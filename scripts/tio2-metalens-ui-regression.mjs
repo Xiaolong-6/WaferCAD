@@ -1,7 +1,8 @@
 // Real WaferCAD UI acceptance: import paper-derived Metalens project,
 // rebuild every Step from clean Base using its captured file Mask, then export.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 import { buildMetalensLocal } from './build-tio2-metalens-example.mjs';
 import { exportCurrentProject, loadProject } from './test-helpers/product-scientific.mjs';
 import {
@@ -104,6 +105,7 @@ try {
   try {
     const welcomePage = await welcomeContext.newPage();
     const welcomeErrors = observePageErrors(welcomePage);
+    const welcomeStart = performance.now();
     await welcomePage.goto(baseUrl + '/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
@@ -117,19 +119,47 @@ try {
     await welcomePage.waitForFunction(
       () => /Opened .*\.wafercad\./.test(document.getElementById('statusText')?.textContent || ''),
       null,
-      { timeout: 60000 },
+      { timeout: 180000 },
     );
-    const opened = await exportCurrentProject(welcomePage, 60000);
+    const loadedMs = Math.round(performance.now() - welcomeStart);
+    // Large scenes finish asynchronously after the import status changes.
+    // Exercise Project actions only after the visible frame has completed.
+    await waitForThreeReady(welcomePage, 180000);
+    const frameReadyMs = Math.round(performance.now() - welcomeStart);
+    const opened = await exportCurrentProject(welcomePage, 180000);
     assert.equal(opened.processRecipe.steps.length, 9, 'Welcome lost Recipe');
     assert.equal(opened.snapshotBranches.nodes.length, 10, 'Welcome lost full History');
-    for (const xy of [
-      [-1.1, -1.1],
-      [-1.1, 1.1],
-      [1.1, 1.1],
-      [0, 0],
-    ]) {
-      assert.deepEqual(sample(opened.model, xy), sample(project.model, xy));
-    }
+    const { readProjectFile } = await import('../site/project-io.js');
+    const source = await readFile(
+      new URL('../site/examples/tio2-metalens-full-array.wafercad', import.meta.url),
+    );
+    const expected = await readProjectFile({
+      size: source.length,
+      text: async () => source.toString('utf8'),
+    });
+    assert.equal(opened.model.kernel, 'vector-2.5d-array-v1');
+    assert.equal(opened.model.width, 30);
+    assert.equal(opened.model.array.instances.length, 6400);
+    assert.equal(
+      opened.model.array.instances.filter((instance) => instance.role === 'device').length,
+      4725,
+    );
+    assert.equal(opened.layout.root, 'TIO2_GRID');
+    assert.equal(opened.layout.elements.length, 60232);
+    assert.equal(opened.snapshots.length, 6);
+    assert.deepEqual(
+      opened.model,
+      expected.model,
+      'Welcome/export changed full-array physical geometry',
+    );
+    assert.deepEqual(opened.layout, expected.layout, 'Welcome/export changed matching Mask');
+    assert.deepEqual(opened.processRecipe, expected.processRecipe, 'Welcome/export changed Recipe');
+    assert.deepEqual(opened.snapshots, expected.snapshots, 'Welcome/export changed bookmarks');
+    assert.deepEqual(
+      opened.snapshotBranches.nodes,
+      expected.snapshotBranches.nodes,
+      'Welcome/export changed complete History restore states',
+    );
     // Scientific views must actually render the reconstructed material stack.
     // A valid data model with a blank or stale canvas is a product regression.
     await waitForThreeReady(welcomePage, 90000);
@@ -169,14 +199,14 @@ try {
     });
     await writeFile(
       'test-results/metalens/visual-browser-report.json',
-      JSON.stringify({ pass: true, ...visual, sectionInk }, null, 2) + '\n',
+      JSON.stringify({ pass: true, loadedMs, frameReadyMs, ...visual, sectionInk }, null, 2) + '\n',
     );
     await welcomePage.screenshot({
       path: 'test-results/metalens/welcome-opened-project.png',
     });
     assert.deepEqual(welcomeErrors, []);
     console.log(
-      'TiO2 Metalens Welcome card opens full process project with 9-Step Recipe and 10-node History.',
+      'TiO2 Metalens Welcome opens 4725 sites, matching Mask, 9-Step Recipe and 10 compiled History nodes.',
     );
   } finally {
     await welcomeContext.close();

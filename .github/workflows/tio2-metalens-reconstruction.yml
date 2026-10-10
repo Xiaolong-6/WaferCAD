@@ -3,6 +3,9 @@ name: TiO2 metalens reconstruction acceptance
 on:
   pull_request:
     paths:
+      - 'site/bundled-examples.js'
+      - 'site/examples/tio2-metalens-full-array.wafercad'
+      - 'scripts/tio2-metalens-ui-regression.mjs'
       - 'scripts/build-tio2-metalens-example.mjs'
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
       - 'scripts/tio2-metalens-array-scale.mjs'
@@ -30,7 +33,9 @@ jobs:
           node scripts/tio2-metalens-array-scale.mjs --grid=25
       - name: Probe 4725 processed sites in bounded complete 80x80 array
         timeout-minutes: 10
-        run: node scripts/tio2-metalens-array-scale.mjs --grid=80
+        run: |
+          node scripts/tio2-metalens-array-scale.mjs --grid=80 --write-example
+          git diff --exit-code -- site/examples/tio2-metalens-full-array.wafercad
       - name: Rebuild source-derived four-unit process and 4725-site illustrative GDS
         run: node scripts/build-tio2-metalens-example.mjs
       - name: Install Chromium for real Recipe Run All

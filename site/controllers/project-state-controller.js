@@ -11,6 +11,7 @@ import { normalizeSectionDetailRoi } from '../section-detail-roi.js';
 import { normalizeSectionZScales } from '../section-z-collapse.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
+import { equalStatePairs } from '../state-equality.js';
 
 export function createEmptyLayout() {
   return {
@@ -23,26 +24,6 @@ export function createEmptyLayout() {
     hierarchy: {},
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
   };
-}
-
-// Exact comparison with a private copy, including non-finite values and missing
-// keys. JSON fingerprints would conflate NaN/null and undefined/missing values.
-function unchangedState(left, right) {
-  const pending = [[left, right]];
-  while (pending.length) {
-    const [a, b] = pending.pop();
-    if (Object.is(a, b)) continue;
-    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
-    if (Array.isArray(a) !== Array.isArray(b)) return false;
-    if (Array.isArray(a) && a.length !== b.length) return false;
-    const keys = Object.keys(a);
-    if (keys.length !== Object.keys(b).length) return false;
-    for (const key of keys) {
-      if (!Object.hasOwn(b, key)) return false;
-      pending.push([a[key], b[key]]);
-    }
-  }
-  return true;
 }
 
 export function createProjectStateController({
@@ -271,11 +252,14 @@ export function createProjectStateController({
 
   function isValidSnapshotStates(states) {
     try {
-      const remaining = [...new Set(states)].filter((state) => {
-        const validatedCopy = importedStates.get(state);
+      const uniqueStates = [...new Set(states)];
+      const copies = uniqueStates.map((state) => {
+        const copy = importedStates.get(state);
         importedStates.delete(state);
-        return !validatedCopy || !unchangedState(state, validatedCopy);
+        return copy;
       });
+      const matches = equalStatePairs(uniqueStates.map((state, index) => [state, copies[index]]));
+      const remaining = uniqueStates.filter((state, index) => !copies[index] || !matches[index]);
       validateProjectFiles(remaining);
       return states.every((state) => state.snapshots == null);
     } catch {

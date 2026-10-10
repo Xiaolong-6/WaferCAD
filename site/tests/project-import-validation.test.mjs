@@ -94,3 +94,23 @@ test('Fast display preference is optional, boolean and never a geometry migratio
   state.display.threeFastMode = 'fast';
   assert.equal(controller.isValidSnapshotState(state), false);
 });
+
+test('batch receipts detect edits to geometry shared by multiple History states', async () => {
+  const controller = createProjectStateController({});
+  const project = await controller.readProjectSnapshot(file);
+  const states = statesOf(project);
+  const geom = states[0].model.regions[0].geom;
+  assert.ok(states.filter((state) => state.model.regions[0].geom === geom).length > 1);
+  geom[0][0][0][0] = Infinity;
+  assert.equal(controller.isValidSnapshotStates(states), false);
+
+  const fresh = await controller.readProjectSnapshot(file);
+  assert.equal(controller.isValidSnapshotStates(statesOf(fresh)), true);
+  const freshStates = statesOf(fresh);
+  freshStates.at(-1).model.regions[0].geom[0][0][0][0] = NaN;
+  assert.equal(
+    controller.isValidSnapshotStates(freshStates),
+    false,
+    'Consumed receipts cannot hide a later edit.',
+  );
+});

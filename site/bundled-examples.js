@@ -211,8 +211,9 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     kind: 'project',
     level: 'Paper-derived nanophotonics',
     variants: [],
-    path: './examples/tio2-metalens-four-unit-process.wafercad',
-    filename: 'tio2-metalens-four-unit-process.wafercad',
+    path: './examples/tio2-metalens-full-array.wafercad',
+    filename: 'tio2-metalens-full-array.wafercad',
+    previewSourcePath: './examples/tio2-metalens-four-unit-process.wafercad',
     previewProject: {
       path: './examples/previews/tio2-metalens-four-unit.wafercad',
       filename: 'tio2-metalens-preview.wafercad',
@@ -224,7 +225,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Schematic only · process verified; XY is illustrative',
     },
     summary:
-      'Four TiO₂ meta-atom shapes with real PMMA / Cr lift-off and 1.5 µm TiO₂ RIE, nine-step reproducible Recipe and History. The full 4725-site parameterized Mask is a separate illustration, not the authors optimized layout.',
+      'Open loads the complete 4,725-site array, its matching Mask and nine-step PMMA / Cr lift-off and TiO₂ RIE History. The cover shows four representative shapes. Array geometry is illustrative; History is compiled from processed templates, and full-array Run all is not yet certified.',
     sources: [
       {
         citation:
