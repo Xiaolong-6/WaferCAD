@@ -1079,15 +1079,15 @@ export function createPlanRenderers({
     ctx.lineWidth = 0.8;
     if (collapseEnabled) {
       ctx.beginPath();
-      ctx.moveTo(plotLeft, zTransform.frameTop);
-      ctx.lineTo(plotLeft + plotWidth, zTransform.frameTop);
-      ctx.lineTo(plotLeft + plotWidth, zTransform.upperBottom);
-      ctx.moveTo(plotLeft + plotWidth, zTransform.lowerTop);
-      ctx.lineTo(plotLeft + plotWidth, zTransform.frameBottom);
-      ctx.lineTo(plotLeft, zTransform.frameBottom);
-      ctx.lineTo(plotLeft, zTransform.lowerTop);
-      ctx.moveTo(plotLeft, zTransform.upperBottom);
-      ctx.lineTo(plotLeft, zTransform.frameTop);
+      ctx.moveTo(viewportX(plotLeft), viewportY(zTransform.frameTop));
+      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.frameTop));
+      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.upperBottom));
+      ctx.moveTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.lowerTop));
+      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.frameBottom));
+      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.frameBottom));
+      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.lowerTop));
+      ctx.moveTo(viewportX(plotLeft), viewportY(zTransform.upperBottom));
+      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.frameTop));
       ctx.stroke();
 
       // Restrained break notches at the plot edges; the interactive entry point
@@ -1097,21 +1097,21 @@ export function createPlanRenderers({
       ctx.strokeStyle = '#788593';
       ctx.lineWidth = 0.8;
       for (const [x, direction] of [
-        [plotLeft, 1],
-        [plotLeft + plotWidth, -1],
+        [viewportX(plotLeft), 1],
+        [viewportX(plotLeft) + plotWidth * screenViewport.zoom), -1],
       ]) {
         ctx.beginPath();
-        ctx.moveTo(x, zTransform.upperBottom - 1);
-        ctx.lineTo(x + direction * 6, zTransform.upperBottom + 3);
-        ctx.lineTo(x + direction * 12, zTransform.upperBottom - 1);
-        ctx.moveTo(x, zTransform.lowerTop + 1);
-        ctx.lineTo(x + direction * 6, zTransform.lowerTop - 3);
-        ctx.lineTo(x + direction * 12, zTransform.lowerTop + 1);
+        ctx.moveTo(x, viewportY(zTransform.upperBottom) - 1);
+        ctx.lineTo(x + direction * 6, viewportY(zTransform.upperBottom) + 3);
+        ctx.lineTo(x + direction * 12, viewportY(zTransform.upperBottom) - 1);
+        ctx.moveTo(x, viewportY(zTransform.lowerTop) + 1);
+        ctx.lineTo(x + direction * 6, viewportY(zTransform.lowerTop) - 3);
+        ctx.lineTo(x + direction * 12, viewportY(zTransform.lowerTop) + 1);
         ctx.stroke();
       }
       ctx.restore();
     } else {
-      ctx.strokeRect(plotLeft, zTransform.frameTop, plotWidth, zTransform.frameHeight);
+      ctx.strokeRect(viewportX(plotLeft), viewportY(zTransform.frameTop), plotWidth * screenViewport.zoom, zTransform.frameHeight * screenViewport.zoom);
     }
 
     ctx.fillStyle = '#707b86';
@@ -1129,17 +1129,17 @@ export function createPlanRenderers({
       ctx.strokeStyle = '#aab3bd';
       ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.moveTo(plotLeft - 4, y);
-      ctx.lineTo(plotLeft, y);
+      ctx.moveTo(viewportX(plotLeft)) - 4, y);
+      ctx.lineTo(viewportX(plotLeft), y);
       ctx.stroke();
       ctx.fillStyle = '#707b86';
-      ctx.fillText(formatXY(value), plotLeft - 6, y);
+      ctx.fillText(formatXY(value), viewportX(plotLeft)) - 6, y);
     }
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('A', plotLeft, Math.min(h - 5, zTransform.frameBottom + 15));
+    ctx.fillText('A', viewportX(plotLeft), Math.min(h - 5, viewportY(zTransform.frameBottom) + 15));
     ctx.textAlign = 'right';
-    ctx.fillText('B', plotLeft + plotWidth, Math.min(h - 5, zTransform.frameBottom + 15));
+    ctx.fillText('B', viewportX(plotLeft) + plotWidth * screenViewport.zoom), Math.min(h - 5, viewportY(zTransform.frameBottom) + 15));
     ctx.textAlign = 'left';
 
     const scaleButton = $('sectionScaleModeBtn');
