@@ -885,6 +885,31 @@ try {
     assert.ok(legendFlow.right <= legendFlow.width);
     assert.equal((await checkLegend()).matches, true);
     record(`${width}: Section legend below plot, no overlay`);
+    await click('[data-action="domain:history"]');
+    const history = await evaluate(`(() => {
+      const node=document.querySelector('[data-history-scroll]'),rect=node.getBoundingClientRect();
+      return {height:node.clientHeight,total:node.scrollHeight,x:rect.x+rect.width/2,
+        y:Math.min(innerHeight-40,rect.y+80),top:rect.top,
+        plot:document.querySelector('[data-science="section"]').getBoundingClientRect().height};
+    })()`);
+    assert.ok(history.height >= 250 && history.total > history.height && history.top < 1000);
+    assert.ok(history.plot >= 240);
+    await call('Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      x: history.x,
+      y: history.y,
+      deltaX: 0,
+      deltaY: 10000,
+    });
+    await waitFor(
+      async () =>
+        evaluate(`(() => {const node=document.querySelector('[data-history-scroll]');
+      return node.scrollTop>0 && node.scrollTop+node.clientHeight>=node.scrollHeight-2;})()`),
+      `${width} History wheel bottom`,
+    );
+    record(
+      `${width}: History has visible bounded content and wheel reaches the last Step; plot retains 240px height`,
+    );
   }
   await viewport(1440);
   assert.equal((await snapshot()).state.mode, 'split');
@@ -937,6 +962,68 @@ try {
   }
   record('Manual, Recipe and History wheel scroll reaches the bottom in a short desktop viewport');
   await click('[data-action="domain:process"]');
+  const guideCases = [
+    ['deposit', { processCoverage: 'direct' }, 'deposit-directional'],
+    ['deposit', { processCoverage: 'conformal' }, 'deposit-conformal'],
+    [
+      'deposit',
+      { processCoverage: 'transfer', processPlacement: 'follow' },
+      'deposit-transfer-follow',
+    ],
+    ['deposit', { processCoverage: 'transfer', processPlacement: 'flat' }, 'deposit-transfer-flat'],
+    ['extend', { processCoverage: 'direct' }, 'extend-directional'],
+    ['extend', { processCoverage: 'conformal' }, 'extend-conformal'],
+    ['etch', { processProfile: 'directional', processSurface: 'smooth' }, 'etch-selective'],
+    ['etch', { processProfile: 'isotropic' }, 'etch-isotropic'],
+    ['etch', { processProfile: 'undercut' }, 'etch-undercut'],
+    ['etch', { processProfile: 'planarize' }, 'etch-planarize'],
+    [
+      'etch',
+      { processProfile: 'directional', processSurface: 'rough', processPolarity: 'normal' },
+      'etch-rough-normal',
+    ],
+    ['etch', { processSurface: 'rough', processPolarity: 'inverted' }, 'etch-rough-inverted'],
+    ['etch', { processSurface: 'pyramid', processPolarity: 'normal' }, 'etch-pyramid-normal'],
+    ['etch', { processSurface: 'pyramid', processPolarity: 'inverted' }, 'etch-pyramid-inverted'],
+    ['liftoff', {}, 'liftoff'],
+    ['implant', {}, 'implant'],
+    ['electrical', {}, 'electrical'],
+    ['record', {}, 'record'],
+  ];
+  for (const [operation, fields, id] of guideCases) {
+    for (const [key, value] of Object.entries({ operation, ...fields }))
+      await evaluate(`(() => {const input=document.querySelector('[data-key="${key}"]');
+        input.value=${JSON.stringify(value)};input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    assert.equal(
+      await evaluate(`(() => {
+      const guide=document.querySelector('[data-process-guide]');
+      const entry=window.WaferCadProcessGuide.processGuideEntry(${JSON.stringify(id)});
+      return guide.dataset.processGuide===entry.id && guide.textContent.includes(entry.summary)
+        && guide.querySelectorAll('.p-process-guide-drawing').length===2
+        && [...guide.querySelectorAll('.p-process-guide-drawing')].every((node,index)=>{
+          const expected=document.createElement('div');
+          expected.innerHTML=window.WaferCadProcessGuide.processGuideSvg(entry.id,Boolean(index));
+          return node.firstElementChild.isEqualNode(expected.firstElementChild);
+        })
+        && guide.querySelector('a').hash==='#'+entry.id;
+    })()`),
+      true,
+      id,
+    );
+  }
+  await click('.p-process-guide > summary');
+  await waitFor(
+    async () => evaluate('window.WaferCadV2Shell.snapshot().state.processGuideOpen===false'),
+    'guide collapse',
+  );
+  await evaluate(`(() => {const input=document.querySelector('[data-key="operation"]');
+    input.value='deposit';input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  assert.equal(await evaluate("document.querySelector('[data-process-guide]').open"), false);
+  await click('.p-process-guide > summary');
+  assert.equal((await snapshot()).sourceFrozen, true);
+  record(
+    'Manual guide matches canonical diagrams for all 18 available selector variants; collapse survives operation changes',
+  );
   await click('[data-action="domain:code"]');
   assert.equal(
     await evaluate(`(() => {
@@ -992,6 +1079,7 @@ try {
     'direct file boot',
   );
   record('double-click file:// boot, no server or fetch required');
+  assert.equal(await evaluate("document.querySelector('[data-process-guide] svg')!==null"), true);
   assert.deepEqual(errors, [], 'No browser console/page errors');
   const version = await (await fetch(`${endpoint}/json/version`)).json();
   console.log(

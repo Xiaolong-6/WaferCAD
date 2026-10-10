@@ -318,11 +318,81 @@
         ),
       ];
     }
-    function processExtras() {
-      const operation = state.operation || 'deposit';
-      const sample = [...data.recipe.steps, ...data.branches.flatMap((b) => b.recipe.steps)].find(
+    function processSample(operation) {
+      return [...data.recipe.steps, ...data.branches.flatMap((b) => b.recipe.steps)].find(
         (s) => s.command === operation,
       )?.params;
+    }
+    function processGuide() {
+      const { processGuideKey, processGuideEntry, processGuideSvg } = window.WaferCadProcessGuide;
+      const operation = state.operation || 'deposit';
+      const sample = processSample(operation);
+      const id = processGuideKey({
+        type: { deposit: 'add', extend: 'grow' }[operation] || operation,
+        growth: state.processCoverage || sample?.coverage || 'direct',
+        placement: state.processPlacement || sample?.placement || 'follow',
+        profile: state.processProfile || 'directional',
+        surface: state.processSurface || sample?.surface?.kind || sample?.surface || 'smooth',
+        polarity: state.processPolarity || 'inverted',
+        targetMaterial: Boolean(state.material || currentModel().layers.at(-1)?.id),
+      });
+      const entry = processGuideEntry(id);
+      const illustration = (after) => {
+        const drawing = el('div', { class: 'p-process-guide-drawing' });
+        // Trusted canonical SVG only; form values are not interpolated into markup.
+        drawing.innerHTML = processGuideSvg(id, after);
+        return el('div', {}, el('span', { class: 'p-aux' }, after ? 'After' : 'Before'), drawing);
+      };
+      const guide = el(
+        'details',
+        {
+          class: 'p-process-guide',
+          'data-process-guide': id,
+          'aria-label': 'Current process schematic',
+          open: state.processGuideOpen !== false,
+        },
+        el(
+          'summary',
+          {},
+          `How ${operation === 'liftoff' ? 'Lift-off' : operation[0].toUpperCase() + operation.slice(1)} works`,
+        ),
+        el('strong', {}, entry.title),
+        el(
+          'div',
+          {
+            class: 'p-process-guide-illustrations',
+            'aria-label': 'Schematic process before and after',
+          },
+          illustration(false),
+          el('span', { 'aria-hidden': 'true' }, '→'),
+          illustration(true),
+        ),
+        el('p', {}, entry.summary),
+        el(
+          'small',
+          { class: 'p-aux' },
+          operation === 'record'
+            ? 'History only'
+            : `${state.area === 'full' ? 'Whole face' : state.area === 'invert' ? 'Invert Mask' : 'Selected Mask'} · ${state.face === 'back' ? 'Back' : 'Front'}`,
+        ),
+        el(
+          'a',
+          {
+            href: `https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations#${id}`,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+          'Full operation guide ↗',
+        ),
+      );
+      guide.addEventListener('toggle', () => {
+        if (guide.isConnected) state.processGuideOpen = guide.open;
+      });
+      return guide;
+    }
+    function processExtras() {
+      const operation = state.operation || 'deposit';
+      const sample = processSample(operation);
       if (operation === 'deposit' || operation === 'extend')
         return [
           ...(operation === 'deposit'
@@ -666,6 +736,7 @@
           ...taskControls(),
           state.failure ? notice(state.failure, 'error') : null,
         ),
+        processGuide(),
         el(
           'div',
           { class: 'p-process-summary' },

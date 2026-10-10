@@ -1476,6 +1476,8 @@
       root.querySelector(`[popovertarget="${popupOwner}"]`)?.focus({ preventScroll: true });
     if (kind === 'return-results' && narrow())
       root.querySelector('.p-stage')?.scrollIntoView({ block: 'start' });
+    if (['domain', 'show-editor'].includes(kind) && narrow())
+      root.querySelector('.p-inspector')?.scrollIntoView({ block: 'start' });
     if (kind === 'fail' && state.domain === 'recipe')
       root
         .querySelector(`[data-action="step:${activeStep}"]`)
