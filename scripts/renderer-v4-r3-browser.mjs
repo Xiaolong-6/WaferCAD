@@ -182,7 +182,10 @@ try {
   assert.equal(r2.v4GpuResourceComplete, 'true');
   assert.ok(Number(r2.v4GpuResourceEstimatedBufferBytes) > 0);
   assert.ok(Number(r2.v4GpuResourceMeshes) > 0);
-  assert.ok(Number(fastIndex.v4FastIndexedVertices) > 0, 'fast index must reduce vertex submission');
+  assert.ok(
+    Number(fastIndex.v4FastIndexedVertices) > 0,
+    'fast index must reduce vertex submission',
+  );
   assert.ok(Number(fastIndex.v4FastOriginalVertices) > Number(fastIndex.v4FastIndexedVertices));
   const pixels = compareScreenshotPngPixels(observations[0].png, observations[1].png);
   const indexedPixels = compareScreenshotPngPixels(observations[0].png, observations[2].png);
