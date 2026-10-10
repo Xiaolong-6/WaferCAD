@@ -31,10 +31,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Generate exact Prettier review patch (CI checkout only)
-        run: |
-          npx prettier --write site/controllers/base-controls-controller.js site/model-array-construction.js site/process-recipe-preflight.js site/process-recipe.js site/tests/model-array.test.mjs site/tests/process-recipe-preflight.test.mjs site/tests/process-recipe.test.mjs site/tests/tio2-metalens-reconstruction.test.mjs
-          git --no-pager diff --unified=1 -- site/controllers/base-controls-controller.js site/model-array-construction.js site/process-recipe-preflight.js site/process-recipe.js site/tests/model-array.test.mjs site/tests/process-recipe-preflight.test.mjs site/tests/process-recipe.test.mjs site/tests/tio2-metalens-reconstruction.test.mjs
       - name: Probe scale-safe array templates at 8x8 and 25x25
         run: |
           node scripts/tio2-metalens-array-scale.mjs --grid=8
