@@ -30,7 +30,8 @@ export function censusV4SceneResources(groups, { maxObjects = 20000 } = {}) {
     maxObjects < 1 ||
     maxObjects > 100000 ||
     !groups.every((group) => validObject(group) && Array.isArray(group.children))
-  ) return output;
+  )
+    return output;
 
   output.valid = true;
   output.reason = 'measured';
@@ -76,8 +77,12 @@ export function censusV4SceneResources(groups, { maxObjects = 20000 } = {}) {
   }
   output.geometryCount = geometryOwners.size;
   output.materialCount = materialOwners.size;
-  output.sharedGeometries = [...geometryOwners.values()].filter((owners) => owners.length > 1).length;
-  output.sharedMaterials = [...materialOwners.values()].filter((owners) => owners.length > 1).length;
+  output.sharedGeometries = [...geometryOwners.values()].filter(
+    (owners) => owners.length > 1,
+  ).length;
+  output.sharedMaterials = [...materialOwners.values()].filter(
+    (owners) => owners.length > 1,
+  ).length;
   output.crossGroupGeometries = [...geometryOwners.values()].filter(
     (owners) => new Set(owners).size > 1,
   ).length;
