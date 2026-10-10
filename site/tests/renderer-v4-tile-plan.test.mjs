@@ -78,12 +78,19 @@ test('R2 plan serves near, ROI, Section Z, and perspective uncertainty without g
     assert.equal(result.skippedTriangles, 0);
     assert.equal(result.tiles, 2);
     assert.equal(
-      result.nearTiles + result.midTiles + result.farTiles +
-        result.uncertainTiles + result.offscreenTiles,
+      result.nearTiles +
+        result.midTiles +
+        result.farTiles +
+        result.uncertainTiles +
+        result.offscreenTiles,
       2,
     );
   }
-  assert.equal(observePreparedAdaptiveTiles(plan, { ...view, viewProjectionMatrix: perspectiveNear }).uncertainTiles, 2);
+  assert.equal(
+    observePreparedAdaptiveTiles(plan, { ...view, viewProjectionMatrix: perspectiveNear })
+      .uncertainTiles,
+    2,
+  );
   assert.equal(owners[0].parts[0].z1, 0.002);
 });
 
@@ -171,7 +178,15 @@ test('invalid roughness, array offsets, appearance and excessive template parts 
   assert.equal(p.owners, 1);
   assert.equal(p.tiles.length, 2);
   assert.equal(observePreparedAdaptiveTiles(p, { ...view, mapZ: () => NaN }).uncertainTiles, 2);
-  assert.equal(observePreparedAdaptiveTiles(p, { ...view, visibleIntervals: () => { throw Error('invalid'); } }).uncertainTiles, 2);
+  assert.equal(
+    observePreparedAdaptiveTiles(p, {
+      ...view,
+      visibleIntervals: () => {
+        throw Error('invalid');
+      },
+    }).uncertainTiles,
+    2,
+  );
 });
 
 test('observations with invalid camera/Section options fail closed and never allocate tiers', () => {
