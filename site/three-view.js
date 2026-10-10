@@ -3554,7 +3554,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
               transparent: targetVariant === 'transparent',
               quality: inspection.fast === false,
               fullArray: Number(plan.arrayInstances || 0) >= 64,
-              clipped: Boolean(clip) || currentZDisplay?.enabled !== false,
+              clipped:
+                Boolean(clip) ||
+                Boolean(electrical.viewClipped) ||
+                visibleSolid.caps.length !== electrical.caps.length ||
+                visibleSolid.slabs.length !== electrical.slabs.length ||
+                visibleSolid.slabs.some(
+                  (slab, index) =>
+                    slab.z0 !== electrical.slabs[index]?.z0 ||
+                    slab.z1 !== electrical.slabs[index]?.z1,
+                ),
               rough: Boolean(appearance),
               solid: displaySolid,
             }),
