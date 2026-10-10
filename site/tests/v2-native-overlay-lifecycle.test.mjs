@@ -127,6 +127,25 @@ test('opening native More in another view closes previously adopted More', () =>
   native.destroy();
 });
 
+test('nested ROI details preserve their responsive More parent while both are open', () => {
+  const manager = fixture();
+  const sample = owner();
+  const child = new MockNode();
+  child.summary = new MockNode('SUMMARY');
+  sample.details.contains = (node) => node === child;
+  const original = sample.panel.querySelectorAll;
+  sample.panel.querySelectorAll = (selector) =>
+    selector === 'details' ? [sample.details, child] : original(selector);
+  const native = manager.adoptNativeViews([sample.panel]);
+  sample.details.open = true;
+  sample.details.fire('toggle');
+  child.open = true;
+  child.fire('toggle');
+  assert.equal(sample.details.open, true, 'More parent must not collapse');
+  assert.equal(child.open, true, 'ROI child must remain open');
+  native.destroy();
+});
+
 test('original Z Break dialog replaces native More and delegates closure to its native owner', () => {
   const manager = fixture();
   const first = owner();
