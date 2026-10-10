@@ -74,7 +74,7 @@ BC-02 已关闭；BC-03–BC-08 按用户最终决定延后到 M3，不再继续
 
 按用户最终范围，进入 M3 前关闭 BC-01、BC-02、BC-09；BC-03 到 BC-08 不再补齐 mock 实现，全部转为 M3 的真实 Process / Recipe / ROI / Legend / Draw / File / Export 接线验收项。已开始的 BC-03/04/05 草稿修改已撤回。**M2 完整 UI 对照仍未通过**；58 项 shell 检查通过不能替代真实业务和完整 UI 对照。
 
-本分支已通过正常 merge `2dc680f` 合入最新 `origin/main` `d73a201`（TiO2 metalens 更新），没有重写历史。此前布局修复 `644cbb6`、Mask/标题修复 `d6a233a` 和报告 `0a19e2f` 已 push；本小修与本记录随后正常 push 到原分支。
+本分支先通过正常 merge `2dc680f` 合入 `origin/main` `d73a201`；推送前再次同步发现 main 已前进到 `dc2cb2d`（完整 4725-site TiO2 metalens array），随后正常 merge 为 `f390516`。唯一冲突是 `docs/README.md` 的文档导航，保留双方全部条目，没有重写历史。此前布局修复 `644cbb6`、Mask/标题修复 `d6a233a` 和报告 `0a19e2f` 已 push；本小修与本记录随后正常 push 到原分支。
 
 BC-02 的离线 fixture packager 按原始 stable node ID 提取 operation replay 参数为 `node.edit`，不运行 core、不导入生产控制器。mock controller 按该 payload 装载 Manual 草稿，完整参数另保留于 `processSourceParams`；进入 Edit 前保存 Manual 字段和独立 undo/redo，Cancel/Return 恢复。Deposit 的名称、厚度、face/area 不再借用上一张表单。生产 restore/replay 事务仍归 M3。
 
@@ -93,6 +93,8 @@ BC-09 只清理文案和语言标记：`prototype`、`source History`、`normali
 | `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs site/tests/process-guide.test.mjs site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs`                                                                                                                                                                                                                    | exit 0；27 passed / 0 failed（8 shell 契约、8 guide、11 文档）                                          |
 | `npx prettier --check scripts/v2/build-m2-mock-data.mjs scripts/v2/check-m2-shell.mjs scripts/v2/m25-shell-contract.test.mjs site/app-v2.html site/ui-v2/app.html site/ui-v2/live-preview.js site/ui-v2/mock-data.js site/ui-v2/mock-domain-panels.js site/ui-v2/mock-views.js site/ui-v2/mock-workspace.js site/ui-v2/production-workspace.js site/ui-v2/workstation-v2.js site/ui-v2/workstation-v2.css` | exit 0                                                                                                  |
 | `git diff --check`                                                                                                                                                                                                                                                                                                                                                                                         | exit 0                                                                                                  |
+
+上述正式浏览器、lint、docs、27 项回归和 fixture 检查在最终 main 合并 `f390516` 后再次通过。此时 docs 检查为 115 Markdown files、433 internal links、95 reachable docs、44 Architecture module references。沙箱内首次启动 Chrome 未能建立调试端点；允许原生浏览器测试进程后，同一正式脚本完整通过，没有修改产品或测试来规避该启动失败。
 
 契约测试首次因旧 `lang=zh-CN` 断言失败，按用户明确要求英文界面更新为 `lang=en` 后 27 项全部通过；架构和业务隔离断言未放宽。实际 IAB 点击品牌到 `index.html` Welcome 成功；Lift-off→History Deposit Edit 展示 0.07 µm / Front / Whole face，Cancel 返回原草稿。支持截图：`test-results/ui-v2-acceptance/pre-m3-history-edit-1280.png`，包含品牌样式和英文右下角保存状态/项目链接。
 
