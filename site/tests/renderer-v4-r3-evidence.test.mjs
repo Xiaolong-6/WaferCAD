@@ -97,7 +97,9 @@ test('rough, NaN, and throwing display transforms cannot yield validated candida
   assert.equal(result.owners, 1);
   const transform = surveyV4FeatureFootprints([owner()], {
     ...camera,
-    visibleIntervals: () => { throw new Error('invalid section'); },
+    visibleIntervals: () => {
+      throw new Error('invalid section');
+    },
   });
   assert.equal(transform.excludedOwners, 1);
   assert.equal(transform.measuredQuads, 0);
@@ -108,10 +110,17 @@ test('resource census deduplicates shared material, geometry and typed-array ide
   const attr = { array: sharedArray };
   const geo = { attributes: { position: attr, normal: attr }, index: null };
   const material = {};
-  const groupA = { children: [
-    { geometry: geo, material, isInstancedMesh: true, instanceMatrix: { array: new Float32Array(32) } },
-    { geometry: geo, material },
-  ] };
+  const groupA = {
+    children: [
+      {
+        geometry: geo,
+        material,
+        isInstancedMesh: true,
+        instanceMatrix: { array: new Float32Array(32) },
+      },
+      { geometry: geo, material },
+    ],
+  };
   const groupB = { children: [{ geometry: geo, material }] };
   const r = censusV4SceneResources([groupA, groupB]);
   assert.equal(r.valid, true);
@@ -130,8 +139,14 @@ test('resource census deduplicates shared material, geometry and typed-array ide
 
 test('resource census exposes object budget, rejects malformed groups and never disposes resources', () => {
   const geo = { attributes: { position: { array: new Float32Array(3) } } };
-  const mat = { dispose: () => { throw new Error('must not dispose'); } };
-  const groups = [{ children: Array.from({ length: 4 }, () => ({ geometry: geo, material: mat })) }];
+  const mat = {
+    dispose: () => {
+      throw new Error('must not dispose');
+    },
+  };
+  const groups = [
+    { children: Array.from({ length: 4 }, () => ({ geometry: geo, material: mat })) },
+  ];
   const r = censusV4SceneResources(groups, { maxObjects: 2 });
   assert.equal(r.meshCount, 2);
   assert.equal(r.objectOverflow, 2);
