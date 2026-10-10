@@ -192,7 +192,6 @@ R1 is intended as an _initial experiment_, not acceptance of V4 or PR #166.
 Record exact CI results, browser availability and final branch HEAD in the
 Draft PR; any unrun gate remains **pending**, never implicitly passed.
 
-
 ## R2 verified checkpoint — 2026-10-10
 
 - [Full R1/R2 focused CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38063163584):
