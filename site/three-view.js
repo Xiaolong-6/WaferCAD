@@ -14,6 +14,7 @@ import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
+import { sharedFlatCapZ, mappedFlatCapTranslation } from './renderer-v4-flat-geometry-sharing.js';
 import {
   createAdaptiveTilePlanCache,
   observePreparedAdaptiveTiles,
@@ -108,6 +109,7 @@ export function createThreeView({
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
+  const v4SharedFlatCapEnabled = rendererParams.get('rendererV4SharedFlatCaps') === '1';
   const v4GpuCensusEnabled = rendererParams.get('rendererV4GpuCensus') === '1';
   const v4HeavyCameraNoDamping = rendererParams.get('rendererV4HeavyCameraNoDamping') === '1';
   const v4TileProbeEnabled =
@@ -145,6 +147,9 @@ export function createThreeView({
   let surfacePlanBuildCount = 0;
   let smoothCapInstanceGroupCount = 0;
   let smoothCapInstanceCount = 0;
+  let v4SharedFlatTemplates = 0;
+  let v4SharedFlatMeshes = 0;
+  let v4SharedFlatClonesAvoided = 0;
   let smoothCapTemplateTriangleCount = 0;
   let smoothSidewallInstanceGroupCount = 0;
   let smoothSidewallInstanceCount = 0;
@@ -352,6 +357,10 @@ export function createThreeView({
       minZ,
       maxZ,
       canonicalZ: null,
+      flatReadOnly:
+        typeof object.geometry.userData?.waferCadV4ReadOnlyFlatZ === 'number' &&
+        object.geometry.userData.waferCadV4ReadOnlyFlatZ === minZ &&
+        minZ === maxZ,
       mode: 'canonical',
     };
     zDisplayObjects.add(object);
@@ -399,13 +408,16 @@ export function createThreeView({
     object.visible = !fullyHidden;
     if (fullyHidden) return;
 
-    if (canTranslateSide) {
+    // Shared flat template vertices remain immutable: a single physical
+    // Z plane maps to a translated mesh under any Section display transform.
+    const flatTranslation = mappedFlatCapTranslation(record, state);
+    if (canTranslateSide || flatTranslation !== null) {
       if (record.mode === 'mapped') {
         restoreCanonicalZ(record, positions);
         refreshGeometryBounds(object);
       }
       const sample = fullyUpper ? record.minZ : record.maxZ;
-      object.position.z = state.mapZ(sample) - sample;
+      object.position.z = flatTranslation ?? state.mapZ(sample) - sample;
       record.mode = 'translated';
       return;
     }
@@ -949,6 +961,12 @@ export function createThreeView({
     scheduleFrame();
   }
 
+  function publishV4SharedFlatCounts() {
+    host.dataset.v4SharedFlatTemplates = String(v4SharedFlatTemplates);
+    host.dataset.v4SharedFlatMeshes = String(v4SharedFlatMeshes);
+    host.dataset.v4SharedFlatClonesAvoided = String(v4SharedFlatClonesAvoided);
+  }
+
   function writeV4GpuResourceCensus() {
     if (!v4GpuCensusEnabled) return;
     const groups = [
@@ -1058,6 +1076,9 @@ export function createThreeView({
       surfaceMaterialPool,
       currentRoughMode,
       lastLodSignature,
+      v4SharedFlatTemplates,
+      v4SharedFlatMeshes,
+      v4SharedFlatClonesAvoided,
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
@@ -1156,6 +1177,10 @@ export function createThreeView({
     surfaceMaterialPool = entry.surfaceMaterialPool;
     currentRoughMode = entry.currentRoughMode;
     lastLodSignature = entry.lastLodSignature;
+    v4SharedFlatTemplates = entry.v4SharedFlatTemplates || 0;
+    v4SharedFlatMeshes = entry.v4SharedFlatMeshes || 0;
+    v4SharedFlatClonesAvoided = entry.v4SharedFlatClonesAvoided || 0;
+    publishV4SharedFlatCounts();
     physicalSceneModel = entry.model;
     physicalSceneSignature = entry.signature;
     activeSceneVariant = entry.mode;
@@ -1225,6 +1250,10 @@ export function createThreeView({
     surfaceMaterialPool = new Map();
     currentRoughMode = 'none';
     lastLodSignature = null;
+    v4SharedFlatTemplates = 0;
+    v4SharedFlatMeshes = 0;
+    v4SharedFlatClonesAvoided = 0;
+    publishV4SharedFlatCounts();
     activeSceneVariant = mode;
     host.dataset.sceneVariant = mode;
   }
@@ -2034,6 +2063,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       adaptiveRough = false,
       appearance = null,
       presentation = null,
+      shareFlatGeometry = false,
     } = {},
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
@@ -2049,11 +2079,22 @@ diffuseColor.a *= waferCadAlphaScale;`,
       batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 256) : maxInstancesPerMesh,
       chunks = spatialInstanceChunks(translations, { maxInstances: batchSize }),
       meshes = [];
+    const flatShared =
+      shareFlatGeometry && chunks.length > 1
+        ? sharedFlatCapZ(geometry, { enabled: v4SharedFlatCapEnabled, planarCap: true, adaptiveRough, appearance })
+        : null;
+    if (flatShared) {
+      geometry.userData.waferCadV4ReadOnlyFlatZ = flatShared.z;
+      v4SharedFlatTemplates++;
+      v4SharedFlatMeshes += chunks.length;
+      v4SharedFlatClonesAvoided += chunks.length - 1;
+      publishV4SharedFlatCounts();
+    }
     chunks.forEach((chunk, chunkIndex) => {
       // Z-collapse can remap vertex Z coordinates in place. Give each spatial
       // chunk its own tiny template geometry so one chunk cannot mutate the
       // canonical coordinates observed by another chunk.
-      const chunkGeometry = chunkIndex === 0 ? geometry : geometry.clone(),
+      const chunkGeometry = flatShared || chunkIndex === 0 ? geometry : geometry.clone(),
         mesh = new THREE.InstancedMesh(chunkGeometry, material, chunk.length),
         matrix = new THREE.Matrix4();
       chunk.forEach(([x, y], index) => {
@@ -3245,6 +3286,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
             presentation,
+            shareFlatGeometry: true,
           });
           smoothCapInstanceGroupCount += meshes.length;
           smoothCapInstanceCount += cap.instanceTranslations.length;
@@ -3319,6 +3361,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
                     name: `${bucket.part.layerId || 'material'} repeated cap`,
                     presentation,
+                    shareFlatGeometry: true,
                   });
                 if (!meshes.length) continue;
                 smoothCapInstanceGroupCount += meshes.length;
