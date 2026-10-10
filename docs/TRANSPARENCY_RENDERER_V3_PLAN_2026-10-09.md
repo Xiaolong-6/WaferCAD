@@ -721,6 +721,13 @@ full 625-site, edge-on, Section Z-collapse, ROI, 20-toggle and Process/Recipe
 acceptance before considering promotion to default. Do not modify image
 baselines or describe this as an achieved improvement.
 
+At final non-Draft PR review, the **existing** V3 625-site A/B CI slot now
+runs `--electrical-planar-ab` in place of the historical Quality-indexing
+comparison. This is a cost-neutral replacement, not an added heavy job.
+Historical indexing A/B evidence remains in the earlier Phase B.1 section;
+the standalone `--assembly-ab` and indexing A/B modes remain locally
+reproducible but are not duplicated in final-review CI.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
