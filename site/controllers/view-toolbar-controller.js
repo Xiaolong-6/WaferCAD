@@ -61,7 +61,7 @@ export function createViewToolbarController({ root = document } = {}) {
       // Legacy toolbar breakpoints and DOM remain unchanged.
       const entriesForPanel =
         root.documentElement.dataset.ui === 'v2' &&
-          (panelId === 'threePanel' || panelId === 'sectionPanel')
+        (panelId === 'threePanel' || panelId === 'sectionPanel')
           ? [['.view-mode-field', 700], ...configs]
           : configs;
       for (const [selector, breakpoint] of entriesForPanel) {
