@@ -3437,7 +3437,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
               v4FastIndexedVertices += geometry.getAttribute('position').count * instances;
               v4FastOriginalVertices += geometry.index.count * instances;
             } else {
-              qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
+              qualityIndexedSubmittedVertices +=
+                geometry.getAttribute('position').count * instances;
               qualityOriginalSubmittedVertices += geometry.index.count * instances;
               qualityIndexedTriangles += (geometry.index.count / 3) * instances;
             }
