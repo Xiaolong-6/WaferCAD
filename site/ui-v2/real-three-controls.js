@@ -122,9 +122,10 @@
     host.addEventListener('pointermove', move, true);
     host.addEventListener('pointerup', end, true);
     host.addEventListener('pointercancel', end, true);
-    host.addEventListener('lostpointercapture', (event) => {
+    function lostCapture(event) {
       if (drag?.pointerId === event.pointerId) drag = null;
-    });
+    }
+    host.addEventListener('lostpointercapture', lostCapture);
     sync();
     return Object.freeze({
       pan,
@@ -137,6 +138,7 @@
         host.removeEventListener('pointermove', move, true);
         host.removeEventListener('pointerup', end, true);
         host.removeEventListener('pointercancel', end, true);
+        host.removeEventListener('lostpointercapture', lostCapture);
       },
     });
   }
