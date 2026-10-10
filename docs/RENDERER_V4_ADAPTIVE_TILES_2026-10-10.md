@@ -269,3 +269,45 @@ Fast far-wafer tier; R3 needs structure/template-level projected error and
 transparent-material coverage proof before removing any face. Keep both R2
 interaction flags default-off, PR #166 and PR #174 Draft, and approved
 visual baselines unchanged.
+
+## R3 Phase A acceptance and Fast indexing pilot (2026-10-10)
+
+Branch-only [full Node check](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38067054964)
+at commit `dc4abeb0`: **642/642 Node tests** and **35/35 focused tests**
+passed, with ESLint, Prettier and generated documentation checks green.
+
+The [R3 625-site browser
+A/B](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38067036840)
+used Linux Chromium with ANGLE SwiftShader software WebGL, not a physical
+GPU. The 531 x 275 canvas had **0/146,025 changed pixels** in all
+three same-pose arms (baseline, R3 observation, Fast indexed sidewalls).
+All three submitted **16,906,262 triangles** and **1,408 draw calls**,
+with 880 active scene objects and 880 geometries.
+
+In the stratified R3 feature sample, 8,192 of 5,085,000 candidate
+smooth buried sidewall quads were projected across two valid owners;
+7,975 sampled quads had footprint <= 0.5 pixels. **5,076,808
+quads remained unmeasured.** This is neither a population estimate
+nor permission to remove transparent surfaces. Section Z collapse
+remained the active reduction veto. The R3 resource census inspected
+retained scene variants and observed 1,468 meshes, 1,468 geometries,
+658 materials and 32,513,760 bytes of unique typed-array data
+(approximate CPU-side buffer storage, not true GPU VRAM).
+
+The opt-in `?rendererV4FastSmoothIndex=1` experiment reuses the
+already available smooth planar wall index builder for Fast,
+transparent, buried array sidewalls, subject to the existing
+`canIndexSmoothWalls` exclusion checks. It reduces eligible repeated
+wall vertices from **4,125,000** to **2,750,000**, saving
+**1,375,000 vertex records (33.3%)** in this fixture, with the same
+triangle count, draw calls and zero same-pose pixel differences.
+It does not alter canonical geometry, GLB export, Kernel, ROI or
+History. It remains default-off and does not establish a measurable
+GPU frame-time or VRAM improvement.
+
+Still open before promotion: multiple camera angles, zoom, ROI,
+Section Z-collapse edits, near-edge-on opacity ordering, long-running
+resource lifetime, representative physical hardware GPU profiling
+and repeatable presentation-time gains. GPU tile ownership and safe
+face elimination are not implemented. Keep PR #174 stacked as Draft
+on PR #166; neither merges into main. Visual baselines stay intact.
