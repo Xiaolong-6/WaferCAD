@@ -3,7 +3,7 @@
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 32;
 const MAX_PAN = 100000;
-const finiteOr = (v, fallback) => Number.isFinite(Number(v)) ? Number(v) : fallback;
+const finiteOr = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export function normalizeSectionViewport(input = null) {
@@ -40,7 +40,8 @@ export function zoomSectionViewportAt(view, factor, x, y, width, height) {
   const zoom = next.zoom;
   const cx = Math.max(1, finiteOr(width, 1)) / 2;
   const cy = Math.max(1, finiteOr(height, 1)) / 2;
-  const px = finiteOr(x, cx), py = finiteOr(y, cy);
+  const px = finiteOr(x, cx),
+    py = finiteOr(y, cy);
   // Keep the material/physical point under the pointer fixed during zoom.
   const baseX = (px - cx - current.panX) / current.zoom;
   const baseY = (py - cy - current.panY) / current.zoom;
