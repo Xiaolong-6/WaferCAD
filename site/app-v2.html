@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" data-ui="v2" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WaferCAD · UI Preview</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="ui-v2/tokens.css" />
+    <link rel="stylesheet" href="ui-v2/components.css" />
+    <link rel="stylesheet" href="ui-v2/workstation-v2.css" />
+    <script src="ui-v2/view-state.js" defer></script>
+    <script src="ui-v2/live-preview.js" defer></script>
+    <script src="ui-v2/view-icons.js" defer></script>
+    <script src="ui-v2/native-components.js" defer></script>
+    <script src="ui-v2/view-panel.js" defer></script>
+    <script src="ui-v2/section-legend.js" defer></script>
+    <script src="ui-v2/workstation-v2.js" defer></script>
+    <script src="ui-v2/mock-data.js" defer></script>
+    <script src="ui-v2/process-guide.generated.js" defer></script>
+    <script src="ui-v2/mock-domain-panels.js" defer></script>
+    <script src="ui-v2/history-tree.js" defer></script>
+    <script src="ui-v2/mock-views.js" defer></script>
+    <script src="ui-v2/mock-workspace.js" defer></script>
+    <script src="ui-v2/shell-preview.js" defer></script>
+  </head>
+  <body data-ready="false" data-page-errors="0">
+    <header class="v2-preview-bar">
+      <strong>UI Preview</strong>
+      <label
+        >Example
+        <select id="v2-example">
+          <option value="m3d">M3D · 27 layers / 35 steps</option>
+          <option value="photodetector">Photodetector · 7 Variants</option>
+        </select>
+      </label>
+      <label><input id="v2-empty" type="checkbox" />Empty History</label>
+      <button id="v2-failure" type="button" class="wc-button" data-size="sm">
+        Recipe failure example
+      </button>
+      <span class="p-aux"
+        >Interactive preview · No process computation or project saving. Refresh resets
+        changes.</span
+      >
+      <span id="v2-live-status" class="p-aux" role="status">File preview · Refresh to update</span>
+    </header>
+    <main id="app-root" aria-label="WaferCAD v2 workstation">
+      <p class="v2-boot-message" role="status">Loading workspace…</p>
+    </main>
+    <noscript>JavaScript is required. Open app.html for the current application.</noscript>
+  </body>
+</html>

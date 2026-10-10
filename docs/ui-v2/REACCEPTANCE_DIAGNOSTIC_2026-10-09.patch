@@ -1,0 +1,66 @@
+diff --git a/scripts/v2/check-m2-shell.mjs b/scripts/v2/check-m2-shell.mjs
+index bae3bd7..b338cb7 100644
+--- a/scripts/v2/check-m2-shell.mjs
++++ b/scripts/v2/check-m2-shell.mjs
+@@ -42,6 +42,7 @@ const checks = [];
+ const roi = [];
+ function record(name) {
+   checks.push(name);
++  console.log('PASS', name);
+ }
+ async function waitFor(probe, label) {
+   for (let attempt = 0; attempt < 100; attempt++) {
+@@ -73,7 +74,7 @@ async function evaluate(expression) {
+ }
+ async function click(selector) {
+   const rect = await evaluate(
+-    `(() => {const el=document.querySelector(${JSON.stringify(selector)});if(!el)throw Error('Missing button');el.scrollIntoView({block:'nearest',inline:'nearest'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`,
++    `(() => {const el=[...document.querySelectorAll(${JSON.stringify(selector)})].find(node=>node.getClientRects().length);if(!el)throw Error('Missing button');el.scrollIntoView({block:'nearest',inline:'nearest'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`,
+   );
+   await call('Input.dispatchMouseEvent', {
+     type: 'mousePressed',
+@@ -209,7 +210,7 @@ try {
+   for (const target of ['project', 'mask', 'process', 'history', 'project']) {
+     await click(`[data-action="domain:${target}"]`);
+     assert.equal(await evaluate(`(() => ['main','mask','three','section'].every((id)=>
+-      window.__m25Mounts[id]===document.querySelector('[data-slot="view.'+id+'.stage"])) &&
++      window.__m25Mounts[id]===document.querySelector('[data-slot="view.'+id+'.stage"]')) &&
+       ['project','base','mask','process','history'].every((id)=>
+       window.__m25Panels[id]===window.WaferCadV2Shell.getSlot('panel.'+id)))()`), true);
+   }
+@@ -411,17 +412,17 @@ try {
+   await click('[data-action="hide-editor"]');
+   assert.equal(
+     await evaluate(
+-      "document.querySelector('.p-nav')===null && document.querySelector('.p-empty-strip')===null",
++      "document.querySelector('.p-nav').hidden && document.querySelector('.p-empty-strip').hidden",
+     ),
+     true,
+   );
+   assert.equal(
+     await evaluate(
+-      'document.querySelector(\'[data-action="expand-empty"]\').parentElement===document.querySelector(\'[data-action="mode:single"]\').parentElement',
++      'document.querySelector(\'.p-viewbar [data-action="expand-empty"]\').parentElement===document.querySelector(\'[data-action="mode:single"]\').parentElement',
+     ),
+     true,
+   );
+-  await click('[data-action="expand-empty"]');
++  await click('.p-viewbar [data-action="expand-empty"]');
+   assert.equal(
+     await evaluate(
+       "window.__m2MainHost===document.querySelector('[data-science=\"main\"]') && window.__m2Workbench===document.querySelector('.p-workbench')",
+@@ -634,7 +635,7 @@ try {
+   );
+   record('Photodetector History tree nests Variants under their actual origin Steps');
+   await evaluate('window.WaferCadV2Shell.debug({empty:true})');
+-  assert.equal(await evaluate("document.querySelector('.p-inspector')===null"), true);
++  assert.equal(await evaluate("document.querySelector('.p-inspector').hidden"), true);
+   record('Photodetector real Variants / empty History reclaims inspector');
+   await evaluate(
+     "window.WaferCadV2Shell.debug({example:'photodetector',domain:'process',empty:false})",
+@@ -674,3 +675,5 @@ try {
+   browser.kill();
+   for (const item of pending.values()) clearTimeout(item.timeout);
+ }
++
++

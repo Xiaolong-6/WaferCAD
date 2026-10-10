@@ -1,0 +1,92 @@
+name: UI v2 D1 real-view acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "site/**"
+      - "scripts/v2/**"
+      - ".github/workflows/ui-v2-d1.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ui-v2-d1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  section-real-views:
+    name: D1 · Section and native views (software WebGL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install pinned tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify Section state and portal unit contracts
+        run: |
+          node --test \
+            site/tests/project-section-viewport-lifecycle.test.mjs \
+            site/tests/v2-native-overlay-lifecycle.test.mjs \
+            site/tests/section-view-viewport.test.mjs \
+            site/tests/project-file.test.mjs
+      - name: Verify formatting of changed D1 source
+        run: |
+          npx prettier --check \
+            site/app.js \
+            site/plan-renderers.js \
+            site/project-schema.js \
+            site/controllers/project-state-controller.js \
+            site/controllers/view-toolbar-controller.js \
+            site/section-view-viewport.js \
+            site/ui-v2/overlay-manager.js \
+            site/ui-v2/real-section-controls.js \
+            site/ui-v2/real-view-bridge.js \
+            site/tests/project-section-viewport-lifecycle.test.mjs \
+            site/tests/v2-native-overlay-lifecycle.test.mjs \
+            site/tests/section-view-viewport.test.mjs \
+            site/tests/project-file.test.mjs \
+            scripts/v2/check-d1-extended.mjs
+      - name: Cache Chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run D1 real views on Base, Photodetector, and M3D
+        shell: bash
+        run: |
+          set -euo pipefail
+          failures=0
+          for fixture in "" photodetector m3d; do
+            for script in check-d1-real-views check-d1-extended check-d1-three-gestures; do
+              echo "::group::${script} ${fixture:-Base}"
+              if ! WAFERCAD_D1_FIXTURE="$fixture" node "scripts/v2/${script}.mjs"; then
+                echo "::error::D1 gate failed: ${script} / ${fixture:-Base}"
+                failures=$((failures + 1))
+              fi
+              echo "::endgroup::"
+            done
+          done
+          echo "D1 browser runner failures: $failures"
+          test "$failures" -eq 0
+      - name: Upload D1 evidence (not an approved visual baseline)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-ui-v2-d1-${{ github.sha }}
+          path: test-results/ui-v2-d1-*
+          retention-days: 14
+          if-no-files-found: warn

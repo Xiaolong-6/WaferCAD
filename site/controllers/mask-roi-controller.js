@@ -165,7 +165,10 @@ export function createMaskRoiController({
     $('maskRoiEditor')?.addEventListener('toggle', () => {
       if ($('maskRoiEditor').open) {
         for (const details of $('maskPanel').querySelectorAll('details')) {
-          if (details !== $('maskRoiEditor')) details.open = false;
+          // Responsive More owns this original editor; closing its ancestor
+          // also hides the ROI tools the user just opened.
+          if (details !== $('maskRoiEditor') && !details.contains($('maskRoiEditor')))
+            details.open = false;
         }
         syncEditor();
       }
