@@ -140,12 +140,15 @@ async function runArm(name, search) {
 }
 
 try {
-  await runArm('baseline', 'rendererV4TileProbe=1');
+  await runArm('baseline', 'rendererV4TileProbe=1&rendererV4GpuCensus=1');
   await runArm(
     'r3-feature-and-resource-survey',
     'rendererV4TileProbe=1&rendererV4FeatureSurvey=1&rendererV4GpuCensus=1',
   );
-  await runArm('r3-fast-index', 'rendererV4TileProbe=1&rendererV4FastSmoothIndex=1');
+  await runArm(
+    'r3-fast-index',
+    'rendererV4TileProbe=1&rendererV4FastSmoothIndex=1&rendererV4GpuCensus=1',
+  );
   const [r1, r2, fastIndex] = observations.map((arm) => arm.result);
   for (const key of [
     'modelRevision',
@@ -187,6 +190,35 @@ try {
     'fast index must reduce vertex submission',
   );
   assert.ok(Number(fastIndex.v4FastOriginalVertices) > Number(fastIndex.v4FastIndexedVertices));
+  // Count *retained unique typed-array bytes*, not per-instance expanded
+  // logical vertex records or unobservable driver-resident VRAM.
+  assert.equal(r1.v4GpuResourceStatus, 'measured');
+  assert.equal(fastIndex.v4GpuResourceStatus, 'measured');
+  assert.equal(r1.v4GpuResourceComplete, 'true');
+  assert.equal(fastIndex.v4GpuResourceComplete, 'true');
+  for (const key of [
+    'v4GpuResourceMeshes',
+    'v4GpuResourceGeometries',
+    'v4GpuResourceMaterials',
+  ]) {
+    assert.equal(fastIndex[key], r1[key], key + ' must be unchanged by indexing');
+  }
+  const baselineBufferBytes = Number(r1.v4GpuResourceEstimatedBufferBytes);
+  const indexedBufferBytes = Number(fastIndex.v4GpuResourceEstimatedBufferBytes);
+  assert.ok(Number.isFinite(baselineBufferBytes) && baselineBufferBytes > 0);
+  assert.ok(Number.isFinite(indexedBufferBytes) && indexedBufferBytes > 0);
+  assert.ok(
+    indexedBufferBytes < baselineBufferBytes,
+    'indexed Fast scene should reduce retained typed-array bytes',
+  );
+  const indexedBufferEstimate = {
+    baselineBytes: baselineBufferBytes,
+    indexedBytes: indexedBufferBytes,
+    savedBytes: baselineBufferBytes - indexedBufferBytes,
+    savedFraction: (baselineBufferBytes - indexedBufferBytes) / baselineBufferBytes,
+    category: 'CPU typed-array bytes across retained scene variants; not GPU VRAM',
+  };
+  console.log('RENDERER_V4_R3_BUFFER_ESTIMATE', JSON.stringify(indexedBufferEstimate));
   const pixels = compareScreenshotPngPixels(observations[0].png, observations[1].png);
   const indexedPixels = compareScreenshotPngPixels(observations[0].png, observations[2].png);
   const report = {
@@ -194,6 +226,7 @@ try {
     observations: [r1, r2, fastIndex],
     pixels,
     indexedPixels,
+    indexedBufferEstimate,
   };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   console.log('RENDERER_V4_R3_BROWSER_PARITY', JSON.stringify(pixels));
