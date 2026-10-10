@@ -7,6 +7,7 @@ const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
 const { ARRAY_MODEL_KERNEL, isArrayModel, resolveArrayModel, translateGeometry } =
   await import('../model-array.js');
 const { validateProcessModel, migrateProjectFile } = await import('../project-schema.js');
+const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
 const { serializeProject, readProjectFile } = await import('../project-io.js');
 function twoSites() {
   const leaf = createModel({ shape: 'rect', width: 10, height: 10, thickness: 2 });
@@ -26,6 +27,29 @@ function twoSites() {
     },
   };
 }
+test('rectangular GRID Recipe Base preserves complete device/background ownership', () => {
+  const seed = createModel({ shape: 'rect', width: 0.375, height: 0.375, thickness: 2 });
+  const descriptor = {
+    kind: 'rect-grid', rows: 80, columns: 80, pitchX: 0.375, pitchY: 0.375,
+    activeSites: 4725,
+  };
+  const model = createRectangularGridArrayModel(seed, descriptor);
+  validateProcessModel(model);
+  assert.equal(model.width, 30);
+  assert.equal(model.height, 30);
+  assert.equal(model.array.instances.length, 6400);
+  assert.equal(model.array.instances.filter((s) => s.role === 'device').length, 4725);
+  assert.equal(model.array.instances.filter((s) => s.role === 'background').length, 1675);
+  assert.equal(model.array.templates.length, 1);
+  assert.deepEqual(model.array.instances[0], {
+    id: 'site-0', templateId: 'site', x: -14.8125, y: -14.8125, role: 'background',
+  });
+  assert.deepEqual(model.array.instances[6399], {
+    id: 'site-6399', templateId: 'site', x: 14.8125, y: 14.8125, role: 'background',
+  });
+  assert.throws(() => createRectangularGridArrayModel(seed, { ...descriptor, activeSites: 6401 }));
+});
+
 test('canonical arrays retain instances and expand only the queried physical area', () => {
   const model = twoSites();
   validateProcessModel(model);
