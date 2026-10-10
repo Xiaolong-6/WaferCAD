@@ -69,13 +69,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          failures=0
           for fixture in "" photodetector m3d; do
             for script in check-d1-real-views check-d1-extended check-d1-three-gestures; do
               echo "::group::${script} ${fixture:-Base}"
-              WAFERCAD_D1_FIXTURE="$fixture" node "scripts/v2/${script}.mjs"
+              if ! WAFERCAD_D1_FIXTURE="$fixture" node "scripts/v2/${script}.mjs"; then
+                echo "::error::D1 gate failed: ${script} / ${fixture:-Base}"
+                failures=$((failures + 1))
+              fi
               echo "::endgroup::"
             done
           done
+          echo "D1 browser runner failures: $failures"
+          test "$failures" -eq 0
       - name: Upload D1 evidence (not an approved visual baseline)
         if: always()
         uses: actions/upload-artifact@v6
