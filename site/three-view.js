@@ -6,6 +6,10 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import {
+  canTryElectricalVolumeCapPass,
+  electricalVolumeGeometryGroups,
+} from './renderer-electrical-volume-pass.js';
 import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
@@ -96,6 +100,8 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
+  const v3ElectricalVolumeCapExperiment =
+    rendererParams.get('rendererV3ElectricalVolumeCapPass') === '1';
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -1486,7 +1492,7 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0, { groupPlanarCaps = false } = {}) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
@@ -1504,6 +1510,7 @@ export function createThreeView({
           if (cross * normal < 0) [b, c] = [c, b];
           triangle(a, b, c, [0, 0, normal]);
         }
+    const capVertexCount = positions.length / 3;
     for (const { z0, z1, polys } of slabs)
       for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (let r = 0; r < poly.length; r++) {
@@ -1532,6 +1539,13 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (groupPlanarCaps) {
+      const groups = electricalVolumeGeometryGroups(capVertexCount, positions.length / 3);
+      for (const item of groups || []) {
+        geometry.addGroup(item.start, item.count, item.materialIndex);
+      }
+      geometry.userData.electricalVolumeCapGroups = Boolean(groups);
+    }
     return geometry;
   }
 
@@ -3520,7 +3534,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       let electricalRegionInternalCount = 0,
         electricalRegionSurfaceCount = 0,
-        electricalFarLodBodyCount = 0;
+        electricalFarLodBodyCount = 0,
+        electricalVolumeCapPassObjects = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
@@ -3534,7 +3549,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
               followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
             ),
             displaySolid = electricalDisplaySolidForLod(electrical, visibleSolid, arrayLod),
-            bodyGeometry = geometryFromSolid(displaySolid, transparentArrayDisplayTolerance),
+            splitCaps = canTryElectricalVolumeCapPass({
+              enabled: v3ElectricalVolumeCapExperiment,
+              transparent: targetVariant === 'transparent',
+              quality: inspection.fast === false,
+              fullArray: Number(plan.arrayInstances || 0) >= 64,
+              clipped: Boolean(clip) || currentZDisplay?.enabled !== false,
+              rough: Boolean(appearance),
+              solid: displaySolid,
+            }),
+            bodyGeometry = geometryFromSolid(displaySolid, transparentArrayDisplayTolerance, {
+              groupPlanarCaps: splitCaps,
+            }),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
               roughness: 0.82,
@@ -3542,9 +3568,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
               side: THREE.DoubleSide,
               ...electricalState,
             }),
+            groupedCaps = Boolean(bodyGeometry.userData.electricalVolumeCapGroups),
+            capMaterial = groupedCaps ? bodyMaterial.clone() : null,
             body = addSurfaceMesh(
               bodyGeometry,
-              bodyMaterial,
+              groupedCaps ? [capMaterial, bodyMaterial] : bodyMaterial,
               electricalState,
               null,
               34,
@@ -3555,6 +3583,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           if (body) {
             body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
             electricalRegionInternalCount++;
+            if (groupedCaps) {
+              capMaterial.forceSinglePass = true;
+              capMaterial.userData.waferCadExperimentalElectricalVolumeCaps = true;
+              electricalVolumeCapPassObjects++;
+            }
             if (displaySolid !== visibleSolid) electricalFarLodBodyCount++;
           }
 
@@ -3667,6 +3700,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
+      host.dataset.v3ElectricalVolumeCapPassObjects = String(electricalVolumeCapPassObjects);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
