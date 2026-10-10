@@ -22,7 +22,9 @@ const browser = await launchBrowser();
 const all = [];
 
 async function frameSerial(page) {
-  return page.locator('#threeHost').evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
+  return page
+    .locator('#threeHost')
+    .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
 }
 
 async function nextRealFrame(page, previous) {
@@ -78,21 +80,26 @@ async function run(name, flags) {
     const errors = observePageErrors(page);
     await page.goto(baseUrl + '/app.html?' + flags);
     await waitForAppReady(page);
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url)),
-    );
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
     await chooseConfirmation(page);
-    await page.waitForFunction(
-      () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
+    await page.waitForFunction(() =>
+      document.getElementById('statusText')?.textContent.startsWith('Opened '),
     );
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 180000);
     const opacityControl = page.locator('#threePanel .three-opacity-control');
     const more = page.locator('#threePanel .view-more-control');
     if (
-      await opacityControl.evaluate((node) =>
-        Boolean(node.closest('.view-overflow-secondary')),
-      )
+      await opacityControl.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))
     ) {
       if (!(await more.evaluate((node) => node.open))) {
         await more.locator(':scope > summary').click();
@@ -166,10 +173,13 @@ async function run(name, flags) {
     await nextRealFrame(page, before);
     states.push(await capture(page, name, 'clipped-roi'));
     assert.deepEqual(errors, [], name + ': browser errors');
-    console.log('RENDERER_V4_R4_DYNAMIC_ARM', JSON.stringify({
-      name,
-      frames: states.map(({ state, data }) => ({ state, ...data })),
-    }));
+    console.log(
+      'RENDERER_V4_R4_DYNAMIC_ARM',
+      JSON.stringify({
+        name,
+        frames: states.map(({ state, data }) => ({ state, ...data })),
+      }),
+    );
     all.push({ name, states });
   } finally {
     await context.close();
@@ -189,7 +199,8 @@ try {
   );
   const comparisons = [];
   for (let i = 0; i < baseline.length; i++) {
-    const expected = baseline[i], actual = optimized[i];
+    const expected = baseline[i],
+      actual = optimized[i];
     for (const field of ['zCollapsed', 'zFrontScale', 'zBackScale', 'drawCalls', 'triangles']) {
       assert.equal(actual.data[field], expected.data[field], expected.state + ': ' + field);
     }
@@ -209,9 +220,18 @@ try {
   assert.equal(baseline[2].data.zBackScale, '0.6');
   await writeFile(
     new URL('report.json', output),
-    JSON.stringify({ backend: 'software/hardware explicitly reported per arm', comparisons, arms: all.map(
-      ({ name, states }) => ({ name, frames: states.map(({ state, data }) => ({ state, ...data })) }),
-    ) }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        backend: 'software/hardware explicitly reported per arm',
+        comparisons,
+        arms: all.map(({ name, states }) => ({
+          name,
+          frames: states.map(({ state, data }) => ({ state, ...data })),
+        })),
+      },
+      null,
+      2,
+    ) + '\n',
   );
 } finally {
   await browser.close();
