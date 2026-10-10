@@ -100,6 +100,21 @@ export function attachArrayMaskQuery(area, query) {
   return area;
 }
 
+// Do not materialize/unite tens of thousands of polygons merely to create
+// an Array Process selection. The canonical boundary is a *query envelope*;
+// localGeometry() resolves the actual mask/inverse mask inside each cell.
+// Keep an empty selected mask empty (including inverse selection), and clip
+// the envelope by Mask ROI before the worker receives it.
+export function deferredArrayMaskArea(
+  { boundary, index = null, mode, limiter = null },
+  vectorApi,
+) {
+  if (mode !== 'full' && !index?.instances?.length) return [];
+  const envelope = limiter ? vectorApi.intersection(boundary, limiter) : boundary;
+  if (vectorApi.isEmpty(envelope)) return [];
+  return attachArrayMaskQuery(envelope, { index, mode, limiter, boundary });
+}
+
 function withMaskSpatialIndex(index) {
   const order = index.instances
     .map((_, i) => i)
