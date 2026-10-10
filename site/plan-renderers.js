@@ -1075,43 +1075,47 @@ export function createPlanRenderers({
       return;
     }
 
+    // The axes and all material contours use the SAME projected viewport.
+    // Labels remain screen-size independent rather than scaling the canvas CSS.
+    const frameLeft = viewportX(plotLeft),
+      frameRight = viewportX(plotLeft + plotWidth),
+      frameTop = viewportY(zTransform.frameTop),
+      frameBottom = viewportY(zTransform.frameBottom),
+      upperBottom = viewportY(zTransform.upperBottom),
+      lowerTop = viewportY(zTransform.lowerTop);
     ctx.strokeStyle = '#8995a1';
     ctx.lineWidth = 0.8;
     if (collapseEnabled) {
       ctx.beginPath();
-      ctx.moveTo(viewportX(plotLeft), viewportY(zTransform.frameTop));
-      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.frameTop));
-      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.upperBottom));
-      ctx.moveTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.lowerTop));
-      ctx.lineTo(viewportX(plotLeft) + plotWidth * screenViewport.zoom), viewportY(zTransform.frameBottom));
-      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.frameBottom));
-      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.lowerTop));
-      ctx.moveTo(viewportX(plotLeft), viewportY(zTransform.upperBottom));
-      ctx.lineTo(viewportX(plotLeft), viewportY(zTransform.frameTop));
+      ctx.moveTo(frameLeft, frameTop);
+      ctx.lineTo(frameRight, frameTop);
+      ctx.lineTo(frameRight, upperBottom);
+      ctx.moveTo(frameRight, lowerTop);
+      ctx.lineTo(frameRight, frameBottom);
+      ctx.lineTo(frameLeft, frameBottom);
+      ctx.lineTo(frameLeft, lowerTop);
+      ctx.moveTo(frameLeft, upperBottom);
+      ctx.lineTo(frameLeft, frameTop);
       ctx.stroke();
 
-      // Restrained break notches at the plot edges; the interactive entry point
-      // is the small DOM control over the left Z axis.
+      // Physical break indicators travel with the plotted Z interfaces.
       ctx.save();
       ctx.globalAlpha = 0.72;
       ctx.strokeStyle = '#788593';
       ctx.lineWidth = 0.8;
-      for (const [x, direction] of [
-        [viewportX(plotLeft), 1],
-        [viewportX(plotLeft) + plotWidth * screenViewport.zoom), -1],
-      ]) {
+      for (const [x, direction] of [[frameLeft, 1], [frameRight, -1]]) {
         ctx.beginPath();
-        ctx.moveTo(x, viewportY(zTransform.upperBottom) - 1);
-        ctx.lineTo(x + direction * 6, viewportY(zTransform.upperBottom) + 3);
-        ctx.lineTo(x + direction * 12, viewportY(zTransform.upperBottom) - 1);
-        ctx.moveTo(x, viewportY(zTransform.lowerTop) + 1);
-        ctx.lineTo(x + direction * 6, viewportY(zTransform.lowerTop) - 3);
-        ctx.lineTo(x + direction * 12, viewportY(zTransform.lowerTop) + 1);
+        ctx.moveTo(x, upperBottom - 1);
+        ctx.lineTo(x + direction * 6, upperBottom + 3);
+        ctx.lineTo(x + direction * 12, upperBottom - 1);
+        ctx.moveTo(x, lowerTop + 1);
+        ctx.lineTo(x + direction * 6, lowerTop - 3);
+        ctx.lineTo(x + direction * 12, lowerTop + 1);
         ctx.stroke();
       }
       ctx.restore();
     } else {
-      ctx.strokeRect(viewportX(plotLeft), viewportY(zTransform.frameTop), plotWidth * screenViewport.zoom, zTransform.frameHeight * screenViewport.zoom);
+      ctx.strokeRect(frameLeft, frameTop, frameRight - frameLeft, frameBottom - frameTop);
     }
 
     ctx.fillStyle = '#707b86';
@@ -1129,17 +1133,17 @@ export function createPlanRenderers({
       ctx.strokeStyle = '#aab3bd';
       ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.moveTo(viewportX(plotLeft)) - 4, y);
-      ctx.lineTo(viewportX(plotLeft), y);
+      ctx.moveTo(frameLeft - 4, y);
+      ctx.lineTo(frameLeft, y);
       ctx.stroke();
       ctx.fillStyle = '#707b86';
-      ctx.fillText(formatXY(value), viewportX(plotLeft)) - 6, y);
+      ctx.fillText(formatXY(value), frameLeft - 6, y);
     }
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText('A', viewportX(plotLeft), Math.min(h - 5, viewportY(zTransform.frameBottom) + 15));
+    ctx.fillText('A', frameLeft, Math.min(h - 5, frameBottom + 15));
     ctx.textAlign = 'right';
-    ctx.fillText('B', viewportX(plotLeft) + plotWidth * screenViewport.zoom), Math.min(h - 5, viewportY(zTransform.frameBottom) + 15));
+    ctx.fillText('B', frameRight, Math.min(h - 5, frameBottom + 15));
     ctx.textAlign = 'left';
 
     const scaleButton = $('sectionScaleModeBtn');
