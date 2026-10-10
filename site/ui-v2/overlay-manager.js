@@ -121,6 +121,14 @@
       }
       return node;
     }
+    function activateNative(type, node, trigger, external) {
+      const previous = active.get(type);
+      if (previous?.node === node) return;
+      if (type === 'dialog') close('popover', 'dialog');
+      if (previous) close(type, 'replaced');
+      active.set(type, { node, trigger, external });
+      if (trigger && type !== 'toast') trigger.setAttribute('aria-expanded', 'true');
+    }
     function adoptPopover(node, trigger) {
       // Native toolbar menus remain in their owning toolbar for legacy-friendly
       // accessibility selectors, but share the same close/focus semantics.
