@@ -191,3 +191,44 @@ updates without explicit user approval.
 R1 is intended as an _initial experiment_, not acceptance of V4 or PR #166.
 Record exact CI results, browser availability and final branch HEAD in the
 Draft PR; any unrun gate remains **pending**, never implicitly passed.
+
+
+## R2 verified checkpoint — 2026-10-10
+
+- [Full R1/R2 focused CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38063163584):
+  **27/27 focused V3/V4 tests** and **634/634 full Node tests**, zero
+  failures/skips; ESLint, Prettier and documentation gate passed.
+- [One-pose 625-site browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38063174708):
+  Chromium/Playwright under Linux SwiftShader software WebGL, not a physical
+  hardware GPU result. At 1440x960 viewport, Fast transparent with 1,885
+  reported array instances and model revision 61, both flags submitted
+  **16,906,262 triangles / 1,408 calls** and retained 880 objects, 880
+  geometries and 588 materials. The **531x275** canvas had **0/146,025**
+  changed pixels (max channel delta zero) between R1 and R2.
+- R2 prepared 130 CPU tiles (128 near, two mid, zero far), retained 130 tiles,
+  and recorded one cold miss. The actual camera gesture yielded **13 warm
+  cache hits / 13 camera samples**, confirming reusable CPU metadata.
+  Section Z collapse remained a strict `z-collapse` reduction gate, and
+  the experiment submitted **zero skipped triangles**.
+- The opt-in heavy-camera policy was active during the R2 camera gesture.
+  However, the measured Playwright drag-to-cache-hit interval was **132.74 s**
+  on this software-WebGL runner. This includes pointer event processing,
+  scene/WebGL work and browser scheduling, and is not a GPU execution timer.
+  The earlier non-inertia-pilot drag had 22 samples and also took minutes;
+  the trials are not a controlled latency A/B. **No product interaction
+  speedup is accepted.**
+- The original build-stage R1 probe was about 23.9 ms versus about 40.1 ms
+  for the R2 cold plan/projection at this run. This is diagnostic CPU
+  overhead, not total renderer cost or repeatable profiling; do not present
+  caching as a cold-start win.
+
+**R2 acceptance boundary:** stable derived CPU partitioning, bounded
+lifecycle, real cache hits, same-pose canvas parity and regression tests are
+validated. GPU tile ownership, real GPU timers, reduced WebGL submissions,
+edge-on/ROI multiview canvas parity, resource lifetime over prolonged model
+edits and repeatable motion speedup remain **open**. In particular, the
+64-instance tile screen footprint classifies most groups as near despite the
+Fast far-wafer tier; R3 needs structure/template-level projected error and
+transparent-material coverage proof before removing any face. Keep both R2
+interaction flags default-off, PR #166 and PR #174 Draft, and approved
+visual baselines unchanged.
