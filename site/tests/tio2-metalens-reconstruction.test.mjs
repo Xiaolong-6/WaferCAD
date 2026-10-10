@@ -96,7 +96,12 @@ test('Welcome opens the complete matched array and retains compiled process stag
   assert.equal(project.processRecipe.base.height, 30);
   const { inferRectangularGridRecipeBase } = await import('../process-recipe-preflight.js');
   assert.deepEqual(inferRectangularGridRecipeBase(project.model, project.processRecipe.base), {
-    kind: 'rect-grid', rows: 80, columns: 80, pitchX: 0.375, pitchY: 0.375, activeSites: 4725,
+    kind: 'rect-grid',
+    rows: 80,
+    columns: 80,
+    pitchX: 0.375,
+    pitchY: 0.375,
+    activeSites: 4725,
   });
   for (const step of project.processRecipe.steps.filter((step) => step.params.mask)) {
     assert.equal(step.params.mask.cell, 'TIO2_GRID');
