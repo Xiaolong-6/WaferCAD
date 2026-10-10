@@ -447,6 +447,23 @@ try {
       true,
     );
     evidence.inlineDialog = 'original editor retained; Escape/focus pass';
+    // Shared native overlay owner: a view change dismisses its old More
+    // without cloning controls or leaving an invisible menu intercepting input.
+    assert.equal(
+      await page.evaluate(() => typeof window.WaferCadV2ActiveOverlays?.adoptNativeViews),
+      'function',
+    );
+    await page.locator('[data-action="view:main"]').click();
+    await page.locator('#mainPanel .view-more-control > summary').click();
+    assert.equal(await page.locator('#mainPanel .view-more-control').evaluate((d) => d.open), true);
+    await page.locator('[data-action="view:mask"]').click();
+    await page.waitForFunction(() => !document.querySelector('#mainPanel .view-more-control').open);
+    assert.equal(await page.locator('#mainPanel .view-more-control').evaluate((d) => d.open), false);
+    await page.locator('#maskPanel .view-more-control > summary').click();
+    assert.equal(await page.locator('#maskPanel .view-more-control').evaluate((d) => d.open), true);
+    await page.locator('[data-action="view:main"]').click();
+    await page.waitForFunction(() => !document.querySelector('#maskPanel .view-more-control').open);
+    evidence.nativeOverlayViewChange = 'native Main/Mask owners close after host hide';
     assert.deepEqual(evidence.errors, [], 'No page/console exceptions in extended D1');
     evidence.result = 'pass';
     console.log(JSON.stringify(evidence, null, 2));
