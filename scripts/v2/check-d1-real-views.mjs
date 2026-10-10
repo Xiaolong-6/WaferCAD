@@ -80,8 +80,9 @@ try {
       await page.setViewportSize({ width, height: 960 });
       await waitForPaint(page);
       await page.locator('[data-action="view:main"]').click();
-      await page.locator('[data-action="mode:single"]').click();
+      // The narrow v2 shell intentionally hides mode controls and forces Single.
       if (width > 820) {
+        await page.locator('[data-action="mode:single"]').click();
         await page.locator('[data-action="mode:overview"]').click();
         await page.locator('[data-action="mode:split"]').click();
         await page.locator('[data-key="split-left"]').selectOption('mask');
@@ -90,8 +91,8 @@ try {
           await page.evaluate(() => JSON.parse(sessionStorage.getItem('wafercad.workstation-split-views.v1'))),
           ['mask', 'main'],
         );
+        await page.locator('[data-action="mode:single"]').click();
       }
-      await page.locator('[data-action="mode:single"]').click();
       await page.locator('#mainMaxBtn').click();
       assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'true');
       await page.locator('#mainMaxBtn').click();
