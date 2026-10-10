@@ -151,7 +151,11 @@ export function installWebglFrameProbe() {
     },
     owner(object) {
       owner = {
-        kind: object.userData?.waferCadPresentation?.kind || 'untracked',
+        kind:
+          object.userData?.waferCadPresentation?.kind ||
+          (object.type === 'AxesHelper' && object.isLineSegments === true
+            ? 'reference-axes'
+            : 'untracked'),
         name: object.name || '',
       };
     },

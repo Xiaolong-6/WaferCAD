@@ -182,3 +182,22 @@ test('probe waits for a ready exact Quality transparent frame', () => {
   h.host.dataset.sceneVariant = 'transparent';
   assert.equal(h.frame(() => h.gl.drawArrays(4, 0, 6)).triangles, 2);
 });
+
+test('reference axes are attributed separately, without concealing unknown material objects', () => {
+  const h = harness();
+  h.probe.arm({ rasterDiscard: false });
+  const result = h.frame(() => {
+    h.probe.owner({ type: 'AxesHelper', isLineSegments: true });
+    h.gl.drawArrays(1, 0, 6);
+    h.probe.owner({ type: 'Mesh' });
+    h.gl.drawArrays(4, 0, 3);
+  });
+  assert.equal(result.drawCalls, 2);
+  assert.deepEqual(
+    result.owners.map((row) => [row.kind, row.triangles]),
+    [
+      ['untracked', 1],
+      ['reference-axes', 0],
+    ],
+  );
+});

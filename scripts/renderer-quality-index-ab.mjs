@@ -19,7 +19,9 @@ const gpuProfile = process.argv.includes('--gpu-profile');
 const finalFrameOnly = process.argv.includes('--final-frame-only');
 const out = new URL(
   gpuProfile
-    ? '../test-results/renderer-gpu-profile/'
+    ? finalFrameOnly
+      ? '../test-results/renderer-gpu-profile-final-only/'
+      : '../test-results/renderer-gpu-profile/'
     : '../test-results/renderer-quality-index-ab/',
   import.meta.url,
 );
@@ -298,7 +300,7 @@ try {
           gpuTimerScope:
             'first draw through end of animation callback; only non-disjoint results valid',
           interpretation:
-            'Discard still submits every primitive; the remaining cost is not pure vertex time. No product speedup or annotation omission is authorized.',
+            'API primitive submissions remain identical, but discard may change driver optimization; these counts are not hardware invocation counters. Remaining cost is not pure vertex time. No product speedup or annotation omission is authorized.',
         }
       : {}),
   };

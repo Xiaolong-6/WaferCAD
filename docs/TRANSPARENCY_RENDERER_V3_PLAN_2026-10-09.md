@@ -574,12 +574,14 @@ Both arms use `gl.finish()` and record submission/completion wait separately
 from the screenshot/compositor checkpoint. GPU timer queries are used only
 when supported, available and non-disjoint; unavailable/busy/lost/disjoint/
 timed-out results retain `gpuMs: null`. This is not a pure vertex/fragment
-stage separation and never authorizes omission of physical faces.
+stage separation and never authorizes omission of physical faces. Discard
+can change driver optimization; submitted API primitives are not hardware
+invocation counters.
 
 Local Linux, Node 24.19.0, Playwright 1.55.1, Chromium 140 / SwiftShader,
 Three 0.179.1:
 
-- `node --test site/tests/renderer-quality-index-experiment.test.mjs site/tests/renderer-v3-edge-tile-survey.test.mjs site/tests/renderer-v3-projection-probe.test.mjs site/tests/renderer-v3-screen-budget.test.mjs site/tests/renderer-v3-tile-bounds.test.mjs site/tests/webgl-frame-probe.test.mjs`: **38/38 pass**.
+- `node --test site/tests/renderer-quality-index-experiment.test.mjs site/tests/renderer-v3-edge-tile-survey.test.mjs site/tests/renderer-v3-projection-probe.test.mjs site/tests/renderer-v3-screen-budget.test.mjs site/tests/renderer-v3-tile-bounds.test.mjs site/tests/webgl-frame-probe.test.mjs`: **39/39 pass**, including reference axes attribution without concealing unknown material draws.
 - `WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/webgl-frame-probe-smoke.mjs`: **pass** on native WebGL2. Normal / discard / restored-normal all submitted **2,500 triangles / 2 calls**, with zero GL/page errors and exact restored image parity. This small synthetic scene validates instrumentation, not 625-site scientific acceptance or speed.
 - `npm run check`: **pass**, including ESLint, full formatting, documentation contracts and **608/608 Node tests**. Subsequent frame-gate edits also passed focused ESLint and the 38-test renderer diagnostic group.
 - SwiftShader reports `EXT_disjoint_timer_query_webgl2` **unsupported**;
@@ -588,8 +590,8 @@ Three 0.179.1:
   before arming or measuring a transparent frame. Captured state: no page
   errors, `renderState=building`, model revision 61, Process revision 40,
   37 partial renderer frames, last partial frame 685,100 triangles / 359
-  draws. There is **no completed full-scene profile or speed result** from
-  these attempts. Other repository tests were simultaneously using CPU;
+  draws. These attempts produced **no completed full-scene measurement**.
+  Other repository tests were simultaneously using CPU;
   environmental attribution remains unproven.
 
 An additional **default-off** `?rendererV3FinalFrameOnly=1` pilot suppresses
@@ -600,15 +602,61 @@ build's `finally` block and schedules the unchanged exact final scene.
 readiness, skipped-preview counters and frame policy are recorded. This is
 an experiment to test the partial-frame hypothesis, **not an accepted
 optimization**; keep it off until matched pose/geometry, completed-frame,
-resource/interaction and performance evidence pass. The 625-site pilot passed
-initial 3D readiness and entered the transparent-frame measurement; its full
-four-trial result is still being evaluated at this checkpoint. The control
-and pilot ran amid other CPU work, so no causal startup speedup is established.
+resource/interaction and performance evidence pass.
+
+### Completed 625-site profile (2026-10-10)
+
+The final-frame-only pilot completed normal / discard / discard / normal.
+Every trial submitted **57,040,012 triangles / 1,408 draw calls**, with zero
+GL/page errors, Quality indexing off and `gpuMs: null`. The two normal PNGs
+were byte-identical (SHA-256
+`082404084114f66422b986abfbfa6d57c6510f761ea6c6338911a379820432ee`).
+This establishes same-run final-image parity, not an approved visual baseline.
+
+| Trial     | Initial scene ready | Transparent completed checkpoint |
+| --------- | ------------------: | -------------------------------: |
+| Normal 1  |             7.825 s |                         19.474 s |
+| Discard 2 |             6.986 s |                          3.805 s |
+| Discard 3 |             6.528 s |                          4.040 s |
+| Normal 4  |             7.079 s |                         28.238 s |
+
+Normal median **23.856 s**, discard median **3.923 s**; diagnostic ratio
+**0.1644**. Actual draw submission in the first three trials was 118–146 ms.
+One assembly preview was skipped in each measured build. Shorter JS submission
+alone cannot explain the completed-image cost. This experiment does **not**
+isolate fragment, vertex, blending or compositor duration and is **not** a
+product speedup. Startup benefit is not established.
+
+The default preview policy also completed all four trials with the same
+57,040,012 triangles / 1,408 calls, zero GL/page errors and no skipped preview
+frames. Its normal median was **26.772 s**, discard median **4.860 s**
+(ratio **0.1815**). Initial readiness was 11.417 / 7.737 / 8.484 / 7.645 s;
+completed checkpoints were 28.158 / 4.914 / 4.807 / 25.386 s. Both normal
+images matched each other **and the pilot's normal images byte-for-byte**.
+These sequential policy blocks were not randomized or replicated; their
+within-block variation does not establish a stable startup or completed-frame
+speedup. Keep the assembly pilot default-off.
+
+| Presentation owner          | Submitted triangles | Draw calls |
+| --------------------------- | ------------------: | ---------: |
+| Material interfaces         |          26,407,500 |        213 |
+| Internal electrical volumes |          23,535,000 |        234 |
+| Electrical surfaces         |           5,947,500 |        234 |
+| Exterior material surfaces  |           1,150,012 |        726 |
+| Reference axes (lines)      |                   0 |          1 |
+
+The integrated branch checkpoint `c9a79b4` passed automatic Quality and
+targeted Chromium (UI smoke, resilience and renderer product) CI. Draft-only
+heavy 625-site, edge-on, Process, Native Fig3 and Recipe jobs were skipped;
+they are **not** current-head acceptance evidence. The latest diagnostic
+changes passed focused tests, ESLint, formatting and documentation checks.
 
 The benchmark writes failure stage, page errors and renderer state to
 `test-results/renderer-gpu-profile/failure.json`; successful profile output
-uses `report.json`. No additional costly automatic CI job or manual workflow
-dispatch was added. PR #166 remains Draft; no merge or speedup claim.
+uses `report.json`. The final-frame-only pilot writes separately under
+`test-results/renderer-gpu-profile-final-only/`. No additional costly automatic
+CI job or manual workflow dispatch was added. PR #166 remains Draft; no merge
+or speedup claim.
 
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
