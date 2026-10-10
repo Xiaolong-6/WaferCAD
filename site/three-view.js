@@ -461,7 +461,11 @@ export function createThreeView({
     if (!model || !group) return null;
     currentZDisplay = zDisplayState(model);
     group.scale.z = currentZDisplay.scale;
+    const detachesBefore = v4SharedFlatDetachCount;
     for (const object of zDisplayObjects) applyZDisplayToObject(object, currentZDisplay);
+    if (v4GpuCensusEnabled && v4SharedFlatDetachCount !== detachesBefore) {
+      writeV4GpuResourceCensus();
+    }
 
     host.dataset.zCollapseFollow = 'section';
     host.dataset.zCollapseEnabled = String(currentZDisplay.enabled !== false);
@@ -1000,6 +1004,7 @@ export function createThreeView({
     host.dataset.v4GpuResourceGeometries = String(result.geometryCount);
     host.dataset.v4GpuResourceMaterials = String(result.materialCount);
     host.dataset.v4GpuResourceInstancedMeshes = String(result.instancedMeshCount);
+    host.dataset.v4GpuResourceRetiredFlatGeometries = String(result.retiredFlatGeometries);
     host.dataset.v4GpuResourceEstimatedBufferBytes = String(result.estimatedBufferBytes);
     host.dataset.v4GpuResourceCrossVariantGeometries = String(result.crossGroupGeometries);
     host.dataset.v4GpuResourceCrossVariantMaterials = String(result.crossGroupMaterials);
