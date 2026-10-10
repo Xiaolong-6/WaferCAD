@@ -293,7 +293,10 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   // Scalar/Draw selections intersect the Mask ROI directly. Canonical
   // arrays keep a deferred per-cell Mask query and carry the same limiter.
   assert.match(selectionGeometry, /return limiter \? intersection\(area, limiter\) : area;/);
-  assert.match(selectionGeometry, /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/);
+  assert.match(
+    selectionGeometry,
+    /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
+  );
   assert.match(planRenderers, /getMaskRoiController\(\)\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);
   assert.match(maskRoiController, /canMoveBody\(world\)/);
