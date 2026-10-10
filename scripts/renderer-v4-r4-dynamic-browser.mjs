@@ -134,6 +134,7 @@ async function run(name, flags) {
 
     // Unlinked, unequal front/back Section scales exercise the formerly
     // mutating Z path. All shared flat cap physical Z coordinates must survive.
+    await page.locator('#sectionCollapseEditor .section-collapse-advanced > summary').click();
     await page.locator('#sectionCollapseScaleLinked').uncheck();
     before = await frameSerial(page);
     await page.locator('#sectionCollapseFrontScale').fill('1.6');
