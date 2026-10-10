@@ -122,6 +122,10 @@ async function runArm(name, search) {
       v4GpuResourceComplete: host.v4GpuResourceComplete,
       v4FastIndexedVertices: host.v4FastIndexedVertices,
       v4FastOriginalVertices: host.v4FastOriginalVertices,
+      v4SharedFlatTemplates: host.v4SharedFlatTemplates,
+      v4SharedFlatMeshes: host.v4SharedFlatMeshes,
+      v4SharedFlatClonesAvoided: host.v4SharedFlatClonesAvoided,
+      v4GpuResourceGeometries: host.v4GpuResourceGeometries,
       rendererIdentity: await page.locator('#threeHost canvas').evaluate((canvas) => {
         const gl = canvas.getContext('webgl2');
         const extension = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -149,7 +153,11 @@ try {
     'r3-fast-index',
     'rendererV4TileProbe=1&rendererV4FastSmoothIndex=1&rendererV4GpuCensus=1',
   );
-  const [r1, r2, fastIndex] = observations.map((arm) => arm.result);
+  await runArm(
+    'r4-shared-flat',
+    'rendererV4TileProbe=1&rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1',
+  );
+  const [r1, r2, fastIndex, sharedFlat] = observations.map((arm) => arm.result);
   for (const key of [
     'modelRevision',
     'arrayInstances',
@@ -215,20 +223,54 @@ try {
     category: 'CPU typed-array bytes across retained scene variants; not GPU VRAM',
   };
   console.log('RENDERER_V4_R3_BUFFER_ESTIMATE', JSON.stringify(indexedBufferEstimate));
+  // R4 retains the exact polygons/materials/triangle ordering, but each
+  // spatial InstancedMesh can refer to one immutable constant-Z cap template.
+  for (const key of [
+    'modelRevision',
+    'sceneVariant',
+    'rendererDrawCalls',
+    'rendererDrawTriangles',
+    'sceneObjectCount',
+    'sceneMaterialCount',
+  ]) assert.equal(sharedFlat[key], r1[key], key + ' must survive flat geometry sharing');
+  assert.ok(Number(sharedFlat.v4SharedFlatClonesAvoided) > 0, 'R4 must actually reuse a template');
+  assert.ok(Number(sharedFlat.v4SharedFlatTemplates) > 0);
+  assert.equal(sharedFlat.v4GpuResourceStatus, 'measured');
+  assert.equal(sharedFlat.v4GpuResourceComplete, 'true');
+  assert.ok(
+    Number(sharedFlat.v4GpuResourceGeometries) < Number(r1.v4GpuResourceGeometries),
+    'R4 must retain fewer unique BufferGeometries',
+  );
+  const sharedBufferBytes = Number(sharedFlat.v4GpuResourceEstimatedBufferBytes);
+  assert.ok(sharedBufferBytes < baselineBufferBytes, 'R4 must reduce retained typed-array bytes');
+  const flatShareEstimate = {
+    baselineBytes: baselineBufferBytes,
+    sharedBytes: sharedBufferBytes,
+    savedBytes: baselineBufferBytes - sharedBufferBytes,
+    savedFraction: (baselineBufferBytes - sharedBufferBytes) / baselineBufferBytes,
+    avoidedClones: Number(sharedFlat.v4SharedFlatClonesAvoided),
+    category: 'CPU typed-array estimate across scene variants; not verified GPU VRAM',
+  };
+  console.log('RENDERER_V4_R4_FLAT_SHARE_ESTIMATE', JSON.stringify(flatShareEstimate));
   const pixels = compareScreenshotPngPixels(observations[0].png, observations[1].png);
   const indexedPixels = compareScreenshotPngPixels(observations[0].png, observations[2].png);
+  const sharedPixels = compareScreenshotPngPixels(observations[0].png, observations[3].png);
   const report = {
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
-    observations: [r1, r2, fastIndex],
+    observations: [r1, r2, fastIndex, sharedFlat],
     pixels,
     indexedPixels,
     indexedBufferEstimate,
+    flatShareEstimate,
+    sharedPixels,
   };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   console.log('RENDERER_V4_R3_BROWSER_PARITY', JSON.stringify(pixels));
   console.log('RENDERER_V4_R3_FAST_INDEX_PARITY', JSON.stringify(indexedPixels));
+  console.log('RENDERER_V4_R4_FLAT_SHARE_PARITY', JSON.stringify(sharedPixels));
   assert.equal(pixels.pixelIdentical, true, 'R1 and R3 survey canvases must match exactly');
   assert.equal(indexedPixels.pixelIdentical, true, 'R1 and R3 indexed canvases must match exactly');
+  assert.equal(sharedPixels.pixelIdentical, true, 'R1 and R4 shared cap canvases must match exactly');
 } finally {
   await browser.close();
 }
