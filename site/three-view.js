@@ -949,10 +949,14 @@ export function createThreeView({
 
   function writeV4GpuResourceCensus() {
     if (!v4GpuCensusEnabled) return;
-    const groups = [...new Set([
-      ...[...sceneVariantCache.values()].map((entry) => entry?.group).filter(Boolean),
-      group,
-    ].filter(Boolean))];
+    const groups = [
+      ...new Set(
+        [
+          ...[...sceneVariantCache.values()].map((entry) => entry?.group).filter(Boolean),
+          group,
+        ].filter(Boolean),
+      ),
+    ];
     const result = censusV4SceneResources(groups);
     host.dataset.v4GpuResourceStatus = result.reason;
     host.dataset.v4GpuResourceSceneGroups = String(result.groupCount);
@@ -3123,7 +3127,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
           farTier: arrayLod.tier !== 'exact',
           clipped: Boolean(clip),
           zCollapsed: currentZDisplay?.enabled !== false,
-          edgeOn: distanceForV3 <= 0 ||
+          edgeOn:
+            distanceForV3 <= 0 ||
             Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
         });
         v4FeatureProbeMs = performance.now() - started;
