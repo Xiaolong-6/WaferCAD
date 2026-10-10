@@ -82,7 +82,6 @@ try {
       window.__waferCadWebglProbe.owner(this);
       return original.apply(this, args);
     };
-    window.__waferCadWebglProbe.arm({ rasterDiscard: false });
   });
   let reference = null;
   for (const [index, singlePass] of [true, false, false, true].entries()) {
@@ -92,6 +91,9 @@ try {
     await page.evaluate((enabled) => {
       window.__waferCadSameContextPolicy = enabled;
       window.__waferCadSameContextEligible = 0;
+      // The native draw probe is one-shot. Arm it independently for every
+      // policy arm; otherwise later trials would reuse the first frame.
+      window.__waferCadWebglProbe.arm({ rasterDiscard: false });
       // Even with the same value, the input event routes through the existing
       // presentation-only invalidation, scheduling a fresh complete frame.
       const input = document.getElementById('threeOpacityRange');
@@ -119,6 +121,11 @@ try {
     const expectedCalls = singlePass ? 1291 : 1408;
     assert.equal(Number(state.rendererDrawTriangles), expectedTriangles);
     assert.equal(Number(state.rendererDrawCalls), expectedCalls);
+    assert.equal(
+      probe.last.frameSerial,
+      Number(state.rendererFrameSerial),
+      'native census must be from this exact completed WebGL frame',
+    );
     assert.equal(probe.last.triangles, expectedTriangles, 'native GL triangle census');
     assert.equal(probe.last.drawCalls, expectedCalls, 'native GL draw census');
     assert.equal(probe.last.glError, 0);
