@@ -33,6 +33,35 @@ function numericProfile(dataset) {
     'rendererDrawTriangles',
     'sceneSinglePassCapObjects',
     'sceneSavedCapTriangleSubmissions',
+    // V3 Phase A: observe-only subpixel interface-budget measurements.
+    'v3SubpixelWallCandidates',
+    'v3SubpixelWallInstances',
+    'v3SubpixelRawTriangleEstimate',
+    'v3SkippedTriangles',
+    'v3ProjectionOwners',
+    'v3ProjectionSampleQuads',
+    'v3ProjectionVisibleQuads',
+    'v3ProjectionSubpixelQuads',
+    'v3ProjectionOffscreenQuads',
+    'v3ProjectionRawTriangleUpperBound',
+    'v3TileBoundOwners',
+    'v3TileBoundTiles',
+    'v3TileSubpixelBounds',
+    'v3TileOffscreenBounds',
+    'v3TileUncertainBounds',
+    'v3TileOwnerOverflow',
+    'v3TileBoundOverflow',
+    'v3EdgeSurveyOwners',
+    'v3EdgeSurveyBounds',
+    'v3EdgeSurveySubpixel',
+    'v3EdgeSurveyUncertain',
+    'v3EdgeSurveyOverflow',
+    'v3EdgeSurveyRawUpperBound',
+    'v3EdgeSurveySubpixelRawUpperBound',
+    'v3EdgeSurveyMs',
+    'v3QualityIndexedVertices',
+    'v3QualityOriginalVertices',
+    'v3QualityIndexedTriangles',
     'sceneRetainedGroupCount',
     'sceneRetainedObjectCount',
     'sceneRetainedGeometryCount',
@@ -51,7 +80,7 @@ try {
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
 
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
   await waitForAppReady(page);
   const openStarted = performance.now();
   await page

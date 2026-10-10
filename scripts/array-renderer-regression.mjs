@@ -74,7 +74,7 @@ try {
     return elapsed;
   };
   const errors = observePageErrors(page);
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')
@@ -124,6 +124,65 @@ try {
     const elapsedMs = await waitStage('fast-transparent-array-lod', 120000, beforeLodFrame);
     const distant = await snapshot();
     assert.match(distant.transparentArrayLodTier, /^far-/);
+    assert.equal(distant.v3ScreenBudgetMode, 'observe-only');
+    assert.equal(distant.v3ProjectionStatus, 'sampled');
+    assert.equal(distant.v3TileBoundStatus, 'measured');
+    assert.equal(distant.v3EdgeSurveyStatus, 'bounded');
+    assert.ok(
+      Number(distant.v3EdgeSurveyOwners) > 0,
+      'edge survey must inspect heavy smooth owners',
+    );
+    assert.ok(Number(distant.v3EdgeSurveyBounds) > 0, 'must project complete edge x tile bounds');
+    assert.equal(
+      distant.v3EdgeSurveyOverflow,
+      '0',
+      'heavy-owner edge-tile budget must be complete',
+    );
+    assert.ok(Number(distant.v3EdgeSurveyMs) >= 0, 'probe time must be measurable');
+    assert.equal(
+      distant.v3EdgeSurveyGate,
+      distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'alpha-coverage-unverified',
+      'even subpixel contour bounds must not authorize alpha compositing changes',
+    );
+    assert.ok(Number(distant.v3TileBoundOwners) > 0, 'must bound at least one whole buried owner');
+    assert.ok(Number(distant.v3TileBoundTiles) > 0, 'must bound at least one complete tile');
+    assert.equal(distant.v3TileOwnerOverflow, '0');
+    assert.equal(distant.v3TileBoundOverflow, '0');
+    assert.equal(
+      distant.v3TileReductionGate,
+      distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'alpha-coverage-unverified',
+      'active Section cuts must forbid tile-level reduction even after projection',
+    );
+    assert.ok(
+      JSON.parse(distant.v3TileBoundTopOwners).length > 0,
+      'far-array actual projection must expose owner-level bounds',
+    );
+    assert.ok(
+      Number(distant.v3ProjectionSampleQuads) > 0,
+      'Far transparent array must sample real camera-projected buried walls',
+    );
+    assert.ok(
+      Number(distant.v3ProjectionVisibleQuads) > 0,
+      'Some sampled buried wall geometry must be in the camera frustum',
+    );
+    assert.ok(
+      Number(distant.v3ProjectionRawTriangleUpperBound) > 0,
+      'Sample report must estimate raw buried wall workload',
+    );
+    assert.ok(
+      JSON.parse(distant.v3ProjectionTopOwners).length > 0,
+      'Projected top owner report must be present',
+    );
+    assert.equal(
+      distant.v3ScreenBudgetReason,
+      distant.zCollapseEnabled === 'true' ? 'z-collapse' : 'qualified',
+      'The v3 probe must use the effective Section Z-collapse display state',
+    );
+    assert.equal(distant.v3SkippedTriangles, '0', 'v3 probe must not remove geometry');
+    assert.ok(
+      Number.isFinite(Number(distant.v3SubpixelWallInstances)),
+      'far-array presentation must report the v3 screen-space budget',
+    );
     assert.equal(distant.cameraDampingEnabled, 'true', 'Far Fast mode keeps normal camera inertia');
     assert.ok(
       Number(distant.electricalFarLodBodyCount) > 0,
@@ -212,6 +271,30 @@ try {
   assert.equal(transparentCold.rendererUpdateKind, 'variant-build');
   assert.equal(transparentCold.sceneVariant, 'transparent');
   assert.equal(transparentCold.transparentArrayLodTier, 'exact', 'Quality stays exact');
+  assert.ok(
+    Number(transparentCold.v3QualityIndexedVertices) > 0,
+    'opt-in Quality must actually index smooth buried instanced material walls',
+  );
+  assert.equal(
+    Number(transparentCold.v3QualityOriginalVertices),
+    Number(transparentCold.v3QualityIndexedTriangles) * 3,
+    'Quality indexing preserves all original GPU triangles',
+  );
+  assert.equal(
+    Number(transparentCold.v3QualityOriginalVertices) /
+      Number(transparentCold.v3QualityIndexedVertices),
+    1.5,
+    'each smooth quad uses four rather than six independent vertices',
+  );
+  assert.equal(transparentCold.v3SkippedTriangles, '0');
+  assert.equal(transparentCold.v3ScreenBudgetQualified, 'false');
+  assert.equal(transparentCold.v3ScreenBudgetReason, 'not-far');
+  assert.equal(transparentCold.v3ProjectionStatus, 'not-far');
+  assert.equal(transparentCold.v3ProjectionSampleQuads, '0');
+  assert.equal(transparentCold.v3TileBoundStatus, 'not-far');
+  assert.equal(transparentCold.v3TileBoundTiles, '0');
+  assert.equal(transparentCold.v3EdgeSurveyStatus, 'not-far');
+  assert.equal(transparentCold.v3EdgeSurveyBounds, '0');
   assert.equal(
     transparentCold.cameraDampingEnabled,
     'false',
@@ -238,6 +321,14 @@ try {
   const opaqueSwapMs = await waitStage('opacity-swap-opaque', 120000, beforeOpaqueFrame);
   const opaqueSwap = await snapshot();
   assert.equal(opaqueSwap.rendererUpdateKind, 'variant-swap');
+  assert.equal(opaqueSwap.v3SkippedTriangles, '0');
+  assert.equal(opaqueSwap.v3ScreenBudgetQualified, 'false');
+  assert.equal(opaqueSwap.v3ScreenBudgetReason, 'not-far');
+  assert.equal(opaqueSwap.v3ProjectionSampleQuads, '0');
+  assert.equal(opaqueSwap.v3TileBoundStatus, 'not-far');
+  assert.equal(opaqueSwap.v3TileBoundTiles, '0');
+  assert.equal(opaqueSwap.v3EdgeSurveyStatus, 'not-far');
+  assert.equal(opaqueSwap.v3EdgeSurveyBounds, '0');
   assert.equal(
     Number(opaqueSwap.sceneSinglePassCapObjects),
     0,
@@ -253,6 +344,11 @@ try {
   const warmTransparentMs = await waitStage('opacity-swap-transparent', 120000, beforeWarmFrame);
   const transparentWarm = await snapshot();
   assert.equal(transparentWarm.rendererUpdateKind, 'variant-swap');
+  assert.equal(transparentWarm.v3ScreenBudgetQualified, 'false');
+  assert.equal(transparentWarm.v3ProjectionStatus, 'not-far');
+  assert.equal(transparentWarm.v3TileBoundStatus, 'not-far');
+  assert.equal(transparentWarm.v3EdgeSurveyStatus, 'not-far');
+  assert.equal(transparentWarm.v3SkippedTriangles, '0');
   assert.equal(
     transparentWarm.sceneSavedCapTriangleSubmissions,
     transparentCold.sceneSavedCapTriangleSubmissions,

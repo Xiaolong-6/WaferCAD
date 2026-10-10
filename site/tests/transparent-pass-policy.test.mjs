@@ -69,3 +69,38 @@ test('opaque scenes, sides, rough surfaces and annotations retain the two-pass p
   assert.equal(canUseSinglePass({ materialState }), false);
   assert.equal(canRenderPlanarCapInSinglePass(), false);
 });
+
+test('electrical planar cap experiment is explicit and never applies to volume/rough/opaque', () => {
+  const electrical = { kind: 'electrical-surface', planarCap: true };
+  assert.equal(canUseSinglePass({ materialState, presentation: electrical }), false);
+  assert.equal(
+    canUseSinglePass({
+      materialState,
+      presentation: { ...electrical, experimentalElectricalPlanarSinglePass: true },
+    }),
+    true,
+  );
+  for (const presentation of [
+    { ...electrical, planarCap: false, experimentalElectricalPlanarSinglePass: true },
+    { kind: 'electrical-internal', planarCap: true, experimentalElectricalPlanarSinglePass: true },
+    { kind: 'implant-surface', planarCap: true, experimentalElectricalPlanarSinglePass: true },
+    { kind: 'implant-internal', planarCap: true, experimentalElectricalPlanarSinglePass: true },
+  ]) {
+    assert.equal(canUseSinglePass({ materialState, presentation }), false, presentation.kind);
+  }
+  assert.equal(
+    canUseSinglePass({
+      materialState,
+      appearance: { kind: 'rough' },
+      presentation: { ...electrical, experimentalElectricalPlanarSinglePass: true },
+    }),
+    false,
+  );
+  assert.equal(
+    canUseSinglePass({
+      materialState: { transparent: false },
+      presentation: { ...electrical, experimentalElectricalPlanarSinglePass: true },
+    }),
+    false,
+  );
+});

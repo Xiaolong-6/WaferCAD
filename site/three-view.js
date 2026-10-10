@@ -6,6 +6,11 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
+import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
+import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
+import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
+import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -13,6 +18,10 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  clearRendererBuildFailure,
+  setRendererBuildFailure,
+} from './renderer-rebuild-status.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -82,6 +91,18 @@ export function createThreeView({
   if (typeof getModel !== 'function') throw new TypeError('getModel must be a function.');
 
   const smoothCapDerivedDataCache = createDerivedDataCache();
+  // Expensive V3 profiling is explicitly opt-in for benchmark runs.
+  const rendererParams = new URLSearchParams(
+    host.ownerDocument?.defaultView?.location?.search || '',
+  );
+  const v3DiagnosticsEnabled = rendererParams.get('rendererV3Diagnostics') === '1';
+  const v3RoiTraceEnabled = rendererParams.get('rendererV3RoiTrace') === '1';
+  const v3QualityIndexExperiment = rendererParams.get('rendererV3QualityIndex') === '1';
+  const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
+  const v3ElectricalPlanarSinglePassExperiment =
+    rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
+  let suppressAssemblyFrames = false;
+  let assemblySkippedFrames = 0;
 
   let renderer = null;
   let scene = null;
@@ -781,6 +802,13 @@ export function createThreeView({
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
+      // Experimental large-array loading policy: assembly still yields to UI
+      // animation frames, but does not repeatedly submit incomplete meshes.
+      // The final exact scene is submitted after the build's finally block.
+      if (suppressAssemblyFrames) {
+        host.dataset.rendererAssemblySkippedFrames = String(++assemblySkippedFrames);
+        return;
+      }
       // OrbitControls damping keeps scheduling frames after pointer-up.
       // A full-wafer exact transparent array can cost tens of seconds per
       // software-WebGL frame; repeating these frames starves input handling.
@@ -789,13 +817,30 @@ export function createThreeView({
         host.dataset.sceneVariant === 'transparent' &&
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
+      const wasDampingEnabled = Boolean(controls?.enableDamping);
       if (controls) controls.enableDamping = !heavyExactTransparency;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
-      const changed = controls?.update?.() || false;
+      // OrbitControls already updates the camera on pointer/fit/setViewState.
+      // Calling update() on every *idle* exact frame, with damping disabled,
+      // repeatedly round-trips Cartesian/spherical floats and can shift a
+      // subpixel transparent edge between otherwise identical GL submissions.
+      // Keep the single update on damping-mode transitions and normal drag,
+      // but hold the completed camera pose constant between idle frames.
+      const needsCameraUpdate =
+        interacting ||
+        Boolean(controls?.enableDamping) ||
+        wasDampingEnabled !== Boolean(controls?.enableDamping);
+      const changed = needsCameraUpdate ? controls?.update?.() || false : false;
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
       renderer.render(scene, camera);
+      // Opt-in, read-only camera evidence for scientific idle-frame checks.
+      // Evaluating after render captures the exact matrices consumed by GL.
+      if (v3RoiTraceEnabled) {
+        host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
+        host.dataset.rendererCameraProjection = JSON.stringify(camera.projectionMatrix.elements);
+      }
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
@@ -915,6 +960,53 @@ export function createThreeView({
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
+      v3QualityIndexedVertices: host.dataset.v3QualityIndexedVertices || '0',
+      v3QualityOriginalVertices: host.dataset.v3QualityOriginalVertices || '0',
+      v3QualityIndexedTriangles: host.dataset.v3QualityIndexedTriangles || '0',
+      v3EdgeSurvey: {
+        status: host.dataset.v3EdgeSurveyStatus || 'not-measured',
+        gate: host.dataset.v3EdgeSurveyGate || 'not-far',
+        owners: host.dataset.v3EdgeSurveyOwners || '0',
+        bounds: host.dataset.v3EdgeSurveyBounds || '0',
+        subpixel: host.dataset.v3EdgeSurveySubpixel || '0',
+        uncertain: host.dataset.v3EdgeSurveyUncertain || '0',
+        overflow: host.dataset.v3EdgeSurveyOverflow || '0',
+        raw: host.dataset.v3EdgeSurveyRawUpperBound || '0',
+        candidateRaw: host.dataset.v3EdgeSurveySubpixelRawUpperBound || '0',
+        elapsedMs: host.dataset.v3EdgeSurveyMs || '0',
+        topOwners: host.dataset.v3EdgeSurveyTopOwners || '[]',
+      },
+      v3TileProbe: {
+        status: host.dataset.v3TileBoundStatus || 'not-sampled',
+        gate: host.dataset.v3TileReductionGate || 'not-far',
+        owners: host.dataset.v3TileBoundOwners || '0',
+        tiles: host.dataset.v3TileBoundTiles || '0',
+        subpixel: host.dataset.v3TileSubpixelBounds || '0',
+        offscreen: host.dataset.v3TileOffscreenBounds || '0',
+        uncertain: host.dataset.v3TileUncertainBounds || '0',
+        ownerOverflow: host.dataset.v3TileOwnerOverflow || '0',
+        tileOverflow: host.dataset.v3TileBoundOverflow || '0',
+        topOwners: host.dataset.v3TileBoundTopOwners || '[]',
+      },
+      v3ProjectionProbe: {
+        status: host.dataset.v3ProjectionStatus || 'not-sampled',
+        owners: host.dataset.v3ProjectionOwners || '0',
+        quads: host.dataset.v3ProjectionSampleQuads || '0',
+        projected: host.dataset.v3ProjectionVisibleQuads || '0',
+        subpixel: host.dataset.v3ProjectionSubpixelQuads || '0',
+        offscreen: host.dataset.v3ProjectionOffscreenQuads || '0',
+        rawTriangles: host.dataset.v3ProjectionRawTriangleUpperBound || '0',
+        topOwners: host.dataset.v3ProjectionTopOwners || '[]',
+      },
+      v3SubpixelProbe: {
+        mode: host.dataset.v3ScreenBudgetMode || 'observe-only',
+        qualified: host.dataset.v3ScreenBudgetQualified || 'false',
+        reason: host.dataset.v3ScreenBudgetReason || 'unmeasured',
+        candidates: host.dataset.v3SubpixelWallCandidates || '0',
+        instances: host.dataset.v3SubpixelWallInstances || '0',
+        rawTriangles: host.dataset.v3SubpixelRawTriangleEstimate || '0',
+        skipped: host.dataset.v3SkippedTriangles || '0',
+      },
       model: physicalSceneModel,
       signature: physicalSceneSignature,
     };
@@ -971,6 +1063,45 @@ export function createThreeView({
     host.dataset.transparentArrayDisplayTolerance = entry.arrayLodTolerance || '0';
     host.dataset.fullWaferTransparencyLod = String(entry.arrayLodTier !== 'exact');
     host.dataset.electricalFarLodBodyCount = entry.electricalFarLodBodyCount || '0';
+    host.dataset.v3QualityIndexedVertices = entry.v3QualityIndexedVertices || '0';
+    host.dataset.v3QualityOriginalVertices = entry.v3QualityOriginalVertices || '0';
+    host.dataset.v3QualityIndexedTriangles = entry.v3QualityIndexedTriangles || '0';
+    host.dataset.v3ScreenBudgetMode = entry.v3SubpixelProbe?.mode || 'observe-only';
+    host.dataset.v3ScreenBudgetQualified = entry.v3SubpixelProbe?.qualified || 'false';
+    host.dataset.v3ScreenBudgetReason = entry.v3SubpixelProbe?.reason || 'unmeasured';
+    host.dataset.v3SubpixelWallCandidates = entry.v3SubpixelProbe?.candidates || '0';
+    host.dataset.v3SubpixelWallInstances = entry.v3SubpixelProbe?.instances || '0';
+    host.dataset.v3SubpixelRawTriangleEstimate = entry.v3SubpixelProbe?.rawTriangles || '0';
+    host.dataset.v3SkippedTriangles = entry.v3SubpixelProbe?.skipped || '0';
+    host.dataset.v3ProjectionStatus = entry.v3ProjectionProbe?.status || 'not-sampled';
+    host.dataset.v3ProjectionOwners = entry.v3ProjectionProbe?.owners || '0';
+    host.dataset.v3ProjectionSampleQuads = entry.v3ProjectionProbe?.quads || '0';
+    host.dataset.v3ProjectionVisibleQuads = entry.v3ProjectionProbe?.projected || '0';
+    host.dataset.v3ProjectionSubpixelQuads = entry.v3ProjectionProbe?.subpixel || '0';
+    host.dataset.v3ProjectionOffscreenQuads = entry.v3ProjectionProbe?.offscreen || '0';
+    host.dataset.v3ProjectionRawTriangleUpperBound = entry.v3ProjectionProbe?.rawTriangles || '0';
+    host.dataset.v3ProjectionTopOwners = entry.v3ProjectionProbe?.topOwners || '[]';
+    host.dataset.v3TileBoundStatus = entry.v3TileProbe?.status || 'not-sampled';
+    host.dataset.v3TileReductionGate = entry.v3TileProbe?.gate || 'not-far';
+    host.dataset.v3TileBoundOwners = entry.v3TileProbe?.owners || '0';
+    host.dataset.v3TileBoundTiles = entry.v3TileProbe?.tiles || '0';
+    host.dataset.v3TileSubpixelBounds = entry.v3TileProbe?.subpixel || '0';
+    host.dataset.v3TileOffscreenBounds = entry.v3TileProbe?.offscreen || '0';
+    host.dataset.v3TileUncertainBounds = entry.v3TileProbe?.uncertain || '0';
+    host.dataset.v3TileOwnerOverflow = entry.v3TileProbe?.ownerOverflow || '0';
+    host.dataset.v3TileBoundOverflow = entry.v3TileProbe?.tileOverflow || '0';
+    host.dataset.v3TileBoundTopOwners = entry.v3TileProbe?.topOwners || '[]';
+    host.dataset.v3EdgeSurveyStatus = entry.v3EdgeSurvey?.status || 'not-measured';
+    host.dataset.v3EdgeSurveyGate = entry.v3EdgeSurvey?.gate || 'not-far';
+    host.dataset.v3EdgeSurveyOwners = entry.v3EdgeSurvey?.owners || '0';
+    host.dataset.v3EdgeSurveyBounds = entry.v3EdgeSurvey?.bounds || '0';
+    host.dataset.v3EdgeSurveySubpixel = entry.v3EdgeSurvey?.subpixel || '0';
+    host.dataset.v3EdgeSurveyUncertain = entry.v3EdgeSurvey?.uncertain || '0';
+    host.dataset.v3EdgeSurveyOverflow = entry.v3EdgeSurvey?.overflow || '0';
+    host.dataset.v3EdgeSurveyRawUpperBound = entry.v3EdgeSurvey?.raw || '0';
+    host.dataset.v3EdgeSurveySubpixelRawUpperBound = entry.v3EdgeSurvey?.candidateRaw || '0';
+    host.dataset.v3EdgeSurveyMs = entry.v3EdgeSurvey?.elapsedMs || '0';
+    host.dataset.v3EdgeSurveyTopOwners = entry.v3EdgeSurvey?.topOwners || '[]';
     return true;
   }
 
@@ -1523,10 +1654,16 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0, { indexedSmooth = false } = {}) {
     const positions = [],
       normals = [],
-      annotationDepths = [];
+      annotationDepths = [],
+      indices = [],
+      preparedParts =
+        displayTolerance > 0
+          ? simplifyDisplaySidewallParts(parts, displayTolerance)
+          : mergeCollinearSidewallParts(parts),
+      useIndex = indexedSmooth && canIndexSmoothWalls(preparedParts);
 
     const triangle = (a, b, c, depths = null) => {
         const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
@@ -1549,9 +1686,7 @@ export function createThreeView({
               roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
-    for (const part of displayTolerance > 0
-      ? simplifyDisplaySidewallParts(parts, displayTolerance)
-      : mergeCollinearSidewallParts(parts)) {
+    for (const part of preparedParts) {
       const p = part.p,
         q = part.q,
         dx = q[0] - p[0],
@@ -1590,14 +1725,19 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        triangle(lower0, lower1, upper1, firstDepths);
-        triangle(lower0, upper1, upper0, secondDepths);
+        if (useIndex) {
+          pushIndexedSmoothWall(positions, normals, indices, lower0, lower1, upper1, upper0);
+        } else {
+          triangle(lower0, lower1, upper1, firstDepths);
+          triangle(lower0, upper1, upper0, secondDepths);
+        }
       }
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (indices.length) geometry.setIndex(indices);
     if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
       geometry.setAttribute(
         'annotationDepth',
@@ -2548,6 +2688,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       pendingRender = true;
       return;
     }
+    clearRendererBuildFailure(host);
     const model = getModel();
     if (!model) return;
     const clip = getClipGeometry(),
@@ -2555,6 +2696,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    const previousVariant = activeSceneVariant;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2572,6 +2714,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     ) {
       if (activeSceneVariant === targetVariant) {
         pendingRender = false;
+        // A rejected ROI may have hidden the retained, otherwise valid scene.
+        group.visible = true;
         host.dataset.renderState = 'updating';
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
@@ -2604,7 +2748,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
 
+    const previousSceneGeneration = sceneGeneration;
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
+    let sceneReplaced = false;
+    let rebuildFailed = false;
     pendingRender = false;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
@@ -2613,22 +2760,42 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
     stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
+    // Manual-only ROI performance breadcrumbs. No geometry or presentation changes.
+    const recordRoiStage = (name) => {
+      if (!v3RoiTraceEnabled || !clip) return;
+      const elapsedMs = performance.now() - rendererProfileStart;
+      host.dataset.rendererRoiStage = name;
+      host.dataset.rendererRoiStageElapsedMs = String(elapsedMs);
+      console.info(
+        'WAFERCAD_ROI_STAGE',
+        JSON.stringify({ name, elapsedMs, sceneGeneration: renderGeneration }),
+      );
+    };
+    recordRoiStage('begin');
 
     rendering = true;
     buildStageStartedAt = performance.now();
     recordVariantStage('begin');
     try {
-      if (!variantBuild) disposeGroup();
+      // Resolve bounded clipped topology BEFORE disposing the last valid scene.
+      // In particular, a 625-site ROI can hit the three-million-point guard.
+      // This is a controlled rejection, not a long-running WebGL build.
+      recordRoiStage('surface-plan-start');
+      const plan =
+        variantBuild && physicalSurfacePlan
+          ? physicalSurfacePlan
+          : buildRenderSurfacePlan(model, clip);
+      recordRoiStage('surface-plan-complete');
+      if (!variantBuild) {
+        sceneReplaced = true;
+        disposeGroup();
+      }
       syncRenderPolicy();
       applyZDisplayState(model);
 
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
-        borders = Boolean(inspection.borders),
-        plan =
-          variantBuild && physicalSurfacePlan
-            ? physicalSurfacePlan
-            : buildRenderSurfacePlan(model, clip);
+        borders = Boolean(inspection.borders);
       if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -2641,12 +2808,168 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.fullWaferTransparencyLod = String(arrayLod.tier !== 'exact');
       host.dataset.transparentArrayDisplayTolerance = String(transparentArrayDisplayTolerance);
       host.dataset.transparentArrayLodTier = arrayLod.tier;
+      // V3 phase A is diagnostic only: estimate the strictly subpixel,
+      // smooth, buried wall workload at a far Fast array camera. No mesh
+      // reduction, change to opacity sorting or mutation of source geometry.
+      const viewportForV3 = currentViewport(),
+        distanceForV3 = camera && controls ? camera.position.distanceTo(controls.target) : 0,
+        v3Budget = v3DiagnosticsEnabled
+          ? buriedInterfaceSubpixelBudget(plan.sidewalls, {
+              farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
+              clipped: Boolean(clip),
+              // Use the EFFECTIVE Section display transform, including the
+              // enabled default when the stored Section setting is null.
+              zCollapsed: currentZDisplay?.enabled !== false,
+              displayZScale: currentZDisplay?.scale,
+              unitsPerPixel:
+                camera && distanceForV3 > 0
+                  ? (2 * distanceForV3 * Math.tan((camera.fov * Math.PI) / 360)) /
+                    viewportForV3.height
+                  : 0,
+              viewZFraction:
+                camera && distanceForV3 > 0
+                  ? Math.abs(camera.position.z - controls.target.z) / distanceForV3
+                  : 0,
+            })
+          : {
+              mode: 'observe-only',
+              qualified: false,
+              exclusionReason: 'diagnostics-disabled',
+              candidates: 0,
+              instanceWallSegments: 0,
+              rawTwoPassTriangleEstimate: 0,
+              skippedTriangles: 0,
+            };
+      host.dataset.v3ScreenBudgetMode = v3Budget.mode;
+      host.dataset.v3ScreenBudgetQualified = String(v3Budget.qualified);
+      host.dataset.v3ScreenBudgetReason = v3Budget.exclusionReason || 'qualified';
+      host.dataset.v3SubpixelWallCandidates = String(v3Budget.candidates);
+      host.dataset.v3SubpixelWallInstances = String(v3Budget.instanceWallSegments);
+      host.dataset.v3SubpixelRawTriangleEstimate = String(v3Budget.rawTwoPassTriangleEstimate);
+      host.dataset.v3SkippedTriangles = String(v3Budget.skippedTriangles);
+      // Read-only sample of *actual perspective projection*, even when a
+      // collapsed Section disqualifies every candidate from future culling.
+      // Strictly bounded per owner/edge/instance to avoid adding GPU work.
+      let v3Projected = null;
+      if (
+        v3DiagnosticsEnabled &&
+        targetVariant === 'transparent' &&
+        arrayLod.tier !== 'exact' &&
+        camera
+      ) {
+        camera.updateMatrixWorld();
+        const pointForProjection = new THREE.Vector3();
+        v3Projected = sampleBuriedInterfaceProjection(plan.sidewalls, {
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          project: ([x, y, z]) => {
+            pointForProjection.set(x, y, z).project(camera);
+            if (
+              ![pointForProjection.x, pointForProjection.y, pointForProjection.z].every(
+                Number.isFinite,
+              ) ||
+              pointForProjection.z < -1 ||
+              pointForProjection.z > 1
+            )
+              return null;
+            return [
+              ((pointForProjection.x + 1) * viewportForV3.width) / 2,
+              ((1 - pointForProjection.y) * viewportForV3.height) / 2,
+            ];
+          },
+        });
+      }
+      host.dataset.v3ProjectionStatus = v3Projected?.reason || 'not-far';
+      host.dataset.v3ProjectionOwners = String(v3Projected?.analyzedOwners || 0);
+      host.dataset.v3ProjectionSampleQuads = String(v3Projected?.sampledQuads || 0);
+      host.dataset.v3ProjectionVisibleQuads = String(v3Projected?.projectedQuads || 0);
+      host.dataset.v3ProjectionSubpixelQuads = String(v3Projected?.subpixelQuads || 0);
+      host.dataset.v3ProjectionOffscreenQuads = String(v3Projected?.offscreenQuads || 0);
+      host.dataset.v3ProjectionRawTriangleUpperBound = String(
+        v3Projected?.rawOwnerTriangleUpperBound || 0,
+      );
+      host.dataset.v3ProjectionTopOwners = JSON.stringify(v3Projected?.topOwners || []);
+      // V3 owner/tile screen-space bounds are conservative and independent
+      // of the random/representative quad samples above. Observe-only:
+      // geometry and draw submissions must be bitwise unchanged.
+      let v3Tiles = null,
+        v3Edges = null,
+        v3EdgesMs = 0;
+      if (
+        v3DiagnosticsEnabled &&
+        targetVariant === 'transparent' &&
+        arrayLod.tier !== 'exact' &&
+        camera
+      ) {
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+        v3Tiles = buriedInterfaceTileBounds(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: true,
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          nearEdgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+        const edgeStartedAt = performance.now();
+        v3Edges = buriedInterfaceEdgeTileSurvey(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: true,
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          edgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+        v3EdgesMs = performance.now() - edgeStartedAt;
+      }
+      host.dataset.v3TileBoundStatus = v3Tiles?.reason || 'not-far';
+      host.dataset.v3TileReductionGate = v3Tiles?.reductionGate || 'not-far';
+      host.dataset.v3TileBoundOwners = String(v3Tiles?.owners || 0);
+      host.dataset.v3TileBoundTiles = String(v3Tiles?.tiles || 0);
+      host.dataset.v3TileSubpixelBounds = String(v3Tiles?.subpixelBounds || 0);
+      host.dataset.v3TileOffscreenBounds = String(v3Tiles?.offscreenBounds || 0);
+      host.dataset.v3TileUncertainBounds = String(v3Tiles?.uncertainTiles || 0);
+      host.dataset.v3TileOwnerOverflow = String(v3Tiles?.ownerOverflow || 0);
+      host.dataset.v3TileBoundOverflow = String(v3Tiles?.tileOverflow || 0);
+      host.dataset.v3TileBoundTopOwners = JSON.stringify(v3Tiles?.topOwners || []);
+      host.dataset.v3EdgeSurveyStatus = v3Edges?.reason || 'not-far';
+      host.dataset.v3EdgeSurveyGate = v3Edges?.reductionGate || 'not-far';
+      host.dataset.v3EdgeSurveyOwners = String(v3Edges?.studiedOwners || 0);
+      host.dataset.v3EdgeSurveyBounds = String(v3Edges?.projectedBounds || 0);
+      host.dataset.v3EdgeSurveySubpixel = String(v3Edges?.subpixelBounds || 0);
+      host.dataset.v3EdgeSurveyUncertain = String(v3Edges?.uncertainBounds || 0);
+      host.dataset.v3EdgeSurveyOverflow = String(v3Edges?.workOverflow || 0);
+      host.dataset.v3EdgeSurveyRawUpperBound = String(v3Edges?.representedRawTwoPassTriangles || 0);
+      host.dataset.v3EdgeSurveySubpixelRawUpperBound = String(
+        v3Edges?.subpixelRawTwoPassUpperBound || 0,
+      );
+      host.dataset.v3EdgeSurveyMs = String(v3EdgesMs);
+      host.dataset.v3EdgeSurveyTopOwners = JSON.stringify(v3Edges?.topOwners || []);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
+      recordRoiStage('topology-complete');
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
+      suppressAssemblyFrames = v3FinalFrameOnlyExperiment && cooperativeAssembly;
+      assemblySkippedFrames = 0;
+      host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
+      host.dataset.rendererAssemblySkippedFrames = '0';
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 32;
       const maybeYieldAssembly = async () => {
@@ -2868,6 +3191,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       recordVariantStage('caps-complete');
+      recordRoiStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
@@ -2880,6 +3204,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallInstanceGroupCount = 0;
       smoothSidewallInstanceCount = 0;
       smoothSidewallTemplateTriangleCount = 0;
+      let qualityIndexedSubmittedVertices = 0,
+        qualityOriginalSubmittedVertices = 0,
+        qualityIndexedTriangles = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -2889,6 +3216,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const geometry = geometryFromSidewallParts(
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
+              {
+                indexedSmooth:
+                  v3QualityIndexExperiment &&
+                  targetVariant === 'transparent' &&
+                  inspection.fast === false &&
+                  sidewall.buried === true,
+              },
             ),
             presentation = presentationFor(sidewall),
             material = createSurfaceMaterial(
@@ -2908,7 +3242,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           smoothSidewallInstanceGroupCount += meshes.length;
           smoothSidewallInstanceCount += sidewall.instanceTranslations.length;
-          smoothSidewallTemplateTriangleCount += geometry.getAttribute('position')?.count / 3 || 0;
+          smoothSidewallTemplateTriangleCount +=
+            (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
+          if (geometry.index?.count && meshes.length) {
+            const instances = sidewall.instanceTranslations.length;
+            qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
+            qualityOriginalSubmittedVertices += geometry.index.count * instances;
+            qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+          }
           continue;
         }
         pushBucket(sidewalls, sidewall, state);
@@ -2995,17 +3336,26 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       recordVariantStage('sidewalls-complete');
+      recordRoiStage('sidewalls-complete');
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
         group.children.reduce(
-          (sum, object) => sum + (object.geometry?.getAttribute?.('position')?.count || 0) / 3,
+          (sum, object) =>
+            sum +
+            (object.geometry?.index?.count ||
+              object.geometry?.getAttribute?.('position')?.count ||
+              0) /
+              3,
           0,
         ),
       );
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      host.dataset.v3QualityIndexedVertices = String(qualityIndexedSubmittedVertices);
+      host.dataset.v3QualityOriginalVertices = String(qualityOriginalSubmittedVertices);
+      host.dataset.v3QualityIndexedTriangles = String(qualityIndexedTriangles);
       const rendererSidewallsAt = performance.now();
 
       host.dataset.instanceChunkLimit = presentationMode() === 'transparent' ? '256' : '4096';
@@ -3294,6 +3644,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
             kind: 'electrical-surface',
             exposed: Boolean(electrical.surfaceExposed),
             sortBias: 44,
+            // All vertices of this smooth cap lie on one Z plane.
+            // Keep the experimental presentation optimization strictly
+            // outside rough, clipped, Fast and non-array Quality scenes.
+            ...(v3ElectricalPlanarSinglePassExperiment &&
+            targetVariant === 'transparent' &&
+            inspection.fast === false &&
+            !clip &&
+            Number(plan.arrayInstances || 0) >= 64 &&
+            !appearance
+              ? { planarCap: true, experimentalElectricalPlanarSinglePass: true }
+              : {}),
           },
           capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
@@ -3360,6 +3721,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
+      recordRoiStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
@@ -3377,20 +3739,56 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
       recordVariantStage('presentation-complete');
+      recordRoiStage('presentation-complete');
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
+    } catch (error) {
+      rebuildFailed = true;
+      recordRoiStage('build-failed');
+      // Keep the last good geometry for a subsequent ROI clear, but never
+      // display it as though it were the failed clipped geometry.
+      try {
+        if (variantBuild) {
+          const previous = sceneVariantCache.get(previousVariant);
+          if (previous) {
+            const failedGroup = group;
+            scene.remove(failedGroup);
+            disposeSceneGroup(failedGroup);
+            restoreSceneVariant(previous);
+          } else {
+            disposeGroup();
+          }
+        } else if (sceneReplaced) {
+          disposeGroup();
+        } else {
+          sceneGeneration = previousSceneGeneration;
+          host.dataset.sceneGeneration = String(sceneGeneration);
+        }
+      } catch (cleanupError) {
+        console.warn('3D rebuild cleanup failed:', cleanupError);
+      }
+      if (group) group.visible = false;
+      const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
+      console.warn('3D rebuild rejected:', failure.code, failure.detail);
     } finally {
+      recordRoiStage('build-exited');
+      suppressAssemblyFrames = false;
       rendering = false;
     }
 
     if (pendingRender) {
       queueMicrotask(() => {
-        if (!rendering && pendingRender) render();
+        if (!rendering && pendingRender) void render();
       });
+      scheduleFrame();
+      return;
+    }
+
+    if (rebuildFailed) {
       scheduleFrame();
       return;
     }
