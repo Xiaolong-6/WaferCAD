@@ -28,14 +28,19 @@ async function runArm(name, search) {
     const openedAt = performance.now();
     await page.goto(baseUrl + '/app.html?' + search);
     await waitForAppReady(page);
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(
-        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-      ),
-    );
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
     await chooseConfirmation(page);
-    await page.waitForFunction(
-      () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
+    await page.waitForFunction(() =>
+      document.getElementById('statusText')?.textContent.startsWith('Opened '),
     );
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 180000);
@@ -49,16 +54,18 @@ async function runArm(name, search) {
     }
     if (!(await display.evaluate((node) => node.open)))
       await display.locator(':scope > summary').click();
-    const beforeFrame = await page.locator('#threeHost').evaluate(
-      (node) => Number(node.dataset.rendererFrameSerial || 0),
-    );
+    const beforeFrame = await page
+      .locator('#threeHost')
+      .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
     await page.locator('#threeOpacityRange').fill('0.5');
     await waitForThreeReady(page, 180000);
     await page.waitForFunction(
       (previous) => {
         const host = document.getElementById('threeHost');
-        return host?.dataset.renderState === 'ready' &&
-          Number(host.dataset.rendererFrameSerial || 0) > previous;
+        return (
+          host?.dataset.renderState === 'ready' &&
+          Number(host.dataset.rendererFrameSerial || 0) > previous
+        );
       },
       beforeFrame,
       { timeout: 180000 },
@@ -171,7 +178,11 @@ try {
   assert.ok(Number(r2.v4TileCacheMisses) > 0);
   assert.ok(Number(r2.v4TileCacheRetainedTiles) > 0);
   const pixels = compareScreenshotPngPixels(observations[0].png, observations[1].png);
-  const report = { fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad', observations: [r1, r2], pixels };
+  const report = {
+    fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
+    observations: [r1, r2],
+    pixels,
+  };
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   console.log('RENDERER_V4_R2_BROWSER_PARITY', JSON.stringify(pixels));
   assert.equal(pixels.pixelIdentical, true, 'R1 and R2 renderer canvases must match exactly');
