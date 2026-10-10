@@ -168,8 +168,8 @@ try {
 
       await page.locator('[data-action="view:main"]').click();
       if (width > 820) {
+        // Single's dock already includes Section; toggling it here would hide it.
         await page.locator('[data-action="mode:single"]').click();
-        await page.locator('[data-action="section"]').click();
       } else {
         await page.locator('[data-action="mobile-section"]').click();
       }
