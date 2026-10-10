@@ -35,6 +35,7 @@
   const livePanels = new Map();
   let threeControls = null;
   let sectionControls = null;
+  let nativeOverlayOwners = null;
 
   const notifyResize = () => {
     const serial = ++renderSerial;
