@@ -1,5 +1,6 @@
 // Same-run A/B experiments for Quality indexing, raster-discard profiling,
-// and final-frame-only assembly. All product experiments remain default-off.
+// final-frame-only assembly and smooth Electrical Region cap passes.
+// All product experiments remain default-off.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, URLSearchParams } from 'node:url';
@@ -18,14 +19,21 @@ import {
 const gpuProfile = process.argv.includes('--gpu-profile');
 const finalFrameOnly = process.argv.includes('--final-frame-only');
 const assemblyAb = process.argv.includes('--assembly-ab');
+const electricalPlanarAb = process.argv.includes('--electrical-planar-ab');
 assert.ok(
-  !assemblyAb || (!gpuProfile && !finalFrameOnly),
-  '--assembly-ab is standalone; do not combine it with raster discard or fixed assembly policy',
+  !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb),
+  '--assembly-ab is standalone; do not combine it with other modes',
+);
+assert.ok(
+  !electricalPlanarAb || (!gpuProfile && !finalFrameOnly && !assemblyAb),
+  '--electrical-planar-ab is standalone; do not combine it with other modes',
 );
 const out = new URL(
   assemblyAb
     ? '../test-results/renderer-assembly-ab/'
-    : gpuProfile
+    : electricalPlanarAb
+      ? '../test-results/renderer-electrical-planar-ab/'
+      : gpuProfile
     ? finalFrameOnly
       ? '../test-results/renderer-gpu-profile-final-only/'
       : '../test-results/renderer-gpu-profile/'
@@ -60,12 +68,17 @@ async function trial(enabled, ordinal) {
     errors = observePageErrors(page);
     const label = assemblyAb
       ? `${ordinal}-${enabled ? 'final-only' : 'preview'}`
-      : gpuProfile
+      : electricalPlanarAb
+        ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
+        : gpuProfile
         ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
         : `${ordinal}-${enabled ? 'on' : 'off'}`;
     const params = new URLSearchParams();
-    if (!gpuProfile && !assemblyAb && enabled) params.set('rendererV3QualityIndex', '1');
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled)
+      params.set('rendererV3QualityIndex', '1');
     if (trialFinalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
+    if (electricalPlanarAb && enabled)
+      params.set('rendererV3ElectricalPlanarSinglePass', '1');
     await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
     stage = 'open-fixture';
@@ -180,8 +193,20 @@ async function trial(enabled, ordinal) {
     assert.deepEqual(errors, [], `${label}: no page errors`);
     assert.equal(state.transparentArrayLodTier, 'exact');
     assert.equal(state.v3SkippedTriangles, '0');
-    assert.equal(state.rendererDrawTriangles, '57040012', '625-site exact triangle parity');
-    assert.equal(state.rendererDrawCalls, '1408', '625-site draw-call parity');
+    if (electricalPlanarAb && enabled) {
+      assert.ok(
+        Number(state.rendererDrawTriangles) < 57040012 &&
+          Number(state.rendererDrawTriangles) > 50000000,
+        'electrical smooth-cap trial must save GPU triangle submissions without omitting volume',
+      );
+      assert.ok(
+        Number(state.rendererDrawCalls) < 1408,
+        'electrical smooth-cap trial must remove only redundant draw passes',
+      );
+    } else {
+      assert.equal(state.rendererDrawTriangles, '57040012', '625-site exact triangle parity');
+      assert.equal(state.rendererDrawCalls, '1408', '625-site draw-call parity');
+    }
     assert.equal(state.sceneVariant, 'transparent');
     assert.equal(state.renderQuality, 'quality');
     assert.ok(Number(state.rendererFrameMs) > 0);
@@ -190,7 +215,7 @@ async function trial(enabled, ordinal) {
       trialFinalFrameOnly ? 'final-only' : 'preview',
       `${label}: measured array build must use the requested assembly policy`,
     );
-    if (!gpuProfile && !assemblyAb && enabled) {
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled) {
       assert.ok(Number(state.v3QualityIndexedTriangles) > 10000000);
       assert.equal(
         Number(state.v3QualityOriginalVertices) / Number(state.v3QualityIndexedVertices),
@@ -236,7 +261,9 @@ async function trial(enabled, ordinal) {
     console.log(
       assemblyAb
         ? 'RENDERER_ASSEMBLY_AB_TRIAL'
-        : gpuProfile
+        : electricalPlanarAb
+          ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
+          : gpuProfile
           ? 'RENDERER_GPU_PROFILE_TRIAL'
           : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
       JSON.stringify(result),
@@ -260,6 +287,7 @@ async function trial(enabled, ordinal) {
           enabled,
           gpuProfile,
           assemblyAb,
+          electricalPlanarAb,
           trialFinalFrameOnly,
           stage,
           error: String(error),
@@ -291,7 +319,9 @@ try {
   const report = {
     mode: assemblyAb
       ? 'same-run-final-preview-preview-final'
-      : gpuProfile
+      : electricalPlanarAb
+        ? 'same-run-electrical-single-double-double-single'
+        : gpuProfile
         ? 'same-run-normal-discard-discard-normal'
         : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
@@ -303,9 +333,19 @@ try {
     exactCanvasParity: gpuProfile
       ? 'normal arms only; discard images intentionally incomplete'
       : true,
-    ...(assemblyAb
+    ...(electricalPlanarAb
       ? {
-          finalOnlyCompletedMedianMs: onMedianMs,
+          electricalSinglePassMedianMs: onMedianMs,
+          electricalDoublePassMedianMs: offMedianMs,
+          elapsedRatioSingleToDouble: onMedianMs / offMedianMs,
+          submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
+          submittedTrianglesDouble: off.map((x) => x.submittedTriangles),
+          drawCallsSingle: on.map((x) => x.drawCalls),
+          drawCallsDouble: off.map((x) => x.drawCalls),
+        }
+      : assemblyAb
+        ? {
+            finalOnlyCompletedMedianMs: onMedianMs,
           previewCompletedMedianMs: offMedianMs,
           completedRatioFinalToPreview: onMedianMs / offMedianMs,
           completedDeltaMs: onMedianMs - offMedianMs,
@@ -332,10 +372,15 @@ try {
         }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
-    ...(assemblyAb
+    ...(electricalPlanarAb
       ? {
           interpretation:
-            'Same-run final-image parity and equal submissions compare initial readiness and completed-image cost. Preview frames can affect responsiveness; a single ABBA round is inconclusive and cannot promote the policy.',
+            'Default-off smooth electrical surface rendering experiment. Matching canvas pixels and reduced WebGL submissions are required; one ABBA round cannot establish hardware performance improvement or authorize rollout.',
+        }
+      : assemblyAb
+        ? {
+            interpretation:
+              'Same-run final-image parity and equal submissions compare initial readiness and completed-image cost. Preview frames can affect responsiveness; a single ABBA round is inconclusive and cannot promote the policy.',
         }
       : gpuProfile
         ? {
@@ -352,7 +397,9 @@ try {
   console.log(
     assemblyAb
       ? 'RENDERER_ASSEMBLY_AB_OK'
-      : gpuProfile
+      : electricalPlanarAb
+        ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
+        : gpuProfile
         ? 'RENDERER_GPU_PROFILE_OK'
         : 'RENDERER_QUALITY_INDEX_AB_OK',
     JSON.stringify(report),
