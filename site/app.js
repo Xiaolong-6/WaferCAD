@@ -788,9 +788,9 @@ if (V2_REAL_VIEWS) {
   };
   bridge.panSectionViewport = (dx, dy) =>
     bridge.setSectionViewport(panSectionViewport(sectionViewport, dx, dy));
-  bridge.zoomSectionViewportAt = (factor, x, y, width, height) =>
+  bridge.zoomSectionViewportAt = (factor, x, y, width, height, origin = sectionViewport) =>
     bridge.setSectionViewport(zoomSectionViewportAt(
-      sectionViewport, factor, x, y, width, height,
+      origin, factor, x, y, width, height,
     ));
   bridge.getThreeCamera = () => threeView?.getViewState?.() || null;
   bridge.setThreeCamera = (viewState) => {
