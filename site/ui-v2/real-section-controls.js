@@ -2,9 +2,9 @@
 // No CSS canvas transforms, geometry edits or alternate section renderer.
 (() => {
   const { button } = window.WaferCadV2Components;
-  function create({ canvas, getViewport, setViewport, panViewport, zoomViewportAt }) {
+  function create({ canvas, getViewport, setViewport, panViewport, zoomViewportAt, cancelDetailDrawing }) {
     if (!(canvas instanceof HTMLCanvasElement)) throw TypeError('Section native canvas required');
-    for (const fn of [getViewport, setViewport, panViewport, zoomViewportAt]) {
+    for (const fn of [getViewport, setViewport, panViewport, zoomViewportAt, cancelDetailDrawing]) {
       if (typeof fn !== 'function') throw TypeError('Section viewport callbacks required');
     }
     const fit = button('Fit', 'v2-section-fit', 'fit', {
@@ -21,6 +21,7 @@
       'aria-label': 'Zoom Section',
       'aria-pressed': 'false',
     });
+    const detailButton = document.getElementById('sectionDetailRoiBtn');
     let mode = null, drag = null;
     function finish(pointerId) {
       if (!drag || pointerId !== drag.pointerId) return;
@@ -35,6 +36,7 @@
     }
     function setMode(next) {
       if (drag) finish(drag.pointerId);
+      if (next && next !== mode) cancelDetailDrawing();
       mode = next === mode ? null : next;
       sync();
     }
@@ -97,6 +99,8 @@
     fit.addEventListener('click', reset);
     pan.addEventListener('click', () => setMode('pan'));
     zoom.addEventListener('click', () => setMode('zoom'));
+    const releaseToDetail = () => setMode(null);
+    detailButton?.addEventListener('click', releaseToDetail);
     canvas.addEventListener('pointerdown', begin, true);
     canvas.addEventListener('pointermove', move, true);
     canvas.addEventListener('pointerup', end, true);
@@ -109,6 +113,7 @@
       hide() { if (drag) finish(drag.pointerId); },
       destroy() {
         if (drag) finish(drag.pointerId);
+        detailButton?.removeEventListener('click', releaseToDetail);
         canvas.removeEventListener('pointerdown', begin, true);
         canvas.removeEventListener('pointermove', move, true);
         canvas.removeEventListener('pointerup', end, true);
