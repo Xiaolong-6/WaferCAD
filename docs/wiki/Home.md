@@ -36,7 +36,7 @@ WaferCAD calculates **idealized geometric material stacks**, not physically cali
 - [Process and Recipes](Process-and-Recipes) — individual operations, guided recipes and execution safety.
 - [History, Variants and Recovery](History-Variants-and-Recovery) — previous states, alternate branches and browser checkpoints.
 - [Import and Export](Import-and-Export) — project, mask and 3D interchange.
-- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the six shipped Welcome example families and scientific caveats.
+- [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the eight Welcome example families and scientific caveats.
 - [Process Recipe Code Tutorial](Recipe-Code-Tutorial) ([中文](Recipe-Code-Tutorial-zh-CN)) — seven supported commands, mask capture and replay.
 
 ## For documentation maintainers

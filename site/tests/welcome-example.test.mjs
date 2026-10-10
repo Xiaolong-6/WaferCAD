@@ -14,7 +14,7 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
-test('welcome example catalog promotes seven literature-backed project families', async () => {
+test('welcome example catalog promotes eight literature-backed project families', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
@@ -25,6 +25,7 @@ test('welcome example catalog promotes seven literature-backed project families'
       'm3d-selfpowered-heterogeneous-ic',
       'magic-1000-mos2-beol',
       'three-tier-silicon-jlfets',
+      'tio2-metalens-four-unit',
     ],
   );
   const literature = BUNDLED_EXAMPLES[0];

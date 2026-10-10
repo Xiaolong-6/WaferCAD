@@ -204,6 +204,37 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', '3D integration', 'Transfer', 'Conformal', 'CMP', 'History'],
   },
+  {
+    id: 'tio2-metalens-four-unit',
+    title: 'TiO₂ achromatic metalens · four meta-atoms',
+    figure: 'Wang et al. · Fig. 2–3 / Supplementary Note 4',
+    kind: 'project',
+    level: 'Paper-derived nanophotonics',
+    variants: [],
+    path: './examples/tio2-metalens-four-unit-process.wafercad',
+    filename: 'tio2-metalens-four-unit-process.wafercad',
+    previewProject: {
+      path: './examples/previews/tio2-metalens-four-unit.wafercad',
+      filename: 'tio2-metalens-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/tio2-metalens-four-unit-schematic.svg',
+      view: 'three',
+      alt: 'Illustrative schematic of four TiO2 meta-atom cross-sections, not an author GDS image',
+      label: 'Schematic only · process verified; XY is illustrative',
+    },
+    summary:
+      'Four TiO₂ meta-atom shapes with real PMMA / Cr lift-off and 1.5 µm TiO₂ RIE, nine-step reproducible Recipe and History. The full 4725-site parameterized Mask is a separate illustration, not the authors optimized layout.',
+    sources: [
+      {
+        citation:
+          'Y. Wang et al., “High-efficiency broadband achromatic metalens for near-IR biological imaging window,” Nature Communications 12, 5560 (2021).',
+        doi: '10.1038/s41467-021-25797-9',
+        href: 'https://doi.org/10.1038/s41467-021-25797-9',
+      },
+    ],
+    tags: ['Literature', 'Metalens', 'TiO₂', 'Lift-off', 'EBL / RIE', 'Illustrative XY'],
+  },
 ]);
 
 export function bundledExampleById(id) {
