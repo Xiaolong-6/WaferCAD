@@ -154,3 +154,24 @@ test('resource census exposes object budget, rejects malformed groups and never 
   assert.equal(censusV4SceneResources(groups, { maxObjects: 0 }).valid, false);
   assert.equal(censusV4SceneResources([{}]).valid, false);
 });
+
+
+test('resource census includes retired shared cap templates until owner group disposal', () => {
+  const current = {
+    attributes: { position: { array: new Float32Array(9) } },
+  };
+  const retired = {
+    attributes: { position: { array: new Float32Array(12) } },
+  };
+  const group = {
+    children: [{ geometry: current, material: {} }],
+    userData: { waferCadRetiredFlatGeometries: new Set([retired]) },
+  };
+  const result = censusV4SceneResources([group]);
+  assert.equal(result.complete, true);
+  assert.equal(result.retiredFlatGeometries, 1);
+  assert.equal(result.geometryCount, 2);
+  assert.equal(result.bufferCount, 2);
+  assert.equal(result.estimatedBufferBytes, (9 + 12) * 4);
+  assert.equal(group.userData.waferCadRetiredFlatGeometries.has(retired), true);
+});
