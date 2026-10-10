@@ -408,7 +408,10 @@ try {
       const zoomDrag = await drag('#sectionCanvas', 0.4, 0.4, 0.4, 0.32);
       const fitAfterZoom = await measureSection();
       const zoomRatio = Math.exp((zoomDrag.from.y - zoomDrag.to.y) * 0.009);
-      assert.ok(Math.abs(fitAfterZoom.zoom - zoomRatio) <= 1e-9, `Zoom mismatch: ${JSON.stringify({ fitAfterPan, fitAfterZoom, zoomDrag, zoomRatio })}`);
+      assert.ok(
+        Math.abs(fitAfterZoom.zoom - zoomRatio) <= 1e-9,
+        `Zoom mismatch: ${JSON.stringify({ fitAfterPan, fitAfterZoom, zoomDrag, zoomRatio })}`,
+      );
       assert.ok(Math.abs(fitAfterZoom.sx / fitAfterPan.sx - zoomRatio) <= 1e-9);
       assert.ok(Math.abs(fitAfterZoom.sz / fitAfterPan.sz - zoomRatio) <= 1e-9);
       assert.deepEqual(fitAfterZoom.physical, fitBefore.physical);
