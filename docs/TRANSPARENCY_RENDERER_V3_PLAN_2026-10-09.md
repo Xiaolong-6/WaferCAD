@@ -683,6 +683,44 @@ preview responsiveness or suitability on real GPUs; require further paired
 replicates, interaction/Recovery checks and full near/edge-on/Process/Recipe
 acceptance before enabling the policy by default. PR #166 remains Draft.
 
+## Phase B.3 — opt-in Electrical Region smooth planar cap pass (2026-10-10)
+
+The completed WebGL attribution showed **5,947,500 submitted triangles**
+from Electrical Region surfaces (of **57,040,012** total Quality transparent
+triangles). In contrast to interior Electrical Region volumes, a smooth
+electrical *surface cap* lies in a single Z plane; Three.js's default
+transparent DoubleSide backface/frontface two-pass draw can issue a redundant
+pass for that cap. The material-cap single-pass implementation already has
+a tested policy; this change extends it to one explicitly gated annotation
+surface kind **without changing canonical geometry or shader/material alpha**.
+
+The experiment requires **all** of:
+`?rendererV3ElectricalPlanarSinglePass=1`, a transparent **Quality**
+scene, no ROI clip, at least 64 array instances, a smooth (non-rough)
+Electrical Region surface cap and an explicit `planarCap` presentation
+tag. It keeps Electrical Region **internal volumes**, rough caps, exterior
+materials, sidewalls, implant gradients and opaque/Fast scenes on their
+existing paths. Product default remains **OFF**. The policy-level unit test
+enforces the opt-in and negative controls.
+
+The standalone paired 625-site test is
+`node scripts/renderer-quality-index-ab.mjs --electrical-planar-ab`.
+It runs ON/OFF/OFF/ON in isolated contexts on the same browser/runner and
+requires **byte-identical 3D canvases** at the matching camera, color
+opacity, image size and Quality settings, zero page errors, and preserved
+physical model. ON must demonstrably submit fewer WebGL triangles and draw
+calls while OFF retains **57,040,012 triangles / 1,408 calls**. A new separate
+`test-results/renderer-electrical-planar-ab/` output captures the four
+frames, per-trial counts and completed-frame timings.
+
+**Status: not yet scientifically accepted.** The reduction is a *candidate*
+only: opaque/transparent boundaries or blended coplanar overlaps could still
+change pixels and fail the parity gate. Even a complete same-run image match
+does not demonstrate a statistically significant hardware speedup. Require
+full 625-site, edge-on, Section Z-collapse, ROI, 20-toggle and Process/Recipe
+acceptance before considering promotion to default. Do not modify image
+baselines or describe this as an achieved improvement.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
