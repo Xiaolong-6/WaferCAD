@@ -12,6 +12,12 @@ for (const example of fixture.fixtures) {
   if (createHash('sha256').update(bytes).digest('hex') !== example.sha256)
     throw new Error(`Source changed: ${example.source}; rebuild presentation fixtures first.`);
   const project = JSON.parse(bytes);
+  for (const node of example.history) {
+    const source = project.snapshotBranches.nodes.find((entry) => entry.id === node.id);
+    node.edit = source.operation.replay
+      ? { ...source.operation.replay.params, area: source.operation.replay.areaMode }
+      : { type: source.operation.kind, name: source.operation.name || source.operation.label };
+  }
   for (const [ref, model] of Object.entries(example.models)) {
     const source = ref === 'project' ? project.model : project.sharedModels[ref];
     model.annotations = ['implants', 'electricalRegions'].flatMap((collection) =>

@@ -18,6 +18,29 @@
     const unitFactor = unit === 'nm' ? 1000 : unit === 'mm' ? 0.001 : 1;
     const unitName = unit === 'um' ? 'µm' : unit;
     const displayLength = (value) => Number(value) * unitFactor;
+    const fieldLabel = (key) =>
+      ({
+        face: 'Active face',
+        area: 'Area',
+        coverage: 'Coverage',
+        placement: 'Placement',
+        profile: 'Profile',
+        regionType: 'Region type',
+        source: 'Source',
+        process: 'Process',
+        temperatureC: 'Temperature · °C',
+        durationMin: 'Duration · min',
+        featureSize: 'Feature XY',
+        featureCv: 'Feature variation · %',
+        meanHeight: 'Height',
+        heightCv: 'Height variation · %',
+        morphology: 'Surface pattern',
+        polarity: 'Orientation',
+        tilt: 'Tilt X · °',
+        depthProfile: 'Depth profile',
+        sacrificial: 'Sacrificial layer',
+      })[key] ||
+      key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (letter) => letter.toUpperCase());
     function recipeParameter(key, value) {
       const choices = {
         face: [
@@ -69,7 +92,7 @@
           ['custom', 'Custom'],
         ],
       };
-      if (choices[key]) return select(key, `step-param:${key}`, choices[key], value);
+      if (choices[key]) return select(fieldLabel(key), `step-param:${key}`, choices[key], value);
       if (key === 'surface' && typeof value === 'string')
         return select(
           'Surface',
@@ -83,7 +106,7 @@
         );
       const physical = ['thicknessUm', 'depthUm'].includes(key);
       return field(
-        `${key}${physical ? ` · ${unitName}` : ''}`,
+        `${fieldLabel(key)}${physical ? ` · ${unitName}` : ''}`,
         `step-param:${key}`,
         physical ? displayLength(value) : value,
         typeof value === 'number' || physical ? { type: 'number', step: 'any' } : {},
@@ -280,18 +303,18 @@
       return [
         notice(
           state.task.kind === 'recipe'
-            ? `Recipe · step ${Math.min(state.task.done + 1, state.task.total)} / ${state.task.total} · ${recipe.steps[Math.min(state.task.done, recipe.steps.length - 1)]?.id || ''}`
+            ? `Recipe · step ${Math.min(state.task.done + 1, state.task.total)} / ${state.task.total}`
             : `Manual · one ${state.operation || 'deposit'} operation · 0 / 1`,
         ),
         busy(
-          state.task.kind === 'recipe' ? 'Run All · simulated' : 'Apply · simulated',
+          state.task.kind === 'recipe' ? 'Run All · preview' : 'Apply · preview',
           state.task.done,
           state.task.total,
         ),
         el(
           'div',
           { class: 'p-actions' },
-          button('Complete simulation', 'complete', 'check'),
+          button('Complete preview', 'complete', 'check'),
           button('Advance progress', 'advance-task', 'play'),
           button('Inject failure', 'fail', 'warning'),
           button('Cancel', 'cancel-task', 'stop'),
@@ -484,11 +507,7 @@
         ];
       if (operation === 'implant')
         return [
-          field(
-            'Implant name / source assumptions',
-            'processName',
-            state.processName || sample?.name || 'New Implant',
-          ),
+          field('Implant name', 'processName', state.processName || sample?.name || 'New Implant'),
           stepper(
             'Tilt X · degrees',
             'processTilt',
@@ -503,10 +522,7 @@
             displayLength(state.processDepth ?? sample?.depthUm ?? 0.5),
             0.01 * unitFactor,
           ),
-          notice(
-            sample?.name ||
-              'This example has no Implant operation. Prototype parameters only; no inferred physical defaults.',
-          ),
+          notice(sample?.name || 'No Implant step in this example.'),
         ];
       if (operation === 'electrical')
         return [
@@ -561,7 +577,7 @@
         field(
           'Record label',
           'processRecordLabel',
-          state.processRecordLabel || sample?.label || 'Prototype record',
+          state.processRecordLabel || sample?.label || 'New record',
         ),
         field(
           'Temperature · °C',
@@ -797,7 +813,7 @@
             ? el(
                 'div',
                 { class: 'p-form', 'data-step-editor': selected.id },
-                el('strong', {}, `Edit step ${activeStep + 1} · ${selected.id}`),
+                el('strong', {}, `Edit step ${activeStep + 1}`),
                 select(
                   'Operation',
                   'stepCommand',
@@ -840,7 +856,7 @@
                       ...Object.entries(selected.params.surface).map(([key, value]) => {
                         const physical = ['featureSize', 'meanHeight'].includes(key);
                         return field(
-                          `${key}${physical ? ` · ${unitName}` : ''}`,
+                          `${fieldLabel(key)}${physical ? ` · ${unitName}` : ''}`,
                           `step-surface:${key}`,
                           physical ? displayLength(value) : value,
                           typeof value === 'number' ? { type: 'number', step: 'any' } : {},

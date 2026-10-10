@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-ui="v2" data-theme="light">
+<html lang="en" data-ui="v2" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -27,22 +27,25 @@
     <header class="v2-preview-bar">
       <strong>UI Preview</strong>
       <label
-        >示例
+        >Example
         <select id="v2-example">
-          <option value="m3d">M3D · 27 层 / 35 步</option>
+          <option value="m3d">M3D · 27 layers / 35 steps</option>
           <option value="photodetector">Photodetector · 7 Variants</option>
         </select>
       </label>
-      <label><input id="v2-empty" type="checkbox" />空 History</label>
+      <label><input id="v2-empty" type="checkbox" />Empty History</label>
       <button id="v2-failure" type="button" class="wc-button" data-size="sm">
-        Recipe 失败场景
+        Recipe failure example
       </button>
-      <span class="p-aux">交互预览 · 不执行工艺计算，修改不会保存到项目，刷新后重置</span>
-      <span id="v2-live-status" class="p-aux" role="status">文件模式 · 修改后刷新</span>
+      <span class="p-aux"
+        >Interactive preview · No process computation or project saving. Refresh resets
+        changes.</span
+      >
+      <span id="v2-live-status" class="p-aux" role="status">File preview · Refresh to update</span>
     </header>
     <main id="app-root" aria-label="WaferCAD v2 workstation">
-      <p class="v2-boot-message" role="status">正在加载工作台…</p>
+      <p class="v2-boot-message" role="status">Loading workspace…</p>
     </main>
-    <noscript>此静态壳层需要启用 JavaScript。旧版入口仍为 app.html。</noscript>
+    <noscript>JavaScript is required. Open app.html for the current application.</noscript>
   </body>
 </html>

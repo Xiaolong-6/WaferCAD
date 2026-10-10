@@ -12,14 +12,21 @@ test('registry supplies all named surfaces, and navigation is extensible', async
   const registry = sandbox.window.WaferCadV2ShellRegistry;
   const slots = registry.defaults.slots;
   for (const name of [
-    'topbar.project', 'navigation.primary',
+    'topbar.project',
+    'navigation.primary',
     ...['project', 'base', 'mask', 'process', 'history'].map((key) => `panel.${key}`),
     ...['step', 'recipe', 'code', 'diagnostics'].map((key) => `panel.process.${key}`),
     ...['main', 'mask', 'three', 'section'].flatMap((key) =>
-      ['header', 'actions', 'stage', 'readout', 'overlays'].map((part) => `view.${key}.${part}`)),
-    'portal.popover', 'portal.dialog', 'portal.toast',
-    'status.message', 'status.save', 'status.version',
-  ]) assert.ok(slots.includes(name), name);
+      ['header', 'actions', 'stage', 'readout', 'overlays'].map((part) => `view.${key}.${part}`),
+    ),
+    'portal.popover',
+    'portal.dialog',
+    'portal.toast',
+    'status.message',
+    'status.save',
+    'status.version',
+  ])
+    assert.ok(slots.includes(name), name);
   assert.equal(registry.defaults.nestedPanels.base, 'project');
   assert.equal(registry.defaults.subpanelOwner, 'process');
   const extended = registry.define({
@@ -35,10 +42,20 @@ test('adapter lifecycle mounts once, toggles visibility, destroys once', async (
   const events = [];
   const adapters = sandbox.window.WaferCadV2DomainAdapters.create();
   adapters.register('example', {
-    mount(node) { assert.equal(node, host); events.push('mount'); return node; },
-    onShow() { events.push('show'); },
-    onHide() { events.push('hide'); },
-    destroy() { events.push('destroy'); },
+    mount(node) {
+      assert.equal(node, host);
+      events.push('mount');
+      return node;
+    },
+    onShow() {
+      events.push('show');
+    },
+    onHide() {
+      events.push('hide');
+    },
+    destroy() {
+      events.push('destroy');
+    },
   });
   adapters.show('example', host);
   adapters.show('example', host);
@@ -61,6 +78,6 @@ test('shell does not embed business state or replace renderer-owned hosts', asyn
   assert.ok(!view.includes('panel.replaceChildren('));
   assert.ok(!view.includes('stage.replaceChildren('));
   assert.doesNotMatch(production, /mock-data\.js|mock-workspace\.js|mock-domain-panels\.js/);
-  assert.match(production, /<html[^>]+lang="zh-CN"/);
+  assert.match(production, /<html[^>]+lang="en"/);
   assert.doesNotMatch(css, /z-index:\s*\d|!important/);
 });

@@ -215,7 +215,7 @@ try {
   assert.doesNotMatch(shellSource, /task|history|placement|dirty/i);
   const productionEntry = await readFile('site/ui-v2/app.html', 'utf8');
   assert.doesNotMatch(productionEntry, /mock-data\.js|mock-workspace\.js|mock-domain-panels\.js/);
-  assert.match(productionEntry, /<html[^>]+lang="zh-CN"/);
+  assert.match(productionEntry, /<html[^>]+lang="en"/);
   record('shell excludes domain knowledge; production-safe entry loads no mocks');
   const identity = await evaluate(`(() => {
     window.__m25Mounts = Object.fromEntries(['main','mask','three','section'].map((id) =>
@@ -635,7 +635,7 @@ try {
     true,
   );
   await click('[data-action="complete"]');
-  assert.match((await snapshot()).state.message, /Manual simulation complete/);
+  assert.match((await snapshot()).state.message, /Manual preview complete/);
   await click('[data-action="domain:recipe"]');
   assert.ok(
     await evaluate(`(() => {const select=document.querySelector('[data-key="recipeAddKind"]');
@@ -720,7 +720,7 @@ try {
   assert.equal((await snapshot()).state.failedStep, 2);
   await click('[data-action="run-all"]');
   await click('[data-action="complete"]');
-  assert.match((await snapshot()).state.message, /Recipe simulation complete/);
+  assert.match((await snapshot()).state.message, /Recipe preview complete/);
   record('distinct Manual / Recipe feedback, busy locks, failed Step locator');
   await click('[data-action="domain:code"]');
   assert.equal(
@@ -1137,6 +1137,151 @@ try {
     true,
   );
   record('390 Section: More and Max wrap within the header and remain directly visible');
+  await viewport(1280);
+  async function chooseField(key, value) {
+    await evaluate(`(() => {const input=document.querySelector('[data-key=${JSON.stringify(key)}]');
+      input.value=${JSON.stringify(String(value))};input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  }
+  async function assertProductCopy() {
+    const visibleCopy = await evaluate(`(() => {
+      const root=document.querySelector('#app-root'),texts=[];
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+      while(walker.nextNode()) {
+        const node=walker.currentNode,parent=node.parentElement;
+        if (!parent.closest('textarea,script,style,option') && parent.getClientRects().length && getComputedStyle(parent).visibility!=='hidden') texts.push(node.textContent);
+      }
+      texts.push(...[...root.querySelectorAll('[aria-label],[title]')].filter(node=>node.getClientRects().length).map(node=>node.getAttribute('aria-label')+' '+node.title));
+      return texts.join(' ');
+    })()`);
+    assert.doesNotMatch(
+      visibleCopy,
+      /\bprototype\b|\bsimulat(?:ed|ion)\b|source History|normalized Z|presentation only|prototype-step-|recipe-step-|thicknessUm|depthUm|featureCv|heightCv|regionType|depthProfile/i,
+    );
+    assert.doesNotMatch(visibleCopy, /[\u4e00-\u9fff]/, 'product interface stays English');
+  }
+  for (const [example, nodeId, thickness, name] of [
+    ['m3d', 'm3d-step-02', 0.07, 'SOI B-doped Si 70nm'],
+    ['photodetector', 'black-si-fig1a-step-01', 0.65, 'Thermal SiO2 650 nm'],
+  ]) {
+    await call('Page.navigate', { url: `${url.split('?')[0]}?example=${example}` });
+    await waitFor(
+      async () => evaluate("document.body?.dataset.ready==='true'"),
+      'pre-M3 fixture boot',
+    );
+    await click('[data-action="domain:process"]');
+    await chooseField('thickness', 0.321);
+    await chooseField('processName', 'My saved form draft');
+    await chooseField('face', 'back');
+    await chooseField('operation', 'liftoff');
+    const beforeEdit = (await snapshot()).state;
+    await evaluate(
+      `window.__historyEditHost = document.querySelector('[data-slot="panel.process.step"]')`,
+    );
+    await click('[data-action="domain:history"]');
+    await click(`[data-step-id="${nodeId}"] .p-history-more`);
+    await click(`[data-action="history-edit:${nodeId}"]`);
+    const edited = await snapshot();
+    assert.equal(edited.cursor, nodeId);
+    assert.equal(edited.state.operation, 'deposit');
+    assert.equal(edited.state.thickness, thickness);
+    assert.equal(edited.state.processName, name);
+    assert.equal(edited.state.face, 'front');
+    assert.equal(await evaluate("document.querySelector('[data-key=operation]').value"), 'deposit');
+    assert.equal(await evaluate("document.querySelector('[data-key=processName]').value"), name);
+    assert.equal(
+      await evaluate("document.querySelector('[data-process-guide]').dataset.processGuide"),
+      'deposit-directional',
+    );
+    await click('[data-action="history-cancel-edit"]');
+    const returned = (await snapshot()).state;
+    for (const key of [
+      'operation',
+      'material',
+      'thickness',
+      'processName',
+      'face',
+      'area',
+      'draftUndo',
+      'draftRedo',
+    ])
+      assert.deepEqual(returned[key], beforeEdit[key], `Cancel restores ${key}`);
+    assert.equal((await snapshot()).sourceFrozen, true);
+    assert.equal(
+      await evaluate(
+        `window.__historyEditHost === document.querySelector('[data-slot="panel.process.step"]')`,
+      ),
+      true,
+      'History edit and cancel preserve the named Process host',
+    );
+    record(
+      `${example}: History Deposit Edit loads stable-node parameters; Cancel restores prior Lift-off draft and edit history`,
+    );
+    for (const domain of [
+      'project',
+      'mask',
+      'process',
+      'recipe',
+      'code',
+      'diagnostics',
+      'history',
+    ]) {
+      await click(`[data-action="domain:${domain}"]`);
+      await assertProductCopy();
+    }
+    await click('[data-action="domain:process"]');
+    for (const operation of [
+      'deposit',
+      'extend',
+      'etch',
+      'liftoff',
+      'implant',
+      'electrical',
+      'record',
+    ]) {
+      await chooseField('operation', operation);
+      await assertProductCopy();
+    }
+  }
+  await click('[data-action="domain:process"]');
+  await chooseField('operation', 'etch');
+  await chooseField('processSurface', 'rough');
+  await assertProductCopy();
+  await click('[data-action="domain:recipe"]');
+  await click('[data-action="add-step"]');
+  await assertProductCopy();
+  await click('[data-action="domain:project"]');
+  await click('[data-action="base-rebuild"]');
+  await assertProductCopy();
+  await click('[data-action="dialog-cancel"]');
+  await click('[data-action="maximize:section"]');
+  await click('#sectionPanel [popovertarget]');
+  await click('[data-action="zbreak-settings"]');
+  await assertProductCopy();
+  await click('[data-action="dialog-cancel"]');
+  record(
+    'pre-M3 copy scan: seven editors, seven Manual operations, new Recipe ID, Base and Z-break dialogs use English product language',
+  );
+  const chromeLinks = await evaluate(`(() => {
+    const brand=document.querySelector('.p-brand');
+    const links=[...document.querySelectorAll('.p-status-secondary a')];
+    return {brand:brand.getAttribute('href'),decoration:getComputedStyle(brand).textDecorationLine,
+      weight:getComputedStyle(brand).fontWeight,links:links.map(link=>({href:link.href,rel:link.rel,target:link.target})),
+      save:document.querySelector('[data-slot="status.save"]').textContent};
+  })()`);
+  assert.equal(chromeLinks.brand, 'index.html');
+  assert.equal(chromeLinks.decoration, 'none');
+  assert.ok(Number(chromeLinks.weight) >= 700);
+  assert.deepEqual(
+    chromeLinks.links.map((link) => link.href),
+    ['https://github.com/Xiaolong-6/WaferCAD', 'https://github.com/Xiaolong-6/WaferCAD/wiki'],
+  );
+  assert.ok(
+    chromeLinks.links.every((link) => link.target === '_blank' && link.rel.includes('noopener')),
+  );
+  assert.match(chromeLinks.save, /^Autosave off/);
+  record(
+    'brand home entry retains title styling; footer has GitHub, Wiki and truthful adapter-owned save status',
+  );
   await call('Page.navigate', { url: pathToFileURL(resolve('site/app-v2.html')).href });
   await waitFor(
     async () =>

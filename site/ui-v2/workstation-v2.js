@@ -6,6 +6,7 @@
     root,
     state,
     getProjectName,
+    homeUrl = 'index.html',
     registry = window.WaferCadV2ShellRegistry.defaults,
     adapters = window.WaferCadV2DomainAdapters.create(),
     presentation = () => ({}),
@@ -22,7 +23,7 @@
     const topbar = el(
       'header',
       { class: 'p-topbar' },
-      el('span', { class: 'p-brand' }, 'WaferCAD'),
+      el('a', { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' }, 'WaferCAD'),
       slot('topbar.project', 'p-project-title', 'span'),
       el(
         'div',
@@ -75,8 +76,30 @@
       'footer',
       { class: 'p-status', role: 'status', 'aria-live': 'polite' },
       slot('status.message', '', 'span'),
-      slot('status.save', '', 'span'),
-      slot('status.version', '', 'span'),
+      el(
+        'div',
+        { class: 'p-status-secondary' },
+        slot('status.save', '', 'span'),
+        slot('status.version', '', 'span'),
+        el(
+          'a',
+          {
+            href: 'https://github.com/Xiaolong-6/WaferCAD',
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+          'GitHub',
+        ),
+        el(
+          'a',
+          {
+            href: 'https://github.com/Xiaolong-6/WaferCAD/wiki',
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+          'Wiki',
+        ),
+      ),
     );
     const portals = {
       popover: slot('portal.popover', 'v2-popover-portal'),

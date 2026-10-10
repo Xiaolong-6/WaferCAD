@@ -16,7 +16,7 @@
       const svg = svgNode('svg', {
         viewBox: `${-w * 0.56} ${-h * 0.56} ${w * 1.12} ${h * 1.12}`,
         role: 'img',
-        'aria-label': mask ? 'Actual source Draw shapes' : 'Actual source model top-layer polygons',
+        'aria-label': mask ? 'Draw shapes' : 'Top view',
       });
       const maskTransform = state.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 };
       const group = svgNode('g', {
@@ -299,8 +299,7 @@
       const svg = svgNode('svg', {
         viewBox: '0 0 480 180',
         role: 'img',
-        'aria-label':
-          'Representative actual region stack, equal visual bands, not a computed section',
+        'aria-label': 'Section stack schematic',
       });
       const stack = model.stack.slice().reverse();
       const height = Math.min(22, 145 / Math.max(1, stack.length));
@@ -415,7 +414,7 @@
           name === 'three'
             ? el('img', {
                 src: data.thumbnail,
-                alt: 'Recorded real final-model 3D thumbnail; not a live renderer',
+                alt: 'Example 3D view',
               })
             : name === 'section'
               ? sectionSchematic(model)
@@ -436,7 +435,7 @@
         const roiPlane = svgNode('svg', {
           viewBox: `${-model.width * 0.56} ${-model.height * 0.56} ${model.width * 1.12} ${model.height * 1.12}`,
           class: 'v2-roi-plane',
-          'aria-label': 'Mock orthographic ROI registration plane, not a live 3D renderer',
+          'aria-label': 'ROI on the example 3D view',
         });
         roiPlane.append(
           svgNode('rect', {

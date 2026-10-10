@@ -107,7 +107,68 @@
     recipeRedoStack = [],
     draftUndoStack = [],
     draftRedoStack = [],
-    pendingRecipeTemplate = null;
+    pendingRecipeTemplate = null,
+    historyDraft = null;
+  const manualKey = (key) =>
+    key.startsWith('process') ||
+    ['operation', 'material', 'thickness', 'face', 'area', 'liftoffSacrificial'].includes(key);
+  function loadHistoryDraft(node) {
+    if (!historyDraft)
+      historyDraft = {
+        fields: Object.fromEntries(Object.entries(state).filter(([key]) => manualKey(key))),
+        undo: structuredClone(draftUndoStack),
+        redo: structuredClone(draftRedoStack),
+      };
+    Object.keys(state)
+      .filter(manualKey)
+      .forEach((key) => delete state[key]);
+    const p = node.edit || {};
+    state.operation = { add: 'deposit', grow: 'extend' }[p.type] || p.type || 'record';
+    if (
+      !['deposit', 'extend', 'etch', 'liftoff', 'implant', 'electrical', 'record'].includes(
+        state.operation,
+      )
+    )
+      state.operation = 'record';
+    Object.assign(state, {
+      processSourceParams: structuredClone(p),
+      face: p.face || 'front',
+      area: p.area || 'full',
+      thickness: p.thickness ?? 0.07,
+      material:
+        p.etchTargetLayerIds?.[0] ||
+        p.extendTargetLayerIds?.[0] ||
+        currentModel().layers.find((item) => item.name === p.name)?.id ||
+        '',
+      processName: p.name || node.label,
+      processCoverage: p.growth || 'direct',
+      processPlacement: p.placement || 'follow',
+      processProfile: p.etchProfile || 'directional',
+      processSurface: typeof p.surface === 'object' ? p.surface.kind : p.surface || 'smooth',
+      processDepth: p.depth ?? p.depthUm ?? 0.05,
+      processTilt: p.tilt ?? 0,
+      processRegionType: p.regionType || 'p-type',
+      processRegionSource: p.source || 'induced',
+      processRecordLabel: p.label || p.name || node.label,
+      liftoffSacrificial: p.sacrificial || '',
+    });
+    draftUndoStack = [];
+    draftRedoStack = [];
+    state.draftUndo = false;
+    state.draftRedo = false;
+  }
+  function restoreHistoryDraft() {
+    if (!historyDraft) return;
+    Object.keys(state)
+      .filter(manualKey)
+      .forEach((key) => delete state[key]);
+    Object.assign(state, historyDraft.fields);
+    draftUndoStack = historyDraft.undo;
+    draftRedoStack = historyDraft.redo;
+    state.draftUndo = draftUndoStack.length > 0;
+    state.draftRedo = draftRedoStack.length > 0;
+    historyDraft = null;
+  }
   const narrow = () => viewState.compact(window);
   function rememberView() {
     const mode = state.mode === 'single' ? state.view : state.mode;
@@ -169,6 +230,7 @@
     state.exportTask = null;
     state.failure = null;
     state.dirty = false;
+    historyDraft = null;
     delete state.projectName;
     delete state.material;
     delete state.fileLoaded;
@@ -265,7 +327,7 @@
         ],
         badge: state.dirty ? 'Unsaved changes' : 'Example',
         message: state.message,
-        save: '',
+        save: state.dirty ? 'Autosave off · Unsaved preview changes' : 'Autosave off · Preview',
         version: '',
       };
     },
@@ -805,7 +867,7 @@
     } else if (kind === 'mask-export') {
       state.message = `${value.toUpperCase()} export settings.`;
       dialog(
-        'Mask export · presentation only',
+        'Mask export settings',
         el(
           'div',
           { class: 'p-form' },
@@ -842,16 +904,16 @@
       state.baseApplied = null;
     } else if (kind === 'base-rebuild') {
       dialog(
-        'Rebuild Base · choose source handling',
+        'Rebuild Base',
         'Choose how to handle existing History when rebuilding Base. This preview changes the selected dimensions only.',
         'Keep source in a Variant',
         'base-keep',
-        [['Clear source History', 'base-clear']],
+        [['Clear History', 'base-clear']],
       );
       return;
     } else if (kind === 'base-clear') {
       dialog(
-        'Clear source History?',
+        'Clear History?',
         'Keep the new dimensions without preserving a Variant? Existing example History stays available in this preview.',
         'Confirm Clear',
         'base-clear-confirm',
@@ -967,13 +1029,13 @@
         el(
           'div',
           { class: 'p-form' },
-          field('Start · normalized Z', 'zBreakStart', state.zBreakSettings.start, {
+          field('Start position · 0–1', 'zBreakStart', state.zBreakSettings.start, {
             type: 'number',
             min: 0,
             max: 1,
             step: 0.01,
           }),
-          field('End · normalized Z', 'zBreakEnd', state.zBreakSettings.end, {
+          field('End position · 0–1', 'zBreakEnd', state.zBreakSettings.end, {
             type: 'number',
             min: 0,
             max: 1,
@@ -1129,6 +1191,7 @@
       );
       state.dirty = true;
     } else if (kind === 'history-return-head' || kind === 'history-cancel-edit') {
+      restoreHistoryDraft();
       cursor = historyBranches().find((entry) => entry.id === branch)?.headNodeId || data.cursor;
       state.editOld = false;
       state.domain = 'history';
@@ -1159,6 +1222,7 @@
       state.mobile = 'edit';
       state.editOld = true;
       state.historyEditMode = kind.slice(8);
+      if (kind === 'history-edit' && node) loadHistoryDraft(node);
       state.message = `Editing ${node?.label || 'Selected step'}.`;
     } else if (kind === 'history-variant') {
       cursor = value;
@@ -1235,7 +1299,7 @@
       state.task = null;
       state.failure = recipeTask
         ? `Preview failed at Step ${state.failedStep + 1}. Edit this step, then Continue or Rebuild.`
-        : 'Simulated Apply rejection · original model unchanged. Correct parameters and retry.';
+        : 'Apply preview failed. Check the parameters and try again.';
       if (recipeTask) activeStep = state.failedStep;
     } else if (kind === 'advance-task') {
       state.task.done = Math.min(state.task.total, state.task.done + 1);
@@ -1315,8 +1379,8 @@
       }
       state.message =
         completed?.kind === 'recipe'
-          ? `Recipe simulation complete · ${completed.total} steps.`
-          : `Manual simulation complete · ${state.operation || 'deposit'}.`;
+          ? `Recipe preview complete · ${completed.total} steps.`
+          : `Manual preview complete · ${state.operation || 'deposit'}.`;
     } else if (kind === 'continue-confirm' || kind === 'rebuild-confirm') {
       dialog(
         kind === 'continue-confirm' ? 'Continue current model' : 'Rebuild Base · new Main',
@@ -1335,7 +1399,7 @@
         total: recipe.steps.length,
       };
       state.failure = null;
-      state.message = `${kind === 'confirm-continue' ? 'Continue' : 'Rebuild'} simulation · existing branches preserved.`;
+      state.message = `${kind === 'confirm-continue' ? 'Continue' : 'Rebuild'} preview · existing branches preserved.`;
     } else if (kind === 'increment' || kind === 'decrement') {
       const input = root.querySelector(`[data-key="${value}"]`);
       const delta = Number(input.step) * (kind === 'increment' ? 1 : -1);
@@ -1355,7 +1419,7 @@
         'new-project': 'New project',
         'load-project': 'Load example',
         recovery: 'Review Recovery candidate',
-        'file-import': 'File import walkthrough',
+        'file-import': 'Layout example',
       };
       dialog(
         titles[kind],
@@ -1382,7 +1446,7 @@
           : kind === 'file-import'
             ? 'Inspect Cells and Layers in gds-basic-instances.gds. This preview keeps the existing Draw shapes.'
             : 'Unsaved changes will be reset. Continue?',
-        kind === 'file-import' ? 'Inspect real sample inventory' : 'Confirm simulation',
+        kind === 'file-import' ? 'Browse sample Cells and Layers' : 'Confirm preview',
         `confirm-${kind}`,
       );
       return;
@@ -1400,7 +1464,7 @@
       state.message = 'Sample Cells and Layers loaded.';
     } else if (kind === 'cell' || kind === 'file-layer') {
       state[kind === 'cell' ? 'fileCell' : 'fileLayer'] = value;
-      state.message = `Selected ${value} in real sample inventory · view geometry not replaced.`;
+      state.message = `Selected ${value}. Draw shapes are kept.`;
     } else if (['confirm-new-project', 'confirm-load-project', 'confirm-recovery'].includes(kind)) {
       closeDialog();
       if (kind === 'confirm-load-project')
@@ -1801,7 +1865,7 @@
     };
     window.dispatchEvent(new Event('wafercad-v2-ready'));
   } catch (error) {
-    root.replaceChildren(notice(`Prototype failed to load: ${error.message}`, 'error'));
+    root.replaceChildren(notice(`Preview unavailable. Refresh and try again.`, 'error'));
     window.dispatchEvent(new ErrorEvent('error', { message: error.message }));
   }
 })();
