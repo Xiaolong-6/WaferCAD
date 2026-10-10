@@ -275,19 +275,7 @@ export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
       processRecipe: {
         ...state.processRecipe,
         name: 'TiO2 full-array PMMA/Cr process (compiled template History)',
-        base: {
-          ...state.processRecipe.base,
-          width: extent,
-          height: extent,
-          array: {
-            kind: 'rect-grid',
-            rows: grid,
-            columns: grid,
-            pitchX: pitch,
-            pitchY: pitch,
-            activeSites: count,
-          },
-        },
+        base: { ...state.processRecipe.base, width: extent, height: extent },
         steps: state.processRecipe.steps.map((step) => ({
           ...step,
           params: {
