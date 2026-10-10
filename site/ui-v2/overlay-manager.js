@@ -14,7 +14,8 @@
         node.open = false;
       } else if (external === 'native-dialog' && node.open) {
         const event = new CustomEvent('wafercad:popover-close', {
-          cancelable: true, bubbles: false,
+          cancelable: true,
+          bubbles: false,
         });
         node.dispatchEvent(event);
         if (!event.defaultPrevented && node.open) node.close();
@@ -157,7 +158,8 @@
       const closeCustom = (node) => {
         if (node.hidden && !node.open) return;
         const event = new CustomEvent('wafercad:popover-close', {
-          cancelable: true, bubbles: false,
+          cancelable: true,
+          bubbles: false,
         });
         node.dispatchEvent(event);
         if (!event.defaultPrevented) {
@@ -180,9 +182,7 @@
       function trackCustom(panel, node) {
         const opened = node.open || (!node.hidden && node.tagName !== 'DIALOG');
         if (opened) {
-          const trigger = node.id
-            ? panel.querySelector(`[aria-controls="${node.id}"]`)
-            : null;
+          const trigger = node.id ? panel.querySelector(`[aria-controls="${node.id}"]`) : null;
           activateNative('dialog', node, trigger, 'native-dialog');
         } else if (active.get('dialog')?.node === node) {
           active.delete('dialog');
