@@ -2,12 +2,15 @@
 // final-frame-only assembly and smooth Electrical Region cap passes.
 // All product experiments remain default-off.
 import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, URLSearchParams } from 'node:url';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
+import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
 import {
   launchBrowser,
+  launchOptions,
   newUiContext,
   observePageErrors,
   waitForAppReady,
@@ -21,20 +24,28 @@ const gpuProfile = process.argv.includes('--gpu-profile');
 const finalFrameOnly = process.argv.includes('--final-frame-only');
 const assemblyAb = process.argv.includes('--assembly-ab');
 const electricalPlanarAb = process.argv.includes('--electrical-planar-ab');
+const hardwareElectricalAb = process.argv.includes('--hardware-electrical-ab');
+const webglCensus = gpuProfile || hardwareElectricalAb;
 assert.ok(
-  !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb),
+  !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb && !hardwareElectricalAb),
   '--assembly-ab is standalone; do not combine it with other modes',
 );
 assert.ok(
-  !electricalPlanarAb || (!gpuProfile && !finalFrameOnly && !assemblyAb),
+  !electricalPlanarAb || (!gpuProfile && !finalFrameOnly && !assemblyAb && !hardwareElectricalAb),
   '--electrical-planar-ab is standalone; do not combine it with other modes',
+);
+assert.ok(
+  !hardwareElectricalAb || (!gpuProfile && !finalFrameOnly && !assemblyAb && !electricalPlanarAb),
+  '--hardware-electrical-ab is standalone; do not combine it with other modes',
 );
 const out = new URL(
   assemblyAb
     ? '../test-results/renderer-assembly-ab/'
-    : electricalPlanarAb
-      ? '../test-results/renderer-electrical-planar-ab/'
-      : gpuProfile
+    : hardwareElectricalAb
+      ? '../test-results/renderer-hardware-electrical-ab/'
+      : electricalPlanarAb
+        ? '../test-results/renderer-electrical-planar-ab/'
+        : gpuProfile
     ? finalFrameOnly
       ? '../test-results/renderer-gpu-profile-final-only/'
       : '../test-results/renderer-gpu-profile/'
@@ -45,7 +56,10 @@ await mkdir(out, { recursive: true });
 const fixture = fileURLToPath(
   new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
 );
-const browser = await launchBrowser();
+// Manual hardware mode uses a visible browser; CI keeps its original launch.
+const browser = hardwareElectricalAb
+  ? await chromium.launch({ ...launchOptions, headless: false })
+  : await launchBrowser();
 const trials = [];
 let referenceCanvas = null;
 
@@ -64,22 +78,24 @@ async function trial(enabled, ordinal) {
   let pixelDifference = null;
   let stage = 'boot';
   try {
-    if (gpuProfile) await context.addInitScript(installWebglFrameProbe);
+    if (webglCensus) await context.addInitScript(installWebglFrameProbe);
     page = await context.newPage();
     page.setDefaultTimeout(180000);
     errors = observePageErrors(page);
     const label = assemblyAb
       ? `${ordinal}-${enabled ? 'final-only' : 'preview'}`
-      : electricalPlanarAb
-        ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
-        : gpuProfile
+      : hardwareElectricalAb
+        ? `${ordinal}-${enabled ? 'hardware-single' : 'hardware-double'}`
+        : electricalPlanarAb
+          ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
+          : gpuProfile
         ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
         : `${ordinal}-${enabled ? 'on' : 'off'}`;
     const params = new URLSearchParams();
-    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled)
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && !hardwareElectricalAb && enabled)
       params.set('rendererV3QualityIndex', '1');
     if (trialFinalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
-    if (electricalPlanarAb && enabled)
+    if ((electricalPlanarAb || hardwareElectricalAb) && enabled)
       params.set('rendererV3ElectricalPlanarSinglePass', '1');
     await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
@@ -94,7 +110,7 @@ async function trial(enabled, ordinal) {
     );
     await closeFunctionPanel(page);
     stage = 'initial-three';
-    if (gpuProfile) console.log('RENDERER_TRIAL_SETUP', JSON.stringify({ label, stage }));
+    if (webglCensus) console.log('RENDERER_TRIAL_SETUP', JSON.stringify({ label, stage }));
     await waitForThreeReady(page, 180000);
     const initialSceneReadyMs = performance.now() - setupBegan;
     stage = 'quality-scene';
@@ -118,7 +134,7 @@ async function trial(enabled, ordinal) {
     const oldSerial = Number(
       await page.locator('#threeHost').evaluate((el) => el.dataset.rendererFrameSerial || 0),
     );
-    if (gpuProfile) {
+    if (webglCensus) {
       await page.evaluate(async (rasterDiscard) => {
         const THREE =
           await import('https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js');
@@ -128,7 +144,7 @@ async function trial(enabled, ordinal) {
           return original.apply(this, args);
         };
         window.__waferCadWebglProbe.arm({ rasterDiscard });
-      }, enabled);
+      }, gpuProfile && enabled);
     }
     stage = 'measured-transparent-frame';
     console.log('RENDERER_TRIAL_START', JSON.stringify({ label, stage }));
@@ -148,15 +164,15 @@ async function trial(enabled, ordinal) {
       oldSerial,
       { timeout: 180000 },
     );
-    // screenshot forces compositor presentation; elapsed includes blocking
-    // software-WebGL rendering and the first complete image.
+    // Screenshot forces compositor presentation; elapsed includes the first
+    // complete image. GPU-specific timing is reported separately when valid.
     const canvas = await page.locator('#threeHost canvas').screenshot({
       path: fileURLToPath(new URL(`${label}.png`, out)),
     });
     const completedFrameMs = performance.now() - began;
     const state = await page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
     let webgl = null;
-    if (gpuProfile) {
+    if (webglCensus) {
       await page.waitForFunction(() => {
         const frames = window.__waferCadWebglProbe.frames();
         return frames.length > 0 && frames.every((frame) => frame.timerStatus !== 'pending');
@@ -173,7 +189,7 @@ async function trial(enabled, ordinal) {
         Number(state.rendererFrameSerial),
         `${label}: same completed frame`,
       );
-      assert.equal(webgl.rasterDiscard, enabled);
+      assert.equal(webgl.rasterDiscard, gpuProfile && enabled);
       assert.equal(webgl.glError, 0, 'WebGL must accept every profiled draw without errors');
       assert.equal(
         webgl.priorRasterDiscard,
@@ -192,10 +208,17 @@ async function trial(enabled, ordinal) {
       assert.ok(webgl.completedDrawMs > 0);
       if (webgl.timerStatus !== 'valid') assert.equal(webgl.gpuMs, null);
     }
+    const backend = hardwareElectricalAb ? classifyWebglBackend(webgl) : null;
+    if (hardwareElectricalAb) {
+      assert.ok(
+        backend.hardwareVerified,
+        `${label}: GPU identity unverified (${backend.reason}); hardware A/B cannot use software WebGL`,
+      );
+    }
     assert.deepEqual(errors, [], `${label}: no page errors`);
     assert.equal(state.transparentArrayLodTier, 'exact');
     assert.equal(state.v3SkippedTriangles, '0');
-    if (electricalPlanarAb && enabled) {
+    if ((electricalPlanarAb || hardwareElectricalAb) && enabled) {
       assert.ok(
         Number(state.rendererDrawTriangles) < 57040012 &&
           Number(state.rendererDrawTriangles) > 50000000,
@@ -217,7 +240,7 @@ async function trial(enabled, ordinal) {
       trialFinalFrameOnly ? 'final-only' : 'preview',
       `${label}: measured array build must use the requested assembly policy`,
     );
-    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled) {
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && !hardwareElectricalAb && enabled) {
       assert.ok(Number(state.v3QualityIndexedTriangles) > 10000000);
       assert.equal(
         Number(state.v3QualityOriginalVertices) / Number(state.v3QualityIndexedVertices),
@@ -268,14 +291,18 @@ async function trial(enabled, ordinal) {
       finalFrameOnly: trialFinalFrameOnly,
       assemblyFramePolicy: state.rendererAssemblyFramePolicy,
       assemblySkippedFrames: Number(state.rendererAssemblySkippedFrames || 0),
-      ...(gpuProfile ? { webgl, diagnosticImageOnly: enabled } : {}),
+      ...(webglCensus
+        ? { webgl, ...(hardwareElectricalAb ? { backend } : { diagnosticImageOnly: enabled }) }
+        : {}),
     };
     console.log(
       assemblyAb
         ? 'RENDERER_ASSEMBLY_AB_TRIAL'
-        : electricalPlanarAb
-          ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
-          : gpuProfile
+        : hardwareElectricalAb
+          ? 'RENDERER_HARDWARE_ELECTRICAL_AB_TRIAL'
+          : electricalPlanarAb
+            ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
+            : gpuProfile
           ? 'RENDERER_GPU_PROFILE_TRIAL'
           : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
       JSON.stringify(result),
@@ -300,6 +327,7 @@ async function trial(enabled, ordinal) {
           gpuProfile,
           assemblyAb,
           electricalPlanarAb,
+          hardwareElectricalAb,
           trialFinalFrameOnly,
           stage,
           error: String(error),
@@ -332,9 +360,11 @@ try {
   const report = {
     mode: assemblyAb
       ? 'same-run-final-preview-preview-final'
-      : electricalPlanarAb
-        ? 'same-run-electrical-single-double-double-single'
-        : gpuProfile
+      : hardwareElectricalAb
+        ? 'same-run-hardware-electrical-single-double-double-single'
+        : electricalPlanarAb
+          ? 'same-run-electrical-single-double-double-single'
+          : gpuProfile
         ? 'same-run-normal-discard-discard-normal'
         : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
@@ -346,9 +376,26 @@ try {
     exactCanvasParity: gpuProfile
       ? 'normal arms only; discard images intentionally incomplete'
       : true,
-    ...(electricalPlanarAb
+    ...(hardwareElectricalAb
       ? {
+          hardwareConfirmed: trials.every((x) => x.backend?.hardwareVerified),
+          adapters: [...new Set(trials.map((x) => x.backend?.adapter))],
           electricalSinglePassMedianMs: onMedianMs,
+          electricalDoublePassMedianMs: offMedianMs,
+          completedRatioSingleToDouble: onMedianMs / offMedianMs,
+          gpuTimers: trials.map((x) => ({
+            label: x.label,
+            status: x.webgl.timerStatus,
+            gpuMs: x.webgl.gpuMs,
+          })),
+          submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
+          submittedTrianglesDouble: off.map((x) => x.submittedTriangles),
+          drawCallsSingle: on.map((x) => x.drawCalls),
+          drawCallsDouble: off.map((x) => x.drawCalls),
+        }
+      : electricalPlanarAb
+        ? {
+            electricalSinglePassMedianMs: onMedianMs,
           electricalDoublePassMedianMs: offMedianMs,
           elapsedRatioSingleToDouble: onMedianMs / offMedianMs,
           submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
@@ -385,8 +432,17 @@ try {
         }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
-    ...(electricalPlanarAb
+    ...(hardwareElectricalAb
       ? {
+          hardwareOnly: true,
+          explicitFinishBarrier: true,
+          gpuTimerScope:
+            'first draw through end of animation callback; only non-disjoint results valid',
+          interpretation:
+            'Manually requested, headed hardware A/B. Non-software unmasked adapter is mandatory. Both arms use gl.finish. Two trials per arm are exploratory; require repeatability before default rollout. GPU timer may be null. Strict screenshot parity is required.',
+        }
+      : electricalPlanarAb
+        ? {
           interpretation:
             'Default-off smooth electrical surface rendering experiment. Matching canvas pixels and reduced WebGL submissions are required; one ABBA round cannot establish hardware performance improvement or authorize rollout.',
         }
@@ -410,9 +466,11 @@ try {
   console.log(
     assemblyAb
       ? 'RENDERER_ASSEMBLY_AB_OK'
-      : electricalPlanarAb
-        ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
-        : gpuProfile
+      : hardwareElectricalAb
+        ? 'RENDERER_HARDWARE_ELECTRICAL_AB_OK'
+        : electricalPlanarAb
+          ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
+          : gpuProfile
         ? 'RENDERER_GPU_PROFILE_OK'
         : 'RENDERER_QUALITY_INDEX_AB_OK',
     JSON.stringify(report),
