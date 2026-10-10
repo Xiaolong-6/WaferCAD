@@ -25,7 +25,11 @@ import {
   resolveSectionCollapse,
   sectionVisibleZSpan,
 } from './section-z-collapse.js';
-import { normalizeSectionViewport, sectionViewportMap, sectionViewportUnmap } from './section-view-viewport.js';
+import {
+  normalizeSectionViewport,
+  sectionViewportMap,
+  sectionViewportUnmap,
+} from './section-view-viewport.js';
 
 export function createPlanRenderers({
   root = document,
@@ -521,7 +525,14 @@ export function createPlanRenderers({
     drawPlanAxes(ctx, v, w, h, back);
   }
   function renderSection(targetCanvas = null, detailRoi = null) {
-    const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse, sectionViewport } = getState();
+    const {
+      model,
+      section,
+      sectionScaleMode,
+      sectionShowBorders,
+      sectionCollapse,
+      sectionViewport,
+    } = getState();
     const mainCanvas = $('sectionCanvas'),
       c = targetCanvas || mainCanvas,
       { ctx, w, h } = setupCanvas(c),
@@ -680,7 +691,15 @@ export function createPlanRenderers({
         const x0 = Math.max(-profileStep, mapT(t0)),
           x1 = Math.min(w + profileStep, mapT(t1));
         if (x1 <= x0) return [];
-        const toT = (x) => (sectionViewportUnmap(x / detailScaleX + detailX, viewW, screenViewport.panX, screenViewport.zoom) - plotLeft) / plotWidth,
+        const toT = (x) =>
+            (sectionViewportUnmap(
+              x / detailScaleX + detailX,
+              viewW,
+              screenViewport.panX,
+              screenViewport.zoom,
+            ) -
+              plotLeft) /
+            plotWidth,
           times = [toT(x0)];
         for (let x = (Math.floor(x0 / profileStep) + 1) * profileStep; x < x1; x += profileStep) {
           times.push(toT(x));
@@ -1103,7 +1122,10 @@ export function createPlanRenderers({
       ctx.globalAlpha = 0.72;
       ctx.strokeStyle = '#788593';
       ctx.lineWidth = 0.8;
-      for (const [x, direction] of [[frameLeft, 1], [frameRight, -1]]) {
+      for (const [x, direction] of [
+        [frameLeft, 1],
+        [frameRight, -1],
+      ]) {
         ctx.beginPath();
         ctx.moveTo(x, upperBottom - 1);
         ctx.lineTo(x + direction * 6, upperBottom + 3);
