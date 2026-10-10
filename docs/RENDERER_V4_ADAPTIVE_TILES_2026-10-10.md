@@ -52,6 +52,59 @@ changing the submission path.
 - All far counts are **candidate workload buckets only**; the reduction
   gate remains `alpha-coverage-unverified` in otherwise eligible views.
 
+## R2 implementation — partition preparation and CPU cache (2026-10-10)
+
+R2 is an **opt-in CPU metadata experiment** on the same stacked PR. No
+WebGL geometry, materials, draw calls or GPU resources are created or
+destroyed by this code. GPU tile ownership remains a separate, unimplemented
+acceptance stage.
+
+- `site/renderer-v4-tile-plan.js` prepares a deterministic chunk list and
+  per-tile XY bounding volumes, retaining immutable numeric derived values
+  for physical Z intervals. The per-camera projection stage reapplies
+  current Z-collapse/display transforms and camera matrices. It does not
+  memoize a world-to-screen result across camera changes.
+- `createAdaptiveTilePlanCache` provides a bounded (default two-entry)
+  CPU plan LRU keyed by the exact Surface Plan array identity, revision and
+  chunk/owner limits. The 3D view explicitly clears the cache and previous
+  LOD tiers when model identity, revision or `plan.sidewalls` changes, even
+  when a project mutation reuses a numeric revision.
+- R1 `?rendererV4TileProbe=1` keeps its original uncached algorithm.
+  R2 `?rendererV4TileCache=1` opts into both the probe and prepared-plan
+  execution. Both remain disabled by default and continue to submit
+  **identical original render meshes**.
+- Host diagnostics add `data-v4-tile-cache-mode`,
+  `data-v4-tile-cache-hit`, `data-v4-tile-cache-hits`,
+  `data-v4-tile-cache-misses`, `data-v4-tile-cache-evictions` and
+  `data-v4-tile-cache-retained-tiles`, besides R1's count and gate data.
+  Probe time includes cold preparation or warm cache reuse.
+- `site/tests/renderer-v4-tile-plan.test.mjs` tests exact R1/R2 projection
+  classification parity in a synthetic tile fixture, cache hits and source
+  invalidation, strict capacity/eviction, near-plane unknowns, ROI,
+  edge-on, Section transforms, rough exclusion, and scientific-data
+  immutability.
+
+**Limitations**: tile IDs are scoped to an individual source plan epoch.
+R2 does not have GPU tile ownership, geometry error bounds, cancellation,
+progressive refinement, proven draw-call reductions or hardware performance
+data. R2 must not be described as a completed LOD replacement or GPU cache.
+
+### R2 focused verification
+
+```bash
+node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs
+npm run check:ci
+npx prettier --check site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
+```
+
+For browser acceptance, open the same real 3D project twice, with
+`?rendererV4TileProbe=1` and `?rendererV4TileCache=1`. Compare identical
+camera poses, pixel output and draw/triangle counts. Change camera, zoom,
+ROI and Section Z, then verify no stale cache and no resource growth.
+For a cache-hit test, the real model/Surface Plan instance must be retained
+across scene variants. A zero-hit run is not evidence of reuse. Hardware
+WebGL identity and GPU frame completion still require independent checking.
+
 ## Reproduce and evidence requirements
 
 Use pinned dependencies (`npm ci`), start the static server with
