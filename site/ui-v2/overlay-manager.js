@@ -149,55 +149,77 @@
     function adoptNativeViews(panels) {
       const owners = new Map();
       const cleanups = [];
+      const observer = new MutationObserver(() => {
+        for (const [panel, entry] of owners) {
+          for (const node of entry.custom) trackCustom(panel, node);
+        }
+      });
+      const closeCustom = (node) => {
+        if (node.hidden && !node.open) return;
+        const event = new CustomEvent('wafercad:popover-close', {
+          cancelable: true, bubbles: false,
+        });
+        node.dispatchEvent(event);
+        if (!event.defaultPrevented) {
+          if (node.open && typeof node.close === 'function') node.close();
+          node.hidden = true;
+        }
+      };
+      const closePanel = (panel) => {
+        const entry = owners.get(panel);
+        if (!entry) return;
+        for (const node of entry.details) {
+          if (active.get('popover')?.node === node) close('popover', 'view-hide');
+          else if (node.open) node.open = false;
+        }
+        for (const node of entry.custom) {
+          if (active.get('dialog')?.node === node) close('dialog', 'view-hide');
+          else closeCustom(node);
+        }
+      };
+      function trackCustom(panel, node) {
+        const opened = node.open || (!node.hidden && node.tagName !== 'DIALOG');
+        if (opened) {
+          const trigger = node.id
+            ? panel.querySelector(`[aria-controls="${node.id}"]`)
+            : null;
+          activateNative('dialog', node, trigger, 'native-dialog');
+        } else if (active.get('dialog')?.node === node) {
+          active.delete('dialog');
+        }
+      }
       for (const panel of panels) {
         if (!panel?.isConnected) continue;
         const details = [...panel.querySelectorAll('details')];
-        // Keep references: the Z Break dialog may enter document.body's
-        // native modal top layer and later return to Section's own DOM.
+        // Keep object identity when native Z Break temporarily enters body.
         const custom = [...panel.querySelectorAll('[data-view-popover-panel]')];
         owners.set(panel, { details, custom });
-      }
-      const closePanel = (panel) => {
-        const owner = owners.get(panel);
-        if (!owner) return;
-        for (const item of owner.details) if (item.open) item.open = false;
-        for (const item of owner.custom) {
-          if (item.hidden && !item.open) continue;
-          const event = new CustomEvent('wafercad:popover-close', {
-            cancelable: true, bubbles: false,
-          });
-          item.dispatchEvent(event);
-          // Respect native owning controllers that preventDefault and
-          // reparent their original dialog or update scientific state.
-          if (event.defaultPrevented) continue;
-          if (item.open && typeof item.close === 'function') item.close();
-          item.hidden = true;
-        }
-      };
-      for (const [panel, owner] of owners) {
-        for (const detail of owner.details) {
+        for (const node of details) {
+          const trigger = node.querySelector(':scope > summary');
           const changed = () => {
-            if (!detail.open) return;
-            for (const other of owners.keys()) {
-              if (other !== panel) closePanel(other);
-            }
+            if (node.open) activateNative('popover', node, trigger, 'native-details');
+            else if (active.get('popover')?.node === node) active.delete('popover');
           };
-          detail.addEventListener('toggle', changed);
-          cleanups.push(() => detail.removeEventListener('toggle', changed));
+          node.addEventListener('toggle', changed);
+          cleanups.push(() => node.removeEventListener('toggle', changed));
+        }
+        for (const node of custom) {
+          const changed = () => trackCustom(panel, node);
+          node.addEventListener('toggle', changed);
+          cleanups.push(() => node.removeEventListener('toggle', changed));
+          observer.observe(node, { attributes: true, attributeFilter: ['open', 'hidden'] });
         }
       }
       const sync = () => {
-        for (const panel of owners.keys()) {
-          // This checks ancestors as well as the panel's hidden state.
-          // Native dialog reparenting does not bypass its registered owner.
+        for (const panel of owners.keys())
           if (!panel.isConnected || !panel.checkVisibility()) closePanel(panel);
-        }
       };
       return Object.freeze({
         sync,
         destroy() {
-          owners.forEach((_value, panel) => closePanel(panel));
-          cleanups.forEach((cleanup) => cleanup());
+          observer.disconnect();
+          for (const panel of owners.keys()) closePanel(panel);
+          cleanups.forEach((fn) => fn());
           owners.clear();
         },
       });
