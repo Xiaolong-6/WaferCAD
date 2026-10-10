@@ -375,6 +375,7 @@
       throw Error('Real application bootstrap never reached appReady.');
     if (!verifyNativeIdentity())
       throw Error('A native scientific stage was replaced during bootstrap.');
+    nativeOverlayOwners = shell.overlays.adoptNativeViews([...livePanels.values()]);
     document.body.dataset.ready = 'true';
     window.WaferCadV2RealBridge.ready = true;
     render();
