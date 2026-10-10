@@ -79,3 +79,7 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 - Base Section 1:1 X:Z calibration assertion added to `check-d1-extended.mjs` using native toggle, original Slice inputs, canvas DOMRect and 0.25px threshold; the widened gate is currently **unverified**, including the 390px narrow case. No scientific compositor modifications.
 - Remaining I16 D1 blockers: original Section lacks a verified real Pan/Zoom viewport API; native controller popover and modal nodes do not yet have a unified v2 portal lifecycle; rotated/transformed Mask and full independent Section physical Z / Main↔3D registration remain; M1.5 four-width full visual parity, Windows/real GPU evidence, and route convergence remain open.
 - D1 status: **NOT ACCEPTED**. Historical 585/8/60 and six fixture browser passes were obtained before the above source changes; rerun all required gates and deterministic AST generation before any pass claim. No D2, main merge or visual baseline changes.
+
+### D1 camera / physical Section runtime inspection (`b44b5d4` input)
+
+上述待运行状态由实际复验替代：camera 脚本存在 appReady→WebGL 竞态，已改为完整帧+真实相机等待；3D Pan/Zoom、回归 Orbit 和实际拖拽 capture 释放已验证。新 Base 1:1 物理检查实际发现薄截面居中偏差 **0.42866px >0.25px**，已在显示 helper `section-z-collapse.js` 限定修复非折叠 Physical 的亚像素高度下限；原阈值/公式保留，四档复验 **0px**。Auto/折叠布局不变，新增 owning-suite 物理回归；未改 `plan-renderers.js` / `three-view.js` 等禁止修改服务或任何基线。最新 AST 267 IDs / 215 classes / 1116 operations / 60 dynamic IDs / 14 unresolved；Node 586/586，focused 12/12。其余实跑结果和剩余 I16 门槛见 [D1 report](M3_D1_EXECUTION_2026-10-10.md) 最新小节。Section viewport、统一 portal、完整 M1.5/物理/硬件 GPU 与入口批准仍未完成；D2 未启动。

@@ -197,3 +197,40 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:smoke
 ```
 
 Remaining D1 blockers include **Section true Pan/Zoom** (the current Section compositor owns physical X/Z rasterization and needs a narrowly specified viewport API; a CSS transform would invalidate hit testing), the unified native overlay portal lifecycle (existing controller-owned nodes/dialog top-layer cannot be blindly moved without breaking `closest('.view-panel')`, focus and event contracts), full independent Section/Slice/rotated Mask/Main↔3D physical geometry, four-width M1.5 real-view visual parity, platform-specific approved screenshots, hardware GPU evidence, and explicit route handoff. Implement/validate those before declaring D1 passed.
+
+## Executable camera / physical Section inspection at `b44b5d4` — 2026-10-10
+
+Input: `b44b5d486360ea81d53f5ae8d20f959ddd86cb0e`. This section supersedes the immediately preceding **implementation pushed / tests not run** checkpoint. Same branch and rollback point. Locked tooling reinstalled with `npm ci`; Linux / Node v24.19.0 / pinned Chromium 140.0.7339.186 (v1193) / Three 0.179.1. Only local gates were run; no manual CI/deployment/main merge/D2/default-route or approved-baseline change.
+
+### Two failures reproduced, not hidden
+
+| Finding                                                    | Reproduction / repair                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New camera gate checked canvas before WebGL initialization | Input gate failed with `Real WebGL canvas not initialized` immediately after appReady. appReady is not first-render readiness. Gate now waits for original WebGL canvas, complete frame and actual camera access before recording identity; subsequent pointer gestures must produce a newer complete renderer frame.                                                                                                                                                                                                                                                                |
+| Physical Section thin-frame centering exceeded 0.25px      | Input extended Base gate failed at 1440px: Slice span 84000µm, padded Z span 13.92µm, Base thickness input 12µm, Y error **0.42866px**. Actual physical height is subpixel; `createSectionZTransform` clamped the already-fitted plot height to 1px and centered again. `site/section-z-collapse.js` now preserves a positive subpixel height **only for physical mode with Z Break disabled**. Auto and broken-axis minimum height remain unchanged. The original independent browser formula and 0.25px threshold were retained; all four Base physical checks now report **0px**. |
+
+The Section change is in the display-transform helper, not a model operation. Stored geometry, project schemas/History, µm inputs and renderer algorithms remain owned by their original services. No edits to the forbidden `plan-renderers.js`, `three-view.js`, model/process/project/worker/persistence sources were needed. Added an owning-suite regression in `site/tests/section-surface-rendering.test.mjs` for a subpixel physical frame's endpoints and X:Z scale, plus unchanged Auto readability floor. This rendering change is covered by actual browser physical checks, existing legacy browser checks and final Node suite; approved Windows pixels were not replaced.
+
+### Stronger actual camera checks
+
+The camera gate now records the actual GPU renderer, verifies capture release after real drags, and proves that leaving Pan/Zoom restores **actual native OrbitControls rotation**, rather than only an `orbit` data attribute. It starts a real captured Pan, uses keyboard Main navigation while the mouse is held, and verifies view-hide releases that capture. The same original WebGL canvas and camera owner are used throughout. Input Pan/Zoom product math needed no functional correction; modified adapter/toolbar source changes in this inspection are formatting only.
+
+Base four-width camera measurements: target moves, relative-position error ≤**9.1e-10µm**, Zoom distance ratio **1.4993025**, complete frames, zero console/page errors. Renderer is **ANGLE Vulkan SwiftShader software WebGL**. This is not hardware GPU evidence or a frame-time benchmark. Actual fixtures are the final-only Photodetector/M3D previews through native import+confirmation, not Recipe rebuild/full-array acceptance.
+
+### Executed gates and remaining scope
+
+- Final `npm test`: **586/586**, zero failures (118922ms), including the new physical regression. Initial input's 585 pass remains a separate historical run.
+- Focused camera + v2 state/contract Node tests: **12/12**. Lint and changed-source Prettier run on the final code. AST write/check refreshed deterministically: **267 static IDs, 215 dynamic classes, 1116 operations, 60 dynamic IDs, 14 unresolved**. Generated references refreshed after all source/test edits; counts are not dynamic migration acceptance.
+- Current legacy `test:ui:smoke` and `test:ui:workstation` (including View UX v3) pass at unchanged legacy entry and assertions.
+- Three browser runners: `check-d1-real-views.mjs`, `check-d1-extended.mjs`, `check-d1-three-gestures.mjs`; each runs Base/Photodetector/M3D at 1440/1024/768/390. Final result: all nine fixture/runner combinations pass, with four widths each (36 width cases). Existing ROI/Detail/owner/focus/layout checks and unchanged M1.5 reference captures stay in place.
+
+Reproduce each fixture sequentially for hardware/performance review to avoid concurrent software-raster load:
+
+```bash
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=photodetector node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=m3d node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-extended.mjs
+```
+
+**D1 remains NOT ACCEPTED.** The new physical Base check proves uncollapsed 1:1 projection against independent native inputs and DOMRect; it does not establish every collapsed/nonlinear/rough/material boundary, Slice/rotated Mask or Main↔3D registration. Section universal Fit/Pan/Zoom still needs a formal viewport API; existing Section Detail magnification is not a substitute. Unified portal lifecycle, complete M1.5 functional/visual parity, Windows approved pixels, real hardware GPU and explicit production-route checkpoint remain open. Preserve the current experimental entry and continue within D1.

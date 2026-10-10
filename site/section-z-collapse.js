@@ -246,7 +246,13 @@ export function createSectionZTransform({
 }) {
   const min = Number(zMin),
     max = Number(zMax),
-    height = Math.max(1, Number(plotHeight) || 1),
+    // In noncollapsed physical 1:1 mode a thin film can legitimately project
+    // below one CSS pixel. A one-pixel floor shifts its centered frame even
+    // though X/Z scale is correct. Auto and broken-axis layout keep their floor.
+    height = Math.max(
+      mode === 'physical' && collapse?.enabled === false ? 1e-12 : 1,
+      Number(plotHeight) || 1,
+    ),
     enabled = collapse?.enabled !== false;
 
   if (!enabled) {

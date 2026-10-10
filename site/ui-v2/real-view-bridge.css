@@ -171,7 +171,9 @@ html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='zoom'] canvas {
   touch-action: none;
 }
 
-html[data-v2-m3='d1-experimental'] .v2-native-toolbar [data-action^='v2-three-'][aria-pressed='true'] {
+html[data-v2-m3='d1-experimental']
+  .v2-native-toolbar
+  [data-action^='v2-three-'][aria-pressed='true'] {
   border-color: var(--wc-accent);
   background: var(--wc-accent-tint-active);
   color: var(--wc-accent-active);

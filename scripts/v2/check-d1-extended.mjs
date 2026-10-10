@@ -305,29 +305,37 @@ try {
           const canvas = document.getElementById('sectionCanvas');
           const d = canvas.dataset;
           const input = (id) => Number(document.getElementById(id).value);
-          const span = Math.hypot(input('sectionBx')-input('sectionAx'),
-            input('sectionBy')-input('sectionAy'));
-          const z = Number(d.sectionZ1Um)-Number(d.sectionZ0Um);
+          const span = Math.hypot(
+            input('sectionBx') - input('sectionAx'),
+            input('sectionBy') - input('sectionAy'),
+          );
+          const z = Number(d.sectionZ1Um) - Number(d.sectionZ0Um);
           const rect = canvas.getBoundingClientRect();
-          const scale = Math.min((rect.width-37)/span, (rect.height-32)/z);
+          const scale = Math.min((rect.width - 37) / span, (rect.height - 32) / z);
           return {
-            span, z, base: input('baseThickness'),
+            span,
+            z,
+            base: input('baseThickness'),
             collapsed: d.sectionCollapseEnabled,
             mode: d.scaleMode,
             errors: [
-              Math.abs((Number(d.xPxPerUm)-scale)*span),
-              Math.abs((Number(d.zPxPerUm)-scale)*z),
-              Math.abs(Number(d.sectionPlotLeft)-(27+(rect.width-37-span*scale)/2)),
-              Math.abs(Number(d.sectionFrameTop)-(10+(rect.height-32-z*scale)/2)),
+              Math.abs((Number(d.xPxPerUm) - scale) * span),
+              Math.abs((Number(d.zPxPerUm) - scale) * z),
+              Math.abs(Number(d.sectionPlotLeft) - (27 + (rect.width - 37 - span * scale) / 2)),
+              Math.abs(Number(d.sectionFrameTop) - (10 + (rect.height - 32 - z * scale) / 2)),
             ],
           };
         });
         assert.equal(physical.mode, 'physical');
         assert.equal(physical.collapsed, 'false');
-        assert.ok(physical.z >= physical.base,
-          'Physical Base stack must span its specified thickness');
-        assert.ok(Math.max(...physical.errors) <= 0.25,
-          `Independent Section physical projection mismatch: ${JSON.stringify(physical)}`);
+        assert.ok(
+          physical.z >= physical.base,
+          'Physical Base stack must span its specified thickness',
+        );
+        assert.ok(
+          Math.max(...physical.errors) <= 0.25,
+          `Independent Section physical projection mismatch: ${JSON.stringify(physical)}`,
+        );
         section.physical = physical;
       }
       const owners = await page.evaluate(() => {

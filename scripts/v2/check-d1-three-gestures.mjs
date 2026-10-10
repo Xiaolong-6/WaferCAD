@@ -10,17 +10,28 @@ import { launchBrowser, newUiPage, waitForPaint, chooseConfirmation } from '../t
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const site = resolve(repo, 'site');
-const fixtures = { m3d: 'm3d-selfpowered-heterogeneous-ic', photodetector: 'photodetector-literature' };
+const fixtures = {
+  m3d: 'm3d-selfpowered-heterogeneous-ic',
+  photodetector: 'photodetector-literature',
+};
 const fixture = process.env.WAFERCAD_D1_FIXTURE || '';
 assert.ok(!fixture || fixtures[fixture], 'Known D1 camera test fixture');
 const output = resolve(repo, `test-results/ui-v2-d1-camera${fixture ? `-${fixture}` : ''}`);
 const types = {
-  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.woff2': 'font/woff2', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.woff2': 'font/woff2',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
 };
 const evidence = {
   sha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
-  fixture: fixture || 'Base', widths: [], errors: [], result: 'running',
+  fixture: fixture || 'Base',
+  widths: [],
+  errors: [],
+  result: 'running',
 };
 const server = createServer(async (req, res) => {
   try {
@@ -58,36 +69,74 @@ try {
     await page.goto(`${base}/app-v2-real.html`);
     await page.waitForFunction(
       () => document.body.dataset.ready === 'true' || document.body.dataset.ready === 'error',
-      null, { timeout: 120000 },
+      null,
+      { timeout: 120000 },
     );
     assert.equal(await page.locator('body').getAttribute('data-ready'), 'true');
     if (fixture) {
       const filename = `${fixtures[fixture]}.wafercad`;
-      await page.locator('#openProjectInput')
+      await page
+        .locator('#openProjectInput')
         .setInputFiles(resolve(site, 'examples/previews', filename));
       await chooseConfirmation(page);
       await page.waitForFunction(
         (name) => document.getElementById('statusText').textContent === `Opened ${name}.`,
-        filename, { timeout: 120000 },
+        filename,
+        { timeout: 120000 },
       );
     }
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#threeHost canvas') &&
+        document.getElementById('threeHost').dataset.renderPhase === 'complete' &&
+        window.WaferCadV2RealBridge.getThreeCamera(),
+      null,
+      { timeout: 120000 },
+    );
     await page.evaluate(() => {
       window.d1CameraCanvas = document.querySelector('#threeHost canvas');
       if (!window.d1CameraCanvas) throw Error('Real WebGL canvas not initialized');
+      document.addEventListener(
+        'pointerdown',
+        (event) => {
+          if (event.target === window.d1CameraCanvas) window.d1LastPointerId = event.pointerId;
+        },
+        true,
+      );
+    });
+    evidence.renderer = await page.evaluate(() => {
+      const gl = window.d1CameraCanvas.getContext('webgl2');
+      const debug = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = debug
+        ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
+      return {
+        name,
+        gpuClass: /swiftshader|llvmpipe|software/i.test(name)
+          ? 'software WebGL'
+          : 'unclassified; hardware not established',
+      };
     });
 
     async function camera() {
       return page.evaluate(() => window.WaferCadV2RealBridge.getThreeCamera());
     }
     async function drag3d(dx, dy) {
+      const frameBefore = await page
+        .locator('#threeHost')
+        .getAttribute('data-renderer-frame-serial');
       const box = await page.locator('#threeHost canvas').boundingBox();
       assert.ok(box && box.width > 100 && box.height > 100, 'WebGL viewport visible');
-      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const x = box.x + box.width / 2,
+        y = box.y + box.height / 2;
       assert.equal(
-        await page.evaluate(({ x, y }) => {
-          const hit = document.elementFromPoint(x, y);
-          return hit?.tagName === 'CANVAS' && document.getElementById('threeHost').contains(hit);
-        }, { x, y }),
+        await page.evaluate(
+          ({ x, y }) => {
+            const hit = document.elementFromPoint(x, y);
+            return hit?.tagName === 'CANVAS' && document.getElementById('threeHost').contains(hit);
+          },
+          { x, y },
+        ),
         true,
         'Pan/Zoom must start on the real 3D canvas, not on an overlay',
       );
@@ -95,41 +144,83 @@ try {
       await page.mouse.down();
       await page.mouse.move(x + dx, y + dy, { steps: 8 });
       await page.mouse.up();
+      assert.equal(
+        await page
+          .locator('#threeHost')
+          .evaluate((node) => node.hasPointerCapture(window.d1LastPointerId)),
+        false,
+        'Custom pointer capture released after drag',
+      );
       await waitForPaint(page);
+      await page.waitForFunction(
+        (before) => {
+          const d = document.getElementById('threeHost').dataset;
+          return d.renderPhase === 'complete' && Number(d.rendererFrameSerial) > Number(before);
+        },
+        frameBefore,
+        { timeout: 120000 },
+      );
     }
 
     for (const width of [1440, 1024, 768, 390]) {
       await page.setViewportSize({ width, height: 960 });
       await page.locator('[data-action="view:three"]').click();
-      await page.waitForFunction(() =>
-        document.getElementById('threeHost').dataset.renderPhase === 'complete',
-        null, { timeout: 120000 });
+      await page.waitForFunction(
+        () => document.getElementById('threeHost').dataset.renderPhase === 'complete',
+        null,
+        { timeout: 120000 },
+      );
       const before = await camera();
       assert.ok(before && before.position && before.target, 'Actual camera state must exist');
       await page.locator('[data-action="v2-three-pan"]').click();
-      assert.equal(await page.locator('[data-action="v2-three-pan"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(
+        await page.locator('[data-action="v2-three-pan"]').getAttribute('aria-pressed'),
+        'true',
+      );
       await drag3d(40, 20);
       const afterPan = await camera();
       const originalOffset = difference(before.position, before.target);
       const translatedOffset = difference(afterPan.position, afterPan.target);
-      assert.ok(length(difference(afterPan.target, before.target)) > 0.001,
-        'Pan must translate the original camera target');
-      assert.ok(closeEnough(originalOffset, translatedOffset, 0.000001 * Math.max(1, length(originalOffset))),
-        'Pan must retain relative camera direction/distance');
+      assert.ok(
+        length(difference(afterPan.target, before.target)) > 0.001,
+        'Pan must translate the original camera target',
+      );
+      assert.ok(
+        closeEnough(
+          originalOffset,
+          translatedOffset,
+          0.000001 * Math.max(1, length(originalOffset)),
+        ),
+        'Pan must retain relative camera direction/distance',
+      );
       await page.locator('[data-action="v2-three-zoom"]').click();
-      assert.equal(await page.locator('[data-action="v2-three-pan"]').getAttribute('aria-pressed'), 'false');
+      assert.equal(
+        await page.locator('[data-action="v2-three-pan"]').getAttribute('aria-pressed'),
+        'false',
+      );
       await drag3d(0, 45);
       const afterZoom = await camera();
-      const ratio = length(difference(afterZoom.position, afterZoom.target)) /
+      const ratio =
+        length(difference(afterZoom.position, afterZoom.target)) /
         length(difference(afterPan.position, afterPan.target));
       assert.ok(ratio > 1.1 && ratio < 2, `Zoom must change actual camera distance: ${ratio}`);
-      assert.ok(closeEnough(afterPan.target, afterZoom.target, 0.000001 * Math.max(1, length(afterPan.target))),
-        'Zoom must preserve target');
+      assert.ok(
+        closeEnough(
+          afterPan.target,
+          afterZoom.target,
+          0.000001 * Math.max(1, length(afterPan.target)),
+        ),
+        'Zoom must preserve target',
+      );
       await page.locator('[data-action="v2-three-zoom"]').click();
       assert.equal(await page.locator('#threeHost').getAttribute('data-v2-gesture'), 'orbit');
-      assert.equal(await page.evaluate(() =>
-        document.querySelector('#threeHost canvas') === window.d1CameraCanvas), true,
-        'Original WebGL canvas must persist throughout gestures');
+      assert.equal(
+        await page.evaluate(
+          () => document.querySelector('#threeHost canvas') === window.d1CameraCanvas,
+        ),
+        true,
+        'Original WebGL canvas must persist throughout gestures',
+      );
       evidence.widths.push({
         width,
         targetShift: length(difference(afterPan.target, before.target)),
@@ -139,6 +230,39 @@ try {
       });
       await page.screenshot({ path: resolve(output, `camera-${width}.png`), fullPage: true });
     }
+    const beforeOrbit = await camera();
+    await drag3d(28, 14);
+    const afterOrbit = await camera();
+    const offsetBefore = difference(beforeOrbit.position, beforeOrbit.target);
+    const offsetAfter = difference(afterOrbit.position, afterOrbit.target);
+    evidence.restoredOrbitShift = length(difference(offsetBefore, offsetAfter));
+    assert.ok(
+      evidence.restoredOrbitShift > 0.0001 * length(offsetBefore),
+      'Default OrbitControls must really rotate after leaving custom gesture mode',
+    );
+    await page.locator('[data-action="v2-three-pan"]').click();
+    const cancelBox = await page.locator('#threeHost canvas').boundingBox();
+    await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
+    await page.mouse.down();
+    assert.equal(
+      await page
+        .locator('#threeHost')
+        .evaluate((node) => node.hasPointerCapture(window.d1LastPointerId)),
+      true,
+      'Pan owns actual drag capture',
+    );
+    await page.locator('[data-action="view:main"]').focus();
+    await page.keyboard.press('Enter');
+    await waitForPaint(page);
+    assert.equal(
+      await page
+        .locator('#threeHost')
+        .evaluate((node) => node.hasPointerCapture(window.d1LastPointerId)),
+      false,
+      'View hide releases an active drag',
+    );
+    await page.mouse.up();
+    evidence.hideCapture = 'released through actual keyboard navigation while dragging';
     assert.deepEqual(evidence.errors, [], 'No browser JS/console errors');
     evidence.result = 'pass';
     console.log(JSON.stringify(evidence, null, 2));

@@ -59,9 +59,10 @@ export function createViewToolbarController({ root = document } = {}) {
       // D1 adds genuine 3D Pan/Zoom controls. On narrow panels retain
       // the original 3D Quality select inside the original More owner.
       // Legacy toolbar breakpoints and DOM remain unchanged.
-      const entriesForPanel = root.documentElement.dataset.ui === 'v2' && panelId === 'threePanel'
-        ? [['.view-mode-field', 700], ...configs]
-        : configs;
+      const entriesForPanel =
+        root.documentElement.dataset.ui === 'v2' && panelId === 'threePanel'
+          ? [['.view-mode-field', 700], ...configs]
+          : configs;
       for (const [selector, breakpoint] of entriesForPanel) {
         const node = panel.querySelector(selector);
         if (!node) throw new Error(`View toolbar control missing: ${panelId} ${selector}`);

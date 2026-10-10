@@ -19,8 +19,9 @@ test('3D Pan translates position and target equally without changing physical mo
   const before = original();
   const after = moveCamera(before, 80, 25, 600);
   assert.ok(norm(delta(after.target, before.target)) > 0.01);
-  assert.ok(norm(delta(delta(after.position, after.target),
-    delta(before.position, before.target))) < 1e-9);
+  assert.ok(
+    norm(delta(delta(after.position, after.target), delta(before.position, before.target))) < 1e-9,
+  );
   assert.deepEqual(before, original(), 'Camera source must remain immutable');
 });
 
@@ -31,8 +32,11 @@ test('3D Pan respects perspective target-plane pixel scale and zero motion', () 
   assert.deepEqual(Array.from(still.target), before.target);
   const short = moveCamera(before, 80, 0, 300);
   const tall = moveCamera(before, 80, 0, 600);
-  assert.ok(Math.abs(norm(delta(short.target, before.target)) /
-    norm(delta(tall.target, before.target)) - 2) < 1e-9);
+  assert.ok(
+    Math.abs(
+      norm(delta(short.target, before.target)) / norm(delta(tall.target, before.target)) - 2,
+    ) < 1e-9,
+  );
 });
 
 test('3D Zoom changes camera distance but leaves target and fov intact', () => {

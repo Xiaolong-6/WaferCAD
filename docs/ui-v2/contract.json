@@ -17,7 +17,7 @@
     "ariaControls": 7,
     "dynamicClasses": 215,
     "dynamicClassPatterns": 2,
-    "dynamicOperations": 1114,
+    "dynamicOperations": 1116,
     "dynamicIdDeclarations": 60,
     "unresolvedOperations": 14
   },
@@ -70,7 +70,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 1706,
+          "line": 1720,
           "source": "document.getElementById('workstationBootScreen')?.setAttribute('aria-hidden', 'true');"
         },
         {
@@ -148,7 +148,7 @@
         { "file": "site/app.html", "line": 238, "source": "data-view-panel=\"mainPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1506,
+          "line": 1520,
           "source": "$('mainPanel').hidden = next !== 'main';"
         },
         {
@@ -525,7 +525,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 151,
+          "line": 161,
           "source": "['#sectionControlsBtn', 'line'],"
         },
         {
@@ -627,7 +627,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 149,
+          "line": 159,
           "source": "['#focusEditor > summary', 'roi'],"
         },
         {
@@ -1347,7 +1347,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 122,
+          "line": 123,
           "source": "const pan = tools.querySelector('#mainPanBtn');"
         },
         {
@@ -1607,10 +1607,10 @@
         { "file": "site/app.html", "line": 245, "source": "<canvas id=\"mainCanvas\"></canvas>" },
         {
           "file": "site/app.js",
-          "line": 1588,
+          "line": 1602,
           "source": "bindPlanCanvas('main', $('mainCanvas'), () => activeFace === 'back');"
         },
-        { "file": "site/app.js", "line": 1592, "source": "observer.observe($('mainCanvas'));" },
+        { "file": "site/app.js", "line": 1606, "source": "observer.observe($('mainCanvas'));" },
         {
           "file": "site/controllers/export-controller.js",
           "line": 89,
@@ -1695,7 +1695,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 88,
+          "line": 89,
           "source": "if (!doc.querySelector('#mainCanvas') || !doc.querySelector('#threeHost')) {"
         },
         {
@@ -2174,6 +2174,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 297,
           "source": "['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map(async (id) =>"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 309,
+          "source": "input('sectionBx') - input('sectionAx'),"
         }
       ]
     },
@@ -2229,6 +2234,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 297,
           "source": "['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map(async (id) =>"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 310,
+          "source": "input('sectionBy') - input('sectionAy'),"
         }
       ]
     },
@@ -2290,6 +2300,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 297,
           "source": "['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map(async (id) =>"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 309,
+          "source": "input('sectionBx') - input('sectionAx'),"
         }
       ]
     },
@@ -2346,6 +2361,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 297,
           "source": "['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'].map(async (id) =>"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 310,
+          "source": "input('sectionBy') - input('sectionAy'),"
         }
       ]
     },
@@ -2365,7 +2385,7 @@
         { "file": "site/app.html", "line": 443, "source": "data-view-panel=\"maskPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1507,
+          "line": 1521,
           "source": "$('maskPanel').hidden = next !== 'mask';"
         },
         {
@@ -2831,7 +2851,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 150,
+          "line": 160,
           "source": "['#maskRoiEditor > summary', 'roi'],"
         },
         {
@@ -3304,7 +3324,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 909,
+          "line": 923,
           "source": "$('maskOpacityValue').value = `${Math.round(maskOpacity * 100)}%`;"
         },
         {
@@ -3338,7 +3358,7 @@
         { "file": "site/app.html", "line": 372, "source": "id=\"maskOpacityRange\"" },
         {
           "file": "site/app.js",
-          "line": 908,
+          "line": 922,
           "source": "$('maskOpacityRange').value = String(maskOpacity);"
         },
         {
@@ -3799,10 +3819,10 @@
         { "file": "site/app.html", "line": 450, "source": "<canvas id=\"maskCanvas\"></canvas>" },
         {
           "file": "site/app.js",
-          "line": 1589,
+          "line": 1603,
           "source": "bindPlanCanvas('mask', $('maskCanvas'));"
         },
-        { "file": "site/app.js", "line": 1593, "source": "observer.observe($('maskCanvas'));" },
+        { "file": "site/app.js", "line": 1607, "source": "observer.observe($('maskCanvas'));" },
         {
           "file": "site/controllers/draw-mask-controller.js",
           "line": 586,
@@ -4393,7 +4413,7 @@
         { "file": "site/app.html", "line": 596, "source": "data-view-panel=\"threePanel\"" },
         {
           "file": "site/app.js",
-          "line": 1508,
+          "line": 1522,
           "source": "$('threePanel').hidden = next !== 'three';"
         },
         {
@@ -4405,6 +4425,11 @@
           "file": "site/controllers/view-toolbar-controller.js",
           "line": 14,
           "source": "threePanel: ["
+        },
+        {
+          "file": "site/controllers/view-toolbar-controller.js",
+          "line": 63,
+          "source": "root.documentElement.dataset.ui === 'v2' && panelId === 'threePanel'"
         },
         { "file": "site/style.css", "line": 955, "source": "#threePanel {" },
         { "file": "site/style.css", "line": 1087, "source": "#threePanel .view-head {" },
@@ -4896,7 +4921,7 @@
         { "file": "site/app.html", "line": 525, "source": "id=\"threeFastBtn\"" },
         {
           "file": "site/app.js",
-          "line": 913,
+          "line": 927,
           "source": "syncThreeRenderModeButton($('threeFastBtn'), threeFastMode);"
         },
         {
@@ -5066,7 +5091,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 912,
+          "line": 926,
           "source": "$('threeBorders').checked = threeShowBorders;"
         },
         {
@@ -5191,7 +5216,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 911,
+          "line": 925,
           "source": "$('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;"
         },
         {
@@ -5220,7 +5245,7 @@
         { "file": "site/app.html", "line": 551, "source": "id=\"threeOpacityRange\"" },
         {
           "file": "site/app.js",
-          "line": 910,
+          "line": 924,
           "source": "$('threeOpacityRange').value = String(threeOpacity);"
         },
         {
@@ -5384,7 +5409,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 117,
+          "line": 118,
           "source": "const fit = tools.querySelector(`#${key === 'three' ? 'fit3dBtn' : `${key}ZoomFit`}`);"
         },
         {
@@ -5747,7 +5772,7 @@
           "line": 761,
           "source": "$('threeHost').dataset.renderError = message;"
         },
-        { "file": "site/app.js", "line": 1595, "source": "observer.observe($('threeHost'));" },
+        { "file": "site/app.js", "line": 1609, "source": "observer.observe($('threeHost'));" },
         { "file": "site/style.css", "line": 638, "source": "#threeHost {" },
         { "file": "site/style.css", "line": 643, "source": "#threeHost canvas {" },
         { "file": "site/style.css", "line": 2726, "source": "#threeHost {" },
@@ -5762,13 +5787,28 @@
           "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #threeHost > canvas {"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 160,
+          "source": "html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='pan'] canvas {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 165,
+          "source": "html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='pan'] canvas:active {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 169,
+          "source": "html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='zoom'] canvas {"
+        },
+        {
           "file": "site/ui-v2/real-view-bridge.js",
           "line": 13,
           "source": "three: ['threePanel', 'threeHost', 'threeStats'],"
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 88,
+          "line": 89,
           "source": "if (!doc.querySelector('#mainCanvas') || !doc.querySelector('#threeHost')) {"
         },
         {
@@ -6360,6 +6400,81 @@
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 316,
           "source": "const host = document.getElementById('threeHost');"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 90,
+          "source": "document.querySelector('#threeHost canvas') &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 91,
+          "source": "document.getElementById('threeHost').dataset.renderPhase === 'complete' &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 97,
+          "source": "window.d1CameraCanvas = document.querySelector('#threeHost canvas');"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 126,
+          "source": ".locator('#threeHost')"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 128,
+          "source": "const box = await page.locator('#threeHost canvas').boundingBox();"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 136,
+          "source": "return hit?.tagName === 'CANVAS' && document.getElementById('threeHost').contains(hit);"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 149,
+          "source": ".locator('#threeHost')"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 157,
+          "source": "const d = document.getElementById('threeHost').dataset;"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 169,
+          "source": "() => document.getElementById('threeHost').dataset.renderPhase === 'complete',"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 216,
+          "source": "assert.equal(await page.locator('#threeHost').getAttribute('data-v2-gesture'), 'orbit');"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 219,
+          "source": "() => document.querySelector('#threeHost canvas') === window.d1CameraCanvas,"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 229,
+          "source": "viewport: await page.locator('#threeHost canvas').boundingBox(),"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 244,
+          "source": "const cancelBox = await page.locator('#threeHost canvas').boundingBox();"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 249,
+          "source": ".locator('#threeHost')"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 259,
+          "source": ".locator('#threeHost')"
         },
         {
           "file": "scripts/welcome-preview-benchmark.mjs",
@@ -7413,6 +7528,11 @@
           "file": "scripts/process-geometry-regression.mjs",
           "line": 245,
           "source": "await recipePage.locator('#baseThickness').fill('525');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 318,
+          "source": "base: input('baseThickness'),"
         },
         {
           "file": "scripts/workstation-regression.mjs",
@@ -12958,7 +13078,7 @@
           "line": 1110,
           "source": "<button id=\"applyOperationBtn\" class=\"primary apply-btn\">Apply</button>"
         },
-        { "file": "site/app.js", "line": 1110, "source": "const button = $('applyOperationBtn');" },
+        { "file": "site/app.js", "line": 1124, "source": "const button = $('applyOperationBtn');" },
         {
           "file": "site/controllers/process-panel-controller.js",
           "line": 255,
@@ -14016,7 +14136,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 258,
+          "line": 272,
           "source": "getProjectName: () => document.getElementById('projectNameInput')?.value || 'Untitled',"
         },
         {
@@ -14300,6 +14420,11 @@
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 99,
+          "source": ".locator('#openProjectInput')"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 79,
           "source": ".locator('#openProjectInput')"
         },
         {
@@ -14761,7 +14886,7 @@
         { "file": "site/app.html", "line": 1363, "source": "data-view-panel=\"sectionPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1509,
+          "line": 1523,
           "source": "$('sectionPanel').hidden = next !== 'section';"
         },
         {
@@ -15210,12 +15335,22 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 327,
+          "line": 295,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 301,
+          "source": "await page.locator('#sectionPanel .view-more-control > summary').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 376,
           "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 328,
+          "line": 377,
           "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
         },
         {
@@ -15364,6 +15499,11 @@
           "source": "const sectionScaleButton = page.locator('#sectionScaleModeBtn');"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 299,
+          "source": "const scaleSelect = page.locator('#sectionScaleModeBtn');"
+        },
+        {
           "file": "scripts/view-ux-v3-regression.mjs",
           "line": 82,
           "source": "await page.locator('#sectionScaleModeBtn').selectOption('physical');"
@@ -15413,12 +15553,12 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 152,
+          "line": 162,
           "source": "['#sectionCollapseAxisBtn', 'zbreak'],"
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 384,
+          "line": 398,
           "source": "const trigger = document.getElementById('sectionCollapseAxisBtn');"
         },
         {
@@ -15493,12 +15633,17 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 328,
+          "line": 295,
           "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 338,
+          "line": 377,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 387,
           "source": ".locator('#sectionCollapseAxisBtn')"
         },
         {
@@ -15689,7 +15834,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 327,
+          "line": 376,
           "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
         }
       ]
@@ -15762,7 +15907,7 @@
           "line": 1371,
           "source": "<canvas id=\"sectionCanvas\"></canvas>"
         },
-        { "file": "site/app.js", "line": 1594, "source": "observer.observe($('sectionCanvas'));" },
+        { "file": "site/app.js", "line": 1608, "source": "observer.observe($('sectionCanvas'));" },
         {
           "file": "site/controllers/export-controller.js",
           "line": 467,
@@ -16084,6 +16229,11 @@
           "source": "const canvas = document.getElementById('sectionCanvas').getBoundingClientRect();"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 305,
+          "source": "const canvas = document.getElementById('sectionCanvas');"
+        },
+        {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 143,
           "source": "document.querySelectorAll('#sectionCanvas').length !== 1 ||"
@@ -16185,7 +16335,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 349,
+          "line": 398,
           "source": "node.parentElement.id === 'sectionCollapseOverlay',"
         },
         {
@@ -16242,7 +16392,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 383,
+          "line": 397,
           "source": "const editor = document.getElementById('sectionCollapseEditor');"
         },
         {
@@ -16302,22 +16452,22 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 330,
+          "line": 379,
           "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.matches(':modal')),"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 335,
+          "line": 384,
           "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 345,
+          "line": 394,
           "source": ".locator('#sectionCollapseEditor')"
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 348,
+          "line": 397,
           "source": "node === window.d1ExtendedOwners.get('sectionCollapseEditor') &&"
         },
         {
@@ -16377,6 +16527,11 @@
           "source": "await page.locator('#sectionCollapseClose').click();"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 298,
+          "source": "await page.locator('#sectionCollapseClose').click();"
+        },
+        {
           "file": "scripts/view-ux-v3-regression.mjs",
           "line": 191,
           "source": "await page.locator('#sectionCollapseClose').click();"
@@ -16425,6 +16580,21 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 512,
           "source": "const enabled = page.locator('#sectionCollapseEnabled');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 296,
+          "source": "if (await page.locator('#sectionCollapseEnabled').isChecked())"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 297,
+          "source": "await page.locator('#sectionCollapseEnabled').uncheck();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 319,
+          "source": "collapsed: d.sectionCollapseEnabled,"
         },
         {
           "file": "scripts/view-ux-v3-regression.mjs",
@@ -17177,7 +17347,7 @@
         },
         {
           "file": "scripts/v2/check-d1-extended.mjs",
-          "line": 319,
+          "line": 368,
           "source": "await page.locator('#sectionDetailCloseBtn').click();"
         }
       ]
@@ -18400,6 +18570,11 @@
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 264,
           "source": "/^ROI created\\./.test(document.getElementById('statusText').textContent),"
+        },
+        {
+          "file": "scripts/v2/check-d1-three-gestures.mjs",
+          "line": 83,
+          "source": "(name) => document.getElementById('statusText').textContent === `Opened ${name}.`,"
         },
         {
           "file": "scripts/visual-baseline-regression.mjs",
@@ -20061,7 +20236,7 @@
       "name": "p-panel-head",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 198, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 208, "kind": "classList.add" }
       ]
     },
     {
@@ -20080,14 +20255,14 @@
       "name": "p-view",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 196, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 206, "kind": "classList.add" }
       ]
     },
     {
       "name": "p-view-head",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 198, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 208, "kind": "classList.add" }
       ]
     },
     {
@@ -20138,8 +20313,8 @@
       "name": "preview-panning",
       "pattern": false,
       "occurrences": [
-        { "file": "site/app.js", "line": 1563, "kind": "classList.add" },
-        { "file": "site/app.js", "line": 1582, "kind": "classList.remove" }
+        { "file": "site/app.js", "line": 1577, "kind": "classList.add" },
+        { "file": "site/app.js", "line": 1596, "kind": "classList.remove" }
       ]
     },
     {
@@ -20166,7 +20341,7 @@
     {
       "name": "process-busy",
       "pattern": false,
-      "occurrences": [{ "file": "site/app.js", "line": 1112, "kind": "classList.toggle" }]
+      "occurrences": [{ "file": "site/app.js", "line": 1126, "kind": "classList.toggle" }]
     },
     {
       "name": "process-history-body",
@@ -20774,14 +20949,14 @@
       "name": "v2-native-toolbar",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 114, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 115, "kind": "classList.add" }
       ]
     },
     {
       "name": "v2-real-view",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 196, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 206, "kind": "classList.add" }
       ]
     },
     {
@@ -20806,7 +20981,7 @@
       "name": "wc-button",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 205, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 215, "kind": "classList.add" }
       ]
     },
     {
@@ -20940,7 +21115,7 @@
     {
       "name": "workstation-boot",
       "pattern": false,
-      "occurrences": [{ "file": "site/app.js", "line": 1705, "kind": "classList.remove" }]
+      "occurrences": [{ "file": "site/app.js", "line": 1719, "kind": "classList.remove" }]
     },
     {
       "name": "workstation-compact-ui",
@@ -21204,32 +21379,32 @@
           "line": 540,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
-        { "file": "site/app.js", "line": 975, "source": "confirmationDialog," },
+        { "file": "site/app.js", "line": 989, "source": "confirmationDialog," },
         {
           "file": "site/app.js",
-          "line": 1040,
+          "line": 1054,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
         {
           "file": "site/app.js",
-          "line": 1104,
+          "line": 1118,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
-        { "file": "site/app.js", "line": 1218, "source": "confirmationDialog.confirm({" },
+        { "file": "site/app.js", "line": 1232, "source": "confirmationDialog.confirm({" },
         {
           "file": "site/app.js",
-          "line": 1288,
+          "line": 1302,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
-        { "file": "site/app.js", "line": 1290, "source": "confirmationDialog.ask({" },
+        { "file": "site/app.js", "line": 1304, "source": "confirmationDialog.ask({" },
         {
           "file": "site/app.js",
-          "line": 1462,
+          "line": 1476,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
         {
           "file": "site/app.js",
-          "line": 1463,
+          "line": 1477,
           "source": "chooseAction: (options) => confirmationDialog.ask(options),"
         },
         {
@@ -24997,6 +25172,13 @@
       "kind": "MemberExpression"
     },
     {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 306,
+      "source": "d = canvas.dataset",
+      "key": null,
+      "kind": "VariableDeclarator"
+    },
+    {
       "file": "scripts/v2/check-d1-real-views.mjs",
       "line": 77,
       "source": "document.body.dataset.ready",
@@ -25085,6 +25267,41 @@
       "line": 357,
       "source": "document.body.dataset.ready",
       "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 71,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 71,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 91,
+      "source": "document.getElementById('threeHost').dataset.renderPhase",
+      "key": "renderPhase",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 157,
+      "source": "d = document.getElementById('threeHost').dataset",
+      "key": null,
+      "kind": "VariableDeclarator"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 169,
+      "source": "document.getElementById('threeHost').dataset.renderPhase",
+      "key": "renderPhase",
       "kind": "MemberExpression"
     },
     {
@@ -25215,21 +25432,21 @@
     },
     {
       "file": "site/app.js",
-      "line": 1475,
+      "line": 1489,
       "source": "document.documentElement.dataset.previewPlanFraming",
       "key": "previewPlanFraming",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 1504,
+      "line": 1518,
       "source": "document.documentElement.dataset.previewView",
       "key": "previewView",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 1704,
+      "line": 1718,
       "source": "document.documentElement.dataset.appReady",
       "key": "appReady",
       "kind": "MemberExpression"
@@ -25505,6 +25722,13 @@
       "line": 49,
       "source": "button.dataset.viewPanel",
       "key": "viewPanel",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/controllers/view-toolbar-controller.js",
+      "line": 63,
+      "source": "root.documentElement.dataset.ui",
+      "key": "ui",
       "kind": "MemberExpression"
     },
     {
@@ -27277,92 +27501,99 @@
       "kind": "MemberExpression"
     },
     {
+      "file": "site/ui-v2/real-three-controls.js",
+      "line": 59,
+      "source": "host.dataset.v2Gesture",
+      "key": "v2Gesture",
+      "kind": "MemberExpression"
+    },
+    {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 176,
+      "line": 186,
       "source": "host.dataset.adapter",
       "key": "adapter",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 197,
+      "line": 207,
       "source": "panel.dataset.view",
       "key": "view",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 202,
+      "line": 212,
       "source": "tools.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 206,
+      "line": 216,
       "source": "control.dataset.size",
       "key": "size",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 232,
+      "line": 242,
       "source": "stage.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 234,
+      "line": 244,
       "source": "readout.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 290,
+      "line": 304,
       "source": "max.dataset.viewPanel",
       "key": "viewPanel",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 297,
+      "line": 311,
       "source": "event.target.closest('[data-action]')?.dataset.action",
       "key": "action",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 326,
+      "line": 340,
       "source": "event.target.dataset.key",
       "key": "key",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 327,
+      "line": 341,
       "source": "event.target.dataset.key",
       "key": "key",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 344,
+      "line": 358,
       "source": "document.documentElement.dataset.appReady",
       "key": "appReady",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 348,
+      "line": 362,
       "source": "document.body.dataset.ready",
       "key": "ready",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 404,
+      "line": 418,
       "source": "document.body.dataset.ready",
       "key": "ready",
       "kind": "MemberExpression"
@@ -29211,6 +29442,13 @@
       "source": "document.querySelector('#threeHost').dataset.renderPhase"
     },
     {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 306,
+      "kind": "dataset",
+      "values": [],
+      "source": "d = canvas.dataset"
+    },
+    {
       "file": "scripts/v2/check-d1-real-views.mjs",
       "line": 77,
       "kind": "dataset",
@@ -29300,6 +29538,41 @@
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 71,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 71,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 91,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.renderPhase"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 157,
+      "kind": "dataset",
+      "values": [],
+      "source": "d = document.getElementById('threeHost').dataset"
+    },
+    {
+      "file": "scripts/v2/check-d1-three-gestures.mjs",
+      "line": 169,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.renderPhase"
     },
     {
       "file": "scripts/visual-baseline-regression.mjs",
@@ -29478,49 +29751,49 @@
     },
     {
       "file": "site/app.js",
-      "line": 1112,
+      "line": 1126,
       "kind": "classList.toggle",
       "values": ["process-busy"],
       "source": "button.classList.toggle('process-busy', disabled)"
     },
     {
       "file": "site/app.js",
-      "line": 1475,
+      "line": 1489,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.previewPlanFraming"
     },
     {
       "file": "site/app.js",
-      "line": 1504,
+      "line": 1518,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.previewView"
     },
     {
       "file": "site/app.js",
-      "line": 1563,
+      "line": 1577,
       "kind": "classList.add",
       "values": ["preview-panning"],
       "source": "canvas.classList.add('preview-panning')"
     },
     {
       "file": "site/app.js",
-      "line": 1582,
+      "line": 1596,
       "kind": "classList.remove",
       "values": ["preview-panning"],
       "source": "canvas.classList.remove('preview-panning')"
     },
     {
       "file": "site/app.js",
-      "line": 1704,
+      "line": 1718,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.appReady"
     },
     {
       "file": "site/app.js",
-      "line": 1705,
+      "line": 1719,
       "kind": "classList.remove",
       "values": ["workstation-boot"],
       "source": "document.documentElement.classList.remove('workstation-boot')"
@@ -32838,6 +33111,13 @@
     {
       "file": "site/controllers/view-toolbar-controller.js",
       "line": 63,
+      "kind": "dataset",
+      "values": [],
+      "source": "root.documentElement.dataset.ui"
+    },
+    {
+      "file": "site/controllers/view-toolbar-controller.js",
+      "line": 70,
       "kind": "insertBefore",
       "values": [],
       "source": "node.parentNode.insertBefore(placeholder, node)"
@@ -35468,218 +35748,225 @@
       "source": "document.body.dataset.ready"
     },
     {
+      "file": "site/ui-v2/real-three-controls.js",
+      "line": 59,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.v2Gesture"
+    },
+    {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 65,
+      "line": 66,
       "kind": "append",
       "values": [],
       "source": "select.append(option)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 68,
+      "line": 69,
       "kind": "append",
       "values": [],
       "source": "row.append(el('label', {}, label + ' ', select))"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 70,
+      "line": 71,
       "kind": "append",
       "values": [],
       "source": "bar.append(row)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 94,
+      "line": 95,
       "kind": "append",
       "values": [],
       "source": "contract.append(document.importNode(node, true))"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 108,
+      "line": 109,
       "kind": "replaceChildren",
       "values": [],
       "source": "node.replaceChildren(window.WaferCadV2Icons.icon(glyph), document.createTextNode(text))"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 114,
+      "line": 115,
       "kind": "classList.add",
       "values": ["v2-native-toolbar"],
       "source": "tools.classList.add('v2-native-toolbar')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 120,
+      "line": 121,
       "kind": "prepend",
       "values": [],
       "source": "tools.prepend(fit)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 164,
+      "line": 174,
       "kind": "append",
       "values": [],
       "source": "tools.append(more)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 165,
+      "line": 175,
       "kind": "append",
       "values": [],
       "source": "tools.append(max)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 176,
+      "line": 186,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.adapter"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 182,
+      "line": 192,
       "kind": "append",
       "values": [],
       "source": "content.append(el('p', { class: 'p-aux' }, 'This domain is not wired in D1.'))"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 196,
+      "line": 206,
       "kind": "classList.add",
       "values": ["p-view", "v2-real-view"],
       "source": "panel.classList.add('p-view', 'v2-real-view')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 197,
+      "line": 207,
       "kind": "dataset",
       "values": [],
       "source": "panel.dataset.view"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 198,
+      "line": 208,
       "kind": "classList.add",
       "values": ["p-panel-head", "p-view-head"],
       "source": "header.classList.add('p-panel-head', 'p-view-head')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 202,
+      "line": 212,
       "kind": "dataset",
       "values": [],
       "source": "tools.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 205,
+      "line": 215,
       "kind": "classList.add",
       "values": ["wc-button"],
       "source": "control.classList.add('wc-button')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 206,
+      "line": 216,
       "kind": "dataset",
       "values": [],
       "source": "control.dataset.size"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 232,
+      "line": 242,
       "kind": "dataset",
       "values": [],
       "source": "stage.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 234,
+      "line": 244,
       "kind": "dataset",
       "values": [],
       "source": "readout.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 235,
+      "line": 245,
       "kind": "append",
       "values": [],
       "source": "panel.append(\n            el('div', {\n              class: 'v2-real-overlays',\n              'data-slot': `view.${key}.overlays`,\n              hidden: true,\n            }),\n          )"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 243,
+      "line": 253,
       "kind": "append",
       "values": [],
       "source": "host.append(panel)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 290,
+      "line": 304,
       "kind": "dataset",
       "values": [],
       "source": "max.dataset.viewPanel"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 297,
+      "line": 311,
       "kind": "dataset",
       "values": [],
       "source": "event.target.closest('[data-action]')?.dataset.action"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 326,
+      "line": 340,
       "kind": "dataset",
       "values": [],
       "source": "event.target.dataset.key"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 327,
+      "line": 341,
       "kind": "dataset",
       "values": [],
       "source": "event.target.dataset.key"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 336,
+      "line": 350,
       "kind": "createElement",
       "values": ["script"],
       "source": "document.createElement('script')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 341,
+      "line": 355,
       "kind": "append",
       "values": [],
       "source": "document.head.append(vendor)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 344,
+      "line": 358,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.appReady"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 348,
+      "line": 362,
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 404,
+      "line": 418,
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 406,
+      "line": 420,
       "kind": "replaceChildren",
       "values": [],
       "source": "root.replaceChildren(\n      el(\n        'p',\n        { role: 'alert', class: 'p-aux' },\n        `D1 real views could not start: ${error.message}. Open app.html for the production workspace.`,\n      ),\n    )"

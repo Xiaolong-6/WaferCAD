@@ -3,8 +3,10 @@
 // The optional gesture modes override left-drag only while active; default orbit stays unchanged.
 (() => {
   const { button } = window.WaferCadV2Components;
-  const finite = (point) => Array.isArray(point) &&
-    point.length === 3 && point.every((value) => Number.isFinite(Number(value)));
+  const finite = (point) =>
+    Array.isArray(point) &&
+    point.length === 3 &&
+    point.every((value) => Number.isFinite(Number(value)));
   const sub = (a, b) => a.map((v, i) => v - b[i]);
   const add = (a, b) => a.map((v, i) => v + b[i]);
   const scale = (a, n) => a.map((v) => v * n);
@@ -25,13 +27,12 @@
     const forwardVector = sub(input.target, input.position);
     const distance = Math.hypot(...forwardVector);
     const forward = unit(forwardVector);
-    if (!forward || !Number.isFinite(input.fov) || input.fov <= 0 || input.fov >= 180)
-      return null;
+    if (!forward || !Number.isFinite(input.fov) || input.fov <= 0 || input.fov >= 180) return null;
     const right = unit(cross(forward, [0, 0, 1])) || unit(cross(forward, [0, 1, 0]));
     const up = right && unit(cross(right, forward));
     if (!right || !up) return null;
-    const worldPerCssPixel = (2 * distance * Math.tan((input.fov * Math.PI) / 360)) /
-      Math.max(1, viewportHeight);
+    const worldPerCssPixel =
+      (2 * distance * Math.tan((input.fov * Math.PI) / 360)) / Math.max(1, viewportHeight);
     const change = add(scale(right, -dx * worldPerCssPixel), scale(up, dy * worldPerCssPixel));
     return { ...input, position: add(input.position, change), target: add(input.target, change) };
   }
@@ -63,8 +64,13 @@
       sync();
     }
     function begin(event) {
-      if (!mode || event.button !== 0 || event.isPrimary === false ||
-          event.target.tagName !== 'CANVAS') return;
+      if (
+        !mode ||
+        event.button !== 0 ||
+        event.isPrimary === false ||
+        event.target.tagName !== 'CANVAS'
+      )
+        return;
       const camera = getCamera();
       if (!finite(camera?.position) || !finite(camera?.target)) return;
       const canvas = event.target;
@@ -84,10 +90,12 @@
     }
     function move(event) {
       if (!drag || drag.pointerId !== event.pointerId) return;
-      const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-      const next = drag.mode === 'pan'
-        ? moveCamera(drag.camera, dx, dy, drag.height)
-        : zoomCamera(drag.camera, dy);
+      const dx = event.clientX - drag.x,
+        dy = event.clientY - drag.y;
+      const next =
+        drag.mode === 'pan'
+          ? moveCamera(drag.camera, dx, dy, drag.height)
+          : zoomCamera(drag.camera, dy);
       if (next) setCamera(next);
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -114,7 +122,10 @@
       'aria-label': 'Zoom 3D',
       'aria-pressed': 'false',
     });
-    controls = new Map([['pan', pan], ['zoom', zoom]]);
+    controls = new Map([
+      ['pan', pan],
+      ['zoom', zoom],
+    ]);
     pan.addEventListener('click', () => setMode('pan'));
     zoom.addEventListener('click', () => setMode('zoom'));
     // Listen on the host capture phase to take only opted-in left gestures.
@@ -130,7 +141,9 @@
     return Object.freeze({
       pan,
       zoom,
-      hide() { if (drag) finish(drag.pointerId); },
+      hide() {
+        if (drag) finish(drag.pointerId);
+      },
       getMode: () => mode,
       destroy() {
         if (drag) finish(drag.pointerId);

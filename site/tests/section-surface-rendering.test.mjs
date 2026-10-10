@@ -28,6 +28,37 @@ const {
   translateSectionCollapse,
 } = await import('../section-z-collapse.js');
 
+test('physical Section preserves subpixel frame position and X:Z scale', () => {
+  const zMin = -6.96,
+    zMax = 6.96,
+    xScale = 0.01025;
+  const physicalHeight = (zMax - zMin) * xScale;
+  const transform = createSectionZTransform({
+    zMin,
+    zMax,
+    collapse: { enabled: false },
+    plotTop: 178.25,
+    plotHeight: physicalHeight,
+    mode: 'physical',
+    xScale,
+  });
+  assert.ok(physicalHeight < 1, 'Scenario is a subpixel physical cross-section');
+  assert.ok(Math.abs(transform.mapZ(zMax) - 178.25) < 1e-10);
+  assert.ok(Math.abs(transform.mapZ(zMin) - (178.25 + physicalHeight)) < 1e-10);
+  assert.equal(transform.topScale, xScale);
+  assert.equal(transform.bottomScale, xScale);
+  const auto = createSectionZTransform({
+    zMin,
+    zMax,
+    collapse: { enabled: false },
+    plotTop: 178.25,
+    plotHeight: physicalHeight,
+    mode: 'auto',
+    xScale,
+  });
+  assert.ok(Math.abs(auto.frameHeight - 1) < 1e-12, 'Auto readability floor is unchanged');
+});
+
 test('Section collapse and surface rendering contracts', () => {
   for (const palette of Object.values(STRUCTURE_PALETTES)) assert.equal(palette.length, 20);
 
