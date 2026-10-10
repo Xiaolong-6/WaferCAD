@@ -163,7 +163,7 @@ export function surveyV4FeatureFootprints(
     for (const [dx, dy] of offsets) {
       for (const f of fragments) {
         if (report.measuredQuads >= maxQuads) {
-          report.workOverflow += count - (report.representedQuads - count);
+          report.workOverflow = Math.max(0, report.representedQuads - report.measuredQuads);
           // The report is explicitly incomplete; stop without authorizing LOD.
           return report;
         }
