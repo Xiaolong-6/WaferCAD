@@ -192,6 +192,44 @@ R1 is intended as an _initial experiment_, not acceptance of V4 or PR #166.
 Record exact CI results, browser availability and final branch HEAD in the
 Draft PR; any unrun gate remains **pending**, never implicitly passed.
 
+## R3 Phase A — per-feature projection and resource census (2026-10-10)
+
+Two more **default-off, observe-only** pilots are wired into
+`site/three-view.js`, on the existing PR #174 branch:
+
+- `?rendererV4FeatureSurvey=1` projects individually translated smooth,
+  buried sidewall quads rather than bounding entire 64-instance tiles.
+  A hard 8,192 projected-quad work budget, source validation, Z/ROI/
+  edge-on gates and near-plane fail-closed behavior preserve correctness.
+  `data-v4-feature-measured-quads`, `data-v4-feature-subpixel-quads`,
+  `data-v4-feature-overflow`, `data-v4-feature-gate` and
+  `data-v4-feature-skipped-triangles` expose full-versus-bounded coverage.
+  **A measured subpixel quad contributes to alpha; it is never culled.**
+- `?rendererV4GpuCensus=1` inventories actual retained scene-variant
+  objects, unique BufferGeometry and materials, InstancedMesh counts,
+  cross-variant shared references and estimated typed-array bytes.
+  `data-v4-gpu-resource-*` is an accounting snapshot and deliberately
+  never calls `dispose` or changes resource ownership. Estimated array
+  bytes do **not** equal driver VRAM allocation or GPU transfer bandwidth.
+- Tests in `site/tests/renderer-v4-r3-evidence.test.mjs` cover
+  individual feature footprints versus grouped bounds, alpha/Z guards,
+  near-plane clipping, bounded overflow, immutable source geometry,
+  shared resources, typed-array deduplication and zero disposer calls.
+- `scripts/renderer-v4-r3-browser.mjs` compares identical 625-site
+  fixed-pose R1/R3 WebGL canvas screenshots and draw submissions, and
+  requires nonempty R3 feature and resource census results. The
+  branch-only workflow `renderer-v4-r3-browser.yml` runs it in Chromium.
+  As with earlier CI, SwiftShader results must not be called physical GPU
+  measurements.
+
+**R3 Phase A is an enabling investigation, not completed dynamic LOD.**
+No face omission, simplification of buried interfaces, instancing batch
+change, Z-transform buffer sharing or GLB export change has been made.
+GPU ownership and hardware performance gains are unverified. Promotion to
+a drawable R3 LOD path requires a tested alpha-equivalence rule, resource
+lifetime ownership contract, representative near/edge-on and ROI screenshots,
+and real hardware GPU A/B.
+
 ## R2 verified checkpoint — 2026-10-10
 
 - [Full R1/R2 focused CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38063163584):
