@@ -23,6 +23,9 @@ flowchart LR
   Diagrams --> AssetGenerator[scripts/build-wiki-diagrams.mjs]
   AssetGenerator --> Images["docs/wiki/assets/process/*.svg"]
   Generator --> Operations[docs/wiki/Process-Operations.md]
+  Generator --> Portable[site/ui-v2/process-guide.generated.js]
+  Diagrams --> Generator
+  Portable --> Preview[v2 mock Process guide]
   Images --> Operations
   Authored[Authored docs/wiki pages] --> Wiki[GitHub Wiki sync on main]
   Operations --> Wiki
@@ -33,6 +36,7 @@ flowchart LR
 ```
 
 - Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference **and all affected SVG assets** with their sources. The old `site/guide/` route is a compatibility redirect to the Wiki.
+- The same command generates `site/ui-v2/process-guide.generated.js`, a classic-script bridge used only by the portable mock preview, including direct `file://` boot. Never hand-edit its catalog or diagrams. `docs:check` rejects bridge drift; `process-guide.test.mjs` compares all 19 Before/After pairs to the canonical modules. This does not connect production Process controllers or alter geometry.
 - Edit other Wiki pages directly. `site/bundled-examples.js` owns the six-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
 - [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.

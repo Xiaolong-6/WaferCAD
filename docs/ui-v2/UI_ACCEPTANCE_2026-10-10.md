@@ -1,6 +1,6 @@
 # UI v2 actual UI acceptance — 2026-10-10
 
-**Current result at `2ae4ca3`: targeted UI acceptance PASS; UI-01 through UI-08 closed. Automated M2.5 shell checks PASS (49 checks).**
+**Targeted result at `2ae4ca3`: UI-01 through UI-08 closed; automated M2.5 shell checks PASS (49 checks). The later [actual legacy comparison and compact fixes](LEGACY_BROWSER_COMPARISON_2026-10-10.md) supersedes any broader interpretation: product `d6a233a` has 54 passing shell checks, but new mock/UI parity findings remain open. Full UI/product migration acceptance is not passed.**
 
 ## Repair and recheck — `2ae4ca3`
 
