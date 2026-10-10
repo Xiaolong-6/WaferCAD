@@ -124,6 +124,7 @@ async function runArm(name, search) {
       assert.ok(rect, 'visible 3D canvas is required for a camera-move probe');
       const x = rect.x + rect.width / 2;
       const y = rect.y + rect.height / 2;
+      const cameraMoveStartedAt = performance.now();
       await page.mouse.move(x, y);
       await page.mouse.down();
       await page.mouse.move(x + 48, y + 16, { steps: 5 });
@@ -136,6 +137,9 @@ async function runArm(name, search) {
       const moved = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
       result.v4TileCacheHitsAfterCameraMove = moved.v4TileCacheHits;
       result.v4TileCameraSamples = moved.v4TileCacheCameraSamples;
+      result.cameraMoveProbeMs = performance.now() - cameraMoveStartedAt;
+      result.v4HeavyCameraNoDampingActive = moved.v4HeavyCameraNoDampingActive;
+      assert.equal(result.v4HeavyCameraNoDampingActive, 'true');
       assert.ok(Number(result.v4TileCameraSamples) > 0);
       assert.equal(moved.v4TileSkippedTriangles, '0');
       assert.deepEqual(errors, [], 'camera movement must retain zero page errors');
@@ -148,7 +152,7 @@ async function runArm(name, search) {
 
 try {
   await runArm('r1-probe', 'rendererV4TileProbe=1');
-  await runArm('r2-cpu-plan', 'rendererV4TileCache=1');
+  await runArm('r2-cpu-plan', 'rendererV4TileCache=1&rendererV4HeavyCameraNoDamping=1');
   const [r1, r2] = observations.map((arm) => arm.result);
   for (const key of [
     'modelRevision',
