@@ -853,6 +853,7 @@ const projectStateController = createProjectStateController({
     roiAnchor,
     section,
     sectionScaleMode,
+    sectionViewport,
     sectionShowBorders,
     sectionCollapse,
     sectionDetailRoi,
@@ -903,6 +904,7 @@ const projectStateController = createProjectStateController({
     processRecipe = next.processRecipe ? structuredClone(next.processRecipe) : null;
     processRecipeController?.refresh();
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
+    sectionViewport = normalizeSectionViewport(next.sectionViewport);
     sectionShowBorders = Boolean(next.sectionShowBorders);
     sectionCollapse = next.sectionCollapse || null;
     sectionDetailRoi = next.sectionDetailRoi || null;
