@@ -110,6 +110,29 @@ async function runArm(name, search) {
       }),
     };
     observations.push({ result, png });
+    if (name === 'r2-cpu-plan') {
+      // A real OrbitControls interaction must reuse the *same* prepared
+      // CPU partition. Pixel comparison above remains at the original pose.
+      const rect = await page.locator('#threeHost canvas').boundingBox();
+      assert.ok(rect, 'visible 3D canvas is required for a camera-move probe');
+      const x = rect.x + rect.width / 2;
+      const y = rect.y + rect.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 48, y + 16, { steps: 5 });
+      await page.mouse.up();
+      await page.waitForFunction(
+        () => Number(document.getElementById('threeHost')?.dataset.v4TileCacheHits || 0) > 0,
+        null,
+        { timeout: 180000 },
+      );
+      const moved = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+      result.v4TileCacheHitsAfterCameraMove = moved.v4TileCacheHits;
+      result.v4TileCameraSamples = moved.v4TileCacheCameraSamples;
+      assert.ok(Number(result.v4TileCameraSamples) > 0);
+      assert.equal(moved.v4TileSkippedTriangles, '0');
+      assert.deepEqual(errors, [], 'camera movement must retain zero page errors');
+    }
     console.log('RENDERER_V4_R2_BROWSER_ARM', JSON.stringify(result));
   } finally {
     await context.close();
