@@ -8,6 +8,7 @@ on:
       - site/three-view.js
       - site/renderer-v4-adaptive-tiles.js
       - site/renderer-v4-tile-plan.js
+      - site/renderer-v4-interaction-policy.js
       - scripts/renderer-v4-r2-browser.mjs
       - .github/workflows/renderer-v4-r2-browser.yml
 
