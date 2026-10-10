@@ -54,6 +54,24 @@ test('budget overflow is explicit and never extrapolated into face-removal autho
   assert.equal(r.skippedTriangles, 0);
 });
 
+test('feature sampling is deterministic and stratified across multiple valid owners', () => {
+  const a = owner();
+  const b = owner();
+  b.layerId = 'second';
+  b.instanceTranslations = b.instanceTranslations.map(([x, y]) => [x + 2, y]);
+  const report = surveyV4FeatureFootprints([a, b], { ...camera, maxQuads: 10 });
+  const repeat = surveyV4FeatureFootprints([a, b], { ...camera, maxQuads: 10 });
+  assert.deepEqual(report, repeat);
+  assert.equal(report.owners, 2);
+  assert.equal(report.sampledOwners, 2);
+  assert.equal(report.measuredQuads, 10);
+  assert.equal(report.representedQuads, 256);
+  assert.equal(report.workOverflow, 246);
+  assert.equal(report.subpixelQuads, 5);
+  assert.equal(report.offscreenQuads, 5);
+  assert.equal(report.skippedTriangles, 0);
+});
+
 test('invalid perspective input and near-plane clipping fail closed', () => {
   const bad = surveyV4FeatureFootprints([owner()], {
     ...camera,
