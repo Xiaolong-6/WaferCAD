@@ -2,7 +2,14 @@
 // No CSS canvas transforms, geometry edits or alternate section renderer.
 (() => {
   const { button } = window.WaferCadV2Components;
-  function create({ canvas, getViewport, setViewport, panViewport, zoomViewportAt, cancelDetailDrawing }) {
+  function create({
+    canvas,
+    getViewport,
+    setViewport,
+    panViewport,
+    zoomViewportAt,
+    cancelDetailDrawing,
+  }) {
     if (!(canvas instanceof HTMLCanvasElement)) throw TypeError('Section native canvas required');
     for (const fn of [getViewport, setViewport, panViewport, zoomViewportAt, cancelDetailDrawing]) {
       if (typeof fn !== 'function') throw TypeError('Section viewport callbacks required');
@@ -22,7 +29,8 @@
       'aria-pressed': 'false',
     });
     const detailButton = document.getElementById('sectionDetailRoiBtn');
-    let mode = null, drag = null;
+    let mode = null,
+      drag = null;
     function finish(pointerId) {
       if (!drag || pointerId !== drag.pointerId) return;
       const id = drag.pointerId;
@@ -45,8 +53,14 @@
       setViewport({ zoom: 1, panX: 0, panY: 0 });
     }
     function begin(event) {
-      if (!mode || event.button !== 0 || event.isPrimary === false ||
-          event.target !== canvas || canvas.classList.contains('section-detail-drawing')) return;
+      if (
+        !mode ||
+        event.button !== 0 ||
+        event.isPrimary === false ||
+        event.target !== canvas ||
+        canvas.classList.contains('section-detail-drawing')
+      )
+        return;
       const rect = canvas.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return;
       const viewport = getViewport();
@@ -67,7 +81,8 @@
     }
     function move(event) {
       if (!drag || event.pointerId !== drag.pointerId) return;
-      const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+      const dx = event.clientX - drag.x,
+        dy = event.clientY - drag.y;
       if (drag.mode === 'pan') {
         // Start-relative pan avoids integration drift across event frequencies.
         setViewport({
@@ -80,8 +95,12 @@
         const factor = Math.exp(-dy * 0.009);
         // Compute directly from drag start; do not double-render every move.
         zoomViewportAt(
-          factor, drag.localX, drag.localY,
-          drag.rectWidth, drag.rectHeight, drag.viewport,
+          factor,
+          drag.localX,
+          drag.localY,
+          drag.rectWidth,
+          drag.rectHeight,
+          drag.viewport,
         );
       }
       event.preventDefault();
@@ -108,9 +127,13 @@
     canvas.addEventListener('lostpointercapture', lost);
     sync();
     return Object.freeze({
-      fit, pan, zoom,
+      fit,
+      pan,
+      zoom,
       getMode: () => mode,
-      hide() { if (drag) finish(drag.pointerId); },
+      hide() {
+        if (drag) finish(drag.pointerId);
+      },
       destroy() {
         if (drag) finish(drag.pointerId);
         detailButton?.removeEventListener('click', releaseToDetail);
