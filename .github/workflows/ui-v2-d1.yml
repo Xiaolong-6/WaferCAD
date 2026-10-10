@@ -43,7 +43,7 @@ jobs:
             site/tests/project-file.test.mjs
       - name: Verify formatting of changed D1 source
         run: |
-          npx prettier --write \
+          npx prettier --check \
             site/app.js \
             site/plan-renderers.js \
             site/project-schema.js \
@@ -58,10 +58,6 @@ jobs:
             site/tests/section-view-viewport.test.mjs \
             site/tests/project-file.test.mjs \
             scripts/v2/check-d1-extended.mjs
-          echo "FORMAT_PATCH_BEGIN"
-          git diff --no-ext-diff --unified=3 -- site scripts/v2
-          echo "FORMAT_PATCH_END"
-          exit 1
       - name: Cache Chromium
         uses: actions/cache@v5
         with:
