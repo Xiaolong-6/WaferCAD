@@ -688,7 +688,7 @@ acceptance before enabling the policy by default. PR #166 remains Draft.
 The completed WebGL attribution showed **5,947,500 submitted triangles**
 from Electrical Region surfaces (of **57,040,012** total Quality transparent
 triangles). In contrast to interior Electrical Region volumes, a smooth
-electrical *surface cap* lies in a single Z plane; Three.js's default
+electrical _surface cap_ lies in a single Z plane; Three.js's default
 transparent DoubleSide backface/frontface two-pass draw can issue a redundant
 pass for that cap. The material-cap single-pass implementation already has
 a tested policy; this change extends it to one explicitly gated annotation
@@ -713,7 +713,7 @@ calls while OFF retains **57,040,012 triangles / 1,408 calls**. A new separate
 `test-results/renderer-electrical-planar-ab/` output captures the four
 frames, per-trial counts and completed-frame timings.
 
-**Status: not yet scientifically accepted.** The reduction is a *candidate*
+**Status: not yet scientifically accepted.** The reduction is a _candidate_
 only: opaque/transparent boundaries or blended coplanar overlaps could still
 change pixels and fail the parity gate. Even a complete same-run image match
 does not demonstrate a statistically significant hardware speedup. Require
@@ -746,20 +746,20 @@ pixel parity** contract, despite reducing GPU submissions. Neither is
 shipped; implementation modules, query flag, tests and P1 CI wiring were
 **removed from the active branch**. No screenshot baseline was adjusted.
 
-| Candidate | A/B run | ON submitted triangles | ON draw calls | ON vs reference PNG | Gate |
-| --- | --- | ---: | ---: | --- | --- |
-| Group smooth caps separately, wall remains two-pass | [38031265243](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031265243) | **48,118,762** | **1,408** | 20,815 vs 20,819 bytes; pixels differ | **FAIL** |
-| Original BackSide/FrontSide order, separate indexed meshes skipping opposite cap | [38032284826](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38032284826) | **48,118,762** | **1,291** | 20,821 vs 20,819 bytes; pixels differ | **FAIL** |
+| Candidate                                                                        | A/B run                                                                        | ON submitted triangles | ON draw calls | ON vs reference PNG                   | Gate     |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------: | ------------: | ------------------------------------- | -------- |
+| Group smooth caps separately, wall remains two-pass                              | [38031265243](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031265243) |         **48,118,762** |     **1,408** | 20,815 vs 20,819 bytes; pixels differ | **FAIL** |
+| Original BackSide/FrontSide order, separate indexed meshes skipping opposite cap | [38032284826](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38032284826) |         **48,118,762** |     **1,291** | 20,821 vs 20,819 bytes; pixels differ | **FAIL** |
 
 A subsequent **decoded RGBA per-pixel** examination of the original
 CI artifacts (both Playwright canvas screenshots are 531 × 275 RGB PNG)
 quantified the mismatch, which cannot be inferred from differing compressed
 PNG file sizes alone:
 
-| Candidate | Pixels changed / 146,025 | Pixel fraction | Largest per-channel difference | Changed pixel bounding box |
-| --- | ---: | ---: | ---: | --- |
-| Separate material-group cap | **12** | **0.00822%** | **1 / 255** | x 222–300, y 136–151 |
-| Explicit indexed BackSide/FrontSide | **2** | **0.00137%** | **1 / 255** | x 230, y 157–158 |
+| Candidate                           | Pixels changed / 146,025 | Pixel fraction | Largest per-channel difference | Changed pixel bounding box |
+| ----------------------------------- | -----------------------: | -------------: | -----------------------------: | -------------------------- |
+| Separate material-group cap         |                   **12** |   **0.00822%** |                    **1 / 255** | x 222–300, y 136–151       |
+| Explicit indexed BackSide/FrontSide |                    **2** |   **0.00137%** |                    **1 / 255** | x 230, y 157–158           |
 
 The first trial altered single RGB channels by ±1; the second altered only
 R/B channels by ±1. Both screenshots have identical dimensions; alpha is
@@ -809,7 +809,7 @@ were achieved by P1.
 ## Phase B.5 — manual real-GPU Electrical surface ABBA gate (2026-10-10)
 
 **Tooling completed; real hardware measurement is not yet claimed.** The
-existing Quality 625-site smooth Electrical *surface* experiment can now be
+existing Quality 625-site smooth Electrical _surface_ experiment can now be
 checked on a real Windows GPU without introducing another expensive CI job.
 
 Start WaferCAD locally (two terminals, from repository root):

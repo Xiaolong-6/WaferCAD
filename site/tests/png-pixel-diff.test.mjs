@@ -19,12 +19,10 @@ test('Playwright RGB PNG bytes decode to exact RGBA pixel samples', () => {
   const image = decodeScreenshotPng(SAME);
   assert.equal(image.width, 2);
   assert.equal(image.height, 2);
-  assert.deepEqual([...image.rgba], [
-    10, 20, 30, 255,
-    40, 50, 60, 255,
-    70, 80, 90, 255,
-    100, 110, 120, 255,
-  ]);
+  assert.deepEqual(
+    [...image.rgba],
+    [10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255],
+  );
 });
 
 test('pixel diagnostics distinguish byte parity from one-LSB RGB differences', () => {

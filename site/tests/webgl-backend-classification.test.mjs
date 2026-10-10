@@ -4,7 +4,8 @@ import { classifyWebglBackend } from '../../scripts/test-helpers/webgl-backend-c
 
 test('WebGL hardware gate accepts a surfaced real adapter', () => {
   const result = classifyWebglBackend({
-    unmaskedRenderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0)',
+    unmaskedRenderer:
+      'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0)',
     renderer: 'WebKit WebGL',
   });
   assert.equal(result.hardwareVerified, true);

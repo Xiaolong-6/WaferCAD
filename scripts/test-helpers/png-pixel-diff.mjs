@@ -68,11 +68,15 @@ export function decodeScreenshotPng(source) {
         above = previous[x],
         upperLeft = x < channels ? 0 : previous[x - channels];
       const predictor =
-        filter === 0 ? 0
-        : filter === 1 ? left
-        : filter === 2 ? above
-        : filter === 3 ? Math.floor((left + above) / 2)
-        : paeth(left, above, upperLeft);
+        filter === 0
+          ? 0
+          : filter === 1
+            ? left
+            : filter === 2
+              ? above
+              : filter === 3
+                ? Math.floor((left + above) / 2)
+                : paeth(left, above, upperLeft);
       row[x] = (raw[inputOffset + x] + predictor) & 255;
     }
     inputOffset += stride;
@@ -145,8 +149,7 @@ export function compareScreenshotPngPixels(reference, candidate) {
     maxChannelDelta,
     totalAbsoluteDelta,
     changedChannelsRGBA: channelChanged,
-    boundingBox:
-      differentPixels > 0 ? { minX, minY, maxX, maxY } : null,
+    boundingBox: differentPixels > 0 ? { minX, minY, maxX, maxY } : null,
     firstDifferences,
   };
 }
