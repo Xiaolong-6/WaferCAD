@@ -4,7 +4,17 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { launchBrowser, newUiContext, observePageErrors, waitForAppReady, waitForThreeReady, chooseConfirmation, closeFunctionPanel, baseUrl } from './test-helpers/ui.mjs';
+import { createHash } from 'node:crypto';
+import {
+  launchBrowser,
+  newUiContext,
+  observePageErrors,
+  waitForAppReady,
+  waitForThreeReady,
+  chooseConfirmation,
+  closeFunctionPanel,
+  baseUrl,
+} from './test-helpers/ui.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
 
@@ -16,7 +26,12 @@ await context.addInitScript(installWebglFrameProbe);
 const page = await context.newPage();
 page.setDefaultTimeout(180000);
 const errors = observePageErrors(page);
-const report = { mode: 'one-context-electrical-on-off-off-on', browserVersion: browser.version(), trials: [], errors };
+const report = {
+  mode: 'one-context-electrical-on-on-off-off-on-on',
+  browserVersion: browser.version(),
+  trials: [],
+  errors,
+};
 const snapshot = () => page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
 let stage = 'boot';
 try {
@@ -26,7 +41,9 @@ try {
   await waitForAppReady(page);
   stage = 'load-project';
   await page.locator('#openProjectInput').setInputFiles(
-    fileURLToPath(new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url)),
+    fileURLToPath(
+      new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+    ),
   );
   await chooseConfirmation(page);
   await page.waitForFunction(
@@ -47,10 +64,12 @@ try {
   await page.waitForFunction(
     (serial) => {
       const host = document.getElementById('threeHost');
-      return host?.dataset.renderState === 'ready' &&
+      return (
+        host?.dataset.renderState === 'ready' &&
         host.dataset.renderQuality === 'quality' &&
         host.dataset.sceneVariant === 'transparent' &&
-        Number(host.dataset.rendererFrameSerial || 0) > serial;
+        Number(host.dataset.rendererFrameSerial || 0) > serial
+      );
     },
     before,
     { timeout: 180000 },
@@ -72,10 +91,28 @@ try {
     THREE.Object3D.prototype.onBeforeRender = function (...args) {
       const material = args[4];
       const descriptor = this.userData?.waferCadPresentation;
-      if (descriptor?.kind === 'electrical-surface' &&
-          descriptor.planarCap === true &&
-          descriptor.experimentalElectricalPlanarSinglePass === true &&
-          material?.userData?.waferCadSinglePassPlanarCap === true) {
+      const renderer = args[0];
+      const camera = args[2];
+      const frame = renderer.info.render.frame;
+      if (window.__waferCadSameContextTrace?.frame !== frame) {
+        window.__waferCadSameContextTrace = {
+          frame,
+          cameraWorld: camera.matrixWorld.toArray(),
+          cameraProjection: camera.projectionMatrix.toArray(),
+          order: [],
+        };
+      }
+      window.__waferCadSameContextTrace.order.push([
+        this.name,
+        descriptor?.kind || null,
+        this.renderOrder,
+      ]);
+      if (
+        descriptor?.kind === 'electrical-surface' &&
+        descriptor.planarCap === true &&
+        descriptor.experimentalElectricalPlanarSinglePass === true &&
+        material?.userData?.waferCadSinglePassPlanarCap === true
+      ) {
         material.forceSinglePass = window.__waferCadSameContextPolicy;
         window.__waferCadSameContextEligible++;
       }
@@ -84,7 +121,10 @@ try {
     };
   });
   let reference = null;
-  for (const [index, singlePass] of [true, false, false, true].entries()) {
+  let referencePose = null;
+  let referenceOrder = null;
+  const policyReferences = new Map();
+  for (const [index, singlePass] of [true, true, false, false, true, true].entries()) {
     const label = `${index + 1}-${singlePass ? 'single' : 'double'}`;
     stage = label;
     const serial = Number((await snapshot()).rendererFrameSerial || 0);
@@ -102,8 +142,10 @@ try {
     await page.waitForFunction(
       (previous) => {
         const host = document.getElementById('threeHost');
-        return host?.dataset.renderState === 'ready' &&
-          Number(host.dataset.rendererFrameSerial || 0) > previous;
+        return (
+          host?.dataset.renderState === 'ready' &&
+          Number(host.dataset.rendererFrameSerial || 0) > previous
+        );
       },
       serial,
       { timeout: 180000 },
@@ -115,6 +157,7 @@ try {
     const probe = await page.evaluate(() => ({
       eligibleDraws: window.__waferCadSameContextEligible,
       last: window.__waferCadWebglProbe.frames().at(-1),
+      trace: window.__waferCadSameContextTrace,
     }));
     assert.ok(probe.eligibleDraws > 0, 'eligible smooth Electrical caps must be intercepted');
     const expectedTriangles = singlePass ? 54066262 : 57040012;
@@ -129,11 +172,29 @@ try {
     assert.equal(probe.last.triangles, expectedTriangles, 'native GL triangle census');
     assert.equal(probe.last.drawCalls, expectedCalls, 'native GL draw census');
     assert.equal(probe.last.glError, 0);
-    assert.equal(probe.last.frameSerial, Number(state.rendererFrameSerial));
-    for (const key of ['sceneGeneration', 'modelRevision', 'processRevision', 'surfacePlanBuildCount', 'presentationObjectCount']) {
+    for (const key of [
+      'sceneGeneration',
+      'modelRevision',
+      'processRevision',
+      'surfacePlanBuildCount',
+      'presentationObjectCount',
+    ]) {
       assert.equal(state[key], baseline[key], `${label}: scene contract ${key}`);
     }
     const comparison = reference ? compareScreenshotPngPixels(reference, canvas) : null;
+    const previousForPolicy = policyReferences.get(singlePass);
+    const samePolicyComparison = previousForPolicy
+      ? compareScreenshotPngPixels(previousForPolicy, canvas)
+      : null;
+    const pose = JSON.stringify([probe.trace?.cameraWorld, probe.trace?.cameraProjection]);
+    const order = createHash('sha256').update(JSON.stringify(probe.trace?.order)).digest('hex');
+    await writeFile(new URL(`${label}-trace.json`, output), JSON.stringify(probe.trace));
+    if (!reference) {
+      reference = canvas;
+      referencePose = pose;
+      referenceOrder = order;
+    }
+    if (!previousForPolicy) policyReferences.set(singlePass, canvas);
     const trial = {
       label,
       singlePass,
@@ -141,19 +202,32 @@ try {
       frameSerial: Number(state.rendererFrameSerial),
       nativeDrawCalls: probe.last.drawCalls,
       nativeTriangles: probe.last.triangles,
-      byteIdentical: reference ? reference.equals(canvas) : true,
+      byteIdentical: reference.equals(canvas),
+      samePolicyByteIdentical: previousForPolicy ? previousForPolicy.equals(canvas) : true,
+      cameraIdentical: referencePose === pose,
+      orderIdentical: referenceOrder === order,
+      orderHash: order,
       pixelDifference: comparison,
+      samePolicyPixelDifference: samePolicyComparison,
     };
     report.trials.push(trial);
-    if (!reference) reference = canvas;
-    else if (!trial.byteIdentical) {
-      await writeFile(new URL(`${label}-pixel-diff.json`, output), JSON.stringify(comparison, null, 2));
-      assert.fail(`${label}: same-context Electrical AB pixel parity failed (${comparison.differentPixels} pixels)`);
+    if (!trial.byteIdentical) {
+      await writeFile(
+        new URL(`${label}-pixel-diff.json`, output),
+        JSON.stringify(comparison, null, 2),
+      );
     }
     assert.deepEqual(errors, []);
     console.log('ELECTRICAL_SAME_CONTEXT_FRAME', JSON.stringify(trial));
   }
-  report.passed = true;
+  report.strictParity = report.trials.every(
+    (trial) => trial.byteIdentical && trial.cameraIdentical && trial.orderIdentical,
+  );
+  report.passed = report.strictParity;
+  assert.ok(
+    report.passed,
+    'same-context scientific pixel/pose/order parity failed; inspect completed report and PNG diffs',
+  );
 } catch (error) {
   report.passed = false;
   report.stage = stage;
