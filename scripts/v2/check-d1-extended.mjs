@@ -412,7 +412,17 @@ try {
       assert.equal(fitRestored.zoom, 1);
       assert.equal(fitRestored.panX, 0);
       assert.equal(fitRestored.panY, 0);
-      evidence.widths.at(-1).sectionGesture = { fitBefore, fitAfterPan, fitAfterZoom, fitRestored };
+      // One active Section tool: Detail ROI disarms Pan, entering Zoom
+      // cancels Detail drawing through the original controller.
+      await clickControl('#sectionPanel', '[data-action="v2-section-pan"]');
+      await clickControl('#sectionPanel', '#sectionDetailRoiBtn');
+      assert.equal(await page.locator('[data-action="v2-section-pan"]').getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#sectionCanvas').evaluate((c) => c.classList.contains('section-detail-drawing')), true);
+      await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
+      assert.equal(await page.locator('#sectionCanvas').evaluate((c) => c.classList.contains('section-detail-drawing')), false);
+      assert.equal(await page.locator('[data-action="v2-section-zoom"]').getAttribute('aria-pressed'), 'true');
+      await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
+      evidence.widths.at(-1).sectionGesture = { fitBefore, fitAfterPan, fitAfterZoom, fitRestored, toolModes: 'exclusive' };
     }
 
     // A maximized desktop Section must exercise the inline path as well as
