@@ -1,6 +1,5 @@
 // Same-run A/B experiments for Quality indexing, raster-discard profiling,
-// final-frame-only assembly, smooth Electrical Region caps and internal-volume
-// grouping. The internal-volume ABBA runs on top of the verified smooth-cap pilot.
+// final-frame-only assembly and smooth Electrical Region cap passes.
 // All product experiments remain default-off.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -21,27 +20,20 @@ const gpuProfile = process.argv.includes('--gpu-profile');
 const finalFrameOnly = process.argv.includes('--final-frame-only');
 const assemblyAb = process.argv.includes('--assembly-ab');
 const electricalPlanarAb = process.argv.includes('--electrical-planar-ab');
-const electricalVolumeAb = process.argv.includes('--electrical-volume-ab');
 assert.ok(
-  !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb && !electricalVolumeAb),
+  !assemblyAb || (!gpuProfile && !finalFrameOnly && !electricalPlanarAb),
   '--assembly-ab is standalone; do not combine it with other modes',
 );
 assert.ok(
-  !electricalPlanarAb || (!gpuProfile && !finalFrameOnly && !assemblyAb && !electricalVolumeAb),
+  !electricalPlanarAb || (!gpuProfile && !finalFrameOnly && !assemblyAb),
   '--electrical-planar-ab is standalone; do not combine it with other modes',
-);
-assert.ok(
-  !electricalVolumeAb || (!gpuProfile && !finalFrameOnly && !assemblyAb && !electricalPlanarAb),
-  '--electrical-volume-ab is standalone; do not combine it with other modes',
 );
 const out = new URL(
   assemblyAb
     ? '../test-results/renderer-assembly-ab/'
-    : electricalVolumeAb
-      ? '../test-results/renderer-electrical-volume-ab/'
-      : electricalPlanarAb
-        ? '../test-results/renderer-electrical-planar-ab/'
-        : gpuProfile
+    : electricalPlanarAb
+      ? '../test-results/renderer-electrical-planar-ab/'
+      : gpuProfile
     ? finalFrameOnly
       ? '../test-results/renderer-gpu-profile-final-only/'
       : '../test-results/renderer-gpu-profile/'
@@ -76,20 +68,17 @@ async function trial(enabled, ordinal) {
     errors = observePageErrors(page);
     const label = assemblyAb
       ? `${ordinal}-${enabled ? 'final-only' : 'preview'}`
-      : electricalVolumeAb
-        ? `${ordinal}-${enabled ? 'volume-caps' : 'volume-original'}`
-        : electricalPlanarAb
-          ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
-          : gpuProfile
+      : electricalPlanarAb
+        ? `${ordinal}-${enabled ? 'electrical-single' : 'electrical-double'}`
+        : gpuProfile
         ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
         : `${ordinal}-${enabled ? 'on' : 'off'}`;
     const params = new URLSearchParams();
-    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && !electricalVolumeAb && enabled)
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled)
       params.set('rendererV3QualityIndex', '1');
     if (trialFinalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
-    if ((electricalPlanarAb && enabled) || electricalVolumeAb)
+    if (electricalPlanarAb && enabled)
       params.set('rendererV3ElectricalPlanarSinglePass', '1');
-    if (electricalVolumeAb && enabled) params.set('rendererV3ElectricalVolumeCapPass', '1');
     await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
     stage = 'open-fixture';
@@ -204,23 +193,7 @@ async function trial(enabled, ordinal) {
     assert.deepEqual(errors, [], `${label}: no page errors`);
     assert.equal(state.transparentArrayLodTier, 'exact');
     assert.equal(state.v3SkippedTriangles, '0');
-    if (electricalVolumeAb) {
-      const expected = 54066262;
-      if (enabled) {
-        assert.ok(
-          Number(state.v3ElectricalVolumeCapPassObjects) > 0,
-          'internal-volume pilot must actually group planar caps',
-        );
-        assert.ok(
-          Number(state.rendererDrawTriangles) < expected,
-          'internal-volume cap pilot must reduce triangle submissions',
-        );
-      } else {
-        assert.equal(state.v3ElectricalVolumeCapPassObjects, '0');
-        assert.equal(state.rendererDrawTriangles, String(expected));
-        assert.equal(state.rendererDrawCalls, '1291');
-      }
-    } else if (electricalPlanarAb && enabled) {
+    if (electricalPlanarAb && enabled) {
       assert.ok(
         Number(state.rendererDrawTriangles) < 57040012 &&
           Number(state.rendererDrawTriangles) > 50000000,
@@ -242,7 +215,7 @@ async function trial(enabled, ordinal) {
       trialFinalFrameOnly ? 'final-only' : 'preview',
       `${label}: measured array build must use the requested assembly policy`,
     );
-    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && !electricalVolumeAb && enabled) {
+    if (!gpuProfile && !assemblyAb && !electricalPlanarAb && enabled) {
       assert.ok(Number(state.v3QualityIndexedTriangles) > 10000000);
       assert.equal(
         Number(state.v3QualityOriginalVertices) / Number(state.v3QualityIndexedVertices),
@@ -276,7 +249,6 @@ async function trial(enabled, ordinal) {
       indexedVertices: Number(state.v3QualityIndexedVertices),
       submittedTriangles: Number(state.rendererDrawTriangles),
       drawCalls: Number(state.rendererDrawCalls),
-      electricalVolumeCapPassObjects: Number(state.v3ElectricalVolumeCapPassObjects || 0),
       imageBytes: canvas.length,
       cameraMode: state.transparentArrayLodTier,
       errors,
@@ -289,11 +261,9 @@ async function trial(enabled, ordinal) {
     console.log(
       assemblyAb
         ? 'RENDERER_ASSEMBLY_AB_TRIAL'
-        : electricalVolumeAb
-          ? 'RENDERER_ELECTRICAL_VOLUME_AB_TRIAL'
-          : electricalPlanarAb
-            ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
-            : gpuProfile
+        : electricalPlanarAb
+          ? 'RENDERER_ELECTRICAL_PLANAR_AB_TRIAL'
+          : gpuProfile
           ? 'RENDERER_GPU_PROFILE_TRIAL'
           : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
       JSON.stringify(result),
@@ -318,7 +288,6 @@ async function trial(enabled, ordinal) {
           gpuProfile,
           assemblyAb,
           electricalPlanarAb,
-          electricalVolumeAb,
           trialFinalFrameOnly,
           stage,
           error: String(error),
@@ -350,11 +319,9 @@ try {
   const report = {
     mode: assemblyAb
       ? 'same-run-final-preview-preview-final'
-      : electricalVolumeAb
-        ? 'same-run-electrical-volume-caps-original-original-caps'
-        : electricalPlanarAb
-          ? 'same-run-electrical-single-double-double-single'
-          : gpuProfile
+      : electricalPlanarAb
+        ? 'same-run-electrical-single-double-double-single'
+        : gpuProfile
         ? 'same-run-normal-discard-discard-normal'
         : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
@@ -366,20 +333,9 @@ try {
     exactCanvasParity: gpuProfile
       ? 'normal arms only; discard images intentionally incomplete'
       : true,
-    ...(electricalVolumeAb
+    ...(electricalPlanarAb
       ? {
-          volumeCapPassMedianMs: onMedianMs,
-          volumeOriginalMedianMs: offMedianMs,
-          elapsedRatioCapToOriginal: onMedianMs / offMedianMs,
-          capGroupCounts: on.map((x) => x.electricalVolumeCapPassObjects),
-          submittedTrianglesOn: on.map((x) => x.submittedTriangles),
-          submittedTrianglesOff: off.map((x) => x.submittedTriangles),
-          drawCallsOn: on.map((x) => x.drawCalls),
-          drawCallsOff: off.map((x) => x.drawCalls),
-        }
-      : electricalPlanarAb
-        ? {
-            electricalSinglePassMedianMs: onMedianMs,
+          electricalSinglePassMedianMs: onMedianMs,
           electricalDoublePassMedianMs: offMedianMs,
           elapsedRatioSingleToDouble: onMedianMs / offMedianMs,
           submittedTrianglesSingle: on.map((x) => x.submittedTriangles),
@@ -416,14 +372,9 @@ try {
         }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
-    ...(electricalVolumeAb
+    ...(electricalPlanarAb
       ? {
           interpretation:
-            'Default-off internal Electrical Region caps-only pass grouping experiment: fail closed on same-pixel difference, no grouped volumes, or missing triangle reduction. Any gain is exploratory and hardware verification remains separate.',
-        }
-      : electricalPlanarAb
-        ? {
-            interpretation:
             'Default-off smooth electrical surface rendering experiment. Matching canvas pixels and reduced WebGL submissions are required; one ABBA round cannot establish hardware performance improvement or authorize rollout.',
         }
       : assemblyAb
@@ -446,11 +397,9 @@ try {
   console.log(
     assemblyAb
       ? 'RENDERER_ASSEMBLY_AB_OK'
-      : electricalVolumeAb
-        ? 'RENDERER_ELECTRICAL_VOLUME_AB_OK'
-        : electricalPlanarAb
-          ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
-          : gpuProfile
+      : electricalPlanarAb
+        ? 'RENDERER_ELECTRICAL_PLANAR_AB_OK'
+        : gpuProfile
         ? 'RENDERER_GPU_PROFILE_OK'
         : 'RENDERER_QUALITY_INDEX_AB_OK',
     JSON.stringify(report),
