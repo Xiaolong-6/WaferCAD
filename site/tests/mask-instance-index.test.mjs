@@ -157,8 +157,12 @@ test('canonical array Process uses deferred Mask envelopes for masked, inverse a
     domain = rectMulti(1, 1, site.x, site.y),
     mask = translateGeometry([[maskElements[0].points]], -site.x, -site.y),
     localDomain = rectMulti(1, 1);
+  const canonicalBoundary = structuredClone(model.boundary);
   for (const mode of ['mask', 'invert', 'full']) {
     const area = geometry.operationAreaGeometry(mode);
+    assert.notStrictEqual(area, model.boundary, 'The shared project boundary must not be a query envelope');
+    assert.equal(Object.hasOwn(model.boundary, 'arrayMaskQuery'), false);
+    assert.deepEqual(model.boundary, canonicalBoundary);
     assert.ok(area.arrayMaskQuery, mode + ' must remain an indexed query envelope');
     assert.equal(area.arrayMaskQuery.mode, mode);
     assert.deepEqual(area, model.boundary, 'No global Mask union may be stored on the envelope');
