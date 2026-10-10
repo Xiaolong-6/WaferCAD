@@ -92,6 +92,7 @@ export function createThreeView({
     host.ownerDocument?.defaultView?.location?.search || '',
   );
   const v3DiagnosticsEnabled = rendererParams.get('rendererV3Diagnostics') === '1';
+  const v3RoiTraceEnabled = rendererParams.get('rendererV3RoiTrace') === '1';
   const v3QualityIndexExperiment = rendererParams.get('rendererV3QualityIndex') === '1';
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
@@ -2731,6 +2732,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
     stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
+    // Manual-only ROI performance breadcrumbs. No geometry or presentation changes.
+    const recordRoiStage = (name) => {
+      if (!v3RoiTraceEnabled || !clip) return;
+      const elapsedMs = performance.now() - rendererProfileStart;
+      host.dataset.rendererRoiStage = name;
+      host.dataset.rendererRoiStageElapsedMs = String(elapsedMs);
+      console.info(
+        'WAFERCAD_ROI_STAGE',
+        JSON.stringify({ name, elapsedMs, sceneGeneration: renderGeneration }),
+      );
+    };
+    recordRoiStage('begin');
 
     rendering = true;
     buildStageStartedAt = performance.now();
@@ -2742,11 +2755,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
-        borders = Boolean(inspection.borders),
-        plan =
-          variantBuild && physicalSurfacePlan
-            ? physicalSurfacePlan
-            : buildRenderSurfacePlan(model, clip);
+        borders = Boolean(inspection.borders);
+      recordRoiStage('surface-plan-start');
+      const plan =
+        variantBuild && physicalSurfacePlan
+          ? physicalSurfacePlan
+          : buildRenderSurfacePlan(model, clip);
+      recordRoiStage('surface-plan-complete');
       if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -2914,6 +2929,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         smoothCaps = new Map(),
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
+      recordRoiStage('topology-complete');
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       suppressAssemblyFrames = v3FinalFrameOnlyExperiment && cooperativeAssembly;
@@ -3141,6 +3157,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       recordVariantStage('caps-complete');
+      recordRoiStage('caps-complete');
       host.dataset.smoothCapInstanceGroups = String(smoothCapInstanceGroupCount);
       host.dataset.smoothCapInstanceCount = String(smoothCapInstanceCount);
       host.dataset.smoothCapTemplateTriangles = String(Math.round(smoothCapTemplateTriangleCount));
@@ -3285,6 +3302,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       recordVariantStage('sidewalls-complete');
+      recordRoiStage('sidewalls-complete');
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
       host.dataset.smoothSidewallInstanceCount = String(smoothSidewallInstanceCount);
       host.dataset.sidewallTriangleCount = String(
@@ -3669,6 +3687,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
+      recordRoiStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
@@ -3686,6 +3705,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
       recordVariantStage('presentation-complete');
+      recordRoiStage('presentation-complete');
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
@@ -3693,6 +3713,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
     } finally {
+      recordRoiStage('build-exited');
       suppressAssemblyFrames = false;
       rendering = false;
     }
