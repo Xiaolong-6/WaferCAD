@@ -366,6 +366,53 @@ try {
       assert.equal(evidence.widths.at(-1).overflow, 0);
       await page.screenshot({ path: resolve(output, `section-${width}.png`), fullPage: true });
       await page.locator('#sectionDetailCloseBtn').click();
+      // D1 real Section Fit/Pan/Zoom: assert transformed physical raster metrics,
+      // the original scientific canvas, and a final full-view fit. Not CSS zoom.
+      const sectionMore = page.locator('#sectionPanel .view-more-control');
+      if (await sectionMore.evaluate((node) => node.open))
+        await sectionMore.locator(':scope > summary').click();
+      const measureSection = () => page.evaluate(() => {
+        const c = document.getElementById('sectionCanvas');
+        const d = c.dataset;
+        return {
+          x: Number(d.sectionPlotLeft), y: Number(d.sectionFrameTop),
+          sx: Number(d.xPxPerUm), sz: Number(d.zPxPerUm),
+          zoom: Number(d.sectionViewportZoom),
+          panX: Number(d.sectionViewportPanX), panY: Number(d.sectionViewportPanY),
+          owner: window.WaferCadV2RealBridge.getSlot('view.section.stage') === c,
+          physical: [document.getElementById('sectionAx').value,
+            document.getElementById('sectionAy').value,
+            document.getElementById('sectionBx').value,
+            document.getElementById('sectionBy').value],
+        };
+      });
+      await clickControl('#sectionPanel', '[data-action="v2-section-fit"]');
+      const fitBefore = await measureSection();
+      assert.equal(fitBefore.zoom, 1);
+      await clickControl('#sectionPanel', '[data-action="v2-section-pan"]');
+      const panDrag = await drag('#sectionCanvas', 0.4, 0.4, 0.5, 0.5);
+      const fitAfterPan = await measureSection();
+      const dx = panDrag.to.x - panDrag.from.x, dy = panDrag.to.y - panDrag.from.y;
+      assert.ok(Math.abs(fitAfterPan.x - fitBefore.x - dx) <= 0.25);
+      assert.ok(Math.abs(fitAfterPan.y - fitBefore.y - dy) <= 0.25);
+      assert.ok(Math.abs(fitAfterPan.sx - fitBefore.sx) <= 1e-9);
+      assert.ok(Math.abs(fitAfterPan.sz - fitBefore.sz) <= 1e-9);
+      await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
+      const zoomDrag = await drag('#sectionCanvas', 0.4, 0.4, 0.4, 0.32);
+      const fitAfterZoom = await measureSection();
+      const zoomRatio = Math.exp((zoomDrag.from.y - zoomDrag.to.y) * 0.009);
+      assert.ok(Math.abs(fitAfterZoom.zoom - zoomRatio) <= 1e-9);
+      assert.ok(Math.abs(fitAfterZoom.sx / fitAfterPan.sx - zoomRatio) <= 1e-9);
+      assert.ok(Math.abs(fitAfterZoom.sz / fitAfterPan.sz - zoomRatio) <= 1e-9);
+      assert.deepEqual(fitAfterZoom.physical, fitBefore.physical);
+      assert.equal(fitAfterZoom.owner, true);
+      await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
+      await clickControl('#sectionPanel', '[data-action="v2-section-fit"]');
+      const fitRestored = await measureSection();
+      assert.equal(fitRestored.zoom, 1);
+      assert.equal(fitRestored.panX, 0);
+      assert.equal(fitRestored.panY, 0);
+      evidence.widths.at(-1).sectionGesture = { fitBefore, fitAfterPan, fitAfterZoom, fitRestored };
     }
 
     // A maximized desktop Section must exercise the inline path as well as
