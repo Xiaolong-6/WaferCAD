@@ -123,3 +123,69 @@ test('selected-layer spatial lookup is rebuilt for filtered instances and layout
   assert.notEqual(prepareMaskInstanceIndex(layout), previous);
   assert.equal(selectedMaskInstanceIndex(layout, () => true).instances.length, 1);
 });
+
+
+test('canonical array Process uses deferred Mask envelopes for masked, inverse and empty selections', async () => {
+  const { createModel } = await import('../model.js');
+  const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
+  const { createSelectionGeometry } = await import('../selection-geometry.js');
+  const model = createRectangularGridArrayModel(
+    createModel({ shape: 'rect', width: 1, height: 1, thickness: 2 }),
+    { kind: 'rect-grid', rows: 8, columns: 8, pitchX: 1, pitchY: 1, activeSites: 48 },
+  );
+  const maskElements = model.array.instances
+    .filter((_, i) => i % 2 === 0)
+    .map((site) => ({
+      kind: 'polygon',
+      layer: 1,
+      datatype: 0,
+      sourceCell: 'GRID',
+      points: rectMulti(0.2, 0.2, site.x, site.y)[0][0].slice(0, -1),
+    }));
+  const state = {
+    model,
+    maskSourceMode: 'file',
+    maskRoi: null,
+    maskTransform: { x: 0, y: 0, rotation: 0, scale: 1 },
+    layout: { root: 'GRID', elements: maskElements },
+  };
+  const geometry = createSelectionGeometry({
+    getState: () => state,
+    selectedElement: (e) => e.layer === 1,
+    maskPoint: (p) => p,
+  });
+  const site = model.array.instances[0],
+    domain = rectMulti(1, 1, site.x, site.y),
+    mask = translateGeometry([[maskElements[0].points]], -site.x, -site.y),
+    localDomain = rectMulti(1, 1);
+  for (const mode of ['mask', 'invert', 'full']) {
+    const area = geometry.operationAreaGeometry(mode);
+    assert.ok(area.arrayMaskQuery, mode + ' must remain an indexed query envelope');
+    assert.equal(area.arrayMaskQuery.mode, mode);
+    assert.deepEqual(area, model.boundary, 'No global Mask union may be stored on the envelope');
+    const actual = localGeometry(area, site, domain);
+    const expected =
+      mode === 'mask'
+        ? mask
+        : mode === 'invert'
+          ? difference(localDomain, mask)
+          : localDomain;
+    assert.equal(difference(actual, expected).length, 0, mode + ': missing local area');
+    assert.equal(difference(expected, actual).length, 0, mode + ': extra local area');
+  }
+  // A cell with no matching mask polygons is skipped, while its inverse
+  // remains the entire cell. An empty selected Mask is rejected for both.
+  const unmaskedSite = model.array.instances[1],
+    unmaskedDomain = rectMulti(1, 1, unmaskedSite.x, unmaskedSite.y);
+  assert.deepEqual(localGeometry(geometry.operationAreaGeometry('mask'), unmaskedSite, unmaskedDomain), []);
+  assert.equal(
+    difference(
+      localGeometry(geometry.operationAreaGeometry('invert'), unmaskedSite, unmaskedDomain),
+      rectMulti(1, 1),
+    ).length,
+    0,
+  );
+  state.layout = { ...state.layout, elements: [] };
+  assert.deepEqual(geometry.operationAreaGeometry('mask'), []);
+  assert.deepEqual(geometry.operationAreaGeometry('invert'), []);
+});
