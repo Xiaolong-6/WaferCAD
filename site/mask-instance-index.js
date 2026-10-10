@@ -105,10 +105,7 @@ export function attachArrayMaskQuery(area, query) {
 // localGeometry() resolves the actual mask/inverse mask inside each cell.
 // Keep an empty selected mask empty (including inverse selection), and clip
 // the envelope by Mask ROI before the worker receives it.
-export function deferredArrayMaskArea(
-  { boundary, index = null, mode, limiter = null },
-  vectorApi,
-) {
+export function deferredArrayMaskArea({ boundary, index = null, mode, limiter = null }, vectorApi) {
   if (mode !== 'full' && !index?.instances?.length) return [];
   const envelope = limiter ? vectorApi.intersection(boundary, limiter) : boundary;
   if (vectorApi.isEmpty(envelope)) return [];
