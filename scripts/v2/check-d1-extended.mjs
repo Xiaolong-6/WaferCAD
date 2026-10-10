@@ -296,7 +296,10 @@ try {
         if (await page.locator('#sectionCollapseEnabled').isChecked())
           await page.locator('#sectionCollapseEnabled').uncheck();
         await page.locator('#sectionCollapseClose').click();
-        await page.locator('#sectionScaleModeBtn').selectOption('physical');
+        const scaleSelect = page.locator('#sectionScaleModeBtn');
+        if (!(await scaleSelect.isVisible()))
+          await page.locator('#sectionPanel .view-more-control > summary').click();
+        await scaleSelect.selectOption('physical');
         await waitForPaint(page);
         const physical = await page.evaluate(() => {
           const canvas = document.getElementById('sectionCanvas');
