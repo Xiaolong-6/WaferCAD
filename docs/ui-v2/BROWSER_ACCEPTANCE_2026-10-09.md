@@ -1,6 +1,6 @@
 # UI v2 browser acceptance — 2026-10-09
 
-> Superseded overall disposition: **automated M2.5 shell PASS; actual UI acceptance FAIL / open**. See the [2026-10-10 UI review](UI_ACCEPTANCE_2026-10-10.md) at `5ec5082`. The checks at `af64d67` below remain historical evidence for their named contracts; they do not establish visual or complete UI acceptance, production parity or M4 approval.
+> Current targeted disposition: **automated M2.5 shell PASS (49 checks); eight reported UI findings repaired and visually rechecked at `2ae4ca3`**. See the [2026-10-10 UI review and repair](UI_ACCEPTANCE_2026-10-10.md). The checks at `af64d67` below remain historical evidence for their named contracts; they do not establish complete production parity or M4 approval.
 
 ## Current M2.5 audit at af64d67
 

@@ -1,6 +1,37 @@
 # UI v2 actual UI acceptance — 2026-10-10
 
-**Result: FAIL / UI acceptance remains open. Automated M2.5 shell checks pass.**
+**Current result at `2ae4ca3`: targeted UI acceptance PASS; UI-01 through UI-08 closed. Automated M2.5 shell checks PASS (49 checks).**
+
+## Repair and recheck — `2ae4ca3`
+
+The user authorized fixing the six remaining findings, then requested compact floating tools comparable to title-bar buttons. This revision repairs presentation in the existing mock adapters and the shared overlay transition. It preserves shell/renderer host identity, stable entity IDs, physical dimensions, the M2/M3 boundary and approved visual baselines. It does not certify full production parity, scientific execution, persistence or M4 visuals.
+
+| Finding | Repair and actual browser recheck                                                                                                                                                                                                                                                                                                                               |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI-03   | Headers wrap controls within their own view. At 1024×768 Overview all four headers have equal clientWidth/scrollWidth (339px). At 390×844 Section has equal clientWidth/scrollWidth (354px); More/Max remain directly visible. Other tool labels and actions remain.                                                                                            |
+| UI-04   | Draw buttons are 28×28px with 16px icons, 4px gaps/padding; desktop tools wrap without a horizontal scrollbar. At 1024×768 the settings panel opens below the wrapped strip and scrolls internally. Native Chrome touch emulation separately confirms coarse-pointer controls remain at least 40×40px.                                                          |
+| UI-05   | Apply and icon-only form Undo/Redo share one 36px action row; redundant review heading removed and results summary compacted. Added missing Undo/Redo SVG symbols. At 1440×650 Coverage → Conformal enables Undo; Undo restores Direct, Redo restores Conformal. Hover/accessibility names explicitly identify form editing.                                    |
+| UI-06   | Repeated draft/mock/M3/IndexedDB/lease/core language and internal cursor IDs removed from workspace labels, dialogs and readouts. A single entry notice explains the preview limitations. Project, Diagnostics, Base dialog and History were inspected at 1280×720; Base width typed as 75 µm confirms `75 × 30 × 2 µm`, with the source illustration retained. |
+| UI-07   | Shared dialog transition dismisses the initiating popover and restores focus to its original trigger. At 1280×720 Photodetector Variant rename shows deliberate input/action spacing and zero open popovers. Escape returns focus to the Variant ellipsis; reopening and saving `UI review branch` with Enter succeeds.                                         |
+| UI-08   | Code heading is a single ellipsized line with step count; editor owns the available height. At 1280×720 editor height is 368px, workflow panel clientHeight/scrollHeight both 503px; Apply code/Format remain visible. A separate automated 1440×650 check covers the shorter window.                                                                           |
+
+UI-01/02 were already repaired at `5ec5082`; their icon-only names/actions and absent Legend developer footer remain covered by the final runner. The six current findings are closed for the named scenarios above. Historical FAIL evidence below remains as the initial review, not the current disposition.
+
+Validation on the exact final product source, Windows NT `10.0.26300.0`, Node `v24.16.0`, native Chrome `155.0.8059.40`:
+
+- `$env:WAFERCAD_REVIEW_CHROME='C:/Program Files/Google/Chrome/Application/chrome.exe'; node scripts/v2/check-m2-shell.mjs` — exit 0, 49 named checks, captured errors `[]`. Includes real wheel input for Manual/Recipe/History, node identity, Base draft, dialog focus/menu closure, desktop/coarse toolbar sizes, narrow header bounds and bounded Code layout.
+- `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs` — exit 0, 8 passed, 0 failed.
+- `npm run lint` — exit 0.
+- `npx prettier --write site/app-v2.html site/ui-v2/mock-domain-panels.js site/ui-v2/mock-views.js site/ui-v2/mock-workspace.js site/ui-v2/native-components.js site/ui-v2/overlay-manager.js site/ui-v2/view-icons.js site/ui-v2/workstation-v2.css scripts/v2/check-m2-shell.mjs` — exit 0; the same exact file list with `--check` passes.
+- `git diff --check` — exit 0. No dependencies or approved baselines changed; full legacy scientific browser suite and M4 comparator remain outside this repair scope.
+
+During repair the old runner first rejected 28px desktop buttons because it asserted a universal 40px target. The desktop assertion now matches the requested compact size, and a separate coarse-pointer runtime assertion preserves the touch contract. Menu cancellation now closes the menu, so the deletion regression reopens it through the returned trigger before repeating Delete. A new Code layout check was corrected to navigate to Process before selecting Code. These intermediate runs failed; the complete final run above passes.
+
+Supporting ignored screenshots under `test-results/ui-v2-acceptance/`: `repair-overview-1024.png`, `repair-section-390.png`, `repair-code-1280.png`, `repair-rename-1280.png`, `repair-manual-1440x650.png`, `repair-base-dialog-1280.png`, `repair-base-confirmed-1280.png`, `repair-final-preview.png` (normal preview, 1343×1175). Reproduce using the existing server/entry and scenarios below; screenshots are visual evidence, not approved pixel baselines.
+
+Documentation gate: `npm run docs:check` — exit 0 (112 Markdown files, 415 internal links, 92 reachable docs, 43 Architecture references). `npx prettier --check docs/ui-v2/UI_ACCEPTANCE_2026-10-10.md docs/README.md docs/ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md docs/ui-v2/FULL_PARITY_AUDIT_2026-10-09.md` — exit 0. This handoff accompanies `2ae4ca3` on the authorized feature branch; no merge, deployment or manual CI job was requested or performed.
+
+## Initial review — `5ec5082` (historical FAIL)
 
 Product revision: `5ec5082` on `codex/ui-v2-m2-handoff-2026-10-09`. This review supersedes the blanket “M2.5 passed” wording in the previous [browser acceptance report](BROWSER_ACCEPTANCE_2026-10-09.md). Automated architecture and interaction probes are evidence for their named contracts, not proof of acceptable visual hierarchy, copy or every toolbar fitting its view.
 
@@ -74,4 +105,4 @@ Supporting screenshots are ignored local files under `test-results/ui-v2-accepta
 - `ui-history-bottom-1280.png`, `ui-history-rename-1280.png`, `ui-mask-1280.png`.
 - `ui-overview-1024.png`, `ui-manual-768.png`, `ui-manual-390.png`, `ui-section-390.png`, `ui-legend-palette-390.png`, `ui-recipe-bottom-1440x650.png`.
 
-The committed findings and reproduction steps are the shared handoff; local screenshots alone are not. Product and this report are pushed to the previously authorized feature branch. **Automated shell PASS remains valid; overall UI acceptance is FAIL / open until the open findings are repaired and visually rechecked.**
+The committed findings and reproduction steps are the shared handoff; local screenshots alone are not. **At the initial `5ec5082` review, automated shell PASS remained valid and actual UI acceptance was FAIL/open. The repair section above supersedes that initial disposition.**
