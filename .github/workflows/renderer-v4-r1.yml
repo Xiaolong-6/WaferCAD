@@ -35,7 +35,10 @@ jobs:
         run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs
       - name: Targeted lint
         run: npx eslint site/renderer-v4-adaptive-tiles.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/three-view.js
-      - name: Targeted formatting
-        run: npx prettier --check site/renderer-v4-adaptive-tiles.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/three-view.js docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md docs/README.md
+      - name: Targeted formatting (emit correction diff)
+        run: |
+          npx prettier --write site/renderer-v4-adaptive-tiles.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/three-view.js docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md docs/README.md
+          git diff -- site/renderer-v4-adaptive-tiles.js docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
+          git diff --exit-code -- site/renderer-v4-adaptive-tiles.js docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
       - name: Documentation links and generated guide
         run: npm run docs:check
