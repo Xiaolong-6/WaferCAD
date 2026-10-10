@@ -6,10 +6,6 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
-import {
-  canTryElectricalVolumeCapPass,
-  electricalVolumePassIndices,
-} from './renderer-electrical-volume-pass.js';
 import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
@@ -100,8 +96,6 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
-  const v3ElectricalVolumeCapExperiment =
-    rendererParams.get('rendererV3ElectricalVolumeCapPass') === '1';
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -1492,16 +1486,14 @@ export function createThreeView({
     return [minX, minY, maxX, maxY].every(Number.isFinite) ? { minX, minY, maxX, maxY } : null;
   }
 
-  function geometryFromSolid({ slabs, caps }, displayTolerance = 0, { trackCapPassRanges = false } = {}) {
+  function geometryFromSolid({ slabs, caps }, displayTolerance = 0) {
     const positions = [],
       normals = [];
     const triangle = (a, b, c, normal) => {
       positions.push(...a, ...b, ...c);
       normals.push(...normal, ...normal, ...normal);
     };
-    const capRanges = [];
-    for (const { z, normal, polys } of caps) {
-      const capStart = positions.length / 3;
+    for (const { z, normal, polys } of caps)
       for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (const triangle2d of triangulatePolygon(
           THREE,
@@ -1512,9 +1504,6 @@ export function createThreeView({
           if (cross * normal < 0) [b, c] = [c, b];
           triangle(a, b, c, [0, 0, normal]);
         }
-      if (trackCapPassRanges)
-        capRanges.push({ start: capStart, count: positions.length / 3 - capStart, normal });
-    }
     for (const { z0, z1, polys } of slabs)
       for (const poly of simplifyDisplayPolygons(polys, displayTolerance))
         for (let r = 0; r < poly.length; r++) {
@@ -1543,7 +1532,6 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    if (trackCapPassRanges) geometry.userData.electricalCapPassRanges = capRanges;
     return geometry;
   }
 
@@ -3532,8 +3520,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       let electricalRegionInternalCount = 0,
         electricalRegionSurfaceCount = 0,
-        electricalFarLodBodyCount = 0,
-        electricalVolumeCapPassObjects = 0;
+        electricalFarLodBodyCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
@@ -3547,34 +3534,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               followDepthProfile ? { slabs: electrical.slabs, caps: [] } : electrical,
             ),
             displaySolid = electricalDisplaySolidForLod(electrical, visibleSolid, arrayLod),
-            splitCaps = canTryElectricalVolumeCapPass({
-              enabled: v3ElectricalVolumeCapExperiment,
-              transparent: targetVariant === 'transparent',
-              quality: inspection.fast === false,
-              fullArray: Number(plan.arrayInstances || 0) >= 64,
-              clipped:
-                Boolean(clip) ||
-                Boolean(electrical.viewClipped) ||
-                visibleSolid.caps.length !== electrical.caps.length ||
-                visibleSolid.slabs.length !== electrical.slabs.length ||
-                visibleSolid.slabs.some(
-                  (slab, index) =>
-                    slab.z0 !== electrical.slabs[index]?.z0 ||
-                    slab.z1 !== electrical.slabs[index]?.z1,
-                ),
-              rough: Boolean(appearance),
-              cameraAbove:
-                Boolean(camera && currentZDisplay?.mapZ) &&
-                displaySolid.caps.every(
-                  (cap) =>
-                    camera.position.z >
-                    currentZDisplay.mapZ(cap.z) * (group?.scale?.z || 1) + 1e-5,
-                ),
-              solid: displaySolid,
-            }),
-            bodyGeometry = geometryFromSolid(displaySolid, transparentArrayDisplayTolerance, {
-              trackCapPassRanges: splitCaps,
-            }),
+            bodyGeometry = geometryFromSolid(displaySolid, transparentArrayDisplayTolerance),
             bodyMaterial = new THREE.MeshStandardMaterial({
               color: electrical.color || '#7A6FD0',
               roughness: 0.82,
@@ -3582,57 +3542,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               side: THREE.DoubleSide,
               ...electricalState,
             }),
-            passIndices = splitCaps
-              ? electricalVolumePassIndices(
-                  bodyGeometry.userData.electricalCapPassRanges,
-                  bodyGeometry.getAttribute('position').count,
-                )
-              : null,
-            name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
-          if (passIndices) {
-            // Reproduce Three.js's original DoubleSide ordering with one
-            // explicit BackSide then FrontSide draw per spatial instance tile.
-            // Both geometries keep every original vertex for identical bounds,
-            // but each indexed draw skips the cap facing the opposite pass.
-            const makePassGeometry = (indices) => {
-                const geometry = new THREE.BufferGeometry();
-                geometry.setAttribute('position', bodyGeometry.getAttribute('position').clone());
-                geometry.setAttribute('normal', bodyGeometry.getAttribute('normal').clone());
-                geometry.setIndex(indices);
-                return geometry;
-              },
-              backMaterial = bodyMaterial.clone();
-            backMaterial.side = THREE.BackSide;
-            bodyMaterial.side = THREE.FrontSide;
-            const back = addSurfaceMesh(
-                makePassGeometry(passIndices.back),
-                backMaterial,
-                electricalState,
-                null,
-                34,
-                false,
-                electrical.instanceTranslations,
-                presentation,
-              ),
-              front = addSurfaceMesh(
-                makePassGeometry(passIndices.front),
-                bodyMaterial,
-                electricalState,
-                null,
-                34,
-                false,
-                electrical.instanceTranslations,
-                presentation,
-              );
-            bodyGeometry.dispose();
-            if (back && front) {
-              back.name = `${name} (back)`;
-              front.name = `${name} (front)`;
-              electricalVolumeCapPassObjects++;
-              electricalRegionInternalCount++;
-            }
-          } else {
-            const body = addSurfaceMesh(
+            body = addSurfaceMesh(
               bodyGeometry,
               bodyMaterial,
               electricalState,
@@ -3642,12 +3552,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
               electrical.instanceTranslations,
               presentation,
             );
-            if (body) {
-              body.name = name;
-              electricalRegionInternalCount++;
-            }
+          if (body) {
+            body.name = electrical.name || electrical.electricalRegionId || 'Electrical Region';
+            electricalRegionInternalCount++;
+            if (displaySolid !== visibleSolid) electricalFarLodBodyCount++;
           }
-          if (displaySolid !== visibleSolid) electricalFarLodBodyCount++;
 
           if (followDepthProfile && zIsVisible(electrical.innerZ)) {
             const depthPresentation = { kind: 'electrical-depth', sortBias: 35 },
@@ -3758,7 +3667,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
-      host.dataset.v3ElectricalVolumeCapPassObjects = String(electricalVolumeCapPassObjects);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
       const rendererAssemblyAt = performance.now();
