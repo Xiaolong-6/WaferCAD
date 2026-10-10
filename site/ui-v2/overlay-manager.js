@@ -10,10 +10,21 @@
       active.delete(type);
       const { node, trigger, onClose, cleanup, external } = entry;
       cleanup?.();
-      if (type === 'dialog' && node.open) node.close();
+      if (external === 'native-details' && node.open) {
+        node.open = false;
+      } else if (external === 'native-dialog' && node.open) {
+        const event = new CustomEvent('wafercad:popover-close', {
+          cancelable: true, bubbles: false,
+        });
+        node.dispatchEvent(event);
+        if (!event.defaultPrevented && node.open) node.close();
+      } else if (type === 'dialog' && node.open) node.close();
       if (type === 'popover' && node.matches(':popover-open')) node.hidePopover();
       if (!external) node.remove();
-      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      // Replacing one menu with another must never steal focus from its
+      // new owner. Escape/dismiss explicitly restore the original trigger.
+      if (trigger?.isConnected && !['replaced', 'dialog', 'view-hide', 'destroy'].includes(reason))
+        trigger.focus({ preventScroll: true });
       onClose?.(reason);
     }
     function mount(
