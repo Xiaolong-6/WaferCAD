@@ -20,10 +20,14 @@ import {
 
 // A diagnostic subset cannot establish full acceptance; preserve ROI failure artifacts.
 const skipRoi = process.argv.includes('--skip-roi');
+const repeatOnly = process.argv.includes('--repeat-only');
+assert.ok(!skipRoi || !repeatOnly, 'Choose one diagnostic subset');
 const output = new URL(
-  skipRoi
-    ? '../test-results/renderer-electrical-inspection-no-roi/'
-    : '../test-results/renderer-electrical-inspection/',
+  repeatOnly
+    ? '../test-results/renderer-electrical-inspection-repeat-only/'
+    : skipRoi
+      ? '../test-results/renderer-electrical-inspection-no-roi/'
+      : '../test-results/renderer-electrical-inspection/',
   import.meta.url,
 );
 await mkdir(output, { recursive: true });
@@ -233,6 +237,12 @@ async function runTrial(enabled, ordinal) {
     await opacity(0.5);
     await capture('far-collapse');
     assert.equal((await snapshot()).rendererDrawTriangles, enabled ? '54066262' : '57040012');
+    if (repeatOnly) {
+      // Isolate fresh-context transparency drift without 80 transitions or ROI.
+      await changed(() => page.locator('#fit3dBtn').click());
+      await capture('fitted');
+      return;
+    }
     await opacity(0.25);
     await capture('far-opacity-25');
     await opacity(0.75);
@@ -381,6 +391,7 @@ try {
           ),
         ),
         roiCovered,
+        diagnosticSubset: repeatOnly ? 'repeat-only' : skipRoi ? 'no-roi' : null,
         fullAcceptance:
           roiCovered &&
           trials.every((trial) =>
@@ -417,6 +428,7 @@ try {
         stage,
         error: String(error),
         browserVersion: browser.version(),
+        diagnosticSubset: repeatOnly ? 'repeat-only' : skipRoi ? 'no-roi' : null,
         roiCovered,
         trials,
         comparisons,
