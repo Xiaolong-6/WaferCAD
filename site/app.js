@@ -6,6 +6,7 @@ import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
 import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from './model.js';
 import { transformMulti } from './vector-geometry.js';
 import { createThreeView } from './three-view.js';
+import { setRendererBuildFailure } from './renderer-rebuild-status.js';
 import {
   formatLengthInput,
   formatXY as formatXYValue,
@@ -751,14 +752,19 @@ function initThree() {
 }
 
 function renderThree() {
-  try {
-    threeView?.render();
-    delete $('threeHost').dataset.renderError;
-  } catch (error) {
-    const message = error?.message || String(error || 'Unknown 3D render error');
-    $('threeHost').dataset.renderError = message;
-    $('threeStats').textContent = '3D render error';
+  if (!threeView) return;
+  const reportFailure = (error) => {
+    setRendererBuildFailure($('threeHost'), $('threeStats'), error, {
+      roi: Boolean(roiGeometry()),
+    });
     console.error('3D render failed.', error);
+  };
+  try {
+    // ThreeView.render is async: a synchronous try/catch and eager deletion of
+    // renderError would erase a completed geometry-budget failure.
+    void Promise.resolve(threeView.render()).catch(reportFailure);
+  } catch (error) {
+    reportFailure(error);
   }
 }
 
