@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WaferCAD UI v2 · M2 mock shell</title>
+    <title>WaferCAD · UI Preview</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="ui-v2/tokens.css" />
     <link rel="stylesheet" href="ui-v2/components.css" />
@@ -24,7 +24,7 @@
   </head>
   <body data-ready="false" data-page-errors="0">
     <header class="v2-preview-bar">
-      <strong>M2 · Mock Shell</strong>
+      <strong>UI Preview</strong>
       <label
         >示例
         <select id="v2-example">
@@ -36,11 +36,11 @@
       <button id="v2-failure" type="button" class="wc-button" data-size="sm">
         Recipe 失败场景
       </button>
-      <span class="p-aux">只演示 UI；无科学执行 / 工程存储</span>
+      <span class="p-aux">交互预览 · 不执行工艺计算，修改不会保存到项目，刷新后重置</span>
       <span id="v2-live-status" class="p-aux" role="status">文件模式 · 修改后刷新</span>
     </header>
     <main id="app-root" aria-label="WaferCAD v2 workstation">
-      <p class="v2-boot-message" role="status">正在装配 v2 壳层…</p>
+      <p class="v2-boot-message" role="status">正在加载工作台…</p>
     </main>
     <noscript>此静态壳层需要启用 JavaScript。旧版入口仍为 app.html。</noscript>
   </body>

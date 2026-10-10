@@ -2,7 +2,8 @@
 (() => {
   function create({ root, portals }) {
     const active = new Map();
-    const tabStops = 'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+    const tabStops =
+      'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
     function close(type, reason = 'close') {
       const entry = active.get(type);
       if (!entry) return;
@@ -15,15 +16,30 @@
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
       onClose?.(reason);
     }
-    function mount(type, { content, trigger = document.activeElement, id, onClose, className = '', label } = {}) {
+    function mount(
+      type,
+      { content, trigger = document.activeElement, id, onClose, className = '', label } = {},
+    ) {
       if (!portals[type]) throw Error(`Unknown overlay type: ${type}`);
+      if (type === 'dialog') {
+        const menu = active.get('popover');
+        if (menu?.node.contains(trigger)) trigger = menu.trigger;
+        close('popover', 'dialog');
+      }
       close(type, 'replaced');
       const node = document.createElement(type === 'dialog' ? 'dialog' : 'div');
       node.className = className || `v2-${type}`;
       if (id) node.id = id;
       if (label) node.setAttribute('aria-label', label);
-      if (type === 'popover') { node.popover = 'manual'; node.tabIndex = -1; node.setAttribute('role', 'menu'); }
-      if (type === 'toast') { node.setAttribute('role', 'status'); node.setAttribute('aria-live', 'polite'); }
+      if (type === 'popover') {
+        node.popover = 'manual';
+        node.tabIndex = -1;
+        node.setAttribute('role', 'menu');
+      }
+      if (type === 'toast') {
+        node.setAttribute('role', 'status');
+        node.setAttribute('aria-live', 'polite');
+      }
       if (content != null) node.append(content);
       portals[type].append(node);
       const outside = (event) => {
@@ -32,26 +48,47 @@
         // Check the content rectangle before treating them as an inside click.
         if (type === 'dialog' && event.target === node) {
           const rect = node.getBoundingClientRect();
-          const outsideBox = event.clientX < rect.left || event.clientX > rect.right ||
-            event.clientY < rect.top || event.clientY > rect.bottom;
+          const outsideBox =
+            event.clientX < rect.left ||
+            event.clientX > rect.right ||
+            event.clientY < rect.top ||
+            event.clientY > rect.bottom;
           if (outsideBox) close(type, 'outside');
           return;
         }
         if (!node.contains(event.target)) close(type, 'outside');
       };
       const onKey = (event) => {
-        if (event.key === 'Escape') { event.preventDefault(); close(type, 'escape'); return; }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          close(type, 'escape');
+          return;
+        }
         if (type !== 'dialog' || event.key !== 'Tab') return;
-        const items = [...node.querySelectorAll(tabStops)].filter((item) => item.getClientRects().length);
-        if (!items.length) { event.preventDefault(); node.focus(); return; }
-        const first = items[0], last = items.at(-1);
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        const items = [...node.querySelectorAll(tabStops)].filter(
+          (item) => item.getClientRects().length,
+        );
+        if (!items.length) {
+          event.preventDefault();
+          node.focus();
+          return;
+        }
+        const first = items[0],
+          last = items.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       };
       const cleanup = () => {
         document.removeEventListener('pointerdown', outside, true);
         node.removeEventListener('keydown', onKey);
-        if (trigger) { trigger.setAttribute('aria-expanded', 'false'); }
+        if (trigger) {
+          trigger.setAttribute('aria-expanded', 'false');
+        }
       };
       active.set(type, { node, trigger, onClose, cleanup });
       if (trigger && type !== 'toast') {
@@ -60,7 +97,10 @@
         trigger.setAttribute('aria-controls', node.id);
       }
       if (type === 'dialog') {
-        node.addEventListener('cancel', (event) => { event.preventDefault(); close(type, 'escape'); });
+        node.addEventListener('cancel', (event) => {
+          event.preventDefault();
+          close(type, 'escape');
+        });
         node.showModal();
       } else if (type === 'popover') node.showPopover();
       if (type !== 'toast') {
@@ -85,7 +125,10 @@
       return node;
     }
     return Object.freeze({
-      mount, close, adoptPopover, destroy: () => [...active.keys()].forEach(close),
+      mount,
+      close,
+      adoptPopover,
+      destroy: () => [...active.keys()].forEach(close),
     });
   }
   window.WaferCadV2Overlays = Object.freeze({ create });

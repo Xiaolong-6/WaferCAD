@@ -310,7 +310,23 @@ try {
   );
   await click('[data-action="draft-undo"]');
   assert.equal((await snapshot()).state.displayUnit, 'um');
-  record('Project owns XYZ display units; Manual Apply owns Undo/Redo and unit conversion');
+  assert.equal(
+    await evaluate(`(() => {
+    const group=document.querySelector('.p-apply-actions');
+    const apply=group.querySelector('[data-action=apply]').getBoundingClientRect();
+    return ['undo','redo'].every(kind=>{
+      const button=group.querySelector('[data-action="draft-'+kind+'"]');
+      const href=button.querySelector('use').getAttribute('href');
+      return button.getAttribute('aria-label')===kind[0].toUpperCase()+kind.slice(1)+' form edit'
+        && Boolean(document.querySelector(href+' path'))
+        && Math.abs(button.getBoundingClientRect().top-apply.top)<=1;
+    });
+  })()`),
+    true,
+  );
+  record(
+    'Project owns XYZ display units; Manual groups Apply with named form Undo/Redo and rendered icons',
+  );
   const checkLegend = () =>
     evaluate(`(() => {
     const snap=window.WaferCadV2Shell.snapshot();
@@ -416,11 +432,21 @@ try {
   );
   assert.equal(
     await evaluate(
-      "(() => {const icon=document.querySelector('.p-mask-tools [data-action^=draw-tool] .wc-icon'),button=icon.closest('button');const r=button.getBoundingClientRect(),i=icon.getBoundingClientRect();return !document.querySelector('.p-panel-content [data-key=roiX]')&&i.width<=16.5&&i.height<=16.5&&r.width>=40&&r.height>=40})()",
+      "(() => {const icon=document.querySelector('.p-mask-tools [data-action^=draw-tool] .wc-icon'),button=icon.closest('button');const r=button.getBoundingClientRect(),i=icon.getBoundingClientRect();return !document.querySelector('.p-panel-content [data-key=roiX]')&&i.width<=16.5&&i.height<=16.5&&r.width===28&&r.height===28})()",
     ),
     true,
-    'Mask tools should be floating, compact icons with touch-sized controls',
+    'Desktop Mask tools use compact 28px buttons with 16px icons',
   );
+  await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  assert.equal(
+    await evaluate(`(() => {
+    const r=document.querySelector('.p-mask-tools [data-action^=draw-tool]').getBoundingClientRect();
+    return matchMedia('(pointer:coarse)').matches && r.width>=40 && r.height>=40;
+  })()`),
+    true,
+  );
+  await call('Emulation.setTouchEmulationEnabled', { enabled: false });
+  record('Draw tools use compact desktop buttons and retain 40px coarse-pointer targets');
   const drawCount = (await snapshot()).state.drawDraft.length;
   await click('[data-action="draw-tool:ring-sector"]');
   await click('[data-action="draw-add"]');
@@ -678,6 +704,15 @@ try {
     true,
   );
   await click('[data-action="history-rename:main"]');
+  assert.equal(
+    await evaluate(`(() => {
+    const input=document.querySelector('[data-key="historyRenameName"]').getBoundingClientRect();
+    const save=document.querySelector('[data-action="history-rename-confirm"]').getBoundingClientRect();
+    return !document.querySelector('[popover]:popover-open') && save.top-input.bottom>=8;
+  })()`),
+    true,
+  );
+  record('History rename dismisses its menu and separates the input from dialog actions');
   await evaluate(
     `(() => {const input=document.querySelector('[data-key="historyRenameName"]');input.value='  ';input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
   );
@@ -741,6 +776,13 @@ try {
   await click(`[data-action="history-delete-branch:${draftVariant}"]`);
   await click('dialog [data-action="dialog-cancel"]');
   assert.equal((await snapshot()).prototypeVariants, 1);
+  assert.equal(
+    await evaluate(
+      `document.activeElement?.dataset.action===${JSON.stringify(`history-branch-menu:${draftVariant}`)}`,
+    ),
+    true,
+  );
+  await click(`[data-action="history-branch-menu:${draftVariant}"]`);
   await click(`[data-action="history-delete-branch:${draftVariant}"]`);
   await click('[data-action="history-delete-branch-confirm"]');
   assert.equal((await snapshot()).prototypeVariants, 0);
@@ -894,6 +936,55 @@ try {
     );
   }
   record('Manual, Recipe and History wheel scroll reaches the bottom in a short desktop viewport');
+  await click('[data-action="domain:process"]');
+  await click('[data-action="domain:code"]');
+  assert.equal(
+    await evaluate(`(() => {
+    const panel=document.querySelector('.p-panel-content');
+    const editor=document.querySelector('.p-code-editor').getBoundingClientRect();
+    return panel.scrollHeight<=panel.clientHeight+1 && editor.height>=250
+      && [...document.querySelectorAll('.p-code-workspace .p-actions button')].every(button=>
+        button.getBoundingClientRect().bottom<=panel.getBoundingClientRect().bottom);
+  })()`),
+    true,
+  );
+  record('Code owns a bounded editor; actions remain visible without a second panel scrollbar');
+  await click('[data-action="mode:overview"]');
+  await viewport(1024);
+  assert.equal(
+    await evaluate(`(() => {
+    const containers=[...document.querySelectorAll('.p-view-head,.p-mask-tools')]
+      .filter(node=>node.getClientRects().length);
+    return containers.every(node=>{
+      const parent=node.getBoundingClientRect();
+      return node.scrollWidth<=node.clientWidth+1 && [...node.querySelectorAll('button')]
+        .filter(button=>button.getClientRects().length).every(button=>{
+          const rect=button.getBoundingClientRect();
+          return rect.left>=parent.left-1 && rect.right<=parent.right+1;
+        });
+    }) && [...document.querySelectorAll('.p-mask-tools [data-action^="draw-tool"]')]
+      .every(button=>button.getBoundingClientRect().width===28 && button.getBoundingClientRect().height===28);
+  })()`),
+    true,
+  );
+  record(
+    '1024 Overview: all header and compact Draw actions fit their views without horizontal scrolling',
+  );
+  await viewport(390);
+  await click('[data-action="mobile-section"]');
+  assert.equal(
+    await evaluate(`(() => {
+    const header=document.querySelector('#sectionPanel .p-view-head');
+    const parent=header.getBoundingClientRect();
+    return header.scrollWidth<=header.clientWidth+1 && [...header.querySelectorAll('button')]
+      .filter(button=>button.getClientRects().length).every(button=>{
+        const rect=button.getBoundingClientRect();
+        return rect.left>=parent.left-1 && rect.right<=parent.right+1;
+      });
+  })()`),
+    true,
+  );
+  record('390 Section: More and Max wrap within the header and remain directly visible');
   await call('Page.navigate', { url: pathToFileURL(resolve('site/app-v2.html')).href });
   await waitFor(
     async () =>

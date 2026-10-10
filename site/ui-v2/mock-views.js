@@ -1,14 +1,7 @@
 // Source-fixture illustrations only; no scientific renderer imported.
 (() => {
   const { el, button, field, select, toolbar } = window.WaferCadV2Components;
-  window.createWaferCadV2MockViews = ({
-    state,
-    data,
-    branch,
-    cursor,
-    currentModel,
-    viewPanels,
-  }) => {
+  window.createWaferCadV2MockViews = ({ state, data, branch, currentModel, viewPanels }) => {
     const viewState = window.WaferCadV2ViewState;
     const narrow = () => viewState.compact(window);
     function svgNode(tag, attrs = {}, children = []) {
@@ -157,7 +150,7 @@
       const unitFactor = state.displayUnit === 'nm' ? 1000 : state.displayUnit === 'mm' ? 0.001 : 1;
       const unitName = state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm';
       const displayLength = (value) => Number(value) * unitFactor;
-      return [
+      return el('div', { class: 'p-mask-controls' }, [
         el(
           'div',
           { class: 'p-mask-tools', role: 'toolbar', 'aria-label': 'Mask canvas tools' },
@@ -180,8 +173,8 @@
                   title: 'Delete last shape',
                 }),
                 button('', 'draw-clear', 'clear', {
-                  'aria-label': 'Clear Draw draft',
-                  title: 'Clear Draw draft',
+                  'aria-label': 'Clear Draw shapes',
+                  title: 'Clear Draw shapes',
                 }),
               ]
             : null,
@@ -300,7 +293,7 @@
               ),
             )
           : null,
-      ];
+      ]);
     }
     function sectionSchematic(model) {
       const svg = svgNode('svg', {
@@ -524,10 +517,10 @@
           'div',
           { class: 'p-readout' },
           name === 'three'
-            ? `${state.quality} · fixed final snapshot / mock ROI plane`
+            ? `${state.quality} · Example image`
             : name === 'section'
-              ? `${state.sectionScale === 'physical' ? '1:1 X:Z' : 'Auto'} · ${model.stack.length} actual stack segments · schematic, not computed geometry`
-              : `${model.layers.length} layers · ${model.regionCount} regions · cursor ${cursor} · ${state.displayUnit || 'um'}`,
+              ? `${state.sectionScale === 'physical' ? '1:1 X:Z' : 'Auto'} · Stack overview`
+              : `${model.layers.length} layers · ${model.regionCount} regions · ${state.displayUnit === 'nm' ? 'nm' : state.displayUnit === 'mm' ? 'mm' : 'µm'}`,
         ),
       );
       // A mock adapter may refresh its own illustration and list children; the

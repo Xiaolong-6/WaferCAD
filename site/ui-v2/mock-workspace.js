@@ -67,7 +67,7 @@
     quality: 'Fast',
     task: null,
     failure: null,
-    message: 'M2 · MOCK SHELL · no core connection / no project persistence.',
+    message: 'Ready',
     empty: query.get('scene') === 'empty-history',
     emptyExpanded: false,
     dirty: false,
@@ -270,9 +270,9 @@
           '[data-history-list]',
           '[data-variant-list]',
         ],
-        badge: state.dirty ? 'DRAFT · source unchanged' : 'READ-ONLY SOURCE',
+        badge: state.dirty ? 'Unsaved changes' : 'Example',
         message: state.message,
-        save: 'Mock only · no autosave',
+        save: '',
         version: '',
       };
     },
@@ -294,14 +294,17 @@
   function presetRecipeFailure() {
     activeStep = Math.min(2, recipe.steps.length - 1);
     state.failedStep = activeStep;
-    state.failure = `Simulated failure · Step ${activeStep + 1} · ${recipe.steps[activeStep].id}. Edit here; then Continue or Rebuild. Source remains unchanged.`;
+    state.failure = `Preview failed at Step ${activeStep + 1}. Edit this step, then Continue or Rebuild.`;
   }
   function dialog(title, text, accept, action, choices = []) {
+    state.historyMenuNode = null;
+    state.historyBranchMenu = null;
+    state.legendPaletteOpen = null;
     const content = el(
       'div',
-      { 'aria-labelledby': 'p-dialog-title' },
+      { class: 'p-dialog-content', 'aria-labelledby': 'p-dialog-title' },
       el('h2', { id: 'p-dialog-title' }, title),
-      el('div', {}, text),
+      el('div', { class: 'p-dialog-body' }, text),
       el(
         'div',
         { class: 'p-actions' },
@@ -362,15 +365,15 @@
     });
     state.recipeErrors = errors;
     state.message = errors.length
-      ? `Recipe draft check: ${errors.length} issue(s).`
-      : 'Recipe draft check passed. No operations were executed.';
+      ? `Recipe validation: ${errors.length} issue(s).`
+      : 'Recipe validation passed.';
   }
   function newRecipeStep(command) {
     const id = `prototype-step-${Date.now().toString(36)}-${recipe.steps.length + 1}`;
     const params = { face: 'front', area: 'full' };
     if (['deposit', 'extend'].includes(command))
       Object.assign(params, {
-        material: 'New material · draft',
+        material: 'New material',
         thicknessUm: 0.1,
         coverage: 'direct',
       });
@@ -382,10 +385,10 @@
         surface: 'smooth',
       });
     if (command === 'implant')
-      Object.assign(params, { name: 'New Implant · draft', depthUm: 0.05, tilt: 0 });
+      Object.assign(params, { name: 'New Implant', depthUm: 0.05, tilt: 0 });
     if (command === 'electrical')
       Object.assign(params, {
-        name: 'New Electrical Region · draft',
+        name: 'New Electrical Region',
         depthUm: 0.05,
         regionType: 'p-type',
         source: 'induced',
@@ -393,14 +396,14 @@
     if (command === 'liftoff') Object.assign(params, { sacrificial: 'Resist' });
     if (command === 'record')
       Object.assign(params, {
-        label: 'New record · draft',
+        label: 'New record',
         process: 'custom',
         temperatureC: null,
         durationMin: null,
         ambient: '',
         note: '',
       });
-    if (command === 'snapshot') Object.assign(params, { name: 'Review point · draft' });
+    if (command === 'snapshot') Object.assign(params, { name: 'Review point' });
     return { id, command, params };
   }
   function rememberDraftChange(key, value) {
@@ -532,7 +535,7 @@
             'cube',
           ),
         ),
-        'Apply display draft',
+        'Apply display settings',
         'apply-settings',
       );
     } else if (view === 'three') {
@@ -548,9 +551,7 @@
             step: 0.05,
           }),
           button(state.borders ? 'Hide borders' : 'Show borders', 'borders', 'cube'),
-          notice(
-            'Fast / Quality and opacity affect only this view draft. GLB / PNG actions remain separate.',
-          ),
+          notice('Adjust rendering quality and opacity.'),
         ),
         'Done',
         'apply-settings',
@@ -644,9 +645,7 @@
             view === 'detail' ? 'clear-detail-roi' : 'clear-roi',
             'close',
           ),
-          notice(
-            'Display / selection draft in canonical µm. Stored example geometry is unchanged.',
-          ),
+          notice('Set position and size in µm.'),
         ),
         'Apply settings',
         'apply-settings',
@@ -695,15 +694,14 @@
       state.emptyExpanded = false;
       state.editorHidden = false;
     } else if (kind === 'code-apply' || kind === 'code-format') {
-      state.message = `${kind === 'code-apply' ? 'Apply code' : 'Format'} UI demonstration only. Draft retained; no parser or execution, saved Recipe unchanged.`;
+      state.message = `${kind === 'code-apply' ? 'Applying code' : 'Formatting'} is unavailable in this preview. Your text is retained.`;
     } else if (kind === 'show-editor') {
       state.mobile = 'edit';
       state.editorHidden = false;
     } else if (kind === 'hide-editor' || kind === 'return-results') {
       state.mobile = 'view';
       state.editorHidden = !narrow();
-      state.message =
-        'Results kept visible; draft retained. Use a workspace label to reopen the dock.';
+      state.message = 'Editor hidden. Select a workspace to reopen it.';
     } else if (kind === 'mode') {
       state.mode = value;
       state.maximize = null;
@@ -724,7 +722,7 @@
       return;
     } else if (kind === 'apply-settings') {
       closeDialog();
-      state.message = 'View controls updated in the local M2 presentation draft.';
+      state.message = 'Display settings updated.';
     } else if (kind === 'clear-roi') {
       state.roi = false;
       state.roiSettings = {
@@ -737,11 +735,11 @@
         rotation: 0,
       };
       closeDialog();
-      state.message = 'ROI draft cleared; source geometry is unchanged.';
+      state.message = 'ROI cleared.';
     } else if (kind === 'clear-detail-roi') {
       state.detail = false;
       closeDialog();
-      state.message = 'Detail ROI draft cleared; source geometry is unchanged.';
+      state.message = 'Detail ROI cleared.';
     } else if (kind === 'mask-roi-settings') {
       state.maskRoiOpen = !state.maskRoiOpen;
     } else if (kind === 'mask-roi-close') {
@@ -757,12 +755,12 @@
       }
       state.draftUndo = draftUndoStack.length > 0;
       state.draftRedo = draftRedoStack.length > 0;
-      state.message = 'Workspace draft edit history updated; source project remains unchanged.';
+      state.message = 'Form edit history updated.';
     } else if (kind === 'section-borders') state.sectionBorders = !state.sectionBorders;
     else if (kind === 'borders') state.borders = !state.borders;
     else if (kind === 'draw-tool') {
       state.drawTool = value;
-      state.message = `${value} Draw tool selected; pointer drawing is represented by the local preview controls.`;
+      state.message = `${target.title || 'Draw'} selected. Use Add to preview a shape.`;
     } else if (kind === 'draw-add') {
       const w = currentModel().width,
         h = currentModel().height,
@@ -806,17 +804,17 @@
           b: [cx + w * 0.1, cy + h * 0.1],
         });
       state.drawDraft = next;
-      state.message = `Added preview ${state.drawTool} shape ${next.length}; source Draw geometry unchanged.`;
+      state.message = `Shape added · ${next.length} shapes.`;
     } else if (kind === 'draw-delete' || kind === 'draw-clear') {
       state.drawDraft = kind === 'draw-clear' ? [] : state.drawDraft.slice(0, -1);
-      state.message = 'Draw preview updated; source Draw geometry unchanged.';
+      state.message = 'Draw shapes updated.';
     } else if (kind === 'mask-layer') {
       state.layerVisibility[value] = !state.layerVisibility[value];
-      state.message = `Layer visibility draft: ${value}. Source material data unchanged.`;
+      state.message = 'Layer visibility updated.';
     } else if (kind === 'mask-opacity') {
       state.maskOpacity = Number(value);
     } else if (kind === 'mask-export') {
-      state.message = `${value.toUpperCase()} export settings opened from the Mask More menu; UI demonstration only.`;
+      state.message = `${value.toUpperCase()} export settings.`;
       dialog(
         'Mask export · presentation only',
         el(
@@ -840,9 +838,7 @@
             ],
             state.exportLayers || 'visible',
           ),
-          notice(
-            'SVG / GDS / OAS controls are represented here. No physical file is generated in M2.',
-          ),
+          notice('Choose export settings. File generation is unavailable in this preview.'),
         ),
         'Close',
         'apply-settings',
@@ -858,7 +854,7 @@
     } else if (kind === 'base-rebuild') {
       dialog(
         'Rebuild Base · choose source handling',
-        'This mock shows the legacy branch choices. It does not archive or clear project History.',
+        'Choose how to handle existing History when rebuilding Base. This preview changes the selected dimensions only.',
         'Keep source in a Variant',
         'base-keep',
         [['Clear source History', 'base-clear']],
@@ -867,7 +863,7 @@
     } else if (kind === 'base-clear') {
       dialog(
         'Clear source History?',
-        'This is a destructive choice in a real Base rebuild. Confirming here only closes the mock flow; no source History is actually cleared.',
+        'Keep the new dimensions without preserving a Variant? Existing example History stays available in this preview.',
         'Confirm Clear',
         'base-clear-confirm',
       );
@@ -878,8 +874,8 @@
       state.dirty = true;
       state.message =
         kind === 'base-keep'
-          ? 'Base rebuild draft: source branch would be kept.'
-          : 'Base rebuild draft: source History would be cleared after confirmation.';
+          ? 'Base dimensions confirmed · keep existing Variant.'
+          : 'Base dimensions confirmed · start fresh.';
     } else if (kind === 'recipe-undo' || kind === 'recipe-redo') {
       const from = kind === 'recipe-undo' ? recipeUndoStack : recipeRedoStack;
       const to = kind === 'recipe-undo' ? recipeRedoStack : recipeUndoStack;
@@ -947,8 +943,8 @@
             : data.recipe.steps.length;
       dialog(
         'Recipe template preview',
-        `Replace the current ${recipe.steps.length}-step draft with ${pendingRecipeTemplate} (${count} steps)? Undo will restore the previous draft.`,
-        'Replace Recipe draft',
+        `Replace the current ${recipe.steps.length}-step Recipe with ${count} steps? Undo restores the previous Recipe.`,
+        'Replace Recipe',
         'confirm-template',
       );
       return;
@@ -958,7 +954,7 @@
       if (pendingRecipeTemplate === 'blank') recipe = { name: 'New Recipe', steps: [] };
       else if (pendingRecipeTemplate === 'deposit-etch')
         recipe = {
-          name: 'Deposit + Etch draft',
+          name: 'Deposit + Etch',
           steps: [newRecipeStep('deposit'), newRecipeStep('etch')],
         };
       else recipe = structuredClone(data.recipe);
@@ -970,10 +966,10 @@
     } else if (kind === 'maximize') state.maximize = state.maximize === value ? null : value;
     else if (kind === 'quality') {
       state.quality = state.quality === 'Fast' ? 'Quality' : 'Fast';
-      state.message = 'Quality mode control simulated. Recorded 3D image is not recomputed.';
+      state.message = 'Quality selected. This preview uses a fixed example image.';
     } else if (kind === 'roi') {
       state.roi = !state.roi;
-      state.message = 'ROI display demo only. Main/3D registration remains the early M2 gate.';
+      state.message = 'ROI display updated.';
     } else if (kind === 'detail') state.detail = !state.detail;
     else if (kind === 'zbreak') state.zbreak = !state.zbreak;
     else if (kind === 'zbreak-settings') {
@@ -1004,9 +1000,7 @@
             min: 0.1,
             step: 0.1,
           }),
-          notice(
-            'Display-only collapse; physical Z is unchanged. The stack remains schematic in M2.',
-          ),
+          notice('Z-break affects display scale only.'),
         ),
         state.zbreak ? 'Disable Z-break' : 'Enable Z-break',
         'confirm-zbreak',
@@ -1017,7 +1011,7 @@
       state.zbreak = !state.zbreak;
     } else if (kind === 'tool') {
       state.tool = value;
-      state.message = `${value} tool selected · pointer geometry not connected.`;
+      state.message = `${value === 'pan' ? 'Pan' : value === 'zoom' ? 'Zoom' : 'Section line'} selected. Canvas gestures are unavailable in this preview.`;
     } else if (
       kind === 'fit' ||
       kind === 'borders' ||
@@ -1025,7 +1019,7 @@
       kind === 'draw-rect' ||
       kind === 'draw-ring'
     )
-      state.message = `${target.textContent.trim()} control demo · source model / masks unchanged.`;
+      state.message = `${target.title || target.textContent.trim() || 'View control'} selected.`;
     else if (kind === 'expand-empty') {
       state.emptyExpanded = true;
       state.mobile = 'edit';
@@ -1036,7 +1030,7 @@
     } else if (kind === 'save-step') {
       state.dirty = true;
       state.failure = null;
-      state.message = `Step ${activeStep + 1} draft saved in memory; reload discards it.`;
+      state.message = `Step ${activeStep + 1} updated.`;
     } else if (kind === 'legend-palette') {
       const key = action.slice('legend-palette:'.length);
       state.legendPaletteOpen = state.legendPaletteOpen === key ? null : key;
@@ -1067,7 +1061,7 @@
       state.historyRenameTarget = { id: value, bookmark };
       state.historyRenameName = item.name;
       dialog(
-        bookmark ? 'Rename bookmark · draft' : 'Rename Variant · draft',
+        bookmark ? 'Rename bookmark' : 'Rename Variant',
         field('Name', 'historyRenameName', item.name, { maxlength: 256 }),
         'Save name',
         'history-rename-confirm',
@@ -1090,7 +1084,7 @@
       closeDialog();
       state.historyBranchMenu = null;
       state.dirty = true;
-      state.message = 'Name updated in the UI draft; source IDs and History are unchanged.';
+      state.message = 'Name updated.';
     } else if (kind === 'history-delete-branch') {
       const item = historyBranches().find((entry) => entry.id === value);
       if (!item || value === 'main') return;
@@ -1099,8 +1093,8 @@
       } else {
         state.historyDeleteBranch = value;
         dialog(
-          'Delete Variant from UI draft?',
-          `Remove "${item.name}" from this draft? Source History is preserved; reload restores it.`,
+          'Delete Variant?',
+          `Remove "${item.name}"? Refreshing restores the example.`,
           'Delete Variant',
           'history-delete-branch-confirm',
         );
@@ -1133,7 +1127,7 @@
     } else if (kind === 'history-bookmark-delete') {
       state.historyDeleteBookmark = value;
       dialog(
-        'Delete bookmark from UI draft?',
+        'Delete bookmark?',
         'The Step remains available. Source bookmarks are unchanged.',
         'Delete bookmark',
         'history-bookmark-delete-confirm',
@@ -1161,8 +1155,8 @@
       state.historyMenuNode = null;
       state.message =
         kind === 'history-select'
-          ? `Inspecting ${value}; source History remains unchanged.`
-          : `Restore walkthrough from ${value}; no actual History transaction.`;
+          ? `Inspecting ${node?.label || 'Selected step'}.`
+          : `Restore preview · ${node?.label || 'Selected step'}.`;
     } else if (
       kind === 'history-edit' ||
       kind === 'history-insert' ||
@@ -1176,7 +1170,7 @@
       state.mobile = 'edit';
       state.editOld = true;
       state.historyEditMode = kind.slice(8);
-      state.message = `Editing from ${value}; Apply creates a prototype Variant and preserves the source branch.`;
+      state.message = `Editing ${node?.label || 'Selected step'}.`;
     } else if (kind === 'history-variant') {
       cursor = value;
       const node = data.history.find((entry) => entry.id === value);
@@ -1184,7 +1178,7 @@
       const id = `prototype-variant-${crypto.randomUUID()}`;
       variants.push({
         id,
-        name: `Prototype Variant ${variants.length + 1} · from ${value}`,
+        name: `Variant ${variants.length + 1}`,
         parentBranchId: branch,
         rootNodeId: value,
         headNodeId: value,
@@ -1193,10 +1187,10 @@
       branch = id;
       state.historyMenuNode = null;
       state.dirty = true;
-      state.message = `Prototype Variant created from ${value}; source History is unchanged.`;
+      state.message = 'Variant created.';
     } else if (kind === 'history') {
       cursor = value;
-      state.message = `Inspecting stored ${value}; source History not mutated.`;
+      state.message = `Inspecting ${data.history.find((node) => node.id === value)?.label || 'Selected step'}.`;
     } else if (kind === 'branch') {
       branch = value;
       const b = historyBranches().find((item) => item.id === value);
@@ -1206,19 +1200,18 @@
         recipe = structuredClone(b.recipe);
         activeStep = 0;
       }
-      state.message = `Inspecting ${b.name}; Main uses this stored model. 3D remains final thumbnail.`;
-    } else if (kind === 'restore')
-      state.message = `Restore walkthrough at ${cursor} · metadata/polygons shown, no actual History transaction.`;
+      state.message = `Inspecting ${b.name}.`;
+    } else if (kind === 'restore') state.message = 'Restore preview selected.';
     else if (kind === 'edit-old') {
       state.domain = 'process';
       state.mobile = 'edit';
-      state.message = `Editing from ${cursor}; Apply requires a new prototype Variant, preserving the source branch.`;
+      state.message = 'Editing selected step.';
       state.editOld = true;
     } else if (kind === 'create-variant') {
       const id = `prototype-variant-${crypto.randomUUID()}`;
       variants.push({
         id,
-        name: `Prototype Variant ${variants.length + 1} · from ${cursor}`,
+        name: `Variant ${variants.length + 1}`,
         parentBranchId: branch,
         rootNodeId: cursor,
         headNodeId: cursor,
@@ -1226,13 +1219,12 @@
       });
       branch = id;
       state.dirty = true;
-      state.message =
-        'New prototype Variant created. Original source HEAD and node graph unchanged.';
+      state.message = 'Variant created.';
     } else if (kind === 'apply' && state.editOld) {
       dialog(
         'Create Variant before Apply',
-        `Detached cursor ${cursor}. Source HEAD will remain intact; this simulates branch creation only.`,
-        'Create Variant + simulate',
+        'Create a Variant to keep your changes separate from the original branch?',
+        'Create Variant',
         'confirm-old-apply',
       );
       return;
@@ -1253,14 +1245,14 @@
       state.failedStep = Math.min(2, recipe.steps.length - 1);
       state.task = null;
       state.failure = recipeTask
-        ? `Simulated failure at step ${state.failedStep + 1} · ${recipe.steps[state.failedStep].id}. Source model unchanged. Edit, then Continue or Rebuild.`
+        ? `Preview failed at Step ${state.failedStep + 1}. Edit this step, then Continue or Rebuild.`
         : 'Simulated Apply rejection · original model unchanged. Correct parameters and retry.';
       if (recipeTask) activeStep = state.failedStep;
     } else if (kind === 'advance-task') {
       state.task.done = Math.min(state.task.total, state.task.done + 1);
     } else if (kind === 'cancel-task') {
       state.task = null;
-      state.message = 'Task cancelled · no source mutation.';
+      state.message = 'Cancelled.';
     } else if (kind === 'complete') {
       const completed = state.task;
       state.task = null;
@@ -1303,7 +1295,7 @@
         } else if (step.command === 'record')
           Object.assign(params, {
             process: state.processRecordKind || 'custom',
-            label: state.processRecordLabel || 'Record draft',
+            label: state.processRecordLabel || 'Record',
             temperatureC: state.processTemperature || null,
             durationMin: state.processDuration || null,
             ambient: state.processAmbient || '',
@@ -1334,15 +1326,15 @@
       }
       state.message =
         completed?.kind === 'recipe'
-          ? `Recipe simulation complete · ${completed.total} steps processed in order. Source model / History unchanged; no scientific execution.`
-          : `Manual simulation complete · one ${state.operation || 'deposit'} operation. Source model / History unchanged; no scientific execution.`;
+          ? `Recipe simulation complete · ${completed.total} steps.`
+          : `Manual simulation complete · ${state.operation || 'deposit'}.`;
     } else if (kind === 'continue-confirm' || kind === 'rebuild-confirm') {
       dialog(
         kind === 'continue-confirm' ? 'Continue current model' : 'Rebuild Base · new Main',
         kind === 'continue-confirm'
-          ? 'Additive execution normally needs confirmation on an existing process revision. Here it only starts a simulation.'
-          : 'Keep / Clear / Cancel archive semantics are not implemented in this prototype. Source branches remain intact.',
-        kind === 'continue-confirm' ? 'Confirm Continue' : 'Keep source + simulate rebuild',
+          ? 'Preview continuing from the selected step?'
+          : 'Preview rebuilding from Base? Existing example Variants remain available.',
+        kind === 'continue-confirm' ? 'Confirm Continue' : 'Preview rebuild',
         kind === 'continue-confirm' ? 'confirm-continue' : 'confirm-rebuild',
       );
       return;
@@ -1371,8 +1363,8 @@
       kind === 'file-import'
     ) {
       const titles = {
-        'new-project': 'Create project · draft safety',
-        'load-project': 'Load other bundled real project',
+        'new-project': 'New project',
+        'load-project': 'Load example',
         recovery: 'Review Recovery candidate',
         'file-import': 'File import walkthrough',
       };
@@ -1382,9 +1374,7 @@
           ? el(
               'div',
               { class: 'p-form' },
-              notice(
-                'New project setup is a UI draft; real example remains visible, no Base transaction.',
-              ),
+              notice('Choose a project name and Base dimensions.'),
               field('New project name', 'newProjectName', 'Device study'),
               field('Base width · µm', 'newWidth', currentModel().width, {
                 type: 'number',
@@ -1401,8 +1391,8 @@
               field('Base material', 'newMaterial', currentModel().layers[0].name),
             )
           : kind === 'file-import'
-            ? 'Inspect the bundled gds-basic-instances.gds inventory. Cells, references and Layers come from its real binary records. This does not replace the Draw-source project or execute a core import.'
-            : 'Unsaved prototype drafts are not persisted. Source files remain untouched. You can cancel or confirm this UI-only transition.',
+            ? 'Inspect Cells and Layers in gds-basic-instances.gds. This preview keeps the existing Draw shapes.'
+            : 'Unsaved changes will be reset. Continue?',
         kind === 'file-import' ? 'Inspect real sample inventory' : 'Confirm simulation',
         `confirm-${kind}`,
       );
@@ -1412,8 +1402,7 @@
       state.maskMode = 'file';
       state.fileLoaded = true;
       state.fileCell = fileMask.cells[0].name;
-      state.message =
-        'Actual GDS Cells / Layers metadata loaded. Project still uses its original Draw mask; no core import.';
+      state.message = 'Sample Cells and Layers loaded.';
     } else if (kind === 'cell' || kind === 'file-layer') {
       state[kind === 'cell' ? 'fileCell' : 'fileLayer'] = value;
       state.message = `Selected ${value} in real sample inventory · view geometry not replaced.`;
@@ -1426,7 +1415,8 @@
         state.projectName = state.newProjectName || 'Device study';
         state.dirty = true;
       }
-      state.message = `${kind.slice(8)} walkthrough complete · real bundled example loaded; no file/Recovery storage transaction.`;
+      state.message =
+        kind === 'confirm-new-project' ? 'Project settings updated.' : 'Example loaded.';
     } else if (kind === 'save') {
       download(
         'wafercad-m15-ui-draft.json',
@@ -1444,10 +1434,10 @@
           2,
         ),
       );
-      state.message = 'Downloaded UI draft, not a scientific .wafercad project.';
+      state.message = 'Settings downloaded as JSON.';
     } else if (kind === 'cancel-export') {
       state.exportTask = null;
-      state.message = 'Local 3D export draft cancelled; no file was generated.';
+      state.message = 'Export cancelled.';
     } else if (kind === 'export') {
       const [, view, format] = action.split(':');
       const svg = root.querySelector(`[data-science="${view}"] svg`);
@@ -1460,8 +1450,8 @@
         );
       state.message =
         svg && action.endsWith(':svg')
-          ? 'Presentation SVG downloaded (not a physical export).'
-          : `${view} ${format?.toUpperCase() || ''} export control simulated; no physical image / GLB / detail export produced. Cancel remains available for the local draft.`;
+          ? 'View SVG downloaded.'
+          : `${format?.toUpperCase() || 'View'} file generation is unavailable in this preview.`;
     }
     render(action);
     if (['history-menu', 'history-branch-menu', 'legend-palette'].includes(kind)) {

@@ -78,7 +78,7 @@
       { class: 'p-progress', role: 'status', 'aria-live': 'polite' },
       el('strong', {}, label),
       el('progress', { value: done, max: total, 'aria-label': label }),
-      el('span', { class: 'p-aux' }, `${done} / ${total} · simulation; source unchanged`),
+      el('span', { class: 'p-aux' }, `${done} / ${total}`),
     );
   }
   function panelHeader(title, subtitle, actions = []) {

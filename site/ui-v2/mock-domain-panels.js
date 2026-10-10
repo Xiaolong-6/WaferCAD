@@ -105,28 +105,21 @@
             ],
             state.displayUnit,
           ),
-          notice(
-            `${data.source} · ${data.bytes.toLocaleString()} bytes · real final model + complete History.`,
-          ),
+          notice(`${data.source.split('/').at(-1)} · ${data.bytes.toLocaleString()} bytes`),
           el(
             'div',
             { class: 'p-actions' },
             button('New', 'new-project', 'plus'),
             button('Load', 'load-project', 'folder'),
-            button('Save UI draft', 'save', 'save'),
+            button('Export settings', 'save', 'save'),
           ),
         ),
         el(
           'section',
           {},
           el('h3', {}, 'Recovery'),
-          el(
-            'p',
-            { class: 'p-aux' },
-            'Demonstration recovery candidate: bundled project. No IndexedDB, writer lease or autosave access.',
-          ),
+          el('p', { class: 'p-aux' }, 'Review this example as a recovery candidate.'),
           button('Review recovery', 'recovery', 'history'),
-          button('Export UI draft', 'save', 'export'),
         ),
       ];
     }
@@ -134,7 +127,7 @@
       const draft = state.baseDraft || currentModel();
       return el(
         'section',
-        { class: 'p-base-editor', 'aria-label': 'Base draft' },
+        { class: 'p-base-editor', 'aria-label': 'Base dimensions' },
         el('h3', {}, 'Base'),
         select(
           'Shape',
@@ -160,21 +153,16 @@
             ),
         ),
         state.baseError ? notice(state.baseError, 'error') : null,
-        el(
-          'p',
-          { class: 'p-aux' },
-          'Dimensions are a UI draft; the example model stays unchanged.',
-        ),
-        button('Rebuild Base · simulate', 'base-rebuild', 'history', {
+        button('Rebuild Base', 'base-rebuild', 'history', {
           primary: true,
           disabled: Boolean(state.baseError),
         }),
-        button('Revert draft', 'base-revert', 'undo'),
+        button('Revert changes', 'base-revert', 'undo'),
         state.baseApplied
           ? el(
               'p',
               { class: 'p-aux' },
-              `Last confirmed draft: ${['width', 'height', 'thickness']
+              `Confirmed dimensions: ${['width', 'height', 'thickness']
                 .map((key) => displayLength(state.baseApplied[key]))
                 .join(' × ')} ${unitName}`,
             )
@@ -211,8 +199,8 @@
             'Mask source',
             'maskMode',
             [
-              ['draw', 'Draw · actual source shapes'],
-              ['file', 'File · import walkthrough'],
+              ['draw', 'Draw'],
+              ['file', 'File'],
             ],
             state.maskMode,
           ),
@@ -221,9 +209,7 @@
               ? el(
                   'section',
                   { class: 'p-form' },
-                  notice(
-                    `${fileMask.source} · real file metadata only. Draw-source project geometry remains unchanged.`,
-                  ),
+                  notice(`${fileMask.source.split('/').at(-1)} · File inventory`),
                   el('h3', {}, `File Layers · ${fileMask.layers.length}`),
                   el(
                     'div',
@@ -340,7 +326,7 @@
       if (operation === 'deposit' || operation === 'extend')
         return [
           ...(operation === 'deposit'
-            ? [field('Layer name', 'processName', state.processName || 'New layer · draft')]
+            ? [field('Layer name', 'processName', state.processName || 'New layer')]
             : []),
           select(
             'Coverage',
@@ -444,16 +430,14 @@
             currentModel().layers.map((layer) => [layer.name, layer.name]),
             state.liftoffSacrificial || currentModel().layers.at(-1)?.name || '',
           ),
-          notice(
-            'Ideal sacrificial lift-off · UI draft only; no geometry or transaction executed.',
-          ),
+          notice('Select the sacrificial material to remove.'),
         ];
       if (operation === 'implant')
         return [
           field(
             'Implant name / source assumptions',
             'processName',
-            state.processName || sample?.name || 'Prototype implant draft',
+            state.processName || sample?.name || 'New Implant',
           ),
           stepper(
             'Tilt X · degrees',
@@ -479,7 +463,7 @@
           field(
             'Electrical region name',
             'processName',
-            state.processName || sample?.name || 'Prototype electrical draft',
+            state.processName || sample?.name || 'New Electrical Region',
           ),
           select(
             'Region type',
@@ -513,7 +497,7 @@
             displayLength(state.processDepth ?? sample?.depthUm ?? 0.05),
             0.01 * unitFactor,
           ),
-          notice(sample?.name || 'No Electrical step in this source Recipe. UI-only controls.'),
+          notice(sample?.name || 'No Electrical step in this Recipe.'),
         ];
       return [
         select(
@@ -570,7 +554,9 @@
           ? el(
               'div',
               { class: 'p-history-edit-context' },
-              notice(`${state.historyEditMode || 'edit'} from ${cursor} · UI draft`),
+              notice(
+                `${state.historyEditMode === 'insert' ? 'Insert before' : 'Edit'}: ${data.history.find((node) => node.id === cursor)?.label || 'Selected step'}`,
+              ),
               button('Cancel · return to HEAD', 'history-cancel-edit', 'back'),
             )
           : null,
@@ -641,39 +627,50 @@
             'processAddToRecipe',
             [
               ['false', 'No'],
-              ['true', 'Yes · draft'],
+              ['true', 'Yes'],
             ],
             state.processAddToRecipe || 'false',
           ),
           el('span', { id: 'p-units', class: 'p-aux' }, `Input unit: ${unitName}`),
-          button('Apply · simulate', 'apply', 'play', {
-            primary: true,
-            disabled:
-              Boolean(state.task) ||
-              (!['record', 'liftoff'].includes(state.operation) &&
-                state.thickness != null &&
-                (!Number.isFinite(state.thickness) || state.thickness <= 0)),
-          }),
+          el(
+            'div',
+            { class: 'p-apply-actions' },
+            button('Apply', 'apply', 'play', {
+              primary: true,
+              disabled:
+                Boolean(state.task) ||
+                (!['record', 'liftoff'].includes(state.operation) &&
+                  state.thickness != null &&
+                  (!Number.isFinite(state.thickness) || state.thickness <= 0)),
+            }),
+            el(
+              'div',
+              { class: 'p-edit-actions', role: 'toolbar', 'aria-label': 'Form edits' },
+              button('', 'draft-undo', 'undo', {
+                disabled: !state.draftUndo,
+                'aria-label': 'Undo form edit',
+                title: 'Undo form edit',
+              }),
+              button('', 'draft-redo', 'redo', {
+                disabled: !state.draftRedo,
+                'aria-label': 'Redo form edit',
+                title: 'Redo form edit',
+              }),
+            ),
+          ),
           !['record', 'liftoff'].includes(state.operation) &&
             state.thickness != null &&
             (!Number.isFinite(state.thickness) || state.thickness <= 0)
             ? notice('Enter a positive thickness / depth before Apply.', 'error')
             : null,
-          el(
-            'div',
-            { class: 'p-actions', role: 'toolbar', 'aria-label': 'Apply history' },
-            button('Undo', 'draft-undo', 'undo', { disabled: !state.draftUndo }),
-            button('Redo', 'draft-redo', 'redo', { disabled: !state.draftRedo }),
-          ),
           ...taskControls(),
           state.failure ? notice(state.failure, 'error') : null,
         ),
         el(
-          'section',
-          {},
-          el('h3', {}, 'Review before applying'),
+          'div',
+          { class: 'p-process-summary' },
           el(
-            'p',
+            'span',
             { class: 'p-aux' },
             `${currentModel().regionCount} regions · ${currentModel().layers.length} layers`,
           ),
@@ -728,7 +725,7 @@
               ],
               state.recipeTemplate || 'source',
             ),
-            notice('Loading a template replaces this Recipe draft after explicit confirmation.'),
+            el('p', { class: 'p-aux' }, 'Replacing a template can be undone.'),
             button('Preview / replace template…', 'template-preview', 'recipe'),
           ),
           state.recipeErrors?.length ? notice(state.recipeErrors.join(' · '), 'error') : null,
@@ -765,7 +762,7 @@
                   ].map((kind) => [kind, kind]),
                   selected.command,
                 ),
-                field('Material / label draft', 'stepLabel', stepTitle(selected)),
+                field('Material / label', 'stepLabel', stepTitle(selected)),
                 ...(selected.params.thicknessUm != null || selected.params.depthUm != null
                   ? [
                       stepper(
@@ -788,7 +785,7 @@
                   ? el(
                       'fieldset',
                       { class: 'p-form' },
-                      el('legend', {}, 'Surface draft'),
+                      el('legend', {}, 'Surface'),
                       ...Object.entries(selected.params.surface).map(([key, value]) => {
                         const physical = ['featureSize', 'meanHeight'].includes(key);
                         return field(
@@ -808,10 +805,10 @@
                     )
                   : null,
                 ['mask', 'invert'].includes(selected.params.area)
-                  ? button('Use current Mask · draft', 'recipe-capture-mask', 'mask')
+                  ? button('Use current Mask', 'recipe-capture-mask', 'mask')
                   : null,
                 button('Copy step', 'copy-step'),
-                button('Save step draft', 'save-step', 'save'),
+                button('Save step', 'save-step', 'save'),
                 button('Run to step', 'run-prefix', 'play'),
               )
             : emptyState('No steps in this Variant', 'Choose another populated Variant.', null),
@@ -861,7 +858,7 @@
         return [
           emptyState(
             'No recorded steps',
-            'Only History is empty in this targeted scene; the actual model stays loaded.',
+            'No steps have been recorded yet.',
             button('Back to canvas', 'return-results', 'back'),
           ),
         ];
@@ -934,7 +931,7 @@
                         ? 'Main is protected'
                         : allBranches.some((item) => item.parentBranchId === tree.branch.id)
                           ? 'Delete child Variants first'
-                          : 'Delete from UI draft',
+                          : 'Delete Variant',
                   }),
                 )
               : null,
@@ -988,14 +985,12 @@
                               button('Edit from here', `history-edit:${step.node.id}`, null, {
                                 role: 'menuitem',
                               }),
+                              button('Insert before', `history-insert:${step.node.id}`, null, {
+                                role: 'menuitem',
+                                disabled: !step.node.parentId,
+                              }),
                               button(
-                                'Insert before · draft',
-                                `history-insert:${step.node.id}`,
-                                null,
-                                { role: 'menuitem', disabled: !step.node.parentId },
-                              ),
-                              button(
-                                'Continue from here · draft',
+                                'Continue from here',
                                 `history-continue:${step.node.id}`,
                                 null,
                                 { role: 'menuitem' },
@@ -1058,11 +1053,7 @@
                     ),
                   ),
                 )
-              : emptyState(
-                  'No steps in this Variant',
-                  'This draft branch has no saved Steps.',
-                  null,
-                ),
+              : emptyState('No steps in this Variant', 'This Variant has no recorded steps.', null),
         );
       }
       return [
@@ -1072,11 +1063,11 @@
           el(
             'div',
             { class: 'p-history-fixed' },
-            el('strong', {}, selected?.label || 'Prototype Variant'),
+            el('strong', {}, selected?.label || 'New Variant'),
             el(
               'span',
               { class: 'p-history-context' },
-              `Cursor · ${branch} · ${selected?.kind || 'Base'}`,
+              `Cursor · ${allBranches.find((item) => item.id === branch)?.name || 'Variant'}`,
             ),
           ),
           el(
@@ -1125,32 +1116,36 @@
           class: 'p-code-editor',
           spellcheck: 'false',
           'data-key': 'codeDraft',
-          'aria-label': 'Process Recipe code draft',
+          'aria-label': 'Process Recipe code',
         },
         state.codeDraft ?? sourceText,
       );
       return [
-        processModes('code'),
-        el('h3', {}, `${recipe.name} · ${recipe.steps.length} source steps`),
-        notice(
-          'Editable presentation of the real Recipe commands. Apply / Format are UI demonstrations only: no parser, execution, or saved Recipe changes.',
-        ),
-        state.failure ? notice(state.failure, 'error') : null,
-        editor,
         el(
-          'div',
-          { class: 'p-actions' },
-          button('Apply code · demo', 'code-apply', 'check', { primary: true }),
-          button('Format · demo', 'code-format', 'code'),
+          'section',
+          { class: 'p-code-workspace' },
+          processModes('code'),
+          el(
+            'div',
+            { class: 'p-code-heading' },
+            el('strong', { title: recipe.name }, recipe.name),
+            el('span', { class: 'p-aux' }, `${recipe.steps.length} steps`),
+          ),
+          state.failure ? notice(state.failure, 'error') : null,
+          editor,
+          el(
+            'div',
+            { class: 'p-actions' },
+            button('Apply code', 'code-apply', 'check', { primary: true }),
+            button('Format', 'code-format', 'code'),
+          ),
         ),
       ];
     }
     function diagnosticsPanel() {
       return [
         processModes('diagnostics'),
-        notice(
-          'Geometry Diagnostics has a named Process slot. Real Analyze, Materials, metrics and Findings enter during M3.',
-        ),
+        notice('Geometry analysis is not available in this preview.'),
       ];
     }
     function inspector() {
