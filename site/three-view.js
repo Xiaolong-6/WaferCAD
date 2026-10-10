@@ -12,6 +12,8 @@ import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
+import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
+import { censusV4SceneResources } from './renderer-v4-resource-census.js';
 import {
   createAdaptiveTilePlanCache,
   observePreparedAdaptiveTiles,
@@ -103,6 +105,8 @@ export function createThreeView({
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
+  const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
+  const v4GpuCensusEnabled = rendererParams.get('rendererV4GpuCensus') === '1';
   const v4HeavyCameraNoDamping = rendererParams.get('rendererV4HeavyCameraNoDamping') === '1';
   const v4TileProbeEnabled =
     rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
@@ -943,6 +947,25 @@ export function createThreeView({
     scheduleFrame();
   }
 
+  function writeV4GpuResourceCensus() {
+    if (!v4GpuCensusEnabled) return;
+    const groups = [...new Set([
+      ...[...sceneVariantCache.values()].map((entry) => entry?.group).filter(Boolean),
+      group,
+    ].filter(Boolean))];
+    const result = censusV4SceneResources(groups);
+    host.dataset.v4GpuResourceStatus = result.reason;
+    host.dataset.v4GpuResourceSceneGroups = String(result.groupCount);
+    host.dataset.v4GpuResourceMeshes = String(result.meshCount);
+    host.dataset.v4GpuResourceGeometries = String(result.geometryCount);
+    host.dataset.v4GpuResourceMaterials = String(result.materialCount);
+    host.dataset.v4GpuResourceInstancedMeshes = String(result.instancedMeshCount);
+    host.dataset.v4GpuResourceEstimatedBufferBytes = String(result.estimatedBufferBytes);
+    host.dataset.v4GpuResourceCrossVariantGeometries = String(result.crossGroupGeometries);
+    host.dataset.v4GpuResourceCrossVariantMaterials = String(result.crossGroupMaterials);
+    host.dataset.v4GpuResourceComplete = String(result.complete);
+  }
+
   function disposeGroup() {
     if (!group) return;
     clearRoughRefineTimer();
@@ -1174,6 +1197,7 @@ export function createThreeView({
     host.dataset.v3EdgeSurveySubpixelRawUpperBound = entry.v3EdgeSurvey?.candidateRaw || '0';
     host.dataset.v3EdgeSurveyMs = entry.v3EdgeSurvey?.elapsedMs || '0';
     host.dataset.v3EdgeSurveyTopOwners = entry.v3EdgeSurvey?.topOwners || '[]';
+    writeV4GpuResourceCensus();
     return true;
   }
 
@@ -3081,6 +3105,40 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.v4TileOverflow = String(v4Tiles?.tileOverflow || 0);
       host.dataset.v4TileSkippedTriangles = '0';
       host.dataset.v4TileSample = JSON.stringify(v4Tiles?.sample || []);
+      // R3 feature-level projection is much finer than tile bounding
+      // volumes; it remains a bounded read-only probe, not an alpha gate.
+      let v4Features = null;
+      let v4FeatureProbeMs = 0;
+      if (v4FeatureSurveyEnabled && targetVariant === 'transparent' && camera) {
+        const started = performance.now();
+        camera.updateMatrixWorld();
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+        v4Features = surveyV4FeatureFootprints(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: arrayLod.tier !== 'exact',
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          edgeOn: distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+        v4FeatureProbeMs = performance.now() - started;
+      }
+      host.dataset.v4FeatureStatus = v4Features?.reason || 'disabled';
+      host.dataset.v4FeatureGate = v4Features?.reductionGate || 'probe-disabled';
+      host.dataset.v4FeatureOwners = String(v4Features?.owners || 0);
+      host.dataset.v4FeatureMeasuredQuads = String(v4Features?.measuredQuads || 0);
+      host.dataset.v4FeatureRepresentedQuads = String(v4Features?.representedQuads || 0);
+      host.dataset.v4FeatureSubpixelQuads = String(v4Features?.subpixelQuads || 0);
+      host.dataset.v4FeatureNearUncertain = String(v4Features?.nearPlaneUncertainQuads || 0);
+      host.dataset.v4FeatureOverflow = String(v4Features?.workOverflow || 0);
+      host.dataset.v4FeatureCandidateRawTriangles = String(v4Features?.rawTriangleCandidates || 0);
+      host.dataset.v4FeatureSkippedTriangles = '0';
+      host.dataset.v4FeatureProbeMs = String(v4FeatureProbeMs);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -3858,6 +3916,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       applyPresentationState({ profile: false, settle: false });
       recordVariantStage('presentation-complete');
       cacheActiveSceneVariant();
+      writeV4GpuResourceCensus();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
