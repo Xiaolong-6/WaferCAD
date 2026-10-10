@@ -34,6 +34,7 @@
   const nativeStages = new Map();
   const livePanels = new Map();
   let threeControls = null;
+  let sectionControls = null;
 
   const notifyResize = () => {
     const serial = ++renderSerial;
@@ -133,6 +134,17 @@
         setCamera: (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
       });
       fit.after(threeControls.pan, threeControls.zoom);
+    }
+    if (key === 'section') {
+      sectionControls = window.WaferCadV2RealSectionControls.create({
+        canvas: nativeStages.get('section'),
+        getViewport: () => window.WaferCadV2RealBridge?.getSectionViewport?.(),
+        setViewport: (view) => window.WaferCadV2RealBridge?.setSectionViewport?.(view),
+        panViewport: (dx, dy) => window.WaferCadV2RealBridge?.panSectionViewport?.(dx, dy),
+        zoomViewportAt: (factor, x, y, w, h, origin) =>
+          window.WaferCadV2RealBridge?.zoomSectionViewportAt?.(factor, x, y, w, h, origin),
+      });
+      tools.prepend(sectionControls.fit, sectionControls.pan, sectionControls.zoom);
     }
     if (key === 'main' || key === 'mask') {
       const plus = tools.querySelector(`#${key}ZoomIn`);
@@ -258,9 +270,11 @@
         },
         onHide() {
           if (key === 'three') threeControls?.hide();
+          if (key === 'section') sectionControls?.hide();
         },
         destroy() {
           if (key === 'three') threeControls?.destroy();
+          if (key === 'section') sectionControls?.destroy();
         },
       });
     }
