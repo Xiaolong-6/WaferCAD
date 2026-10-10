@@ -45,6 +45,31 @@ test('preflight simulates rebuilt Base instead of depending on films removed by 
   );
 });
 
+test('array Recipe without array Base cannot destructively rebuild to a scalar model', () => {
+  const arrayModel = { ...model, kernel: 'vector-2.5d-array-v1' };
+  const steps = [step('deposit', deposit('New film').params)];
+  assert.deepEqual(
+    validateRecipeExecution(steps, { model: arrayModel, startMode: 'continue' }).errors,
+    [],
+  );
+  assert.match(
+    validateRecipeExecution(steps, {
+      model: arrayModel,
+      startMode: 'new-base',
+      base: { material: 'Base', shape: 'rect', width: 30, height: 30, thickness: 2 },
+    }).errors[0],
+    /no array Base definition/,
+  );
+  assert.deepEqual(
+    validateRecipeExecution(steps, {
+      model: arrayModel,
+      startMode: 'new-base',
+      base: { material: 'Base', array: { rows: 25, columns: 25 } },
+    }).errors,
+    [],
+  );
+});
+
 test('preflight lets Steps use films deposited by an earlier Step', () => {
   const steps = [
     step('deposit', deposit('New film').params),
