@@ -318,11 +318,12 @@ and native per-owner/pass accounting, and reproduce the ROI stall in an isolated
 fresh scenario. Hardware gate remains FAIL/unaccepted even though resource
 lifecycle checks passed. V4 stays a separate stacked diagnostic experiment.
 
-Publication status: this follow-up and its inspection harness are saved in a
-local commit on the V3 branch; no push, PR readiness change, merge or deployment
-was performed. Resolve the tooling revision with
-`git log -1 --format=%H -- scripts/renderer-electrical-inspection.mjs`; the
-unchanged product renderer revision remains `3b7e6af9d608ea8814217f385cf251be0f4ffb06`.
+Publication history: the Windows follow-up was originally prepared locally,
+then pushed as `7abcf51a1314f2d77f6d30ee4f2acb2fe4bec125` with the user's
+approval. The product renderer at that acceptance commit remained
+`3b7e6af9d608ea8814217f385cf251be0f4ffb06`. The later diagnostic
+revisions below add an OFF-by-default tracing hook and browser-only tools;
+no product optimization was enabled, no merge or deployment performed.
 Final formatting, documentation and `git diff --check` passed. Local test servers
 were stopped after acceptance runs.
 
