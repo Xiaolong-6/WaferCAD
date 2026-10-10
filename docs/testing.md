@@ -39,6 +39,33 @@ On the experimental transparency V3 branch, `node scripts/renderer-quality-index
 
 Raster discard submits every original primitive but deliberately produces an incomplete image. Its screenshots are labeled diagnostic-only and must never serve as visual acceptance, a baseline, a product optimization, or permission to omit material/annotation faces. The two normal-arm canvases must match exactly. Discard may change driver optimization: API primitive counts are not hardware invocation counters, and remaining cost is **not** a pure vertex-stage timer. Explicit completion changes scheduling, so compare only measurements using the same probe. Output is under ignored `test-results/renderer-gpu-profile/`; adding `--final-frame-only` enables the default-off assembly pilot and writes separately to `test-results/renderer-gpu-profile-final-only/`. This extra diagnostic is run locally, not added to automatic heavy CI. The application never imports the helper. `webgl-frame-probe.test.mjs` owns counter, query-validity, GL-state restoration and reference-axes attribution regressions; unknown material draws still fail the full-scene gate.
 
+### Manual Electrical cap inspection
+
+On the experimental V3 branch, `node scripts/renderer-electrical-inspection.mjs`
+uses headed Chromium and the pinned local Three route to exercise the default-off
+Electrical planar-cap candidate on a recognized hardware adapter. Serve `site/`
+at `WAFERCAD_URL` and set `WAFERCAD_THREE_DIR` as below. It runs OFF/OFF/ON/ON
+in fresh storage contexts, comparing unobstructed completed canvases at matching
+pointer poses: saved full-wafer camera, 25%/50%/75% opacity, opaque, near,
+edge-on, fitted, Section full-Z, ROI and ROI restore, and Fast negative control.
+Each arm includes 20 presentation transitions with retained scene-resource and
+physical revision checks. Same-policy controls help distinguish repeatability
+from cross-policy image changes; this order is not an ABBA timing experiment.
+
+The script records every strict byte/pixel mismatch and then fails acceptance;
+it does not approve any pixel tolerance. Reports, images and failure state are
+under ignored `test-results/renderer-electrical-inspection/`. Actual native GL
+census and hardware timing remain owned by
+`node scripts/renderer-quality-index-ab.mjs --hardware-electrical-ab`.
+These are manual local gates and add no automatic heavy CI job. A mismatch keeps
+the pilot default-off; software-only parity cannot supersede a hardware failure.
+The explicit `--skip-roi` diagnostic subset preserves full-gate ROI failures and
+writes to `test-results/renderer-electrical-inspection-no-roi/`. Its report sets
+`roiCovered=false` and `fullAcceptance=false`; it cannot pass full acceptance.
+Test-only traces record actual camera matrices and presentation draw order per
+captured frame, with same-policy/cross-policy pose and order comparisons. No
+application module imports this instrumentation.
+
 ### Documentation checks
 
 `npm run docs:check` validates generated Process output and the repository-wide documentation link/navigation contract. `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs site/tests/process-guide.test.mjs` owns link negative cases, actual tutorial parsing, Welcome catalog alignment and generated operation diagrams. See [Documentation architecture](DOCUMENTATION.md) for authority and publishing boundaries.
