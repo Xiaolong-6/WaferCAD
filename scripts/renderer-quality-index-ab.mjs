@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, URLSearchParams } from 'node:url';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
+import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
 import {
   launchBrowser,
   newUiContext,
@@ -60,6 +61,7 @@ async function trial(enabled, ordinal) {
   const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
   let page;
   let errors = [];
+  let pixelDifference = null;
   let stage = 'boot';
   try {
     if (gpuProfile) await context.addInitScript(installWebglFrameProbe);
@@ -228,10 +230,20 @@ async function trial(enabled, ordinal) {
     }
     if (!gpuProfile || !enabled) {
       if (referenceCanvas === null) referenceCanvas = canvas;
-      assert.ok(
-        canvas.equals(referenceCanvas),
-        `${label}: canvas pixels differ from the same-pose original frame; fail closed`,
-      );
+      // Pixel-level diagnostics are emitted only on a strict-byte-parity
+      // failure. Never turn a tolerated color difference into a PASS here.
+      if (!canvas.equals(referenceCanvas)) {
+        pixelDifference = compareScreenshotPngPixels(referenceCanvas, canvas);
+        await writeFile(
+          new URL(`${label}-pixel-diff.json`, out),
+          JSON.stringify(pixelDifference, null, 2),
+        );
+        assert.fail(
+          `${label}: canvas bytes differ from the same-pose reference; ` +
+            `${pixelDifference.differentPixels ?? 'unknown'} changed pixels; ` +
+            `max channel delta ${pixelDifference.maxChannelDelta ?? 'unknown'}/255; fail closed`,
+        );
+      }
     } else {
       assert.ok(
         referenceCanvas && !canvas.equals(referenceCanvas),
@@ -292,6 +304,7 @@ async function trial(enabled, ordinal) {
           stage,
           error: String(error),
           errors,
+          pixelDifference,
           state,
         },
         null,
