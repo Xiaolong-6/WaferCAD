@@ -125,7 +125,6 @@ async function runArm(name, search) {
       v4SharedFlatTemplates: host.v4SharedFlatTemplates,
       v4SharedFlatMeshes: host.v4SharedFlatMeshes,
       v4SharedFlatClonesAvoided: host.v4SharedFlatClonesAvoided,
-      v4GpuResourceGeometries: host.v4GpuResourceGeometries,
       rendererIdentity: await page.locator('#threeHost canvas').evaluate((canvas) => {
         const gl = canvas.getContext('webgl2');
         const extension = gl?.getExtension('WEBGL_debug_renderer_info');
