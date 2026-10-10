@@ -52,7 +52,7 @@ try {
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.goto(`${base}/app-v2-real.html`);
     await page.waitForFunction(() => document.body.dataset.ready === 'true' ||
-      document.body.dataset.ready === 'error', { timeout: 120000 });
+      document.body.dataset.ready === 'error', null, { timeout: 120000 });
     assert.equal(await page.locator('body').getAttribute('data-ready'), 'true',
       'Real app must boot, not display an error or a placeholder');
     assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
