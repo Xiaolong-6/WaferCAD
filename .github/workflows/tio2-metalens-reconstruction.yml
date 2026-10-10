@@ -10,6 +10,10 @@ on:
       - 'site/tests/tio2-metalens-reconstruction.test.mjs'
       - 'scripts/tio2-metalens-array-scale.mjs'
       - 'scripts/tio2-metalens-grid-browser.mjs'
+      - 'site/process-recipe-preflight.js'
+      - 'site/process-recipe.js'
+      - 'site/controllers/base-controls-controller.js'
+      - 'site/model-array-construction.js'
       - '.github/workflows/tio2-metalens-reconstruction.yml'
   workflow_dispatch:
 
@@ -19,7 +23,7 @@ permissions:
 jobs:
   reconstruct:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -58,6 +62,11 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/tio2-metalens-grid-browser.mjs
+      - name: Real 4725-site Recipe Run All from inferred GRID Base
+        timeout-minutes: 18
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=tio2-metalens-four-unit
       - name: Build exact production Welcome preview
         run: |
           node scripts/build-example-previews.mjs --write --id=tio2-metalens-four-unit
