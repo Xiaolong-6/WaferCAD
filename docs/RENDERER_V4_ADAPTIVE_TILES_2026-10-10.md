@@ -340,3 +340,46 @@ geometry is outside this eligible subset. The census is a CPU
 typed-array estimate, not measured driver-resident VRAM. R3 performance
 benefit remains unproven until real-hardware GPU and repeatable
 presentation-time experiments. Do not make indexing default-on yet.
+
+## R4 opt-in constant-Z cap sharing (2026-10-10)
+
+The new `?rendererV4SharedFlatCaps=1` experiment reuses one
+read-only BufferGeometry template across multiple spatial chunks of
+a smooth, horizontal array cap. A pure eligibility function requires
+every vertex Z to be finite and identical, checks actual planar-cap
+ownership, and rejects rough/displaced geometry and depth-gradient
+attributes. Flat geometry only moves in XY through instance matrices.
+Its Section Z display transformation is implemented as an independent
+mesh translation, equivalent to mapping the same constant Z for every
+vertex. The canonical geometry and stored project never change.
+
+The experiment remains default-off. Smooth sidewalls, rough meshes,
+annotations and export geometry keep their existing ownership and
+mutation pathways. Each owning scene variant retains and disposes
+its shared cap BufferGeometry once; the experiment does not share
+these objects across opaque/transparent scene variants or separate
+renderers. Resource and pixel counts are acceptance assertions,
+not only logging.
+
+In the [R4 625-site browser A/B](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38071010146),
+Linux Chromium/SwiftShader retained **1,468** unique geometries at
+baseline versus **1,362** when sharing was enabled. There were
+**52** eligible templates across **158** chunk meshes, avoiding
+**106** geometry clones. Unique retained typed-array storage fell
+from **32,513,760** to **32,181,984 bytes**, a saving of
+**331,776 bytes (1.0204%)**. The 531 x 275 screenshot had
+**0/146,025** differing pixels. Draw calls, triangles, visible
+object counts and material counts did not change.
+
+These are CPU-side typed-array estimates across retained variants;
+GPU driver allocation and per-frame timing are still unmeasured.
+The R3 indexed-sidewall reduction and R4 cap sharing were each
+benchmarked against the same baseline in **separate** experimental
+arms. Their savings must not be added without a combined-arm
+resource census and pixel test.
+
+Further gates before promotion: real GPU ABBA performance and
+resource residency, opacity/scene-variant transitions, near/edge-on
+camera poses, ROI, dynamic Section Z-collapse edits, repeated
+project reloads and GPU context cleanup. Keep PR #174 Draft
+and do not modify approved visual baselines.
