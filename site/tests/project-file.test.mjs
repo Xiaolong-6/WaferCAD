@@ -115,7 +115,7 @@ test('Section viewport remains optional for legacy projects and validates persis
   ]) {
     const invalid = structuredClone(saved);
     invalid.display.sectionViewport[field] = value;
-    assert.throws(() => validateProjectFile(invalid), /display\\.sectionViewport/);
+    assert.throws(() => validateProjectFile(invalid), /display\.sectionViewport/);
   }
 });
 
