@@ -140,7 +140,7 @@ try {
   await waitFor(
     async () =>
       evaluate(
-        "document.documentElement.dataset.ui==='v2' && document.body.dataset.ready==='true'",
+        "document.documentElement?.dataset.ui==='v2' && document.body?.dataset.ready==='true'",
       ),
     'v2 shell boot',
   );

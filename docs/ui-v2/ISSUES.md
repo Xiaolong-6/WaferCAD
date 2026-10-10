@@ -35,18 +35,26 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 
 ## M3 前置 main 审计差异（2026-10-10）
 
-完整按域“静态控件 / 动态生成 / 状态 / 事件与导航 / 真实事务回调”表见 [M3 latest-main audit](M3_MAIN_AUDIT_2026-10-10.md)。本轮只写文档，无产品接线。以下编号在 I01–I10 的历史问题上递增，未表示已有核心修改授权。
+完整按域“静态控件 / 动态生成 / 状态 / 事件与导航 / 真实事务回调”表见 [M3 latest-main audit](M3_MAIN_AUDIT_2026-10-10.md)。初始轮次只写文档；后续已完成运行时前置审计、生成清单和脚本修复，无产品接线。以下编号在 I01–I10 的历史问题上递增，未表示已有核心修改授权。
 
-| ID | 发现与影响 | 处理边界 / 验收条件 | 状态 |
-| --- | --- | --- | --- |
-| I11 | `main` 的 `site/app.html` 现有 **267/267** 唯一静态 ID（含 Lift-off 3 个、Diagnostics 5 个）；M0 自动生成的 `CONTRACT.md` / `contract.json` 仍是 **259**。原 205 dynamic classes / 843 operations / 5 unresolved **不能**自动视为最新。 | 取得可执行 checkout 后先用 `node scripts/ui-contract-extract.mjs --write` 与 `--check` 共同刷新机器清单和人类文档；逐项复核新增控件引用及动态表达式；禁止直接手写假的 AST 数量。 | **P1 / D1 前资产门槛未通过**；本轮仅核对当前静态 HTML |
-| I12 | `site/app-v2.html` 仍运行 mock，`site/ui-v2/app.html` 是未接生产服务的 shell，`site/app.html` 是真正产品入口。v2 没有已验证的独立生产 bootstrap；可能发生 double-bind 或仍展示演示数据。 | 建议稳定 `site/app-v2.html` 做未来生产 route；保留单独 mock/gallery 入口。先定义 shell-first / single-owner / mount→bind→restore 契约，D1 需真实运行时验证；不得擅自切默认入口。 | **P1 / D1 设计前置**，待 D1 批准 |
-| I13 | 源分支 `codex/ui-v2-m2-handoff-2026-10-09` 当前 `e706f38`，比远端 `main` `dc2cb2d` **领先 99 commits**；`main` 没有 `site/app-v2.html` 或 `docs/ui-v2/`。历史文档“已合并 main”的措辞与现在远端状态不符。 | 按用户指定从源分支开 M3 分支，不合并 main；下个域启动前重新比对远端，另行获准方可进行最终集成。 | **P1 / 集成事实已确认；合入主线未获授权** |
-| I14 | `main` 已纳入 4,725-site TiO₂ full-array Welcome 项目及 Lift-off / Geometry Diagnostics；巨型数组恢复和报告 partial/stale、Recipe/History 源 ID、renderer ready 与完整帧之间存在跨域契约。 | D3/D4/D5/D6/D8/D9 各自加入实际源工程场景；确认 full array 的 compiled grid 不代表 full Recipe Run All；Diagnostics 不能将 skipped/partial 检查说成无问题。只读科学/worker/IO 保持不变。 | **P1 / 映射已录，runtime 待 M3** |
-| I15 | 当前审计环境无可用本地工作区；只有 GitHub API 源码读取和引用对比，不能执行 `npm ci`、AST 生成、Node/浏览器或视觉验收；用户计划中的“重新跑契约”尚缺执行证据。 | 在 D1 前取得可执行 checkout，实际执行且记录命令、退出码、浏览器/OS 与清单差异。既有 60 shell checks 是历史报告，不当作本分支重新跑出的结果。 | **P1 / 未通过 runtime 门槛；不得以文档完成宣告 D1 可自动启动** |
+| ID  | 发现与影响                                                                                                                                                                                                                              | 处理边界 / 验收条件                                                                                                                                                                     | 状态                                                                                                                                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I11 | `main` 的 `site/app.html` 现有 **267/267** 唯一静态 ID（含 Lift-off 3 个、Diagnostics 5 个）；M0 自动生成的 `CONTRACT.md` / `contract.json` 仍是 **259**。原 205 dynamic classes / 843 operations / 5 unresolved **不能**自动视为最新。 | 取得可执行 checkout 后先用 `node scripts/ui-contract-extract.mjs --write` 与 `--check` 共同刷新机器清单和人类文档；逐项复核新增控件引用及动态表达式；禁止直接手写假的 AST 数量。        | **已关闭清单漂移**：AST write/check 与 Chromium 核对通过；267 IDs、209 classes、1082 operations、60 dynamic IDs、14 unresolved（其中 legacy 7）；逐域真实接线仍待验收 |
+| I12 | `site/app-v2.html` 仍运行 mock，`site/ui-v2/app.html` 是未接生产服务的 shell，`site/app.html` 是真正产品入口。v2 没有已验证的独立生产 bootstrap；可能发生 double-bind 或仍展示演示数据。                                                | 建议稳定 `site/app-v2.html` 做未来生产 route；保留单独 mock/gallery 入口。先定义 shell-first / single-owner / mount→bind→restore 契约，D1 需真实运行时验证；不得擅自切默认入口。        | **P1 / D1 设计前置**，待 D1 批准                                                                                                                                      |
+| I13 | 源分支 `codex/ui-v2-m2-handoff-2026-10-09` 当前 `e706f38`，比远端 `main` `dc2cb2d` **领先 99 commits**；`main` 没有 `site/app-v2.html` 或 `docs/ui-v2/`。历史文档“已合并 main”的措辞与现在远端状态不符。                                | 按用户指定从源分支开 M3 分支，不合并 main；下个域启动前重新比对远端，另行获准方可进行最终集成。                                                                                         | **P1 / 集成事实已确认；合入主线未获授权**                                                                                                                             |
+| I14 | `main` 已纳入 4,725-site TiO₂ full-array Welcome 项目及 Lift-off / Geometry Diagnostics；巨型数组恢复和报告 partial/stale、Recipe/History 源 ID、renderer ready 与完整帧之间存在跨域契约。                                              | D3/D4/D5/D6/D8/D9 各自加入实际源工程场景；确认 full array 的 compiled grid 不代表 full Recipe Run All；Diagnostics 不能将 skipped/partial 检查说成无问题。只读科学/worker/IO 保持不变。 | **P1 / 映射已录，runtime 待 M3**                                                                                                                                      |
+| I15 | 当前审计环境无可用本地工作区；只有 GitHub API 源码读取和引用对比，不能执行 `npm ci`、AST 生成、Node/浏览器或视觉验收；用户计划中的“重新跑契约”尚缺执行证据。                                                                            | 在 D1 前取得可执行 checkout，实际执行且记录命令、退出码、浏览器/OS 与清单差异。既有 60 shell checks 是历史报告，不当作本分支重新跑出的结果。                                            | **已关闭执行环境缺口**：npm ci、8 项契约、60 项壳层、585 项 Node、legacy 浏览器、lint/docs 已实跑；D1 仍未启动                                                        |
 
 ### M3 检查点纪律
 
-- 当前分支：`codex/ui-v2-m3-main-audit-20261010`，初始基点 `e706f38`。只完成可连接 API 的静态审计与文档记录；**没有启动 D1**。
+- 当前分支：`codex/ui-v2-m3-main-audit-20261010`，初始基点 `e706f38`。静态审计后已补齐可执行前置审计，详见主报告 §7；**没有启动 D1**。
 - D1 前置决策与运行时审计必须汇报并获用户批准；每域开始记录回滚基点 commit，不打 tag；同样的批准门槛适用于 D2–D9。
 - BC-03–BC-08 由其指定 M3 域验收覆盖，不新增 mock 功能作为替代，不改已批准视觉基线。
+
+### 可执行复验修订
+
+- I08 的旧“5 个未解析”是 M0 历史值：本轮 AST 实际为 14，其中 7 来自 legacy、7 来自 v2/原型。全部已映射到 helper/guide 的所有者，仍需对应域条件场景验收，不宣告动态迁移覆盖。
+- I12：两个 v2 route 实测各自隔离，37 个槽位身份与 scientific stage sentinel 子节点保持。生产空壳仍为零 canvas、13 个 placeholder adapter；单一真实 bootstrap 未实现。具体 shell-first→服务/控制器→bind once→restore/first-frame 设计见主报告 §7。
+- I13：新 fetch 的 main/source hash 未变；输入审计 HEAD 比 main 领先 102（99 源提交 + 3 审计提交），没有合并。
+- I16：原 `check-m2-shell.mjs` 在 CDP 导航开始后直接读取 `document.body.dataset`，body 尚不存在时抛 TypeError。已用 optional chaining 保持原 ready 谓词等待，60 项原断言全部通过。只修验收脚本，无产品变更。
+- Linux headless Chromium 证据不替代 Windows approved pixels、真实 GPU 或 real D1 pointer/canvas/transaction 验收。

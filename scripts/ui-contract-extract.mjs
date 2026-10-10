@@ -451,7 +451,7 @@ const doc = [
   '',
   `Audited main: \`${contract.auditedBase}\`. Generated with \`node scripts/ui-contract-extract.mjs\`; verify with \`--check\`.`,
   '',
-  'This inventories the legacy entry before v2 exists. IDs/ARIA/data attributes come from app.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Counts separate runtime site code from test-only evidence. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.',
+  'This inventories the legacy entry at the recorded main revision. IDs/ARIA/data attributes come from app.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Runtime-site counts include ui-v2 previews and prototypes and exclude test-only evidence; they are not legacy-only counts. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.',
   '',
   '## Counts',
   '',
