@@ -96,6 +96,29 @@ function validProject() {
   };
 }
 
+
+test('Section viewport remains optional for legacy projects and validates persisted CSS view state', () => {
+  const old = validProject();
+  assert.equal(validateProjectFile(old), old);
+  const saved = structuredClone(old);
+  saved.display.sectionViewport = { zoom: 1.75, panX: -134.25, panY: 98.5 };
+  assert.equal(validateProjectFile(saved), saved);
+  assert.equal(
+    validateProjectFile(JSON.parse(JSON.stringify(saved))).display.sectionViewport.zoom,
+    1.75,
+  );
+  for (const [field, value] of [
+    ['zoom', 0],
+    ['zoom', 40],
+    ['panX', Number.POSITIVE_INFINITY],
+    ['panY', 100001],
+  ]) {
+    const invalid = structuredClone(saved);
+    invalid.display.sectionViewport[field] = value;
+    assert.throws(() => validateProjectFile(invalid), /display\\.sectionViewport/);
+  }
+});
+
 test('project JSON round-trip remains valid', () => {
   const source = validProject();
   const loaded = JSON.parse(JSON.stringify(source));
