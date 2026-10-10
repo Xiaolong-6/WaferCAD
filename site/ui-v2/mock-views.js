@@ -288,7 +288,7 @@
         more.push(
           button('Section controls…', 'settings:section', 'section'),
           button('Z-break settings…', 'zbreak-settings', 'zbreak'),
-          button('Detail ROI', 'detail', 'roi'),
+          button('Detail ROI', 'detail', 'roi', { 'aria-pressed': String(state.detail) }),
           button('Detail ROI settings…', 'settings:detail', 'settings'),
         );
       const exports =

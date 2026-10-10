@@ -107,6 +107,17 @@
     });
   }
   function toolbar(label, groups, overflow) {
+    const commands = [...overflow];
+    const layoutGroups = [...groups, ...(commands.length ? [commands] : [])];
+    commands.forEach((item) => {
+      const name = item.getAttribute('aria-label') || item.textContent.trim() || item.title;
+      item.setAttribute('aria-label', name);
+      if (!item.title) item.title = name;
+      // Menu text returns only when the command overflows; title-bar commands stay icon-only.
+      [...item.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .forEach((node) => node.remove());
+    });
     const id = `p-overflow-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
     const trigger = button('', null, 'more', {
       title: `${label} more tools`,
@@ -127,7 +138,6 @@
       },
       overflow,
     );
-    overflow.forEach((item) => item.setAttribute('role', 'menuitem'));
     const position = () => {
       const rect = trigger.getBoundingClientRect();
       const width = menu.offsetWidth,
@@ -167,7 +177,7 @@
       items[next]?.focus({ preventScroll: true });
     });
     window.WaferCadV2ActiveOverlays?.adoptPopover(menu, trigger);
-    const toolGroups = groups.map((group, i) =>
+    const toolGroups = layoutGroups.map((group, i) =>
       el(
         'div',
         { class: 'p-tool-group', role: 'group', 'aria-label': `${label} group ${i + 1}` },
@@ -181,14 +191,13 @@
       toolStrip,
       el('div', { class: 'p-overflow-anchor' }, trigger, menu),
     );
-    const permanentItems = [...overflow];
-    const tools = groups.flat();
+    const tools = layoutGroups.flat();
     const roles = new Map(tools.map((item) => [item, item.getAttribute('role')]));
     // Move the original controls, preserving actions and toggle state. No domain state is owned here.
     const arrange = () => {
       if (!bar.isConnected || !bar.clientWidth) return;
       const focused = document.activeElement;
-      groups.forEach((group, i) => {
+      layoutGroups.forEach((group, i) => {
         toolGroups[i].append(...group);
         group.forEach((item) => {
           item.querySelector('[data-overflow-label]')?.remove();
@@ -220,7 +229,9 @@
         hidden.unshift(item);
         menu.prepend(item);
       }
-      overflow.splice(0, overflow.length, ...hidden, ...permanentItems);
+      overflow.splice(0, overflow.length, ...hidden);
+      if (!hidden.length && menu.matches(':popover-open')) menu.hidePopover();
+      trigger.disabled = hidden.length === 0;
       if (focused !== document.activeElement && tools.includes(focused)) {
         if (!hidden.includes(focused) || menu.matches(':popover-open'))
           focused.focus({ preventScroll: true });

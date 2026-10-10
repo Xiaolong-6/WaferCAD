@@ -907,6 +907,8 @@ try {
     );
     record(`${width}: dock no overlap, strict ROI alignment, Split swap`);
   }
+  await viewport(320);
+  await click('[data-action="view:main"]');
   await click('[data-view="main"] [popovertarget]');
   await waitFor(
     async () => evaluate("Boolean(document.querySelector('.p-overflow:popover-open')?.style.top)"),
@@ -936,11 +938,12 @@ try {
   assert.equal(await evaluate("document.querySelector('.p-overflow:popover-open')===null"), true);
   assert.equal(
     await evaluate(
-      "[...document.querySelectorAll('.p-view-head [data-action^=\"export:\"]')].every(button=>Boolean(button.closest('[popover]')))",
+      "[...document.querySelectorAll('#mainPanel [data-action^=\"export:\"]')].every(button=>Boolean(button.closest('[popover]')))",
     ),
     true,
   );
-  record('More anchored menu / Esc / Export inside menu only');
+  await viewport(1024);
+  record('Narrow More anchored menu / Escape; surplus export commands stay accessible in More');
   await evaluate(
     "(() => {const select=document.querySelector('[data-key=\"split-right\"]');select.value='mask';select.dispatchEvent(new Event('change',{bubbles:true}))})()",
   );
@@ -1122,6 +1125,9 @@ try {
   );
   record('Code owns a bounded editor; actions remain visible without a second panel scrollbar');
   async function assertViewHeaders() {
+    await evaluate(
+      'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))',
+    );
     assert.equal(
       await evaluate(`(() => [...document.querySelectorAll('.p-view-head')]
       .filter(header=>header.getClientRects().length).every(header=>{
@@ -1224,6 +1230,49 @@ try {
   assert.equal((await snapshot()).sourceFrozen, true);
   record(
     '768/390/320 and coarse input: title row stays fixed; overflow toggle, Escape, Max/Restore and widening work',
+  );
+  await click('[data-action="maximize:section"]');
+  await assertViewHeaders();
+  const promotedActions = [
+    'settings:section',
+    'zbreak-settings',
+    'detail',
+    'settings:detail',
+    'export:section:svg',
+    'export:section:png',
+  ];
+  assert.equal(
+    await evaluate(`(() => {
+    const actions=${JSON.stringify(promotedActions)};
+    return actions.every(action=>{
+      const button=document.querySelector('#sectionPanel [data-action="'+action+'"]');
+      return button.closest('.p-tool-strip') && !button.closest('[popover]')
+        && button.getClientRects().length && !button.textContent.trim()
+        && button.title && button.getAttribute('aria-label') && !button.getAttribute('role');
+    }) && document.querySelector('#sectionPanel [popovertarget]').disabled;
+  })()`),
+    true,
+  );
+  for (const [action, label] of [
+    ['settings:section', 'Section controls · display and A–B line'],
+    ['zbreak-settings', 'Section Z-break'],
+    ['settings:detail', 'Detail ROI settings'],
+  ]) {
+    await click('#sectionPanel [data-action="' + action + '"]');
+    assert.equal(
+      await evaluate('document.querySelector("dialog[open]").getAttribute("aria-label")'),
+      label,
+    );
+    await click('dialog[open] [data-action="dialog-cancel"]');
+  }
+  const detailBeforePromotion = (await snapshot()).state.detail;
+  await click('#sectionPanel [data-action="detail"]');
+  assert.equal((await snapshot()).state.detail, !detailBeforePromotion);
+  await click('#sectionPanel [data-action="detail"]');
+  await click('[data-action="maximize:section"]');
+  assert.equal((await snapshot()).sourceFrozen, true);
+  record(
+    'Wide Section promotes all six former More commands as icons; dialogs and Detail ROI keep their actions',
   );
   await viewport(1280);
   async function chooseField(key, value) {
@@ -1342,7 +1391,6 @@ try {
   await assertProductCopy();
   await click('[data-action="dialog-cancel"]');
   await click('[data-action="maximize:section"]');
-  await click('#sectionPanel [popovertarget]');
   await click('[data-action="zbreak-settings"]');
   await assertProductCopy();
   await click('[data-action="dialog-cancel"]');
