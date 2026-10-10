@@ -1,8 +1,8 @@
 # Legacy / v2 浏览器对照与窄屏修复 — 2026-10-10
 
-审计版本：`c320d2a` 加本轮修复；最新标题栏/Mask 小修产品提交 **`e1ad828`**，pre-M3 三项修复为 `d147c2c`（此前布局批次 `644cbb6` / `d6a233a`），分支 `codex/ui-v2-m2-handoff-2026-10-09`。旧版入口 `app.html`，当前演示入口 `app-v2.html`，Welcome 为 `index.html`。本轮实际点击、输入、拖拽和滚轮操作，补充此前 [258 项源码对照](FULL_PARITY_AUDIT_2026-10-09.md)，不能把那张表当成 258 项已实际执行。
+审计版本：`c320d2a` 加本轮修复；最新标题栏小修产品提交 **`9a43d0d`**（此前标题栏/Mask 修复 `e1ad828`），pre-M3 三项修复为 `d147c2c`（此前布局批次 `644cbb6` / `d6a233a`），分支 `codex/ui-v2-m2-handoff-2026-10-09`。旧版入口 `app.html`，当前演示入口 `app-v2.html`，Welcome 为 `index.html`。本轮实际点击、输入、拖拽和滚轮操作，补充此前 [258 项源码对照](FULL_PARITY_AUDIT_2026-10-09.md)，不能把那张表当成 258 项已实际执行。
 
-**结论：窄屏 History、图表高度和 Manual 示意图已修复并复验；最新自动壳层门槛 59 项通过；BC-01、BC-02、BC-09 已关闭。BC-03 到 BC-08 按用户决定延后到 M3。扩大范围后的 UI 对照仍有下表的未完成项，不能宣布完整 UI 或产品迁移验收通过。** [上一轮 targeted PASS](UI_ACCEPTANCE_2026-10-10.md) 只覆盖当时八项问题，不能覆盖本轮新发现的表单、ROI 和 Legend 缺口。
+**结论：窄屏 History、图表高度和 Manual 示意图已修复并复验；最新自动壳层门槛 60 项通过；BC-01、BC-02、BC-09 已关闭。BC-03 到 BC-08 按用户决定延后到 M3。扩大范围后的 UI 对照仍有下表的未完成项，不能宣布完整 UI 或产品迁移验收通过。** [上一轮 targeted PASS](UI_ACCEPTANCE_2026-10-10.md) 只覆盖当时八项问题，不能覆盖本轮新发现的表单、ROI 和 Legend 缺口。
 
 ## 架构和范围
 
@@ -97,6 +97,25 @@ BC-09 只清理文案和语言标记：`prototype`、`source History`、`normali
 上述正式浏览器、lint、docs、27 项回归和 fixture 检查在最终 main 合并 `f390516` 后再次通过。此时 docs 检查为 115 Markdown files、433 internal links、95 reachable docs、44 Architecture module references。沙箱内首次启动 Chrome 未能建立调试端点；允许原生浏览器测试进程后，同一正式脚本完整通过，没有修改产品或测试来规避该启动失败。
 
 契约测试首次因旧 `lang=zh-CN` 断言失败，按用户明确要求英文界面更新为 `lang=en` 后 27 项全部通过；架构和业务隔离断言未放宽。实际 IAB 点击品牌到 `index.html` Welcome 成功；Lift-off→History Deposit Edit 展示 0.07 µm / Front / Whole face，Cancel 返回原草稿。支持截图：`test-results/ui-v2-acceptance/pre-m3-history-edit-1280.png`，包含品牌样式和英文右下角保存状态/项目链接。
+
+## All More commands participate in responsive layout — product 9a43d0d
+
+The user clarified with a Section menu screenshot that commands originally assigned to More must also appear in the title bar whenever there is room. This supersedes the previous fixed-menu/export placement: Section controls, Z-break settings, Detail ROI, Detail ROI settings, Export Section SVG and PNG now share the same measured overflow policy as regular tools. The shared policy also applies to Main, Mask and 3D commands. All promoted commands are icon-only, retain English tooltips/accessibility names, and return to labeled menu entries when space runs out. Max remains last; More is disabled when there are no remaining overflow commands. Existing button nodes/actions and mock data/controller ownership are preserved.
+
+Windows NT 10.0.26300.0, Node v24.16.0, native Chrome 155.0.8059.40:
+
+| Command                                                                                                                   | Result                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$env:WAFERCAD_REVIEW_CHROME='C:/Program Files/Google/Chrome/Application/chrome.exe'; node scripts/v2/check-m2-shell.mjs` | exit 0; 60 named checks; errors []; includes all six former Section menu commands on a wide title bar, direct settings dialogs and Detail ROI toggle, narrow exports/menu positioning/Escape, width round trips and stable scientific hosts |
+| `npm run lint`                                                                                                            | exit 0                                                                                                                                                                                                                                      |
+| `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs`                                       | exit 0; 8 passed, 0 failed                                                                                                                                                                                                                  |
+| `npx prettier --check site/ui-v2/native-components.js site/ui-v2/mock-views.js scripts/v2/check-m2-shell.mjs`             | exit 0                                                                                                                                                                                                                                      |
+| `npm run docs:check`                                                                                                      | exit 0                                                                                                                                                                                                                                      |
+| `git diff --check`                                                                                                        | exit 0                                                                                                                                                                                                                                      |
+
+The first added layout recheck ran before the newly mounted toolbar's animation-frame/ResizeObserver layout completed. The assertion now waits for the completed paint frames, retaining its single-row, strict bounds, icon/name and Max-position checks. The earlier export-only-in-More assertion was intentionally replaced with responsive placement coverage to match the user's explicit new requirement.
+
+Actual IAB: at 768px Section all six commands appear as icons and Section controls opens directly from the title; at 320px those commands return to More with readable labels. Review screenshot: `test-results/ui-v2-acceptance/titlebar-promoted-section-768.png`. Run `node scripts/v2/serve-v2.mjs`, open `app-v2.html`, select Section and resize 768→320→768. No approved pixel baseline, scientific geometry, dependency, real controller or M3 scope was changed. BC-03–BC-08 remain deferred, and **full M2 UI comparison remains not passed**. Published by normal push to the existing codex branch.
 
 ## Title-bar and Mask follow-up — product e1ad828
 
