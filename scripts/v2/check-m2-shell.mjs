@@ -197,6 +197,19 @@ try {
   );
   assert.equal((await snapshot()).sourceFrozen, true);
   record('v2 entry / Inter font / frozen real-source mocks');
+  const iconTools = await evaluate(`([...document.querySelectorAll('.p-view .p-tool-group button')]
+    .filter(button => /^(fit:|tool:pan:|tool:zoom:)/.test(button.dataset.action))
+    .map(button => ({text:button.textContent.trim(), label:button.getAttribute('aria-label'),
+      title:button.title, icon:Boolean(button.querySelector('svg'))})))`);
+  assert.equal(iconTools.length, 12);
+  assert.ok(
+    iconTools.every(
+      ({ text, label, title, icon }) =>
+        text === '' && ['Fit', 'Pan', 'Zoom'].includes(label) && title === label && icon,
+    ),
+  );
+  assert.equal(await evaluate("document.querySelector('.v2-legend-note') === null"), true);
+  record('four view toolbars use named icon-only Fit/Pan/Zoom; Legend has no developer footer');
   // M2.5: shell must be entirely presentation-only and production entry fixture-free.
   const shellSource = await readFile('site/ui-v2/workstation-v2.js', 'utf8');
   assert.doesNotMatch(shellSource, /task|history|placement|dirty/i);

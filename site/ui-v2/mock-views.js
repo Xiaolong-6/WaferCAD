@@ -351,9 +351,13 @@
       const model = currentModel(),
         label = { main: 'Main', mask: 'Mask', three: '3D', section: 'Section' }[name];
       const common = [
-        button('Fit', `fit:${name}`, 'fit'),
-        button('Pan', `tool:pan:${name}`, 'pan', { 'aria-pressed': String(state.tool === 'pan') }),
-        button('Zoom', `tool:zoom:${name}`, 'zoom'),
+        button('', `fit:${name}`, 'fit', { 'aria-label': 'Fit', title: 'Fit' }),
+        button('', `tool:pan:${name}`, 'pan', {
+          'aria-label': 'Pan',
+          title: 'Pan',
+          'aria-pressed': String(state.tool === 'pan'),
+        }),
+        button('', `tool:zoom:${name}`, 'zoom', { 'aria-label': 'Zoom', title: 'Zoom' }),
       ];
       const extra =
         name === 'three'
@@ -412,25 +416,27 @@
       const canvas = el(
         'div',
         { class: 'p-science', 'data-science': name, 'data-v2-stage-host': '' },
-        el('div', { class: 'v2-mock-scene' },
-        name === 'three'
-          ? el('img', {
-              src: data.thumbnail,
-              alt: 'Recorded real final-model 3D thumbnail; not a live renderer',
-            })
-          : name === 'section'
-            ? sectionSchematic(model)
-            : planar(model, name === 'mask'),
         el(
-          'span',
-          { class: 'p-scale' },
+          'div',
+          { class: 'v2-mock-scene' },
           name === 'three'
-            ? 'Recorded final state'
+            ? el('img', {
+                src: data.thumbnail,
+                alt: 'Recorded real final-model 3D thumbnail; not a live renderer',
+              })
             : name === 'section'
-              ? 'Equal-band stack schematic'
-              : `${model.width} × ${model.height} µm`,
-        ),
-        name === 'mask' ? maskCanvasTools() : null,
+              ? sectionSchematic(model)
+              : planar(model, name === 'mask'),
+          el(
+            'span',
+            { class: 'p-scale' },
+            name === 'three'
+              ? 'Recorded final state'
+              : name === 'section'
+                ? 'Equal-band stack schematic'
+                : `${model.width} × ${model.height} µm`,
+          ),
+          name === 'mask' ? maskCanvasTools() : null,
         ),
       );
       if (name === 'three' && (state.roi || state.detail)) {
@@ -467,14 +473,22 @@
           'aria-label': `${label} ${state.maximize === name ? 'restore' : 'maximize'}`,
         }),
       );
-      const preparedStage = name === 'section'
-        ? el('div', { class: 'v2-section-body', 'data-legend-open': String(state.legendOpen) },
-            canvas,
-            window.createWaferCadV2SectionLegend({
-              layers: model.layers, annotations: model.annotations, colors: state.legendColors,
-              paletteOpen: state.legendPaletteOpen, paletteName: state.legendPalette, open: state.legendOpen,
-            }))
-        : canvas;
+      const preparedStage =
+        name === 'section'
+          ? el(
+              'div',
+              { class: 'v2-section-body', 'data-legend-open': String(state.legendOpen) },
+              canvas,
+              window.createWaferCadV2SectionLegend({
+                layers: model.layers,
+                annotations: model.annotations,
+                colors: state.legendColors,
+                paletteOpen: state.legendPaletteOpen,
+                paletteName: state.legendPalette,
+                open: state.legendOpen,
+              }),
+            )
+          : canvas;
       const panel = viewPanels.update(
         name,
         {
@@ -520,9 +534,9 @@
       // named scientific canvas host and its renderer-facing ancestors never change.
       const live = viewPanels.getCanvas(name);
       if (live !== canvas) {
-        live.querySelector('.v2-mock-scene').replaceChildren(
-          ...canvas.querySelector('.v2-mock-scene').childNodes,
-        );
+        live
+          .querySelector('.v2-mock-scene')
+          .replaceChildren(...canvas.querySelector('.v2-mock-scene').childNodes);
         live.dataset.borders = canvas.dataset.borders;
         if (name === 'section') {
           const body = panel.querySelector('.v2-section-body');
@@ -531,9 +545,9 @@
           if (legend && nextLegend) {
             const scroller = legend.querySelector('.v2-legend-list');
             const position = scroller?.scrollTop || 0;
-            legend.querySelector('.v2-legend-list').replaceChildren(
-              ...nextLegend.querySelector('.v2-legend-list').childNodes,
-            );
+            legend
+              .querySelector('.v2-legend-list')
+              .replaceChildren(...nextLegend.querySelector('.v2-legend-list').childNodes);
             legend.querySelector('.v2-legend-title').textContent =
               nextLegend.querySelector('.v2-legend-title').textContent;
             legend.hidden = nextLegend.hidden;

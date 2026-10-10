@@ -258,7 +258,6 @@
           : null,
         annotations.map((item) => row(item, true, colors, paletteOpen, palette)),
       ),
-      el('p', { class: 'p-aux v2-legend-note' }, '源标签只读 · 调色仅作用于本地 UI draft'),
     );
   };
 })();
