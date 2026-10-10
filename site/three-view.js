@@ -11,6 +11,7 @@ import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
+import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
 import {
   createAdaptiveTilePlanCache,
   observePreparedAdaptiveTiles,
@@ -897,11 +898,12 @@ export function createThreeView({
       // Opt-in V4 interaction pilot: damped inertia can queue many costly
       // full-wafer frames after pointer-up, even with a cached CPU tile plan.
       // This only changes camera easing; no mesh/alpha/draw policy is altered.
-      const heavyV4TransparentFrame =
-        v4HeavyCameraNoDamping &&
-        host.dataset.sceneVariant === 'transparent' &&
-        Number(host.dataset.arrayInstances || 0) >= 64 &&
-        Number(host.dataset.rendererDrawTriangles || 0) >= 5000000;
+      const heavyV4TransparentFrame = shouldDisableV4HeavyCameraDamping({
+        enabled: v4HeavyCameraNoDamping,
+        sceneVariant: host.dataset.sceneVariant,
+        arrayInstances: host.dataset.arrayInstances,
+        drawTriangles: host.dataset.rendererDrawTriangles,
+      });
       if (controls) controls.enableDamping = !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
