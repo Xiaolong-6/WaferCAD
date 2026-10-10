@@ -50,10 +50,18 @@ function setup() {
   const controller = createProjectStateController({
     ensureHierarchy() {},
     getState: () => state,
-    applyState: (next) => { state = { ...state, ...next }; },
+    applyState: (next) => {
+      state = { ...state, ...next };
+    },
     setSectionEditEnabled() {},
   });
-  return { controller, getState: () => state, setState: (next) => { state = { ...state, ...next }; } };
+  return {
+    controller,
+    getState: () => state,
+    setState: (next) => {
+      state = { ...state, ...next };
+    },
+  };
 }
 
 test('Section viewport survives the exact project snapshot build/load path', () => {
