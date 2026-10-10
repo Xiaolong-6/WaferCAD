@@ -2,10 +2,75 @@ import { createModel } from './model.js';
 import { intersection, unionGeometries, pointInMulti } from './vector-geometry.js';
 import {
   ARRAY_MODEL_KERNEL,
+  MAX_ARRAY_INSTANCES,
   geometryBounds,
   translateGeometry,
   rectangleGeometry,
 } from './model-array.js';
+
+// Rectangular, translation-only canonical array seed. Mask-dependent
+// topology is produced later by Process operations, never embedded in Base.
+export function createRectangularGridArrayModel(
+  source,
+  { kind, rows, columns, pitchX, pitchY, activeSites },
+) {
+  const count = rows * columns;
+  if (
+    kind !== 'rect-grid' ||
+    !Number.isInteger(rows) || rows < 1 ||
+    !Number.isInteger(columns) || columns < 1 ||
+    !Number.isSafeInteger(count) || count > MAX_ARRAY_INSTANCES ||
+    !Number.isFinite(pitchX) || pitchX <= 0 ||
+    !Number.isFinite(pitchY) || pitchY <= 0 ||
+    !Number.isInteger(activeSites) || activeSites < 0 || activeSites > count
+  ) throw new Error('Invalid rectangular Recipe Base array.');
+  if (
+    source.kernel !== 'vector-2.5d-v1' ||
+    source.shape !== 'rect' ||
+    Math.abs(source.width - pitchX) > 1e-9 ||
+    Math.abs(source.height - pitchY) > 1e-9
+  ) throw new Error('Rectangular Recipe Base requires one matching canonical cell.');
+
+  const width = columns * pitchX;
+  const height = rows * pitchY;
+  const cells = [];
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const x = Number(((column + 0.5) * pitchX - width / 2).toFixed(4));
+      const y = Number(((row + 0.5) * pitchY - height / 2).toFixed(4));
+      cells.push({ index: row * columns + column, row, column, x, y, d: Math.hypot(x, y) });
+    }
+  }
+  const devices = new Set(
+    [...cells]
+      .sort((a, b) => a.d - b.d || a.row - b.row || a.column - b.column)
+      .slice(0, activeSites)
+      .map((cell) => cell.index),
+  );
+  return {
+    ...source,
+    kernel: ARRAY_MODEL_KERNEL,
+    shape: 'rect',
+    width,
+    height,
+    boundary: rectangleGeometry({
+      minX: -width / 2, maxX: width / 2,
+      minY: -height / 2, maxY: height / 2,
+    }),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'site', model: source }],
+      instances: cells.map((cell) => ({
+        id: 'site-' + cell.index,
+        templateId: 'site',
+        x: cell.x,
+        y: cell.y,
+        role: devices.has(cell.index) ? 'device' : 'background',
+      })),
+    },
+  };
+}
 
 const rounded = (g) =>
   g.map((p) => p.map((r) => r.map(([x, y]) => [Number(x.toFixed(4)), Number(y.toFixed(4))])));
