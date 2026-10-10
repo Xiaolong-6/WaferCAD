@@ -126,7 +126,12 @@
       const previous = active.get(type);
       if (previous?.node === node) return;
       if (type === 'dialog') close('popover', 'dialog');
-      if (previous) close(type, 'replaced');
+      // Native <details> menus may be nested inside the responsive More.
+      // The parent and child must stay open together, while unrelated view
+      // owners remain mutually exclusive.
+      const nested =
+        previous?.node?.contains?.(node) || node?.contains?.(previous?.node);
+      if (previous && !nested) close(type, 'replaced');
       active.set(type, { node, trigger, external });
       if (trigger && type !== 'toast') trigger.setAttribute('aria-expanded', 'true');
     }
