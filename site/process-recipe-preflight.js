@@ -17,6 +17,11 @@ export function validateRecipeExecution(
 ) {
   const errors = [];
   const warnings = [];
+  if (startMode === 'new-base' && model?.kernel === 'vector-2.5d-array-v1' && !base?.array) {
+    errors.push(
+      'Rebuild Base is unavailable: this canonical array Recipe has no array Base definition.',
+    );
+  }
   const total = Math.min(steps.length, Math.max(0, Math.trunc(Number(limit) || 0)));
   const layers = model?.layers || [];
   const startingLayers =
