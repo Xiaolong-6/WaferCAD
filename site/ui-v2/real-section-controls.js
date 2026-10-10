@@ -76,9 +76,11 @@
       } else {
         // A signed monotonic factor makes up/down drags reversible.
         const factor = Math.exp(-dy * 0.009);
-        // Restore the drag origin so the helper applies one anchored zoom.
-        setViewport(drag.viewport);
-        zoomViewportAt(factor, drag.localX, drag.localY, drag.rectWidth, drag.rectHeight);
+        // Compute directly from drag start; do not double-render every move.
+        zoomViewportAt(
+          factor, drag.localX, drag.localY,
+          drag.rectWidth, drag.rectHeight, drag.viewport,
+        );
       }
       event.preventDefault();
       event.stopImmediatePropagation();
