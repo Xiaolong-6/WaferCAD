@@ -18,6 +18,10 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  clearRendererBuildFailure,
+  setRendererBuildFailure,
+} from './renderer-rebuild-status.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -2667,6 +2671,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       pendingRender = true;
       return;
     }
+    clearRendererBuildFailure(host);
     const model = getModel();
     if (!model) return;
     const clip = getClipGeometry(),
@@ -2674,6 +2679,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    const previousVariant = activeSceneVariant;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2691,6 +2697,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     ) {
       if (activeSceneVariant === targetVariant) {
         pendingRender = false;
+        // A rejected ROI may have hidden the retained, otherwise valid scene.
+        group.visible = true;
         host.dataset.renderState = 'updating';
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
@@ -2723,7 +2731,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
 
+    const previousSceneGeneration = sceneGeneration;
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
+    let sceneReplaced = false;
+    let rebuildFailed = false;
     pendingRender = false;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
@@ -2749,19 +2760,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
     buildStageStartedAt = performance.now();
     recordVariantStage('begin');
     try {
-      if (!variantBuild) disposeGroup();
-      syncRenderPolicy();
-      applyZDisplayState(model);
-
-      const materialState = inspectionMaterialState(inspection.opacity),
-        opacity = materialState.opacity,
-        borders = Boolean(inspection.borders);
+      // Resolve bounded clipped topology BEFORE disposing the last valid scene.
+      // In particular, a 625-site ROI can hit the three-million-point guard.
+      // This is a controlled rejection, not a long-running WebGL build.
       recordRoiStage('surface-plan-start');
       const plan =
         variantBuild && physicalSurfacePlan
           ? physicalSurfacePlan
           : buildRenderSurfacePlan(model, clip);
       recordRoiStage('surface-plan-complete');
+      if (!variantBuild) {
+        sceneReplaced = true;
+        disposeGroup();
+      }
+      syncRenderPolicy();
+      applyZDisplayState(model);
+
+      const materialState = inspectionMaterialState(inspection.opacity),
+        opacity = materialState.opacity,
+        borders = Boolean(inspection.borders);
       if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -3712,6 +3729,34 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
+    } catch (error) {
+      rebuildFailed = true;
+      recordRoiStage('build-failed');
+      // Keep the last good geometry for a subsequent ROI clear, but never
+      // display it as though it were the failed clipped geometry.
+      try {
+        if (variantBuild) {
+          const previous = sceneVariantCache.get(previousVariant);
+          if (previous) {
+            const failedGroup = group;
+            scene.remove(failedGroup);
+            disposeSceneGroup(failedGroup);
+            restoreSceneVariant(previous);
+          } else {
+            disposeGroup();
+          }
+        } else if (sceneReplaced) {
+          disposeGroup();
+        } else {
+          sceneGeneration = previousSceneGeneration;
+          host.dataset.sceneGeneration = String(sceneGeneration);
+        }
+      } catch (cleanupError) {
+        console.warn('3D rebuild cleanup failed:', cleanupError);
+      }
+      if (group) group.visible = false;
+      const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
+      console.warn('3D rebuild rejected:', failure.code, failure.detail);
     } finally {
       recordRoiStage('build-exited');
       suppressAssemblyFrames = false;
@@ -3720,8 +3765,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
     if (pendingRender) {
       queueMicrotask(() => {
-        if (!rendering && pendingRender) render();
+        if (!rendering && pendingRender) void render();
       });
+      scheduleFrame();
+      return;
+    }
+
+    if (rebuildFailed) {
       scheduleFrame();
       return;
     }
