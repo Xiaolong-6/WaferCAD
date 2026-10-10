@@ -768,6 +768,20 @@ function fit3d() {
   threeView?.fit();
 }
 
+// D1-only presentation seam: reuse the live OrbitControls camera state and
+// existing view-dirty transaction owner. No duplicate renderer or model math.
+if (V2_REAL_VIEWS) {
+  const bridge = globalThis.WaferCadV2RealBridge;
+  if (!bridge) throw new Error('Real v2 camera bridge was not registered before bootstrap.');
+  bridge.getThreeCamera = () => threeView?.getViewState?.() || null;
+  bridge.setThreeCamera = (viewState) => {
+    if (!threeView?.ready || !threeView.setViewState?.(viewState)) return false;
+    pendingThreeCamera = threeView.getViewState?.() || null;
+    markViewDirty();
+    return true;
+  };
+}
+
 let workspaceViewController = null;
 
 function renderAll() {
