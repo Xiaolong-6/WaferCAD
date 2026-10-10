@@ -155,3 +155,24 @@ html[data-v2-m3='d1-experimental'] .v2-real-split select {
     max-width: 65px;
   }
 }
+
+/* Only explicit D1 camera gestures override OrbitControls' default cursor. */
+html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='pan'] canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='pan'] canvas:active {
+  cursor: grabbing;
+}
+
+html[data-v2-m3='d1-experimental'] #threeHost[data-v2-gesture='zoom'] canvas {
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar [data-action^='v2-three-'][aria-pressed='true'] {
+  border-color: var(--wc-accent);
+  background: var(--wc-accent-tint-active);
+  color: var(--wc-accent-active);
+}
