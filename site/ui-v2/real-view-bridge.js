@@ -244,9 +244,14 @@
     };
     root.addEventListener('click', handleClick);
     root.addEventListener('change', handleChange);
+    let compactBefore = viewState.compact(window);
     window.addEventListener('resize', () => {
-      // Narrow mode does not change the persisted view choice.
-      if (!destroyed) render();
+      // The bridge dispatches resize for the native renderer. Do not recurse.
+      const compactAfter = viewState.compact(window);
+      if (!destroyed && compactAfter !== compactBefore) {
+        compactBefore = compactAfter;
+        render();
+      }
     });
     await loadLegacyModule();
   }
