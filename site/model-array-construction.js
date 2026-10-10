@@ -17,19 +17,28 @@ export function createRectangularGridArrayModel(
   const count = rows * columns;
   if (
     kind !== 'rect-grid' ||
-    !Number.isInteger(rows) || rows < 1 ||
-    !Number.isInteger(columns) || columns < 1 ||
-    !Number.isSafeInteger(count) || count > MAX_ARRAY_INSTANCES ||
-    !Number.isFinite(pitchX) || pitchX <= 0 ||
-    !Number.isFinite(pitchY) || pitchY <= 0 ||
-    !Number.isInteger(activeSites) || activeSites < 0 || activeSites > count
-  ) throw new Error('Invalid rectangular Recipe Base array.');
+    !Number.isInteger(rows) ||
+    rows < 1 ||
+    !Number.isInteger(columns) ||
+    columns < 1 ||
+    !Number.isSafeInteger(count) ||
+    count > MAX_ARRAY_INSTANCES ||
+    !Number.isFinite(pitchX) ||
+    pitchX <= 0 ||
+    !Number.isFinite(pitchY) ||
+    pitchY <= 0 ||
+    !Number.isInteger(activeSites) ||
+    activeSites < 0 ||
+    activeSites > count
+  )
+    throw new Error('Invalid rectangular Recipe Base array.');
   if (
     source.kernel !== 'vector-2.5d-v1' ||
     source.shape !== 'rect' ||
     Math.abs(source.width - pitchX) > 1e-9 ||
     Math.abs(source.height - pitchY) > 1e-9
-  ) throw new Error('Rectangular Recipe Base requires one matching canonical cell.');
+  )
+    throw new Error('Rectangular Recipe Base requires one matching canonical cell.');
 
   const width = columns * pitchX;
   const height = rows * pitchY;
@@ -54,8 +63,10 @@ export function createRectangularGridArrayModel(
     width,
     height,
     boundary: rectangleGeometry({
-      minX: -width / 2, maxX: width / 2,
-      minY: -height / 2, maxY: height / 2,
+      minX: -width / 2,
+      maxX: width / 2,
+      minY: -height / 2,
+      maxY: height / 2,
     }),
     regions: [],
     array: {
