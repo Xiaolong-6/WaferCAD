@@ -106,6 +106,7 @@ export function createThreeView({
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
+  const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
   const v4GpuCensusEnabled = rendererParams.get('rendererV4GpuCensus') === '1';
   const v4HeavyCameraNoDamping = rendererParams.get('rendererV4HeavyCameraNoDamping') === '1';
   const v4TileProbeEnabled =
@@ -3390,7 +3391,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallTemplateTriangleCount = 0;
       let qualityIndexedSubmittedVertices = 0,
         qualityOriginalSubmittedVertices = 0,
-        qualityIndexedTriangles = 0;
+        qualityIndexedTriangles = 0,
+        v4FastIndexedVertices = 0,
+        v4FastOriginalVertices = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -3402,10 +3405,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
               {
                 indexedSmooth:
-                  v3QualityIndexExperiment &&
                   targetVariant === 'transparent' &&
-                  inspection.fast === false &&
-                  sidewall.buried === true,
+                  sidewall.buried === true &&
+                  ((v3QualityIndexExperiment && inspection.fast === false) ||
+                    (v4FastSmoothIndex && inspection.fast !== false)),
               },
             ),
             presentation = presentationFor(sidewall),
@@ -3430,9 +3433,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
             (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
           if (geometry.index?.count && meshes.length) {
             const instances = sidewall.instanceTranslations.length;
-            qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
-            qualityOriginalSubmittedVertices += geometry.index.count * instances;
-            qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+            if (v4FastSmoothIndex && inspection.fast !== false) {
+              v4FastIndexedVertices += geometry.getAttribute('position').count * instances;
+              v4FastOriginalVertices += geometry.index.count * instances;
+            } else {
+              qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
+              qualityOriginalSubmittedVertices += geometry.index.count * instances;
+              qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+            }
           }
           continue;
         }
@@ -3536,6 +3544,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      host.dataset.v4FastIndexedVertices = String(v4FastIndexedVertices);
+      host.dataset.v4FastOriginalVertices = String(v4FastOriginalVertices);
       host.dataset.v3QualityIndexedVertices = String(qualityIndexedSubmittedVertices);
       host.dataset.v3QualityOriginalVertices = String(qualityOriginalSubmittedVertices);
       host.dataset.v3QualityIndexedTriangles = String(qualityIndexedTriangles);
