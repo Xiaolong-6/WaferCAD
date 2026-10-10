@@ -18,6 +18,44 @@ import {
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
+async function assertSameCanonicalArrayGeometry(expected, actual) {
+  assert.equal(actual.kernel, expected.kernel, 'Run All changed canonical array kernel');
+  const actualSites = new Map(actual.array?.instances?.map((site) => [site.id, site]));
+  const expectedSites = expected.array.instances;
+  assert.equal(actualSites.size, expectedSites.length, 'Run All lost/duplicated canonical sites');
+  const expectedTemplates = new Map(expected.array.templates.map((item) => [item.id, item.model]));
+  const actualTemplates = new Map(actual.array.templates.map((item) => [item.id, item.model]));
+  const checkedPairs = new Set();
+  let slabsChecked = 0;
+  let maxMismatchAreaUm2 = 0;
+  for (const expectedSite of expectedSites) {
+    const actualSite = actualSites.get(expectedSite.id);
+    assert.ok(actualSite, 'Run All lost array instance ' + expectedSite.id);
+    assert.deepEqual(
+      [actualSite.x, actualSite.y, actualSite.role],
+      [expectedSite.x, expectedSite.y, expectedSite.role],
+      'Run All changed canonical site placement/role ' + expectedSite.id,
+    );
+    const key = expectedSite.templateId + '|' + actualSite.templateId;
+    if (checkedPairs.has(key)) continue;
+    checkedPairs.add(key);
+    const expectedLeaf = expectedTemplates.get(expectedSite.templateId);
+    const actualLeaf = actualTemplates.get(actualSite.templateId);
+    assert.ok(expectedLeaf && actualLeaf, 'Run All references a missing physical template');
+    const comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf);
+    slabsChecked += comparison.slabsChecked;
+    maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, comparison.maxMismatchAreaUm2);
+  }
+  return {
+    verified: true,
+    materialCount: expected.layers.length,
+    sitesChecked: expectedSites.length,
+    templatePairsChecked: checkedPairs.size,
+    slabsChecked,
+    maxMismatchAreaUm2,
+  };
+}
+
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
 const requestedVariant =
@@ -215,7 +253,9 @@ try {
       const geometryComparison =
         example.id === 'magic-1000-mos2-beol'
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-          : null;
+          : example.id === 'tio2-metalens-four-unit'
+            ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+            : null;
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
