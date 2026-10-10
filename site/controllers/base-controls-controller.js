@@ -1,4 +1,5 @@
 import { createModel, hasMaterial } from '../model.js';
+import { inferRectangularGridRecipeBase } from '../process-recipe-preflight.js';
 import {
   createWaferArrayModel,
   createWaferArrayTiling,
@@ -107,11 +108,13 @@ export function createBaseControlsController({
     // cannot restore the previous process lineage.
     const before = captureBaseSnapshot();
     try {
-      const seed = recipeBase?.array
+      const arraySpec = recipeBase?.array ||
+        (recipeBase ? inferRectangularGridRecipeBase(getModel(), recipeBase) : null);
+      const seed = arraySpec
         ? createModel({
             shape: 'rect',
-            width: recipeBase.array.pitchX,
-            height: recipeBase.array.pitchY,
+            width: arraySpec.pitchX,
+            height: arraySpec.pitchY,
             thickness,
           })
         : createModel({ shape, width, height, thickness });
@@ -119,10 +122,10 @@ export function createBaseControlsController({
         seed.layers[0].name = recipeBase.material;
         if (recipeBase.color) seed.layers[0].color = recipeBase.color;
       }
-      const newModel = recipeBase?.array?.kind === 'rect-grid'
-        ? createRectangularGridArrayModel(seed, recipeBase.array)
-        : recipeBase?.array
-          ? createWaferArrayModel(seed, createWaferArrayTiling(recipeBase.array))
+      const newModel = arraySpec?.kind === 'rect-grid'
+        ? createRectangularGridArrayModel(seed, arraySpec)
+        : arraySpec
+          ? createWaferArrayModel(seed, createWaferArrayTiling(arraySpec))
           : seed;
       setBaseRevertSnapshot(before);
       saveHistory(before);
