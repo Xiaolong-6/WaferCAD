@@ -18,11 +18,33 @@ import {
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
+function materialFootprintPerimeter(model, name, vectorApi) {
+  const ids = new Set((model.layers || []).filter((layer) => layer.name === name).map((layer) => layer.id));
+  const geoms = (model.regions || [])
+    .filter((region) => region.stack.some((segment) => ids.has(segment.layerId)))
+    .map((region) => region.geom);
+  if (!geoms.length) return 0;
+  let perimeter = 0;
+  for (const polygon of vectorApi.unionGeometries(geoms)) {
+    for (const ring of polygon) {
+      for (let i = 0; i < ring.length; i++) {
+        const current = ring[i];
+        const next = ring[(i + 1) % ring.length];
+        perimeter += Math.hypot(current[0] - next[0], current[1] - next[1]);
+      }
+    }
+  }
+  return perimeter;
+}
+
 async function assertSameCanonicalArrayGeometry(expected, actual) {
   assert.equal(actual.kernel, expected.kernel, 'Run All changed canonical array kernel');
   const actualSites = new Map(actual.array?.instances?.map((site) => [site.id, site]));
   const expectedSites = expected.array.instances;
   assert.equal(actualSites.size, expectedSites.length, 'Run All lost/duplicated canonical sites');
+  const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const vectorApi = await import('../site/vector-geometry.js');
   const expectedTemplates = new Map(expected.array.templates.map((item) => [item.id, item.model]));
   const actualTemplates = new Map(actual.array.templates.map((item) => [item.id, item.model]));
   const checkedPairs = new Set();
@@ -42,15 +64,19 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
     const expectedLeaf = expectedTemplates.get(expectedSite.templateId);
     const actualLeaf = actualTemplates.get(actualSite.templateId);
     assert.ok(expectedLeaf && actualLeaf, 'Run All references a missing physical template');
-    // The published TiO2 fixture stores XY vertices on a 0.0001 µm grid.
-    // Browser replay uses the original floating-point Mask before the next
-    // packed export. Permit at most 50 nm² of XY occupancy discrepancy per
-    // material/Z slab, equivalent to a 0.05 nm offset along a 1 µm edge.
-    // This is a narrow storage-precision envelope, not a geometry pass waiver.
+    // Published geometry quantizes each XY coordinate to 0.1 nm. A boundary
+    // displaced by at most one quantum changes area by at most perimeter×quantum
+    // to first order. Allow a 10% numeric margin, capped at 150 nm² per slab.
+    // This remains sensitive to a missing meta-atom or a filled annular gap.
+    const perimeterUm = materialFootprintPerimeter(expectedLeaf, 'TiO2', vectorApi);
+    const areaToleranceUm2 = Math.max(
+      1e-7,
+      Math.min(1.5e-4, 1.1e-4 * perimeterUm),
+    );
     let comparison;
     try {
       comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf, {
-        areaToleranceUm2: 5e-5,
+        areaToleranceUm2,
       });
     } catch (error) {
       throw new Error(
