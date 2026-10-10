@@ -67,6 +67,8 @@ async function capture(page, name, state) {
       geometries: host.v4GpuResourceGeometries,
       bufferBytes: host.v4GpuResourceEstimatedBufferBytes,
       sharedClonesAvoided: host.v4SharedFlatClonesAvoided,
+      sharedDetaches: host.v4SharedFlatDetachCount,
+      retiredTemplates: host.v4GpuResourceRetiredFlatGeometries,
       roiBounds: host.rendererRoiBounds || null,
       webglRenderer: await page.locator('#threeHost canvas').evaluate((canvas) => {
         const gl = canvas.getContext('webgl2');
@@ -263,6 +265,11 @@ try {
     assert.equal(pixels.pixelIdentical, true, expected.state + ': exact pixel parity');
   }
   assert.ok(Number(optimized[0].data.sharedClonesAvoided) > 0, 'R4 sharing must actually occur');
+  assert.ok(
+    Number(optimized[2].data.sharedDetaches) > 0,
+    'unequal Section scales must detach shared cap geometry before vertex writes',
+  );
+  assert.ok(Number(optimized[2].data.retiredTemplates) > 0, 'retired templates must remain in resource census until group disposal');
   assert.ok(
     Number(optimized[0].data.bufferBytes) < Number(baseline[0].data.bufferBytes),
     'R4 should save source template arrays',
