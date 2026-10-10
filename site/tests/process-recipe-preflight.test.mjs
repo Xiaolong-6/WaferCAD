@@ -139,19 +139,36 @@ test('legacy 80x80 GRID Base inference accepts only complete matching role owner
   const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
   const { inferRectangularGridRecipeBase } = await import('../process-recipe-preflight.js');
   const base = { shape: 'rect', width: 30, height: 30, thickness: 2, material: 'Base' };
-  const desc = { kind: 'rect-grid', rows: 80, columns: 80, pitchX: 0.375, pitchY: 0.375, activeSites: 4725 };
+  const desc = {
+    kind: 'rect-grid',
+    rows: 80,
+    columns: 80,
+    pitchX: 0.375,
+    pitchY: 0.375,
+    activeSites: 4725,
+  };
   const model = createRectangularGridArrayModel(
     createModel({ shape: 'rect', width: 0.375, height: 0.375, thickness: 2 }),
     desc,
   );
   assert.deepEqual(inferRectangularGridRecipeBase(model, base), desc);
-  assert.deepEqual(validateRecipeExecution([step('deposit', deposit('Oxide').params)], {
-    model, base, startMode: 'new-base',
-  }).errors, []);
+  assert.deepEqual(
+    validateRecipeExecution([step('deposit', deposit('Oxide').params)], {
+      model,
+      base,
+      startMode: 'new-base',
+    }).errors,
+    [],
+  );
   const altered = structuredClone(model);
   altered.array.instances[0].role = 'device';
   assert.equal(inferRectangularGridRecipeBase(altered, base), null);
-  assert.match(validateRecipeExecution([step('deposit', deposit('Oxide').params)], {
-    model: altered, base, startMode: 'new-base',
-  }).errors[0], /no verified reconstructible Base/);
+  assert.match(
+    validateRecipeExecution([step('deposit', deposit('Oxide').params)], {
+      model: altered,
+      base,
+      startMode: 'new-base',
+    }).errors[0],
+    /no verified reconstructible Base/,
+  );
 });
