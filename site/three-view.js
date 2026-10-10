@@ -835,6 +835,12 @@ export function createThreeView({
       updateTransparentOrder();
       const frameStartedAt = performance.now();
       renderer.render(scene, camera);
+      // Opt-in, read-only camera evidence for scientific idle-frame checks.
+      // Evaluating after render captures the exact matrices consumed by GL.
+      if (v3RoiTraceEnabled) {
+        host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
+        host.dataset.rendererCameraProjection = JSON.stringify(camera.projectionMatrix.elements);
+      }
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
