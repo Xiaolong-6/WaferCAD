@@ -658,6 +658,31 @@ uses `report.json`. The final-frame-only pilot writes separately under
 CI job or manual workflow dispatch was added. PR #166 remains Draft; no merge
 or speedup claim.
 
+## Phase B.2.1 — paired assembly policy control (2026-10-10)
+
+A standalone, **manual-only** `node scripts/renderer-quality-index-ab.mjs
+--assembly-ab` mode now compares the existing default preview policy with
+the opt-in `?rendererV3FinalFrameOnly=1` pilot on the same browser binary
+and runner. Four fresh isolated contexts execute final-only / preview /
+preview / final-only (ABBA). Both arms keep Quality indexing **off** and
+rasterization **on**. No added CI dispatch or app default change.
+
+The probe checks per-trial assembly policy, completed exact Quality triangles
+(**57,040,012**), draw calls (**1,408**), no page errors, zero skipped
+physical geometry and pixel-exact completed canvas equivalence between
+**all four** trials. It reports the two arms' initial 3D readiness and
+completed transparent image medians, their ratios, scene assembly and
+skipped preview frames. Separate screenshots and
+`test-results/renderer-assembly-ab/report.json` avoid overwriting earlier
+GPU/discard diagnostics; stage-specific failures go to `failure.json`.
+
+**Scientific gate:** this probe is a way to measure the existing pilot,
+not a validated speedup. Await its real 625-site result before interpreting
+the medians. One software-WebGL ABBA round cannot show stable benefit,
+preview responsiveness or suitability on real GPUs; require further paired
+replicates, interaction/Recovery checks and full near/edge-on/Process/Recipe
+acceptance before enabling the policy by default. PR #166 remains Draft.
+
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
 Work on one surface family at a time; begin with buried **smooth material**
