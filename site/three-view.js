@@ -14,7 +14,11 @@ import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
-import { sharedFlatCapZ, mappedFlatCapTranslation } from './renderer-v4-flat-geometry-sharing.js';
+import {
+  sharedFlatCapZ,
+  mappedFlatCapTranslation,
+  detachV4SharedFlatCap,
+} from './renderer-v4-flat-geometry-sharing.js';
 import {
   createAdaptiveTilePlanCache,
   observePreparedAdaptiveTiles,
@@ -151,6 +155,7 @@ export function createThreeView({
   let v4SharedFlatTemplates = 0;
   let v4SharedFlatMeshes = 0;
   let v4SharedFlatClonesAvoided = 0;
+  let v4SharedFlatDetachCount = 0;
   let smoothCapTemplateTriangleCount = 0;
   let smoothSidewallInstanceGroupCount = 0;
   let smoothSidewallInstanceCount = 0;
@@ -391,8 +396,8 @@ export function createThreeView({
   }
 
   function applyZDisplayToObject(object, state) {
-    const record = objectZRecord(object),
-      positions = object?.geometry?.getAttribute?.('position');
+    const record = objectZRecord(object);
+    let positions = object?.geometry?.getAttribute?.('position');
     if (!record || !positions?.count || !state) return;
 
     const fullyHidden =
@@ -409,8 +414,17 @@ export function createThreeView({
     object.visible = !fullyHidden;
     if (fullyHidden) return;
 
-    // Shared flat template vertices remain immutable: a single physical
-    // Z plane maps to a translated mesh under any Section display transform.
+    // A non-unit Section scale originally rewrites Float32 position buffers.
+    // Transforming one shared plane as a mesh translation can differ by a
+    // Float32 rounding unit (visible as pixel differences in the 625-site
+    // multiview A/B). Detach on first write and preserve the baseline path.
+    if (record.flatReadOnly && !canTranslateSide) {
+      detachV4SharedFlatCap(object, record, group);
+      positions = object.geometry.getAttribute('position');
+      v4SharedFlatDetachCount++;
+      publishV4SharedFlatCounts();
+    }
+    // Unit-scale planes can safely translate without any buffer mutation.
     const flatTranslation = mappedFlatCapTranslation(record, state);
     if (canTranslateSide || flatTranslation !== null) {
       if (record.mode === 'mapped') {
@@ -966,6 +980,7 @@ export function createThreeView({
     host.dataset.v4SharedFlatTemplates = String(v4SharedFlatTemplates);
     host.dataset.v4SharedFlatMeshes = String(v4SharedFlatMeshes);
     host.dataset.v4SharedFlatClonesAvoided = String(v4SharedFlatClonesAvoided);
+    host.dataset.v4SharedFlatDetachCount = String(v4SharedFlatDetachCount);
   }
 
   function writeV4GpuResourceCensus() {
@@ -1016,6 +1031,10 @@ export function createThreeView({
         if (material.bumpMap) textures.add(material.bumpMap);
       }
     }
+    for (const geometry of group.userData?.waferCadRetiredFlatGeometries || []) {
+      geometries.add(geometry);
+    }
+    group.userData?.waferCadRetiredFlatGeometries?.clear();
     group.clear();
     zDisplayObjects = new Set();
     currentZDisplay = null;
@@ -1080,6 +1099,7 @@ export function createThreeView({
       v4SharedFlatTemplates,
       v4SharedFlatMeshes,
       v4SharedFlatClonesAvoided,
+      v4SharedFlatDetachCount,
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
@@ -1149,6 +1169,10 @@ export function createThreeView({
         if (material.bumpMap) textures.add(material.bumpMap);
       }
     }
+    for (const geometry of targetGroup.userData?.waferCadRetiredFlatGeometries || []) {
+      geometries.add(geometry);
+    }
+    targetGroup.userData?.waferCadRetiredFlatGeometries?.clear();
     targetGroup.clear();
     for (const geometry of geometries) geometry.dispose?.();
     for (const texture of textures) texture.dispose?.();
@@ -1181,6 +1205,7 @@ export function createThreeView({
     v4SharedFlatTemplates = entry.v4SharedFlatTemplates || 0;
     v4SharedFlatMeshes = entry.v4SharedFlatMeshes || 0;
     v4SharedFlatClonesAvoided = entry.v4SharedFlatClonesAvoided || 0;
+    v4SharedFlatDetachCount = entry.v4SharedFlatDetachCount || 0;
     publishV4SharedFlatCounts();
     physicalSceneModel = entry.model;
     physicalSceneSignature = entry.signature;
@@ -1254,6 +1279,7 @@ export function createThreeView({
     v4SharedFlatTemplates = 0;
     v4SharedFlatMeshes = 0;
     v4SharedFlatClonesAvoided = 0;
+    v4SharedFlatDetachCount = 0;
     publishV4SharedFlatCounts();
     activeSceneVariant = mode;
     host.dataset.sceneVariant = mode;
