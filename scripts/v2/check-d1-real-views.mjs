@@ -97,7 +97,10 @@ try {
       assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'true');
       await page.locator('#mainMaxBtn').click();
       assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'false');
-      await page.locator('#mainZoomFit').click();
+      const fit = page.locator('#mainZoomFit');
+      if (!(await fit.isVisible()))
+        await page.locator('#mainPanel .view-more-control > summary').click();
+      await fit.click();
       await page.evaluate(() => {
         if (!window.WaferCadV2RealBridge.verifyNativeIdentity())
           throw Error('Scientific host re-created or detached');
