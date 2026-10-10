@@ -234,3 +234,41 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-extended.m
 ```
 
 **D1 remains NOT ACCEPTED.** The new physical Base check proves uncollapsed 1:1 projection against independent native inputs and DOMRect; it does not establish every collapsed/nonlinear/rough/material boundary, Slice/rotated Mask or Main↔3D registration. Section universal Fit/Pan/Zoom still needs a formal viewport API; existing Section Detail magnification is not a substitute. Unified portal lifecycle, complete M1.5 functional/visual parity, Windows approved pixels, real hardware GPU and explicit production-route checkpoint remain open. Preserve the current experimental entry and continue within D1.
+
+## D1 Section viewport + native-overlay lifecycle implementation (after `8408352`, 2026-10-10)
+
+**This checkpoint is implementation only. D1 remains NOT ACCEPTED.** The confirmed **36 fixture/width browser scenarios, 586/586 Node tests and 0px physical-Section centering error** in the preceding section were run against `8408352`, **before** the changes below. This session had a GitHub source-editing connection but no accessible executable checkout/browser. A container attempt to reach GitHub for an executable checkout failed DNS resolution. It would be incorrect to call the new code green based on the earlier results.
+
+### Implemented on the same existing branch
+
+- `site/section-view-viewport.js` adds a display-only affine mapping (uniform zoom + X/Y screen pan) with an inverse and cursor-anchored zoom. A single factor scales X and Z; source model/Slice/ROI geometry remains µm and is never rewritten by gestures.
+- `site/plan-renderers.js` is modified **only at the Section presentation projection layer**: projected physical material paths, roughness sampling, display axes, labels, Z-break gaps, thin physical frames and the Detail inset share the same viewport transform. The original `createSectionZTransform` remains responsible for physical or auto Z projection. Main/Mask and model geometry paths are not altered. Canvas projection metadata reports scaled X/Z px-per-µm and current display-only viewport.
+- The existing `site/app.js` v2-only seam owns the Section viewport state and its render/mark-view-dirty callback; the legacy route has an identity viewport. `site/ui-v2/real-section-controls.js` provides genuine Section **Fit/Pan/Zoom** actions on the **original canvas**. Pan drags translate viewport pixels; Zoom performs one cursor-anchored update per move; Fit resets the viewport. Section Detail drawing mode retains pointer priority, and native owner identity/pointer capture are preserved. No CSS zoom, second Section renderer, worker or process geometry modifications.
+- `site/ui-v2/real-view-bridge.js`, `site/app-v2-real.html` and experimental-only stylesheet mount the controls. Original Section scale, Z Break, Detail ROI, More and Max controls remain intact. The existing responsive toolbar relocates the original Section physical-scale selector into More on small panels.
+- `site/ui-v2/overlay-manager.js` gained `adoptNativeViews`: one shared **lifecycle coordinator** for original view-native details and custom panels, with cross-view menu exclusivity, hidden-owner closure and teardown. It does **not clone/reparent** scientific controls or override their own `wafercad:popover-close` handlers; the original Z Break dialog can continue temporarily moving into the browser modal layer. The bridge registers original nodes **after** the real controller bootstrap.
+- `site/tests/section-view-viewport.test.mjs` covers mapping identity, pan source immutability, pointer-anchored zoom inverses, uniform X/Z scale and finite bounds. `scripts/v2/check-d1-extended.mjs` now exercises real Section Fit/Pan/Zoom, checks the displayed physical projection values, source Slice µm inputs and original Section stage identity at all four widths, and adds real Main/Mask menu-owner closure on navigation. Previous subpixel Section and 0.25px acceptance assertions remain.
+
+### Actual evidence vs required verification
+
+Static source reading and V8 parsing of the Section compositor, v2 bridge and extended browser runner succeeded. Standalone coordinate-mapping execution confirmed zero error (double precision) for a nontrivial cursor-anchored zoom and inverse. No actual Chromium, Node suite, CSS pixel screenshot, lint, docs, AST generator or native portal smoke was run for this post-`8408352` head.
+
+**Required follow-up:**
+
+```bash
+npm ci
+npm test
+node --test site/tests/section-view-viewport.test.mjs
+npm run lint
+npm run docs:check
+node scripts/ui-contract-extract.mjs --write
+node scripts/ui-contract-extract.mjs --check
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-real-views.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=photodetector node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=m3d node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-three-gestures.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:smoke
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" npm run test:ui:workstation
+```
+
+Do not relax any scientific, DOM identity, interactive, accessibility or 0.25px assertion to obtain green. Inspect the physical Section display at non-unit zoom (including narrow view, Z Break on/off and nontrivial imported models), nested More/Mask ROI and native modal reparenting, cross-view escape/focus ownership, pixel alignment against M1.5, independent Slice/Mask/Main↔3D correspondence, and Windows actual hardware GPU. Complete native portal test coverage and M1.5 exact real-toolbar visual parity still require browser inspection; route promotion/D2/main merge and approved-baseline updates remain out of scope.
