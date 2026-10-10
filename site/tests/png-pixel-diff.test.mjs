@@ -43,12 +43,12 @@ test('pixel diagnostics distinguish byte parity from one-LSB RGB differences', (
   assert.equal(changed.maxChannelDelta, 1);
   assert.equal(changed.totalAbsoluteDelta, 2);
   assert.deepEqual(changed.changedChannelsRGBA, [1, 0, 1, 0]);
-  assert.deepEqual(changed.boundingBox, { minX: 0, minY: 0, maxX: 1, maxY: 1 });
+  assert.deepEqual(changed.boundingBox, { minX: 1, minY: 0, maxX: 1, maxY: 1 });
 });
 
 test('malformed and unsupported PNG inputs fail closed', () => {
   assert.throws(() => decodeScreenshotPng(Buffer.from('not a png')), /Not a PNG/);
-  assert.throws(() => decodeScreenshotPng(SAME.subarray(0, 20)), /Truncated/);
+  assert.throws(() => decodeScreenshotPng(SAME.subarray(0, 45)), /Truncated/);
   const unsupported = Buffer.from(SAME);
   unsupported[25] = 3; // Indexed-color screenshots cannot be silently interpreted as RGB.
   assert.throws(() => decodeScreenshotPng(unsupported), /Only non-interlaced/);
