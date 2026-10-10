@@ -11,9 +11,9 @@ This inventories the legacy entry at the recorded main revision. IDs/ARIA/data a
 - dataAttributes: 40
 - roleAttributes: 17
 - ariaControls: 7
-- dynamicClasses: 214
+- dynamicClasses: 215
 - dynamicClassPatterns: 2
-- dynamicOperations: 1109
+- dynamicOperations: 1114
 - dynamicIdDeclarations: 60
 - unresolvedOperations: 14
 
@@ -29,8 +29,8 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | welcomeHomeLink             | a                | 88 / div                       | 2: site/app.html, site/tests/welcome-navigation.test.mjs                  |
 | mainPanel                   | section          | 102 / main                     | 25: site/app.html, site/app.js, …                                         |
 | mainFaceLabel               | span             | 104 / div                      | 2: site/app.html, site/controllers/workspace-view-controller.js           |
-| sectionControlsBtn          | button / button  | 106 / div                      | 8: site/app.html, site/controllers/main-canvas-controller.js, …           |
-| focusEditor                 | details          | 116 / div                      | 10: site/app.html, site/app.js, …                                         |
+| sectionControlsBtn          | button / button  | 106 / div                      | 9: site/app.html, site/controllers/main-canvas-controller.js, …           |
+| focusEditor                 | details          | 116 / div                      | 11: site/app.html, site/app.js, …                                         |
 | clearRoiBtn                 | button / button  | 146 / div                      | 4: site/app.html, site/controllers/main-canvas-controller.js, …           |
 | roiEditor                   | div              | 155 / div                      | 5: site/app.html, site/controllers/roi-controller.js, …                   |
 | roiShapeLabel               | strong           | 157 / div                      | 4: site/app.html, site/controllers/roi-controller.js, …                   |
@@ -46,10 +46,10 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | roiAnchorSelect             | select           | 184 / label                    | 3: site/app.html, site/controllers/roi-controller.js, …                   |
 | roiX                        | input / number   | 193 / label                    | 5: site/app.html, site/controllers/roi-controller.js, …                   |
 | roiY                        | input / number   | 194 / label                    | 4: site/app.html, site/controllers/roi-controller.js, …                   |
-| mainPanBtn                  | button / button  | 199 / div                      | 6: site/app.html, site/controllers/main-canvas-controller.js, …           |
+| mainPanBtn                  | button / button  | 199 / div                      | 7: site/app.html, site/controllers/main-canvas-controller.js, …           |
 | mainZoomFit                 | button           | 208 / div                      | 6: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| mainZoomOut                 | button           | 214 / div                      | 4: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| mainZoomIn                  | button           | 221 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
+| mainZoomOut                 | button           | 214 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
+| mainZoomIn                  | button           | 221 / div                      | 6: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | mainExportSvgBtn            | button / button  | 231 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | mainMaxBtn                  | button / button  | 234 / div                      | 4: site/app.html, site/controllers/view-toolbar-controller.js, …          |
 | mainCanvas                  | canvas           | 245 / mainPanel                | 25: site/app.html, site/app.js, …                                         |
@@ -61,16 +61,16 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | sectionAy                   | input / number   | 282 / div                      | 5: site/app.html, site/controllers/section-controls-controller.js, …      |
 | sectionBx                   | input / number   | 284 / div                      | 6: site/app.html, site/controllers/section-controls-controller.js, …      |
 | sectionBy                   | input / number   | 285 / div                      | 6: site/app.html, site/controllers/section-controls-controller.js, …      |
-| maskPanel                   | section          | 290 / main                     | 23: site/app.html, site/app.js, …                                         |
+| maskPanel                   | section          | 290 / main                     | 24: site/app.html, site/app.js, …                                         |
 | maskCellLabel               | span             | 292 / div                      | 4: site/app.html, site/controllers/draw-mask-controller.js, …             |
 | maskSourceToggleBtn         | select           | 296 / label                    | 7: site/app.html, site/controllers/draw-mask-controller.js, …             |
-| maskRoiEditor               | details          | 305 / div                      | 7: site/app.html, site/controllers/mask-roi-controller.js, …              |
+| maskRoiEditor               | details          | 305 / div                      | 9: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | clearMaskRoiBtn             | button / button  | 320 / div                      | 2: site/app.html, site/controllers/mask-roi-controller.js                 |
-| maskRoiFields               | div              | 322 / div                      | 3: site/app.html, site/controllers/mask-roi-controller.js, …              |
+| maskRoiFields               | div              | 322 / div                      | 4: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | maskRoiShapeLabel           | strong           | 324 / div                      | 3: site/app.html, site/controllers/mask-roi-controller.js, …              |
-| maskRoiUnitLabel            | span             | 325 / div                      | 2: site/app.html, site/controllers/mask-roi-controller.js                 |
+| maskRoiUnitLabel            | span             | 325 / div                      | 3: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | maskRoiRectFields           | div              | 327 / maskRoiFields            | 2: site/app.html, site/controllers/mask-roi-controller.js                 |
-| maskRoiSize                 | input / number   | 329 / label                    | 4: site/app.html, site/controllers/mask-roi-controller.js, …              |
+| maskRoiSize                 | input / number   | 329 / label                    | 5: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | maskRoiRotation             | input / number   | 333 / label                    | 3: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | maskRoiCircleFields         | div              | 336 / maskRoiFields            | 2: site/app.html, site/controllers/mask-roi-controller.js                 |
 | maskRoiRadius               | input / number   | 339 / label                    | 2: site/app.html, site/controllers/mask-roi-controller.js                 |
@@ -79,9 +79,9 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | maskRoiY                    | input / number   | 354 / label                    | 3: site/app.html, site/controllers/mask-roi-controller.js, …              |
 | maskOpacityValue            | output           | 369 / label                    | 4: site/app.html, site/app.js, …                                          |
 | maskOpacityRange            | input / range    | 371 / div                      | 7: site/app.html, site/app.js, …                                          |
-| maskZoomFit                 | button           | 381 / div                      | 4: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| maskZoomOut                 | button           | 387 / div                      | 2: site/app.html, site/controllers/workspace-actions-controller.js        |
-| maskZoomIn                  | button           | 394 / div                      | 2: site/app.html, site/controllers/workspace-actions-controller.js        |
+| maskZoomFit                 | button           | 381 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
+| maskZoomOut                 | button           | 387 / div                      | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
+| maskZoomIn                  | button           | 394 / div                      | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | maskExportControl           | details          | 403 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | maskExportFilterGroup       | div              | 406 / div                      | 2: site/app.html, site/controllers/export-controller.js                   |
 | maskExportCells             | select           | 409 / label                    | 5: site/app.html, site/controllers/export-controller.js, …                |
@@ -91,7 +91,7 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | maskExportGdsBtn            | button / button  | 431 / div                      | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | maskExportOasBtn            | button / button  | 432 / div                      | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | maskMaxBtn                  | button / button  | 439 / div                      | 3: site/app.html, site/controllers/view-toolbar-controller.js, …          |
-| maskCanvas                  | canvas           | 450 / maskPanel                | 20: site/app.html, site/app.js, …                                         |
+| maskCanvas                  | canvas           | 450 / maskPanel                | 21: site/app.html, site/app.js, …                                         |
 | maskCoords                  | div              | 451 / maskPanel                | 4: site/app.html, site/controllers/draw-mask-controller.js, …             |
 | drawMaskToolbar             | div              | 452 / maskPanel                | 6: site/app.html, site/controllers/draw-mask-controller.js, …             |
 | drawMaskDeleteBtn           | button / button  | 487 / drawMaskToolbar          | 2: site/app.html, site/controllers/draw-mask-controller.js                |
@@ -110,12 +110,12 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | threeBorders                | input / checkbox | 544 / threeBorderControl       | 10: site/app.html, site/app.js, …                                         |
 | threeOpacityValue           | output           | 548 / label                    | 3: site/app.html, site/app.js, …                                          |
 | threeOpacityRange           | input / range    | 550 / div                      | 13: site/app.html, site/app.js, …                                         |
-| fit3dBtn                    | button           | 560 / div                      | 8: site/app.html, site/controllers/workspace-actions-controller.js, …     |
+| fit3dBtn                    | button           | 560 / div                      | 9: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | threeExportModelBtn         | button / button  | 569 / div                      | 7: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | threeExportCancelBtn        | button / button  | 572 / div                      | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | threeExportPngBtn           | button / button  | 580 / div                      | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | threeMaxBtn                 | button / button  | 592 / div                      | 7: site/app.html, site/controllers/view-toolbar-controller.js, …          |
-| threeHost                   | div              | 603 / threePanel               | 35: site/app.html, site/app.js, …                                         |
+| threeHost                   | div              | 603 / threePanel               | 36: site/app.html, site/app.js, …                                         |
 | toolPanel                   | section          | 606 / main                     | 13: site/app.html, site/style.css, …                                      |
 | settingsTab                 | button / button  | 608 / div                      | 5: site/app.html, site/tests/function-panel-feedback.test.mjs, …          |
 | baseTab                     | button / button  | 619 / div                      | 2: site/app.html, site/tests/issue-13-settings-ui.test.mjs                |
@@ -127,9 +127,9 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | baseSummary                 | span             | 679 / div                      | 2: site/app.html, site/controllers/workspace-view-controller.js           |
 | substrateShape              | div              | 682 / div                      | 3: site/app.html, site/controllers/base-controls-controller.js, …         |
 | baseWidthUnit               | b                | 690 / span                     | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| baseWidth                   | input / number   | 691 / label                    | 8: site/app.html, site/controllers/base-controls-controller.js, …         |
+| baseWidth                   | input / number   | 691 / label                    | 9: site/app.html, site/controllers/base-controls-controller.js, …         |
 | baseHeightUnit              | b                | 694 / span                     | 3: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| baseHeight                  | input / number   | 695 / label                    | 6: site/app.html, site/controllers/base-controls-controller.js, …         |
+| baseHeight                  | input / number   | 695 / label                    | 7: site/app.html, site/controllers/base-controls-controller.js, …         |
 | baseThicknessUnit           | b                | 704 / span                     | 4: site/app.html, site/controllers/workspace-actions-controller.js, …     |
 | baseThickness               | input / number   | 705 / label                    | 8: site/app.html, site/controllers/base-controls-controller.js, …         |
 | applyBaseBtn                | button           | 709 / div                      | 7: site/app.html, site/controllers/base-controls-controller.js, …         |
@@ -235,27 +235,27 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | settingsTools               | section          | 1222 / div                     | 8: site/app.html, site/tests/issue-13-settings-ui.test.mjs, …             |
 | projectNameInput            | input / text     | 1232 / label                   | 11: site/app.html, site/app.js, …                                         |
 | newProjectBtn               | button           | 1242 / div                     | 8: site/app.html, site/controllers/project-controller.js, …               |
-| openProjectInput            | input / file     | 1246 / label                   | 15: site/app.html, site/controllers/project-controller.js, …              |
+| openProjectInput            | input / file     | 1246 / label                   | 16: site/app.html, site/controllers/project-controller.js, …              |
 | saveProjectBtn              | button           | 1248 / div                     | 7: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | exportProjectBtn            | button           | 1255 / div                     | 14: site/app.html, site/controllers/project-controller.js, …              |
 | workspaceRecoverySelect     | select           | 1266 / label                   | 6: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | workspaceRestoreBtn         | button / button  | 1270 / div                     | 4: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | workspaceRecoveryClearBtn   | button / button  | 1273 / div                     | 5: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | xyUnitSelect                | select           | 1291 / label                   | 10: site/app.html, site/controllers/workspace-actions-controller.js, …    |
-| sectionPanel                | section          | 1302 / main                    | 21: site/app.html, site/app.js, …                                         |
+| sectionPanel                | section          | 1302 / main                    | 22: site/app.html, site/app.js, …                                         |
 | sectionMeta                 | span             | 1304 / div                     | 4: site/app.html, site/plan-renderers.js, …                               |
 | sectionScaleModeBtn         | select           | 1308 / label                   | 7: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| sectionCollapseAxisBtn      | button / button  | 1317 / div                     | 6: site/app.html, site/controllers/section-collapse-controller.js, …      |
+| sectionCollapseAxisBtn      | button / button  | 1317 / div                     | 8: site/app.html, site/controllers/section-collapse-controller.js, …      |
 | sectionBordersBtn           | button / button  | 1331 / div                     | 5: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| sectionDetailRoiBtn         | button / button  | 1345 / div                     | 4: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
+| sectionDetailRoiBtn         | button / button  | 1345 / div                     | 5: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
 | sectionExportSvgBtn         | button / button  | 1354 / div                     | 4: site/app.html, site/controllers/workspace-actions-controller.js, …     |
-| sectionMaxBtn               | button / button  | 1359 / div                     | 4: site/app.html, site/controllers/view-toolbar-controller.js, …          |
+| sectionMaxBtn               | button / button  | 1359 / div                     | 5: site/app.html, site/controllers/view-toolbar-controller.js, …          |
 | sectionBody                 | div              | 1370 / sectionPanel            | 5: site/app.html, site/controllers/section-collapse-controller.js, …      |
-| sectionCanvas               | canvas           | 1371 / sectionBody             | 28: site/app.html, site/app.js, …                                         |
+| sectionCanvas               | canvas           | 1371 / sectionBody             | 29: site/app.html, site/app.js, …                                         |
 | sectionRange                | span             | 1372 / sectionBody             | 4: site/app.html, site/plan-renderers.js, …                               |
-| sectionCollapseOverlay      | div              | 1373 / sectionBody             | 4: site/app.html, site/controllers/section-collapse-controller.js, …      |
-| sectionCollapseEditor       | dialog           | 1374 / sectionCollapseOverlay  | 4: site/app.html, site/controllers/section-collapse-controller.js, …      |
-| sectionCollapseClose        | button / button  | 1386 / div                     | 4: site/app.html, site/controllers/section-collapse-controller.js, …      |
+| sectionCollapseOverlay      | div              | 1373 / sectionBody             | 5: site/app.html, site/controllers/section-collapse-controller.js, …      |
+| sectionCollapseEditor       | dialog           | 1374 / sectionCollapseOverlay  | 6: site/app.html, site/controllers/section-collapse-controller.js, …      |
+| sectionCollapseClose        | button / button  | 1386 / div                     | 5: site/app.html, site/controllers/section-collapse-controller.js, …      |
 | sectionCollapseEnabled      | input / checkbox | 1396 / label                   | 6: site/app.html, site/controllers/section-collapse-controller.js, …      |
 | sectionCollapseRuler        | div              | 1404 / div                     | 2: site/app.html, site/controllers/section-collapse-controller.js         |
 | sectionCollapseWindow       | div              | 1409 / sectionCollapseRuler    | 2: site/app.html, site/controllers/section-collapse-controller.js         |
@@ -269,12 +269,12 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | sectionCollapseScaleLinked  | input / checkbox | 1456 / label                   | 5: site/app.html, site/controllers/section-collapse-controller.js, …      |
 | sectionCollapseFrontScale   | input / number   | 1462 / label                   | 4: site/app.html, site/controllers/section-collapse-controller.js, …      |
 | sectionCollapseBackScale    | input / number   | 1476 / label                   | 4: site/app.html, site/controllers/section-collapse-controller.js, …      |
-| sectionDetailRoiOverlay     | div              | 1497 / sectionBody             | 5: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
-| sectionDetailInset          | div              | 1528 / sectionBody             | 5: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
+| sectionDetailRoiOverlay     | div              | 1497 / sectionBody             | 6: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
+| sectionDetailInset          | div              | 1528 / sectionBody             | 6: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
 | sectionDetailInsetHead      | div              | 1529 / sectionDetailInset      | 3: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
-| sectionDetailZoom           | span             | 1536 / div                     | 3: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
+| sectionDetailZoom           | span             | 1536 / div                     | 4: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
 | sectionDetailShapeBtn       | button / button  | 1539 / div                     | 3: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
-| sectionDetailCloseBtn       | button / button  | 1547 / div                     | 2: site/app.html, site/controllers/section-detail-roi-controller.js       |
+| sectionDetailCloseBtn       | button / button  | 1547 / div                     | 3: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
 | sectionDetailInsetCanvas    | canvas           | 1558 / sectionDetailInset      | 4: site/app.html, site/controllers/section-detail-roi-controller.js, …    |
 | layerLegend                 | aside            | 1560 / sectionBody             | 16: site/app.html, site/controllers/layer-legend-controller.js, …         |
 | processTaskDialog           | div              | 1565 / body                    | 8: site/app.html, site/controllers/process-task-controller.js, …          |
@@ -285,7 +285,7 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | workspaceConflictDialog     | div              | 1573 / body                    | 4: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | workspaceTakeOverBtn        | button / button  | 1586 / workspaceConflictDialog | 4: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | statusBar                   | footer           | 1588 / body                    | 3: site/app.html, site/controllers/feedback-controller.js, …              |
-| statusText                  | span             | 1589 / statusBar               | 34: site/app.html, site/controllers/feedback-controller.js, …             |
+| statusText                  | span             | 1589 / statusBar               | 35: site/app.html, site/controllers/feedback-controller.js, …             |
 | workspaceSaveStatus         | span             | 1591 / span                    | 8: site/app.html, site/controllers/workspace-persistence-controller.js, … |
 | safeReloadBtn               | button / button  | 1595 / span                    | 5: site/app.html, site/app.js, …                                          |
 | safeReloadSeparator         | span             | 1596 / span                    | 2: site/app.html, site/app.js                                             |
@@ -451,10 +451,10 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | loading                          | 3: site/welcome.js:50, site/welcome.js:348, …                                                                        |
 | mini-btn                         | 2: site/workstation-ui.js:582, site/workstation-ui.js:588                                                            |
 | open                             | 3: site/workstation-ui.js:221, site/workstation-ui.js:263, …                                                         |
-| p-panel-head                     | 1: site/ui-v2/real-view-bridge.js:136                                                                                |
+| p-panel-head                     | 1: site/ui-v2/real-view-bridge.js:198                                                                                |
 | p-sprite                         | 2: site/ui-v2/prototypes/a-full/source/prototype-icons.js:38, site/ui-v2/view-icons.js:55                            |
-| p-view                           | 1: site/ui-v2/real-view-bridge.js:134                                                                                |
-| p-view-head                      | 1: site/ui-v2/real-view-bridge.js:136                                                                                |
+| p-view                           | 1: site/ui-v2/real-view-bridge.js:196                                                                                |
+| p-view-head                      | 1: site/ui-v2/real-view-bridge.js:198                                                                                |
 | param-field                      | 1: site/controllers/process-recipe-controller.js:527                                                                 |
 | param-grid-2                     | 1: site/controllers/process-recipe-controller.js:685                                                                 |
 | plan-pan-active                  | 1: site/controllers/main-canvas-controller.js:39                                                                     |
@@ -525,10 +525,11 @@ Duplicate static IDs: none. Missing static aria-controls targets: none.
 | three-unavailable-card           | 1: site/three-view.js:226                                                                                            |
 | unavailable                      | 1: site/controllers/mask-browser-controller.js:228                                                                   |
 | v2-${…}                          | 1: site/ui-v2/overlay-manager.js:31                                                                                  |
-| v2-real-view                     | 1: site/ui-v2/real-view-bridge.js:134                                                                                |
+| v2-native-toolbar                | 1: site/ui-v2/real-view-bridge.js:114                                                                                |
+| v2-real-view                     | 1: site/ui-v2/real-view-bridge.js:196                                                                                |
 | view-maximized                   | 1: site/controllers/view-maximize-controller.js:20                                                                   |
 | view-overflow-secondary          | 1: site/controllers/view-toolbar-controller.js:55                                                                    |
-| wc-button                        | 1: site/ui-v2/real-view-bridge.js:142                                                                                |
+| wc-button                        | 1: site/ui-v2/real-view-bridge.js:205                                                                                |
 | wc-icon                          | 3: site/ui-v2/gallery.html:287, site/ui-v2/prototypes/a-full/source/prototype-icons.js:52, …                         |
 | wc-tree-caret                    | 1: site/ui-v2/gallery.html:489                                                                                       |
 | welcome-example-body             | 1: site/welcome.js:243                                                                                               |
@@ -705,7 +706,7 @@ Every innerHTML assignment, createElement call, className/classList state change
 | site/ui-v2/prototypes/c-history.html                        | 6               | dataset                                                                                                                                                             |
 | site/ui-v2/prototypes/c-process.html                        | 6               | dataset                                                                                                                                                             |
 | site/ui-v2/prototypes/c-recipe.html                         | 6               | dataset                                                                                                                                                             |
-| site/ui-v2/real-view-bridge.js                              | 26              | append, dataset, classList.add, createElement, replaceChildren                                                                                                      |
+| site/ui-v2/real-view-bridge.js                              | 31              | append, replaceChildren, classList.add, prepend, dataset, createElement                                                                                             |
 | site/ui-v2/shell-preview.js                                 | 1               | dataset                                                                                                                                                             |
 | site/ui-v2/view-icons.js                                    | 10              | createElementNS, classList.add, append, prepend                                                                                                                     |
 | site/ui-v2/view-panel.js                                    | 5               | append, replaceChildren                                                                                                                                             |

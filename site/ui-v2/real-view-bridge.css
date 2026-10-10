@@ -58,7 +58,7 @@ html[data-v2-m3='d1-experimental'] .v2-real-view > .view-head .view-tools {
   min-width: 0;
   gap: 4px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 html[data-v2-m3='d1-experimental'] .v2-real-view > #mainCanvas,
@@ -92,6 +92,29 @@ html[data-v2-m3='d1-experimental'] .v2-real-view .wc-button {
   min-height: var(--wc-control-sm);
   font-size: var(--wc-font-body);
   font-family: var(--wc-font);
+}
+
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar .view-more-control {
+  margin-left: auto;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar .wc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar .wc-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-native-toolbar .view-mode-select {
+  min-height: var(--wc-control-sm);
+  font: var(--wc-font-body) var(--wc-font);
 }
 
 html[data-v2-m3='d1-experimental'] .v2-real-view > .section-body {

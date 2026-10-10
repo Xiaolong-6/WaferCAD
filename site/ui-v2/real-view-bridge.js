@@ -73,7 +73,7 @@
       const button = panel.querySelector('.view-max-btn');
       if (!button) continue;
       const maximized = state.maximize === key;
-      button.textContent = maximized ? 'Restore' : 'Max';
+      commandLabel(button, maximized ? 'Restore' : 'Max', 'maximize');
       button.setAttribute('aria-pressed', String(maximized));
       button.setAttribute(
         'aria-label',
@@ -101,6 +101,68 @@
       nativeStages.set(key, stage);
       livePanels.set(key, panel);
     }
+  }
+
+  function commandLabel(node, text, glyph) {
+    if (!node) return;
+    node.replaceChildren(window.WaferCadV2Icons.icon(glyph), document.createTextNode(text));
+  }
+
+  // One real-toolbar presentation policy. Move native controls before bind;
+  // IDs, controller listeners, popover content and scientific hosts stay intact.
+  function arrangeToolbar(key, tools) {
+    tools.classList.add('v2-native-toolbar');
+    tools.setAttribute('role', 'toolbar');
+    tools.setAttribute('aria-label', `${key === 'three' ? '3D' : key} view tools`);
+    const fit = tools.querySelector(`#${key === 'three' ? 'fit3dBtn' : `${key}ZoomFit`}`);
+    if (fit) {
+      commandLabel(fit, 'Fit', 'fit');
+      tools.prepend(fit);
+    }
+    const pan = tools.querySelector('#mainPanBtn');
+    if (pan) {
+      commandLabel(pan, 'Pan', 'pan');
+      fit.after(pan);
+    }
+    if (key === 'main' || key === 'mask') {
+      const plus = tools.querySelector(`#${key}ZoomIn`);
+      const minus = tools.querySelector(`#${key}ZoomOut`);
+      const oldRow = plus.parentElement;
+      const heading = oldRow.previousElementSibling;
+      const zoom = el(
+        'details',
+        { class: 'v2-real-zoom' },
+        el('summary', {
+          class: 'mini-btn wc-button',
+          'data-size': 'sm',
+          title: `Zoom ${key} view`,
+          'aria-label': `Zoom ${key} view`,
+        }),
+        el('div', { class: 'view-menu-popover view-popover-surface' }, minus, plus),
+      );
+      commandLabel(zoom.querySelector('summary'), 'Zoom', 'zoom');
+      (pan || fit).after(zoom);
+      if (heading?.textContent === 'Zoom') heading.remove();
+      oldRow.remove();
+    }
+    const icons = [
+      ['#focusEditor > summary', 'roi'],
+      ['#maskRoiEditor > summary', 'roi'],
+      ['#sectionControlsBtn', 'line'],
+      ['#sectionCollapseAxisBtn', 'zbreak'],
+      ['.view-display-control > summary', 'settings'],
+      ['.mask-opacity-control > summary', 'settings'],
+      ['.view-more-control > summary', 'more'],
+      ['.view-max-btn', 'maximize'],
+    ];
+    for (const [selector, glyph] of icons) {
+      const node = tools.querySelector(selector);
+      if (node) commandLabel(node, node.textContent.trim(), glyph);
+    }
+    const more = tools.querySelector('.view-more-control');
+    const max = tools.querySelector('.view-max-btn');
+    if (more) tools.append(more);
+    if (max) tools.append(max);
   }
 
   function buildShell() {
@@ -138,6 +200,7 @@
             .querySelector(':scope > div:first-child')
             ?.setAttribute('data-slot', `view.${key}.header`);
           tools.dataset.slot = `view.${key}.actions`;
+          arrangeToolbar(key, tools);
           for (const control of header.querySelectorAll('.mini-btn')) {
             control.classList.add('wc-button');
             control.dataset.size = 'sm';

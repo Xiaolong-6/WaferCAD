@@ -15,9 +15,9 @@
     "dataAttributes": 40,
     "roleAttributes": 17,
     "ariaControls": 7,
-    "dynamicClasses": 214,
+    "dynamicClasses": 215,
     "dynamicClassPatterns": 2,
-    "dynamicOperations": 1109,
+    "dynamicOperations": 1114,
     "dynamicIdDeclarations": 60,
     "unresolvedOperations": 14
   },
@@ -372,37 +372,42 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 169,
+          "line": 155,
+          "source": "await page.locator('#mainPanel .v2-real-zoom > summary').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 188,
           "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 179,
+          "line": 198,
           "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 182,
+          "line": 201,
           "source": "const more = page.locator('#mainPanel .view-more-control');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 189,
-          "source": ".querySelector('#mainPanel .view-more-control > summary')"
-        },
-        {
-          "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 205,
+          "line": 208,
           "source": ".querySelector('#mainPanel .view-more-control > summary')"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 224,
+          "source": ".querySelector('#mainPanel .view-more-control > summary')"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 243,
           "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 227,
+          "line": 246,
           "source": "await page.waitForFunction(() => !document.querySelector('#mainPanel details[open]'));"
         },
         {
@@ -519,6 +524,11 @@
           "source": "assert.match(html, /id=\"sectionControlsBtn\"/);"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 151,
+          "source": "['#sectionControlsBtn', 'line'],"
+        },
+        {
           "file": "scripts/interaction-regression.mjs",
           "line": 213,
           "source": "await page.locator('#sectionControlsBtn').click();"
@@ -616,6 +626,11 @@
           "source": "assert.ok(html.indexOf('id=\"focusEditor\"') < maskStart);"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 149,
+          "source": "['#focusEditor > summary', 'roi'],"
+        },
+        {
           "file": "site/workstation.css",
           "line": 1839,
           "source": "html.welcome-project-preview #focusEditor,"
@@ -697,7 +712,7 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 222,
+          "line": 241,
           "source": "const roiSummary = page.locator('#focusEditor > summary');"
         },
         { "file": "scripts/workstation-regression.mjs", "line": 206, "source": "'#focusEditor'," }
@@ -825,7 +840,7 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 251,
+          "line": 270,
           "source": "unit: document.getElementById('roiUnitLabel').textContent,"
         }
       ]
@@ -928,7 +943,7 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 248,
+          "line": 267,
           "source": "widthUm: Number(document.getElementById('roiWidth').value),"
         },
         {
@@ -996,7 +1011,7 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 249,
+          "line": 268,
           "source": "heightUm: Number(document.getElementById('roiHeight').value),"
         }
       ]
@@ -1331,6 +1346,11 @@
           "source": "['#mainPanBtn', 540],"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 122,
+          "source": "const pan = tools.querySelector('#mainPanBtn');"
+        },
+        {
           "file": "site/workstation.css",
           "line": 1687,
           "source": "html.workstation-ui-v2.workstation-compact-ui #mainPanBtn {"
@@ -1391,14 +1411,15 @@
           "line": 674,
           "source": "await page.locator('#mainZoomFit').click();"
         },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 124, "source": "'mainZoomFit'," },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 123,
-          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
+          "line": 163,
+          "source": "await page.locator('#mainZoomFit').click();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 177,
+          "line": 196,
           "source": "const fit = page.locator('#mainZoomFit');"
         }
       ]
@@ -1431,7 +1452,8 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 110,
           "source": "for (const id of ['mainPanBtn', 'mainZoomOut', 'mainZoomIn']) {"
-        }
+        },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 130, "source": "'mainZoomOut'," }
       ]
     },
     {
@@ -1466,6 +1488,12 @@
         {
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 641,
+          "source": "await page.locator('#mainZoomIn').click();"
+        },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 129, "source": "'mainZoomIn'," },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 156,
           "source": "await page.locator('#mainZoomIn').click();"
         },
         {
@@ -1540,34 +1568,30 @@
           "line": 659,
           "source": "['mainMaxBtn', 'mainPanel'],"
         },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 127, "source": "'mainMaxBtn'," },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 123,
-          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
-        },
-        {
-          "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 173,
+          "line": 192,
           "source": "await clickMainAction('#mainMaxBtn');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 174,
+          "line": 193,
           "source": "assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'true');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 175,
+          "line": 194,
           "source": "await clickMainAction('#mainMaxBtn');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 176,
+          "line": 195,
           "source": "assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'false');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 281,
+          "line": 300,
           "source": "restored: document.getElementById('mainMaxBtn').textContent.trim(),"
         }
       ]
@@ -1801,27 +1825,37 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 134,
+          "line": 141,
           "source": "document.querySelectorAll('#mainCanvas').length !== 1 ||"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 213,
+          "line": 154,
+          "source": "const originalScale = await page.locator('#mainCanvas').getAttribute('data-x-px-per-um');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 158,
+          "source": "const zoomScale = await page.locator('#mainCanvas').getAttribute('data-x-px-per-um');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 232,
           "source": "const mainRect = await page.locator('#mainCanvas').boundingBox();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 229,
+          "line": 248,
           "source": "const dragRect = await page.locator('#mainCanvas').boundingBox();"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 250,
+          "line": 269,
           "source": "scale: Number(document.getElementById('mainCanvas').dataset.xPxPerUm),"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 276,
+          "line": 295,
           "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
         },
         {
@@ -2554,6 +2588,21 @@
           "source": "assert.equal(await page.locator('#maskPanel').isVisible(), true);"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 166,
+          "source": "await clickControl('#maskPanel', '#maskZoomFit');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 167,
+          "source": "await clickControl('#maskPanel', '#maskRoiEditor > summary');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 170,
+          "source": "await page.waitForFunction(() => !document.querySelector('#maskPanel details[open]'));"
+        },
+        {
           "file": "scripts/v2/check-m2-shell.mjs",
           "line": 422,
           "source": "\"document.querySelector('#maskPanel .p-view-head [data-action=roi]')!==null&&document.querySelector('.p-mask-tools [data-action^=draw-tool]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-roi-settings]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-alignment-settings]')!==null&&!document.querySelector('.p-mask-tools [data-action=roi]')&&!document.querySelector('.p-mask-settings')\","
@@ -2762,12 +2811,12 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 168,
-          "source": "if (details !== $('maskRoiEditor')) details.open = false;"
+          "line": 170,
+          "source": "if (details !== $('maskRoiEditor') && !details.contains($('maskRoiEditor')))"
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 181,
+          "line": 184,
           "source": "$('maskRoiEditor').open = false;"
         },
         {
@@ -2779,6 +2828,11 @@
           "file": "site/tests/function-panel-feedback.test.mjs",
           "line": 288,
           "source": "assert.match(html, /id=\"maskRoiEditor\"/);"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 150,
+          "source": "['#maskRoiEditor > summary', 'roi'],"
         },
         {
           "file": "site/workstation.css",
@@ -2830,6 +2884,31 @@
           "line": 579,
           "source": "await clickViewSummary('#maskRoiEditor');"
         },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 116,
+          "source": "editor: document.getElementById('maskRoiEditor').open,"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 127,
+          "source": "['maskRoiEditor', document.getElementById('maskRoiEditor')],"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 167,
+          "source": "await clickControl('#maskPanel', '#maskRoiEditor > summary');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 168,
+          "source": "await page.waitForFunction(() => document.getElementById('maskRoiEditor').open);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 169,
+          "source": "await page.locator('#maskRoiEditor .mask-roi-tool[data-tool=\"rect\"]').click();"
+        },
         { "file": "scripts/workstation-regression.mjs", "line": 208, "source": "'#maskRoiEditor'," }
       ]
     },
@@ -2848,7 +2927,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 187,
+          "line": 190,
           "source": "$('clearMaskRoiBtn').onclick = () => {"
         }
       ]
@@ -2875,6 +2954,11 @@
           "file": "scripts/interaction-regression.mjs",
           "line": 553,
           "source": "assert.equal(await page.locator('#maskRoiFields').isVisible(), true);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 179,
+          "source": "sizeFieldHidden: document.getElementById('maskRoiFields').hidden,"
         }
       ]
     },
@@ -2920,6 +3004,11 @@
           "file": "site/controllers/mask-roi-controller.js",
           "line": 60,
           "source": "$('maskRoiUnitLabel').textContent = xyUnitLabel();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 178,
+          "source": "unit: document.getElementById('maskRoiUnitLabel').textContent,"
         }
       ]
     },
@@ -2964,7 +3053,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 202,
+          "line": 205,
           "source": "for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {"
         },
         {
@@ -2986,6 +3075,11 @@
           "file": "scripts/interaction-regression.mjs",
           "line": 577,
           "source": "assert.equal(await page.locator('#maskRoiSize').inputValue(), maskRoiLocalSize);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 177,
+          "source": "sizeUm: Number(document.getElementById('maskRoiSize').value),"
         }
       ]
     },
@@ -3014,7 +3108,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 205,
+          "line": 208,
           "source": "$('maskRoiRotation').oninput = applyEditor;"
         },
         {
@@ -3084,7 +3178,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 202,
+          "line": 205,
           "source": "for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {"
         }
       ]
@@ -3105,12 +3199,12 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 197,
+          "line": 200,
           "source": "$('maskRoiAnchorSelect').onchange = () => {"
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 198,
+          "line": 201,
           "source": "setAnchor($('maskRoiAnchorSelect').value);"
         }
       ]
@@ -3140,7 +3234,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 202,
+          "line": 205,
           "source": "for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {"
         },
         {
@@ -3180,7 +3274,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 202,
+          "line": 205,
           "source": "for (const id of ['maskRoiSize', 'maskRoiRadius', 'maskRoiX', 'maskRoiY']) {"
         },
         {
@@ -3333,10 +3427,11 @@
           "source": "'maskZoomFit',"
         },
         {
-          "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 123,
-          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
-        }
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 166,
+          "source": "await clickControl('#maskPanel', '#maskZoomFit');"
+        },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 125, "source": "'maskZoomFit'," }
       ]
     },
     {
@@ -3357,7 +3452,8 @@
           "file": "site/controllers/workspace-actions-controller.js",
           "line": 172,
           "source": "$('maskZoomOut').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1 / 1.25);"
-        }
+        },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 132, "source": "'maskZoomOut'," }
       ]
     },
     {
@@ -3378,7 +3474,8 @@
           "file": "site/controllers/workspace-actions-controller.js",
           "line": 173,
           "source": "$('maskZoomIn').onclick = () => zoomPlanView('mask', $('maskCanvas'), 1.25);"
-        }
+        },
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 131, "source": "'maskZoomIn'," }
       ]
     },
     {
@@ -3723,7 +3820,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 209,
+          "line": 212,
           "source": "const canvas = $('maskCanvas');"
         },
         {
@@ -3823,13 +3920,18 @@
           "source": "for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas']) {"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 172,
+          "source": "const maskDrag = await drag('#maskCanvas', 0.43, 0.43, 0.56, 0.53);"
+        },
+        {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 135,
+          "line": 142,
           "source": "document.querySelectorAll('#maskCanvas').length !== 1 ||"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 276,
+          "line": 295,
           "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
         }
       ]
@@ -5281,6 +5383,11 @@
           "source": "'fit3dBtn',"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 117,
+          "source": "const fit = tools.querySelector(`#${key === 'three' ? 'fit3dBtn' : `${key}ZoomFit`}`);"
+        },
+        {
           "file": "scripts/array-renderer-edge-on-regression.mjs",
           "line": 109,
           "source": "document.getElementById('fit3dBtn')?.click();"
@@ -5320,11 +5427,7 @@
           "line": 848,
           "source": "await page.locator('#fit3dBtn').click();"
         },
-        {
-          "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 123,
-          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
-        }
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 126, "source": "'fit3dBtn'," }
       ]
     },
     {
@@ -5621,11 +5724,7 @@
           "line": 276,
           "source": "await page.locator('#threeMaxBtn').click();"
         },
-        {
-          "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 123,
-          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
-        }
+        { "file": "scripts/v2/check-d1-real-views.mjs", "line": 128, "source": "'threeMaxBtn'," }
       ]
     },
     {
@@ -6203,6 +6302,16 @@
           "source": "assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 97,
+          "source": "document.querySelector('#threeHost canvas') &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 98,
+          "source": "document.querySelector('#threeHost').dataset.renderPhase === 'complete',"
+        },
+        {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 111,
           "source": "document.querySelector('#threeHost canvas') &&"
@@ -6219,37 +6328,37 @@
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 128,
+          "line": 135,
           "source": "window.d1OriginalGlCanvas = document.querySelector('#threeHost canvas');"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 137,
+          "line": 144,
           "source": "document.querySelectorAll('#threeHost').length !== 1"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 269,
+          "line": 288,
           "source": "if (document.querySelector('#threeHost canvas') !== window.d1OriginalGlCanvas)"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 279,
+          "line": 298,
           "source": "glCanvasCount: document.querySelectorAll('#threeHost canvas').length,"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 293,
+          "line": 312,
           "source": "Number(document.getElementById('threeHost').dataset.rendererFrameSerial) > 0 &&"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 294,
+          "line": 313,
           "source": "document.getElementById('threeHost').dataset.renderPhase === 'complete',"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 297,
+          "line": 316,
           "source": "const host = document.getElementById('threeHost');"
         },
         {
@@ -7075,6 +7184,11 @@
           "source": "await page.locator('#baseWidth').fill(String(sample.baseWidth));"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 188,
+          "source": "widthUm: Number(document.getElementById('baseWidth').value),"
+        },
+        {
           "file": "scripts/v2/check-m2-shell.mjs",
           "line": 264,
           "source": "const baseWidth = await evaluate("
@@ -7202,6 +7316,11 @@
           "file": "scripts/persistence-regression.mjs",
           "line": 419,
           "source": "assert.equal(Number(await projectHandoffPage.locator('#baseHeight').inputValue()), 3210);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 189,
+          "source": "heightUm: Number(document.getElementById('baseHeight').value),"
         }
       ]
     },
@@ -13897,7 +14016,7 @@
         },
         {
           "file": "site/ui-v2/real-view-bridge.js",
-          "line": 195,
+          "line": 258,
           "source": "getProjectName: () => document.getElementById('projectNameInput')?.value || 'Untitled',"
         },
         {
@@ -14173,6 +14292,11 @@
           "source": "await page.locator('#openProjectInput').setInputFiles({"
         },
         { "file": "scripts/ui-smoke.mjs", "line": 65, "source": "'openProjectInput'," },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 86,
+          "source": ".locator('#openProjectInput')"
+        },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 99,
@@ -15065,6 +15189,36 @@
           "source": "await welcomePage.locator('#sectionPanel').screenshot({"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 217,
+          "source": "await clickControl('#sectionPanel', '#sectionDetailRoiBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 244,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 269,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 284,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 326,
+          "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 327,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
           "file": "scripts/v2/check-m2-shell.mjs",
           "line": 1182,
           "source": "await click('#sectionPanel [popovertarget=\"p-overflow-section\"]');"
@@ -15258,6 +15412,16 @@
           "source": "assert.match(html, /id=\"sectionCollapseAxisBtn\"[^>]*>\\s*Z Break\\s*<\\/button>/);"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 152,
+          "source": "['#sectionCollapseAxisBtn', 'zbreak'],"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 384,
+          "source": "const trigger = document.getElementById('sectionCollapseAxisBtn');"
+        },
+        {
           "file": "scripts/tandem-visual-acceptance.mjs",
           "line": 82,
           "source": "await page.locator('#sectionCollapseAxisBtn').click();"
@@ -15301,6 +15465,41 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 304,
           "source": "const entry = page.locator('#sectionCollapseAxisBtn'),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 244,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 257,
+          "source": ".locator('#sectionCollapseAxisBtn')"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 269,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 279,
+          "source": ".locator('#sectionCollapseAxisBtn')"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 284,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 327,
+          "source": "await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 337,
+          "source": ".locator('#sectionCollapseAxisBtn')"
         },
         {
           "file": "scripts/view-ux-v3-regression.mjs",
@@ -15380,6 +15579,11 @@
           "file": "scripts/process-geometry-regression.mjs",
           "line": 887,
           "source": "await page.locator('#sectionDetailRoiBtn').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 217,
+          "source": "await clickControl('#sectionPanel', '#sectionDetailRoiBtn');"
         }
       ]
     },
@@ -15482,6 +15686,11 @@
           "file": "scripts/renderer-product-cases.mjs",
           "line": 832,
           "source": "await page.locator('#sectionMaxBtn').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 326,
+          "source": "await clickControl('#sectionPanel', '#sectionMaxBtn');"
         }
       ]
     },
@@ -15865,18 +16074,28 @@
           "source": "const sectionInk = await canvasInkFraction(welcomePage, '#sectionCanvas');"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 218,
+          "source": "const sectionDrag = await drag('#sectionCanvas', 0.36, 0.38, 0.58, 0.57);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 225,
+          "source": "const canvas = document.getElementById('sectionCanvas').getBoundingClientRect();"
+        },
+        {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 136,
+          "line": 143,
           "source": "document.querySelectorAll('#sectionCanvas').length !== 1 ||"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 276,
+          "line": 295,
           "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 323,
+          "line": 342,
           "source": "const sectionRect = await page.locator('#sectionCanvas').boundingBox();"
         },
         {
@@ -15950,6 +16169,26 @@
           "source": "html.welcome-project-preview #sectionCollapseOverlay {"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 265,
+          "source": ".evaluate((node) => node.parentElement.id === 'sectionCollapseOverlay'),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 274,
+          "source": "'sectionCollapseOverlay',"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 289,
+          "source": "'sectionCollapseOverlay',"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 348,
+          "source": "node.parentElement.id === 'sectionCollapseOverlay',"
+        },
+        {
           "file": "scripts/workstation-regression.mjs",
           "line": 213,
           "source": "'#sectionCollapseOverlay',"
@@ -16002,6 +16241,11 @@
           "source": "if ($('sectionCollapseEditor').contains(event.target)) return;"
         },
         {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 383,
+          "source": "const editor = document.getElementById('sectionCollapseEditor');"
+        },
+        {
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 305,
           "source": "editor = page.locator('#sectionCollapseEditor'),"
@@ -16010,6 +16254,71 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 394,
           "source": "await checkPopover(page, '#sectionCollapseEditor', '#sectionPanel');"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 128,
+          "source": "['sectionCollapseEditor', document.getElementById('sectionCollapseEditor')],"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 246,
+          "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.open),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 251,
+          "source": ".locator('#sectionCollapseEditor')"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 254,
+          "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 264,
+          "source": ".locator('#sectionCollapseEditor')"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 271,
+          "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 273,
+          "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.parentElement.id),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 286,
+          "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 288,
+          "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.parentElement.id),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 329,
+          "source": "await page.locator('#sectionCollapseEditor').evaluate((node) => node.matches(':modal')),"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 334,
+          "source": "await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 344,
+          "source": ".locator('#sectionCollapseEditor')"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 347,
+          "source": "node === window.d1ExtendedOwners.get('sectionCollapseEditor') &&"
         },
         {
           "file": "scripts/view-ux-v3-regression.mjs",
@@ -16060,6 +16369,11 @@
         {
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 524,
+          "source": "await page.locator('#sectionCollapseClose').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 270,
           "source": "await page.locator('#sectionCollapseClose').click();"
         },
         {
@@ -16668,6 +16982,21 @@
           "source": ".locator('#sectionDetailRoiOverlay')"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 129,
+          "source": "['sectionDetailRoiOverlay', document.getElementById('sectionDetailRoiOverlay')],"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 221,
+          "source": "!document.getElementById('sectionDetailRoiOverlay').hidden &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 226,
+          "source": "const overlay = document.getElementById('sectionDetailRoiOverlay').getBoundingClientRect();"
+        },
+        {
           "file": "scripts/workstation-regression.mjs",
           "line": 211,
           "source": "'#sectionDetailRoiOverlay',"
@@ -16721,6 +17050,11 @@
           "file": "scripts/process-geometry-regression.mjs",
           "line": 914,
           "source": "const insetAfter = await page.locator('#sectionDetailInset').boundingBox();"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 222,
+          "source": "!document.getElementById('sectionDetailInset').hidden,"
         },
         {
           "file": "scripts/workstation-regression.mjs",
@@ -16782,7 +17116,12 @@
           "line": 96,
           "source": "const zoom = $('sectionDetailZoom'),"
         },
-        { "file": "site/style.css", "line": 4883, "source": "#sectionDetailZoom {" }
+        { "file": "site/style.css", "line": 4883, "source": "#sectionDetailZoom {" },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 234,
+          "source": "zoom: document.getElementById('sectionDetailZoom').textContent,"
+        }
       ]
     },
     {
@@ -16835,6 +17174,11 @@
           "file": "site/controllers/section-detail-roi-controller.js",
           "line": 348,
           "source": "$('sectionDetailCloseBtn').addEventListener('click', clear);"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 318,
+          "source": "await page.locator('#sectionDetailCloseBtn').click();"
         }
       ]
     },
@@ -18038,13 +18382,23 @@
           "source": "() => /Opened .*\\.wafercad\\./.test(document.getElementById('statusText')?.textContent || ''),"
         },
         {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 90,
+          "source": "(name) => document.getElementById('statusText').textContent === `Opened ${name}.`,"
+        },
+        {
+          "file": "scripts/v2/check-d1-extended.mjs",
+          "line": 174,
+          "source": "document.getElementById('statusText').textContent.startsWith('Mask ROI created.'),"
+        },
+        {
           "file": "scripts/v2/check-d1-real-views.mjs",
           "line": 103,
           "source": "(name) => document.getElementById('statusText').textContent === `Opened ${name}.`,"
         },
         {
           "file": "scripts/v2/check-d1-real-views.mjs",
-          "line": 245,
+          "line": 264,
           "source": "/^ROI created\\./.test(document.getElementById('statusText').textContent),"
         },
         {
@@ -18641,7 +18995,7 @@
         },
         {
           "file": "site/controllers/mask-roi-controller.js",
-          "line": 180,
+          "line": 183,
           "kind": "classList.toggle"
         },
         {
@@ -19707,7 +20061,7 @@
       "name": "p-panel-head",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 136, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 198, "kind": "classList.add" }
       ]
     },
     {
@@ -19726,14 +20080,14 @@
       "name": "p-view",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 134, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 196, "kind": "classList.add" }
       ]
     },
     {
       "name": "p-view-head",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 136, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 198, "kind": "classList.add" }
       ]
     },
     {
@@ -20417,10 +20771,17 @@
       "occurrences": [{ "file": "site/ui-v2/overlay-manager.js", "line": 31, "kind": "className" }]
     },
     {
+      "name": "v2-native-toolbar",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 114, "kind": "classList.add" }
+      ]
+    },
+    {
       "name": "v2-real-view",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 134, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 196, "kind": "classList.add" }
       ]
     },
     {
@@ -20445,7 +20806,7 @@
       "name": "wc-button",
       "pattern": false,
       "occurrences": [
-        { "file": "site/ui-v2/real-view-bridge.js", "line": 142, "kind": "classList.add" }
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 205, "kind": "classList.add" }
       ]
     },
     {
@@ -24615,6 +24976,27 @@
       "kind": "MemberExpression"
     },
     {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 73,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 73,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 98,
+      "source": "document.querySelector('#threeHost').dataset.renderPhase",
+      "key": "renderPhase",
+      "kind": "MemberExpression"
+    },
+    {
       "file": "scripts/v2/check-d1-real-views.mjs",
       "line": 77,
       "source": "document.body.dataset.ready",
@@ -24651,56 +25033,56 @@
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 250,
+      "line": 269,
       "source": "document.getElementById('mainCanvas').dataset.xPxPerUm",
       "key": "xPxPerUm",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 293,
+      "line": 312,
       "source": "document.getElementById('threeHost').dataset.rendererFrameSerial",
       "key": "rendererFrameSerial",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 294,
+      "line": 313,
       "source": "document.getElementById('threeHost').dataset.renderPhase",
       "key": "renderPhase",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 313,
+      "line": 332,
       "source": "host.dataset.rendererFrameSerial",
       "key": "rendererFrameSerial",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 314,
+      "line": 333,
       "source": "host.dataset.rendererDrawCalls",
       "key": "rendererDrawCalls",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 315,
+      "line": 334,
       "source": "host.dataset.rendererDrawTriangles",
       "key": "rendererDrawTriangles",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 316,
+      "line": 335,
       "source": "host.dataset.renderPhase",
       "key": "renderPhase",
       "kind": "MemberExpression"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 338,
+      "line": 357,
       "source": "document.body.dataset.ready",
       "key": "ready",
       "kind": "MemberExpression"
@@ -24910,7 +25292,7 @@
     },
     {
       "file": "site/controllers/mask-roi-controller.js",
-      "line": 176,
+      "line": 179,
       "source": "button.dataset.tool",
       "key": "tool",
       "kind": "MemberExpression"
@@ -26896,91 +27278,91 @@
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 114,
+      "line": 176,
       "source": "host.dataset.adapter",
       "key": "adapter",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 135,
+      "line": 197,
       "source": "panel.dataset.view",
       "key": "view",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 140,
+      "line": 202,
       "source": "tools.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 143,
+      "line": 206,
       "source": "control.dataset.size",
       "key": "size",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 169,
+      "line": 232,
       "source": "stage.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 171,
+      "line": 234,
       "source": "readout.dataset.slot",
       "key": "slot",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 227,
+      "line": 290,
       "source": "max.dataset.viewPanel",
       "key": "viewPanel",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 234,
+      "line": 297,
       "source": "event.target.closest('[data-action]')?.dataset.action",
       "key": "action",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 263,
+      "line": 326,
       "source": "event.target.dataset.key",
       "key": "key",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 264,
+      "line": 327,
       "source": "event.target.dataset.key",
       "key": "key",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 281,
+      "line": 344,
       "source": "document.documentElement.dataset.appReady",
       "key": "appReady",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 285,
+      "line": 348,
       "source": "document.body.dataset.ready",
       "key": "ready",
       "kind": "MemberExpression"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 328,
+      "line": 404,
       "source": "document.body.dataset.ready",
       "key": "ready",
       "kind": "MemberExpression"
@@ -28808,6 +29190,27 @@
       "source": "shell.getSlot(`view.${key}.stage`).append(child)"
     },
     {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 73,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 73,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-extended.mjs",
+      "line": 98,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.querySelector('#threeHost').dataset.renderPhase"
+    },
+    {
       "file": "scripts/v2/check-d1-real-views.mjs",
       "line": 77,
       "kind": "dataset",
@@ -28844,56 +29247,56 @@
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 250,
+      "line": 269,
       "kind": "dataset",
       "values": [],
       "source": "document.getElementById('mainCanvas').dataset.xPxPerUm"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 293,
+      "line": 312,
       "kind": "dataset",
       "values": [],
       "source": "document.getElementById('threeHost').dataset.rendererFrameSerial"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 294,
+      "line": 313,
       "kind": "dataset",
       "values": [],
       "source": "document.getElementById('threeHost').dataset.renderPhase"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 313,
+      "line": 332,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.rendererFrameSerial"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 314,
+      "line": 333,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.rendererDrawCalls"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 315,
+      "line": 334,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.rendererDrawTriangles"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 316,
+      "line": 335,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.renderPhase"
     },
     {
       "file": "scripts/v2/check-d1-real-views.mjs",
-      "line": 338,
+      "line": 357,
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
@@ -30318,14 +30721,14 @@
     },
     {
       "file": "site/controllers/mask-roi-controller.js",
-      "line": 176,
+      "line": 179,
       "kind": "dataset",
       "values": [],
       "source": "button.dataset.tool"
     },
     {
       "file": "site/controllers/mask-roi-controller.js",
-      "line": 180,
+      "line": 183,
       "kind": "classList.toggle",
       "values": ["active"],
       "source": "item.classList.toggle('active', item === button)"
@@ -35094,154 +35497,189 @@
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
+      "line": 108,
+      "kind": "replaceChildren",
+      "values": [],
+      "source": "node.replaceChildren(window.WaferCadV2Icons.icon(glyph), document.createTextNode(text))"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
       "line": 114,
+      "kind": "classList.add",
+      "values": ["v2-native-toolbar"],
+      "source": "tools.classList.add('v2-native-toolbar')"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 120,
+      "kind": "prepend",
+      "values": [],
+      "source": "tools.prepend(fit)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 164,
+      "kind": "append",
+      "values": [],
+      "source": "tools.append(more)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 165,
+      "kind": "append",
+      "values": [],
+      "source": "tools.append(max)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 176,
       "kind": "dataset",
       "values": [],
       "source": "host.dataset.adapter"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 120,
+      "line": 182,
       "kind": "append",
       "values": [],
       "source": "content.append(el('p', { class: 'p-aux' }, 'This domain is not wired in D1.'))"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 134,
+      "line": 196,
       "kind": "classList.add",
       "values": ["p-view", "v2-real-view"],
       "source": "panel.classList.add('p-view', 'v2-real-view')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 135,
+      "line": 197,
       "kind": "dataset",
       "values": [],
       "source": "panel.dataset.view"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 136,
+      "line": 198,
       "kind": "classList.add",
       "values": ["p-panel-head", "p-view-head"],
       "source": "header.classList.add('p-panel-head', 'p-view-head')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 140,
+      "line": 202,
       "kind": "dataset",
       "values": [],
       "source": "tools.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 142,
+      "line": 205,
       "kind": "classList.add",
       "values": ["wc-button"],
       "source": "control.classList.add('wc-button')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 143,
+      "line": 206,
       "kind": "dataset",
       "values": [],
       "source": "control.dataset.size"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 169,
+      "line": 232,
       "kind": "dataset",
       "values": [],
       "source": "stage.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 171,
+      "line": 234,
       "kind": "dataset",
       "values": [],
       "source": "readout.dataset.slot"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 172,
+      "line": 235,
       "kind": "append",
       "values": [],
       "source": "panel.append(\n            el('div', {\n              class: 'v2-real-overlays',\n              'data-slot': `view.${key}.overlays`,\n              hidden: true,\n            }),\n          )"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 180,
+      "line": 243,
       "kind": "append",
       "values": [],
       "source": "host.append(panel)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 227,
+      "line": 290,
       "kind": "dataset",
       "values": [],
       "source": "max.dataset.viewPanel"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 234,
+      "line": 297,
       "kind": "dataset",
       "values": [],
       "source": "event.target.closest('[data-action]')?.dataset.action"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 263,
+      "line": 326,
       "kind": "dataset",
       "values": [],
       "source": "event.target.dataset.key"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 264,
+      "line": 327,
       "kind": "dataset",
       "values": [],
       "source": "event.target.dataset.key"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 273,
+      "line": 336,
       "kind": "createElement",
       "values": ["script"],
       "source": "document.createElement('script')"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 278,
+      "line": 341,
       "kind": "append",
       "values": [],
       "source": "document.head.append(vendor)"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 281,
+      "line": 344,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.appReady"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 285,
+      "line": 348,
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 328,
+      "line": 404,
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
     },
     {
       "file": "site/ui-v2/real-view-bridge.js",
-      "line": 330,
+      "line": 406,
       "kind": "replaceChildren",
       "values": [],
       "source": "root.replaceChildren(\n      el(\n        'p',\n        { role: 'alert', class: 'p-aux' },\n        `D1 real views could not start: ${error.message}. Open app.html for the production workspace.`,\n      ),\n    )"

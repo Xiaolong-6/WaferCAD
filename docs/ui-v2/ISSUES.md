@@ -68,3 +68,7 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 ### D1 运行时复验更新
 
 详见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md) 的 Executable inspection。AST 最新 267 IDs / 214 classes / 1109 operations / 60 dynamic IDs / 14 unresolved；I11 旧数字保留为前置审计历史。I12 已有隔离真实 bootstrap，尚未获准替换 mock；I06 仅 Main 矩形 pointer 回算通过，不宣告真实 Main↔3D 边界对齐或旧 CI 根因关闭。科学核心、持久化与生产入口没有本轮修改。
+
+### D1 extended gate follow-up (`c960107` input)
+
+已实跑新 gate 并修复 390px Mask ROI 打开时关闭自身 More 祖先的真实缺陷；保留原始节点与几何算法。工具栏已有原生 Fit / Main Pan / Main+Mask Zoom / More / Max 图标、顺序和尺寸统一，Zoom 实际缩放验证通过；3D/Section 通用动作与完整 M1.5 一致性仍开放。Section Detail ≤0.25px、Z Break 原生 modal/inline 的 Escape/Close/背景关闭与回挂已验证，不能代替独立物理 Z、旋转 Mask、全部 portal 场景。最新 AST 为 267 IDs / 215 classes / 1114 operations / 60 dynamic IDs / 14 unresolved。I16 仍为 D1 未通过；D2 未启动。完整环境、命令及范围见 [D1 report](M3_D1_EXECUTION_2026-10-10.md)。

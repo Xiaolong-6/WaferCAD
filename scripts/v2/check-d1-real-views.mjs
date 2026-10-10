@@ -120,10 +120,17 @@ try {
         ]),
       );
       window.d1OriginalButtons = new Map(
-        ['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => [
-          key,
-          document.getElementById(key),
-        ]),
+        [
+          'mainZoomFit',
+          'maskZoomFit',
+          'fit3dBtn',
+          'mainMaxBtn',
+          'threeMaxBtn',
+          'mainZoomIn',
+          'mainZoomOut',
+          'maskZoomIn',
+          'maskZoomOut',
+        ].map((key) => [key, document.getElementById(key)]),
       );
       window.d1OriginalGlCanvas = document.querySelector('#threeHost canvas');
       for (const [name, node] of [...window.d1OriginalStages, ...window.d1OriginalButtons])
@@ -143,6 +150,18 @@ try {
       await page.setViewportSize({ width, height: 960 });
       await waitForPaint(page);
       await page.locator('[data-action="view:main"]').click();
+      await waitForPaint(page);
+      const originalScale = await page.locator('#mainCanvas').getAttribute('data-x-px-per-um');
+      await page.locator('#mainPanel .v2-real-zoom > summary').click();
+      await page.locator('#mainZoomIn').click();
+      await waitForPaint(page);
+      const zoomScale = await page.locator('#mainCanvas').getAttribute('data-x-px-per-um');
+      assert.ok(
+        Math.abs(Number(zoomScale) / Number(originalScale) - 1.25) < 1e-8,
+        'Moved native Zoom still changes real plan scale',
+      );
+      await page.locator('#mainZoomFit').click();
+      await waitForPaint(page);
       // The narrow v2 shell intentionally hides mode controls and forces Single.
       if (width > 820) {
         await page.locator('[data-action="mode:single"]').click();

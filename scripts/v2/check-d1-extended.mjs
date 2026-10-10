@@ -11,7 +11,10 @@ import { launchBrowser, newUiPage, waitForPaint, chooseConfirmation } from '../t
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const site = resolve(repo, 'site');
-const fixtures = { m3d: 'm3d-selfpowered-heterogeneous-ic', photodetector: 'photodetector-literature' };
+const fixtures = {
+  m3d: 'm3d-selfpowered-heterogeneous-ic',
+  photodetector: 'photodetector-literature',
+};
 const fixture = process.env.WAFERCAD_D1_FIXTURE || '';
 assert.ok(!fixture || fixtures[fixture], 'Known extended real-view fixture');
 const output = resolve(repo, `test-results/ui-v2-d1-extended${fixture ? `-${fixture}` : ''}`);
@@ -30,7 +33,8 @@ const evidence = {
   widths: [],
   errors: [],
   result: 'running',
-  scope: 'Mask ROI actual drag, Section detail pixel alignment, Z Break Escape/focus and original owner identity',
+  scope:
+    'Mask ROI actual drag, Section detail pixel alignment, Z Break Escape/focus and original owner identity',
 };
 const server = createServer(async (req, res) => {
   try {
@@ -70,11 +74,17 @@ try {
       null,
       { timeout: 120000 },
     );
-    assert.equal(await page.locator('body').getAttribute('data-ready'), 'true', 'Real v2 app must bootstrap');
+    assert.equal(
+      await page.locator('body').getAttribute('data-ready'),
+      'true',
+      'Real v2 app must bootstrap',
+    );
 
     if (fixture) {
       const filename = `${fixtures[fixture]}.wafercad`;
-      await page.locator('#openProjectInput').setInputFiles(resolve(site, 'examples/previews', filename));
+      await page
+        .locator('#openProjectInput')
+        .setInputFiles(resolve(site, 'examples/previews', filename));
       await chooseConfirmation(page);
       await page.waitForFunction(
         (name) => document.getElementById('statusText').textContent === `Opened ${name}.`,
@@ -83,7 +93,8 @@ try {
       );
     }
     await page.waitForFunction(
-      () => document.querySelector('#threeHost canvas') &&
+      () =>
+        document.querySelector('#threeHost canvas') &&
         document.querySelector('#threeHost').dataset.renderPhase === 'complete',
       null,
       { timeout: 120000 },
@@ -91,9 +102,28 @@ try {
 
     // Store the actual objects so a seemingly identical replacement still fails identity.
     await page.evaluate(() => {
+      window.d1ExtendedTrace = [];
+      for (const type of ['click', 'toggle'])
+        document.addEventListener(
+          type,
+          (event) => {
+            if (!event.target.closest?.('.view-panel')) return;
+            window.d1ExtendedTrace.push({
+              type,
+              width: innerWidth,
+              target: event.target.id || event.target.className,
+              open: event.target.open,
+              editor: document.getElementById('maskRoiEditor').open,
+            });
+            if (window.d1ExtendedTrace.length > 60) window.d1ExtendedTrace.shift();
+          },
+          true,
+        );
       window.d1ExtendedOwners = new Map([
-        ...['main', 'mask', 'three', 'section'].map((name) =>
-          [`view.${name}.stage`, window.WaferCadV2RealBridge.getSlot(`view.${name}.stage`)]),
+        ...['main', 'mask', 'three', 'section'].map((name) => [
+          `view.${name}.stage`,
+          window.WaferCadV2RealBridge.getSlot(`view.${name}.stage`),
+        ]),
         ['maskRoiEditor', document.getElementById('maskRoiEditor')],
         ['sectionCollapseEditor', document.getElementById('sectionCollapseEditor')],
         ['sectionDetailRoiOverlay', document.getElementById('sectionDetailRoiOverlay')],
@@ -109,6 +139,7 @@ try {
         const more = page.locator(`${panel} .view-more-control > summary`);
         if (!(await more.isVisible())) throw Error(`Control is not visible: ${selector}`);
         await more.click();
+        await waitForPaint(page);
       }
       await item.click();
       await waitForPaint(page);
@@ -134,11 +165,13 @@ try {
       await waitForPaint(page);
       await clickControl('#maskPanel', '#maskZoomFit');
       await clickControl('#maskPanel', '#maskRoiEditor > summary');
+      await page.waitForFunction(() => document.getElementById('maskRoiEditor').open);
       await page.locator('#maskRoiEditor .mask-roi-tool[data-tool="rect"]').click();
-      await page.waitForFunction(() => !document.getElementById('maskRoiEditor').open);
+      await page.waitForFunction(() => !document.querySelector('#maskPanel details[open]'));
+      await waitForPaint(page);
       const maskDrag = await drag('#maskCanvas', 0.43, 0.43, 0.56, 0.53);
-      await page.waitForFunction(
-        () => document.getElementById('statusText').textContent.startsWith('Mask ROI created.'),
+      await page.waitForFunction(() =>
+        document.getElementById('statusText').textContent.startsWith('Mask ROI created.'),
       );
       const mask = await page.evaluate(() => ({
         sizeUm: Number(document.getElementById('maskRoiSize').value),
@@ -159,10 +192,17 @@ try {
           (maskDrag.bounds.width - 68) / base.widthUm,
           (maskDrag.bounds.height - 68) / base.heightUm,
         );
-        mask.errorPx = Math.abs(mask.sizeUm * s -
-          Math.max(Math.abs(maskDrag.to.x - maskDrag.from.x),
-            Math.abs(maskDrag.to.y - maskDrag.from.y)));
-        assert.ok(mask.errorPx <= 0.25, `Mask ROI physical→pixel mismatch: ${JSON.stringify(mask)}`);
+        mask.errorPx = Math.abs(
+          mask.sizeUm * s -
+            Math.max(
+              Math.abs(maskDrag.to.x - maskDrag.from.x),
+              Math.abs(maskDrag.to.y - maskDrag.from.y),
+            ),
+        );
+        assert.ok(
+          mask.errorPx <= 0.25,
+          `Mask ROI physical→pixel mismatch: ${JSON.stringify(mask)}`,
+        );
       }
       await page.screenshot({ path: resolve(output, `mask-${width}.png`), fullPage: true });
 
@@ -176,9 +216,10 @@ try {
       await waitForPaint(page);
       await clickControl('#sectionPanel', '#sectionDetailRoiBtn');
       const sectionDrag = await drag('#sectionCanvas', 0.36, 0.38, 0.58, 0.57);
-      await page.waitForFunction(() =>
-        !document.getElementById('sectionDetailRoiOverlay').hidden &&
-        !document.getElementById('sectionDetailInset').hidden,
+      await page.waitForFunction(
+        () =>
+          !document.getElementById('sectionDetailRoiOverlay').hidden &&
+          !document.getElementById('sectionDetailInset').hidden,
       );
       const section = await page.evaluate(() => {
         const canvas = document.getElementById('sectionCanvas').getBoundingClientRect();
@@ -194,51 +235,142 @@ try {
         };
       });
       const worstSectionError = Math.max(...Object.values(section.errorsPx));
-      assert.ok(worstSectionError <= 0.25,
-        `Real Section detail ROI DOMRect mismatch: ${JSON.stringify(section)}`);
+      assert.ok(
+        worstSectionError <= 0.25,
+        `Real Section detail ROI DOMRect mismatch: ${JSON.stringify(section)}`,
+      );
       assert.match(section.zoom, /^×/, 'Section detail inset must report magnification');
 
       await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');
-      assert.equal(await page.locator('#sectionCollapseEditor').evaluate((node) => node.open), true,
-        'Z Break editor opens as the original native dialog');
-      const zMode = await page.locator('#sectionCollapseEditor').evaluate((node) =>
-        node.matches(':modal') ? 'modal' : 'inline');
+      assert.equal(
+        await page.locator('#sectionCollapseEditor').evaluate((node) => node.open),
+        true,
+        'Z Break editor opens as the original native dialog',
+      );
+      const zMode = await page
+        .locator('#sectionCollapseEditor')
+        .evaluate((node) => (node.matches(':modal') ? 'modal' : 'inline'));
       await page.keyboard.press('Escape');
       await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);
       assert.equal(
-        await page.locator('#sectionCollapseAxisBtn').evaluate((node) => document.activeElement === node),
+        await page
+          .locator('#sectionCollapseAxisBtn')
+          .evaluate((node) => document.activeElement === node),
         true,
         'Escape restores Z Break trigger focus after native modal/inline dismissal',
       );
       assert.equal(
-        await page.locator('#sectionCollapseEditor').evaluate((node) =>
-          node.parentElement.id === 'sectionCollapseOverlay'),
+        await page
+          .locator('#sectionCollapseEditor')
+          .evaluate((node) => node.parentElement.id === 'sectionCollapseOverlay'),
         true,
         'Native Z Break editor is returned to its original owner',
       );
+      await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');
+      await page.locator('#sectionCollapseClose').click();
+      await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);
+      assert.equal(
+        await page.locator('#sectionCollapseEditor').evaluate((node) => node.parentElement.id),
+        'sectionCollapseOverlay',
+        'Explicit Close returns native owner',
+      );
+      assert.equal(
+        await page
+          .locator('#sectionCollapseAxisBtn')
+          .evaluate((node) => document.activeElement === node),
+        true,
+        'Explicit Close restores Z Break focus',
+      );
+      await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');
+      await page.mouse.click(1, 1);
+      await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);
+      assert.equal(
+        await page.locator('#sectionCollapseEditor').evaluate((node) => node.parentElement.id),
+        'sectionCollapseOverlay',
+        'Outside dismissal returns native owner',
+      );
       const owners = await page.evaluate(() => {
         for (const [key, original] of window.d1ExtendedOwners) {
-          const current = key.startsWith('view.') ?
-            window.WaferCadV2RealBridge.getSlot(key) : document.getElementById(key);
-          if (current !== original || !current.isConnected) throw Error(`D1 owner replaced: ${key}`);
+          const current = key.startsWith('view.')
+            ? window.WaferCadV2RealBridge.getSlot(key)
+            : document.getElementById(key);
+          if (current !== original || !current.isConnected)
+            throw Error(`D1 owner replaced: ${key}`);
         }
         const all = [...document.querySelectorAll('[id]')].map((node) => node.id);
         if (new Set(all).size !== all.length) throw Error('Duplicate IDs');
         return window.d1ExtendedOwners.size;
       });
       evidence.widths.push({
-        width, mask, maskDrag, section, worstSectionError, zMode, owners,
-        overflow: await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth)),
+        width,
+        mask,
+        maskDrag,
+        sectionDrag,
+        section,
+        worstSectionError,
+        zMode,
+        owners,
+        overflow: await page.evaluate(() =>
+          Math.max(0, document.documentElement.scrollWidth - innerWidth),
+        ),
       });
       assert.equal(evidence.widths.at(-1).overflow, 0);
       await page.screenshot({ path: resolve(output, `section-${width}.png`), fullPage: true });
       await page.locator('#sectionDetailCloseBtn').click();
     }
 
+    // A maximized desktop Section must exercise the inline path as well as
+    // the short-dock modal path above; keep the same editor object in both.
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await page.locator('[data-action="view:main"]').click();
+    await page.locator('[data-action="mode:single"]').click();
+    await clickControl('#sectionPanel', '#sectionMaxBtn');
+    await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');
+    assert.equal(
+      await page.locator('#sectionCollapseEditor').evaluate((node) => node.matches(':modal')),
+      false,
+      'Tall desktop Section uses original inline dialog',
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.getElementById('sectionCollapseEditor').open);
+    assert.equal(
+      await page
+        .locator('#sectionCollapseAxisBtn')
+        .evaluate((node) => document.activeElement === node),
+      true,
+      'Inline Escape restores native trigger focus',
+    );
+    assert.equal(
+      await page
+        .locator('#sectionCollapseEditor')
+        .evaluate(
+          (node) =>
+            node === window.d1ExtendedOwners.get('sectionCollapseEditor') &&
+            node.parentElement.id === 'sectionCollapseOverlay',
+        ),
+      true,
+    );
+    evidence.inlineDialog = 'original editor retained; Escape/focus pass';
     assert.deepEqual(evidence.errors, [], 'No page/console exceptions in extended D1');
     evidence.result = 'pass';
     console.log(JSON.stringify(evidence, null, 2));
   } finally {
+    if (evidence.result !== 'pass') {
+      await page
+        .screenshot({ path: resolve(output, 'failure.png'), fullPage: true })
+        .catch(() => {});
+      evidence.failureState = await page
+        .evaluate(() => ({
+          active: document.activeElement?.id,
+          trace: window.d1ExtendedTrace,
+          details: [...document.querySelectorAll('.view-panel details')].map((node) => ({
+            id: node.id,
+            open: node.open,
+            visible: node.checkVisibility(),
+          })),
+        }))
+        .catch(() => null);
+    }
     await context.close();
   }
 } catch (error) {
