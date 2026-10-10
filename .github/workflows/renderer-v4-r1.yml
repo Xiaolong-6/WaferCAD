@@ -40,8 +40,11 @@ jobs:
         run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs
       - name: Targeted lint
         run: npx eslint site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs
-      - name: Targeted formatting
-        run: npx prettier --check site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md docs/README.md
+      - name: Targeted formatting (emit R2 handoff correction)
+        run: |
+          npx prettier --write docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
+          git diff -- docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
+          git diff --exit-code -- docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md
       - name: Documentation links and generated guide
         run: npm run docs:check
       - name: Full non-browser Node gate
