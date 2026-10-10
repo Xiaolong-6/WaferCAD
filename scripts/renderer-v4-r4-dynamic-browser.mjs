@@ -44,6 +44,11 @@ async function nextRealFrame(page, previous) {
 async function capture(page, name, state) {
   await waitForThreeReady(page, 180000);
   const host = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+  assert.equal(
+    await page.locator('#sectionCollapseEditor').evaluate((node) => node.open),
+    false,
+    state + ': Section editor must be closed so screenshots show unobscured 3D',
+  );
   assert.equal(host.sceneVariant, 'transparent');
   assert.equal(host.v4GpuResourceStatus, 'measured');
   assert.equal(host.v4GpuResourceComplete, 'true');
@@ -123,8 +128,11 @@ async function run(name, flags) {
       () => document.getElementById('threeHost')?.dataset.zCollapseEnabled === 'false',
     );
     await nextRealFrame(page, before);
+    await page.locator('#sectionCollapseClose').click();
     states.push(await capture(page, name, 'unbroken-z'));
 
+    await page.locator('#sectionCollapseAxisBtn').click();
+    await page.locator('#sectionCollapseEditor').waitFor({ state: 'visible' });
     before = await frameSerial(page);
     await page.locator('#sectionCollapseEnabled').check();
     await page.waitForFunction(
@@ -144,8 +152,8 @@ async function run(name, flags) {
     await page.locator('#sectionCollapseBackScale').fill('0.6');
     await page.locator('#sectionCollapseBackScale').dispatchEvent('change');
     await nextRealFrame(page, before);
-    states.push(await capture(page, name, 'unlinked-z-scales'));
     await page.locator('#sectionCollapseClose').click();
+    states.push(await capture(page, name, 'unlinked-z-scales'));
 
     // One bounded pointer orbit, instead of a stepped drag that can
     // queue minutes of unnecessary full-wafer SwiftShader redraws.
@@ -171,6 +179,10 @@ async function run(name, flags) {
     await page.mouse.down();
     await page.mouse.move(main.x + main.width * 0.64, main.y + main.height * 0.64);
     await page.mouse.up();
+    await page.waitForFunction(() => {
+      const roi = document.getElementById('roiEditor');
+      return roi && !roi.hidden;
+    });
     await nextRealFrame(page, before);
     states.push(await capture(page, name, 'clipped-roi'));
     assert.deepEqual(errors, [], name + ': browser errors');
