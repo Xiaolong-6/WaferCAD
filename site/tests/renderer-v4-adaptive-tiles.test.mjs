@@ -154,7 +154,7 @@ test('Z exaggeration changes screen footprint classification without modifying p
   const scaled = observeAdaptiveArrayTiles(input, {
     ...view,
     viewProjectionMatrix: tilted,
-    displayZScale: 1000,
+    displayZScale: 400,
   });
   assert.equal(normal.farTiles, 2);
   assert.equal(scaled.nearTiles, 2);
