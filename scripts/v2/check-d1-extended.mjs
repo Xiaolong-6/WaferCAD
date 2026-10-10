@@ -289,6 +289,44 @@ try {
         'sectionCollapseOverlay',
         'Outside dismissal returns native owner',
       );
+      // Verify independent physical Base dimensions in real Section 1:1 X:Z.
+      // Scientific view inputs are the source; no image/baseline tolerance change.
+      if (!fixture) {
+        await clickControl('#sectionPanel', '#sectionCollapseAxisBtn');
+        if (await page.locator('#sectionCollapseEnabled').isChecked())
+          await page.locator('#sectionCollapseEnabled').uncheck();
+        await page.locator('#sectionCollapseClose').click();
+        await page.locator('#sectionScaleModeBtn').selectOption('physical');
+        await waitForPaint(page);
+        const physical = await page.evaluate(() => {
+          const canvas = document.getElementById('sectionCanvas');
+          const d = canvas.dataset;
+          const input = (id) => Number(document.getElementById(id).value);
+          const span = Math.hypot(input('sectionBx')-input('sectionAx'),
+            input('sectionBy')-input('sectionAy'));
+          const z = Number(d.sectionZ1Um)-Number(d.sectionZ0Um);
+          const rect = canvas.getBoundingClientRect();
+          const scale = Math.min((rect.width-37)/span, (rect.height-32)/z);
+          return {
+            span, z, base: input('baseThickness'),
+            collapsed: d.sectionCollapseEnabled,
+            mode: d.scaleMode,
+            errors: [
+              Math.abs((Number(d.xPxPerUm)-scale)*span),
+              Math.abs((Number(d.zPxPerUm)-scale)*z),
+              Math.abs(Number(d.sectionPlotLeft)-(27+(rect.width-37-span*scale)/2)),
+              Math.abs(Number(d.sectionFrameTop)-(10+(rect.height-32-z*scale)/2)),
+            ],
+          };
+        });
+        assert.equal(physical.mode, 'physical');
+        assert.equal(physical.collapsed, 'false');
+        assert.ok(physical.z >= physical.base,
+          'Physical Base stack must span its specified thickness');
+        assert.ok(Math.max(...physical.errors) <= 0.25,
+          `Independent Section physical projection mismatch: ${JSON.stringify(physical)}`);
+        section.physical = physical;
+      }
       const owners = await page.evaluate(() => {
         for (const [key, original] of window.d1ExtendedOwners) {
           const current = key.startsWith('view.')
