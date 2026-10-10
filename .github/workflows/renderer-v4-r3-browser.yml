@@ -1,4 +1,4 @@
-name: Renderer V4 R3 feature and GPU census parity
+name: Renderer V4 R3-R4 buffer and pixel parity
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - site/three-view.js
       - site/renderer-v4-feature-footprints.js
       - site/renderer-v4-resource-census.js
+      - site/renderer-v4-flat-geometry-sharing.js
       - scripts/renderer-v4-r3-browser.mjs
       - .github/workflows/renderer-v4-r3-browser.yml
 
@@ -45,7 +46,7 @@ jobs:
           done
           cat /tmp/wafercad-r3.log
           exit 1
-      - name: Paired 625-site R3 parity
+      - name: Paired 625-site R3-R4 parity
         run: node scripts/renderer-v4-r3-browser.mjs
       - name: Save parity artifacts
         if: always()
