@@ -728,62 +728,63 @@ Historical indexing A/B evidence remains in the earlier Phase B.1 section;
 the standalone `--assembly-ab` and indexing A/B modes remain locally
 reproducible but are not duplicated in final-review CI.
 
-## Phase B.4 — P0/P1 Electrical Region internal-volume candidate (2026-10-10)
+## Phase B.4 — P0/P1 full-wafer Electrical Region internal-volume trials: both rejected (2026-10-10)
 
-**Scope:** Experimental only; product defaults unchanged. The previously
-accepted smooth Electrical *surface* single-pass ABBA is the shared baseline
-in both P1 arms: **54,066,262** GPU-submitted Quality triangles and **1,291**
-draw calls, with exact PNG parity in the earlier acceptance.
+### Final measured result
 
-### P1 attempt 1 — separated cap material: FAIL, retired
+The opt-in smooth Electrical **surface** single-pass experiment from Phase B.3
+remains the last **accepted** V3 image-parity result: in the same-run
+625-site Quality ABBA, baseline **57,040,012 triangles / 1,408 calls** became
+**54,066,262 / 1,291** with byte-identical completed canvas frames.
+Median completed-image time on the software-WebGL runner was **24.526 s OFF
+vs 23.361 s ON** (two samples per arm; no general GPU speedup established).
 
-[CI 38031265243](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031265243)
-ran the normal 625-site / opacity / edge-on gates successfully but the new
-`--electrical-volume-ab` failed at the **first ON vs OFF image comparison**.
-The grouped cap / wall material emitted **48,118,762** triangles / **1,408**
-calls in ON (39 grouped owners), compared with **54,066,262** / **1,291**
-in the original arm. The ON screenshot was **20,815 bytes**, different from
-the **20,819-byte** original screenshot. Cap/wall render-group ordering is
-therefore visibly distinct from the original backface-before-frontface
-blending and cannot be accepted. The runtime implementation was replaced;
-the failed artifact is retained in the workflow.
+P1 attempted to reduce the still-heavy `electrical-internal` owner
+(**23,535,000** submitted triangles in the earlier GL census) without
+changing the physical model. Both candidates failed the **strict final-image
+pixel parity** contract, despite reducing GPU submissions. Neither is
+shipped; implementation modules, query flag, tests and P1 CI wiring were
+**removed from the active branch**. No screenshot baseline was adjusted.
 
-### P1 attempt 2 — preserve separate original back/front passes (new, unverified)
+| Candidate | A/B run | ON submitted triangles | ON draw calls | ON vs reference PNG | Gate |
+| --- | --- | ---: | ---: | --- | --- |
+| Group smooth caps separately, wall remains two-pass | [38031265243](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031265243) | **48,118,762** | **1,408** | 20,815 vs 20,819 bytes; pixels differ | **FAIL** |
+| Original BackSide/FrontSide order, separate indexed meshes skipping opposite cap | [38032284826](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38032284826) | **48,118,762** | **1,291** | 20,821 vs 20,819 bytes; pixels differ | **FAIL** |
 
-The candidate now follows Three.js's exact original compositing sequence:
-the original DoubleSide Electrical Region volume produces a BackSide draw
-then a FrontSide draw; the new opt-in builds two **consecutive** presentation
-meshes, one per pass. Each uses the original coordinates/normals/triangle
-ordering and the original instancing. The BackSide index buffer omits only
-the **+Z horizontal cap** when the camera is above the whole body; the
-FrontSide buffer omits only the **−Z cap**, and **both retain every wall**.
-Each template retains the original full unindexed vertex attributes for
-matching geometry bounds and Z-collapse transforms; no canonical geometry
-or topology is simplified. The pure index-list helper rejects malformed
-ranges and maintains original cap-before-sidewall ordering.
+Both tests activated **39** candidate electrical body owners and triggered a
+hard A/B failure at the first ON/OFF cross-comparison. The first ON frame of
+the second experiment completed in **21.079 s**, but OFF never completed a
+reported ABBA trial because the pixel assertion failed. This is **not** a
+paired speedup result. Both full-wafer **default** 20-toggle/resource tests,
+targeted Chromium, exact edge-on, Native Fig3, all nine Recipe Run All and
+Quality (on attempt 2) separately passed. Process geometry's standalone
+browser job was skipped under the renderer-targeted CI plan.
 
-The flag `?rendererV3ElectricalVolumeCapPass=1` is default **OFF**,
-restricted at build-time to transparent Quality, full-array >=64, above-wafer
-camera, no ROI, non-rough, intact Z-collapse and exactly two opposed caps
-with sidewalls. A final-frame screenshot is NOT proof that the strategy
-works under camera orbit, so do not promote or expose it to ordinary users
-without a tested camera-crossing fallback and independent 3D angle/ROI/opacity
-acceptance.
+The visual differences are consistent with a change in transparent pass
+ordering, or an inter-object shading/sort interaction, but **their exact
+pixel-level cause has not been isolated**. Never reinterpret alpha-blended
+internal volumes as expendable geometry from these submission numbers alone.
 
-`node scripts/renderer-quality-index-ab.mjs --electrical-volume-ab`
-compares ON/OFF/OFF/ON on the same software-WebGL runner, keeping the
-previously accepted surface-cap experiment enabled in **both** arms.
-Every final Quality canvas PNG must match byte-for-byte; all page errors,
-submitted triangle counts and draw calls are captured in separate artifacts.
-The established final-review 625-site ABBA CI slot is reused with no extra
-heavy job. Any discrepancy fails closed; a lower draw count by itself is
-never evidence of scientific parity.
+### Next action / P0 instrumentation gate
 
-**P0 hardware blocker:** the current CI browser is software WebGL with no
-valid GPU timer queries; measured image latency is not transferable to
-Windows GPU. Repeat with actual GPU, multiple ABBA rounds, cache/warm
-control, Section Z-collapse, opacity and camera interactions before considering
-default enablement. Never modify established visual baselines to force parity.
+Do not add another internal-volume optimization flag until the difference is
+localized with a per-pixel image diff, object-owner isolation, near/edge-on
+camera and transparency-order accounting. A cheaper early fail gate can
+run isolated ABBA **before** the 625-site 20-toggle stress when reviewing a
+future opt-in candidate, without increasing the number of CI jobs.
+
+The CI renderer uses Chromium **software WebGL**. Timing and triangle counts
+do not establish representative Windows **hardware GPU** cost or fragment
+overdraw behavior. Hardware profiler runs require the actual GPU renderer
+string, disjoint-safe GPU timer queries if available, browser/driver details,
+same-run reference controls and separate scene-assembly vs final-frame
+checkpoints. Where GPU timers are unsupported, explicitly report
+`gpuMs: null`. No real-hardware performance target is accepted yet.
+
+**Decision:** stay on the previously verified, default-off Electrical Region
+smooth-surface pilot and preserve all canonical geometry. PR #166 remains
+Draft and unmerged. Do not claim the proposed <20 s or <15 s Quality targets
+were achieved by P1.
 
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 
