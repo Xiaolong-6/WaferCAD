@@ -107,7 +107,10 @@ export function attachArrayMaskQuery(area, query) {
 // the envelope by Mask ROI before the worker receives it.
 export function deferredArrayMaskArea({ boundary, index = null, mode, limiter = null }, vectorApi) {
   if (mode !== 'full' && !index?.instances?.length) return [];
-  const envelope = limiter ? vectorApi.intersection(boundary, limiter) : boundary;
+  // The original boundary is authoritative project geometry. Never attach
+  // per-request metadata to it: a second Process operation must not inherit
+  // the preceding query or fail on its non-configurable arrayMaskQuery field.
+  const envelope = limiter ? vectorApi.intersection(boundary, limiter) : structuredClone(boundary);
   if (vectorApi.isEmpty(envelope)) return [];
   return attachArrayMaskQuery(envelope, { index, mode, limiter, boundary });
 }
