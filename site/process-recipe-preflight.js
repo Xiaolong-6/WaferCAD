@@ -11,43 +11,55 @@ export function normalizeRecipeLayerKey(value) {
 export function inferRectangularGridRecipeBase(model, base) {
   if (
     model?.kernel !== 'vector-2.5d-array-v1' ||
-    model.shape !== 'rect' || base?.shape !== 'rect' ||
+    model.shape !== 'rect' ||
+    base?.shape !== 'rect' ||
     !Array.isArray(model.array?.instances) ||
-    model.array.instances.length < 1 || model.array.instances.length > 10000
-  ) return null;
+    model.array.instances.length < 1 ||
+    model.array.instances.length > 10000
+  )
+    return null;
   const instances = model.array.instances;
   const xs = [...new Set(instances.map((x) => x.x))].sort((a, b) => a - b);
   const ys = [...new Set(instances.map((x) => x.y))].sort((a, b) => a - b);
-  const columns = xs.length, rows = ys.length;
+  const columns = xs.length,
+    rows = ys.length;
   if (rows * columns !== instances.length || rows < 2 || columns < 2) return null;
-  const pitchX = xs[1] - xs[0], pitchY = ys[1] - ys[0];
-  const width = columns * pitchX, height = rows * pitchY;
+  const pitchX = xs[1] - xs[0],
+    pitchY = ys[1] - ys[0];
+  const width = columns * pitchX,
+    height = rows * pitchY;
   if (
     ![pitchX, pitchY, width, height].every((x) => Number.isFinite(x) && x > 0) ||
     Math.abs(width - model.width) > 1e-6 ||
     Math.abs(height - model.height) > 1e-6 ||
     Math.abs(width - base.width) > 1e-6 ||
     Math.abs(height - base.height) > 1e-6
-  ) return null;
+  )
+    return null;
   const canonicalX = (column) => Number(((column + 0.5) * pitchX - width / 2).toFixed(4));
   const canonicalY = (row) => Number(((row + 0.5) * pitchY - height / 2).toFixed(4));
   const occupied = new Map();
   let activeSites = 0;
   for (const entry of instances) {
     if (!['device', 'background'].includes(entry.role)) return null;
-    const col = xs.indexOf(entry.x), row = ys.indexOf(entry.y);
+    const col = xs.indexOf(entry.x),
+      row = ys.indexOf(entry.y);
     if (
-      col < 0 || row < 0 ||
-      entry.x !== canonicalX(col) || entry.y !== canonicalY(row) ||
+      col < 0 ||
+      row < 0 ||
+      entry.x !== canonicalX(col) ||
+      entry.y !== canonicalY(row) ||
       entry.id !== 'site-' + (row * columns + col)
-    ) return null;
+    )
+      return null;
     const key = row * columns + col;
     if (occupied.has(key)) return null;
     occupied.set(key, entry.role);
     if (entry.role === 'device') activeSites++;
   }
   const ranked = [...occupied.keys()].map((index) => {
-    const row = Math.floor(index / columns), column = index % columns;
+    const row = Math.floor(index / columns),
+      column = index % columns;
     return { index, row, column, d: Math.hypot(canonicalX(column), canonicalY(row)) };
   });
   ranked.sort((a, b) => a.d - b.d || a.row - b.row || a.column - b.column);
@@ -57,10 +69,11 @@ export function inferRectangularGridRecipeBase(model, base) {
   }
   if (
     model.array.templates?.some(
-      ({ model: leaf }) => Math.abs(leaf.width - pitchX) > 1e-6 ||
-        Math.abs(leaf.height - pitchY) > 1e-6,
+      ({ model: leaf }) =>
+        Math.abs(leaf.width - pitchX) > 1e-6 || Math.abs(leaf.height - pitchY) > 1e-6,
     )
-  ) return null;
+  )
+    return null;
   return { kind: 'rect-grid', rows, columns, pitchX, pitchY, activeSites };
 }
 
