@@ -214,6 +214,19 @@ try {
       assert.equal(replayNodes.length, processSteps.length);
       for (const [index, step] of processSteps.entries()) {
         if (step.command === 'record') continue;
+        if (step.command === 'liftoff') {
+          const replay = replayNodes[index].operation?.replay?.params;
+          assert.ok(
+            replay?.sacrificialLayerId,
+            `${example.id}: Step ${index + 1} lost its lift-off sacrificial material`,
+          );
+          assert.equal(
+            replay.thickness ?? 0,
+            0,
+            `${example.id}: Step ${index + 1} lift-off unexpectedly gained a physical depth`,
+          );
+          continue;
+        }
         const expected = step.params.thicknessUm ?? step.params.depthUm;
         const actual = replayNodes[index].operation?.replay?.params?.thickness;
         assert.ok(
