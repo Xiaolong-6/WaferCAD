@@ -250,18 +250,19 @@ jobs:
       - name: Check 625-site array scene and retained resources
         run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
 
-      # Run the same-run ABBA trial only on this experimental V3 branch.
-      # The existing 625-site suite remains the main hard correctness gate.
-      - name: Compare Quality indexed vs original geometry on the same runner
+      # Use the existing V3 final-review A/B budget for the current
+      # display-only candidate. Do not add another expensive 625-site job.
+      # Quality indexing was measured on an earlier head and stays default-off.
+      - name: Compare Electrical Region planar single/double pass on the same runner
         if: ${{ startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
-        run: node scripts/renderer-quality-index-ab.mjs
+        run: node scripts/renderer-quality-index-ab.mjs --electrical-planar-ab
 
-      - name: Upload Quality indexing A/B diagnostics
+      - name: Upload Electrical Region planar A/B diagnostics
         if: ${{ always() && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
         uses: actions/upload-artifact@v6
         with:
-          name: wafercad-quality-index-ab-${{ github.sha }}
-          path: test-results/renderer-quality-index-ab
+          name: wafercad-electrical-planar-ab-${{ github.sha }}
+          path: test-results/renderer-electrical-planar-ab
           retention-days: 14
           if-no-files-found: warn
 
