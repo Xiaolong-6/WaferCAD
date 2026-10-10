@@ -94,6 +94,9 @@ test('Welcome opens the complete matched array and retains compiled process stag
   assert.equal(project.processRecipe.steps.length, 9);
   assert.equal(project.processRecipe.base.width, 30);
   assert.equal(project.processRecipe.base.height, 30);
+  assert.deepEqual(project.processRecipe.base.array, {
+    kind: 'rect-grid', rows: 80, columns: 80, pitchX: 0.375, pitchY: 0.375, activeSites: 4725,
+  });
   for (const step of project.processRecipe.steps.filter((step) => step.params.mask)) {
     assert.equal(step.params.mask.cell, 'TIO2_GRID');
   }
