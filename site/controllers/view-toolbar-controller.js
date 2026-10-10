@@ -60,7 +60,8 @@ export function createViewToolbarController({ root = document } = {}) {
       // the original 3D Quality select inside the original More owner.
       // Legacy toolbar breakpoints and DOM remain unchanged.
       const entriesForPanel =
-        root.documentElement.dataset.ui === 'v2' && panelId === 'threePanel'
+        root.documentElement.dataset.ui === 'v2' &&
+          (panelId === 'threePanel' || panelId === 'sectionPanel')
           ? [['.view-mode-field', 700], ...configs]
           : configs;
       for (const [selector, breakpoint] of entriesForPanel) {
