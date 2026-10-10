@@ -225,7 +225,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Schematic only · process verified; XY is illustrative',
     },
     summary:
-      'Open loads the complete 4,725-site array, its matching Mask and nine-step PMMA / Cr lift-off and TiO₂ RIE History. The cover shows four representative shapes. Array geometry is illustrative; History is compiled from processed templates, and full-array Run all is not yet certified.',
+      'Open loads the complete illustrative 4,725-site array, its matching Mask, nine-step Recipe and compiled History. The cover shows four representative shapes; the actual full-array Run All from Base has passed Kernel replay and storage-quantized geometry acceptance. This is not the authors’ GDS or a verified optical design.',
     sources: [
       {
         citation:
