@@ -94,6 +94,8 @@ export function createThreeView({
   const v3DiagnosticsEnabled = rendererParams.get('rendererV3Diagnostics') === '1';
   const v3QualityIndexExperiment = rendererParams.get('rendererV3QualityIndex') === '1';
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
+  const v3ElectricalPlanarSinglePassExperiment =
+    rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -3590,6 +3592,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
             kind: 'electrical-surface',
             exposed: Boolean(electrical.surfaceExposed),
             sortBias: 44,
+            // All vertices of this smooth cap lie on one Z plane.
+            // Keep the experimental presentation optimization strictly
+            // outside rough, clipped, Fast and non-array Quality scenes.
+            ...(v3ElectricalPlanarSinglePassExperiment &&
+            targetVariant === 'transparent' &&
+            inspection.fast === false &&
+            !clip &&
+            Number(plan.arrayInstances || 0) >= 64 &&
+            !appearance
+              ? { planarCap: true, experimentalElectricalPlanarSinglePass: true }
+              : {}),
           },
           capState = presentationState(surfacePresentation, inspection).materialState,
           capName = `${electrical.name || electrical.electricalRegionId || 'Electrical Region'} surface`;
