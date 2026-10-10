@@ -751,6 +751,26 @@ shipped; implementation modules, query flag, tests and P1 CI wiring were
 | Group smooth caps separately, wall remains two-pass | [38031265243](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031265243) | **48,118,762** | **1,408** | 20,815 vs 20,819 bytes; pixels differ | **FAIL** |
 | Original BackSide/FrontSide order, separate indexed meshes skipping opposite cap | [38032284826](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38032284826) | **48,118,762** | **1,291** | 20,821 vs 20,819 bytes; pixels differ | **FAIL** |
 
+A subsequent **decoded RGBA per-pixel** examination of the original
+CI artifacts (both Playwright canvas screenshots are 531 × 275 RGB PNG)
+quantified the mismatch, which cannot be inferred from differing compressed
+PNG file sizes alone:
+
+| Candidate | Pixels changed / 146,025 | Pixel fraction | Largest per-channel difference | Changed pixel bounding box |
+| --- | ---: | ---: | ---: | --- |
+| Separate material-group cap | **12** | **0.00822%** | **1 / 255** | x 222–300, y 136–151 |
+| Explicit indexed BackSide/FrontSide | **2** | **0.00137%** | **1 / 255** | x 230, y 157–158 |
+
+The first trial altered single RGB channels by ±1; the second altered only
+R/B channels by ±1. Both screenshots have identical dimensions; alpha is
+unchanged. The images do not show large-scale geometric differences at these
+specific poses. **Cause not proven:** numerical raster/blending rounding and
+subtle transparent sort differences remain competing hypotheses. No
+pixel tolerance has been accepted, no visual baseline was changed, and the
+strict byte-parity scientific contract stays binding. Tests now produce a
+separate quantitative `*-pixel-diff.json` next to `failure.json` upon
+any future mismatch (decoder tested independently on RGB fixtures).
+
 Both tests activated **39** candidate electrical body owners and triggered a
 hard A/B failure at the first ON/OFF cross-comparison. The first ON frame of
 the second experiment completed in **21.079 s**, but OFF never completed a
