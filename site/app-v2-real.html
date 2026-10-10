@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-ui="v2" data-theme="light" data-v2-m3="d1-experimental">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WaferCAD · D1 Real Views (Experimental)</title>
+    <link rel="icon" href="data:," />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./workstation.css" />
+    <link rel="stylesheet" href="./ui-v2/tokens.css" />
+    <link rel="stylesheet" href="./ui-v2/components.css" />
+    <link rel="stylesheet" href="./ui-v2/workstation-v2.css" />
+    <link rel="stylesheet" href="./ui-v2/real-view-bridge.css" />
+    <script src="./ui-v2/view-state.js" defer></script>
+    <script src="./ui-v2/view-icons.js" defer></script>
+    <script src="./ui-v2/native-components.js" defer></script>
+    <script src="./ui-v2/shell-registry.js" defer></script>
+    <script src="./ui-v2/domain-adapters.js" defer></script>
+    <script src="./ui-v2/overlay-manager.js" defer></script>
+    <script src="./ui-v2/workstation-v2.js" defer></script>
+    <script src="./ui-v2/real-view-bridge.js" defer></script>
+  </head>
+  <body class="v2-real-d1">
+    <div id="app-root" aria-label="WaferCAD v2 live-view workstation"></div>
+    <div id="v2-legacy-contract" hidden aria-hidden="true"></div>
+    <noscript>JavaScript is required. Use app.html for the current production workspace.</noscript>
+  </body>
+</html>
