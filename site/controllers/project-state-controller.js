@@ -8,6 +8,7 @@ import {
 import { normalizeMaskRoi } from '../mask-roi-geometry.js';
 import { normalizeRoi } from '../roi-editor.js';
 import { normalizeSectionDetailRoi } from '../section-detail-roi.js';
+import { normalizeSectionViewport } from '../section-view-viewport.js';
 import { normalizeSectionZScales } from '../section-z-collapse.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
@@ -96,6 +97,7 @@ export function createProjectStateController({
         threeFastMode: state.threeFastMode !== false,
         threeCamera: state.threeCamera,
         sectionScaleMode: state.sectionScaleMode,
+        sectionViewport: normalizeSectionViewport(state.sectionViewport),
         sectionShowBorders: state.sectionShowBorders,
         sectionCollapse: state.sectionCollapse,
         sectionDetailRoi: state.sectionDetailRoi,
@@ -140,6 +142,7 @@ export function createProjectStateController({
       sectionScaleMode = ['auto', 'physical'].includes(project.display?.sectionScaleMode)
         ? project.display.sectionScaleMode
         : 'auto',
+      sectionViewport = normalizeSectionViewport(project.display?.sectionViewport),
       sectionShowBorders = Boolean(project.display?.sectionShowBorders),
       sectionDetailRoi = normalizeSectionDetailRoi(project.display?.sectionDetailRoi),
       sectionCollapse =
@@ -189,6 +192,7 @@ export function createProjectStateController({
       threeFastMode: project.display?.threeFastMode !== false,
       threeCamera,
       sectionScaleMode,
+      sectionViewport,
       sectionShowBorders,
       sectionDetailRoi,
       sectionCollapse,
@@ -223,6 +227,7 @@ export function createProjectStateController({
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
       projectName: 'Untitled',
       sectionScaleMode: 'auto',
+      sectionViewport: normalizeSectionViewport(),
       sectionShowBorders: previous.sectionShowBorders,
       sectionDetailRoi: null,
       sectionCollapse: null,
