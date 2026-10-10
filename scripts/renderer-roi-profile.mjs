@@ -109,6 +109,15 @@ try {
   await closeFunctionPanel(page);
   await waitForThreeReady(page, 180000);
   await changed(() => page.locator('#threeFastBtn').selectOption('quality'));
+  result.stage = 'quality-opacity';
+  // The real opacity input is hidden until Display (and its narrow-panel More
+  // ancestor) opens. Keep setup failures separate from the profiled ROI build.
+  const display = page.locator('#threePanel .three-opacity-control');
+  const more = page.locator('#threePanel .view-more-control');
+  if (await display.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
+    if (!(await more.evaluate((node) => node.open))) await more.locator(':scope > summary').click();
+  }
+  await display.locator(':scope > summary').click();
   await changed(() => page.locator('#threeOpacityRange').fill('0.5'));
   result.backend = classifyWebglBackend(
     await page.locator('#threeHost canvas').evaluate((canvas) => {
