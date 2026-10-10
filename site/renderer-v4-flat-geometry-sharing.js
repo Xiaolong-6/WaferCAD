@@ -37,3 +37,29 @@ export function mappedFlatCapTranslation(record, state) {
   if (!Number.isFinite(mapped)) return null;
   return mapped - record.minZ;
 }
+
+
+// Once unequal front/back Z scales require vertex remapping, clone on write
+// before touching any shared template. The original template stays owned by
+// its scene group and is disposed once when that group is evicted or reset.
+export function detachV4SharedFlatCap(object, record, ownerGroup) {
+  if (!record?.flatReadOnly) return false;
+  const original = object?.geometry;
+  if (typeof original?.clone !== 'function' || !ownerGroup?.userData) {
+    throw new Error('Cannot detach shared flat geometry for Section Z remapping.');
+  }
+  const copy = original.clone();
+  if (!copy || copy === original || !copy.getAttribute?.('position')) {
+    throw new Error('Shared flat geometry clone was not independent.');
+  }
+  if (!copy.userData || typeof copy.userData !== 'object') copy.userData = {};
+  delete copy.userData.waferCadV4ReadOnlyFlatZ;
+  if (!(ownerGroup.userData.waferCadRetiredFlatGeometries instanceof Set)) {
+    ownerGroup.userData.waferCadRetiredFlatGeometries = new Set();
+  }
+  ownerGroup.userData.waferCadRetiredFlatGeometries.add(original);
+  object.geometry = copy;
+  record.flatReadOnly = false;
+  record.canonicalZ = null;
+  return true;
+}
