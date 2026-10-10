@@ -102,6 +102,7 @@ export function createThreeView({
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
+  const v4HeavyCameraNoDamping = rendererParams.get('rendererV4HeavyCameraNoDamping') === '1';
   const v4TileProbeEnabled =
     rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
   const v4TilePlanCache = createAdaptiveTilePlanCache();
@@ -893,8 +894,17 @@ export function createThreeView({
         host.dataset.sceneVariant === 'transparent' &&
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
-      if (controls) controls.enableDamping = !heavyExactTransparency;
+      // Opt-in V4 interaction pilot: damped inertia can queue many costly
+      // full-wafer frames after pointer-up, even with a cached CPU tile plan.
+      // This only changes camera easing; no mesh/alpha/draw policy is altered.
+      const heavyV4TransparentFrame =
+        v4HeavyCameraNoDamping &&
+        host.dataset.sceneVariant === 'transparent' &&
+        Number(host.dataset.arrayInstances || 0) >= 64 &&
+        Number(host.dataset.rendererDrawTriangles || 0) >= 5000000;
+      if (controls) controls.enableDamping = !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
+      host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
       const changed = controls?.update?.() || false;
       refreshV4CameraTileProbe(changed);
       updateRoughMaterialLod();
