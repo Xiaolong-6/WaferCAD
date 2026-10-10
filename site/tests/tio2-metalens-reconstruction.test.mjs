@@ -75,6 +75,8 @@ test('Welcome opens the complete matched array and retains compiled process stag
   assert.equal(entry.path, './examples/tio2-metalens-full-array.wafercad');
   assert.equal(entry.previewSourcePath, './examples/tio2-metalens-four-unit-process.wafercad');
   const bytes = await readFile(new URL('../' + entry.path.slice(2), import.meta.url));
+  const raw = JSON.parse(bytes.toString('utf8'));
+  assert.equal(raw.storage?.lengthQuantumUm, 1e-4, 'Metalens XY quantization contract changed');
   const project = await readProjectFile({
     size: bytes.length,
     text: async () => bytes.toString('utf8'),
