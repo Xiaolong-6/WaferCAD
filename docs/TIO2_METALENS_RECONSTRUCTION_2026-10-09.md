@@ -79,6 +79,23 @@ The reconstruction workflow verifies deterministic regeneration of the committed
 full-array file, independent four-unit Run all, the actual Welcome opening and
 full-array project import/3D/Section. See the follow-up handoff for executed results.
 
+## Merge review: full-array Recipe Base gap (2026-10-10)
+
+PR #173 remains draft. The 4,725-site stored array is kernel-compiled from 49
+shared templates; its 30 × 30 µm `processRecipe.base` has no `array` descriptor.
+The interactive Recipe `new-base` path therefore would reconstruct one plain
+rectangular substrate, not the 6,400-cell canonical array. The existing
+`createWaferArrayTiling` is a circular odd-row/column wafer constructor and
+cannot reconstruct this 80 × 80 GRID simply by adding a descriptor.
+
+The pure Recipe preflight now rejects `new-base` for canonical array models
+without an array Base descriptor **before** History or geometry can be mutated.
+`continue` remains available for supported existing-model operations. This is
+only a safety guard, **not** completion of full-array Run All. The mandatory
+merge gate remains: support deterministic 80 × 80 Base reconstruction and real
+browser Run All with exact material/Mask/History parity. Do not certify or merge
+based only on compiled-template History or a successful four-unit Run All.
+
 ## Full-array Welcome follow-up validation
 
 Branch: `feat/tio2-metalens-full-array-example-20261009`, based on `main` `d73a201`.
