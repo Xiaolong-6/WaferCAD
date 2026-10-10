@@ -21,6 +21,7 @@ export function censusV4SceneResources(groups, { maxObjects = 20000 } = {}) {
     sharedMaterials: 0,
     crossGroupGeometries: 0,
     crossGroupMaterials: 0,
+    retiredFlatGeometries: 0,
     objectOverflow: 0,
     complete: false,
   };
@@ -68,6 +69,17 @@ export function censusV4SceneResources(groups, { maxObjects = 20000 } = {}) {
       }
       countBuffer(object.instanceMatrix);
       countBuffer(object.instanceColor);
+    }
+    // A shared flat template may no longer be referenced by any mesh after
+    // per-object Section copy-on-write. Its owner group still retains it for
+    // exactly-once disposal; include those live arrays in the byte census.
+    const retired = groups[groupIndex].userData?.waferCadRetiredFlatGeometries;
+    if (retired instanceof Set) {
+      for (const geometry of retired) {
+        if (!validObject(geometry) || !validObject(geometry.attributes)) continue;
+        output.retiredFlatGeometries++;
+        if (!geometryOwners.has(geometry)) geometryOwners.set(geometry, [groupIndex]);
+      }
     }
   }
   for (const geometry of geometryOwners.keys()) {
