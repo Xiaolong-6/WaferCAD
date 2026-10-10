@@ -10,6 +10,7 @@ import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
+import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -96,6 +97,10 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
+  const v4TileProbeEnabled = rendererParams.get('rendererV4TileProbe') === '1';
+  let v4PreviousTiers = new Map();
+  let v4ObservedModel = null;
+  let v4ObservedRevision = null;
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -2910,6 +2915,51 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       host.dataset.v3EdgeSurveyMs = String(v3EdgesMs);
       host.dataset.v3EdgeSurveyTopOwners = JSON.stringify(v3Edges?.topOwners || []);
+      // V4 R1 remains purely observational. Never omit transparent surfaces
+      // based on a pixel footprint: alpha/occlusion parity is unproven.
+      const v4Revision = String(model.revision ?? 0) + ':' + String(model.processRevision ?? 0);
+      if (v4ObservedModel !== model || v4ObservedRevision !== v4Revision) {
+        v4PreviousTiers = new Map();
+        v4ObservedModel = model;
+        v4ObservedRevision = v4Revision;
+      }
+      let v4Tiles = null;
+      let v4ProbeMs = 0;
+      if (v4TileProbeEnabled && targetVariant === 'transparent' && camera) {
+        const probeStartedAt = performance.now();
+        camera.updateMatrixWorld();
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+        v4Tiles = observeAdaptiveArrayTiles(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: arrayLod.tier !== 'exact',
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          nearEdgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+          previousTiers: v4PreviousTiers,
+        });
+        v4PreviousTiers = v4Tiles.valid ? v4Tiles.nextTiers : new Map();
+        v4ProbeMs = performance.now() - probeStartedAt;
+      }
+      host.dataset.v4TileProbeStatus = v4Tiles?.reason || 'disabled';
+      host.dataset.v4TileReductionGate = v4Tiles?.reductionGate || 'probe-disabled';
+      host.dataset.v4TileProbeMs = String(v4ProbeMs);
+      host.dataset.v4TileTotal = String(v4Tiles?.tiles || 0);
+      host.dataset.v4TileNear = String(v4Tiles?.nearTiles || 0);
+      host.dataset.v4TileMid = String(v4Tiles?.midTiles || 0);
+      host.dataset.v4TileFar = String(v4Tiles?.farTiles || 0);
+      host.dataset.v4TileOffscreen = String(v4Tiles?.offscreenTiles || 0);
+      host.dataset.v4TileUncertain = String(v4Tiles?.uncertainTiles || 0);
+      host.dataset.v4TileOwnerOverflow = String(v4Tiles?.ownerOverflow || 0);
+      host.dataset.v4TileOverflow = String(v4Tiles?.tileOverflow || 0);
+      host.dataset.v4TileSkippedTriangles = '0';
+      host.dataset.v4TileSample = JSON.stringify(v4Tiles?.sample || []);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
