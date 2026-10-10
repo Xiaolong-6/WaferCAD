@@ -73,6 +73,12 @@ acceptance stage.
   R2 `?rendererV4TileCache=1` opts into both the probe and prepared-plan
   execution. Both remain disabled by default and continue to submit
   **identical original render meshes**.
+- The R2 cache also supplies a throttled read-only observation during
+  OrbitControls movement (at most one sampling attempt per 250 ms).
+  This avoids camera-dependent tier diagnostics becoming stale between
+  scene rebuilds; `data-v4-tile-cache-camera-samples` and cache-hit
+  counters expose whether warm reuse actually happened. Camera sampling
+  makes no mesh visibility, render-buffer or GPU allocation changes.
 - Host diagnostics add `data-v4-tile-cache-mode`,
   `data-v4-tile-cache-hit`, `data-v4-tile-cache-hits`,
   `data-v4-tile-cache-misses`, `data-v4-tile-cache-evictions` and
@@ -101,8 +107,11 @@ For browser acceptance, open the same real 3D project twice, with
 `?rendererV4TileProbe=1` and `?rendererV4TileCache=1`. Compare identical
 camera poses, pixel output and draw/triangle counts. Change camera, zoom,
 ROI and Section Z, then verify no stale cache and no resource growth.
-For a cache-hit test, the real model/Surface Plan instance must be retained
-across scene variants. A zero-hit run is not evidence of reuse. Hardware
+For a cache-hit test, move the actual 3D camera while retaining the same
+Surface Plan, and require nonzero `v4TileCacheHits` and
+`v4TileCacheCameraSamples`. The browser acceptance script performs this
+after recording paired same-pose screenshots. A zero-hit run is not evidence
+of reuse. Hardware
 WebGL identity and GPU frame completion still require independent checking.
 
 ## Reproduce and evidence requirements
