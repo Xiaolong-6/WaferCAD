@@ -83,3 +83,10 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 ### D1 camera / physical Section runtime inspection (`b44b5d4` input)
 
 上述待运行状态由实际复验替代：camera 脚本存在 appReady→WebGL 竞态，已改为完整帧+真实相机等待；3D Pan/Zoom、回归 Orbit 和实际拖拽 capture 释放已验证。新 Base 1:1 物理检查实际发现薄截面居中偏差 **0.42866px >0.25px**，已在显示 helper `section-z-collapse.js` 限定修复非折叠 Physical 的亚像素高度下限；原阈值/公式保留，四档复验 **0px**。Auto/折叠布局不变，新增 owning-suite 物理回归；未改 `plan-renderers.js` / `three-view.js` 等禁止修改服务或任何基线。最新 AST 267 IDs / 215 classes / 1116 operations / 60 dynamic IDs / 14 unresolved；Node 586/586，focused 12/12。其余实跑结果和剩余 I16 门槛见 [D1 report](M3_D1_EXECUTION_2026-10-10.md) 最新小节。Section viewport、统一 portal、完整 M1.5/物理/硬件 GPU 与入口批准仍未完成；D2 未启动。
+
+### D1 after `8408352`: Section/Pan/Zoom + overlay lifecycle implementation, pending gate
+
+- Real Section Fit/Pan/Zoom is now wired in the original Section compositor via the new display-only `section-view-viewport.js` transform. Source model and Slice geometry remain in µm; X and Z share one scale. A pure viewport unit suite and four-width extended browser action assertions were added, retaining the 0.25px Section tolerance.
+- The v2 Overlay Manager now coordinates native view-details menus and original dialogs without cloning/reparenting scientific controls; viewport navigation closes invisible owners. No broad legacy `view-popover-controller` refactor.
+- **New-code validation still pending:** Node suite, 3 × Base/Photodetector/M3D browser gates, lint/Prettier/docs/generated AST, embedded ROI and modal/inline lifecycle, screenshot review, hardware GPU. Original `8408352` 586/586 and 36 width cases are historical, not proof for the new head.
+- I16 **still open**: full exact M1.5 visual/functional parity, advanced Section physical profiles, transformed Mask and Main↔3D registration, all native portal/keyboard cases, Windows/hardware GPU and explicit route convergence. D2/main/baselines unchanged.
