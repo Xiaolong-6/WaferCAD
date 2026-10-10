@@ -124,10 +124,70 @@
       });
       return node;
     }
+    // Adopt native scientific view owners without cloning or portalling their
+    // original DOM. Their product controllers still handle button actions,
+    // dialogs and focus; the shared manager handles cross-view lifecycle.
+    function adoptNativeViews(panels) {
+      const owners = new Map();
+      const cleanups = [];
+      for (const panel of panels) {
+        if (!panel?.isConnected) continue;
+        const details = [...panel.querySelectorAll('details')];
+        // Keep references: the Z Break dialog may enter document.body's
+        // native modal top layer and later return to Section's own DOM.
+        const custom = [...panel.querySelectorAll('[data-view-popover-panel]')];
+        owners.set(panel, { details, custom });
+      }
+      const closePanel = (panel) => {
+        const owner = owners.get(panel);
+        if (!owner) return;
+        for (const item of owner.details) if (item.open) item.open = false;
+        for (const item of owner.custom) {
+          if (item.hidden && !item.open) continue;
+          const event = new CustomEvent('wafercad:popover-close', {
+            cancelable: true, bubbles: false,
+          });
+          item.dispatchEvent(event);
+          // Respect native owning controllers that preventDefault and
+          // reparent their original dialog or update scientific state.
+          if (event.defaultPrevented) continue;
+          if (item.open && typeof item.close === 'function') item.close();
+          item.hidden = true;
+        }
+      };
+      for (const [panel, owner] of owners) {
+        for (const detail of owner.details) {
+          const changed = () => {
+            if (!detail.open) return;
+            for (const other of owners.keys()) {
+              if (other !== panel) closePanel(other);
+            }
+          };
+          detail.addEventListener('toggle', changed);
+          cleanups.push(() => detail.removeEventListener('toggle', changed));
+        }
+      }
+      const sync = () => {
+        for (const panel of owners.keys()) {
+          // This checks ancestors as well as the panel's hidden state.
+          // Native dialog reparenting does not bypass its registered owner.
+          if (!panel.isConnected || !panel.checkVisibility()) closePanel(panel);
+        }
+      };
+      return Object.freeze({
+        sync,
+        destroy() {
+          owners.forEach((_value, panel) => closePanel(panel));
+          cleanups.forEach((cleanup) => cleanup());
+          owners.clear();
+        },
+      });
+    }
     return Object.freeze({
       mount,
       close,
       adoptPopover,
+      adoptNativeViews,
       destroy: () => [...active.keys()].forEach(close),
     });
   }
