@@ -7,6 +7,11 @@ import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from '
 import { transformMulti } from './vector-geometry.js';
 import { createThreeView } from './three-view.js';
 import {
+  normalizeSectionViewport,
+  panSectionViewport,
+  zoomSectionViewportAt,
+} from './section-view-viewport.js';
+import {
   formatLengthInput,
   formatXY as formatXYValue,
   fromMicron,
@@ -108,6 +113,7 @@ let projectName = 'Untitled',
   processRecipe = null,
   section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
+  sectionViewport = normalizeSectionViewport(),
   sectionShowBorders = false,
   sectionCollapse = null,
   sectionDetailRoi = null,
@@ -773,6 +779,19 @@ function fit3d() {
 if (V2_REAL_VIEWS) {
   const bridge = globalThis.WaferCadV2RealBridge;
   if (!bridge) throw new Error('Real v2 camera bridge was not registered before bootstrap.');
+  bridge.getSectionViewport = () => structuredClone(sectionViewport);
+  bridge.setSectionViewport = (value) => {
+    sectionViewport = normalizeSectionViewport(value);
+    renderSection();
+    markViewDirty();
+    return structuredClone(sectionViewport);
+  };
+  bridge.panSectionViewport = (dx, dy) =>
+    bridge.setSectionViewport(panSectionViewport(sectionViewport, dx, dy));
+  bridge.zoomSectionViewportAt = (factor, x, y, width, height) =>
+    bridge.setSectionViewport(zoomSectionViewportAt(
+      sectionViewport, factor, x, y, width, height,
+    ));
   bridge.getThreeCamera = () => threeView?.getViewState?.() || null;
   bridge.setThreeCamera = (viewState) => {
     if (!threeView?.ready || !threeView.setViewState?.(viewState)) return false;
@@ -1653,6 +1672,7 @@ planRenderers = createPlanRenderers({
     layout,
     section,
     sectionScaleMode,
+    sectionViewport: V2_REAL_VIEWS ? sectionViewport : null,
     sectionShowBorders,
     sectionCollapse,
     maskOpacity,
