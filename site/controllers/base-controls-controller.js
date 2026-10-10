@@ -1,5 +1,9 @@
 import { createModel, hasMaterial } from '../model.js';
-import { createWaferArrayModel, createWaferArrayTiling } from '../model-array-construction.js';
+import {
+  createWaferArrayModel,
+  createWaferArrayTiling,
+  createRectangularGridArrayModel,
+} from '../model-array-construction.js';
 
 export function createBaseControlsController({
   root = document,
@@ -115,9 +119,11 @@ export function createBaseControlsController({
         seed.layers[0].name = recipeBase.material;
         if (recipeBase.color) seed.layers[0].color = recipeBase.color;
       }
-      const newModel = recipeBase?.array
-        ? createWaferArrayModel(seed, createWaferArrayTiling(recipeBase.array))
-        : seed;
+      const newModel = recipeBase?.array?.kind === 'rect-grid'
+        ? createRectangularGridArrayModel(seed, recipeBase.array)
+        : recipeBase?.array
+          ? createWaferArrayModel(seed, createWaferArrayTiling(recipeBase.array))
+          : seed;
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);
