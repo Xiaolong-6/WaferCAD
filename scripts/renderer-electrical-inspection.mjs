@@ -361,6 +361,11 @@ try {
   // Same-policy controls precede cross-policy comparisons. These timings are not ABBA.
   for (const [index, enabled] of [false, false, true, true].entries())
     await runTrial(enabled, index + 1);
+  const roiCovered =
+    !skipRoi &&
+    trials.every((trial) =>
+      ['roi', 'roi-cleared'].every((name) => trial.states.some((entry) => entry.name === name)),
+    );
   await writeFile(
     new URL('report.json', output),
     JSON.stringify(
@@ -375,9 +380,9 @@ try {
             (entry) => entry.byteIdentical && entry.frameSerialIdentical && entry.cameraIdentical,
           ),
         ),
-        roiCovered: !skipRoi,
+        roiCovered,
         fullAcceptance:
-          !skipRoi &&
+          roiCovered &&
           trials.every((trial) =>
             trial.repeats.every(
               (entry) => entry.byteIdentical && entry.frameSerialIdentical && entry.cameraIdentical,
@@ -399,6 +404,12 @@ try {
     'strict repeatability / matching-camera inspection parity failed; inspect report.json',
   );
 } catch (error) {
+  const roiCovered =
+    !skipRoi &&
+    trials.length === 4 &&
+    trials.every((trial) =>
+      ['roi', 'roi-cleared'].every((name) => trial.states.some((entry) => entry.name === name)),
+    );
   await writeFile(
     new URL('failure.json', output),
     JSON.stringify(
@@ -406,7 +417,7 @@ try {
         stage,
         error: String(error),
         browserVersion: browser.version(),
-        roiCovered: !skipRoi,
+        roiCovered,
         trials,
         comparisons,
       },
