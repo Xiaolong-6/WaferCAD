@@ -109,6 +109,9 @@ export function createThreeView({
   let v4ObservedModel = null;
   let v4ObservedRevision = null;
   let v4ObservedPlan = null;
+  let v4CameraProbe = null;
+  let v4CameraProbeSamples = 0;
+  let v4CameraProbeLastAt = 0;
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -806,6 +809,70 @@ export function createThreeView({
   }
 
   let completedFrameSerial = 0;
+  // Experimental R2: refresh the screen-space *diagnostic* during camera
+  // interactions. The prepared CPU partition is reused; WebGL submissions,
+  // visibility, alpha ordering and stored physical Z remain unchanged.
+  function refreshV4CameraTileProbe(changed) {
+    if (
+      !v4TileCacheEnabled ||
+      !v4CameraProbe ||
+      (!changed && !interacting) ||
+      rendering ||
+      host.dataset.sceneVariant !== 'transparent' ||
+      !camera ||
+      !controls
+    ) return;
+    const now = performance.now();
+    if (now - v4CameraProbeLastAt < 250) return;
+    const model = getModel();
+    const revision = String(model?.revision ?? 0) + ':' + String(model?.processRevision ?? 0);
+    if (
+      model !== v4ObservedModel ||
+      revision !== v4ObservedRevision ||
+      v4CameraProbe.sidewalls !== v4ObservedPlan
+    ) {
+      v4CameraProbe = null;
+      return;
+    }
+    v4CameraProbeLastAt = now;
+    const started = performance.now();
+    camera.updateMatrixWorld();
+    const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+    const viewport = currentViewport();
+    const distance = camera.position.distanceTo(controls.target);
+    const { plan, hit } = v4TilePlanCache.get(v4CameraProbe.sidewalls, revision);
+    const observed = observePreparedAdaptiveTiles(plan, {
+      viewProjectionMatrix: viewProjection.elements,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+      displayZScale: currentZDisplay?.scale,
+      mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+      visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+      farTier: v4CameraProbe.farTier,
+      clipped: v4CameraProbe.clipped,
+      zCollapsed: currentZDisplay?.enabled !== false,
+      nearEdgeOn:
+        distance <= 0 || Math.abs(camera.position.z - controls.target.z) / distance < 0.35,
+      previousTiers: v4PreviousTiers,
+    });
+    v4PreviousTiers = observed.valid ? observed.nextTiers : new Map();
+    const cache = v4TilePlanCache.stats();
+    host.dataset.v4TileCacheHit = String(hit);
+    host.dataset.v4TileCacheHits = String(cache.hits);
+    host.dataset.v4TileCacheMisses = String(cache.misses);
+    host.dataset.v4TileCacheRetainedTiles = String(cache.retainedTiles);
+    host.dataset.v4TileCacheCameraSamples = String(++v4CameraProbeSamples);
+    host.dataset.v4TileProbeMs = String(performance.now() - started);
+    host.dataset.v4TileProbeStatus = observed.reason;
+    host.dataset.v4TileReductionGate = observed.reductionGate;
+    host.dataset.v4TileTotal = String(observed.tiles);
+    host.dataset.v4TileNear = String(observed.nearTiles);
+    host.dataset.v4TileMid = String(observed.midTiles);
+    host.dataset.v4TileFar = String(observed.farTiles);
+    host.dataset.v4TileOffscreen = String(observed.offscreenTiles);
+    host.dataset.v4TileUncertain = String(observed.uncertainTiles);
+    host.dataset.v4TileSkippedTriangles = '0';
+  }
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -828,6 +895,7 @@ export function createThreeView({
       if (controls) controls.enableDamping = !heavyExactTransparency;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       const changed = controls?.update?.() || false;
+      refreshV4CameraTileProbe(changed);
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
@@ -2936,6 +3004,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         v4ObservedModel = model;
         v4ObservedRevision = v4Revision;
         v4ObservedPlan = plan.sidewalls;
+        v4CameraProbe = null;
       }
       let v4Tiles = null;
       let v4ProbeMs = 0;
@@ -2968,7 +3037,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
         v4PreviousTiers = v4Tiles.valid ? v4Tiles.nextTiers : new Map();
         v4ProbeMs = performance.now() - probeStartedAt;
+        v4CameraProbeLastAt = performance.now();
       }
+      v4CameraProbe = v4TileCacheEnabled && targetVariant === 'transparent'
+        ? { sidewalls: plan.sidewalls, farTier: arrayLod.tier !== 'exact', clipped: Boolean(clip) }
+        : null;
       const v4CacheStats = v4TilePlanCache.stats();
       host.dataset.v4TileCacheMode = v4TileCacheEnabled ? 'cpu-plan' : 'off';
       host.dataset.v4TileCacheHit = String(v4CacheHit);
@@ -2976,6 +3049,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.v4TileCacheMisses = String(v4CacheStats.misses);
       host.dataset.v4TileCacheEvictions = String(v4CacheStats.evictions);
       host.dataset.v4TileCacheRetainedTiles = String(v4CacheStats.retainedTiles);
+      host.dataset.v4TileCacheCameraSamples = String(v4CameraProbeSamples);
       host.dataset.v4TileProbeStatus = v4Tiles?.reason || 'disabled';
       host.dataset.v4TileReductionGate = v4Tiles?.reductionGate || 'probe-disabled';
       host.dataset.v4TileProbeMs = String(v4ProbeMs);
