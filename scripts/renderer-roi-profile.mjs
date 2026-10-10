@@ -115,7 +115,6 @@ try {
       );
       await changed(() => page.locator('#threeOpacityRange').fill(i % 2 === 0 ? '1' : '0.5'));
     }
-    await changed(() => page.locator('#threeOpacityRange').fill('0.5'));
     const box = await page.locator('#threeHost canvas').boundingBox();
     assert.ok(box);
     const x = box.x + box.width / 2;
