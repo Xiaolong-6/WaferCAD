@@ -33,6 +33,7 @@
   let destroyed = false;
   const nativeStages = new Map();
   const livePanels = new Map();
+  let threeControls = null;
 
   const notifyResize = () => {
     const serial = ++renderSerial;
@@ -123,6 +124,15 @@
     if (pan) {
       commandLabel(pan, 'Pan', 'pan');
       fit.after(pan);
+    }
+    if (key === 'three') {
+      const host = nativeStages.get('three');
+      threeControls = window.WaferCadV2RealThreeControls.create({
+        host,
+        getCamera: () => window.WaferCadV2RealBridge?.getThreeCamera?.(),
+        setCamera: (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
+      });
+      fit.after(threeControls.pan, threeControls.zoom);
     }
     if (key === 'main' || key === 'mask') {
       const plus = tools.querySelector(`#${key}ZoomIn`);
@@ -246,8 +256,12 @@
         onShow() {
           notifyResize();
         },
-        onHide() {},
-        destroy() {},
+        onHide() {
+          if (key === 'three') threeControls?.hide();
+        },
+        destroy() {
+          if (key === 'three') threeControls?.destroy();
+        },
       });
     }
     shell = window.createWaferCadV2Workstation({
