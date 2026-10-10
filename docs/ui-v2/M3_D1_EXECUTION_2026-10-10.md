@@ -2,7 +2,7 @@
 
 Date: 2026-10-10. Branch: `codex/ui-v2-m3-main-audit-20261010`. Pre-domain rollback point: `0fa32a75df234ca451dff085f16a7f961744a2bb`.
 
-> **D1 IN PROGRESS — NOT ACCEPTED.** This checkpoint records a concrete opt-in real-view implementation and a new strict browser gate. It does not claim browser, pointer, visual or full D1 acceptance. No D2 work was started. The public `app-v2.html` remains the original M2 mock preview.
+> **D1 IN PROGRESS — NOT ACCEPTED.** The initial implementation at `39d5c22` was followed by the executable inspection below. The isolated real-view gate now passes for Base, Photodetector and M3D, but full geometry, shared-toolbar/portal and approved-platform visual acceptance remain open. No D2 work was started. The public `app-v2.html` remains the original M2 mock preview.
 
 ## Scope of implementation
 
@@ -12,18 +12,18 @@ Date: 2026-10-10. Branch: `codex/ui-v2-m3-main-audit-20261010`. Pre-domain rollb
 - `site/ui-v2/real-view-bridge.css`: experimental-only native view presentation sizing; no changes to M1.5 approved prototype or existing CSS.
 - `scripts/v2/check-d1-real-views.mjs`: executable browser regression (owns its localhost server) that checks v2 route, no mock presenter, real source canvas IDs, four stages and original button identities, mode persistence, Split, Max/Restore, boot/console errors and screenshots at 1440/1024/768/390. It records local ignored evidence under `test-results/ui-v2-d1-real/`.
 
-## Source and boundary checks actually performed
+## Initial connected-only inspection at `39d5c22` (historical)
 
 - GitHub connected source comparison: working branch started at **exact** `0fa32a7`; all D1 edits are on the requested existing branch, no force push.
 - Confirmed all **17** referenced source/style/vendor resources for `app-v2-real.html` exist on the same branch.
 - New classic bridge `real-view-bridge.js` parsed successfully with the local V8 syntax parser available in the connected tooling. This is **syntax**, not functional runtime evidence.
-- Source-level review: the v2 switch in `app.js` is conditional on `html[data-ui=v2]`; legacy control flow remains in the `else` branch. Historical preflight at `0fa32a7` (585 Node, 60 shell, 8 contract, legacy suites) is *prior evidence*, **not** a new test pass for this D1 commit.
+- Source-level review: the v2 switch in `app.js` is conditional on `html[data-ui=v2]`; legacy control flow remains in the `else` branch. Historical preflight at `0fa32a7` (585 Node, 60 shell, 8 contract, legacy suites) is _prior evidence_, **not** a new test pass for this D1 commit.
 - Connected commit status check had **no CI statuses and no pull-request workflow runs** for the D1 head at inspection time. No manual or costly CI tasks dispatched.
 
-## Acceptance currently missing / why it remains open
+## Initial missing acceptance (historical; runtime updates below supersede items 1/6)
 
 1. **Real browser bootstrap and true WebGL canvas:** a runnable checked-out repository/browser was unavailable to this ChatGPT execution environment. `node scripts/v2/check-d1-real-views.mjs` was **not executed**, nor were `npm ci`, lint, docs:check, contract refresh, GPU fallback, real screenshot/pixel or ROI physical-coordinate measurements. We must not infer they passed from static parsing.
-2. **M1.5 chrome parity:** the experimental real route currently *adopts original native view-head toolbars* inside v2 layout. Final shared-toolbar component placement, overflow/icon alignment, popover focus/Esc/aria semantics and exact four-width approved prototype comparison remain to be audited/fixed in a real browser. No baseline has been created/updated.
+2. **M1.5 chrome parity:** the experimental real route currently _adopts original native view-head toolbars_ inside v2 layout. Final shared-toolbar component placement, overflow/icon alignment, popover focus/Esc/aria semantics and exact four-width approved prototype comparison remain to be audited/fixed in a real browser. No baseline has been created/updated.
 3. **Pointer/DOMRect correctness:** real Main/Mask ROI and Section Detail/Slice interaction need the strict original 0.25px and µm geometry scenarios. Stage identity checks alone cannot prove pointer accuracy. 3D first complete frame and software-vs-hardware WebGL must be reported separately.
 4. **Route convergence:** product `app-v2.html` deliberately remains mock. Move/retarget only after the isolated experimental route truly passes D1 acceptance. `startup-controller.js` and Welcome legacy URL cleanup remain D9 ownership; launching with a staged URL may currently rewrite the experimental path, so it is not approved as production routing.
 5. **Hidden legacy contract:** controllers still require their 267 legacy IDs; importing existing DOM into hidden staging is a temporary bootstrap bridge, not complete removal/migration of all domain controls. Verify that dynamic dialogs/portal ownership and persistence does not act on hidden UI unexpectedly. Domain controls/transactions remain D2–D9.
@@ -50,3 +50,53 @@ Inspect `test-results/ui-v2-d1-real/real-{1440,1024,768,390}.png` against approv
 ## Decision / roll-forward
 
 **No D1 PASS claim** is warranted yet. The experimental entry remains isolated so the previously accepted M2 mock and legacy real product are not silently replaced. After runtime tests and screenshot review, either promote the single real v2 bootstrap into `app-v2.html` (keeping an explicit mock route) or revert the D1 experiment to the recorded rollback commit if its shell/DOM approach proves unsuitable. Explicit user approval is still required before D2 and before any visual-baseline change/merge to main.
+
+## Executable inspection and fixes — 2026-10-10
+
+Input: `39d5c229bf7ed00e9e20dd6dc01512ed25b85f74`. All fixes remain on the same M3 branch. D1 rollback remains `0fa32a7`. Linux, Node v24.19.0, pinned Playwright Chromium 140.0.7339.186 (v1193), locked dependencies installed with `npm ci`. Tests use local pinned Three 0.179.1 via `WAFERCAD_THREE_DIR`, not an unpinned network dependency.
+
+### Defects reproduced and repaired
+
+| Defect                                                                       | Evidence / fix                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Real canvas rendered outside the visible v2 grid                             | Legacy ID-specific `grid-area` declarations created implicit tracks in the new grid; initial screenshot showed blank scientific workspace despite appReady and GPU frames. Experimental-only, higher-specificity CSS resets native panels to automatic placement and spans docked Section across Split. Visible canvas bounds are now asserted at all four widths. |
+| Single did not survive refresh                                               | Legacy storage enum uses `main/mask/three`, not `single`. Bridge now stores the selected view for Single, keeping the existing sessionStorage keys and enum. Actual page reload is tested.                                                                                                                                                                         |
+| Broken Section readout slot                                                  | `sectionCoords` does not exist; original ID is `sectionRange`. Corrected binding. All 37 registry slots must resolve; four overlay slots are explicitly empty, hidden bridge owners, **not** proof of portal migration.                                                                                                                                            |
+| Missing v2 navigation icon sprite and inconsistent native button sizing      | Install existing sprite and apply shared button/font tokens to original controls, preserving node identity. Full toolbar order/icon convergence remains open.                                                                                                                                                                                                      |
+| More keyboard/focus and aria state                                           | ArrowDown opens and focuses a visible original control; Escape closes the relevant More owner and restores summary focus; aria-expanded follows actual native details state. Browser gate covers these behaviors.                                                                                                                                                  |
+| Gate accepted readiness before usable rendering / missed responsive controls | Wait for first complete frame before capturing WebGL identity; wait for native responsive ResizeObserver before Max/ROI interaction; open More when necessary, then reacquire pointer DOMRect after closing menus. Verify actual drag hit target and physical-to-pixel round-trip.                                                                                 |
+| Local deploy asset absent                                                    | Gate server supplies explicit `build-info.json` fixture; product source and deploy behavior unchanged.                                                                                                                                                                                                                                                             |
+
+### Executed validation
+
+- Enhanced D1 gate: Base and real Photodetector/M3D final-only projects, **1440/1024/768/390**. No JS/console errors or horizontal overflow. Original stages, native action buttons and the same WebGL canvas retained after navigation/ROI/mode changes; 37 slots resolve, no duplicate IDs. Single/Overview/Split, Split exchange, Max/Restore, keyboard More/focus and actual reload checks pass.
+- Main Rect ROI is driven by real pointer drag into `mainCanvas`; input remains µm and physical dimensions round-trip through the renderer's actual scale with ≤0.25px tolerance. Maximum errors: Base **0.00004904px**, Photodetector **0.00005189px**, M3D **0.00046667px**. This is a Main rectangular ROI check, **not** Mask ROI / Slice / Section Detail or independent Main↔3D boundary alignment acceptance.
+- 3D: actual WebGL2 canvas and `renderPhase=complete`, nonzero draw calls/triangles captured at every width. Renderer is ANGLE Vulkan **SwiftShader software WebGL**. This proves software rendering, **not** hardware GPU or performance acceptance. Section canvas is visibly sized at each width; Section physical correctness is still unverified.
+- Original M2 mock shell: **60 checks pass**, errors empty; existing 1440/1024 mock ROI assertions remain unchanged. Run used the pinned headless shell with `--no-sandbox` in this root container.
+- Legacy browser suites: `test:ui:smoke`, `test:ui:workstation`, `test:ui:viewux-v3` pass at unchanged legacy entry; assertions/baselines were not relaxed.
+- Node: initial input `39d5c22` passed **585/585**. Final-source repeat also passed **585/585** (165149ms). Eight focused v2 state/contract tests, lint and docs checks pass; generated inventory refreshed via AST write/check (267 IDs, 214 classes, 1109 operations, 60 dynamic IDs, 14 unresolved). No unresolved operation is declared migrated from this count.
+
+The gate clears its output directory on every run, saves evidence JSON and Main/3D/Section screenshots per width, and captures the **unchanged** M1.5 a-full iframe as `m15-reference-{width}.png` for manual comparison. Optional real fixture injection uses the original project file input and confirmation dialog; it does not connect or accept D3 Project UI, full History/Recipe replay or the 4,725-site array.
+
+```bash
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-real-views.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=photodetector node scripts/v2/check-d1-real-views.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=m3d node scripts/v2/check-d1-real-views.mjs
+```
+
+### M1.5 comparison and remaining D1 gates
+
+Reference captures use the approved a-full source unchanged; manually inspected desktop and narrow scientific chrome. Content is deliberately different (real renderer versus presentation-only prototype); no arbitrary pixel-equality claim or approved baseline replacement.
+
+| Area                               | Result                                                                                                                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Responsive visibility / bounds     | Real Main, 3D and Section visible at all four widths; no horizontal overflow.                                                                                                                           |
+| Main native toolbar                | **Not visually converged**: prototype Fit/Pan/Zoom/ROI icons and order differ from real Slice/3D ROI/Pan/Fit; More/Max still native text controls. Shared sizing alone is insufficient.                 |
+| Section toolbar / legend / Z Break | Original native controls retained. Common-toolbar structure, Z Break top-layer ownership, focus lifecycle and physical Detail/Slice scenarios still require D1 verification; Legend edits belong to D7. |
+| Overlay slots                      | Stable empty owners exist, but existing native overlays were not relocated into a unified v2 portal. Presence is not lifecycle acceptance.                                                              |
+| Approved platform screenshots      | Linux review artifacts do not establish Windows approved pixel parity.                                                                                                                                  |
+| Production route                   | Still isolated `app-v2-real.html`; original `app-v2.html` remains mock. No route promotion, D2, main merge or approved baseline change.                                                                 |
+
+**Decision: runtime wiring gate passes for the listed scenarios; full D1 remains open.** Next D1 work must converge the native-toolbar presentation without replacing native controls/listeners, verify the remaining real geometry and overlay scenarios, and resolve the route checkpoint. Do not start D2 based on this partial runtime gate.
+
+Final repeat evidence: the same modified bridge passed the M3D fixture (four widths, zero errors, completed software WebGL frames, 11–21 draw calls / 290–5381 triangles after ROI). Base gate also captured all four unchanged M1.5 references. Fixture counts are evidence of completed clipped scenes, not a benchmark or full Recipe replay. Final lint, docs check, eight focused tests and deterministic AST check completed successfully.

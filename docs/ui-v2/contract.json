@@ -15,9 +15,9 @@
     "dataAttributes": 40,
     "roleAttributes": 17,
     "ariaControls": 7,
-    "dynamicClasses": 209,
+    "dynamicClasses": 214,
     "dynamicClassPatterns": 2,
-    "dynamicOperations": 1082,
+    "dynamicOperations": 1109,
     "dynamicIdDeclarations": 60,
     "unresolvedOperations": 14
   },
@@ -70,7 +70,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 1695,
+          "line": 1706,
           "source": "document.getElementById('workstationBootScreen')?.setAttribute('aria-hidden', 'true');"
         },
         {
@@ -148,7 +148,7 @@
         { "file": "site/app.html", "line": 238, "source": "data-view-panel=\"mainPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1499,
+          "line": 1506,
           "source": "$('mainPanel').hidden = next !== 'main';"
         },
         {
@@ -201,6 +201,16 @@
           "file": "site/tests/function-panel-feedback.test.mjs",
           "line": 336,
           "source": "['mainPanel', 'mainExportSvgBtn'],"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 9,
+          "source": "> :is(#mainPanel, #maskPanel, #threePanel, #sectionPanel) {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 11,
+          "source": "main: ['mainPanel', 'mainCanvas', 'mainCoords'],"
         },
         {
           "file": "site/workstation-ui.js",
@@ -359,6 +369,41 @@
           "file": "scripts/ui-smoke.mjs",
           "line": 47,
           "source": "assert.equal(await page.locator('#mainPanel').isVisible(), true);"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 169,
+          "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 179,
+          "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 182,
+          "source": "const more = page.locator('#mainPanel .view-more-control');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 189,
+          "source": ".querySelector('#mainPanel .view-more-control > summary')"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 205,
+          "source": ".querySelector('#mainPanel .view-more-control > summary')"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 224,
+          "source": "await page.locator('#mainPanel .view-more-control > summary').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 227,
+          "source": "await page.waitForFunction(() => !document.querySelector('#mainPanel details[open]'));"
         },
         {
           "file": "scripts/v2/check-m2-shell.mjs",
@@ -533,7 +578,7 @@
           "line": 116,
           "source": "<details id=\"focusEditor\" class=\"focus-editor\">"
         },
-        { "file": "site/app.js", "line": 210, "source": "const editor = $('focusEditor');" },
+        { "file": "site/app.js", "line": 212, "source": "const editor = $('focusEditor');" },
         { "file": "site/controllers/roi-controller.js", "line": 150, "source": "$('focusEditor')" },
         {
           "file": "site/controllers/roi-controller.js",
@@ -649,6 +694,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 807,
           "source": "await checkPopover(page, '#focusEditor .focus-popover', '#mainPanel');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 222,
+          "source": "const roiSummary = page.locator('#focusEditor > summary');"
         },
         { "file": "scripts/workstation-regression.mjs", "line": 206, "source": "'#focusEditor'," }
       ]
@@ -772,6 +822,11 @@
           "file": "site/controllers/roi-controller.js",
           "line": 64,
           "source": "$('roiUnitLabel').textContent = xyUnitLabel();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 251,
+          "source": "unit: document.getElementById('roiUnitLabel').textContent,"
         }
       ]
     },
@@ -872,6 +927,11 @@
           "source": "Number(await page.locator('#roiWidth').inputValue()),"
         },
         {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 248,
+          "source": "widthUm: Number(document.getElementById('roiWidth').value),"
+        },
+        {
           "file": "scripts/v2/check-m2-shell.mjs",
           "line": 491,
           "source": "\"document.querySelector('dialog[open]').getAttribute('aria-label')==='Mask ROI settings' && !document.querySelector('dialog[open] [data-key^=align]') && Boolean(document.querySelector('dialog[open] [data-key=roiWidth]'))\","
@@ -933,6 +993,11 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 801,
           "source": "Number(await page.locator('#roiHeight').inputValue()),"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 249,
+          "source": "heightUm: Number(document.getElementById('roiHeight').value),"
         }
       ]
     },
@@ -1325,6 +1390,16 @@
           "file": "scripts/test-helpers/product-layout.mjs",
           "line": 674,
           "source": "await page.locator('#mainZoomFit').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 123,
+          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 177,
+          "source": "const fit = page.locator('#mainZoomFit');"
         }
       ]
     },
@@ -1464,6 +1539,36 @@
           "file": "scripts/interaction-regression.mjs",
           "line": 659,
           "source": "['mainMaxBtn', 'mainPanel'],"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 123,
+          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 173,
+          "source": "await clickMainAction('#mainMaxBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 174,
+          "source": "assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'true');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 175,
+          "source": "await clickMainAction('#mainMaxBtn');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 176,
+          "source": "assert.equal(await page.locator('#mainMaxBtn').getAttribute('aria-pressed'), 'false');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 281,
+          "source": "restored: document.getElementById('mainMaxBtn').textContent.trim(),"
         }
       ]
     },
@@ -1478,10 +1583,10 @@
         { "file": "site/app.html", "line": 245, "source": "<canvas id=\"mainCanvas\"></canvas>" },
         {
           "file": "site/app.js",
-          "line": 1581,
+          "line": 1588,
           "source": "bindPlanCanvas('main', $('mainCanvas'), () => activeFace === 'back');"
         },
-        { "file": "site/app.js", "line": 1585, "source": "observer.observe($('mainCanvas'));" },
+        { "file": "site/app.js", "line": 1592, "source": "observer.observe($('mainCanvas'));" },
         {
           "file": "site/controllers/export-controller.js",
           "line": 89,
@@ -1553,6 +1658,21 @@
           "file": "site/tests/issue-9-main-ab.test.mjs",
           "line": 38,
           "source": "assert.match(mainCanvas, /isRoiDrawing/);"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 64,
+          "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #mainCanvas,"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 11,
+          "source": "main: ['mainPanel', 'mainCanvas', 'mainCoords'],"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 88,
+          "source": "if (!doc.querySelector('#mainCanvas') || !doc.querySelector('#threeHost')) {"
         },
         {
           "file": "site/workstation.css",
@@ -1680,6 +1800,31 @@
           "source": "main: document.getElementById('mainCanvas').toDataURL(),"
         },
         {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 134,
+          "source": "document.querySelectorAll('#mainCanvas').length !== 1 ||"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 213,
+          "source": "const mainRect = await page.locator('#mainCanvas').boundingBox();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 229,
+          "source": "const dragRect = await page.locator('#mainCanvas').boundingBox();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 250,
+          "source": "scale: Number(document.getElementById('mainCanvas').dataset.xPxPerUm),"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 276,
+          "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
+        },
+        {
           "file": "scripts/visual-baseline-regression.mjs",
           "line": 53,
           "source": "await waitForCanvasSizeSync(page, '#mainCanvas');"
@@ -1743,6 +1888,11 @@
           "file": "site/plan-renderers.js",
           "line": 461,
           "source": "$('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 11,
+          "source": "main: ['mainPanel', 'mainCanvas', 'mainCoords'],"
         }
       ]
     },
@@ -2181,7 +2331,7 @@
         { "file": "site/app.html", "line": 443, "source": "data-view-panel=\"maskPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1500,
+          "line": 1507,
           "source": "$('maskPanel').hidden = next !== 'mask';"
         },
         {
@@ -2239,6 +2389,16 @@
           "file": "site/ui-v2/prototypes/a-full/source/prototype.js",
           "line": 964,
           "source": "mask: maskPanel,"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 9,
+          "source": "> :is(#mainPanel, #maskPanel, #threePanel, #sectionPanel) {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 12,
+          "source": "mask: ['maskPanel', 'maskCanvas', 'maskCoords'],"
         },
         {
           "file": "site/workstation-ui.js",
@@ -3050,7 +3210,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 907,
+          "line": 909,
           "source": "$('maskOpacityValue').value = `${Math.round(maskOpacity * 100)}%`;"
         },
         {
@@ -3084,7 +3244,7 @@
         { "file": "site/app.html", "line": 372, "source": "id=\"maskOpacityRange\"" },
         {
           "file": "site/app.js",
-          "line": 906,
+          "line": 908,
           "source": "$('maskOpacityRange').value = String(maskOpacity);"
         },
         {
@@ -3171,6 +3331,11 @@
           "file": "site/tests/issue-13-settings-ui.test.mjs",
           "line": 111,
           "source": "'maskZoomFit',"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 123,
+          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
         }
       ]
     },
@@ -3537,10 +3702,10 @@
         { "file": "site/app.html", "line": 450, "source": "<canvas id=\"maskCanvas\"></canvas>" },
         {
           "file": "site/app.js",
-          "line": 1582,
+          "line": 1589,
           "source": "bindPlanCanvas('mask', $('maskCanvas'));"
         },
-        { "file": "site/app.js", "line": 1586, "source": "observer.observe($('maskCanvas'));" },
+        { "file": "site/app.js", "line": 1593, "source": "observer.observe($('maskCanvas'));" },
         {
           "file": "site/controllers/draw-mask-controller.js",
           "line": 586,
@@ -3581,6 +3746,16 @@
           "file": "site/tests/mask-svg-linework-roi.test.mjs",
           "line": 85,
           "source": "if (id === 'maskCanvas')"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 65,
+          "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #maskCanvas,"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 12,
+          "source": "mask: ['maskPanel', 'maskCanvas', 'maskCoords'],"
         },
         {
           "file": "site/workstation.css",
@@ -3646,6 +3821,16 @@
           "file": "scripts/test-helpers/product.mjs",
           "line": 180,
           "source": "for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas']) {"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 135,
+          "source": "document.querySelectorAll('#maskCanvas').length !== 1 ||"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 276,
+          "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
         }
       ]
     },
@@ -3671,6 +3856,11 @@
           "file": "site/controllers/roi-controller.js",
           "line": 226,
           "source": "$('maskCoords').textContent = `x ${xyText(point[0])} · y ${xyText(point[1])}`;"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 12,
+          "source": "mask: ['maskPanel', 'maskCanvas', 'maskCoords'],"
         }
       ]
     },
@@ -4101,7 +4291,7 @@
         { "file": "site/app.html", "line": 596, "source": "data-view-panel=\"threePanel\"" },
         {
           "file": "site/app.js",
-          "line": 1501,
+          "line": 1508,
           "source": "$('threePanel').hidden = next !== 'three';"
         },
         {
@@ -4133,6 +4323,16 @@
           "file": "site/tests/function-panel-feedback.test.mjs",
           "line": 338,
           "source": "['threePanel', 'threeExportModelBtn'],"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 9,
+          "source": "> :is(#mainPanel, #maskPanel, #threePanel, #sectionPanel) {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 13,
+          "source": "three: ['threePanel', 'threeHost', 'threeStats'],"
         },
         {
           "file": "site/workstation-ui.js",
@@ -4556,11 +4756,16 @@
           "line": 520,
           "source": "<div><strong>3D</strong><span id=\"threeStats\"></span></div>"
         },
-        { "file": "site/app.js", "line": 734, "source": "stats: $('threeStats')," },
+        { "file": "site/app.js", "line": 736, "source": "stats: $('threeStats')," },
         {
           "file": "site/app.js",
-          "line": 760,
+          "line": 762,
           "source": "$('threeStats').textContent = '3D render error';"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 13,
+          "source": "three: ['threePanel', 'threeHost', 'threeStats'],"
         },
         {
           "file": "scripts/resilience-regression.mjs",
@@ -4589,7 +4794,7 @@
         { "file": "site/app.html", "line": 525, "source": "id=\"threeFastBtn\"" },
         {
           "file": "site/app.js",
-          "line": 911,
+          "line": 913,
           "source": "syncThreeRenderModeButton($('threeFastBtn'), threeFastMode);"
         },
         {
@@ -4759,7 +4964,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 910,
+          "line": 912,
           "source": "$('threeBorders').checked = threeShowBorders;"
         },
         {
@@ -4884,7 +5089,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 909,
+          "line": 911,
           "source": "$('threeOpacityValue').value = `${Math.round(threeOpacity * 100)}%`;"
         },
         {
@@ -4913,7 +5118,7 @@
         { "file": "site/app.html", "line": 551, "source": "id=\"threeOpacityRange\"" },
         {
           "file": "site/app.js",
-          "line": 908,
+          "line": 910,
           "source": "$('threeOpacityRange').value = String(threeOpacity);"
         },
         {
@@ -5114,6 +5319,11 @@
           "file": "scripts/renderer-product-cases.mjs",
           "line": 848,
           "source": "await page.locator('#fit3dBtn').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 123,
+          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
         }
       ]
     },
@@ -5410,6 +5620,11 @@
           "file": "scripts/three-fast-mode-regression.mjs",
           "line": 276,
           "source": "await page.locator('#threeMaxBtn').click();"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 123,
+          "source": "['mainZoomFit', 'maskZoomFit', 'fit3dBtn', 'mainMaxBtn', 'threeMaxBtn'].map((key) => ["
         }
       ]
     },
@@ -5422,21 +5637,41 @@
       "attributes": { "id": "threeHost" },
       "references": [
         { "file": "site/app.html", "line": 603, "source": "<div id=\"threeHost\"></div>" },
-        { "file": "site/app.js", "line": 733, "source": "host: $('threeHost')," },
+        { "file": "site/app.js", "line": 735, "source": "host: $('threeHost')," },
         {
           "file": "site/app.js",
-          "line": 756,
+          "line": 758,
           "source": "delete $('threeHost').dataset.renderError;"
         },
         {
           "file": "site/app.js",
-          "line": 759,
+          "line": 761,
           "source": "$('threeHost').dataset.renderError = message;"
         },
-        { "file": "site/app.js", "line": 1588, "source": "observer.observe($('threeHost'));" },
+        { "file": "site/app.js", "line": 1595, "source": "observer.observe($('threeHost'));" },
         { "file": "site/style.css", "line": 638, "source": "#threeHost {" },
         { "file": "site/style.css", "line": 643, "source": "#threeHost canvas {" },
         { "file": "site/style.css", "line": 2726, "source": "#threeHost {" },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 67,
+          "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #threeHost {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 76,
+          "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #threeHost > canvas {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 13,
+          "source": "three: ['threePanel', 'threeHost', 'threeStats'],"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 88,
+          "source": "if (!doc.querySelector('#mainCanvas') || !doc.querySelector('#threeHost')) {"
+        },
         {
           "file": "site/workstation.css",
           "line": 1825,
@@ -5966,6 +6201,56 @@
           "file": "scripts/ui-smoke.mjs",
           "line": 57,
           "source": "assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 111,
+          "source": "document.querySelector('#threeHost canvas') &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 112,
+          "source": "Number(document.getElementById('threeHost').dataset.rendererFrameSerial) > 0 &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 113,
+          "source": "document.getElementById('threeHost').dataset.renderPhase === 'complete',"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 128,
+          "source": "window.d1OriginalGlCanvas = document.querySelector('#threeHost canvas');"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 137,
+          "source": "document.querySelectorAll('#threeHost').length !== 1"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 269,
+          "source": "if (document.querySelector('#threeHost canvas') !== window.d1OriginalGlCanvas)"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 279,
+          "source": "glCanvasCount: document.querySelectorAll('#threeHost canvas').length,"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 293,
+          "source": "Number(document.getElementById('threeHost').dataset.rendererFrameSerial) > 0 &&"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 294,
+          "source": "document.getElementById('threeHost').dataset.renderPhase === 'complete',"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 297,
+          "source": "const host = document.getElementById('threeHost');"
         },
         {
           "file": "scripts/welcome-preview-benchmark.mjs",
@@ -7084,7 +7369,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 590,
+          "line": 592,
           "source": "$('revertBaseBtn').disabled = !baseRevertSnapshot;"
         },
         {
@@ -12554,7 +12839,7 @@
           "line": 1110,
           "source": "<button id=\"applyOperationBtn\" class=\"primary apply-btn\">Apply</button>"
         },
-        { "file": "site/app.js", "line": 1106, "source": "const button = $('applyOperationBtn');" },
+        { "file": "site/app.js", "line": 1110, "source": "const button = $('applyOperationBtn');" },
         {
           "file": "site/controllers/process-panel-controller.js",
           "line": 255,
@@ -12839,7 +13124,7 @@
         { "file": "site/app.html", "line": 1112, "source": "id=\"undoBtn\"" },
         {
           "file": "site/app.js",
-          "line": 588,
+          "line": 590,
           "source": "$('undoBtn').disabled = !history.length;"
         },
         {
@@ -12878,7 +13163,7 @@
       },
       "references": [
         { "file": "site/app.html", "line": 1120, "source": "id=\"redoBtn\"" },
-        { "file": "site/app.js", "line": 589, "source": "$('redoBtn').disabled = !future.length;" },
+        { "file": "site/app.js", "line": 591, "source": "$('redoBtn').disabled = !future.length;" },
         {
           "file": "site/controllers/workspace-actions-controller.js",
           "line": 363,
@@ -13589,7 +13874,7 @@
       },
       "references": [
         { "file": "site/app.html", "line": 1233, "source": "id=\"projectNameInput\"" },
-        { "file": "site/app.js", "line": 140, "source": "const input = $('projectNameInput');" },
+        { "file": "site/app.js", "line": 142, "source": "const input = $('projectNameInput');" },
         {
           "file": "site/controllers/project-controller.js",
           "line": 1040,
@@ -13609,6 +13894,11 @@
           "file": "site/tests/issue-13-settings-ui.test.mjs",
           "line": 40,
           "source": "assert.match(settings, /id=\"projectNameInput\"/);"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 195,
+          "source": "getProjectName: () => document.getElementById('projectNameInput')?.value || 'Untitled',"
         },
         {
           "file": "site/workstation-ui.js",
@@ -13883,6 +14173,11 @@
           "source": "await page.locator('#openProjectInput').setInputFiles({"
         },
         { "file": "scripts/ui-smoke.mjs", "line": 65, "source": "'openProjectInput'," },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 99,
+          "source": ".locator('#openProjectInput')"
+        },
         {
           "file": "scripts/workstation-regression.mjs",
           "line": 397,
@@ -14342,7 +14637,7 @@
         { "file": "site/app.html", "line": 1363, "source": "data-view-panel=\"sectionPanel\"" },
         {
           "file": "site/app.js",
-          "line": 1502,
+          "line": 1509,
           "source": "$('sectionPanel').hidden = next !== 'section';"
         },
         {
@@ -14366,6 +14661,17 @@
           "file": "site/tests/wiki-manual.test.mjs",
           "line": 94,
           "source": "html.indexOf('id=\"sectionPanel\"'),"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 9,
+          "source": "> :is(#mainPanel, #maskPanel, #threePanel, #sectionPanel) {"
+        },
+        { "file": "site/ui-v2/real-view-bridge.css", "line": 15, "source": "> #sectionPanel {" },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 14,
+          "source": "section: ['sectionPanel', 'sectionCanvas', 'sectionRange'],"
         },
         {
           "file": "site/workstation-ui.js",
@@ -15247,7 +15553,7 @@
           "line": 1371,
           "source": "<canvas id=\"sectionCanvas\"></canvas>"
         },
-        { "file": "site/app.js", "line": 1587, "source": "observer.observe($('sectionCanvas'));" },
+        { "file": "site/app.js", "line": 1594, "source": "observer.observe($('sectionCanvas'));" },
         {
           "file": "site/controllers/export-controller.js",
           "line": 467,
@@ -15317,6 +15623,16 @@
           "file": "site/style.css",
           "line": 4770,
           "source": "#sectionCanvas.section-detail-drawing {"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.css",
+          "line": 66,
+          "source": "html[data-v2-m3='d1-experimental'] .v2-real-view > #sectionCanvas,"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 14,
+          "source": "section: ['sectionPanel', 'sectionCanvas', 'sectionRange'],"
         },
         {
           "file": "site/workstation.css",
@@ -15549,6 +15865,21 @@
           "source": "const sectionInk = await canvasInkFraction(welcomePage, '#sectionCanvas');"
         },
         {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 136,
+          "source": "document.querySelectorAll('#sectionCanvas').length !== 1 ||"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 276,
+          "source": "liveCanvas: ['mainCanvas', 'maskCanvas', 'sectionCanvas'].filter("
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 323,
+          "source": "const sectionRect = await page.locator('#sectionCanvas').boundingBox();"
+        },
+        {
           "file": "scripts/view-ux-v3-regression.mjs",
           "line": 83,
           "source": "assert.equal(await page.locator('#sectionCanvas').getAttribute('data-scale-mode'), 'physical');"
@@ -15582,6 +15913,11 @@
           "file": "site/plan-renderers.js",
           "line": 1162,
           "source": "$('sectionRange').textContent = `Z (${xyUnitLabel()}) ${formatXY(lo)} → ${formatXY(hi)}`;"
+        },
+        {
+          "file": "site/ui-v2/real-view-bridge.js",
+          "line": 14,
+          "source": "section: ['sectionPanel', 'sectionCanvas', 'sectionRange'],"
         },
         {
           "file": "site/workstation.css",
@@ -17702,6 +18038,16 @@
           "source": "() => /Opened .*\\.wafercad\\./.test(document.getElementById('statusText')?.textContent || ''),"
         },
         {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 103,
+          "source": "(name) => document.getElementById('statusText').textContent === `Opened ${name}.`,"
+        },
+        {
+          "file": "scripts/v2/check-d1-real-views.mjs",
+          "line": 245,
+          "source": "/^ROI created\\./.test(document.getElementById('statusText').textContent),"
+        },
+        {
           "file": "scripts/visual-baseline-regression.mjs",
           "line": 92,
           "source": "(document.getElementById('statusText')?.textContent || '') ==="
@@ -17891,7 +18237,7 @@
           "line": 1595,
           "source": "<button id=\"safeReloadBtn\" class=\"status-action\" type=\"button\" hidden>Reload safely</button>"
         },
-        { "file": "site/app.js", "line": 191, "source": "const button = $('safeReloadBtn');" },
+        { "file": "site/app.js", "line": 193, "source": "const button = $('safeReloadBtn');" },
         {
           "file": "site/controllers/workspace-persistence-controller.js",
           "line": 738,
@@ -17929,7 +18275,7 @@
         },
         {
           "file": "site/app.js",
-          "line": 192,
+          "line": 194,
           "source": "const separator = $('safeReloadSeparator');"
         }
       ]
@@ -19358,6 +19704,13 @@
       ]
     },
     {
+      "name": "p-panel-head",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 136, "kind": "classList.add" }
+      ]
+    },
+    {
       "name": "p-sprite",
       "pattern": false,
       "occurrences": [
@@ -19367,6 +19720,20 @@
           "kind": "classList.add"
         },
         { "file": "site/ui-v2/view-icons.js", "line": 55, "kind": "classList.add" }
+      ]
+    },
+    {
+      "name": "p-view",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 134, "kind": "classList.add" }
+      ]
+    },
+    {
+      "name": "p-view-head",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 136, "kind": "classList.add" }
       ]
     },
     {
@@ -19417,8 +19784,8 @@
       "name": "preview-panning",
       "pattern": false,
       "occurrences": [
-        { "file": "site/app.js", "line": 1556, "kind": "classList.add" },
-        { "file": "site/app.js", "line": 1575, "kind": "classList.remove" }
+        { "file": "site/app.js", "line": 1563, "kind": "classList.add" },
+        { "file": "site/app.js", "line": 1582, "kind": "classList.remove" }
       ]
     },
     {
@@ -19445,7 +19812,7 @@
     {
       "name": "process-busy",
       "pattern": false,
-      "occurrences": [{ "file": "site/app.js", "line": 1108, "kind": "classList.toggle" }]
+      "occurrences": [{ "file": "site/app.js", "line": 1112, "kind": "classList.toggle" }]
     },
     {
       "name": "process-history-body",
@@ -20050,6 +20417,13 @@
       "occurrences": [{ "file": "site/ui-v2/overlay-manager.js", "line": 31, "kind": "className" }]
     },
     {
+      "name": "v2-real-view",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 134, "kind": "classList.add" }
+      ]
+    },
+    {
       "name": "view-maximized",
       "pattern": false,
       "occurrences": [
@@ -20065,6 +20439,13 @@
       "pattern": false,
       "occurrences": [
         { "file": "site/controllers/view-toolbar-controller.js", "line": 55, "kind": "className" }
+      ]
+    },
+    {
+      "name": "wc-button",
+      "pattern": false,
+      "occurrences": [
+        { "file": "site/ui-v2/real-view-bridge.js", "line": 142, "kind": "classList.add" }
       ]
     },
     {
@@ -20186,7 +20567,7 @@
     {
       "name": "welcome-project-preview",
       "pattern": false,
-      "occurrences": [{ "file": "site/app.js", "line": 69, "kind": "classList.add" }]
+      "occurrences": [{ "file": "site/app.js", "line": 71, "kind": "classList.add" }]
     },
     {
       "name": "wide",
@@ -20198,7 +20579,7 @@
     {
       "name": "workstation-boot",
       "pattern": false,
-      "occurrences": [{ "file": "site/app.js", "line": 1694, "kind": "classList.remove" }]
+      "occurrences": [{ "file": "site/app.js", "line": 1705, "kind": "classList.remove" }]
     },
     {
       "name": "workstation-compact-ui",
@@ -20454,40 +20835,40 @@
       "references": [
         {
           "file": "site/app.js",
-          "line": 122,
+          "line": 124,
           "source": "const confirmationDialog = createConfirmationDialogController({ root: document });"
         },
         {
           "file": "site/app.js",
-          "line": 538,
+          "line": 540,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
-        { "file": "site/app.js", "line": 973, "source": "confirmationDialog," },
+        { "file": "site/app.js", "line": 975, "source": "confirmationDialog," },
         {
           "file": "site/app.js",
-          "line": 1036,
-          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
-        },
-        {
-          "file": "site/app.js",
-          "line": 1100,
-          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
-        },
-        { "file": "site/app.js", "line": 1214, "source": "confirmationDialog.confirm({" },
-        {
-          "file": "site/app.js",
-          "line": 1284,
-          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
-        },
-        { "file": "site/app.js", "line": 1286, "source": "confirmationDialog.ask({" },
-        {
-          "file": "site/app.js",
-          "line": 1458,
+          "line": 1040,
           "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
         },
         {
           "file": "site/app.js",
-          "line": 1459,
+          "line": 1104,
+          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
+        },
+        { "file": "site/app.js", "line": 1218, "source": "confirmationDialog.confirm({" },
+        {
+          "file": "site/app.js",
+          "line": 1288,
+          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
+        },
+        { "file": "site/app.js", "line": 1290, "source": "confirmationDialog.ask({" },
+        {
+          "file": "site/app.js",
+          "line": 1462,
+          "source": "confirmAction: (options) => confirmationDialog.confirm(options),"
+        },
+        {
+          "file": "site/app.js",
+          "line": 1463,
           "source": "chooseAction: (options) => confirmationDialog.ask(options),"
         },
         {
@@ -24234,6 +24615,97 @@
       "kind": "MemberExpression"
     },
     {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 77,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 77,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 87,
+      "source": "document.documentElement.dataset.appReady",
+      "key": "appReady",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 112,
+      "source": "document.getElementById('threeHost').dataset.rendererFrameSerial",
+      "key": "rendererFrameSerial",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 113,
+      "source": "document.getElementById('threeHost').dataset.renderPhase",
+      "key": "renderPhase",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 250,
+      "source": "document.getElementById('mainCanvas').dataset.xPxPerUm",
+      "key": "xPxPerUm",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 293,
+      "source": "document.getElementById('threeHost').dataset.rendererFrameSerial",
+      "key": "rendererFrameSerial",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 294,
+      "source": "document.getElementById('threeHost').dataset.renderPhase",
+      "key": "renderPhase",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 313,
+      "source": "host.dataset.rendererFrameSerial",
+      "key": "rendererFrameSerial",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 314,
+      "source": "host.dataset.rendererDrawCalls",
+      "key": "rendererDrawCalls",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 315,
+      "source": "host.dataset.rendererDrawTriangles",
+      "key": "rendererDrawTriangles",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 316,
+      "source": "host.dataset.renderPhase",
+      "key": "renderPhase",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 338,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
       "file": "scripts/visual-baseline-regression.mjs",
       "line": 99,
       "source": "canvas.dataset.xPxPerUm",
@@ -24333,42 +24805,49 @@
     },
     {
       "file": "site/app.js",
-      "line": 70,
+      "line": 65,
+      "source": "document.documentElement.dataset.ui",
+      "key": "ui",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/app.js",
+      "line": 72,
       "source": "document.documentElement.dataset.previewView",
       "key": "previewView",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 756,
+      "line": 758,
       "source": "$('threeHost').dataset.renderError",
       "key": "renderError",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 759,
+      "line": 761,
       "source": "$('threeHost').dataset.renderError",
       "key": "renderError",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 1468,
+      "line": 1475,
       "source": "document.documentElement.dataset.previewPlanFraming",
       "key": "previewPlanFraming",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 1497,
+      "line": 1504,
       "source": "document.documentElement.dataset.previewView",
       "key": "previewView",
       "kind": "MemberExpression"
     },
     {
       "file": "site/app.js",
-      "line": 1693,
+      "line": 1704,
       "source": "document.documentElement.dataset.appReady",
       "key": "appReady",
       "kind": "MemberExpression"
@@ -26416,6 +26895,97 @@
       "kind": "MemberExpression"
     },
     {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 114,
+      "source": "host.dataset.adapter",
+      "key": "adapter",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 135,
+      "source": "panel.dataset.view",
+      "key": "view",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 140,
+      "source": "tools.dataset.slot",
+      "key": "slot",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 143,
+      "source": "control.dataset.size",
+      "key": "size",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 169,
+      "source": "stage.dataset.slot",
+      "key": "slot",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 171,
+      "source": "readout.dataset.slot",
+      "key": "slot",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 227,
+      "source": "max.dataset.viewPanel",
+      "key": "viewPanel",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 234,
+      "source": "event.target.closest('[data-action]')?.dataset.action",
+      "key": "action",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 263,
+      "source": "event.target.dataset.key",
+      "key": "key",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 264,
+      "source": "event.target.dataset.key",
+      "key": "key",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 281,
+      "source": "document.documentElement.dataset.appReady",
+      "key": "appReady",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 285,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 328,
+      "source": "document.body.dataset.ready",
+      "key": "ready",
+      "kind": "MemberExpression"
+    },
+    {
       "file": "site/ui-v2/shell-preview.js",
       "line": 18,
       "source": "document.body.dataset.ready",
@@ -28238,6 +28808,97 @@
       "source": "shell.getSlot(`view.${key}.stage`).append(child)"
     },
     {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 77,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 77,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 87,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.documentElement.dataset.appReady"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 112,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.rendererFrameSerial"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 113,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.renderPhase"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 250,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('mainCanvas').dataset.xPxPerUm"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 293,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.rendererFrameSerial"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 294,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.getElementById('threeHost').dataset.renderPhase"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 313,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.rendererFrameSerial"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 314,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.rendererDrawCalls"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 315,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.rendererDrawTriangles"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 316,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.renderPhase"
+    },
+    {
+      "file": "scripts/v2/check-d1-real-views.mjs",
+      "line": 338,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
       "file": "scripts/visual-baseline-regression.mjs",
       "line": 99,
       "kind": "dataset",
@@ -28379,77 +29040,84 @@
     },
     {
       "file": "site/app.js",
-      "line": 69,
+      "line": 65,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.documentElement.dataset.ui"
+    },
+    {
+      "file": "site/app.js",
+      "line": 71,
       "kind": "classList.add",
       "values": ["welcome-project-preview"],
       "source": "document.documentElement.classList.add('welcome-project-preview')"
     },
     {
       "file": "site/app.js",
-      "line": 70,
+      "line": 72,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.previewView"
     },
     {
       "file": "site/app.js",
-      "line": 756,
+      "line": 758,
       "kind": "dataset",
       "values": [],
       "source": "$('threeHost').dataset.renderError"
     },
     {
       "file": "site/app.js",
-      "line": 759,
+      "line": 761,
       "kind": "dataset",
       "values": [],
       "source": "$('threeHost').dataset.renderError"
     },
     {
       "file": "site/app.js",
-      "line": 1108,
+      "line": 1112,
       "kind": "classList.toggle",
       "values": ["process-busy"],
       "source": "button.classList.toggle('process-busy', disabled)"
     },
     {
       "file": "site/app.js",
-      "line": 1468,
+      "line": 1475,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.previewPlanFraming"
     },
     {
       "file": "site/app.js",
-      "line": 1497,
+      "line": 1504,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.previewView"
     },
     {
       "file": "site/app.js",
-      "line": 1556,
+      "line": 1563,
       "kind": "classList.add",
       "values": ["preview-panning"],
       "source": "canvas.classList.add('preview-panning')"
     },
     {
       "file": "site/app.js",
-      "line": 1575,
+      "line": 1582,
       "kind": "classList.remove",
       "values": ["preview-panning"],
       "source": "canvas.classList.remove('preview-panning')"
     },
     {
       "file": "site/app.js",
-      "line": 1693,
+      "line": 1704,
       "kind": "dataset",
       "values": [],
       "source": "document.documentElement.dataset.appReady"
     },
     {
       "file": "site/app.js",
-      "line": 1694,
+      "line": 1705,
       "kind": "classList.remove",
       "values": ["workstation-boot"],
       "source": "document.documentElement.classList.remove('workstation-boot')"
@@ -34395,6 +35063,188 @@
       "kind": "dataset",
       "values": [],
       "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 65,
+      "kind": "append",
+      "values": [],
+      "source": "select.append(option)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 68,
+      "kind": "append",
+      "values": [],
+      "source": "row.append(el('label', {}, label + ' ', select))"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 70,
+      "kind": "append",
+      "values": [],
+      "source": "bar.append(row)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 94,
+      "kind": "append",
+      "values": [],
+      "source": "contract.append(document.importNode(node, true))"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 114,
+      "kind": "dataset",
+      "values": [],
+      "source": "host.dataset.adapter"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 120,
+      "kind": "append",
+      "values": [],
+      "source": "content.append(el('p', { class: 'p-aux' }, 'This domain is not wired in D1.'))"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 134,
+      "kind": "classList.add",
+      "values": ["p-view", "v2-real-view"],
+      "source": "panel.classList.add('p-view', 'v2-real-view')"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 135,
+      "kind": "dataset",
+      "values": [],
+      "source": "panel.dataset.view"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 136,
+      "kind": "classList.add",
+      "values": ["p-panel-head", "p-view-head"],
+      "source": "header.classList.add('p-panel-head', 'p-view-head')"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 140,
+      "kind": "dataset",
+      "values": [],
+      "source": "tools.dataset.slot"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 142,
+      "kind": "classList.add",
+      "values": ["wc-button"],
+      "source": "control.classList.add('wc-button')"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 143,
+      "kind": "dataset",
+      "values": [],
+      "source": "control.dataset.size"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 169,
+      "kind": "dataset",
+      "values": [],
+      "source": "stage.dataset.slot"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 171,
+      "kind": "dataset",
+      "values": [],
+      "source": "readout.dataset.slot"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 172,
+      "kind": "append",
+      "values": [],
+      "source": "panel.append(\n            el('div', {\n              class: 'v2-real-overlays',\n              'data-slot': `view.${key}.overlays`,\n              hidden: true,\n            }),\n          )"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 180,
+      "kind": "append",
+      "values": [],
+      "source": "host.append(panel)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 227,
+      "kind": "dataset",
+      "values": [],
+      "source": "max.dataset.viewPanel"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 234,
+      "kind": "dataset",
+      "values": [],
+      "source": "event.target.closest('[data-action]')?.dataset.action"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 263,
+      "kind": "dataset",
+      "values": [],
+      "source": "event.target.dataset.key"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 264,
+      "kind": "dataset",
+      "values": [],
+      "source": "event.target.dataset.key"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 273,
+      "kind": "createElement",
+      "values": ["script"],
+      "source": "document.createElement('script')"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 278,
+      "kind": "append",
+      "values": [],
+      "source": "document.head.append(vendor)"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 281,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.documentElement.dataset.appReady"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 285,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 328,
+      "kind": "dataset",
+      "values": [],
+      "source": "document.body.dataset.ready"
+    },
+    {
+      "file": "site/ui-v2/real-view-bridge.js",
+      "line": 330,
+      "kind": "replaceChildren",
+      "values": [],
+      "source": "root.replaceChildren(\n      el(\n        'p',\n        { role: 'alert', class: 'p-aux' },\n        `D1 real views could not start: ${error.message}. Open app.html for the production workspace.`,\n      ),\n    )"
     },
     {
       "file": "site/ui-v2/shell-preview.js",

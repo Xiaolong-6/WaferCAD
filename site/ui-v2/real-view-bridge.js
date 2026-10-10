@@ -11,7 +11,7 @@
     main: ['mainPanel', 'mainCanvas', 'mainCoords'],
     mask: ['maskPanel', 'maskCanvas', 'maskCoords'],
     three: ['threePanel', 'threeHost', 'threeStats'],
-    section: ['sectionPanel', 'sectionCanvas', 'sectionCoords'],
+    section: ['sectionPanel', 'sectionCanvas', 'sectionRange'],
   });
   const state = {
     layout: 'a',
@@ -57,7 +57,11 @@
           'aria-label': `${label} split view`,
         });
         for (const key of viewState.singles) {
-          const option = el('option', { value: key }, key === 'three' ? '3D' : key[0].toUpperCase() + key.slice(1));
+          const option = el(
+            'option',
+            { value: key },
+            key === 'three' ? '3D' : key[0].toUpperCase() + key.slice(1),
+          );
           select.append(option);
         }
         select.value = state.splitViews[index];
@@ -71,7 +75,10 @@
       const maximized = state.maximize === key;
       button.textContent = maximized ? 'Restore' : 'Max';
       button.setAttribute('aria-pressed', String(maximized));
-      button.setAttribute('aria-label', `${maximized ? 'Restore' : 'Maximize'} ${key === 'three' ? '3D' : key} view`);
+      button.setAttribute(
+        'aria-label',
+        `${maximized ? 'Restore' : 'Maximize'} ${key === 'three' ? '3D' : key} view`,
+      );
     }
     notifyResize();
   }
@@ -97,11 +104,16 @@
   }
 
   function buildShell() {
+    window.WaferCadV2Icons.installSprite();
     const adapters = window.WaferCadV2DomainAdapters.create();
-    for (const id of registry.panels.map((key) => `panel.${key}`)
+    for (const id of registry.panels
+      .map((key) => `panel.${key}`)
       .concat(registry.processModes.map((key) => `panel.process.${key}`))) {
       adapters.register(id, {
-        mount(host) { host.dataset.adapter = 'unconnected'; return host; },
+        mount(host) {
+          host.dataset.adapter = 'unconnected';
+          return host;
+        },
         onShow(host) {
           const content = host.querySelector(':scope > [data-slot-content]');
           if (content && !content.firstChild)
@@ -122,22 +134,64 @@
           panel.classList.add('p-view', 'v2-real-view');
           panel.dataset.view = key;
           header.classList.add('p-panel-head', 'p-view-head');
-          header.querySelector(':scope > div:first-child')?.setAttribute('data-slot', `view.${key}.header`);
+          header
+            .querySelector(':scope > div:first-child')
+            ?.setAttribute('data-slot', `view.${key}.header`);
           tools.dataset.slot = `view.${key}.actions`;
+          for (const control of header.querySelectorAll('.mini-btn')) {
+            control.classList.add('wc-button');
+            control.dataset.size = 'sm';
+          }
+          for (const details of header.querySelectorAll('details')) {
+            const summary = details.querySelector(':scope > summary');
+            if (!summary) continue;
+            summary.setAttribute('aria-expanded', String(details.open));
+            details.addEventListener('toggle', () =>
+              summary.setAttribute('aria-expanded', String(details.open)),
+            );
+            summary.addEventListener('keydown', (event) => {
+              if (event.key !== 'ArrowDown') return;
+              event.preventDefault();
+              details.open = true;
+              queueMicrotask(() =>
+                [...details.querySelectorAll('button, input, select, summary')]
+                  .find((node) => node !== summary && node.checkVisibility() && !node.disabled)
+                  ?.focus(),
+              );
+            });
+            details.addEventListener('keydown', (event) => {
+              if (event.key !== 'Escape') return;
+              const owner = details.closest('.view-more-control') || details;
+              owner.open = false;
+              owner.querySelector(':scope > summary')?.focus({ preventScroll: true });
+            });
+          }
           stage.dataset.slot = `view.${key}.stage`;
           const readout = document.getElementById(readoutId);
           if (readout && panel.contains(readout)) readout.dataset.slot = `view.${key}.readout`;
+          panel.append(
+            el('div', {
+              class: 'v2-real-overlays',
+              'data-slot': `view.${key}.overlays`,
+              hidden: true,
+            }),
+          );
           // Native Section and ROI overlays stay attached to their original view.
           host.append(panel);
           return panel;
         },
-        onShow() { notifyResize(); },
+        onShow() {
+          notifyResize();
+        },
         onHide() {},
         destroy() {},
       });
     }
     shell = window.createWaferCadV2Workstation({
-      root, state, registry, adapters,
+      root,
+      state,
+      registry,
+      adapters,
       getProjectName: () => document.getElementById('projectNameInput')?.value || 'Untitled',
       homeUrl: './index.html',
       presentation: () => ({
@@ -153,20 +207,25 @@
   }
 
   function verifyNativeIdentity() {
-    return nativeStages.size === 4 &&
-      [...nativeStages].every(([key, stage]) =>
-        stage.isConnected &&
-        document.getElementById(nativeIds[key][1]) === stage &&
-        shell.getSlot(`view.${key}.stage`) === stage
+    return (
+      nativeStages.size === 4 &&
+      [...nativeStages].every(
+        ([key, stage]) =>
+          stage.isConnected &&
+          document.getElementById(nativeIds[key][1]) === stage &&
+          shell.getSlot(`view.${key}.stage`) === stage,
       ) &&
-      new Set([...nativeStages.values()]).size === 4;
+      new Set([...nativeStages.values()]).size === 4
+    );
   }
 
   function handleClick(event) {
     const max = event.target.closest('.view-max-btn');
     if (max && root.contains(max)) {
       event.preventDefault();
-      const key = Object.keys(nativeIds).find((item) => nativeIds[item][0] === max.dataset.viewPanel);
+      const key = Object.keys(nativeIds).find(
+        (item) => nativeIds[item][0] === max.dataset.viewPanel,
+      );
       if (!key) return;
       state.maximize = state.maximize === key ? null : key;
       render();
@@ -183,11 +242,11 @@
       state.view = value;
       state.mode = 'single';
       state.maximize = null;
-      viewState.remember(window, value, state.splitViews);
+      viewState.remember(window, state.view, state.splitViews);
     } else if (kind === 'mode' && registry.viewModes.some((item) => item.key === value)) {
       state.mode = value;
       state.maximize = null;
-      viewState.remember(window, value, state.splitViews);
+      viewState.remember(window, value === 'single' ? state.view : value, state.splitViews);
     } else if (kind === 'section') state.section = !state.section;
     else if (kind === 'mobile-section') {
       state.view = 'section';
@@ -221,7 +280,8 @@
     await import('../app.js');
     if (document.documentElement.dataset.appReady !== 'true')
       throw Error('Real application bootstrap never reached appReady.');
-    if (!verifyNativeIdentity()) throw Error('A native scientific stage was replaced during bootstrap.');
+    if (!verifyNativeIdentity())
+      throw Error('A native scientific stage was replaced during bootstrap.');
     document.body.dataset.ready = 'true';
     window.WaferCadV2RealBridge.ready = true;
     render();
@@ -232,15 +292,22 @@
     if (!response.ok) throw Error(`Unable to load real view contract: HTTP ${response.status}`);
     attachNativeContract(await response.text());
     buildShell();
-    if (!verifyNativeIdentity()) throw Error('Real view host identity failed before controller bind.');
+    if (!verifyNativeIdentity())
+      throw Error('Real view host identity failed before controller bind.');
     window.WaferCadV2RealBridge = {
       ready: false,
       workstationController: Object.freeze({ bind() {} }),
-      openProcessPanel: () => { state.domain = 'process'; render(); },
+      openProcessPanel: () => {
+        state.domain = 'process';
+        render();
+      },
       verifyNativeIdentity,
       getSlot: (name) => shell.getSlot(name),
       render,
-      destroy: () => { destroyed = true; shell.destroy(); },
+      destroy: () => {
+        destroyed = true;
+        shell.destroy();
+      },
     };
     root.addEventListener('click', handleClick);
     root.addEventListener('change', handleChange);
@@ -260,7 +327,12 @@
     console.error('WaferCAD D1 real-view bootstrap:', error);
     document.body.dataset.ready = 'error';
     if (shell) shell.destroy();
-    root.replaceChildren(el('p', { role: 'alert', class: 'p-aux' },
-      `D1 real views could not start: ${error.message}. Open app.html for the production workspace.`));
+    root.replaceChildren(
+      el(
+        'p',
+        { role: 'alert', class: 'p-aux' },
+        `D1 real views could not start: ${error.message}. Open app.html for the production workspace.`,
+      ),
+    );
   });
 })();

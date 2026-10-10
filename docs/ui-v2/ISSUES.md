@@ -35,9 +35,9 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 
 ## D1 实施期间新增待验收项（2026-10-10）
 
-| ID | 发现与风险 | 处理要求 | 状态 |
-| --- | --- | --- | --- |
-| I16 | D1 已提交独立 `app-v2-real.html` 的真实视图装配实验：复用现有 DOM/canvas/控制器，`app.js` 在 v2 标记下使用单一 bootstrap。当前无可执行工作区，真实 Chrome/Playwright、WebGL、像素几何、M1.5 视觉及旧入口回归**尚未运行**；原生 view-head 暂未转为最终共享 chrome，`app-v2.html` 仍为 mock。 | 严格执行 `scripts/v2/check-d1-real-views.mjs` 及原有回归，复核生成库存、四宽度截图、真实 pointer/ROI ≤0.25px、浮层键盘与焦点、3D 完整帧；修复并复验后再决定是否替换 mock 入口，不得直接批准 D1。完整步骤见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md)。 | **P1 / D1 未通过；D2 不得启动** |
+| ID  | 发现与风险                                                                                                                                                                                                                                                                                                                                                                                   | 处理要求                                                                                                                                                                                                                                                   | 状态                                                      |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| I16 | D1 已提交独立 `app-v2-real.html` 的真实视图装配实验：复用现有 DOM/canvas/控制器，`app.js` 在 v2 标记下使用单一 bootstrap。已取得可执行工作区并补跑 Chromium、软件 WebGL、Main 指针 ROI、四档截图及旧入口回归；修复可见布局、Single 刷新、Section readout 和键盘焦点。完整几何、共享 toolbar/portal 及批准平台视觉仍未通过；原生 view-head 暂未转为最终共享 chrome，`app-v2.html` 仍为 mock。 | 严格执行 `scripts/v2/check-d1-real-views.mjs` 及原有回归，复核生成库存、四宽度截图、真实 pointer/ROI ≤0.25px、浮层键盘与焦点、3D 完整帧；修复并复验后再决定是否替换 mock 入口，不得直接批准 D1。完整步骤见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md)。 | **P1 / 部分 runtime gate 通过，D1 仍未通过；D2 不得启动** |
 
 ## M3 前置 main 审计差异（2026-10-10）
 
@@ -49,11 +49,11 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 | I12 | `site/app-v2.html` 仍运行 mock，`site/ui-v2/app.html` 是未接生产服务的 shell，`site/app.html` 是真正产品入口。v2 没有已验证的独立生产 bootstrap；可能发生 double-bind 或仍展示演示数据。                                                | 建议稳定 `site/app-v2.html` 做未来生产 route；保留单独 mock/gallery 入口。先定义 shell-first / single-owner / mount→bind→restore 契约，D1 需真实运行时验证；不得擅自切默认入口。        | **P1 / D1 设计前置**，待 D1 批准                                                                                                                                      |
 | I13 | 源分支 `codex/ui-v2-m2-handoff-2026-10-09` 当前 `e706f38`，比远端 `main` `dc2cb2d` **领先 99 commits**；`main` 没有 `site/app-v2.html` 或 `docs/ui-v2/`。历史文档“已合并 main”的措辞与现在远端状态不符。                                | 按用户指定从源分支开 M3 分支，不合并 main；下个域启动前重新比对远端，另行获准方可进行最终集成。                                                                                         | **P1 / 集成事实已确认；合入主线未获授权**                                                                                                                             |
 | I14 | `main` 已纳入 4,725-site TiO₂ full-array Welcome 项目及 Lift-off / Geometry Diagnostics；巨型数组恢复和报告 partial/stale、Recipe/History 源 ID、renderer ready 与完整帧之间存在跨域契约。                                              | D3/D4/D5/D6/D8/D9 各自加入实际源工程场景；确认 full array 的 compiled grid 不代表 full Recipe Run All；Diagnostics 不能将 skipped/partial 检查说成无问题。只读科学/worker/IO 保持不变。 | **P1 / 映射已录，runtime 待 M3**                                                                                                                                      |
-| I15 | 当前审计环境无可用本地工作区；只有 GitHub API 源码读取和引用对比，不能执行 `npm ci`、AST 生成、Node/浏览器或视觉验收；用户计划中的“重新跑契约”尚缺执行证据。                                                                            | 在 D1 前取得可执行 checkout，实际执行且记录命令、退出码、浏览器/OS 与清单差异。既有 60 shell checks 是历史报告，不当作本分支重新跑出的结果。                                            | **已关闭执行环境缺口**：npm ci、8 项契约、60 项壳层、585 项 Node、legacy 浏览器、lint/docs 已实跑；D1 仍未启动                                                        |
+| I15 | 当前审计环境无可用本地工作区；只有 GitHub API 源码读取和引用对比，不能执行 `npm ci`、AST 生成、Node/浏览器或视觉验收；用户计划中的“重新跑契约”尚缺执行证据。                                                                            | 在 D1 前取得可执行 checkout，实际执行且记录命令、退出码、浏览器/OS 与清单差异。既有 60 shell checks 是历史报告，不当作本分支重新跑出的结果。                                            | **已关闭执行环境缺口**：npm ci、8 项契约、60 项壳层、585 项 Node、legacy 浏览器、lint/docs 已实跑；D1 执行现见 I16                                                    |
 
 ### M3 检查点纪律
 
-- 当前分支：`codex/ui-v2-m3-main-audit-20261010`，初始基点 `e706f38`。静态审计后已补齐可执行前置审计，详见主报告 §7；**没有启动 D1**。
+- 当前分支：`codex/ui-v2-m3-main-audit-20261010`，初始基点 `e706f38`。静态审计后已补齐可执行前置审计，详见主报告 §7；该句是前置审计历史状态；现已启动 D1，验收仍开放。
 - D1 前置决策与运行时审计必须汇报并获用户批准；每域开始记录回滚基点 commit，不打 tag；同样的批准门槛适用于 D2–D9。
 - BC-03–BC-08 由其指定 M3 域验收覆盖，不新增 mock 功能作为替代，不改已批准视觉基线。
 
@@ -62,5 +62,9 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 - I08 的旧“5 个未解析”是 M0 历史值：本轮 AST 实际为 14，其中 7 来自 legacy、7 来自 v2/原型。全部已映射到 helper/guide 的所有者，仍需对应域条件场景验收，不宣告动态迁移覆盖。
 - I12：两个 v2 route 实测各自隔离，37 个槽位身份与 scientific stage sentinel 子节点保持。生产空壳仍为零 canvas、13 个 placeholder adapter；单一真实 bootstrap 未实现。具体 shell-first→服务/控制器→bind once→restore/first-frame 设计见主报告 §7。
 - I13：新 fetch 的 main/source hash 未变；输入审计 HEAD 比 main 领先 102（99 源提交 + 3 审计提交），没有合并。
-- I16：原 `check-m2-shell.mjs` 在 CDP 导航开始后直接读取 `document.body.dataset`，body 尚不存在时抛 TypeError。已用 optional chaining 保持原 ready 谓词等待，60 项原断言全部通过。只修验收脚本，无产品变更。
+- I15 前置脚本修订（历史）：原 `check-m2-shell.mjs` 在 CDP 导航开始后直接读取 `document.body.dataset`，body 尚不存在时抛 TypeError。已用 optional chaining 保持原 ready 谓词等待，60 项原断言全部通过。只修验收脚本，无产品变更。
 - Linux headless Chromium 证据不替代 Windows approved pixels、真实 GPU 或 real D1 pointer/canvas/transaction 验收。
+
+### D1 运行时复验更新
+
+详见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md) 的 Executable inspection。AST 最新 267 IDs / 214 classes / 1109 operations / 60 dynamic IDs / 14 unresolved；I11 旧数字保留为前置审计历史。I12 已有隔离真实 bootstrap，尚未获准替换 mock；I06 仅 Main 矩形 pointer 回算通过，不宣告真实 Main↔3D 边界对齐或旧 CI 根因关闭。科学核心、持久化与生产入口没有本轮修改。

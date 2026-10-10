@@ -3,6 +3,19 @@
   display: none;
 }
 
+/* Legacy IDs have named grid areas. The v2 grid owns placement by view order. */
+html[data-v2-m3='d1-experimental']
+  .p-canvases
+  > :is(#mainPanel, #maskPanel, #threePanel, #sectionPanel) {
+  grid-area: auto;
+}
+
+html[data-v2-m3='d1-experimental']
+  .p-canvases[data-mode='split'][data-maximized='false']
+  > #sectionPanel {
+  grid-column: 1 / -1;
+}
+
 html[data-v2-m3='d1-experimental'] .p-canvases > .v2-real-view {
   display: flex;
   flex-direction: column;
@@ -68,6 +81,22 @@ html[data-v2-m3='d1-experimental'] .v2-real-view > #threeHost > canvas {
 
 html[data-v2-m3='d1-experimental'] .v2-real-view .view-max-btn {
   flex: 0 0 auto;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-real-view .view-head strong {
+  font-size: var(--wc-font-body);
+}
+
+html[data-v2-m3='d1-experimental'] .v2-real-view .wc-button {
+  height: auto;
+  min-height: var(--wc-control-sm);
+  font-size: var(--wc-font-body);
+  font-family: var(--wc-font);
+}
+
+html[data-v2-m3='d1-experimental'] .v2-real-view > .section-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 html[data-v2-m3='d1-experimental'] .v2-real-view > .view-canvas-readout {
