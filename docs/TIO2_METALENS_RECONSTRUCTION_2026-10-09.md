@@ -1,5 +1,49 @@
 # TiO₂ metalens paper-derived reconstruction — experimental
 
+## 2026-10-10 current merge-gate result — true full-array Run All
+
+> This dated follow-up supersedes the earlier **unverified full-array Run All**
+> status recorded in the sections below. The earlier paragraphs remain as
+> revision-specific provenance; they are not current release limitations.
+
+On PR [#173](https://github.com/Xiaolong-6/WaferCAD/pull/173),
+the actual Welcome 4,725-site / 80 × 80 GRID example has passed
+**Process → Recipe → Rebuild Base first (new Main) → Run All (9/9)**
+in real Chromium, followed by project export. The dedicated full-grid-replay
+job passed on commit `7af67f0` in
+[TiO₂ reconstruction CI run 38031568133](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38031568133).
+The 9-Step processing phase took approximately 19 seconds on that runner;
+this is an observation, not a cross-device performance SLA.
+
+The acceptance verifies all **6,400 canonical cell positions**, including
+**4,725 active TiO₂ sites and 1,675 background sites**, exact matching
+60,232-polygon exportable Mask, unchanged editable nine-step Recipe,
+and a fresh Main History with all nine committed operations.
+Five materials were compared over **602 material/Z slabs** for the distinct
+source/rebuilt template pairs, with a largest XY occupancy mismatch of
+`0.00007636 µm²` (**76.36 nm²**). The per-template physical acceptance
+bound is derived from the TiO₂ footprint perimeter and the published
+`0.0001 µm` (0.1 nm) XY coordinate quantum, with a 10% numerical
+margin and an absolute 150 nm² ceiling. All verified pairs meet these
+bounds; this is **storage-quantized XY/Z material equivalence**, not
+byte-for-byte polygon coordinate identity. Topological checks for ring
+holes and bipolar gaps are separately retained.
+
+The original stored History remains **Kernel-compiled from the 49
+processed local templates**. The newly verified 9/9 replay independently
+executes the whole-array Recipe from Base. The existing compact example
+asset stays byte-preserved; a strictly checked `rect-grid` Base inference
+rebuilds its canonical 80 × 80 array. Regular circular-wafer recipes
+retain their original semantics. The sparse spatial Mask path avoids
+the earlier global Boolean union of roughly 60k polygons and duplicate
+Mask transfers to the worker.
+
+**Scientific boundary:** the array site positions and sizes are
+illustrative; neither the authors' full original mask nor numerical
+achromatic optical performance was reconstructed. This is a Kernel
+geometry/Recipe acceptance only.
+
+
 The subsequent full-array loading optimization and controlled measurements are recorded in [performance follow-up](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
 
 Primary source: Wang et al., _Nature Communications_ **12**, 5560 (2021), DOI [10.1038/s41467-021-25797-9](https://doi.org/10.1038/s41467-021-25797-9). Source of process details: Supplementary Note 4 in the published supporting information.
