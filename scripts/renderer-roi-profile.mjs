@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import {
   launchOptions,
   newUiContext,
@@ -104,6 +105,16 @@ try {
   await waitForThreeReady(page, 180000);
   await changed(() => page.locator('#threeFastBtn').selectOption('quality'));
   await changed(() => page.locator('#threeOpacityRange').fill('0.5'));
+  result.backend = classifyWebglBackend(
+    await page.locator('#threeHost canvas').evaluate((canvas) => {
+      const gl = canvas.getContext('webgl2');
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        renderer: gl.getParameter(gl.RENDERER),
+        unmaskedRenderer: info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : null,
+      };
+    }),
+  );
   if (afterTransitions) {
     result.stage = 'preceding-presentation-and-camera';
     for (let i = 0; i < 10; i++) {
@@ -159,7 +170,8 @@ try {
   );
   const rect = await page.locator('#mainCanvas').boundingBox();
   assert.ok(rect && rect.width > 0 && rect.height > 0);
-  const before = Number((await state()).host.rendererFrameSerial || 0);
+  result.preRoiState = await state();
+  const before = Number(result.preRoiState.host.rendererFrameSerial || 0);
   session = await context.newCDPSession(page);
   await session.send('Profiler.enable');
   await session.send('Profiler.setSamplingInterval', { interval: 1000 });
