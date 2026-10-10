@@ -19,7 +19,9 @@ import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
 function materialFootprintPerimeter(model, name, vectorApi) {
-  const ids = new Set((model.layers || []).filter((layer) => layer.name === name).map((layer) => layer.id));
+  const ids = new Set(
+    (model.layers || []).filter((layer) => layer.name === name).map((layer) => layer.id),
+  );
   const geoms = (model.regions || [])
     .filter((region) => region.stack.some((segment) => ids.has(segment.layerId)))
     .map((region) => region.geom);
@@ -69,10 +71,7 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
     // to first order. Allow a 10% numeric margin, capped at 150 nm² per slab.
     // This remains sensitive to a missing meta-atom or a filled annular gap.
     const perimeterUm = materialFootprintPerimeter(expectedLeaf, 'TiO2', vectorApi);
-    const areaToleranceUm2 = Math.max(
-      1e-7,
-      Math.min(1.5e-4, 1.1e-4 * perimeterUm),
-    );
+    const areaToleranceUm2 = Math.max(1e-7, Math.min(1.5e-4, 1.1e-4 * perimeterUm));
     let comparison;
     try {
       comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf, {
