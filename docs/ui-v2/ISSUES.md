@@ -72,3 +72,10 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 ### D1 extended gate follow-up (`c960107` input)
 
 已实跑新 gate 并修复 390px Mask ROI 打开时关闭自身 More 祖先的真实缺陷；保留原始节点与几何算法。工具栏已有原生 Fit / Main Pan / Main+Mask Zoom / More / Max 图标、顺序和尺寸统一，Zoom 实际缩放验证通过；3D/Section 通用动作与完整 M1.5 一致性仍开放。Section Detail ≤0.25px、Z Break 原生 modal/inline 的 Escape/Close/背景关闭与回挂已验证，不能代替独立物理 Z、旋转 Mask、全部 portal 场景。最新 AST 为 267 IDs / 215 classes / 1114 operations / 60 dynamic IDs / 14 unresolved。I16 仍为 D1 未通过；D2 未启动。完整环境、命令及范围见 [D1 report](M3_D1_EXECUTION_2026-10-10.md)。
+
+### D1 follow-up after `096def1` — code pushed; real-browser gate pending
+
+- Added opt-in, actual Three camera Pan/Zoom through the existing `threeView` getters/setters and v2-only UI owner; no renderer/worker/process/model duplication, default OrbitControls remains available. New `check-d1-three-gestures.mjs` gate must verify real camera behavior at four widths on Base/Photodetector/M3D. Static V8 math invariants were checked; **these browser/Node tests have not run on the new HEAD**.
+- Base Section 1:1 X:Z calibration assertion added to `check-d1-extended.mjs` using native toggle, original Slice inputs, canvas DOMRect and 0.25px threshold; the widened gate is currently **unverified**, including the 390px narrow case. No scientific compositor modifications.
+- Remaining I16 D1 blockers: original Section lacks a verified real Pan/Zoom viewport API; native controller popover and modal nodes do not yet have a unified v2 portal lifecycle; rotated/transformed Mask and full independent Section physical Z / Main↔3D registration remain; M1.5 four-width full visual parity, Windows/real GPU evidence, and route convergence remain open.
+- D1 status: **NOT ACCEPTED**. Historical 585/8/60 and six fixture browser passes were obtained before the above source changes; rerun all required gates and deterministic AST generation before any pass claim. No D2, main merge or visual baseline changes.
