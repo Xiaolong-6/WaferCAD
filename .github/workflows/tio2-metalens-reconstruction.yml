@@ -35,6 +35,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Review exact Prettier changes for sparse Mask path (temporary)
+        run: |
+          npx prettier --write site/mask-instance-index.js site/process-worker.js site/selection-geometry.js site/model.js site/model-array-process.js site/tests/mask-instance-index.test.mjs
+          git --no-pager diff --unified=1 -- site/mask-instance-index.js site/process-worker.js site/selection-geometry.js site/model.js site/model-array-process.js site/tests/mask-instance-index.test.mjs
       - name: Probe scale-safe array templates at 8x8 and 25x25
         run: |
           node scripts/tio2-metalens-array-scale.mjs --grid=8
