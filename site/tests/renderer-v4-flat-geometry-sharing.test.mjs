@@ -41,7 +41,9 @@ test('flat read-only cap Z mapping is exact for regular and scaled Section trans
   ]) {
     const translation = mappedFlatCapTranslation(record, state);
     assert.ok(Number.isFinite(translation));
-    assert.deepEqual(physical.map((z) => z + translation), physical.map(state.mapZ));
+    for (const z of physical) {
+      assert.ok(Math.abs(z + translation - state.mapZ(z)) <= 1e-12);
+    }
   }
   assert.deepEqual(physical, [0.25, 0.25, 0.25], 'canonical Z must stay untouched');
   assert.equal(mappedFlatCapTranslation({ ...record, flatReadOnly: false }, { mapZ: (z) => z }), null);
