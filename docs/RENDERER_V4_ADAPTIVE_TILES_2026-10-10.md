@@ -90,6 +90,27 @@ acceptance stage.
   edge-on, Section transforms, rough exclusion, and scientific-data
   immutability.
 
+### R2 camera-interaction follow-up
+
+The initial 625-site Fast transparent Chromium/SwiftShader browser acceptance
+found 130 tiles and exact R1/R2 same-pose pixel parity (**0/146,025**
+different pixels). CPU cache preparation had one miss, as expected; actual
+OrbitControls movement later produced **22 cache hits** and 22 sampled camera
+projections, proving real plan reuse. The post-drag frame sequence took
+minutes on SwiftShader because camera damping continues issuing expensive
+full-wafer redraws. This is evidence of an interaction bottleneck, not a
+GPU performance improvement.
+
+A separate default-off pilot, `?rendererV4HeavyCameraNoDamping=1`, disables
+inertial damping only when transparent, at least 64 array instances, and
+at least 5 million triangles are measured in the last rendered frame.
+It does not change the mesh pipeline, draw submissions or scientific
+coordinates. Missing/nonfinite counters fail closed. The paired browser R2
+arm combines that flag with `?rendererV4TileCache=1`, asserts the policy
+is active after a real drag and records camera-move-to-cache-hit latency.
+Preserve ordinary camera easing outside this explicitly gated experiment.
+Do not use a one-off software-WebGL interaction time as hardware proof.
+
 **Limitations**: tile IDs are scoped to an individual source plan epoch.
 R2 does not have GPU tile ownership, geometry error bounds, cancellation,
 progressive refinement, proven draw-call reductions or hardware performance
