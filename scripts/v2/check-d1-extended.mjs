@@ -407,7 +407,11 @@ try {
       await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
       const zoomDrag = await drag('#sectionCanvas', 0.4, 0.4, 0.4, 0.32);
       const fitAfterZoom = await measureSection();
-      const zoomRatio = Math.exp((zoomDrag.from.y - zoomDrag.to.y) * 0.009);
+      // Chromium reports pointer client coordinates at float32 precision.
+      // Match the actual gesture input, not Playwright's double-precision target.
+      const zoomRatio = Math.exp(
+        (Math.fround(zoomDrag.from.y) - Math.fround(zoomDrag.to.y)) * 0.009,
+      );
       assert.ok(
         Math.abs(fitAfterZoom.zoom - zoomRatio) <= 1e-9,
         `Zoom mismatch: ${JSON.stringify({ fitAfterPan, fitAfterZoom, zoomDrag, zoomRatio })}`,
