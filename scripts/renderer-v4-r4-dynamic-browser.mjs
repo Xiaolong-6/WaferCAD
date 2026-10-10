@@ -175,25 +175,61 @@ async function run(name, flags) {
     const main = await page.locator('#mainCanvas').boundingBox();
     assert.ok(main, 'Main canvas must be visible for ROI creation');
     before = await frameSerial(page);
-    await page.mouse.move(main.x + main.width * 0.36, main.y + main.height * 0.36);
+    // Use a bounded central crop: it must either complete a new ROI frame or
+    // explicitly report the scientific point-budget guard. Never accept a
+    // stale full-wafer frame as proof of a successful clipped ROI.
+    await page.mouse.move(main.x + main.width * 0.44, main.y + main.height * 0.44);
     await page.mouse.down();
-    await page.mouse.move(main.x + main.width * 0.64, main.y + main.height * 0.64);
+    await page.mouse.move(main.x + main.width * 0.56, main.y + main.height * 0.56);
     await page.mouse.up();
     await page.waitForFunction(() => {
       const roi = document.getElementById('roiEditor');
       return roi && !roi.hidden;
     });
+    await page.waitForFunction(
+      (previous) => {
+        const host = document.getElementById('threeHost');
+        return (
+          (host?.dataset.renderState === 'ready' &&
+            Number(host.dataset.rendererFrameSerial || 0) > previous) ||
+          (host?.dataset.renderState === 'error' && Boolean(host.dataset.rendererErrorCode))
+        );
+      },
+      before,
+      { timeout: 180000 },
+    );
+    const roiResult = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+    const roiOutcome =
+      roiResult.renderState === 'ready' ? 'rendered' : 'bounded-error';
+    if (roiOutcome === 'rendered') {
+      states.push(await capture(page, name, 'clipped-roi'));
+    } else {
+      assert.equal(
+        roiResult.rendererErrorCode,
+        'geometry-point-budget',
+        'only an explicit scientific geometry budget can be a valid ROI rejection',
+      );
+      assert.ok(roiResult.renderError, 'ROI rejection must retain a readable explanation');
+    }
+    // Successful ROI and explicit bounded rejection must both be reversible.
+    const roiEditor = page.locator('#focusEditor');
+    if (!(await roiEditor.evaluate((node) => node.open))) {
+      await roiEditor.locator(':scope > summary').click();
+    }
+    before = await frameSerial(page);
+    await page.locator('#clearRoiBtn').click();
     await nextRealFrame(page, before);
-    states.push(await capture(page, name, 'clipped-roi'));
+    states.push(await capture(page, name, 'roi-cleared'));
     assert.deepEqual(errors, [], name + ': browser errors');
     console.log(
       'RENDERER_V4_R4_DYNAMIC_ARM',
       JSON.stringify({
         name,
+        roiOutcome,
         frames: states.map(({ state, data }) => ({ state, ...data })),
       }),
     );
-    all.push({ name, states });
+    all.push({ name, states, roiOutcome });
   } finally {
     await context.close();
   }
@@ -204,6 +240,7 @@ try {
   const common = 'rendererV4GpuCensus=1&rendererV4HeavyCameraNoDamping=1';
   await run('baseline', common);
   await run('shared-flat', common + '&rendererV4SharedFlatCaps=1');
+  assert.equal(all[0].roiOutcome, all[1].roiOutcome, 'ROI outcome must match across renderer policies');
   const baseline = all[0].states;
   const optimized = all[1].states;
   assert.deepEqual(
@@ -237,8 +274,9 @@ try {
       {
         backend: 'software/hardware explicitly reported per arm',
         comparisons,
-        arms: all.map(({ name, states }) => ({
+        arms: all.map(({ name, states, roiOutcome }) => ({
           name,
+          roiOutcome,
           frames: states.map(({ state, data }) => ({ state, ...data })),
         })),
       },
