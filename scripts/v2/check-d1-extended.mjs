@@ -371,28 +371,35 @@ try {
       const sectionMore = page.locator('#sectionPanel .view-more-control');
       if (await sectionMore.evaluate((node) => node.open))
         await sectionMore.locator(':scope > summary').click();
-      const measureSection = () => page.evaluate(() => {
-        const c = document.getElementById('sectionCanvas');
-        const d = c.dataset;
-        return {
-          x: Number(d.sectionPlotLeft), y: Number(d.sectionFrameTop),
-          sx: Number(d.xPxPerUm), sz: Number(d.zPxPerUm),
-          zoom: Number(d.sectionViewportZoom),
-          panX: Number(d.sectionViewportPanX), panY: Number(d.sectionViewportPanY),
-          owner: window.WaferCadV2RealBridge.getSlot('view.section.stage') === c,
-          physical: [document.getElementById('sectionAx').value,
-            document.getElementById('sectionAy').value,
-            document.getElementById('sectionBx').value,
-            document.getElementById('sectionBy').value],
-        };
-      });
+      const measureSection = () =>
+        page.evaluate(() => {
+          const c = document.getElementById('sectionCanvas');
+          const d = c.dataset;
+          return {
+            x: Number(d.sectionPlotLeft),
+            y: Number(d.sectionFrameTop),
+            sx: Number(d.xPxPerUm),
+            sz: Number(d.zPxPerUm),
+            zoom: Number(d.sectionViewportZoom),
+            panX: Number(d.sectionViewportPanX),
+            panY: Number(d.sectionViewportPanY),
+            owner: window.WaferCadV2RealBridge.getSlot('view.section.stage') === c,
+            physical: [
+              document.getElementById('sectionAx').value,
+              document.getElementById('sectionAy').value,
+              document.getElementById('sectionBx').value,
+              document.getElementById('sectionBy').value,
+            ],
+          };
+        });
       await clickControl('#sectionPanel', '[data-action="v2-section-fit"]');
       const fitBefore = await measureSection();
       assert.equal(fitBefore.zoom, 1);
       await clickControl('#sectionPanel', '[data-action="v2-section-pan"]');
       const panDrag = await drag('#sectionCanvas', 0.4, 0.4, 0.5, 0.5);
       const fitAfterPan = await measureSection();
-      const dx = panDrag.to.x - panDrag.from.x, dy = panDrag.to.y - panDrag.from.y;
+      const dx = panDrag.to.x - panDrag.from.x,
+        dy = panDrag.to.y - panDrag.from.y;
       assert.ok(Math.abs(fitAfterPan.x - fitBefore.x - dx) <= 0.25);
       assert.ok(Math.abs(fitAfterPan.y - fitBefore.y - dy) <= 0.25);
       assert.ok(Math.abs(fitAfterPan.sx - fitBefore.sx) <= 1e-9);
@@ -416,13 +423,35 @@ try {
       // cancels Detail drawing through the original controller.
       await clickControl('#sectionPanel', '[data-action="v2-section-pan"]');
       await clickControl('#sectionPanel', '#sectionDetailRoiBtn');
-      assert.equal(await page.locator('[data-action="v2-section-pan"]').getAttribute('aria-pressed'), 'false');
-      assert.equal(await page.locator('#sectionCanvas').evaluate((c) => c.classList.contains('section-detail-drawing')), true);
+      assert.equal(
+        await page.locator('[data-action="v2-section-pan"]').getAttribute('aria-pressed'),
+        'false',
+      );
+      assert.equal(
+        await page
+          .locator('#sectionCanvas')
+          .evaluate((c) => c.classList.contains('section-detail-drawing')),
+        true,
+      );
       await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
-      assert.equal(await page.locator('#sectionCanvas').evaluate((c) => c.classList.contains('section-detail-drawing')), false);
-      assert.equal(await page.locator('[data-action="v2-section-zoom"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(
+        await page
+          .locator('#sectionCanvas')
+          .evaluate((c) => c.classList.contains('section-detail-drawing')),
+        false,
+      );
+      assert.equal(
+        await page.locator('[data-action="v2-section-zoom"]').getAttribute('aria-pressed'),
+        'true',
+      );
       await clickControl('#sectionPanel', '[data-action="v2-section-zoom"]');
-      evidence.widths.at(-1).sectionGesture = { fitBefore, fitAfterPan, fitAfterZoom, fitRestored, toolModes: 'exclusive' };
+      evidence.widths.at(-1).sectionGesture = {
+        fitBefore,
+        fitAfterPan,
+        fitAfterZoom,
+        fitRestored,
+        toolModes: 'exclusive',
+      };
     }
 
     // A maximized desktop Section must exercise the inline path as well as
@@ -468,7 +497,10 @@ try {
     assert.equal(await page.locator('#mainPanel .view-more-control').evaluate((d) => d.open), true);
     await page.locator('[data-action="view:mask"]').click();
     await page.waitForFunction(() => !document.querySelector('#mainPanel .view-more-control').open);
-    assert.equal(await page.locator('#mainPanel .view-more-control').evaluate((d) => d.open), false);
+    assert.equal(
+      await page.locator('#mainPanel .view-more-control').evaluate((d) => d.open),
+      false,
+    );
     await page.locator('#maskPanel .view-more-control > summary').click();
     assert.equal(await page.locator('#maskPanel .view-more-control').evaluate((d) => d.open), true);
     await page.locator('[data-action="view:main"]').click();
