@@ -817,9 +817,20 @@ export function createThreeView({
         host.dataset.sceneVariant === 'transparent' &&
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
+      const wasDampingEnabled = Boolean(controls?.enableDamping);
       if (controls) controls.enableDamping = !heavyExactTransparency;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
-      const changed = controls?.update?.() || false;
+      // OrbitControls already updates the camera on pointer/fit/setViewState.
+      // Calling update() on every *idle* exact frame, with damping disabled,
+      // repeatedly round-trips Cartesian/spherical floats and can shift a
+      // subpixel transparent edge between otherwise identical GL submissions.
+      // Keep the single update on damping-mode transitions and normal drag,
+      // but hold the completed camera pose constant between idle frames.
+      const needsCameraUpdate =
+        interacting ||
+        Boolean(controls?.enableDamping) ||
+        wasDampingEnabled !== Boolean(controls?.enableDamping);
+      const changed = needsCameraUpdate ? controls?.update?.() || false : false;
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
