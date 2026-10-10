@@ -1,5 +1,5 @@
-// Phase B.1 same-run ON/OFF/FF/ON trial of exact indexed transparent
-// material walls. Never enables this experimental display path for users.
+// Same-run A/B experiments for Quality indexing, raster-discard profiling,
+// and final-frame-only assembly. All product experiments remain default-off.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, URLSearchParams } from 'node:url';
@@ -17,8 +17,15 @@ import {
 
 const gpuProfile = process.argv.includes('--gpu-profile');
 const finalFrameOnly = process.argv.includes('--final-frame-only');
+const assemblyAb = process.argv.includes('--assembly-ab');
+assert.ok(
+  !assemblyAb || (!gpuProfile && !finalFrameOnly),
+  '--assembly-ab is standalone; do not combine it with raster discard or fixed assembly policy',
+);
 const out = new URL(
-  gpuProfile
+  assemblyAb
+    ? '../test-results/renderer-assembly-ab/'
+    : gpuProfile
     ? finalFrameOnly
       ? '../test-results/renderer-gpu-profile-final-only/'
       : '../test-results/renderer-gpu-profile/'
@@ -39,6 +46,7 @@ function median(values) {
 }
 
 async function trial(enabled, ordinal) {
+  const trialFinalFrameOnly = assemblyAb ? enabled : finalFrameOnly;
   // Isolate Project storage and Three.js scene caches, but keep all trials
   // on the same physical CI runner / browser binary.
   const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
@@ -50,12 +58,14 @@ async function trial(enabled, ordinal) {
     page = await context.newPage();
     page.setDefaultTimeout(180000);
     errors = observePageErrors(page);
-    const label = gpuProfile
-      ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
-      : `${ordinal}-${enabled ? 'on' : 'off'}`;
+    const label = assemblyAb
+      ? `${ordinal}-${enabled ? 'final-only' : 'preview'}`
+      : gpuProfile
+        ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
+        : `${ordinal}-${enabled ? 'on' : 'off'}`;
     const params = new URLSearchParams();
-    if (!gpuProfile && enabled) params.set('rendererV3QualityIndex', '1');
-    if (finalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
+    if (!gpuProfile && !assemblyAb && enabled) params.set('rendererV3QualityIndex', '1');
+    if (trialFinalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
     await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
     stage = 'open-fixture';
@@ -175,7 +185,12 @@ async function trial(enabled, ordinal) {
     assert.equal(state.sceneVariant, 'transparent');
     assert.equal(state.renderQuality, 'quality');
     assert.ok(Number(state.rendererFrameMs) > 0);
-    if (!gpuProfile && enabled) {
+    assert.equal(
+      state.rendererAssemblyFramePolicy,
+      trialFinalFrameOnly ? 'final-only' : 'preview',
+      `${label}: measured array build must use the requested assembly policy`,
+    );
+    if (!gpuProfile && !assemblyAb && enabled) {
       assert.ok(Number(state.v3QualityIndexedTriangles) > 10000000);
       assert.equal(
         Number(state.v3QualityOriginalVertices) / Number(state.v3QualityIndexedVertices),
@@ -213,13 +228,17 @@ async function trial(enabled, ordinal) {
       cameraMode: state.transparentArrayLodTier,
       errors,
       initialSceneReadyMs,
-      finalFrameOnly,
+      finalFrameOnly: trialFinalFrameOnly,
       assemblyFramePolicy: state.rendererAssemblyFramePolicy,
       assemblySkippedFrames: Number(state.rendererAssemblySkippedFrames || 0),
       ...(gpuProfile ? { webgl, diagnosticImageOnly: enabled } : {}),
     };
     console.log(
-      gpuProfile ? 'RENDERER_GPU_PROFILE_TRIAL' : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
+      assemblyAb
+        ? 'RENDERER_ASSEMBLY_AB_TRIAL'
+        : gpuProfile
+          ? 'RENDERER_GPU_PROFILE_TRIAL'
+          : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
       JSON.stringify(result),
     );
     return result;
@@ -240,6 +259,8 @@ async function trial(enabled, ordinal) {
           ordinal,
           enabled,
           gpuProfile,
+          assemblyAb,
+          trialFinalFrameOnly,
           stage,
           error: String(error),
           errors,
@@ -268,19 +289,37 @@ try {
   const offMedianMs = median(off.map((x) => x.completedFrameMs));
   const onMedianMs = median(on.map((x) => x.completedFrameMs));
   const report = {
-    mode: gpuProfile ? 'same-run-normal-discard-discard-normal' : 'same-run-abba',
+    mode: assemblyAb
+      ? 'same-run-final-preview-preview-final'
+      : gpuProfile
+        ? 'same-run-normal-discard-discard-normal'
+        : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
     viewport: '1440x960',
     browserVersion: browser.version(),
-    finalFrameOnly,
+    finalFrameOnly: assemblyAb ? 'paired' : finalFrameOnly,
     order: trials.map((x) => x.label),
     trials,
     exactCanvasParity: gpuProfile
       ? 'normal arms only; discard images intentionally incomplete'
       : true,
-    ...(gpuProfile
+    ...(assemblyAb
       ? {
-          normalMedianMs: offMedianMs,
+          finalOnlyCompletedMedianMs: onMedianMs,
+          previewCompletedMedianMs: offMedianMs,
+          completedRatioFinalToPreview: onMedianMs / offMedianMs,
+          completedDeltaMs: onMedianMs - offMedianMs,
+          finalOnlyInitialReadyMedianMs: median(on.map((x) => x.initialSceneReadyMs)),
+          previewInitialReadyMedianMs: median(off.map((x) => x.initialSceneReadyMs)),
+          initialReadyRatioFinalToPreview:
+            median(on.map((x) => x.initialSceneReadyMs)) /
+            median(off.map((x) => x.initialSceneReadyMs)),
+          finalOnlySkippedAssemblyFrames: on.map((x) => x.assemblySkippedFrames),
+          previewSkippedAssemblyFrames: off.map((x) => x.assemblySkippedFrames),
+        }
+      : gpuProfile
+        ? {
+            normalMedianMs: offMedianMs,
           rasterDiscardMedianMs: onMedianMs,
           rasterDiscardToNormalRatio: onMedianMs / offMedianMs,
           rasterDiscardDeltaMs: onMedianMs - offMedianMs,
@@ -293,9 +332,14 @@ try {
         }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
-    ...(gpuProfile
+    ...(assemblyAb
       ? {
-          diagnosticOnly: true,
+          interpretation:
+            'Same-run final-image parity and equal submissions compare initial readiness and completed-image cost. Preview frames can affect responsiveness; a single ABBA round is inconclusive and cannot promote the policy.',
+        }
+      : gpuProfile
+        ? {
+            diagnosticOnly: true,
           explicitFinishBarrier: true,
           gpuTimerScope:
             'first draw through end of animation callback; only non-disjoint results valid',
@@ -306,7 +350,11 @@ try {
   };
   await writeFile(new URL('report.json', out), JSON.stringify(report, null, 2));
   console.log(
-    gpuProfile ? 'RENDERER_GPU_PROFILE_OK' : 'RENDERER_QUALITY_INDEX_AB_OK',
+    assemblyAb
+      ? 'RENDERER_ASSEMBLY_AB_OK'
+      : gpuProfile
+        ? 'RENDERER_GPU_PROFILE_OK'
+        : 'RENDERER_QUALITY_INDEX_AB_OK',
     JSON.stringify(report),
   );
 } finally {
