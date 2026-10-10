@@ -311,6 +311,19 @@
     };
     root.addEventListener('click', handleClick);
     root.addEventListener('change', handleChange);
+    // Native Section Z Break may temporarily move into body as a modal.
+    // The controller closes it on Escape; restore focus to the original
+    // triggering button *after* its close handler, without stealing focus
+    // on outside-pointer dismissals or replacing the dialog node.
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const editor = document.getElementById('sectionCollapseEditor');
+      const trigger = document.getElementById('sectionCollapseAxisBtn');
+      if (!editor?.open || !trigger) return;
+      queueMicrotask(() => {
+        if (!editor.open && trigger.isConnected) trigger.focus({ preventScroll: true });
+      });
+    });
     let compactBefore = viewState.compact(window);
     window.addEventListener('resize', () => {
       // The bridge dispatches resize for the native renderer. Do not recurse.
