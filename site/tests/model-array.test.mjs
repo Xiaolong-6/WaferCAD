@@ -30,7 +30,11 @@ function twoSites() {
 test('rectangular GRID Recipe Base preserves complete device/background ownership', () => {
   const seed = createModel({ shape: 'rect', width: 0.375, height: 0.375, thickness: 2 });
   const descriptor = {
-    kind: 'rect-grid', rows: 80, columns: 80, pitchX: 0.375, pitchY: 0.375,
+    kind: 'rect-grid',
+    rows: 80,
+    columns: 80,
+    pitchX: 0.375,
+    pitchY: 0.375,
     activeSites: 4725,
   };
   const model = createRectangularGridArrayModel(seed, descriptor);
@@ -42,10 +46,18 @@ test('rectangular GRID Recipe Base preserves complete device/background ownershi
   assert.equal(model.array.instances.filter((s) => s.role === 'background').length, 1675);
   assert.equal(model.array.templates.length, 1);
   assert.deepEqual(model.array.instances[0], {
-    id: 'site-0', templateId: 'site', x: -14.8125, y: -14.8125, role: 'background',
+    id: 'site-0',
+    templateId: 'site',
+    x: -14.8125,
+    y: -14.8125,
+    role: 'background',
   });
   assert.deepEqual(model.array.instances[6399], {
-    id: 'site-6399', templateId: 'site', x: 14.8125, y: 14.8125, role: 'background',
+    id: 'site-6399',
+    templateId: 'site',
+    x: 14.8125,
+    y: 14.8125,
+    role: 'background',
   });
   assert.throws(() => createRectangularGridArrayModel(seed, { ...descriptor, activeSites: 6401 }));
 });
