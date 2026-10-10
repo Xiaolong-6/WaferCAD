@@ -10,6 +10,15 @@ import { buriedInterfaceSubpixelBudget } from './renderer-v3-screen-budget.js';
 import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.js';
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
+import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
+import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
+import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
+import { censusV4SceneResources } from './renderer-v4-resource-census.js';
+import { sharedFlatCapZ, mappedFlatCapTranslation } from './renderer-v4-flat-geometry-sharing.js';
+import {
+  createAdaptiveTilePlanCache,
+  observePreparedAdaptiveTiles,
+} from './renderer-v4-tile-plan.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -101,6 +110,22 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
+  const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
+  const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
+  const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
+  const v4SharedFlatCapEnabled = rendererParams.get('rendererV4SharedFlatCaps') === '1';
+  const v4GpuCensusEnabled = rendererParams.get('rendererV4GpuCensus') === '1';
+  const v4HeavyCameraNoDamping = rendererParams.get('rendererV4HeavyCameraNoDamping') === '1';
+  const v4TileProbeEnabled =
+    rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
+  const v4TilePlanCache = createAdaptiveTilePlanCache();
+  let v4PreviousTiers = new Map();
+  let v4ObservedModel = null;
+  let v4ObservedRevision = null;
+  let v4ObservedPlan = null;
+  let v4CameraProbe = null;
+  let v4CameraProbeSamples = 0;
+  let v4CameraProbeLastAt = 0;
   let suppressAssemblyFrames = false;
   let assemblySkippedFrames = 0;
 
@@ -126,6 +151,9 @@ export function createThreeView({
   let surfacePlanBuildCount = 0;
   let smoothCapInstanceGroupCount = 0;
   let smoothCapInstanceCount = 0;
+  let v4SharedFlatTemplates = 0;
+  let v4SharedFlatMeshes = 0;
+  let v4SharedFlatClonesAvoided = 0;
   let smoothCapTemplateTriangleCount = 0;
   let smoothSidewallInstanceGroupCount = 0;
   let smoothSidewallInstanceCount = 0;
@@ -333,6 +361,10 @@ export function createThreeView({
       minZ,
       maxZ,
       canonicalZ: null,
+      flatReadOnly:
+        typeof object.geometry.userData?.waferCadV4ReadOnlyFlatZ === 'number' &&
+        object.geometry.userData.waferCadV4ReadOnlyFlatZ === minZ &&
+        minZ === maxZ,
       mode: 'canonical',
     };
     zDisplayObjects.add(object);
@@ -380,13 +412,16 @@ export function createThreeView({
     object.visible = !fullyHidden;
     if (fullyHidden) return;
 
-    if (canTranslateSide) {
+    // Shared flat template vertices remain immutable: a single physical
+    // Z plane maps to a translated mesh under any Section display transform.
+    const flatTranslation = mappedFlatCapTranslation(record, state);
+    if (canTranslateSide || flatTranslation !== null) {
       if (record.mode === 'mapped') {
         restoreCanonicalZ(record, positions);
         refreshGeometryBounds(object);
       }
       const sample = fullyUpper ? record.minZ : record.maxZ;
-      object.position.z = state.mapZ(sample) - sample;
+      object.position.z = flatTranslation ?? state.mapZ(sample) - sample;
       record.mode = 'translated';
       return;
     }
@@ -798,6 +833,71 @@ export function createThreeView({
   }
 
   let completedFrameSerial = 0;
+  // Experimental R2: refresh the screen-space *diagnostic* during camera
+  // interactions. The prepared CPU partition is reused; WebGL submissions,
+  // visibility, alpha ordering and stored physical Z remain unchanged.
+  function refreshV4CameraTileProbe(changed) {
+    if (
+      !v4TileCacheEnabled ||
+      !v4CameraProbe ||
+      (!changed && !interacting) ||
+      rendering ||
+      host.dataset.sceneVariant !== 'transparent' ||
+      !camera ||
+      !controls
+    )
+      return;
+    const now = performance.now();
+    if (now - v4CameraProbeLastAt < 250) return;
+    const model = getModel();
+    const revision = String(model?.revision ?? 0) + ':' + String(model?.processRevision ?? 0);
+    if (
+      model !== v4ObservedModel ||
+      revision !== v4ObservedRevision ||
+      v4CameraProbe.sidewalls !== v4ObservedPlan
+    ) {
+      v4CameraProbe = null;
+      return;
+    }
+    v4CameraProbeLastAt = now;
+    const started = performance.now();
+    camera.updateMatrixWorld();
+    const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+    const viewport = currentViewport();
+    const distance = camera.position.distanceTo(controls.target);
+    const { plan, hit } = v4TilePlanCache.get(v4CameraProbe.sidewalls, revision);
+    const observed = observePreparedAdaptiveTiles(plan, {
+      viewProjectionMatrix: viewProjection.elements,
+      viewportWidth: viewport.width,
+      viewportHeight: viewport.height,
+      displayZScale: currentZDisplay?.scale,
+      mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+      visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+      farTier: v4CameraProbe.farTier,
+      clipped: v4CameraProbe.clipped,
+      zCollapsed: currentZDisplay?.enabled !== false,
+      nearEdgeOn:
+        distance <= 0 || Math.abs(camera.position.z - controls.target.z) / distance < 0.35,
+      previousTiers: v4PreviousTiers,
+    });
+    v4PreviousTiers = observed.valid ? observed.nextTiers : new Map();
+    const cache = v4TilePlanCache.stats();
+    host.dataset.v4TileCacheHit = String(hit);
+    host.dataset.v4TileCacheHits = String(cache.hits);
+    host.dataset.v4TileCacheMisses = String(cache.misses);
+    host.dataset.v4TileCacheRetainedTiles = String(cache.retainedTiles);
+    host.dataset.v4TileCacheCameraSamples = String(++v4CameraProbeSamples);
+    host.dataset.v4TileProbeMs = String(performance.now() - started);
+    host.dataset.v4TileProbeStatus = observed.reason;
+    host.dataset.v4TileReductionGate = observed.reductionGate;
+    host.dataset.v4TileTotal = String(observed.tiles);
+    host.dataset.v4TileNear = String(observed.nearTiles);
+    host.dataset.v4TileMid = String(observed.midTiles);
+    host.dataset.v4TileFar = String(observed.farTiles);
+    host.dataset.v4TileOffscreen = String(observed.offscreenTiles);
+    host.dataset.v4TileUncertain = String(observed.uncertainTiles);
+    host.dataset.v4TileSkippedTriangles = '0';
+  }
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -817,9 +917,20 @@ export function createThreeView({
         host.dataset.sceneVariant === 'transparent' &&
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
-      if (controls) controls.enableDamping = !heavyExactTransparency;
+      // Opt-in V4 interaction pilot: damped inertia can queue many costly
+      // full-wafer frames after pointer-up, even with a cached CPU tile plan.
+      // This only changes camera easing; no mesh/alpha/draw policy is altered.
+      const heavyV4TransparentFrame = shouldDisableV4HeavyCameraDamping({
+        enabled: v4HeavyCameraNoDamping,
+        sceneVariant: host.dataset.sceneVariant,
+        arrayInstances: host.dataset.arrayInstances,
+        drawTriangles: host.dataset.rendererDrawTriangles,
+      });
+      if (controls) controls.enableDamping = !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
+      host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
       const changed = controls?.update?.() || false;
+      refreshV4CameraTileProbe(changed);
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
@@ -852,6 +963,35 @@ export function createThreeView({
       refreshCameraArrayLod();
     }
     scheduleFrame();
+  }
+
+  function publishV4SharedFlatCounts() {
+    host.dataset.v4SharedFlatTemplates = String(v4SharedFlatTemplates);
+    host.dataset.v4SharedFlatMeshes = String(v4SharedFlatMeshes);
+    host.dataset.v4SharedFlatClonesAvoided = String(v4SharedFlatClonesAvoided);
+  }
+
+  function writeV4GpuResourceCensus() {
+    if (!v4GpuCensusEnabled) return;
+    const groups = [
+      ...new Set(
+        [
+          ...[...sceneVariantCache.values()].map((entry) => entry?.group).filter(Boolean),
+          group,
+        ].filter(Boolean),
+      ),
+    ];
+    const result = censusV4SceneResources(groups);
+    host.dataset.v4GpuResourceStatus = result.reason;
+    host.dataset.v4GpuResourceSceneGroups = String(result.groupCount);
+    host.dataset.v4GpuResourceMeshes = String(result.meshCount);
+    host.dataset.v4GpuResourceGeometries = String(result.geometryCount);
+    host.dataset.v4GpuResourceMaterials = String(result.materialCount);
+    host.dataset.v4GpuResourceInstancedMeshes = String(result.instancedMeshCount);
+    host.dataset.v4GpuResourceEstimatedBufferBytes = String(result.estimatedBufferBytes);
+    host.dataset.v4GpuResourceCrossVariantGeometries = String(result.crossGroupGeometries);
+    host.dataset.v4GpuResourceCrossVariantMaterials = String(result.crossGroupMaterials);
+    host.dataset.v4GpuResourceComplete = String(result.complete);
   }
 
   function disposeGroup() {
@@ -940,6 +1080,9 @@ export function createThreeView({
       surfaceMaterialPool,
       currentRoughMode,
       lastLodSignature,
+      v4SharedFlatTemplates,
+      v4SharedFlatMeshes,
+      v4SharedFlatClonesAvoided,
       arrayLodTier: host.dataset.transparentArrayLodTier || 'exact',
       arrayLodTolerance: host.dataset.transparentArrayDisplayTolerance || '0',
       electricalFarLodBodyCount: host.dataset.electricalFarLodBodyCount || '0',
@@ -1038,6 +1181,10 @@ export function createThreeView({
     surfaceMaterialPool = entry.surfaceMaterialPool;
     currentRoughMode = entry.currentRoughMode;
     lastLodSignature = entry.lastLodSignature;
+    v4SharedFlatTemplates = entry.v4SharedFlatTemplates || 0;
+    v4SharedFlatMeshes = entry.v4SharedFlatMeshes || 0;
+    v4SharedFlatClonesAvoided = entry.v4SharedFlatClonesAvoided || 0;
+    publishV4SharedFlatCounts();
     physicalSceneModel = entry.model;
     physicalSceneSignature = entry.signature;
     activeSceneVariant = entry.mode;
@@ -1085,6 +1232,7 @@ export function createThreeView({
     host.dataset.v3EdgeSurveySubpixelRawUpperBound = entry.v3EdgeSurvey?.candidateRaw || '0';
     host.dataset.v3EdgeSurveyMs = entry.v3EdgeSurvey?.elapsedMs || '0';
     host.dataset.v3EdgeSurveyTopOwners = entry.v3EdgeSurvey?.topOwners || '[]';
+    writeV4GpuResourceCensus();
     return true;
   }
 
@@ -1106,6 +1254,10 @@ export function createThreeView({
     surfaceMaterialPool = new Map();
     currentRoughMode = 'none';
     lastLodSignature = null;
+    v4SharedFlatTemplates = 0;
+    v4SharedFlatMeshes = 0;
+    v4SharedFlatClonesAvoided = 0;
+    publishV4SharedFlatCounts();
     activeSceneVariant = mode;
     host.dataset.sceneVariant = mode;
   }
@@ -1915,6 +2067,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       adaptiveRough = false,
       appearance = null,
       presentation = null,
+      shareFlatGeometry = false,
     } = {},
   ) {
     if (!geometry.getAttribute('position')?.count || !translations?.length) {
@@ -1930,11 +2083,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
       batchSize = transparentBatch ? Math.min(maxInstancesPerMesh, 256) : maxInstancesPerMesh,
       chunks = spatialInstanceChunks(translations, { maxInstances: batchSize }),
       meshes = [];
+    const flatShared =
+      shareFlatGeometry && chunks.length > 1
+        ? sharedFlatCapZ(geometry, {
+            enabled: v4SharedFlatCapEnabled,
+            planarCap: true,
+            adaptiveRough,
+            appearance,
+          })
+        : null;
+    if (flatShared) {
+      geometry.userData.waferCadV4ReadOnlyFlatZ = flatShared.z;
+      v4SharedFlatTemplates++;
+      v4SharedFlatMeshes += chunks.length;
+      v4SharedFlatClonesAvoided += chunks.length - 1;
+      publishV4SharedFlatCounts();
+    }
     chunks.forEach((chunk, chunkIndex) => {
       // Z-collapse can remap vertex Z coordinates in place. Give each spatial
       // chunk its own tiny template geometry so one chunk cannot mutate the
       // canonical coordinates observed by another chunk.
-      const chunkGeometry = chunkIndex === 0 ? geometry : geometry.clone(),
+      const chunkGeometry = flatShared || chunkIndex === 0 ? geometry : geometry.clone(),
         mesh = new THREE.InstancedMesh(chunkGeometry, material, chunk.length),
         matrix = new THREE.Matrix4();
       chunk.forEach(([x, y], index) => {
@@ -2942,6 +3111,119 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       host.dataset.v3EdgeSurveyMs = String(v3EdgesMs);
       host.dataset.v3EdgeSurveyTopOwners = JSON.stringify(v3Edges?.topOwners || []);
+      // V4 R1 remains purely observational. Never omit transparent surfaces
+      // based on a pixel footprint: alpha/occlusion parity is unproven.
+      const v4Revision = String(model.revision ?? 0) + ':' + String(model.processRevision ?? 0);
+      if (
+        v4ObservedModel !== model ||
+        v4ObservedRevision !== v4Revision ||
+        v4ObservedPlan !== plan.sidewalls
+      ) {
+        v4PreviousTiers = new Map();
+        v4TilePlanCache.clear();
+        v4ObservedModel = model;
+        v4ObservedRevision = v4Revision;
+        v4ObservedPlan = plan.sidewalls;
+        v4CameraProbe = null;
+      }
+      let v4Tiles = null;
+      let v4ProbeMs = 0;
+      let v4CacheHit = false;
+      if (v4TileProbeEnabled && targetVariant === 'transparent' && camera) {
+        const probeStartedAt = performance.now();
+        camera.updateMatrixWorld();
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+        const v4Projection = {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: arrayLod.tier !== 'exact',
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          nearEdgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+          previousTiers: v4PreviousTiers,
+        };
+        if (v4TileCacheEnabled) {
+          const cached = v4TilePlanCache.get(plan.sidewalls, v4Revision);
+          v4CacheHit = cached.hit;
+          v4Tiles = observePreparedAdaptiveTiles(cached.plan, v4Projection);
+        } else {
+          v4Tiles = observeAdaptiveArrayTiles(plan.sidewalls, v4Projection);
+        }
+        v4PreviousTiers = v4Tiles.valid ? v4Tiles.nextTiers : new Map();
+        v4ProbeMs = performance.now() - probeStartedAt;
+        v4CameraProbeLastAt = performance.now();
+      }
+      v4CameraProbe =
+        v4TileCacheEnabled && targetVariant === 'transparent'
+          ? {
+              sidewalls: plan.sidewalls,
+              farTier: arrayLod.tier !== 'exact',
+              clipped: Boolean(clip),
+            }
+          : null;
+      const v4CacheStats = v4TilePlanCache.stats();
+      host.dataset.v4TileCacheMode = v4TileCacheEnabled ? 'cpu-plan' : 'off';
+      host.dataset.v4TileCacheHit = String(v4CacheHit);
+      host.dataset.v4TileCacheHits = String(v4CacheStats.hits);
+      host.dataset.v4TileCacheMisses = String(v4CacheStats.misses);
+      host.dataset.v4TileCacheEvictions = String(v4CacheStats.evictions);
+      host.dataset.v4TileCacheRetainedTiles = String(v4CacheStats.retainedTiles);
+      host.dataset.v4TileCacheCameraSamples = String(v4CameraProbeSamples);
+      host.dataset.v4TileProbeStatus = v4Tiles?.reason || 'disabled';
+      host.dataset.v4TileReductionGate = v4Tiles?.reductionGate || 'probe-disabled';
+      host.dataset.v4TileProbeMs = String(v4ProbeMs);
+      host.dataset.v4TileTotal = String(v4Tiles?.tiles || 0);
+      host.dataset.v4TileNear = String(v4Tiles?.nearTiles || 0);
+      host.dataset.v4TileMid = String(v4Tiles?.midTiles || 0);
+      host.dataset.v4TileFar = String(v4Tiles?.farTiles || 0);
+      host.dataset.v4TileOffscreen = String(v4Tiles?.offscreenTiles || 0);
+      host.dataset.v4TileUncertain = String(v4Tiles?.uncertainTiles || 0);
+      host.dataset.v4TileOwnerOverflow = String(v4Tiles?.ownerOverflow || 0);
+      host.dataset.v4TileOverflow = String(v4Tiles?.tileOverflow || 0);
+      host.dataset.v4TileSkippedTriangles = '0';
+      host.dataset.v4TileSample = JSON.stringify(v4Tiles?.sample || []);
+      // R3 feature-level projection is much finer than tile bounding
+      // volumes; it remains a bounded read-only probe, not an alpha gate.
+      let v4Features = null;
+      let v4FeatureProbeMs = 0;
+      if (v4FeatureSurveyEnabled && targetVariant === 'transparent' && camera) {
+        const started = performance.now();
+        camera.updateMatrixWorld();
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
+        v4Features = surveyV4FeatureFootprints(plan.sidewalls, {
+          viewProjectionMatrix: viewProjection.elements,
+          viewportWidth: viewportForV3.width,
+          viewportHeight: viewportForV3.height,
+          displayZScale: currentZDisplay?.scale,
+          mapZ: (z) => currentZDisplay?.mapZ?.(z) ?? z,
+          visibleIntervals: (z0, z1) => visibleZIntervals(z0, z1, currentZDisplay),
+          farTier: arrayLod.tier !== 'exact',
+          clipped: Boolean(clip),
+          zCollapsed: currentZDisplay?.enabled !== false,
+          edgeOn:
+            distanceForV3 <= 0 ||
+            Math.abs(camera.position.z - controls.target.z) / distanceForV3 < 0.35,
+        });
+        v4FeatureProbeMs = performance.now() - started;
+      }
+      host.dataset.v4FeatureStatus = v4Features?.reason || 'disabled';
+      host.dataset.v4FeatureGate = v4Features?.reductionGate || 'probe-disabled';
+      host.dataset.v4FeatureOwners = String(v4Features?.owners || 0);
+      host.dataset.v4FeatureSampledOwners = String(v4Features?.sampledOwners || 0);
+      host.dataset.v4FeatureMeasuredQuads = String(v4Features?.measuredQuads || 0);
+      host.dataset.v4FeatureRepresentedQuads = String(v4Features?.representedQuads || 0);
+      host.dataset.v4FeatureSubpixelQuads = String(v4Features?.subpixelQuads || 0);
+      host.dataset.v4FeatureNearUncertain = String(v4Features?.nearPlaneUncertainQuads || 0);
+      host.dataset.v4FeatureOverflow = String(v4Features?.workOverflow || 0);
+      host.dataset.v4FeatureCandidateRawTriangles = String(v4Features?.rawTriangleCandidates || 0);
+      host.dataset.v4FeatureSkippedTriangles = '0';
+      host.dataset.v4FeatureProbeMs = String(v4FeatureProbeMs);
       const interfaceState = interfaceMaterialState(opacity),
         smoothCaps = new Map(),
         sidewalls = new Map(),
@@ -3026,6 +3308,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const meshes = addInstancedSurfaceMeshes(geometry, material, cap.instanceTranslations, {
             name: `${cap.layerId} array cap`,
             presentation,
+            shareFlatGeometry: true,
           });
           smoothCapInstanceGroupCount += meshes.length;
           smoothCapInstanceCount += cap.instanceTranslations.length;
@@ -3100,6 +3383,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                   meshes = addInstancedSurfaceMeshes(geometry, material, instances.translations, {
                     name: `${bucket.part.layerId || 'material'} repeated cap`,
                     presentation,
+                    shareFlatGeometry: true,
                   });
                 if (!meshes.length) continue;
                 smoothCapInstanceGroupCount += meshes.length;
@@ -3189,7 +3473,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       smoothSidewallTemplateTriangleCount = 0;
       let qualityIndexedSubmittedVertices = 0,
         qualityOriginalSubmittedVertices = 0,
-        qualityIndexedTriangles = 0;
+        qualityIndexedTriangles = 0,
+        v4FastIndexedVertices = 0,
+        v4FastOriginalVertices = 0;
       for (const sidewall of plan.sidewalls) {
         await maybeYieldAssembly();
         const state = stateFor(sidewall);
@@ -3201,10 +3487,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
               {
                 indexedSmooth:
-                  v3QualityIndexExperiment &&
                   targetVariant === 'transparent' &&
-                  inspection.fast === false &&
-                  sidewall.buried === true,
+                  sidewall.buried === true &&
+                  ((v3QualityIndexExperiment && inspection.fast === false) ||
+                    (v4FastSmoothIndex && inspection.fast !== false)),
               },
             ),
             presentation = presentationFor(sidewall),
@@ -3229,9 +3515,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
             (geometry.index?.count || geometry.getAttribute('position')?.count || 0) / 3;
           if (geometry.index?.count && meshes.length) {
             const instances = sidewall.instanceTranslations.length;
-            qualityIndexedSubmittedVertices += geometry.getAttribute('position').count * instances;
-            qualityOriginalSubmittedVertices += geometry.index.count * instances;
-            qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+            if (v4FastSmoothIndex && inspection.fast !== false) {
+              v4FastIndexedVertices += geometry.getAttribute('position').count * instances;
+              v4FastOriginalVertices += geometry.index.count * instances;
+            } else {
+              qualityIndexedSubmittedVertices +=
+                geometry.getAttribute('position').count * instances;
+              qualityOriginalSubmittedVertices += geometry.index.count * instances;
+              qualityIndexedTriangles += (geometry.index.count / 3) * instances;
+            }
           }
           continue;
         }
@@ -3336,6 +3628,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.smoothSidewallTemplateTriangles = String(
         Math.round(smoothSidewallTemplateTriangleCount),
       );
+      host.dataset.v4FastIndexedVertices = String(v4FastIndexedVertices);
+      host.dataset.v4FastOriginalVertices = String(v4FastOriginalVertices);
       host.dataset.v3QualityIndexedVertices = String(qualityIndexedSubmittedVertices);
       host.dataset.v3QualityOriginalVertices = String(qualityOriginalSubmittedVertices);
       host.dataset.v3QualityIndexedTriangles = String(qualityIndexedTriangles);
@@ -3724,6 +4018,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordVariantStage('presentation-complete');
       recordRoiStage('presentation-complete');
       cacheActiveSceneVariant();
+      writeV4GpuResourceCensus();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
