@@ -41,6 +41,7 @@ export function surveyV4FeatureFootprints(
     reductionGate: 'invalid-input',
     owners: 0,
     selectedOwners: 0,
+    sampledOwners: 0,
     excludedOwners: 0,
     ownerOverflow: 0,
     measuredQuads: 0,
@@ -97,6 +98,7 @@ export function surveyV4FeatureFootprints(
     );
   report.selectedOwners = Math.min(selected.length, maxOwners);
   report.ownerOverflow = Math.max(0, selected.length - maxOwners);
+  const prepared = [];
   for (const { owner } of selected.slice(0, maxOwners)) {
     const parts = Array.isArray(owner.parts) ? owner.parts : [owner];
     const offsets = owner.instanceTranslations;
@@ -159,46 +161,52 @@ export function surveyV4FeatureFootprints(
     report.owners++;
     const count = offsets.length * fragments.length;
     report.representedQuads += count;
-    // Never extrapolate a skipped work item into a valid projection result.
-    for (const [dx, dy] of offsets) {
-      for (const f of fragments) {
-        if (report.measuredQuads >= maxQuads) {
-          report.workOverflow = Math.max(0, report.representedQuads - report.measuredQuads);
-          // The report is explicitly incomplete; stop without authorizing LOD.
-          return report;
-        }
-        report.measuredQuads++;
-        const projected = projectAxisAlignedTileBounds(
-          {
-            minX: f.minX + dx,
-            maxX: f.maxX + dx,
-            minY: f.minY + dy,
-            maxY: f.maxY + dy,
-            minZ: f.minZ,
-            maxZ: f.maxZ,
-          },
-          viewProjectionMatrix,
-          viewportWidth,
-          viewportHeight,
-        );
-        if (projected.kind === 'uncertain-near-far') {
-          report.nearPlaneUncertainQuads++;
-          continue;
-        }
-        if (projected.kind === 'offscreen-bound') {
-          report.offscreenQuads++;
-          continue;
-        }
-        const footprint = Math.max(projected.widthPx, projected.heightPx);
-        report.maxFootprintPx = Math.max(report.maxFootprintPx, footprint);
-        if (footprint <= subpixelPx) {
-          report.subpixelQuads++;
-          // Count theoretical 2-pass transparent workload, not actual savings.
-          report.rawTriangleCandidates += 4;
-        }
-        if (report.sample.length < 8) report.sample.push(Number(footprint.toFixed(4)));
+    if (count > 0) prepared.push({ offsets, fragments, count });
+  }
+  // Do not spend the entire work budget on the first heavy owner. A
+  // deterministic, bounded, evenly spaced sample covers each valid owner.
+  // This remains a sample, never a conservative maximum error bound.
+  const quota = Math.floor(maxQuads / Math.max(1, prepared.length));
+  const extra = maxQuads % Math.max(1, prepared.length);
+  for (let ownerIndex = 0; ownerIndex < prepared.length; ownerIndex++) {
+    const { offsets, fragments, count } = prepared[ownerIndex];
+    const samples = Math.min(count, quota + (ownerIndex < extra ? 1 : 0));
+    if (samples > 0) report.sampledOwners++;
+    for (let sampleIndex = 0; sampleIndex < samples; sampleIndex++) {
+      const index = Math.min(count - 1, Math.floor(((sampleIndex + 0.5) * count) / samples));
+      const [dx, dy] = offsets[Math.floor(index / fragments.length)];
+      const f = fragments[index % fragments.length];
+      report.measuredQuads++;
+      const projected = projectAxisAlignedTileBounds(
+        {
+          minX: f.minX + dx,
+          maxX: f.maxX + dx,
+          minY: f.minY + dy,
+          maxY: f.maxY + dy,
+          minZ: f.minZ,
+          maxZ: f.maxZ,
+        },
+        viewProjectionMatrix,
+        viewportWidth,
+        viewportHeight,
+      );
+      if (projected.kind === 'uncertain-near-far') {
+        report.nearPlaneUncertainQuads++;
+        continue;
       }
+      if (projected.kind === 'offscreen-bound') {
+        report.offscreenQuads++;
+        continue;
+      }
+      const footprint = Math.max(projected.widthPx, projected.heightPx);
+      report.maxFootprintPx = Math.max(report.maxFootprintPx, footprint);
+      if (footprint <= subpixelPx) {
+        report.subpixelQuads++;
+        report.rawTriangleCandidates += 4;
+      }
+      if (report.sample.length < 8) report.sample.push(Number(footprint.toFixed(4)));
     }
   }
+  report.workOverflow = Math.max(0, report.representedQuads - report.measuredQuads);
   return report;
 }
