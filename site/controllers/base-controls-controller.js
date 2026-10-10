@@ -108,7 +108,8 @@ export function createBaseControlsController({
     // cannot restore the previous process lineage.
     const before = captureBaseSnapshot();
     try {
-      const arraySpec = recipeBase?.array ||
+      const arraySpec =
+        recipeBase?.array ||
         (recipeBase ? inferRectangularGridRecipeBase(getModel(), recipeBase) : null);
       const seed = arraySpec
         ? createModel({
@@ -122,11 +123,12 @@ export function createBaseControlsController({
         seed.layers[0].name = recipeBase.material;
         if (recipeBase.color) seed.layers[0].color = recipeBase.color;
       }
-      const newModel = arraySpec?.kind === 'rect-grid'
-        ? createRectangularGridArrayModel(seed, arraySpec)
-        : arraySpec
-          ? createWaferArrayModel(seed, createWaferArrayTiling(arraySpec))
-          : seed;
+      const newModel =
+        arraySpec?.kind === 'rect-grid'
+          ? createRectangularGridArrayModel(seed, arraySpec)
+          : arraySpec
+            ? createWaferArrayModel(seed, createWaferArrayTiling(arraySpec))
+            : seed;
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);
