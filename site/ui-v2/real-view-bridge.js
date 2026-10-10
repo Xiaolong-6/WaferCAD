@@ -400,6 +400,7 @@
       render,
       destroy: () => {
         destroyed = true;
+        nativeOverlayOwners?.destroy();
         shell.destroy();
       },
     };
