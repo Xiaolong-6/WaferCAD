@@ -38,6 +38,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [PR #166 continued acceptance](PR166_ACCEPTANCE_2026-10-10.md) — historical 625-site pixel evidence, current CI, Electrical A/B census repairs and open hardware/runtime gates.
+- [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
