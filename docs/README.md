@@ -36,6 +36,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Plans and verification evidence
 
+- [UI v2 M3 latest-main pre-wiring audit — 2026-10-10](ui-v2/M3_MAIN_AUDIT_2026-10-10.md) — exact main/feature-branch integration status, 267-ID contract delta, per-domain static/dynamic/event/transaction ownership and D1 blockers; source audit only, no runtime validation.
 - [Legacy / UI v2 browser comparison — 2026-10-10](ui-v2/LEGACY_BROWSER_COMPARISON_2026-10-10.md) — actual legacy operations and current mock comparison; compact History/plot/guide fixes at `9a43d0d`, 60 shell checks, and remaining UI gaps. Does not claim all 258 features executed or complete product parity.
 - [UI v2 全量功能比较审计 — 2026-10-09](ui-v2/FULL_PARITY_AUDIT_2026-10-09.md) — all 258 legacy feature IDs, current shell/mock/missing states, source evidence and ordered repair ledger; M2.5 checks do not establish product parity.
 - [UI v2 actual UI acceptance — 2026-10-10](ui-v2/UI_ACCEPTANCE_2026-10-10.md) — targeted UI PASS at `2ae4ca3`; all eight findings closed, compact tools, visual rechecks and 49 passing shell checks; initial FAIL retained as history.
