@@ -43,7 +43,6 @@ illustrative; neither the authors' full original mask nor numerical
 achromatic optical performance was reconstructed. This is a Kernel
 geometry/Recipe acceptance only.
 
-
 The subsequent full-array loading optimization and controlled measurements are recorded in [performance follow-up](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
 
 Primary source: Wang et al., _Nature Communications_ **12**, 5560 (2021), DOI [10.1038/s41467-021-25797-9](https://doi.org/10.1038/s41467-021-25797-9). Source of process details: Supplementary Note 4 in the published supporting information.
