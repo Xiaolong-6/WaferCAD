@@ -100,3 +100,23 @@ Reference captures use the approved a-full source unchanged; manually inspected 
 **Decision: runtime wiring gate passes for the listed scenarios; full D1 remains open.** Next D1 work must converge the native-toolbar presentation without replacing native controls/listeners, verify the remaining real geometry and overlay scenarios, and resolve the route checkpoint. Do not start D2 based on this partial runtime gate.
 
 Final repeat evidence: the same modified bridge passed the M3D fixture (four widths, zero errors, completed software WebGL frames, 11–21 draw calls / 290–5381 triangles after ROI). Base gate also captured all four unchanged M1.5 references. Fixture counts are evidence of completed clipped scenes, not a benchmark or full Recipe replay. Final lint, docs check, eight focused tests and deterministic AST check completed successfully.
+
+## Follow-up source changes — 2026-10-10 (after `2c77457`, pending browser run)
+
+A subsequent D1-only source audit confirmed two still-open acceptance classes in the real controllers: `mask-roi-controller.js` captures real canvas-local pointer events and maintains a mask-local ROI independent of the 3D ROI; `section-detail-roi-controller.js` maintains fractional Section canvas coordinates and positions a persistent inset; `section-collapse-controller.js` may reparent its **original** `<dialog>` to `document.body` on narrow/short docks. Original node identity alone does not prove any of these end-user behaviors.
+
+Changes committed **on this same feature branch only**:
+
+- `site/ui-v2/real-view-bridge.js`: v2-scoped Escape focus restoration for the **original** Z Break trigger after the existing controller has closed either its modal or inline native dialog. The handler intentionally does not claim pointer-dismiss focus or replace/recreate the dialog.
+- `scripts/v2/check-d1-extended.mjs`: separately runnable, strict Playwright browser gate at 1440/1024/768/390 with Base and optional Photodetector/M3D fixtures. It performs actual Mask ROI pointer drawing and editable µm checks, an independent physical-to-screen Mask square tolerance for the untransformed Base, actual Section Detail drag and ≤0.25px overlay round-trip, original native Z Break dialog open/Escape/focus/owner return, stage and action-owner identity and duplicate-ID checks, screenshots and console errors. It saves **ignored local** `test-results/ui-v2-d1-extended[-fixture]` evidence. This script deliberately **does not** claim transformed Mask ROI precision for complex imported layouts, independent Section Z physical bounds, or Windows/M1.5 visual approval.
+- These follow-up source modifications were checked with the available connected GitHub file read and a JavaScript async syntax parse (imports removed only for parsing). **The new browser gate, standard Node/lint and legacy visual suites were not executed by this session**, because the usable repository/browser environment is still absent here; earlier passing measurements at `2c77457` continue to belong to that earlier commit. No new PASS claim.
+
+Execute and inspect before accepting D1:
+
+```bash
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=photodetector node scripts/v2/check-d1-extended.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_D1_FIXTURE=m3d node scripts/v2/check-d1-extended.mjs
+```
+
+If any assertion fails, **do not relax the 0.25px threshold**; fix the actual DOMRect/controller behavior on this same branch and rerun old+new gates. Shared v2 toolbar icon/order/action parity (and any missing real Zoom/Pan actions) must be resolved via functional native controls, not cosmetic placeholders; overlay portal lifecycle, Section physical-Z geometry, M1.5 four-width visual review, hardware/SwiftShader distinction and route promotion remain explicit D1 blockers. D2, main merge and approved baseline changes remain prohibited.
