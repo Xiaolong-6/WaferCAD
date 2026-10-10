@@ -84,8 +84,13 @@ try {
       assert.ok(box && box.width > 100 && box.height > 100, 'WebGL viewport visible');
       const x = box.x + box.width / 2, y = box.y + box.height / 2;
       assert.equal(
-        await page.evaluate(({ x, y }) => document.elementFromPoint(x, y),
-          { x, y }).then((element) => Boolean(element)), true);
+        await page.evaluate(({ x, y }) => {
+          const hit = document.elementFromPoint(x, y);
+          return hit?.tagName === 'CANVAS' && document.getElementById('threeHost').contains(hit);
+        }, { x, y }),
+        true,
+        'Pan/Zoom must start on the real 3D canvas, not on an overlay',
+      );
       await page.mouse.move(x, y);
       await page.mouse.down();
       await page.mouse.move(x + dx, y + dy, { steps: 8 });
