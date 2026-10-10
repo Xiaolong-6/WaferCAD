@@ -3131,6 +3131,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.v4FeatureStatus = v4Features?.reason || 'disabled';
       host.dataset.v4FeatureGate = v4Features?.reductionGate || 'probe-disabled';
       host.dataset.v4FeatureOwners = String(v4Features?.owners || 0);
+      host.dataset.v4FeatureSampledOwners = String(v4Features?.sampledOwners || 0);
       host.dataset.v4FeatureMeasuredQuads = String(v4Features?.measuredQuads || 0);
       host.dataset.v4FeatureRepresentedQuads = String(v4Features?.representedQuads || 0);
       host.dataset.v4FeatureSubpixelQuads = String(v4Features?.subpixelQuads || 0);
