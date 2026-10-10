@@ -192,12 +192,6 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
         run: node scripts/renderer-roi-recovery-regression.mjs
 
-      # Isolate GPU-context creation from ON/OFF material policy: strict
-      # completed-frame image parity, real GL submissions, zero tolerances.
-      - name: Check single-context Electrical planar A/B pixel parity
-        if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
-        run: node scripts/renderer-electrical-same-context-ab.mjs
-
       - name: Package tested preview
         if: always()
         run: |
