@@ -48,6 +48,7 @@
 
   function render() {
     shell.render();
+    nativeOverlayOwners?.sync();
     // Split selectors are view *layout* controls; they never create a second canvas.
     const bar = root.querySelector('.p-viewbar');
     bar?.querySelector('.v2-real-split')?.remove();
