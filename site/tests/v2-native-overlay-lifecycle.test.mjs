@@ -20,7 +20,10 @@ class MockNode {
     this.handlers.set(type, list);
   }
   removeEventListener(type, callback) {
-    this.handlers.set(type, (this.handlers.get(type) || []).filter((fn) => fn !== callback));
+    this.handlers.set(
+      type,
+      (this.handlers.get(type) || []).filter((fn) => fn !== callback),
+    );
   }
   dispatchEvent(event) {
     for (const callback of this.handlers.get(event.type) || []) callback(event);
@@ -29,11 +32,21 @@ class MockNode {
   fire(type) {
     this.dispatchEvent({ type, newState: this.open ? 'open' : 'closed' });
   }
-  matches() { return false; }
-  querySelector() { return this.summary || null; }
-  setAttribute(key, value) { this.attributes.set(key, value); }
-  getAttribute(key) { return this.attributes.get(key); }
-  focus() { this.focusCount++; }
+  matches() {
+    return false;
+  }
+  querySelector() {
+    return this.summary || null;
+  }
+  setAttribute(key, value) {
+    this.attributes.set(key, value);
+  }
+  getAttribute(key) {
+    return this.attributes.get(key);
+  }
+  focus() {
+    this.focusCount++;
+  }
   close() {
     this.open = false;
     this.hidden = true;
@@ -51,15 +64,15 @@ class MockEvent {
   }
 }
 class MockObserver {
-  constructor(callback) { this.callback = callback; }
+  constructor(callback) {
+    this.callback = callback;
+  }
   observe() {}
   disconnect() {}
 }
 function fixture() {
   const win = {};
-  new Function('window', 'MutationObserver', 'CustomEvent', source)(
-    win, MockObserver, MockEvent,
-  );
+  new Function('window', 'MutationObserver', 'CustomEvent', source)(win, MockObserver, MockEvent);
   return win.WaferCadV2Overlays.create({ root: {}, portals: {} });
 }
 function owner() {
@@ -81,7 +94,9 @@ function owner() {
     querySelector(selector) {
       return selector === '[aria-controls="sectionCollapseEditor"]' ? trigger : null;
     },
-    checkVisibility() { return this.visible; },
+    checkVisibility() {
+      return this.visible;
+    },
   };
   return { panel, details, dialog, trigger };
 }
@@ -99,7 +114,8 @@ test('shared close(popover) closes the original native menu, preserving node ide
 
 test('opening native More in another view closes previously adopted More', () => {
   const manager = fixture();
-  const first = owner(), second = owner();
+  const first = owner(),
+    second = owner();
   const native = manager.adoptNativeViews([first.panel, second.panel]);
   first.details.open = true;
   first.details.fire('toggle');
