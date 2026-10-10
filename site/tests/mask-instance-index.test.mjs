@@ -124,7 +124,6 @@ test('selected-layer spatial lookup is rebuilt for filtered instances and layout
   assert.equal(selectedMaskInstanceIndex(layout, () => true).instances.length, 1);
 });
 
-
 test('canonical array Process uses deferred Mask envelopes for masked, inverse and empty selections', async () => {
   const { createModel } = await import('../model.js');
   const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
@@ -165,11 +164,7 @@ test('canonical array Process uses deferred Mask envelopes for masked, inverse a
     assert.deepEqual(area, model.boundary, 'No global Mask union may be stored on the envelope');
     const actual = localGeometry(area, site, domain);
     const expected =
-      mode === 'mask'
-        ? mask
-        : mode === 'invert'
-          ? difference(localDomain, mask)
-          : localDomain;
+      mode === 'mask' ? mask : mode === 'invert' ? difference(localDomain, mask) : localDomain;
     assert.equal(difference(actual, expected).length, 0, mode + ': missing local area');
     assert.equal(difference(expected, actual).length, 0, mode + ': extra local area');
   }
@@ -177,7 +172,10 @@ test('canonical array Process uses deferred Mask envelopes for masked, inverse a
   // remains the entire cell. An empty selected Mask is rejected for both.
   const unmaskedSite = model.array.instances[1],
     unmaskedDomain = rectMulti(1, 1, unmaskedSite.x, unmaskedSite.y);
-  assert.deepEqual(localGeometry(geometry.operationAreaGeometry('mask'), unmaskedSite, unmaskedDomain), []);
+  assert.deepEqual(
+    localGeometry(geometry.operationAreaGeometry('mask'), unmaskedSite, unmaskedDomain),
+    [],
+  );
   assert.equal(
     difference(
       localGeometry(geometry.operationAreaGeometry('invert'), unmaskedSite, unmaskedDomain),
