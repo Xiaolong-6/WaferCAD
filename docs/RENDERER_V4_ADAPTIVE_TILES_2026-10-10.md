@@ -105,6 +105,6 @@ updates without explicit user approval.
 
 ## Validation and publication
 
-R1 is intended as an *initial experiment*, not acceptance of V4 or PR #166.
+R1 is intended as an _initial experiment_, not acceptance of V4 or PR #166.
 Record exact CI results, browser availability and final branch HEAD in the
 Draft PR; any unrun gate remains **pending**, never implicitly passed.
