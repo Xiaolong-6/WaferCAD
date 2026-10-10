@@ -250,19 +250,19 @@ jobs:
       - name: Check 625-site array scene and retained resources
         run: node scripts/array-renderer-regression.mjs --fast-transparent-lod
 
-      # Use the existing V3 final-review A/B budget for the current
-      # display-only candidate. Do not add another expensive 625-site job.
-      # Quality indexing was measured on an earlier head and stays default-off.
-      - name: Compare Electrical Region planar single/double pass on the same runner
+      # Use the established V3 final-review A/B slot for the new P1 candidate.
+      # The prior smooth Electrical cap experiment already passed on PR #166;
+      # both arms retain that opt-in when comparing the additional volume split.
+      - name: Compare Electrical internal volume grouped caps against exact reference
         if: ${{ startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
-        run: node scripts/renderer-quality-index-ab.mjs --electrical-planar-ab
+        run: node scripts/renderer-quality-index-ab.mjs --electrical-volume-ab
 
-      - name: Upload Electrical Region planar A/B diagnostics
+      - name: Upload Electrical internal volume A/B diagnostics
         if: ${{ always() && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
         uses: actions/upload-artifact@v6
         with:
-          name: wafercad-electrical-planar-ab-${{ github.sha }}
-          path: test-results/renderer-electrical-planar-ab
+          name: wafercad-electrical-volume-ab-${{ github.sha }}
+          path: test-results/renderer-electrical-volume-ab
           retention-days: 14
           if-no-files-found: warn
 
