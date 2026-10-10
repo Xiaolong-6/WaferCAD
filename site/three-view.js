@@ -11,7 +11,10 @@ import { sampleBuriedInterfaceProjection } from './renderer-v3-projection-probe.
 import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
-import { createAdaptiveTilePlanCache, observePreparedAdaptiveTiles } from './renderer-v4-tile-plan.js';
+import {
+  createAdaptiveTilePlanCache,
+  observePreparedAdaptiveTiles,
+} from './renderer-v4-tile-plan.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -99,7 +102,8 @@ export function createThreeView({
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
-  const v4TileProbeEnabled = rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
+  const v4TileProbeEnabled =
+    rendererParams.get('rendererV4TileProbe') === '1' || v4TileCacheEnabled;
   const v4TilePlanCache = createAdaptiveTilePlanCache();
   let v4PreviousTiers = new Map();
   let v4ObservedModel = null;
