@@ -358,13 +358,16 @@ $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
 node scripts/renderer-roi-profile.mjs
 node scripts/renderer-roi-profile.mjs --after-transitions
+node scripts/renderer-electrical-inspection.mjs --repeat-only
 node scripts/renderer-electrical-inspection.mjs --skip-roi
 ```
 
 The isolated ROI results write to
 `test-results/renderer-roi-profile-fresh/` and
-`test-results/renderer-roi-profile-after-transitions/`. The inspection
-no-ROI subset remains **diagnostic-only** and cannot pass full acceptance.
+`test-results/renderer-roi-profile-after-transitions/`. The fast
+`--repeat-only` subset captures OFF/OFF/ON/ON far and fitted frames, and
+same-context duplicates, without 80 transition checks or ROI. Both
+inspection subsets remain **diagnostic-only** and cannot pass full acceptance.
 The CPU profile can be inspected using Chromium DevTools Performance or
 the CPU profiling view. A stage left at `surface-plan-start` is evidence
 of time spent in that phase, but the profile stack is needed to identify
