@@ -1,8 +1,8 @@
 # Legacy / v2 浏览器对照与窄屏修复 — 2026-10-10
 
-审计版本：`c320d2a` 加本轮修复；最新 pre-M3 修复产品提交 **`d147c2c`**（此前布局批次 `644cbb6` / `d6a233a`），分支 `codex/ui-v2-m2-handoff-2026-10-09`。旧版入口 `app.html`，当前演示入口 `app-v2.html`，Welcome 为 `index.html`。本轮实际点击、输入、拖拽和滚轮操作，补充此前 [258 项源码对照](FULL_PARITY_AUDIT_2026-10-09.md)，不能把那张表当成 258 项已实际执行。
+审计版本：`c320d2a` 加本轮修复；最新标题栏/Mask 小修产品提交 **`e1ad828`**，pre-M3 三项修复为 `d147c2c`（此前布局批次 `644cbb6` / `d6a233a`），分支 `codex/ui-v2-m2-handoff-2026-10-09`。旧版入口 `app.html`，当前演示入口 `app-v2.html`，Welcome 为 `index.html`。本轮实际点击、输入、拖拽和滚轮操作，补充此前 [258 项源码对照](FULL_PARITY_AUDIT_2026-10-09.md)，不能把那张表当成 258 项已实际执行。
 
-**结论：窄屏 History、图表高度和 Manual 示意图已修复并复验；最新自动壳层门槛 58 项通过；BC-01、BC-02、BC-09 已关闭。BC-03 到 BC-08 按用户决定延后到 M3。扩大范围后的 UI 对照仍有下表的未完成项，不能宣布完整 UI 或产品迁移验收通过。** [上一轮 targeted PASS](UI_ACCEPTANCE_2026-10-10.md) 只覆盖当时八项问题，不能覆盖本轮新发现的表单、ROI 和 Legend 缺口。
+**结论：窄屏 History、图表高度和 Manual 示意图已修复并复验；最新自动壳层门槛 59 项通过；BC-01、BC-02、BC-09 已关闭。BC-03 到 BC-08 按用户决定延后到 M3。扩大范围后的 UI 对照仍有下表的未完成项，不能宣布完整 UI 或产品迁移验收通过。** [上一轮 targeted PASS](UI_ACCEPTANCE_2026-10-10.md) 只覆盖当时八项问题，不能覆盖本轮新发现的表单、ROI 和 Legend 缺口。
 
 ## 架构和范围
 
@@ -97,6 +97,27 @@ BC-09 只清理文案和语言标记：`prototype`、`source History`、`normali
 上述正式浏览器、lint、docs、27 项回归和 fixture 检查在最终 main 合并 `f390516` 后再次通过。此时 docs 检查为 115 Markdown files、433 internal links、95 reachable docs、44 Architecture module references。沙箱内首次启动 Chrome 未能建立调试端点；允许原生浏览器测试进程后，同一正式脚本完整通过，没有修改产品或测试来规避该启动失败。
 
 契约测试首次因旧 `lang=zh-CN` 断言失败，按用户明确要求英文界面更新为 `lang=en` 后 27 项全部通过；架构和业务隔离断言未放宽。实际 IAB 点击品牌到 `index.html` Welcome 成功；Lift-off→History Deposit Edit 展示 0.07 µm / Front / Whole face，Cancel 返回原草稿。支持截图：`test-results/ui-v2-acceptance/pre-m3-history-edit-1280.png`，包含品牌样式和英文右下角保存状态/项目链接。
+
+## Title-bar and Mask follow-up — product e1ad828
+
+The user subsequently requested a single title row, Max always last, automatic More overflow instead of horizontal scrolling, icon-only controls with tooltips, and separate Mask ROI/Alignment entries in the title bar. This is a presentation repair; BC-03 through BC-08 remain deferred to M3, including independent Mask/Main/Detail ROI geometry and complete ROI schemas. **Full M2 UI comparison remains not passed.**
+
+- The shared native toolbar measures its actual available width with ResizeObserver. Surplus controls move into More in their original order and return when space permits. It moves the existing buttons, retaining their actions, pressed state and icons; menu entries receive readable labels and checkbox semantics where appropriate. More and Max remain outside the measured tool strip, on the same row as the title. Existing permanent menu commands retain their placement.
+- All four view title bars use icons with English title tooltips and accessible names, including More, Max/Restore, quality, ROI, Z-break and Legend. The view-panel lifecycle disposes each replaced toolbar observer; the scientific and named shell hosts stay stable.
+- Mask ROI visibility/settings and Alignment belong to the title bar. Their separate dialogs use the existing shared overlay lifecycle and the existing mock draft values/unit conversion. Editing Alignment does not change ROI values; editing ROI does not change the alignment transform. The canvas floating toolbar now exists only in Draw mode and contains drawing/add/delete/clear controls. Removed the obsolete combined floating settings panel and its CSS/state.
+
+Validation on Windows NT 10.0.26300.0, Node v24.16.0, native Chrome 155.0.8059.40 (dependencies remain locked from npm ci; no dependency or approved visual baseline changes):
+
+| Command                                                                                                                                                                                                                    | Result                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$env:WAFERCAD_REVIEW_CHROME='C:/Program Files/Google/Chrome/Application/chrome.exe'; node scripts/v2/check-m2-shell.mjs`                                                                                                  | exit 0; 59 named checks, errors []; 1440/1024 overview headers and 768/390/320 widths, coarse touch targets, overflow toggle, Escape focus, Max/Restore, widening, independent Mask dialogs and frozen sources |
+| `npm run lint`                                                                                                                                                                                                             | exit 0                                                                                                                                                                                                         |
+| `node --test scripts/v2/view-state.test.mjs scripts/v2/m25-shell-contract.test.mjs`                                                                                                                                        | exit 0; 8 passed, 0 failed                                                                                                                                                                                     |
+| `npx prettier --check site/ui-v2/native-components.js site/ui-v2/view-panel.js site/ui-v2/mock-views.js site/ui-v2/mock-workspace.js site/ui-v2/view-icons.js site/ui-v2/workstation-v2.css scripts/v2/check-m2-shell.mjs` | exit 0                                                                                                                                                                                                         |
+| `npm run docs:check`                                                                                                                                                                                                       | exit 0                                                                                                                                                                                                         |
+| `git diff --check`                                                                                                                                                                                                         | exit 0                                                                                                                                                                                                         |
+
+Actual IAB checks: 390px Section has a single icon row; at 320px Mask Alignment moves into More and opens its independent dialog; ROI settings shows no alignment fields; at 768px the Mask title entries return and the floating toolbar is drawing-only. Supporting screenshots (ignored review artifacts, not baselines): `test-results/ui-v2-acceptance/titlebar-section-icons-390.png`, `titlebar-mask-overflow-320.png`, `titlebar-mask-draw-only-768.png`. Reproduce with `node scripts/v2/serve-v2.mjs`, open `app-v2.html`, select Mask or Section, and resize across these widths. Changes are committed and normally pushed to the same codex branch; no main publication, deployment or manual CI run is included.
 
 ## 前一布局批次的精确验证与复现（`d6a233a`）
 

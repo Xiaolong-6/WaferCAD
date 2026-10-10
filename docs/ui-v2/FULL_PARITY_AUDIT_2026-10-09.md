@@ -2,7 +2,7 @@
 
 > 最新实际 UI 结论请看 [2026-10-10 UI 验收与修复](UI_ACCEPTANCE_2026-10-10.md)：`2ae4ca3` 已修复并视觉复验八项报告问题，49 项正式壳层检查通过。下表保留完整对照审计基线；本轮定向 UI 验收不代表 258 项功能全部完成或 M4 获批。
 
-> 后续 [旧版实际浏览器对照](LEGACY_BROWSER_COMPARISON_2026-10-10.md) 记录 `d147c2c` 的 Manual 示意图、窄屏图高/History 修复和 58 项壳层检查，以及仍未完成的表单、ROI、Legend 等缺口。不能以这些修复宣称整体 UI 验收通过。
+> 后续 [旧版实际浏览器对照](LEGACY_BROWSER_COMPARISON_2026-10-10.md) 记录 `e1ad828` 的 Manual 示意图、窄屏图高/History 修复和 59 项壳层检查，以及仍未完成的表单、ROI、Legend 等缺口。不能以这些修复宣称整体 UI 验收通过。
 
 审计基线：分支 `codex/ui-v2-m2-handoff-2026-10-09`，HEAD `feab69b` 加本轮尚未提交的滚动/Base/Recipe布局/色块修复。逐项修复开始前冻结本表。用户要求：先全面审计，再逐项修复；History 顶部 Restore/Edit/Create Variant 重复按钮移除，统一行内 ⋯。
 
