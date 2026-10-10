@@ -42,7 +42,21 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
     const expectedLeaf = expectedTemplates.get(expectedSite.templateId);
     const actualLeaf = actualTemplates.get(actualSite.templateId);
     assert.ok(expectedLeaf && actualLeaf, 'Run All references a missing physical template');
-    const comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf);
+    // The published TiO2 fixture stores XY vertices on a 0.0001 µm grid.
+    // Browser replay uses the original floating-point Mask before the next
+    // packed export. Permit at most 50 nm² of XY occupancy discrepancy per
+    // material/Z slab, equivalent to a 0.05 nm offset along a 1 µm edge.
+    // This is a narrow storage-precision envelope, not a geometry pass waiver.
+    let comparison;
+    try {
+      comparison = await assertSameMaterialGeometry(expectedLeaf, actualLeaf, {
+        areaToleranceUm2: 5e-5,
+      });
+    } catch (error) {
+      throw new Error(
+        `Array geometry differs at ${expectedSite.id} ${expectedSite.templateId} -> ${actualSite.templateId}: ${error.message}`,
+      );
+    }
     slabsChecked += comparison.slabsChecked;
     maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, comparison.maxMismatchAreaUm2);
   }
