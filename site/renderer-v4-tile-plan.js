@@ -59,7 +59,10 @@ export function buildAdaptiveTilePlan(
       plan.excludedOwners++;
       continue;
     }
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     const zPairs = [];
     let valid = true;
     for (const part of parts) {
@@ -93,7 +96,10 @@ export function buildAdaptiveTilePlan(
         plan.tileOverflow += count - tileIndex;
         break;
       }
-      let dxMin = Infinity, dxMax = -Infinity, dyMin = Infinity, dyMax = -Infinity;
+      let dxMin = Infinity,
+        dxMax = -Infinity,
+        dyMin = Infinity,
+        dyMax = -Infinity;
       for (
         let pointIndex = tileIndex * tileInstances;
         pointIndex < Math.min(ordered.length, (tileIndex + 1) * tileInstances);
@@ -128,7 +134,9 @@ export function createAdaptiveTilePlanCache({ maxEntries = 2 } = {}) {
   if (!Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > 8)
     throw new RangeError('maxEntries must be an integer in [1, 8]');
   const entries = [];
-  let hits = 0, misses = 0, evictions = 0;
+  let hits = 0,
+    misses = 0,
+    evictions = 0;
   function clear() {
     entries.length = 0;
   }
@@ -229,7 +237,8 @@ export function observePreparedAdaptiveTiles(
       farThresholdPx,
       hysteresis,
     }) === 'exact-uncertain'
-  ) return result;
+  )
+    return result;
   result.valid = true;
   result.reason = 'measured';
   result.reductionGate = !farTier
@@ -250,7 +259,9 @@ export function observePreparedAdaptiveTiles(
     result.tiles++;
     let z = zCache.get(tile.ownerPlan);
     if (!z) {
-      let minZ = Infinity, maxZ = -Infinity, valid = true;
+      let minZ = Infinity,
+        maxZ = -Infinity,
+        valid = true;
       try {
         for (const [z0, z1] of tile.ownerPlan.zPairs) {
           const intervals = visibleIntervals(z0, z1);
@@ -311,8 +322,7 @@ export function observePreparedAdaptiveTiles(
       result.candidateFarTiles++;
     } else result.uncertainTiles++;
     if (tier !== 'exact-uncertain') result.nextTiers.set(tile.id, tier);
-    if (result.sample.length < 8)
-      result.sample.push({ id: tile.id, tier, footprintPx });
+    if (result.sample.length < 8) result.sample.push({ id: tile.id, tier, footprintPx });
   }
   return result;
 }
