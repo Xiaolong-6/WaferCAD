@@ -181,6 +181,8 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
+History value comparisons and private import receipts use `site/state-equality.js`. Its exact own-key/value comparison visits shared object pairs once within a synchronous batch and handles canonical XY pairs directly. The memo is discarded after a failed comparison and at the end of each call; it never authorizes a later live edit using object identity or revision alone. Changed/consumed import receipts continue through strict validation. Geometry, snapshots and export formats are unchanged. See [metalens loading measurements](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
+
 Owns the canonical process-History graph. A successful Process action creates one **Step node** with `branchId`, `parentId`, `processRevision`, timestamp, structured operation metadata, and the exact validated workspace state produced by that action. Geometry-changing Deposit/Extend/Etch/Implant actions record the worker result; Record actions create an explicit non-geometric fabrication Step. In snapshot-branch format v3 every newly written Step is restorable.
 
 A **Variant** is a path through that Step graph. Each Variant stores `parentBranchId`, `rootNodeId`, `headNodeId`, and an exact `headState`. `rootNodeId` points to the Step where the Variant diverged; it may belong to the parent Variant. A new process Step on the child Variant points back to that origin Step through `parentId`. Variant topology therefore never depends on a snapshot/bookmark record.

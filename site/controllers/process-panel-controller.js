@@ -1005,11 +1005,15 @@ export function createProcessPanelController({
             ...(isArrayModel(model)
               ? { maskIndex: selectedMaskInstanceIndex(layout, selectedElement, maskTransform) }
               : {}),
-            elements: (layout.elements || []).filter(selectedElement).map((element) => ({
-              kind: element.kind,
-              width: element.width,
-              points: element.points,
-            })),
+            // Canonical arrays carry the selected, spatially indexed Mask.
+            // Do not also clone/transfer 60k raw elements to the worker.
+            elements: isArrayModel(model)
+              ? []
+              : (layout.elements || []).filter(selectedElement).map((element) => ({
+                  kind: element.kind,
+                  width: element.width,
+                  points: element.points,
+                })),
           }),
     };
 

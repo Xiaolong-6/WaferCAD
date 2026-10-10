@@ -1,0 +1,65 @@
+{
+  "sourceSha256": "71538e0b5376a7458f62b8c61eb9bdd869f481de8470b8c4158d45bbe39da88d",
+  "bytes": 10563872,
+  "browserVersion": "140.0.7339.186",
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "viewport": {
+    "width": 1400,
+    "height": 900
+  },
+  "date": "2026-10-10",
+  "baselineCommit": "46dab94",
+  "method": "Three fresh-context pairs, before then after, interleaved; real Welcome title click; same complete file; pinned local Three 0.179.1; headless software WebGL; no CPU profile or concurrent test workloads.",
+  "baselineModules": ["workspace-snapshots.js", "controllers/project-state-controller.js"],
+  "before": {
+    "runs": [
+      {
+        "openedMs": 8104,
+        "readyMs": 8946,
+        "workerMs": 1558,
+        "errors": []
+      },
+      {
+        "openedMs": 7080,
+        "readyMs": 7936,
+        "workerMs": 1170,
+        "errors": []
+      },
+      {
+        "openedMs": 7813,
+        "readyMs": 8502,
+        "workerMs": 1391,
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 7813,
+    "medianReadyMs": 8502,
+    "medianWorkerMs": 1391
+  },
+  "after": {
+    "runs": [
+      {
+        "openedMs": 5084,
+        "readyMs": 6037,
+        "workerMs": 1334,
+        "errors": []
+      },
+      {
+        "openedMs": 5135,
+        "readyMs": 5970,
+        "workerMs": 1217,
+        "errors": []
+      },
+      {
+        "openedMs": 5106,
+        "readyMs": 5975,
+        "workerMs": 1195,
+        "errors": []
+      }
+    ],
+    "medianOpenedMs": 5106,
+    "medianReadyMs": 5975,
+    "medianWorkerMs": 1217
+  }
+}

@@ -18,10 +18,7 @@ import {
 } from './test-helpers/ui.mjs';
 
 const file = await readFile(
-  new URL(
-    '../test-results/metalens/tio2-4725-grid-kernel-compiled-ILLUSTRATIVE.wafercad',
-    import.meta.url,
-  ),
+  new URL('../site/examples/tio2-metalens-full-array.wafercad', import.meta.url),
 );
 const browser = await launchBrowser();
 const context = await newUiContext(browser, {
@@ -36,7 +33,7 @@ try {
   await waitForAppReady(page);
   await openFunctionPanel(page, 'project', { timeout: 120000 });
   await page.locator('#openProjectInput').setInputFiles({
-    name: 'tio2-4725-grid-kernel-compiled-ILLUSTRATIVE.wafercad',
+    name: 'tio2-metalens-full-array.wafercad',
     mimeType: 'application/json',
     buffer: file,
   });
@@ -47,9 +44,10 @@ try {
     { timeout: 180000 },
   );
   const loadedMs = Math.round(performance.now() - begin);
-  // Exportable viewport evidence must not be hidden beneath Project flyout.
-  await closeFunctionPanel(page);
+  // Import completion precedes asynchronous scene assembly. Wait for the
+  // physical frame before exercising the flyout control and capturing views.
   await waitForThreeReady(page, 180000);
+  await closeFunctionPanel(page);
   await page.waitForFunction(
     () => {
       const canvas = document.getElementById('sectionCanvas');

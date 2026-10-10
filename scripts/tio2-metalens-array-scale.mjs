@@ -8,12 +8,13 @@ import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
-import { metaAtomPolygons } from './build-tio2-metalens-example.mjs';
+import { buildMetalensLocal, metaAtomPolygons } from './build-tio2-metalens-example.mjs';
 
 const pitch = 0.375;
 const families = ['circle', 'square', 'ring', 'bipolar-concentric-ring'];
 
-export async function probeMetalensGrid(grid = 25) {
+export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
+  if (publish && grid !== 80) throw new Error('Only the complete 80x80 example can be published.');
   if (![8, 25, 80].includes(grid)) throw new Error('Supported probe sizes: 8, 25, 80');
   await loadGeometryKernel();
   const m = await import('../site/model.js');
@@ -42,23 +43,46 @@ export async function probeMetalensGrid(grid = 25) {
       .slice(0, count)
       .map((x) => x.row * grid + x.col),
   );
-  const apply = (leaf, op, area) => {
+  const histories = new Map();
+  const apply = (leaf, op, area, allowUnchanged = false) => {
+    // A blank background cell has no lithography opening and no Cr after
+    // lift-off. Retain its unchanged stage while device templates do change.
+    if (
+      allowUnchanged &&
+      (!area.length ||
+        (op.type === 'etch' &&
+          !leaf.regions.some((region) =>
+            region.stack.some((segment) => op.etchTargetLayerIds.includes(segment.layerId)),
+          )))
+    ) {
+      histories.get(leaf).push(structuredClone(leaf));
+      return { changed: false };
+    }
     const result =
       applyAdvancedProcessOperation(leaf, op, area, m, v) ??
       m.applyOperation(leaf, { ...op, area });
-    assert.equal(result?.changed, true, result?.error || 'Kernel operation made no change');
+    assert.ok(!result?.error, result?.error);
+    assert.equal(result?.changed, true, 'Kernel operation made no change');
+    if (publish) histories.get(leaf).push(structuredClone(leaf));
     return result;
   };
   const makeLeaf = (family, scale) => {
     const leaf = m.createModel({ shape: 'rect', width: pitch, height: pitch, thickness: 2 });
     leaf.layers[0].name = 'Glass (2um illustration)';
+    if (publish) {
+      histories.set(leaf, [structuredClone(leaf)]);
+      // Cleaning is metadata, just as in the four-unit source Recipe.
+      leaf.revision++;
+      leaf.processRevision++;
+      histories.get(leaf).push(structuredClone(leaf));
+    }
     const baseArea = leaf.boundary;
     apply(
       leaf,
       { type: 'add', name: 'ITO', face: 'front', growth: 'direct', thickness: 0.013 },
       baseArea,
     );
-    if (!family) return leaf;
+    if (!family && !publish) return leaf;
     apply(
       leaf,
       { type: 'add', name: 'TiO2', face: 'front', growth: 'direct', thickness: 1.5 },
@@ -69,7 +93,7 @@ export async function probeMetalensGrid(grid = 25) {
       { type: 'add', name: 'PMMA', face: 'front', growth: 'direct', thickness: 0.2 },
       baseArea,
     );
-    const polygons = metaAtomPolygons(family, 0, 0, scale);
+    const polygons = family ? metaAtomPolygons(family, 0, 0, scale) : [];
     const keep = v.unionGeometries(polygons.map((points) => [[[...points, points[0]]]]));
     const remove = v.difference(baseArea, keep);
     apply(
@@ -82,6 +106,7 @@ export async function probeMetalensGrid(grid = 25) {
         etchTargetLayerIds: [resist.layerId],
       },
       keep,
+      !family,
     );
     const cr = apply(
       leaf,
@@ -114,6 +139,7 @@ export async function probeMetalensGrid(grid = 25) {
         etchTargetLayerIds: [cr.layerId],
       },
       baseArea,
+      !family,
     );
     validateProcessModel(leaf);
     const top = (x, y) =>
@@ -121,7 +147,7 @@ export async function probeMetalensGrid(grid = 25) {
         .find((r) => v.pointInMulti([x, y], r.geom))
         ?.stack.map((segment) => segment.layerId);
     assert.ok(
-      top(0, 0)?.includes('layer-2') === (family !== 'ring'),
+      top(0, 0)?.includes('layer-2') === Boolean(family && family !== 'ring'),
       family + ': center topology inconsistent',
     );
     return leaf;
@@ -193,6 +219,7 @@ export async function probeMetalensGrid(grid = 25) {
       ...project.layout,
       name: '80x80 GRID - ILLUSTRATIVE, not author GDS',
       root: 'TIO2_GRID',
+      hierarchy: { TIO2_GRID: [] },
       elements,
       combos: [
         {
@@ -215,6 +242,80 @@ export async function probeMetalensGrid(grid = 25) {
       'tio2-4725-compiled-grid-ILLUSTRATIVE.gds',
     );
     assert.equal(checked.layout.elements.length, elements.length, 'GRID mask GDS round-trip');
+  }
+  if (publish) {
+    const { project: local } = await buildMetalensLocal();
+    const stages = local.snapshotBranches.nodes.map((node, index) => ({
+      ...root,
+      nextRegionId: histories.get(first)[index].nextRegionId,
+      nextLayerId: histories.get(first)[index].nextLayerId,
+      nextImplantId: histories.get(first)[index].nextImplantId,
+      nextElectricalRegionId: histories.get(first)[index].nextElectricalRegionId,
+      revision: node.state.model.revision,
+      processRevision: node.state.model.processRevision,
+      layers: node.state.model.layers,
+      array: {
+        version: 1,
+        templates: [...definitions].map(([id, leaf]) => ({
+          id,
+          model: histories.get(leaf)[index],
+        })),
+        instances,
+      },
+    }));
+    for (const stage of stages) validateProcessModel(stage);
+    const mapState = (state) => ({
+      ...state,
+      name: 'TiO2 metalens - 4725-site full array / source-derived process',
+      model: stages[state.model.processRevision],
+      layout: project.layout,
+      section: project.section,
+      display: project.display,
+      activeCell: 'TIO2_GRID',
+      processRecipe: {
+        ...state.processRecipe,
+        name: 'TiO2 full-array PMMA/Cr process (compiled template History)',
+        base: { ...state.processRecipe.base, width: extent, height: extent },
+        steps: state.processRecipe.steps.map((step) => ({
+          ...step,
+          params: {
+            ...step.params,
+            ...(step.params.mask ? { mask: { ...step.params.mask, cell: 'TIO2_GRID' } } : {}),
+          },
+        })),
+      },
+    });
+    Object.assign(project, mapState(local));
+    project.snapshots = local.snapshots.map((bookmark) => ({
+      ...bookmark,
+      state: mapState(bookmark.state),
+    }));
+    project.snapshotBranches = {
+      ...local.snapshotBranches,
+      nodes: local.snapshotBranches.nodes.map((node) => ({
+        ...node,
+        state: mapState(node.state),
+        operation: {
+          ...node.operation,
+          ...(node.operation.replay?.maskContext
+            ? {
+                replay: {
+                  ...node.operation.replay,
+                  maskContext: {
+                    ...node.operation.replay.maskContext,
+                    cell: 'TIO2_GRID',
+                  },
+                },
+              }
+            : {}),
+        },
+      })),
+      branches: local.snapshotBranches.branches.map((branch) => ({
+        ...branch,
+        name: 'TiO2 metalens - full array',
+        headState: mapState(branch.headState),
+      })),
+    };
   }
   validateProjectFile(project);
   const serializeStart = performance.now();
@@ -247,6 +348,15 @@ export async function probeMetalensGrid(grid = 25) {
       ? { maskGdsBytes: gridGds.byteLength, maskPolygons: project.layout.elements.length }
       : {}),
   };
+  if (publish) {
+    assert.equal(reopened.snapshotBranches.nodes.length, 10);
+    assert.equal(reopened.snapshots.length, 6);
+    assert.equal(reopened.processRecipe.steps.length, 9);
+    await writeFile(
+      new URL('../site/examples/tio2-metalens-full-array.wafercad', import.meta.url),
+      saved,
+    );
+  }
   if (grid === 80) {
     const out = new URL('../test-results/metalens/', import.meta.url);
     await mkdir(out, { recursive: true });
@@ -258,7 +368,7 @@ export async function probeMetalensGrid(grid = 25) {
 }
 
 const selected = Number(process.argv.find((arg) => arg.startsWith('--grid='))?.slice(7) || 25);
-probeMetalensGrid(selected)
+probeMetalensGrid(selected, { publish: process.argv.includes('--write-example') })
   .then((result) => {
     console.log('METALENS_ARRAY_SCALE|' + JSON.stringify(result));
   })

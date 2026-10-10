@@ -26,7 +26,7 @@ Use this page to find the document that owns a question. Current contracts descr
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
-- [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived fabrication sequence, four-cell Recipe and 4725-site illustrative mask provenance.
+- [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
 - [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
 - [Morphology](ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
@@ -42,6 +42,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [UI v2 visual polish — 2026-10-09](ui-v2/VISUAL_POLISH_2026-10-09.md) — historical shell presentation changes; current UI acceptance is recorded separately above.
 - [UI v2 M0 checkpoint](ui-v2/M0_CHECKPOINT.md) — baseline, generated DOM contract, implicit dependencies, PR #161 postmortem, risks and the required stop before M1.
 - [UI v2 M2 iteration handoff — 2026-10-09](ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md) — latest M2 UI iteration, exact branch/revision, reproducible preview, checks and M3 boundaries.
+- [TiO2 full-array loading performance — 2026-10-10](TIO2_METALENS_PERFORMANCE_2026-10-10.md) — exact shared-state comparison, unchanged full-array assets and paired browser measurements.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
