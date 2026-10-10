@@ -1,6 +1,8 @@
 # TiO2 full-array loading performance
 
-Branch: `feat/tio2-metalens-full-array-example-20261009`. Baseline: `46dab94`. Local implementation and verification only; no push, PR, merge, deployment or manual remote CI.
+Branch: `feat/tio2-metalens-full-array-example-20261009`. Benchmark baseline: local `46dab94`; tested product: local `e7281d1`. Published product: `e35a8c8df268d9a58446fcd1875968a64fc0e2a8`.
+
+Publication follow-up, 2026-10-10: the user explicitly authorized publishing this branch. Refreshed `origin/main` remained `d73a201`; the working tree was clean, and 91 focused state/import/History/CI-routing tests passed again. CLI push failed because GitHub write credentials were unavailable, so the connected GitHub API published the three local commits as one commit with an identical complete file tree. Every uploaded blob matched its local Git SHA, and the remote tree matched `4722e8863ecedb2388b465ab7fc6b7a23be29a9c`. A fetch and exact local/remote file comparison verified publication. No PR, merge, deployment or manual remote CI was performed.
 
 ## Change and correctness
 
@@ -39,12 +41,12 @@ Install locked dependencies with `npm ci`. Serve `site/` on port 4173 and set `W
 node scripts/tio2-metalens-loading-benchmark.mjs test-results/metalens/loading-after.json 3
 ```
 
-For the baseline, export only the two compared modules from `46dab94` into an ignored directory while preserving their relative paths:
+For the baseline, export only the two compared modules into an ignored directory while preserving their relative paths. They are byte-identical in local `46dab94` and public `d73a201`; the latter remains available in the published history:
 
 ```bash
 mkdir -p test-results/metalens/perf-baseline/controllers
-git show 46dab94:site/workspace-snapshots.js > test-results/metalens/perf-baseline/workspace-snapshots.js
-git show 46dab94:site/controllers/project-state-controller.js > test-results/metalens/perf-baseline/controllers/project-state-controller.js
+git show d73a201:site/workspace-snapshots.js > test-results/metalens/perf-baseline/workspace-snapshots.js
+git show d73a201:site/controllers/project-state-controller.js > test-results/metalens/perf-baseline/controllers/project-state-controller.js
 WAFERCAD_BASELINE_SNAPSHOTS_DIR="$PWD/test-results/metalens/perf-baseline" node scripts/tio2-metalens-loading-benchmark.mjs test-results/metalens/loading-before.json 3
 ```
 

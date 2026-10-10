@@ -137,7 +137,11 @@ probe took 46.2 s to import and 74.8 s through view capture. These shared Linux
 software-WebGL results certify completion, not a production performance target;
 large History capture/comparison remains a measurable limitation.
 
-The product is committed locally. Remote push was rejected by automatic approval
-review because publishing repository source to a public GitHub branch requires
-explicit user authorization. No remote branch, PR, merge or deployment was made
-by this follow-up. Publication can proceed after that authorization.
+At the original integration checkpoint, remote push was rejected by automatic
+approval review because explicit publication authorization was missing. On
+2026-10-10 the user granted that authorization. The complete integration and
+loading optimization were published to
+`feat/tio2-metalens-full-array-example-20261009`, product commit
+`e35a8c8df268d9a58446fcd1875968a64fc0e2a8`, with an exact file-tree match to the
+tested local product. See the [performance publication record](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
+No PR, merge or deployment was made by this follow-up.
