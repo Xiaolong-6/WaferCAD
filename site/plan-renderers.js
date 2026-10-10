@@ -25,6 +25,7 @@ import {
   resolveSectionCollapse,
   sectionVisibleZSpan,
 } from './section-z-collapse.js';
+import { normalizeSectionViewport, sectionViewportMap, sectionViewportUnmap } from './section-view-viewport.js';
 
 export function createPlanRenderers({
   root = document,
@@ -520,7 +521,7 @@ export function createPlanRenderers({
     drawPlanAxes(ctx, v, w, h, back);
   }
   function renderSection(targetCanvas = null, detailRoi = null) {
-    const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse } = getState();
+    const { model, section, sectionScaleMode, sectionShowBorders, sectionCollapse, sectionViewport } = getState();
     const mainCanvas = $('sectionCanvas'),
       c = targetCanvas || mainCanvas,
       { ctx, w, h } = setupCanvas(c),
@@ -577,6 +578,9 @@ export function createPlanRenderers({
         mode: sectionScaleMode,
         xScale,
       }),
+      screenViewport = normalizeSectionViewport(sectionViewport),
+      viewportX = (x) => sectionViewportMap(x, viewW, screenViewport.panX, screenViewport.zoom),
+      viewportY = (y) => sectionViewportMap(y, viewH, screenViewport.panY, screenViewport.zoom),
       zScale = Math.max(1e-12, zTransform.topScale),
       zExaggeration = zScale / Math.max(xScale, 1e-12),
       bottomZExaggeration = Math.max(1e-12, zTransform.bottomScale) / Math.max(xScale, 1e-12),
@@ -586,30 +590,33 @@ export function createPlanRenderers({
       detailScaleY = detailRoi ? h / Math.max(1, detailRoi.height * viewH) : 1,
       screenX = (value) => (value - detailX) * detailScaleX,
       screenY = (value) => (value - detailY) * detailScaleY,
-      baseMapT = (t) => plotLeft + t * plotWidth,
-      baseMapZ = zTransform.mapZ,
+      baseMapT = (t) => viewportX(plotLeft + t * plotWidth),
+      baseMapZ = (z) => viewportY(zTransform.mapZ(z)),
       mapT = (t) => screenX(baseMapT(t)),
       mapZ = (z) => screenY(baseMapZ(z)),
-      effectiveXScale = xScale * detailScaleX;
+      effectiveXScale = xScale * screenViewport.zoom * detailScaleX;
 
     if (!detailRoi) {
       c.dataset.scaleMode = sectionScaleMode;
-      c.dataset.xPxPerUm = String(xScale);
-      c.dataset.zPxPerUm = String(zScale);
-      c.dataset.sectionFrontPxPerUm = String(zTransform.topScale);
-      c.dataset.sectionBackPxPerUm = String(zTransform.bottomScale);
+      c.dataset.xPxPerUm = String(xScale * screenViewport.zoom);
+      c.dataset.zPxPerUm = String(zScale * screenViewport.zoom);
+      c.dataset.sectionFrontPxPerUm = String(zTransform.topScale * screenViewport.zoom);
+      c.dataset.sectionBackPxPerUm = String(zTransform.bottomScale * screenViewport.zoom);
       c.dataset.sectionScaleLinked = String(collapse.scaleLinked !== false);
       c.dataset.zMinUm = String(lo);
       c.dataset.zMaxUm = String(hi);
-      c.dataset.sectionPlotLeft = String(plotLeft);
-      c.dataset.sectionCollapseBreakY = String(zTransform.breakCenter);
-      c.dataset.sectionCollapseUpperY = String(zTransform.upperBottom);
-      c.dataset.sectionCollapseLowerY = String(zTransform.lowerTop);
-      c.dataset.sectionFrameTop = String(zTransform.frameTop);
-      c.dataset.sectionFrameBottom = String(zTransform.frameBottom);
+      c.dataset.sectionPlotLeft = String(viewportX(plotLeft));
+      c.dataset.sectionCollapseBreakY = String(viewportY(zTransform.breakCenter));
+      c.dataset.sectionCollapseUpperY = String(viewportY(zTransform.upperBottom));
+      c.dataset.sectionCollapseLowerY = String(viewportY(zTransform.lowerTop));
+      c.dataset.sectionFrameTop = String(viewportY(zTransform.frameTop));
+      c.dataset.sectionFrameBottom = String(viewportY(zTransform.frameBottom));
       c.dataset.sectionZ0Um = String(z0);
       c.dataset.sectionZ1Um = String(z1);
-      c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale);
+      c.dataset.sectionBottomPxPerUm = String(zTransform.bottomScale * screenViewport.zoom);
+      c.dataset.sectionViewportZoom = String(screenViewport.zoom);
+      c.dataset.sectionViewportPanX = String(screenViewport.panX);
+      c.dataset.sectionViewportPanY = String(screenViewport.panY);
       c.dataset.sectionCollapseEnabled = String(collapseEnabled);
       c.dataset.sectionCollapseTopUm = String(collapse.top);
       c.dataset.sectionCollapseBottomUm = String(collapse.bottom);
@@ -673,7 +680,7 @@ export function createPlanRenderers({
         const x0 = Math.max(-profileStep, mapT(t0)),
           x1 = Math.min(w + profileStep, mapT(t1));
         if (x1 <= x0) return [];
-        const toT = (x) => (x / detailScaleX + detailX - plotLeft) / plotWidth,
+        const toT = (x) => (sectionViewportUnmap(x / detailScaleX + detailX, viewW, screenViewport.panX, screenViewport.zoom) - plotLeft) / plotWidth,
           times = [toT(x0)];
         for (let x = (Math.floor(x0 / profileStep) + 1) * profileStep; x < x1; x += profileStep) {
           times.push(toT(x));
@@ -1049,10 +1056,10 @@ export function createPlanRenderers({
     // Section is one continuous physical-Z view and nothing is masked.
     if (collapseEnabled) {
       ctx.fillStyle = '#fbfcfd';
-      const collapseLeft = screenX(plotLeft),
-        collapseRight = screenX(plotLeft + plotWidth),
-        collapseTop = screenY(zTransform.upperBottom - 0.5),
-        collapseBottom = screenY(zTransform.lowerTop + 0.5);
+      const collapseLeft = screenX(viewportX(plotLeft)),
+        collapseRight = screenX(viewportX(plotLeft + plotWidth)),
+        collapseTop = screenY(viewportY(zTransform.upperBottom - 0.5)),
+        collapseBottom = screenY(viewportY(zTransform.lowerTop + 0.5));
       ctx.fillRect(
         Math.min(collapseLeft, collapseRight),
         Math.min(collapseTop, collapseBottom),
