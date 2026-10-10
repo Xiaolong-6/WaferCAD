@@ -135,6 +135,8 @@ test('preflight marks missing layout as unverified and does not mutate inputs', 
 });
 
 test('legacy 80x80 GRID Base inference accepts only complete matching role ownership', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
   const { createModel } = await import('../model.js');
   const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
   const { inferRectangularGridRecipeBase } = await import('../process-recipe-preflight.js');
