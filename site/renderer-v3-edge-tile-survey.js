@@ -50,17 +50,28 @@ export function buriedInterfaceEdgeTileSurvey(
     !viewProjectionMatrix ||
     viewProjectionMatrix.length !== 16 ||
     !Array.from(viewProjectionMatrix).every(Number.isFinite) ||
-    !Number.isFinite(viewportWidth) || viewportWidth <= 0 ||
-    !Number.isFinite(viewportHeight) || viewportHeight <= 0 ||
-    !Number.isFinite(displayZScale) || displayZScale <= 0 ||
-    typeof mapZ !== 'function' || typeof visibleIntervals !== 'function' ||
-    !Number.isInteger(tileInstances) || tileInstances < 1 || tileInstances > 256 ||
-    !Number.isInteger(maxOwners) || maxOwners < 1 || maxOwners > 8 ||
+    !Number.isFinite(viewportWidth) ||
+    viewportWidth <= 0 ||
+    !Number.isFinite(viewportHeight) ||
+    viewportHeight <= 0 ||
+    !Number.isFinite(displayZScale) ||
+    displayZScale <= 0 ||
+    typeof mapZ !== 'function' ||
+    typeof visibleIntervals !== 'function' ||
+    !Number.isInteger(tileInstances) ||
+    tileInstances < 1 ||
+    tileInstances > 256 ||
+    !Number.isInteger(maxOwners) ||
+    maxOwners < 1 ||
+    maxOwners > 8 ||
     !Number.isInteger(maxProjectedBounds) ||
-    maxProjectedBounds < 1 || maxProjectedBounds > 200000 ||
+    maxProjectedBounds < 1 ||
+    maxProjectedBounds > 200000 ||
     !Number.isFinite(subpixelThreshold) ||
-    subpixelThreshold <= 0 || subpixelThreshold > 0.5
-  ) return result;
+    subpixelThreshold <= 0 ||
+    subpixelThreshold > 0.5
+  )
+    return result;
   result.valid = true;
   result.reason = 'bounded';
   result.reductionGate = !farTier
@@ -74,15 +85,18 @@ export function buriedInterfaceEdgeTileSurvey(
           : 'alpha-coverage-unverified';
 
   // Pick the heaviest owner templates, never hard-code example layer IDs.
-  const candidates = owners.filter(
-    (o) => o?.buried === true &&
-      Array.isArray(o.instanceTranslations) &&
-      o.instanceTranslations.length >= 64,
-  ).sort(
-    (a, b) =>
-      (b.parts?.length || 1) * b.instanceTranslations.length -
-      (a.parts?.length || 1) * a.instanceTranslations.length,
-  );
+  const candidates = owners
+    .filter(
+      (o) =>
+        o?.buried === true &&
+        Array.isArray(o.instanceTranslations) &&
+        o.instanceTranslations.length >= 64,
+    )
+    .sort(
+      (a, b) =>
+        (b.parts?.length || 1) * b.instanceTranslations.length -
+        (a.parts?.length || 1) * a.instanceTranslations.length,
+    );
   result.ownerOverflow = Math.max(0, candidates.length - maxOwners);
   for (const owner of candidates.slice(0, maxOwners)) {
     const parts = owner.parts || [owner];
@@ -92,11 +106,15 @@ export function buriedInterfaceEdgeTileSurvey(
     if (
       !parts.length ||
       parts.length > 8192 ||
-      !parts.every((p) =>
-        finiteXY(p?.p) && finiteXY(p?.q) &&
-        Number.isFinite(p.z0) && Number.isFinite(p.z1) &&
-        p.z0 !== p.z1 &&
-        !p.lowerSurface?.appearance && !p.upperSurface?.appearance,
+      !parts.every(
+        (p) =>
+          finiteXY(p?.p) &&
+          finiteXY(p?.q) &&
+          Number.isFinite(p.z0) &&
+          Number.isFinite(p.z1) &&
+          p.z0 !== p.z1 &&
+          !p.lowerSurface?.appearance &&
+          !p.upperSurface?.appearance,
       ) ||
       !translations.every(finiteXY)
     ) {
@@ -147,8 +165,7 @@ export function buriedInterfaceEdgeTileSurvey(
       continue;
     }
     result.hiddenIntervals += hiddenCount;
-    const tiles = [...translations]
-      .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    const tiles = [...translations].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
     const count = Math.ceil(tiles.length / tileInstances);
     const perOwner = {
       layerId: String(owner.layerId || 'unknown'),
@@ -170,16 +187,24 @@ export function buriedInterfaceEdgeTileSurvey(
         dy1 = Math.max(...group.map((p) => p[1]));
       for (let partIndex = 0; partIndex < fragments.length; partIndex++) {
         if (result.projectedBounds >= maxProjectedBounds) {
-          result.workOverflow += fragments.length - partIndex +
-            (count - tileIndex - 1) * fragments.length;
+          result.workOverflow +=
+            fragments.length - partIndex + (count - tileIndex - 1) * fragments.length;
           break;
         }
         const f = fragments[partIndex],
-          rect = projectAxisAlignedTileBounds({
-            minX: f.minX + dx0, maxX: f.maxX + dx1,
-            minY: f.minY + dy0, maxY: f.maxY + dy1,
-            minZ: f.minZ, maxZ: f.maxZ,
-          }, viewProjectionMatrix, viewportWidth, viewportHeight);
+          rect = projectAxisAlignedTileBounds(
+            {
+              minX: f.minX + dx0,
+              maxX: f.maxX + dx1,
+              minY: f.minY + dy0,
+              maxY: f.maxY + dy1,
+              minZ: f.minZ,
+              maxZ: f.maxZ,
+            },
+            viewProjectionMatrix,
+            viewportWidth,
+            viewportHeight,
+          );
         result.projectedBounds++;
         perOwner.projectedBounds++;
         const represented = group.length * 4;
@@ -191,10 +216,7 @@ export function buriedInterfaceEdgeTileSurvey(
         } else if (rect.kind === 'offscreen-bound') {
           result.offscreenBounds++;
           perOwner.offscreenBounds++;
-        } else if (
-          rect.widthPx <= subpixelThreshold &&
-          rect.heightPx <= subpixelThreshold
-        ) {
+        } else if (rect.widthPx <= subpixelThreshold && rect.heightPx <= subpixelThreshold) {
           result.subpixelBounds++;
           perOwner.subpixelBounds++;
           result.subpixelRawTwoPassUpperBound += represented;

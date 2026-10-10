@@ -93,6 +93,9 @@ export function createThreeView({
   );
   const v3DiagnosticsEnabled = rendererParams.get('rendererV3Diagnostics') === '1';
   const v3QualityIndexExperiment = rendererParams.get('rendererV3QualityIndex') === '1';
+  const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
+  let suppressAssemblyFrames = false;
+  let assemblySkippedFrames = 0;
 
   let renderer = null;
   let scene = null;
@@ -792,6 +795,13 @@ export function createThreeView({
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
       frame = null;
+      // Experimental large-array loading policy: assembly still yields to UI
+      // animation frames, but does not repeatedly submit incomplete meshes.
+      // The final exact scene is submitted after the build's finally block.
+      if (suppressAssemblyFrames) {
+        host.dataset.rendererAssemblySkippedFrames = String(++assemblySkippedFrames);
+        return;
+      }
       // OrbitControls damping keeps scheduling frames after pointer-up.
       // A full-wafer exact transparent array can cost tens of seconds per
       // software-WebGL frame; repeating these frames starves input handling.
@@ -1045,8 +1055,7 @@ export function createThreeView({
     host.dataset.v3ProjectionVisibleQuads = entry.v3ProjectionProbe?.projected || '0';
     host.dataset.v3ProjectionSubpixelQuads = entry.v3ProjectionProbe?.subpixel || '0';
     host.dataset.v3ProjectionOffscreenQuads = entry.v3ProjectionProbe?.offscreen || '0';
-    host.dataset.v3ProjectionRawTriangleUpperBound =
-      entry.v3ProjectionProbe?.rawTriangles || '0';
+    host.dataset.v3ProjectionRawTriangleUpperBound = entry.v3ProjectionProbe?.rawTriangles || '0';
     host.dataset.v3ProjectionTopOwners = entry.v3ProjectionProbe?.topOwners || '[]';
     host.dataset.v3TileBoundStatus = entry.v3TileProbe?.status || 'not-sampled';
     host.dataset.v3TileReductionGate = entry.v3TileProbe?.gate || 'not-far';
@@ -1626,9 +1635,10 @@ export function createThreeView({
       normals = [],
       annotationDepths = [],
       indices = [],
-      preparedParts = displayTolerance > 0
-        ? simplifyDisplaySidewallParts(parts, displayTolerance)
-        : mergeCollinearSidewallParts(parts),
+      preparedParts =
+        displayTolerance > 0
+          ? simplifyDisplaySidewallParts(parts, displayTolerance)
+          : mergeCollinearSidewallParts(parts),
       useIndex = indexedSmooth && canIndexSmoothWalls(preparedParts);
 
     const triangle = (a, b, c, depths = null) => {
@@ -2751,41 +2761,40 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // smooth, buried wall workload at a far Fast array camera. No mesh
       // reduction, change to opacity sorting or mutation of source geometry.
       const viewportForV3 = currentViewport(),
-        distanceForV3 =
-          camera && controls ? camera.position.distanceTo(controls.target) : 0,
-        v3Budget = v3DiagnosticsEnabled ? buriedInterfaceSubpixelBudget(plan.sidewalls, {
-          farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
-          clipped: Boolean(clip),
-          // Use the EFFECTIVE Section display transform, including the
-          // enabled default when the stored Section setting is null.
-          zCollapsed: currentZDisplay?.enabled !== false,
-          displayZScale: currentZDisplay?.scale,
-          unitsPerPixel:
-            camera && distanceForV3 > 0
-              ? (2 * distanceForV3 * Math.tan((camera.fov * Math.PI) / 360)) /
-                viewportForV3.height
-              : 0,
-          viewZFraction:
-            camera && distanceForV3 > 0
-              ? Math.abs(camera.position.z - controls.target.z) / distanceForV3
-              : 0,
-        }) : {
-          mode: 'observe-only',
-          qualified: false,
-          exclusionReason: 'diagnostics-disabled',
-          candidates: 0,
-          instanceWallSegments: 0,
-          rawTwoPassTriangleEstimate: 0,
-          skippedTriangles: 0,
-        };
+        distanceForV3 = camera && controls ? camera.position.distanceTo(controls.target) : 0,
+        v3Budget = v3DiagnosticsEnabled
+          ? buriedInterfaceSubpixelBudget(plan.sidewalls, {
+              farTier: targetVariant === 'transparent' && arrayLod.tier !== 'exact',
+              clipped: Boolean(clip),
+              // Use the EFFECTIVE Section display transform, including the
+              // enabled default when the stored Section setting is null.
+              zCollapsed: currentZDisplay?.enabled !== false,
+              displayZScale: currentZDisplay?.scale,
+              unitsPerPixel:
+                camera && distanceForV3 > 0
+                  ? (2 * distanceForV3 * Math.tan((camera.fov * Math.PI) / 360)) /
+                    viewportForV3.height
+                  : 0,
+              viewZFraction:
+                camera && distanceForV3 > 0
+                  ? Math.abs(camera.position.z - controls.target.z) / distanceForV3
+                  : 0,
+            })
+          : {
+              mode: 'observe-only',
+              qualified: false,
+              exclusionReason: 'diagnostics-disabled',
+              candidates: 0,
+              instanceWallSegments: 0,
+              rawTwoPassTriangleEstimate: 0,
+              skippedTriangles: 0,
+            };
       host.dataset.v3ScreenBudgetMode = v3Budget.mode;
       host.dataset.v3ScreenBudgetQualified = String(v3Budget.qualified);
       host.dataset.v3ScreenBudgetReason = v3Budget.exclusionReason || 'qualified';
       host.dataset.v3SubpixelWallCandidates = String(v3Budget.candidates);
       host.dataset.v3SubpixelWallInstances = String(v3Budget.instanceWallSegments);
-      host.dataset.v3SubpixelRawTriangleEstimate = String(
-        v3Budget.rawTwoPassTriangleEstimate,
-      );
+      host.dataset.v3SubpixelRawTriangleEstimate = String(v3Budget.rawTwoPassTriangleEstimate);
       host.dataset.v3SkippedTriangles = String(v3Budget.skippedTriangles);
       // Read-only sample of *actual perspective projection*, even when a
       // collapsed Section disqualifies every candidate from future culling.
@@ -2813,7 +2822,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
               ) ||
               pointForProjection.z < -1 ||
               pointForProjection.z > 1
-            ) return null;
+            )
+              return null;
             return [
               ((pointForProjection.x + 1) * viewportForV3.width) / 2,
               ((1 - pointForProjection.y) * viewportForV3.height) / 2,
@@ -2843,9 +2853,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         arrayLod.tier !== 'exact' &&
         camera
       ) {
-        const viewProjection = camera.projectionMatrix
-          .clone()
-          .multiply(camera.matrixWorldInverse);
+        const viewProjection = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse);
         v3Tiles = buriedInterfaceTileBounds(plan.sidewalls, {
           viewProjectionMatrix: viewProjection.elements,
           viewportWidth: viewportForV3.width,
@@ -2894,9 +2902,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.v3EdgeSurveySubpixel = String(v3Edges?.subpixelBounds || 0);
       host.dataset.v3EdgeSurveyUncertain = String(v3Edges?.uncertainBounds || 0);
       host.dataset.v3EdgeSurveyOverflow = String(v3Edges?.workOverflow || 0);
-      host.dataset.v3EdgeSurveyRawUpperBound = String(
-        v3Edges?.representedRawTwoPassTriangles || 0,
-      );
+      host.dataset.v3EdgeSurveyRawUpperBound = String(v3Edges?.representedRawTwoPassTriangles || 0);
       host.dataset.v3EdgeSurveySubpixelRawUpperBound = String(
         v3Edges?.subpixelRawTwoPassUpperBound || 0,
       );
@@ -2908,6 +2914,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         rendererTopologyAt = performance.now();
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
+      suppressAssemblyFrames = v3FinalFrameOnlyExperiment && cooperativeAssembly;
+      assemblySkippedFrames = 0;
+      host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
+      host.dataset.rendererAssemblySkippedFrames = '0';
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 32;
       const maybeYieldAssembly = async () => {
@@ -3281,7 +3291,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             sum +
             (object.geometry?.index?.count ||
               object.geometry?.getAttribute?.('position')?.count ||
-              0) / 3,
+              0) /
+              3,
           0,
         ),
       );
@@ -3669,6 +3680,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
     } finally {
+      suppressAssemblyFrames = false;
       rendering = false;
     }
 

@@ -90,18 +90,22 @@ test('a fully projected bounding volume entirely outside the viewport is reporte
 
 test('non-array, exterior, and rough/coating owner groups are excluded conservatively', () => {
   const plain = tiny();
-  const result = buriedInterfaceTileBounds([
-    { ...plain, buried: false },
-    { ...plain, instanceTranslations: [[0, 0]] },
-    { ...plain, parts: [{ ...plain.parts[0], upperSurface: { appearance: { kind: 'rough' } } }] },
-    plain,
-  ], camera);
+  const result = buriedInterfaceTileBounds(
+    [
+      { ...plain, buried: false },
+      { ...plain, instanceTranslations: [[0, 0]] },
+      { ...plain, parts: [{ ...plain.parts[0], upperSurface: { appearance: { kind: 'rough' } } }] },
+      plain,
+    ],
+    camera,
+  );
   assert.equal(result.owners, 1);
   assert.equal(result.excludedOwners, 1);
 });
 
 test('bounded owner and tile budgets disclose overflow instead of implying full coverage', () => {
-  const ownerA = tiny(), ownerB = { ...tiny(), layerId: 'layer-12' };
+  const ownerA = tiny(),
+    ownerB = { ...tiny(), layerId: 'layer-12' };
   const result = buriedInterfaceTileBounds([ownerA, ownerB], {
     ...camera,
     maxOwners: 1,

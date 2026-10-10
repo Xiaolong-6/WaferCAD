@@ -99,11 +99,8 @@ test('thickness must be bounded in physical units; oblique camera cannot hide a 
   assert.equal(r.rawTwoPassTriangleEstimate, 0);
 });
 
-
 test('render Z exaggeration forbids treating a visibly large thin film as subpixel', () => {
-  const physicallyThin = [smoothInterior({ parts: [
-    { p: [0, 0], q: [1, 0], z0: 0, z1: 0.02 },
-  ] })];
+  const physicallyThin = [smoothInterior({ parts: [{ p: [0, 0], q: [1, 0], z0: 0, z1: 0.02 }] })];
   const physicalOnly = buriedInterfaceSubpixelBudget(physicallyThin, {
     ...farOptions,
     unitsPerPixel: 2.56,

@@ -128,9 +128,16 @@ try {
     assert.equal(distant.v3ProjectionStatus, 'sampled');
     assert.equal(distant.v3TileBoundStatus, 'measured');
     assert.equal(distant.v3EdgeSurveyStatus, 'bounded');
-    assert.ok(Number(distant.v3EdgeSurveyOwners) > 0, 'edge survey must inspect heavy smooth owners');
+    assert.ok(
+      Number(distant.v3EdgeSurveyOwners) > 0,
+      'edge survey must inspect heavy smooth owners',
+    );
     assert.ok(Number(distant.v3EdgeSurveyBounds) > 0, 'must project complete edge x tile bounds');
-    assert.equal(distant.v3EdgeSurveyOverflow, '0', 'heavy-owner edge-tile budget must be complete');
+    assert.equal(
+      distant.v3EdgeSurveyOverflow,
+      '0',
+      'heavy-owner edge-tile budget must be complete',
+    );
     assert.ok(Number(distant.v3EdgeSurveyMs) >= 0, 'probe time must be measurable');
     assert.equal(
       distant.v3EdgeSurveyGate,

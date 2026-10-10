@@ -4,7 +4,8 @@ import { buriedInterfaceEdgeTileSurvey } from '../renderer-v3-edge-tile-survey.j
 
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 const smooth = (layerId = 'layer-6') => ({
-  layerId, buried: true,
+  layerId,
+  buried: true,
   instanceTranslations: Array.from({ length: 128 }, (_, i) => [i * 0.000001, 0]),
   parts: [
     { p: [0, 0], q: [0.002, 0], z0: 0, z1: 0.002 },
@@ -43,7 +44,9 @@ test('amplified Section Z projected with tilted camera cannot create false subpi
   const basis = { ...camera, viewProjectionMatrix: tilted };
   const base = buriedInterfaceEdgeTileSurvey([smooth()], basis);
   const boosted = buriedInterfaceEdgeTileSurvey([smooth()], {
-    ...basis, displayZScale: 100, zCollapsed: true,
+    ...basis,
+    displayZScale: 100,
+    zCollapsed: true,
   });
   assert.equal(base.subpixelBounds, 2);
   assert.equal(boosted.subpixelBounds, 0);
@@ -54,7 +57,10 @@ test('amplified Section Z projected with tilted camera cannot create false subpi
 test('two surviving Section intervals are counted independently, not hidden or silently dropped', () => {
   const r = buriedInterfaceEdgeTileSurvey([smooth()], {
     ...camera,
-    visibleIntervals: () => [[0, 0.0005], [0.0015, 0.002]],
+    visibleIntervals: () => [
+      [0, 0.0005],
+      [0.0015, 0.002],
+    ],
     zCollapsed: true,
   });
   assert.equal(r.projectedBounds, 8);
@@ -76,7 +82,8 @@ test('buried mixed rough owners are rejected as complete groups', () => {
 test('near-camera clip crossings are explicitly uncertain, not offscreen', () => {
   const wFromZ = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0];
   const r = buriedInterfaceEdgeTileSurvey([smooth()], {
-    ...camera, viewProjectionMatrix: wFromZ,
+    ...camera,
+    viewProjectionMatrix: wFromZ,
   });
   assert.equal(r.projectedBounds, 4);
   assert.equal(r.uncertainBounds, 4);
@@ -106,7 +113,9 @@ test('ROI, near and edge-on are fail-closed transparency gates', () => {
 
 test('hard budget marks overflow rather than treating the subset as complete', () => {
   const r = buriedInterfaceEdgeTileSurvey([smooth(), smooth('layer-12')], {
-    ...camera, maxOwners: 2, maxProjectedBounds: 1,
+    ...camera,
+    maxOwners: 2,
+    maxProjectedBounds: 1,
   });
   assert.equal(r.studiedOwners, 1);
   assert.equal(r.projectedBounds, 1);

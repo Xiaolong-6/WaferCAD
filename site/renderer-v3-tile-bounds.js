@@ -24,19 +24,20 @@ export function projectAxisAlignedTileBounds(bounds, matrix, width, height) {
           clipW <= 0 ||
           clipZ < -clipW ||
           clipZ > clipW
-        ) return { kind: 'uncertain-near-far' };
-        corners.push([
-          ((clipX / clipW + 1) * width) / 2,
-          ((1 - clipY / clipW) * height) / 2,
-        ]);
+        )
+          return { kind: 'uncertain-near-far' };
+        corners.push([((clipX / clipW + 1) * width) / 2, ((1 - clipY / clipW) * height) / 2]);
       }
     }
   }
   const xs = corners.map((p) => p[0]);
   const ys = corners.map((p) => p[1]);
-  const minX = Math.min(...xs), maxX = Math.max(...xs),
-    minY = Math.min(...ys), maxY = Math.max(...ys);
-  const pixelWidth = maxX - minX, pixelHeight = maxY - minY;
+  const minX = Math.min(...xs),
+    maxX = Math.max(...xs),
+    minY = Math.min(...ys),
+    maxY = Math.max(...ys);
+  const pixelWidth = maxX - minX,
+    pixelHeight = maxY - minY;
   const offscreen = maxX < 0 || minX > width || maxY < 0 || minY > height;
   return {
     kind: offscreen ? 'offscreen-bound' : 'onscreen-bound',
@@ -93,17 +94,28 @@ export function buriedInterfaceTileBounds(
     !viewProjectionMatrix ||
     viewProjectionMatrix.length !== 16 ||
     !Array.from(viewProjectionMatrix).every(Number.isFinite) ||
-    !Number.isFinite(viewportWidth) || viewportWidth <= 0 ||
-    !Number.isFinite(viewportHeight) || viewportHeight <= 0 ||
-    !Number.isFinite(displayZScale) || displayZScale <= 0 ||
+    !Number.isFinite(viewportWidth) ||
+    viewportWidth <= 0 ||
+    !Number.isFinite(viewportHeight) ||
+    viewportHeight <= 0 ||
+    !Number.isFinite(displayZScale) ||
+    displayZScale <= 0 ||
     typeof mapZ !== 'function' ||
     typeof visibleIntervals !== 'function' ||
-    !Number.isInteger(tileInstances) || tileInstances < 1 || tileInstances > 256 ||
-    !Number.isInteger(maxOwners) || maxOwners < 1 || maxOwners > 128 ||
-    !Number.isInteger(maxTiles) || maxTiles < 1 || maxTiles > 4096 ||
+    !Number.isInteger(tileInstances) ||
+    tileInstances < 1 ||
+    tileInstances > 256 ||
+    !Number.isInteger(maxOwners) ||
+    maxOwners < 1 ||
+    maxOwners > 128 ||
+    !Number.isInteger(maxTiles) ||
+    maxTiles < 1 ||
+    maxTiles > 4096 ||
     !Number.isFinite(subpixelThreshold) ||
-    subpixelThreshold <= 0 || subpixelThreshold > 0.5
-  ) return output;
+    subpixelThreshold <= 0 ||
+    subpixelThreshold > 0.5
+  )
+    return output;
   output.valid = true;
   output.reason = 'measured';
   output.reductionGate = !farTier
@@ -126,7 +138,9 @@ export function buriedInterfaceTileBounds(
   for (const owner of eligible.slice(0, maxOwners)) {
     const parts = Array.isArray(owner.parts) ? owner.parts : [owner];
     const xy = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-    let zMin = Infinity, zMax = -Infinity, invalid = false;
+    let zMin = Infinity,
+      zMax = -Infinity,
+      invalid = false;
     for (const part of parts) {
       if (
         !finite2(part?.p) ||
@@ -196,11 +210,16 @@ export function buriedInterfaceTileBounds(
         dyMax = Math.max(...tile.map((p) => p[1]));
       const rectangle = projectAxisAlignedTileBounds(
         {
-          minX: xy.minX + dxMin, maxX: xy.maxX + dxMax,
-          minY: xy.minY + dyMin, maxY: xy.maxY + dyMax,
-          minZ: zMin, maxZ: zMax,
+          minX: xy.minX + dxMin,
+          maxX: xy.maxX + dxMax,
+          minY: xy.minY + dyMin,
+          maxY: xy.maxY + dyMax,
+          minZ: zMin,
+          maxZ: zMax,
         },
-        viewProjectionMatrix, viewportWidth, viewportHeight,
+        viewProjectionMatrix,
+        viewportWidth,
+        viewportHeight,
       );
       output.tiles++;
       recorded.tiles++;
@@ -225,9 +244,7 @@ export function buriedInterfaceTileBounds(
     }
     output.topOwners.push(recorded);
   }
-  output.topOwners.sort(
-    (a, b) => b.rawTwoPassTriangleUpperBound - a.rawTwoPassTriangleUpperBound,
-  );
+  output.topOwners.sort((a, b) => b.rawTwoPassTriangleUpperBound - a.rawTwoPassTriangleUpperBound);
   output.topOwners = output.topOwners.slice(0, 6);
   // No skipped geometry. Even exact subpixel bounding is not a proof that
   // alpha blending / occlusion / ownership can be dropped.

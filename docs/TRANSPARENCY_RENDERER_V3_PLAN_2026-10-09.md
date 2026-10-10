@@ -11,7 +11,7 @@ At full Native Fig3 625-site / 1,885 render instances, integrated v2 still
 takes approximately **34.00 s Quality cold**, **33.51 s warm**, and **11.77 s
 Fast distant** on the software-WebGL CI runner. Exact Quality submits
 **57,040,012 triangles and 1,408 draw calls** despite existing scene
-caching. The <15 s Quality and <6 s Fast targets remain *advisory*.
+caching. The <15 s Quality and <6 s Fast targets remain _advisory_.
 
 Frame work is dominated by buried material-interface and Electrical Region
 surfaces. Prior v2 trials established that transparent planar caps can safely
@@ -27,7 +27,7 @@ experiments without frame-accurate benchmarks is not useful.
   buried Electrical/Implant interfaces must have an **exact fallback**.
 - Maintain current opacity/color, transparent depth order, owned layer
   boundaries, coincident material interfaces and annotation coverage.
-- Any approximation is confined to *presentation-derived GPU meshes* and must
+- Any approximation is confined to _presentation-derived GPU meshes_ and must
   reconstruct the accurate version when zoom/quality/ROI/camera state changes.
 - Changes to baseline screenshots are prohibited without explicit approval.
   CI pass without matching-camera near/far/edge-on screenshot review is
@@ -35,7 +35,7 @@ experiments without frame-accurate benchmarks is not useful.
 
 ## Phase A — observe-only screen-space budget (current first commit series)
 
-New `site/renderer-v3-screen-budget.js` classifies *potential* far-camera
+New `site/renderer-v3-screen-budget.js` classifies _potential_ far-camera
 subpixel buried **smooth** array sidewall segments. Inputs include the active
 camera's micrometres per pixel, view angle, ROI/collapse state and ownership
 metadata. It accepts only a Fast far-tier camera, at least 64 translated
@@ -47,7 +47,7 @@ viewport, edge-on, ROI, disabled camera and active Section collapse fail closed.
 - `v3ScreenBudgetMode='observe-only'` and `v3SkippedTriangles='0'` at all
   times; **no triangles, polygons or materials are removed** in Phase A.
 - `v3SubpixelWallCandidates`, `v3SubpixelWallInstances` and
-  `v3SubpixelRawTriangleEstimate` estimate a *raw* far-field candidate
+  `v3SubpixelRawTriangleEstimate` estimate a _raw_ far-field candidate
   budget. The estimate does not account for exact edge-chain merging,
   frustum culling, material visibility or raster timing and is **not** a
   guarantee of achievable savings.
@@ -90,7 +90,7 @@ collapse safety exclusion, **not an indication that no interface workload
 exists**. Run-to-run timing variance is substantial and no v3 speedup
 has been demonstrated.
 
-The initial observation code also divided *physical* wall height directly
+The initial observation code also divided _physical_ wall height directly
 by screen units per pixel while overlooking the renderer's huge Z-display
 scale. Such a probe could label visibly tall walls as subpixel; no real
 geometry was omitted in that version. The follow-up fix now uses the
@@ -108,7 +108,7 @@ near/ROI/edge-on restoration before Phase B can remove even one triangle.
 ## Phase A.2 — bounded real-camera projection sampling (current work)
 
 An independently testable pure diagnostic,
-`site/renderer-v3-projection-probe.js`, samples candidate *buried smooth*
+`site/renderer-v3-projection-probe.js`, samples candidate _buried smooth_
 translated material sidewall quads using the actual Three.js perspective
 camera, viewport pixels, and the effective Section Z-display transform,
 including its scale and hidden Z intervals. It records actual projected
@@ -120,7 +120,7 @@ instances**, reports the observed subpixel/offscreen portions, and ranks
 owners by their **raw, unmerged two-pass triangle upper bound**. Raw triangles
 are deliberately labelled an upper bound (not measured GPU triangles);
 samples are deliberately labelled samples (not a proof for every instance).
-Even with active Z-collapse, the diagnostic can record the truly *visible*
+Even with active Z-collapse, the diagnostic can record the truly _visible_
 remaining sidewalls while the older Phase A reduction-eligibility gate
 remains `z-collapse`. It never changes geometry, masks, Z cuts, material
 alpha, transparent sort order, GLB or canonical scientific data.
@@ -152,18 +152,18 @@ including M3D and JLFET.
 
 The 625-site `wafercad-array-renderer` artifact `report.json` recorded:
 
-| Diagnostic (Fast distant unless qualified) | Measured |
-| --- | ---: |
-| Smooth buried material-interface owners sampled | 13 |
-| Projected sample quads / valid projected | 520 / 520 |
-| Subpixel *samples* (both projected dimensions <=0.5 px) | 294 / 520 (56.5%) |
-| Sample quads entirely offscreen | 0 |
-| Raw, unmerged two-pass owner upper-bound | 25,360,000 triangles |
-| Dominant owners | `layer-6`, `layer-12`, each raw upper-bound 10,170,000 |
-| Other owners by raw upper-bound | `layer-4`, `layer-10`, each 1,910,000 |
-| Actual Fast / Quality submitted triangles | 16,906,262 / 57,040,012 |
-| Fast completed / Quality cold / warm | 9.16 s / 26.21 s / 25.64 s |
-| Rendered triangles actually omitted by v3 | **0** |
+| Diagnostic (Fast distant unless qualified)              |                                               Measured |
+| ------------------------------------------------------- | -----------------------------------------------------: |
+| Smooth buried material-interface owners sampled         |                                                     13 |
+| Projected sample quads / valid projected                |                                              520 / 520 |
+| Subpixel _samples_ (both projected dimensions <=0.5 px) |                                      294 / 520 (56.5%) |
+| Sample quads entirely offscreen                         |                                                      0 |
+| Raw, unmerged two-pass owner upper-bound                |                                   25,360,000 triangles |
+| Dominant owners                                         | `layer-6`, `layer-12`, each raw upper-bound 10,170,000 |
+| Other owners by raw upper-bound                         |                  `layer-4`, `layer-10`, each 1,910,000 |
+| Actual Fast / Quality submitted triangles               |                                16,906,262 / 57,040,012 |
+| Fast completed / Quality cold / warm                    |                             9.16 s / 26.21 s / 25.64 s |
+| Rendered triangles actually omitted by v3               |                                                  **0** |
 
 Interpretation: the **observed samples** indicate some distant material walls
 project to subpixel size, but the sample is capped per owner/edge/instance,
@@ -183,8 +183,8 @@ had 394 pixels (0.029% of a 1440x960 screenshot) with maximum channel
 difference >8. This comparison is diagnostic, not blanket scientific
 near/ROI proof; visual baselines were **not** replaced.
 
-**Next engineering decision:** start with `layer-6` / `layer-12` *buried
-smooth material walls* as the bounded owner-analysis targets, first adding a
+**Next engineering decision:** start with `layer-6` / `layer-12` _buried
+smooth material walls_ as the bounded owner-analysis targets, first adding a
 conservative whole-tile/whole-owner screen-space bound and transparency
 coverage validation. Do **not** use a sample fraction as a culling ratio.
 Keep rough, exposed, Electrical/Implant, ROI, edge-on, Z-collapse cuts and
@@ -204,8 +204,8 @@ pure, conservative and **observe-only** diagnostics module:
   part** and **every translated instance** once; reject mixed rough/invalid
   owner geometries entirely. Partition sorted translations into spatial
   groups of up to 64 instances per tile.
-- Compute a physical XY enclosing rectangle across *all* part edges and a
-  displayed Z range across *all* surviving Section intervals. Translation
+- Compute a physical XY enclosing rectangle across _all_ part edges and a
+  displayed Z range across _all_ surviving Section intervals. Translation
   extrema give the complete XYZ box for each tile without expanding
   thousands of edges by hundreds of repeated instances.
 - Project all eight corners through the actual homogeneous
@@ -213,7 +213,7 @@ pure, conservative and **observe-only** diagnostics module:
   planes are crossed or homogeneous `w <= 0`, mark the tile **uncertain**
   instead of falsely classifying it as visible/offscreen/subpixel.
 - Classify only entirely projected bounding boxes by viewport pixel
-  extent. A tile called subpixel has a *whole enclosing box* no more than
+  extent. A tile called subpixel has a _whole enclosing box_ no more than
   0.5 pixels wide and tall; sample-only classification is insufficient.
 - Record owner/tile coverage, skipped/rough owners, overflow, uncertain
   cases, and top six raw workload owners. Hard safety budgets: 32 owners,
@@ -233,7 +233,7 @@ Quality and opaque cached variants.
 
 **Important:** The whole-owner bounding box deliberately overestimates
 screen coverage for disjoint walls and large arrays; this can yield
-zero subpixel *complete tile* candidates even if the earlier 520-quad
+zero subpixel _complete tile_ candidates even if the earlier 520-quad
 sample saw many small projected faces. That is a conservative finding,
 not a bug. Real Phase B savings would need smaller **topology-owned**
 tile/feature partitions, a verified visible-color/alpha error model, and
@@ -260,8 +260,8 @@ geometry omission. Actual submitted Fast/Quality triangles remain
 layer-12 the template contains ~4,068 contour segments across 625 translated
 instances; enclosing the full contour inevitably hides fine-scale
 subpixel patches. The next diagnostic, `site/renderer-v3-edge-tile-survey.js`,
-therefore projects a conservative per-*contour-part* ×
-per-*spatial instance tile* bounding volume. It:
+therefore projects a conservative per-_contour-part_ ×
+per-_spatial instance tile_ bounding volume. It:
 
 - Automatically selects the two heaviest buried smooth array owners,
   rather than hard-coding the example layer IDs.
@@ -272,7 +272,7 @@ per-*spatial instance tile* bounding volume. It:
 - Caps projected bounds at **100,000**, reports incomplete work explicitly,
   and measures wall-clock overhead as `v3EdgeSurveyMs`.
 - Reports **bounds**, subpixel bounds and an unmerged raw two-pass triangle
-  *upper bound* for the studied workload. These are **not** actual GPU
+  _upper bound_ for the studied workload. These are **not** actual GPU
   reductions, nor is the subpixel ratio guaranteed to approximate them.
 - Preserves all geometry, material opacity, transparency sorting, and exact
   scientific data; `v3SkippedTriangles` remains zero and the reduction
@@ -290,18 +290,18 @@ transparency LOD experiment. No experimental culling is enabled in A.4.
 Runtime head `4976bda7c4be7d786a4b2dc042cdcae4cf4e7e5e` passed Quality, Browser 625-site, edge-on, Native Fig3 and all Recipe Run All.
 Browser run: https://github.com/Xiaolong-6/WaferCAD/actions/runs/37928527195
 
-| Diagnostic | 625-site Fast distant |
-| --- | ---: |
-| Major buried material owners | 2: `layer-6`, `layer-12` |
-| Complete contour edge x 64-instance tile bounds | 81,360 |
-| Complete subpixel bounds, threshold 0.5 px | **0** |
-| Near/far uncertain bounds and overflow | 0 / 0 |
-| Raw unmerged two-pass estimate | 20,340,000 triangles |
-| Actual GPU triangle reduction | **0** |
-| Edge/tile diagnostic CPU time | **85.8 ms** |
-| Fast/Quality submitted triangles | 16,906,262 / 57,040,012 |
-| Fast distant elapsed | 8.33 s |
-| Quality transparent cold/warm | 24.37 / 23.65 s |
+| Diagnostic                                      |    625-site Fast distant |
+| ----------------------------------------------- | -----------------------: |
+| Major buried material owners                    | 2: `layer-6`, `layer-12` |
+| Complete contour edge x 64-instance tile bounds |                   81,360 |
+| Complete subpixel bounds, threshold 0.5 px      |                    **0** |
+| Near/far uncertain bounds and overflow          |                    0 / 0 |
+| Raw unmerged two-pass estimate                  |     20,340,000 triangles |
+| Actual GPU triangle reduction                   |                    **0** |
+| Edge/tile diagnostic CPU time                   |              **85.8 ms** |
+| Fast/Quality submitted triangles                |  16,906,262 / 57,040,012 |
+| Fast distant elapsed                            |                   8.33 s |
+| Quality transparent cold/warm                   |          24.37 / 23.65 s |
 
 The prior Phase A.3 CI run gave Fast 11.84 s and Quality 33.01 / 32.30 s, with identical GPU triangle counts; CI variance precludes any speedup claim.
 The 85.8 ms survey imposes real additional scene-build CPU work. It should be run benchmark-only once the scientific measurement is accepted.
@@ -318,8 +318,9 @@ passed [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933170117
 and [Recipe Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615747).
 
 Direct artifact comparison against the A.4 625-site reference:
+
 - **2,200** template wall triangles indexed. **6,600 → 4,400** template
-  vertices, or 33.3% fewer *only within the indexed subset*.
+  vertices, or 33.3% fewer _only within the indexed subset_.
 - **16,906,262** Fast and **57,040,012** Quality GPU draw triangles,
   plus **1,408** draw calls in both tests — identical to the reference.
   The indexed subset is too small relative to the complete scene to
@@ -392,13 +393,13 @@ presentation toggles), edge-on exact restoration, Native Fig3 and all Recipe
 Run All with the trial enabled. Browser CI:
 https://github.com/Xiaolong-6/WaferCAD/actions/runs/37933615621.
 
-| Measurement | Phase A.4 unindexed baseline | Indexed Phase B.0 trial |
-| --- | ---: | ---: |
-| Fast submitted triangles | 16,906,262 | 16,906,262 |
-| Fast completed stage | 8.33 s | 12.55 s |
-| Fast completed frame | 172.1 ms | 255.5 ms |
-| Fast scene assembly | 486.9 ms | 828.6 ms |
-| Quality transparent cold | 24.37 s | 34.30 s |
+| Measurement              | Phase A.4 unindexed baseline | Indexed Phase B.0 trial |
+| ------------------------ | ---------------------------: | ----------------------: |
+| Fast submitted triangles |                   16,906,262 |              16,906,262 |
+| Fast completed stage     |                       8.33 s |                 12.55 s |
+| Fast completed frame     |                     172.1 ms |                255.5 ms |
+| Fast scene assembly      |                     486.9 ms |                828.6 ms |
+| Quality transparent cold |                      24.37 s |                 34.30 s |
 
 Both trials were on separate CI runs: their timing differences are affected
 by runner/WebGL and workstation variance, and cannot prove a causal
@@ -458,28 +459,27 @@ also explicitly include `?rendererV3Diagnostics=1` to record diagnostics.
 **Acceptance:** Quality, targeted Chromium, full 625-site/20-toggle,
 edge-on, Native Fig3 and every Recipe Run All on the same integration
 head. Compare full-scene 3D pixels against the previous indexed-free
-625-site reference at a matching camera, and compare *actual*
+625-site reference at a matching camera, and compare _actual_
 `rendererDrawTriangles`, `rendererDrawCalls`, first completed-frame
 time and tested indexed vertex coverage. A claimed performance benefit
 requires paired repeated measurements beyond CI-host variation. If
 the covered vertex fraction is negligible or screen output differs,
 revert the runtime opt-in branch and keep only this record.
 
-
 ## Phase B.1 paired hardware gate — ABBA within one runner (2026-10-09)
 
 The first fully green Phase B.1 CI run at `04d93f1` was an ON-only
 smoke/regression test. Its 625-site Quality transparent scene reports:
 
-| Quantity | Instrumented count |
-| --- | ---: |
-| Indexed smooth interface triangles | **11,855,000** |
-| Equivalent unindexed source vertices (instances applied) | **35,565,000** |
-| Indexed vertices (instances applied) | **23,710,000** |
-| Source vertex-count reduction within affected owner set | **33.33%** |
-| Total GPU-submitted transparent Quality triangles | **57,040,012** |
-| Total Quality draw calls | **1,408** |
-| V3 skipped physical triangles | **0** |
+| Quantity                                                 | Instrumented count |
+| -------------------------------------------------------- | -----------------: |
+| Indexed smooth interface triangles                       |     **11,855,000** |
+| Equivalent unindexed source vertices (instances applied) |     **35,565,000** |
+| Indexed vertices (instances applied)                     |     **23,710,000** |
+| Source vertex-count reduction within affected owner set  |         **33.33%** |
+| Total GPU-submitted transparent Quality triangles        |     **57,040,012** |
+| Total Quality draw calls                                 |          **1,408** |
+| V3 skipped physical triangles                            |              **0** |
 
 These are renderer diagnostic counts, not actual GPU hardware vertex-invocation
 counters or evidence of reduced pixel shading. The ON-only benchmark finished
@@ -507,6 +507,7 @@ for production performance claims.
 ## Phase B.1 final ON/OFF measurement — PASS, marginal and inconclusive
 
 Full final-review CI at `f2ca6ef878cdf725aed18a38cc826daa00d584ec`:
+
 - [625-site and strict same-run ABBA](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326595): **success**, including edge-on.
 - [Native Fig3](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326645): **success**.
 - [All Example Recipe Reconstruction / Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/37958326641): **success**.
@@ -517,13 +518,13 @@ The exact A/B artifact is `wafercad-quality-index-ab-79db8e955129c0da3569b7e8f81
 a fresh isolated browser context, the same 625-site JLFET fixture,
 1440×960 viewport, Quality transparency 0.5, and identical fitted camera.
 
-| Trial | Indexed | Completed image (ms) | rendererFrameMs | Assembly (ms) |
-| --- | --- | ---: | ---: | ---: |
-| 1 | ON | 33,945 | 207 | 746 |
-| 2 | OFF | 34,077 | 140 | 457 |
-| 3 | OFF | 35,268 | 222 | 485 |
-| 4 | ON | 33,604 | 181 | 566 |
-| **Mean per arm** | **ON / OFF** | **33,775 / 34,673** | **194 / 181** | **656 / 471** |
+| Trial            | Indexed      | Completed image (ms) | rendererFrameMs | Assembly (ms) |
+| ---------------- | ------------ | -------------------: | --------------: | ------------: |
+| 1                | ON           |               33,945 |             207 |           746 |
+| 2                | OFF          |               34,077 |             140 |           457 |
+| 3                | OFF          |               35,268 |             222 |           485 |
+| 4                | ON           |               33,604 |             181 |           566 |
+| **Mean per arm** | **ON / OFF** |  **33,775 / 34,673** |   **194 / 181** | **656 / 471** |
 
 ON/OFF completed-image ratio `0.9741064`: indexed mode appeared **2.59%
 faster (898 ms)** on this single four-trial run. However, the inner
@@ -538,7 +539,7 @@ two trials per arm cannot establish a statistically robust gain on hardware.
 - Both arms submit **57,040,012** triangles and **1,408** draw calls,
   retain each original smooth material-interface triangle, and skip zero.
 - ON represents **11,855,000** indexed source triangles, changing logical
-  vertex-instance count from 35,565,000 to 23,710,000; this is *not* a
+  vertex-instance count from 35,565,000 to 23,710,000; this is _not_ a
   measured GPU hardware vertex-invocation reduction.
 - The ABBA screenshot covers the current 3D canvas and pose; independent
   625-site, edge-on, Native Fig3, and Recipe regressions checked the other
@@ -554,6 +555,60 @@ overdraw** bottleneck with explicitly preserved layer, blend and depth
 contracts, rather than additional indexing experiments. PR #166 stays
 Draft; main has advanced independently and requires integration audit before
 any merge.
+
+## Phase B.2 — isolated WebGL census and completion diagnostics
+
+The branch has integrated main `d73a201` (Metalens examples) at `6301ae1`
+without conflicts or force. Product geometry and approved baselines are unchanged.
+
+`node scripts/renderer-quality-index-ab.mjs --gpu-profile` now performs
+normal / raster-discard / raster-discard / normal on fresh browser contexts,
+with Quality indexing off. Its browser-only helper is never imported by the
+application. It counts actual WebGL2 calls and indexed/instanced triangle
+submissions, including both transparent passes, by presentation owner. Totals
+must equal Three's completed-frame counters, with zero GL or page errors.
+Both normal canvases must match; discarded images must differ and are
+explicitly **incomplete diagnostic images**, never scientific acceptance.
+
+Both arms use `gl.finish()` and record submission/completion wait separately
+from the screenshot/compositor checkpoint. GPU timer queries are used only
+when supported, available and non-disjoint; unavailable/busy/lost/disjoint/
+timed-out results retain `gpuMs: null`. This is not a pure vertex/fragment
+stage separation and never authorizes omission of physical faces.
+
+Local Linux, Node 24.19.0, Playwright 1.55.1, Chromium 140 / SwiftShader,
+Three 0.179.1:
+
+- `node --test site/tests/renderer-quality-index-experiment.test.mjs site/tests/renderer-v3-edge-tile-survey.test.mjs site/tests/renderer-v3-projection-probe.test.mjs site/tests/renderer-v3-screen-budget.test.mjs site/tests/renderer-v3-tile-bounds.test.mjs site/tests/webgl-frame-probe.test.mjs`: **38/38 pass**.
+- `WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/webgl-frame-probe-smoke.mjs`: **pass** on native WebGL2. Normal / discard / restored-normal all submitted **2,500 triangles / 2 calls**, with zero GL/page errors and exact restored image parity. This small synthetic scene validates instrumentation, not 625-site scientific acceptance or speed.
+- `npm run check`: **pass**, including ESLint, full formatting, documentation contracts and **608/608 Node tests**. Subsequent frame-gate edits also passed focused ESLint and the 38-test renderer diagnostic group.
+- SwiftShader reports `EXT_disjoint_timer_query_webgl2` **unsupported**;
+  valid hardware GPU duration is unavailable in this environment.
+- Two full 625-site attempts timed out at **initial 3D readiness (180 s)**,
+  before arming or measuring a transparent frame. Captured state: no page
+  errors, `renderState=building`, model revision 61, Process revision 40,
+  37 partial renderer frames, last partial frame 685,100 triangles / 359
+  draws. There is **no completed full-scene profile or speed result** from
+  these attempts. Other repository tests were simultaneously using CPU;
+  environmental attribution remains unproven.
+
+An additional **default-off** `?rendererV3FinalFrameOnly=1` pilot suppresses
+partial WebGL frame submissions during cooperative large-array assembly
+while retaining its UI animation-frame yields. It clears the guard in the
+build's `finally` block and schedules the unchanged exact final scene.
+`--final-frame-only` enables it in either benchmark mode. Initial-scene
+readiness, skipped-preview counters and frame policy are recorded. This is
+an experiment to test the partial-frame hypothesis, **not an accepted
+optimization**; keep it off until matched pose/geometry, completed-frame,
+resource/interaction and performance evidence pass. The 625-site pilot passed
+initial 3D readiness and entered the transparent-frame measurement; its full
+four-trial result is still being evaluated at this checkpoint. The control
+and pilot ran amid other CPU work, so no causal startup speedup is established.
+
+The benchmark writes failure stage, page errors and renderer state to
+`test-results/renderer-gpu-profile/failure.json`; successful profile output
+uses `report.json`. No additional costly automatic CI job or manual workflow
+dispatch was added. PR #166 remains Draft; no merge or speedup claim.
 
 ## Phase B — ownership-aware distant representations (future, NOT shipped)
 

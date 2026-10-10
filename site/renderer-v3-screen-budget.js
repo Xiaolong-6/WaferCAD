@@ -36,13 +36,9 @@ export function buriedInterfaceSubpixelBudget(
             ? 'invalid-camera-scale'
             : !Number.isFinite(displayZScale) || displayZScale <= 0
               ? 'invalid-display-scale'
-              : !Number.isFinite(viewZFraction) ||
-                  viewZFraction < 0.35 ||
-                  viewZFraction > 1
+              : !Number.isFinite(viewZFraction) || viewZFraction < 0.35 || viewZFraction > 1
                 ? 'edge-on-or-invalid-angle'
-                : !Number.isFinite(maxPixelSpan) ||
-                    maxPixelSpan <= 0 ||
-                    maxPixelSpan > 0.5
+                : !Number.isFinite(maxPixelSpan) || maxPixelSpan <= 0 || maxPixelSpan > 0.5
                   ? 'invalid-pixel-threshold'
                   : null;
   if (exclusionReason) return { ...empty, exclusionReason };

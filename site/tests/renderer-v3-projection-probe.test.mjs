@@ -61,7 +61,10 @@ test('ROI, rough and exterior owners cannot enter the smooth buried sample', () 
   const source = [
     { ...owner(), buried: false },
     { ...owner(), instanceTranslations: [[0, 0]] },
-    { ...owner(), parts: [{ ...owner().parts[0], upperSurface: { appearance: { kind: 'rough' } } }] },
+    {
+      ...owner(),
+      parts: [{ ...owner().parts[0], upperSurface: { appearance: { kind: 'rough' } } }],
+    },
   ];
   const result = sampleBuriedInterfaceProjection(source, camera);
   assert.equal(result.reason, 'no-buried-smooth-array-owners');
@@ -103,11 +106,13 @@ test('offscreen samples are reported, never removed and do not count as subpixel
   assert.equal(result.skippedTriangles, 0);
 });
 
-
 test('Z-collapse with two surviving intervals samples both exposed wall fragments', () => {
   const result = sampleBuriedInterfaceProjection([owner()], {
     ...camera,
-    visibleIntervals: () => [[0, 0.04], [0.06, 0.1]],
+    visibleIntervals: () => [
+      [0, 0.04],
+      [0.06, 0.1],
+    ],
   });
   assert.equal(result.valid, true);
   assert.equal(result.sampledQuads, 12);

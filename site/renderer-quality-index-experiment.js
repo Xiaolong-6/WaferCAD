@@ -6,19 +6,17 @@ export function canIndexSmoothWalls(parts) {
   return (
     Array.isArray(parts) &&
     parts.length > 0 &&
-    parts.every((part) =>
-      part &&
-      Array.isArray(part.p) &&
-      part.p.length >= 2 &&
-      Array.isArray(part.q) &&
-      part.q.length >= 2 &&
-      [part.p[0], part.p[1], part.q[0], part.q[1], part.z0, part.z1].every(
-        Number.isFinite,
-      ) &&
-      !part.lowerSurface?.appearance &&
-      !part.upperSurface?.appearance &&
-      !(Number.isFinite(Number(part.lowerDepth)) &&
-        Number.isFinite(Number(part.upperDepth))),
+    parts.every(
+      (part) =>
+        part &&
+        Array.isArray(part.p) &&
+        part.p.length >= 2 &&
+        Array.isArray(part.q) &&
+        part.q.length >= 2 &&
+        [part.p[0], part.p[1], part.q[0], part.q[1], part.z0, part.z1].every(Number.isFinite) &&
+        !part.lowerSurface?.appearance &&
+        !part.upperSurface?.appearance &&
+        !(Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth))),
     )
   );
 }

@@ -11,9 +11,8 @@ function sampleIndices(size, limit) {
   if (!Number.isInteger(size) || size <= 0 || limit <= 0) return [];
   const count = Math.min(size, Math.floor(limit));
   if (count === 1) return [Math.floor((size - 1) / 2)];
-  return Array.from(
-    { length: count },
-    (_, index) => Math.floor((index * (size - 1)) / (count - 1)),
+  return Array.from({ length: count }, (_, index) =>
+    Math.floor((index * (size - 1)) / (count - 1)),
   );
 }
 
@@ -29,7 +28,8 @@ function projectionArea(quad, project, widthPx, heightPx) {
   return {
     width: xMax - xMin,
     height: yMax - yMin,
-    offscreen: pixels.every((point) => point[0] < 0) ||
+    offscreen:
+      pixels.every((point) => point[0] < 0) ||
       pixels.every((point) => point[0] > widthPx) ||
       pixels.every((point) => point[1] < 0) ||
       pixels.every((point) => point[1] > heightPx),
@@ -170,9 +170,7 @@ export function sampleBuriedInterfaceProjection(
       }
     }
   }
-  result.topOwners.sort(
-    (a, b) => b.rawTwoPassTriangleUpperBound - a.rawTwoPassTriangleUpperBound,
-  );
+  result.topOwners.sort((a, b) => b.rawTwoPassTriangleUpperBound - a.rawTwoPassTriangleUpperBound);
   result.topOwners = result.topOwners.slice(0, 6);
   return result;
 }

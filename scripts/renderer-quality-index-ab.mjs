@@ -2,7 +2,8 @@
 // material walls. Never enables this experimental display path for users.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URLSearchParams } from 'node:url';
+import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import {
   launchBrowser,
   newUiContext,
@@ -14,7 +15,14 @@ import {
   baseUrl,
 } from './test-helpers/ui.mjs';
 
-const out = new URL('../test-results/renderer-quality-index-ab/', import.meta.url);
+const gpuProfile = process.argv.includes('--gpu-profile');
+const finalFrameOnly = process.argv.includes('--final-frame-only');
+const out = new URL(
+  gpuProfile
+    ? '../test-results/renderer-gpu-profile/'
+    : '../test-results/renderer-quality-index-ab/',
+  import.meta.url,
+);
 await mkdir(out, { recursive: true });
 const fixture = fileURLToPath(
   new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
@@ -32,15 +40,24 @@ async function trial(enabled, ordinal) {
   // Isolate Project storage and Three.js scene caches, but keep all trials
   // on the same physical CI runner / browser binary.
   const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
+  let page;
+  let errors = [];
+  let stage = 'boot';
   try {
-    const page = await context.newPage();
+    if (gpuProfile) await context.addInitScript(installWebglFrameProbe);
+    page = await context.newPage();
     page.setDefaultTimeout(180000);
-    const errors = observePageErrors(page);
-    const label = `${ordinal}-${enabled ? 'on' : 'off'}`;
-    await page.goto(
-      baseUrl + '/app.html' + (enabled ? '?rendererV3QualityIndex=1' : ''),
-    );
+    errors = observePageErrors(page);
+    const label = gpuProfile
+      ? `${ordinal}-${enabled ? 'raster-discard' : 'normal'}`
+      : `${ordinal}-${enabled ? 'on' : 'off'}`;
+    const params = new URLSearchParams();
+    if (!gpuProfile && enabled) params.set('rendererV3QualityIndex', '1');
+    if (finalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
+    await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
+    stage = 'open-fixture';
+    const setupBegan = performance.now();
     await page.locator('#openProjectInput').setInputFiles(fixture);
     await chooseConfirmation(page);
     await page.waitForFunction(
@@ -49,7 +66,11 @@ async function trial(enabled, ordinal) {
       { timeout: 180000 },
     );
     await closeFunctionPanel(page);
+    stage = 'initial-three';
+    if (gpuProfile) console.log('RENDERER_TRIAL_SETUP', JSON.stringify({ label, stage }));
     await waitForThreeReady(page, 180000);
+    const initialSceneReadyMs = performance.now() - setupBegan;
+    stage = 'quality-scene';
     await page.locator('#threeFastBtn').selectOption('quality');
     await page.waitForFunction(
       () => {
@@ -70,6 +91,20 @@ async function trial(enabled, ordinal) {
     const oldSerial = Number(
       await page.locator('#threeHost').evaluate((el) => el.dataset.rendererFrameSerial || 0),
     );
+    if (gpuProfile) {
+      await page.evaluate(async (rasterDiscard) => {
+        const THREE =
+          await import('https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js');
+        const original = THREE.Object3D.prototype.onBeforeRender;
+        THREE.Object3D.prototype.onBeforeRender = function (...args) {
+          window.__waferCadWebglProbe.owner(this);
+          return original.apply(this, args);
+        };
+        window.__waferCadWebglProbe.arm({ rasterDiscard });
+      }, enabled);
+    }
+    stage = 'measured-transparent-frame';
+    console.log('RENDERER_TRIAL_START', JSON.stringify({ label, stage }));
     const began = performance.now();
     await page.locator('#threeOpacityRange').fill('0.5');
     await waitForThreeReady(page, 180000);
@@ -93,6 +128,43 @@ async function trial(enabled, ordinal) {
     });
     const completedFrameMs = performance.now() - began;
     const state = await page.locator('#threeHost').evaluate((el) => ({ ...el.dataset }));
+    let webgl = null;
+    if (gpuProfile) {
+      await page.waitForFunction(() => {
+        const frames = window.__waferCadWebglProbe.frames();
+        return frames.length > 0 && frames.every((frame) => frame.timerStatus !== 'pending');
+      });
+      webgl = await page.evaluate(() => window.__waferCadWebglProbe.frames().at(-1));
+      assert.equal(webgl.drawCalls, Number(state.rendererDrawCalls), `${label}: actual GL calls`);
+      assert.equal(
+        webgl.triangles,
+        Number(state.rendererDrawTriangles),
+        `${label}: actual GL triangles`,
+      );
+      assert.equal(
+        webgl.frameSerial,
+        Number(state.rendererFrameSerial),
+        `${label}: same completed frame`,
+      );
+      assert.equal(webgl.rasterDiscard, enabled);
+      assert.equal(webgl.glError, 0, 'WebGL must accept every profiled draw without errors');
+      assert.equal(
+        webgl.priorRasterDiscard,
+        false,
+        'fresh context begins with normal rasterization',
+      );
+      assert.equal(
+        webgl.owners.reduce((sum, owner) => sum + owner.triangles, 0),
+        webgl.triangles,
+      );
+      assert.equal(
+        webgl.owners.filter((owner) => owner.kind === 'untracked').length,
+        0,
+        'every actual draw must have attributed presentation ownership',
+      );
+      assert.ok(webgl.completedDrawMs > 0);
+      if (webgl.timerStatus !== 'valid') assert.equal(webgl.gpuMs, null);
+    }
     assert.deepEqual(errors, [], `${label}: no page errors`);
     assert.equal(state.transparentArrayLodTier, 'exact');
     assert.equal(state.v3SkippedTriangles, '0');
@@ -101,11 +173,10 @@ async function trial(enabled, ordinal) {
     assert.equal(state.sceneVariant, 'transparent');
     assert.equal(state.renderQuality, 'quality');
     assert.ok(Number(state.rendererFrameMs) > 0);
-    if (enabled) {
+    if (!gpuProfile && enabled) {
       assert.ok(Number(state.v3QualityIndexedTriangles) > 10000000);
       assert.equal(
-        Number(state.v3QualityOriginalVertices) /
-          Number(state.v3QualityIndexedVertices),
+        Number(state.v3QualityOriginalVertices) / Number(state.v3QualityIndexedVertices),
         1.5,
         'each indexed quad must represent the exact original six vertices',
       );
@@ -113,11 +184,18 @@ async function trial(enabled, ordinal) {
       assert.equal(state.v3QualityIndexedTriangles, '0');
       assert.equal(state.v3QualityIndexedVertices, '0');
     }
-    if (referenceCanvas === null) referenceCanvas = canvas;
-    assert.ok(
-      canvas.equals(referenceCanvas),
-      `${label}: canvas pixels differ from the same-pose original frame; fail closed`,
-    );
+    if (!gpuProfile || !enabled) {
+      if (referenceCanvas === null) referenceCanvas = canvas;
+      assert.ok(
+        canvas.equals(referenceCanvas),
+        `${label}: canvas pixels differ from the same-pose original frame; fail closed`,
+      );
+    } else {
+      assert.ok(
+        referenceCanvas && !canvas.equals(referenceCanvas),
+        'raster discard must change the diagnostic image; it is not a scientific render',
+      );
+    }
     const result = {
       label,
       enabled,
@@ -132,9 +210,44 @@ async function trial(enabled, ordinal) {
       imageBytes: canvas.length,
       cameraMode: state.transparentArrayLodTier,
       errors,
+      initialSceneReadyMs,
+      finalFrameOnly,
+      assemblyFramePolicy: state.rendererAssemblyFramePolicy,
+      assemblySkippedFrames: Number(state.rendererAssemblySkippedFrames || 0),
+      ...(gpuProfile ? { webgl, diagnosticImageOnly: enabled } : {}),
     };
-    console.log('RENDERER_QUALITY_INDEX_AB_TRIAL', JSON.stringify(result));
+    console.log(
+      gpuProfile ? 'RENDERER_GPU_PROFILE_TRIAL' : 'RENDERER_QUALITY_INDEX_AB_TRIAL',
+      JSON.stringify(result),
+    );
     return result;
+  } catch (error) {
+    const state = page
+      ? await page
+          .evaluate(() => ({
+            host: { ...document.getElementById('threeHost')?.dataset },
+            status: document.getElementById('statusText')?.textContent,
+            probe: window.__waferCadWebglProbe?.frames(),
+          }))
+          .catch(() => null)
+      : null;
+    await writeFile(
+      new URL('failure.json', out),
+      JSON.stringify(
+        {
+          ordinal,
+          enabled,
+          gpuProfile,
+          stage,
+          error: String(error),
+          errors,
+          state,
+        },
+        null,
+        2,
+      ),
+    );
+    throw error;
   } finally {
     await context.close();
   }
@@ -142,7 +255,10 @@ async function trial(enabled, ordinal) {
 
 try {
   // Symmetric ordering controls for first-run cache and CI thermal drift.
-  for (const [i, enabled] of [true, false, false, true].entries()) {
+  for (const [i, enabled] of (gpuProfile
+    ? [false, true, true, false]
+    : [true, false, false, true]
+  ).entries()) {
     trials.push(await trial(enabled, i + 1));
   }
   const on = trials.filter((x) => x.enabled);
@@ -150,22 +266,47 @@ try {
   const offMedianMs = median(off.map((x) => x.completedFrameMs));
   const onMedianMs = median(on.map((x) => x.completedFrameMs));
   const report = {
-    mode: 'same-run-abba',
+    mode: gpuProfile ? 'same-run-normal-discard-discard-normal' : 'same-run-abba',
     fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
     viewport: '1440x960',
     browserVersion: browser.version(),
+    finalFrameOnly,
     order: trials.map((x) => x.label),
     trials,
-    exactCanvasParity: true,
-    onMedianMs,
-    offMedianMs,
-    elapsedRatioOnToOff: onMedianMs / offMedianMs,
-    elapsedDeltaMs: onMedianMs - offMedianMs,
+    exactCanvasParity: gpuProfile
+      ? 'normal arms only; discard images intentionally incomplete'
+      : true,
+    ...(gpuProfile
+      ? {
+          normalMedianMs: offMedianMs,
+          rasterDiscardMedianMs: onMedianMs,
+          rasterDiscardToNormalRatio: onMedianMs / offMedianMs,
+          rasterDiscardDeltaMs: onMedianMs - offMedianMs,
+        }
+      : {
+          onMedianMs,
+          offMedianMs,
+          elapsedRatioOnToOff: onMedianMs / offMedianMs,
+          elapsedDeltaMs: onMedianMs - offMedianMs,
+        }),
     // Observational diagnostics, not automatically interpreted as a speedup.
     inferSpeedup: false,
+    ...(gpuProfile
+      ? {
+          diagnosticOnly: true,
+          explicitFinishBarrier: true,
+          gpuTimerScope:
+            'first draw through end of animation callback; only non-disjoint results valid',
+          interpretation:
+            'Discard still submits every primitive; the remaining cost is not pure vertex time. No product speedup or annotation omission is authorized.',
+        }
+      : {}),
   };
   await writeFile(new URL('report.json', out), JSON.stringify(report, null, 2));
-  console.log('RENDERER_QUALITY_INDEX_AB_OK', JSON.stringify(report));
+  console.log(
+    gpuProfile ? 'RENDERER_GPU_PROFILE_OK' : 'RENDERER_QUALITY_INDEX_AB_OK',
+    JSON.stringify(report),
+  );
 } finally {
   await browser.close();
 }

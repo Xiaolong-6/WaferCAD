@@ -62,6 +62,7 @@ for (const entry of BUNDLED_EXAMPLES) {
               add: 'deposit',
               grow: 'extend',
               etch: 'etch',
+              liftoff: 'liftoff',
               implant: 'implant',
               electrical: 'electrical',
               record: 'record',
