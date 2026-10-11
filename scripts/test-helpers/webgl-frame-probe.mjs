@@ -55,8 +55,14 @@ export function installWebglFrameProbe() {
     }
   }
 
-  function capturePhaseFramebuffer(gl, active, endingKind) {
-    if (!active.capturePhases || active.phases.length >= 12) return;
+  function capturePhaseFramebuffer(gl, active, endingKind, final = false) {
+    if (!active.capturePhases || endingKind === null) return;
+    // Reserve the last slot for the completed frame. Sampling the first
+    // transitions only must never masquerade as full-stage coverage.
+    if (active.phases.length >= (final ? 12 : 11)) {
+      if (!final) active.phaseTransitionsSkipped++;
+      return;
+    }
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
     const binding = gl.getParameter(gl.FRAMEBUFFER_BINDING);
@@ -126,6 +132,8 @@ export function installWebglFrameProbe() {
             capturePhases: options.capturePhases === true,
             phases: [],
             phaseKind: null,
+            phaseTransitionsObserved: 0,
+            phaseTransitionsSkipped: 0,
             firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
@@ -141,6 +149,7 @@ export function installWebglFrameProbe() {
         const active = entry.active;
         if (active) {
           if (active.capturePhases && active.phaseKind !== null && active.phaseKind !== owner.kind) {
+            active.phaseTransitionsObserved++;
             capturePhaseFramebuffer(gl, active, active.phaseKind);
           }
           active.phaseKind = owner.kind;
@@ -216,6 +225,9 @@ export function installWebglFrameProbe() {
         // An explicit completion barrier separates JS submission from the
         // remaining driver/GPU queue. It perturbs scheduling in BOTH arms.
         gl.finish();
+        // Capture the final drawn phase even if there was no owner transition.
+        // The readback is diagnostic-only and excluded from the finish latency.
+        if (active.capturePhases) capturePhaseFramebuffer(gl, active, active.phaseKind, true);
         const finishedAt = performance.now();
         const frame = {
           rasterDiscard: active.rasterDiscard,
@@ -231,7 +243,18 @@ export function installWebglFrameProbe() {
           frameSerial: Number(entry.canvas.closest('#threeHost')?.dataset.rendererFrameSerial || 0),
           owners: [...active.owners.values()].sort((a, b) => b.triangles - a.triangles),
           ...(active.captureDrawInputs ? { drawInputs: active.drawInputs } : {}),
-          ...(active.capturePhases ? { phases: active.phases } : {}),
+          ...(active.capturePhases
+            ? {
+                phases: active.phases,
+                phaseCoverage: {
+                  captured: active.phases.length,
+                  transitionsObserved: active.phaseTransitionsObserved,
+                  transitionsSkipped: active.phaseTransitionsSkipped,
+                  complete: active.phaseTransitionsSkipped === 0,
+                  finalFrameCaptured: active.phases.at(-1)?.afterDraw === active.drawCalls,
+                },
+              }
+            : {}),
           vendor: gl.getParameter(gl.VENDOR),
           renderer: gl.getParameter(gl.RENDERER),
           version: gl.getParameter(gl.VERSION),
