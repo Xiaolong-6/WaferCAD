@@ -9,17 +9,22 @@ import {
   classifyR7PixelSignatures,
   summarizeR7Abba,
   summarizeR7PixelParity,
+  selectR7Candidate,
 } from './test-helpers/renderer-r7-abba.mjs';
 
 const ciSmoke = process.argv.includes('--ci-smoke');
+const candidate = selectR7Candidate(process.argv);
 const folder = new URL(
-  ciSmoke
-    ? '../test-results/renderer-v4-r7-ci-smoke/'
-    : '../test-results/renderer-v4-r7-hardware-abba/',
+  '../test-results/' +
+    (ciSmoke ? 'renderer-v4-r7-ci-smoke' : 'renderer-v4-r7-hardware-abba') +
+    candidate.artifactSuffix +
+    '/',
   import.meta.url,
 );
 const labels = R7_ORDER.map((policy, index) => index + 1 + '-' + policy);
 const report = JSON.parse(await readFile(new URL('report.json', folder), 'utf8'));
+assert.equal(report.candidateMode, candidate.mode, 'saved report does not match selected R7 candidate');
+assert.deepEqual(report.candidateFlags, candidate.flags, 'saved report has unexpected candidate flags');
 assert.equal(report.trials.length, 4, 'requires four completed independent contexts');
 assert.deepEqual(
   report.trials.map((trial) => trial.label),
@@ -37,6 +42,7 @@ const descriptiveStats = summarizeR7Abba(report.trials);
 const result = {
   source: 'saved-R7-ABBA-PNGs-no-new-GPU-measurement',
   mode: report.mode,
+  candidateMode: report.candidateMode,
   backend: report.trials.map((trial) => trial.backend),
   summary: parity,
   signature,
