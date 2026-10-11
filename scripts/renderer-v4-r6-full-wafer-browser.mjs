@@ -3,7 +3,10 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
+import {
+  compareScreenshotPngPixels,
+  decodeScreenshotPng,
+} from './test-helpers/png-pixel-diff.mjs';
 import {
   launchBrowser,
   newUiContext,
@@ -64,6 +67,21 @@ async function capture(page, phase, variant) {
     frame: Number(host.rendererFrameSerial || 0),
     triangles: Number(host.rendererDrawTriangles),
     calls: Number(host.rendererDrawCalls),
+    webglGeometries: Number(host.webglGeometryCount || 0),
+    webglPrograms: Number(host.webglProgramCount || 0),
+    gl: await page.locator('#threeHost canvas').evaluate((canvas) => {
+      const gl = canvas.getContext('webgl2');
+      return {
+        attributes: gl.getContextAttributes(),
+        samples: gl.getParameter(gl.SAMPLES),
+        sampleBuffers: gl.getParameter(gl.SAMPLE_BUFFERS),
+        drawingBuffer: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+        depthBits: gl.getParameter(gl.DEPTH_BITS),
+        stencilBits: gl.getParameter(gl.STENCIL_BITS),
+        blend: gl.isEnabled(gl.BLEND),
+        dither: gl.isEnabled(gl.DITHER),
+      };
+    }),
   };
   for (const key of ['geometries', 'materials', 'bytes', 'frame', 'triangles', 'calls']) {
     assert.ok(Number.isSafeInteger(state[key]) && state[key] > 0, phase + ': ' + key);
@@ -190,6 +208,31 @@ function verifyStable(before, after, label) {
   }
   assert.ok(after.state.frame > before.state.frame, label + ': post-restore frame required');
   const pixels = compareScreenshotPngPixels(before.png, after.png);
+  if (!pixels.pixelIdentical) {
+    const a = decodeScreenshotPng(before.png);
+    const b = decodeScreenshotPng(after.png);
+    const samplePoints = [
+      [265, 140],
+      [265, 160],
+      [216, 130],
+      [330, 172],
+      [183, 104],
+      [258, 106],
+      [1, 1],
+    ];
+    pixels.sampledColors = samplePoints.map(([x, y]) => {
+      const at = 4 * (y * a.width + x);
+      return {
+        xy: [x, y],
+        before: [...a.rgba.subarray(at, at + 4)],
+        after: [...b.rgba.subarray(at, at + 4)],
+      };
+    });
+    pixels.glBefore = before.state.gl;
+    pixels.glAfter = after.state.gl;
+    pixels.programsBefore = before.state.webglPrograms;
+    pixels.programsAfter = after.state.webglPrograms;
+  }
   comparisons.push({ phase: label, ...pixels });
   console.log('RENDERER_V4_R6_FULL_WAFER_PIXEL_PARITY', JSON.stringify(comparisons.at(-1)));
   return pixels;
