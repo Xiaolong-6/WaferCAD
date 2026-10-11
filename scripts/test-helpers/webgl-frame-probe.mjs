@@ -40,6 +40,10 @@ export function installWebglFrameProbe() {
           entry.active = {
             rasterDiscard: options.rasterDiscard,
             priorDiscard,
+            // Optional completed-frame framebuffer evidence; disabled by default.
+            pixelSamples: options.pixelSamples || [],
+            captureGlState: options.captureGlState === true,
+            firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
             timerStatus: timerBusy ? 'busy' : query ? 'pending' : 'unsupported',
@@ -53,6 +57,21 @@ export function installWebglFrameProbe() {
         }
         const active = entry.active;
         if (active) {
+          if (
+            active.captureGlState &&
+            owner.kind === 'electrical-surface' &&
+            active.firstElectricalState === null
+          )
+            active.firstElectricalState = {
+              blend: gl.isEnabled(gl.BLEND),
+              depthTest: gl.isEnabled(gl.DEPTH_TEST),
+              dither: gl.isEnabled(gl.DITHER),
+              cullFace: gl.isEnabled(gl.CULL_FACE),
+              blendSrcRgb: gl.getParameter(gl.BLEND_SRC_RGB),
+              blendDstRgb: gl.getParameter(gl.BLEND_DST_RGB),
+              blendEquationRgb: gl.getParameter(gl.BLEND_EQUATION_RGB),
+              depthMask: gl.getParameter(gl.DEPTH_WRITEMASK),
+            };
           const instanced = method.endsWith('Instanced');
           const count = method.startsWith('drawArrays') ? args[2] : args[1];
           const instances = instanced ? args[method === 'drawArraysInstanced' ? 3 : 4] : 1;
@@ -107,6 +126,48 @@ export function installWebglFrameProbe() {
         };
         const debug = gl.getExtension('WEBGL_debug_renderer_info');
         if (debug) frame.unmaskedRenderer = gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
+        if (active.captureGlState) {
+          frame.glState = {
+            blend: gl.isEnabled(gl.BLEND),
+            dither: gl.isEnabled(gl.DITHER),
+            depthTest: gl.isEnabled(gl.DEPTH_TEST),
+            cullFace: gl.isEnabled(gl.CULL_FACE),
+            blendSrcRgb: gl.getParameter(gl.BLEND_SRC_RGB),
+            blendDstRgb: gl.getParameter(gl.BLEND_DST_RGB),
+            blendEquationRgb: gl.getParameter(gl.BLEND_EQUATION_RGB),
+            depthMask: gl.getParameter(gl.DEPTH_WRITEMASK),
+            framebuffer: gl.getParameter(gl.FRAMEBUFFER_BINDING) ? 'offscreen' : 'default',
+            firstElectricalState: active.firstElectricalState,
+          };
+        }
+        if (active.pixelSamples.length) {
+          frame.pixelSamples = active.pixelSamples.map(({ x, y }) => {
+            const width = gl.drawingBufferWidth;
+            const height = gl.drawingBufferHeight;
+            // PNG coordinates are top-left; native readPixels uses bottom-left.
+            if (
+              !Number.isInteger(x) ||
+              !Number.isInteger(y) ||
+              x < 0 ||
+              y < 0 ||
+              x >= width ||
+              y >= height
+            )
+              return { x, y, status: 'out-of-bounds', width, height };
+            const rgba = new Uint8Array(4);
+            gl.readPixels(x, height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+            const error = gl.getError();
+            return {
+              x,
+              y,
+              width,
+              height,
+              rgba: Array.from(rgba),
+              status: error === gl.NO_ERROR ? 'valid' : 'gl-error',
+              glError: error,
+            };
+          });
+        }
         frames.push(frame);
         if (frames.length > 16) frames.shift();
         if (active.query) {
@@ -147,7 +208,18 @@ export function installWebglFrameProbe() {
       if (armed || [...contexts.values()].some((entry) => entry.active)) {
         throw new Error('WebGL frame probe already armed');
       }
-      armed = { rasterDiscard: options.rasterDiscard === true };
+      const pixels = options.pixelSamples || [];
+      if (
+        !Array.isArray(pixels) ||
+        pixels.length > 16 ||
+        pixels.some((point) => !point || !Number.isInteger(point.x) || !Number.isInteger(point.y))
+      )
+        throw new Error('Invalid bounded WebGL diagnostic sample coordinates');
+      armed = {
+        rasterDiscard: options.rasterDiscard === true,
+        captureGlState: options.captureGlState === true,
+        pixelSamples: pixels.map(({ x, y }) => ({ x, y })),
+      };
     },
     owner(object) {
       owner = {
