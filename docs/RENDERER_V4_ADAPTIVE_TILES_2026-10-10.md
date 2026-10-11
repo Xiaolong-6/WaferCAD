@@ -754,3 +754,65 @@ independent R7 probe.
 No 625-site RTX 3060 hardware ABBA, driver VRAM or GPU timer
 measurement was taken here. Do not call R7 a measured performance
 gain, and do not merge either Draft PR.
+
+## R7 first physical RTX 3060 run — strict parity blocked (2026-10-11)
+
+The user executed `node scripts/renderer-v4-r7-abba-browser.mjs
+--hardware-rtx3060` on Windows. All four independent A/B/B/A arms
+verified the unmasked adapter as **ANGLE / NVIDIA GeForce RTX 3060 /
+Direct3D11**. This is actual hardware evidence, unlike the CI
+SwiftShader instrument smoke. All arms used the same submitted
+**1,409 draw calls / 16,906,262 triangles**, the same 530 × 273
+drawing buffer, and identical reported camera world/projection
+matrices.
+
+| Arm | Fit-to-frame + `gl.finish()` wall-time median | Geometries | CPU TypedArrays |
+| --- | ---: | ---: | ---: |
+| 1-A | 40.40 ms | 1,468 | 32,513,760 B |
+| 2-B | 31.55 ms | 1,362 | 32,063,184 B |
+| 3-B | 39.80 ms | 1,362 | 32,063,184 B |
+| 4-A | 72.20 ms | 1,468 | 32,513,760 B |
+
+B reused 106 flat geometries and reduced the retained CPU
+TypedArray count by **450,576 B (1.386%)**. This is **not** GPU
+VRAM reclamation, a reduced triangle count or a draw-call reduction.
+The default-policy A2 median increased **78.7%** over A1,
+and the candidate-policy B2 median increased **26.1%** over B1.
+These timings are browser event-to-frame + blocking driver
+`gl.finish()` wall times, **not GPU timer queries**. An uncorrected
+pooled A/B median must not be interpreted as a performance speedup;
+power/temperature, OS scheduling, render-frame history and
+driver/context effects were not isolated.
+
+**Strict acceptance failed** at the first A1/B1 screenshot comparison
+(`AssertionError: R7 strict cross-context pixel parity`).
+The 4 PNGs were written before the failure to
+`test-results/renderer-v4-r7-hardware-abba/`. The console
+contained no pixel-difference counts; therefore the size and cause
+of the mismatch are **unknown**. Previous V3 experiments also
+identified genuine cross-context differences under RTX 3060,
+including same-policy pairs; this first R7 A/B failure alone cannot
+implicate V4 geometry optimization.
+
+A follow-up R7 test-only patch
+[`0932611`](https://github.com/Xiaolong-6/WaferCAD/commit/0932611561e3415e045674554a53c5723f086f55)
+preserves **all six cross-context pair comparisons**, separate A/A
+and B/B stability, duplicate same-context snapshots, descriptive
+statistics and explicit failure reasons in JSON before exiting with
+the same strict nonzero status. A separate offline utility,
+`scripts/renderer-v4-r7-compare-saved.mjs`, can analyze the
+**four existing hardware PNGs** without starting Chromium or
+running the GPU again:
+
+```powershell
+node scripts/renderer-v4-r7-compare-saved.mjs
+```
+
+The utility writes
+`test-results/renderer-v4-r7-hardware-abba/offline-parity-report.json`
+even if it returns exit code 1 due to actual pixel differences.
+The full A/A, B/B and A/B values are required to distinguish
+baseline renderer nondeterminism from candidate-specific
+differences. **Strict pixel tolerance stays zero.** PR #174 remains
+Draft, opt-in and unmerged; no visual baseline is modified or
+hardware speedup is accepted.
