@@ -6,14 +6,14 @@ Both remain Draft until their individual hardware parity requirements pass.
 
 ## One command on Windows
 
-From any checkout of PR #174, with Node 24, npm, Git, PowerShell, network
+From any checkout of PR #174, with Node 24, npm, Git, network
 access to the repository, and a working RTX 3060:
 
 ```powershell
 node scripts/renderer-unified-hardware.mjs --hardware-rtx3060
 ```
 
-The script fetches both remote branch heads, checks that the V4 HEAD contains
+The script first verifies actual Chromium navigation to the locally served\n`app.html`, before any GPU trial. If it fails, `preflight-chromium.log`\nexplains the HTTP response or browser error and the run ends without wasting\nGPU captures.\n\nThe script fetches both remote branch heads, checks that the V4 HEAD contains
 the V3 HEAD, makes two **detached temporary Git worktrees**, installs pinned
 dependencies with `npm ci --ignore-scripts --no-audit --no-fund`, installs
 pinned Playwright Chromium, and launches its own local HTTP server. It leaves
@@ -35,7 +35,7 @@ node scripts/renderer-unified-hardware.mjs --plan-only
 ## Evidence and result interpretation
 
 Every run produces a new timestamped directory under
-`test-results/renderer-unified-hardware/` and an accompanying ZIP. It
+`test-results/renderer-unified-hardware/` and an accompanying ZIP created with Node built-ins (no PowerShell Archive\nmodule required). It
 contains a `summary.json`, the exact SHA for each branch, logs for installation
 and each experiment, plus the original screenshots and `report.json` files.
 Upload **one ZIP** for review. The runner continues gathering the other policies
@@ -51,3 +51,23 @@ baseline is modified by this script.
 The runner may exit nonzero **while still producing a usable ZIP** because the
 strict pixel gate has not passed. Retain the evidence; do not weaken assertions
 or merge either PR on the strength of software smoke tests.
+
+## 2026-10-11 failed first Windows capture (invalid evidence)
+
+The user-supplied `rtx3060-488aa89e-2026-10-11T17-19-25-511Z.zip`
+contains V3 `1620f8b` and V4 `488aa89`. Dependencies installed,
+but all four experiments failed at their initial `page.goto(app.html)` with
+`net::ERR_HTTP_RESPONSE_CODE_FAILURE`. There are **no GPU screenshots or
+pixel comparisons** and no evidence establishing the 45 stable A/B pixels'
+cause. The original summary incorrectly called V3 `blocked` and the
+three V4 runs `candidate-not-exercised`, although no candidate ever
+started. The archive module also failed to import on the user's Windows
+PowerShell installation. These were harness failures, not new renderer
+pixel-parity failures.
+
+The repaired launcher now classifies boot errors separately, self-tests
+local HTTP and Windows Chromium navigation before any GPU run, logs 403/404
+with attempted paths, preserves partial artifacts and produces ZIP without
+PowerShell. Linux CI exercises the HTTP service/ZIP unit tests; the focused
+workflow also runs an independent Windows Chromium navigation job. **Do not
+ask for the next RTX 3060 collection until that Windows preflight is green.**
