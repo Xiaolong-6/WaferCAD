@@ -153,6 +153,13 @@ try {
       await waitForPaint(page);
       const bounds = await page.locator(canvas).boundingBox();
       assert.ok(bounds && bounds.width > 100 && bounds.height > 100, `${canvas} must be visible`);
+      if (canvas === '#sectionCanvas') {
+        const host = await page.locator('#sectionBody').boundingBox();
+        assert.ok(
+          host && bounds.height <= host.height + 1 && bounds.y >= host.y - 1,
+          `Section raster escaped its constrained scientific viewport: ${JSON.stringify({ bounds, host })}`,
+        );
+      }
       const from = { x: bounds.x + sx * bounds.width, y: bounds.y + sy * bounds.height };
       const to = { x: bounds.x + ex * bounds.width, y: bounds.y + ey * bounds.height };
       const hit = await page.evaluate(({ x, y }) => {
@@ -162,7 +169,7 @@ try {
           tag: node?.tagName,
           viewport: { width: innerWidth, height: innerHeight },
           pageHeight: document.documentElement.scrollHeight,
-          scrollY,
+          scrollY: window.scrollY,
         };
       }, from);
       assert.equal(
