@@ -132,6 +132,9 @@ export function createThreeView({
   let assemblySkippedFrames = 0;
 
   let renderer = null;
+  let webglContextStatus = 'uninitialized';
+  let webglContextLossCount = 0;
+  let webglContextRestoreCount = 0;
   let scene = null;
   let camera = null;
   let controls = null;
@@ -919,9 +922,10 @@ export function createThreeView({
     host.dataset.v4TileSkippedTriangles = '0';
   }
   function scheduleFrame() {
-    if (!renderer || frame != null) return;
+    if (!renderer || frame != null || webglContextStatus === 'lost') return;
     frame = requestAnimationFrame(() => {
       frame = null;
+      if (webglContextStatus === 'lost') return;
       // Experimental large-array loading policy: assembly still yields to UI
       // animation frames, but does not repeatedly submit incomplete meshes.
       // The final exact scene is submitted after the build's finally block.
@@ -962,7 +966,17 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+      } catch (error) {
+        webglContextStatus = 'error';
+        host.dataset.rendererWebglContext = 'error';
+        host.dataset.renderState = 'error';
+        host.dataset.renderError = error?.message || 'WebGL frame submission failed.';
+        stats.textContent = '3D render failed';
+        console.warn('3D WebGL frame failed:', error);
+        return;
+      }
       // Opt-in camera evidence is sampled after the completed GL frame.
       if (v3RoiTraceEnabled) {
         host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
@@ -972,6 +986,13 @@ export function createThreeView({
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
       completedFrameSerial++;
+      if (webglContextStatus === 'restoring') {
+        webglContextStatus = 'ready';
+        host.dataset.rendererWebglContext = 'ready';
+        host.dataset.renderState = 'ready';
+        host.dataset.rendererWebglRecoveryFrame = String(completedFrameSerial);
+        stats.textContent = '3D restored';
+      }
       host.dataset.rendererFrameSerial = String(completedFrameSerial);
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
@@ -2750,6 +2771,34 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
 
         try {
+          webglContextStatus = 'ready';
+          host.dataset.rendererWebglContext = 'ready';
+          renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            webglContextStatus = 'lost';
+            host.dataset.rendererWebglContext = 'lost';
+            host.dataset.rendererWebglContextLosses = String(++webglContextLossCount);
+            host.dataset.renderState = 'context-lost';
+            stats.textContent = '3D WebGL context lost';
+            if (frame != null) {
+              cancelAnimationFrame(frame);
+              frame = null;
+            }
+          });
+          renderer.domElement.addEventListener('webglcontextrestored', () => {
+            if (webglContextStatus !== 'lost') return;
+            webglContextStatus = 'restoring';
+            host.dataset.rendererWebglContext = 'restoring';
+            host.dataset.rendererWebglContextRestores = String(++webglContextRestoreCount);
+            host.dataset.renderState = 'restoring';
+            stats.textContent = 'restoring 3D…';
+            // Three recreates context-owned state internally. Reapply the
+            // canvas/background state on its new GL context before drawing.
+            renderer.setClearColor(0xf5f7f9);
+            renderer.setSize(Math.max(2, host.clientWidth), Math.max(2, host.clientHeight), false);
+            if (pendingRender && !rendering) void render();
+            scheduleFrame();
+          });
           preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
           renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
@@ -2856,6 +2905,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   async function render() {
     if (!ready) return;
+    if (webglContextStatus === 'lost') {
+      pendingRender = true;
+      host.dataset.renderState = 'context-lost';
+      return;
+    }
     if (rendering) {
       pendingRender = true;
       return;
