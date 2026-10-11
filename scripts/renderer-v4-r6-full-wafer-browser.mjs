@@ -24,6 +24,15 @@ const timeout = 180000;
 
 async function capture(page, phase, variant) {
   await waitForThreeReady(page, timeout);
+  // The WebGL frame counter advances when Three returns, before Chromium
+  // necessarily presents the completed compositor frame. Compare only
+  // after two browser paint opportunities; do not omit or mask any pixels.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }),
+  );
   const host = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
   assert.equal(host.renderState, 'ready', phase);
   assert.equal(host.sceneVariant, variant, phase + ': physical variant');
