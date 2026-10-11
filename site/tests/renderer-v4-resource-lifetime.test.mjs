@@ -99,7 +99,6 @@ test('R5 cleanup does not mutate canonical geometry before dispose', () => {
   assert.deepEqual([...physical], [0, 0, 0.25]);
 });
 
-
 test('R5 keeps allocation counts bounded over 100 independent variant cycles', () => {
   const disposal = new Map();
   const resource = (id) => ({

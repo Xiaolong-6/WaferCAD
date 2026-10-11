@@ -18,7 +18,9 @@ import {
 const output = new URL('../test-results/renderer-v4-r5-lifetime/', import.meta.url);
 await mkdir(output, { recursive: true });
 const fixture = await readFile(
-  fileURLToPath(new URL('../site/examples/previews/three-tier-silicon-jlfets.wafercad', import.meta.url)),
+  fileURLToPath(
+    new URL('../site/examples/previews/three-tier-silicon-jlfets.wafercad', import.meta.url),
+  ),
 );
 const browser = await launchBrowser();
 const states = [];
@@ -58,9 +60,11 @@ async function waitNewFrame(page, before, expectedVariant) {
   await page.waitForFunction(
     ({ previous, variant }) => {
       const host = document.getElementById('threeHost');
-      return host?.dataset.renderState === 'ready' &&
+      return (
+        host?.dataset.renderState === 'ready' &&
         host?.dataset.sceneVariant === variant &&
-        Number(host.dataset.rendererFrameSerial || 0) > previous;
+        Number(host.dataset.rendererFrameSerial || 0) > previous
+      );
     },
     { previous: before, variant: expectedVariant },
     { timeout: 120000 },
@@ -68,7 +72,9 @@ async function waitNewFrame(page, before, expectedVariant) {
 }
 
 async function importFixture(page, iteration) {
-  const before = await page.locator('#threeHost').evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
+  const before = await page
+    .locator('#threeHost')
+    .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
   await page.locator('#openProjectInput').setInputFiles({
     name: 'r5-lifetime-' + iteration + '.wafercad',
     mimeType: 'application/octet-stream',
@@ -95,7 +101,9 @@ try {
     await closeFunctionPanel(page);
     const opacityControl = page.locator('#threePanel .three-opacity-control');
     const more = page.locator('#threePanel .view-more-control');
-    if (await opacityControl.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))) {
+    if (
+      await opacityControl.evaluate((node) => Boolean(node.closest('.view-overflow-secondary')))
+    ) {
       if (!(await more.evaluate((node) => node.open))) {
         await more.locator(':scope > summary').click();
       }
@@ -105,7 +113,9 @@ try {
     }
     const range = page.locator('#threeOpacityRange');
     const changeOpacity = async (opacity, label) => {
-      const before = await page.locator('#threeHost').evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
+      const before = await page
+        .locator('#threeHost')
+        .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
       await range.fill(opacity);
       const variant = opacity === '1' ? 'opaque' : 'transparent';
       await waitNewFrame(page, before, variant);
@@ -149,14 +159,17 @@ try {
       );
     }
     assert.deepEqual(errors, [], 'no page/console errors from repeated scene lifetime');
-    console.log('RENDERER_V4_R5_LIFETIME_STRESS', JSON.stringify({
-      backend: await page.locator('#threeHost canvas').evaluate((canvas) => {
-        const gl = canvas.getContext('webgl2');
-        const ext = gl?.getExtension('WEBGL_debug_renderer_info');
-        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'not-reported';
+    console.log(
+      'RENDERER_V4_R5_LIFETIME_STRESS',
+      JSON.stringify({
+        backend: await page.locator('#threeHost canvas').evaluate((canvas) => {
+          const gl = canvas.getContext('webgl2');
+          const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+          return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'not-reported';
+        }),
+        states,
       }),
-      states,
-    }));
+    );
     await writeFile(new URL('report.json', output), JSON.stringify({ states }, null, 2) + '\n');
   } finally {
     await context.close();
