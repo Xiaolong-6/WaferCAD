@@ -55,6 +55,36 @@ export function installWebglFrameProbe() {
     }
   }
 
+  function capturePhaseFramebuffer(gl, active, endingKind) {
+    if (!active.capturePhases || active.phases.length >= 12) return;
+    const width = gl.drawingBufferWidth;
+    const height = gl.drawingBufferHeight;
+    const binding = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+    if (binding || width <= 0 || height <= 0 || width * height > 2000000) {
+      active.phases.push({
+        afterDraw: active.drawCalls,
+        kind: endingKind,
+        status: binding ? 'offscreen-framebuffer' : 'size-limit',
+      });
+      return;
+    }
+    const bytes = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+    const error = gl.getError();
+    const checkpoint = {
+      afterDraw: active.drawCalls,
+      kind: endingKind,
+      width,
+      height,
+      status: error === gl.NO_ERROR ? 'valid' : 'gl-error',
+      glError: error,
+    };
+    if (error === gl.NO_ERROR) {
+      Object.defineProperty(checkpoint, 'rgba', { value: bytes });
+    }
+    active.phases.push(checkpoint);
+  }
+
   function instrument(gl, canvas) {
     if (contexts.has(gl)) return;
     const entry = { gl, canvas, active: null, timer: null };
@@ -92,7 +122,11 @@ export function installWebglFrameProbe() {
             captureGlState: options.captureGlState === true,
             captureFramebuffer: options.captureFramebuffer === true,
             captureDrawInputs: options.captureDrawInputs === true,
+        capturePhases: options.capturePhases === true,
             drawInputs: [],
+            capturePhases: options.capturePhases === true,
+            phases: [],
+            phaseKind: null,
             firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
@@ -107,6 +141,10 @@ export function installWebglFrameProbe() {
         }
         const active = entry.active;
         if (active) {
+          if (active.capturePhases && active.phaseKind !== null && active.phaseKind !== owner.kind) {
+            capturePhaseFramebuffer(gl, active, active.phaseKind);
+          }
+          active.phaseKind = owner.kind;
           if (
             active.captureGlState &&
             owner.kind === 'electrical-surface' &&
@@ -194,6 +232,7 @@ export function installWebglFrameProbe() {
           frameSerial: Number(entry.canvas.closest('#threeHost')?.dataset.rendererFrameSerial || 0),
           owners: [...active.owners.values()].sort((a, b) => b.triangles - a.triangles),
           ...(active.captureDrawInputs ? { drawInputs: active.drawInputs } : {}),
+          ...(active.capturePhases ? { phases: active.phases } : {}),
           vendor: gl.getParameter(gl.VENDOR),
           renderer: gl.getParameter(gl.RENDERER),
           version: gl.getParameter(gl.VERSION),
