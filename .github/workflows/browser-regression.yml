@@ -192,6 +192,13 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
         run: node scripts/renderer-roi-recovery-regression.mjs
 
+      # One-time strict scientific diagnosis of the known two-channel
+      # alpha discrepancy. Remove from normal CI after collecting raw GL
+      # readback + PNG evidence; this tests a nonproduct hot-switch path.
+      - name: Diagnose Electrical GPU framebuffer versus PNG pixels
+        if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
+        run: node scripts/renderer-electrical-same-context-ab.mjs
+
       - name: Package tested preview
         if: always()
         run: |
