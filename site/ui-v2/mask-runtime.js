@@ -218,7 +218,7 @@ export function createMaskRuntime({
     chooseRoiTool(value) {
       state.panEnabled = false;
       draw.setTool(null);
-      state.maskRoiTool = value;
+      state.maskRoiTool = value === 'square' ? 'rect' : value;
       state.maskRoiDraft = null;
       renderMask();
       status('Drag in Mask to create the ROI.');
