@@ -1256,9 +1256,7 @@ export function createProcessRecipeController({
       canonicalTargetLayerId:
         step.command === 'extend' && p.face === 'both' ? bothMaterialId(p.material) : null,
       canonicalEtchTargetLayerId:
-        step.command === 'etch' && p.face === 'both' && p.target
-          ? bothMaterialId(p.target)
-          : null,
+        step.command === 'etch' && p.face === 'both' && p.target ? bothMaterialId(p.target) : null,
     });
     const after = Number(getModel()?.processRevision || 0);
     if (after <= before) throw new Error('The Process step did not commit a model revision.');

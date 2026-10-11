@@ -123,10 +123,13 @@ export function validateRecipeExecution(
   for (const [index, step] of steps.slice(0, total).entries()) {
     const prefix = `Step ${index + 1}`;
     const params = step.params || {};
-    if (params.face === 'both' &&
+    if (
+      params.face === 'both' &&
       (step.command === 'liftoff' || (step.command === 'etch' && params.profile === 'planarize'))
     ) {
-      errors.push(`${prefix}: Both is unsupported for ${step.command === 'liftoff' ? 'Lift-off' : 'absolute-Z Planarize'}.`);
+      errors.push(
+        `${prefix}: Both is unsupported for ${step.command === 'liftoff' ? 'Lift-off' : 'absolute-Z Planarize'}.`,
+      );
     }
     if (step.command === 'extend' && !materials.has(params.material)) {
       errors.push(

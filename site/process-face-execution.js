@@ -26,7 +26,10 @@ export function applyProcessFaces(model, params, applySingleFace) {
   if (!SUPPORTED_BOTH_TYPES.has(params.type)) {
     return {
       model,
-      result: { changed: false, error: `Both faces are unsupported for ${params.type || 'this operation'}.` },
+      result: {
+        changed: false,
+        error: `Both faces are unsupported for ${params.type || 'this operation'}.`,
+      },
     };
   }
   // Absolute Z Planarize on both faces would have an ambiguous physical meaning.

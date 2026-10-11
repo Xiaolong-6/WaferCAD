@@ -31,7 +31,10 @@ test('Both deposits two linked independent layers on the two exposed wafer faces
   assert.equal(model.layers[1].processGroupId, model.layers[2].processGroupId);
   assert.equal(model.layers[1].pairedLayerId, model.layers[2].id);
   assert.equal(model.layers[2].pairedLayerId, model.layers[1].id);
-  assert.deepEqual(model.layers.slice(1).map((layer) => layer.processFace), ['front', 'back']);
+  assert.deepEqual(
+    model.layers.slice(1).map((layer) => layer.processFace),
+    ['front', 'back'],
+  );
   assert.equal(model.processRevision, 2, 'Front then Back are both computed');
   const stack = stackAt(model, [0, 0]);
   assert.equal(stack.length, 3);
@@ -49,7 +52,11 @@ test('Both deposits two linked independent layers on the two exposed wafer faces
 test('Both applies the same mask footprint to both faces without coating outside', () => {
   const model = slab();
   const result = modelApi.applyOperation(model, {
-    type: 'add', name: 'SiNx', thickness: 0.1, face: 'both', area: vectorApi.rectMulti(4, 4),
+    type: 'add',
+    name: 'SiNx',
+    thickness: 0.1,
+    face: 'both',
+    area: vectorApi.rectMulti(4, 4),
   });
   assert.equal(result.changed, true, result.error);
   assert.equal(stackAt(model, [0, 0]).length, 3);
@@ -57,13 +64,17 @@ test('Both applies the same mask footprint to both faces without coating outside
   validateProcessModel(model);
 });
 
-test('Both Extend grows the shared film on both sides', () => {
+test('Both Extend targets paired independent films on both sides', () => {
   const model = slab();
   const deposit = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(deposit.changed, true);
   const extend = modelApi.applyOperation(model, {
-    type: 'grow', thickness: 0.1, growth: 'direct', targetLayerId: deposit.layerId,
-    face: 'both', area: model.boundary,
+    type: 'grow',
+    thickness: 0.1,
+    growth: 'direct',
+    targetLayerId: deposit.layerId,
+    face: 'both',
+    area: model.boundary,
   });
   assert.equal(extend.changed, true, extend.error);
   const stack = stackAt(model, [0, 0]);
@@ -77,12 +88,19 @@ test('Both Extend grows the shared film on both sides', () => {
 test('Both is atomic if Back fails after a successful Front operation', () => {
   const model = slab();
   const front = modelApi.applyOperation(model, {
-    type: 'add', name: 'Top only', thickness: 0.1, face: 'front', area: model.boundary,
+    type: 'add',
+    name: 'Top only',
+    thickness: 0.1,
+    face: 'front',
+    area: model.boundary,
   });
   assert.equal(front.changed, true);
   const before = structuredClone(model);
   const result = modelApi.applyOperation(model, {
-    type: 'grow', targetLayerId: front.layerId, thickness: 0.1, face: 'both',
+    type: 'grow',
+    targetLayerId: front.layerId,
+    thickness: 0.1,
+    face: 'both',
     area: model.boundary,
   });
   assert.equal(result.changed, false);
@@ -90,12 +108,19 @@ test('Both is atomic if Back fails after a successful Front operation', () => {
   assert.deepEqual(model, before, 'Front growth must not leak after Back rejection');
 });
 
-test('Both Transfer preserves one material identity and both surface placements', () => {
+test('Both Transfer creates independently identifiable surface films', () => {
   const model = slab();
   const applied = applyProcessFaces(
     model,
-    { type: 'add', name: 'Laminate', growth: 'transfer', transferMode: 'follow',
-      thickness: 0.15, face: 'both', area: model.boundary },
+    {
+      type: 'add',
+      name: 'Laminate',
+      growth: 'transfer',
+      transferMode: 'follow',
+      thickness: 0.15,
+      face: 'both',
+      area: model.boundary,
+    },
     (candidate, params) =>
       applyAdvancedProcessOperation(candidate, params, params.area, modelApi, vectorApi) ??
       modelApi.applyOperation(candidate, params),
@@ -110,14 +135,17 @@ test('Both Transfer preserves one material identity and both surface placements'
   assert.equal(model.layers.length, 1, 'worker-style caller input remains unchanged');
 });
 
-
 test('Both selective Etch maps the front target to its paired back layer', () => {
   const model = slab();
   const added = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(added.changed, true, added.error);
   const removed = modelApi.applyOperation(model, {
-    type: 'etch', thickness: 0.1, etchProfile: 'directional',
-    etchTargetLayerIds: [added.layerIds.front], face: 'both', area: model.boundary,
+    type: 'etch',
+    thickness: 0.1,
+    etchProfile: 'directional',
+    etchTargetLayerIds: [added.layerIds.front],
+    face: 'both',
+    area: model.boundary,
   });
   assert.equal(removed.changed, true, removed.error);
   const stack = stackAt(model, [0, 0]);
@@ -131,8 +159,12 @@ test('single-face selective Etch can remove one coating without touching the oth
   const added = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(added.changed, true, added.error);
   const result = modelApi.applyOperation(model, {
-    type: 'etch', thickness: 0.2, etchProfile: 'directional',
-    etchTargetLayerIds: [added.layerIds.front], face: 'front', area: model.boundary,
+    type: 'etch',
+    thickness: 0.2,
+    etchProfile: 'directional',
+    etchTargetLayerIds: [added.layerIds.front],
+    face: 'front',
+    area: model.boundary,
   });
   assert.equal(result.changed, true, result.error);
   const stack = stackAt(model, [0, 0]);
@@ -144,29 +176,52 @@ test('single-face selective Etch can remove one coating without touching the oth
 test('Both annotations retain separate physical faces and IDs in one logical operation', () => {
   const model = slab();
   const implant = modelApi.applyOperation(model, {
-    type: 'implant', name: 'Dual-side doping', thickness: 0.1, face: 'both',
+    type: 'implant',
+    name: 'Dual-side doping',
+    thickness: 0.1,
+    face: 'both',
     area: model.boundary,
   });
   assert.equal(implant.changed, true, implant.error);
   assert.equal(model.implants.length, 2);
-  assert.deepEqual(model.implants.map(({ face }) => face), ['front', 'back']);
-  assert.deepEqual(implant.implantIds, model.implants.map(({ id }) => id));
+  assert.deepEqual(
+    model.implants.map(({ face }) => face),
+    ['front', 'back'],
+  );
+  assert.deepEqual(
+    implant.implantIds,
+    model.implants.map(({ id }) => id),
+  );
   const electrical = modelApi.applyOperation(model, {
-    type: 'electrical', name: 'Surface passivation', thickness: 0.01, face: 'both',
+    type: 'electrical',
+    name: 'Surface passivation',
+    thickness: 0.01,
+    face: 'both',
     area: model.boundary,
   });
   assert.equal(electrical.changed, true, electrical.error);
-  assert.deepEqual(electrical.electricalRegionIds, model.electricalRegions.map(({ id }) => id));
-  assert.deepEqual(model.electricalRegions.map(({ face }) => face), ['front', 'back']);
+  assert.deepEqual(
+    electrical.electricalRegionIds,
+    model.electricalRegions.map(({ id }) => id),
+  );
+  assert.deepEqual(
+    model.electricalRegions.map(({ face }) => face),
+    ['front', 'back'],
+  );
   validateProcessModel(model);
 });
 
 test('Both works with canonical array templates without flattening the wafer', () => {
   const leaf = slab();
   const model = {
-    ...leaf, kernel: ARRAY_MODEL_KERNEL, width: 40,
-    boundary: vectorApi.rectMulti(40, 20), regions: [],
-    array: { version: 1, templates: [{ id: 'cell', model: leaf }],
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    width: 40,
+    boundary: vectorApi.rectMulti(40, 20),
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
       instances: [
         { id: 'left', templateId: 'cell', x: -10, y: 0 },
         { id: 'right', templateId: 'cell', x: 10, y: 0 },
@@ -174,7 +229,10 @@ test('Both works with canonical array templates without flattening the wafer', (
     },
   };
   const result = modelApi.applyOperation(model, {
-    type: 'add', name: 'Dual array film', thickness: 0.1, face: 'both',
+    type: 'add',
+    name: 'Dual array film',
+    thickness: 0.1,
+    face: 'both',
     area: model.boundary,
   });
   assert.equal(result.changed, true, result.error);
@@ -190,15 +248,16 @@ test('Both works with canonical array templates without flattening the wafer', (
   validateProcessModel(model);
 });
 
-
 test('Both linked layers survive normal project export and import', async () => {
   const model = slab();
   const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(deposited.changed, true, deposited.error);
-  const project = migrateProjectFile(projectForBenchmark({
-    model,
-    section: { a: [-9, 0], b: [9, 0] },
-  }));
+  const project = migrateProjectFile(
+    projectForBenchmark({
+      model,
+      section: { a: [-9, 0], b: [9, 0] },
+    }),
+  );
   const text = serializeProject(project);
   const restored = await readProjectFile({
     size: Buffer.byteLength(text),
@@ -214,12 +273,19 @@ test('Both linked layers survive normal project export and import', async () => 
 });
 
 test('Both recipe parses, normalizes and serializes without falling back to Front', () => {
-  const source = 'deposit({ material: "Al2O3", thickness: "20 nm", coverage: "conformal", face: "both", area: "full" });';
+  const source =
+    'deposit({ material: "Al2O3", thickness: "20 nm", coverage: "conformal", face: "both", area: "full" });';
   const parsed = parseProcessRecipeSource(source);
   assert.equal(parsed.steps[0].params.face, 'both');
   assert.equal(normalizeProcessRecipe(parsed).steps[0].params.face, 'both');
-  assert.equal(parseProcessRecipeSource(serializeProcessRecipe(parsed)).steps[0].params.face, 'both');
-  assert.throws(() => parseProcessRecipeSource(source.replace('face: "both"', 'face: "side"')), /Unsupported recipe face/);
+  assert.equal(
+    parseProcessRecipeSource(serializeProcessRecipe(parsed)).steps[0].params.face,
+    'both',
+  );
+  assert.throws(
+    () => parseProcessRecipeSource(source.replace('face: "both"', 'face: "side"')),
+    /Unsupported recipe face/,
+  );
 });
 
 test('Both rejects Planarize and Lift-off without changing the model', () => {
@@ -229,7 +295,11 @@ test('Both rejects Planarize and Lift-off without changing the model', () => {
     { type: 'etch', etchProfile: 'planarize', targetZ: 0, thickness: 0 },
     { type: 'liftoff', sacrificialLayerId: 'layer-1' },
   ]) {
-    const result = modelApi.applyOperation(model, { ...params, face: 'both', area: model.boundary });
+    const result = modelApi.applyOperation(model, {
+      ...params,
+      face: 'both',
+      area: model.boundary,
+    });
     assert.equal(result.changed, false);
     assert.match(result.error, /Both faces are unsupported/);
     assert.deepEqual(model, before);

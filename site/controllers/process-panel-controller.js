@@ -729,8 +729,7 @@ export function createProcessPanelController({
         if (operation.kind === 'add' && task.result.layerId) {
           for (const id of Object.values(task.result.layerIds || { front: task.result.layerId }))
             colorNewLayer(id);
-        }
-        else if (operation.kind === 'implant' && task.result.implantId) {
+        } else if (operation.kind === 'implant' && task.result.implantId) {
           colorNewImplant(task.result.implantId);
         } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
           colorNewElectricalRegion(task.result.electricalRegionId);

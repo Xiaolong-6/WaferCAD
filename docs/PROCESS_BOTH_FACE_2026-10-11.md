@@ -8,11 +8,11 @@ A current Recipe code example:
 
 ```js
 deposit({
-  material: "Al2O3",
-  thickness: "20 nm",
-  coverage: "conformal",
-  face: "both",
-  area: "full",
+  material: 'Al2O3',
+  thickness: '20 nm',
+  coverage: 'conformal',
+  face: 'both',
+  area: 'full',
 });
 ```
 
@@ -34,7 +34,7 @@ The same syntax is available for directional deposition, Extend, directional/iso
 
 - Process Surface options: Front / Back / Both. `Both` is an **operation target** only.
 - Recipe editor must preserve and display `params.face === 'both'`. The legacy Recipe code editor already accepts it; replacing the UI selector is work for the UI v2 track.
-- Send a *single* worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
+- Send a _single_ worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
 - Show one History Step labeled Both, with two linked children in future layer/legend UI. Each child has its own edit/delete/color and face-specific target actions. Show a clear error if either surface cannot be processed.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.
 
