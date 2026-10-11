@@ -43,6 +43,10 @@ Use this page to find the document that owns a question. Current contracts descr
 - [UI v2 actual UI acceptance — 2026-10-10](ui-v2/UI_ACCEPTANCE_2026-10-10.md) — targeted UI PASS at `2ae4ca3`; all eight findings closed, compact tools, visual rechecks and 49 passing shell checks; initial FAIL retained as history.
 - [Main-only course correction — 2026-10-11](ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md) — local Main floating-editor/Pan/Zoom checkpoint, exact validation evidence, architecture health report and shared floating-strip proposal; view-kit extraction and Mask await approval.
 - [Mask-only v2 checkpoint — 2026-10-11](ui-v2/MASK_HANDOFF_2026-10-11.md) — approved shared view-kit Mask adapter, local run/review, stage budget, source preservation and acceptance evidence.
+- [UI v2 WIP handoff — 2026-10-11](ui-v2/HANDOFF_2026-10-11.md) — branch state, local gate evidence, stage budgets and standing rules.
+- [UI v2 legacy cross-view synchronization table — 2026-10-11](ui-v2/SYNC_TABLE_2026-10-11.md) — audited render dispatch and ROI/Section/3D linkage, with unconfirmed behavior marked.
+- [UI v2 Section M2/legacy contract audit — 2026-10-11](ui-v2/SECTION_CONTRACT_AUDIT_2026-10-11.md) — Section control parity, unsupported mock behavior and additive port estimates.
+- [UI v2 3D M2/legacy contract audit — 2026-10-11](ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md) — OrbitControls gestures, rendering/export contract and additive port estimates.
 - [M1.5 Windows visual comparison — 2026-10-11](ui-v2/M15_VISUAL_REVIEW_2026-10-11.md) — real-view and matched prototype captures, initial visual findings and pending human acceptance.
 - [UI v2 visual polish — 2026-10-09](ui-v2/VISUAL_POLISH_2026-10-09.md) — historical shell presentation changes; current UI acceptance is recorded separately above.
 - [UI v2 M0 checkpoint](ui-v2/M0_CHECKPOINT.md) — baseline, generated DOM contract, implicit dependencies, PR #161 postmortem, risks and the required stop before M1.
