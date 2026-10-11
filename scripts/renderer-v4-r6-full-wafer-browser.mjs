@@ -3,10 +3,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import {
-  compareScreenshotPngPixels,
-  decodeScreenshotPng,
-} from './test-helpers/png-pixel-diff.mjs';
+import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 import {
   launchBrowser,
   newUiContext,
