@@ -4,14 +4,7 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { createServer } from 'node:http';
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -211,7 +204,8 @@ async function runHardware() {
         status,
         reportFile: report ? step.id + '/report.json' : null,
         logFile: step.id + '.log',
-        strictPixelParity: step.id === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
+        strictPixelParity:
+          step.id === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
         candidateActivation: report?.trials
           ?.filter((trial) => trial.policy === 'B')
           .map((trial) => trial.candidateActivation),
@@ -231,7 +225,9 @@ async function runHardware() {
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,
       fatalError,
-      passed: !fatalError && completed.length === plan.length &&
+      passed:
+        !fatalError &&
+        completed.length === plan.length &&
         completed.every((step) => step.status === 'passed'),
     };
     await writeFile(join(evidence, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
@@ -251,8 +247,11 @@ async function runHardware() {
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        'Compress-Archive -LiteralPath ' + psQuote(evidence) +
-          ' -DestinationPath ' + psQuote(zip) + ' -Force',
+        'Compress-Archive -LiteralPath ' +
+          psQuote(evidence) +
+          ' -DestinationPath ' +
+          psQuote(zip) +
+          ' -Force',
       ],
       root,
       join(dirname(evidence), 'archive-' + id + '.log'),

@@ -9,7 +9,10 @@ import {
 test('one hardware plan retains exact V3 and three independent V4 candidate artifacts', () => {
   assert.match(RENDERER_HARDWARE_BRANCHES.v3, /transparent-renderer-v3/);
   const plan = buildRendererHardwarePlan();
-  assert.deepEqual(plan.map(({ id }) => id), ['v3', 'v4-index', 'v4-caps', 'v4-combined']);
+  assert.deepEqual(
+    plan.map(({ id }) => id),
+    ['v3', 'v4-index', 'v4-caps', 'v4-combined'],
+  );
   assert.deepEqual(plan[0].args, ['--hardware-rtx3060', '--report-only']);
   assert.deepEqual(plan[1].args, ['--hardware-rtx3060', '--isolate-index']);
   assert.deepEqual(plan[2].args, ['--hardware-rtx3060', '--isolate-caps']);
@@ -59,10 +62,7 @@ test('V4 no-op, incomplete and mismatched policies fail closed', () => {
   const early = v4Report('index', false);
   early.trials = early.trials.slice(0, 2);
   early.parity = null;
-  assert.equal(
-    classifyRendererHardwareStep(step('v4-index', 1), early),
-    'candidate-not-exercised',
-  );
+  assert.equal(classifyRendererHardwareStep(step('v4-index', 1), early), 'candidate-not-exercised');
   assert.equal(classifyRendererHardwareStep(step('v4-index'), v4Report('caps')), 'error');
   assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), null), 'error');
   const parityFail = v4Report('caps');

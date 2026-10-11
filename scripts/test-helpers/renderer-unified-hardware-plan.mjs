@@ -54,7 +54,5 @@ export function classifyRendererHardwareStep(step, report) {
     return 'candidate-not-exercised';
   }
   if (report.trials?.length !== 4 || !report.parity) return 'incomplete';
-  return report.passed === true && report.parity.strictPixelParity === true
-    ? 'passed'
-    : 'blocked';
+  return report.passed === true && report.parity.strictPixelParity === true ? 'passed' : 'blocked';
 }
