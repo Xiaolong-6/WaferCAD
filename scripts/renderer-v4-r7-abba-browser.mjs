@@ -28,6 +28,15 @@ import {
 
 const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
+const isolateIndex = process.argv.includes('--isolate-index');
+const isolateCaps = process.argv.includes('--isolate-caps');
+assert.ok(!(isolateIndex && isolateCaps), 'select at most one V4 isolation candidate');
+const candidateFlags = isolateIndex
+  ? ['rendererV4FastSmoothIndex=1']
+  : isolateCaps
+    ? ['rendererV4SharedFlatCaps=1']
+    : ['rendererV4FastSmoothIndex=1', 'rendererV4SharedFlatCaps=1'];
+const candidateName = isolateIndex ? 'FastSmoothIndex-only' : isolateCaps ? 'SharedFlatCaps-only' : 'combined';
 assert.notEqual(ciSmoke, hardwareRtx3060, 'select exactly one: --ci-smoke or --hardware-rtx3060');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', 'hardware mode requires Windows');
 const output = new URL(
@@ -47,6 +56,8 @@ const fixture = fileURLToPath(
 );
 const report = {
   order: [...R7_ORDER],
+  candidateName,
+  candidateFlags,
   fixture,
   backendClass: hardwareRtx3060 ? 'hardware-intended, verified per trial' : 'CI probe only',
   mode: hardwareRtx3060 ? 'hardware-rtx3060' : 'ci-smoke',
@@ -78,7 +89,7 @@ async function oneArm(policy, index) {
   const flags = [
     'rendererV4GpuCensus=1',
     'rendererV3RoiTrace=1',
-    ...(policy === 'B' ? ['rendererV4FastSmoothIndex=1', 'rendererV4SharedFlatCaps=1'] : []),
+    ...(policy === 'B' ? candidateFlags : []),
   ];
   const row = { label, policy, flags, samples: [] };
   report.trials.push(row);
