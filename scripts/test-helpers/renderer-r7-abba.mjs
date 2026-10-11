@@ -42,8 +42,7 @@ export function classifyR7CandidateActivation(mode, state, policy = 'B') {
   const countersComplete = [indexVertices, sourceVertices, clonesAvoided].every(
     (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0,
   );
-  const indexActive =
-    countersComplete && indexVertices > 0 && sourceVertices > indexVertices;
+  const indexActive = countersComplete && indexVertices > 0 && sourceVertices > indexVertices;
   const capsActive = countersComplete && clonesAvoided > 0;
   const expectedIndex = policy === 'B' && (mode === 'index' || mode === 'combined');
   const expectedCaps = policy === 'B' && (mode === 'caps' || mode === 'combined');
