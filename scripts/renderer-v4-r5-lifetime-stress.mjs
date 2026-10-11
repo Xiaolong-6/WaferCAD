@@ -36,6 +36,7 @@ async function snapshot(page, phase) {
   const result = {
     phase,
     variant: data.sceneVariant,
+    opacity: await page.locator('#threeOpacityRange').inputValue(),
     generation: data.sceneGeneration,
     frameSerial: Number(data.rendererFrameSerial),
     groups: Number(data.v4GpuResourceSceneGroups),
@@ -145,34 +146,42 @@ try {
         .locator('#threeHost')
         .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
       await range.fill(opacity);
-      const variant = opacity === '1' ? 'opaque' : 'transparent';
-      await waitNewFrame(page, before, variant);
+      // Sub-64-instance models update presentation in place. Their
+      // sceneVariant field need not change when the opacity policy does.
+      await waitNewFrame(page, before);
+      assert.equal(
+        await page.locator('#threeOpacityValue').textContent(),
+        opacity === '1' ? '100%' : '50%',
+        label + ': expected opacity event callback',
+      );
       return snapshot(page, label);
     };
 
-    // Construct both retained scene variants. Revisit them without
-    // reimporting to prove the variant cache stays bounded, not ever-growing.
+    // Small project: exercise repeated presentation-only changes and
+    // bound allocations. R4's 625-site gate separately tests variant builds.
     const opaque0 = await changeOpacity('1', 'initial-opaque');
-    assert.equal(opaque0.variant, 'opaque');
-    await changeOpacity('0.5', 'warm-transparent');
+    assert.equal(opaque0.opacity, '1');
+    const warmTransparent = await changeOpacity('0.5', 'warm-transparent');
     const opaque1 = await changeOpacity('1', 'warm-opaque');
     for (let cycle = 0; cycle < 3; cycle++) {
       const transparent = await changeOpacity('0.5', 'cycle-' + cycle + '-transparent');
       const opaque = await changeOpacity('1', 'cycle-' + cycle + '-opaque');
-      assert.equal(transparent.groups, 2);
-      assert.equal(opaque.groups, 2);
-      assert.equal(opaque.bytes, opaque1.bytes, 'opaque cache must not grow by repeated toggles');
+      assert.equal(transparent.groups, warmTransparent.groups);
+      assert.equal(transparent.bytes, warmTransparent.bytes);
+      assert.equal(transparent.geometries, warmTransparent.geometries);
+      assert.equal(opaque.groups, opaque1.groups);
+      assert.equal(opaque.bytes, opaque1.bytes, 'display changes must not grow retained buffers');
       assert.equal(opaque.geometries, opaque1.geometries);
       assert.equal(opaque.materials, opaque1.materials);
     }
 
     // Two user-imported project revisions must invalidate and retire prior
     // scene groups, not preserve stale resources in an orphaned cache.
-    const beforeReload = states.at(-1);
+    let beforeReload = states.at(-1);
     for (let revision = 1; revision <= 2; revision++) {
       await importFixture(page, revision);
       const current = await changeOpacity('1', 'reimport-' + revision);
-      assert.equal(current.variant, 'opaque');
+      assert.equal(current.opacity, '1');
       assert.ok(
         current.disposedGroups > beforeReload.disposedGroups,
         'reimport must retire at least one old scene group',
@@ -185,6 +194,7 @@ try {
         current.disposedMaterials > beforeReload.disposedMaterials,
         'reimport must dispose old materials',
       );
+      beforeReload = current;
     }
     assert.deepEqual(errors, [], 'no page/console errors from repeated scene lifetime');
     console.log(
