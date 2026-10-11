@@ -47,7 +47,12 @@ function assertModelPersistence(actual, expected, path = 'model') {
 const browser = await launchBrowser();
 try {
   report.browser = browser.version();
-  for (const example of ['m3d', 'photodetector', 'metalens']) {
+  for (const [example, sourceName] of [
+    ['m3d', 'm3d-selfpowered'],
+    ['photodetector', 'photodetector-literature'],
+    ['metalens', 'tio2-metalens-four-unit'],
+    ['metalens-array', 'tio2-metalens-full-array'],
+  ]) {
     const { page, context } = await newUiPage(browser, {
       viewport: { width: 1024, height: 900 },
       acceptDownloads: true,
@@ -68,8 +73,15 @@ try {
       const before = await snapshot();
       assert.equal(before.sharedIdentity, true);
       assert.ok(before.model.layers.length > 0);
-      assert.ok(before.model.regions.length > 0);
-      assert.equal(before.source.includes(example === 'm3d' ? 'm3d-selfpowered' : example), true);
+      assert.ok(
+        before.model.regions.length > 0 ||
+          before.model.array?.templates?.some((template) => template.model.regions.length > 0),
+      );
+      assert.equal(before.source.includes(sourceName), true);
+      if (example === 'metalens-array') {
+        assert.equal(before.model.array.instances.length, 6400, 'Real 80×80 full array');
+        assert.equal(before.model.array.templates.length, 49, '49 shared physical templates');
+      }
       const legacyBoot = await page.evaluate(() =>
         performance.getEntriesByType('resource').some((entry) =>
           /\/app\.js(?:\?|$)/.test(entry.name),

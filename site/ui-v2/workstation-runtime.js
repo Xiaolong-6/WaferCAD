@@ -10,6 +10,7 @@ export async function loadWorkstationProject() {
     m3d: 'examples/m3d-selfpowered-full-replay.wafercad',
     photodetector: 'examples/previews/photodetector-literature.wafercad',
     metalens: 'examples/previews/tio2-metalens-four-unit.wafercad',
+    'metalens-array': 'examples/tio2-metalens-full-array.wafercad',
     jlfet: 'examples/previews/three-tier-silicon-jlfets.wafercad',
   };
   const example = new URLSearchParams(location.search).get('example') || 'm3d';
