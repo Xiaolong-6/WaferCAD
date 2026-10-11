@@ -1232,7 +1232,6 @@ function applyOperationImpl(
     type,
     name,
     targetLayerId,
-    reuseLayerId = null,
     etchTargetLayerIds = [],
     etchProfile = 'directional',
     thickness,
@@ -1425,12 +1424,7 @@ function applyOperationImpl(
       };
     }
   }
-  if (type === 'add') {
-    if (reuseLayerId && !layerById(model, reuseLayerId)) {
-      return { changed: false, error: 'The shared both-face deposition layer is unavailable.' };
-    }
-    layer = reuseLayerId ? layerById(model, reuseLayerId) : createLayer(model, name);
-  }
+  if (type === 'add') layer = createLayer(model, name);
 
   if (type === 'etch') {
     const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];
