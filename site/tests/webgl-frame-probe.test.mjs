@@ -32,12 +32,16 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     drawingBufferWidth: 531,
     drawingBufferHeight: 275,
     readPixels: (x, y, width, height, format, type, out) => {
-      assert.equal(width, 1);
-      assert.equal(height, 1);
+      assert.ok(Number.isInteger(width) && width >= 1);
+      assert.ok(Number.isInteger(height) && height >= 1);
       assert.equal(format, 15);
       assert.equal(type, 16);
       calls.push(`read:${x}:${y}`);
-      out.set([x & 255, y & 255, 7, 255]);
+      for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+          out.set([(x + col) & 255, (y + row) & 255, 7, 255], (row * width + col) * 4);
+        }
+      }
     },
     getExtension: (name) =>
       name === 'EXT_disjoint_timer_query_webgl2' && timer ? extension : null,
