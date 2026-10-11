@@ -1059,12 +1059,13 @@ export function createProcessPanelController({
         colorNewLayer(id);
       $('layerName').value = `Layer ${model.nextLayerId}`;
     } else if (type === 'implant' && result.implantId) {
-      for (const id of result.implantIds || [result.implantId]) colorNewImplant(id);
+      if (result.implantIds) result.implantIds.forEach(colorNewImplant);
+      else colorNewImplant(result.implantId);
       $('implantName').value =
         `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
     } else if (type === 'electrical' && result.electricalRegionId) {
-      for (const id of result.electricalRegionIds || [result.electricalRegionId])
-        colorNewElectricalRegion(id);
+      if (result.electricalRegionIds) result.electricalRegionIds.forEach(colorNewElectricalRegion);
+      else colorNewElectricalRegion(result.electricalRegionId);
       $('electricalName').value =
         `Electrical Region ${model.nextElectricalRegionId || (model.electricalRegions?.length || 0) + 1}`;
     }
