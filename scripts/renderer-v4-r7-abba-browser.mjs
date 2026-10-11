@@ -40,9 +40,10 @@ const candidateName = isolateIndex ? 'FastSmoothIndex-only' : isolateCaps ? 'Sha
 assert.notEqual(ciSmoke, hardwareRtx3060, 'select exactly one: --ci-smoke or --hardware-rtx3060');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', 'hardware mode requires Windows');
 const output = new URL(
-  hardwareRtx3060
-    ? '../test-results/renderer-v4-r7-hardware-abba/'
-    : '../test-results/renderer-v4-r7-ci-smoke/',
+  '../test-results/' +
+    (hardwareRtx3060 ? 'renderer-v4-r7-hardware-abba' : 'renderer-v4-r7-ci-smoke') +
+    (isolateIndex ? '-index-only' : isolateCaps ? '-caps-only' : '') +
+    '/',
   import.meta.url,
 );
 await mkdir(output, { recursive: true });
