@@ -56,14 +56,14 @@ async function snapshot(page, phase) {
   return result;
 }
 
-async function waitNewFrame(page, before, expectedVariant) {
+async function waitNewFrame(page, before, expectedVariant = null) {
   try {
     await page.waitForFunction(
       ({ previous, variant }) => {
         const host = document.getElementById('threeHost');
         return (
           host?.dataset.renderState === 'ready' &&
-          host?.dataset.sceneVariant === variant &&
+          (!variant || host?.dataset.sceneVariant === variant) &&
           Number(host.dataset.rendererFrameSerial || 0) > previous
         );
       },
@@ -112,7 +112,9 @@ async function importFixture(page, iteration) {
     'r5-lifetime-' + iteration + '.wafercad',
     { timeout: 120000 },
   );
-  await waitNewFrame(page, before, 'opaque');
+  // The imported project owns its initial opacity; it may be transparent.
+  // Normalize explicitly after import before asserting opaque cache behavior.
+  await waitNewFrame(page, before);
 }
 
 try {
@@ -150,7 +152,7 @@ try {
 
     // Construct both retained scene variants. Revisit them without
     // reimporting to prove the variant cache stays bounded, not ever-growing.
-    const opaque0 = await snapshot(page, 'initial-opaque');
+    const opaque0 = await changeOpacity('1', 'initial-opaque');
     assert.equal(opaque0.variant, 'opaque');
     await changeOpacity('0.5', 'warm-transparent');
     const opaque1 = await changeOpacity('1', 'warm-opaque');
@@ -169,7 +171,7 @@ try {
     const beforeReload = states.at(-1);
     for (let revision = 1; revision <= 2; revision++) {
       await importFixture(page, revision);
-      const current = await snapshot(page, 'reimport-' + revision);
+      const current = await changeOpacity('1', 'reimport-' + revision);
       assert.equal(current.variant, 'opaque');
       assert.ok(
         current.disposedGroups > beforeReload.disposedGroups,
