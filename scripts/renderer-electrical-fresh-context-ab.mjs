@@ -18,6 +18,7 @@ import {
 } from './test-helpers/ui.mjs';
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
+import { compareRendererPhaseEvidence } from './test-helpers/renderer-v3-phase-parity.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
@@ -185,6 +186,7 @@ async function trial(enabled, index) {
         captureGlState: true,
         captureFramebuffer: true,
         captureDrawInputs,
+        capturePhases: captureDrawInputs,
         pixelSamples,
       });
       const input = document.getElementById('threeOpacityRange');
@@ -216,6 +218,16 @@ async function trial(enabled, index) {
             .map((value) => value.toString(16).padStart(2, '0'))
             .join('')
         : null;
+      const phases = await Promise.all((frame.phases || []).map(async (phase) => {
+        const { rgba, ...details } = phase;
+        return {
+          ...details,
+          hash: rgba
+            ? Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', rgba)))
+                .map((value) => value.toString(16).padStart(2, '0')).join('')
+            : null,
+        };
+      }));
       const trace = window.__freshContextTrace;
       const canvas = document.querySelector('#threeHost canvas');
       const rect = canvas.getBoundingClientRect();
@@ -228,6 +240,8 @@ async function trial(enabled, index) {
           vendor: frame.vendor,
           glState: frame.glState,
           drawInputs: frame.drawInputs || [],
+          phases,
+          phaseCoverage: frame.phaseCoverage || null,
           framebuffer: frame.framebuffer,
           framebufferHash: hex,
           pixelSamples: frame.pixelSamples,
@@ -249,17 +263,45 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
-    native.drawInputs = native.drawInputs.map(({ shaders, ...draw }) => ({
+    native.drawInputs = native.drawInputs.map(({ shaders, buffers, ...draw }) => ({
       ...draw,
       shaderHashes: shaders.map(({ type, source }) => ({
         type,
         hash: hashJson(source),
         length: source.length,
       })),
+      buffers: {
+        attributes: buffers.attributes.map(({ bytes, ...attribute }) => ({
+          ...attribute,
+          ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+        })),
+        indices: buffers.indices && (() => {
+          const { bytes, ...index } = buffers.indices;
+          return {
+            ...index,
+            ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+          };
+        })(),
+      },
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
+    row.phaseCheckpoints = native.phases;
+    row.phaseCoverage = native.phaseCoverage;
+    row.phaseSequenceHash = hashJson(native.phases.map(({ afterDraw, kind, status }) => ({
+      afterDraw, kind, status,
+    })));
     row.drawInputsCount = native.drawInputs.length;
     if (hardwareRtx3060) {
+      assert.ok(
+        row.phaseCoverage?.finalFrameCaptured === true &&
+          row.phaseCheckpoints.at(-1)?.afterDraw === native.calls,
+        `${label}: final drawn owner phase must be captured`,
+      );
+      assert.ok(
+        row.phaseCheckpoints.length > 0 &&
+          row.phaseCheckpoints.every((checkpoint) => checkpoint.status === 'valid' && checkpoint.hash),
+        `${label}: complete phase checkpoint evidence required`,
+      );
       assert.equal(
         row.drawInputsCount,
         48,
@@ -270,6 +312,12 @@ async function trial(enabled, index) {
           draw.shaderHashes.some((shader) => shader.length > 0),
         ),
         `${label}: shader source evidence missing`,
+      );
+      assert.ok(
+        native.drawInputs.some((draw) => draw.buffers.attributes.some((attribute) =>
+          attribute.status === 'read' && attribute.sampledBytes > 0,
+        )),
+        `${label}: vertex buffer evidence missing`,
       );
     }
     row.stage = 'captured';
@@ -335,6 +383,7 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
+        phaseEvidence: compareRendererPhaseEvidence(previous.row, row),
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -360,6 +409,7 @@ async function trial(enabled, index) {
         orderHash: row.orderHash,
         camera: row.cameraWorld,
         materialHash: row.materialHash,
+        phaseCoverage: row.phaseCoverage,
         calls: native.calls,
         triangles: native.triangles,
       }),
@@ -395,6 +445,7 @@ try {
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
+    phaseEvidence: compareRendererPhaseEvidence(off, on),
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===

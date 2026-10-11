@@ -8,6 +8,89 @@ export function installWebglFrameProbe() {
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
   const originalRaf = window.requestAnimationFrame;
 
+  // Diagnostic readback only: never mutate buffer bytes or VAO attribute pointers.
+  // Bound the number of attributes and bytes to avoid a full-wafer CPU copy.
+  function sampleDrawBuffers(gl, indexed) {
+    const priorArray = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+    const attributes = [];
+    try {
+      const limit = Math.min(8, gl.getParameter(gl.MAX_VERTEX_ATTRIBS));
+      for (let i = 0; i < limit; i++) {
+        if (!gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_ENABLED)) continue;
+        const buffer = gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
+        if (!buffer) {
+          attributes.push({ index: i, status: 'missing-buffer' });
+          continue;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        const length = Math.min(4096, gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE));
+        const data = new Uint8Array(length);
+        gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
+        attributes.push({
+          index: i, status: 'read',
+          totalBytes: gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE),
+          offset: gl.getVertexAttribOffset(i, gl.VERTEX_ATTRIB_ARRAY_POINTER),
+          size: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_SIZE),
+          type: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_TYPE),
+          stride: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_STRIDE),
+          divisor: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_DIVISOR),
+          bytes: Array.from(data),
+        });
+      }
+      let indices = null;
+      if (indexed) {
+        const element = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
+        if (!element) {
+          indices = { status: 'missing-buffer' };
+        } else {
+          const totalBytes = gl.getBufferParameter(gl.ELEMENT_ARRAY_BUFFER, gl.BUFFER_SIZE);
+          const data = new Uint8Array(Math.min(4096, totalBytes));
+          gl.getBufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, data);
+          indices = { status: 'read', totalBytes, bytes: Array.from(data) };
+        }
+      }
+      return { attributes, indices };
+    } finally {
+      gl.bindBuffer(gl.ARRAY_BUFFER, priorArray);
+    }
+  }
+
+  function capturePhaseFramebuffer(gl, active, endingKind, final = false) {
+    if (!active.capturePhases || endingKind === null) return;
+    // Reserve the last slot for the completed frame. Sampling the first
+    // transitions only must never masquerade as full-stage coverage.
+    if (active.phases.length >= (final ? 12 : 11)) {
+      if (!final) active.phaseTransitionsSkipped++;
+      return;
+    }
+    const width = gl.drawingBufferWidth;
+    const height = gl.drawingBufferHeight;
+    const binding = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+    if (binding || width <= 0 || height <= 0 || width * height > 2000000) {
+      active.phases.push({
+        afterDraw: active.drawCalls,
+        kind: endingKind,
+        status: binding ? 'offscreen-framebuffer' : 'size-limit',
+      });
+      return;
+    }
+    const bytes = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+    const error = gl.getError();
+    const checkpoint = {
+      afterDraw: active.drawCalls,
+      kind: endingKind,
+      width,
+      height,
+      status: error === gl.NO_ERROR ? 'valid' : 'gl-error',
+      glError: error,
+    };
+    if (error === gl.NO_ERROR) {
+      Object.defineProperty(checkpoint, 'rgba', { value: bytes });
+    }
+    active.phases.push(checkpoint);
+  }
+
   function instrument(gl, canvas) {
     if (contexts.has(gl)) return;
     const entry = { gl, canvas, active: null, timer: null };
@@ -46,6 +129,11 @@ export function installWebglFrameProbe() {
             captureFramebuffer: options.captureFramebuffer === true,
             captureDrawInputs: options.captureDrawInputs === true,
             drawInputs: [],
+            capturePhases: options.capturePhases === true,
+            phases: [],
+            phaseKind: null,
+            phaseTransitionsObserved: 0,
+            phaseTransitionsSkipped: 0,
             firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
@@ -60,6 +148,11 @@ export function installWebglFrameProbe() {
         }
         const active = entry.active;
         if (active) {
+          if (active.capturePhases && active.phaseKind !== null && active.phaseKind !== owner.kind) {
+            active.phaseTransitionsObserved++;
+            capturePhaseFramebuffer(gl, active, active.phaseKind);
+          }
+          active.phaseKind = owner.kind;
           if (
             active.captureGlState &&
             owner.kind === 'electrical-surface' &&
@@ -101,6 +194,7 @@ export function installWebglFrameProbe() {
               blendDstRgb: gl.getParameter(gl.BLEND_DST_RGB),
               blendEquationRgb: gl.getParameter(gl.BLEND_EQUATION_RGB),
               viewport: Array.from(gl.getParameter(gl.VIEWPORT)),
+              buffers: sampleDrawBuffers(gl, method.startsWith('drawElements')),
             });
           }
           const key = JSON.stringify([owner.kind, owner.name]);
@@ -132,6 +226,9 @@ export function installWebglFrameProbe() {
         // remaining driver/GPU queue. It perturbs scheduling in BOTH arms.
         gl.finish();
         const finishedAt = performance.now();
+        // Capture the final drawn phase even if there was no owner transition.
+        // The readback is diagnostic-only and excluded from the finish latency.
+        if (active.capturePhases) capturePhaseFramebuffer(gl, active, active.phaseKind, true);
         const frame = {
           rasterDiscard: active.rasterDiscard,
           drawCalls: active.drawCalls,
@@ -146,6 +243,18 @@ export function installWebglFrameProbe() {
           frameSerial: Number(entry.canvas.closest('#threeHost')?.dataset.rendererFrameSerial || 0),
           owners: [...active.owners.values()].sort((a, b) => b.triangles - a.triangles),
           ...(active.captureDrawInputs ? { drawInputs: active.drawInputs } : {}),
+          ...(active.capturePhases
+            ? {
+                phases: active.phases,
+                phaseCoverage: {
+                  captured: active.phases.length,
+                  transitionsObserved: active.phaseTransitionsObserved,
+                  transitionsSkipped: active.phaseTransitionsSkipped,
+                  complete: active.phaseTransitionsSkipped === 0,
+                  finalFrameCaptured: active.phases.at(-1)?.afterDraw === active.drawCalls,
+                },
+              }
+            : {}),
           vendor: gl.getParameter(gl.VENDOR),
           renderer: gl.getParameter(gl.RENDERER),
           version: gl.getParameter(gl.VERSION),
@@ -283,6 +392,7 @@ export function installWebglFrameProbe() {
         captureGlState: options.captureGlState === true,
         captureFramebuffer: options.captureFramebuffer === true,
         captureDrawInputs: options.captureDrawInputs === true,
+        capturePhases: options.capturePhases === true,
         pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
           x,
           y,
