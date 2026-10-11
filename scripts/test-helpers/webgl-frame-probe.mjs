@@ -43,6 +43,7 @@ export function installWebglFrameProbe() {
             // Optional completed-frame framebuffer evidence; disabled by default.
             pixelSamples: options.pixelSamples || [],
             captureGlState: options.captureGlState === true,
+            captureFramebuffer: options.captureFramebuffer === true,
             firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
@@ -177,6 +178,25 @@ export function installWebglFrameProbe() {
             };
           });
         }
+        if (active.captureFramebuffer) {
+          const width = gl.drawingBufferWidth;
+          const height = gl.drawingBufferHeight;
+          if (width > 0 && height > 0 && width * height <= 2000000) {
+            const rgba = new Uint8Array(width * height * 4);
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+            const readError = gl.getError();
+            frame.framebuffer = {
+              width,
+              height,
+              status: readError === gl.NO_ERROR ? 'valid' : 'gl-error',
+              glError: readError,
+            };
+            // Keep the large raw backing data off JSON/log serialization.
+            Object.defineProperty(frame, 'framebufferRgba', { value: rgba });
+          } else {
+            frame.framebuffer = { width, height, status: 'size-limit' };
+          }
+        }
         frames.push(frame);
         if (frames.length > 16) frames.shift();
         if (active.query) {
@@ -236,6 +256,7 @@ export function installWebglFrameProbe() {
       armed = {
         rasterDiscard: options.rasterDiscard === true,
         captureGlState: options.captureGlState === true,
+        captureFramebuffer: options.captureFramebuffer === true,
         pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
           x,
           y,
