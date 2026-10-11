@@ -814,9 +814,10 @@ export function createProcessPanelController({
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
-  async function applyOperation({ canonicalLengthUm = null, canonicalSurface = null } = {}) {
+  async function applyOperation({ canonicalLengthUm = null, canonicalSurface = null, canonicalFace = null } = {}) {
     let model = getModel();
     const activeFace = getActiveFace(),
+      processFace = canonicalFace || activeFace,
       { maskSourceMode, maskRoi, drawMask, maskTransform, layout, activeCell, selectedLayerKeys } =
         getMaskState();
     if (processTaskController?.isBusy()) {
@@ -946,7 +947,7 @@ export function createProcessPanelController({
     }
 
     const beforeBase = baseCoverageState(model),
-      params = { type, name, targetLayerId, thickness, face: activeFace };
+      params = { type, name, targetLayerId, thickness, face: processFace };
     if (type === 'etch') {
       params.surface = roughSurface;
       params.etchProfile = etchProfile;
@@ -1054,11 +1055,12 @@ export function createProcessPanelController({
       colorNewLayer(result.layerId);
       $('layerName').value = `Layer ${model.nextLayerId}`;
     } else if (type === 'implant' && result.implantId) {
-      colorNewImplant(result.implantId);
+      for (const id of result.implantIds || [result.implantId]) colorNewImplant(id);
       $('implantName').value =
         `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
     } else if (type === 'electrical' && result.electricalRegionId) {
-      colorNewElectricalRegion(result.electricalRegionId);
+      for (const id of result.electricalRegionIds || [result.electricalRegionId])
+        colorNewElectricalRegion(id);
       $('electricalName').value =
         `Electrical Region ${model.nextElectricalRegionId || (model.electricalRegions?.length || 0) + 1}`;
     }
@@ -1100,7 +1102,7 @@ export function createProcessPanelController({
     const operation = {
       kind: type,
       label: operationLabel,
-      face: activeFace,
+      face: processFace,
       areaMode,
       areaLabel,
       thickness,
