@@ -25,6 +25,7 @@ import {
   summarizeR7Abba,
   summarizeR7PixelParity,
   selectR7Candidate,
+  classifyR7CandidateActivation,
 } from './test-helpers/renderer-r7-abba.mjs';
 
 const ciSmoke = process.argv.includes('--ci-smoke');
@@ -221,12 +222,23 @@ async function oneArm(policy, index) {
       geometries: Number(host.v4GpuResourceGeometries),
       materials: Number(host.v4GpuResourceMaterials),
       cpuTypedArrayBytes: Number(host.v4GpuResourceEstimatedBufferBytes),
-      sharedFlatClonesAvoided: Number(host.v4SharedFlatClonesAvoided || 0),
+      sharedFlatClonesAvoided: Number(host.v4SharedFlatClonesAvoided ?? NaN),
+      fastIndexedVertices: Number(host.v4FastIndexedVertices ?? NaN),
+      fastOriginalVertices: Number(host.v4FastOriginalVertices ?? NaN),
       renderer: row.backend.adapter,
       canvasWidth: await page.locator('#threeHost canvas').evaluate((canvas) => canvas.width),
       canvasHeight: await page.locator('#threeHost canvas').evaluate((canvas) => canvas.height),
     };
     assert.ok(row.state.geometries > 0 && row.state.cpuTypedArrayBytes > 0);
+    row.candidateActivation = classifyR7CandidateActivation(candidate.mode, row.state);
+    // A must never exercise a candidate. On hardware, a B that does not
+    // exercise the requested optimization is inconclusive, not parity evidence.
+    if (hardwareRtx3060 && policy === 'B') {
+      assert.ok(
+        row.candidateActivation.candidateExercised,
+        label + ': candidate optimization was not exercised; check index/caps counters before interpreting pixel parity',
+      );
+    }
     assert.deepEqual(errors, [], label + ': unexpected browser exceptions');
     console.log('RENDERER_V4_R7_ABBA_ARM', JSON.stringify(row));
   } finally {
@@ -278,7 +290,15 @@ try {
     [0, 3],
     [1, 2],
   ]) {
-    for (const key of ['drawCalls', 'triangles', 'geometries', 'cpuTypedArrayBytes']) {
+    for (const key of [
+      'drawCalls',
+      'triangles',
+      'geometries',
+      'cpuTypedArrayBytes',
+      'sharedFlatClonesAvoided',
+      'fastIndexedVertices',
+      'fastOriginalVertices',
+    ]) {
       if (report.trials[a].state[key] !== report.trials[b].state[key]) {
         failures.push(key + ': same-policy counts drift in ' + (a + 1) + '-' + (b + 1));
       }
