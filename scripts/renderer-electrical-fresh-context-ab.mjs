@@ -179,16 +179,17 @@ async function trial(enabled, index) {
       })),
     );
     row.stage = 'capture-product-frame';
-    await page.evaluate((pixelSamples) => {
+    await page.evaluate(({ pixelSamples, captureDrawInputs }) => {
       window.__waferCadWebglProbe.arm({
         rasterDiscard: false,
         captureGlState: true,
         captureFramebuffer: true,
+        captureDrawInputs,
         pixelSamples,
       });
       const input = document.getElementById('threeOpacityRange');
       input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, samples);
+    }, { pixelSamples: samples, captureDrawInputs: hardwareRtx3060 });
     await page.waitForFunction(
       () => {
         const host = document.getElementById('threeHost');
@@ -226,6 +227,7 @@ async function trial(enabled, index) {
           renderer: frame.unmaskedRenderer || frame.renderer,
           vendor: frame.vendor,
           glState: frame.glState,
+          drawInputs: frame.drawInputs || [],
           framebuffer: frame.framebuffer,
           framebufferHash: hex,
           pixelSamples: frame.pixelSamples,
@@ -247,6 +249,11 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
+    native.drawInputs = native.drawInputs.map(({ shaders, ...draw }) => ({
+      ...draw,
+      shaderHashes: shaders.map(({ type, source }) => ({ type, hash: hashJson(source), length: source.length })),
+    }));
+    row.drawInputsHash = hashJson(native.drawInputs);
     row.stage = 'captured';
     row.png = { width: png.width, height: png.height };
     row.layout = evidence.layout;
