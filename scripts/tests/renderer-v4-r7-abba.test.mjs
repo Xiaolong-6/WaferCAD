@@ -25,12 +25,7 @@ test('R7 descriptive median follows strict A/B/B/A scheduling', () => {
 });
 
 test('R7 fails closed on missing trials, wrong order, stale and invalid frame samples', () => {
-  const good = [
-    trial('A', 10, 12),
-    trial('B', 9, 11),
-    trial('B', 10, 11),
-    trial('A', 11, 13),
-  ];
+  const good = [trial('A', 10, 12), trial('B', 9, 11), trial('B', 10, 11), trial('A', 11, 13)];
   assert.throws(() => summarizeR7Abba(good.slice(1)), /exactly four/);
   assert.throws(() => summarizeR7Abba([good[1], good[0], good[2], good[3]]), /A-B-B-A/);
   assert.throws(
