@@ -46,17 +46,29 @@ const v4Report = (mode, active = true) => ({
 });
 
 test('strict acceptance never infers V3 success from report-only exit code', () => {
+  const complete = {
+    stage: 'completed',
+    trials: [{}, {}, {}, {}],
+    passed: false,
+    strictParity: false,
+  };
+  assert.equal(classifyRendererHardwareStep(step('v3'), complete), 'blocked');
   assert.equal(
-    classifyRendererHardwareStep(step('v3'), { passed: false, strictParity: false }),
-    'blocked',
+    classifyRendererHardwareStep(step('v3'), { ...complete, passed: true, strictParity: true }),
+    'passed',
   );
   assert.equal(
-    classifyRendererHardwareStep(step('v3'), { passed: true, strictParity: true }),
-    'passed',
+    classifyRendererHardwareStep(step('v3'), {
+      ...complete,
+      stage: '1-OFF',
+      trials: [{}],
+      error: 'page.goto: ERR_HTTP_RESPONSE_CODE_FAILURE',
+    }),
+    'error',
   );
   assert.equal(classifyRendererHardwareStep(step('v3', 1), null), 'error');
   assert.equal(
-    classifyRendererHardwareStep(step('v3', 1), { passed: true, strictParity: true }),
+    classifyRendererHardwareStep(step('v3', 1), { ...complete, passed: true, strictParity: true }),
     'error',
   );
 });
@@ -80,6 +92,11 @@ test('V4 no-op, incomplete and mismatched policies fail closed', () => {
   assert.equal(classifyRendererHardwareStep(step('v4-index', 1), early), 'candidate-not-exercised');
   assert.equal(classifyRendererHardwareStep(step('v4-index'), v4Report('caps')), 'error');
   assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), null), 'error');
+  const interrupted = v4Report('caps', false);
+  interrupted.trials = [{ policy: 'A' }];
+  interrupted.parity = null;
+  interrupted.failure = 'page.goto: ERR_HTTP_RESPONSE_CODE_FAILURE';
+  assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), interrupted), 'error');
   assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), v4Report('caps')), 'error');
   const parityFail = v4Report('caps');
   parityFail.passed = false;
