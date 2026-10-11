@@ -59,7 +59,9 @@ test('portable hardware ZIP preserves binary screenshot and report with valid CR
       assert.equal(data.readUInt32LE(localOffset), 0x04034b50);
       const localNameSize = data.readUInt16LE(localOffset + 26);
       const compressedStart = localOffset + 30 + localNameSize;
-      const contents = inflateRawSync(data.subarray(compressedStart, compressedStart + compressedSize));
+      const contents = inflateRawSync(
+        data.subarray(compressedStart, compressedStart + compressedSize),
+      );
       assert.equal(crc32(contents) >>> 0, crc);
       extracted.set(name, contents);
       at += 46 + fileNameSize;

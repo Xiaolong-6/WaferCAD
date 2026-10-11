@@ -31,7 +31,11 @@ export async function startRendererHardwareSite(worktree, diagnostic = () => {})
     try {
       const pathname = decodeURIComponent(new URL(request.url || '/', 'http://localhost').pathname);
       const segments = (pathname === '/' ? '/index.html' : pathname).split('/').filter(Boolean);
-      if (segments.some((segment) => segment === '..' || segment.includes('\\') || segment.includes('\0'))) {
+      if (
+        segments.some(
+          (segment) => segment === '..' || segment.includes('\\') || segment.includes('\0'),
+        )
+      ) {
         response.writeHead(403).end('Forbidden path');
         diagnostic({ status: 403, path: pathname });
         return;
@@ -63,12 +67,16 @@ export async function startRendererHardwareSite(worktree, diagnostic = () => {})
   return {
     url,
     async verify() {
-      const response = await fetch(url + '/app.html', { signal: AbortSignal.timeout(10000) });
+      const response = await fetch(url + '/app.html', { signal: globalThis.AbortSignal.timeout(10000) });
       const body = await response.text();
       if (response.status !== 200 || !body.includes('<html')) {
         throw new Error(
-          'Static worktree preflight failed: ' + response.status + ' ' +
-            url + '/app.html, body=' + body.slice(0, 120),
+          'Static worktree preflight failed: ' +
+            response.status +
+            ' ' +
+            url +
+            '/app.html, body=' +
+            body.slice(0, 120),
         );
       }
       diagnostic({ status: response.status, path: '/app.html', bytes: body.length });
