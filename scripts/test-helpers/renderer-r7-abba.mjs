@@ -27,6 +27,31 @@ export function selectR7Candidate(args = []) {
 
 export const R7_ORDER = Object.freeze(['A', 'B', 'B', 'A']);
 
+
+export function classifyR7CandidateActivation(mode, state) {
+  if (!Object.hasOwn(R7_CANDIDATE_FLAGS, mode)) {
+    throw new Error('unknown R7 candidate mode');
+  }
+  const indexVertices = Number(state?.fastIndexedVertices);
+  const sourceVertices = Number(state?.fastOriginalVertices);
+  const clonesAvoided = Number(state?.sharedFlatClonesAvoided);
+  const indexActive =
+    Number.isFinite(indexVertices) &&
+    Number.isFinite(sourceVertices) &&
+    indexVertices > 0 &&
+    sourceVertices > indexVertices;
+  const capsActive = Number.isFinite(clonesAvoided) && clonesAvoided > 0;
+  const expectedIndex = mode === 'index' || mode === 'combined';
+  const expectedCaps = mode === 'caps' || mode === 'combined';
+  return {
+    indexActive,
+    capsActive,
+    expectedIndex,
+    expectedCaps,
+    candidateExercised: (!expectedIndex || indexActive) && (!expectedCaps || capsActive),
+  };
+}
+
 export function summarizeR7Abba(trials) {
   if (
     !Array.isArray(trials) ||
