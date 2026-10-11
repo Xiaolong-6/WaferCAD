@@ -27,27 +27,34 @@ export function selectR7Candidate(args = []) {
 
 export const R7_ORDER = Object.freeze(['A', 'B', 'B', 'A']);
 
-export function classifyR7CandidateActivation(mode, state) {
+export function classifyR7CandidateActivation(mode, state, policy = 'B') {
   if (!Object.hasOwn(R7_CANDIDATE_FLAGS, mode)) {
     throw new Error('unknown R7 candidate mode');
   }
-  const indexVertices = Number(state?.fastIndexedVertices);
-  const sourceVertices = Number(state?.fastOriginalVertices);
-  const clonesAvoided = Number(state?.sharedFlatClonesAvoided);
+  if (policy !== 'A' && policy !== 'B') {
+    throw new Error('unknown R7 baseline/candidate policy');
+  }
+  const indexVertices = state?.fastIndexedVertices;
+  const sourceVertices = state?.fastOriginalVertices;
+  const clonesAvoided = state?.sharedFlatClonesAvoided;
+  // Missing counters are unknown, not zeros. A no-op fixture in SwiftShader
+  // does not establish that the requested hardware path was exercised.
+  const countersComplete = [indexVertices, sourceVertices, clonesAvoided].every(
+    (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0,
+  );
   const indexActive =
-    Number.isFinite(indexVertices) &&
-    Number.isFinite(sourceVertices) &&
-    indexVertices > 0 &&
-    sourceVertices > indexVertices;
-  const capsActive = Number.isFinite(clonesAvoided) && clonesAvoided > 0;
-  const expectedIndex = mode === 'index' || mode === 'combined';
-  const expectedCaps = mode === 'caps' || mode === 'combined';
+    countersComplete && indexVertices > 0 && sourceVertices > indexVertices;
+  const capsActive = countersComplete && clonesAvoided > 0;
+  const expectedIndex = policy === 'B' && (mode === 'index' || mode === 'combined');
+  const expectedCaps = policy === 'B' && (mode === 'caps' || mode === 'combined');
   return {
     indexActive,
     capsActive,
+    countersComplete,
     expectedIndex,
     expectedCaps,
-    candidateExercised: (!expectedIndex || indexActive) && (!expectedCaps || capsActive),
+    candidateExercised:
+      countersComplete && indexActive === expectedIndex && capsActive === expectedCaps,
   };
 }
 
