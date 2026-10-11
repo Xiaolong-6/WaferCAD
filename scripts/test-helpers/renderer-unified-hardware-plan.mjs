@@ -41,11 +41,20 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
 
 export function classifyRendererHardwareStep(step, report) {
   if (!report) return step.exitCode === 0 ? 'incomplete' : 'error';
-  // Browser assertions intentionally exit nonzero on parity mismatch. Preserve
-  // those as blocked, but never accept a contradictory passing JSON report.
+  // A browser/HTTP/fixture exception is an infrastructure failure, not a
+  // strict-pixel failure. V3 report-only mode may exit 0 even on an exception.
+  if (report.error || report.failure) {
+    const candidateError =
+      step.id.startsWith('v4-') &&
+      /candidate optimization|Index\/Caps activity|instrumentation counters/.test(
+        String(report.failure || report.error),
+      );
+    return candidateError ? 'candidate-not-exercised' : 'error';
+  }
   if (step.exitCode !== 0 && report.passed === true) return 'error';
   if (report.stage === 'initialization') return 'incomplete';
   if (step.id === 'v3') {
+    if (report.stage !== 'completed' || report.trials?.length !== 4) return 'incomplete';
     return report.passed === true && report.strictParity === true ? 'passed' : 'blocked';
   }
   if (report.candidateMode !== step.id.slice(3)) return 'error';
