@@ -75,6 +75,7 @@ try {
       console.log(`M4 ${example}: integrated route, isolation, units and Project export PASS`);
     } catch (error) {
       report.cases.push({ example, result: 'fail', error: error.stack || error.message, errors });
+      console.error(`M4 ${example} failed:`, error.stack || error.message, errors);
       await page.screenshot({ path: resolve(output, `${example}-failure.png`) }).catch(() => {});
       throw error;
     } finally {

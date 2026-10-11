@@ -494,7 +494,11 @@ export function createWorkstationWorkflow({ store, workstation }) {
     materialPreview.hidden = !['add', 'implant', 'electrical'].includes(type);
     inputUnit.textContent = `Input unit: ${units.label()}`;
     processSummary.textContent = `${state.model.regions.length} regions · ${state.model.layers.length} layers`;
-     for (const id of ['processParametersHeading', 'processSummary', 'operationNote'])
+    // The existing Process controller resets button.textContent during refresh.
+    // Reinstall the one M2 icon after its public update has completed.
+    const apply = hooks.get('applyOperationBtn');
+    if (!apply.querySelector('svg.wc-icon')) apply.prepend(window.WaferCadV2Icons.icon('play'));
+    for (const id of ['processParametersHeading', 'processSummary', 'operationNote'])
       if (hooks.has(id)) hooks.get(id).hidden = true;
     const api = window.WaferCadProcessGuide;
     const id = api.processGuideKey({
