@@ -189,7 +189,7 @@ async function trial(enabled, index) {
       const frame = window.__waferCadWebglProbe.frames().at(-1);
       const raw = frame.framebufferRgba;
       const hex = raw
-        ? Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', raw)))
+        ? Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', raw)))
             .map((value) => value.toString(16).padStart(2, '0'))
             .join('')
         : null;
