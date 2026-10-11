@@ -8,6 +8,53 @@ export function installWebglFrameProbe() {
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
   const originalRaf = window.requestAnimationFrame;
 
+  // Diagnostic readback only: never mutate buffer bytes or VAO attribute pointers.
+  // Bound the number of attributes and bytes to avoid a full-wafer CPU copy.
+  function sampleDrawBuffers(gl, indexed) {
+    const priorArray = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+    const attributes = [];
+    try {
+      const limit = Math.min(8, gl.getParameter(gl.MAX_VERTEX_ATTRIBS));
+      for (let i = 0; i < limit; i++) {
+        if (!gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_ENABLED)) continue;
+        const buffer = gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING);
+        if (!buffer) {
+          attributes.push({ index: i, status: 'missing-buffer' });
+          continue;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        const length = Math.min(4096, gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE));
+        const data = new Uint8Array(length);
+        gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
+        attributes.push({
+          index: i, status: 'read',
+          totalBytes: gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE),
+          offset: gl.getVertexAttribOffset(i, gl.VERTEX_ATTRIB_ARRAY_POINTER),
+          size: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_SIZE),
+          type: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_TYPE),
+          stride: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_STRIDE),
+          divisor: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_DIVISOR),
+          bytes: Array.from(data),
+        });
+      }
+      let indices = null;
+      if (indexed) {
+        const element = gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);
+        if (!element) {
+          indices = { status: 'missing-buffer' };
+        } else {
+          const totalBytes = gl.getBufferParameter(gl.ELEMENT_ARRAY_BUFFER, gl.BUFFER_SIZE);
+          const data = new Uint8Array(Math.min(4096, totalBytes));
+          gl.getBufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, data);
+          indices = { status: 'read', totalBytes, bytes: Array.from(data) };
+        }
+      }
+      return { attributes, indices };
+    } finally {
+      gl.bindBuffer(gl.ARRAY_BUFFER, priorArray);
+    }
+  }
+
   function instrument(gl, canvas) {
     if (contexts.has(gl)) return;
     const entry = { gl, canvas, active: null, timer: null };
@@ -101,6 +148,7 @@ export function installWebglFrameProbe() {
               blendDstRgb: gl.getParameter(gl.BLEND_DST_RGB),
               blendEquationRgb: gl.getParameter(gl.BLEND_EQUATION_RGB),
               viewport: Array.from(gl.getParameter(gl.VIEWPORT)),
+              buffers: sampleDrawBuffers(gl, method.startsWith('drawElements')),
             });
           }
           const key = JSON.stringify([owner.kind, owner.name]);
