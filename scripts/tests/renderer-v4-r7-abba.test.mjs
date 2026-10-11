@@ -30,44 +30,41 @@ test('R7 isolation modes enable exactly their declared browser boot flags', () =
   assert.deepEqual(selectR7Candidate(['--isolate-index']).flags, ['rendererV4FastSmoothIndex=1']);
 });
 
-test('R7 hardware candidate activation rejects no-op isolation even when URL flag is enabled', () => {
-  const exercised = { fastIndexedVertices: 4, fastOriginalVertices: 6, sharedFlatClonesAvoided: 8 };
-  for (const mode of ['index', 'caps', 'combined']) {
-    const activation = classifyR7CandidateActivation(mode, exercised);
-    assert.equal(activation.candidateExercised, true);
-    assert.equal(activation.indexActive, true);
-    assert.equal(activation.capsActive, true);
-  }
+test('R7 hardware isolation enforces requested optimization and rejects unselected side effects', () => {
+  const both = { fastIndexedVertices: 4, fastOriginalVertices: 6, sharedFlatClonesAvoided: 8 };
+  const indexOnly = { ...both, sharedFlatClonesAvoided: 0 };
+  const capsOnly = { ...both, fastIndexedVertices: 0, fastOriginalVertices: 0 };
   const none = { fastIndexedVertices: 0, fastOriginalVertices: 0, sharedFlatClonesAvoided: 0 };
+
   for (const mode of ['index', 'caps', 'combined']) {
-    assert.equal(classifyR7CandidateActivation(mode, none).candidateExercised, false);
+    const baseline = classifyR7CandidateActivation(mode, none, 'A');
+    assert.equal(baseline.candidateExercised, true);
+    assert.equal(baseline.expectedIndex, false);
+    assert.equal(baseline.expectedCaps, false);
+    assert.equal(classifyR7CandidateActivation(mode, both, 'A').candidateExercised, false);
+    assert.equal(classifyR7CandidateActivation(mode, none, 'B').candidateExercised, false);
   }
-  assert.equal(
-    classifyR7CandidateActivation('index', { ...exercised, fastOriginalVertices: 4 })
-      .candidateExercised,
-    false,
-  );
-  assert.equal(
-    classifyR7CandidateActivation('index', { ...exercised, fastIndexedVertices: NaN })
-      .candidateExercised,
-    false,
-  );
-  assert.equal(
-    classifyR7CandidateActivation('index', { ...exercised, sharedFlatClonesAvoided: 0 })
-      .candidateExercised,
-    true,
-  );
-  assert.equal(
-    classifyR7CandidateActivation('caps', { ...exercised, fastIndexedVertices: 0 })
-      .candidateExercised,
-    true,
-  );
-  assert.equal(
-    classifyR7CandidateActivation('combined', { ...exercised, fastIndexedVertices: 0 })
-      .candidateExercised,
-    false,
-  );
-  assert.throws(() => classifyR7CandidateActivation('unsupported', exercised), /unknown/);
+  assert.equal(classifyR7CandidateActivation('index', indexOnly).candidateExercised, true);
+  assert.equal(classifyR7CandidateActivation('caps', capsOnly).candidateExercised, true);
+  assert.equal(classifyR7CandidateActivation('combined', both).candidateExercised, true);
+  assert.equal(classifyR7CandidateActivation('index', both).candidateExercised, false);
+  assert.equal(classifyR7CandidateActivation('caps', both).candidateExercised, false);
+  assert.equal(classifyR7CandidateActivation('combined', indexOnly).candidateExercised, false);
+  assert.equal(classifyR7CandidateActivation('combined', capsOnly).candidateExercised, false);
+
+  for (const invalid of [
+    { ...none, fastIndexedVertices: null },
+    { ...none, fastIndexedVertices: NaN },
+    { ...none, fastOriginalVertices: -1 },
+    { ...none, sharedFlatClonesAvoided: null },
+    { ...none, sharedFlatClonesAvoided: undefined },
+  ]) {
+    const result = classifyR7CandidateActivation('index', invalid, 'A');
+    assert.equal(result.countersComplete, false);
+    assert.equal(result.candidateExercised, false);
+  }
+  assert.throws(() => classifyR7CandidateActivation('unsupported', both), /unknown/);
+  assert.throws(() => classifyR7CandidateActivation('index', both, 'C'), /unknown/);
 });
 
 const trial = (policy, a, b) => ({
