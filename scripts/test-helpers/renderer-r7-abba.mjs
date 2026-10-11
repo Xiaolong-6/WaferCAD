@@ -80,3 +80,79 @@ export function summarizeR7PixelParity(comparisons) {
     mismatchCount: comparisons.filter((item) => !item.pixelIdentical).length,
   };
 }
+
+export function classifyR7PixelSignatures(images) {
+  if (
+    !Array.isArray(images) ||
+    images.length !== 4 ||
+    images.some(
+      (image) =>
+        !Number.isSafeInteger(image?.width) ||
+        !Number.isSafeInteger(image?.height) ||
+        image.width <= 0 ||
+        image.height <= 0 ||
+        !image.rgba ||
+        image.rgba.length !== image.width * image.height * 4 ||
+        image.width !== images[0]?.width ||
+        image.height !== images[0]?.height,
+    )
+  ) {
+    throw new Error('R7 pixel classification requires four same-size RGBA frames in ABBA order');
+  }
+  const [a1, b1, b2, a2] = images.map((image) => image.rgba);
+  let stablePolicyPixels = 0;
+  let samePolicyDriftPixels = 0;
+  let anyChangedPixels = 0;
+  let stablePolicyMaxChannelDelta = 0;
+  let stablePolicyMinX = images[0].width;
+  let stablePolicyMinY = images[0].height;
+  let stablePolicyMaxX = -1;
+  let stablePolicyMaxY = -1;
+  for (let pixel = 0; pixel < images[0].width * images[0].height; pixel++) {
+    const offset = pixel * 4;
+    let sameA = true;
+    let sameB = true;
+    let sameAB = true;
+    let anyDifferent = false;
+    let maxDelta = 0;
+    for (let channel = 0; channel < 4; channel++) {
+      const at = offset + channel;
+      if (a1[at] !== a2[at]) sameA = false;
+      if (b1[at] !== b2[at]) sameB = false;
+      if (a1[at] !== b1[at]) sameAB = false;
+      if (a1[at] !== b1[at] || a1[at] !== a2[at] || a1[at] !== b2[at]) {
+        anyDifferent = true;
+      }
+      maxDelta = Math.max(maxDelta, Math.abs(a1[at] - b1[at]));
+    }
+    if (anyDifferent) anyChangedPixels++;
+    if (!sameA || !sameB) samePolicyDriftPixels++;
+    if (sameA && sameB && !sameAB) {
+      stablePolicyPixels++;
+      const x = pixel % images[0].width;
+      const y = Math.floor(pixel / images[0].width);
+      stablePolicyMinX = Math.min(stablePolicyMinX, x);
+      stablePolicyMaxX = Math.max(stablePolicyMaxX, x);
+      stablePolicyMinY = Math.min(stablePolicyMinY, y);
+      stablePolicyMaxY = Math.max(stablePolicyMaxY, y);
+      stablePolicyMaxChannelDelta = Math.max(stablePolicyMaxChannelDelta, maxDelta);
+    }
+  }
+  return {
+    totalPixels: images[0].width * images[0].height,
+    anyChangedPixels,
+    samePolicyDriftPixels,
+    stablePolicyPixels,
+    stablePolicyMaxChannelDelta,
+    stablePolicyBoundingBox: stablePolicyPixels
+      ? {
+          minX: stablePolicyMinX,
+          minY: stablePolicyMinY,
+          maxX: stablePolicyMaxX,
+          maxY: stablePolicyMaxY,
+        }
+      : null,
+    strictPixelParity: anyChangedPixels === 0,
+    interpretation: 'stable ABBA signature is associative evidence, not causal proof',
+  };
+}

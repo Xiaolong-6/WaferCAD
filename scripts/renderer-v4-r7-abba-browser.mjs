@@ -17,10 +17,11 @@ import {
   closeFunctionPanel,
 } from './test-helpers/ui.mjs';
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
-import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
+import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 import {
   R7_ORDER,
   R7_PIXEL_PAIRS,
+  classifyR7PixelSignatures,
   summarizeR7Abba,
   summarizeR7PixelParity,
 } from './test-helpers/renderer-r7-abba.mjs';
@@ -238,6 +239,7 @@ try {
     console.log('RENDERER_V4_R7_ABBA_PIXEL_PAIR', JSON.stringify(comparison));
   }
   report.parity = summarizeR7PixelParity(report.comparisons);
+  report.pixelSignature = classifyR7PixelSignatures(pngs.map(decodeScreenshotPng));
   report.stats = summarizeR7Abba(report.trials);
   const failures = report.failureReasons;
   for (const row of report.trials) {

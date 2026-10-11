@@ -2,10 +2,11 @@
 // that exited on the first strict mismatch. No browser, server or GPU needed.
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
-import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
+import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 import {
   R7_ORDER,
   R7_PIXEL_PAIRS,
+  classifyR7PixelSignatures,
   summarizeR7Abba,
   summarizeR7PixelParity,
 } from './test-helpers/renderer-r7-abba.mjs';
@@ -31,12 +32,14 @@ const comparisons = R7_PIXEL_PAIRS.map(({ pair, kind }) => {
   return { pair, kind, ...compareScreenshotPngPixels(pngs[a], pngs[b]) };
 });
 const parity = summarizeR7PixelParity(comparisons);
+const signature = classifyR7PixelSignatures(pngs.map(decodeScreenshotPng));
 const descriptiveStats = summarizeR7Abba(report.trials);
 const result = {
   source: 'saved-R7-ABBA-PNGs-no-new-GPU-measurement',
   mode: report.mode,
   backend: report.trials.map((trial) => trial.backend),
   summary: parity,
+  signature,
   comparisons,
   descriptiveStats,
   pixelGatePassed: parity.strictPixelParity,
