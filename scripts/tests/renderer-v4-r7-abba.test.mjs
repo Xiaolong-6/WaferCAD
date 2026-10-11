@@ -67,10 +67,7 @@ test('R7 evaluates all six pairs, rejecting same-policy instability without rela
   assert.equal(blocked.candidateRepeatable, true);
   assert.equal(blocked.optimizationAttributionPossible, false);
   assert.equal(blocked.mismatchCount, 1);
-  assert.throws(
-    () => summarizeR7PixelParity(baselineDrift.slice(0, 3)),
-    /all six ordered/,
-  );
+  assert.throws(() => summarizeR7PixelParity(baselineDrift.slice(0, 3)), /all six ordered/);
   assert.throws(
     () => summarizeR7PixelParity([...identical.slice(0, 5), identical[4]]),
     /all six ordered/,

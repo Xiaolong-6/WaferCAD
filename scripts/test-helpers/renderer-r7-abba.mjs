@@ -70,9 +70,7 @@ export function summarizeR7PixelParity(comparisons) {
   }
   const baselineRepeatable = comparisons[2].pixelIdentical;
   const candidateRepeatable = comparisons[3].pixelIdentical;
-  const crossPolicyIdentical = [0, 1, 4, 5].every(
-    (index) => comparisons[index].pixelIdentical,
-  );
+  const crossPolicyIdentical = [0, 1, 4, 5].every((index) => comparisons[index].pixelIdentical);
   return {
     baselineRepeatable,
     candidateRepeatable,
