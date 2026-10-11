@@ -67,7 +67,9 @@ export async function startRendererHardwareSite(worktree, diagnostic = () => {})
   return {
     url,
     async verify() {
-      const response = await fetch(url + '/app.html', { signal: globalThis.AbortSignal.timeout(10000) });
+      const response = await fetch(url + '/app.html', {
+        signal: globalThis.AbortSignal.timeout(10000),
+      });
       const body = await response.text();
       if (response.status !== 200 || !body.includes('<html')) {
         throw new Error(
