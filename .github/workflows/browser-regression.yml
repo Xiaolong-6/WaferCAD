@@ -192,6 +192,13 @@ jobs:
         if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
         run: node scripts/renderer-roi-recovery-regression.mjs
 
+      # One-shot investigation: run the REAL production boot policy in four
+      # clean contexts, save strict mismatches as evidence. report-only avoids
+      # mislabeling this blocked scientific gate as a product test failure.
+      - name: Diagnose production Electrical fresh-context parity
+        if: ${{ needs.plan.outputs.renderer == 'true' && startsWith(github.head_ref, 'perf/transparent-renderer-v3-') }}
+        run: node scripts/renderer-electrical-fresh-context-ab.mjs --report-only
+
       - name: Package tested preview
         if: always()
         run: |
