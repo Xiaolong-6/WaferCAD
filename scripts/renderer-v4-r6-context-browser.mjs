@@ -41,6 +41,8 @@ try {
       const ext = gl?.getExtension('WEBGL_lose_context');
       if (!ext) return false;
       window.__wafercadR6Events = [];
+      // The extension cannot be re-queried while the WebGL context is lost.
+      window.__wafercadR6Extension = ext;
       canvas.addEventListener('webglcontextlost', () => window.__wafercadR6Events.push('lost'));
       canvas.addEventListener('webglcontextrestored', () => window.__wafercadR6Events.push('restored'));
       ext.loseContext();
@@ -49,34 +51,49 @@ try {
     assert.ok(support, 'WEBGL_lose_context unavailable: do not claim context recovery acceptance');
     await page.waitForFunction(() => window.__wafercadR6Events?.includes('lost'));
     events.push('lost');
-    await page.locator('#threeHost canvas').evaluate(canvas => {
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      gl.getExtension('WEBGL_lose_context').restoreContext();
-    });
+    await page.evaluate(() => window.__wafercadR6Extension.restoreContext());
     await page.waitForFunction(() => window.__wafercadR6Events?.includes('restored'));
     events.push('restored');
-    // Trigger a real user-driven render after restoration instead of treating the event as success.
+    // Exercise the actual toolbar interaction and require completed frames.
+    // A context-restored event alone does not prove any usable rendering.
+    const opacityControl = page.locator('#threePanel .three-opacity-control');
+    const more = page.locator('#threePanel .view-more-control');
     const opacity = page.locator('#threeOpacityRange');
     const previous = await opacity.inputValue();
     const next = previous === '1' ? '0.5' : '1';
-    await opacity.evaluate((node, value) => {
-      node.value = value;
-      node.dispatchEvent(new Event('input', { bubbles: true }));
-      node.dispatchEvent(new Event('change', { bubbles: true }));
-    }, next);
-    await page.waitForFunction(
-      expected => document.getElementById('threeOpacityRange')?.value === expected
-        && document.getElementById('threeHost')?.dataset.renderState === 'ready',
-      next,
-    );
-    await opacity.evaluate((node, value) => {
-      node.value = value;
-      node.dispatchEvent(new Event('input', { bubbles: true }));
-      node.dispatchEvent(new Event('change', { bubbles: true }));
-    }, previous);
-    await page.waitForFunction(
-      previous => Number(document.getElementById('threeHost')?.dataset.rendererFrameSerial || 0) > previous,
-      frameBefore, { timeout: 90000 },
+    for (const value of [next, previous]) {
+      if (
+        (await opacityControl.evaluate((node) =>
+          Boolean(node.closest('.view-overflow-secondary')),
+        )) &&
+        !(await more.evaluate((node) => node.open))
+      ) {
+        await more.locator(':scope > summary').click();
+      }
+      if (!(await opacityControl.evaluate((node) => node.open))) {
+        await opacityControl.locator(':scope > summary').click();
+      }
+      const serial = Number(
+        await host.evaluate((node) => node.dataset.rendererFrameSerial || 0),
+      );
+      await opacity.fill(value);
+      await page.waitForFunction(
+        ({ serial, value }) => {
+          const node = document.getElementById('threeHost');
+          return (
+            node?.dataset.renderState === 'ready' &&
+            Number(node.dataset.rendererFrameSerial || 0) > serial &&
+            document.getElementById('threeOpacityRange')?.value === value
+          );
+        },
+        { serial, value },
+        { timeout: 90000 },
+      );
+    }
+    assert.ok(
+      Number(await host.evaluate((node) => node.dataset.rendererFrameSerial || 0)) >
+        frameBefore,
+      'restored context must submit a new frame',
     );
     await waitForThreeReady(page, 90000);
     const final = await host.evaluate(node => ({ ...node.dataset }));
