@@ -35,7 +35,20 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
 
-The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; it does not establish the pending Process/History Stage C workflow.
+The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; the Process/History Stage C workflow is owned by the integrated Stage C gate below.
+
+
+Stage C now uses one genuine M2-derived four-view workstation with a shared model and the existing scientific controllers. The [Stage C / M4 CI gate](../.github/workflows/ui-v2-stage-c-m4.yml) runs these commands at 4182 (Node 24; Chromium 140 / Playwright 1.55.1):
+
+```bash
+node scripts/v2/check-sync.mjs
+node scripts/v2/check-review-interactions.mjs
+node scripts/v2/check-m4-projects.mjs
+```
+
+The shared synchronization owner checks independent Main/Mask/Section ROIs, real mask-limited Process geometry, front/back process targeting versus Main orientation, History Undo/Redo/restore, Layers preference, Project Open/Save/Recovery, Recipe precise deposition, Diagnostics read-only behavior, and 1440/1024/768/390 plus emulated-touch layout invariants. The M4 project owner additionally checks M3D, Photodetector, four-unit TiO2 Metalens and the true 6,400-tile / 49-template full array with real imports, unit round trips and exported project verification at the documented 0.1 nm persistence precision. Its `metalens-array` route loads the complete fixture, not the four-unit preview. Both owners report errors and upload browser screenshots without updating approved visual baselines. `check-sync` and its latest checkpoint are documented in [M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md).
+
+For revision-specific passing evidence use PR #177 at `b127ce8` and the [M4 CI run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38161661083). These are software-WebGL, programmatic and Chromium touch-emulation results. Physical RTX GPU, physical touchscreen, M2 visual acceptance, heavy full-array Recipe Run All, complete Variant editing and new screenshot baseline approval remain separate checks.
 
 Phase B 3D separates small-example interaction coverage from a substantial real export that can be cancelled through the task panel:
 
