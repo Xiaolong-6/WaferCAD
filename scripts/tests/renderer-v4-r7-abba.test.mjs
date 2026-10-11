@@ -108,8 +108,5 @@ test('R7 isolates policy-stable pixels from baseline and candidate fresh-context
   assert.equal(identical.anyChangedPixels, 0);
   assert.equal(identical.stablePolicyPixels, 0);
   assert.equal(identical.strictPixelParity, true);
-  assert.throws(
-    () => classifyR7PixelSignatures(frames.slice(1)),
-    /four same-size RGBA/,
-  );
+  assert.throws(() => classifyR7PixelSignatures(frames.slice(1)), /four same-size RGBA/);
 });
