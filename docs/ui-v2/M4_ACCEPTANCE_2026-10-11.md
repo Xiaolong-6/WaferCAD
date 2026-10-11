@@ -29,4 +29,6 @@ The dedicated `ui-v2-stage-c-m4.yml` workflow runs the Stage C and three-project
 - [ ] Review on a real discrete GPU; keep SwiftShader results explicitly labeled software-only.
 - [ ] Ask for approval before creating any independent UI v2 screenshot baseline.
 
+At product revision \`b68d1c8\`, two independently triggered Stage C/M4 CI runs completed with zero failures: Main/Mask/Section real synchronization at 1440/1024/768/390 and emulated touch, History/Recovery/Recipe/Diagnostics, interaction regressions, and all three real project load/unit/export cases. GitHub Actions: [Stage C/M4 run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38160936189). Quality and small-model 3D were green at the same revision. These are **browser/software-WebGL gates**, not hardware sign-off. A visual review of the 1440px CI screenshot then found cramped Diagnostics presentation; subsequent M2-aligned CSS and a computed-layout assertion address it, pending the next CI result.
+
 The Stage C code corrections and new gate are tracked as subsequent PR #177 commits. Record the exact green commit and run links here when tests actually finish; do not treat this document as evidence of unrun tests.

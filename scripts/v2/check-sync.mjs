@@ -443,6 +443,16 @@ try {
           { timeout: 120000 },
         );
         assert.deepEqual((await snap()).model, precise, 'Diagnostics is read-only');
+        const diagnosticsPresentation = await page.locator('#diagnosticsResults').evaluate((root) => ({
+          metrics: root.querySelectorAll('.diagnostics-metric').length,
+          metricLayout: getComputedStyle(root.querySelector('.diagnostics-metric')).display,
+          layerLayout: getComputedStyle(root.querySelector('.diagnostics-layer')).display,
+          overflow: Math.max(0, root.scrollWidth - root.clientWidth),
+        }));
+        assert.ok(diagnosticsPresentation.metrics >= 4, 'Diagnostics metrics stay visible');
+        assert.equal(diagnosticsPresentation.metricLayout, 'flex');
+        assert.equal(diagnosticsPresentation.layerLayout, 'grid');
+        assert.equal(diagnosticsPresentation.overflow, 0, 'Diagnostics inspector must not overflow');
       }
       await view('main');
       if (await page.locator('[data-action="mode:split"]').isVisible()) {
