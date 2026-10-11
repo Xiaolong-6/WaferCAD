@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const modelApi = await import('../model.js');
@@ -11,6 +11,7 @@ const { normalizeProcessRecipe, parseProcessRecipeSource, serializeProcessRecipe
   await import('../process-recipe.js');
 const { validateProcessModel } = await import('../project-schema.js');
 const { ARRAY_MODEL_KERNEL, resolveArrayModel } = await import('../model-array.js');
+const { serializeProject, readProjectFile } = await import('../project-io.js');
 
 const slab = () => modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
 const stackAt = (model, point) =>
@@ -187,6 +188,29 @@ test('Both works with canonical array templates without flattening the wafer', (
     assert.equal(region.stack.at(-1).layerId, result.layerIds.front);
   }
   validateProcessModel(model);
+});
+
+
+test('Both linked layers survive normal project export and import', async () => {
+  const model = slab();
+  const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(deposited.changed, true, deposited.error);
+  const project = projectForBenchmark({
+    model,
+    section: { a: [-9, 0], b: [9, 0] },
+  });
+  const text = serializeProject(project);
+  const restored = await readProjectFile({
+    size: Buffer.byteLength(text),
+    text: async () => text,
+  });
+  const front = restored.model.layers.find((layer) => layer.id === deposited.layerIds.front);
+  const back = restored.model.layers.find((layer) => layer.id === deposited.layerIds.back);
+  assert.equal(front.processFace, 'front');
+  assert.equal(back.processFace, 'back');
+  assert.equal(front.processGroupId, back.processGroupId);
+  assert.equal(front.pairedLayerId, back.id);
+  assert.equal(back.pairedLayerId, front.id);
 });
 
 test('Both recipe parses, normalizes and serializes without falling back to Front', () => {
