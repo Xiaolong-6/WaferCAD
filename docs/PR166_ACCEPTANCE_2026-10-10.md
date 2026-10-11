@@ -227,8 +227,21 @@ Reproduce using a fresh local server and pinned Three:
 python -u -m http.server 4174 --bind 127.0.0.1 --directory site
 $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-electrical-fresh-context-ab.mjs --hardware-rtx3060
 node scripts/renderer-quality-index-ab.mjs --hardware-electrical-ab
 ```
+
+The first command is the production-path P0 gate: it launches headed Chromium,
+fails closed unless every context identifies an NVIDIA GeForce RTX 3060, and
+captures fresh OFF/OFF/ON/ON contexts at zero pixel tolerance. It records full
+raw GL framebuffer hashes alongside PNG pixel diffs, camera matrices, draw
+order, material descriptors and canvas/backing-store dimensions. The report's
+`differenceStage` distinguishes a raw framebuffer mismatch from a screenshot-
+only mismatch; the accompanying state hashes identify application-input drift.
+Per-context traces and PNGs are written before strict parity checks to
+`test-results/renderer-hardware-fresh-context-ab/`, including on failed runs.
+Run this gate before the ABBA performance command; a parity failure keeps the
+optimization default-off and blocks further performance acceptance.
 
 Two independent hardware runs both **failed strict ON/OFF canvas parity** at
 trial 2. Both localized the same two changed pixels in the 531 × 275 image:
@@ -257,6 +270,52 @@ Hardware artifacts and pixel diagnostics are under ignored
 **Decision: hardware scientific parity FAIL; keep Draft, default-off and
 unmerged.** Same-policy controls, multiscale inspection and ownership/pass-order
 localization are required before another promotion attempt.
+
+## Production-path RTX 3060 fresh-context P0 — 2026-10-11
+
+The normal page-boot OFF/OFF/ON/ON gate was added to the Windows hardware
+acceptance sequence and run in headed Chromium. Source checkout HEAD was
+`113c16992612f3f0ee4fe65acd066ed4b783dd22`; the acceptance harness and this
+handoff had local documentation/diagnostic edits during the run. Environment:
+Windows x64, Node `v24.16.0`, Playwright `1.55.1`, Chromium `140.0.7339.186`,
+Three `0.179.1`, server `http://127.0.0.1:4174`. All four contexts were
+fail-closed verified as
+`ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)`.
+
+Command:
+
+```powershell
+$env:WAFERCAD_URL = 'http://127.0.0.1:4174'
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-electrical-fresh-context-ab.mjs --hardware-rtx3060
+```
+
+The exact-pixel gate **failed**. Both same-policy pairs had identical camera
+matrices, draw-order hashes, material descriptors, CSS/canvas/GL dimensions,
+model/process revisions and native submission counts, but different full
+framebuffer hashes and PNG pixels:
+
+| Comparison                     | PNG pixels different | Max channel delta | Raw GL framebuffer | Difference stage  |
+| ------------------------------ | -------------------: | ----------------: | ------------------ | ----------------- |
+| OFF context 1 vs OFF context 2 |        107 / 146,025 |                 3 | different          | WebGL framebuffer |
+| ON context 3 vs ON context 4   |         36 / 146,025 |                 3 | different          | WebGL framebuffer |
+| OFF context 1 vs ON context 3  |         66 / 146,025 |                 3 | different          | WebGL framebuffer |
+
+The first mismatch therefore exists before browser screenshot capture; this is
+not a PNG-only compositor difference. The measured camera/order/material/layout
+inputs match within each policy, so the remaining failure points to cross-context
+WebGL rendering variability among the recorded inputs. Sparse raw-pixel probes
+matched even while complete framebuffer hashes differed, confirming that those
+samples are not a substitute for the full readback. OFF submitted 1,408 calls /
+57,040,012 triangles and ON submitted 1,291 / 54,066,262. These counts do not
+change the failed parity decision and no performance claim is made.
+
+The gate wrote four PNGs, four per-context traces and `report.json` under ignored
+`test-results/renderer-hardware-fresh-context-ab/`. The strict threshold remains
+zero. Keep PR #166 Draft and the candidate default-off; do not proceed to the
+hardware performance promotion gate until repeatable fresh-context parity is
+resolved. This run narrows the failure to the GL framebuffer stage but does not
+yet isolate which unobserved context/render input creates the variation.
 
 ### Inspection controls and scope limits
 
