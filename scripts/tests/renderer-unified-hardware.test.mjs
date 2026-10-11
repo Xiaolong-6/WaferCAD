@@ -36,10 +36,10 @@ const v4Report = (mode, active = true) => ({
   stage: 'complete',
   candidateMode: mode,
   trials: [
-    { policy: 'A' },
+    { policy: 'A', candidateActivation: { candidateExercised: true } },
     { policy: 'B', candidateActivation: { candidateExercised: active } },
     { policy: 'B', candidateActivation: { candidateExercised: active } },
-    { policy: 'A' },
+    { policy: 'A', candidateActivation: { candidateExercised: true } },
   ],
   parity: { strictPixelParity: true },
   passed: true,
@@ -63,6 +63,12 @@ test('strict acceptance never infers V3 success from report-only exit code', () 
 
 test('V4 no-op, incomplete and mismatched policies fail closed', () => {
   assert.equal(classifyRendererHardwareStep(step('v4-index'), v4Report('index')), 'passed');
+  const unexpectedBaseline = v4Report('index');
+  unexpectedBaseline.trials[0].candidateActivation.candidateExercised = false;
+  assert.equal(
+    classifyRendererHardwareStep(step('v4-index'), unexpectedBaseline),
+    'candidate-not-exercised',
+  );
   assert.equal(
     classifyRendererHardwareStep(step('v4-index'), v4Report('index', false)),
     'candidate-not-exercised',
