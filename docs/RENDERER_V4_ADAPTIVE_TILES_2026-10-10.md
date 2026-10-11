@@ -646,3 +646,77 @@ It does not measure physical GPU VRAM/driver resource reclamation,
 hardware frame time, long-duration browser tab endurance or RTX 3060
 ABBA performance. Both renderer PRs must remain Draft, experimental
 flags default off and visual reference assets untouched.
+
+## V3 upstream sync and R7 ABBA instrumentation (2026-10-11)
+
+**Source synchronization:** PR #166 progressed from its V4 stack base
+`07d599b` to `657d8ce`. The intervening three commits modify only
+`docs/PR166_ACCEPTANCE_2026-10-10.md`, `docs/testing.md`,
+`scripts/renderer-electrical-fresh-context-ab.mjs` and
+`scripts/renderer-roi-profile.mjs`. The changes do not overlap V4
+product or test paths. V4 incorporated the exact upstream blobs via
+non-forced, two-parent merge commit
+[`998588c`](https://github.com/Xiaolong-6/WaferCAD/commit/998588c738e7084709d958527c269ac02c1403d4),
+and comparison against the V3 HEAD now reports **behind=0**.
+Neither PR was merged into `main`. V3's existing RTX 3060
+cross-context and ROI profiling failures remain diagnostic evidence,
+not newly accepted performance results.
+
+**R7 measurement harness:** `scripts/renderer-v4-r7-abba-browser.mjs`
+runs fresh-browser-context **A → B → B → A** arms. A uses the
+default-off V4 physical submission path with read-only resource
+census; B enables `rendererV4FastSmoothIndex=1` and
+`rendererV4SharedFlatCaps=1`. For each arm it records:
+
+- The masked/unmasked adapter via `WEBGL_debug_renderer_info`,
+  refusing unknown or software adapters in hardware mode;
+- Identical user-driven Fit pose, renderer frame sequence,
+  completed draw/triangle submissions and 3D canvas PNG;
+- Per-arm browser wall time from the real Fit action through the
+  next completed WebGL frame followed by `gl.finish()`, plus the
+  instrumented `renderer.render()` submission interval;
+- Retained JS `BufferGeometry` count, material count and deduplicated
+  CPU `TypedArray` bytes, never mislabelled driver GPU VRAM.
+
+The harness requires **zero changed pixels** between all four
+same-pose contexts, exact camera matrices and stable submission
+counts on same-policy repeats. It writes full JSON and PNGs to
+`test-results/renderer-v4-r7-hardware-abba/`; the strict ABBA
+summarizer refuses missing samples or re-ordered trials. Reported
+A/B medians are **descriptive**, not standalone GPU time or proof of
+a speedup. The WebGL API does not expose a reliable cross-driver
+VRAM counter; `gpuVramBytes` stays `null`.
+
+To run the intentionally small four-unit **software smoke** on
+CI's pinned Chromium and static server:
+
+```sh
+node scripts/renderer-v4-r7-abba-browser.mjs --ci-smoke
+```
+
+The distinct [R7 CI workflow](https://github.com/Xiaolong-6/WaferCAD/actions/workflows/renderer-v4-r7-abba.yml)
+checks ordering/statistics, lint/format, browser controls, read-only
+resource accounting and strict pixel parity. Its software render
+latencies are **not hardware benchmarks**, irrespective of pass/fail.
+
+To collect a hardware ABBA on the existing Windows RTX 3060
+checkout, run the pinned Node/Playwright environment and local static
+server on port 4173, then:
+
+```powershell
+$env:WAFERCAD_URL = 'http://127.0.0.1:4173'
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-v4-r7-abba-browser.mjs --hardware-rtx3060
+```
+
+Hardware mode requires **Windows, headed Chromium and a verified
+NVIDIA GeForce RTX 3060**. The full fixture is the 625-site
+`three-tier-silicon-jlfets-full-wafer.wafercad`. A hardware pass
+is necessary but insufficient: at least several independent ABBA
+batches, variance assessment, driver/viewport identification,
+external GPU VRAM telemetry, cross-policy geometry/History safety
+and physically measured responsiveness must precede a product
+performance claim. No expensive manual CI was dispatched; the
+hardware measurements have **not been run in this session**. R7
+remains a diagnostic pilot, with both renderer PRs Draft,
+all experimental flags default-off and visual baselines untouched.
