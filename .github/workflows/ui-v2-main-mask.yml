@@ -1,8 +1,9 @@
 name: UI v2 Main and Mask acceptance
 
 on:
-  push:
-    branches: [codex/ui-v2-main-wip]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'site/**'
       - 'scripts/v2/**'
@@ -11,6 +12,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ui-v2-main-mask-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   main-mask:
