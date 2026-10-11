@@ -3,13 +3,19 @@ import test from 'node:test';
 import { disposeRendererSceneResources } from '../renderer-v4-resource-lifetime.js';
 
 function disposable(label, calls) {
-  return { dispose() { calls.push(label); } };
+  return {
+    dispose() {
+      calls.push(label);
+    },
+  };
 }
 function group(children, retired = undefined) {
   return {
     children,
     userData: retired ? { waferCadRetiredFlatGeometries: retired } : {},
-    clear() { this.children = []; },
+    clear() {
+      this.children = [];
+    },
   };
 }
 
@@ -20,15 +26,18 @@ test('R5 disposes nested scene resources exactly once, including shared template
   const texture = disposable('texture', calls);
   const material = { ...disposable('material', calls), bumpMap: texture };
   const retired = disposable('retired', calls);
-  const scene = group([
-    { geometry: shared, material, children: [] },
-    {
-      children: [
-        { geometry: shared, material, children: [] },
-        { geometry: privateMesh, material: [material, material], children: [] },
-      ],
-    },
-  ], new Set([retired, shared]));
+  const scene = group(
+    [
+      { geometry: shared, material, children: [] },
+      {
+        children: [
+          { geometry: shared, material, children: [] },
+          { geometry: privateMesh, material: [material, material], children: [] },
+        ],
+      },
+    ],
+    new Set([retired, shared]),
+  );
   const before = scene.userData.waferCadRetiredFlatGeometries;
   const result = disposeRendererSceneResources(scene);
   assert.deepEqual(result, {
@@ -62,7 +71,11 @@ test('R5 retires copy-on-write templates no longer referenced by live meshes', (
 
 test('R5 fails closed on missing groups, cyclic descendants and missing optional resources', () => {
   assert.deepEqual(disposeRendererSceneResources(null), {
-    objects: 0, geometries: 0, materials: 0, textures: 0, retiredFlatTemplates: 0,
+    objects: 0,
+    geometries: 0,
+    materials: 0,
+    textures: 0,
+    retiredFlatTemplates: 0,
   });
   const loop = { geometry: null, material: null, children: [] };
   loop.children.push(loop);
@@ -74,7 +87,12 @@ test('R5 fails closed on missing groups, cyclic descendants and missing optional
 test('R5 cleanup does not mutate canonical geometry before dispose', () => {
   let observed;
   const physical = new Float32Array([0, 0, 0.25]);
-  const geometry = { attributes: { position: { array: physical } }, dispose() { observed = [...physical]; } };
+  const geometry = {
+    attributes: { position: { array: physical } },
+    dispose() {
+      observed = [...physical];
+    },
+  };
   const scene = group([{ geometry, material: null }]);
   assert.equal(disposeRendererSceneResources(scene).geometries, 1);
   assert.deepEqual(observed, [0, 0, 0.25]);
