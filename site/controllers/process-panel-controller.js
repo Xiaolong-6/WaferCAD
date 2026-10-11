@@ -726,7 +726,10 @@ export function createProcessPanelController({
         clearBaseRevertSnapshot();
         setModel(task.model);
         captureHistoryReplayResult(operation, sourceStep, task.result, layerIdMap);
-        if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
+        if (operation.kind === 'add' && task.result.layerId) {
+          for (const id of Object.values(task.result.layerIds || { front: task.result.layerId }))
+            colorNewLayer(id);
+        }
         else if (operation.kind === 'implant' && task.result.implantId) {
           colorNewImplant(task.result.implantId);
         } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
@@ -1052,7 +1055,8 @@ export function createProcessPanelController({
     model = task.model;
 
     if (type === 'add' && result.layerId) {
-      colorNewLayer(result.layerId);
+      for (const id of Object.values(result.layerIds || { front: result.layerId }))
+        colorNewLayer(id);
       $('layerName').value = `Layer ${model.nextLayerId}`;
     } else if (type === 'implant' && result.implantId) {
       for (const id of result.implantIds || [result.implantId]) colorNewImplant(id);
@@ -1136,6 +1140,8 @@ export function createProcessPanelController({
       maskRoi: Boolean(maskRoi),
       maskContext: structuredClone(maskContext),
       resultLayerId: type === 'add' ? result.layerId || null : null,
+      resultLayerIds: type === 'add' ? result.layerIds || null : null,
+      resultLayerGroupId: type === 'add' ? result.layerGroupId || null : null,
       resultImplantId: type === 'implant' ? result.implantId || null : null,
       resultElectricalRegionId: type === 'electrical' ? result.electricalRegionId || null : null,
       replay: {
