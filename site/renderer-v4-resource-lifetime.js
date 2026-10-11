@@ -1,0 +1,60 @@
+// Renderer V4 R5 — ownership-based, exactly-once scene resource retirement.
+// This module has no WebGL dependency and never touches model/process data.
+//
+// Each scene variant owns its meshes and materials. A shared flat-cap
+// template is referenced by several chunk meshes *within the same variant*.
+// After copy-on-write a retired template has no mesh reference, but stays
+// owned by the original group until that group is evicted.
+export function disposeRendererSceneResources(root) {
+  const counts = {
+    objects: 0,
+    geometries: 0,
+    materials: 0,
+    textures: 0,
+    retiredFlatTemplates: 0,
+  };
+  if (!root || !Array.isArray(root.children)) return counts;
+
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  const visited = new Set();
+  const stack = [...root.children];
+
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object || typeof object !== 'object' || visited.has(object)) continue;
+    visited.add(object);
+    counts.objects++;
+    if (object.geometry) geometries.add(object.geometry);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material) continue;
+      materials.add(material);
+      if (material.bumpMap) textures.add(material.bumpMap);
+    }
+    if (Array.isArray(object.children)) stack.push(...object.children);
+  }
+
+  const retired = root.userData?.waferCadRetiredFlatGeometries;
+  if (retired instanceof Set) {
+    for (const geometry of retired) {
+      if (geometry && !geometries.has(geometry)) {
+        geometries.add(geometry);
+        counts.retiredFlatTemplates++;
+      }
+    }
+    retired.clear();
+  }
+
+  // Detach objects before disposing their GPU-facing allocations. Repeating
+  // retirement on this emptied group must not dispose any resource again.
+  root.clear?.();
+  for (const geometry of geometries) geometry?.dispose?.();
+  for (const texture of textures) texture?.dispose?.();
+  for (const material of materials) material?.dispose?.();
+
+  counts.geometries = geometries.size;
+  counts.materials = materials.size;
+  counts.textures = textures.size;
+  return counts;
+}
