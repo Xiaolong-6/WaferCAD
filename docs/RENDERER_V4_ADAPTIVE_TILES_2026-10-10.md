@@ -495,3 +495,25 @@ but does not construct two full-array variants. These checks together
 cover both bounded cache reuse and lifecycle retirement. Hardware
 ABBA and long-duration context-loss/VRAM testing remain unaccepted;
 both renderer PRs stay Draft without default-on policy changes.
+
+
+## R6 — WebGL context loss/restoration experiment (2026-10-11)
+
+R6 adds a **separate, default-off CI-driven browser recovery gate**:
+`scripts/renderer-v4-r6-context-browser.mjs` and
+`.github/workflows/renderer-v4-r6-context.yml`. On the small TiO2
+four-unit preview, it requests `WEBGL_lose_context`, waits for both browser
+loss and restoration events, exercises actual 3D opacity control changes,
+requires a new completed frame, and checks that the existing retained JS
+resource census remains complete, bounded, and cross-variant-disjoint.
+The application model, scientific geometry, canonical project and baseline
+images are unchanged. This first probe does **not** claim exact screenshot
+parity, measured GPU memory, long-duration endurance or full-wafer context
+recovery; those need separate gates.
+
+**Status:** the R6 workflow was introduced on this branch; its result must
+be inspected before declaring context recovery accepted. Expected WebGL
+console diagnostics from forced loss must be distinguished from unexpected
+page exceptions. Failed assertions are blockers, not grounds for adjusting
+the approved visual baseline. A full-array post-restore repeat and physical
+GPU/driver recovery acceptance remain pending. Keep PR #174 Draft.
