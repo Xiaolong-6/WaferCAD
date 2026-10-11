@@ -316,6 +316,7 @@ async function trial(enabled, index) {
           JSON.stringify([row.cameraWorld, row.cameraProjection]),
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
+        sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -375,6 +376,7 @@ try {
     orderIdentical: off.orderHash === on.orderHash,
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
+    sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===
