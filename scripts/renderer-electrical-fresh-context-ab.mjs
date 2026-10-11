@@ -18,6 +18,7 @@ import {
 } from './test-helpers/ui.mjs';
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
+import { compareRendererPhaseEvidence } from './test-helpers/renderer-v3-phase-parity.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
@@ -240,6 +241,7 @@ async function trial(enabled, index) {
           glState: frame.glState,
           drawInputs: frame.drawInputs || [],
           phases,
+          phaseCoverage: frame.phaseCoverage || null,
           framebuffer: frame.framebuffer,
           framebufferHash: hex,
           pixelSamples: frame.pixelSamples,
@@ -284,11 +286,17 @@ async function trial(enabled, index) {
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
     row.phaseCheckpoints = native.phases;
+    row.phaseCoverage = native.phaseCoverage;
     row.phaseSequenceHash = hashJson(native.phases.map(({ afterDraw, kind, status }) => ({
       afterDraw, kind, status,
     })));
     row.drawInputsCount = native.drawInputs.length;
     if (hardwareRtx3060) {
+      assert.ok(
+        row.phaseCoverage?.finalFrameCaptured === true &&
+          row.phaseCheckpoints.at(-1)?.afterDraw === native.calls,
+        `${label}: final drawn owner phase must be captured`,
+      );
       assert.ok(
         row.phaseCheckpoints.length > 0 &&
           row.phaseCheckpoints.every((checkpoint) => checkpoint.status === 'valid' && checkpoint.hash),
@@ -375,11 +383,7 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
-        phaseSequenceIdentical: previous.row.phaseSequenceHash === row.phaseSequenceHash,
-        firstDifferentPhase: previous.row.phaseSequenceHash === row.phaseSequenceHash
-          ? row.phaseCheckpoints.findIndex((phase, i) =>
-              phase.hash !== previous.row.phaseCheckpoints[i]?.hash)
-          : null,
+        phaseEvidence: compareRendererPhaseEvidence(previous.row, row),
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -405,6 +409,7 @@ async function trial(enabled, index) {
         orderHash: row.orderHash,
         camera: row.cameraWorld,
         materialHash: row.materialHash,
+        phaseCoverage: row.phaseCoverage,
         calls: native.calls,
         triangles: native.triangles,
       }),
@@ -440,10 +445,7 @@ try {
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
-    phaseSequenceIdentical: off.phaseSequenceHash === on.phaseSequenceHash,
-    firstDifferentPhase: off.phaseSequenceHash === on.phaseSequenceHash
-      ? on.phaseCheckpoints.findIndex((phase, i) => phase.hash !== off.phaseCheckpoints[i]?.hash)
-      : null,
+    phaseEvidence: compareRendererPhaseEvidence(off, on),
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===
