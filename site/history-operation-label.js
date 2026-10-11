@@ -12,7 +12,8 @@ export function historyOperationLabel(node, model) {
   const operation = node?.operation || {},
     refs = node?.entityRefs || {},
     fallback = operation.label || operation.kind || 'Process step',
-    thickness = preciseMicron(operation.thickness);
+    thickness = preciseMicron(operation.thickness),
+    faceSuffix = operation.face === 'both' ? ' · Both' : '';
 
   if (!model || operation.kind === 'record') return fallback;
 
@@ -21,20 +22,20 @@ export function historyOperationLabel(node, model) {
     if (!name || !thickness) return fallback;
     if (operation.growth === 'transfer') {
       const mode = operation.transferMode || operation.replay?.params?.transferMode;
-      return `Transfer ${name} · ${mode === 'follow' ? 'Follow surface' : 'Flat'} · ${thickness}`;
+      return `Transfer ${name} · ${mode === 'follow' ? 'Follow surface' : 'Flat'} · ${thickness}${faceSuffix}`;
     }
-    return `Deposit ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}`;
+    return `Deposit ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}${faceSuffix}`;
   }
 
   if (operation.kind === 'grow') {
     const name = namedEntity(model.layers, refs.targetLayerId, operation.name || '');
     if (!name || !thickness) return fallback;
-    return `Extend ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}`;
+    return `Extend ${name} · ${operation.growth === 'conformal' ? 'Conformal' : 'Directional'} · ${thickness}${faceSuffix}`;
   }
 
   if (operation.kind === 'etch') {
     if (!thickness) return fallback;
-    if (operation.etchProfile === 'planarize') return `Planarize · Z ${thickness}`;
+    if (operation.etchProfile === 'planarize') return `Planarize · Z ${thickness}${faceSuffix}`;
     const targetId = refs.etchTargetLayerIds?.[0] || operation.etchTargetLayerIds?.[0] || null,
       targetName = namedEntity(model.layers, targetId, ''),
       release = operation.etchProfile === 'isotropic' || operation.etchProfile === 'undercut',
@@ -50,12 +51,12 @@ export function historyOperationLabel(node, model) {
           : operation.etchProfile === 'undercut'
             ? 'Undercut'
             : '';
-    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}` : ''} · ${thickness}${profileLabel ? ` · ${profileLabel}` : surfaceLabel ? ` · ${surfaceLabel}` : ''}`;
+    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}${faceSuffix}` : ''} · ${thickness}${profileLabel ? ` · ${profileLabel}` : surfaceLabel ? ` · ${surfaceLabel}` : ''}${faceSuffix}`;
   }
 
   if (operation.kind === 'implant') {
     const name = namedEntity(model.implants, refs.resultImplantId, operation.name || '');
-    return name && thickness ? `Implant ${name} · ${thickness}` : fallback;
+    return name && thickness ? `Implant ${name} · ${thickness}${faceSuffix}` : fallback;
   }
 
   if (operation.kind === 'electrical') {
