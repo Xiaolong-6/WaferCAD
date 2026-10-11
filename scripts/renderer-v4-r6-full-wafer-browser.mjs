@@ -47,6 +47,9 @@ async function capture(page, phase, variant) {
     bytes: Number(host.v4GpuResourceEstimatedBufferBytes),
     disposedGroups: Number(host.v4R5DisposedGroups || 0),
     sceneGeneration: host.sceneGeneration,
+    cameraWorld: host.rendererCameraWorld || null,
+    cameraProjection: host.rendererCameraProjection || null,
+    webglContext: host.rendererWebglContext || null,
     modelRevision: host.modelRevision,
     processRevision: host.processRevision,
     frame: Number(host.rendererFrameSerial || 0),
@@ -131,6 +134,11 @@ async function cycleContext(page, phase) {
     return canvas.getContext('webgl2').isContextLost();
   });
   assert.equal(lost, true, phase + ': actual WebGL context lost');
+  assert.equal(
+    await page.locator('#threeHost').evaluate((node) => node.dataset.renderState),
+    'context-lost',
+    phase + ': do not report ready while the WebGL context is lost',
+  );
   await page.evaluate(() => window.__wafercadR6FullWaferExtension.restoreContext());
   await page.waitForFunction(() => window.__wafercadR6FullWaferEvents?.includes('restored'), null, {
     timeout,
@@ -164,6 +172,8 @@ function verifyStable(before, after, label) {
     'sceneGeneration',
     'modelRevision',
     'processRevision',
+    'cameraWorld',
+    'cameraProjection',
     'triangles',
     'calls',
   ]) {
@@ -173,7 +183,7 @@ function verifyStable(before, after, label) {
   const pixels = compareScreenshotPngPixels(before.png, after.png);
   comparisons.push({ phase: label, ...pixels });
   console.log('RENDERER_V4_R6_FULL_WAFER_PIXEL_PARITY', JSON.stringify(comparisons.at(-1)));
-  assert.equal(pixels.pixelIdentical, true, label + ': exact same-pose pixel parity');
+  return pixels;
 }
 
 try {
@@ -185,7 +195,7 @@ try {
     const observedErrors = observePageErrors(page);
     await page.goto(
       baseUrl +
-        '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
+        '/app.html?rendererV3RoiTrace=1&rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
     );
     await waitForAppReady(page);
     await page
@@ -214,19 +224,26 @@ try {
     await changeVariant(page, '1', 'opaque', 'warm-opaque');
     const opaque = await capture(page, 'baseline-opaque', 'opaque');
 
+    await changeVariant(page, '0.5', 'transparent', 'preloss-repeat-transparent');
+    await changeVariant(page, '1', 'opaque', 'preloss-repeat-opaque');
+    const repeatedOpaque = await capture(page, 'preloss-repeat-opaque', 'opaque');
+    verifyStable(opaque, repeatedOpaque, 'opaque-variant-repeat-without-context-loss');
+
     const backend = await cycleContext(page, 'opaque-loss');
     // Use real UI events to re-submit a frame without changing final pose.
     await changeVariant(page, '0.5', 'transparent', 'post-opaque-loss-transparent');
     await changeVariant(page, '1', 'opaque', 'post-opaque-loss-opaque');
     const recoveredOpaque = await capture(page, 'recovered-opaque', 'opaque');
-    verifyStable(opaque, recoveredOpaque, 'opaque-restoration');
+    verifyStable(repeatedOpaque, recoveredOpaque, 'opaque-restoration');
 
     await changeVariant(page, '0.5', 'transparent', 'pre-transparent-loss');
+    const repeatedTransparent = await capture(page, 'preloss-repeat-transparent', 'transparent');
+    verifyStable(transparent, repeatedTransparent, 'transparent-variant-repeat-without-context-loss');
     await cycleContext(page, 'transparent-loss');
     await changeVariant(page, '1', 'opaque', 'post-transparent-loss-opaque');
     await changeVariant(page, '0.5', 'transparent', 'post-transparent-loss-transparent');
     const recoveredTransparent = await capture(page, 'recovered-transparent', 'transparent');
-    verifyStable(transparent, recoveredTransparent, 'transparent-restoration');
+    verifyStable(repeatedTransparent, recoveredTransparent, 'transparent-restoration');
     assert.deepEqual(observedErrors, [], 'no unexpected page errors');
     const report = {
       fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
@@ -238,6 +255,10 @@ try {
     };
     await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
     console.log('RENDERER_V4_R6_FULL_WAFER_ACCEPTANCE', JSON.stringify(report));
+    assert.ok(
+      comparisons.every((entry) => entry.pixelIdentical),
+      'each variant must have strict 0-different-pixel parity both without and after context loss',
+    );
   } finally {
     await context.close();
   }
