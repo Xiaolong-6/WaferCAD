@@ -1,6 +1,5 @@
 // M2 presentation over the original renderer, camera policy and physical exporters.
 import { createThreeView } from '../three-view.js';
-import { createProcessTaskController } from '../controllers/process-task-controller.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
@@ -61,6 +60,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     getZCollapse: () => state.sectionCollapse,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
+      workstation.changed('three');
     },
   });
   renderer.setGestureMode(local.mode, { wheelZoom: local.zoomEnabled });
@@ -105,29 +105,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
     requestRender();
   };
-  const taskPanel = el(
-    'section',
-    {
-      id: 'processTaskDialog',
-      class: 'v2-three-task',
-      hidden: true,
-      role: 'status',
-      'aria-live': 'polite',
-      'aria-label': 'Background task',
-    },
-    el('strong', { id: 'processTaskTitle' }),
-    el('span', { id: 'processTaskStage' }),
-    el('span', { id: 'processTaskElapsed' }),
-    button('Abort', null, 'stop', { id: 'processTaskAbortBtn' }),
-  );
-  document.body.append(taskPanel);
-  const task = createProcessTaskController({
-    status: workstation.status,
-    setApplyDisabled: (busy) => {
-      panel.querySelector('[data-action="three-export-menu"]').disabled = busy;
-    },
-  });
-  task.bind();
+  const task = workstation.task;
   const download = (blob, name) => {
     const url = URL.createObjectURL(blob),
       link = el('a', { href: url, download: name });

@@ -234,6 +234,34 @@
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
+        if (info.splitChoices && key !== 'section') {
+          const title = panel.querySelector(`[data-slot="view.${key}.header"]`);
+          const index = state.splitViews.indexOf(key);
+          if (mode === 'split' && index >= 0) {
+            const select = el(
+              'select',
+              {
+                class: 'v2-split-select',
+                'aria-label': `${index === 0 ? 'Left' : 'Right'} Split view`,
+              },
+              registry.views
+                .filter((v) => v.key !== 'section')
+                .map((v) => el('option', { value: v.key, selected: v.key === key }, v.label)),
+            );
+            select.onchange = () => {
+              state.splitViews = window.WaferCadV2ViewState.replaceSlot(
+                state.splitViews,
+                index,
+                select.value,
+              );
+              render();
+            };
+            title.replaceChildren(select);
+          } else
+            title.replaceChildren(
+              el('strong', {}, registry.views.find((v) => v.key === key).label),
+            );
+        }
         if (visible) {
           const active = adapters.isActive(id);
           adapters.show(id, canvases);

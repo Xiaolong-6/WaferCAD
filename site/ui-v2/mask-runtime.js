@@ -7,8 +7,8 @@ import { createMaskImportController } from '../controllers/mask-import-controlle
 import { createExportController } from '../controllers/export-controller.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
 import { drawShapeContainsPoint } from '../draw-mask-geometry.js';
-import { formatInspectionLength } from './view-kit/inspection-fields.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
+import { createDisplayUnits } from './view-kit/display-units.js';
 
 export function createMaskRuntime({
   state,
@@ -18,6 +18,7 @@ export function createMaskRuntime({
   onRoiSync,
   status,
   confirmAction,
+  selectedMaskElement,
 }) {
   let renderer,
     draw,
@@ -28,12 +29,13 @@ export function createMaskRuntime({
     roi?.syncEditor();
     onChange();
   };
+  const units = createDisplayUnits(() => state);
   const lengths = {
-    xyUnitLabel: () => 'µm',
-    formatLengthField: formatInspectionLength,
+    xyUnitLabel: units.label,
+    formatLengthField: units.format,
     formatNumericField: (value) => String(value),
-    manualMicron: Number,
-    xyText: (value) => `${formatInspectionLength(value)} µm`,
+    manualMicron: units.parse,
+    xyText: (value) => `${units.format(value)} ${units.label()}`,
   };
   const maskPoint = (point) => maskLocalToWorld(point, state.maskTransform);
   const layerKey = (layer, datatype) => `${layer}|${datatype}`;
@@ -57,8 +59,9 @@ export function createMaskRuntime({
       ? hex
       : `rgba(${value >> 16},${(value >> 8) & 255},${value & 255},${alpha})`;
   };
-  const selectedElement = (element) =>
-    state.selectedLayerKeys.includes(layerKey(element.layer, element.datatype));
+  const selectedElement =
+    selectedMaskElement ||
+    ((element) => state.selectedLayerKeys.includes(layerKey(element.layer, element.datatype)));
   const plan = createPlanViewController({
     getModel: () => state.model,
     getLayout: () => state.layout,
@@ -67,9 +70,9 @@ export function createMaskRuntime({
     getDrawMask: () => state.drawMask,
     getPlanViews: () => state.planViews,
     maskPoint,
-    formatXY: formatInspectionLength,
-    xyToDisplay: Number,
-    xyFromDisplay: Number,
+    formatXY: units.format,
+    xyToDisplay: units.toDisplay,
+    xyFromDisplay: units.parse,
     xyUnitLabel: lengths.xyUnitLabel,
     renderMask,
     renderMain: () => {},
@@ -132,7 +135,7 @@ export function createMaskRuntime({
     getMaskRoiController: () => roi,
     ...plan,
     ...lengths,
-    formatXY: formatInspectionLength,
+    formatXY: units.format,
     maskPoint,
     layerKey,
     layerColor,
@@ -189,12 +192,13 @@ export function createMaskRuntime({
     layerKey,
     layerColor,
     selectedElement,
-    formatXY: formatInspectionLength,
+    formatXY: units.format,
     runMaskLayoutExport,
     status,
   });
   renderMask();
   return {
+    layerColor,
     draw,
     roi,
     alignment,

@@ -1,0 +1,31 @@
+// Display conversion only. Canonical geometry and worker parameters stay in physical µm.
+import { fromMicron, toMicron, unitMeta } from '../../units.js';
+export function createDisplayUnits(getState) {
+  const key = () => getState()?.xyDisplayUnit || 'um';
+  const formatValue = (value) => {
+    const digits = key() === 'nm' ? 1 : key() === 'mm' ? 7 : 4;
+    return String(Number(Number(value).toFixed(digits)));
+  };
+  return {
+    key,
+    label: () => unitMeta(key()).label,
+    formatValue,
+    format: (value) => formatValue(fromMicron(value, key())),
+    canonicalInput: (value) => String(fromMicron(value, key())),
+    parse: (value) => toMicron(value, key()),
+    toDisplay: (value) => fromMicron(value, key()),
+    labelText: (label) => label.replace(/µm/g, unitMeta(key()).label),
+  };
+}
+export function syncDisplayUnitFields(root, unit) {
+  for (const control of root.querySelectorAll('[data-display-length]')) {
+    const previous = control.dataset.displayLength;
+    if (previous === unit) continue;
+    if (control.value !== '' && Number.isFinite(Number(control.value)))
+      control.value = String(fromMicron(toMicron(control.value, previous), unit));
+    control.dataset.displayLength = unit;
+    control.step = unit === 'nm' ? '0.1' : unit === 'mm' ? '0.0000001' : '0.0001';
+    const label = control.closest('label')?.querySelector('.wc-label');
+    if (label) label.textContent = label.textContent.replace(/µm|nm|mm/g, unitMeta(unit).label);
+  }
+}

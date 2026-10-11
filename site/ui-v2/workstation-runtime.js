@@ -3,6 +3,7 @@ import { readProjectFile } from '../project-io.js';
 import { createProjectStateController } from '../controllers/project-state-controller.js';
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 export async function loadWorkstationProject() {
   const examples = {
@@ -25,7 +26,12 @@ export async function loadWorkstationProject() {
 }
 
 export function createWorkstationRuntime(project) {
+  let sectionLayersVisible = true;
+  try {
+    sectionLayersVisible = localStorage.getItem('wafercad.v2.section-layers.v1') !== 'false';
+  } catch {}
   const state = {
+    sectionLayersVisible,
     xyDisplayUnit: 'um',
     activeStructurePalette: 'balanced',
     planViews: { main: { zoom: 1, panX: 0, panY: 0 }, mask: { zoom: 1, panX: 0, panY: 0 } },
@@ -43,17 +49,27 @@ export function createWorkstationRuntime(project) {
     section: { panEnabled: false, zoomEnabled: false },
     three: { mode: 'rotate', zoomEnabled: false },
   };
+  let history = null;
+  let restoreListener = () => {};
   const projectState = createProjectStateController({
     getState: () => state,
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
+    getSnapshotRecords: () => history?.exportRecords() || [],
+    getSnapshotBranchState: () => {
+      history?.syncActiveHeadState();
+      return history?.exportBranchState() || null;
+    },
     setSectionEditEnabled: (value) => {
       local.main.sectionEditEnabled = value;
     },
   });
   projectState.loadProjectSnapshot(project.data);
+  let maskBrowser = null;
   const selectedElement = (element) =>
-    state.selectedLayerKeys.has(`${element.layer}|${element.datatype}`);
+    maskBrowser
+      ? maskBrowser.selectedElement(element)
+      : state.selectedLayerKeys.has(`${element.layer}|${element.datatype}`);
   const maskPoint = (point) => maskLocalToWorld(point, state.maskTransform);
   const selection = createSelectionGeometry({ getState: () => state, selectedElement, maskPoint });
   const views = new Map();
@@ -146,12 +162,52 @@ export function createWorkstationRuntime(project) {
       },
     });
   }
+  function restore(snapshot) {
+    views.get('section')?.resetTransient();
+    views.get('main')?.runtime.roi.clearDrawingMode();
+    projectState.loadProjectSnapshot(snapshot);
+    renameFocus = null;
+    presentationModel = null;
+    Object.assign(state, {
+      roiTool: null,
+      roiDraft: null,
+      maskRoiTool: null,
+      maskRoiDraft: null,
+      drawUi: null,
+    });
+    local.main.tool = 'none';
+    views.get('mask')?.runtime.draw.resetInteraction();
+    views.get('section')?.detail.cancelDrawing();
+    const three = views.get('three');
+    if (state.threeCamera) three?.renderer.setViewState(state.threeCamera);
+    else three?.renderer.fit();
+    dependencies.roi = JSON.stringify(state.roi);
+    dependencies.section = JSON.stringify(state.section);
+    restoreListener();
+    invalidate('main', 'mask', 'section', 'three');
+  }
+  history = createSnapshotManager({
+    capture: () => projectState.buildProjectSnapshot(false),
+    restore,
+    validateState: projectState.isValidSnapshotState,
+    validateStates: projectState.isValidSnapshotStates,
+  });
+  history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
   return {
     state,
     local,
     project,
     projectState,
+    history,
+    restore,
+    onRestore(listener) {
+      restoreListener = listener;
+    },
     selection,
+    selectedElement,
+    setMaskBrowser(value) {
+      maskBrowser = value;
+    },
     views,
     counters,
     viewState,

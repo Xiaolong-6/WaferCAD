@@ -8,6 +8,7 @@ import { createExportController } from '../controllers/export-controller.js';
 import { constrainSquare, squareFromDrag } from './main-square.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { formatInspectionLength } from './view-kit/inspection-fields.js';
+import { createDisplayUnits } from './view-kit/display-units.js';
 
 // UI precision only: never round loaded geometry or pointer projection values.
 export const formatMainPosition = formatInspectionLength;
@@ -23,6 +24,7 @@ export function createMainRuntime({
 }) {
   let renderer, main, roi, slice, editor, squareStart;
   const noop = () => {};
+  const units = createDisplayUnits(() => state);
   const renderMain = () => {
     renderer?.renderMain();
     roi?.syncEditor();
@@ -34,18 +36,18 @@ export function createMainRuntime({
   };
   const getActiveFace = () => state.activeFace;
   const lengths = {
-    xyUnitLabel: () => 'µm',
-    formatLengthField: formatMainPosition,
+    xyUnitLabel: units.label,
+    formatLengthField: units.format,
     formatNumericField: (value) => String(value),
-    manualMicron: Number,
-    xyText: (value) => `${formatMainPosition(value)} µm`,
+    manualMicron: units.parse,
+    xyText: (value) => `${units.format(value)} ${units.label()}`,
   };
   const plan = createPlanViewController({
     getModel: () => state.model,
     getPlanViews: () => state.planViews,
-    formatXY: formatMainPosition,
-    xyToDisplay: Number,
-    xyFromDisplay: Number,
+    formatXY: units.format,
+    xyToDisplay: units.toDisplay,
+    xyFromDisplay: units.parse,
     xyUnitLabel: lengths.xyUnitLabel,
     renderMain,
     renderMask: noop,

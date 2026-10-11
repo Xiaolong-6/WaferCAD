@@ -35,6 +35,31 @@ try {
       assert.equal(initial.ui.mode, width >= 1121 ? 'overview' : 'single');
       if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
       await waitForPaint(page);
+      const layers = page.locator('#sectionPanel [data-action="legend"]');
+      const commandLayers = async () => {
+        if (!(await layers.isVisible()))
+          await page.getByRole('button', { name: 'Section more tools', exact: true }).click();
+        await layers.click();
+        await waitForPaint(page);
+      };
+      assert.equal(await layers.getAttribute('aria-pressed'), 'true');
+      await commandLayers();
+      assert.equal(await layers.getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#layerLegend').isVisible(), false);
+      await page.reload();
+      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
+      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await waitForPaint(page);
+      assert.equal(await layers.getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#layerLegend').isVisible(), false);
+      assert.deepEqual((await snapshot()).model, initial.model);
+      await commandLayers();
+      await page.reload();
+      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
+      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await waitForPaint(page);
+      assert.equal(await layers.getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('#layerLegend').isVisible(), true);
       const name = page.getByRole('button', { name: 'Rename TiO2', exact: true });
       const fingerprint = () => page.locator('#sectionCanvas').evaluate((c) => c.toDataURL());
       const normal = await fingerprint();
@@ -109,6 +134,7 @@ try {
         focusRestoresColors: true,
         repeatedRandom: true,
         rightAligned: true,
+        layersPersistedAfterReload: true,
       });
       console.log(`Review ${width}${hasTouch ? ' touch' : ''}: PASS`);
     } finally {
@@ -124,17 +150,30 @@ try {
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const initial = await snapshot();
     const item = initial.model.electricalRegions[0];
-    await page.getByRole('button', { name: `Depth profile for ${item.name}`, exact: true }).click();
-    await page
-      .getByRole('combobox', { name: `Depth profile for ${item.name}`, exact: true })
-      .selectOption('smooth');
-    await page.keyboard.press('Escape');
+    const depth = page.getByRole('button', { name: `Depth profile for ${item.name}`, exact: true });
+    assert.equal(await depth.getAttribute('aria-pressed'), 'false');
+    assert.equal(await depth.locator('use').getAttribute('href'), '#p-icon-depthFollow');
+    await depth.click();
+    await waitForPaint(page);
+    assert.equal(await depth.getAttribute('aria-pressed'), 'true');
+    assert.equal(await depth.locator('use').getAttribute('href'), '#p-icon-depthSmooth');
+    assert.equal(
+      await page
+        .getByRole('combobox', { name: `Depth profile for ${item.name}`, exact: true })
+        .count(),
+      0,
+    );
+    await depth.click();
+    await waitForPaint(page);
+    assert.equal((await snapshot()).model.electricalRegions[0].depthProfile, 'follow');
+    await depth.click();
+    await waitForPaint(page);
     await page.getByRole('checkbox', { name: `Show ${item.name}`, exact: true }).uncheck();
     await waitForPaint(page);
     const expected = structuredClone(initial.model);
     expected.electricalRegions[0].depthProfile = 'smooth';
     expected.electricalRegions[0].visible = false;
-    expected.revision += 2;
+    expected.revision += 4;
     assert.deepEqual(
       (await snapshot()).model,
       expected,

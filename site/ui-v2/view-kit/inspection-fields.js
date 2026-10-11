@@ -4,19 +4,30 @@ export const formatInspectionLength = (value) => String(Number(Number(value).toF
 export function createInspectionFields({
   hook = (_id, node) => node,
   components = window.WaferCadV2Components,
+  units,
 }) {
   const { el, field, select } = components;
   return {
     input(label, id, value = 0, { kind = 'length' } = {}) {
-      const node = field(label, id, kind === 'length' ? formatInspectionLength(value) : value, {
-        type: 'number',
-        step: kind === 'angle' ? '0.001' : '0.0001',
-      });
+      const node = field(
+        kind === 'length' && units ? units.labelText(label) : label,
+        id,
+        kind === 'length' ? (units?.format(value) ?? formatInspectionLength(value)) : value,
+        {
+          type: 'number',
+          step: kind === 'angle' ? '0.001' : '0.0001',
+        },
+      );
       const control = hook(id, node.querySelector('input'));
+      if (kind === 'length' && units) {
+        control.dataset.displayLength = units.key();
+        control.step = units.key() === 'nm' ? '0.1' : units.key() === 'mm' ? '0.0000001' : '0.0001';
+      }
       if (kind === 'length')
         control.addEventListener('change', () => {
           if (control.value !== '' && Number.isFinite(Number(control.value)))
-            control.value = formatInspectionLength(control.value);
+            control.value =
+              units?.formatValue(control.value) ?? formatInspectionLength(control.value);
         });
       return node;
     },

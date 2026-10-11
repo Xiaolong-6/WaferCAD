@@ -44,6 +44,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Main-only course correction — 2026-10-11](ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md) — local Main floating-editor/Pan/Zoom checkpoint, exact validation evidence, architecture health report and shared floating-strip proposal; view-kit extraction and Mask await approval.
 - [Mask-only v2 checkpoint — 2026-10-11](ui-v2/MASK_HANDOFF_2026-10-11.md) — approved shared view-kit Mask adapter, local run/review, stage budget, source preservation and acceptance evidence.
 - [UI v2 WIP handoff — 2026-10-11](ui-v2/HANDOFF_2026-10-11.md) — branch state, local gate evidence, stage budgets and standing rules.
+- [UI v2 Stage C local WIP handoff — 2026-10-11](ui-v2/LOCAL_STAGE_C_WIP_HANDOFF_2026-10-11.md) — current Project/Mask/Process/History wiring, M2 decisions, local synchronization results and unfinished acceptance paths.
 - [UI v2 Stage B local checkpoint — 2026-10-11](ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) — restored Mask ROI tools, real shared-model 3D work, browser diagnostics and WIP preview status.
 - [UI v2 Stage B review handoff — 2026-10-11](ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) — current implementation, passing lightweight checks, review captures and explicit verification limits.
 - [UI v2 legacy cross-view synchronization table — 2026-10-11](ui-v2/SYNC_TABLE_2026-10-11.md) — audited render dispatch and ROI/Section/3D linkage, with unconfirmed behavior marked.

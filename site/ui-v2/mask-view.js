@@ -3,7 +3,8 @@ import { readProjectFile } from '../project-io.js';
 import { createMaskRuntime } from './mask-runtime.js';
 import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
-import { createInspectionFields, formatInspectionLength } from './view-kit/inspection-fields.js';
+import { createInspectionFields } from './view-kit/inspection-fields.js';
+import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { maskRoiAnchorPoint } from '../mask-roi-geometry.js';
 
 export async function createMaskView({ project, sharedState, workstation } = {}) {
@@ -23,7 +24,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     },
     body: document.body,
   };
-  const { input, choice, pair, textarea } = createInspectionFields({ hook });
+  const units = createDisplayUnits(() => state);
+  const { input, choice, pair, textarea } = createInspectionFields({ hook, units });
   const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
   const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
   let state,
@@ -48,10 +50,11 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     maximize: null,
   };
   const caption = () =>
-    `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · µm`;
+    `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · ${units.label()}`;
   const iconButton = (hint, action, glyph, extra = {}) =>
     button('', action, glyph, { title: hint, 'aria-label': hint, ...extra });
   function sync() {
+    syncDisplayUnitFields(document, units.key());
     if (!state) return;
     state.drawOpen = state.maskSourceMode === 'draw';
     const sourceButton = document.querySelector('[data-action="mask-source"]');
@@ -78,7 +81,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         ?.setAttribute('aria-pressed', String(state[`${key}Enabled`]));
     root.getElementById('maskCanvas')?.classList.toggle('plan-pan-active', state.panEnabled);
     shell?.getSlot('view.mask.readout')?.replaceChildren(caption());
-    shell?.getSlot('status.message')?.replaceChildren(message);
+    if (!workstation) shell?.getSlot('status.message')?.replaceChildren(message);
     if (hooks.has('maskSourceToggleBtn'))
       hooks.get('maskSourceToggleBtn').value = state.maskSourceMode;
   }
@@ -88,7 +91,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         [
           'Points · µm (one x, y pair per line)',
           'drawShapePoints',
-          shape.points.map((p) => p.map(formatInspectionLength).join(', ')).join('\n'),
+          shape.points.map((p) => p.map(units.format).join(', ')).join('\n'),
           'points',
         ],
       ];
@@ -157,8 +160,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       for (const [, id, value, type] of shapeFields(shape)) {
         const control = hooks.get(id);
         if (control && control !== document.activeElement)
-          control.value =
-            type === 'points' || type === 'angle' ? value : formatInspectionLength(value);
+          control.value = type === 'points' || type === 'angle' ? value : units.format(value);
       }
   }
   const anchorOptions = [
@@ -211,7 +213,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       ['maskRoiRotation', roi.rotation],
     ])
       if (value != null && hooks.get(id) !== document.activeElement)
-        hooks.get(id).value = id.includes('Rotation') ? value : formatInspectionLength(value);
+        hooks.get(id).value = id.includes('Rotation') ? value : units.format(value);
   }
   const alignmentForm = el(
     'div',
@@ -465,9 +467,11 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       onRoiSync: roiSync,
       status: (value) => {
         message = value;
+        workstation?.status(value);
         sync();
       },
       confirmAction,
+      selectedMaskElement: workstation?.selectedMaskElement,
     });
     new ResizeObserver(() => runtime.render()).observe(hooks.get('maskCanvas'));
     roiSync(state.maskRoi);

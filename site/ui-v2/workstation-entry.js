@@ -4,8 +4,9 @@ import { createMaskView } from './mask-view.js';
 import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
+import { createWorkstationWorkflow } from './workstation-workflow.js';
 
-const { el, button, panelHeader } = window.WaferCadV2Components;
+const { el } = window.WaferCadV2Components;
 try {
   window.WaferCadV2Icons.installSprite();
   const project = await loadWorkstationProject(),
@@ -45,10 +46,13 @@ try {
     getProjectName: () => store.state.projectName || project.data.name,
     presentation: () => ({
       selectedPanel: uiState.domain,
+      selectedSubpanel: uiState.processMode || 'step',
       selectedNavigation: uiState.domain,
+      visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
+      splitChoices: true,
       editorHidden: uiState.editorHidden,
       message,
-      save: 'Shared project · Stage B',
+      save: shell.getSlot('status.save').textContent || 'Shared project · Stage C',
     }),
   });
   const render = () => {
@@ -67,7 +71,14 @@ try {
     render,
     status,
     changed: store.changed,
+    selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
+  };
+  const workflow = createWorkstationWorkflow({ store, workstation });
+  workstation.task = workflow.task;
+  workstation.changed = (key) => {
+    store.changed(key);
+    workflow.persistence.schedule();
   };
   const scope = (key) => ({
     ...workstation,
@@ -108,26 +119,16 @@ try {
     onHide() {},
     destroy() {},
   });
-  const projectPanel = shell.getSlot('panel.project').querySelector('[data-slot-content]');
-  projectPanel.append(
-    panelHeader('Project', project.data.name),
-    el(
-      'p',
-      { class: 'p-aux' },
-      `${store.state.model.layers.length} layers · ${store.state.model.regions.length} regions · µm`,
-    ),
-    el(
-      'div',
-      { class: 'p-actions' },
-      button('Front', 'face:front', 'main'),
-      button('Back', 'face:back', 'main'),
-    ),
-  );
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
-    if (action.startsWith('mode:')) {
+    if (action.startsWith('domain:')) {
+      uiState.domain = action.split(':')[1];
+      uiState.editorHidden = false;
+      uiState.mobile = 'edit';
+      render();
+    } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
       uiState.maximize = null;
       render();
@@ -147,9 +148,8 @@ try {
       const key = action.split(':')[1];
       uiState.maximize = uiState.maximize === key ? null : key;
       render();
-    } else if (action.startsWith('face:')) {
-      store.state.activeFace = action.split(':')[1];
-      store.renderAll();
+    } else if (action === 'face:main') {
+      workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
       uiState.editorHidden = true;
       uiState.mobile = 'view';
@@ -161,8 +161,9 @@ try {
     }
   });
   window.addEventListener('resize', render);
+  await workflow.start();
   starting = false;
-  render();
+  workflow.refresh();
   store.start();
   window.WaferCadV2Workstation = {
     ready: true,
@@ -173,6 +174,14 @@ try {
         model: store.state.model,
         roi: store.state.roi,
         maskRoi: store.state.maskRoi,
+        maskTransform: store.state.maskTransform,
+        maskSourceMode: store.state.maskSourceMode,
+        drawMask: store.state.drawMask,
+        layout: store.state.layout,
+        activeCell: store.state.activeCell,
+        selectedLayerKeys: [...store.state.selectedLayerKeys],
+        projectName: store.state.projectName,
+        sectionLayersVisible: store.state.sectionLayersVisible,
         section: store.state.section,
         sectionDetailRoi: store.state.sectionDetailRoi,
         sectionViewport: store.state.sectionViewport,
@@ -186,6 +195,7 @@ try {
           borders: store.state.threeShowBorders,
           fast: store.state.threeFastMode,
         },
+        workflow: workflow.snapshot(),
         counts: store.counters,
         ui: uiState,
         scientificUnchanged: geometryBefore === store.geometrySnapshot(),

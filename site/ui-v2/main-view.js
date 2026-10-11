@@ -1,6 +1,7 @@
 // Main-only v2 presentation. Every visible control originates in M2 components.
 import { readProjectFile } from '../project-io.js';
-import { createMainRuntime, formatMainPosition } from './main-runtime.js';
+import { createMainRuntime } from './main-runtime.js';
+import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { roiAnchorPoint } from '../roi-editor.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createFloatingStrip } from './view-kit/floating-strip.js';
@@ -45,7 +46,8 @@ export async function createMainView({ project, sharedState, workstation, render
     mobile: 'view',
     splitViews: ['main', 'three'],
   };
-  const { input, choice, pair } = createInspectionFields({ hook });
+  const units = createDisplayUnits(() => state);
+  const { input, choice, pair } = createInspectionFields({ hook, units });
   const slicePanel = hook(
     'sectionCoordsPanel',
     el(
@@ -58,9 +60,17 @@ export async function createMainView({ project, sharedState, workstation, render
     ),
   );
   const caption = () =>
-    `${state.model.layers.length} layers · ${state.model.regions.length} regions · µm`;
+    `${state.model.layers.length} layers · ${state.model.regions.length} regions · ${units.label()}`;
   function sync() {
     if (!state) return;
+    syncDisplayUnitFields(document, units.key());
+    const face = hooks.get('mainFaceBtn');
+    if (face) {
+      const back = state.activeFace === 'back';
+      face.title = `${back ? 'Back' : 'Front'} view · click to switch`;
+      face.setAttribute('aria-label', back ? 'Back view' : 'Front view');
+      face.querySelector('use').setAttribute('href', `#p-icon-${back ? 'faceBack' : 'faceFront'}`);
+    }
     workstation?.changed('main');
     for (const key of ['pan', 'zoom', 'line']) {
       const action = document.querySelector(`#mainPanel [data-action="tool:${key}:main"]`);
@@ -77,7 +87,7 @@ export async function createMainView({ project, sharedState, workstation, render
     const canvas = root.getElementById('mainCanvas');
     canvas.dataset.tool = state.tool;
     shell?.getSlot('view.main.readout')?.replaceChildren(caption());
-    shell?.getSlot('status.message')?.replaceChildren(message);
+    if (!workstation) shell?.getSlot('status.message')?.replaceChildren(message);
   }
   function displayLengths(roi) {
     if (!roi || roiEditorDirty) return;
@@ -99,13 +109,12 @@ export async function createMainView({ project, sharedState, workstation, render
             roiEndAngle: roi.endDeg ?? 90,
           };
     for (const [id, value] of Object.entries(values))
-      if (hooks.has(id))
-        hooks.get(id).value = id.includes('Angle') ? value : formatMainPosition(value);
+      if (hooks.has(id)) hooks.get(id).value = id.includes('Angle') ? value : units.format(value);
     for (const [id, value] of [
       ['roiX', point[0]],
       ['roiY', point[1]],
     ])
-      if (hooks.has(id)) hooks.get(id).value = formatMainPosition(value);
+      if (hooks.has(id)) hooks.get(id).value = units.format(value);
     updateRoiFields();
   }
   function updateRoiFields() {
@@ -186,6 +195,7 @@ export async function createMainView({ project, sharedState, workstation, render
         runtime.setTool('roi');
         runtime.drawRoi(selected);
         message = 'Drag in Main to create the selected ROI shape.';
+        workstation?.status(message);
       } else {
         if (selected === 'square') hooks.get('roiHeight').value = hooks.get('roiWidth').value;
         runtime.roi.applyEditor();
@@ -330,7 +340,16 @@ export async function createMainView({ project, sharedState, workstation, render
       'Main',
       [
         common,
-        [button('', 'roi', 'roi', { title: 'ROI', 'aria-label': 'ROI', 'aria-pressed': 'false' })],
+        [
+          hook(
+            'mainFaceBtn',
+            button('', 'face:main', 'faceFront', {
+              title: 'Front view',
+              'aria-label': 'Front view',
+            }),
+          ),
+          button('', 'roi', 'roi', { title: 'ROI', 'aria-label': 'ROI', 'aria-pressed': 'false' }),
+        ],
         [
           button('', 'export-menu', 'export', {
             title: 'Export',
@@ -413,7 +432,10 @@ export async function createMainView({ project, sharedState, workstation, render
       if (action === 'fit:main') runtime.fit();
       else if (action === 'tool:pan:main') runtime.setPanEnabled(!state.panEnabled);
       else if (action === 'tool:zoom:main') runtime.setZoomEnabled(!state.zoomEnabled);
-      else if (action === 'roi') toggleRoiTools();
+      else if (action === 'face:main') {
+        state.activeFace = state.activeFace === 'back' ? 'front' : 'back';
+        renderShell();
+      } else if (action === 'roi') toggleRoiTools();
       else if (action.startsWith('roi-tool:')) chooseRoiTool(action.split(':')[1]);
       else if (action === 'export-menu') openExport(trigger);
       else if (action === 'settings:main') openRoiSettings(trigger);
@@ -531,6 +553,7 @@ export async function createMainView({ project, sharedState, workstation, render
       onChange: sync,
       status: (value) => {
         message = value;
+        workstation?.status(value);
         sync();
       },
       onRoiSync: displayLengths,

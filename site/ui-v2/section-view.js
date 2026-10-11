@@ -10,6 +10,7 @@ import {
 } from '../section-view-viewport.js';
 import { createInspectionFields, formatInspectionLength } from './view-kit/inspection-fields.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
+import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
 import {
@@ -44,7 +45,8 @@ export function createSectionView({ store, main, workstation }) {
       return document.activeElement;
     },
   };
-  const fields = createInspectionFields({ hook });
+  const units = createDisplayUnits(() => state);
+  const fields = createInspectionFields({ hook, units });
   const icon = (label, action, glyph) =>
     button('', action, glyph, { title: label, 'aria-label': label });
   const canvas = hook(
@@ -90,7 +92,7 @@ export function createSectionView({ store, main, workstation }) {
       inset,
     ),
   );
-  let legendOpen = true,
+  let legendOpen = state.sectionLayersVisible !== false,
     editingName = false,
     legendPalette = 'balanced',
     paletteOpen = null,
@@ -147,8 +149,8 @@ export function createSectionView({ store, main, workstation }) {
       store.views.get('three')?.runtime.updateZCollapse?.();
     },
     onSettled: () => store.invalidate('three'),
-    formatXY: formatInspectionLength,
-    xyUnitLabel: () => 'µm',
+    formatXY: units.format,
+    xyUnitLabel: units.label,
   });
   detail = createSectionDetailRoiController({
     root,
@@ -165,9 +167,9 @@ export function createSectionView({ store, main, workstation }) {
     ...main.runtime.plan,
     getSectionCollapseController: () => collapse,
     syncSectionInputs: () => main.runtime.slice.syncInputs(),
-    formatXY: formatInspectionLength,
-    xyText: (value) => `${formatInspectionLength(value)} µm`,
-    xyUnitLabel: () => 'µm',
+    formatXY: units.format,
+    xyText: (value) => `${units.format(value)} ${units.label()}`,
+    xyUnitLabel: units.label,
   });
   const viewport = (value) => {
     state.sectionViewport = normalizeSectionViewport(value);
@@ -257,7 +259,7 @@ export function createSectionView({ store, main, workstation }) {
     ['sectionCollapseBottomInput', 'bottom'],
   ])
     hooks.get(id).onchange = (e) => {
-      const value = Number(e.target.value);
+      const value = units.parse(e.target.value);
       if (Number.isFinite(value))
         collapse.setCurrent({ ...collapse.current(), [key]: value }, { settled: true });
     };
@@ -280,6 +282,7 @@ export function createSectionView({ store, main, workstation }) {
   window.addEventListener('pointerup', collapse.endDrag);
   window.addEventListener('pointercancel', collapse.endDrag);
   function sync() {
+    syncDisplayUnitFields(zForm, units.key());
     for (const key of ['pan', 'zoom'])
       panel
         .querySelector(`[data-action="tool:${key}:section"]`)
@@ -304,7 +307,8 @@ export function createSectionView({ store, main, workstation }) {
       ['sectionCollapseBackScale', z.backScale],
     ]) {
       const input = hooks.get(id);
-      if (input !== document.activeElement) input.value = formatInspectionLength(value);
+      if (input !== document.activeElement)
+        input.value = id.includes('Scale') ? formatInspectionLength(value) : units.format(value);
     }
     hooks.get('sectionCollapseScaleLinked').checked = z.scaleLinked !== false;
     for (const key of ['Front', 'Back'])
@@ -377,8 +381,14 @@ export function createSectionView({ store, main, workstation }) {
             : item.kind === 'Implant'
               ? renameImplant
               : renameElectricalRegion;
-          if (!cancelled && input.value.trim() !== item.name)
+          if (!cancelled && input.value.trim() !== item.name) {
             rename(state.model, item.id, input.value);
+            store.history?.renameHistoryEntity(
+              row.dataset.layerId ? 'layer' : item.kind.toLowerCase(),
+              item.id,
+              input.value.trim(),
+            );
+          }
           store.renderAll();
         };
         input.onkeydown = (event) => {
@@ -401,30 +411,19 @@ export function createSectionView({ store, main, workstation }) {
         }
       };
       if (row.dataset.annotationId) {
-        const profile = icon(`Depth profile for ${item.name}`, null, 'line');
-        profile.title = `Depth profile: ${item.depthProfile === 'smooth' ? 'Smooth' : 'Follow offset'}`;
+        const smooth = item.depthProfile === 'smooth';
+        const profile = icon(
+          `Depth profile for ${item.name}`,
+          null,
+          smooth ? 'depthSmooth' : 'depthFollow',
+        );
+        profile.title = `Depth profile: ${smooth ? 'Smooth' : 'Follow offset'}`;
+        profile.setAttribute('aria-pressed', String(smooth));
         profile.onclick = () => {
-          const choice = el(
-            'select',
-            { 'aria-label': `Depth profile for ${item.name}` },
-            el(
-              'option',
-              { value: 'follow', selected: item.depthProfile !== 'smooth' },
-              'Follow offset',
-            ),
-            el('option', { value: 'smooth', selected: item.depthProfile === 'smooth' }, 'Smooth'),
-          );
-          choice.onchange = () => {
-            const setProfile =
-              item.kind === 'Implant' ? setImplantDepthProfile : setElectricalRegionDepthProfile;
-            setProfile(state.model, item.id, choice.value);
-            store.renderAll();
-          };
-          mountToolPopover(workstation.overlays, {
-            trigger: profile,
-            label: 'Depth profile',
-            content: el('label', { class: 'p-form' }, 'Depth profile', choice),
-          });
+          const setProfile =
+            item.kind === 'Implant' ? setImplantDepthProfile : setElectricalRegionDepthProfile;
+          setProfile(state.model, item.id, smooth ? 'follow' : 'smooth');
+          store.renderAll();
         };
         row.append(profile);
       }
@@ -434,12 +433,13 @@ export function createSectionView({ store, main, workstation }) {
     else body.append(next);
     legend = next;
     body.dataset.legendOpen = String(legendOpen);
+    panel.querySelector('[data-action="legend"]').setAttribute('aria-pressed', String(legendOpen));
   }
   const exporter = createExportController({
     root,
     getState: () => state,
     ...main.runtime.plan,
-    formatXY: formatInspectionLength,
+    formatXY: units.format,
     status: workstation.status,
   });
   const floating = (id, title, content, trigger) =>
@@ -477,6 +477,10 @@ export function createSectionView({ store, main, workstation }) {
       sync();
     } else if (action === 'legend') {
       legendOpen = !legendOpen;
+      state.sectionLayersVisible = legendOpen;
+      try {
+        localStorage.setItem('wafercad.v2.section-layers.v1', String(legendOpen));
+      } catch {}
       renderLegend();
     } else if (action === 'section-export-menu')
       mountToolPopover(workstation.overlays, {
@@ -528,6 +532,13 @@ export function createSectionView({ store, main, workstation }) {
     root,
     detail,
     collapse,
+    resetTransient() {
+      const input = legend?.querySelector('.v2-legend-name input');
+      if (input) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      editingName = false;
+      paletteOpen = null;
+      workstation.overlays.closeFloatings();
+    },
     runtime: {
       render() {
         render();
