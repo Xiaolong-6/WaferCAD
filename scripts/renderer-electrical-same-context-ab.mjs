@@ -16,7 +16,10 @@ import {
   baseUrl,
 } from './test-helpers/ui.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
-import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
+import {
+  compareScreenshotPngPixels,
+  decodeScreenshotPng,
+} from './test-helpers/png-pixel-diff.mjs';
 
 const output = new URL('../test-results/product-review/electrical-same-context/', import.meta.url);
 await mkdir(output, { recursive: true });
@@ -121,6 +124,7 @@ try {
     };
   });
   let reference = null;
+  let referenceRaw = null;
   let referencePose = null;
   let referenceOrder = null;
   const policyReferences = new Map();
@@ -133,7 +137,14 @@ try {
       window.__waferCadSameContextEligible = 0;
       // The native draw probe is one-shot. Arm it independently for every
       // policy arm; otherwise later trials would reuse the first frame.
-      window.__waferCadWebglProbe.arm({ rasterDiscard: false });
+      window.__waferCadWebglProbe.arm({
+        rasterDiscard: false,
+        captureGlState: true,
+        pixelSamples: [
+          { x: 301, y: 138 },
+          { x: 301, y: 139 },
+        ],
+      });
       // Even with the same value, the input event routes through the existing
       // presentation-only invalidation, scheduling a fresh complete frame.
       const input = document.getElementById('threeOpacityRange');
@@ -172,6 +183,21 @@ try {
     assert.equal(probe.last.triangles, expectedTriangles, 'native GL triangle census');
     assert.equal(probe.last.drawCalls, expectedCalls, 'native GL draw census');
     assert.equal(probe.last.glError, 0);
+    assert.ok(
+      probe.last.pixelSamples?.every((sample) => sample.status === 'valid'),
+      `${label}: raw WebGL readback must succeed`,
+    );
+    const decoded = decodeScreenshotPng(canvas);
+    const rawPixelSamples = probe.last.pixelSamples;
+    for (const sample of rawPixelSamples) {
+      assert.equal(sample.width, decoded.width);
+      assert.equal(sample.height, decoded.height);
+    }
+    const pngPixelSamples = rawPixelSamples.map(({ x, y }) => ({
+      x,
+      y,
+      rgba: Array.from(decoded.rgba.subarray((y * decoded.width + x) * 4, (y * decoded.width + x) * 4 + 4)),
+    }));
     for (const key of [
       'sceneGeneration',
       'modelRevision',
@@ -191,6 +217,7 @@ try {
     await writeFile(new URL(`${label}-trace.json`, output), JSON.stringify(probe.trace));
     if (!reference) {
       reference = canvas;
+      referenceRaw = rawPixelSamples.map(({ rgba }) => rgba);
       referencePose = pose;
       referenceOrder = order;
     }
@@ -209,6 +236,11 @@ try {
       orderHash: order,
       pixelDifference: comparison,
       samePolicyPixelDifference: samePolicyComparison,
+      rawPixelsIdentical: JSON.stringify(referenceRaw) ===
+        JSON.stringify(rawPixelSamples.map(({ rgba }) => rgba)),
+      rawPixelSamples,
+      pngPixelSamples,
+      glState: probe.last.glState,
     };
     report.trials.push(trial);
     if (!trial.byteIdentical) {
