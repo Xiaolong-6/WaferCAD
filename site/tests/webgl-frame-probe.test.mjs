@@ -203,11 +203,16 @@ test('bounded framebuffer capture is available only when explicitly requested', 
   assert.equal(frame.framebuffer.status, 'valid');
   assert.equal(frame.framebuffer.width, 2);
   assert.equal(frame.framebuffer.height, 2);
-  assert.equal(frame.framebufferRgba.length, 16);
-  assert.equal(Object.keys(frame).includes('framebufferRgba'), false);
+  // harness.frame() JSON-clones the result, intentionally dropping the
+  // non-enumerable raw buffer. Inspect the original probe-owned frame here.
+  const original = h.probe.frames().at(-1);
+  assert.equal(original.framebufferRgba.length, 16);
+  assert.equal(Object.keys(original).includes('framebufferRgba'), false);
+  assert.equal(frame.framebufferRgba, undefined);
   assert.ok(h.calls.includes('read:0:0'));
-  const again = h.frame(() => h.gl.drawArrays(4, 0, 6));
-  assert.equal(again.framebuffer, undefined);
+  const capturedCount = h.probe.frames().length;
+  h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(h.probe.frames().length, capturedCount, 'one-shot probe must not recapture');
 });
 
 test('invalid or excessive WebGL readback coordinates fail before arming', () => {
