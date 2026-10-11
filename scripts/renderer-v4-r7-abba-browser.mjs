@@ -231,7 +231,10 @@ try {
   }
   // Counts must remain reproducible within each policy. Cross-policy
   // reductions are reported but never fabricated as performance gains.
-  for (const [a, b] of [[0, 3], [1, 2]]) {
+  for (const [a, b] of [
+    [0, 3],
+    [1, 2],
+  ]) {
     for (const key of ['drawCalls', 'triangles', 'geometries', 'cpuTypedArrayBytes']) {
       assert.equal(report.trials[a].state[key], report.trials[b].state[key], key + ' drift');
     }
