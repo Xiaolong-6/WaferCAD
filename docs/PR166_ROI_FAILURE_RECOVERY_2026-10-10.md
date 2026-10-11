@@ -214,3 +214,63 @@ explicitly recorded (a) backing store versus capture dimensions,
 (b) same-camera raw GL sample neighborhoods, (c) shader/material
 program configuration, and (d) alpha/dither state. Never qualify
 hardware image parity from software WebGL evidence.
+
+## Fresh WebGL context, normal product policy — no material hot-switch (2026-10-11)
+
+This follow-up addresses the earlier experiment's scientific confounder: changing
+`forceSinglePass` on an already initialized Three.js material is **not** an
+application user flow. The new
+`scripts/renderer-electrical-fresh-context-ab.mjs` selects the existing
+default-OFF Electrical cap optimization **only at fresh page boot**, then loads
+the same 625-site fixture, selects Quality 50% transparency, fits with the
+public 3D toolbar and captures one fully completed native WebGL frame per
+fresh browser context.
+
+[Linux Chromium CI 38117286875](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38117286875)
+ran the exact production OFF/OFF/ON/ON path with the **SwiftShader Vulkan
+software adapter**, Chromium 140; [artifact](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38117286875)
+contains four per-frame PNGs, full trace JSON and strict
+`electrical-fresh-context/report.json`.
+The comparison checked **entire raw WebGL framebuffer SHA-256** as well as
+exact PNG bytes and decoded pixel data, camera matrices, presentation draw
+order, presentation material descriptors, CSS/canvas/PNG dimensions,
+model/process revision and native WebGL submissions.
+
+| Verification | Fresh OFF/OFF | Fresh ON/ON | Fresh OFF/ON |
+| --- | --- | --- | --- |
+| PNG pixel difference | **0** | **0** | **0** |
+| PNG bytes identical | yes | yes | yes |
+| Complete GL framebuffer SHA-256 identical | yes | yes | yes |
+| Exact camera world/projection and draw order | yes | yes | yes |
+| Viewport/canvas/GL backing size | identical | identical | identical |
+
+All four native GL framebuffers had a **530 × 273** backing store while
+the canvas screenshot was **531 × 275**; this difference does not produce
+cross-arm pixel mismatches when geometry and view are controlled. All four
+readbacks had zero GL errors and the same framebuffer hash
+`569ca9411a8245951ddd917092650b4bb6e695dac01e8d9d8662fa0028e4ee0d`.
+Normal OFF submitted **1,408 draw calls / 57,040,012 triangles**;
+experimental ON submitted **1,291 / 54,066,262**, consistent with the
+original software-WebGL A/B reduction. The material-policy descriptor hash
+legitimately differs between ON and OFF; each same-policy pair matched.
+
+This **passes the controlled software-WebGL strict pixel gate**. It is
+separate from the six-frame test-only material hot-switch, whose previously
+recorded 1/255 WebGL difference remains a valid observation about that
+non-product sequence, but must not be projected onto production behavior.
+
+**Hard acceptance limit:** SwiftShader is a software rasterizer.
+The earlier RTX 3060 fresh-context tests showed strict pixel differences,
+including same-policy controls. This Linux result neither repairs nor
+supersedes those hardware findings. PR #166 remains **Draft, default OFF
+and unmerged**; no approved visual baselines were replaced and no
+geometry/physics or renderer shading decisions were changed in this
+follow-up. Browser CI used `--report-only` solely to collect all four arms;
+that flag never promotes a failed scientific criterion.
+
+The one-time CI diagnostic step was removed after the evidence was saved.
+The opt-in script remains available for controlled future tests. The new
+bounded framebuffer capture is test-tool-only, and its mock fixture was
+updated to emulate full 2D `readPixels` rather than only 1×1 samples.
+The last repository Quality+Browser CI head still needs to confirm the
+mock repair and removal of the one-time workflow step.
