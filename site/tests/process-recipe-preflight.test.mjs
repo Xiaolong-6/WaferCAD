@@ -174,3 +174,16 @@ test('legacy 80x80 GRID Base inference accepts only complete matching role owner
     /no verified reconstructible Base/,
   );
 });
+
+test('Both preflight rejects Lift-off and absolute-Z Planarize before Run All mutates History', () => {
+  const recipe = normalizeProcessRecipe({
+    steps: [
+      { command: 'liftoff', params: { sacrificial: 'PMMA', face: 'both', area: 'full' } },
+      { command: 'etch', params: { targetZ: '0 µm', profile: 'planarize', face: 'both' } },
+    ],
+  });
+  const report = validateRecipeExecution(recipe.steps, {});
+  assert.equal(report.errors.length, 2);
+  assert.match(report.errors[0], /Both is unsupported for Lift-off/);
+  assert.match(report.errors[1], /Both is unsupported for absolute-Z Planarize/);
+});
