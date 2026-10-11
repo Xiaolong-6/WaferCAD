@@ -63,16 +63,18 @@ async function setOpacity(page, value, variant, phase) {
   if (!(await opacityControl.evaluate((node) => node.open))) {
     await opacityControl.locator(':scope > summary').click();
   }
-  const before = await page.locator('#threeHost').evaluate(
-    (node) => Number(node.dataset.rendererFrameSerial || 0),
-  );
+  const before = await page
+    .locator('#threeHost')
+    .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
   await page.locator('#threeOpacityRange').fill(value);
   await page.waitForFunction(
     ({ serial, expected }) => {
       const host = document.getElementById('threeHost');
-      return host?.dataset.renderState === 'ready' &&
+      return (
+        host?.dataset.renderState === 'ready' &&
         host.dataset.sceneVariant === expected &&
-        Number(host.dataset.rendererFrameSerial || 0) > serial;
+        Number(host.dataset.rendererFrameSerial || 0) > serial
+      );
     },
     { serial: before, expected: variant },
     { timeout: 180000 },
@@ -93,13 +95,21 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(180000);
     const errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1');
-    await waitForAppReady(page);
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(
-        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-      ),
+    await page.goto(
+      baseUrl +
+        '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
     );
+    await waitForAppReady(page);
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
     await chooseConfirmation(page);
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
@@ -109,9 +119,10 @@ try {
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 180000);
     const initialOpacity = await page.locator('#threeOpacityRange').inputValue();
-    const first = initialOpacity === '1'
-      ? await readState(page, 'warm-opaque')
-      : await setOpacity(page, '1', 'opaque', 'warm-opaque');
+    const first =
+      initialOpacity === '1'
+        ? await readState(page, 'warm-opaque')
+        : await setOpacity(page, '1', 'opaque', 'warm-opaque');
     assert.equal(first.variant, 'opaque');
     assert.equal(first.groups, 1, 'first variant should not retain old model allocations');
     const second = await setOpacity(page, '0.5', 'transparent', 'warm-transparent');
@@ -120,7 +131,11 @@ try {
     for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
       assert.equal(back[key], second[key], key + ': cached variant reuse must not allocate again');
     }
-    assert.equal(back.disposedGroups, second.disposedGroups, 'cache swap must not dispose a live variant');
+    assert.equal(
+      back.disposedGroups,
+      second.disposedGroups,
+      'cache swap must not dispose a live variant',
+    );
     const again = await setOpacity(page, '0.5', 'transparent', 'return-transparent');
     for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
       assert.equal(again[key], second[key], key + ': reverse cache swap must not allocate again');
@@ -132,13 +147,19 @@ try {
       const ext = gl?.getExtension('WEBGL_debug_renderer_info');
       return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'not-reported';
     });
-    console.log('RENDERER_V4_R5_DUAL_VARIANT_ACCEPTANCE', JSON.stringify({
-      backend,
-      variantCount: 2,
-      boundedBufferBytes: second.bytes,
-      states: history.length,
-    }));
-    await writeFile(new URL('report.json', output), JSON.stringify({ backend, history }, null, 2) + '\n');
+    console.log(
+      'RENDERER_V4_R5_DUAL_VARIANT_ACCEPTANCE',
+      JSON.stringify({
+        backend,
+        variantCount: 2,
+        boundedBufferBytes: second.bytes,
+        states: history.length,
+      }),
+    );
+    await writeFile(
+      new URL('report.json', output),
+      JSON.stringify({ backend, history }, null, 2) + '\n',
+    );
   } finally {
     await context.close();
   }
