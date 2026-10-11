@@ -48,6 +48,12 @@ function normalizeArea(value) {
   throw new Error(`Unsupported recipe area "${value}".`);
 }
 
+function normalizeProcessFace(value) {
+  const face = cleanText(value, 'front').toLowerCase();
+  if (['front', 'back', 'both'].includes(face)) return face;
+  throw new Error(`Unsupported recipe face "${value}".`);
+}
+
 function normalizeCoverage(value, { allowTransfer = false } = {}) {
   const mode = cleanText(value, 'directional').toLowerCase();
   if (['directional', 'direct'].includes(mode)) return 'direct';
@@ -174,7 +180,7 @@ function normalizeStep(command, input, index = 0) {
           : 'follow'
         : null;
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     delete params.thickness;
     delete params.mode;
   } else if (command === 'extend') {
@@ -186,7 +192,7 @@ function normalizeStep(command, input, index = 0) {
     if (!(params.thicknessUm > 0)) throw new Error('extend.thickness must be greater than zero.');
     params.coverage = normalizeCoverage(params.coverage || params.mode);
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     delete params.thickness;
     delete params.mode;
     delete params.target;
@@ -208,7 +214,7 @@ function normalizeStep(command, input, index = 0) {
       throw new Error(`etch.target is required for ${params.profile}.`);
     }
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     params.surface =
       params.profile === 'directional'
         ? normalizeEtchSurface(params.surface, params.thicknessUm)
@@ -220,7 +226,7 @@ function normalizeStep(command, input, index = 0) {
     params.sacrificial = cleanText(params.sacrificial || params.material);
     if (!params.sacrificial) throw new Error('liftoff.sacrificial is required.');
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     delete params.material;
   } else if (command === 'implant') {
     params.name = cleanText(params.name, 'Implant');
@@ -233,7 +239,7 @@ function normalizeStep(command, input, index = 0) {
       throw new Error('implant.tilt must be between -80 and 80 degrees.');
     }
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     delete params.depth;
     delete params.thickness;
   } else if (command === 'electrical') {
@@ -245,7 +251,7 @@ function normalizeStep(command, input, index = 0) {
     params.regionType = cleanText(params.regionType || params.type, 'p-inversion');
     params.source = cleanText(params.source, 'induced');
     params.area = normalizeArea(params.area);
-    params.face = params.face === 'back' ? 'back' : 'front';
+    params.face = normalizeProcessFace(params.face);
     delete params.depth;
     delete params.thickness;
     delete params.type;
