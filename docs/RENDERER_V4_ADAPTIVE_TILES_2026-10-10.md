@@ -720,3 +720,20 @@ performance claim. No expensive manual CI was dispatched; the
 hardware measurements have **not been run in this session**. R7
 remains a diagnostic pilot, with both renderer PRs Draft,
 all experimental flags default-off and visual baselines untouched.
+
+### R7 instrument smoke checkpoint
+
+[R7 ABBA CI #38127477574](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38127477574)
+**passed** with two ABBA statistics tests, ESLint, Prettier and four
+independent software-WebGL browser contexts. All three cross-context
+pairs against arm A1 had **0/146,025 different pixels** at 531 × 275.
+The small four-unit fixture had **13 calls, 1,084 submitted triangles
+and 62,688 CPU TypedArray bytes** under both A and B; no optimization
+effect is present in this smoke fixture.
+
+The recorded browser input-to-next-frame-plus-`gl.finish()` median
+was **7.75 ms A / 7.85 ms B**. The detected backend was ANGLE
+SwiftShader software WebGL (`hardwareVerified=false`), so those
+latencies are instrumentation checks **only**. They show no meaningful
+speedup and are not GPU execution times, RTX 3060 measurements, or
+VRAM evidence. The hardware 625-site ABBA remains unexecuted.
