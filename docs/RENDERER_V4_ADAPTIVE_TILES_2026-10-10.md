@@ -383,3 +383,53 @@ resource residency, opacity/scene-variant transitions, near/edge-on
 camera poses, ROI, dynamic Section Z-collapse edits, repeated
 project reloads and GPU context cleanup. Keep PR #174 Draft
 and do not modify approved visual baselines.
+
+## R4 acceptance closure and V3 integration (2026-10-11)
+
+R4 flat-cap geometry sharing remains **opt-in** and draft. The
+[matched 625-site dynamic browser comparison](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38106878591)
+passed exact 0-pixel parity for **six** UI-driven states: initial,
+Z Break off, independent 1.6/0.6 Section scaling, Orbit camera movement,
+ROI rendered, and ROI cleared/recovered. The Section-scaling pixel defect
+(87 differing pixels before copy-on-write) was fixed with privately
+owned geometry on first Section Z vertex write; original shared templates
+remain accounted for and are disposed by their owner group. The
+[full focused Node gate](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38106878579)
+passed 651/651 total and 41/41 focused tests. [R3/R4
+resource and same-pose A/B](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38106878610)
+also passed.
+
+The later V3 idle-camera fix at `2c05967` has now been integrated by
+a two-parent merge, preserving V4's camera tile sampling. It holds the
+completed camera pose on idle undamped frames and exposes the exact
+completed camera world/projection matrices with V3 ROI tracing enabled.
+The V3 integration requires **fresh** browser and Node checks at the
+merged V4 HEAD; earlier R4 evidence must not substitute for them.
+
+## R5 — resource ownership and actual lifetime (in progress)
+
+`site/renderer-v4-resource-lifetime.js` supplies a renderer-independent
+cleanup routine for one owning scene variant. It recursively collects
+geometries (including nested meshes), shared materials, bump textures,
+and retired constant-Z templates from the variant's owner Set, then
+clears the scene group and disposes each unique allocation exactly
+once. This replaces two duplicated disposal loops in `three-view.js`.
+It does **not** change vertices, draw order, materials, scene topology
+during drawing or export geometry.
+
+Cumulative host counters `data-v4-r5-disposed-groups`,
+`data-v4-r5-disposed-geometries`,
+`data-v4-r5-disposed-materials`, and
+`data-v4-r5-retired-flat-templates` describe actual invocation of
+resource release, not driver-resident VRAM. R5 unit tests exercise
+nested ownership, duplicate references, detached templates,
+idempotent group release, malformed input and unchanged physical
+coordinates.
+
+The existing six-state 625-site browser gate additionally checks that
+ROI construction/clear retires scene groups and actual geometries,
+and releases at least one copy-on-write retired template in R4 mode.
+The same strict zero-pixel A/B still applies. Long-lived reload
+cycles, multiple WebGL contexts, driver-reported GPU residency and
+repeatable hardware ABBA timing are still unaccepted; keep both PRs
+Draft and avoid global default-on switches or baseline updates.
