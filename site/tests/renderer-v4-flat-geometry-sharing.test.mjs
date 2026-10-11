@@ -71,7 +71,6 @@ test('the shared-cap eligibility probe never mutates source geometry', () => {
   assert.deepEqual(geo.userData, {});
 });
 
-
 test('non-unit Section mapping detaches each shared cap and retains original for exactly-once group disposal', () => {
   const disposalCounts = new Map();
   const copied = [];

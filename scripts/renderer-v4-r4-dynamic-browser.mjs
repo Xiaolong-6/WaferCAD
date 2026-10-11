@@ -269,7 +269,10 @@ try {
     Number(optimized[2].data.sharedDetaches) > 0,
     'unequal Section scales must detach shared cap geometry before vertex writes',
   );
-  assert.ok(Number(optimized[2].data.retiredTemplates) > 0, 'retired templates must remain in resource census until group disposal');
+  assert.ok(
+    Number(optimized[2].data.retiredTemplates) > 0,
+    'retired templates must remain in resource census until group disposal',
+  );
   assert.ok(
     Number(optimized[0].data.bufferBytes) < Number(baseline[0].data.bufferBytes),
     'R4 should save source template arrays',

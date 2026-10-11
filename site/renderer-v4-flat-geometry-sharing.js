@@ -38,7 +38,6 @@ export function mappedFlatCapTranslation(record, state) {
   return mapped - record.minZ;
 }
 
-
 // Once unequal front/back Z scales require vertex remapping, clone on write
 // before touching any shared template. The original template stays owned by
 // its scene group and is disposed once when that group is evicted or reset.
