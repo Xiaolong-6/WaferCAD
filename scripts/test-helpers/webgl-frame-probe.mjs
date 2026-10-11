@@ -122,7 +122,6 @@ export function installWebglFrameProbe() {
             captureGlState: options.captureGlState === true,
             captureFramebuffer: options.captureFramebuffer === true,
             captureDrawInputs: options.captureDrawInputs === true,
-        capturePhases: options.capturePhases === true,
             drawInputs: [],
             capturePhases: options.capturePhases === true,
             phases: [],
