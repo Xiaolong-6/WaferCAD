@@ -186,11 +186,21 @@ async function runHardware() {
       const source = join(worktree, step.artifact);
       const target = join(evidence, step.id);
       let report = null;
+      let artifactsCopied = false;
       try {
-        report = JSON.parse(await readFile(join(source, 'report.json'), 'utf8'));
+        // Copy evidence before parsing the report: a crash during JSON write
+        // must not discard already completed screenshots or partial traces.
         await cp(source, target, { recursive: true });
+        artifactsCopied = true;
       } catch (error) {
-        console.log(step.id + ': no complete artifact folder: ' + String(error));
+        console.log(step.id + ': evidence copy failed: ' + String(error));
+      }
+      if (artifactsCopied) {
+        try {
+          report = JSON.parse(await readFile(join(target, 'report.json'), 'utf8'));
+        } catch (error) {
+          console.log(step.id + ': report unavailable or incomplete: ' + String(error));
+        }
       }
       const status = classifyRendererHardwareStep(
         { ...step, exitCode: execution.exitCode },
@@ -202,7 +212,8 @@ async function runHardware() {
         sha: refs[step.branch],
         exitCode: execution.exitCode,
         status,
-        reportFile: report ? step.id + '/report.json' : null,
+        reportFile: report && artifactsCopied ? step.id + '/report.json' : null,
+        evidenceFolder: artifactsCopied ? step.id : null,
         logFile: step.id + '.log',
         strictPixelParity:
           step.id === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
