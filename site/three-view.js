@@ -18,6 +18,10 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  clearRendererBuildFailure,
+  setRendererBuildFailure,
+} from './renderer-rebuild-status.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -813,13 +817,30 @@ export function createThreeView({
         host.dataset.sceneVariant === 'transparent' &&
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
+      const wasDampingEnabled = Boolean(controls?.enableDamping);
       if (controls) controls.enableDamping = !heavyExactTransparency;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
-      const changed = controls?.update?.() || false;
+      // OrbitControls already updates the camera on pointer/fit/setViewState.
+      // Calling update() on every *idle* exact frame, with damping disabled,
+      // repeatedly round-trips Cartesian/spherical floats and can shift a
+      // subpixel transparent edge between otherwise identical GL submissions.
+      // Keep the single update on damping-mode transitions and normal drag,
+      // but hold the completed camera pose constant between idle frames.
+      const needsCameraUpdate =
+        interacting ||
+        Boolean(controls?.enableDamping) ||
+        wasDampingEnabled !== Boolean(controls?.enableDamping);
+      const changed = needsCameraUpdate ? controls?.update?.() || false : false;
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
       renderer.render(scene, camera);
+      // Opt-in, read-only camera evidence for scientific idle-frame checks.
+      // Evaluating after render captures the exact matrices consumed by GL.
+      if (v3RoiTraceEnabled) {
+        host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
+        host.dataset.rendererCameraProjection = JSON.stringify(camera.projectionMatrix.elements);
+      }
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
@@ -2667,6 +2688,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       pendingRender = true;
       return;
     }
+    clearRendererBuildFailure(host);
     const model = getModel();
     if (!model) return;
     const clip = getClipGeometry(),
@@ -2674,6 +2696,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    const previousVariant = activeSceneVariant;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2691,6 +2714,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     ) {
       if (activeSceneVariant === targetVariant) {
         pendingRender = false;
+        // A rejected ROI may have hidden the retained, otherwise valid scene.
+        group.visible = true;
         host.dataset.renderState = 'updating';
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
@@ -2723,7 +2748,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
 
+    const previousSceneGeneration = sceneGeneration;
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
+    let sceneReplaced = false;
+    let rebuildFailed = false;
     pendingRender = false;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
@@ -2749,19 +2777,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
     buildStageStartedAt = performance.now();
     recordVariantStage('begin');
     try {
-      if (!variantBuild) disposeGroup();
-      syncRenderPolicy();
-      applyZDisplayState(model);
-
-      const materialState = inspectionMaterialState(inspection.opacity),
-        opacity = materialState.opacity,
-        borders = Boolean(inspection.borders);
+      // Resolve bounded clipped topology BEFORE disposing the last valid scene.
+      // In particular, a 625-site ROI can hit the three-million-point guard.
+      // This is a controlled rejection, not a long-running WebGL build.
       recordRoiStage('surface-plan-start');
       const plan =
         variantBuild && physicalSurfacePlan
           ? physicalSurfacePlan
           : buildRenderSurfacePlan(model, clip);
       recordRoiStage('surface-plan-complete');
+      if (!variantBuild) {
+        sceneReplaced = true;
+        disposeGroup();
+      }
+      syncRenderPolicy();
+      applyZDisplayState(model);
+
+      const materialState = inspectionMaterialState(inspection.opacity),
+        opacity = materialState.opacity,
+        borders = Boolean(inspection.borders);
       if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
@@ -3712,6 +3746,34 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
+    } catch (error) {
+      rebuildFailed = true;
+      recordRoiStage('build-failed');
+      // Keep the last good geometry for a subsequent ROI clear, but never
+      // display it as though it were the failed clipped geometry.
+      try {
+        if (variantBuild) {
+          const previous = sceneVariantCache.get(previousVariant);
+          if (previous) {
+            const failedGroup = group;
+            scene.remove(failedGroup);
+            disposeSceneGroup(failedGroup);
+            restoreSceneVariant(previous);
+          } else {
+            disposeGroup();
+          }
+        } else if (sceneReplaced) {
+          disposeGroup();
+        } else {
+          sceneGeneration = previousSceneGeneration;
+          host.dataset.sceneGeneration = String(sceneGeneration);
+        }
+      } catch (cleanupError) {
+        console.warn('3D rebuild cleanup failed:', cleanupError);
+      }
+      if (group) group.visible = false;
+      const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
+      console.warn('3D rebuild rejected:', failure.code, failure.detail);
     } finally {
       recordRoiStage('build-exited');
       suppressAssemblyFrames = false;
@@ -3720,8 +3782,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
     if (pendingRender) {
       queueMicrotask(() => {
-        if (!rendering && pendingRender) render();
+        if (!rendering && pendingRender) void render();
       });
+      scheduleFrame();
+      return;
+    }
+
+    if (rebuildFailed) {
       scheduleFrame();
       return;
     }

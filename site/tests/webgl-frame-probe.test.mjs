@@ -26,6 +26,23 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     VENDOR: 12,
     RENDERER: 13,
     VERSION: 14,
+    NO_ERROR: 0,
+    RGBA: 15,
+    UNSIGNED_BYTE: 16,
+    drawingBufferWidth: 531,
+    drawingBufferHeight: 275,
+    readPixels: (x, y, width, height, format, type, out) => {
+      assert.ok(Number.isInteger(width) && width >= 1);
+      assert.ok(Number.isInteger(height) && height >= 1);
+      assert.equal(format, 15);
+      assert.equal(type, 16);
+      calls.push(`read:${x}:${y}`);
+      for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+          out.set([(x + col) & 255, (y + row) & 255, 7, 255], (row * width + col) * 4);
+        }
+      }
+    },
     getExtension: (name) =>
       name === 'EXT_disjoint_timer_query_webgl2' && timer ? extension : null,
     getParameter: (key) => (key === extension.GPU_DISJOINT_EXT ? disjoint : 'mock'),
@@ -125,6 +142,90 @@ test('census honors actual indexed/instanced submissions, including second passe
   assert.equal(result.gpuMs, null);
   assert.equal(result.frameSerial, 7);
   assert.ok(result.completedDrawMs > 0);
+});
+
+test('opt-in WebGL readback samples the completed frame, with vertical flip', () => {
+  const h = harness();
+  h.probe.arm({
+    rasterDiscard: false,
+    captureGlState: true,
+    pixelSamples: [
+      { x: 301, y: 138 },
+      { x: 301, y: 139 },
+    ],
+  });
+  const frame = h.frame(() => {
+    h.probe.owner({
+      name: 'electrical cap',
+      userData: { waferCadPresentation: { kind: 'electrical-surface' } },
+    });
+    h.gl.drawArrays(4, 0, 6);
+  });
+  assert.deepEqual(
+    Array.from(frame.pixelSamples, (sample) => [sample.x, sample.y, sample.rgba]),
+    [
+      [301, 138, [45, 136, 7, 255]],
+      [301, 139, [45, 135, 7, 255]],
+    ],
+  );
+  assert.equal(frame.pixelSamples.every((sample) => sample.status === 'valid'), true);
+  assert.equal(frame.glState.firstElectricalState.blend, false);
+  assert.ok(h.calls.indexOf('finish') < h.calls.indexOf('read:301:136'));
+  assert.equal(h.calls.includes('read:301:135'), true);
+});
+
+test('readback maps screenshot centers to a fractional-DPR GL backing size', () => {
+  const h = harness();
+  h.gl.drawingBufferWidth = 530;
+  h.gl.drawingBufferHeight = 274;
+  h.probe.arm({
+    pixelSamples: [{ x: 301, y: 138, sourceWidth: 531, sourceHeight: 275 }],
+  });
+  const result = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  const sample = result.pixelSamples[0];
+  assert.equal(sample.status, 'valid');
+  assert.equal(sample.displayWidth, 531);
+  assert.equal(sample.displayHeight, 275);
+  assert.equal(sample.width, 530);
+  assert.equal(sample.height, 274);
+  assert.equal(sample.readX, 300);
+  assert.equal(sample.readY, 137);
+  assert.deepEqual(sample.rgba, [44, 136, 7, 255]);
+  assert.ok(h.calls.includes('read:300:136'));
+});
+
+test('bounded framebuffer capture is available only when explicitly requested', () => {
+  const h = harness();
+  h.gl.drawingBufferWidth = 2;
+  h.gl.drawingBufferHeight = 2;
+  h.probe.arm({ rasterDiscard: false, captureFramebuffer: true });
+  const frame = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(frame.framebuffer.status, 'valid');
+  assert.equal(frame.framebuffer.width, 2);
+  assert.equal(frame.framebuffer.height, 2);
+  // harness.frame() JSON-clones the result, intentionally dropping the
+  // non-enumerable raw buffer. Inspect the original probe-owned frame here.
+  const original = h.probe.frames().at(-1);
+  assert.equal(original.framebufferRgba.length, 16);
+  assert.equal(Object.keys(original).includes('framebufferRgba'), false);
+  assert.equal(frame.framebufferRgba, undefined);
+  assert.ok(h.calls.includes('read:0:0'));
+  const capturedCount = h.probe.frames().length;
+  h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(h.probe.frames().length, capturedCount, 'one-shot probe must not recapture');
+});
+
+test('invalid or excessive WebGL readback coordinates fail before arming', () => {
+  const h = harness();
+  assert.throws(() => h.probe.arm({ pixelSamples: [{ x: 0.5, y: 0 }] }), /Invalid bounded/);
+  assert.throws(
+    () => h.probe.arm({ pixelSamples: Array.from({ length: 17 }, () => ({ x: 0, y: 0 })) }),
+    /Invalid bounded/,
+  );
+  h.probe.arm({ rasterDiscard: false });
+  const frame = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(frame.pixelSamples, undefined);
+  assert.equal(h.calls.some((call) => call.startsWith('read:')), false);
 });
 
 test('diagnostic discard restores GL state before later normal draws', () => {
