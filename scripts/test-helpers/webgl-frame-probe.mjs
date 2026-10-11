@@ -141,27 +141,36 @@ export function installWebglFrameProbe() {
           };
         }
         if (active.pixelSamples.length) {
-          frame.pixelSamples = active.pixelSamples.map(({ x, y }) => {
+          frame.pixelSamples = active.pixelSamples.map(({ x, y, sourceWidth, sourceHeight }) => {
             const width = gl.drawingBufferWidth;
             const height = gl.drawingBufferHeight;
-            // PNG coordinates are top-left; native readPixels uses bottom-left.
+            // The screenshot and GL backing store can differ by one pixel
+            // (or DPR). Map pixel centers, never assume identical dimensions.
+            const displayWidth = sourceWidth || width;
+            const displayHeight = sourceHeight || height;
             if (
-              !Number.isInteger(x) ||
-              !Number.isInteger(y) ||
               x < 0 ||
               y < 0 ||
-              x >= width ||
-              y >= height
+              x >= displayWidth ||
+              y >= displayHeight ||
+              width <= 0 ||
+              height <= 0
             )
               return { x, y, status: 'out-of-bounds', width, height };
+            const readX = Math.min(width - 1, Math.floor(((x + 0.5) * width) / displayWidth));
+            const readY = Math.min(height - 1, Math.floor(((y + 0.5) * height) / displayHeight));
             const rgba = new Uint8Array(4);
-            gl.readPixels(x, height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+            gl.readPixels(readX, height - 1 - readY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
             const error = gl.getError();
             return {
               x,
               y,
+              readX,
+              readY,
               width,
               height,
+              displayWidth,
+              displayHeight,
               rgba: Array.from(rgba),
               status: error === gl.NO_ERROR ? 'valid' : 'gl-error',
               glError: error,
@@ -212,13 +221,27 @@ export function installWebglFrameProbe() {
       if (
         !Array.isArray(pixels) ||
         pixels.length > 16 ||
-        pixels.some((point) => !point || !Number.isInteger(point.x) || !Number.isInteger(point.y))
+        pixels.some(
+          (point) =>
+            !point ||
+            !Number.isInteger(point.x) ||
+            !Number.isInteger(point.y) ||
+            (point.sourceWidth != null &&
+              (!Number.isInteger(point.sourceWidth) || point.sourceWidth <= 0)) ||
+            (point.sourceHeight != null &&
+              (!Number.isInteger(point.sourceHeight) || point.sourceHeight <= 0)),
+        )
       )
         throw new Error('Invalid bounded WebGL diagnostic sample coordinates');
       armed = {
         rasterDiscard: options.rasterDiscard === true,
         captureGlState: options.captureGlState === true,
-        pixelSamples: pixels.map(({ x, y }) => ({ x, y })),
+        pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
+          x,
+          y,
+          sourceWidth,
+          sourceHeight,
+        })),
       };
     },
     owner(object) {
