@@ -314,8 +314,141 @@ try {
     await changeVariant(page, '0.5', 'transparent', 'post-transparent-loss-transparent');
     const recoveredTransparent = await capture(page, 'recovered-transparent', 'transparent');
     verifyStable(transparentAfterOpaqueLoss, recoveredTransparent, 'transparent-restoration');
+
+    // Prove the restored context remains usable by real Section/ROI controls
+    // and a full project re-import. The scientific ROI point-budget guard is
+    // an explicit valid rejection, never an accepted stale 'ready' scene.
+    const lifecycle = [];
+    const sectionEditor = page.locator('#sectionCollapseEditor');
+    await page.locator('#sectionCollapseAxisBtn').click();
+    await sectionEditor.waitFor({ state: 'visible' });
+    const sectionEnabled = page.locator('#sectionCollapseEnabled');
+    const originalSection = await sectionEnabled.isChecked();
+    for (const enabled of [!originalSection, originalSection]) {
+      const beforeFrame = Number(
+        await page.locator('#threeHost').evaluate((node) => node.dataset.rendererFrameSerial || 0),
+      );
+      await sectionEnabled.setChecked(enabled);
+      await page.waitForFunction(
+        ({ expected, beforeFrame }) => {
+          const node = document.getElementById('threeHost');
+          return (
+            node?.dataset.renderState === 'ready' &&
+            node.dataset.zCollapseEnabled === String(expected) &&
+            Number(node.dataset.rendererFrameSerial || 0) > beforeFrame
+          );
+        },
+        { expected: enabled, beforeFrame },
+        { timeout },
+      );
+      lifecycle.push({ phase: 'section-z-' + enabled, outcome: 'rendered' });
+    }
+    await page.locator('#sectionCollapseClose').click();
+
+    const focusEditor = page.locator('#focusEditor');
+    if (!(await focusEditor.evaluate((node) => node.open))) {
+      await focusEditor.locator(':scope > summary').click();
+    }
+    await page.locator('.roi-tool[data-tool="rect"]').click();
+    const bounds = await page.locator('#mainCanvas').boundingBox();
+    assert.ok(bounds, 'Main canvas must be accessible after WebGL restoration');
+    await page.mouse.move(bounds.x + bounds.width * 0.44, bounds.y + bounds.height * 0.44);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width * 0.56, bounds.y + bounds.height * 0.56);
+    await page.mouse.up();
+    await page.waitForFunction(() => {
+      const editor = document.getElementById('roiEditor');
+      return editor && !editor.hidden;
+    });
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' ||
+          (host?.dataset.renderState === 'error' && Boolean(host.dataset.rendererErrorCode))
+        );
+      },
+      null,
+      { timeout },
+    );
+    const roi = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+    const roiOutcome = roi.renderState === 'ready' ? 'rendered' : 'bounded-error';
+    if (roiOutcome === 'bounded-error') {
+      assert.equal(
+        roi.rendererErrorCode,
+        'geometry-point-budget',
+        'ROI rejection must be the explicit scientific geometry budget only',
+      );
+      assert.ok(roi.renderError, 'ROI rejection requires human-readable diagnostics');
+    }
+    lifecycle.push({ phase: 'main-roi', outcome: roiOutcome });
+    if (!(await focusEditor.evaluate((node) => node.open))) {
+      await focusEditor.locator(':scope > summary').click();
+    }
+    const clearStart = Number(
+      await page.locator('#threeHost').evaluate((node) => node.dataset.rendererFrameSerial || 0),
+    );
+    await page.locator('#clearRoiBtn').click();
+    await page.waitForFunction(
+      (previous) => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          Number(host.dataset.rendererFrameSerial || 0) > previous &&
+          !host.dataset.rendererErrorCode
+        );
+      },
+      clearStart,
+      { timeout },
+    );
+    await waitForThreeReady(page, timeout);
+    const cleared = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+    assert.equal(cleared.v4GpuResourceStatus, 'measured', 'ROI clear resource report');
+    assert.equal(cleared.v4GpuResourceComplete, 'true', 'ROI clear resource report');
+    assert.equal(cleared.v4GpuResourceCrossVariantGeometries, '0');
+    assert.equal(cleared.v4GpuResourceCrossVariantMaterials, '0');
+    assert.ok(Number(cleared.v4GpuResourceSceneGroups) <= 2, 'ROI clear scene cache bound');
+    lifecycle.push({ phase: 'roi-clear', outcome: 'ready', groups: cleared.v4GpuResourceSceneGroups });
+
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
+    await chooseConfirmation(page);
+    await page.waitForFunction(
+      () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
+      null,
+      { timeout },
+    );
+    await closeFunctionPanel(page);
+    await waitForThreeReady(page, timeout);
+    if ((await page.locator('#threeOpacityRange').inputValue()) !== '1') {
+      await changeVariant(page, '1', 'opaque', 'reload-opaque');
+    }
+    await changeVariant(page, '0.5', 'transparent', 'reload-transparent');
+    const reloaded = await capture(page, 'reloaded-full-wafer', 'transparent');
+    for (const key of ['groups', 'geometries', 'materials', 'bytes', 'triangles', 'calls']) {
+      assert.equal(reloaded.state[key], transparent.state[key], 're-import bounded ' + key);
+    }
+    assert.ok(
+      reloaded.state.disposedGroups > recoveredTransparent.state.disposedGroups,
+      're-import must dispose the previous retained scene cache',
+    );
+    lifecycle.push({
+      phase: 're-import',
+      outcome: 'ready',
+      disposedGroups: reloaded.state.disposedGroups,
+    });
+    console.log('RENDERER_V4_R6_FULL_WAFER_LIFECYCLE', JSON.stringify(lifecycle));
     assert.deepEqual(observedErrors, [], 'no unexpected page errors');
     const report = {
+      lifecycle,
       fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
       adapter: backend,
       backendClass: 'CI Chromium WebGL; software/physical adapter is not independently certified',
