@@ -484,7 +484,7 @@ variant retained **588 geometries**, **70 materials** and
 built and retained exactly two distinct scene variants:
 **1,362 geometries**, **658 materials**, **32,181,984 bytes**.
 Returning opaque and transparent kept these resource counts and
-the group disposal counter unchanged. This does *not* prove GPU VRAM
+the group disposal counter unchanged. This does _not_ prove GPU VRAM
 allocation or driver timing.
 
 The R5 gate also enforces additional round trips with exact equality
