@@ -14,6 +14,7 @@ import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
+import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import {
   sharedFlatCapZ,
   mappedFlatCapTranslation,
@@ -156,6 +157,10 @@ export function createThreeView({
   let v4SharedFlatMeshes = 0;
   let v4SharedFlatClonesAvoided = 0;
   let v4SharedFlatDetachCount = 0;
+  let v4R5DisposedGroups = 0;
+  let v4R5DisposedGeometries = 0;
+  let v4R5DisposedMaterials = 0;
+  let v4R5RetiredFlatTemplates = 0;
   let smoothCapTemplateTriangleCount = 0;
   let smoothSidewallInstanceGroupCount = 0;
   let smoothSidewallInstanceCount = 0;
@@ -1037,28 +1042,9 @@ export function createThreeView({
       renderer.domElement.dataset.roughMeshMode = 'none';
       renderer.domElement.dataset.roughMeshWorker = 'false';
     }
-    const geometries = new Set(),
-      materials = new Set(),
-      textures = new Set();
-    for (const object of group.children) {
-      if (object.geometry) geometries.add(object.geometry);
-      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of objectMaterials) {
-        if (!material) continue;
-        materials.add(material);
-        if (material.bumpMap) textures.add(material.bumpMap);
-      }
-    }
-    for (const geometry of group.userData?.waferCadRetiredFlatGeometries || []) {
-      geometries.add(geometry);
-    }
-    group.userData?.waferCadRetiredFlatGeometries?.clear();
-    group.clear();
+    recordV4R5Disposal(disposeRendererSceneResources(group));
     zDisplayObjects = new Set();
     currentZDisplay = null;
-    for (const geometry of geometries) geometry.dispose();
-    for (const texture of textures) texture.dispose();
-    for (const material of materials) material.dispose();
     roughMeshes = [];
     roughTasks = [];
     roughOwnedObjects = new Set();
@@ -1173,28 +1159,21 @@ export function createThreeView({
     };
   }
 
+  function recordV4R5Disposal(report) {
+    if (!report) return;
+    v4R5DisposedGroups++;
+    v4R5DisposedGeometries += report.geometries;
+    v4R5DisposedMaterials += report.materials;
+    v4R5RetiredFlatTemplates += report.retiredFlatTemplates;
+    host.dataset.v4R5DisposedGroups = String(v4R5DisposedGroups);
+    host.dataset.v4R5DisposedGeometries = String(v4R5DisposedGeometries);
+    host.dataset.v4R5DisposedMaterials = String(v4R5DisposedMaterials);
+    host.dataset.v4R5RetiredFlatTemplates = String(v4R5RetiredFlatTemplates);
+  }
+
   function disposeSceneGroup(targetGroup) {
     if (!targetGroup) return;
-    const geometries = new Set(),
-      materials = new Set(),
-      textures = new Set();
-    for (const object of targetGroup.children || []) {
-      if (object.geometry) geometries.add(object.geometry);
-      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of objectMaterials) {
-        if (!material) continue;
-        materials.add(material);
-        if (material.bumpMap) textures.add(material.bumpMap);
-      }
-    }
-    for (const geometry of targetGroup.userData?.waferCadRetiredFlatGeometries || []) {
-      geometries.add(geometry);
-    }
-    targetGroup.userData?.waferCadRetiredFlatGeometries?.clear();
-    targetGroup.clear();
-    for (const geometry of geometries) geometry.dispose?.();
-    for (const texture of textures) texture.dispose?.();
-    for (const material of materials) material.dispose?.();
+    recordV4R5Disposal(disposeRendererSceneResources(targetGroup));
   }
 
   function cacheActiveSceneVariant() {
