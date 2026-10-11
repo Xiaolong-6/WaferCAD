@@ -182,7 +182,9 @@ test('Both preflight rejects Lift-off and absolute-Z Planarize before Run All mu
       { command: 'etch', params: { targetZ: '0 µm', profile: 'planarize', face: 'both' } },
     ],
   });
-  const report = validateRecipeExecution(recipe.steps, {});
+  const report = validateRecipeExecution(recipe.steps, {
+    model: { layers: [{ name: 'PMMA' }] },
+  });
   assert.equal(report.errors.length, 2);
   assert.match(report.errors[0], /Both is unsupported for Lift-off/);
   assert.match(report.errors[1], /Both is unsupported for absolute-Z Planarize/);
