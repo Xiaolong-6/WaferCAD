@@ -190,6 +190,22 @@ test('readback maps screenshot centers to a fractional-DPR GL backing size', () 
   assert.ok(h.calls.includes('read:300:136'));
 });
 
+test('bounded framebuffer capture is available only when explicitly requested', () => {
+  const h = harness();
+  h.gl.drawingBufferWidth = 2;
+  h.gl.drawingBufferHeight = 2;
+  h.probe.arm({ rasterDiscard: false, captureFramebuffer: true });
+  const frame = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(frame.framebuffer.status, 'valid');
+  assert.equal(frame.framebuffer.width, 2);
+  assert.equal(frame.framebuffer.height, 2);
+  assert.equal(frame.framebufferRgba.length, 16);
+  assert.equal(Object.keys(frame).includes('framebufferRgba'), false);
+  assert.ok(h.calls.includes('read:0:0'));
+  const again = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(again.framebuffer, undefined);
+});
+
 test('invalid or excessive WebGL readback coordinates fail before arming', () => {
   const h = harness();
   assert.throws(() => h.probe.arm({ pixelSamples: [{ x: 0.5, y: 0 }] }), /Invalid bounded/);
