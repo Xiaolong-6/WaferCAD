@@ -817,7 +817,13 @@ export function createProcessPanelController({
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
-  async function applyOperation({ canonicalLengthUm = null, canonicalSurface = null, canonicalFace = null } = {}) {
+  async function applyOperation({
+    canonicalLengthUm = null,
+    canonicalSurface = null,
+    canonicalFace = null,
+    canonicalTargetLayerId = null,
+    canonicalEtchTargetLayerId = null,
+  } = {}) {
     let model = getModel();
     const activeFace = getActiveFace(),
       processFace = canonicalFace || activeFace,
@@ -867,8 +873,8 @@ export function createProcessPanelController({
             ? $('electricalName').value.trim() ||
               `Electrical Region ${model.nextElectricalRegionId || 1}`
             : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-      targetLayerId = $('targetLayer').value,
-      etchTargetLayerId = $('etchTargetLayer')?.value || '';
+      targetLayerId = canonicalTargetLayerId || $('targetLayer').value,
+      etchTargetLayerId = canonicalEtchTargetLayerId ?? $('etchTargetLayer')?.value ?? '';
     if (type === 'liftoff' && !$('liftoffTargetLayer').value)
       return status('Choose a sacrificial layer for Lift-off.', 'warning');
     if (type === 'grow' && !targetLayerId) {
