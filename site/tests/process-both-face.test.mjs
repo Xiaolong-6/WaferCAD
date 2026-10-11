@@ -306,7 +306,6 @@ test('Both rejects Planarize and Lift-off without changing the model', () => {
   }
 });
 
-
 test('deleting only one Both film unlinks its surviving counterpart', () => {
   const model = slab();
   const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
