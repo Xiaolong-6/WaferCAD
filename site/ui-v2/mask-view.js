@@ -460,7 +460,7 @@ try {
       roiSync(state.maskRoi);
       floating('maskRoiSettings', 'Mask ROI settings', roiForm, trigger);
     } else if (action.startsWith('mask-roi:')) runtime.chooseRoiTool(action.split(':')[1]);
-    else if (action === 'roi-apply') runtime.roi.applyEditor();
+    else if (action === 'roi-apply') hooks.get('maskRoiSize').dispatchEvent(new Event('change'));
     else if (action === 'mask-alignment-settings') {
       runtime.alignment.syncTransformInputs();
       floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger);
