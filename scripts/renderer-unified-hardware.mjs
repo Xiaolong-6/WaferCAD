@@ -2,10 +2,10 @@
 // Do not treat either A/B comparison as accepted when strict parity fails.
 // One command runs V3 then V4 index/caps/combined, preserving all artifacts.
 import { spawn, execFileSync } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 import { createServer } from 'node:http';
 import {
   cp,
-  createWriteStream,
   mkdir,
   mkdtemp,
   readFile,
@@ -13,7 +13,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, extname, join, resolve, sep } from 'node:path';
+import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   RENDERER_HARDWARE_BRANCHES,
