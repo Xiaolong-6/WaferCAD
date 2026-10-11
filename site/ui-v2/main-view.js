@@ -2,9 +2,11 @@
 import { readProjectFile } from '../project-io.js';
 import { createMainRuntime, formatMainPosition } from './main-runtime.js';
 import { roiAnchorPoint } from '../roi-editor.js';
-import { createMainOverlayManager } from './main-overlay-manager.js';
+import { createFloatingEditorManager } from './view-kit/floating-editor.js';
+import { createFloatingStrip } from './view-kit/floating-strip.js';
+import { createInspectionFields } from './view-kit/inspection-fields.js';
 
-const { el, button, field, select, toolbar, panelHeader } = window.WaferCadV2Components;
+const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
 const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
 const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
 const hooks = new Map();
@@ -23,6 +25,7 @@ const root = {
 let runtime,
   shell,
   overlays,
+  roiStrip,
   data,
   state,
   modelBefore,
@@ -40,18 +43,7 @@ const uiState = {
   mobile: 'view',
   splitViews: ['main', 'three'],
 };
-const input = (label, id, value = 0) => {
-  const angle = id.includes('Angle');
-  const node = field(label, id, value, { type: 'number', step: angle ? '0.001' : '0.0001' });
-  const control = hook(id, node.querySelector('input'));
-  if (!angle)
-    control.addEventListener('change', () => {
-      if (control.value !== '' && Number.isFinite(Number(control.value)))
-        control.value = formatMainPosition(control.value);
-    });
-  return node;
-};
-const pair = (...children) => el('div', { class: 'v2-main-pair' }, children);
+const { input, choice, pair } = createInspectionFields({ hook });
 const slicePanel = hook(
   'sectionCoordsPanel',
   el(
@@ -74,15 +66,10 @@ function sync() {
       String(key === 'line' ? state.sectionEditEnabled : state[`${key}Enabled`]),
     );
   }
-  document
-    .querySelector('#mainPanel [data-action="roi"]')
-    ?.setAttribute('aria-pressed', String(uiState.roiOpen));
-  const strip = document.getElementById('mainRoiTools');
-  if (strip) strip.hidden = !uiState.roiOpen;
-  for (const node of strip?.querySelectorAll('[data-roi-tool]') || []) {
-    const selected = state.roiTool || (state.sectionEditEnabled ? 'line' : state.tool);
-    node.setAttribute('aria-pressed', String(node.dataset.roiTool === selected));
-  }
+  roiStrip?.update({
+    open: uiState.roiOpen,
+    selected: state.roiTool || (state.sectionEditEnabled ? 'line' : state.tool),
+  });
   if (hooks.has('sectionControlsBtn')) hooks.get('sectionControlsBtn').title = 'Slice';
   const canvas = root.getElementById('mainCanvas');
   canvas.dataset.tool = state.tool;
@@ -133,7 +120,7 @@ function openRoiSettings(trigger) {
     overlays.closeFloating('mainRoiSettings');
     return;
   }
-  const shape = select(
+  const shape = choice(
     'ROI shape',
     'roiShape',
     [
@@ -142,9 +129,9 @@ function openRoiSettings(trigger) {
       ['sector', 'Sector'],
     ],
     state.roiShape,
+    { hookId: 'roiShapeSelect' },
   );
-  hook('roiShapeSelect', shape.querySelector('select'));
-  const anchor = select(
+  const anchor = choice(
     'Reference',
     'roiAnchor',
     [
@@ -155,8 +142,8 @@ function openRoiSettings(trigger) {
       ['bottom-right', 'Bottom-right'],
     ],
     state.roiAnchor,
+    { hookId: 'roiAnchorSelect' },
   );
-  hook('roiAnchorSelect', anchor.querySelector('select'));
   anchor.querySelector('select').onchange = () => {
     state.roiAnchor = anchor.querySelector('select').value;
     roiEditorDirty = false;
@@ -170,7 +157,10 @@ function openRoiSettings(trigger) {
     pair(input('X · µm', 'roiX'), input('Y · µm', 'roiY')),
     pair(input('Width · µm', 'roiWidth', 10), input('Height · µm', 'roiHeight', 5)),
     input('Radius · µm', 'roiRadius', 5),
-    pair(input('Start angle · °', 'roiStartAngle'), input('End angle · °', 'roiEndAngle', 90)),
+    pair(
+      input('Start angle · °', 'roiStartAngle', 0, { kind: 'angle' }),
+      input('End angle · °', 'roiEndAngle', 90, { kind: 'angle' }),
+    ),
     el('span', { class: 'p-aux' }, 'Position and size precision · 0.1 nm'),
   );
   roiEditorDirty = false;
@@ -212,7 +202,7 @@ function openRoiSettings(trigger) {
       form,
       el(
         'div',
-        { class: 'v2-main-floating-actions' },
+        { class: 'v2-floating-editor-actions' },
         button('Clear ROI', 'clear-roi', 'close'),
         apply,
       ),
@@ -236,48 +226,38 @@ function popover(content, trigger, onClose) {
   return node;
 }
 function buildRoiTools() {
-  const glyphButton = (label, action, glyph, path) => {
-    const node = button('', action, glyph, {
-      title: label,
-      'aria-label': label,
-      'aria-pressed': 'false',
-    });
-    if (path) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 16 16');
-      svg.setAttribute('aria-hidden', 'true');
-      svg.classList.add('wc-icon');
-      const shape = document.createElementNS(svg.namespaceURI, 'path');
-      shape.setAttribute('d', path);
-      svg.append(shape);
-      node.append(svg);
-    }
-    return node;
-  };
-  const tool = (key, label, glyph, path) => {
-    const node = glyphButton(label, `roi-tool:${key}`, glyph, path);
-    node.dataset.roiTool = key;
-    if (key === 'line') hook('sectionControlsBtn', node);
-    return node;
-  };
-  const divider = () => el('span', { class: 'p-mask-tool-divider', 'aria-hidden': 'true' });
-  return el(
-    'div',
-    { id: 'mainRoiTools', class: 'p-mask-controls', hidden: true },
-    el(
-      'div',
-      { class: 'p-mask-tools', role: 'toolbar', 'aria-label': 'Main ROI tools' },
-      tool('select', 'Select', 'select'),
-      divider(),
-      tool('line', 'Slice', 'line'),
-      glyphButton('Slice settings', 'slice-coordinates', null, 'M3 10l7-7 3 3-7 7H3Zm6-6 3 3'),
-      divider(),
-      tool('rect', 'Rectangle', 'rectangle'),
-      tool('square', 'Square', null, 'M3 3h10v10H3Z'),
-      tool('sector', 'Sector', null, 'M3 13V3a10 10 0 0 1 10 10Z'),
-      glyphButton('ROI settings', 'settings:main', 'settings'),
-    ),
+  const groups = [
+    [['select', 'Select', 'select']],
+    [
+      ['line', 'Slice', 'line'],
+      [null, 'Slice settings', null, 'M3 10l7-7 3 3-7 7H3Zm6-6 3 3'],
+    ],
+    [
+      ['rect', 'Rectangle', 'rectangle'],
+      ['square', 'Square', null, 'M3 3h10v10H3Z'],
+      ['sector', 'Sector', null, 'M3 13V3a10 10 0 0 1 10 10Z'],
+    ],
+  ].map((group) =>
+    group.map(([key, label, glyph, path]) => ({
+      key,
+      label,
+      glyph,
+      path,
+      action: key ? `roi-tool:${key}` : 'slice-coordinates',
+    })),
   );
+  roiStrip = createFloatingStrip({
+    id: 'mainRoiTools',
+    label: 'Main ROI tools',
+    groups,
+    settings: { label: 'ROI settings', action: 'settings:main', glyph: 'settings' },
+    toolAttribute: 'data-roi-tool',
+    owner: () => document.querySelector('#mainPanel [data-action="roi"]'),
+    onToolCreated: (key, node) => {
+      if (key === 'line') hook('sectionControlsBtn', node);
+    },
+  });
+  return roiStrip.node;
 }
 function toggleRoiTools() {
   uiState.roiOpen = !uiState.roiOpen;
@@ -312,7 +292,7 @@ function openSliceCoordinates(trigger) {
       slicePanel,
       el(
         'div',
-        { class: 'v2-main-floating-actions' },
+        { class: 'v2-floating-editor-actions' },
         el('span', { class: 'p-aux' }, 'Precision · 0.1 nm'),
         done,
       ),
@@ -525,7 +505,7 @@ try {
       save: 'Main-only review',
     }),
   });
-  overlays = createMainOverlayManager(shell.overlays);
+  overlays = createFloatingEditorManager(shell.overlays, { className: 'v2-main-floating' });
   shell
     .getSlot('panel.project')
     .querySelector('[data-slot-content]')

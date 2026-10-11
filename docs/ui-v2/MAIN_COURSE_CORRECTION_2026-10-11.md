@@ -1,6 +1,6 @@
 # Main-only v2 hands-on review
 
-The local checkpoint's existing-file table, legacy-isolation evidence, workaround inventory and proposed shared floating-strip/view-kit boundaries are in the [Main architecture health report](MAIN_ARCHITECTURE_HEALTH_2026-10-11.md). View-kit extraction and Mask implementation await user approval.
+The local checkpoint's existing-file table, legacy-isolation evidence, workaround inventory and approved view-kit extraction are in the [Main architecture health report](MAIN_ARCHITECTURE_HEALTH_2026-10-11.md). The extraction section records the latest stage; historical stops below preserve earlier decisions. Mask implementation awaits user approval.
 
 Date: 2026-10-11. Base: da37fe4d217d26f23941144908f5abe9d4dc784c. Branch: codex/ui-v2-m3-main-audit-20261010. The latest checkpoint section below supersedes historical behavior/status entries. Product changes are checkpointed locally; no push, merge, baseline replacement or D2 work. Resolve the exact local revision with `git log -1 --format=%H -- docs/ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md`.
 
@@ -120,3 +120,13 @@ Existing product additions plus deletions against da37fe4 remain 192/200, includ
 Live review: http://127.0.0.1:4182/app-v2-main.html and http://127.0.0.1:4182/app-v2.html?example=m3d&domain=project&review=main. Reproduce with node scripts/v2/serve-v2.mjs. Screenshot comparison: test-results/ui-v2-main-review/index.html; actual editor captures are main-floating-{1440,1024,768,390}.png. These are ignored supporting artifacts, not approved baselines. Known scope gaps: PNG deferred; Project/other views disconnected; units fixed to micrometres; view preferences not persisted.
 
 The user authorized a local checkpoint only. Preserve the unrelated M1.5 README link/document/capture script outside the commit. The architecture proposal includes one shared floating-strip component/style for Main ROI and Mask Draw, configuration-only differences, and Mask tools constrained to the audited legacy controller capabilities. No view-kit extraction or Mask implementation has started. Stop after delivering the checkpoint and report; wait for the user's approval before either next step.
+
+## Approved behavior-preserving view-kit extraction
+
+Stage base: 6dfff3b0ac58a9d3af1db550ece1a3629a6e0864. Main now imports the shared floating-strip, floating-editor, inspection-fields and plan-gestures modules directly. The Main-only overlay-manager and touch modules are deleted, and their shared implementations/styles are not duplicated in Main. Tools/groups/field values and controller actions remain Main configuration. No new feature or Mask integration is included.
+
+The revised cap counts legacy product code only; this extraction changes 0/40 legacy lines. Report v2 changes separately: 427 added/deleted lines in existing v2 files plus 384 new shared lines. main-view.js is 580 -> 560 lines; main-overlay-manager.js is 143 -> 0 (deleted/migrated). Main-specific source is 897 lines and shared source is 384, total 1,281. The original cumulative legacy changes against da37fe4 are 32 lines; the former mixed legacy/v2 192-line count is historical under the superseded budget rule.
+
+All required checks passed unchanged: npm run check (lint/Prettier/docs, 610/610 Node); four legacy smoke/workstation/interaction/product-layout suites (109 captures); Main four widths plus touch and unchanged 0.25px assertions. Repeated isolation greps, AST preservation evidence, refreshed workaround table, environment/logs and screenshot comparison are in the architecture report's extraction section. Initial Main PNGs at all four widths are byte-identical to the previous checkpoint. A read-only original-checkpoint replay passed the identical Main command with exactly equal recorded runtime results. One extracted 1440 floating-panel capture differed in position; three direct comparisons and the original replay did not reproduce it. Exact panel pixel repeatability and its cause remain unproven; no positioning change was added in this extraction. The report retains all evidence and this limit.
+
+The pages and run commands are unchanged. Commit locally only, preserve unrelated M1.5 work and do not push. Stop after the extraction checkpoint and wait before Mask.

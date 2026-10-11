@@ -1,4 +1,6 @@
-# Main-only checkpoint: architecture health and view-kit proposal
+# Main architecture health and view-kit extraction
+
+Latest approved stage: behavior-preserving view-kit extraction, based on Main checkpoint 6dfff3b0ac58a9d3af1db550ece1a3629a6e0864. The [extraction checkpoint](#view-kit-extraction-checkpoint) below records the current budget rule, migration, isolation evidence, workarounds and validation. Earlier sections preserve the original Main checkpoint and its historical budget/authorization statements; they do not override the later approval. Mask remains unimplemented and awaits approval.
 
 Date: 2026-10-11. Branch: codex/ui-v2-m3-main-audit-20261010. Product diff base: da37fe4d217d26f23941144908f5abe9d4dc784c. Pre-checkpoint HEAD: 918b4bbcc9cdaaef08b419aebff7441f40c12f3e (the separate verified format-only commit). This report accompanies a local checkpoint; no push, merge, deployment, view-kit extraction or Mask implementation is authorized. Resolve the checkpoint containing this report with `git log -1 --format=%H -- docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`.
 
@@ -139,3 +141,98 @@ Screenshot comparison: test-results/ui-v2-main-review/index.html. Actual floatin
 The initial checkpoint gate stopped on an unreachable new report and a new browser test clicking beneath the persistent ROI strip. The user approved adding the report link to the reachable handoff and making the new test locate exposed canvas without force-clicking or changing assertions. Those corrections were applied before the successful reruns. No legacy test was edited.
 
 The local checkpoint includes only the relevant Main/report/test files and preserves unrelated local work. No push. Wait for the user's approval before view-kit extraction or Mask. Future changes retain the independent 0.25px ROI/A-B assertions and the legacy-failure stop rule.
+
+## View-kit extraction checkpoint
+
+Stage base: 6dfff3b0ac58a9d3af1db550ece1a3629a6e0864. The user approved only behavior-preserving extraction of floating-strip, floating-editor, inspection-fields and plan-gestures, migration of Main and removal of Main-specific duplicates. Resolve the resulting local checkpoint with `git log -1 --format=%H -- docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`. No push or Mask work is authorized.
+
+### Current budget and changes
+
+The revised 200-line Main cap counts legacy product files only; v2 shell/product files are reported separately. Extraction has its own 40-line legacy ceiling for this stage, not a cumulative ceiling. **Legacy product changes in this extraction: 0/40.** The inherited Main/controller changes against da37fe4 total 32 added/deleted legacy lines (Main canvas 14, ROI 16, approved popover race fix 2); extraction adds zero. Science/model/worker/IO/schema, app.js/app.html, D1, M2 prototype behavior and approved baselines remain untouched.
+
+| Existing v2 file                   |  Added | Deleted | Reason                                                                                          |
+| ---------------------------------- | -----: | ------: | ----------------------------------------------------------------------------------------------- |
+| site/app-v2-main.html              |      3 |       0 | Load shared strip/editor/field styles.                                                          |
+| site/ui-v2/main-view.js            |     52 |      72 | Tool/field configuration calls the shared components; remove glyph/strip/field implementations. |
+| site/ui-v2/main-runtime.js         |      4 |       3 | Import shared planar touch gestures and UI length formatter; preserve controller ports.         |
+| site/ui-v2/main-view.css           |      0 |      55 | Move editor, paired-field and strip rules to view-kit.                                          |
+| site/ui-v2/main-overlay-manager.js |      0 |     143 | Remove Main implementation; migrate it to floating-editor.js.                                   |
+| site/ui-v2/main-touch.js           |      0 |      95 | Remove Main implementation; migrate it to plan-gestures.js.                                     |
+| **Total existing v2**              | **59** | **368** | **427 changed lines; reported separately from legacy.**                                         |
+
+| New shared file                |   Lines | Boundary                                                                                                                       |
+| ------------------------------ | ------: | ------------------------------------------------------------------------------------------------------------------------------ |
+| view-kit/floating-strip.js     |      57 | Configured tool groups, icons/hints, dividers, final settings button and owner/selection sync.                                 |
+| view-kit/floating-strip.css    |       7 | Shared persistent-strip visibility/wrapping over the unchanged M2 p-mask-* appearance primitives.                              |
+| view-kit/floating-editor.js    |     146 | Shared nonmodal drag/bounds/coexistence/focus/Escape lifecycle, retaining the existing v2 menu owner.                          |
+| view-kit/floating-editor.css   |      44 | Shared floating surface, header, body and action-row presentation.                                                             |
+| view-kit/inspection-fields.js  |      30 | Configured numeric/select hooks, length/angle precision and paired fields; no geometry computation.                            |
+| view-kit/inspection-fields.css |       5 | Shared two-column field layout.                                                                                                |
+| view-kit/plan-gestures.js      |      95 | Existing independently gated touch drag/pinch through view-supplied ports. Mouse navigation stays in the unchanged controller. |
+| **Total new shared v2**        | **384** | No Mask adapter or tool configuration added.                                                                                   |
+
+The existing-v2 count includes deletions as well as additions, including relocated modules; it is not a claim of 427 behavioral changes. Git detects the editor/gesture relocations as renames: the rename-aware v2 product diff is 212 additions plus 137 deletions, 349 changed lines. The tables above also expose the full old/new module sizes rather than hiding relocated source. Product source totals are 897 Main-specific lines plus 384 shared lines, 1,281 total versus 1,206 before extraction. Configuration and reusable API/style boundaries explain the increase; no splitting was performed to evade a legacy cap.
+
+| Requested file          | Before | After | Result                                                                                            |
+| ----------------------- | -----: | ----: | ------------------------------------------------------------------------------------------------- |
+| main-view.js            |    580 |   560 | Presentation/configuration/controller actions remain; shared strip/field implementations removed. |
+| main-overlay-manager.js |    143 |     0 | Deleted; one shared floating-editor implementation, 146 lines.                                    |
+
+Main imports the shared modules directly. There are no Main compatibility wrapper modules for editor/gestures and no duplicate Main editor/field/strip style rules. Its `v2-main-floating` class is retained only as a configured test/DOM compatibility marker; appearance and lifecycle use the shared generic classes. The unchanged M2 prototype still uses its original components; this stage does not migrate or extend Mask.
+
+### Repeated isolation and preservation evidence
+
+```powershell
+rg -n --glob 'main-*.js' 'cloneNode|importNode|DOMParser|real-view-bridge|#focusEditor|#roiEditor|#maskCanvas|\.view-panel' site/ui-v2
+rg -n --glob 'main-*.js' '(import|fetch|require).*app\.(js|html)' site/ui-v2
+rg -n 'cloneNode|importNode|DOMParser|real-view-bridge|#focusEditor|#roiEditor|#maskCanvas|app\.(js|html)|mainCanvas|roiShape|section[A-B]' site/ui-v2/view-kit
+git diff --name-only 6dfff3b0 -- site/controllers site/app.js site/app.html site/tests scripts/v2/check-main-view.mjs scripts/v2/check-main-touch.mjs
+```
+
+All three searches returned no matches (rg exit 1); the final diff list is empty. Existing Main/legacy test files, touch script and every 0.25px assertion remain byte-for-byte unchanged from the stage base. Shared modules import no controller, scientific model or legacy page. Their append operations insert only newly constructed v2 nodes; the configured Main hook IDs continue to refer to v2-created controls.
+
+Supporting Espree AST comparison: the planar gesture function body is identical before/after; the length formatter expression is identical; the editor body is identical after substituting its generic CSS classes and configurable compatibility class. The editor's factory parameters now accept the same root/window injection through an options object. Evidence: test-results/view-kit-equivalence.json. This comparison supplements runtime checks; it does not replace them.
+
+### Current workarounds
+
+| Workaround                            | Reason/status after extraction                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Main-only entry and injected state    | Preserved: validate M3D without full legacy UI/persistence; Project remains a later stop.                                            |
+| Hook Map and document-backed v2 root  | Preserved: supply required public-controller IDs with newly built v2 fields.                                                         |
+| No-op Mask/Section render callbacks   | Preserved: Main-only controller dependencies must not boot other renderers.                                                          |
+| Optional ROI editor-sync callback     | Preserved: controller-owned authoritative ROI updates v2 fields through the existing additive port.                                  |
+| Menu/floating lifecycle composition   | Now shared in floating-editor: native v2 popovers retain their owner while persistent editors own drag/focus/Escape.                 |
+| Document-level Main action delegation | Preserved: portalled v2 form actions remain connected to Main controller commands.                                                   |
+| Touch capture plus pointercancel      | Now shared in plan-gestures: pinch cancels an uncommitted one-finger inspection draft.                                               |
+| Square represented as rectangular ROI | Preserved: v2 equality constraint introduces no stored shape or science change.                                                      |
+| UI-only length formatting             | Now shared in inspection-fields: 0.1 nm presentation/input does not round canonical geometry.                                        |
+| SVG exporter and deferred PNG         | Preserved approved scope; no export feature added.                                                                                   |
+| M2 p-mask-* appearance primitives     | Shared strip inherits the approved base appearance; one kit component/style serves future real views without changing the prototype. |
+| v2-main-floating compatibility marker | Retained through config to keep existing tests/selectors unchanged; no Main-specific editor implementation/style remains.            |
+
+The temporary Main editor manager, Main touch module, numeric-field helper and glyph/strip implementation are removed. View-specific ROI/Slice data synchronization, field values, tool actions and geometry constraints remain in Main, not in the generic kit.
+
+### Extraction validation and stop
+
+All required gates passed, exit 0. Environment: Windows, Node 24.16.0, locked Playwright 1.55.1 / Chromium 140.0.7339.186, local Three 0.179.1. The exact commands are unchanged:
+
+```powershell
+npm run check
+$env:WAFERCAD_URL='http://127.0.0.1:4174'
+$env:WAFERCAD_THREE_DIR=Join-Path (Get-Location) 'node_modules/three'
+npm run test:ui:smoke
+npm run test:ui:workstation
+npm run test:ui:interaction
+npm run test:ui:product:layout
+node scripts/v2/check-main-view.mjs
+```
+
+Full check: ESLint/Prettier/docs PASS; Node 610/610 PASS, zero failures/skips. All four unchanged legacy suites PASS, including View UX v3 and 109 responsive product-layout captures. Main PASS at 1440/1024/768/390 plus the same touch cases; 0.25px ROI/A-B assertions, scientific model equality, real shape/Slice/export interactions, focus/Escape/coexistence/drag, duplicate-ID/overflow/legacy-boot checks remain unchanged and pass. Physical touchscreen acceptance is not established by emulation. The broad test:ui:all inventory was not run.
+
+Logs: test-results/view-kit-full-check.log, view-kit-main-browser.log and view-kit-legacy-{smoke,workstation,interaction,product-layout}.log. Main/M2 use the same M3D source/hash. Screenshots/report remain in test-results/ui-v2-main-review/; pre-extraction captures were retained under test-results/main-before-view-kit/, and the extracted run is also preserved in test-results/view-kit-main-validated/. No approved baseline is modified. Initial Main-panel PNGs are byte-identical before/after at all four widths. The floating-editor PNGs match at 1024/768/390; the first 1440 capture had different panel positions, despite passing the unchanged behavior/bounds assertions. Three direct original/extracted 1440 editor-open/drag comparisons produced identical positions (test-results/view-kit-editor-position.json).
+
+A read-only proxy served the original six Main entry/module/style files from 6dfff3b0 on temporary localhost port 4184. The unchanged full Main command was replayed with WAFERCAD_V2_BASE=http://127.0.0.1:4184: PASS, all four widths and touch, exit 0. Its recorded result/widths/errors/browser/touch data are exactly equal to the extracted run (test-results/view-kit-preservation.json). The replay's 1440 editor capture matches the prior checkpoint; it did not reproduce the differing extracted capture. Therefore exact floating-panel screenshot repeatability is not established, and the cause of that isolated position difference remains unproven. No position fix or new feature was added during extraction. Original replay artifacts/log: test-results/view-kit-checkpoint-replay/ and view-kit-checkpoint-browser.log. The temporary server was stopped; the normal Main/M2 URLs remain on 4182. The gallery/report were restored from the retained extracted run after the diagnostic, without editing image content.
+
+Final documentation navigation and formatting checks also pass after updating this report. The committed result is a local checkpoint only; unrelated M1.5 README/document/capture work remains unstaged. Resolve the exact commit using the path-specific git log command above.
+
+This stage ends at a local checkpoint, no push. Mask controller ports, tool contract changes and configuration will be implemented only after a separate approval. The prior read-only Mask capability audit still applies.

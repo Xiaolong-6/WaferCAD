@@ -1,7 +1,10 @@
-// Main-only extension of the v2 overlay owner for persistent nonmodal editors.
+// Shared v2 overlay extension for persistent nonmodal inspection editors.
 // Menus/dialogs retain the shared manager; these editors own focus/Escape,
 // dragging and viewport bounds without a scrim, outside dismissal or Tab trap.
-export function createMainOverlayManager(base, root = document, windowRef = window) {
+export function createFloatingEditorManager(
+  base,
+  { className = '', root = document, windowRef = window } = {},
+) {
   const entries = new Map();
   let active;
   const closeFloating = (id, reason = 'close') => {
@@ -34,14 +37,14 @@ export function createMainOverlayManager(base, root = document, windowRef = wind
       'section',
       {
         id,
-        class: 'v2-main-floating',
+        class: `v2-floating-editor ${className}`.trim(),
         role: 'dialog',
         'aria-modal': 'false',
         'aria-labelledby': `${id}-title`,
         tabindex: -1,
       },
       header,
-      el('div', { class: 'v2-main-floating-body' }, content),
+      el('div', { class: 'v2-floating-editor-body' }, content),
     );
     node.style.width = `${width}px`;
     root.body.append(node);
@@ -111,7 +114,7 @@ export function createMainOverlayManager(base, root = document, windowRef = wind
     active = id;
     node
       .querySelector(
-        '.v2-main-floating-body input, .v2-main-floating-body select, .v2-main-floating-body button',
+        '.v2-floating-editor-body input, .v2-floating-editor-body select, .v2-floating-editor-body button',
       )
       ?.focus({ preventScroll: true });
     return node;

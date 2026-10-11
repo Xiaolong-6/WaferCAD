@@ -6,10 +6,11 @@ import { createRoiController } from '../controllers/roi-controller.js';
 import { createSectionControlsController } from '../controllers/section-controls-controller.js';
 import { createExportController } from '../controllers/export-controller.js';
 import { constrainSquare, squareFromDrag } from './main-square.js';
-import { bindMainTouch } from './main-touch.js';
+import { bindPlanGestures } from './view-kit/plan-gestures.js';
+import { formatInspectionLength } from './view-kit/inspection-fields.js';
 
 // UI precision only: never round loaded geometry or pointer projection values.
-export const formatMainPosition = (value) => String(Number(Number(value).toFixed(4)));
+export const formatMainPosition = formatInspectionLength;
 
 export function createMainRuntime({
   state,
@@ -156,7 +157,7 @@ export function createMainRuntime({
     },
     true,
   );
-  bindMainTouch({
+  bindPlanGestures({
     canvas,
     panEnabled: () => state.panEnabled,
     zoomEnabled: () => state.zoomEnabled,

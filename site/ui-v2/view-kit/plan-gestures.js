@@ -1,6 +1,6 @@
-// Main-only touch navigation. Capture only owned navigation gestures; one
+// Shared planar touch navigation through view-supplied Pan/Zoom ports. Capture only owned navigation gestures; one
 // finger remains available to the existing ROI/Slice controllers when Pan is off.
-export function bindMainTouch({ canvas, panEnabled, zoomEnabled, panBy, zoomAt }) {
+export function bindPlanGestures({ canvas, panEnabled, zoomEnabled, panBy, zoomAt }) {
   const pointers = new Map();
   let gesture = false,
     last,
