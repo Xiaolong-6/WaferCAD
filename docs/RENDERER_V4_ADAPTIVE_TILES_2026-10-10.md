@@ -496,7 +496,6 @@ cover both bounded cache reuse and lifecycle retirement. Hardware
 ABBA and long-duration context-loss/VRAM testing remain unaccepted;
 both renderer PRs stay Draft without default-on policy changes.
 
-
 ## R6 — WebGL context loss/restoration experiment (2026-10-11)
 
 R6 adds a **separate, default-off CI-driven browser recovery gate**:
