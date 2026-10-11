@@ -412,7 +412,11 @@ try {
     assert.equal(cleared.v4GpuResourceCrossVariantGeometries, '0');
     assert.equal(cleared.v4GpuResourceCrossVariantMaterials, '0');
     assert.ok(Number(cleared.v4GpuResourceSceneGroups) <= 2, 'ROI clear scene cache bound');
-    lifecycle.push({ phase: 'roi-clear', outcome: 'ready', groups: cleared.v4GpuResourceSceneGroups });
+    lifecycle.push({
+      phase: 'roi-clear',
+      outcome: 'ready',
+      groups: cleared.v4GpuResourceSceneGroups,
+    });
 
     const disposedBeforeImport = Number(cleared.v4R5DisposedGroups || 0);
     await page
