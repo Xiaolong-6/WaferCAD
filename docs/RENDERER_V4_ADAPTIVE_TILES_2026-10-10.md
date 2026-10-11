@@ -830,10 +830,10 @@ order:
 
 - **A1 vs B1:** 131 pixels (max 8-bit channel delta 5).
 - **A1 vs B2:** 123 pixels (max delta 5).
-- **A1 vs A2:** 78 pixels (max delta 2; *baseline same-policy
-  fresh-context instability*).
-- **B1 vs B2:** 147 pixels (max delta 2; *candidate same-policy
-  fresh-context instability*).
+- **A1 vs A2:** 78 pixels (max delta 2; _baseline same-policy
+  fresh-context instability_).
+- **B1 vs B2:** 147 pixels (max delta 2; _candidate same-policy
+  fresh-context instability_).
 - **B1 vs A2:** 193 pixels (max delta 5).
 - **B2 vs A2:** 83 pixels (max delta 5).
 
@@ -849,7 +849,7 @@ difference in the final image; it **does not identify** which
 opt-in feature, shader, material, buffer or hardware operation
 created it. Both groups remain strictly nonidentical.
 
-The ABBA evidence rules out a blanket claim that *all* differences
+The ABBA evidence rules out a blanket claim that _all_ differences
 are random context noise. It also does not support attributing all
 A/B differences to V4 shared geometry, because substantial
 same-policy drift is independently present.
