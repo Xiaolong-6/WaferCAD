@@ -519,7 +519,7 @@ GPU/driver recovery acceptance remain pending. Keep PR #174 Draft.
 
 ## R6 Phase B — 625-site context recovery and strict pixel gate (2026-10-11)
 
-**Status: BLOCKED — do not merge or enable R6/V4 by default.**
+**Historical checkpoint: BLOCKED at the initial R6-B probe; subsequently repaired as documented below. Do not merge or enable V4 by default.**
 
 The branch adds `scripts/renderer-v4-r6-full-wafer-browser.mjs` and the
 path-scoped `.github/workflows/renderer-v4-r6-full-wafer.yml`. It opens
@@ -589,3 +589,50 @@ project reimport under repeated context loss, long-duration resource
 endurance and physical RTX 3060 ABBA/VRAM evidence are still not
 accepted. Keep #174 and #166 Draft and keep approved visual
 baselines unchanged.
+
+## R6-B strict full-wafer parity fix (2026-10-11)
+
+The [R6-B strict browser gate](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126084053)
+**passed** at `da992ffd` (product fix `c1eb9c5e`).
+Both 625-site cached modes were exercised before any loss; the first
+opaque context was lost/restored, followed by an opaque/transparent
+cache return, then a second loss/restoration in transparent mode.
+All **five** full-resolution same-pose comparisons passed with
+**0/146,025 changed pixels**, unchanged camera world and projection
+matrices, matching drawing buffers, stable JS geometry/material/buffer
+census, and real post-restore frame submissions.
+
+The root cause was a physical framebuffer sizing discrepancy:
+normal `resize()` uses fractional
+`host.getBoundingClientRect().height`, while the initial R6 recovery
+handler had used rounded `host.clientHeight`. On the actual 625-site
+browser gate, this changed `drawingBuffer` from **530 × 273**
+before WebGL loss to **530 × 274** afterward, while the CSS screenshot
+viewport stayed 531 × 275. That single raster row moved coverage and
+caused 4,597 opaque and 6,380 transparent pixel mismatches. Restoring
+the same fractional host bounds in the recovery path fixed both,
+without relaxing pixel acceptance or changing the approved baseline.
+
+The branch also fixed repeated idle `OrbitControls.update()` camera
+matrix drift; both pre-loss opaque and transparent cached variant
+round trips now produce exactly identical screenshots. The earlier
+claim that the transparent *ordinary* repeat was unstable was a test
+order/label error: it had compared a pre-loss baseline with a
+post-opaque-loss screenshot. The corrected gate isolates pre-loss
+round trips before triggering any WebGL restoration.
+
+[Focused R1-R5 CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071347),
+[R2 browser](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071349),
+[R3-R5 parity](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071367),
+[R5 cache](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071350),
+[R5 lifetime](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071369),
+and [R6 small-context](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071355)
+are independently green on the sizing-fix product revision.
+
+This does not prove hardware RTX 3060 behavior, driver VRAM reclamation
+or ABBA speedup. Follow-on real UI Section Z, ROI and full-project
+reimport after dual context restoration are covered by a newly added
+strict lifecycle extension, whose CI result must be recorded
+separately. Do not mark that extension accepted until it actually
+passes; no default-on policy or merge authorization follows from
+this software-WebGL pixel gate.
