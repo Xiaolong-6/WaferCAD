@@ -170,6 +170,26 @@ test('opt-in WebGL readback samples the completed frame, with vertical flip', ()
   assert.equal(h.calls.includes('read:301:135'), true);
 });
 
+test('readback maps screenshot centers to a fractional-DPR GL backing size', () => {
+  const h = harness();
+  h.gl.drawingBufferWidth = 530;
+  h.gl.drawingBufferHeight = 274;
+  h.probe.arm({
+    pixelSamples: [{ x: 301, y: 138, sourceWidth: 531, sourceHeight: 275 }],
+  });
+  const result = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  const sample = result.pixelSamples[0];
+  assert.equal(sample.status, 'valid');
+  assert.equal(sample.displayWidth, 531);
+  assert.equal(sample.displayHeight, 275);
+  assert.equal(sample.width, 530);
+  assert.equal(sample.height, 274);
+  assert.equal(sample.readX, 300);
+  assert.equal(sample.readY, 138);
+  assert.deepEqual(sample.rgba, [44, 135, 7, 255]);
+  assert.ok(h.calls.includes('read:300:135'));
+});
+
 test('invalid or excessive WebGL readback coordinates fail before arming', () => {
   const h = harness();
   assert.throws(() => h.probe.arm({ pixelSamples: [{ x: 0.5, y: 0 }] }), /Invalid bounded/);
