@@ -1,4 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { applyProcessFaces } from './process-face-execution.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
 import {
@@ -1231,6 +1232,7 @@ function applyOperationImpl(
     type,
     name,
     targetLayerId,
+    reuseLayerId = null,
     etchTargetLayerIds = [],
     etchProfile = 'directional',
     thickness,
@@ -1423,7 +1425,12 @@ function applyOperationImpl(
       };
     }
   }
-  if (type === 'add') layer = createLayer(model, name);
+  if (type === 'add') {
+    if (reuseLayerId && !layerById(model, reuseLayerId)) {
+      return { changed: false, error: 'The shared both-face deposition layer is unavailable.' };
+    }
+    layer = reuseLayerId ? layerById(model, reuseLayerId) : createLayer(model, name);
+  }
 
   if (type === 'etch') {
     const selectiveTargets = [...new Set((etchTargetLayerIds || []).filter(Boolean))];
@@ -1538,6 +1545,17 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  if (params?.face === 'both') {
+    const applied = applyProcessFaces(model, params, applyOperation);
+    if (applied.result?.changed) {
+      for (const key of Object.keys(model)) delete model[key];
+      Object.assign(model, applied.model);
+    }
+    return applied.result;
+  }
+  if (!['front', 'back', undefined, null].includes(params?.face)) {
+    return { changed: false, error: 'Unsupported Process face.' };
+  }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
       params?.growth === 'conformal' ||
