@@ -54,14 +54,19 @@ async function runLogged(command, args, cwd, logPath, env = process.env) {
       shell: process.platform === 'win32' && (command === 'npm' || command === 'npx'),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    child.stdout.pipe(log, { end: false });
-    child.stderr.pipe(log, { end: false });
+    child.stdout?.pipe(log, { end: false });
+    child.stderr?.pipe(log, { end: false });
+    let spawnError = null;
     child.on('error', (error) => {
-      log.write(String(error) + '\n');
-      resolveRun({ exitCode: 127, error: String(error) });
+      spawnError = String(error);
+      log.write(spawnError + '\n');
     });
     child.on('close', (code, signal) => {
-      resolveRun({ exitCode: code ?? 127, signal: signal || null });
+      resolveRun({
+        exitCode: spawnError ? 127 : (code ?? 127),
+        signal: signal || null,
+        ...(spawnError ? { error: spawnError } : {}),
+      });
     });
   });
   await new Promise((done) => log.end(done));
@@ -250,7 +255,7 @@ async function runHardware() {
           ' -DestinationPath ' + psQuote(zip) + ' -Force',
       ],
       root,
-      join(evidence, 'archive.log'),
+      join(dirname(evidence), 'archive-' + id + '.log'),
     );
     console.log('Renderer evidence: ' + evidence);
     if (archive.exitCode === 0) console.log('Shareable evidence ZIP: ' + zip);
