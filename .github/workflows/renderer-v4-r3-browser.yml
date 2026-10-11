@@ -1,4 +1,4 @@
-name: Renderer V4 R3-R4 buffer and pixel parity
+name: Renderer V4 R3-R5 buffer and pixel parity
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - site/renderer-v4-feature-footprints.js
       - site/renderer-v4-resource-census.js
       - site/renderer-v4-flat-geometry-sharing.js
+      - site/renderer-v4-resource-lifetime.js
       - scripts/renderer-v4-r3-browser.mjs
       - .github/workflows/renderer-v4-r3-browser.yml
 
