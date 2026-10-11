@@ -437,8 +437,7 @@ try {
     );
     await page.waitForFunction(
       (previous) =>
-        Number(document.getElementById('threeHost')?.dataset.v4R5DisposedGroups || 0) >
-        previous,
+        Number(document.getElementById('threeHost')?.dataset.v4R5DisposedGroups || 0) > previous,
       disposedBeforeImport,
       { timeout },
     );
