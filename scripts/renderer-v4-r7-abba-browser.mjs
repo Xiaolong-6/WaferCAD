@@ -36,7 +36,11 @@ const candidateFlags = isolateIndex
   : isolateCaps
     ? ['rendererV4SharedFlatCaps=1']
     : ['rendererV4FastSmoothIndex=1', 'rendererV4SharedFlatCaps=1'];
-const candidateName = isolateIndex ? 'FastSmoothIndex-only' : isolateCaps ? 'SharedFlatCaps-only' : 'combined';
+const candidateName = isolateIndex
+  ? 'FastSmoothIndex-only'
+  : isolateCaps
+    ? 'SharedFlatCaps-only'
+    : 'combined';
 assert.notEqual(ciSmoke, hardwareRtx3060, 'select exactly one: --ci-smoke or --hardware-rtx3060');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', 'hardware mode requires Windows');
 const output = new URL(
