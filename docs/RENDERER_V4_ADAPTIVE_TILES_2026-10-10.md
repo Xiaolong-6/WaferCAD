@@ -767,11 +767,11 @@ drawing buffer, and identical reported camera world/projection
 matrices.
 
 | Arm | Fit-to-frame + `gl.finish()` wall-time median | Geometries | CPU TypedArrays |
-| --- | ---: | ---: | ---: |
-| 1-A | 40.40 ms | 1,468 | 32,513,760 B |
-| 2-B | 31.55 ms | 1,362 | 32,063,184 B |
-| 3-B | 39.80 ms | 1,362 | 32,063,184 B |
-| 4-A | 72.20 ms | 1,468 | 32,513,760 B |
+| --- | --------------------------------------------: | ---------: | --------------: |
+| 1-A |                                      40.40 ms |      1,468 |    32,513,760 B |
+| 2-B |                                      31.55 ms |      1,362 |    32,063,184 B |
+| 3-B |                                      39.80 ms |      1,362 |    32,063,184 B |
+| 4-A |                                      72.20 ms |      1,468 |    32,513,760 B |
 
 B reused 106 flat geometries and reduced the retained CPU
 TypedArray count by **450,576 B (1.386%)**. This is **not** GPU
