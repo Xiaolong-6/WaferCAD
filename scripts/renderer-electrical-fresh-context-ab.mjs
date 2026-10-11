@@ -180,18 +180,25 @@ async function trial(enabled, index) {
       })),
     );
     row.stage = 'capture-product-frame';
-    await page.evaluate(({ pixelSamples, captureDrawInputs }) => {
+    await page.evaluate(({ pixelSamples, captureDrawInputs, capturePhaseDraws }) => {
       window.__waferCadWebglProbe.arm({
         rasterDiscard: false,
         captureGlState: true,
         captureFramebuffer: true,
         captureDrawInputs,
         capturePhases: captureDrawInputs,
+        capturePhaseDraws,
         pixelSamples,
       });
       const input = document.getElementById('threeOpacityRange');
       input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, { pixelSamples: samples, captureDrawInputs: hardwareRtx3060 });
+    }, {
+      pixelSamples: samples,
+      captureDrawInputs: hardwareRtx3060,
+      capturePhaseDraws: hardwareRtx3060
+        ? [1, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
+        : [],
+    });
     await page.waitForFunction(
       () => {
         const host = document.getElementById('threeHost');
