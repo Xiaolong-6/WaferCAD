@@ -305,3 +305,72 @@ test('Both rejects Planarize and Lift-off without changing the model', () => {
     assert.deepEqual(model, before);
   }
 });
+
+
+test('deleting only one Both film unlinks its surviving counterpart', () => {
+  const model = slab();
+  const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(deposited.changed, true, deposited.error);
+  assert.equal(modelApi.deleteExposedLayer(model, deposited.layerIds.back), true);
+  assert.equal(model.layers.length, 2);
+  const front = model.layers.find((layer) => layer.id === deposited.layerIds.front);
+  assert.equal(front.processFace, 'front');
+  assert.equal(front.processGroupId, deposited.layerGroupId);
+  assert.equal(front.pairedLayerId, undefined);
+  const before = structuredClone(model);
+  const attempt = modelApi.applyOperation(model, {
+    type: 'grow',
+    thickness: 0.1,
+    growth: 'direct',
+    targetLayerId: front.id,
+    face: 'both',
+    area: model.boundary,
+  });
+  assert.equal(attempt.changed, false);
+  assert.match(attempt.error, /^Back face:/);
+  assert.deepEqual(model, before);
+  validateProcessModel(model);
+});
+
+test('incomplete stored Both pairing fails safely without partial geometry', () => {
+  const model = slab();
+  const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(deposited.changed, true, deposited.error);
+  const back = model.layers.find((layer) => layer.id === deposited.layerIds.back);
+  back.pairedLayerId = 'layer-missing';
+  const before = structuredClone(model);
+  const attempt = modelApi.applyOperation(model, {
+    type: 'grow',
+    thickness: 0.1,
+    targetLayerId: deposited.layerIds.front,
+    face: 'both',
+    area: model.boundary,
+  });
+  assert.equal(attempt.changed, false);
+  assert.match(attempt.error, /Back face: Both-face material pair is incomplete/);
+  assert.deepEqual(model, before);
+});
+
+test('array Both deletion unlinks the surviving layer throughout its templates', () => {
+  const leaf = slab();
+  const model = {
+    ...leaf,
+    kernel: ARRAY_MODEL_KERNEL,
+    regions: [],
+    array: {
+      version: 1,
+      templates: [{ id: 'cell', model: leaf }],
+      instances: [{ id: 'one', templateId: 'cell', x: 0, y: 0 }],
+    },
+  };
+  const added = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(added.changed, true, added.error);
+  assert.equal(modelApi.deleteExposedLayer(model, added.layerIds.back), true);
+  const front = model.layers.find((layer) => layer.id === added.layerIds.front);
+  assert.equal(front.pairedLayerId, undefined);
+  for (const template of model.array.templates) {
+    const remaining = template.model.layers.find((layer) => layer.id === added.layerIds.front);
+    assert.equal(remaining.pairedLayerId, undefined);
+  }
+  validateProcessModel(model);
+});
