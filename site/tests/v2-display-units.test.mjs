@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { convertPolygonPointUnits, syncDisplayUnitFields } from '../../site/ui-v2/view-kit/display-units.js';
+import { convertPolygonPointUnits, syncDisplayUnitFields } from '../ui-v2/view-kit/display-units.js';
 
 test('an open polygon editor retains physical vertices through nm, mm and µm switches', () => {
   const label = { textContent: 'Points · µm (one x, y pair per line)' };

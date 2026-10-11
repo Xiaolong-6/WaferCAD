@@ -324,7 +324,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
       el(
         'div',
         { class: 'p-actions' },
-        hook('applyOperationBtn', button('Apply', null, 'process', { primary: true })),
+        hook('applyOperationBtn', button('Apply', null, 'play', { primary: true })),
         hook('undoBtn', button('Undo', null, 'back')),
         hook('redoBtn', button('Redo')),
       ),
@@ -382,7 +382,6 @@ export function createWorkstationWorkflow({ store, workstation }) {
   const operationButtons = hooks.get('applyOperationBtn').parentElement;
   operationButtons.className = 'p-apply-actions';
   hooks.get('applyOperationBtn').dataset.action = 'apply';
-  hooks.get('applyOperationBtn').prepend(window.WaferCadV2Icons.icon('play'));
   hooks.get('undoBtn').remove();
   hooks.get('redoBtn').remove();
   const draftUndo = button('', null, 'undo', {
