@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify full-wafer script lint and format
+        run: npx eslint scripts/renderer-v4-r6-full-wafer-browser.mjs && npx prettier --check scripts/renderer-v4-r6-full-wafer-browser.mjs
       - name: Install pinned Chromium
         run: npx playwright install --with-deps chromium
       - name: Start static WaferCAD
@@ -44,6 +46,9 @@ jobs:
           exit 1
       - name: Full-wafer two-context strict pixel and CPU ownership gate
         run: node scripts/renderer-v4-r6-full-wafer-browser.mjs
+      - name: Print expected R6 formatting diff on failure
+        if: failure()
+        run: npx prettier scripts/renderer-v4-r6-full-wafer-browser.mjs | diff -u scripts/renderer-v4-r6-full-wafer-browser.mjs - || true
       - name: Retain recovery evidence
         if: always()
         uses: actions/upload-artifact@v6
