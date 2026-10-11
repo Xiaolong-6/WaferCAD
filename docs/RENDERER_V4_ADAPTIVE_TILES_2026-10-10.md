@@ -737,3 +737,20 @@ SwiftShader software WebGL (`hardwareVerified=false`), so those
 latencies are instrumentation checks **only**. They show no meaningful
 speedup and are not GPU execution times, RTX 3060 measurements, or
 VRAM evidence. The hardware 625-site ABBA remains unexecuted.
+
+### Latest V3 diagnostic-only sync after R7 smoke
+
+While R7 instrumentation was being added, PR #166 advanced again to
+`29dab6f`. The three additional commits touch only
+`scripts/renderer-electrical-fresh-context-ab.mjs` and
+`scripts/test-helpers/webgl-frame-probe.mjs`, which have no overlapping
+V4 implementation edits. [Two-parent merge `44aefc9`](https://github.com/Xiaolong-6/WaferCAD/commit/44aefc970914a1aa7708402a4b75efd5e1cdff83)
+carried those exact two upstream blobs into V4 without force pushing.
+At this checkpoint `compare(29dab6f, 44aefc9)` reports
+`behind_by=0`. Upstream P0 physical GPU diagnostics remain under PR
+#166; V4 preserves the strict R6-B rendering regression gates and the
+independent R7 probe.
+
+No 625-site RTX 3060 hardware ABBA, driver VRAM or GPU timer
+measurement was taken here. Do not call R7 a measured performance
+gain, and do not merge either Draft PR.
