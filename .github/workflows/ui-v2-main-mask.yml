@@ -21,9 +21,9 @@ jobs:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
       - name: Checkout branch
-        uses: actions/checkout$v6
+        uses: actions/checkout@v6
       - name: Setup Node 24
-        uses: actions/setup-node$v6
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -32,7 +32,7 @@ jobs:
       - name: Run CI checks
         run: npm run check:ci
       - name: Cache Chromium
-        uses: actions/cache$v5
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-1.55.1
@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           node scripts/v2/serve-v2.mjs > serve.log 2>&1 &
-          for attempt in $ (seq 1 60); do
+          for attempt in $(seq 1 60); do
             if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app-v2-main.html; then
               exit 0
             fi
@@ -66,7 +66,7 @@ jobs:
           test "${failures}" -eq 0
       - name: Upload browser review and server evidence
         if: always()
-        uses: actions/upload-artifact$v6
+        uses: actions/upload-artifact@v6
         with:
           name: wafercad-ui-v2-main-mask-${{ github.sha }}
           path: |
