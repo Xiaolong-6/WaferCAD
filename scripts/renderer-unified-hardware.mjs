@@ -3,12 +3,13 @@
 // One command runs V3 then V4 index/caps/combined, preserving all artifacts.
 import { spawn, execFileSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { createServer } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preserveRendererHardwareEvidence } from './test-helpers/renderer-hardware-evidence.mjs';
+import { startRendererHardwareSite } from './test-helpers/renderer-hardware-site.mjs';
+import { writeRendererHardwareZip } from './test-helpers/renderer-hardware-zip.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
@@ -67,51 +68,6 @@ async function runLogged(command, args, cwd, logPath, env = process.env) {
   return outcome;
 }
 
-const mimeTypes = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.wafercad': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.wasm': 'application/wasm',
-};
-
-async function startSite(worktree) {
-  const site = resolve(worktree, 'site');
-  const server = createServer(async (request, response) => {
-    try {
-      const pathname = decodeURIComponent(new URL(request.url || '/', 'http://localhost').pathname);
-      const target = resolve(site, '.' + (pathname === '/' ? '/index.html' : pathname));
-      if (!target.startsWith(site + sep)) {
-        response.writeHead(403).end();
-        return;
-      }
-      const body = await readFile(target);
-      response.writeHead(200, {
-        'Content-Type': mimeTypes[extname(target).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': 'no-store',
-      });
-      response.end(body);
-    } catch {
-      response.writeHead(404).end();
-    }
-  });
-  await new Promise((done, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', done);
-  });
-  return {
-    url: 'http://127.0.0.1:' + server.address().port,
-    close: () => new Promise((done) => server.close(done)),
-  };
-}
-
 async function runHardware() {
   const id = new Date().toISOString().replace(/[:.]/g, '-');
   const evidence = join(root, 'test-results', 'renderer-unified-hardware', id);
@@ -167,9 +123,12 @@ async function runHardware() {
     for (const step of plan) {
       console.log('Running ' + step.id + ' on ' + refs[step.branch].slice(0, 10));
       const worktree = worktrees[step.branch];
-      const site = await startSite(worktree);
+      const site = await startRendererHardwareSite(worktree, (diagnostic) => {
+        console.log(step.id + ' HTTP ' + JSON.stringify(diagnostic));
+      });
       let execution;
       try {
+        await site.verify();
         execution = await runLogged(
           process.execPath,
           [join(worktree, step.script), ...step.args],
@@ -240,25 +199,14 @@ async function runHardware() {
     }
     await rm(temp, { recursive: true, force: true }).catch(() => {});
     const zip = evidence + '.zip';
-    const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
-    const archive = await runLogged(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        'Compress-Archive -LiteralPath ' +
-          psQuote(evidence) +
-          ' -DestinationPath ' +
-          psQuote(zip) +
-          ' -Force',
-      ],
-      root,
-      join(dirname(evidence), 'archive-' + id + '.log'),
-    );
-    console.log('Renderer evidence: ' + evidence);
-    if (archive.exitCode === 0) console.log('Shareable evidence ZIP: ' + zip);
-    else console.warn('Automatic ZIP failed; evidence folder remains available.');
+    try {
+      const result = await writeRendererHardwareZip(evidence, zip);
+      console.log('Shareable evidence ZIP: ' + result.output + ' (' + result.files + ' files)');
+    } catch (error) {
+      console.error('ZIP archive failed: ' + String(error));
+      console.log('Renderer evidence directory is preserved: ' + evidence);
+      process.exitCode = 1;
+    }
     if (!summary.passed) process.exitCode = 1;
   }
 }
