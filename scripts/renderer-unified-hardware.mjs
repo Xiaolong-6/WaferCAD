@@ -4,10 +4,11 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { createServer } from 'node:http';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { preserveRendererHardwareEvidence } from './test-helpers/renderer-hardware-evidence.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
@@ -185,23 +186,11 @@ async function runHardware() {
       }
       const source = join(worktree, step.artifact);
       const target = join(evidence, step.id);
-      let report = null;
-      let artifactsCopied = false;
-      try {
-        // Copy evidence before parsing the report: a crash during JSON write
-        // must not discard already completed screenshots or partial traces.
-        await cp(source, target, { recursive: true });
-        artifactsCopied = true;
-      } catch (error) {
-        console.log(step.id + ': evidence copy failed: ' + String(error));
-      }
-      if (artifactsCopied) {
-        try {
-          report = JSON.parse(await readFile(join(target, 'report.json'), 'utf8'));
-        } catch (error) {
-          console.log(step.id + ': report unavailable or incomplete: ' + String(error));
-        }
-      }
+      const { artifactsCopied, report, warnings } = await preserveRendererHardwareEvidence(
+        source,
+        target,
+      );
+      for (const warning of warnings) console.log(step.id + ': ' + warning);
       const status = classifyRendererHardwareStep(
         { ...step, exitCode: execution.exitCode },
         report,
