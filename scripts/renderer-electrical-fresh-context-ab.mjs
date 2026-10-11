@@ -185,6 +185,7 @@ async function trial(enabled, index) {
         captureGlState: true,
         captureFramebuffer: true,
         captureDrawInputs,
+        capturePhases: captureDrawInputs,
         pixelSamples,
       });
       const input = document.getElementById('threeOpacityRange');
@@ -216,6 +217,16 @@ async function trial(enabled, index) {
             .map((value) => value.toString(16).padStart(2, '0'))
             .join('')
         : null;
+      const phases = await Promise.all((frame.phases || []).map(async (phase) => {
+        const { rgba, ...details } = phase;
+        return {
+          ...details,
+          hash: rgba
+            ? Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', rgba)))
+                .map((value) => value.toString(16).padStart(2, '0')).join('')
+            : null,
+        };
+      }));
       const trace = window.__freshContextTrace;
       const canvas = document.querySelector('#threeHost canvas');
       const rect = canvas.getBoundingClientRect();
@@ -228,6 +239,7 @@ async function trial(enabled, index) {
           vendor: frame.vendor,
           glState: frame.glState,
           drawInputs: frame.drawInputs || [],
+          phases,
           framebuffer: frame.framebuffer,
           framebufferHash: hex,
           pixelSamples: frame.pixelSamples,
@@ -271,8 +283,17 @@ async function trial(enabled, index) {
       },
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
+    row.phaseCheckpoints = native.phases;
+    row.phaseSequenceHash = hashJson(native.phases.map(({ afterDraw, kind, status }) => ({
+      afterDraw, kind, status,
+    })));
     row.drawInputsCount = native.drawInputs.length;
     if (hardwareRtx3060) {
+      assert.ok(
+        row.phaseCheckpoints.length > 0 &&
+          row.phaseCheckpoints.every((checkpoint) => checkpoint.status === 'valid' && checkpoint.hash),
+        `${label}: complete phase checkpoint evidence required`,
+      );
       assert.equal(
         row.drawInputsCount,
         48,
@@ -354,6 +375,11 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
+        phaseSequenceIdentical: previous.row.phaseSequenceHash === row.phaseSequenceHash,
+        firstDifferentPhase: previous.row.phaseSequenceHash === row.phaseSequenceHash
+          ? row.phaseCheckpoints.findIndex((phase, i) =>
+              phase.hash !== previous.row.phaseCheckpoints[i]?.hash)
+          : null,
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -414,6 +440,10 @@ try {
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
+    phaseSequenceIdentical: off.phaseSequenceHash === on.phaseSequenceHash,
+    firstDifferentPhase: off.phaseSequenceHash === on.phaseSequenceHash
+      ? on.phaseCheckpoints.findIndex((phase, i) => phase.hash !== off.phaseCheckpoints[i]?.hash)
+      : null,
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===
