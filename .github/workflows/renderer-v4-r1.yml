@@ -57,6 +57,9 @@ jobs:
       - name: R6 Prettier diff if formatting fails
         if: failure()
         run: npx prettier scripts/renderer-v4-r6-context-browser.mjs | diff -u scripts/renderer-v4-r6-context-browser.mjs - || true
+      - name: Report exact Markdown formatting diff on failure
+        if: failure()
+        run: npx prettier docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md | diff -u docs/RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md - || true
       - name: Documentation links and generated guide
         run: npm run docs:check
       - name: Full non-browser Node gate
