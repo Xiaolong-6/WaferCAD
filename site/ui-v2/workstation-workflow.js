@@ -57,9 +57,10 @@ export function createWorkstationWorkflow({ store, workstation }) {
     hooks.get('faceToggleBtn').value = processFace;
     hooks.get('undoBtn').disabled = !undo.length || task.isBusy();
     hooks.get('redoBtn').disabled = !redo.length || task.isBusy();
-    syncManualPresentation();
     persistence?.schedule();
     workstation.render();
+    // Shell adapter onShow can call process.updateUi() and reset the button contents.
+    syncManualPresentation();
     diagnostics?.onModelRendered();
   };
   const confirmation = {
@@ -873,6 +874,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
       () => {
         step.hidden = false;
         process.updateUi();
+        syncManualPresentation();
       },
     ],
     [
