@@ -70,6 +70,7 @@ test('V4 no-op, incomplete and mismatched policies fail closed', () => {
   const early = v4Report('index', false);
   early.trials = early.trials.slice(0, 2);
   early.parity = null;
+  early.passed = false;
   assert.equal(classifyRendererHardwareStep(step('v4-index', 1), early), 'candidate-not-exercised');
   assert.equal(classifyRendererHardwareStep(step('v4-index'), v4Report('caps')), 'error');
   assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), null), 'error');
