@@ -629,10 +629,20 @@ round trips before triggering any WebGL restoration.
 and [R6 small-context](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126071355)
 are independently green on the sizing-fix product revision.
 
-This does not prove hardware RTX 3060 behavior, driver VRAM reclamation
-or ABBA speedup. Follow-on real UI Section Z, ROI and full-project
-reimport after dual context restoration are covered by a newly added
-strict lifecycle extension, whose CI result must be recorded
-separately. Do not mark that extension accepted until it actually
-passes; no default-on policy or merge authorization follows from
-this software-WebGL pixel gate.
+The [R6-B lifecycle extension](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38126441412)
+**passed** at `8ea10819`, retaining all five strict zero-pixel comparisons.
+After both context losses, real UI Section Z off/on reached completed
+frames, a Main rectangular ROI rendered successfully, clearing ROI
+restored a usable scene with one retained group, and opening the same
+625-site file again disposed the prior groups. The reimported model's
+two presentation variants returned to the exact expected geometry,
+material, CPU buffer, triangle and draw-call counts. The disposal
+counter reached eight scene-group releases in this single session.
+A point-budget rejection remains a separately accepted error path,
+but the observed ROI in this run succeeded.
+
+This is functional and ownership evidence on CI Chromium / SwiftShader.
+It does not measure physical GPU VRAM/driver resource reclamation,
+hardware frame time, long-duration browser tab endurance or RTX 3060
+ABBA performance. Both renderer PRs must remain Draft, experimental
+flags default off and visual reference assets untouched.
