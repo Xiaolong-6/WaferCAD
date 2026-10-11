@@ -32,6 +32,7 @@ on:
       - scripts/test-helpers/renderer-r7-abba.mjs
       - scripts/tests/renderer-v4-r7-abba.test.mjs
       - scripts/renderer-unified-hardware.mjs
+      - scripts/renderer-hardware-http-smoke.mjs
       - scripts/test-helpers/renderer-hardware-evidence.mjs
       - scripts/test-helpers/renderer-hardware-site.mjs
       - scripts/test-helpers/renderer-hardware-zip.mjs
@@ -70,8 +71,8 @@ jobs:
         run: |
           node --test scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs
           node scripts/renderer-unified-hardware.mjs --plan-only
-          npx eslint scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs
-          npx prettier --check scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs docs/RENDERER_V3_V4_UNIFIED_HARDWARE.md
+          npx eslint scripts/renderer-hardware-http-smoke.mjs scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs
+          npx prettier --check scripts/renderer-hardware-http-smoke.mjs scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs docs/RENDERER_V3_V4_UNIFIED_HARDWARE.md
       - name: Targeted lint
         run: npx eslint site/renderer-v4-adaptive-tiles.js site/renderer-v4-tile-plan.js site/renderer-v4-interaction-policy.js site/renderer-v4-feature-footprints.js site/renderer-v4-resource-census.js site/renderer-v4-resource-lifetime.js site/renderer-v4-flat-geometry-sharing.js site/tests/renderer-v4-flat-geometry-sharing.test.mjs site/tests/renderer-v4-resource-lifetime.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/three-view.js scripts/renderer-v4-r2-browser.mjs scripts/renderer-v4-r3-browser.mjs scripts/renderer-v4-r4-dynamic-browser.mjs scripts/renderer-v4-r5-lifetime-stress.mjs scripts/renderer-v4-r5-dual-variant-browser.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/renderer-roi-profile.mjs scripts/test-helpers/webgl-frame-probe.mjs scripts/renderer-v4-r6-context-browser.mjs scripts/renderer-v4-r7-abba-browser.mjs scripts/test-helpers/renderer-r7-abba.mjs scripts/tests/renderer-v4-r7-abba.test.mjs
       - name: Targeted formatting
@@ -79,7 +80,7 @@ jobs:
       - name: Unified runner Prettier diff on failure
         if: failure()
         run: |
-          for file in scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs docs/RENDERER_V3_V4_UNIFIED_HARDWARE.md; do
+          for file in scripts/renderer-hardware-http-smoke.mjs scripts/renderer-unified-hardware.mjs scripts/test-helpers/renderer-hardware-evidence.mjs scripts/test-helpers/renderer-hardware-site.mjs scripts/test-helpers/renderer-hardware-zip.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs scripts/tests/renderer-hardware-site-zip.test.mjs docs/RENDERER_V3_V4_UNIFIED_HARDWARE.md; do
             npx prettier "$file" | diff -u "$file" - || true
           done
       - name: R6 Prettier diff if formatting fails
@@ -92,3 +93,21 @@ jobs:
         run: npm run docs:check
       - name: Full non-browser Node gate
         run: npm run check:ci
+
+  windows-http-preflight:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned Chromium
+        run: npx playwright install chromium
+      - name: Verify Windows app.html HTTP route in Chromium (software-only)
+        run: node scripts/renderer-hardware-http-smoke.mjs
+      - name: Check portable archive and HTTP error reporting
+        run: node --test scripts/tests/renderer-hardware-site-zip.test.mjs
