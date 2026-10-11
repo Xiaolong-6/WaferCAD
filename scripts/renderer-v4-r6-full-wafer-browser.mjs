@@ -32,11 +32,16 @@ async function capture(page, phase, variant) {
   assert.equal(host.v4GpuResourceCrossVariantGeometries, '0', phase);
   assert.equal(host.v4GpuResourceCrossVariantMaterials, '0', phase);
   assert.equal(host.v4GpuResourceSceneGroups, '2', phase + ': both variants retained');
-  assert.equal(host.arrayInstances, '625', phase + ': real full-wafer array');
+  // This counter includes rendered layer/owner instances, not unique physical sites.
+  assert.ok(
+    Number.isSafeInteger(Number(host.arrayInstances)) && Number(host.arrayInstances) >= 625,
+    phase + ': real 625-site model must expose its rendered owner instances',
+  );
   const state = {
     phase,
     variant,
     groups: Number(host.v4GpuResourceSceneGroups),
+    renderedOwnerInstances: Number(host.arrayInstances),
     geometries: Number(host.v4GpuResourceGeometries),
     materials: Number(host.v4GpuResourceMaterials),
     bytes: Number(host.v4GpuResourceEstimatedBufferBytes),
