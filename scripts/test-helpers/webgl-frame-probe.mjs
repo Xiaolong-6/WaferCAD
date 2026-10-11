@@ -132,6 +132,7 @@ export function installWebglFrameProbe() {
             capturePhases: options.capturePhases === true,
             phases: [],
             phaseKind: null,
+            capturePhaseDraws: new Set(options.capturePhaseDraws || []),
             phaseTransitionsObserved: 0,
             phaseTransitionsSkipped: 0,
             firstElectricalState: null,
@@ -148,7 +149,12 @@ export function installWebglFrameProbe() {
         }
         const active = entry.active;
         if (active) {
-          if (active.capturePhases && active.phaseKind !== null && active.phaseKind !== owner.kind) {
+          if (
+            active.capturePhases &&
+            active.capturePhaseDraws.size === 0 &&
+            active.phaseKind !== null &&
+            active.phaseKind !== owner.kind
+          ) {
             active.phaseTransitionsObserved++;
             capturePhaseFramebuffer(gl, active, active.phaseKind);
           }
@@ -203,7 +209,11 @@ export function installWebglFrameProbe() {
           row.triangles += triangles;
           active.owners.set(key, row);
         }
-        return draw(...args);
+        const result = draw(...args);
+        if (active?.capturePhases && active.capturePhaseDraws.has(active.drawCalls)) {
+          capturePhaseFramebuffer(gl, active, owner.kind);
+        }
+        return result;
       };
     }
   }
@@ -250,7 +260,9 @@ export function installWebglFrameProbe() {
                   captured: active.phases.length,
                   transitionsObserved: active.phaseTransitionsObserved,
                   transitionsSkipped: active.phaseTransitionsSkipped,
-                  complete: active.phaseTransitionsSkipped === 0,
+                  mode: active.capturePhaseDraws.size ? 'draw-milestones' : 'owner-transitions',
+                  complete:
+                    active.capturePhaseDraws.size === 0 && active.phaseTransitionsSkipped === 0,
                   finalFrameCaptured: active.phases.at(-1)?.afterDraw === active.drawCalls,
                 },
               }
@@ -387,8 +399,23 @@ export function installWebglFrameProbe() {
         )
       )
         throw new Error('Invalid bounded WebGL diagnostic sample coordinates');
+      const capturePhaseDraws = options.capturePhaseDraws || [];
+      if (
+        !Array.isArray(capturePhaseDraws) ||
+        capturePhaseDraws.length > 11 ||
+        capturePhaseDraws.some(
+          (draw, i) =>
+            !Number.isSafeInteger(draw) ||
+            draw <= 0 ||
+            draw > 100000 ||
+            (i > 0 && draw <= capturePhaseDraws[i - 1]),
+        )
+      ) {
+        throw new Error('Invalid ordered bounded WebGL draw checkpoints');
+      }
       armed = {
         rasterDiscard: options.rasterDiscard === true,
+        capturePhaseDraws: [...capturePhaseDraws],
         captureGlState: options.captureGlState === true,
         captureFramebuffer: options.captureFramebuffer === true,
         captureDrawInputs: options.captureDrawInputs === true,
