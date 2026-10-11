@@ -1,4 +1,4 @@
-name: Renderer V4 R4 dynamic multiview parity
+name: Renderer V4 R4-R5 dynamic and lifecycle parity
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     paths:
       - site/three-view.js
       - site/renderer-v4-flat-geometry-sharing.js
+      - site/renderer-v4-resource-lifetime.js
       - scripts/renderer-v4-r4-dynamic-browser.mjs
       - .github/workflows/renderer-v4-r4-dynamic.yml
 
@@ -42,7 +43,7 @@ jobs:
           done
           cat /tmp/wafercad-v4-r4-http.log
           exit 1
-      - name: Real Section, orbit and ROI strict pixel parity
+      - name: Real Section, orbit, ROI and resource disposal
         run: node scripts/renderer-v4-r4-dynamic-browser.mjs
       - name: Upload R4 camera and Section parity artifacts
         if: always()
