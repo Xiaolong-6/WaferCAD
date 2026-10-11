@@ -31,9 +31,14 @@
   const query = new URL(window.location.href).searchParams;
   const viewState = window.WaferCadV2ViewState;
   const mainReview = query.get('review') === 'main';
-  const preferredMode = mainReview
-    ? 'main'
-    : viewState.preferredMode(viewState.viewportWidth(window), viewState.readMode(window));
+  const maskReview = query.get('review') === 'mask';
+  const { createFloatingStrip } = await import('./view-kit/floating-strip.js');
+  const { createFloatingEditorManager } = await import('./view-kit/floating-editor.js');
+  const { createInspectionFields } = await import('./view-kit/inspection-fields.js');
+  const preferredMode =
+    mainReview || maskReview
+      ? query.get('review')
+      : viewState.preferredMode(viewState.viewportWidth(window), viewState.readMode(window));
   const state = {
     layout: 'a',
     example: query.get('example') === 'photodetector' ? 'photodetector' : 'm3d',
@@ -52,8 +57,8 @@
     view: viewState.singles.includes(preferredMode) ? preferredMode : 'main',
     desktopMode: viewState.compact(window) ? viewState.readMode(window) || 'main' : preferredMode,
     splitViews: viewState.readSplit(window),
-    mobile: mainReview || query.get('scene') === 'empty-history' ? 'view' : 'edit',
-    section: !mainReview,
+    mobile: mainReview || maskReview || query.get('scene') === 'empty-history' ? 'view' : 'edit',
+    section: !mainReview && !maskReview,
     legendOpen: true,
     legendColors: {},
     legendPalette: 'balanced',
@@ -87,6 +92,8 @@
     zBreakSettings: { start: 0.2, end: 0.8, frontScale: 1, backScale: 1, snap: true },
     sectionLine: null,
     drawTool: 'select',
+    drawOpen: false,
+    drawSelectedId: null,
     drawDraft: [],
     recipeUndo: false,
     recipeRedo: false,
@@ -242,6 +249,7 @@
       .filter((item) => !state.historyDeletedBranches.includes(item.id))
       .map((item) => ({ ...item, name: state.historyNames[item.id] || item.name }));
   const domainContext = () => ({
+    createFloatingStrip,
     state,
     data: {
       ...data,
@@ -344,6 +352,8 @@
         });
     }
   };
+  const floatingEditors = createFloatingEditorManager(shell.overlays);
+  const inspectionFields = createInspectionFields({});
   function presetRecipeFailure() {
     activeStep = Math.min(2, recipe.steps.length - 1);
     state.failedStep = activeStep;
@@ -751,7 +761,6 @@
         'detail',
         'zbreak',
         'draw-tool',
-        'draw-add',
         'draw-delete',
         'draw-clear',
         'mask-opacity',
@@ -841,53 +850,42 @@
     else if (kind === 'borders') state.borders = !state.borders;
     else if (kind === 'draw-tool') {
       state.drawTool = value;
-      state.message = `${target.title || 'Draw'} selected. Use Add to preview a shape.`;
-    } else if (kind === 'draw-add') {
-      const w = currentModel().width,
-        h = currentModel().height,
-        index = state.drawDraft.length;
-      const cx = ((index % 5) - 2) * w * 0.08,
-        cy = ((index % 3) - 1) * h * 0.08;
-      const draftId = `draft-${crypto.randomUUID()}`;
-      const next = structuredClone(state.drawDraft);
-      if (state.drawTool === 'circle')
-        next.push({
-          id: draftId,
-          type: 'circle',
-          c: [cx, cy],
-          r: Math.min(w, h) * 0.08,
+      state.message = `${target.title || 'Draw'} selected. Use the Mask-only page for drawing.`;
+    } else if (kind === 'draw-toggle') {
+      state.drawOpen = !state.drawOpen;
+      if (!state.drawOpen) floatingEditors.closeFloating('m2DrawSettings', 'hidden');
+    } else if (kind === 'draw-select') {
+      state.drawSelectedId = value;
+    } else if (kind === 'draw-settings') {
+      const shape = state.drawDraft.find((item) => item.id === state.drawSelectedId);
+      if (shape)
+        floatingEditors.mountFloating({
+          id: 'm2DrawSettings',
+          title: 'Draw shape settings',
+          trigger: target,
+          content: el(
+            'div',
+            { class: 'p-form' },
+            shape.type === 'rect'
+              ? inspectionFields.pair(
+                  inspectionFields.input('X · µm', 'm2DrawX', (shape.a[0] + shape.b[0]) / 2),
+                  inspectionFields.input('Y · µm', 'm2DrawY', (shape.a[1] + shape.b[1]) / 2),
+                )
+              : el('span', { class: 'p-aux' }, shape.type),
+            el(
+              'span',
+              { class: 'p-aux' },
+              'Prototype fields only; use the Mask-only page for real editing.',
+            ),
+          ),
         });
-      else if (state.drawTool === 'ring' || state.drawTool === 'ring-sector')
-        next.push({
-          id: draftId,
-          type: state.drawTool,
-          c: [cx, cy],
-          innerR: Math.min(w, h) * 0.06,
-          outerR: Math.min(w, h) * 0.1,
-          startAngle: 0,
-          endAngle: 180,
-        });
-      else if (state.drawTool === 'polygon')
-        next.push({
-          id: draftId,
-          type: 'polygon',
-          points: [
-            [cx, cy],
-            [cx + w * 0.08, cy],
-            [cx + w * 0.04, cy + h * 0.08],
-          ],
-        });
-      else
-        next.push({
-          id: draftId,
-          type: 'rect',
-          a: [cx, cy],
-          b: [cx + w * 0.1, cy + h * 0.1],
-        });
-      state.drawDraft = next;
-      state.message = `Shape added · ${next.length} shapes.`;
     } else if (kind === 'draw-delete' || kind === 'draw-clear') {
-      state.drawDraft = kind === 'draw-clear' ? [] : state.drawDraft.slice(0, -1);
+      state.drawDraft =
+        kind === 'draw-clear'
+          ? []
+          : state.drawDraft.filter((shape) => shape.id !== state.drawSelectedId);
+      state.drawSelectedId = null;
+      floatingEditors.closeFloating('m2DrawSettings', 'hidden');
       state.message = 'Draw shapes updated.';
     } else if (kind === 'mask-opacity') {
       state.maskOpacity = Number(value);
@@ -1583,6 +1581,9 @@
     root.addEventListener('click', (event) => {
       const target = event.target.closest('[data-action]');
       if (target && !target.disabled) handleAction(target.dataset.action, target);
+      const shape = event.target.closest('[data-draw-shape]');
+      if (shape && state.drawOpen && state.drawTool === 'select')
+        handleAction(`draw-select:${shape.dataset.drawShape}`, shape);
     });
     root.addEventListener('dblclick', (event) => {
       const row = event.target.closest('.p-history-row--branch');

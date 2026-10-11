@@ -8,7 +8,7 @@ export function createInspectionFields({
   const { el, field, select } = components;
   return {
     input(label, id, value = 0, { kind = 'length' } = {}) {
-      const node = field(label, id, value, {
+      const node = field(label, id, kind === 'length' ? formatInspectionLength(value) : value, {
         type: 'number',
         step: kind === 'angle' ? '0.001' : '0.0001',
       });
@@ -24,6 +24,11 @@ export function createInspectionFields({
       const node = select(label, id, options, value);
       hook(hookId, node.querySelector('select'));
       return node;
+    },
+    textarea(label, id, value = '') {
+      const control = hook(id, el('textarea', { class: 'wc-input', rows: 5, spellcheck: false }));
+      control.value = value;
+      return el('label', { class: 'wc-field' }, el('span', { class: 'wc-label' }, label), control);
     },
     pair: (...children) => el('div', { class: 'v2-inspection-pair' }, children),
   };

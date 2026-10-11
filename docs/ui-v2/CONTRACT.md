@@ -1,5 +1,14 @@
 # UI v2 DOM contract — M0 inventory
 
+The historical inventory below remains unchanged. The approved 2026-10-11 Mask
+review uses newly built v2 hooks and the shared view-kit; see
+[Mask handoff](MASK_HANDOFF_2026-10-11.md). Its Draw strip contract is
+Select / Rectangle / Circle / Polygon / Ring / Ring sector / Delete selected /
+Clear / settings. “Add preview shape” is removed; Delete selected and settings
+are disabled without a selection. Strip visibility never changes File/Draw source
+or discards a drawing draft. Main ROI and Mask Draw share one strip component and
+style, and one nonmodal floating editor implementation.
+
 Audited main: `dc2cb2dbd9a7dca36b38070dd168063541767a5e`. Generated with `node scripts/ui-contract-extract.mjs`; verify with `--check`.
 
 This inventories the legacy entry at the recorded main revision. IDs/ARIA/data attributes come from app.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Runtime-site counts include ui-v2 previews and prototypes and exclude test-only evidence; they are not legacy-only counts. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.

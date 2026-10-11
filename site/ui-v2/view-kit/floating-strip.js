@@ -11,12 +11,14 @@ export function createFloatingStrip({
 }) {
   const { el, button } = components;
   const tools = new Map();
-  const glyphButton = ({ label: hint, action, glyph, path, key }) => {
+  const availability = new Map();
+  const glyphButton = ({ label: hint, action, glyph, path, key, enabled }) => {
     const node = button('', action, glyph, {
       title: hint,
       'aria-label': hint,
       'aria-pressed': 'false',
     });
+    if (enabled) availability.set(node, enabled);
     if (path) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', '0 0 16 16');
@@ -50,6 +52,7 @@ export function createFloatingStrip({
     update({ open, selected }) {
       owner()?.setAttribute('aria-pressed', String(open));
       node.hidden = !open;
+      for (const [control, enabled] of availability) control.disabled = !enabled();
       for (const [key, control] of tools)
         control.setAttribute('aria-pressed', String(key === selected));
     },

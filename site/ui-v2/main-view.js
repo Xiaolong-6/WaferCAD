@@ -354,7 +354,7 @@ function buildMain() {
   );
   const stage = el(
     'div',
-    { class: 'p-science v2-main-stage', 'data-v2-stage-host': '' },
+    { class: 'p-science v2-main-stage v2-plan-stage', 'data-v2-stage-host': '' },
     hook('mainCanvas', el('canvas', { 'aria-label': 'Main scientific plan', tabindex: 0 })),
     buildRoiTools(),
     hook(

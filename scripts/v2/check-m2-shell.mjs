@@ -404,6 +404,7 @@ try {
     "window.__m2MainHost=document.querySelector('[data-science=\"main\"]');window.__m2Workbench=document.querySelector('.p-workbench')",
   );
   await click('[data-action="domain:mask"]');
+  await click('[data-action="draw-toggle"]');
   assert.equal((await snapshot()).state.maximize, 'mask');
   assert.equal(
     await evaluate(
@@ -428,7 +429,7 @@ try {
   );
   assert.equal(
     await evaluate(
-      "!document.querySelector('.p-mask-tools')&&document.querySelector('#maskPanel .p-view-head [data-action=roi]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-roi-settings]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-alignment-settings]')!==null",
+      "document.querySelector('.p-mask-tools [data-action^=draw-tool]').disabled&&document.querySelector('#maskPanel .p-view-head [data-action=roi]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-roi-settings]')!==null&&document.querySelector('#maskPanel .p-view-head [data-action=mask-alignment-settings]')!==null",
     ),
     true,
   );
@@ -460,18 +461,22 @@ try {
   record('Draw tools use compact desktop buttons and retain 40px coarse-pointer targets');
   const drawCount = (await snapshot()).state.drawDraft.length;
   await click('[data-action="draw-tool:ring-sector"]');
-  await click('[data-action="draw-add"]');
   assert.equal(
-    (await snapshot()).state.drawDraft.length,
-    drawCount + 1,
-    JSON.stringify(
-      await evaluate(
-        "({disabled:document.querySelector('[data-action=draw-add]')?.disabled,tool:document.querySelector('[data-action^=draw-tool][aria-pressed=true]')?.dataset.action})",
-      ),
+    await evaluate(
+      "document.querySelector('[data-action=draw-add]')===null && document.querySelector('[data-action=draw-delete]').disabled",
     ),
+    true,
   );
+  await click('[data-action="draw-tool:select"]');
+  const selectedId = (await snapshot()).state.drawDraft[0].id;
+  await click(`[data-draw-shape="${selectedId}"]`);
+  assert.equal((await snapshot()).state.drawSelectedId, selectedId);
   await click('[data-action="draw-delete"]');
-  assert.equal((await snapshot()).state.drawDraft.length, drawCount);
+  assert.equal((await snapshot()).state.drawDraft.length, drawCount - 1);
+  assert.equal(
+    (await snapshot()).state.drawDraft.some((shape) => shape.id === selectedId),
+    false,
+  );
   const roiBeforeAlignment = (await snapshot()).state.roiSettings;
   await click('[data-action="mask-alignment-settings"]');
   assert.equal(

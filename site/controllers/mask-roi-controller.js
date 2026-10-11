@@ -36,6 +36,7 @@ export function createMaskRoiController({
   canMoveBody = () => true,
   onChanged = () => {},
   status,
+  onEditorSync = null,
 }) {
   const $ = (id) => root.getElementById(id);
   let drag = null;
@@ -47,6 +48,7 @@ export function createMaskRoiController({
   }
 
   function syncEditor() {
+    if (onEditorSync) return onEditorSync(getRoi());
     const roi = normalizeMaskRoi(getRoi()),
       editor = $('maskRoiFields');
     if (!editor) return;

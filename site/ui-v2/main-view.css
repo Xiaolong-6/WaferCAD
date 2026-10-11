@@ -1,21 +1,4 @@
 /* New v2 canvas/handles only. No legacy controls or legacy styles are loaded. */
-.v2-main-stage {
-  position: relative;
-}
-.v2-main-stage #mainCanvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
-}
-.v2-main-stage #mainCoords {
-  position: absolute;
-  left: 8px;
-  bottom: 6px !important;
-  font-size: var(--wc-font-aux);
-  pointer-events: none;
-}
 #mainPanel.v2-main-view {
   position: relative;
 }
@@ -37,9 +20,6 @@
 }
 #mainPanel.v2-main-view [data-endpoint][hidden] {
   display: none;
-}
-.v2-main-stage #mainCanvas.plan-pan-active {
-  cursor: grab;
 }
 .v2-main-tools {
   min-width: 220px;

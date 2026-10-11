@@ -1,6 +1,13 @@
 // Shared planar touch navigation through view-supplied Pan/Zoom ports. Capture only owned navigation gestures; one
 // finger remains available to the existing ROI/Slice controllers when Pan is off.
-export function bindPlanGestures({ canvas, panEnabled, zoomEnabled, panBy, zoomAt }) {
+export function bindPlanGestures({
+  canvas,
+  panEnabled,
+  zoomEnabled,
+  panBy,
+  zoomAt,
+  mouse = false,
+}) {
   const pointers = new Map();
   let gesture = false,
     last,
@@ -83,6 +90,37 @@ export function bindPlanGestures({ canvas, panEnabled, zoomEnabled, panBy, zoomA
     pointerup: finish,
     pointercancel: finish,
   };
+  let mouseDrag;
+  if (mouse) {
+    listeners.pointerdown = (event) => {
+      down(event);
+      if (event.pointerType === 'touch' || event.button !== 0 || !panEnabled()) return;
+      mouseDrag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      canvas.setPointerCapture(event.pointerId);
+      consume(event);
+    };
+    listeners.pointermove = (event) => {
+      move(event);
+      if (mouseDrag?.id !== event.pointerId) return;
+      if (panEnabled()) panBy(event.clientX - mouseDrag.x, event.clientY - mouseDrag.y);
+      mouseDrag.x = event.clientX;
+      mouseDrag.y = event.clientY;
+      consume(event);
+    };
+    const release = (event) => {
+      finish(event);
+      if (mouseDrag?.id !== event.pointerId) return;
+      mouseDrag = null;
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      consume(event);
+    };
+    listeners.pointerup = release;
+    listeners.pointercancel = release;
+    listeners.wheel = (event) => {
+      consume(event);
+      if (zoomEnabled()) zoomAt(Math.exp(-event.deltaY * 0.0015), event.clientX, event.clientY);
+    };
+  }
   for (const [type, listener] of Object.entries(listeners))
     canvas.addEventListener(type, listener, { capture: true, passive: false });
   return () => {

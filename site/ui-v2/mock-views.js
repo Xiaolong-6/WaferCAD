@@ -1,7 +1,14 @@
 // Source-fixture illustrations only; no scientific renderer imported.
 (() => {
   const { el, button, field, select, toolbar } = window.WaferCadV2Components;
-  window.createWaferCadV2MockViews = ({ state, data, branch, currentModel, viewPanels }) => {
+  window.createWaferCadV2MockViews = ({
+    state,
+    data,
+    branch,
+    currentModel,
+    viewPanels,
+    createFloatingStrip,
+  }) => {
     const viewState = window.WaferCadV2ViewState;
     const narrow = () => viewState.compact(window);
     function svgNode(tag, attrs = {}, children = []) {
@@ -39,6 +46,8 @@
         const shapes = state.drawDraft;
         for (const shape of shapes) {
           const attrs = {
+            'data-draw-shape': shape.id,
+            'stroke-width': shape.id === state.drawSelectedId ? 2 : 1,
             fill: 'var(--wc-accent-tint-active)',
             stroke: 'var(--wc-accent)',
             'vector-effect': 'non-scaling-stroke',
@@ -160,7 +169,6 @@
       return svg;
     }
     function maskCanvasTools() {
-      if (state.maskMode !== 'draw') return null;
       const tools = [
         ['select', 'Select', 'select'],
         ['rect', 'Rectangle', 'rectangle'],
@@ -169,34 +177,44 @@
         ['ring', 'Ring', 'ring'],
         ['ring-sector', 'Ring sector', 'ringSector'],
       ];
-      return el(
-        'div',
-        { class: 'p-mask-controls' },
-        el(
-          'div',
-          { class: 'p-mask-tools', role: 'toolbar', 'aria-label': 'Mask drawing tools' },
-          tools.map(([key, label, glyph]) =>
-            button('', 'draw-tool:' + key, glyph, {
-              'aria-label': label,
-              title: label,
-              'aria-pressed': String(state.drawTool === key),
-            }),
-          ),
-          el('span', { class: 'p-mask-tool-divider', 'aria-hidden': 'true' }),
-          button('Add', 'draw-add', 'plus', {
-            title: 'Add preview shape',
-            disabled: state.drawTool === 'select',
-          }),
-          button('', 'draw-delete', 'delete', {
-            'aria-label': 'Delete last shape',
-            title: 'Delete last shape',
-          }),
-          button('', 'draw-clear', 'clear', {
-            'aria-label': 'Clear Draw shapes',
-            title: 'Clear Draw shapes',
-          }),
-        ),
-      );
+      const descriptors = tools.map(([key, label, glyph]) => ({
+        key,
+        label,
+        glyph,
+        action: 'draw-tool:' + key,
+        enabled: () => state.maskMode === 'draw',
+      }));
+      const strip = createFloatingStrip({
+        id: 'maskDrawTools',
+        label: 'Mask drawing tools',
+        groups: [
+          descriptors.slice(0, 1),
+          descriptors.slice(1),
+          [
+            {
+              label: 'Delete selected',
+              action: 'draw-delete',
+              glyph: 'delete',
+              enabled: () => Boolean(state.drawSelectedId) && state.maskMode === 'draw',
+            },
+            {
+              label: 'Clear Draw shapes',
+              action: 'draw-clear',
+              glyph: 'clear',
+              enabled: () => state.drawDraft.length > 0 && state.maskMode === 'draw',
+            },
+          ],
+        ],
+        settings: {
+          label: 'Draw settings',
+          action: 'draw-settings',
+          glyph: 'settings',
+          enabled: () => Boolean(state.drawSelectedId) && state.maskMode === 'draw',
+        },
+        owner: () => null,
+      });
+      strip.update({ open: state.drawOpen, selected: state.drawTool });
+      return strip.node;
     }
     function sectionSchematic(model) {
       const svg = svgNode('svg', {
@@ -287,6 +305,11 @@
                 ]
               : name === 'mask'
                 ? [
+                    button('', 'draw-toggle', 'polygon', {
+                      'aria-label': 'Draw',
+                      title: 'Draw',
+                      'aria-pressed': String(state.drawOpen),
+                    }),
                     button('', 'roi', 'roi', {
                       'aria-label': state.roi ? 'Hide ROI' : 'Show ROI',
                       title: state.roi ? 'Hide ROI' : 'Show ROI',
