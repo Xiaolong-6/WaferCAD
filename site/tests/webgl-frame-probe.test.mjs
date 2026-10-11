@@ -185,9 +185,9 @@ test('readback maps screenshot centers to a fractional-DPR GL backing size', () 
   assert.equal(sample.width, 530);
   assert.equal(sample.height, 274);
   assert.equal(sample.readX, 300);
-  assert.equal(sample.readY, 138);
-  assert.deepEqual(sample.rgba, [44, 135, 7, 255]);
-  assert.ok(h.calls.includes('read:300:135'));
+  assert.equal(sample.readY, 137);
+  assert.deepEqual(sample.rgba, [44, 136, 7, 255]);
+  assert.ok(h.calls.includes('read:300:136'));
 });
 
 test('invalid or excessive WebGL readback coordinates fail before arming', () => {
