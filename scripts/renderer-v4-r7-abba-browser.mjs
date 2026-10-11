@@ -222,9 +222,14 @@ async function oneArm(policy, index) {
       geometries: Number(host.v4GpuResourceGeometries),
       materials: Number(host.v4GpuResourceMaterials),
       cpuTypedArrayBytes: Number(host.v4GpuResourceEstimatedBufferBytes),
-      sharedFlatClonesAvoided: Number(host.v4SharedFlatClonesAvoided ?? NaN),
-      fastIndexedVertices: Number(host.v4FastIndexedVertices ?? NaN),
-      fastOriginalVertices: Number(host.v4FastOriginalVertices ?? NaN),
+      sharedFlatClonesAvoided:
+        host.v4SharedFlatClonesAvoided === undefined
+          ? null
+          : Number(host.v4SharedFlatClonesAvoided),
+      fastIndexedVertices:
+        host.v4FastIndexedVertices === undefined ? null : Number(host.v4FastIndexedVertices),
+      fastOriginalVertices:
+        host.v4FastOriginalVertices === undefined ? null : Number(host.v4FastOriginalVertices),
       renderer: row.backend.adapter,
       canvasWidth: await page.locator('#threeHost canvas').evaluate((canvas) => canvas.width),
       canvasHeight: await page.locator('#threeHost canvas').evaluate((canvas) => canvas.height),
