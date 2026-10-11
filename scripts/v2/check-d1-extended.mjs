@@ -365,12 +365,14 @@ try {
       });
       assert.equal(evidence.widths.at(-1).overflow, 0);
       await page.screenshot({ path: resolve(output, `section-${width}.png`), fullPage: true });
-      await page.locator('#sectionDetailCloseBtn').click();
-      // D1 real Section Fit/Pan/Zoom: assert transformed physical raster metrics,
-      // the original scientific canvas, and a final full-view fit. Not CSS zoom.
+      // At 390px the physical Scale selector remains inside More. Dismiss
+      // the actual popover before clicking the inset close control below it.
       const sectionMore = page.locator('#sectionPanel .view-more-control');
       if (await sectionMore.evaluate((node) => node.open))
         await sectionMore.locator(':scope > summary').click();
+      await page.locator('#sectionDetailCloseBtn').click();
+      // D1 real Section Fit/Pan/Zoom: assert transformed physical raster metrics,
+      // the original scientific canvas, and a final full-view fit. Not CSS zoom.
       const measureSection = () =>
         page.evaluate(() => {
           const c = document.getElementById('sectionCanvas');
