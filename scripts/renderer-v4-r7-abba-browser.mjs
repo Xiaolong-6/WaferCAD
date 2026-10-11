@@ -24,29 +24,19 @@ import {
   classifyR7PixelSignatures,
   summarizeR7Abba,
   summarizeR7PixelParity,
+  selectR7Candidate,
 } from './test-helpers/renderer-r7-abba.mjs';
 
 const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
-const isolateIndex = process.argv.includes('--isolate-index');
-const isolateCaps = process.argv.includes('--isolate-caps');
-assert.ok(!(isolateIndex && isolateCaps), 'select at most one V4 isolation candidate');
-const candidateFlags = isolateIndex
-  ? ['rendererV4FastSmoothIndex=1']
-  : isolateCaps
-    ? ['rendererV4SharedFlatCaps=1']
-    : ['rendererV4FastSmoothIndex=1', 'rendererV4SharedFlatCaps=1'];
-const candidateName = isolateIndex
-  ? 'FastSmoothIndex-only'
-  : isolateCaps
-    ? 'SharedFlatCaps-only'
-    : 'combined';
+const candidate = selectR7Candidate(process.argv);
+const { candidateName, flags: candidateFlags, artifactSuffix } = candidate;
 assert.notEqual(ciSmoke, hardwareRtx3060, 'select exactly one: --ci-smoke or --hardware-rtx3060');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', 'hardware mode requires Windows');
 const output = new URL(
   '../test-results/' +
     (hardwareRtx3060 ? 'renderer-v4-r7-hardware-abba' : 'renderer-v4-r7-ci-smoke') +
-    (isolateIndex ? '-index-only' : isolateCaps ? '-caps-only' : '') +
+    artifactSuffix +
     '/',
   import.meta.url,
 );
@@ -62,6 +52,7 @@ const fixture = fileURLToPath(
 const report = {
   order: [...R7_ORDER],
   candidateName,
+  candidateMode: candidate.mode,
   candidateFlags,
   fixture,
   backendClass: hardwareRtx3060 ? 'hardware-intended, verified per trial' : 'CI probe only',
