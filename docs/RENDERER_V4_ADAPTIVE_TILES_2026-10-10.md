@@ -516,3 +516,76 @@ console diagnostics from forced loss must be distinguished from unexpected
 page exceptions. Failed assertions are blockers, not grounds for adjusting
 the approved visual baseline. A full-array post-restore repeat and physical
 GPU/driver recovery acceptance remain pending. Keep PR #174 Draft.
+
+## R6 Phase B — 625-site context recovery and strict pixel gate (2026-10-11)
+
+**Status: BLOCKED — do not merge or enable R6/V4 by default.**
+
+The branch adds `scripts/renderer-v4-r6-full-wafer-browser.mjs` and the
+path-scoped `.github/workflows/renderer-v4-r6-full-wafer.yml`. It opens
+`three-tier-silicon-jlfets-full-wafer.wafercad`, warms separate opaque and
+transparent scene variants, records actual completed frames, forces WebGL
+loss/restoration in each variant, drives genuine Opacity input callbacks and
+compares 531 × 275 canvas pixels with **zero tolerance**. It also verifies
+real context loss, ordered restored events, unchanged model revisions,
+camera world/projection matrices, triangle and draw-call submissions,
+stable group/geometry/material/JS buffer census and unchanged disposal
+counters. It saves paired PNGs and JSON diagnostics as CI artifacts.
+
+`site/three-view.js` now marks lost/restoring/ready/error states,
+suspends frames while context is lost, restores renderer background/size
+after Three's context reinitialization, and reports ready only after a
+subsequent WebGL render call returns. The branch also stops idle
+`OrbitControls.update()` calls after damping has settled; repeated
+programmatic opacity switches were previously producing tiny changes
+in the camera world matrix even with no pointer movement. Normal
+interactive damping is retained. These are presentation/runtime-only
+changes; physical model, masks, Process, History and baseline assets
+remain untouched.
+
+### Strict CI results on Chromium / SwiftShader
+
+The [R6-B full-wafer run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124477575)
+measured a **625 physical-site** fixture. The host counter reports
+**1,885 rendered owner instances**, which is not the physical-site count.
+Across both retained scene variants, the census was constant at **2
+groups, 1,362 geometries, 658 materials and 32,181,984 bytes of CPU
+TypedArrays**. Opaque submitted **687,176 triangles / 452 draw calls**,
+transparent **16,906,262 triangles / 1,408 draw calls**.
+Those are Three-reported submissions, not real GPU timings.
+
+- **Opaque, repeated variant swap, no context loss:** 0/146,025
+  changed pixels; exact same-pose world/projection matrices.
+- **Opaque, after context loss/restoration:** 4,597/146,025
+  changed pixels (3.148%), despite identical scene identity, resource
+  census, draw submissions and camera matrices.
+- **Transparent, repeated variant swap, no context loss:**
+  6,380/146,025 changed pixels (4.369%), despite identical camera
+  matrices and draw submissions.
+- **Transparent, after context loss/restoration, compared against the
+  immediately preceding transparent state:** 0/146,025 changed pixels.
+
+The subsequent [R6-B compositor-settle rerun](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124694638)
+delayed each capture by two browser animation frames and reproduced
+the **same failures and pixel counts**. The pixels differing are
+concentrated in the rendered structure, not merely the cleared
+background. This is a real strict-parity failure; neither delaying
+the test nor accepting a nonzero threshold is a valid fix.
+
+[Focused Node/lint/docs](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124477573),
+[R6 small-context recovery](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124477590),
+[R5 dual-variant cache](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124477607),
+and [R3-R5 pixel/resource parity](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38124477572)
+passed on the new camera/context handling revision. These green checks
+**do not** override the red strict R6-B gate. In particular,
+`rendererFrameSerial`, draw calls and JS TypedArray census alone cannot
+prove that the browser compositor displays the identical frame.
+
+**Next diagnosis:** isolate transparent sorting/order and presentation
+material state across cache swaps; separately compare opaque shaders and
+GPU driver state before/after context reconstruction. Only then rerun
+strict two-variant parity. Full-wafer ROI/Section-Z transitions,
+project reimport under repeated context loss, long-duration resource
+endurance and physical RTX 3060 ABBA/VRAM evidence are still not
+accepted. Keep #174 and #166 Draft and keep approved visual
+baselines unchanged.
