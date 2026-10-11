@@ -14,7 +14,7 @@ Preserve the reviewed M2 shell, light theme and four-width (1440/1024/768/390) o
 | v2 views | Existing Main/Mask/Section and 3D Actions | Real M2-derived four-view controls, 1440/1024/768/390 and emulated touch |
 | v2 Stage C | `scripts/v2/check-sync.mjs` | Real Mask-limited process, Main ROI, Section Detail, History/Recovery, Base, Recipe, Diagnostics, Project and full layout gate |
 | v2 interactions | `scripts/v2/check-review-interactions.mjs` | Persistent Layers preference, rename, visibility and annotation controls |
-| v2 real projects | `scripts/v2/check-m4-projects.mjs` | Separate real M3D/Photodetector/Metalens load, navigation, invariant physical model, display-unit round-trip and exact Project export |
+| v2 real projects | `scripts/v2/check-m4-projects.mjs` | Separate real M3D/Photodetector/Metalens load, navigation, invariant physical model, display-unit round-trip and documented 0.1 nm Project export precision |
 
 The dedicated `ui-v2-stage-c-m4.yml` workflow runs the Stage C and three-project owners on normal pushes and uploads reports/screenshots. It does not manually dispatch any expensive workflow. These owners deliberately report PASS/FAIL separately; a skipped or pending job is not acceptance. Full M3D heavy renderer performance, physical GPU pixel parity, genuine physical touchscreen gestures, all Recipe failure/rebuild and Variant branch editing paths remain separate explicit acceptance requirements.
 

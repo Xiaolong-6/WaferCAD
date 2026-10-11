@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
-import { readProjectFile } from '../../site/project-io.js';
+import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 await loadGeometryKernel();
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-m4-projects');
@@ -16,6 +16,34 @@ const report = {
   result: 'running',
   cases: [],
 };
+// Compact .wafercad exports use the documented 0.1 nm storage grid for XY/Z.
+// IDs, topology, metadata and collection structure must remain strictly identical.
+function assertModelPersistence(actual, expected, path = 'model') {
+  if (typeof expected === 'number') {
+    assert.equal(typeof actual, 'number', `${path}: type`);
+    assert.ok(
+      Math.abs(actual - expected) <= PROJECT_LENGTH_QUANTUM_UM + 1e-8,
+      `${path}: numeric persistence drift ${actual} vs ${expected}`,
+    );
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.ok(Array.isArray(actual), `${path}: array type`);
+    assert.equal(actual.length, expected.length, `${path}: topology length`);
+    for (let index = 0; index < expected.length; index++)
+      assertModelPersistence(actual[index], expected[index], `${path}[${index}]`);
+    return;
+  }
+  if (expected !== null && typeof expected === 'object') {
+    assert.ok(actual !== null && typeof actual === 'object', `${path}: object type`);
+    assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), `${path}: keys`);
+    for (const key of Object.keys(expected))
+      assertModelPersistence(actual[key], expected[key], `${path}.${key}`);
+    return;
+  }
+  assert.deepEqual(actual, expected, `${path}: canonical value`);
+}
+
 const browser = await launchBrowser();
 try {
   report.browser = browser.version();
@@ -68,7 +96,7 @@ try {
       const path = resolve(output, `${example}.wafercad`);
       await download.saveAs(path);
       const exported = await readProjectFile(new Blob([await readFile(path)]));
-      assert.deepEqual(exported.model, unchanged.model, 'Exported real project preserves exact geometry');
+      assertModelPersistence(exported.model, unchanged.model);
       assert.deepEqual(errors, [], 'No page errors');
       await page.screenshot({ path: resolve(output, `${example}.png`) });
       report.cases.push({ example, result: 'pass', layers: before.model.layers.length, regions: before.model.regions.length });
