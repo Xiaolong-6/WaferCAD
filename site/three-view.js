@@ -2795,7 +2795,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
             // Three recreates context-owned state internally. Reapply the
             // canvas/background state on its new GL context before drawing.
             renderer.setClearColor(0xf5f7f9);
-            renderer.setSize(Math.max(2, host.clientWidth), Math.max(2, host.clientHeight), false);
+            // Match resize(): clientHeight rounds fractional CSS pixels, which
+            // changed a 273px framebuffer into 274px after WebGL recovery.
+            // Even one pixel changes geometry rasterization and breaks parity.
+            const rect = host.getBoundingClientRect();
+            renderer.setSize(Math.max(2, rect.width), Math.max(2, rect.height), false);
             if (pendingRender && !rendering) void render();
             scheduleFrame();
           });
