@@ -44,7 +44,13 @@
       for (const entry of registered.values()) if (entry.mounted) entry.implementation.destroy();
       registered.clear();
     }
-    return Object.freeze({ register, prepare, show, refresh, hide, destroy,
+    return Object.freeze({
+      register,
+      prepare,
+      show,
+      refresh,
+      hide,
+      destroy,
       node: (id) => registered.get(id)?.node,
       isActive: (id) => current.has(id),
       keys: () => [...registered.keys()],
@@ -52,8 +58,12 @@
   }
   function presentationAdapter({ render }) {
     return {
-      mount(host) { return host; },
-      onShow(host) { render(host); },
+      mount(host) {
+        return host;
+      },
+      onShow(host) {
+        render(host);
+      },
       onHide() {},
       destroy() {},
     };

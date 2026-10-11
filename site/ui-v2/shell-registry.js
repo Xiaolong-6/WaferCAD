@@ -36,11 +36,15 @@
       keys.add(item.key);
     }
     const names = [
-      ...config.topbarSlots, ...config.navigationSlots, ...config.overlaySlots, ...config.statusSlots,
+      ...config.topbarSlots,
+      ...config.navigationSlots,
+      ...config.overlaySlots,
+      ...config.statusSlots,
       ...config.panels.map((key) => `panel.${key}`),
       ...config.processModes.map((key) => `panel.process.${key}`),
       ...config.views.flatMap(({ key }) =>
-        ['header', 'actions', 'stage', 'readout', 'overlays'].map((part) => `view.${key}.${part}`)),
+        ['header', 'actions', 'stage', 'readout', 'overlays'].map((part) => `view.${key}.${part}`),
+      ),
     ];
     return Object.freeze({ ...config, slots: Object.freeze([...new Set(names)]) });
   }
