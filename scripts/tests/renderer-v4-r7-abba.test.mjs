@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   R7_ORDER,
   selectR7Candidate,
+  classifyR7CandidateActivation,
   R7_PIXEL_PAIRS,
   classifyR7PixelSignatures,
   summarizeR7Abba,
@@ -27,6 +28,46 @@ test('R7 isolation modes enable exactly their declared browser boot flags', () =
   assert.equal(selectR7Candidate([]).mode, 'combined');
   index.flags.push('tampered');
   assert.deepEqual(selectR7Candidate(['--isolate-index']).flags, ['rendererV4FastSmoothIndex=1']);
+});
+
+test('R7 hardware candidate activation rejects no-op isolation even when URL flag is enabled', () => {
+  const exercised = { fastIndexedVertices: 4, fastOriginalVertices: 6, sharedFlatClonesAvoided: 8 };
+  for (const mode of ['index', 'caps', 'combined']) {
+    const activation = classifyR7CandidateActivation(mode, exercised);
+    assert.equal(activation.candidateExercised, true);
+    assert.equal(activation.indexActive, true);
+    assert.equal(activation.capsActive, true);
+  }
+  const none = { fastIndexedVertices: 0, fastOriginalVertices: 0, sharedFlatClonesAvoided: 0 };
+  for (const mode of ['index', 'caps', 'combined']) {
+    assert.equal(classifyR7CandidateActivation(mode, none).candidateExercised, false);
+  }
+  assert.equal(
+    classifyR7CandidateActivation('index', { ...exercised, fastOriginalVertices: 4 })
+      .candidateExercised,
+    false,
+  );
+  assert.equal(
+    classifyR7CandidateActivation('index', { ...exercised, fastIndexedVertices: NaN })
+      .candidateExercised,
+    false,
+  );
+  assert.equal(
+    classifyR7CandidateActivation('index', { ...exercised, sharedFlatClonesAvoided: 0 })
+      .candidateExercised,
+    true,
+  );
+  assert.equal(
+    classifyR7CandidateActivation('caps', { ...exercised, fastIndexedVertices: 0 })
+      .candidateExercised,
+    true,
+  );
+  assert.equal(
+    classifyR7CandidateActivation('combined', { ...exercised, fastIndexedVertices: 0 })
+      .candidateExercised,
+    false,
+  );
+  assert.throws(() => classifyR7CandidateActivation('unsupported', exercised), /unknown/);
 });
 
 const trial = (policy, a, b) => ({
