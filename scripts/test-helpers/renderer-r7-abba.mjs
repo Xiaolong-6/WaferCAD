@@ -27,7 +27,6 @@ export function selectR7Candidate(args = []) {
 
 export const R7_ORDER = Object.freeze(['A', 'B', 'B', 'A']);
 
-
 export function classifyR7CandidateActivation(mode, state) {
   if (!Object.hasOwn(R7_CANDIDATE_FLAGS, mode)) {
     throw new Error('unknown R7 candidate mode');

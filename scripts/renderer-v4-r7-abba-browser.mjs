@@ -236,7 +236,8 @@ async function oneArm(policy, index) {
     if (hardwareRtx3060 && policy === 'B') {
       assert.ok(
         row.candidateActivation.candidateExercised,
-        label + ': candidate optimization was not exercised; check index/caps counters before interpreting pixel parity',
+        label +
+          ': candidate optimization was not exercised; check index/caps counters before interpreting pixel parity',
       );
     }
     assert.deepEqual(errors, [], label + ': unexpected browser exceptions');
