@@ -98,3 +98,37 @@ test('R5 cleanup does not mutate canonical geometry before dispose', () => {
   assert.deepEqual(observed, [0, 0, 0.25]);
   assert.deepEqual([...physical], [0, 0, 0.25]);
 });
+
+
+test('R5 keeps allocation counts bounded over 100 independent variant cycles', () => {
+  const disposal = new Map();
+  const resource = (id) => ({
+    dispose() {
+      disposal.set(id, (disposal.get(id) || 0) + 1);
+    },
+  });
+  let sum = 0;
+  for (let cycle = 0; cycle < 100; cycle++) {
+    const shared = resource('geo-' + cycle);
+    const retired = resource('retired-' + cycle);
+    const material = resource('mat-' + cycle);
+    const scene = group(
+      [
+        { geometry: shared, material, children: [] },
+        { geometry: shared, material, children: [] },
+      ],
+      new Set([retired]),
+    );
+    const report = disposeRendererSceneResources(scene);
+    sum += report.geometries;
+    assert.equal(report.geometries, 2);
+    assert.equal(report.materials, 1);
+    assert.equal(report.retiredFlatTemplates, 1);
+    assert.equal(scene.children.length, 0);
+    assert.equal(scene.userData.waferCadRetiredFlatGeometries.size, 0);
+    assert.equal(disposeRendererSceneResources(scene).geometries, 0);
+  }
+  assert.equal(sum, 200);
+  assert.equal(disposal.size, 300);
+  assert.ok([...disposal.values()].every((count) => count === 1));
+});
