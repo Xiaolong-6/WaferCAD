@@ -85,9 +85,14 @@ async function waitNewFrame(page, before, expectedVariant) {
         statusText: document.getElementById('statusText')?.textContent,
       };
     });
-    console.error('RENDERER_V4_R5_LIFETIME_BLOCKED', JSON.stringify({
-      expectedVariant, before, info,
-    }));
+    console.error(
+      'RENDERER_V4_R5_LIFETIME_BLOCKED',
+      JSON.stringify({
+        expectedVariant,
+        before,
+        info,
+      }),
+    );
     throw error;
   }
 }
