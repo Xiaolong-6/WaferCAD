@@ -144,6 +144,7 @@ export function createThreeView({
   let initPromise = null;
   let frame = null;
   let interacting = false;
+  let cameraDampingPending = false;
   let rendering = false;
   let lastLodSignature = null;
   let roughMeshes = [];
@@ -950,18 +951,17 @@ export function createThreeView({
         arrayInstances: host.dataset.arrayInstances,
         drawTriangles: host.dataset.rendererDrawTriangles,
       });
-      const wasDampingEnabled = Boolean(controls?.enableDamping);
       if (controls) controls.enableDamping = !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
-      // Preserve the exact completed camera pose on idle transparent frames.
-      // OrbitControls already performs its required updates on interaction;
-      // redundant undamped update() calls can introduce subpixel camera drift.
-      const needsCameraUpdate =
-        interacting ||
-        Boolean(controls?.enableDamping) ||
-        wasDampingEnabled !== Boolean(controls?.enableDamping);
+      // Preserve the exact completed camera pose on idle frames across both
+      // opaque and transparent variants. Repeated OrbitControls.update()
+      // calls in an idle damped camera can introduce floating-point drift
+      // even without a new pointer event or camera movement.
+      // Only active interaction or still-settling inertia may update it.
+      const needsCameraUpdate = interacting || cameraDampingPending;
       const changed = needsCameraUpdate ? controls?.update?.() || false : false;
+      if (!interacting && !changed) cameraDampingPending = false;
       refreshV4CameraTileProbe(changed);
       updateRoughMaterialLod();
       updateTransparentOrder();
@@ -2813,6 +2813,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           controls.enableDamping = true;
           controls.addEventListener('start', () => {
             interacting = true;
+            cameraDampingPending = true;
             clearRoughRefineTimer();
             terminateRoughWorker({ invalidate: true });
             syncRenderPolicy();
