@@ -17,22 +17,29 @@ const stackAt = (model, point) =>
   model.regions.find((r) => vectorApi.pointInMulti(point, r.geom))?.stack || [];
 const coat = { type: 'add', name: 'Al2O3', thickness: 0.2, growth: 'conformal', face: 'both' };
 
-test('Both deposits a single shared layer on the two exposed wafer faces', () => {
+test('Both deposits two linked independent layers on the two exposed wafer faces', () => {
   const model = slab();
   const result = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(result.changed, true, result.error);
   assert.equal(result.face, 'both');
-  assert.equal(model.layers.length, 2, 'one layer identity for both surfaces');
-  assert.equal(result.layerId, model.layers[1].id);
+  assert.equal(model.layers.length, 3, 'one distinct layer ID per face');
+  assert.notEqual(result.layerIds.front, result.layerIds.back);
+  assert.equal(result.layerId, result.layerIds.front);
+  assert.equal(model.layers[1].id, result.layerIds.front);
+  assert.equal(model.layers[2].id, result.layerIds.back);
+  assert.equal(model.layers[1].processGroupId, model.layers[2].processGroupId);
+  assert.equal(model.layers[1].pairedLayerId, model.layers[2].id);
+  assert.equal(model.layers[2].pairedLayerId, model.layers[1].id);
+  assert.deepEqual(model.layers.slice(1).map((layer) => layer.processFace), ['front', 'back']);
   assert.equal(model.processRevision, 2, 'Front then Back are both computed');
   const stack = stackAt(model, [0, 0]);
   assert.equal(stack.length, 3);
   assert.deepEqual(
     stack.map(({ layerId, z0, z1 }) => ({ layerId, z0, z1 })),
     [
-      { layerId: result.layerId, z0: -5.2, z1: -5 },
+      { layerId: result.layerIds.back, z0: -5.2, z1: -5 },
       { layerId: 'base', z0: -5, z1: 5 },
-      { layerId: result.layerId, z0: 5, z1: 5.2 },
+      { layerId: result.layerIds.front, z0: 5, z1: 5.2 },
     ],
   );
   validateProcessModel(model);
@@ -61,7 +68,8 @@ test('Both Extend grows the shared film on both sides', () => {
   const stack = stackAt(model, [0, 0]);
   assert.ok(Math.abs(stack[0].z0 + 5.3) < 1e-8);
   assert.ok(Math.abs(stack.at(-1).z1 - 5.3) < 1e-8);
-  assert.equal(model.layers.length, 2);
+  assert.equal(model.layers.length, 3);
+  assert.equal(model.layers[1].pairedLayerId, model.layers[2].id);
   validateProcessModel(model);
 });
 
@@ -92,12 +100,44 @@ test('Both Transfer preserves one material identity and both surface placements'
       modelApi.applyOperation(candidate, params),
   );
   assert.equal(applied.result.changed, true, applied.result.error);
-  assert.equal(applied.model.layers.length, 2);
+  assert.equal(applied.model.layers.length, 3);
+  assert.notEqual(applied.result.layerIds.front, applied.result.layerIds.back);
   const stack = stackAt(applied.model, [0, 0]);
-  assert.equal(stack[0].layerId, applied.result.layerId);
-  assert.equal(stack.at(-1).layerId, applied.result.layerId);
+  assert.equal(stack[0].layerId, applied.result.layerIds.back);
+  assert.equal(stack.at(-1).layerId, applied.result.layerIds.front);
   validateProcessModel(applied.model);
   assert.equal(model.layers.length, 1, 'worker-style caller input remains unchanged');
+});
+
+
+test('Both selective Etch maps the front target to its paired back layer', () => {
+  const model = slab();
+  const added = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(added.changed, true, added.error);
+  const removed = modelApi.applyOperation(model, {
+    type: 'etch', thickness: 0.1, etchProfile: 'directional',
+    etchTargetLayerIds: [added.layerIds.front], face: 'both', area: model.boundary,
+  });
+  assert.equal(removed.changed, true, removed.error);
+  const stack = stackAt(model, [0, 0]);
+  assert.ok(Math.abs(stack[0].z0 + 5.1) < 1e-8);
+  assert.ok(Math.abs(stack.at(-1).z1 - 5.1) < 1e-8);
+  validateProcessModel(model);
+});
+
+test('single-face selective Etch can remove one coating without touching the other', () => {
+  const model = slab();
+  const added = modelApi.applyOperation(model, { ...coat, area: model.boundary });
+  assert.equal(added.changed, true, added.error);
+  const result = modelApi.applyOperation(model, {
+    type: 'etch', thickness: 0.2, etchProfile: 'directional',
+    etchTargetLayerIds: [added.layerIds.front], face: 'front', area: model.boundary,
+  });
+  assert.equal(result.changed, true, result.error);
+  const stack = stackAt(model, [0, 0]);
+  assert.equal(stack[0].layerId, added.layerIds.back);
+  assert.equal(stack.at(-1).layerId, 'base');
+  validateProcessModel(model);
 });
 
 test('Both annotations retain separate physical faces and IDs in one logical operation', () => {
@@ -138,12 +178,14 @@ test('Both works with canonical array templates without flattening the wafer', (
   });
   assert.equal(result.changed, true, result.error);
   assert.equal(model.regions.length, 0);
-  assert.equal(model.layers.length, 2);
+  assert.equal(model.layers.length, 3);
   const expanded = resolveArrayModel(model);
   assert.equal(stackAt(expanded, [-10, 0]).length, 3);
   assert.equal(stackAt(expanded, [10, 0]).length, 3);
-  for (const region of expanded.regions)
-    assert.equal(region.stack[0].layerId, region.stack.at(-1).layerId);
+  for (const region of expanded.regions) {
+    assert.equal(region.stack[0].layerId, result.layerIds.back);
+    assert.equal(region.stack.at(-1).layerId, result.layerIds.front);
+  }
   validateProcessModel(model);
 });
 
