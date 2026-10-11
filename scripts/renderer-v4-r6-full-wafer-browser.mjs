@@ -350,6 +350,9 @@ try {
       await focusEditor.locator(':scope > summary').click();
     }
     await page.locator('.roi-tool[data-tool="rect"]').click();
+    const roiFrameBefore = Number(
+      await page.locator('#threeHost').evaluate((node) => node.dataset.rendererFrameSerial || 0),
+    );
     const bounds = await page.locator('#mainCanvas').boundingBox();
     assert.ok(bounds, 'Main canvas must be accessible after WebGL restoration');
     await page.mouse.move(bounds.x + bounds.width * 0.44, bounds.y + bounds.height * 0.44);
@@ -361,14 +364,15 @@ try {
       return editor && !editor.hidden;
     });
     await page.waitForFunction(
-      () => {
+      (before) => {
         const host = document.getElementById('threeHost');
         return (
-          host?.dataset.renderState === 'ready' ||
+          (host?.dataset.renderState === 'ready' &&
+            Number(host.dataset.rendererFrameSerial || 0) > before) ||
           (host?.dataset.renderState === 'error' && Boolean(host.dataset.rendererErrorCode))
         );
       },
-      null,
+      roiFrameBefore,
       { timeout },
     );
     const roi = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
@@ -410,6 +414,7 @@ try {
     assert.ok(Number(cleared.v4GpuResourceSceneGroups) <= 2, 'ROI clear scene cache bound');
     lifecycle.push({ phase: 'roi-clear', outcome: 'ready', groups: cleared.v4GpuResourceSceneGroups });
 
+    const disposedBeforeImport = Number(cleared.v4R5DisposedGroups || 0);
     await page
       .locator('#openProjectInput')
       .setInputFiles(
@@ -424,6 +429,13 @@ try {
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
       null,
+      { timeout },
+    );
+    await page.waitForFunction(
+      (previous) =>
+        Number(document.getElementById('threeHost')?.dataset.v4R5DisposedGroups || 0) >
+        previous,
+      disposedBeforeImport,
       { timeout },
     );
     await closeFunctionPanel(page);
