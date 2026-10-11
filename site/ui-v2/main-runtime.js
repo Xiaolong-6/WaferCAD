@@ -14,6 +14,7 @@ export const formatMainPosition = formatInspectionLength;
 
 export function createMainRuntime({
   state,
+  renderModel = () => state.model,
   onChange,
   status,
   onRoiSync,
@@ -136,7 +137,7 @@ export function createMainRuntime({
   });
   renderer = createPlanRenderers({
     root,
-    getState: () => state,
+    getState: () => ({ ...state, model: renderModel() }),
     getSectionEditor: () => editor,
     ...plan,
     ...lengths,

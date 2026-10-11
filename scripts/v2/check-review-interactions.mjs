@@ -1,0 +1,157 @@
+// User-approved desktop review contracts, exercised through actual controls and shared model.
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
+const output = resolve('test-results/ui-v2-review-interactions');
+await mkdir(output, { recursive: true });
+const report = {
+  revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  result: 'running',
+  cases: [],
+};
+const browser = await launchBrowser();
+try {
+  for (const [width, hasTouch] of [
+    [1440, false],
+    [1024, false],
+    [768, false],
+    [390, false],
+    [1024, true],
+  ]) {
+    const { page, context } = await newUiPage(browser, {
+      viewport: { width, height: 960 },
+      hasTouch,
+    });
+    try {
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(`${base}/app-v2-workstation.html?example=metalens`);
+      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
+      const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      const initial = await snapshot();
+      assert.equal(initial.ui.mode, width >= 1121 ? 'overview' : 'single');
+      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await waitForPaint(page);
+      const name = page.getByRole('button', { name: 'Rename TiO2', exact: true });
+      const fingerprint = () => page.locator('#sectionCanvas').evaluate((c) => c.toDataURL());
+      const normal = await fingerprint();
+      await name.click();
+      await waitForPaint(page);
+      assert.equal(
+        await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).isVisible(),
+        true,
+      );
+      assert.deepEqual(
+        (await snapshot()).model,
+        initial.model,
+        'Focus never changes saved colors or geometry',
+      );
+      assert.notEqual(await fingerprint(), normal, 'Focus changes the actual Section rendering');
+      assert.deepEqual(
+        await page
+          .locator('.v2-legend-row')
+          .evaluateAll((rows) => rows.map((e) => getComputedStyle(e).opacity)),
+        ['1', '1', '1', '1', '1'],
+      );
+      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).press('Escape');
+      await waitForPaint(page);
+      assert.ok((await fingerprint()) === normal, 'Cancel restores the actual Section colors');
+      assert.deepEqual((await snapshot()).model, initial.model);
+      await name.click();
+      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).fill('TiO2 reviewed');
+      await page.getByRole('textbox', { name: 'Name for TiO2', exact: true }).press('Enter');
+      await waitForPaint(page);
+      const renamed = (await snapshot()).model;
+      const expected = structuredClone(initial.model);
+      expected.layers.find((l) => l.name === 'TiO2').name = 'TiO2 reviewed';
+      expected.revision++;
+      assert.deepEqual(renamed, expected, 'Rename only updates the name and model revision');
+      const checks = await page
+        .locator('.v2-legend-row > input[type="checkbox"]')
+        .evaluateAll((es) => es.map((e) => e.getBoundingClientRect().right));
+      assert.ok(
+        Math.max(...checks) - Math.min(...checks) <= 0.25,
+        'Visibility checks are right aligned',
+      );
+      const palette = page.getByRole('combobox', { name: 'Structure color palette', exact: true });
+      await palette.selectOption('random');
+      await waitForPaint(page);
+      const first = (await snapshot()).model.layers.map((l) => l.color);
+      await palette.selectOption('random');
+      await waitForPaint(page);
+      assert.notDeepEqual(
+        (await snapshot()).model.layers.map((l) => l.color),
+        first,
+        'Repeated Random regenerates colors',
+      );
+      const color = page.getByRole('button', { name: 'Choose color for ITO', exact: true });
+      await color.click();
+      assert.equal(await page.locator('.v2-legend-palette').count(), 1);
+      await color.click();
+      assert.equal(await page.locator('.v2-legend-palette').count(), 0);
+      await color.click();
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('.v2-legend-palette').count(), 0);
+      await color.click();
+      await page.locator('[data-action="fit:section"]').click();
+      assert.equal(await page.locator('.v2-legend-palette').count(), 0);
+      assert.deepEqual(errors, []);
+      await page.screenshot({
+        path: resolve(output, `review-${width}${hasTouch ? '-touch' : ''}.png`),
+      });
+      report.cases.push({
+        width,
+        hasTouch,
+        rename: true,
+        focusRestoresColors: true,
+        repeatedRandom: true,
+        rightAligned: true,
+      });
+      console.log(`Review ${width}${hasTouch ? ' touch' : ''}: PASS`);
+    } finally {
+      await context.close();
+    }
+  }
+  const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 960 } });
+  try {
+    await page.goto(`${base}/app-v2-workstation.html?example=jlfet`);
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
+    await page.locator('[data-action="view:main"]').click();
+    await page.locator('[data-action="maximize:section"]').click();
+    const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    const initial = await snapshot();
+    const item = initial.model.electricalRegions[0];
+    await page.getByRole('button', { name: `Depth profile for ${item.name}`, exact: true }).click();
+    await page
+      .getByRole('combobox', { name: `Depth profile for ${item.name}`, exact: true })
+      .selectOption('smooth');
+    await page.keyboard.press('Escape');
+    await page.getByRole('checkbox', { name: `Show ${item.name}`, exact: true }).uncheck();
+    await waitForPaint(page);
+    const expected = structuredClone(initial.model);
+    expected.electricalRegions[0].depthProfile = 'smooth';
+    expected.electricalRegions[0].visible = false;
+    expected.revision += 2;
+    assert.deepEqual(
+      (await snapshot()).model,
+      expected,
+      'Electrical controls update only their existing display properties',
+    );
+    report.electrical = { example: 'jlfet', smooth: true, visibility: true };
+    await page.screenshot({ path: resolve(output, 'electrical.png') });
+    console.log('Electrical real controls: PASS');
+  } finally {
+    await context.close();
+  }
+  report.result = 'pass';
+} catch (error) {
+  report.result = 'fail';
+  report.failure = error.stack;
+  throw error;
+} finally {
+  await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2));
+  await browser.close();
+}

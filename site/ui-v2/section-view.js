@@ -10,6 +10,7 @@ import {
 } from '../section-view-viewport.js';
 import { createInspectionFields, formatInspectionLength } from './view-kit/inspection-fields.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
+import { mountToolPopover } from './view-kit/tool-popover.js';
 import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
 import {
   setLayerVisible,
@@ -18,6 +19,11 @@ import {
   recolorLayer,
   recolorImplant,
   recolorElectricalRegion,
+  renameLayer,
+  renameImplant,
+  renameElectricalRegion,
+  setImplantDepthProfile,
+  setElectricalRegionDepthProfile,
 } from '../model.js';
 
 export function createSectionView({ store, main, workstation }) {
@@ -45,7 +51,8 @@ export function createSectionView({ store, main, workstation }) {
     'sectionCanvas',
     el('canvas', { 'aria-label': 'Physical Section A–B', tabindex: 0 }),
   );
-  const detailButton = hook('sectionDetailRoiBtn', icon('Detail ROI', 'detail', 'roi'));
+  const detailButton = hook('sectionDetailRoiBtn', icon('ROI', 'detail', 'roi'));
+  hook('sectionDetailShapeBtn', el('button'));
   const detailOverlay = hook(
     'sectionDetailRoiOverlay',
     el(
@@ -67,7 +74,6 @@ export function createSectionView({ store, main, workstation }) {
           'header',
           {},
           hook('sectionDetailZoom', el('span')),
-          hook('sectionDetailShapeBtn', icon('Toggle Detail shape', null, 'rectangle')),
           hook('sectionDetailCloseBtn', icon('Clear Detail ROI', null, 'close')),
         ),
       ),
@@ -85,14 +91,11 @@ export function createSectionView({ store, main, workstation }) {
     ),
   );
   let legendOpen = true,
+    editingName = false,
     legendPalette = 'balanced',
     paletteOpen = null,
     legend;
-  const settings = icon('Section settings', 'settings:section', 'settings');
-  const zSettings = hook(
-    'sectionCollapseAxisBtn',
-    icon('Z Break settings', 'zbreak-settings', 'zbreak'),
-  );
+  const zSettings = hook('sectionCollapseAxisBtn', icon('Z Break', 'zbreak-settings', 'zbreak'));
   const tools = toolbar(
     'Section',
     [
@@ -101,14 +104,14 @@ export function createSectionView({ store, main, workstation }) {
         icon('Pan', 'tool:pan:section', 'pan'),
         icon('Zoom', 'tool:zoom:section', 'zoom'),
       ],
-      [icon('Z Break', 'zbreak', 'zbreak'), icon('Layers', 'legend', 'main'), detailButton],
+      [
+        zSettings,
+        icon('XZ Scale', 'scale:section', 'alignment'),
+        icon('Borders', 'borders:section', 'rectangle'),
+        detailButton,
+      ],
     ],
-    [
-      button('Export', 'section-export-menu', 'export'),
-      settings,
-      zSettings,
-      icon('Detail settings', 'settings:detail', 'roi'),
-    ],
+    [icon('Layers', 'legend', 'main'), button('Export', 'section-export-menu', 'export')],
   );
   tools.append(icon('Maximize', 'maximize:section', 'maximize'));
   hook('sectionScaleModeBtn', el('select'));
@@ -158,7 +161,7 @@ export function createSectionView({ store, main, workstation }) {
   });
   renderer = createPlanRenderers({
     root,
-    getState: () => state,
+    getState: () => ({ ...state, model: store.renderModel() }),
     ...main.runtime.plan,
     getSectionCollapseController: () => collapse,
     syncSectionInputs: () => main.runtime.slice.syncInputs(),
@@ -186,45 +189,22 @@ export function createSectionView({ store, main, workstation }) {
   bindPlanGestures({
     canvas,
     mouse: true,
-    dragZoom: true,
     panEnabled: () => local.panEnabled,
     zoomEnabled: () => local.zoomEnabled,
     panBy: (dx, dy) => viewport(panSectionViewport(state.sectionViewport, dx, dy)),
     zoomAt,
   });
-  detailButton.addEventListener('click', () => {
+  detailButton.addEventListener('click', (event) => {
+    if (state.sectionDetailRoi) {
+      event.stopImmediatePropagation();
+      detail.clear();
+      return;
+    }
     local.panEnabled = false;
     local.zoomEnabled = false;
     sync();
   });
   detail.bind();
-  const form = el(
-    'div',
-    { class: 'p-form' },
-    fields.choice(
-      'X:Z scale',
-      'section-scale',
-      [
-        ['auto', 'Auto'],
-        ['physical', '1:1 X:Z'],
-      ],
-      state.sectionScaleMode,
-    ),
-    el(
-      'label',
-      { class: 'wc-field' },
-      el('span', { class: 'wc-label' }, 'Show structural borders'),
-      hook('section-borders', el('input', { type: 'checkbox', checked: state.sectionShowBorders })),
-    ),
-  );
-  hooks.get('section-scale').onchange = (e) => {
-    state.sectionScaleMode = e.target.value;
-    render();
-  };
-  hooks.get('section-borders').onchange = (e) => {
-    state.sectionShowBorders = e.target.checked;
-    render();
-  };
   const ruler = hook(
     'sectionCollapseRuler',
     el(
@@ -239,6 +219,12 @@ export function createSectionView({ store, main, workstation }) {
   const zForm = el(
     'div',
     { class: 'p-form' },
+    el(
+      'label',
+      {},
+      hook('section-collapse-enabled', el('input', { type: 'checkbox' })),
+      ' Show Z Break',
+    ),
     el(
       'label',
       {},
@@ -261,6 +247,11 @@ export function createSectionView({ store, main, workstation }) {
       fields.input('Back scale', 'sectionCollapseBackScale', 1, { kind: 'scale' }),
     ),
   );
+  hooks.get('section-collapse-enabled').onchange = (event) =>
+    collapse.setCurrent(
+      { ...collapse.current(), enabled: event.target.checked },
+      { settled: true },
+    );
   for (const [id, key] of [
     ['sectionCollapseTopInput', 'top'],
     ['sectionCollapseBottomInput', 'bottom'],
@@ -294,9 +285,18 @@ export function createSectionView({ store, main, workstation }) {
         .querySelector(`[data-action="tool:${key}:section"]`)
         .setAttribute('aria-pressed', String(local[`${key}Enabled`]));
     panel
-      .querySelector('[data-action="zbreak"]')
-      .setAttribute('aria-pressed', String(collapse.current().enabled !== false));
+      .querySelector('[data-action="borders:section"]')
+      .setAttribute('aria-pressed', String(state.sectionShowBorders));
     const z = collapse.current();
+    hooks.get('section-collapse-enabled').checked = z.enabled !== false;
+    const scaleButton = panel.querySelector('[data-action="scale:section"]');
+    const physicalScale = state.sectionScaleMode === 'physical';
+    scaleButton.setAttribute('aria-pressed', String(physicalScale));
+    scaleButton.title = physicalScale ? 'XZ Scale: 1:1' : 'XZ Scale: Auto';
+    scaleButton
+      .querySelector('use')
+      .setAttribute('href', `#p-icon-${physicalScale ? 'scalePhysical' : 'scaleAuto'}`);
+    detailButton.title = state.sectionDetailRoi ? 'Hide Section ROI' : 'Draw Section ROI';
     for (const [id, value] of [
       ['sectionCollapseTopInput', z.top],
       ['sectionCollapseBottomInput', z.bottom],
@@ -358,7 +358,77 @@ export function createSectionView({ store, main, workstation }) {
         fn(state.model, item.id, checkbox.checked);
         store.renderAll();
       };
-      row.prepend(checkbox);
+      const name = row.querySelector('.v2-legend-name');
+      name.tabIndex = 0;
+      name.setAttribute('role', 'button');
+      name.setAttribute('aria-label', `Rename ${item.name}`);
+      name.title = `Rename ${item.name}`;
+      const editName = () => {
+        if (name.querySelector('input')) return;
+        editingName = true;
+        store.setRenameFocus({ kind: row.dataset.layerId ? 'layer' : item.kind, id: item.id });
+        const input = el('input', { value: item.name, 'aria-label': `Name for ${item.name}` });
+        let cancelled = false;
+        input.onblur = () => {
+          editingName = false;
+          store.setRenameFocus(null);
+          const rename = row.dataset.layerId
+            ? renameLayer
+            : item.kind === 'Implant'
+              ? renameImplant
+              : renameElectricalRegion;
+          if (!cancelled && input.value.trim() !== item.name)
+            rename(state.model, item.id, input.value);
+          store.renderAll();
+        };
+        input.onkeydown = (event) => {
+          event.stopPropagation();
+          if (event.key === 'Enter') input.blur();
+          else if (event.key === 'Escape') {
+            cancelled = true;
+            input.blur();
+          }
+        };
+        name.replaceChildren(input);
+        input.focus();
+        input.select();
+      };
+      name.onclick = editName;
+      name.onkeydown = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          editName();
+        }
+      };
+      if (row.dataset.annotationId) {
+        const profile = icon(`Depth profile for ${item.name}`, null, 'line');
+        profile.title = `Depth profile: ${item.depthProfile === 'smooth' ? 'Smooth' : 'Follow offset'}`;
+        profile.onclick = () => {
+          const choice = el(
+            'select',
+            { 'aria-label': `Depth profile for ${item.name}` },
+            el(
+              'option',
+              { value: 'follow', selected: item.depthProfile !== 'smooth' },
+              'Follow offset',
+            ),
+            el('option', { value: 'smooth', selected: item.depthProfile === 'smooth' }, 'Smooth'),
+          );
+          choice.onchange = () => {
+            const setProfile =
+              item.kind === 'Implant' ? setImplantDepthProfile : setElectricalRegionDepthProfile;
+            setProfile(state.model, item.id, choice.value);
+            store.renderAll();
+          };
+          mountToolPopover(workstation.overlays, {
+            trigger: profile,
+            label: 'Depth profile',
+            content: el('label', { class: 'p-form' }, 'Depth profile', choice),
+          });
+        };
+        row.append(profile);
+      }
+      row.append(checkbox);
     });
     if (legend) legend.replaceWith(next);
     else body.append(next);
@@ -374,7 +444,18 @@ export function createSectionView({ store, main, workstation }) {
   });
   const floating = (id, title, content, trigger) =>
     workstation.overlays.mountFloating({ id, title, content, trigger });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && paletteOpen) {
+      paletteOpen = null;
+      renderLegend();
+    }
+  });
   document.addEventListener('click', (event) => {
+    if (paletteOpen && !event.target.closest('.v2-legend-palette-anchor')) {
+      paletteOpen = null;
+      if (editingName) panel.querySelector('.v2-legend-palette')?.remove();
+      else renderLegend();
+    }
     const trigger = event.target.closest('[data-action]');
     if (!trigger || trigger.disabled || !trigger.closest('#sectionPanel,.v2-section-floating'))
       return;
@@ -384,36 +465,21 @@ export function createSectionView({ store, main, workstation }) {
       const key = action.split(':')[1];
       detail.cancelDrawing();
       local[`${key}Enabled`] = !local[`${key}Enabled`];
-      local[key === 'pan' ? 'zoomEnabled' : 'panEnabled'] = false;
       sync();
-    } else if (action === 'zbreak') collapse.toggleEnabled();
-    else if (action === 'settings:section') {
-      main.openSliceCoordinates(trigger);
-      floating('sectionSettings', 'Section controls', form, trigger);
+    } else if (action === 'scale:section') {
+      state.sectionScaleMode = state.sectionScaleMode === 'physical' ? 'auto' : 'physical';
+      render();
+    } else if (action === 'borders:section') {
+      state.sectionShowBorders = !state.sectionShowBorders;
+      render();
     } else if (action === 'zbreak-settings') {
       floating('sectionZSettings', 'Z Break · physical µm', zForm, trigger);
       sync();
-    } else if (action === 'settings:detail')
-      floating(
-        'sectionDetailSettings',
-        'Detail ROI',
-        el(
-          'div',
-          { class: 'p-form' },
-          button('Redraw', 'detail-redraw', 'roi'),
-          button('Rectangle / Circle', 'detail-shape', 'rectangle'),
-          button('Clear Detail ROI', 'detail-clear', 'clear'),
-        ),
-        trigger,
-      );
-    else if (action === 'detail-redraw') detailButton.click();
-    else if (action === 'detail-shape') hooks.get('sectionDetailShapeBtn').click();
-    else if (action === 'detail-clear') detail.clear();
-    else if (action === 'legend') {
+    } else if (action === 'legend') {
       legendOpen = !legendOpen;
       renderLegend();
     } else if (action === 'section-export-menu')
-      workstation.overlays.mount('popover', {
+      mountToolPopover(workstation.overlays, {
         trigger,
         label: 'Export Section',
         content: el(
@@ -430,7 +496,8 @@ export function createSectionView({ store, main, workstation }) {
       exporter.exportSectionSvg();
       workstation.overlays.close('popover');
     } else if (action.startsWith('legend-palette:')) {
-      paletteOpen = action.slice('legend-palette:'.length);
+      const key = action.slice('legend-palette:'.length);
+      paletteOpen = paletteOpen === key ? null : key;
       renderLegend();
     } else if (action.startsWith('legend-set:') || action.startsWith('legend-random:')) {
       const [, kind, id] = action.split(':');
@@ -464,7 +531,7 @@ export function createSectionView({ store, main, workstation }) {
     runtime: {
       render() {
         render();
-        renderLegend();
+        if (!editingName) renderLegend();
       },
     },
     viewport,

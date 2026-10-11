@@ -54,6 +54,13 @@ try {
         await waitForPaint(page);
       };
       await ready();
+      if (!report.webgl)
+        report.webgl = await canvas.evaluate((node) => {
+          const gl = node.getContext('webgl2');
+          const debug = gl.getExtension('WEBGL_debug_renderer_info');
+          const renderer = gl.getParameter(debug ? debug.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+          return { renderer, software: /swiftshader|llvmpipe|software/i.test(renderer) };
+        });
       assert.equal(await canvas.count(), 1);
       assert.ok(Number(await host.getAttribute('data-renderer-draw-calls')) > 0);
       assert.ok(Number(await host.getAttribute('data-renderer-draw-triangles')) > 0);
@@ -124,18 +131,28 @@ try {
       before = await camera();
       await drag(0, 28);
       assert.ok(
-        Math.abs(distance(await camera()) - distance(before)) > 0.01,
-        'Zoom must respond to vertical drag',
+        difference((await camera()).target, before.target) > 0.01,
+        'Pan must remain active with wheel Zoom',
       );
+      assert.ok(
+        Math.abs(distance(await camera()) - distance(before)) < 1e-6,
+        'Left drag must not zoom',
+      );
+      await command('tool:rotate:three');
+      assert.equal((await snapshot()).local.three.zoomEnabled, true);
+      before = await camera();
+      await wheel();
+      assert.ok(distance(await camera()) < distance(before), 'Rotate and wheel Zoom coexist');
+      await drag(24, 12);
+      assert.ok(difference((await camera()).position, before.position) > 0.01);
       await command('tool:zoom:three');
-      assert.equal((await snapshot()).local.three.mode, 'none');
+      assert.equal((await snapshot()).local.three.mode, 'rotate');
       before = await camera();
       await wheel();
       assert.ok(
         Math.abs(distance(await camera()) - distance(before)) < 1e-6,
         'No tool must block wheel zoom',
       );
-      await command('tool:rotate:three');
       await command('fit:three');
       assert.equal(
         await page.locator('#threePanel [aria-pressed="true"][data-action^="tool:"]').count(),
@@ -144,17 +161,17 @@ try {
       // Presentation changes reuse scientific scene resources.
       const generation = await host.getAttribute('data-scene-generation');
       const surfacePlan = await host.getAttribute('data-surface-plan-build-count');
-      await command('settings:three');
+      await command('opacity:three');
       assert.equal(await page.locator('#threeOpacityRange').getAttribute('min'), '0.1');
-      await page.locator('#threeBorders').check();
+      if (!(await snapshot()).threeDisplay.borders) await command('borders:three');
       await ready();
       assert.equal((await snapshot()).threeDisplay.borders, true);
       assert.equal(await host.getAttribute('data-scene-generation'), generation);
       assert.equal(await host.getAttribute('data-surface-plan-build-count'), surfacePlan);
-      await page.locator('#threeBorders').uncheck();
+      await command('borders:three');
       await ready();
-      await page.getByRole('button', { name: 'Close 3D display settings', exact: true }).click();
-      await command('settings:three');
+      await page.keyboard.press('Escape');
+      await command('opacity:three');
       await page.locator('#threeOpacityRange').focus();
       await page.keyboard.press('Home');
       await ready();
@@ -162,7 +179,8 @@ try {
       await page.keyboard.press('End');
       await ready();
       assert.equal((await snapshot()).threeDisplay.opacity, 1);
-      await page.getByRole('button', { name: 'Close 3D display settings', exact: true }).click();
+      await page.keyboard.press('Escape');
+      if (!(await snapshot()).threeDisplay.fast) await command('quality:three');
       await command('quality:three');
       await ready();
       assert.equal(await host.getAttribute('data-render-quality'), 'quality');
@@ -192,15 +210,19 @@ try {
         assert.notEqual(await host.getAttribute('data-scene-generation'), generation);
         // Section Z Break follows its original controller; Detail stays independent of 3D clip.
         const collapseEnabled = await host.getAttribute('data-z-collapse-enabled');
-        await page.locator('#sectionPanel [data-action="zbreak"]').click();
+        await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
+        await page.locator('#section-collapse-enabled').setChecked(collapseEnabled !== 'true');
         await ready();
         assert.equal(
           await host.getAttribute('data-z-collapse-enabled'),
           String(collapseEnabled !== 'true'),
         );
-        await page.locator('#sectionPanel [data-action="zbreak"]').click();
+        await page.locator('#section-collapse-enabled').setChecked(collapseEnabled === 'true');
         await ready();
         assert.equal(await host.getAttribute('data-z-collapse-enabled'), collapseEnabled);
+        await page
+          .getByRole('button', { name: 'Close Z Break · physical µm', exact: true })
+          .click();
         const clippedGeneration = await host.getAttribute('data-scene-generation');
         await page.locator('#sectionDetailRoiBtn').click();
         const sectionBox = await page.locator('#sectionCanvas').boundingBox();
@@ -308,9 +330,9 @@ try {
       });
       await waitForPaint(page);
     };
-    for (const mode of ['rotate', 'pan', 'zoom', 'none']) {
+    for (const mode of ['rotate', 'pan', 'none']) {
       if ((await snapshot()).local.three.mode !== mode) {
-        const action = mode === 'none' ? 'zoom' : mode;
+        const action = mode === 'none' ? (await snapshot()).local.three.mode : mode;
         await page.locator(`[data-action="tool:${action}:three"]`).click();
       }
       assert.equal((await snapshot()).local.three.mode, mode);
@@ -324,9 +346,7 @@ try {
         assert.ok(
           mode === 'pan'
             ? difference(after.target, before.target) > 0.01
-            : mode === 'zoom'
-              ? Math.abs(distance(after) - distance(before)) > 0.01
-              : difference(after.position, before.position) > 0.01,
+            : difference(after.position, before.position) > 0.01,
           `One-finger ${mode} must operate`,
         );
       }
@@ -355,7 +375,7 @@ try {
     report.touch = {
       rotate: true,
       pan: true,
-      verticalZoom: true,
+      independentWheelZoom: true,
       pinchAllModes: true,
       scientificUnchanged: true,
       visibility,

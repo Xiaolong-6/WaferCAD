@@ -1,5 +1,7 @@
 # UI v2 Stage B — ready for review
 
+Current toolbar/gesture decisions and Stage C entry are recorded in the [desktop review checkpoint](DESKTOP_REVIEW_2026-10-11.md). This file preserves the earlier Stage B evidence and scope.
+
 Branch: `codex/ui-v2-main-wip`. Parent: `526cc7ae62b8a5a4366f5a80654ce7d0bd064b72`. Resolve this handoff's exact commit with `git log -1 --format=%H -- docs/ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md`. The user explicitly requested **commit and push** after review preparation. This supersedes the earlier online pause for the normal WIP branch push, which triggers its existing preview workflow. No merge or manual CI dispatch is authorized; `main` is unchanged. Stage C has not started. Confirm preview build-info against the pushed revision before treating deployment as current evidence.
 
 The user instructed **“轻量模型pass就够了 马上准备交接review”**. Stage B implementation is closed for this review on the passing lightweight gate. This is not a claim of completed full-M3D, hardware GPU or physical touchscreen acceptance. The full-model rerun was stopped at the user's request, before its first width reported PASS; no further heavy browser check is required for this handoff.

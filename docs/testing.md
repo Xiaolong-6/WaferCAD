@@ -35,6 +35,8 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
 
+The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; it does not establish the pending Process/History Stage C workflow.
+
 Phase B 3D separates small-example interaction coverage from a substantial real export that can be cancelled through the task panel:
 
 ```bash

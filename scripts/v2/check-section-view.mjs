@@ -121,13 +121,13 @@ try {
       );
       const fingerprint = () => sectionCanvas.evaluate((c) => c.toDataURL());
       const slicedImage = await fingerprint();
-      await command('zbreak');
+      await command('zbreak-settings');
+      await page.locator('#section-collapse-enabled').uncheck();
       const toggled = await snapshot();
       assert.equal(toggled.sectionCollapse.enabled, false);
       assert.equal(await sectionCanvas.getAttribute('data-section-collapse-enabled'), 'false');
       assert.notEqual(await fingerprint(), slicedImage);
-      await command('zbreak');
-      await command('zbreak-settings');
+      await page.locator('#section-collapse-enabled').check();
       await page.locator('#sectionCollapseScaleLinked').uncheck();
       await page.locator('#sectionCollapseFrontScale').fill('2');
       await page.locator('#sectionCollapseFrontScale').press('Tab');
@@ -144,8 +144,16 @@ try {
       await page.mouse.down();
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5 - 24, { steps: 5 });
       await page.mouse.up();
-      assert.ok((await snapshot()).sectionViewport.zoom > beforeDragZoom);
+      assert.equal(
+        (await snapshot()).sectionViewport.zoom,
+        beforeDragZoom,
+        'Zoom only uses wheel/pinch',
+      );
       await command('tool:pan:section');
+      assert.equal(
+        await page.locator('[data-action="tool:zoom:section"]').getAttribute('aria-pressed'),
+        'true',
+      );
       box = await sectionCanvas.boundingBox();
       await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.5);
       await page.mouse.down();
@@ -175,10 +183,28 @@ try {
           .locator('#sectionDetailInsetCanvas')
           .evaluate((c) => c.width > 100 && c.height > 100),
       );
-      await page.locator('#sectionDetailShapeBtn').click();
-      assert.equal((await snapshot()).sectionDetailRoi.shape, 'circle');
+      assert.equal((await snapshot()).sectionDetailRoi.shape, 'rect');
+      assert.equal(await page.locator('#sectionDetailShapeBtn').count(), 0);
+      const roiBox = await page.locator('#sectionDetailRoiOverlay').boundingBox();
+      await page.mouse.move(roiBox.x + roiBox.width / 2, roiBox.y + roiBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(roiBox.x + roiBox.width / 2 + 12, roiBox.y + roiBox.height / 2 + 8, {
+        steps: 5,
+      });
+      await page.mouse.up();
+      assert.notDeepEqual((await snapshot()).sectionDetailRoi, detail.sectionDetailRoi);
+      const movedRoi = (await snapshot()).sectionDetailRoi;
+      // Inset starts at top-right; use the visible opposite handle on narrow screens.
+      const handle = await page.locator('[data-detail-handle="nw"]').boundingBox();
+      await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(handle.x + handle.width / 2 - 12, handle.y + handle.height / 2 - 8, {
+        steps: 5,
+      });
+      await page.mouse.up();
+      assert.ok((await snapshot()).sectionDetailRoi.width > movedRoi.width);
       await page.screenshot({ path: resolve(output, `section-${width}.png`), fullPage: true });
-      await page.locator('#sectionDetailCloseBtn').click();
+      await command('detail');
       assert.equal((await snapshot()).sectionDetailRoi, null);
       await command('section-export-menu');
       assert.equal(await page.locator('.v2-section-floating button:disabled').count(), 1);

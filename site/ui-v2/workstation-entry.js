@@ -15,7 +15,11 @@ try {
     layout: 'a',
     font: 'inter',
     domain: 'project',
-    mode: 'single',
+    mode:
+      window.WaferCadV2ViewState.preferredMode(window.WaferCadV2ViewState.viewportWidth(window)) ===
+      'overview'
+        ? 'overview'
+        : 'single',
     view: 'main',
     section: true,
     maximize: null,
@@ -70,6 +74,7 @@ try {
     overlays: createFloatingEditorManager(shell.overlays, { className: `v2-${key}-floating` }),
   });
   const main = await createMainView({
+    renderModel: store.renderModel,
     project,
     sharedState: store.viewState('main'),
     workstation: scope('main'),

@@ -5,8 +5,9 @@ import { roiAnchorPoint } from '../roi-editor.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
+import { mountToolPopover } from './view-kit/tool-popover.js';
 
-export async function createMainView({ project, sharedState, workstation } = {}) {
+export async function createMainView({ project, sharedState, workstation, renderModel } = {}) {
   const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
   const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
   const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
@@ -212,20 +213,12 @@ export async function createMainView({ project, sharedState, workstation } = {})
     });
   }
   function popover(content, trigger, onClose) {
-    const menu = trigger.closest('.p-overflow');
-    if (menu) trigger = document.querySelector(`[popovertarget="${menu.id}"]`);
-    const node = overlays.mount('popover', {
+    return mountToolPopover(overlays, {
       content,
       trigger,
       onClose,
       label: 'Main tools',
-      className: 'v2-main-tools',
     });
-    const rect = trigger.getBoundingClientRect();
-    node.style.inset = 'auto';
-    node.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - node.offsetWidth - 8))}px`;
-    node.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - node.offsetHeight - 8))}px`;
-    return node;
   }
   function buildRoiTools() {
     const groups = [
@@ -533,6 +526,7 @@ export async function createMainView({ project, sharedState, workstation } = {})
     renderShell();
     runtime = createMainRuntime({
       state,
+      renderModel,
       root,
       onChange: sync,
       status: (value) => {

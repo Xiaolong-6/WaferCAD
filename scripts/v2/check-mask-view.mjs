@@ -214,7 +214,7 @@ try {
       await page.mouse.click(...(await world([-15, -4])));
       const pending = await snapshot();
       await page.locator('[data-action="draw-toggle"]').click();
-      assert.equal(await page.locator('#maskDrawTools').isVisible(), false);
+      assert.equal(await page.locator('#maskDrawTools').isVisible(), true);
       const hidden = await snapshot();
       assert.equal(hidden.sourceMode, pending.sourceMode);
       assert.deepEqual(hidden.drawMask, pending.drawMask);
@@ -267,23 +267,26 @@ try {
         await page.getByRole('button', { name: 'Mask more tools' }).click();
       await sourceButton.click();
       const beforeSource = (await snapshot()).drawMask;
-      await page.locator('#maskSourceToggleBtn').selectOption('file');
       assert.equal((await snapshot()).sourceMode, 'file');
-      await page.locator('[data-action="draw-toggle"]').click();
       assert.equal(
-        (await snapshot()).sourceMode,
-        'file',
-        'Hiding the strip never changes File/Draw source',
+        await page.locator('[data-action="draw-toggle"]').getAttribute('aria-pressed'),
+        'false',
       );
+      assert.equal(await page.locator('#maskSourceSettings').count(), 0);
+      assert.equal(await sourceButton.textContent(), '');
+      await page.locator('[data-action="draw-toggle"]').click();
+      assert.equal((await snapshot()).sourceMode, 'draw', 'Draw activates the Draw source');
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
       await page.locator('[data-action="draw-toggle"]').click();
       assert.equal(
         (await snapshot()).sourceMode,
-        'file',
-        'Showing the strip never changes File/Draw source',
+        'draw',
+        'Draw remains active while its source is selected',
       );
-      await page.locator('#maskSourceToggleBtn').selectOption('draw');
-      await page.getByRole('button', { name: 'Close Mask source', exact: true }).click();
+      assert.equal(
+        await page.locator('[data-action="draw-toggle"]').getAttribute('aria-pressed'),
+        'true',
+      );
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
       await page.locator('[data-action="mask-alignment-settings"]').click();
       await page.locator('#maskOffsetX').fill('0.0001');

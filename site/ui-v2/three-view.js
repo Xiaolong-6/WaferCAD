@@ -1,6 +1,7 @@
 // M2 presentation over the original renderer, camera policy and physical exporters.
 import { createThreeView } from '../three-view.js';
 import { createProcessTaskController } from '../controllers/process-task-controller.js';
+import { mountToolPopover } from './view-kit/tool-popover.js';
 
 export function createWorkstationThreeView({ store, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
@@ -23,12 +24,13 @@ export function createWorkstationThreeView({ store, workstation }) {
         icon('Pan', 'tool:pan:three', 'pan'),
         icon('Zoom', 'tool:zoom:three', 'zoom'),
       ],
+      [
+        icon('Render mode', 'quality:three', 'quality'),
+        icon('Opacity', 'opacity:three', 'eye'),
+        icon('Borders', 'borders:three', 'rectangle'),
+      ],
     ],
-    [
-      button('Fast', 'quality:three', 'cube'),
-      button('Export', 'three-export-menu', 'export'),
-      icon('3D display settings', 'settings:three', 'settings'),
-    ],
+    [button('Export', 'three-export-menu', 'export')],
   );
   tools.append(icon('Maximize', 'maximize:three', 'maximize'));
   const panel = window.createWaferCadV2ViewPanels().update(
@@ -49,7 +51,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   const renderer = createThreeView({
     host,
     stats,
-    getModel: () => state.model,
+    getModel: store.renderModel,
     getClipGeometry: store.selection.roiGeometry,
     getInspection: () => ({
       opacity: state.threeOpacity,
@@ -61,7 +63,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       state.threeCamera = camera;
     },
   });
-  renderer.setGestureMode(local.mode);
+  renderer.setGestureMode(local.mode, { wheelZoom: local.zoomEnabled });
   if (state.threeCamera) renderer.setViewState(state.threeCamera);
   let initializing = null;
   const render = async () => {
@@ -87,23 +89,20 @@ export function createWorkstationThreeView({ store, workstation }) {
     step: 0.05,
     value: state.threeOpacity,
   });
-  const borders = el('input', {
-    id: 'threeBorders',
-    type: 'checkbox',
-    checked: state.threeShowBorders,
-  });
+  const opacityValue = el('output', {}, `${Math.round(state.threeOpacity * 100)}%`);
   const form = el(
     'div',
     { class: 'p-form' },
-    el('label', { class: 'wc-field' }, 'Opacity', opacity),
-    el('label', { class: 'wc-field' }, 'Structural borders', borders),
+    el(
+      'label',
+      { class: 'wc-field' },
+      el('span', { class: 'wc-label' }, 'Opacity ', opacityValue),
+      opacity,
+    ),
   );
   opacity.oninput = () => {
     state.threeOpacity = Math.max(0.1, Math.min(1, Number(opacity.value)));
-    requestRender();
-  };
-  borders.onchange = () => {
-    state.threeShowBorders = borders.checked;
+    opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
     requestRender();
   };
   const taskPanel = el(
@@ -175,68 +174,52 @@ export function createWorkstationThreeView({ store, workstation }) {
     for (const mode of ['rotate', 'pan', 'zoom'])
       panel
         .querySelector(`[data-action="tool:${mode}:three"]`)
-        .setAttribute('aria-pressed', String(local.mode === mode));
+        .setAttribute(
+          'aria-pressed',
+          String(mode === 'zoom' ? local.zoomEnabled : local.mode === mode),
+        );
     const quality = panel.querySelector('[data-action="quality:three"]');
     quality.setAttribute('aria-label', state.threeFastMode ? 'Fast' : 'Quality');
     quality.title = state.threeFastMode ? 'Render mode: Fast' : 'Render mode: Quality';
+    quality
+      .querySelector('use')
+      .setAttribute('href', `#p-icon-${state.threeFastMode ? 'fast' : 'quality'}`);
     quality.setAttribute('aria-pressed', String(state.threeFastMode === false));
     host.dataset.v2Gesture = local.mode;
+    host.dataset.wheelZoom = String(local.zoomEnabled);
+    panel
+      .querySelector('[data-action="borders:three"]')
+      .setAttribute('aria-pressed', String(state.threeShowBorders));
   }
-  // OrbitControls still tracks every touch, including the first pointer before pinch.
-  // Its one-finger Zoom action is disabled; only this mode uses the existing D1 camera mapping.
-  const touches = new Set();
-  let drag = null;
-  host.addEventListener(
-    'pointerdown',
-    (event) => {
-      if (event.pointerType !== 'touch') return;
-      touches.add(event.pointerId);
-      drag =
-        touches.size === 1 && local.mode === 'zoom'
-          ? { id: event.pointerId, y: event.clientY, camera: renderer.getViewState() }
-          : null;
-    },
-    true,
-  );
-  host.addEventListener('pointermove', (event) => {
-    if (!drag || drag.id !== event.pointerId || touches.size !== 1) return;
-    const next = window.WaferCadV2RealThreeControls.zoomCamera(drag.camera, event.clientY - drag.y);
-    if (next) {
-      renderer.setViewState(next);
-      state.threeCamera = renderer.getViewState();
-    }
-  });
-  const end = (event) => {
-    touches.delete(event.pointerId);
-    drag = null;
-  };
-  host.addEventListener('pointerup', end, true);
-  host.addEventListener('pointercancel', end, true);
-  host.addEventListener('lostpointercapture', end, true);
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('[data-action]');
     if (!trigger || trigger.disabled || !trigger.closest('#threePanel,.v2-three-floating')) return;
     const action = trigger.dataset.action;
     if (action.startsWith('tool:') && action.endsWith(':three')) {
       const mode = action.split(':')[1];
-      local.mode = local.mode === mode ? 'none' : mode;
-      drag = null;
-      renderer.setGestureMode(local.mode);
+      if (mode === 'zoom') local.zoomEnabled = !local.zoomEnabled;
+      else local.mode = local.mode === mode ? 'none' : mode;
+      renderer.setGestureMode(local.mode, { wheelZoom: local.zoomEnabled });
       sync();
     } else if (action === 'fit:three') renderer.fit();
     else if (action === 'quality:three') {
       state.threeFastMode = !state.threeFastMode;
       sync();
       requestRender();
-    } else if (action === 'settings:three') {
-      workstation.overlays.mountFloating({
-        id: 'threeSettings',
-        title: '3D display settings',
+    } else if (action === 'opacity:three') {
+      opacity.value = state.threeOpacity;
+      opacityValue.textContent = `${Math.round(state.threeOpacity * 100)}%`;
+      mountToolPopover(workstation.overlays, {
+        label: '3D opacity',
         content: form,
         trigger,
       });
+    } else if (action === 'borders:three') {
+      state.threeShowBorders = !state.threeShowBorders;
+      sync();
+      requestRender();
     } else if (action === 'three-export-menu') {
-      workstation.overlays.mount('popover', {
+      mountToolPopover(workstation.overlays, {
         trigger,
         label: 'Export 3D',
         content: el(

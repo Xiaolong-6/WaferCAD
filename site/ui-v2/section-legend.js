@@ -240,10 +240,13 @@
             'data-key': 'legendPalette',
             'aria-label': 'Structure color palette',
           },
+          paletteName === 'random'
+            ? el('option', { value: 'randomized', selected: true, disabled: true }, 'Randomized')
+            : null,
           ...['balanced', 'airy', 'warm', 'cool', 'random'].map((key) =>
             el(
               'option',
-              { value: key, selected: key === paletteName },
+              { value: key, selected: key !== 'random' && key === paletteName },
               key === 'random' ? 'Random' : key[0].toUpperCase() + key.slice(1),
             ),
           ),

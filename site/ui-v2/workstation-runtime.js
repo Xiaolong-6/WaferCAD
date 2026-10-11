@@ -9,6 +9,7 @@ export async function loadWorkstationProject() {
     m3d: 'examples/m3d-selfpowered-full-replay.wafercad',
     photodetector: 'examples/previews/photodetector-literature.wafercad',
     metalens: 'examples/previews/tio2-metalens-four-unit.wafercad',
+    jlfet: 'examples/previews/three-tier-silicon-jlfets.wafercad',
   };
   const example = new URLSearchParams(location.search).get('example') || 'm3d';
   if (!Object.hasOwn(examples, example)) throw Error(`Unknown example: ${example}`);
@@ -40,7 +41,7 @@ export function createWorkstationRuntime(project) {
     main: { panEnabled: true, zoomEnabled: false, tool: 'none', sectionEditEnabled: false },
     mask: { panEnabled: true, zoomEnabled: false },
     section: { panEnabled: false, zoomEnabled: false },
-    three: { mode: 'rotate' },
+    three: { mode: 'rotate', zoomEnabled: false },
   };
   const projectState = createProjectStateController({
     getState: () => state,
@@ -61,6 +62,46 @@ export function createWorkstationRuntime(project) {
     initialized = false;
   const dependencies = { roi: JSON.stringify(state.roi), section: JSON.stringify(state.section) };
   const counters = { main: 0, mask: 0, section: 0, three: 0 };
+  let renameFocus = null,
+    presentationModel = null,
+    presentationSource = null,
+    presentationRevision = null;
+  function renderModel() {
+    if (!renameFocus) return state.model;
+    if (
+      presentationSource === state.model &&
+      presentationRevision === state.model.revision &&
+      presentationModel
+    )
+      return presentationModel;
+    const fade = (item, kind) => {
+      if (kind === renameFocus.kind && item.id === renameFocus.id) return item;
+      const rgb = /^#[0-9a-f]{6}$/i.test(item.color || '')
+        ? parseInt(item.color.slice(1), 16)
+        : 0x808080;
+      const color =
+        '#' +
+        [rgb >> 16, (rgb >> 8) & 255, rgb & 255]
+          .map((channel, index) =>
+            Math.round(channel * 0.18 + [245, 247, 250][index] * 0.82)
+              .toString(16)
+              .padStart(2, '0'),
+          )
+          .join('');
+      return { ...item, color };
+    };
+    presentationSource = state.model;
+    presentationRevision = state.model.revision;
+    presentationModel = {
+      ...state.model,
+      layers: state.model.layers.map((item) => fade(item, 'layer')),
+      implants: (state.model.implants || []).map((item) => fade(item, 'Implant')),
+      electricalRegions: (state.model.electricalRegions || []).map((item) =>
+        fade(item, 'Electrical'),
+      ),
+    };
+    return presentationModel;
+  }
   function invalidate(...keys) {
     keys.forEach((key) => dirty.add(key));
     if (frame || !initialized) return;
@@ -114,6 +155,12 @@ export function createWorkstationRuntime(project) {
     views,
     counters,
     viewState,
+    renderModel,
+    setRenameFocus(focus) {
+      renameFocus = focus;
+      presentationModel = null;
+      invalidate('main', 'section', 'three');
+    },
     changed,
     invalidate,
     start() {

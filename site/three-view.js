@@ -88,6 +88,7 @@ export function createThreeView({
   let camera = null;
   let controls = null;
   let gestureMode = null;
+  let gestureWheelZoom = null;
   let group = null;
   let axesHelper = null;
   let ready = false;
@@ -181,9 +182,10 @@ export function createThreeView({
   }
 
   // Opt-in v2 policy; callers that never opt in retain legacy OrbitControls defaults.
-  function setGestureMode(mode) {
+  function setGestureMode(mode, { wheelZoom = null } = {}) {
     if (!['rotate', 'pan', 'zoom', 'none'].includes(mode)) return false;
     gestureMode = mode;
+    gestureWheelZoom = wheelZoom;
     if (!controls || !THREE) return true;
     controls.mouseButtons.LEFT =
       mode === 'rotate'
@@ -2471,7 +2473,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           renderer.domElement.addEventListener(
             'wheel',
             (event) => {
-              if (gestureMode !== null && gestureMode !== 'zoom') {
+              if (gestureMode !== null && !(gestureWheelZoom ?? gestureMode === 'zoom')) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
               }
@@ -2479,7 +2481,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             { capture: true, passive: false },
           );
           controls = new OrbitControls(camera, renderer.domElement);
-          if (gestureMode !== null) setGestureMode(gestureMode);
+          if (gestureMode !== null) setGestureMode(gestureMode, { wheelZoom: gestureWheelZoom });
           controls.target.set(0, 0, 0);
           controls.enableDamping = true;
           controls.addEventListener('start', () => {

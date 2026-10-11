@@ -53,6 +53,19 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     button('', action, glyph, { title: hint, 'aria-label': hint, ...extra });
   function sync() {
     if (!state) return;
+    state.drawOpen = state.maskSourceMode === 'draw';
+    const sourceButton = document.querySelector('[data-action="mask-source"]');
+    if (sourceButton) {
+      const drawn = state.maskSourceMode === 'draw';
+      sourceButton.setAttribute('aria-pressed', String(drawn));
+      sourceButton.title = `Mask source: ${drawn ? 'Draw' : 'File'}`;
+      sourceButton
+        .querySelector('use')
+        .setAttribute('href', `#p-icon-${drawn ? 'palette' : 'folder'}`);
+    }
+    document
+      .querySelector('[data-action="draw-toggle"]')
+      ?.setAttribute('aria-pressed', String(state.drawOpen));
     workstation?.changed('mask');
     strip?.update({ open: state.drawOpen && !roiOpen, selected: state.drawUi?.tool || 'select' });
     roiStrip?.update({
@@ -251,26 +264,6 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function floating(id, title, content, trigger) {
     overlays.mountFloating({ id, title, content, trigger });
   }
-  function sourceMenu(trigger) {
-    floating(
-      'maskSourceSettings',
-      'Mask source',
-      choice(
-        'Source',
-        'maskSourceToggleBtn',
-        [
-          ['draw', 'Draw'],
-          ['file', 'File'],
-        ],
-        state.maskSourceMode,
-      ),
-      trigger,
-    );
-    hooks.get('maskSourceToggleBtn').onchange = () => {
-      runtime.draw.setSourceMode(hooks.get('maskSourceToggleBtn').value);
-      sync();
-    };
-  }
   function confirmAction({ title, message: text, confirmLabel }) {
     return new Promise((resolve) => {
       const content = el('div', { class: 'p-form' }, el('strong', {}, title), el('p', {}, text));
@@ -296,15 +289,13 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           iconButton('Zoom', 'tool:zoom:mask', 'zoom'),
         ],
         [
-          iconButton('Draw', 'draw-toggle', 'polygon'),
+          iconButton('Mask source', 'mask-source', 'folder'),
+          iconButton('Draw', 'draw-toggle', 'palette'),
           iconButton('ROI', 'mask-roi-toggle', 'roi'),
           iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
         ],
       ],
-      [
-        button('Mask source', 'mask-source', 'mask'),
-        button('Export', 'mask-export-menu', 'export'),
-      ],
+      [button('Export', 'mask-export-menu', 'export')],
     );
     tools.append(iconButton('Maximize view', 'maximize:mask', 'maximize'));
     const descriptors = [
@@ -489,7 +480,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
       else if (action === 'tool:zoom:mask') runtime.setZoomEnabled(!state.zoomEnabled);
       else if (action === 'draw-toggle') {
-        state.drawOpen = roiOpen || !state.drawOpen;
+        runtime.draw.setSourceMode('draw');
         roiOpen = false;
         if (!state.drawOpen) overlays.closeFloating('maskDrawSettings', 'hidden');
         sync();
@@ -498,8 +489,12 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       else if (action === 'draw-apply') runtime.draw.applyEditor();
       else if (action === 'draw-delete') runtime.draw.removeSelected();
       else if (action === 'draw-clear') await runtime.draw.clear();
-      else if (action === 'mask-source') sourceMenu(trigger);
-      else if (action === 'mask-roi-toggle') {
+      else if (action === 'mask-source') {
+        runtime.draw.setSourceMode(state.maskSourceMode === 'draw' ? 'file' : 'draw');
+        roiOpen = false;
+        if (state.maskSourceMode === 'file') overlays.closeFloating('maskDrawSettings', 'hidden');
+        sync();
+      } else if (action === 'mask-roi-toggle') {
         roiOpen = !roiOpen;
         if (!roiOpen) overlays.closeFloating('maskRoiSettings', 'hidden');
       } else if (action.startsWith('mask-roi-tool:')) {
