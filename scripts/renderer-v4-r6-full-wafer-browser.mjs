@@ -233,7 +233,15 @@ try {
     await changeVariant(page, '1', 'opaque', 'warm-opaque');
     const opaque = await capture(page, 'baseline-opaque', 'opaque');
 
+    // Compare BOTH cached variants before ANY context loss. Earlier evidence
+    // mislabelled a post-opaque-loss transparent state as a no-loss comparison.
     await changeVariant(page, '0.5', 'transparent', 'preloss-repeat-transparent');
+    const repeatedTransparent = await capture(page, 'preloss-repeat-transparent', 'transparent');
+    verifyStable(
+      transparent,
+      repeatedTransparent,
+      'transparent-variant-repeat-without-context-loss',
+    );
     await changeVariant(page, '1', 'opaque', 'preloss-repeat-opaque');
     const repeatedOpaque = await capture(page, 'preloss-repeat-opaque', 'opaque');
     verifyStable(opaque, repeatedOpaque, 'opaque-variant-repeat-without-context-loss');
@@ -246,17 +254,21 @@ try {
     verifyStable(repeatedOpaque, recoveredOpaque, 'opaque-restoration');
 
     await changeVariant(page, '0.5', 'transparent', 'pre-transparent-loss');
-    const repeatedTransparent = await capture(page, 'preloss-repeat-transparent', 'transparent');
+    const transparentAfterOpaqueLoss = await capture(
+      page,
+      'post-opaque-loss-transparent',
+      'transparent',
+    );
     verifyStable(
-      transparent,
       repeatedTransparent,
-      'transparent-variant-repeat-without-context-loss',
+      transparentAfterOpaqueLoss,
+      'transparent-after-opaque-context-recovery',
     );
     await cycleContext(page, 'transparent-loss');
     await changeVariant(page, '1', 'opaque', 'post-transparent-loss-opaque');
     await changeVariant(page, '0.5', 'transparent', 'post-transparent-loss-transparent');
     const recoveredTransparent = await capture(page, 'recovered-transparent', 'transparent');
-    verifyStable(repeatedTransparent, recoveredTransparent, 'transparent-restoration');
+    verifyStable(transparentAfterOpaqueLoss, recoveredTransparent, 'transparent-restoration');
     assert.deepEqual(observedErrors, [], 'no unexpected page errors');
     const report = {
       fixture: 'three-tier-silicon-jlfets-full-wafer.wafercad',
