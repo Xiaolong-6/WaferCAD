@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { captureVisibleThree } from './three-visibility.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const example = process.env.WAFERCAD_V2_EXAMPLE || 'm3d';
 const fixtures = { m3d: [27, 551], photodetector: [5, 5], metalens: [5, 2] };
@@ -263,13 +264,14 @@ try {
         false,
       );
       assert.deepEqual(errors, []);
-      await page.screenshot({ path: resolve(output, `three-${width}.png`), fullPage: true });
+      const visibility = await captureVisibleThree(page, resolve(output, `three-${width}.png`));
       report.widths.push({
         width,
         gestures: true,
         wheelPolicy: true,
         sharedIdentity: true,
         scientificUnchanged: true,
+        visibility,
       });
       console.log(`3D ${width}: PASS`);
     } finally {
@@ -347,13 +349,16 @@ try {
     }
     assert.deepEqual((await snapshot()).model, initial.model);
     assert.deepEqual(errors, []);
-    await page.screenshot({ path: resolve(output, 'three-touch.png'), fullPage: true });
+    const visibility = await captureVisibleThree(page, resolve(output, 'three-touch.png'), {
+      fullPage: false,
+    });
     report.touch = {
       rotate: true,
       pan: true,
       verticalZoom: true,
       pinchAllModes: true,
       scientificUnchanged: true,
+      visibility,
     };
     console.log('3D touch: PASS');
   } finally {
