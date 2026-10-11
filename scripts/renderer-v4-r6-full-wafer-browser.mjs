@@ -238,7 +238,11 @@ try {
 
     await changeVariant(page, '0.5', 'transparent', 'pre-transparent-loss');
     const repeatedTransparent = await capture(page, 'preloss-repeat-transparent', 'transparent');
-    verifyStable(transparent, repeatedTransparent, 'transparent-variant-repeat-without-context-loss');
+    verifyStable(
+      transparent,
+      repeatedTransparent,
+      'transparent-variant-repeat-without-context-loss',
+    );
     await cycleContext(page, 'transparent-loss');
     await changeVariant(page, '1', 'opaque', 'post-transparent-loss-opaque');
     await changeVariant(page, '0.5', 'transparent', 'post-transparent-loss-transparent');
