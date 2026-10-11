@@ -225,10 +225,10 @@ export function installWebglFrameProbe() {
         // An explicit completion barrier separates JS submission from the
         // remaining driver/GPU queue. It perturbs scheduling in BOTH arms.
         gl.finish();
+        const finishedAt = performance.now();
         // Capture the final drawn phase even if there was no owner transition.
         // The readback is diagnostic-only and excluded from the finish latency.
         if (active.capturePhases) capturePhaseFramebuffer(gl, active, active.phaseKind, true);
-        const finishedAt = performance.now();
         const frame = {
           rasterDiscard: active.rasterDiscard,
           drawCalls: active.drawCalls,
