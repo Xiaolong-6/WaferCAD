@@ -146,10 +146,15 @@ function applyFollowSurfaceTransfer(model, params, area, modelApi, vectorApi) {
   const amount = Number(params.thickness),
     gap = Math.max(0, Number(params.transferGap) || 0),
     face = params.face === 'back' ? 'back' : 'front';
+  if (params.reuseLayerId && !modelApi.layerById(model, params.reuseLayerId)) {
+    return { changed: false, error: 'The shared both-face transfer layer is unavailable.' };
+  }
   if (!(amount > 1e-9))
     return { changed: false, error: 'Transfer thickness must be greater than zero.' };
 
-  const layer = modelApi.createLayer(model, params.name || 'Transferred layer'),
+  const layer = params.reuseLayerId
+    ? modelApi.layerById(model, params.reuseLayerId)
+    : modelApi.createLayer(model, params.name || 'Transferred layer'),
     next = [];
   let touched = false;
 
@@ -188,7 +193,7 @@ function applyFollowSurfaceTransfer(model, params, area, modelApi, vectorApi) {
   }
 
   if (!touched) {
-    model.layers = model.layers.filter((candidate) => candidate.id !== layer.id);
+    if (!params.reuseLayerId) model.layers = model.layers.filter((candidate) => candidate.id !== layer.id);
     return { changed: false, error: 'Transfer/Laminate does not overlap the selected target.' };
   }
 
@@ -208,6 +213,9 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   const amount = Number(params.thickness),
     gap = Math.max(0, Number(params.transferGap) || 0),
     face = params.face === 'back' ? 'back' : 'front';
+  if (params.reuseLayerId && !modelApi.layerById(model, params.reuseLayerId)) {
+    return { changed: false, error: 'The shared both-face transfer layer is unavailable.' };
+  }
   if (!(amount > 1e-9))
     return { changed: false, error: 'Transfer thickness must be greater than zero.' };
 
@@ -220,7 +228,9 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
     };
   }
 
-  const layer = modelApi.createLayer(model, params.name || 'Transferred layer'),
+  const layer = params.reuseLayerId
+    ? modelApi.layerById(model, params.reuseLayerId)
+    : modelApi.createLayer(model, params.name || 'Transferred layer'),
     transferred = transferredSegment(layer.id, plane, amount, gap, face),
     next = [],
     coveredParts = [];
@@ -258,7 +268,7 @@ function applyFlatTransfer(model, params, area, modelApi, vectorApi) {
   }
 
   if (!next.length) {
-    model.layers = model.layers.filter((candidate) => candidate.id !== layer.id);
+    if (!params.reuseLayerId) model.layers = model.layers.filter((candidate) => candidate.id !== layer.id);
     return { changed: false, error: 'Transfer/Laminate does not overlap the selected target.' };
   }
 
