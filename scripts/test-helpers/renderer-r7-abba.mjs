@@ -40,3 +40,45 @@ export function summarizeR7Abba(trials) {
     gpuVramBytes: null,
   };
 }
+
+export const R7_PIXEL_PAIRS = Object.freeze([
+  { pair: '1-2', kind: 'cross-policy' },
+  { pair: '1-3', kind: 'cross-policy' },
+  { pair: '1-4', kind: 'same-policy-A' },
+  { pair: '2-3', kind: 'same-policy-B' },
+  { pair: '2-4', kind: 'cross-policy' },
+  { pair: '3-4', kind: 'cross-policy' },
+]);
+
+// Never blame candidate geometry for a cross-policy mismatch unless A/A
+// and B/B fresh-context repeats are themselves exact-pixel repeatable.
+export function summarizeR7PixelParity(comparisons) {
+  if (
+    !Array.isArray(comparisons) ||
+    comparisons.length !== R7_PIXEL_PAIRS.length ||
+    comparisons.some(
+      (item, index) =>
+        item?.pair !== R7_PIXEL_PAIRS[index].pair ||
+        item.kind !== R7_PIXEL_PAIRS[index].kind ||
+        typeof item.pixelIdentical !== 'boolean' ||
+        !Number.isSafeInteger(item.differentPixels) ||
+        item.differentPixels < 0 ||
+        item.pixelIdentical !== (item.differentPixels === 0),
+    )
+  ) {
+    throw new Error('R7 requires all six ordered ABBA pixel comparisons with exact counts');
+  }
+  const baselineRepeatable = comparisons[2].pixelIdentical;
+  const candidateRepeatable = comparisons[3].pixelIdentical;
+  const crossPolicyIdentical = [0, 1, 4, 5].every(
+    (index) => comparisons[index].pixelIdentical,
+  );
+  return {
+    baselineRepeatable,
+    candidateRepeatable,
+    crossPolicyIdentical,
+    optimizationAttributionPossible: baselineRepeatable && candidateRepeatable,
+    strictPixelParity: comparisons.every((item) => item.pixelIdentical),
+    mismatchCount: comparisons.filter((item) => !item.pixelIdentical).length,
+  };
+}

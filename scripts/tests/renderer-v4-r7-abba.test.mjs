@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { R7_ORDER, summarizeR7Abba } from '../test-helpers/renderer-r7-abba.mjs';
+import {
+  R7_ORDER,
+  R7_PIXEL_PAIRS,
+  summarizeR7Abba,
+  summarizeR7PixelParity,
+} from '../test-helpers/renderer-r7-abba.mjs';
 
 const trial = (policy, a, b) => ({
   policy,
@@ -39,5 +44,39 @@ test('R7 fails closed on missing trials, wrong order, stale and invalid frame sa
         { policy: 'A', samples: [{ driverFinishWallMs: 0 }, { driverFinishWallMs: NaN }] },
       ]),
     /finite positive/,
+  );
+});
+
+test('R7 evaluates all six pairs, rejecting same-policy instability without relaxing A/B gate', () => {
+  const identical = R7_PIXEL_PAIRS.map(({ pair, kind }) => ({
+    pair,
+    kind,
+    pixelIdentical: true,
+    differentPixels: 0,
+  }));
+  const passed = summarizeR7PixelParity(identical);
+  assert.equal(passed.strictPixelParity, true);
+  assert.equal(passed.baselineRepeatable, true);
+  assert.equal(passed.candidateRepeatable, true);
+  const baselineDrift = identical.map((row) => ({ ...row }));
+  baselineDrift[2].pixelIdentical = false;
+  baselineDrift[2].differentPixels = 12;
+  const blocked = summarizeR7PixelParity(baselineDrift);
+  assert.equal(blocked.strictPixelParity, false);
+  assert.equal(blocked.baselineRepeatable, false);
+  assert.equal(blocked.candidateRepeatable, true);
+  assert.equal(blocked.optimizationAttributionPossible, false);
+  assert.equal(blocked.mismatchCount, 1);
+  assert.throws(
+    () => summarizeR7PixelParity(baselineDrift.slice(0, 3)),
+    /all six ordered/,
+  );
+  assert.throws(
+    () => summarizeR7PixelParity([...identical.slice(0, 5), identical[4]]),
+    /all six ordered/,
+  );
+  assert.throws(
+    () => summarizeR7PixelParity([{ ...identical[0], differentPixels: 1 }, ...identical.slice(1)]),
+    /all six ordered/,
   );
 });

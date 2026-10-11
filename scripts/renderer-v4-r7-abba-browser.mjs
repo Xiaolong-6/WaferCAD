@@ -18,7 +18,12 @@ import {
 } from './test-helpers/ui.mjs';
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
-import { R7_ORDER, summarizeR7Abba } from './test-helpers/renderer-r7-abba.mjs';
+import {
+  R7_ORDER,
+  R7_PIXEL_PAIRS,
+  summarizeR7Abba,
+  summarizeR7PixelParity,
+} from './test-helpers/renderer-r7-abba.mjs';
 
 const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
@@ -48,6 +53,10 @@ const report = {
   platform: process.platform,
   comparisons: [],
   trials: [],
+  parity: null,
+  stats: null,
+  failureReasons: [],
+  stage: 'initialization',
   gpuVramBytes: null,
   pureGpuFrameTimeMs: null,
   passed: false,
@@ -72,6 +81,7 @@ async function oneArm(policy, index) {
   ];
   const row = { label, policy, flags, samples: [] };
   report.trials.push(row);
+  report.stage = 'capture-' + label;
   try {
     const page = await context.newPage();
     page.setDefaultTimeout(timeout);
@@ -175,6 +185,11 @@ async function oneArm(policy, index) {
     const png = await page.locator('#threeHost canvas').screenshot();
     await writeFile(new URL(label + '.png', output), png);
     pngs.push(png);
+    // Two independent reads without touching Fit or the camera. Distinguish
+    // screenshot/compositor instability from fresh-context reproducibility.
+    const duplicate = await page.locator('#threeHost canvas').screenshot();
+    await writeFile(new URL(label + '-duplicate.png', output), duplicate);
+    row.sameContextPixels = compareScreenshotPngPixels(png, duplicate);
     const adapter = await page.locator('#threeHost canvas').evaluate((canvas) => {
       const gl = canvas.getContext('webgl2');
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
@@ -212,37 +227,61 @@ async function oneArm(policy, index) {
 }
 try {
   for (let i = 0; i < R7_ORDER.length; i++) await oneArm(R7_ORDER[i], i + 1);
-  for (let i = 1; i < pngs.length; i++) {
-    const pixels = compareScreenshotPngPixels(pngs[0], pngs[i]);
-    report.comparisons.push({ pair: '1-' + (i + 1), ...pixels });
-    assert.equal(pixels.pixelIdentical, true, 'R7 strict cross-context pixel parity');
+  report.stage = 'all-pair-pixel-parity';
+  // Always compare ALL six pairs: A1/A2 and B1/B2 repeatability must be
+  // established before A/B disagreements can be attributed to the candidate.
+  for (const { pair, kind } of R7_PIXEL_PAIRS) {
+    const [left, right] = pair.split('-').map((value) => Number(value) - 1);
+    const pixels = compareScreenshotPngPixels(pngs[left], pngs[right]);
+    const comparison = { pair, kind, ...pixels };
+    report.comparisons.push(comparison);
+    console.log('RENDERER_V4_R7_ABBA_PIXEL_PAIR', JSON.stringify(comparison));
+  }
+  report.parity = summarizeR7PixelParity(report.comparisons);
+  report.stats = summarizeR7Abba(report.trials);
+  const failures = report.failureReasons;
+  for (const row of report.trials) {
+    if (!row.sameContextPixels.pixelIdentical) {
+      failures.push(row.label + ': even duplicate in-context screenshots differ');
+    }
+  }
+  if (!report.parity.baselineRepeatable) {
+    failures.push('baseline A1/A2 fresh-context pixel parity failed');
+  }
+  if (!report.parity.candidateRepeatable) {
+    failures.push('candidate B1/B2 fresh-context pixel parity failed');
+  }
+  if (!report.parity.crossPolicyIdentical) {
+    failures.push('one or more cross-policy A/B pixel comparisons failed');
   }
   for (let i = 1; i < report.trials.length; i++) {
-    assert.equal(
-      report.trials[i].state.cameraWorld,
-      report.trials[0].state.cameraWorld,
-      'R7 fixed camera world',
-    );
-    assert.equal(
-      report.trials[i].state.cameraProjection,
-      report.trials[0].state.cameraProjection,
-      'R7 fixed projection',
-    );
+    if (report.trials[i].state.cameraWorld !== report.trials[0].state.cameraWorld) {
+      failures.push(report.trials[i].label + ': camera world differs from A1');
+    }
+    if (report.trials[i].state.cameraProjection !== report.trials[0].state.cameraProjection) {
+      failures.push(report.trials[i].label + ': camera projection differs from A1');
+    }
+    if (report.trials[i].backend.adapter !== report.trials[0].backend.adapter) {
+      failures.push(report.trials[i].label + ': WebGL adapter differs from A1');
+    }
   }
-  // Counts must remain reproducible within each policy. Cross-policy
-  // reductions are reported but never fabricated as performance gains.
   for (const [a, b] of [
     [0, 3],
     [1, 2],
   ]) {
     for (const key of ['drawCalls', 'triangles', 'geometries', 'cpuTypedArrayBytes']) {
-      assert.equal(report.trials[a].state[key], report.trials[b].state[key], key + ' drift');
+      if (report.trials[a].state[key] !== report.trials[b].state[key]) {
+        failures.push(key + ': same-policy counts drift in ' + (a + 1) + '-' + (b + 1));
+      }
     }
   }
-  const stats = summarizeR7Abba(report.trials);
-  report.stats = stats;
-  report.passed = true;
+  report.passed = failures.length === 0 && report.parity.strictPixelParity;
+  report.stage = 'complete';
   console.log('RENDERER_V4_R7_ABBA_REPORT', JSON.stringify(report));
+  assert.ok(report.passed, 'R7 strict parity blocked: ' + failures.join('; '));
+} catch (error) {
+  report.failure = String(error);
+  throw error;
 } finally {
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   await browser.close();
