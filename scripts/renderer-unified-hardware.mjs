@@ -120,6 +120,17 @@ async function runHardware() {
     if (playwrightInstall.exitCode !== 0) {
       throw new Error('Chromium installation failed; see install-chromium.log');
     }
+    // Verify the exact Windows Chromium network path before scheduling ANY
+    // GPU captures. The prior run failed every arm at page.goto(app.html).
+    const preflight = await runLogged(
+      process.execPath,
+      [join(worktrees.v4, 'scripts/renderer-hardware-http-smoke.mjs')],
+      worktrees.v4,
+      join(evidence, 'preflight-chromium.log'),
+    );
+    if (preflight.exitCode !== 0) {
+      throw new Error('Local Windows Chromium HTTP preflight failed; see preflight-chromium.log');
+    }
     for (const step of plan) {
       console.log('Running ' + step.id + ' on ' + refs[step.branch].slice(0, 10));
       const worktree = worktrees[step.branch];
