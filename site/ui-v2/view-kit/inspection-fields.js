@@ -36,10 +36,16 @@ export function createInspectionFields({
       hook(hookId, node.querySelector('select'));
       return node;
     },
-    textarea(label, id, value = '') {
+    textarea(label, id, value = '', { kind = 'text' } = {}) {
       const control = hook(id, el('textarea', { class: 'wc-input', rows: 5, spellcheck: false }));
       control.value = value;
-      return el('label', { class: 'wc-field' }, el('span', { class: 'wc-label' }, label), control);
+      if (kind === 'points' && units) control.dataset.displayPoints = units.key();
+      return el(
+        'label',
+        { class: 'wc-field' },
+        el('span', { class: 'wc-label' }, kind === 'points' && units ? units.labelText(label) : label),
+        control,
+      );
     },
     pair: (...children) => el('div', { class: 'v2-inspection-pair' }, children),
   };

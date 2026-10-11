@@ -135,7 +135,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       form.replaceChildren(
         ...shapeFields(shape).map(([label, id, value, type]) =>
           type === 'points'
-            ? textarea(label, id, value)
+            ? textarea(label, id, value, { kind: 'points' })
             : input(label, id, value, { kind: type || 'length' }),
         ),
         el('span', { class: 'p-aux' }, 'Position and size precision · 0.1 nm'),

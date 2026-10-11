@@ -351,9 +351,19 @@ export function createWorkstationWorkflow({ store, workstation }) {
   ]) {
     const control = button(direction < 0 ? '−' : '+', null, null, { 'aria-label': label });
     control.onclick = () => {
-      const physical = Math.max(0, units.parse(thickness.value) + direction * 0.001);
+      const before = formSnapshot();
+      commitDraft(); // Finish an earlier focused edit before the button owns this change.
+      const current = units.parse(thickness.value);
+      if (!Number.isFinite(current)) return;
+      const physical = Math.max(0, current + direction * 0.001);
       thickness.value = units.format(physical);
       thickness.dispatchEvent(new Event('change', { bubbles: true }));
+      if (JSON.stringify(before) !== JSON.stringify(formSnapshot())) {
+        draftPast.push(before);
+        draftFuture.length = 0;
+        draftUndo.disabled = false;
+        draftRedo.disabled = true;
+      }
     };
     stepActions.append(control);
   }
@@ -372,6 +382,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
   const operationButtons = hooks.get('applyOperationBtn').parentElement;
   operationButtons.className = 'p-apply-actions';
   hooks.get('applyOperationBtn').dataset.action = 'apply';
+  hooks.get('applyOperationBtn').prepend(window.WaferCadV2Icons.icon('play'));
   hooks.get('undoBtn').remove();
   hooks.get('redoBtn').remove();
   const draftUndo = button('', null, 'undo', {
@@ -484,9 +495,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     materialPreview.hidden = !['add', 'implant', 'electrical'].includes(type);
     inputUnit.textContent = `Input unit: ${units.label()}`;
     processSummary.textContent = `${state.model.regions.length} regions · ${state.model.layers.length} layers`;
-    const apply = hooks.get('applyOperationBtn');
-    apply.prepend(window.WaferCadV2Icons.icon('play'));
-    for (const id of ['processParametersHeading', 'processSummary', 'operationNote'])
+     for (const id of ['processParametersHeading', 'processSummary', 'operationNote'])
       if (hooks.has(id)) hooks.get(id).hidden = true;
     const api = window.WaferCadProcessGuide;
     const id = api.processGuideKey({

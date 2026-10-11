@@ -188,12 +188,29 @@ try {
         assert.deepEqual((await snap()).roi, inspection.roi);
         assert.deepEqual((await snap()).maskRoi, inspection.maskRoi);
       }
+      if (width === 1440) {
+        await page.getByText('Base', { exact: true }).click();
+        assert.equal(await page.locator('#substrateShape').isVisible(), false);
+        assert.equal(await page.locator('#baseHeight').isVisible(), true);
+      }
       await view('main');
       await command('main', 'face:main');
       assert.equal((await snap()).activeFace, inspection.activeFace === 'front' ? 'back' : 'front');
       assert.equal((await snap()).workflow.processFace, 'front');
       assert.equal(await page.locator('#mainFaceBtn').getAttribute('aria-pressed'), null);
       await panel('process');
+      if (width === 1440) {
+        await page.locator('#operationThickness').fill('0.07');
+        await page.locator('#operationThickness').press('Tab');
+        await page.getByRole('button', { name: 'Increase Thickness / depth' }).click();
+        assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
+        await page.getByRole('button', { name: 'Undo form edit' }).click();
+        assert.equal(await page.locator('#operationThickness').inputValue(), '0.07');
+        await page.getByRole('button', { name: 'Redo form edit' }).click();
+        assert.equal(await page.locator('#operationThickness').inputValue(), '0.071');
+        assert.equal(await page.locator('#applyOperationBtn svg').count(), 1);
+        assert.equal(await page.locator('#v2MaterialPreview').isDisabled(), true);
+      }
       const apply = async (name, depth, face) => {
         await page.locator('#operationType').selectOption('add');
         await page.locator('#operationArea').selectOption('full');

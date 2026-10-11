@@ -1,5 +1,7 @@
 /* Domain controller output inherits the reviewed v2 tokens and control sizing. */
-.v2-process-form .hidden {
+.v2-process-form .hidden,
+.v2-process-form [hidden],
+.p-base-editor [hidden] {
   display: none;
 }
 .v2-process-form {
