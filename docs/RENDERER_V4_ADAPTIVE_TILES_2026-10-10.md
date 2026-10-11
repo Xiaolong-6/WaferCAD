@@ -616,7 +616,7 @@ without relaxing pixel acceptance or changing the approved baseline.
 The branch also fixed repeated idle `OrbitControls.update()` camera
 matrix drift; both pre-loss opaque and transparent cached variant
 round trips now produce exactly identical screenshots. The earlier
-claim that the transparent *ordinary* repeat was unstable was a test
+claim that the transparent _ordinary_ repeat was unstable was a test
 order/label error: it had compared a pre-loss baseline with a
 post-opaque-loss screenshot. The corrected gate isolates pre-loss
 round trips before triggering any WebGL restoration.
