@@ -1,5 +1,30 @@
 // R7 ABBA statistics are descriptive, never GPU timing or approval by themselves.
 // Fixed A-B-B-A ordering mitigates monotonic warm-up but cannot remove driver drift.
+export const R7_CANDIDATE_FLAGS = Object.freeze({
+  combined: Object.freeze(['rendererV4FastSmoothIndex=1', 'rendererV4SharedFlatCaps=1']),
+  index: Object.freeze(['rendererV4FastSmoothIndex=1']),
+  caps: Object.freeze(['rendererV4SharedFlatCaps=1']),
+});
+
+export function selectR7Candidate(args = []) {
+  const indexOnly = args.includes('--isolate-index');
+  const capsOnly = args.includes('--isolate-caps');
+  if (indexOnly && capsOnly) {
+    throw new Error('select at most one V4 isolation candidate');
+  }
+  const mode = indexOnly ? 'index' : capsOnly ? 'caps' : 'combined';
+  return {
+    mode,
+    candidateName: {
+      index: 'FastSmoothIndex-only',
+      caps: 'SharedFlatCaps-only',
+      combined: 'combined',
+    }[mode],
+    flags: [...R7_CANDIDATE_FLAGS[mode]],
+    artifactSuffix: mode === 'combined' ? '' : '-' + mode + '-only',
+  };
+}
+
 export const R7_ORDER = Object.freeze(['A', 'B', 'B', 'A']);
 
 export function summarizeR7Abba(trials) {
