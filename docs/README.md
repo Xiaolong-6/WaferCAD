@@ -25,6 +25,7 @@ Use this page to find the document that owns a question. Current contracts descr
 ## Scientific and interchange contracts
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
+- [Both-face Process Kernel](PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, one-layer identity, atomic failure and future UI contract.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
 - [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
