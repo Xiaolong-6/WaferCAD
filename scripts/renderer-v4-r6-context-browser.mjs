@@ -4,8 +4,14 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
-  launchBrowser, newUiContext, observePageErrors, waitForAppReady,
-  waitForThreeReady, chooseConfirmation, closeFunctionPanel, baseUrl,
+  launchBrowser,
+  newUiContext,
+  observePageErrors,
+  waitForAppReady,
+  waitForThreeReady,
+  chooseConfirmation,
+  closeFunctionPanel,
+  baseUrl,
 } from './test-helpers/ui.mjs';
 
 const output = new URL('../test-results/renderer-v4-r6-context/', import.meta.url);
@@ -20,23 +26,28 @@ try {
     const errors = observePageErrors(page);
     await page.goto(baseUrl + '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1');
     await waitForAppReady(page);
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(new URL('../site/examples/previews/tio2-metalens-four-unit.wafercad', import.meta.url)),
-    );
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL('../site/examples/previews/tio2-metalens-four-unit.wafercad', import.meta.url),
+        ),
+      );
     await chooseConfirmation(page);
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
-      undefined, { timeout: 90000 },
+      undefined,
+      { timeout: 90000 },
     );
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 90000);
     const host = page.locator('#threeHost');
-    const initial = await host.evaluate(node => ({ ...node.dataset }));
+    const initial = await host.evaluate((node) => ({ ...node.dataset }));
     assert.equal(initial.v4GpuResourceStatus, 'measured');
     assert.equal(initial.v4GpuResourceComplete, 'true');
     const before = await host.screenshot();
     const frameBefore = Number(initial.rendererFrameSerial || 0);
-    const support = await page.locator('#threeHost canvas').evaluate(canvas => {
+    const support = await page.locator('#threeHost canvas').evaluate((canvas) => {
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
       const ext = gl?.getExtension('WEBGL_lose_context');
       if (!ext) return false;
@@ -44,7 +55,9 @@ try {
       // The extension cannot be re-queried while the WebGL context is lost.
       window.__wafercadR6Extension = ext;
       canvas.addEventListener('webglcontextlost', () => window.__wafercadR6Events.push('lost'));
-      canvas.addEventListener('webglcontextrestored', () => window.__wafercadR6Events.push('restored'));
+      canvas.addEventListener('webglcontextrestored', () =>
+        window.__wafercadR6Events.push('restored'),
+      );
       ext.loseContext();
       return true;
     });
@@ -73,9 +86,7 @@ try {
       if (!(await opacityControl.evaluate((node) => node.open))) {
         await opacityControl.locator(':scope > summary').click();
       }
-      const serial = Number(
-        await host.evaluate((node) => node.dataset.rendererFrameSerial || 0),
-      );
+      const serial = Number(await host.evaluate((node) => node.dataset.rendererFrameSerial || 0));
       await opacity.fill(value);
       await page.waitForFunction(
         ({ serial, value }) => {
@@ -91,12 +102,11 @@ try {
       );
     }
     assert.ok(
-      Number(await host.evaluate((node) => node.dataset.rendererFrameSerial || 0)) >
-        frameBefore,
+      Number(await host.evaluate((node) => node.dataset.rendererFrameSerial || 0)) > frameBefore,
       'restored context must submit a new frame',
     );
     await waitForThreeReady(page, 90000);
-    const final = await host.evaluate(node => ({ ...node.dataset }));
+    const final = await host.evaluate((node) => ({ ...node.dataset }));
     assert.equal(final.v4GpuResourceStatus, 'measured');
     assert.equal(final.v4GpuResourceComplete, 'true');
     assert.equal(final.v4GpuResourceCrossVariantGeometries, '0');
@@ -108,11 +118,16 @@ try {
     assert.deepEqual(errors, [], 'no unexpected page/console errors');
     const result = {
       backend: 'Chromium WebGL (inspect CI GPU adapter; not hardware certified)',
-      events, geometryCount: Number(final.v4GpuResourceGeometries),
+      events,
+      geometryCount: Number(final.v4GpuResourceGeometries),
       retainedTypedArrayBytes: Number(final.v4GpuResourceEstimatedBufferBytes),
       imageBytes: after.length,
     };
     console.log('RENDERER_V4_R6_CONTEXT_RECOVERY', JSON.stringify(result));
     await writeFile(new URL('report.json', output), JSON.stringify(result, null, 2) + '\n');
-  } finally { await context.close(); }
-} finally { await browser.close(); }
+  } finally {
+    await context.close();
+  }
+} finally {
+  await browser.close();
+}
