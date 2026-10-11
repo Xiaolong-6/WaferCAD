@@ -142,6 +142,19 @@ try {
     }
     const range = page.locator('#threeOpacityRange');
     const changeOpacity = async (opacity, label) => {
+      // Opening a project reinitializes the responsive 3D toolbar and may
+      // close its Display <details>. Reopen the real control for each action.
+      if (
+        (await opacityControl.evaluate((node) =>
+          Boolean(node.closest('.view-overflow-secondary')),
+        )) &&
+        !(await more.evaluate((node) => node.open))
+      ) {
+        await more.locator(':scope > summary').click();
+      }
+      if (!(await opacityControl.evaluate((node) => node.open))) {
+        await opacityControl.locator(':scope > summary').click();
+      }
       const before = await page
         .locator('#threeHost')
         .evaluate((node) => Number(node.dataset.rendererFrameSerial || 0));
