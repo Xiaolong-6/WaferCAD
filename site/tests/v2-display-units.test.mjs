@@ -9,7 +9,9 @@ test('an open polygon editor retains physical vertices through nm, mm and µm sw
     value: '1, -2\n-0.125, 0.5',
     closest: () => ({ querySelector: () => label }),
   };
-  const root = { querySelectorAll: (selector) => selector === '[data-display-points]' ? [control] : [] };
+  const root = {
+    querySelectorAll: (selector) => (selector === '[data-display-points]' ? [control] : []),
+  };
   syncDisplayUnitFields(root, 'nm');
   assert.equal(control.value, '1000, -2000\n-125, 500');
   assert.match(label.textContent, /nm/);

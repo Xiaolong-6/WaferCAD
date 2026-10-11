@@ -21,7 +21,7 @@ export function createDisplayUnits(getState) {
 // Retain punctuation and invalid tokens so validation remains with the Draw controller.
 export function convertPolygonPointUnits(text, previous, unit) {
   return text.replace(
-    /(^|[,\\s])([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?)(?=$|[,\\s])/gm,
+    /(^|[,\s])([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?=$|[,\s])/gm,
     (_match, separator, value) =>
       separator + String(fromMicron(toMicron(value, previous), unit)),
   );

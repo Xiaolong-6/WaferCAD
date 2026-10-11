@@ -35,7 +35,7 @@ try {
         timeout: 120000,
       });
       assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
-      assert.match(page.url(), /\\/app-v2-workstation\\.html\\?example=/);
+      assert.match(page.url(), /\/app-v2-workstation\.html\?example=/);
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const before = await snapshot();
       assert.equal(before.sharedIdentity, true);
@@ -44,7 +44,7 @@ try {
       assert.equal(before.source.includes(example === 'm3d' ? 'm3d-selfpowered' : example), true);
       const legacyBoot = await page.evaluate(() =>
         performance.getEntriesByType('resource').some((entry) =>
-          /\\/app\\.js(?:\\?|$)/.test(entry.name),
+          /\/app\.js(?:\?|$)/.test(entry.name),
         ),
       );
       assert.equal(legacyBoot, false, 'UI v2 must not boot legacy app.js');
