@@ -103,11 +103,16 @@ try {
     await chooseConfirmation(page);
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent.startsWith('Opened '),
+      undefined,
       { timeout: 180000 },
     );
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 180000);
-    const first = await setOpacity(page, '1', 'opaque', 'warm-opaque');
+    const initialOpacity = await page.locator('#threeOpacityRange').inputValue();
+    const first = initialOpacity === '1'
+      ? await readState(page, 'warm-opaque')
+      : await setOpacity(page, '1', 'opaque', 'warm-opaque');
+    assert.equal(first.variant, 'opaque');
     assert.equal(first.groups, 1, 'first variant should not retain old model allocations');
     const second = await setOpacity(page, '0.5', 'transparent', 'warm-transparent');
     assert.equal(second.groups, 2, 'full 625-site model must retain both distinct scene variants');
