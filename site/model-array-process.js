@@ -168,7 +168,20 @@ export function applyArrayOperation(model, params, apply) {
   });
   // Commit only after every working set has completed successfully.
   model.array = { ...model.array, templates, instances };
-  model.layers = metadata.layers;
+  // Preserve per-face provenance on existing material IDs when array working
+  // sets regenerate their layer metadata from canonical template models.
+  const previousLayers = new Map(model.layers.map((layer) => [layer.id, layer]));
+  model.layers = metadata.layers.map((layer) => {
+    const previous = previousLayers.get(layer.id);
+    return previous?.processGroupId
+      ? {
+          ...layer,
+          processGroupId: previous.processGroupId,
+          processFace: previous.processFace,
+          pairedLayerId: previous.pairedLayerId,
+        }
+      : layer;
+  });
   for (const key of ['implants', 'electricalRegions']) {
     const definitions = new Map((model[key] || []).map((a) => [a.id, a]));
     for (const leaf of replacements.values())

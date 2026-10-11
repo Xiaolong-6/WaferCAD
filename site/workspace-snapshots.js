@@ -312,6 +312,7 @@ export function createSnapshotManager({
             ? [...replay.params.etchTargetLayerIds]
             : [],
         resultLayerId: operation.resultLayerId || null,
+        resultLayerIds: operation.resultLayerIds || null,
         resultImplantId: operation.resultImplantId || null,
         resultElectricalRegionId: operation.resultElectricalRegionId || null,
       };
@@ -324,10 +325,20 @@ export function createSnapshotManager({
       return added.length === 1 ? added[0].id : null;
     };
 
-    if (!refs.resultLayerId && operation.kind === 'add') {
-      refs.resultLayerId = addedId(nodeState?.model?.layers, parentState?.model?.layers, {
-        exclude: (item) => item.id === 'base',
-      });
+    if (operation.kind === 'add') {
+      const beforeIds = new Set((parentState?.model?.layers || []).map((layer) => layer.id));
+      const added = (nodeState?.model?.layers || []).filter(
+        (layer) => layer.id !== 'base' && !beforeIds.has(layer.id),
+      );
+      if (!refs.resultLayerId && added.length === 1) refs.resultLayerId = added[0].id;
+      if (!refs.resultLayerIds && added.length === 2) {
+        const front = added.find((layer) => layer.processFace === 'front');
+        const back = added.find((layer) => layer.processFace === 'back');
+        if (front && back) {
+          refs.resultLayerIds = { front: front.id, back: back.id };
+          refs.resultLayerId ||= front.id;
+        }
+      }
     }
     if (!refs.resultImplantId && operation.kind === 'implant') {
       refs.resultImplantId = addedId(nodeState?.model?.implants, parentState?.model?.implants);
