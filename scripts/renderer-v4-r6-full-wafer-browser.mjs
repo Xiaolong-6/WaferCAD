@@ -203,6 +203,11 @@ function verifyStable(before, after, label) {
   ]) {
     assert.equal(after.state[key], before.state[key], label + ': ' + key);
   }
+  assert.deepEqual(
+    after.state.gl,
+    before.state.gl,
+    label + ': WebGL drawing buffer and context state must match exactly',
+  );
   assert.ok(after.state.frame > before.state.frame, label + ': post-restore frame required');
   const pixels = compareScreenshotPngPixels(before.png, after.png);
   if (!pixels.pixelIdentical) {
