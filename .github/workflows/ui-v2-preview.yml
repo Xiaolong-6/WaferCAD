@@ -27,17 +27,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout current production main
-        uses: actions/checkout$v6
+        uses: actions/checkout@v6
         with:
           ref: main
           path: base
       - name: Checkout preview branch
-        uses: actions/checkout$v6
+        uses: actions/checkout@v6
         with:
           ref: codex/ui-v2-main-wip
           path: preview-src
       - name: Setup Node 24
-        uses: actions/setup-node$v6
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
       - name: Stamp each tree with its own commit
@@ -47,7 +47,7 @@ jobs:
           for tree in base preview-src; do
             (
               cd "$tree"
-              sha="$((git rev-parse HEAD)"
+              sha="$(git rev-parse HEAD)"
               printf '{"commit":"%s"}\n' "$sha" > site/build-info.json
               node scripts/stamp-pages-assets.mjs "$sha"
             )
@@ -60,11 +60,11 @@ jobs:
           cp -a base/site/. _site/
           cp -a preview-src/site/. _site/preview/
       - name: Configure Pages
-        uses: actions/configure-pages$v5
+        uses: actions/configure-pages@v5
       - name: Upload static site
-        uses: actions/upload-pages-artifact$v4
+        uses: actions/upload-pages-artifact@v4
         with:
           path: _site
       - name: Deploy preview without changing main root content
         id: deployment
-        uses: actions/deploy-pages$v4
+        uses: actions/deploy-pages@v4
