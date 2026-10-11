@@ -1112,7 +1112,7 @@ export function createProcessPanelController({
 
     const operation = {
       kind: type,
-      label: operationLabel,
+      label: processFace === 'both' ? `${operationLabel} · Both` : operationLabel,
       face: processFace,
       areaMode,
       areaLabel,
