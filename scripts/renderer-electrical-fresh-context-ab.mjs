@@ -249,13 +249,26 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
-    native.drawInputs = native.drawInputs.map(({ shaders, ...draw }) => ({
+    native.drawInputs = native.drawInputs.map(({ shaders, buffers, ...draw }) => ({
       ...draw,
       shaderHashes: shaders.map(({ type, source }) => ({
         type,
         hash: hashJson(source),
         length: source.length,
       })),
+      buffers: {
+        attributes: buffers.attributes.map(({ bytes, ...attribute }) => ({
+          ...attribute,
+          ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+        })),
+        indices: buffers.indices && (() => {
+          const { bytes, ...index } = buffers.indices;
+          return {
+            ...index,
+            ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+          };
+        })(),
+      },
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
     row.drawInputsCount = native.drawInputs.length;
@@ -270,6 +283,12 @@ async function trial(enabled, index) {
           draw.shaderHashes.some((shader) => shader.length > 0),
         ),
         `${label}: shader source evidence missing`,
+      );
+      assert.ok(
+        native.drawInputs.some((draw) => draw.buffers.attributes.some((attribute) =>
+          attribute.status === 'read' && attribute.sampledBytes > 0,
+        )),
+        `${label}: vertex buffer evidence missing`,
       );
     }
     row.stage = 'captured';
