@@ -1,7 +1,20 @@
-// Execute one logical Process operation on both exposed faces.
-// The only supported order is Front then Back. The candidate is committed
-// only if BOTH passes succeed; a failed second pass cannot mutate the caller.
+// One logical Process operation, evaluated Front then Back on a private candidate.
+// A failure on either face never partially commits material or History.
 const SUPPORTED_BOTH_TYPES = new Set(['add', 'grow', 'etch', 'implant', 'electrical']);
+
+function pairedTarget(model, id, face) {
+  if (!id) return id;
+  const layer = model.layers.find((candidate) => candidate.id === id);
+  if (!layer) return id;
+  if (layer.processFace === 'front' && face === 'back' && layer.pairedLayerId) {
+    const pair = model.layers.find((candidate) => candidate.id === layer.pairedLayerId);
+    if (!pair || pair.pairedLayerId !== id || pair.processFace !== 'back') {
+      throw new Error('Both-face material pair is incomplete.');
+    }
+    return pair.id;
+  }
+  return id;
+}
 
 export function applyProcessFaces(model, params, applySingleFace) {
   if (params?.face !== 'both') {
@@ -16,8 +29,7 @@ export function applyProcessFaces(model, params, applySingleFace) {
       result: { changed: false, error: `Both faces are unsupported for ${params.type || 'this operation'}.` },
     };
   }
-  // Planarize uses an absolute physical Z plane; applying the same target on
-  // opposite faces can erase the entire wafer rather than symmetrically thin it.
+  // Absolute Z Planarize on both faces would have an ambiguous physical meaning.
   if (params.type === 'etch' && params.etchProfile === 'planarize') {
     return {
       model,
@@ -36,21 +48,53 @@ export function applyProcessFaces(model, params, applySingleFace) {
   if (params.type === 'add' && !front.layerId) {
     return {
       model,
-      result: { changed: false, error: 'Front face deposition returned no reusable layer ID.' },
+      result: { changed: false, error: 'Front face deposition returned no layer ID.' },
     };
   }
 
-  // Both-sided films are one material layer, not two same-named layers.
-  const back = applySingleFace(candidate, {
-    ...params,
-    face: 'back',
-    ...(params.type === 'add' ? { reuseLayerId: front.layerId } : {}),
-  });
+  // A later Extend / selective Etch addresses the matching Back film when
+  // its selected Front film came from one earlier Both deposition.
+  const backParams = { ...params, face: 'back' };
+  if (params.type === 'grow') {
+    backParams.targetLayerId = pairedTarget(candidate, params.targetLayerId, 'back');
+  }
+  if (params.type === 'etch' && Array.isArray(params.etchTargetLayerIds)) {
+    backParams.etchTargetLayerIds = params.etchTargetLayerIds.map((id) =>
+      pairedTarget(candidate, id, 'back'),
+    );
+  }
+
+  const back = applySingleFace(candidate, backParams);
   if (!back?.changed) {
     return {
       model,
       result: { changed: false, error: `Back face: ${back?.error || 'no geometry changed.'}` },
     };
+  }
+
+  let layerIds = null;
+  let layerGroupId = null;
+  if (params.type === 'add') {
+    if (!back.layerId || front.layerId === back.layerId) {
+      return {
+        model,
+        result: { changed: false, error: 'Both deposition must create two distinct layer IDs.' },
+      };
+    }
+    layerIds = { front: front.layerId, back: back.layerId };
+    layerGroupId = `both-${front.layerId}-${back.layerId}`;
+    for (const face of ['front', 'back']) {
+      const layer = candidate.layers.find((item) => item.id === layerIds[face]);
+      if (!layer) {
+        return {
+          model,
+          result: { changed: false, error: 'Both deposition lost one material layer.' },
+        };
+      }
+      layer.processGroupId = layerGroupId;
+      layer.processFace = face;
+      layer.pairedLayerId = layerIds[face === 'front' ? 'back' : 'front'];
+    }
   }
 
   return {
@@ -59,7 +103,7 @@ export function applyProcessFaces(model, params, applySingleFace) {
       ...back,
       changed: true,
       face: 'both',
-      ...(params.type === 'add' ? { layerId: front.layerId } : {}),
+      ...(layerIds ? { layerId: layerIds.front, layerIds, layerGroupId } : {}),
       ...(params.type === 'implant'
         ? { implantId: front.implantId, implantIds: [front.implantId, back.implantId] }
         : {}),
