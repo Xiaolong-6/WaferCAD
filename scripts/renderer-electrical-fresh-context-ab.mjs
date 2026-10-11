@@ -179,16 +179,17 @@ async function trial(enabled, index) {
       })),
     );
     row.stage = 'capture-product-frame';
-    await page.evaluate((pixelSamples) => {
+    await page.evaluate(({ pixelSamples, captureDrawInputs }) => {
       window.__waferCadWebglProbe.arm({
         rasterDiscard: false,
         captureGlState: true,
         captureFramebuffer: true,
+        captureDrawInputs,
         pixelSamples,
       });
       const input = document.getElementById('threeOpacityRange');
       input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, samples);
+    }, { pixelSamples: samples, captureDrawInputs: hardwareRtx3060 });
     await page.waitForFunction(
       () => {
         const host = document.getElementById('threeHost');
@@ -226,6 +227,7 @@ async function trial(enabled, index) {
           renderer: frame.unmaskedRenderer || frame.renderer,
           vendor: frame.vendor,
           glState: frame.glState,
+          drawInputs: frame.drawInputs || [],
           framebuffer: frame.framebuffer,
           framebufferHash: hex,
           pixelSamples: frame.pixelSamples,
@@ -247,6 +249,11 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
+    native.drawInputs = native.drawInputs.map(({ shaders, ...draw }) => ({
+      ...draw,
+      shaderHashes: shaders.map(({ type, source }) => ({ type, hash: hashJson(source), length: source.length })),
+    }));
+    row.drawInputsHash = hashJson(native.drawInputs);
     row.stage = 'captured';
     row.png = { width: png.width, height: png.height };
     row.layout = evidence.layout;
@@ -309,6 +316,7 @@ async function trial(enabled, index) {
           JSON.stringify([row.cameraWorld, row.cameraProjection]),
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
+        sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -368,6 +376,7 @@ try {
     orderIdentical: off.orderHash === on.orderHash,
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
+    sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===

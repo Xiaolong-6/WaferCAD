@@ -44,6 +44,8 @@ export function installWebglFrameProbe() {
             pixelSamples: options.pixelSamples || [],
             captureGlState: options.captureGlState === true,
             captureFramebuffer: options.captureFramebuffer === true,
+            captureDrawInputs: options.captureDrawInputs === true,
+            drawInputs: [],
             firstElectricalState: null,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
@@ -79,6 +81,28 @@ export function installWebglFrameProbe() {
           const triangles = args[0] === gl.TRIANGLES ? (count / 3) * instances : 0;
           active.drawCalls++;
           active.triangles += triangles;
+          if (active.captureDrawInputs && active.drawInputs.length < 48 &&
+              (active.drawCalls <= 8 || active.drawCalls % 32 === 0)) {
+            const program = gl.getParameter(gl.CURRENT_PROGRAM);
+            const shaders = program ? (gl.getAttachedShaders(program) || []).map(shader => ({
+              type: gl.getShaderParameter(shader, gl.SHADER_TYPE),
+              source: (gl.getShaderSource(shader) || '').slice(0, 100000),
+            })) : [];
+            active.drawInputs.push({
+              draw: active.drawCalls, kind: owner.kind, name: owner.name,
+              method, mode: args[0], count, instances, shaders,
+              indexedBuffer: Boolean(gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING)),
+              blend: gl.isEnabled(gl.BLEND), cull: gl.isEnabled(gl.CULL_FACE),
+              cullMode: gl.getParameter(gl.CULL_FACE_MODE),
+              depthTest: gl.isEnabled(gl.DEPTH_TEST),
+              depthMask: gl.getParameter(gl.DEPTH_WRITEMASK),
+              depthFunc: gl.getParameter(gl.DEPTH_FUNC),
+              blendSrcRgb: gl.getParameter(gl.BLEND_SRC_RGB),
+              blendDstRgb: gl.getParameter(gl.BLEND_DST_RGB),
+              blendEquationRgb: gl.getParameter(gl.BLEND_EQUATION_RGB),
+              viewport: Array.from(gl.getParameter(gl.VIEWPORT)),
+            });
+          }
           const key = JSON.stringify([owner.kind, owner.name]);
           const row = active.owners.get(key) || { ...owner, drawCalls: 0, triangles: 0 };
           row.drawCalls++;
@@ -121,6 +145,7 @@ export function installWebglFrameProbe() {
           gpuMs: null,
           frameSerial: Number(entry.canvas.closest('#threeHost')?.dataset.rendererFrameSerial || 0),
           owners: [...active.owners.values()].sort((a, b) => b.triangles - a.triangles),
+          ...(active.captureDrawInputs ? { drawInputs: active.drawInputs } : {}),
           vendor: gl.getParameter(gl.VENDOR),
           renderer: gl.getParameter(gl.RENDERER),
           version: gl.getParameter(gl.VERSION),
@@ -257,6 +282,7 @@ export function installWebglFrameProbe() {
         rasterDiscard: options.rasterDiscard === true,
         captureGlState: options.captureGlState === true,
         captureFramebuffer: options.captureFramebuffer === true,
+        captureDrawInputs: options.captureDrawInputs === true,
         pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
           x,
           y,
