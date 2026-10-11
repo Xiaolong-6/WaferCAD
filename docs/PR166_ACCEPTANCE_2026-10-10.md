@@ -227,8 +227,21 @@ Reproduce using a fresh local server and pinned Three:
 python -u -m http.server 4174 --bind 127.0.0.1 --directory site
 $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-electrical-fresh-context-ab.mjs --hardware-rtx3060
 node scripts/renderer-quality-index-ab.mjs --hardware-electrical-ab
 ```
+
+The first command is the production-path P0 gate: it launches headed Chromium,
+fails closed unless every context identifies an NVIDIA GeForce RTX 3060, and
+captures fresh OFF/OFF/ON/ON contexts at zero pixel tolerance. It records full
+raw GL framebuffer hashes alongside PNG pixel diffs, camera matrices, draw
+order, material descriptors and canvas/backing-store dimensions. The report's
+`differenceStage` distinguishes a raw framebuffer mismatch from a screenshot-
+only mismatch; the accompanying state hashes identify application-input drift.
+Per-context traces and PNGs are written before strict parity checks to
+`test-results/renderer-hardware-fresh-context-ab/`, including on failed runs.
+Run this gate before the ABBA performance command; a parity failure keeps the
+optimization default-off and blocks further performance acceptance.
 
 Two independent hardware runs both **failed strict ON/OFF canvas parity** at
 trial 2. Both localized the same two changed pixels in the 531 × 275 image:
@@ -257,6 +270,52 @@ Hardware artifacts and pixel diagnostics are under ignored
 **Decision: hardware scientific parity FAIL; keep Draft, default-off and
 unmerged.** Same-policy controls, multiscale inspection and ownership/pass-order
 localization are required before another promotion attempt.
+
+## Production-path RTX 3060 fresh-context P0 — 2026-10-11
+
+The normal page-boot OFF/OFF/ON/ON gate was added to the Windows hardware
+acceptance sequence and run in headed Chromium. Source checkout HEAD was
+`113c16992612f3f0ee4fe65acd066ed4b783dd22`; the acceptance harness and this
+handoff had local documentation/diagnostic edits during the run. Environment:
+Windows x64, Node `v24.16.0`, Playwright `1.55.1`, Chromium `140.0.7339.186`,
+Three `0.179.1`, server `http://127.0.0.1:4174`. All four contexts were
+fail-closed verified as
+`ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)`.
+
+Command:
+
+```powershell
+$env:WAFERCAD_URL = 'http://127.0.0.1:4174'
+$env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
+node scripts/renderer-electrical-fresh-context-ab.mjs --hardware-rtx3060
+```
+
+The exact-pixel gate **failed**. Both same-policy pairs had identical camera
+matrices, draw-order hashes, material descriptors, CSS/canvas/GL dimensions,
+model/process revisions and native submission counts, but different full
+framebuffer hashes and PNG pixels:
+
+| Comparison                     | PNG pixels different | Max channel delta | Raw GL framebuffer | Difference stage  |
+| ------------------------------ | -------------------: | ----------------: | ------------------ | ----------------- |
+| OFF context 1 vs OFF context 2 |        107 / 146,025 |                 3 | different          | WebGL framebuffer |
+| ON context 3 vs ON context 4   |         36 / 146,025 |                 3 | different          | WebGL framebuffer |
+| OFF context 1 vs ON context 3  |         66 / 146,025 |                 3 | different          | WebGL framebuffer |
+
+The first mismatch therefore exists before browser screenshot capture; this is
+not a PNG-only compositor difference. The measured camera/order/material/layout
+inputs match within each policy, so the remaining failure points to cross-context
+WebGL rendering variability among the recorded inputs. Sparse raw-pixel probes
+matched even while complete framebuffer hashes differed, confirming that those
+samples are not a substitute for the full readback. OFF submitted 1,408 calls /
+57,040,012 triangles and ON submitted 1,291 / 54,066,262. These counts do not
+change the failed parity decision and no performance claim is made.
+
+The gate wrote four PNGs, four per-context traces and `report.json` under ignored
+`test-results/renderer-hardware-fresh-context-ab/`. The strict threshold remains
+zero. Keep PR #166 Draft and the candidate default-off; do not proceed to the
+hardware performance promotion gate until repeatable fresh-context parity is
+resolved. This run narrows the failure to the GL framebuffer stage but does not
+yet isolate which unobserved context/render input creates the variation.
 
 ### Inspection controls and scope limits
 
@@ -329,6 +388,9 @@ were stopped after acceptance runs.
 
 ## Post-push P0 diagnostics (2026-10-10; not yet Windows-runtime verified)
 
+Historical tooling publication status; the following Windows execution section
+supersedes the unrun-runtime status, without establishing either P0 as fixed.
+
 After commit `7abcf51` was pushed, the same Draft branch received a
 **manual-only diagnostic** follow-up. The accepted single-pass optimization,
 default transparency policy, canonical geometry, History, workers and approved
@@ -339,7 +401,7 @@ visual baselines remain unchanged.
   events, including entry/exit around the synchronous clipped surface-plan
   build, caps, sidewalls, annotations and presentation. The flag is OFF by
   default and does not alter any draw or mesh decision.
-- `scripts/renderer-roi-profile.mjs` isolates a *default-policy* 625-site
+- `scripts/renderer-roi-profile.mjs` isolates a _default-policy_ 625-site
   Quality ROI rebuild. It records renderer stage events and a Chrome DevTools
   CPU profile (`roi.cpuprofile`) when available. A bounded wait and explicit
   reporting distinguish ROI creation, a stuck renderer build, an unresponsive
@@ -377,3 +439,104 @@ the precise hot function before changing the geometry algorithm.
 **No new Windows GPU runs or ROI speedup are claimed by this follow-up.**
 Keep PR #166 Draft, candidate default-off and unmerged until both P0 issues
 are experimentally resolved and the full scientific gates pass.
+
+## Windows execution of the post-push diagnostics — 2026-10-10
+
+Pulled cleanly to `32f83c1c98f8d4ac3a4c9481a85df8e6dadcf462`. The tests below
+use that product revision plus a diagnostic-script setup repair: the ROI
+profiler now opens the real Display menu and its narrow-panel More ancestor
+before filling the hidden opacity input. The first fresh-profile attempt was
+interrupted at that hidden-input setup, before CPU sampling or ROI measurement;
+it is not a renderer timing failure. No product geometry, budgets, rendering
+decisions, experimental default, baseline or workflow was changed in this follow-up.
+
+Environment: Windows x64, Node v24.16.0, npm 11.17.0, Playwright 1.55.1,
+Chromium 140.0.7339.186, Three 0.179.1. All measured contexts confirmed
+`ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)`.
+Run sequentially using the port-4174 server and pinned-Three environment above.
+
+### Frame repetition result
+
+`node scripts/renderer-electrical-inspection.mjs --repeat-only`: **exit 1** at
+the final cross-context parity assertion; all four OFF/OFF/ON/ON contexts completed.
+All **8/8 same-context duplicate screenshot pairs** were byte-identical, with
+unchanged frame serial, camera matrices and presentation object-order hash.
+They are repeated reads of the **same retained WebGL frame**, not independent
+rerenders, so this does not establish deterministic rendering across new frames.
+
+Cross-context saved-camera images were pixel-identical in all comparisons,
+although most camera matrices differed slightly. Fitted-camera comparisons
+had identical camera matrices and object-order hashes but changed pixels:
+OFF/OFF **96**, ON/ON **62**, and OFF/ON **74 / 110** pixels. No tolerance was
+accepted. Fresh-context render inputs, per-object transforms/buffers/materials,
+native pass ordering and frame lifecycle still need isolation; neither mouse
+drift alone nor screenshot-reading instability explains these results.
+Reports and images: `test-results/renderer-electrical-inspection-repeat-only/`.
+
+### ROI result: budget rejection, not a long surface-plan computation
+
+Both `node scripts/renderer-roi-profile.mjs` and the same command with
+`--after-transitions` exited **1** at the 60,000 ms diagnostic deadline.
+Both started ROI creation from a ready, 1,885-instance exact Quality scene
+(generation 3 fresh / 5 after transitions), and both saved usable CPU profiles.
+
+The actual build exited very quickly between `surface-plan-start` and
+`build-exited`, without reaching `surface-plan-complete`:
+
+| Case              | First build total elapsed | Surface-plan-start to exit |            CPU samples / idle | Final state             |
+| ----------------- | ------------------------: | -------------------------: | ----------------------------: | ----------------------- |
+| Fresh             |                  9.900 ms |                   4.000 ms | 38,476 / 35,881 (93.26% idle) | building, generation 4  |
+| After transitions |                  6.100 ms |                   2.300 ms | 38,608 / 33,853 (87.68% idle) | building, generation 21 |
+
+The captured native page error in both cases was:
+`The requested array area exceeds the bounded geometry point budget. Reduce the process or inspection area.`
+The fresh case recorded one rejection; the post-transition wait recorded 16
+rejections across repeated attempted rebuilds. These are failed builds, not
+completed renderer frames or a measured ROI speedup. The CPU profiles show mostly
+idle time and only a few self samples in the array resolution/charging path;
+the full 60-second wait must not be attributed to geometry computation.
+Fresh diagnostics retained model/process revisions **61/40**. In the
+post-transition wait, the host model revision advanced **61 to 63** while Process
+revision stayed **40**; its source was not isolated. That run cannot establish
+unchanged canonical geometry from revision telemetry alone. A repeated controlled
+scenario should compare actual exported geometry and account for extra UI/state
+updates before claiming canonical invariance.
+
+Code confirms `buildArrayRenderPlan` resolves an ROI-bounded model through
+`resolveArrayModel` before ordinary surface ownership work. Its `charge()` guard
+enforces the existing **3,000,000-point** expansion budget, counting material
+regions and annotation patches. The guard stays unchanged. The renderer's async
+`render()` exits through `finally` after the rejection, leaving `renderState=building`.
+The synchronous `try/catch` in `app.js`'s `renderThree()` does not catch the rejected
+Promise, consistent with the captured native page errors. This identifies the
+failure/lifecycle path; it does not justify bypassing budgets or omitting surfaces.
+
+Artifacts: `test-results/renderer-roi-profile-fresh/` and
+`test-results/renderer-roi-profile-after-transitions/` contain each `report.json`
+and `roi.cpuprofile`. Summarize samples by node ID against `profile.samples`;
+sample fractions are not wall-clock or inclusive function duration estimates.
+Logs are `test-results/renderer-v3-repeat-only.log`,
+`renderer-v3-roi-fresh-retry.log` and `renderer-v3-roi-after.log`.
+
+The next ROI repair should handle async render rejection explicitly, leave a
+clear terminal error with the request to reduce inspection area, and verify
+clearing/reducing ROI restores a completed scene without leaked resources or
+canonical changes. Supporting larger ROI needs a separate bounded, array-aware
+render plan; increasing the safety limit is not an accepted repair. For parity,
+prioritize cross-context per-object/native-frame inputs rather than repeatedly
+reading an unchanged canvas. **Neither P0 is fixed by these diagnostics.**
+
+At pulled HEAD, [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38068171310)
+and [targeted Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38068171429)
+passed. Draft-heavy array/edge-on/Process/Native Fig3/Recipe gates were skipped;
+they are not new acceptance passes. This follow-up is local; no push, merge,
+deployment or manual CI dispatch is implied by the diagnostic runs.
+
+Local validation: `npm ci` exit 0 (82 audited packages, zero vulnerabilities);
+`npm run check` exit 0 (ESLint, formatting, documentation and **615/615 Node
+tests**, zero failed/skipped). The profiler setup repair passed focused ESLint
+and its two runtime attempts reached real ROI profiling; the renderer failures
+above remain failures. Final documentation/format/diff checks passed. The local
+diagnostic server was stopped. The setup repair and reproducible evidence are
+saved together in a local commit, resolvable with
+`git log -1 --format=%H -- scripts/renderer-roi-profile.mjs`.

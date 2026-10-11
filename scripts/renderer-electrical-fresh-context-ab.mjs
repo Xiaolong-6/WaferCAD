@@ -21,12 +21,27 @@ import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
-const output = new URL('../test-results/product-review/electrical-fresh-context/', import.meta.url);
+const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
+assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
+const output = new URL(
+  hardwareRtx3060
+    ? '../test-results/renderer-hardware-fresh-context-ab/'
+    : '../test-results/product-review/electrical-fresh-context/',
+  import.meta.url,
+);
 await mkdir(output, { recursive: true });
-const browser = await chromium.launch(launchOptions);
+const browser = await chromium.launch({
+  ...launchOptions,
+  headless: hardwareRtx3060 ? false : launchOptions.headless,
+});
 const report = {
   experiment: 'production-boot-policy-fresh-context-off-off-on-on',
   browserVersion: browser.version(),
+  nodeVersion: process.version,
+  platform: process.platform,
+  baseUrl,
+  hardwareRtx3060,
+  headed: hardwareRtx3060 ? true : !launchOptions.headless,
   reportOnly,
   strictPixelTolerance: 0,
   trials: [],
@@ -37,6 +52,12 @@ const fixture = fileURLToPath(
   new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
 );
 const hashJson = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const differenceStage = (first, second, pixelIdentical) =>
+  first.native.framebufferHash !== second.native.framebufferHash
+    ? 'webgl-framebuffer'
+    : !pixelIdentical
+      ? 'browser-screenshot-or-compositor'
+      : 'identical-through-screenshot';
 const trialImages = new Map();
 const trialByPolicy = new Map();
 let stage = 'boot';
@@ -108,7 +129,8 @@ async function trial(enabled, index) {
 
     row.stage = 'install-read-only-GL-trace';
     await page.evaluate(async () => {
-      const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js');
+      const THREE =
+        await import('https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js');
       const original = THREE.Object3D.prototype.onBeforeRender;
       THREE.Object3D.prototype.onBeforeRender = function (renderer, scene, camera, ...rest) {
         const frame = renderer.info.render.frame;
@@ -250,6 +272,14 @@ async function trial(enabled, index) {
       rendererCameraWorld: state.rendererCameraWorld,
       rendererCameraProjection: state.rendererCameraProjection,
     };
+    // Keep complete per-context evidence, including state and gate errors.
+    await writeFile(new URL(`${label}-trace.json`, output), JSON.stringify(row, null, 2));
+    if (hardwareRtx3060) {
+      assert.ok(
+        row.backend.hardwareVerified && /NVIDIA.*GeForce RTX 3060/i.test(native.renderer || ''),
+        `${label}: expected a recognized NVIDIA GeForce RTX 3060 adapter, got ${native.renderer || 'unknown'}`,
+      );
+    }
     const expectedCalls = enabled ? 1291 : 1408;
     const expectedTriangles = enabled ? 54066262 : 57040012;
     assert.equal(native.calls, expectedCalls, `${label}: native draw calls`);
@@ -280,9 +310,12 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
-        ...{ rawSampleIdentical:
-          JSON.stringify(previous.row.native.pixelSamples.map((p) => p.rgba)) ===
-          JSON.stringify(native.pixelSamples.map((p) => p.rgba)) },
+        differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
+        ...{
+          rawSampleIdentical:
+            JSON.stringify(previous.row.native.pixelSamples.map((p) => p.rgba)) ===
+            JSON.stringify(native.pixelSamples.map((p) => p.rgba)),
+        },
       };
       report.comparisons.push(comparison);
     } else {
@@ -308,6 +341,7 @@ async function trial(enabled, index) {
   } catch (error) {
     row.stage = stage;
     row.error = String(error);
+    await writeFile(new URL(`${label}-trace.json`, output), JSON.stringify(row, null, 2));
     throw error;
   } finally {
     await context.close();
@@ -320,10 +354,7 @@ try {
   }
   const off = report.trials[0];
   const on = report.trials[2];
-  const cross = compareScreenshotPngPixels(
-    trialImages.get(off.label),
-    trialImages.get(on.label),
-  );
+  const cross = compareScreenshotPngPixels(trialImages.get(off.label), trialImages.get(on.label));
   report.comparisons.push({
     first: off.label,
     second: on.label,
@@ -335,7 +366,9 @@ try {
       JSON.stringify([off.cameraWorld, off.cameraProjection]) ===
       JSON.stringify([on.cameraWorld, on.cameraProjection]),
     orderIdentical: off.orderHash === on.orderHash,
+    materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
+    differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===
       JSON.stringify(on.native.pixelSamples.map((p) => p.rgba)),
@@ -347,6 +380,7 @@ try {
       c.framebufferIdentical &&
       c.cameraIdentical &&
       c.orderIdentical &&
+      (!c.samePolicy || c.materialIdentical) &&
       c.layoutIdentical,
   );
   report.stage = 'completed';

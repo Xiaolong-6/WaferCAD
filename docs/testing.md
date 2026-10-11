@@ -59,6 +59,12 @@ census and hardware timing remain owned by
 `node scripts/renderer-quality-index-ab.mjs --hardware-electrical-ab`.
 These are manual local gates and add no automatic heavy CI job. A mismatch keeps
 the pilot default-off; software-only parity cannot supersede a hardware failure.
+For Windows RTX 3060 production-path parity, run
+`node scripts/renderer-electrical-fresh-context-ab.mjs --hardware-rtx3060`
+first. It requires that adapter and writes raw framebuffer, screenshot and
+application-state evidence to `test-results/renderer-hardware-fresh-context-ab/`.
+Proceed to hardware performance measurement only when OFF/OFF/ON/ON passes
+with exact pixels.
 The explicit `--skip-roi` diagnostic subset preserves full-gate ROI failures and
 writes to `test-results/renderer-electrical-inspection-no-roi/`. Its report sets
 `roiCovered=false` and `fullAcceptance=false`; it cannot pass full acceptance.
