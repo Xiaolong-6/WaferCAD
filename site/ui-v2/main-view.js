@@ -7,6 +7,7 @@ import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
+import { modelInventoryCount } from './view-kit/model-inventory.js';
 
 export async function createMainView({ project, sharedState, workstation, renderModel } = {}) {
   const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
@@ -60,7 +61,7 @@ export async function createMainView({ project, sharedState, workstation, render
     ),
   );
   const caption = () =>
-    `${state.model.layers.length} layers · ${state.model.regions.length} regions · ${units.label()}`;
+    `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
   function sync() {
     if (!state) return;
     syncDisplayUnitFields(document, units.key());

@@ -4,6 +4,7 @@ import { createMaskBrowserController } from '../controllers/mask-browser-control
 import { createMaskImportController } from '../controllers/mask-import-controller.js';
 import { MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
+import { modelInventoryCount } from './view-kit/model-inventory.js';
 
 export function createProjectMaskPanels({
   store,
@@ -370,7 +371,7 @@ export function createProjectMaskPanels({
           if (!projectShown)
             void refreshRecovery().catch((error) => workstation.status(error.message));
           projectShown = true;
-          projectSummary.textContent = `${state.model.layers.length} layers · ${state.model.regions.length} regions · ${units.label()}`;
+          projectSummary.textContent = `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
           projectHost
             .querySelectorAll('[data-action^="face:"]')
             .forEach((node) =>

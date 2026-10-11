@@ -92,6 +92,11 @@ try {
         await page.locator(`[data-action="view:${view}"]`).click();
         await waitForPaint(page);
       }
+      if (example === 'metalens-array') {
+        const label = await page.locator('[data-slot="view.main.readout"]').innerText();
+        assert.match(label, /6,400 instances/, 'Array summary reports physical instances');
+        assert.doesNotMatch(label, /0 regions/, 'Array is not reported as empty');
+      }
       await page.locator('[data-action="domain:process"]').click();
       await waitForPaint(page);
       assert.equal(await page.locator('#v2MaterialPreview').isDisabled(), true);

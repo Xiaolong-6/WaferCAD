@@ -12,6 +12,7 @@ import { STRUCTURE_PALETTES } from '../controllers/layer-legend-controller.js';
 import { recolorLayer, recolorImplant, recolorElectricalRegion } from '../model.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
+import { modelInventoryCount } from './view-kit/model-inventory.js';
 
 export function createWorkstationWorkflow({ store, workstation }) {
   const { el, button, field, panelHeader } = window.WaferCadV2Components;
@@ -494,7 +495,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     const type = hooks.get('operationType').value;
     materialPreview.hidden = !['add', 'implant', 'electrical'].includes(type);
     inputUnit.textContent = `Input unit: ${units.label()}`;
-    processSummary.textContent = `${state.model.regions.length} regions · ${state.model.layers.length} layers`;
+    processSummary.textContent = `${modelInventoryCount(state.model)} · ${state.model.layers.length} layers`;
     // The existing Process controller resets button.textContent during refresh.
     // Reinstall the one M2 icon after its public update has completed.
     const apply = hooks.get('applyOperationBtn');
