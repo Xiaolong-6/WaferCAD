@@ -46,14 +46,14 @@ export function classifyRendererHardwareStep(step, report) {
     return report.passed === true && report.strictParity === true ? 'passed' : 'blocked';
   }
   if (report.candidateMode !== step.id.slice(3)) return 'error';
-  if (report.trials?.length !== 4 || !report.parity) return 'incomplete';
   if (
     report.trials
-      .filter((trial) => trial.policy === 'B')
+      ?.filter((trial) => trial.policy === 'B')
       .some((trial) => trial.candidateActivation?.candidateExercised !== true)
   ) {
     return 'candidate-not-exercised';
   }
+  if (report.trials?.length !== 4 || !report.parity) return 'incomplete';
   return report.passed === true && report.parity.strictPixelParity === true
     ? 'passed'
     : 'blocked';
