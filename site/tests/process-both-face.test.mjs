@@ -9,7 +9,7 @@ const { applyProcessFaces } = await import('../process-face-execution.js');
 const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 const { normalizeProcessRecipe, parseProcessRecipeSource, serializeProcessRecipe } =
   await import('../process-recipe.js');
-const { validateProcessModel } = await import('../project-schema.js');
+const { validateProcessModel, migrateProjectFile } = await import('../project-schema.js');
 const { ARRAY_MODEL_KERNEL, resolveArrayModel } = await import('../model-array.js');
 const { serializeProject, readProjectFile } = await import('../project-io.js');
 
@@ -195,10 +195,10 @@ test('Both linked layers survive normal project export and import', async () => 
   const model = slab();
   const deposited = modelApi.applyOperation(model, { ...coat, area: model.boundary });
   assert.equal(deposited.changed, true, deposited.error);
-  const project = projectForBenchmark({
+  const project = migrateProjectFile(projectForBenchmark({
     model,
     section: { a: [-9, 0], b: [9, 0] },
-  });
+  }));
   const text = serializeProject(project);
   const restored = await readProjectFile({
     size: Buffer.byteLength(text),
