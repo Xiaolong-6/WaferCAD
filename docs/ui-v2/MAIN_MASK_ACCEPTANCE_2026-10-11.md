@@ -1,5 +1,7 @@
 # UI v2 Main / Mask acceptance and decision review — 2026-10-11
 
+The subsequent [Stage A checkpoint](STAGE_A_ACCEPTANCE_2026-10-11.md) records shared-runtime and Section integration; it does not replace the four-view final acceptance.
+
 Repository: Xiaolong-6/WaferCAD. Branch: `codex/ui-v2-main-wip`. Tested product commit: `1664405ef7835a3e974a8551f19c8879186255bf`, identical to the fetched remote HEAD and Draft PR #177 at takeover. The working tree was clean before installation and edits. No branch was created, no merge or manual workflow was dispatched.
 
 This checkpoint completes takeover steps 0 and 1. It supersedes the Main/Mask failure and pause status in the older handoff. **Stages A/B/C are not complete.** The user requested a concrete comparison page before deciding Section Detail and export control differences, then approved real Detail, a single Section Export dropdown with SVG and disabled pending PNG, and a single 3D Export dropdown with cancellation only in the task panel.

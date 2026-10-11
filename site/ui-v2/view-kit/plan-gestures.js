@@ -7,6 +7,7 @@ export function bindPlanGestures({
   panBy,
   zoomAt,
   mouse = false,
+  dragZoom = false,
 }) {
   const pointers = new Map();
   let gesture = false,
@@ -47,7 +48,7 @@ export function bindPlanGestures({
         owned.add(id);
         canvas.setPointerCapture(id);
       }
-    } else if (panEnabled()) {
+    } else if (panEnabled() || (dragZoom && zoomEnabled())) {
       gesture = true;
       owned.add(event.pointerId);
       canvas.setPointerCapture(event.pointerId);
@@ -66,6 +67,8 @@ export function bindPlanGestures({
     consume(event);
     if (pointers.size === 1) {
       if (panEnabled()) panBy(current.x - last.x, current.y - last.y);
+      else if (dragZoom && zoomEnabled())
+        zoomAt(Math.exp(-(current.y - last.y) * 0.009), current.x, current.y);
     } else if (pointers.size === 2) {
       if (panEnabled()) panBy(current.x - last.x, current.y - last.y);
       if (zoomEnabled() && last.distance > 0 && current.distance > 0)
@@ -94,7 +97,12 @@ export function bindPlanGestures({
   if (mouse) {
     listeners.pointerdown = (event) => {
       down(event);
-      if (event.pointerType === 'touch' || event.button !== 0 || !panEnabled()) return;
+      if (
+        event.pointerType === 'touch' ||
+        event.button !== 0 ||
+        (!panEnabled() && !(dragZoom && zoomEnabled()))
+      )
+        return;
       mouseDrag = { id: event.pointerId, x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
       consume(event);
@@ -103,6 +111,8 @@ export function bindPlanGestures({
       move(event);
       if (mouseDrag?.id !== event.pointerId) return;
       if (panEnabled()) panBy(event.clientX - mouseDrag.x, event.clientY - mouseDrag.y);
+      else if (dragZoom && zoomEnabled())
+        zoomAt(Math.exp(-(event.clientY - mouseDrag.y) * 0.009), mouseDrag.x, mouseDrag.y);
       mouseDrag.x = event.clientX;
       mouseDrag.y = event.clientY;
       consume(event);

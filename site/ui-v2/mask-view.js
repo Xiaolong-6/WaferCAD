@@ -6,527 +6,552 @@ import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createInspectionFields, formatInspectionLength } from './view-kit/inspection-fields.js';
 import { maskRoiAnchorPoint } from '../mask-roi-geometry.js';
 
-const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
-const hooks = new Map();
-const hook = (id, node) => {
-  node.id = id;
-  hooks.set(id, node);
-  return node;
-};
-const root = {
-  getElementById: (id) => document.getElementById(id) || hooks.get(id),
-  createElement: (...args) => document.createElement(...args),
-  querySelectorAll: (...args) => document.querySelectorAll(...args),
-  get activeElement() {
-    return document.activeElement;
-  },
-  body: document.body,
-};
-const { input, choice, pair, textarea } = createInspectionFields({ hook });
-const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
-const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
-let state,
-  shell,
-  overlays,
-  runtime,
-  strip,
-  message = 'Ready',
-  modelBefore,
-  editorShapeId;
-const uiState = {
-  layout: 'a',
-  font: 'inter',
-  domain: 'project',
-  mode: 'single',
-  view: 'mask',
-  section: false,
-  mobile: 'view',
-  splitViews: ['main', 'three'],
-  maximize: null,
-};
-const caption = () =>
-  `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · µm`;
-const iconButton = (hint, action, glyph, extra = {}) =>
-  button('', action, glyph, { title: hint, 'aria-label': hint, ...extra });
-function sync() {
-  if (!state) return;
-  strip?.update({ open: state.drawOpen, selected: state.drawUi?.tool || 'select' });
-  for (const key of ['pan', 'zoom'])
-    document
-      .querySelector(`[data-action="tool:${key}:mask"]`)
-      ?.setAttribute('aria-pressed', String(state[`${key}Enabled`]));
-  root.getElementById('maskCanvas')?.classList.toggle('plan-pan-active', state.panEnabled);
-  shell?.getSlot('view.mask.readout')?.replaceChildren(caption());
-  shell?.getSlot('status.message')?.replaceChildren(message);
-  if (hooks.has('maskSourceToggleBtn'))
-    hooks.get('maskSourceToggleBtn').value = state.maskSourceMode;
-}
-function shapeFields(shape) {
-  if (shape.type === 'polygon')
-    return [
-      [
-        'Points · µm (one x, y pair per line)',
-        'drawShapePoints',
-        shape.points.map((p) => p.map(formatInspectionLength).join(', ')).join('\n'),
-        'points',
-      ],
-    ];
-  const center = shape.type === 'rect' ? shape.a.map((v, i) => (v + shape.b[i]) / 2) : shape.c;
-  const fields = [
-    ['X · µm', 'drawShapeCx', center[0]],
-    ['Y · µm', 'drawShapeCy', center[1]],
-  ];
-  if (shape.type === 'rect')
-    fields.push(
-      ['Width · µm', 'drawShapeWidth', shape.b[0] - shape.a[0]],
-      ['Height · µm', 'drawShapeHeight', shape.b[1] - shape.a[1]],
-    );
-  else if (shape.type === 'circle') fields.push(['Radius · µm', 'drawShapeRadius', shape.r]);
-  else
-    fields.push(
-      ['Inner radius · µm', 'drawShapeInnerRadius', shape.innerR],
-      ['Outer radius · µm', 'drawShapeOuterRadius', shape.outerR],
-    );
-  if (shape.type === 'ring-sector')
-    fields.push(
-      ['Start angle · °', 'drawShapeStartDeg', shape.startDeg, 'angle'],
-      ['End angle · °', 'drawShapeEndDeg', shape.endDeg, 'angle'],
-    );
-  return fields;
-}
-function editorSync(kind, shape) {
-  if (kind === 'close') {
-    overlays?.closeFloating('maskDrawSettings', 'hidden');
-    hooks.get('drawShapeEditor').hidden = true;
-    editorShapeId = null;
-    return;
+export async function createMaskView({ project, sharedState, workstation } = {}) {
+  const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
+  const hooks = new Map();
+  const hook = (id, node) => {
+    node.id = id;
+    hooks.set(id, node);
+    return node;
+  };
+  const root = {
+    getElementById: (id) => document.getElementById(id) || hooks.get(id),
+    createElement: (...args) => document.createElement(...args),
+    querySelectorAll: (...args) => document.querySelectorAll(...args),
+    get activeElement() {
+      return document.activeElement;
+    },
+    body: document.body,
+  };
+  const { input, choice, pair, textarea } = createInspectionFields({ hook });
+  const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
+  const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
+  let state,
+    shell,
+    overlays,
+    runtime,
+    strip,
+    message = 'Ready',
+    modelBefore,
+    editorShapeId;
+  const uiState = workstation?.uiState || {
+    layout: 'a',
+    font: 'inter',
+    domain: 'project',
+    mode: 'single',
+    view: 'mask',
+    section: false,
+    mobile: 'view',
+    splitViews: ['main', 'three'],
+    maximize: null,
+  };
+  const caption = () =>
+    `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · µm`;
+  const iconButton = (hint, action, glyph, extra = {}) =>
+    button('', action, glyph, { title: hint, 'aria-label': hint, ...extra });
+  function sync() {
+    if (!state) return;
+    workstation?.changed('mask');
+    strip?.update({ open: state.drawOpen, selected: state.drawUi?.tool || 'select' });
+    for (const key of ['pan', 'zoom'])
+      document
+        .querySelector(`[data-action="tool:${key}:mask"]`)
+        ?.setAttribute('aria-pressed', String(state[`${key}Enabled`]));
+    root.getElementById('maskCanvas')?.classList.toggle('plan-pan-active', state.panEnabled);
+    shell?.getSlot('view.mask.readout')?.replaceChildren(caption());
+    shell?.getSlot('status.message')?.replaceChildren(message);
+    if (hooks.has('maskSourceToggleBtn'))
+      hooks.get('maskSourceToggleBtn').value = state.maskSourceMode;
   }
-  if (!shape || (kind !== 'open' && !overlays.hasFloating('maskDrawSettings'))) return;
-  if (kind === 'open') {
-    if (overlays.hasFloating('maskDrawSettings'))
-      overlays.closeFloating('maskDrawSettings', 'hidden');
-    const form = hooks.get('drawShapeEditor');
-    form.hidden = false;
-    editorShapeId = shape.id;
-    form.replaceChildren(
-      ...shapeFields(shape).map(([label, id, value, type]) =>
-        type === 'points'
-          ? textarea(label, id, value)
-          : input(label, id, value, { kind: type || 'length' }),
-      ),
-      el('span', { class: 'p-aux' }, 'Position and size precision · 0.1 nm'),
-      el(
-        'div',
-        { class: 'v2-floating-editor-actions' },
-        button('Delete selected', 'draw-delete', 'delete'),
-        button('Apply', 'draw-apply', 'check', { primary: true }),
-      ),
-    );
-    overlays.mountFloating({
-      id: 'maskDrawSettings',
-      title: 'Draw shape settings',
-      content: form,
-      trigger: document.querySelector('[data-action="draw-settings"]'),
-      onClose: () => {
-        form.hidden = true;
-        editorShapeId = null;
-      },
-    });
-  } else if (editorShapeId === shape.id)
-    for (const [, id, value, type] of shapeFields(shape)) {
-      const control = hooks.get(id);
-      if (control && control !== document.activeElement)
-        control.value =
-          type === 'points' || type === 'angle' ? value : formatInspectionLength(value);
+  function shapeFields(shape) {
+    if (shape.type === 'polygon')
+      return [
+        [
+          'Points · µm (one x, y pair per line)',
+          'drawShapePoints',
+          shape.points.map((p) => p.map(formatInspectionLength).join(', ')).join('\n'),
+          'points',
+        ],
+      ];
+    const center = shape.type === 'rect' ? shape.a.map((v, i) => (v + shape.b[i]) / 2) : shape.c;
+    const fields = [
+      ['X · µm', 'drawShapeCx', center[0]],
+      ['Y · µm', 'drawShapeCy', center[1]],
+    ];
+    if (shape.type === 'rect')
+      fields.push(
+        ['Width · µm', 'drawShapeWidth', shape.b[0] - shape.a[0]],
+        ['Height · µm', 'drawShapeHeight', shape.b[1] - shape.a[1]],
+      );
+    else if (shape.type === 'circle') fields.push(['Radius · µm', 'drawShapeRadius', shape.r]);
+    else
+      fields.push(
+        ['Inner radius · µm', 'drawShapeInnerRadius', shape.innerR],
+        ['Outer radius · µm', 'drawShapeOuterRadius', shape.outerR],
+      );
+    if (shape.type === 'ring-sector')
+      fields.push(
+        ['Start angle · °', 'drawShapeStartDeg', shape.startDeg, 'angle'],
+        ['End angle · °', 'drawShapeEndDeg', shape.endDeg, 'angle'],
+      );
+    return fields;
+  }
+  function editorSync(kind, shape) {
+    if (kind === 'close') {
+      overlays?.closeFloating('maskDrawSettings', 'hidden');
+      hooks.get('drawShapeEditor').hidden = true;
+      editorShapeId = null;
+      return;
     }
-}
-const anchorOptions = [
-  ['center', 'Center / origin'],
-  ['top-left', 'Top-left'],
-  ['top-right', 'Top-right'],
-  ['bottom-left', 'Bottom-left'],
-  ['bottom-right', 'Bottom-right'],
-];
-const roiForm = el(
-  'div',
-  { class: 'p-form' },
-  el(
-    'div',
-    { class: 'p-actions' },
-    button('Square', 'mask-roi:square', 'rectangle'),
-    button('Circle', 'mask-roi:circle', 'circle'),
-  ),
-  choice('Reference', 'maskRoiAnchorSelect', anchorOptions, 'center'),
-  pair(input('X · µm', 'maskRoiX'), input('Y · µm', 'maskRoiY')),
-  input('Size · µm', 'maskRoiSize', 10),
-  input('Radius · µm', 'maskRoiRadius', 5),
-  input('Rotation · °', 'maskRoiRotation', 0, { kind: 'angle' }),
-  el(
-    'span',
-    { class: 'p-aux' },
-    'Create a Square or Circle by dragging in Mask. Precision · 0.1 nm',
-  ),
-  el(
-    'div',
-    { class: 'v2-floating-editor-actions' },
-    hook('clearMaskRoiBtn', button('Clear ROI', null, 'clear')),
-    button('Apply', 'roi-apply', 'check', { primary: true }),
-  ),
-);
-function roiSync(roi) {
-  for (const id of ['maskRoiX', 'maskRoiY', 'maskRoiSize', 'maskRoiRadius', 'maskRoiRotation'])
-    hooks.get(id).closest('label').hidden =
-      !roi ||
-      (id === 'maskRoiRadius'
-        ? roi.type !== 'circle'
-        : ['maskRoiSize', 'maskRoiRotation'].includes(id) && roi.type !== 'square');
-  if (!roi) return;
-  const p = maskRoiAnchorPoint(roi, state.maskRoiAnchor);
-  for (const [id, value] of [
-    ['maskRoiX', p[0]],
-    ['maskRoiY', p[1]],
-    ['maskRoiSize', roi.size],
-    ['maskRoiRadius', roi.r],
-    ['maskRoiRotation', roi.rotation],
-  ])
-    if (value != null && hooks.get(id) !== document.activeElement)
-      hooks.get(id).value = id.includes('Rotation') ? value : formatInspectionLength(value);
-}
-const alignmentForm = el(
-  'div',
-  { class: 'p-form' },
-  pair(input('Offset X · µm', 'maskOffsetX'), input('Offset Y · µm', 'maskOffsetY')),
-  pair(
-    input('Scale', 'maskScale', 1, { kind: 'scalar' }),
-    input('Rotation · °', 'maskRotation', 0, { kind: 'angle' }),
-  ),
-  el(
-    'span',
-    { class: 'p-aux' },
-    'Alignment applies to the File source; Draw stays in physical coordinates.',
-  ),
-  button('Apply', 'alignment-apply', 'check', { primary: true }),
-);
-for (const id of ['maskOffsetXUnit', 'maskOffsetYUnit'])
-  hook(id, el('span', { hidden: true }, 'µm'));
-for (const id of [
-  'drawMaskDeleteBtn',
-  'drawMaskClearBtn',
-  'drawShapeEditorDelete',
-  'drawShapeEditorClose',
-  'drawShapeEditorApply',
-])
-  hook(id, button('', null, null));
-hook('drawShapeEditor', el('div', { class: 'p-form', hidden: true }));
-const exportFilters = hook(
-  'maskExportFilterGroup',
-  el(
-    'div',
-    { class: 'p-form' },
-    ...[
-      ['maskExportCells', 'Cells'],
-      ['maskExportLayers', 'Layers'],
-    ].map(([id, label]) =>
-      el(
-        'label',
-        { class: 'wc-field' },
-        el('span', { class: 'wc-label' }, label),
-        hook(id, el('select', { class: 'wc-select', multiple: true })),
-      ),
-    ),
-  ),
-);
-const exportNote = hook(
-  'maskExportDrawNote',
-  el('p', { class: 'p-aux' }, 'Export Draw shapes; Mask ROI crops the output.'),
-);
-function floating(id, title, content, trigger) {
-  overlays.mountFloating({ id, title, content, trigger });
-}
-function sourceMenu(trigger) {
-  floating(
-    'maskSourceSettings',
-    'Mask source',
-    choice(
-      'Source',
-      'maskSourceToggleBtn',
-      [
-        ['draw', 'Draw'],
-        ['file', 'File'],
-      ],
-      state.maskSourceMode,
-    ),
-    trigger,
-  );
-  hooks.get('maskSourceToggleBtn').onchange = () => {
-    runtime.draw.setSourceMode(hooks.get('maskSourceToggleBtn').value);
-    sync();
-  };
-}
-function confirmAction({ title, message: text, confirmLabel }) {
-  return new Promise((resolve) => {
-    const content = el('div', { class: 'p-form' }, el('strong', {}, title), el('p', {}, text));
-    const cancel = button('Cancel', null, 'close'),
-      accept = button(confirmLabel, null, 'check', { primary: true });
-    content.append(el('div', { class: 'p-actions' }, cancel, accept));
-    let accepted = false;
-    cancel.onclick = () => overlays.close('dialog');
-    accept.onclick = () => {
-      accepted = true;
-      overlays.close('dialog');
-    };
-    overlays.mount('dialog', { content, label: title, onClose: () => resolve(accepted) });
-  });
-}
-function buildMask() {
-  const tools = toolbar(
-    'Mask',
-    [
-      [
-        iconButton('Fit', 'fit:mask', 'fit'),
-        iconButton('Pan', 'tool:pan:mask', 'pan'),
-        iconButton('Zoom', 'tool:zoom:mask', 'zoom'),
-      ],
-      [
-        iconButton('Draw', 'draw-toggle', 'polygon'),
-        iconButton('ROI settings', 'mask-roi-settings', 'roi'),
-        iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
-      ],
-    ],
-    [button('Mask source', 'mask-source', 'mask'), button('Export', 'mask-export-menu', 'export')],
-  );
-  tools.append(iconButton('Maximize view', 'maximize:mask', 'maximize'));
-  const descriptors = [
-    ['select', 'Select', 'select'],
-    ['rect', 'Rectangle', 'rectangle'],
-    ['circle', 'Circle', 'circle'],
-    ['polygon', 'Polygon', 'polygon'],
-    ['ring', 'Ring', 'ring'],
-    ['ring-sector', 'Ring sector', 'ringSector'],
-  ].map(([key, label, glyph]) => ({
-    key,
-    label,
-    glyph,
-    action: `draw-tool:${key}`,
-    enabled: () => state.maskSourceMode === 'draw',
-  }));
-  strip = createFloatingStrip({
-    id: 'maskDrawTools',
-    label: 'Mask drawing tools',
-    groups: [
-      descriptors.slice(0, 1),
-      descriptors.slice(1),
-      [
-        {
-          label: 'Delete selected',
-          action: 'draw-delete',
-          glyph: 'delete',
-          enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
-        },
-        {
-          label: 'Clear Draw shapes',
-          action: 'draw-clear',
-          glyph: 'clear',
-          enabled: () => state.maskSourceMode === 'draw' && state.drawMask.shapes.length > 0,
-        },
-      ],
-    ],
-    settings: {
-      label: 'Draw settings',
-      action: 'draw-settings',
-      glyph: 'settings',
-      enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
-    },
-    owner: () => document.querySelector('[data-action="draw-toggle"]'),
-  });
-  const stage = el(
-    'div',
-    { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' },
-    hook('maskCanvas', el('canvas', { 'aria-label': 'Mask scientific plan', tabindex: 0 })),
-    strip.node,
-    hook('maskCoords', el('span', { class: 'p-scale' }, 'µm')),
-  );
-  return window
-    .createWaferCadV2ViewPanels()
-    .update(
-      'mask',
-      { class: 'p-view', id: 'maskPanel', 'data-view': 'mask', 'aria-label': 'Mask view' },
-      el('header', { class: 'p-panel-head p-view-head' }, el('strong', {}, 'Mask'), tools),
-      stage,
-      el('div', {}, caption()),
-    );
-}
-function renderShell() {
-  shell.render();
-  document
-    .querySelectorAll('.p-nav [data-action^="domain:"], .p-viewbar [data-action]')
-    .forEach((node) => {
-      if (!['view:mask', 'mode:single', 'expand-empty'].includes(node.dataset.action))
-        node.disabled = true;
-    });
-  runtime?.render();
-}
-try {
-  window.WaferCadV2Icons.installSprite();
-  const response = await fetch('../examples/m3d-selfpowered-full-replay.wafercad');
-  if (!response.ok) throw Error(`M3D source: HTTP ${response.status}`);
-  const bytes = await response.arrayBuffer();
-  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-    .map((v) => v.toString(16).padStart(2, '0'))
-    .join('');
-  if (hash !== expectedHash) throw Error('M3D source no longer matches the M2 reference');
-  const data = await readProjectFile(new Blob([bytes]));
-  state = {
-    ...data,
-    selectedLayerKeys: [...data.selectedLayerKeys],
-    activeFace: 'front',
-    maskOpacity: 0.65,
-    maskRoi: structuredClone(data.maskRoi),
-    maskRoiAnchor: data.maskRoiAnchor || 'center',
-    maskRoiTool: null,
-    maskRoiDraft: null,
-    drawOpen: false,
-    panEnabled: true,
-    zoomEnabled: false,
-    planViews: { mask: { zoom: 1, panX: 0, panY: 0 } },
-  };
-  modelBefore = JSON.stringify(state.model);
-  hook('maskSourceToggleBtn', el('select'));
-  const adapters = window.WaferCadV2DomainAdapters.create(),
-    panel = buildMask();
-  adapters.register('view.mask', {
-    mount: (host) => {
-      host.append(panel);
-      return panel;
-    },
-    onShow() {},
-    onHide() {},
-    destroy() {},
-  });
-  shell = window.createWaferCadV2Workstation({
-    root: document.getElementById('app-root'),
-    state: uiState,
-    adapters,
-    registry: window.WaferCadV2ShellRegistry.define({
-      views: [{ key: 'mask', label: 'Mask', icon: 'mask' }],
-    }),
-    getProjectName: () => data.name,
-    presentation: () => ({
-      selectedPanel: 'project',
-      selectedNavigation: 'project',
-      editorHidden: uiState.editorHidden,
-      message,
-      save: 'Mask-only review',
-    }),
-  });
-  overlays = createFloatingEditorManager(shell.overlays);
-  shell
-    .getSlot('panel.project')
-    .querySelector('[data-slot-content]')
-    .append(panelHeader('Project', 'Not connected in this Mask-only review'));
-  renderShell();
-  runtime = createMaskRuntime({
-    state,
-    root,
-    onChange: sync,
-    onEditorSync: editorSync,
-    onRoiSync: roiSync,
-    status: (value) => {
-      message = value;
-      sync();
-    },
-    confirmAction,
-  });
-  new ResizeObserver(() => runtime.render()).observe(hooks.get('maskCanvas'));
-  roiSync(state.maskRoi);
-  document.addEventListener('click', async (event) => {
-    const trigger = event.target.closest('button[data-action]');
-    if (!trigger || trigger.disabled) return;
-    const action = trigger.dataset.action;
-    if (action === 'fit:mask') runtime.fit();
-    else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
-    else if (action === 'tool:zoom:mask') runtime.setZoomEnabled(!state.zoomEnabled);
-    else if (action === 'draw-toggle') {
-      state.drawOpen = !state.drawOpen;
-      if (!state.drawOpen) overlays.closeFloating('maskDrawSettings', 'hidden');
-      sync();
-    } else if (action.startsWith('draw-tool:')) runtime.chooseDrawTool(action.split(':')[1]);
-    else if (action === 'draw-settings') runtime.draw.openEditor();
-    else if (action === 'draw-apply') runtime.draw.applyEditor();
-    else if (action === 'draw-delete') runtime.draw.removeSelected();
-    else if (action === 'draw-clear') await runtime.draw.clear();
-    else if (action === 'mask-source') sourceMenu(trigger);
-    else if (action === 'mask-roi-settings') {
-      roiSync(state.maskRoi);
-      floating('maskRoiSettings', 'Mask ROI settings', roiForm, trigger);
-    } else if (action.startsWith('mask-roi:')) runtime.chooseRoiTool(action.split(':')[1]);
-    else if (action === 'roi-apply') hooks.get('maskRoiSize').dispatchEvent(new Event('change'));
-    else if (action === 'mask-alignment-settings') {
-      runtime.alignment.syncTransformInputs();
-      floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger);
-    } else if (action === 'alignment-apply') runtime.alignment.updateTransform();
-    else if (action === 'mask-export-menu') {
-      runtime.exporter.syncMaskExportOptions();
-      floating(
-        'maskExportSettings',
-        'Export Mask',
+    if (!shape || (kind !== 'open' && !overlays.hasFloating('maskDrawSettings'))) return;
+    if (kind === 'open') {
+      if (overlays.hasFloating('maskDrawSettings'))
+        overlays.closeFloating('maskDrawSettings', 'hidden');
+      const form = hooks.get('drawShapeEditor');
+      form.hidden = false;
+      editorShapeId = shape.id;
+      form.replaceChildren(
+        ...shapeFields(shape).map(([label, id, value, type]) =>
+          type === 'points'
+            ? textarea(label, id, value)
+            : input(label, id, value, { kind: type || 'length' }),
+        ),
+        el('span', { class: 'p-aux' }, 'Position and size precision · 0.1 nm'),
         el(
           'div',
-          { class: 'p-form' },
-          exportFilters,
-          exportNote,
-          ...['svg', 'gds', 'oas'].map((type) =>
-            button(type.toUpperCase(), `mask-export:${type}`, 'export'),
-          ),
+          { class: 'v2-floating-editor-actions' },
+          button('Delete selected', 'draw-delete', 'delete'),
+          button('Apply', 'draw-apply', 'check', { primary: true }),
         ),
-        trigger,
       );
-    } else if (action.startsWith('mask-export:'))
-      await runtime.exporter[
-        { svg: 'exportMaskSvg', gds: 'exportMaskGds', oas: 'exportMaskOas' }[action.split(':')[1]]
-      ]();
-    else if (action === 'maximize:mask') {
-      uiState.maximize = uiState.maximize ? null : 'mask';
-      renderShell();
-    } else if (['hide-editor', 'return-results'].includes(action)) {
-      uiState.editorHidden = true;
-      uiState.mobile = 'view';
-      renderShell();
-    } else if (['expand-empty', 'show-editor'].includes(action)) {
-      uiState.editorHidden = false;
-      uiState.mobile = 'edit';
-      renderShell();
+      overlays.mountFloating({
+        id: 'maskDrawSettings',
+        title: 'Draw shape settings',
+        content: form,
+        trigger: document.querySelector('[data-action="draw-settings"]'),
+        onClose: () => {
+          form.hidden = true;
+          editorShapeId = null;
+        },
+      });
+    } else if (editorShapeId === shape.id)
+      for (const [, id, value, type] of shapeFields(shape)) {
+        const control = hooks.get(id);
+        if (control && control !== document.activeElement)
+          control.value =
+            type === 'points' || type === 'angle' ? value : formatInspectionLength(value);
+      }
+  }
+  const anchorOptions = [
+    ['center', 'Center / origin'],
+    ['top-left', 'Top-left'],
+    ['top-right', 'Top-right'],
+    ['bottom-left', 'Bottom-left'],
+    ['bottom-right', 'Bottom-right'],
+  ];
+  const roiForm = el(
+    'div',
+    { class: 'p-form' },
+    el(
+      'div',
+      { class: 'p-actions' },
+      button('Square', 'mask-roi:square', 'rectangle'),
+      button('Circle', 'mask-roi:circle', 'circle'),
+    ),
+    choice('Reference', 'maskRoiAnchorSelect', anchorOptions, 'center'),
+    pair(input('X · µm', 'maskRoiX'), input('Y · µm', 'maskRoiY')),
+    input('Size · µm', 'maskRoiSize', 10),
+    input('Radius · µm', 'maskRoiRadius', 5),
+    input('Rotation · °', 'maskRoiRotation', 0, { kind: 'angle' }),
+    el(
+      'span',
+      { class: 'p-aux' },
+      'Create a Square or Circle by dragging in Mask. Precision · 0.1 nm',
+    ),
+    el(
+      'div',
+      { class: 'v2-floating-editor-actions' },
+      hook('clearMaskRoiBtn', button('Clear ROI', null, 'clear')),
+      button('Apply', 'roi-apply', 'check', { primary: true }),
+    ),
+  );
+  function roiSync(roi) {
+    for (const id of ['maskRoiX', 'maskRoiY', 'maskRoiSize', 'maskRoiRadius', 'maskRoiRotation'])
+      hooks.get(id).closest('label').hidden =
+        !roi ||
+        (id === 'maskRoiRadius'
+          ? roi.type !== 'circle'
+          : ['maskRoiSize', 'maskRoiRotation'].includes(id) && roi.type !== 'square');
+    if (!roi) return;
+    const p = maskRoiAnchorPoint(roi, state.maskRoiAnchor);
+    for (const [id, value] of [
+      ['maskRoiX', p[0]],
+      ['maskRoiY', p[1]],
+      ['maskRoiSize', roi.size],
+      ['maskRoiRadius', roi.r],
+      ['maskRoiRotation', roi.rotation],
+    ])
+      if (value != null && hooks.get(id) !== document.activeElement)
+        hooks.get(id).value = id.includes('Rotation') ? value : formatInspectionLength(value);
+  }
+  const alignmentForm = el(
+    'div',
+    { class: 'p-form' },
+    pair(input('Offset X · µm', 'maskOffsetX'), input('Offset Y · µm', 'maskOffsetY')),
+    pair(
+      input('Scale', 'maskScale', 1, { kind: 'scalar' }),
+      input('Rotation · °', 'maskRotation', 0, { kind: 'angle' }),
+    ),
+    el(
+      'span',
+      { class: 'p-aux' },
+      'Alignment applies to the File source; Draw stays in physical coordinates.',
+    ),
+    button('Apply', 'alignment-apply', 'check', { primary: true }),
+  );
+  for (const id of ['maskOffsetXUnit', 'maskOffsetYUnit'])
+    hook(id, el('span', { hidden: true }, 'µm'));
+  for (const id of [
+    'drawMaskDeleteBtn',
+    'drawMaskClearBtn',
+    'drawShapeEditorDelete',
+    'drawShapeEditorClose',
+    'drawShapeEditorApply',
+  ])
+    hook(id, button('', null, null));
+  hook('drawShapeEditor', el('div', { class: 'p-form', hidden: true }));
+  const exportFilters = hook(
+    'maskExportFilterGroup',
+    el(
+      'div',
+      { class: 'p-form' },
+      ...[
+        ['maskExportCells', 'Cells'],
+        ['maskExportLayers', 'Layers'],
+      ].map(([id, label]) =>
+        el(
+          'label',
+          { class: 'wc-field' },
+          el('span', { class: 'wc-label' }, label),
+          hook(id, el('select', { class: 'wc-select', multiple: true })),
+        ),
+      ),
+    ),
+  );
+  const exportNote = hook(
+    'maskExportDrawNote',
+    el('p', { class: 'p-aux' }, 'Export Draw shapes; Mask ROI crops the output.'),
+  );
+  function floating(id, title, content, trigger) {
+    overlays.mountFloating({ id, title, content, trigger });
+  }
+  function sourceMenu(trigger) {
+    floating(
+      'maskSourceSettings',
+      'Mask source',
+      choice(
+        'Source',
+        'maskSourceToggleBtn',
+        [
+          ['draw', 'Draw'],
+          ['file', 'File'],
+        ],
+        state.maskSourceMode,
+      ),
+      trigger,
+    );
+    hooks.get('maskSourceToggleBtn').onchange = () => {
+      runtime.draw.setSourceMode(hooks.get('maskSourceToggleBtn').value);
+      sync();
+    };
+  }
+  function confirmAction({ title, message: text, confirmLabel }) {
+    return new Promise((resolve) => {
+      const content = el('div', { class: 'p-form' }, el('strong', {}, title), el('p', {}, text));
+      const cancel = button('Cancel', null, 'close'),
+        accept = button(confirmLabel, null, 'check', { primary: true });
+      content.append(el('div', { class: 'p-actions' }, cancel, accept));
+      let accepted = false;
+      cancel.onclick = () => overlays.close('dialog');
+      accept.onclick = () => {
+        accepted = true;
+        overlays.close('dialog');
+      };
+      overlays.mount('dialog', { content, label: title, onClose: () => resolve(accepted) });
+    });
+  }
+  function buildMask() {
+    const tools = toolbar(
+      'Mask',
+      [
+        [
+          iconButton('Fit', 'fit:mask', 'fit'),
+          iconButton('Pan', 'tool:pan:mask', 'pan'),
+          iconButton('Zoom', 'tool:zoom:mask', 'zoom'),
+        ],
+        [
+          iconButton('Draw', 'draw-toggle', 'polygon'),
+          iconButton('ROI settings', 'mask-roi-settings', 'roi'),
+          iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
+        ],
+      ],
+      [
+        button('Mask source', 'mask-source', 'mask'),
+        button('Export', 'mask-export-menu', 'export'),
+      ],
+    );
+    tools.append(iconButton('Maximize view', 'maximize:mask', 'maximize'));
+    const descriptors = [
+      ['select', 'Select', 'select'],
+      ['rect', 'Rectangle', 'rectangle'],
+      ['circle', 'Circle', 'circle'],
+      ['polygon', 'Polygon', 'polygon'],
+      ['ring', 'Ring', 'ring'],
+      ['ring-sector', 'Ring sector', 'ringSector'],
+    ].map(([key, label, glyph]) => ({
+      key,
+      label,
+      glyph,
+      action: `draw-tool:${key}`,
+      enabled: () => state.maskSourceMode === 'draw',
+    }));
+    strip = createFloatingStrip({
+      id: 'maskDrawTools',
+      label: 'Mask drawing tools',
+      groups: [
+        descriptors.slice(0, 1),
+        descriptors.slice(1),
+        [
+          {
+            label: 'Delete selected',
+            action: 'draw-delete',
+            glyph: 'delete',
+            enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
+          },
+          {
+            label: 'Clear Draw shapes',
+            action: 'draw-clear',
+            glyph: 'clear',
+            enabled: () => state.maskSourceMode === 'draw' && state.drawMask.shapes.length > 0,
+          },
+        ],
+      ],
+      settings: {
+        label: 'Draw settings',
+        action: 'draw-settings',
+        glyph: 'settings',
+        enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
+      },
+      owner: () => document.querySelector('[data-action="draw-toggle"]'),
+    });
+    const stage = el(
+      'div',
+      { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' },
+      hook('maskCanvas', el('canvas', { 'aria-label': 'Mask scientific plan', tabindex: 0 })),
+      strip.node,
+      hook('maskCoords', el('span', { class: 'p-scale' }, 'µm')),
+    );
+    return window
+      .createWaferCadV2ViewPanels()
+      .update(
+        'mask',
+        { class: 'p-view', id: 'maskPanel', 'data-view': 'mask', 'aria-label': 'Mask view' },
+        el('header', { class: 'p-panel-head p-view-head' }, el('strong', {}, 'Mask'), tools),
+        stage,
+        el('div', {}, caption()),
+      );
+  }
+  function renderShell() {
+    if (workstation) {
+      workstation.render();
+      runtime?.render();
+      return;
     }
-    sync();
-  });
-  window.WaferCadV2Mask = {
-    ready: true,
-    snapshot: () =>
-      structuredClone({
-        source,
-        hash,
-        caption: caption(),
-        drawMask: state.drawMask,
-        drawUi: state.drawUi,
-        sourceMode: state.maskSourceMode,
-        drawOpen: state.drawOpen,
-        panEnabled: state.panEnabled,
-        zoomEnabled: state.zoomEnabled,
-        maskRoi: state.maskRoi,
-        maskTransform: state.maskTransform,
-        plan: state.planViews.mask,
-        scientificUnchanged: modelBefore === JSON.stringify(state.model),
-      }),
-    projection: () => {
-      const rect = hooks.get('maskCanvas').getBoundingClientRect();
-      return runtime.plan.viewport(rect.width, rect.height, 'mask');
-    },
-  };
-  document.body.dataset.ready = 'true';
-} catch (error) {
-  document.body.dataset.ready = 'error';
-  document
-    .getElementById('app-root')
-    .replaceChildren(el('p', { role: 'alert' }, `Mask unavailable: ${error.message}`));
-  console.error(error);
+    shell.render();
+    document
+      .querySelectorAll('.p-nav [data-action^="domain:"], .p-viewbar [data-action]')
+      .forEach((node) => {
+        if (!['view:mask', 'mode:single', 'expand-empty'].includes(node.dataset.action))
+          node.disabled = true;
+      });
+    runtime?.render();
+  }
+  try {
+    window.WaferCadV2Icons.installSprite();
+    const loaded =
+      project ||
+      (await (async () => {
+        const response = await fetch('../examples/m3d-selfpowered-full-replay.wafercad');
+        if (!response.ok) throw Error(`M3D source: HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+          .map((v) => v.toString(16).padStart(2, '0'))
+          .join('');
+        if (hash !== expectedHash) throw Error('M3D source no longer matches the M2 reference');
+        return { data: await readProjectFile(new Blob([bytes])), hash };
+      })());
+    const hash = loaded.hash;
+    const data = loaded.data;
+    state = sharedState || {
+      ...data,
+      selectedLayerKeys: [...data.selectedLayerKeys],
+      activeFace: 'front',
+      maskOpacity: 0.65,
+      maskRoi: structuredClone(data.maskRoi),
+      maskRoiAnchor: data.maskRoiAnchor || 'center',
+      maskRoiTool: null,
+      maskRoiDraft: null,
+      drawOpen: false,
+      panEnabled: true,
+      zoomEnabled: false,
+      planViews: { mask: { zoom: 1, panX: 0, panY: 0 } },
+    };
+    modelBefore = JSON.stringify(state.model);
+    hook('maskSourceToggleBtn', el('select'));
+    const adapters = workstation?.adapters || window.WaferCadV2DomainAdapters.create(),
+      panel = buildMask();
+    adapters.register('view.mask', {
+      mount: (host) => {
+        host.append(panel);
+        return panel;
+      },
+      onShow() {},
+      onHide() {},
+      destroy() {},
+    });
+    workstation?.mount(panel);
+    shell =
+      workstation?.shell ||
+      window.createWaferCadV2Workstation({
+        root: document.getElementById('app-root'),
+        state: uiState,
+        adapters,
+        registry: window.WaferCadV2ShellRegistry.define({
+          views: [{ key: 'mask', label: 'Mask', icon: 'mask' }],
+        }),
+        getProjectName: () => data.name,
+        presentation: () => ({
+          selectedPanel: 'project',
+          selectedNavigation: 'project',
+          editorHidden: uiState.editorHidden,
+          message,
+          save: 'Mask-only review',
+        }),
+      });
+    overlays = workstation?.overlays || createFloatingEditorManager(shell.overlays);
+    if (!workstation)
+      shell
+        .getSlot('panel.project')
+        .querySelector('[data-slot-content]')
+        .append(panelHeader('Project', 'Not connected in this Mask-only review'));
+    renderShell();
+    runtime = createMaskRuntime({
+      state,
+      root,
+      onChange: sync,
+      onEditorSync: editorSync,
+      onRoiSync: roiSync,
+      status: (value) => {
+        message = value;
+        sync();
+      },
+      confirmAction,
+    });
+    new ResizeObserver(() => runtime.render()).observe(hooks.get('maskCanvas'));
+    roiSync(state.maskRoi);
+    document.addEventListener('click', async (event) => {
+      const trigger = event.target.closest('button[data-action]');
+      if (!trigger || trigger.disabled) return;
+      if (workstation && !trigger.closest('#maskPanel, .v2-mask-floating')) return;
+      const action = trigger.dataset.action;
+      if (action === 'fit:mask') runtime.fit();
+      else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
+      else if (action === 'tool:zoom:mask') runtime.setZoomEnabled(!state.zoomEnabled);
+      else if (action === 'draw-toggle') {
+        state.drawOpen = !state.drawOpen;
+        if (!state.drawOpen) overlays.closeFloating('maskDrawSettings', 'hidden');
+        sync();
+      } else if (action.startsWith('draw-tool:')) runtime.chooseDrawTool(action.split(':')[1]);
+      else if (action === 'draw-settings') runtime.draw.openEditor();
+      else if (action === 'draw-apply') runtime.draw.applyEditor();
+      else if (action === 'draw-delete') runtime.draw.removeSelected();
+      else if (action === 'draw-clear') await runtime.draw.clear();
+      else if (action === 'mask-source') sourceMenu(trigger);
+      else if (action === 'mask-roi-settings') {
+        roiSync(state.maskRoi);
+        floating('maskRoiSettings', 'Mask ROI settings', roiForm, trigger);
+      } else if (action.startsWith('mask-roi:')) runtime.chooseRoiTool(action.split(':')[1]);
+      else if (action === 'roi-apply') hooks.get('maskRoiSize').dispatchEvent(new Event('change'));
+      else if (action === 'mask-alignment-settings') {
+        runtime.alignment.syncTransformInputs();
+        floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger);
+      } else if (action === 'alignment-apply') runtime.alignment.updateTransform();
+      else if (action === 'mask-export-menu') {
+        runtime.exporter.syncMaskExportOptions();
+        floating(
+          'maskExportSettings',
+          'Export Mask',
+          el(
+            'div',
+            { class: 'p-form' },
+            exportFilters,
+            exportNote,
+            ...['svg', 'gds', 'oas'].map((type) =>
+              button(type.toUpperCase(), `mask-export:${type}`, 'export'),
+            ),
+          ),
+          trigger,
+        );
+      } else if (action.startsWith('mask-export:'))
+        await runtime.exporter[
+          { svg: 'exportMaskSvg', gds: 'exportMaskGds', oas: 'exportMaskOas' }[action.split(':')[1]]
+        ]();
+      else if (action === 'maximize:mask' && !workstation) {
+        uiState.maximize = uiState.maximize ? null : 'mask';
+        renderShell();
+      } else if (['hide-editor', 'return-results'].includes(action)) {
+        uiState.editorHidden = true;
+        uiState.mobile = 'view';
+        renderShell();
+      } else if (['expand-empty', 'show-editor'].includes(action)) {
+        uiState.editorHidden = false;
+        uiState.mobile = 'edit';
+        renderShell();
+      }
+      sync();
+    });
+    window.WaferCadV2Mask = {
+      ready: true,
+      snapshot: () =>
+        structuredClone({
+          source,
+          hash,
+          caption: caption(),
+          drawMask: state.drawMask,
+          drawUi: state.drawUi,
+          sourceMode: state.maskSourceMode,
+          drawOpen: state.drawOpen,
+          panEnabled: state.panEnabled,
+          zoomEnabled: state.zoomEnabled,
+          maskRoi: state.maskRoi,
+          maskTransform: state.maskTransform,
+          plan: state.planViews.mask,
+          scientificUnchanged: modelBefore === JSON.stringify(state.model),
+        }),
+      projection: () => {
+        const rect = hooks.get('maskCanvas').getBoundingClientRect();
+        return runtime.plan.viewport(rect.width, rect.height, 'mask');
+      },
+    };
+    if (!workstation) document.body.dataset.ready = 'true';
+    return { panel, state, runtime, sync, root, snapshot: window.WaferCadV2Mask.snapshot };
+  } catch (error) {
+    if (workstation) throw error;
+    document.body.dataset.ready = 'error';
+    document
+      .getElementById('app-root')
+      .replaceChildren(el('p', { role: 'alert' }, `Mask unavailable: ${error.message}`));
+    console.error(error);
+  }
 }
+if (!document.body.hasAttribute('data-workstation')) await createMaskView();
