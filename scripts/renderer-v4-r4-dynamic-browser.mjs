@@ -69,6 +69,9 @@ async function capture(page, name, state) {
       sharedClonesAvoided: host.v4SharedFlatClonesAvoided,
       sharedDetaches: host.v4SharedFlatDetachCount,
       retiredTemplates: host.v4GpuResourceRetiredFlatGeometries,
+      disposedGroups: host.v4R5DisposedGroups,
+      disposedGeometries: host.v4R5DisposedGeometries,
+      retiredFlatTemplatesReleased: host.v4R5RetiredFlatTemplates,
       roiBounds: host.rendererRoiBounds || null,
       webglRenderer: await page.locator('#threeHost canvas').evaluate((canvas) => {
         const gl = canvas.getContext('webgl2');
@@ -281,6 +284,20 @@ try {
   assert.equal(optimized[1].data.zCollapsed, 'false');
   assert.equal(baseline[2].data.zFrontScale, '1.6');
   assert.equal(baseline[2].data.zBackScale, '0.6');
+  // ROI construction/clear must retire old scene allocations, including
+  // detached flat-cap templates. These are unique *dispose call* counters,
+  // not a claim of GPU residency reduction or complete leak freedom.
+  for (const arm of [baseline, optimized]) {
+    assert.ok(Number(arm.at(-1).data.disposedGroups) > 0, 'scene lifecycle must retire groups');
+    assert.ok(
+      Number(arm.at(-1).data.disposedGeometries) > 0,
+      'scene lifecycle must release geometry allocations',
+    );
+  }
+  assert.ok(
+    Number(optimized.at(-1).data.retiredFlatTemplatesReleased) > 0,
+    'R4 copy-on-write templates must be released during ROI scene eviction',
+  );
   await writeFile(
     new URL('report.json', output),
     JSON.stringify(
