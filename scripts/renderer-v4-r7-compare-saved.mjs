@@ -23,8 +23,16 @@ const folder = new URL(
 );
 const labels = R7_ORDER.map((policy, index) => index + 1 + '-' + policy);
 const report = JSON.parse(await readFile(new URL('report.json', folder), 'utf8'));
-assert.equal(report.candidateMode, candidate.mode, 'saved report does not match selected R7 candidate');
-assert.deepEqual(report.candidateFlags, candidate.flags, 'saved report has unexpected candidate flags');
+assert.equal(
+  report.candidateMode,
+  candidate.mode,
+  'saved report does not match selected R7 candidate',
+);
+assert.deepEqual(
+  report.candidateFlags,
+  candidate.flags,
+  'saved report has unexpected candidate flags',
+);
 assert.equal(report.trials.length, 4, 'requires four completed independent contexts');
 assert.deepEqual(
   report.trials.map((trial) => trial.label),
