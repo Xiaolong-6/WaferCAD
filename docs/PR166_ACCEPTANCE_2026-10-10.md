@@ -317,6 +317,41 @@ hardware performance promotion gate until repeatable fresh-context parity is
 resolved. This run narrows the failure to the GL framebuffer stage but does not
 yet isolate which unobserved context/render input creates the variation.
 
+## Updated draw-input fingerprint P0 — 2026-10-11
+
+After commits `29dab6f1` and `53e5a104` added bounded native draw-input capture
+and fail-closed evidence checks, the RTX 3060 P0 was rerun at PR branch HEAD
+`53e5a104c83e78db767ca1548d5e9f5332eef9c8`. Environment remained Windows x64,
+Node `v24.16.0`, Playwright `1.55.1`, Chromium `140.0.7339.186`, Three
+`0.179.1`, with the recognized RTX 3060 adapter. Every context supplied the
+required 48 draw samples with non-empty shader sources; the evidence gate itself
+passed.
+
+Strict OFF/OFF/ON/ON parity still **failed**:
+
+| Comparison                     | PNG pixels different | Max channel delta | Full GL framebuffer | Sampled draw inputs       |
+| ------------------------------ | -------------------: | ----------------: | ------------------- | ------------------------- |
+| OFF context 1 vs OFF context 2 |         82 / 146,025 |                 1 | different           | identical                 |
+| ON context 3 vs ON context 4   |        194 / 146,025 |                 3 | different           | identical                 |
+| OFF context 1 vs ON context 3  |        188 / 146,025 |                 2 | different           | different policy sequence |
+
+Within each policy, the full sampled draw-input fingerprint matched exactly.
+The four contexts also exposed the same 12 shader-source hashes and the same
+three sampled GL-state combinations (blend, cull, depth, blend equation and
+viewport); camera, presentation order and layout matched. The complete GL
+framebuffer hashes still differed in every comparison, so the mismatch occurs
+before browser screenshot capture. The new evidence does not implicate shader
+source or the sampled GL state as the source of same-policy variability.
+
+This result warrants a focused GPU-buffer comparison next. Current draw
+fingerprints record draw parameters and whether an element buffer is bound, but
+do not capture vertex-attribute buffer contents or hashes. Compare bounded
+referenced buffer data for the same-policy sampled draws before changing any
+renderer code. Do not relax zero-pixel tolerance. The final run's four PNGs,
+per-context traces and report are under ignored
+`test-results/renderer-hardware-fresh-context-ab/`; `report.json` records the
+draw-input fingerprints and stage classification.
+
 ### Inspection controls and scope limits
 
 Added manual `scripts/renderer-electrical-inspection.mjs` under the renderer
