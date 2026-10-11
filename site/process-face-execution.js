@@ -41,7 +41,15 @@ export function applyProcessFaces(model, params, applySingleFace) {
   }
 
   const candidate = structuredClone(model);
-  const front = applySingleFace(candidate, { ...params, face: 'front' });
+  let front;
+  try {
+    front = applySingleFace(candidate, { ...params, face: 'front' });
+  } catch (error) {
+    return {
+      model,
+      result: { changed: false, error: `Front face: ${error.message}` },
+    };
+  }
   if (!front?.changed) {
     return {
       model,
@@ -57,17 +65,24 @@ export function applyProcessFaces(model, params, applySingleFace) {
 
   // A later Extend / selective Etch addresses the matching Back film when
   // its selected Front film came from one earlier Both deposition.
-  const backParams = { ...params, face: 'back' };
-  if (params.type === 'grow') {
-    backParams.targetLayerId = pairedTarget(candidate, params.targetLayerId, 'back');
+  let back;
+  try {
+    const backParams = { ...params, face: 'back' };
+    if (params.type === 'grow') {
+      backParams.targetLayerId = pairedTarget(candidate, params.targetLayerId, 'back');
+    }
+    if (params.type === 'etch' && Array.isArray(params.etchTargetLayerIds)) {
+      backParams.etchTargetLayerIds = params.etchTargetLayerIds.map((id) =>
+        pairedTarget(candidate, id, 'back'),
+      );
+    }
+    back = applySingleFace(candidate, backParams);
+  } catch (error) {
+    return {
+      model,
+      result: { changed: false, error: `Back face: ${error.message}` },
+    };
   }
-  if (params.type === 'etch' && Array.isArray(params.etchTargetLayerIds)) {
-    backParams.etchTargetLayerIds = params.etchTargetLayerIds.map((id) =>
-      pairedTarget(candidate, id, 'back'),
-    );
-  }
-
-  const back = applySingleFace(candidate, backParams);
   if (!back?.changed) {
     return {
       model,
