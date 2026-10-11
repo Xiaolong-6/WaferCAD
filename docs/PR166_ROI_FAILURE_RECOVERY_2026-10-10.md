@@ -141,3 +141,76 @@ targeted-browser regression. Full oversized ROI rendering is not implemented.
 Hardware fresh-context 625-site pixel parity remains **FAIL/unaccepted**,
 the Electrical candidate remains default OFF, and PR #166 remains Draft,
 unmerged, with unchanged visual baselines.
+
+## WebGL framebuffer versus screenshot readback (2026-10-11)
+
+The six-frame test-only ON/ON/OFF/OFF/ON/ON material hot-switch
+was repeated with **mapped WebGL framebuffer readbacks**, rather than
+assuming a screenshot pixel shares coordinates with the WebGL backing
+buffer. This test is intentionally **not** an automatic CI acceptance gate
+because hot-changing `material.forceSinglePass` within
+`Object3D.onBeforeRender` is not a product interaction.
+
+- [Quality CI 38115626125](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38115626125):
+  **success, 635/635 Node tests passing**, including bounded opt-in
+  readback, vertical flip, and fractional-resolution mapping.
+- [Diagnostic Browser CI 38115626178](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38115626178):
+  normal product/ROI steps passed; the standalone strict scientific
+  hot-switch diagnostic **FAILED as expected**, preserving all frames.
+  [Artifact 11693527978](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38115626178/artifacts/11693527978)
+  includes PNGs, frame traces and
+  `electrical-same-context/report.json`.
+- Chromium 140 on Linux software WebGL produced a **530 × 273**
+  `gl.drawingBuffer`, while Playwright's canvas PNG was **531 × 275**.
+  A screenshot coordinate must be mapped by pixel center into the
+  smaller backing buffer; coordinates cannot be assumed equal.
+- Six frames retained **identical camera world/projection matrices**
+  and **identical presentation object draw-order hashes**. OFF and ON
+  had the expected native 1,408 / 1,291 draw calls and
+  57,040,012 / 54,066,262 triangles respectively. No GL errors.
+- ON (frames 1 and 2), OFF (3 and 4) were byte/pixel identical.
+  Restored ON (5 and 6) changed **two PNG pixels**, (301,138) and
+  (301,139), by +1 red channel level, with no green, blue or alpha
+  differences. The changed PNG appearance remained stable on frame 6.
+- Mapped raw GL readback confirms the change **already exists before
+  browser screenshot composition**. The native framebuffer sample at
+  `(x=300, top-y=137)` changed from
+  **RGBA (66,108,126,255) to (67,108,126,255)**, while the
+  neighboring native sample remained unchanged. PNG scaling from the
+  530 × 273 backing store to 531 × 275 spreads that red-channel
+  difference into two displayed pixels. Accordingly, this is not
+  solely a screenshot-tool artifact.
+- Transparent blend parameters in the diagnostic remained constant:
+  `BLEND=true`, RGB factors `SRC_ALPHA=770` and
+  `ONE_MINUS_SRC_ALPHA=771`, `FUNC_ADD=32774`, `DITHER=true`,
+  `DEPTH_TEST=true`. The first Electrical draw had
+  `DEPTH_WRITEMASK=false` in both policies. The expected culling
+  policy differs: single-pass first Electrical draw
+  `CULL_FACE=false`, double-pass `CULL_FACE=true`. The restored
+  single-pass matches the initial single-pass state in the recorded
+  fields, so these snapshots do not isolate the shader/driver cause
+  of the 1-level difference.
+
+**Interpretation and limit:** The discrepancy belongs to the WebGL
+draw/material lifecycle under **test-only hot-switching**. Its
+occurrence on a settled, equal-camera/equal-order frame rules out
+camera drift or object sorting as the sole cause of this controlled
+difference. No evidence here establishes that production does this
+hot-switch; the real Windows RTX 3060 **fresh-context** ON/OFF
+and same-policy checks remain separate and blocked. Exact PNG parity
+has **not** been relaxed, and no approved visual baseline or
+scientific/physical model was changed.
+
+The short opt-in framebuffer inspection helper remains available in
+`scripts/test-helpers/webgl-frame-probe.mjs`, with focused Node coverage
+in `site/tests/webgl-frame-probe.test.mjs`. The expensive one-time
+hot-switch diagnostic CI step has been removed again from
+`.github/workflows/browser-regression.yml`; the existing real
+625-site ROI error/clear/restore browser gate remains active.
+
+**Next technical hypothesis to test in isolation:** compare the
+*normal product path* in fresh identical hardware WebGL contexts with
+explicitly recorded (a) backing store versus capture dimensions,
+(b) same-camera raw GL sample neighborhoods, (c) shader/material
+program configuration, and (d) alpha/dither state. Never qualify
+hardware image parity from software WebGL evidence.
