@@ -941,15 +941,28 @@ export function createThreeView({
         arrayInstances: host.dataset.arrayInstances,
         drawTriangles: host.dataset.rendererDrawTriangles,
       });
+      const wasDampingEnabled = Boolean(controls?.enableDamping);
       if (controls) controls.enableDamping = !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
-      const changed = controls?.update?.() || false;
+      // Preserve the exact completed camera pose on idle transparent frames.
+      // OrbitControls already performs its required updates on interaction;
+      // redundant undamped update() calls can introduce subpixel camera drift.
+      const needsCameraUpdate =
+        interacting ||
+        Boolean(controls?.enableDamping) ||
+        wasDampingEnabled !== Boolean(controls?.enableDamping);
+      const changed = needsCameraUpdate ? controls?.update?.() || false : false;
       refreshV4CameraTileProbe(changed);
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
       renderer.render(scene, camera);
+      // Opt-in camera evidence is sampled after the completed GL frame.
+      if (v3RoiTraceEnabled) {
+        host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
+        host.dataset.rendererCameraProjection = JSON.stringify(camera.projectionMatrix.elements);
+      }
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.

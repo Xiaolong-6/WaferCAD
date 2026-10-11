@@ -73,6 +73,25 @@ try {
   assert.equal(report.reference.renderQuality, 'quality');
   assert.ok(Number(report.reference.arrayInstances || 0) >= 625);
   assert.ok(Number(report.reference.rendererDrawTriangles) > 0);
+  assert.ok(report.reference.rendererCameraWorld, 'camera trace must be enabled');
+  assert.ok(report.reference.rendererCameraProjection, 'camera projection trace must be enabled');
+
+  // Same policy, scene and pose: even a presentation-only idle redraw must
+  // leave both matrices byte-for-byte unchanged in exact Quality mode.
+  report.stage = 'idle-camera-repeatability';
+  serial = Number(report.reference.rendererFrameSerial || 0);
+  await page.locator('#threeOpacityRange').evaluate((input) => {
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await waitNewReadyFrame(serial);
+  report.idleRepeat = await snapshot();
+  assert.equal(report.idleRepeat.rendererCameraWorld, report.reference.rendererCameraWorld);
+  assert.equal(
+    report.idleRepeat.rendererCameraProjection,
+    report.reference.rendererCameraProjection,
+  );
+  assert.equal(report.idleRepeat.sceneGeneration, report.reference.sceneGeneration);
+  assert.equal(report.idleRepeat.rendererDrawTriangles, report.reference.rendererDrawTriangles);
 
   report.stage = 'create-bounded-roi';
   await page.locator('#focusEditor').evaluate((el) => {

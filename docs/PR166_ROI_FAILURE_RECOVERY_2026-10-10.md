@@ -87,3 +87,57 @@ in this follow-up.
   heavyweight jobs were not repeated on this Draft head and remain skipped.
 - Keep the experimental Electrical planar single-pass flag **default OFF**.
   Maintain Draft status, no merge, no baseline updates or force pushes.
+
+## Exact-camera / alpha state controls (2026-10-10 follow-up)
+
+The existing [PR acceptance report](PR166_ACCEPTANCE_2026-10-10.md)
+remains the source for Windows RTX 3060 evidence; that unpushed local
+`74175fb3` must not be overwritten. The subsequent automatic browser
+measurements here used **Linux Chromium software WebGL**.
+
+The standalone script
+`scripts/renderer-electrical-same-context-ab.mjs` builds a 625-site
+Quality 50%-opacity Electrical single-pass scene **once**, then changes
+only `material.forceSinglePass` through a test-only
+`Object3D.onBeforeRender` interceptor. It collects native WebGL
+submitted triangles, draw calls, exact PNG pixels, camera world and
+projection matrices, and presentation object order. It is an **experimental
+material hot-switch**; the product normally selects the candidate on page
+creation, and does not execute this hot-switch sequence.
+
+- [Six-frame test before camera fix, run 38073677978](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38073677978):
+  ON/ON/OFF/OFF/ON/ON used 54,066,262 / 57,040,012 actual triangles,
+  and 1,291 / 1,408 real native WebGL calls. The first four images
+  matched pixel-for-pixel; the last two ON frames differed at
+  (301,138–139), one red channel count each, on 2 of 146,025 pixels.
+  Order hashes matched, but camera matrices already differed from the
+  first frame on trial 2.
+- `site/three-view.js` now skips redundant
+  `OrbitControls.update()` on idle exact transparent frames with damping
+  disabled, while preserving updates during interaction, damping and
+  damping-mode transitions. It avoids repeated floating-point conversions
+  of an otherwise unchanged camera pose.
+- [Six-frame test with frozen idle camera, run 38074260560](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38074260560):
+  **all six camera matrices and all six object-order traces were identical**;
+  actual native submissions remained correct. Images 1–4 were still exactly
+  equal, while both restored ON frames still differed by the same two
+  1/255 red-channel pixels. This isolates the remaining difference to the
+  test-only material-policy transition or raster/driver state; it does **not**
+  establish that the application's ordinary no-hot-switch render path
+  changes pixels. Strict parity **failed**; no tolerance was added.
+- `?rendererV3RoiTrace=1` now also records the completed camera
+  world and projection matrices. The existing 625-site
+  `renderer-roi-recovery-regression.mjs` checks a same-policy idle redraw
+  preserves both matrices exactly, alongside bounded ROI error recovery.
+  The expensive six-frame hot-switch experiment stays standalone; it was
+  removed from automatic Browser CI after obtaining the diagnostic evidence
+  because it deliberately exercises a nonproduct material lifecycle and
+  does not establish production ON/OFF acceptance.
+
+**Current scientific decision:** The oversized array ROI point-budget
+limit remains enforced, and its failure/clear recovery was previously
+browser-verified. The camera-drift fix is separately under the normal
+targeted-browser regression. Full oversized ROI rendering is not implemented.
+Hardware fresh-context 625-site pixel parity remains **FAIL/unaccepted**,
+the Electrical candidate remains default OFF, and PR #166 remains Draft,
+unmerged, with unchanged visual baselines.
