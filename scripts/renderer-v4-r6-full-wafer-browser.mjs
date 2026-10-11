@@ -119,30 +119,26 @@ async function cycleContext(page, phase) {
     return { supported: true, renderer };
   });
   assert.ok(probe.supported, phase + ': WEBGL_lose_context extension required');
-  await page.waitForFunction(
-    () => window.__wafercadR6FullWaferEvents?.includes('lost'),
-    null,
-    { timeout },
-  );
+  await page.waitForFunction(() => window.__wafercadR6FullWaferEvents?.includes('lost'), null, {
+    timeout,
+  });
   const lost = await page.locator('#threeHost canvas').evaluate((canvas) => {
     return canvas.getContext('webgl2').isContextLost();
   });
   assert.equal(lost, true, phase + ': actual WebGL context lost');
   await page.evaluate(() => window.__wafercadR6FullWaferExtension.restoreContext());
-  await page.waitForFunction(
-    () => window.__wafercadR6FullWaferEvents?.includes('restored'),
-    null,
-    { timeout },
-  );
+  await page.waitForFunction(() => window.__wafercadR6FullWaferEvents?.includes('restored'), null, {
+    timeout,
+  });
   assert.deepEqual(
     await page.evaluate(() => window.__wafercadR6FullWaferEvents),
     ['lost', 'restored'],
     phase + ': single ordered recovery pair',
   );
   assert.equal(
-    await page.locator('#threeHost canvas').evaluate((canvas) =>
-      canvas.getContext('webgl2').isContextLost(),
-    ),
+    await page
+      .locator('#threeHost canvas')
+      .evaluate((canvas) => canvas.getContext('webgl2').isContextLost()),
     false,
     phase + ': context genuinely restored',
   );
@@ -191,7 +187,10 @@ try {
       .locator('#openProjectInput')
       .setInputFiles(
         fileURLToPath(
-          new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
         ),
       );
     await chooseConfirmation(page);
