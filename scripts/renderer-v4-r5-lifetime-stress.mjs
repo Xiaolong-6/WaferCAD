@@ -19,7 +19,7 @@ const output = new URL('../test-results/renderer-v4-r5-lifetime/', import.meta.u
 await mkdir(output, { recursive: true });
 const fixture = await readFile(
   fileURLToPath(
-    new URL('../site/examples/previews/three-tier-silicon-jlfets.wafercad', import.meta.url),
+    new URL('../site/examples/previews/tio2-metalens-four-unit.wafercad', import.meta.url),
   ),
 );
 const browser = await launchBrowser();
@@ -57,18 +57,39 @@ async function snapshot(page, phase) {
 }
 
 async function waitNewFrame(page, before, expectedVariant) {
-  await page.waitForFunction(
-    ({ previous, variant }) => {
+  try {
+    await page.waitForFunction(
+      ({ previous, variant }) => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          host?.dataset.sceneVariant === variant &&
+          Number(host.dataset.rendererFrameSerial || 0) > previous
+        );
+      },
+      { previous: before, variant: expectedVariant },
+      { timeout: 45000 },
+    );
+  } catch (error) {
+    const info = await page.evaluate(() => {
       const host = document.getElementById('threeHost');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        host?.dataset.sceneVariant === variant &&
-        Number(host.dataset.rendererFrameSerial || 0) > previous
-      );
-    },
-    { previous: before, variant: expectedVariant },
-    { timeout: 120000 },
-  );
+      const data = host?.dataset || {};
+      return {
+        phase: data.renderPhase,
+        status: data.renderState,
+        variant: data.sceneVariant,
+        errorCode: data.rendererErrorCode,
+        error: data.renderError,
+        frame: data.rendererFrameSerial,
+        opacity: document.getElementById('threeOpacityRange')?.value,
+        statusText: document.getElementById('statusText')?.textContent,
+      };
+    });
+    console.error('RENDERER_V4_R5_LIFETIME_BLOCKED', JSON.stringify({
+      expectedVariant, before, info,
+    }));
+    throw error;
+  }
 }
 
 async function importFixture(page, iteration) {
