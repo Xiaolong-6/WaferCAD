@@ -251,9 +251,27 @@ async function trial(enabled, index) {
     const native = evidence.native;
     native.drawInputs = native.drawInputs.map(({ shaders, ...draw }) => ({
       ...draw,
-      shaderHashes: shaders.map(({ type, source }) => ({ type, hash: hashJson(source), length: source.length })),
+      shaderHashes: shaders.map(({ type, source }) => ({
+        type,
+        hash: hashJson(source),
+        length: source.length,
+      })),
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
+    row.drawInputsCount = native.drawInputs.length;
+    if (hardwareRtx3060) {
+      assert.equal(
+        row.drawInputsCount,
+        48,
+        `${label}: expected bounded native draw samples`,
+      );
+      assert.ok(
+        native.drawInputs.some((draw) =>
+          draw.shaderHashes.some((shader) => shader.length > 0),
+        ),
+        `${label}: shader source evidence missing`,
+      );
+    }
     row.stage = 'captured';
     row.png = { width: png.width, height: png.height };
     row.layout = evidence.layout;
