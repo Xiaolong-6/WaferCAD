@@ -17,7 +17,7 @@ const folder = new URL(
     : '../test-results/renderer-v4-r7-hardware-abba/',
   import.meta.url,
 );
-const labels = R7_ORDER.map((policy, index) => (index + 1) + '-' + policy);
+const labels = R7_ORDER.map((policy, index) => index + 1 + '-' + policy);
 const report = JSON.parse(await readFile(new URL('report.json', folder), 'utf8'));
 assert.equal(report.trials.length, 4, 'requires four completed independent contexts');
 assert.deepEqual(
@@ -25,9 +25,7 @@ assert.deepEqual(
   labels,
   'requires correct A-B-B-A arm names',
 );
-const pngs = await Promise.all(
-  labels.map((label) => readFile(new URL(label + '.png', folder))),
-);
+const pngs = await Promise.all(labels.map((label) => readFile(new URL(label + '.png', folder))));
 const comparisons = R7_PIXEL_PAIRS.map(({ pair, kind }) => {
   const [a, b] = pair.split('-').map((n) => Number(n) - 1);
   return { pair, kind, ...compareScreenshotPngPixels(pngs[a], pngs[b]) };
@@ -50,6 +48,9 @@ const result = {
     gpuVramMeasured: false,
   },
 };
-await writeFile(new URL('offline-parity-report.json', folder), JSON.stringify(result, null, 2) + '\n');
+await writeFile(
+  new URL('offline-parity-report.json', folder),
+  JSON.stringify(result, null, 2) + '\n',
+);
 console.log('RENDERER_V4_R7_OFFLINE_PARITY', JSON.stringify(result));
 if (!parity.strictPixelParity) process.exitCode = 1;
