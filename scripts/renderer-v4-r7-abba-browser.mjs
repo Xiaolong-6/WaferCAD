@@ -235,14 +235,18 @@ async function oneArm(policy, index) {
       canvasHeight: await page.locator('#threeHost canvas').evaluate((canvas) => canvas.height),
     };
     assert.ok(row.state.geometries > 0 && row.state.cpuTypedArrayBytes > 0);
-    row.candidateActivation = classifyR7CandidateActivation(candidate.mode, row.state);
-    // A must never exercise a candidate. On hardware, a B that does not
-    // exercise the requested optimization is inconclusive, not parity evidence.
-    if (hardwareRtx3060 && policy === 'B') {
+    row.candidateActivation = classifyR7CandidateActivation(candidate.mode, row.state, policy);
+    // Strict isolation needs both halves: A must have neither optimization,
+    // B must enable ONLY those selected by its candidate mode. An unexpected
+    // extra optimization invalidates causal attribution just like a no-op.
+    if (hardwareRtx3060) {
+      assert.ok(
+        row.candidateActivation.countersComplete,
+        label + ': R7 candidate instrumentation counters are missing or invalid',
+      );
       assert.ok(
         row.candidateActivation.candidateExercised,
-        label +
-          ': candidate optimization was not exercised; check index/caps counters before interpreting pixel parity',
+        label + ': actual Index/Caps activity disagrees with the requested A/B policy',
       );
     }
     assert.deepEqual(errors, [], label + ': unexpected browser exceptions');
