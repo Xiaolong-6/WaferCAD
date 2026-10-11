@@ -80,6 +80,11 @@ try {
   await page.locator('#threePanel details[open]').evaluateAll((nodes) => {
     for (const node of nodes) node.open = false;
   });
+  const captureRect = decodeScreenshotPng(
+    await page.locator('#threeHost canvas').screenshot(),
+  );
+  const captureGeometry = { width: captureRect.width, height: captureRect.height };
+  report.captureGeometry = captureGeometry;
   const baseline = await snapshot();
   assert.equal(baseline.v3SkippedTriangles, '0');
   assert.equal(baseline.rendererDrawTriangles, '54066262');
@@ -132,7 +137,7 @@ try {
     const label = `${index + 1}-${singlePass ? 'single' : 'double'}`;
     stage = label;
     const serial = Number((await snapshot()).rendererFrameSerial || 0);
-    await page.evaluate((enabled) => {
+    await page.evaluate(({ enabled, geometry }) => {
       window.__waferCadSameContextPolicy = enabled;
       window.__waferCadSameContextEligible = 0;
       // The native draw probe is one-shot. Arm it independently for every
@@ -140,16 +145,20 @@ try {
       window.__waferCadWebglProbe.arm({
         rasterDiscard: false,
         captureGlState: true,
-        pixelSamples: [
-          { x: 301, y: 138 },
-          { x: 301, y: 139 },
-        ],
+        pixelSamples: [299, 300, 301, 302].flatMap((x) =>
+          [137, 138, 139, 140].map((y) => ({
+            x,
+            y,
+            sourceWidth: geometry.width,
+            sourceHeight: geometry.height,
+          })),
+        ),
       });
       // Even with the same value, the input event routes through the existing
       // presentation-only invalidation, scheduling a fresh complete frame.
       const input = document.getElementById('threeOpacityRange');
       input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, singlePass);
+    }, { enabled: singlePass, geometry: captureGeometry });
     await page.waitForFunction(
       (previous) => {
         const host = document.getElementById('threeHost');
@@ -190,8 +199,8 @@ try {
     const decoded = decodeScreenshotPng(canvas);
     const rawPixelSamples = probe.last.pixelSamples;
     for (const sample of rawPixelSamples) {
-      assert.equal(sample.width, decoded.width);
-      assert.equal(sample.height, decoded.height);
+      assert.equal(sample.displayWidth, decoded.width);
+      assert.equal(sample.displayHeight, decoded.height);
     }
     const pngPixelSamples = rawPixelSamples.map(({ x, y }) => ({
       x,
