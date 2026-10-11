@@ -118,8 +118,24 @@ html[data-v2-m3='d1-experimental'] .v2-native-toolbar .view-mode-select {
 }
 
 html[data-v2-m3='d1-experimental'] .v2-real-view > .section-body {
-  flex: 1 1 auto;
+  /* The Section grid must never size its implicit row from canvas bitmap
+     attributes or a tall imported layer legend. That creates a resize/render
+     feedback loop on a 390px viewport (M3D reached 78,512 CSS pixels). */
+  flex: 1 1 0;
+  height: 0;
   min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+html[data-v2-m3='d1-experimental'] .v2-real-view > .section-body > #sectionCanvas {
+  min-height: 0;
+  max-height: 100%;
+}
+
+html[data-v2-m3='d1-experimental'] .v2-real-view > .section-body > .layer-legend {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 html[data-v2-m3='d1-experimental'] .v2-real-view > .view-canvas-readout {
