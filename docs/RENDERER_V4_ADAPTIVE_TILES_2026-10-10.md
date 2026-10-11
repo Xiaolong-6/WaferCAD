@@ -816,3 +816,53 @@ baseline renderer nondeterminism from candidate-specific
 differences. **Strict pixel tolerance stays zero.** PR #174 remains
 Draft, opt-in and unmerged; no visual baseline is modified or
 hardware speedup is accepted.
+
+### RTX 3060 supplied PNG forensic result — 625-site A/B/B/A
+
+The original four PNGs and `report.json` from the failed Windows RTX
+3060 experiment were inspected directly (no simulated hardware
+samples, rerendering, tolerance changes or baseline replacement). All
+PNG dimensions were **531 × 275 = 146,025 screenshot pixels**. Every
+observed difference was RGB-only; alpha remained identical.
+
+Pairwise exact pixel differences, preserving the run's temporal
+order:
+
+- **A1 vs B1:** 131 pixels (max 8-bit channel delta 5).
+- **A1 vs B2:** 123 pixels (max delta 5).
+- **A1 vs A2:** 78 pixels (max delta 2; *baseline same-policy
+  fresh-context instability*).
+- **B1 vs B2:** 147 pixels (max delta 2; *candidate same-policy
+  fresh-context instability*).
+- **B1 vs A2:** 193 pixels (max delta 5).
+- **B2 vs A2:** 83 pixels (max delta 5).
+
+Exactly **219 unique pixel positions** differ in at least one of the
+six pairs. Of those, **174** change within A1/A2 or B1/B2, proving
+same-policy cross-context instability, while **45** obey the
+policy-consistent signature **A1 = A2; B1 = B2; A != B** at the
+same coordinates. These 45 have bounding box
+`x=215..328, y=118..190` and max RGB-channel delta **5**.
+Policy-consistent pixels are present on the model top/sides and the
+circular substrate rim. This suggests a reproducible policy-correlated
+difference in the final image; it **does not identify** which
+opt-in feature, shader, material, buffer or hardware operation
+created it. Both groups remain strictly nonidentical.
+
+The ABBA evidence rules out a blanket claim that *all* differences
+are random context noise. It also does not support attributing all
+A/B differences to V4 shared geometry, because substantial
+same-policy drift is independently present.
+
+The offline analyzer and strict R7 browser script now additionally
+report a separate **stable-policy pixel count, same-policy drift union,
+max delta and bounding box**, backed by synthetic unit tests. They
+retain the **zero changed pixel** acceptance threshold. For the
+next targeted GPU investigation, distinguish exact post-draw WebGL
+`readPixels` from compositor PNGs, and separately probe
+`rendererV4FastSmoothIndex` versus `rendererV4SharedFlatCaps`.
+No hardware re-run was required to derive these six comparisons.
+
+**Gate: RED.** Renderer V4 optimization remains opt-in, PR #174 Draft,
+PR #166 independent, no visual baseline changes and no hardware
+performance approval.
