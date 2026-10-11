@@ -51,7 +51,7 @@ export function historyOperationLabel(node, model) {
           : operation.etchProfile === 'undercut'
             ? 'Undercut'
             : '';
-    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}${faceSuffix}` : ''} · ${thickness}${profileLabel ? ` · ${profileLabel}` : surfaceLabel ? ` · ${surfaceLabel}` : ''}${faceSuffix}`;
+    return `${release ? 'Release' : 'Etch'}${targetName ? ` ${targetName}` : ''} · ${thickness}${profileLabel ? ` · ${profileLabel}` : surfaceLabel ? ` · ${surfaceLabel}` : ''}${faceSuffix}`;
   }
 
   if (operation.kind === 'implant') {
@@ -66,7 +66,7 @@ export function historyOperationLabel(node, model) {
       operation.name || '',
     );
     return name && thickness
-      ? `Electrical ${name} · ${operation.electricalRegionType || 'region'} · ${thickness}`
+      ? `Electrical ${name} · ${operation.electricalRegionType || 'region'} · ${thickness}${faceSuffix}`
       : fallback;
   }
 
