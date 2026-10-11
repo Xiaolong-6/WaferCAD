@@ -356,6 +356,14 @@ export function isLayerExposed(model, id) {
   return found;
 }
 
+function unlinkDeletedLayerPair(model, removedId) {
+  // A Both deposit is two independently removable Layers. Keep the surviving
+  // Layer's process provenance, but never retain a dangling counterpart ID.
+  for (const layer of model.layers) {
+    if (layer.pairedLayerId === removedId) delete layer.pairedLayerId;
+  }
+}
+
 export function deleteExposedLayer(model, id) {
   if (isArrayModel(model)) {
     if (!isLayerExposed(model, id)) return false;
@@ -367,6 +375,7 @@ export function deleteExposedLayer(model, id) {
     });
     model.array = { ...model.array, templates };
     model.layers = model.layers.filter((l) => l.id !== id);
+    unlinkDeletedLayerPair(model, id);
     model.revision++;
     model.processRevision = (model.processRevision || 0) + 1;
     return true;
@@ -379,6 +388,7 @@ export function deleteExposedLayer(model, id) {
   }
   model.regions = mergeRegions(model, next);
   model.layers = model.layers.filter((layer) => layer.id !== id);
+  unlinkDeletedLayerPair(model, id);
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return true;
