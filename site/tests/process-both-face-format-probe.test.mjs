@@ -7,9 +7,18 @@ test('temporary formatter probe for PR-owned files', async () => {
   for (const path of [
     'site/advanced-process-operations.js',
     'site/controllers/process-panel-controller.js',
+    'site/controllers/process-recipe-controller.js',
+    'site/model.js',
+    'site/model-array-process.js',
     'site/process-face-execution.js',
+    'site/process-worker.js',
+    'site/process-recipe.js',
+    'site/history-replay.js',
+    'site/workspace-snapshots.js',
     'site/tests/process-both-face.test.mjs',
+    'site/tests/history-replay.test.mjs',
     'docs/PROCESS_BOTH_FACE_2026-10-11.md',
+    'docs/README.md',
   ]) {
     const source = readFileSync(path, 'utf8');
     const formatted = await prettier.format(source, { ...config, filepath: path });
