@@ -40,6 +40,7 @@ export function createRoiController({
   renderMain,
   renderAll,
   status,
+  onEditorSync = null,
 }) {
   const $ = (id) => root.getElementById(id);
 
@@ -50,6 +51,7 @@ export function createRoiController({
   }
 
   function syncEditor() {
+    if (onEditorSync) return onEditorSync(getRoi());
     const editor = $('roiEditor'),
       roi = getRoi();
     if (!editor) return;
@@ -388,11 +390,21 @@ export function createRoiController({
     });
   }
 
-  function bind() {
+  function bind({ mainOnly = false } = {}) {
+    if (mainOnly) {
+      bindMainCanvas();
+      return;
+    }
     bindControls();
     bindMaskViewport();
     bindMainCanvas();
   }
 
-  return { bind, clearDrawingMode, syncEditor, applyEditor };
+  function setDrawingTool(tool) {
+    clearDrawingMode();
+    setRoiTool(tool);
+    renderMain();
+  }
+
+  return { bind, clearDrawingMode, syncEditor, applyEditor, setDrawingTool };
 }

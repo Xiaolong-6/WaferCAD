@@ -89,12 +89,33 @@
         state.roiSettings.height > 0
       ) {
         const { x, y, width, height, radius, rotation } = state.roiSettings;
-        if (state.roiShape === 'circle' || state.roiShape === 'ring')
+        if (!mask && state.roiShape === 'sector') {
+          const start = (Number(state.roiStartAngle ?? 0) * Math.PI) / 180;
+          const end = (Number(state.roiEndAngle ?? 90) * Math.PI) / 180;
+          const points = Array.from({ length: 61 }, (_, i) => {
+            const angle = start + ((end - start) * i) / 60;
+            return [x + radius * Math.cos(angle), y + radius * Math.sin(angle)].join(',');
+          });
+          group.append(
+            svgNode('polygon', {
+              points: [`${x},${y}`, ...points].join(' '),
+              fill: 'none',
+              stroke: 'var(--wc-accent)',
+              'vector-effect': 'non-scaling-stroke',
+              'data-roi-mark': '',
+            }),
+          );
+        } else if (state.roiShape === 'circle' || state.roiShape === 'ring')
           group.append(
             svgNode('circle', {
               cx: x,
               cy: y,
-              r: state.roiShape === 'ring' ? radius * 1.15 : Math.min(width, height) / 2,
+              r:
+                state.roiShape === 'ring'
+                  ? radius * 1.15
+                  : mask
+                    ? Math.min(width, height) / 2
+                    : radius,
               fill: 'none',
               stroke: 'var(--wc-accent)',
               'stroke-width': state.roiShape === 'ring' ? radius * 0.15 : 0,

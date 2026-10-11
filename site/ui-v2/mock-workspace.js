@@ -30,10 +30,10 @@
   const root = document.querySelector('#app-root');
   const query = new URL(window.location.href).searchParams;
   const viewState = window.WaferCadV2ViewState;
-  const preferredMode = viewState.preferredMode(
-    viewState.viewportWidth(window),
-    viewState.readMode(window),
-  );
+  const mainReview = query.get('review') === 'main';
+  const preferredMode = mainReview
+    ? 'main'
+    : viewState.preferredMode(viewState.viewportWidth(window), viewState.readMode(window));
   const state = {
     layout: 'a',
     example: query.get('example') === 'photodetector' ? 'photodetector' : 'm3d',
@@ -52,8 +52,8 @@
     view: viewState.singles.includes(preferredMode) ? preferredMode : 'main',
     desktopMode: viewState.compact(window) ? viewState.readMode(window) || 'main' : preferredMode,
     splitViews: viewState.readSplit(window),
-    mobile: query.get('scene') === 'empty-history' ? 'view' : 'edit',
-    section: true,
+    mobile: mainReview || query.get('scene') === 'empty-history' ? 'view' : 'edit',
+    section: !mainReview,
     legendOpen: true,
     legendColors: {},
     legendPalette: 'balanced',
@@ -655,8 +655,12 @@
             [
               ['rect', 'Rectangle'],
               ['circle', 'Circle'],
-              ['ring', 'Ring'],
-              ['ring-sector', 'Ring sector'],
+              ...(view === 'main'
+                ? [['sector', 'Sector']]
+                : [
+                    ['ring', 'Ring'],
+                    ['ring-sector', 'Ring sector'],
+                  ]),
             ],
             state.roiShape,
           ),
@@ -680,25 +684,45 @@
             type: 'number',
             step: 'any',
           }),
-          field(`Width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
-            type: 'number',
-            min: 0,
-            step: 'any',
-          }),
-          field(`Height · ${unitName}`, 'roiHeight', displayLength(state.roiSettings.height), {
-            type: 'number',
-            min: 0,
-            step: 'any',
-          }),
-          field(`Radius · ${unitName}`, 'roiRadius', displayLength(state.roiSettings.radius), {
-            type: 'number',
-            min: 0,
-            step: 'any',
-          }),
-          field('Rotation · °', 'roiRotation', state.roiSettings.rotation, {
-            type: 'number',
-            step: 'any',
-          }),
+          view === 'main' && state.roiShape !== 'rect'
+            ? null
+            : field(`Width · ${unitName}`, 'roiWidth', displayLength(state.roiSettings.width), {
+                type: 'number',
+                min: 0,
+                step: 'any',
+              }),
+          view === 'main' && state.roiShape !== 'rect'
+            ? null
+            : field(`Height · ${unitName}`, 'roiHeight', displayLength(state.roiSettings.height), {
+                type: 'number',
+                min: 0,
+                step: 'any',
+              }),
+          view === 'main' && state.roiShape === 'rect'
+            ? null
+            : field(`Radius · ${unitName}`, 'roiRadius', displayLength(state.roiSettings.radius), {
+                type: 'number',
+                min: 0,
+                step: 'any',
+              }),
+          view !== 'main'
+            ? field('Rotation · °', 'roiRotation', state.roiSettings.rotation, {
+                type: 'number',
+                step: 'any',
+              })
+            : null,
+          view === 'main' && state.roiShape === 'sector'
+            ? [
+                field('Start angle · °', 'roiStartAngle', state.roiStartAngle ?? 0, {
+                  type: 'number',
+                  step: 'any',
+                }),
+                field('End angle · °', 'roiEndAngle', state.roiEndAngle ?? 90, {
+                  type: 'number',
+                  step: 'any',
+                }),
+              ]
+            : null,
           button(
             view === 'detail' ? 'Clear Detail ROI' : 'Clear ROI',
             view === 'detail' ? 'clear-detail-roi' : 'clear-roi',

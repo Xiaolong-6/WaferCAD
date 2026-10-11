@@ -56,7 +56,7 @@ export function createViewPopoverController({ root = document } = {}) {
           // the canvas when it closes. Otherwise the still-open More surface
           // can intercept ROI handle drags even though the editor is hidden.
           const more = details.closest('.view-overflow-secondary')?.closest('.view-more-control');
-          if (more?.open) more.open = false;
+          if (more?.open && !more.querySelector('details[open]')) more.open = false;
         }
       });
     }

@@ -23,8 +23,12 @@ export function createMainCanvasController({
   renderAll,
   ResizeObserverImpl = ResizeObserver,
   windowRef = window,
+  mainOnly = false,
+  onPanModeChange = () => {},
+  isZoomEnabled = () => true,
 }) {
   const $ = (id) => root.getElementById(id);
+  let setPan = () => {};
 
   function bind() {
     const main = $('mainCanvas');
@@ -37,8 +41,12 @@ export function createMainCanvasController({
       panButton?.classList.toggle('active', panMode);
       panButton?.setAttribute('aria-pressed', String(panMode));
       main.classList.toggle('plan-pan-active', panMode);
+      if (mainOnly && !panMode && panDrag && main.hasPointerCapture?.(panDrag.pointerId))
+        main.releasePointerCapture(panDrag.pointerId);
       if (!panMode) panDrag = null;
+      onPanModeChange(panMode);
     }
+    setPan = setPanMode;
 
     const editor = createSectionEditor({
       canvas: main,
@@ -71,7 +79,7 @@ export function createMainCanvasController({
     });
     setSectionEditor(editor);
 
-    panButton?.addEventListener('click', () => setPanMode(!panMode));
+    if (!mainOnly) panButton?.addEventListener('click', () => setPanMode(!panMode));
     $('sectionControlsBtn')?.addEventListener('click', () => setPanMode(false));
     root.querySelectorAll('#mainPanel .roi-tool, #clearRoiBtn').forEach((button) => {
       button.addEventListener('click', () => setPanMode(false));
@@ -124,6 +132,7 @@ export function createMainCanvasController({
       'wheel',
       (event) => {
         event.preventDefault();
+        if (!isZoomEnabled()) return;
         zoomPlanView(
           'main',
           main,
@@ -147,10 +156,11 @@ export function createMainCanvasController({
       renderSection();
     });
     for (const id of ['mainCanvas', 'maskCanvas', 'sectionCanvas']) {
+      if (mainOnly && id !== 'mainCanvas') continue;
       resizeObserver.observe($(id));
     }
     windowRef.addEventListener('resize', renderAll);
   }
 
-  return { bind };
+  return { bind, setPanMode: (active) => setPan(active) };
 }

@@ -1,0 +1,113 @@
+/* New v2 canvas/handles only. No legacy controls or legacy styles are loaded. */
+.v2-main-stage {
+  position: relative;
+}
+.v2-main-stage #mainCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.v2-main-stage #mainCoords {
+  position: absolute;
+  left: 8px;
+  bottom: 6px !important;
+  font-size: var(--wc-font-aux);
+  pointer-events: none;
+}
+#mainPanel.v2-main-view {
+  position: relative;
+}
+#mainPanel.v2-main-view #sectionEndpointHandles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#mainPanel.v2-main-view [data-endpoint] {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+}
+#mainPanel.v2-main-view [data-endpoint][hidden] {
+  display: none;
+}
+.v2-main-stage #mainCanvas.plan-pan-active {
+  cursor: grab;
+}
+#mainRoiTools[hidden] {
+  display: none;
+}
+#mainRoiTools .p-mask-tools {
+  flex-wrap: wrap;
+}
+.v2-main-floating [hidden] {
+  display: none;
+}
+.v2-main-floating {
+  position: fixed;
+  z-index: var(--wc-z-popover);
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  background: var(--wc-surface);
+  border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-md);
+  box-shadow: var(--wc-shadow-1);
+  color: var(--wc-text);
+  font-family: 'Inter Review', var(--wc-font);
+}
+.v2-main-floating > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--wc-space-2) var(--wc-space-3);
+  border-bottom: 1px solid var(--wc-border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.v2-main-floating > header strong {
+  font-size: var(--wc-font-control);
+}
+.v2-main-floating > header .wc-button {
+  width: var(--wc-control-sm);
+  padding: var(--wc-space-1);
+}
+.v2-main-floating-body {
+  padding: var(--wc-space-3);
+}
+.v2-main-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--wc-space-3);
+}
+.v2-main-floating-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wc-space-2);
+  margin-top: var(--wc-space-3);
+}
+.v2-main-tools {
+  min-width: 220px;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: var(--wc-space-3);
+  border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-md);
+  background: var(--wc-surface);
+  color: var(--wc-text);
+}
+#mainPanel.v2-main-view [data-endpoint] {
+  background: var(--wc-surface);
+  color: var(--wc-text);
+  border: 1px solid var(--wc-border-strong);
+}
