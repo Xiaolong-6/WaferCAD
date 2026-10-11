@@ -146,12 +146,30 @@ try {
     }
 
     async function drag(canvas, sx, sy, ex, ey) {
+      // A tall imported M3D legend can scroll the compact Section host.
+      // Scroll the original canvas into the visible viewport before issuing
+      // screen-space pointer events; retain strict elementFromPoint checks.
+      await page.locator(canvas).scrollIntoViewIfNeeded();
+      await waitForPaint(page);
       const bounds = await page.locator(canvas).boundingBox();
       assert.ok(bounds && bounds.width > 100 && bounds.height > 100, `${canvas} must be visible`);
       const from = { x: bounds.x + sx * bounds.width, y: bounds.y + sy * bounds.height };
       const to = { x: bounds.x + ex * bounds.width, y: bounds.y + ey * bounds.height };
-      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.id, from);
-      assert.equal(hit, canvas.slice(1), `Real pointer must hit ${canvas}`);
+      const hit = await page.evaluate(({ x, y }) => {
+        const node = document.elementFromPoint(x, y);
+        return {
+          id: node?.id,
+          tag: node?.tagName,
+          viewport: { width: innerWidth, height: innerHeight },
+          pageHeight: document.documentElement.scrollHeight,
+          scrollY,
+        };
+      }, from);
+      assert.equal(
+        hit.id,
+        canvas.slice(1),
+        `Real pointer must hit ${canvas}: ${JSON.stringify({ hit, bounds, from, to })}`,
+      );
       await page.mouse.move(from.x, from.y);
       await page.mouse.down();
       await page.mouse.move(to.x, to.y, { steps: 8 });
