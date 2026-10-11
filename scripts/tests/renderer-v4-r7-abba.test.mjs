@@ -2,11 +2,40 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   R7_ORDER,
+  selectR7Candidate,
   R7_PIXEL_PAIRS,
   classifyR7PixelSignatures,
   summarizeR7Abba,
   summarizeR7PixelParity,
 } from '../test-helpers/renderer-r7-abba.mjs';
+
+test('R7 isolation modes enable exactly their declared browser boot flags', () => {
+  const combined = selectR7Candidate(['--ci-smoke']);
+  assert.equal(combined.mode, 'combined');
+  assert.equal(combined.artifactSuffix, '');
+  assert.deepEqual(combined.flags, [
+    'rendererV4FastSmoothIndex=1',
+    'rendererV4SharedFlatCaps=1',
+  ]);
+  const index = selectR7Candidate(['--hardware-rtx3060', '--isolate-index']);
+  assert.equal(index.mode, 'index');
+  assert.equal(index.candidateName, 'FastSmoothIndex-only');
+  assert.equal(index.artifactSuffix, '-index-only');
+  assert.deepEqual(index.flags, ['rendererV4FastSmoothIndex=1']);
+  const caps = selectR7Candidate(['--ci-smoke', '--isolate-caps']);
+  assert.equal(caps.mode, 'caps');
+  assert.equal(caps.artifactSuffix, '-caps-only');
+  assert.deepEqual(caps.flags, ['rendererV4SharedFlatCaps=1']);
+  assert.throws(
+    () => selectR7Candidate(['--isolate-index', '--isolate-caps']),
+    /at most one/,
+  );
+  assert.equal(selectR7Candidate([]).mode, 'combined');
+  index.flags.push('tampered');
+  assert.deepEqual(selectR7Candidate(['--isolate-index']).flags, [
+    'rendererV4FastSmoothIndex=1',
+  ]);
+});
 
 const trial = (policy, a, b) => ({
   policy,
