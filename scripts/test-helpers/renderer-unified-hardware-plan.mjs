@@ -51,7 +51,7 @@ export function classifyRendererHardwareStep(step, report) {
   if (report.candidateMode !== step.id.slice(3)) return 'error';
   if (
     report.trials
-      ?.filter((trial) => trial.policy === 'B')
+      ?.filter((trial) => trial.policy === 'A' || trial.policy === 'B')
       .some((trial) => trial.candidateActivation?.candidateExercised !== true)
   ) {
     return 'candidate-not-exercised';
