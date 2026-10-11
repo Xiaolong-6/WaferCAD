@@ -1138,7 +1138,8 @@ export function createProcessRecipeController({
       return true;
     }
 
-    if (p.face) setActiveFace(p.face);
+    // Both is a Process execution target; the current inspection view remains Front/Back.
+    if (p.face === 'front' || p.face === 'back') setActiveFace(p.face);
     if (p.area && p.area !== 'full') {
       const state = maskStateFromRecipe(p.mask);
       if (!state) throw new Error('This step requires a captured Mask context.');
@@ -1233,6 +1234,7 @@ export function createProcessRecipeController({
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
+      canonicalFace: p.face || 'front',
     });
     const after = Number(getModel()?.processRevision || 0);
     if (after <= before) throw new Error('The Process step did not commit a model revision.');
