@@ -149,6 +149,7 @@ try {
       await page.locator('[data-action="tool:pan:mask"]').click();
       await page.locator('[data-action="tool:zoom:mask"]').click();
       assert.equal(await page.locator('dialog[open], :popover-open').count(), 0);
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.wheel(0, -100);
       await waitForPaint(page);
       assert.ok((await snapshot()).plan.zoom > 1);
