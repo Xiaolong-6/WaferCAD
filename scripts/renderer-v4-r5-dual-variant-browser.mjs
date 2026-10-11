@@ -141,6 +141,25 @@ try {
       assert.equal(again[key], second[key], key + ': reverse cache swap must not allocate again');
     }
     assert.equal(again.disposedGroups, second.disposedGroups);
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const opaque = await setOpacity(page, '1', 'opaque', 'repeat-' + cycle + '-opaque');
+      const transparent = await setOpacity(
+        page,
+        '0.5',
+        'transparent',
+        'repeat-' + cycle + '-transparent',
+      );
+      for (const state of [opaque, transparent]) {
+        for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
+          assert.equal(state[key], second[key], state.phase + ': bounded ' + key);
+        }
+        assert.equal(
+          state.disposedGroups,
+          second.disposedGroups,
+          state.phase + ': cached variant must not be disposed',
+        );
+      }
+    }
     assert.deepEqual(errors, [], 'no browser page/console errors');
     const backend = await page.locator('#threeHost canvas').evaluate((canvas) => {
       const gl = canvas.getContext('webgl2');

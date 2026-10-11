@@ -473,3 +473,25 @@ real-GPU ABBA frame timing, browser/driver VRAM observation, WebGL
 context loss/restoration, long-duration workload endurance and any
 default-on decision. Keep both renderer PRs Draft; do not merge to
 main or modify approved visual baselines.
+
+## R5 true 625-site dual-variant cache and repeat-swap test (2026-10-11)
+
+A new [625-site dual-variant CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38121270439)
+verified a real opaque-to-transparent scene rebuild followed by cache
+reuse, under Chromium **SwiftShader software WebGL**. The first opaque
+variant retained **588 geometries**, **70 materials** and
+**16,399,296 bytes** of unique CPU TypedArrays. Warming transparent
+built and retained exactly two distinct scene variants:
+**1,362 geometries**, **658 materials**, **32,181,984 bytes**.
+Returning opaque and transparent kept these resource counts and
+the group disposal counter unchanged. This does *not* prove GPU VRAM
+allocation or driver timing.
+
+The R5 gate also enforces additional round trips with exact equality
+of retained variant counts, geometry/material counts and byte totals,
+without discarding live variants. The small-preview reimport gate
+remains separate: it tests release of obsolete project revisions
+but does not construct two full-array variants. These checks together
+cover both bounded cache reuse and lifecycle retirement. Hardware
+ABBA and long-duration context-loss/VRAM testing remain unaccepted;
+both renderer PRs stay Draft without default-on policy changes.
