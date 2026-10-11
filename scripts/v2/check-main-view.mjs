@@ -312,6 +312,7 @@ try {
       await page.keyboard.press('Escape');
       const endpoint = page.locator('[data-endpoint="a"]');
       const handle = await endpoint.boundingBox();
+      assert.ok(Math.abs(handle.width - handle.height) <= 0.25, 'Slice endpoint stays circular');
       const currentProjection = await page.evaluate(() => window.WaferCadV2Main.projection());
       const section = await page.evaluate(() => window.WaferCadV2Main.snapshot().section);
       assert.ok(

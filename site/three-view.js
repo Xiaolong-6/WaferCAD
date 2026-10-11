@@ -87,6 +87,7 @@ export function createThreeView({
   let scene = null;
   let camera = null;
   let controls = null;
+  let gestureMode = null;
   let group = null;
   let axesHelper = null;
   let ready = false;
@@ -177,6 +178,25 @@ export function createThreeView({
       target: [controls.target.x, controls.target.y, controls.target.z],
       fov: camera.fov,
     };
+  }
+
+  // Opt-in v2 policy; callers that never opt in retain legacy OrbitControls defaults.
+  function setGestureMode(mode) {
+    if (!['rotate', 'pan', 'zoom', 'none'].includes(mode)) return false;
+    gestureMode = mode;
+    if (!controls || !THREE) return true;
+    controls.mouseButtons.LEFT =
+      mode === 'rotate'
+        ? THREE.MOUSE.ROTATE
+        : mode === 'pan'
+          ? THREE.MOUSE.PAN
+          : mode === 'zoom'
+            ? THREE.MOUSE.DOLLY
+            : null;
+    controls.touches.ONE =
+      mode === 'rotate' ? THREE.TOUCH.ROTATE : mode === 'pan' ? THREE.TOUCH.PAN : null;
+    controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+    return true;
   }
 
   function setViewState(value) {
@@ -790,6 +810,7 @@ export function createThreeView({
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
       if (controls) controls.enableDamping = !heavyExactTransparency;
+      if (gestureMode !== null && controls) controls.enableDamping = false;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       const changed = controls?.update?.() || false;
       updateRoughMaterialLod();
@@ -2447,7 +2468,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
           camera.up.set(0, 0, 1);
           camera.position.set(115, -125, 95);
 
+          renderer.domElement.addEventListener(
+            'wheel',
+            (event) => {
+              if (gestureMode !== null && gestureMode !== 'zoom') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+              }
+            },
+            { capture: true, passive: false },
+          );
           controls = new OrbitControls(camera, renderer.domElement);
+          if (gestureMode !== null) setGestureMode(gestureMode);
           controls.target.set(0, 0, 0);
           controls.enableDamping = true;
           controls.addEventListener('start', () => {
@@ -3778,6 +3810,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     fit,
     getViewState,
     setViewState,
+    setGestureMode,
     updateZCollapse,
     exportGlb,
     capturePng,

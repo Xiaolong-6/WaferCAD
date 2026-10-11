@@ -71,9 +71,9 @@ try {
       };
       // Floating Mask actions must still reach the same ROI controller inside the shared shell.
       await page.locator('[data-action="view:mask"]').click();
-      await command('mask-roi-settings');
-      await page.locator('[data-action="mask-roi:square"]').click();
-      await page.getByRole('button', { name: 'Close Mask ROI settings', exact: true }).click();
+      await command('mask-roi-toggle');
+      assert.equal(await page.locator('#maskRoiTools').isVisible(), true);
+      await page.locator('[data-action="mask-roi-tool:square"]').click();
       const maskBox = await page.locator('#maskCanvas').boundingBox();
       await page.mouse.move(maskBox.x + maskBox.width * 0.3, maskBox.y + maskBox.height * 0.3);
       await page.mouse.down();

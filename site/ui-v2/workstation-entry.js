@@ -2,6 +2,7 @@ import { loadWorkstationProject, createWorkstationRuntime } from './workstation-
 import { createMainView } from './main-view.js';
 import { createMaskView } from './mask-view.js';
 import { createSectionView } from './section-view.js';
+import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 
 const { el, button, panelHeader } = window.WaferCadV2Components;
@@ -28,6 +29,7 @@ try {
     views: [
       { key: 'main', label: 'Main', icon: 'main' },
       { key: 'mask', label: 'Mask', icon: 'mask' },
+      { key: 'three', label: '3D', icon: 'cube' },
       { key: 'section', label: 'Section', icon: 'section' },
     ],
   });
@@ -42,7 +44,7 @@ try {
       selectedNavigation: uiState.domain,
       editorHidden: uiState.editorHidden,
       message,
-      save: 'Shared project · Stage A',
+      save: 'Shared project · Stage B',
     }),
   });
   const render = () => {
@@ -81,6 +83,17 @@ try {
   store.views.set('mask', mask);
   const section = createSectionView({ store, main, workstation: scope('section') });
   store.views.set('section', section);
+  const three = createWorkstationThreeView({ store, workstation: scope('three') });
+  store.views.set('three', three);
+  adapters.register('view.three', {
+    mount: (host) => {
+      host.append(three.panel);
+      return three.panel;
+    },
+    onShow: three.runtime.render,
+    onHide() {},
+    destroy() {},
+  });
   adapters.register('view.section', {
     mount: (host) => {
       host.append(section.panel);
@@ -162,6 +175,12 @@ try {
         planViews: store.state.planViews,
         local: store.local,
         activeFace: store.state.activeFace,
+        threeCamera: three.renderer.getViewState(),
+        threeDisplay: {
+          opacity: store.state.threeOpacity,
+          borders: store.state.threeShowBorders,
+          fast: store.state.threeFastMode,
+        },
         counts: store.counters,
         ui: uiState,
         scientificUnchanged: geometryBefore === store.geometrySnapshot(),

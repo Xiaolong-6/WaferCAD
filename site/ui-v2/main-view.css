@@ -9,9 +9,9 @@
 }
 #mainPanel.v2-main-view [data-endpoint] {
   position: absolute;
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
+  width: max(24px, var(--wc-hit-min));
+  height: max(24px, var(--wc-hit-min));
+  min-height: max(24px, var(--wc-hit-min));
   padding: 0;
   transform: translate(-50%, -50%);
   border-radius: 50%;

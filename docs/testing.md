@@ -31,6 +31,23 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### UI v2 shared-workstation checks
+
+Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
+
+Phase B 3D separates small-example interaction coverage from a substantial real export that can be cancelled through the task panel:
+
+```bash
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_V2_EXAMPLE=metalens \
+  node scripts/v2/check-three-view.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" \
+  node scripts/v2/check-three-export-abort.mjs
+```
+
+The first checker covers four widths, touch, Main ROI/Section linkage, unchanged model, PNG 3× and GLB metres. The second uses the complete 27-layer/551-region M3D model, real GLB work and task-panel Abort, requiring no download, unchanged model/ROI and a released task. Only its camera comparison allows the user-approved maximum numerical error of `1e-9`; existing `0.25 px` geometry assertions remain unchanged. A tiny clipped export may complete before an Abort click and cannot establish cancellation. `check-three-view.mjs` still defaults to complete M3D for full-model diagnostics when no example is supplied.
+
+[The Phase B CI workflow](../.github/workflows/ui-v2-three.yml) runs these two browser owners separately from the Main/Mask/Section job. It has no manual dispatch entry. Local reports are under `test-results/ui-v2-three-review-metalens/` and `test-results/ui-v2-three-export-abort/`. Passing these checks does not establish hardware GPU or physical touchscreen acceptance; see the [WIP checkpoint](ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for actual results and outstanding full-M3D interaction diagnostics.
+
 For **frame-accurate transparency measurements**, wait for `rendererFrameSerial` to advance after the opacity change, then sample diagnostics. `renderState=ready` alone may precede the next WebGL frame. `rendererFrameMs` is CPU-observed submission time, while `rendererDrawCalls`/`rendererDrawTriangles` and retained geometry/material counters expose the active and cached scene costs. A browser screenshot/compositor checkpoint is needed when comparing user-visible cold and warm latency. The 625-site transparency benchmark **continues to measure** cold/warm complete-frame latency, but the <15 s cold budget and relative swap times are **temporarily non-blocking** under the recorded renderer acceptance policy. Failures of transparency geometry, buried Electrical/Implant visibility, scene ownership, retained resource stability, interaction, or genuine frame hangs still fail CI. Timing overruns are emitted as `ARRAY_RENDERER_PERF_WARNING` and stored in the renderer report. See [the transparency performance roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) for the evidence, phases and conditions for restoring the hard timing gate.
 
 For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, presentation updates, and rough preview/final readiness). It also asserts the persistent-scene contract: opacity changes must retain the same scene generation and surface-plan build count, report a presentation update, perform zero physical assembly work, and keep scene object/geometry/material counts stable. The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.

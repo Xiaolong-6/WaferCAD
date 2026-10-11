@@ -31,6 +31,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     overlays,
     runtime,
     strip,
+    roiStrip,
+    roiOpen = false,
     message = 'Ready',
     modelBefore,
     editorShapeId;
@@ -52,7 +54,11 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function sync() {
     if (!state) return;
     workstation?.changed('mask');
-    strip?.update({ open: state.drawOpen, selected: state.drawUi?.tool || 'select' });
+    strip?.update({ open: state.drawOpen && !roiOpen, selected: state.drawUi?.tool || 'select' });
+    roiStrip?.update({
+      open: roiOpen,
+      selected: state.maskRoiTool === 'rect' ? 'square' : state.maskRoiTool || 'select',
+    });
     for (const key of ['pan', 'zoom'])
       document
         .querySelector(`[data-action="tool:${key}:mask"]`)
@@ -291,7 +297,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         ],
         [
           iconButton('Draw', 'draw-toggle', 'polygon'),
-          iconButton('ROI settings', 'mask-roi-settings', 'roi'),
+          iconButton('ROI', 'mask-roi-toggle', 'roi'),
           iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
         ],
       ],
@@ -344,11 +350,26 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       },
       owner: () => document.querySelector('[data-action="draw-toggle"]'),
     });
+    roiStrip = createFloatingStrip({
+      id: 'maskRoiTools',
+      label: 'Mask ROI tools',
+      groups: [
+        [{ key: 'select', label: 'Select', glyph: 'select', action: 'mask-roi-tool:select' }],
+        [
+          { key: 'square', label: 'Square', glyph: 'rectangle', action: 'mask-roi-tool:square' },
+          { key: 'circle', label: 'Circle', glyph: 'circle', action: 'mask-roi-tool:circle' },
+        ],
+      ],
+      settings: { label: 'ROI settings', action: 'mask-roi-settings', glyph: 'settings' },
+      toolAttribute: 'data-mask-roi-tool',
+      owner: () => document.querySelector('#maskPanel [data-action="mask-roi-toggle"]'),
+    });
     const stage = el(
       'div',
       { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' },
       hook('maskCanvas', el('canvas', { 'aria-label': 'Mask scientific plan', tabindex: 0 })),
       strip.node,
+      roiStrip.node,
       hook('maskCoords', el('span', { class: 'p-scale' }, 'µm')),
     );
     return window
@@ -468,7 +489,8 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
       else if (action === 'tool:zoom:mask') runtime.setZoomEnabled(!state.zoomEnabled);
       else if (action === 'draw-toggle') {
-        state.drawOpen = !state.drawOpen;
+        state.drawOpen = roiOpen || !state.drawOpen;
+        roiOpen = false;
         if (!state.drawOpen) overlays.closeFloating('maskDrawSettings', 'hidden');
         sync();
       } else if (action.startsWith('draw-tool:')) runtime.chooseDrawTool(action.split(':')[1]);
@@ -477,7 +499,17 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       else if (action === 'draw-delete') runtime.draw.removeSelected();
       else if (action === 'draw-clear') await runtime.draw.clear();
       else if (action === 'mask-source') sourceMenu(trigger);
-      else if (action === 'mask-roi-settings') {
+      else if (action === 'mask-roi-toggle') {
+        roiOpen = !roiOpen;
+        if (!roiOpen) overlays.closeFloating('maskRoiSettings', 'hidden');
+      } else if (action.startsWith('mask-roi-tool:')) {
+        const tool = action.split(':')[1];
+        if (tool === 'select') {
+          runtime.setPanEnabled(false);
+          runtime.roi.clearDrawingMode();
+          runtime.render();
+        } else runtime.chooseRoiTool(tool);
+      } else if (action === 'mask-roi-settings') {
         roiSync(state.maskRoi);
         floating('maskRoiSettings', 'Mask ROI settings', roiForm, trigger);
       } else if (action.startsWith('mask-roi:')) runtime.chooseRoiTool(action.split(':')[1]);

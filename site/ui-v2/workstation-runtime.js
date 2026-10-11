@@ -5,8 +5,16 @@ import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
 
 export async function loadWorkstationProject() {
-  const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
-  const response = await fetch('examples/m3d-selfpowered-full-replay.wafercad');
+  const examples = {
+    m3d: 'examples/m3d-selfpowered-full-replay.wafercad',
+    photodetector: 'examples/previews/photodetector-literature.wafercad',
+    metalens: 'examples/previews/tio2-metalens-four-unit.wafercad',
+  };
+  const example = new URLSearchParams(location.search).get('example') || 'm3d';
+  if (!Object.hasOwn(examples, example)) throw Error(`Unknown example: ${example}`);
+  const path = examples[example];
+  const source = `site/${path}`;
+  const response = await fetch(path);
   if (!response.ok) throw Error(`Project: HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
@@ -32,6 +40,7 @@ export function createWorkstationRuntime(project) {
     main: { panEnabled: true, zoomEnabled: false, tool: 'none', sectionEditEnabled: false },
     mask: { panEnabled: true, zoomEnabled: false },
     section: { panEnabled: false, zoomEnabled: false },
+    three: { mode: 'rotate' },
   };
   const projectState = createProjectStateController({
     getState: () => state,

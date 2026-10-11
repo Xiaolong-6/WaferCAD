@@ -14,6 +14,23 @@ export async function checkMainTouch(browser, base, output) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${base}/app-v2-main.html`);
     await page.waitForFunction(() => window.WaferCadV2Main?.ready, null, { timeout: 120000 });
+    const endpointSizes = [];
+    for (const width of [390, 1024]) {
+      await page.setViewportSize({ width, height: 960 });
+      await waitForPaint(page);
+      const sizes = await page.locator('[data-endpoint]').evaluateAll((handles) =>
+        handles.map((handle) => {
+          const rect = handle.getBoundingClientRect();
+          return { endpoint: handle.dataset.endpoint, width: rect.width, height: rect.height };
+        }),
+      );
+      assert.equal(sizes.length, 2);
+      for (const size of sizes) {
+        assert.ok(size.width >= 40 && size.height >= 40, 'Keep the coarse-pointer target');
+        assert.ok(Math.abs(size.width - size.height) <= 0.25, 'A/B touch handles stay circular');
+      }
+      endpointSizes.push({ width, sizes });
+    }
     const box = await page.locator('#mainCanvas').boundingBox();
     const x = Math.round(box.x + box.width * 0.5),
       y = Math.round(box.y + box.height * 0.55);
@@ -103,7 +120,13 @@ export async function checkMainTouch(browser, base, output) {
     assert.equal((await snapshot()).scientificUnchanged, true);
     assert.deepEqual(errors, []);
     await page.screenshot({ path: resolve(output, 'main-touch.png') });
-    return { result: 'pass', cases, roiDraftCancelled: true, squareAndSliceSingleFinger: true };
+    return {
+      result: 'pass',
+      cases,
+      endpointSizes,
+      roiDraftCancelled: true,
+      squareAndSliceSingleFinger: true,
+    };
   } finally {
     await context.close();
   }
