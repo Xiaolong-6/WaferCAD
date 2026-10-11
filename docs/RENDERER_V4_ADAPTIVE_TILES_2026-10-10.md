@@ -433,3 +433,43 @@ The same strict zero-pixel A/B still applies. Long-lived reload
 cycles, multiple WebGL contexts, driver-reported GPU residency and
 repeatable hardware ABBA timing are still unaccepted; keep both PRs
 Draft and avoid global default-on switches or baseline updates.
+
+## R5 repeated-load stress checkpoint (2026-10-11)
+
+The resource-lifetime unit suite now includes **100** independently
+owned geometry/material/template cleanup cycles. The branch
+[focused and full Node gate](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38117072767)
+passed **46/46 focused tests** and **656/656 complete Node tests**,
+with targeted ESLint, Prettier and documentation checks green.
+
+The new [browser lifetime stress](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38117072814)
+exercised three opacity round trips and two subsequent project reloads
+using the lightweight TiO2 four-unit preview. Across all measured
+states, the scene census remained at **one active scene group**,
+**nine geometries** and **62,688 bytes of retained typed-array
+storage**. Cumulative disposal counters rose from **2 to 4** groups,
+**3 to 21** geometries and **2 to 20** materials after the two
+reimports. No browser page errors were observed.
+
+The small preview uses a presentation-only opacity update:
+`sceneVariant` can remain `transparent` when the displayed opacity
+is 100%; fewer than 64 array instances do not force a new scene
+variant build. The test validates completed frames, the actual
+opacity-output callback, constant retained buffers and increasing
+owned-resource retirement. It must not be cited as a multi-variant
+full-wafer stress test.
+
+The earlier [625-site R4/R5 dynamic
+gate](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38115435929)
+separately established six-state pixel parity with a true array scene,
+ROI clear/recovery and retirement of 52 no-longer-referenced
+copy-on-write cap templates. Both experiments used Linux Chromium
+**SwiftShader software WebGL**. The memory figures are JS TypedArray
+estimates; cumulative `dispose()` calls are not measured hardware
+GPU memory residency.
+
+R5 now has bounded repeated-load functional evidence. Still open:
+real-GPU ABBA frame timing, browser/driver VRAM observation, WebGL
+context loss/restoration, long-duration workload endurance and any
+default-on decision. Keep both renderer PRs Draft; do not merge to
+main or modify approved visual baselines.
