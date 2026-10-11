@@ -13,10 +13,13 @@ test('temporary formatter probe for PR-owned files', async () => {
     'site/process-face-execution.js',
     'site/process-worker.js',
     'site/process-recipe.js',
+    'site/process-recipe-preflight.js',
     'site/history-replay.js',
+    'site/history-operation-label.js',
     'site/workspace-snapshots.js',
     'site/tests/process-both-face.test.mjs',
     'site/tests/history-replay.test.mjs',
+    'site/tests/process-recipe-preflight.test.mjs',
     'docs/PROCESS_BOTH_FACE_2026-10-11.md',
     'docs/README.md',
   ]) {
