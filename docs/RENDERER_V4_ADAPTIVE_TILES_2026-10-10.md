@@ -903,3 +903,31 @@ Index/Caps experimental opt-in gates. CPU TypedArray savings
 observed on RTX 3060 are not proof of a GPU speedup, and fresh
 WebGL-context pixel drift remains unresolved. No additional GPU
 measurement is requested for this lifecycle correction.
+
+## 2026-10-12 follow-up: 3D PNG export rollback
+
+On V4 `30e8caf`, inspection of `site/three-view.js` identified an
+export-state recovery bug. The capture path elevated the interactive
+renderer pixel ratio and camera aspect, then awaited a detailed rough
+mesh rebuild **before entering its old `try/finally`**. A rejected
+rough prepare step could leak the temporary WebGL renderer and leave
+the interactive 3D view with a high-resolution pixel ratio.
+The old success cleanup also overwrote the original camera aspect
+with the capture's aspect rather than restoring the entry value.
+
+The new `site/renderer-capture-transaction.js` wraps temporary
+WebGL setup, rough geometry preparation, PNG encoding, disposal,
+restoration of the **original** interactive pixel ratio and camera
+aspect, rough-scene restoration, and redraw scheduling in one
+transaction. Cleanup attempts continue if an individual stage
+throws; both the primary failure and any cleanup failures are
+reported. Direct Node regressions exercise successful PNG capture,
+failed temporary renderer configuration, failed detailed rough
+preparation, failed PNG encoding, failed WebGL disposal and failed
+restoration. The focused CI additionally checks this helper's
+ESLint/Prettier formatting.
+
+This changes recovery/error behavior of the PNG export path, not
+canonical wafer geometry, opacity, normal frame rendering or
+approved visual baselines. Existing V3/V4 hardware acceptance is
+unchanged. No further GPU experiment is required for this fix.
