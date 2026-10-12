@@ -9,6 +9,8 @@ on:
       - site/renderer-v4-tile-plan.js
       - site/renderer-v4-feature-footprints.js
       - site/renderer-v4-resource-census.js
+      - site/tests/issue-11-3d-controls.test.mjs
+      - site/tests/renderer-workstation-route.test.mjs
       - site/renderer-v4-resource-lifetime.js
       - site/renderer-capture-transaction.js
       - site/tests/renderer-capture-transaction.test.mjs
@@ -36,6 +38,7 @@ on:
       - scripts/renderer-unified-hardware.mjs
       - scripts/renderer-hardware-http-smoke.mjs
       - scripts/test-helpers/renderer-hardware-evidence.mjs
+      - scripts/test-helpers/renderer-workstation-route.mjs
       - scripts/test-helpers/renderer-hardware-site.mjs
       - scripts/test-helpers/renderer-hardware-zip.mjs
       - scripts/tests/renderer-hardware-site-zip.test.mjs
@@ -66,7 +69,7 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Focused V3/V4 tile regressions
-        run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-flat-geometry-sharing.test.mjs site/tests/renderer-v4-resource-lifetime.test.mjs site/tests/renderer-capture-transaction.test.mjs site/tests/webgl-frame-probe.test.mjs
+        run: node --test site/tests/renderer-v3-tile-bounds.test.mjs site/tests/renderer-v4-adaptive-tiles.test.mjs site/tests/renderer-v4-tile-plan.test.mjs site/tests/renderer-v4-interaction-policy.test.mjs site/tests/renderer-v4-r3-evidence.test.mjs site/tests/renderer-v4-flat-geometry-sharing.test.mjs site/tests/renderer-v4-resource-lifetime.test.mjs site/tests/renderer-capture-transaction.test.mjs site/tests/renderer-workstation-route.test.mjs site/tests/issue-11-3d-controls.test.mjs site/tests/webgl-frame-probe.test.mjs
       - name: R7 ABBA statistics contract
         run: node --test scripts/tests/renderer-v4-r7-abba.test.mjs
       - name: Unified V3 V4 hardware planning tests (no GPU required)
