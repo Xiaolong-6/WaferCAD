@@ -12,6 +12,11 @@ import { buriedInterfaceTileBounds } from './renderer-v3-tile-bounds.js';
 import { buriedInterfaceEdgeTileSurvey } from './renderer-v3-edge-tile-survey.js';
 import { observeAdaptiveArrayTiles } from './renderer-v4-adaptive-tiles.js';
 import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-policy.js';
+import {
+  INTERACTIVE_ASSEMBLY_SLICE_MS,
+  shouldYieldRendererAssembly,
+  yieldRendererAssembly,
+} from './renderer-interaction-scheduler.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
@@ -1029,7 +1034,10 @@ export function createThreeView({
 
   async function yieldSceneAssembly() {
     scheduleFrame();
-    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    await yieldRendererAssembly({
+      requestFrame: requestAnimationFrame,
+      postTask: (resume) => setTimeout(resume, 0),
+    });
   }
 
   function resize() {
@@ -3362,16 +3370,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
       host.dataset.rendererAssemblySkippedFrames = '0';
       let sceneAssemblyYields = 0,
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + INTERACTIVE_ASSEMBLY_SLICE_MS;
       const maybeYieldAssembly = async () => {
-        if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
+        if (!shouldYieldRendererAssembly(performance.now(), nextAssemblyYieldAt, {
+          heavy: cooperativeAssembly,
+        })) return;
         sceneAssemblyYields++;
         if (variantBuild) {
-          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+          await yieldRendererAssembly({
+            requestFrame: requestAnimationFrame,
+            postTask: (resume) => setTimeout(resume, 0),
+          });
         } else {
           await yieldSceneAssembly();
         }
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + INTERACTIVE_ASSEMBLY_SLICE_MS;
       };
 
       host.dataset.materialLayerIds = JSON.stringify(
