@@ -256,6 +256,7 @@ async function trial(enabled, index) {
         native: {
           calls: frame.drawCalls,
           triangles: frame.triangles,
+          forcedDitherDisabledDraws: frame.forcedDitherDisabledDraws,
           glError: frame.glError,
           renderer: frame.unmaskedRenderer || frame.renderer,
           vendor: frame.vendor,
@@ -284,6 +285,12 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
+    if (diagnosticNoDither) {
+      assert.ok(
+        native.forcedDitherDisabledDraws > 0,
+        `${label}: diagnostic never disabled GL_DITHER during its captured frame`,
+      );
+    }
     native.drawInputs = native.drawInputs.map(({ shaders, buffers, ...draw }) => ({
       ...draw,
       shaderHashes: shaders.map(({ type, source }) => ({

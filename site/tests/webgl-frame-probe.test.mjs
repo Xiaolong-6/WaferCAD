@@ -151,6 +151,11 @@ test('diagnostic-only dither isolation wraps draws and restores GL state on erro
     'enable-dither',
   ]);
   assert.equal(off.dither(), true);
+  const sampled = harness({ forceDitherOff: true });
+  sampled.probe.arm({ captureFramebuffer: true });
+  const measured = sampled.frame(() => sampled.gl.drawArrays(4, 0, 6));
+  assert.equal(measured.forcedDitherDisabledDraws, 1);
+  assert.equal(sampled.dither(), true);
   const normal = harness();
   normal.frame(() => normal.gl.drawArrays(4, 0, 6));
   assert.deepEqual(normal.calls, ['draw:drawArrays:false:true']);
