@@ -115,7 +115,14 @@ test('typed feedback is centralized in the status bar', () => {
 
 test('Process UI is driven by material presence and exposed Extend targets', () => {
   assert.match(processPanelController, /baseCoverageState\(model\)/);
-  assert.match(processPanelController, /exposedLayerIds\(model, area, activeFace\)/);
+  // Both uses a canonical Front target and verifies the reciprocal Back film.
+  assert.match(
+    processPanelController,
+    /exposedLayerIds\(model, area, activeFace === 'both' \? 'front' : activeFace\)/,
+  );
+  assert.match(processPanelController, /eligibleBothTargets\(model, exposed\)/);
+  assert.match(processPanelController, /pair\.pairedLayerId === layer\.id/);
+  assert.match(processPanelController, /back\.has\(pair\.id\)/);
   assert.match(processPanelController, /All material has been removed/);
   assert.match(processPanelController, /Base fully removed/);
   assert.match(html, /id="etchTargetLayer"/);
