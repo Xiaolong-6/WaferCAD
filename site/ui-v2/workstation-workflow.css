@@ -7,6 +7,8 @@
 }
 .v2-process-form {
   gap: var(--wc-space-3);
+  /* M2 places one design-token gap between Process modes and Manual fields. */
+  margin-top: var(--wc-space-3);
 }
 .v2-recipe {
   display: grid;

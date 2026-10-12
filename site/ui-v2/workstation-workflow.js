@@ -202,8 +202,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
           'Area',
           'operationArea',
           [
-            ['mask', 'Selected mask'],
-            ['invert', 'Invert mask'],
+            ['mask', 'Selected Mask'],
+            ['invert', 'Invert Mask'],
             ['full', 'Whole face'],
           ],
           'mask',

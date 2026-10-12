@@ -53,3 +53,7 @@ A direct inspection of the 1440 and 390 px prototype-versus-real screenshots fro
 ### Project autosave ownership presentation — new targeted repair (pending CI)
 
 M4 1440 px screenshots also showed the `Take over storage` warning in a freshly initialized ownable Project inspector. The workspace persistence controller correctly sets the conflict node's `hidden` property when this tab is writable, but the generic `.p-form { display: grid }` rule could override that attribute. The fix adds a scoped `#workspaceConflictDialog[hidden]` CSS hiding rule, and the M4 real-project browser owner now verifies that a fresh independent tab owns its autosave lease, sees no false conflict warning, and still renders the warning when the hidden flag is explicitly cleared. Multi-tab lease acquisition/reconciliation semantics and workers are unchanged.
+
+### M2 Manual vertical rhythm / Area labels — new final layout gate (pending CI)
+
+The manual screenshot comparison also identifies an approximately one-token gap missing between the real Process modes bar and the first Manual field. The integrated form now uses the existing `--wc-space-3` top gap, while `Selected Mask` and `Invert Mask` exactly match the approved M2 choice text. The browser comparison now checks the actual tab-to-first-label distance (2 px tolerance) and the Area choices; it does not introduce or rebaseline any screenshot. The preceding `003f9aa` functional Stage C/M4 run passed; this last spacing change must be assessed at its own revision.

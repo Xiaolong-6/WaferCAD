@@ -46,6 +46,17 @@ async function capture(page) {
     const labels = [...document.querySelectorAll('.p-inspector label .wc-label')]
       .filter((node) => node.checkVisibility())
       .map((node) => node.textContent.trim());
+    const fieldLabels = [...document.querySelectorAll('.p-inspector label .wc-label')]
+      .filter((node) => node.checkVisibility());
+    const operationLabel = fieldLabels[0];
+    const modes = box('.p-inspector [aria-label="Process modes"]');
+    const gapAfterModes = modes && operationLabel
+      ? operationLabel.getBoundingClientRect().top - modes.y - modes.height
+      : null;
+    const areaLabel = fieldLabels.find((node) => node.textContent.trim() === 'Area');
+    const areaOptions = areaLabel
+      ? [...areaLabel.closest('label').querySelectorAll('option')].map((node) => node.textContent.trim())
+      : [];
     const root = document.querySelector('.p-workbench');
     const style = getComputedStyle(root);
     const stepper = [...document.querySelectorAll('.p-inspector .p-stepper')]
@@ -64,6 +75,8 @@ async function capture(page) {
       stage: box('.p-stage'),
       labels,
       thickness,
+      gapAfterModes,
+      areaOptions,
       font: style.fontFamily,
       theme: document.documentElement.dataset.theme,
       overflowX: Math.max(0, document.documentElement.scrollWidth - innerWidth),
@@ -119,6 +132,9 @@ try {
       const realLabels = real.labels.map(normalize);
       requireOrdered(m2Labels, expected, 'M2 source');
       requireOrdered(realLabels, expected, 'Live v2');
+      assert.deepEqual(real.areaOptions, m2.areaOptions, 'M2 Area choice wording and order');
+      assert.ok(Number.isFinite(m2.gapAfterModes) && Number.isFinite(real.gapAfterModes));
+      near(m2.gapAfterModes, real.gapAfterModes, 2, 'M2 mode-to-Manual top spacing');
       for (const [kind, stepper] of [['M2', m2.thickness], ['real', real.thickness]]) {
         assert.ok(stepper?.box && stepper.label && stepper.input, `${kind} labelled stepper`);
         assert.equal(stepper.buttons.length, 2, `${kind} stepper owns +/- controls`);
