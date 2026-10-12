@@ -20,6 +20,7 @@ import {
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import { compareRendererPhaseEvidence } from './test-helpers/renderer-v3-phase-parity.mjs';
+import { compareRendererRasterStateEvidence } from './test-helpers/renderer-v3-raster-state.mjs';
 import {
   checkRendererPhaseCapture,
   isRendererPhaseAcceptanceEligible,
@@ -250,6 +251,7 @@ async function trial(enabled, index) {
         captureFramebuffer: true,
         captureDrawInputs,
         capturePhases: captureDrawInputs,
+        captureRasterState: captureDrawInputs,
         capturePhaseDraws,
         pixelSamples,
       });
@@ -392,6 +394,7 @@ async function trial(enabled, index) {
         milestones: phaseMilestones,
         drawCalls: native.calls,
         framebuffer: native.framebuffer,
+        requireRasterState: true,
       });
       assert.ok(phaseCapture.valid, `${label}: ${phaseCapture.reason}`);
       assert.equal(
@@ -479,6 +482,7 @@ async function trial(enabled, index) {
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
         phaseEvidence: compareRendererPhaseEvidence(previous.row, row),
+        rasterStateEvidence: compareRendererRasterStateEvidence(previous.row, row),
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
         differenceStage: differenceStage(previous.row, row, diff.pixelIdentical),
         ...{
@@ -551,6 +555,7 @@ try {
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
     phaseEvidence: compareRendererPhaseEvidence(off, on),
+    rasterStateEvidence: compareRendererRasterStateEvidence(off, on),
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
     rawSampleIdentical:
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===

@@ -55,6 +55,48 @@ export function installWebglFrameProbe() {
     }
   }
 
+
+  // Exact GL raster state at the draw checkpoint. Object identities and
+  // program handles differ between contexts; only comparable scalar/array
+  // values belong in fresh-context fingerprints. Read-only, opt-in evidence.
+  function captureRasterState(gl) {
+    const get = (name) => {
+      const value = gl.getParameter(gl[name]);
+      return ArrayBuffer.isView(value) ? Array.from(value) : value;
+    };
+    return {
+      viewport: get('VIEWPORT'),
+      scissorBox: get('SCISSOR_BOX'),
+      scissorTest: gl.isEnabled(gl.SCISSOR_TEST),
+      blend: gl.isEnabled(gl.BLEND),
+      blendSrcRgb: get('BLEND_SRC_RGB'),
+      blendDstRgb: get('BLEND_DST_RGB'),
+      blendSrcAlpha: get('BLEND_SRC_ALPHA'),
+      blendDstAlpha: get('BLEND_DST_ALPHA'),
+      blendEquationRgb: get('BLEND_EQUATION_RGB'),
+      blendEquationAlpha: get('BLEND_EQUATION_ALPHA'),
+      blendColor: get('BLEND_COLOR'),
+      colorMask: get('COLOR_WRITEMASK'),
+      depthTest: gl.isEnabled(gl.DEPTH_TEST),
+      depthMask: get('DEPTH_WRITEMASK'),
+      depthFunc: get('DEPTH_FUNC'),
+      depthRange: get('DEPTH_RANGE'),
+      stencilTest: gl.isEnabled(gl.STENCIL_TEST),
+      cullFace: gl.isEnabled(gl.CULL_FACE),
+      cullFaceMode: get('CULL_FACE_MODE'),
+      frontFace: get('FRONT_FACE'),
+      dither: gl.isEnabled(gl.DITHER),
+      polygonOffsetFill: gl.isEnabled(gl.POLYGON_OFFSET_FILL),
+      polygonOffsetFactor: get('POLYGON_OFFSET_FACTOR'),
+      polygonOffsetUnits: get('POLYGON_OFFSET_UNITS'),
+      sampleAlphaToCoverage: gl.isEnabled(gl.SAMPLE_ALPHA_TO_COVERAGE),
+      sampleCoverage: gl.isEnabled(gl.SAMPLE_COVERAGE),
+      sampleCoverageValue: get('SAMPLE_COVERAGE_VALUE'),
+      sampleCoverageInvert: get('SAMPLE_COVERAGE_INVERT'),
+      samples: get('SAMPLES'),
+    };
+  }
+
   function capturePhaseFramebuffer(gl, active, endingKind, final = false) {
     if (!active.capturePhases || endingKind === null) return;
     // Reserve the last slot for the completed frame. Sampling the first
@@ -84,6 +126,7 @@ export function installWebglFrameProbe() {
       height,
       status: error === gl.NO_ERROR ? 'valid' : 'gl-error',
       glError: error,
+      ...(active.captureRasterState ? { rasterState: captureRasterState(gl) } : {}),
     };
     if (error === gl.NO_ERROR) {
       Object.defineProperty(checkpoint, 'rgba', { value: bytes });
@@ -130,6 +173,7 @@ export function installWebglFrameProbe() {
             captureDrawInputs: options.captureDrawInputs === true,
             drawInputs: [],
             capturePhases: options.capturePhases === true,
+            captureRasterState: options.captureRasterState === true,
             phases: [],
             phaseKind: null,
             capturePhaseDraws: new Set(options.capturePhaseDraws || []),
@@ -444,6 +488,7 @@ export function installWebglFrameProbe() {
         captureFramebuffer: options.captureFramebuffer === true,
         captureDrawInputs: options.captureDrawInputs === true,
         capturePhases: options.capturePhases === true,
+        captureRasterState: options.captureRasterState === true,
         pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
           x,
           y,

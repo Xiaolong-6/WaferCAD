@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  RENDERER_RASTER_STATE_FIELDS,
+  compareRendererRasterStateEvidence,
+  validRendererRasterState,
+} from '../../scripts/test-helpers/renderer-v3-raster-state.mjs';
+import {
   DEFAULT_RENDERER_PHASE_DRAWS,
   checkRendererPhaseCapture,
   MAX_RENDERER_PHASE_DRAW,
@@ -182,4 +187,91 @@ test('targeted two-draw window still demands the exact ordered final capture', (
     coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
     drawCalls: 1291,
   }).valid, true);
+});
+
+const rasterState = () => {
+  const arrays = {
+    viewport: [0, 0, 531, 275],
+    scissorBox: [0, 0, 531, 275],
+    blendColor: [0, 0, 0, 0],
+    colorMask: [true, true, true, true],
+    depthRange: [0, 1],
+  };
+  const booleans = new Set([
+    'scissorTest', 'blend', 'depthTest', 'depthMask',
+    'stencilTest', 'cullFace', 'dither', 'polygonOffsetFill',
+    'sampleAlphaToCoverage', 'sampleCoverage', 'sampleCoverageInvert',
+  ]);
+  return Object.fromEntries(
+    RENDERER_RASTER_STATE_FIELDS.map((field) => [
+      field,
+      Object.hasOwn(arrays, field)
+        ? [...arrays[field]]
+        : booleans.has(field)
+          ? false
+          : 1,
+    ]),
+  );
+};
+
+test('draw-level GL raster state accepts comparable primitives but rejects gaps and identities', () => {
+  const correct = rasterState();
+  assert.equal(validRendererRasterState(correct), true);
+  assert.equal(validRendererRasterState(null), false);
+  assert.equal(validRendererRasterState({ ...correct, blendSrcAlpha: undefined }), false);
+  assert.equal(validRendererRasterState({ ...correct, viewport: [1, 2, 3] }), false);
+  assert.equal(validRendererRasterState({ ...correct, blendColor: [1, NaN, 0, 0] }), false);
+  assert.equal(validRendererRasterState({ ...correct, blend: 1 }), false);
+  assert.equal(validRendererRasterState({ ...correct, colorMask: [1, 1, 1, 1] }), false);
+});
+
+test('same-policy raster comparison identifies sampled state divergence independently of pixels', () => {
+  const base = rasterState();
+  const left = { phaseCheckpoints: [
+    { afterDraw: 256, rasterState: base },
+    { afterDraw: 384, rasterState: base },
+  ] };
+  const right = structuredClone(left);
+  assert.equal(compareRendererRasterStateEvidence(left, right).status, 'sampled-states-identical');
+  right.phaseCheckpoints[1].rasterState.blendSrcAlpha = 770;
+  const changed = compareRendererRasterStateEvidence(left, right);
+  assert.equal(changed.status, 'sampled-state-mismatch');
+  assert.deepEqual(changed.firstDifferentState.fields, ['blendSrcAlpha']);
+  assert.equal(changed.firstDifferentState.afterDraw, 384);
+  assert.deepEqual(changed.firstDifferentState.left, { blendSrcAlpha: 1 });
+  assert.deepEqual(changed.firstDifferentState.right, { blendSrcAlpha: 770 });
+
+  const absent = structuredClone(right);
+  delete absent.phaseCheckpoints[0].rasterState;
+  assert.equal(compareRendererRasterStateEvidence(left, absent).status, 'invalid-raster-state');
+  const sequence = structuredClone(right);
+  sequence.phaseCheckpoints[0].afterDraw = 257;
+  assert.equal(compareRendererRasterStateEvidence(left, sequence).status, 'sequence-mismatch');
+  assert.equal(compareRendererRasterStateEvidence({}, {}).status, 'not-captured');
+});
+
+test('hardware phase gate requires GL raster census when requested, and rejects missing checkpoints', () => {
+  const milestones = [256, 384];
+  const state = rasterState();
+  const frame = { status: 'valid', width: 531, height: 275 };
+  const checkpoints = [256, 384, 1408].map((afterDraw) => ({
+    afterDraw, status: 'valid', hash: 'c'.repeat(64), width: 531, height: 275,
+    rasterState: structuredClone(state),
+  }));
+  const input = {
+    checkpoints, milestones, drawCalls: 1408, framebuffer: frame,
+    coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
+    requireRasterState: true,
+  };
+  assert.equal(checkRendererPhaseCapture(input).valid, true);
+  const damaged = structuredClone(checkpoints);
+  damaged[1].rasterState.blendColor = [];
+  assert.equal(checkRendererPhaseCapture({ ...input, checkpoints: damaged }).valid, false);
+  assert.equal(
+    checkRendererPhaseCapture({
+      ...input,
+      checkpoints: checkpoints.map(({ rasterState: ignored, ...checkpoint }) => checkpoint),
+    }).valid,
+    false,
+  );
 });

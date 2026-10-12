@@ -78,6 +78,32 @@ that V3 or V4 passed production acceptance. Real hardware performance
 and strict **standard** fresh-context parity remain open. No approved
 visual baseline is touched, and both PRs remain Draft.
 
+## R8.3 sampled raster-state census
+
+Each native draw-milestone and final-frame checkpoint now records a
+read-only `rasterState` snapshot: viewport/scissor; RGB and alpha
+blend factors and equations; color write mask; depth/cull/stencil
+controls; dither; polygon offset; sample coverage and default-framebuffer
+sample count. GPU object IDs and program handles are deliberately
+excluded because they are not comparable across contexts.
+
+Every same-policy comparison includes `rasterStateEvidence` with one of
+`sampled-states-identical`, `sampled-state-mismatch`,
+`invalid-raster-state`, `sequence-mismatch` or `not-captured`.
+When a state mismatch is observed, the report identifies the first
+sampled draw, changed GL fields, and both values. This distinguishes
+observed pipeline-state drift from framebuffer divergence where the
+sampled pipeline state agrees. Even complete state equality cannot
+prove identical fragment inputs, precision, resolve behavior or a
+causative draw. The final snapshot is taken at end-of-frame, not
+necessarily inside the last draw.
+
+Standard hardware acceptance and targeted diagnostic classification
+both reject missing or malformed state snapshots. Software test
+harnesses use deterministic fake GL values; they do not certify real
+Intel, AMD or NVIDIA driver behavior. No global WebGL flags, geometry,
+shader programs or visual baselines are changed by this addition.
+
 ## Validation ownership
 
 - `site/tests/renderer-v3-phase-window.test.mjs` covers strict

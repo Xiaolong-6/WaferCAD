@@ -1,3 +1,5 @@
+import { validRendererRasterState } from './renderer-v3-raster-state.mjs';
+
 // Bounded diagnostic milestones for localizing first observed WebGL drift.
 // An interval is observational: do not infer a causative draw from its owner.
 export const MAX_RENDERER_PHASE_DRAW = 1280;
@@ -69,7 +71,14 @@ export function isRendererPhaseAcceptanceEligible({
  * the correct draw, GL buffer size and collection stage were observed.
  * Shared by the direct V3 probe and V4's artifact classifier.
  */
-export function checkRendererPhaseCapture({ checkpoints, coverage, milestones, drawCalls, framebuffer }) {
+export function checkRendererPhaseCapture({
+  checkpoints,
+  coverage,
+  milestones,
+  drawCalls,
+  framebuffer,
+  requireRasterState = false,
+}) {
   const reject = (reason) => ({ valid: false, reason });
   if (!Array.isArray(milestones) || milestones.length === 0 || milestones.length > 11 ||
       milestones.some((draw, i) =>
@@ -94,6 +103,8 @@ export function checkRendererPhaseCapture({ checkpoints, coverage, milestones, d
       return reject(`missing or invalid checkpoint at index ${i}`);
     if (checkpoint.width !== framebuffer.width || checkpoint.height !== framebuffer.height)
       return reject(`framebuffer dimensions changed at checkpoint ${i}`);
+    if (requireRasterState && !validRendererRasterState(checkpoint.rasterState))
+      return reject(`missing or invalid GL raster state at checkpoint ${i}`);
   }
   return { valid: true, reason: null };
 }
