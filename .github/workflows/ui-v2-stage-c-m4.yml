@@ -2,10 +2,16 @@ name: UI v2 Stage C and M4 acceptance
 
 on:
   push:
-    branches: [codex/ui-v2-main-wip]
+    branches: [codex/ui-v2-main-wip, main]
     paths:
-      - 'site/**'
-      - 'scripts/**'
+      - 'site/ui-v2/**'
+      - 'site/app.html'
+      - 'site/app-legacy.html'
+      - 'site/index.html'
+      - 'site/welcome.js'
+      - 'site/controllers/workspace-session-controller.js'
+      - 'site/controllers/workspace-persistence-controller.js'
+      - 'scripts/v2/**'
       - '.github/workflows/ui-v2-stage-c-m4.yml'
   pull_request:
     branches: [main]
