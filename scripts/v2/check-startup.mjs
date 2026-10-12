@@ -67,6 +67,15 @@ try {
   assert.equal(state.model.layers.length, savedLayers, 'Invalid start preserves the saved model');
   assert.equal(state.workflow.steps.length, savedSteps, 'Invalid start preserves History');
 
+  await open('/app.html?start=');
+  state = await snapshot();
+  assert.equal(
+    state.model.layers.length,
+    savedLayers,
+    'Empty start parameter preserves the saved model',
+  );
+  assert.equal(state.workflow.steps.length, savedSteps, 'Empty start parameter preserves History');
+
   await open('/app.html?start=empty');
   state = await snapshot();
   assert.equal(

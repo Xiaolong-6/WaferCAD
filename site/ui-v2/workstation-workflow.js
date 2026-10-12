@@ -854,7 +854,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     initializeWorkspaceStart: async () => {
       const params = new URLSearchParams(globalThis.location?.search || '');
       const intent = params.get('start');
-      if (!intent) return true;
+      if (!params.has('start')) return true;
       try {
         let staged = false;
         if (intent === 'empty') {
