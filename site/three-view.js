@@ -3430,7 +3430,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (!previousVariantGroup) {
         host.dataset.renderState = 'error';
       }
-      stats.textContent = previousVariantGroup ? '3D update failed; previous view retained' : '3D build failed';
+      stats.textContent = previousVariantGroup
+        ? '3D update failed; previous view retained'
+        : '3D build failed';
     } finally {
       rendering = false;
     }
