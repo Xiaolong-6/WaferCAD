@@ -46,7 +46,10 @@ test('R9 single-GPU-session campaign captures baseline, no-MSAA control and inde
   assert.deepEqual(plan[0], buildRendererHardwarePlan()[0]);
   assert.deepEqual(plan[1], buildRendererV3MsaaDiagnosticPlan()[0]);
   assert.equal(plan.length, new Set(plan.map(({ artifact }) => artifact)).size);
-  assert.equal(plan.every(({ args }) => args.includes('--hardware-gpu')), true);
+  assert.equal(
+    plan.every(({ args }) => args.includes('--hardware-gpu')),
+    true,
+  );
   assert.ok(plan[1].args.includes('--diagnose-no-msaa'));
   assert.ok(plan.slice(2).every(({ args }) => !args.includes('--diagnose-no-msaa')));
 });

@@ -24,7 +24,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const options = process.argv.slice(2);
 const planOnly = options.includes('--plan-only');
 const r9Campaign = options.includes('--campaign=r9');
-const unknownCampaign = options.filter((arg) => arg.startsWith('--campaign=') && arg !== '--campaign=r9');
+const unknownCampaign = options.filter(
+  (arg) => arg.startsWith('--campaign=') && arg !== '--campaign=r9',
+);
 if (unknownCampaign.length || options.filter((arg) => arg === '--campaign=r9').length > 1) {
   throw new Error('Only one --campaign=r9 is supported.');
 }
@@ -51,12 +53,12 @@ const hardwareGpu = options.includes('--hardware-gpu') || hardwareRtx3060;
 const plan = r9Campaign
   ? buildRendererR9HardwareCampaignPlan()
   : ditherDiagnostic
-  ? buildRendererV3DitherDiagnosticPlan()
-  : msaaDiagnostic
-    ? buildRendererV3MsaaDiagnosticPlan()
-    : phaseWindowDiagnostic
-      ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
-      : buildRendererHardwarePlan(modes);
+    ? buildRendererV3DitherDiagnosticPlan()
+    : msaaDiagnostic
+      ? buildRendererV3MsaaDiagnosticPlan()
+      : phaseWindowDiagnostic
+        ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+        : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {
@@ -199,9 +201,10 @@ async function runHardware() {
         await writeFile(join(evidence, step.id + '.error.txt'), stepError + '\n');
         console.error(step.id + ': ' + stepError);
       } finally {
-        if (site) await site.close().catch((error) => {
-          console.error(step.id + ' server cleanup: ' + String(error));
-        });
+        if (site)
+          await site.close().catch((error) => {
+            console.error(step.id + ' server cleanup: ' + String(error));
+          });
       }
       const source = join(worktree, step.artifact);
       const target = join(evidence, step.id);
