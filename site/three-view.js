@@ -976,7 +976,8 @@ export function createThreeView({
         drawTriangles: host.dataset.rendererDrawTriangles,
       });
       if (controls)
-        controls.enableDamping = gestureMode === null && !heavyExactTransparency && !heavyV4TransparentFrame;
+        controls.enableDamping =
+          gestureMode === null && !heavyExactTransparency && !heavyV4TransparentFrame;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       host.dataset.v4HeavyCameraNoDampingActive = String(heavyV4TransparentFrame);
       // Preserve the exact completed camera pose on idle frames across both
