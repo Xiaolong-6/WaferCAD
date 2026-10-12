@@ -23,9 +23,10 @@ Use this page to find the document that owns a question. Current contracts descr
 | Shared ChatGPT/Codex workflow and reproducible handoff           | [Collaboration](COLLABORATION.md)              |
 | Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md)                          |
 | PR/main/scheduled/manual triggers and Draft cost controls        | [CI routing](CI.md)                            |
-| CI architecture, release guarantees and outstanding controls     | [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) |
 | Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
 | Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
+
+The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release guarantees and remaining administration controls.
 
 ## Scientific and interchange contracts
 

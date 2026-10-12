@@ -38,10 +38,18 @@ test('Quality covers docs-only PRs and enforces pinned formatter', () => {
 });
 
 test('manual reconstruction runs cannot mutate main', () => {
-  const cases = [
-    ['m3d-full-replay', /if: \$\{\{ github\.ref_name == 'fix\/m3d-conformal-microcracks-20261008' \|\| github\.ref_name == 'integrate\/reviewed-branches-20261008' \}\}/],
-    ['magic1000-candidate', /if: \$\{\{ github\.ref_name == 'feat\/magic-1000-mos2-beol-reconstruction' \}\}/],
-    ['photodetector-reconstruction-v2', /if: \$\{\{ github\.ref_name == 'fix\/photodetector-reconstruction-v2' \}\}/],
-  ];
-  for (const [name, guard] of cases) assert.match(workflow(name), guard, name);
+  const m3d = workflow('m3d-full-replay');
+  assert.match(m3d, /  replay:\n    if: \$\{\{/);
+  assert.ok(m3d.includes("github.ref_name == 'fix/m3d-conformal-microcracks-20261008'"));
+  assert.ok(m3d.includes("github.ref_name == 'integrate/reviewed-branches-20261008'"));
+  assert.ok(
+    workflow('magic1000-candidate').includes(
+      "if: ${{ github.ref_name == 'feat/magic-1000-mos2-beol-reconstruction' }}",
+    ),
+  );
+  assert.ok(
+    workflow('photodetector-reconstruction-v2').includes(
+      "if: ${{ github.ref_name == 'fix/photodetector-reconstruction-v2' }}",
+    ),
+  );
 });

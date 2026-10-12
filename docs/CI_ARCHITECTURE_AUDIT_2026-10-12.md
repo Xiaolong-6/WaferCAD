@@ -9,29 +9,29 @@
 
 ## Workflow inventory (21 existing workflows)
 
-| Workflow | Role and current authority |
-| --- | --- |
-| `quality.yml` | All PRs into main and manual; lint, format, docs and Node suite |
-| `browser-regression.yml` | Targeted PR, release reusable, scheduled full and manual full |
-| `ui-v2-stage-c-m4.yml` | Shared UI v2 on PR, active WIP branch, release reusable and manual |
-| `pages.yml` | Production-release coordinator and GitHub Pages deployment |
-| `product-manual-wiki.yml` | Every main push, managed Wiki synchronization |
-| `pre-main-integration-validation.yml` | Explicit manual full integration inventory |
-| `ui-v2-d1.yml` | Path-selected legacy D1/real Section diagnostic acceptance |
-| `ui-v2-main-mask.yml` | Path-selected Main/Mask/Section browser acceptance |
-| `ui-v2-three.yml` | Path-selected 3D gestures/export cancellation |
-| `ui-v2-preview.yml` | Isolated v2 preview publication; separate publication path |
-| `example-opening-acceptance.yml` | Example cold/prefetch timing and diagnostics |
-| `example-recipe-reconstruction.yml` | Final-review fixture and full Recipe Run All |
-| `process-recipe-safety.yml` | Recipe safety and focused interaction |
-| `klayout-compat.yml` | KLayout interchange corpus; path-selected/manual |
-| `m3d-conformal-baseline.yml` | Historical M3D comparative geometry/Windows evidence |
-| `m3d-example-integration.yml` | M3D welcome/catalog branch-specific integration |
-| `m3d-full-replay.yml` | Branch-restricted write-back reconstruction |
-| `magic1000-candidate.yml` | Branch-restricted write-back example generator |
-| `photodetector-reconstruction-v2.yml` | Branch-restricted write-back example generator |
-| `native-fig3-full-replay.yml` | Final-review native Fig3 reconstruction |
-| `tio2-metalens-reconstruction.yml` | Metalens geometry, full-grid and browser replay |
+| Workflow                              | Role and current authority                                         |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| `quality.yml`                         | All PRs into main and manual; lint, format, docs and Node suite    |
+| `browser-regression.yml`              | Targeted PR, release reusable, scheduled full and manual full      |
+| `ui-v2-stage-c-m4.yml`                | Shared UI v2 on PR, active WIP branch, release reusable and manual |
+| `pages.yml`                           | Production-release coordinator and GitHub Pages deployment         |
+| `product-manual-wiki.yml`             | Every main push, managed Wiki synchronization                      |
+| `pre-main-integration-validation.yml` | Explicit manual full integration inventory                         |
+| `ui-v2-d1.yml`                        | Path-selected legacy D1/real Section diagnostic acceptance         |
+| `ui-v2-main-mask.yml`                 | Path-selected Main/Mask/Section browser acceptance                 |
+| `ui-v2-three.yml`                     | Path-selected 3D gestures/export cancellation                      |
+| `ui-v2-preview.yml`                   | Isolated v2 preview publication; separate publication path         |
+| `example-opening-acceptance.yml`      | Example cold/prefetch timing and diagnostics                       |
+| `example-recipe-reconstruction.yml`   | Final-review fixture and full Recipe Run All                       |
+| `process-recipe-safety.yml`           | Recipe safety and focused interaction                              |
+| `klayout-compat.yml`                  | KLayout interchange corpus; path-selected/manual                   |
+| `m3d-conformal-baseline.yml`          | Historical M3D comparative geometry/Windows evidence               |
+| `m3d-example-integration.yml`         | M3D welcome/catalog branch-specific integration                    |
+| `m3d-full-replay.yml`                 | Branch-restricted write-back reconstruction                        |
+| `magic1000-candidate.yml`             | Branch-restricted write-back example generator                     |
+| `photodetector-reconstruction-v2.yml` | Branch-restricted write-back example generator                     |
+| `native-fig3-full-replay.yml`         | Final-review native Fig3 reconstruction                            |
+| `tio2-metalens-reconstruction.yml`    | Metalens geometry, full-grid and browser replay                    |
 
 ## Verified configuration defects at baseline
 
