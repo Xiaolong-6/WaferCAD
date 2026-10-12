@@ -18,7 +18,9 @@ _Real preview of a bundled device. Your first structure will be simpler._
 
 **I have a GDSII/OASIS mask.** Read [Masks and ROI](Masks-and-ROI), then [Import and Export](Import-and-Export).
 
-**I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).
+**I want AI to help reproduce a paper or generate a Recipe.** Follow [Using WaferCAD with AI](AI-Assisted-Workflows) for prompts, required attachments, Mask and Recipe handoff, and validation.
+
+**I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial).
 
 **An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 18 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
 
@@ -37,7 +39,8 @@ WaferCAD calculates **idealized geometric material stacks**, not physically cali
 - [History, Variants and Recovery](History-Variants-and-Recovery) — previous states, alternate branches and browser checkpoints.
 - [Import and Export](Import-and-Export) — project, mask and 3D interchange.
 - [Examples and Modeling Limits](Examples-and-Modeling-Limits) — the eight Welcome example families and scientific caveats.
-- [Process Recipe Code Tutorial](Recipe-Code-Tutorial) ([中文](Recipe-Code-Tutorial-zh-CN)) — seven supported commands, mask capture and replay.
+- [Using WaferCAD with AI](AI-Assisted-Workflows) — practical paper-to-mask and mask-to-Recipe prompts, inputs, outputs and validation.
+- [Process Recipe Code Tutorial](Recipe-Code-Tutorial) — eight supported commands, mask capture and replay.
 
 ## For documentation maintainers
 
