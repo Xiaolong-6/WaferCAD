@@ -1,0 +1,77 @@
+name: Renderer V4 UI v2 / PR177 compatibility
+
+on:
+  push:
+    branches:
+      - perf/renderer-v4-adaptive-tiles-20261010
+    paths:
+      - site/three-view.js
+      - site/renderer-capture-transaction.js
+      - site/tests/renderer-workstation-route.test.mjs
+      - scripts/renderer-v4-*.mjs
+      - scripts/renderer-electrical-*.mjs
+      - scripts/renderer-quality-index-ab.mjs
+      - scripts/renderer-roi-*.mjs
+      - scripts/test-helpers/renderer-workstation-route.mjs
+      - scripts/test-helpers/renderer-hardware-site.mjs
+      - scripts/renderer-hardware-http-smoke.mjs
+      - .github/workflows/renderer-v4-pr177-compat.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-pr177-compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-merged-worktree:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Build actual integration tree without modifying either PR or main
+        run: |
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
+          test -f site/app-legacy.html
+          grep -q 'data-ui="v2"' site/app.html
+      - name: Install locked dependencies and Chromium
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Route, lifecycle and scientific DOM contracts
+        run: node --test site/tests/renderer-workstation-route.test.mjs site/tests/renderer-capture-transaction.test.mjs site/tests/renderer-v4-resource-lifetime.test.mjs
+      - name: Real UI v2 3D gestures and retained Legacy renderer
+        env:
+          WAFERCAD_URL: http://127.0.0.1:4182
+          WAFERCAD_V2_BASE: http://127.0.0.1:4182
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: |
+          node scripts/v2/serve-v2.mjs > /tmp/wafercad-v2-serve.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:4182/app.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4182/app-legacy.html > /dev/null
+          node scripts/v2/check-three-view.mjs
+          node scripts/renderer-v4-r2-browser.mjs
+      - name: Upload non-baseline integration evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderer-v4-pr177-compat
+          path: |
+            test-results/ui-v2-three-review
+            test-results/renderer-v4-r2
+            /tmp/wafercad-v2-serve.log
+          if-no-files-found: ignore
