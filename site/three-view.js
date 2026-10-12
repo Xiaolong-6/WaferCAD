@@ -6,6 +6,8 @@ import {
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
+import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -862,24 +864,9 @@ export function createThreeView({
       renderer.domElement.dataset.roughMeshMode = 'none';
       renderer.domElement.dataset.roughMeshWorker = 'false';
     }
-    const geometries = new Set(),
-      materials = new Set(),
-      textures = new Set();
-    for (const object of group.children) {
-      if (object.geometry) geometries.add(object.geometry);
-      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of objectMaterials) {
-        if (!material) continue;
-        materials.add(material);
-        if (material.bumpMap) textures.add(material.bumpMap);
-      }
-    }
-    group.clear();
+    disposeSceneResourcesSafely(group);
     zDisplayObjects = new Set();
     currentZDisplay = null;
-    for (const geometry of geometries) geometry.dispose();
-    for (const texture of textures) texture.dispose();
-    for (const material of materials) material.dispose();
     roughMeshes = [];
     roughTasks = [];
     roughOwnedObjects = new Set();
@@ -943,24 +930,19 @@ export function createThreeView({
     };
   }
 
+  function disposeSceneResourcesSafely(targetGroup) {
+    return disposeRendererSceneResources(targetGroup, {
+      onError: (error) => {
+        const failures = Number(host.dataset.rendererDisposalFailures || 0);
+        host.dataset.rendererDisposalFailures = String(failures + error.errors.length);
+        console.warn('3D scene resource disposal failed; continuing cleanup:', error);
+      },
+    });
+  }
+
   function disposeSceneGroup(targetGroup) {
     if (!targetGroup) return;
-    const geometries = new Set(),
-      materials = new Set(),
-      textures = new Set();
-    for (const object of targetGroup.children || []) {
-      if (object.geometry) geometries.add(object.geometry);
-      const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of objectMaterials) {
-        if (!material) continue;
-        materials.add(material);
-        if (material.bumpMap) textures.add(material.bumpMap);
-      }
-    }
-    targetGroup.clear();
-    for (const geometry of geometries) geometry.dispose?.();
-    for (const texture of textures) texture.dispose?.();
-    for (const material of materials) material.dispose?.();
+    disposeSceneResourcesSafely(targetGroup);
   }
 
   function cacheActiveSceneVariant() {
@@ -3766,44 +3748,41 @@ diffuseColor.a *= waferCadAlphaScale;`,
   async function capturePng(scale = 3) {
     if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
     const rect = host.getBoundingClientRect(),
-      oldPixelRatio = renderer.getPixelRatio(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),
-      height = Math.max(2, rect.height),
-      captureRenderer = new THREE.WebGLRenderer({
-        antialias: true,
-        preserveDrawingBuffer: true,
-      });
+      height = Math.max(2, rect.height);
 
-    captureRenderer.setPixelRatio(multiplier);
-    captureRenderer.setSize(width, height, false);
-    captureRenderer.setClearColor(0xf5f7f9);
-    captureRenderer.outputColorSpace = renderer.outputColorSpace;
-    captureRenderer.toneMapping = renderer.toneMapping;
-    captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
-
-    // The main renderer's pixel ratio feeds adaptive rough LOD decisions. Raise
-    // it for the capture build without retaining a persistent drawing buffer.
-    renderer.setPixelRatio(multiplier);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    await requestRoughGeometry('detailed', { force: true });
-    try {
-      captureRenderer.render(scene, camera);
-      return await new Promise((resolve, reject) =>
-        captureRenderer.domElement.toBlob(
-          (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
-          'image/png',
-        ),
-      );
-    } finally {
-      captureRenderer.dispose();
-      renderer.setPixelRatio(oldPixelRatio);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      await requestRoughGeometry('detailed', { force: true });
-      scheduleFrame();
-    }
+    // Temporary pixel ratio and camera state also affect rough-mesh LOD.
+    // Guard the *preparation* and capture setup, not just PNG encoding:
+    // a rejected rough build must restore the interactive renderer as well.
+    return runTemporaryRendererCapture({
+      mainRenderer: renderer,
+      camera,
+      pixelRatio: multiplier,
+      aspect: width / height,
+      createRenderer: () =>
+        new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }),
+      configureRenderer: (captureRenderer) => {
+        captureRenderer.setPixelRatio(multiplier);
+        captureRenderer.setSize(width, height, false);
+        captureRenderer.setClearColor(0xf5f7f9);
+        captureRenderer.outputColorSpace = renderer.outputColorSpace;
+        captureRenderer.toneMapping = renderer.toneMapping;
+        captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
+      },
+      prepareScene: () => requestRoughGeometry('detailed', { force: true }),
+      capture: (captureRenderer) => {
+        captureRenderer.render(scene, camera);
+        return new Promise((resolve, reject) =>
+          captureRenderer.domElement.toBlob(
+            (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
+            'image/png',
+          ),
+        );
+      },
+      restoreScene: () => requestRoughGeometry('detailed', { force: true }),
+      scheduleFrame,
+    });
   }
 
   return {
