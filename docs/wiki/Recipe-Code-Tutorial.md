@@ -105,7 +105,7 @@ _This is the **Conformal Deposit** guide illustration, not the result of running
 
 Directional covers exposed horizontal surfaces. Conformal also creates ideal geometric sidewall bands. For transfer, `placement: "follow"` follows local exposed planes; `"flat"` places a global bridge plane. Neither models deposition kinetics or mechanical sag.
 
-**Both-face Recipe support:** For supported Deposit, Extend, directional/isotropic Etch, Transfer, Implant and Electrical operations, `face: 'both'` applies **Front then Back** as one atomic logical Step. A successful Both Deposit produces **two independent material Layer IDs** (one per face), not a shared layer. Both Lift-off and Both Planarize/CMP are intentionally unsupported. The current manual Surface selector remains Front/Back; the `both` value is available in Recipe Code. Example:
+**Both-face Recipe support:** For supported Deposit, Extend, directional/isotropic Etch, Transfer, Implant and Electrical operations, `face: 'both'` applies **Front then Back** as one atomic logical Step. A successful Both Deposit produces **two independent material Layer IDs** (one per face), not a shared layer. Both Lift-off and Both Planarize/CMP are intentionally unsupported. The v2 Manual **Surface** selector also offers **Both**, and this same `face: 'both'` value is available in Recipe Code. The Legacy interface is unchanged. Example:
 
 ```javascript
 deposit({
