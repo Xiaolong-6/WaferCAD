@@ -3,11 +3,13 @@
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
-Product revision: `5ce8f7e7278baf52f7380abd399af7d083704e29`.
+Product revision: `9c19907e2111cd11b3f4dca56c191e89e5f96d00`.
 Startup adaptation is in `f0078376`; default entry promotion is in `0e746cb1`;
 remaining browser entry fixes and formatting normalization are in `643417c8`.
 `5ce8f7e7` uses the shared versioned Example URL and existing Project worker so
 Welcome-prefetched bytes are reused by the new default workstation.
+`9c19907e` places the Legacy switch in the wrapping status controls, without
+covering the existing footer links.
 
 - `site/app.html` opens the v2 Workstation. `site/app-legacy.html` preserves the previous application page and its relative assets.
 - Welcome opens Empty, full canonical Examples, and staged imports in v2. Embedded previews use Legacy and retain their source/view parameters on refresh.
@@ -23,7 +25,7 @@ Environment: Linux, Node 24.19.0, Playwright 1.55.1, Chromium 140.0.7339.186,
 pinned Three 0.179.1; browser 3D uses SwiftShader software WebGL.
 Tests use isolated browser storage. No user browser data was edited.
 
-- `npm test`: 616 passed, 0 failed before final route wiring. Quality CI also passed on `0e746cb1`; the later product patch changes test routes and formatting only.
+- `npm test`: 616 passed, 0 failed before final route wiring. Quality CI passed on `1cf723e1`: 633 tests passed, 0 failed. The later product patch moves the Legacy link within the existing status controls.
 - `npm run lint`, `npm run format:check`, `npm run docs:check`: passed. The pre-existing formatting warnings were normalized without changing behavior.
 - `node scripts/v2/check-startup.mjs`: passed again after the bundled Project worker integration against `app.html`; includes actual Welcome Example, GDS/OAS upload, Legacy preview/postMessage, no-intent recovery, Empty, invalid intent, failed staged retry and full staged Project History.
 - `node scripts/v2/check-cross-ui-recovery.mjs`: passed again after the bundled Project worker integration; exercises the save-before-switch link with pending edits, exact Legacy → v2 → Legacy → v2 geometry/History/Variant restoration, and a simultaneous Legacy tab that cannot overwrite the v2 writer.
@@ -31,6 +33,7 @@ Tests use isolated browser storage. No user browser data was edited.
 - Legacy `npm run test:ui:workstation`: passed after the route migration, including stalled Three.js and navigation scenarios.
 - Legacy `npm run test:ui:persistence`: passed after the route migration, including recovery checkpoints, staged handoffs, writer takeover and failed-save protection.
 - Stage C synchronization: passed at 1440, 1024, 768 and 390 px, plus 1024 px touch simulation.
+- A focused Legacy-link layout check passed at 1440 and 390 px: link visible inside the footer, within the viewport, with no horizontal overflow.
 - M2 live parity: passed at the four widths before the small interaction fixture migration.
 - M4 projects: passed for M3D, Photodetector, canonical full Metalens and its compatibility alias.
 - Focused route-sensitive Node tests: 49 passed; startup-controller/CI-planner/Welcome tests: 38 passed.
