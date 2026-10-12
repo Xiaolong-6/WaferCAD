@@ -113,9 +113,9 @@ their respective captured frames. Both same-policy draw-input hashes,
 material hashes, camera matrices and draw order agreed.
 
 | Fresh-context same policy | Oct 12 baseline | DITHER disabled |
-| --- | ---: | ---: |
-| OFF/OFF changed pixels | 54 | 33 |
-| ON/ON changed pixels | 78 | 134 |
+| ------------------------- | --------------: | --------------: |
+| OFF/OFF changed pixels    |              54 |              33 |
+| ON/ON changed pixels      |              78 |             134 |
 
 Differences persisted in native GL framebuffer with zero GL errors,
 1/255 maximum channel delta and unchanged alpha. DITHER-off is not a

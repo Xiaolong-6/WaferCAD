@@ -104,11 +104,17 @@ test('no-MSAA mode requires verified zero sample framebuffer and never approves 
     'diagnostic-complete',
   );
   assert.equal(
-    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...standard, acceptanceEligible: true }),
+    classifyRendererHardwareStep(
+      { ...step, exitCode: 0 },
+      { ...standard, acceptanceEligible: true },
+    ),
     'error',
   );
   assert.equal(
-    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...standard, diagnosticNoDither: true }),
+    classifyRendererHardwareStep(
+      { ...step, exitCode: 0 },
+      { ...standard, diagnosticNoDither: true },
+    ),
     'error',
   );
   assert.equal(
@@ -126,7 +132,13 @@ test('no-MSAA mode requires verified zero sample framebuffer and never approves 
     assert.equal(
       classifyRendererHardwareStep(
         { ...step, exitCode: 0 },
-        { ...standard, trials: [{ native: { ...standard.trials[0].native, ...changed } }, ...standard.trials.slice(1)] },
+        {
+          ...standard,
+          trials: [
+            { native: { ...standard.trials[0].native, ...changed } },
+            ...standard.trials.slice(1),
+          ],
+        },
       ),
       'error',
     );
