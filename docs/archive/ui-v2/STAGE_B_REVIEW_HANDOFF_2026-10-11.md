@@ -1,6 +1,6 @@
 # UI v2 Stage B — ready for review
 
-Current toolbar/gesture decisions and Stage C entry are recorded in the [desktop review checkpoint](../../ui-v2/DESKTOP_REVIEW_2026-10-11.md). This file preserves the earlier Stage B evidence and scope.
+Current toolbar/gesture decisions and Stage C entry are recorded in the [desktop review checkpoint](DESKTOP_REVIEW_2026-10-11.md). This file preserves the earlier Stage B evidence and scope.
 
 Branch: `codex/ui-v2-main-wip`. Parent: `526cc7ae62b8a5a4366f5a80654ce7d0bd064b72`. Resolve this handoff's exact commit with `git log -1 --format=%H -- docs/ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md`. The user explicitly requested **commit and push** after review preparation. This supersedes the earlier online pause for the normal WIP branch push, which triggers its existing preview workflow. No merge or manual CI dispatch is authorized; `main` is unchanged. Stage C has not started. Confirm preview build-info against the pushed revision before treating deployment as current evidence.
 
@@ -30,7 +30,7 @@ These are review captures, not replacements for approved visual baselines:
 
 Latest command: `WAFERCAD_V2_EXAMPLE=metalens node scripts/v2/check-three-view.mjs`, **PASS, exit 0**. Environment: Linux, Node 24.19.0, Playwright 1.55.1 / Chromium 140.0.7339.186, pinned local Three 0.179.1. Server port 4182; `PLAYWRIGHT_BROWSERS_PATH=/tmp/wafercad-playwright`; `WAFERCAD_THREE_DIR` points to this checkout's `node_modules/three`. Log: `/tmp/wafercad-phase-b-small-visible-final.log`. Portable report records parent revision and `dirty: true`, because validation preceded the local commit.
 
-Latest lint, repository format and documentation checks pass. The preceding checkpoint's 612/612 Node tests and unchanged legacy smoke/workstation/interaction/layout checks also passed; they were not repeated for this two-line v2 CSS repair. See [the detailed checkpoint](../../ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for chronology, commands, limitations and prior failures.
+Latest lint, repository format and documentation checks pass. The preceding checkpoint's 612/612 Node tests and unchanged legacy smoke/workstation/interaction/layout checks also passed; they were not repeated for this two-line v2 CSS repair. See [the detailed checkpoint](STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for chronology, commands, limitations and prior failures.
 
 ## Review focus and next checkpoint
 

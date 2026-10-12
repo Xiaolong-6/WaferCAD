@@ -1,6 +1,6 @@
 # UI v2 Stage A — shared runtime and physical Section
 
-Branch: `codex/ui-v2-main-wip`, Draft PR [#177](https://github.com/Xiaolong-6/WaferCAD/pull/177). Stage A follows the accepted [Main/Mask checkpoint](../../ui-v2/MAIN_MASK_ACCEPTANCE_2026-10-11.md). The takeover base remains `1664405ef7835a3e974a8551f19c8879186255bf` for cumulative legacy accounting. Product commit and current CI evidence will be recorded after the normal push. No manual workflow or merge is authorized or required.
+Branch: `codex/ui-v2-main-wip`, Draft PR [#177](https://github.com/Xiaolong-6/WaferCAD/pull/177). Stage A follows the accepted [Main/Mask checkpoint](MAIN_MASK_ACCEPTANCE_2026-10-11.md). The takeover base remains `1664405ef7835a3e974a8551f19c8879186255bf` for cumulative legacy accounting. Product commit and current CI evidence will be recorded after the normal push. No manual workflow or merge is authorized or required.
 
 ## Implemented behavior
 

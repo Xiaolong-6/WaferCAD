@@ -1,6 +1,6 @@
 # UI v2 actual UI acceptance — 2026-10-10
 
-**Targeted result at `2ae4ca3`: UI-01 through UI-08 closed; automated M2.5 shell checks PASS (49 checks). The later [actual legacy comparison and compact fixes](../../ui-v2/LEGACY_BROWSER_COMPARISON_2026-10-10.md) supersedes any broader interpretation: product `9a43d0d` has 60 passing shell checks, but new mock/UI parity findings remain open. Full UI/product migration acceptance is not passed.**
+**Targeted result at `2ae4ca3`: UI-01 through UI-08 closed; automated M2.5 shell checks PASS (49 checks). The later [actual legacy comparison and compact fixes](LEGACY_BROWSER_COMPARISON_2026-10-10.md) supersedes any broader interpretation: product `9a43d0d` has 60 passing shell checks, but new mock/UI parity findings remain open. Full UI/product migration acceptance is not passed.**
 
 ## Repair and recheck — `2ae4ca3`
 
@@ -33,7 +33,7 @@ Documentation gate: `npm run docs:check` — exit 0 (112 Markdown files, 415 int
 
 ## Initial review — `5ec5082` (historical FAIL)
 
-Product revision: `5ec5082` on `codex/ui-v2-m2-handoff-2026-10-09`. This review supersedes the blanket “M2.5 passed” wording in the previous [browser acceptance report](../../ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md). Automated architecture and interaction probes are evidence for their named contracts, not proof of acceptable visual hierarchy, copy or every toolbar fitting its view.
+Product revision: `5ec5082` on `codex/ui-v2-m2-handoff-2026-10-09`. This review supersedes the blanket “M2.5 passed” wording in the previous [browser acceptance report](BROWSER_ACCEPTANCE_2026-10-09.md). Automated architecture and interaction probes are evidence for their named contracts, not proof of acceptable visual hierarchy, copy or every toolbar fitting its view.
 
 ## Scope and environment
 
@@ -45,7 +45,7 @@ Visual review used the Codex in-app browser at `http://127.0.0.1:4182/app-v2.htm
 
 ## Actual review coverage
 
-Dimensions below are measured browser viewport dimensions, not inferred from filenames. This is a targeted review, not all 258 rows of the [source parity audit](../../ui-v2/FULL_PARITY_AUDIT_2026-10-09.md).
+Dimensions below are measured browser viewport dimensions, not inferred from filenames. This is a targeted review, not all 258 rows of the [source parity audit](FULL_PARITY_AUDIT_2026-10-09.md).
 
 | Surface / scenario                | Actual viewport                     | Observation                                                                                                                                                                |
 | --------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
