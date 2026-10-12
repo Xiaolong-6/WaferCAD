@@ -20,6 +20,12 @@ import {
 import { classifyWebglBackend } from './test-helpers/webgl-backend-classification.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import { compareRendererPhaseEvidence } from './test-helpers/renderer-v3-phase-parity.mjs';
+import {
+  isRendererPhaseAcceptanceEligible,
+  parseRendererPhaseWindow,
+  rendererPhaseMilestones,
+  summarizeRendererPhaseWindow,
+} from './test-helpers/renderer-v3-phase-window.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
@@ -27,6 +33,15 @@ const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
 const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
+const phaseWindowOptions = process.argv.filter((arg) =>
+  arg.startsWith('--diagnose-phase-window'),
+);
+assert.ok(phaseWindowOptions.length <= 1, 'Select at most one phase window');
+const phaseWindow = phaseWindowOptions.length
+  ? parseRendererPhaseWindow(phaseWindowOptions[0].split('--diagnose-phase-window=')[1] ?? '')
+  : null;
+const phaseWindowDiagnostic = phaseWindow !== null;
+const phaseMilestones = rendererPhaseMilestones(phaseWindow);
 // Preserve the older pinned RTX command while allowing verified integrated
 // and discrete adapters through --hardware-gpu.
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
@@ -38,13 +53,20 @@ assert.ok(
   !diagnosticNoMsaa || (hardwareGpu && reportOnly && !diagnosticNoDither),
   '--diagnose-no-msaa requires --hardware-gpu --report-only; isolation flags cannot be combined',
 );
+assert.ok(
+  !phaseWindowDiagnostic ||
+    (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa),
+  '--diagnose-phase-window=LOW:HIGH requires --hardware-gpu --report-only without other raster interventions',
+);
 const output = new URL(
   hardwareGpu
     ? diagnosticNoDither
       ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
       : diagnosticNoMsaa
         ? '../test-results/renderer-hardware-fresh-context-ab-no-msaa/'
-        : '../test-results/renderer-hardware-fresh-context-ab/'
+        : phaseWindowDiagnostic
+          ? `../test-results/renderer-hardware-fresh-context-ab-phase-window-${phaseWindow.low}-${phaseWindow.high}/`
+          : '../test-results/renderer-hardware-fresh-context-ab/'
     : '../test-results/product-review/electrical-fresh-context/',
   import.meta.url,
 );
@@ -66,7 +88,14 @@ const report = {
   reportOnly,
   diagnosticNoDither,
   diagnosticNoMsaa,
-  acceptanceEligible: !diagnosticNoDither && !diagnosticNoMsaa,
+  phaseWindowDiagnostic,
+  phaseWindow,
+  phaseMilestones: hardwareGpu ? phaseMilestones : [],
+  acceptanceEligible: isRendererPhaseAcceptanceEligible({
+    diagnosticNoDither,
+    diagnosticNoMsaa,
+    phaseWindowDiagnostic,
+  }),
   strictPixelTolerance: 0,
   trials: [],
   comparisons: [],
@@ -228,9 +257,7 @@ async function trial(enabled, index) {
     }, {
       pixelSamples: samples,
       captureDrawInputs: hardwareGpu,
-      capturePhaseDraws: hardwareGpu
-        ? [1, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
-        : [],
+      capturePhaseDraws: hardwareGpu ? phaseMilestones : [],
     });
     await page.waitForFunction(
       () => {
@@ -368,6 +395,14 @@ async function trial(enabled, index) {
           row.phaseCheckpoints.every((checkpoint) => checkpoint.status === 'valid' && checkpoint.hash),
         `${label}: complete phase checkpoint evidence required`,
       );
+      if (phaseWindowDiagnostic) {
+        assert.deepEqual(
+          row.phaseCheckpoints.map((checkpoint) => checkpoint.afterDraw),
+          [...phaseMilestones, native.calls],
+          `${label}: each requested milestone plus final framebuffer must be captured`,
+        );
+        assert.equal(row.phaseCoverage?.mode, 'draw-milestones');
+      }
       assert.equal(
         row.drawInputsCount,
         48,
@@ -530,6 +565,7 @@ try {
       JSON.stringify(off.native.pixelSamples.map((p) => p.rgba)) ===
       JSON.stringify(on.native.pixelSamples.map((p) => p.rgba)),
   });
+  report.observedDriftWindows = summarizeRendererPhaseWindow(report.comparisons);
   report.strictParity = report.comparisons.every(
     (c) =>
       c.pngByteIdentical &&
@@ -543,7 +579,7 @@ try {
   report.stage = 'completed';
   // Strict comparisons are still computed for scientific diagnostics, but
   // an intentionally altered raster state can NEVER approve the product.
-  report.passed = report.strictParity && !diagnosticNoDither && !diagnosticNoMsaa;
+  report.passed = report.strictParity && report.acceptanceEligible;
 } catch (error) {
   report.passed = false;
   report.error = String(error);
