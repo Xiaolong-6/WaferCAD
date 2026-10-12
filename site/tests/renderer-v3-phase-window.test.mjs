@@ -88,6 +88,25 @@ test('only comparable same-policy checkpoint intervals yield follow-up windows',
   ]);
 });
 
+test('final frame beyond bounded draw budget is not suggested as a follow-up command', () => {
+  const [row] = summarizeRendererPhaseWindow([
+    {
+      first: '1-OFF',
+      second: '2-OFF',
+      samePolicy: true,
+      phaseEvidence: {
+        status: 'checkpoint-mismatch',
+        firstDifferentPhase: {
+          afterDraw: 1408,
+          precedingMatchingCheckpoint: { afterDraw: 1280 },
+        },
+      },
+    },
+  ]);
+  assert.deepEqual(row.observedInterval, { afterMatchingDraw: 1280, byDifferentDraw: 1408 });
+  assert.equal(row.nextDiagnosticWindow, null);
+});
+
 test('matching and invalid checkpoints do not fabricate a divergence interval', () => {
   for (const status of ['bounded-checkpoints-identical', 'invalid-checkpoints']) {
     const result = summarizeRendererPhaseWindow([

@@ -46,6 +46,8 @@ export function summarizeRendererPhaseWindow(comparisons) {
         // does NOT prove the first causal draw or authorize product parity.
         nextDiagnosticWindow:
           evidence?.status === 'checkpoint-mismatch' && preceding &&
+          preceding.afterDraw >= 1 &&
+          first.afterDraw <= MAX_RENDERER_PHASE_DRAW &&
           first.afterDraw - preceding.afterDraw > 1
             ? `${preceding.afterDraw}:${first.afterDraw}`
             : null,
