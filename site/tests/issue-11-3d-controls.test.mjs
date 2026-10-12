@@ -5,6 +5,10 @@ import test from 'node:test';
 const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const threeView = await readFile(new URL('../three-view.js', import.meta.url), 'utf8');
+const captureTransaction = await readFile(
+  new URL('../renderer-capture-transaction.js', import.meta.url),
+  'utf8',
+);
 const annotationRendering = await readFile(
   new URL('../annotation-rendering.js', import.meta.url),
   'utf8',
@@ -156,18 +160,21 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /geometryFromRoughMeshData\(THREE, meshData\)/);
   assert.match(threeView, /async function capturePng\(scale = 3\)/);
   assert.match(threeView, /preserveDrawingBuffer: false/);
-  assert.match(
-    threeView,
-    /captureRenderer = new THREE\.WebGLRenderer\(\{[\s\S]*?preserveDrawingBuffer: true/,
-  );
-  assert.match(
-    threeView,
-    /renderer\.setPixelRatio\(multiplier\)[\s\S]*?await requestRoughGeometry\('detailed', \{ force: true \}\);[\s\S]*?captureRenderer\.render\(scene, camera\)/,
-  );
-  assert.match(
-    threeView,
-    /captureRenderer\.dispose\(\)[\s\S]*?renderer\.setPixelRatio\(oldPixelRatio\)[\s\S]*?await requestRoughGeometry\('detailed', \{ force: true \}\);/,
-  );
+  // PNG capture now has one transaction owner. Keep the original contract:
+  // independent buffered WebGL, detailed rough meshes, original camera/ratio
+  // restoration, and redraw even when capture preparation or encoding fails.
+  assert.match(threeView, /runTemporaryRendererCapture\(\{/);
+  assert.match(threeView, /new THREE\.WebGLRenderer\(\{ antialias: true, preserveDrawingBuffer: true \}\)/);
+  assert.match(threeView, /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/);
+  assert.match(threeView, /captureRenderer\.render\(scene, camera\)/);
+  assert.match(threeView, /restoreScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/);
+  assert.match(captureTransaction, /originalPixelRatio = mainRenderer\.getPixelRatio\(\)/);
+  assert.match(captureTransaction, /originalAspect = camera\.aspect/);
+  assert.match(captureTransaction, /temporaryRenderer\.dispose\(\)/);
+  assert.match(captureTransaction, /mainRenderer\.setPixelRatio\(originalPixelRatio\)/);
+  assert.match(captureTransaction, /camera\.aspect = originalAspect/);
+  assert.match(captureTransaction, /await restoreScene\(\)/);
+  assert.match(captureTransaction, /scheduleFrame\(\)/);
   assert.match(app, /createThreeView/);
 });
 
