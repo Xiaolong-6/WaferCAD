@@ -46,13 +46,13 @@ test('every shipped example section embeds a real corresponding preview asset', 
   }
 });
 
-test('Wiki navigation links to both Recipe tutorials', async () => {
+test('Wiki navigation links to English Recipe and AI workflow tutorials', async () => {
   for (const page of ['Home', '_Sidebar', 'Process-and-Recipes', 'Getting-Started']) {
     const text = await manual(page);
     assert.ok(text.includes('(Recipe-Code-Tutorial)'), `${page}: missing English tutorial link`);
     assert.ok(
-      text.includes('(Recipe-Code-Tutorial-zh-CN)'),
-      `${page}: missing Chinese tutorial link`,
+      text.includes('(AI-Assisted-Workflows)'),
+      `${page}: missing AI workflow link`,
     );
   }
 });
@@ -130,11 +130,14 @@ test('Mask ROI documentation agrees with Whole face worker clipping', async () =
   );
 });
 
-test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {
-  for (const page of ['Recipe-Code-Tutorial', 'Recipe-Code-Tutorial-zh-CN']) {
+test('all JavaScript Recipe examples in the English Wiki parse as v1 recipes', async () => {
+  for (const page of ['Recipe-Code-Tutorial', 'AI-Assisted-Workflows']) {
     const source = await manual(page);
     const snippets = [...source.matchAll(/^(?:~~~|```)javascript\n([\s\S]*?)\n(?:~~~|```)/gm)];
-    assert.ok(snippets.length >= 4, `${page}: expected copy-ready recipe snippets`);
+    assert.ok(
+      snippets.length >= (page === 'Recipe-Code-Tutorial' ? 4 : 2),
+      `${page}: expected copy-ready recipe snippets`,
+    );
     for (const [index, snippet] of snippets.entries()) {
       const recipe = parseProcessRecipeSource(snippet[1]);
       assert.ok(recipe.steps.length > 0, `${page}: snippet ${index + 1} is empty`);
