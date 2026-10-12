@@ -4,9 +4,9 @@
 
 Inspected the complete tracked text-document inventory (Markdown, Markdown-adjacent, RST and TXT), across root, `docs/`, UI v2, Wiki, examples, tests and vendored attribution. The pre-migration inventory contained **141 text documents**, including the original `docs/archive/README.md`. Documentation content and purpose were compared to the merged v2 default-entry release (PR #177), current Wiki/Recipe ownership, generated artifacts, scientific source provenance and still-relevant development references.
 
-Disposition: **68 complete revision-specific records relocated** (41 root docs and 27 early UI v2 reports), retaining lightweight compatibility pointers at the old URLs; **72 original-position documents retained** (other than the archive index). Original historical language and reported test outcomes were not translated or represented as new passes. A report is not obsolete just because it is dated: reconstruction provenance, reproducibility evidence and active Kernel/UI contracts must remain discoverable.
+Disposition: **68 complete revision-specific records relocated** (41 root docs and 27 early UI v2 reports), deleting the old paths and updating internal links to the new archive destinations; **72 original-position documents retained** (other than the archive index). Original historical language and reported test outcomes were not translated or represented as new passes. A report is not obsolete just because it is dated: reconstruction provenance, reproducibility evidence and active Kernel/UI contracts must remain discoverable.
 
-The [archive index](archive/README.md) lists **every relocated full document** and its prior compatibility URL. That index, not old pre-release plans, is the canonical historical evidence map.
+The [archive index](archive/README.md) lists **every relocated full document** as its canonical location. That index, not old pre-release plans, is the canonical historical evidence map.
 
 ## Current documentation owners
 
@@ -104,15 +104,15 @@ The following retained documents remain in their existing locations. **Classific
 ## Relocation protocol
 
 1. Preserve the historical document under `docs/archive/<original relative docs path>`, including the `ui-v2/` subdirectory where applicable. Change only relative Markdown destinations necessary to keep links usable at the new location.
-2. Replace the former file with a brief English compatibility pointer rather than deleting long-lived external report URLs. A compatibility pointer is **not** the report's canonical content.
-3. Index the full archived copy **and** the compatibility URL in [Archive](archive/README.md); keep the current [documentation map](README.md) focused on maintained owners.
+2. Delete the original after archiving and update all tracked references. Links outside the repository cannot be rewritten by this migration.
+3. Index the archived copy in [Archive](archive/README.md); keep the current [documentation map](README.md) focused on maintained owners.
 4. For feature/API changes, update the owner file and Wiki, never the archived test results. Keep `docs/wiki/Process-Operations.md` and process SVGs generator-owned.
 
 ## Verification boundaries and follow-up
 
-- The migration was performed through GitHub commits using the original files as source, with Markdown relative-path adjustment and old-location compatibility pointers. An archive path alone does not establish whether the old claim remains technically true.
+- The migration was performed through GitHub commits using the original files as source, with Markdown relative-path adjustment and removal of original paths. An archive path alone does not establish whether the old claim remains technically true.
 - **Not executed in this environment:** `npm ci`, `npm run docs:check`, `npm run format:check`, `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs`, or browser-based validation. The absence of a runnable checkout prevents a verified green test claim. These gates remain prerequisites to integration.
-- Static checks must verify both ends of every relocated document and compatibility link; a full Markdown link/heading run is required before merge. Particular care is needed for older Markdown files with illustrative screenshot references or source-file-relative links.
+- Static checks must verify the archived targets and rewritten internal links; a full Markdown link/heading run is required before merge. Particular care is needed for older Markdown files with illustrative screenshot references or source-file-relative links.
 - Retained dated science/renderer records should continue to be cited with exact commit/environment qualifications. The UI source-derived inventories (`CONTRACT.md`, `FEATURE_INVENTORY.md`, `PLACEMENT_MAP.md`, `IMPLICIT_DEPS.md`) are reference material, not a claim that the current default UI matches every historical selector.
 
 **No scientific code, examples, generated Wiki SVGs, screenshots, visual baselines or legacy recovery data were changed by this document lifecycle reorganization.** No PR, main merge or Wiki publication was initiated.
