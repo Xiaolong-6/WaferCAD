@@ -15,12 +15,15 @@ The planner then enables focused suites as needed:
 | History, replay, project History controls           | History + bundled examples                                                      |
 | Persistence, project IO/schema, startup/recovery    | Persistence + bundled examples                                                  |
 | Workstation/startup shell                           | Workstation integration; resilience only for Three/WebGL bootstrap paths        |
+| UI v2 modules / Stage C scripts                      | Workstation; shared entry/workflow paths also select History, Persistence and Interaction |
 | Pointer/view/layout controls                        | Interaction, and product layout only for layout-owning files                    |
 | Bundled example fixtures/metadata                   | Bundled examples                                                                |
 | GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
 | Renderer/Section/model-view geometry                | Renderer semantic regression; stress/gallery cases on weekly/manual full runs   |
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
+
+The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) additionally runs on `main` pushes affecting the v2 source, published entry/Welcome, shared controllers, model/process/project core or its browser harness. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
@@ -41,7 +44,7 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 ## Documentation and publication workflows
 
-[Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It checks generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift before comparing managed Wiki pages.
+[Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
 [Pages deployment](../.github/workflows/pages.yml) runs on main changes to `site/**`, the asset-stamping script or its own workflow, plus manual dispatch. It runs Node release sanity before deploying. A change only under `docs/` does not trigger Pages by itself. [Quality](../.github/workflows/quality.yml) is PR/manual rather than a general main-push gate; the selected Browser non-PR gate owns post-merge Node coverage.
 
