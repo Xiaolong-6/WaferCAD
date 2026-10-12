@@ -167,7 +167,7 @@ test('all JavaScript Recipe examples in the English Wiki parse as v1 recipes', a
 });
 
 
-test('Wiki uses real first-party images, relevant captions, and the generated Process catalog', async () => {
+test('Wiki uses legible first-party visual evidence or task-specific diagrams, and the generated Process catalog', async () => {
   const home = await manual('Home');
   assert.ok(
     home.includes(`all ${PROCESS_GUIDE.length} before/after operation diagrams`),
@@ -189,7 +189,16 @@ test('Wiki uses real first-party images, relevant captions, and the generated Pr
   for (const page of pages) {
     const source = await manual(page);
     const images = [...source.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)];
-    assert.ok(images.length >= 1, `${page}: expected a specific scientific or application visual`);
+    const diagrams = [...source.matchAll(/```mermaid\n([\s\S]*?)```/g)];
+    assert.ok(
+      images.length >= 1 || diagrams.length >= 1,
+      `${page}: include a relevant diagram or a directly useful scientific image`,
+    );
+    assert.doesNotMatch(
+      source,
+      /site\/example-previews\//,
+      `${page}: blurred legacy JPEG previews are not instructional screenshots`,
+    );
     for (const match of images) {
       const [, alt, url] = match;
       assert.ok(alt.length >= 14, `${page}: image must have descriptive alt text`);
@@ -201,6 +210,13 @@ test('Wiki uses real first-party images, relevant captions, and the generated Pr
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
       await access(new URL('../../' + asset, import.meta.url));
+      if (asset.startsWith('site/examples/thumbnails/')) {
+        const allowed =
+          page === 'Examples-and-Modeling-Limits' ||
+          (page === 'Workspace-and-Views' && asset.endsWith('magic-1000-mos2-beol-section.webp')) ||
+          (page === 'AI-Assisted-Workflows' && asset.endsWith('tio2-metalens-four-unit-schematic.svg'));
+        assert.ok(allowed, `${page}: example cover is irrelevant to this instructional step (${asset})`);
+      }
       if (page !== 'Process-Operations') {
         const after = source.slice(match.index + match[0].length).trimStart();
         assert.match(
