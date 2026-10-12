@@ -17,13 +17,21 @@ the old group is detached and remains in the scene-variant cache.
 On a variant-build failure, the partial scene is disposed and the previous
 cached presentation is restored where possible.
 
-Initial model rebuilds and expensive WebGL frame submissions remain unchanged.
+Large-array assembly now yields the browser an input macrotask at an approximately
+8 ms cooperative time-slice boundary, including during opaque/transparent
+variant assembly. This provides opportunities to service other panes and
+pointer events but does not preempt an expensive individual synchronous mesh
+operation or GPU submission. Variant failure is recorded separately in the
+3D host diagnostics; a subsequent build clears the previous failure marker.
+
+Initial model replacement still drops the previous physical scene, and
+expensive WebGL frame submissions remain unchanged.
 Worker availability alone does not guarantee responsive foreground input.
 
 ## Validation
 
 - Branch: `perf/foreground-responsive-rendering-20261012`.
-- Unit, lint, formatting, and browser CI need to pass on the new HEAD.
+- Source-contract tests cover commit ordering, rollback wiring, and cooperative yielding.\n- Unit, lint, formatting, and browser CI need to pass on the new HEAD.
 - Focused variant-transition and injected-failure browser tests are pending.
 - No FPS, strict-pixel, hardware-GPU, or memory improvement is claimed.
 - Scientific geometry, project data, approved visual baselines, and
