@@ -7,6 +7,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Product manual](wiki/Home.md) — complete English task-oriented user manual, Recipe tutorial and AI-assisted workflows.
 - [Using WaferCAD with AI](wiki/AI-Assisted-Workflows.md) — copy-ready prompts, attachment checklists, GDS/Recipe workflows and validation.\n- [Usage](USAGE.md) — compact repository reference for daily operations.
 - [Wiki navigation](wiki/_Sidebar.md) — the navigation published with the manual.
+- [Wiki visual audit (2026-10-12)](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) — case-specific image provenance and verification scope.
 - [Illustrated Process Operations](wiki/Process-Operations.md) — the same Before → After schematics as the in-app Process panel.
 
 ## Developers and reviewers
