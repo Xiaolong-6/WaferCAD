@@ -202,7 +202,7 @@ test('workspace session keeps a stable tab identity across reloads', () => {
   afterReload.stop();
 });
 
-test('workspace session fails closed without shared storage and recovers only after explicit takeover', () => {
+test('workspace session blocks unsafe writes until explicit takeover', () => {
   const values = new Map();
   let blocked = true;
   const storage = {
@@ -271,7 +271,7 @@ test('workspace session fails closed without shared storage and recovers only af
   second.stop();
 });
 
-test('workspace session refuses a storage backend that cannot persist a lease', () => {
+test('workspace session refuses a backend that cannot persist a lease', () => {
   const storage = {
     getItem: () => null,
     setItem: () => {
