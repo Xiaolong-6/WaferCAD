@@ -72,14 +72,20 @@ export function buildRendererV3MsaaDiagnosticPlan() {
 export function buildRendererV3PhaseWindowDiagnosticPlan(value) {
   const window = parseRendererPhaseWindow(value);
   if (!window) throw new Error('A phase window is required');
-  return [{
-    id: 'v3-phase-window',
-    branch: 'v3',
-    script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-    args: ['--hardware-gpu', '--report-only', `--diagnose-phase-window=${window.low}:${window.high}`],
-    artifact: `test-results/renderer-hardware-fresh-context-ab-phase-window-${window.low}-${window.high}`,
-    phaseWindow: window,
-  }];
+  return [
+    {
+      id: 'v3-phase-window',
+      branch: 'v3',
+      script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+      args: [
+        '--hardware-gpu',
+        '--report-only',
+        `--diagnose-phase-window=${window.low}:${window.high}`,
+      ],
+      artifact: `test-results/renderer-hardware-fresh-context-ab-phase-window-${window.low}-${window.high}`,
+      phaseWindow: window,
+    },
+  ];
 }
 
 export function classifyRendererHardwareStep(step, report) {
@@ -97,18 +103,24 @@ export function classifyRendererHardwareStep(step, report) {
       return 'error';
     if (report.stage !== 'completed' || report.trials?.length !== 4) return 'incomplete';
     const expected = rendererPhaseMilestones(step.phaseWindow);
-    if (report.trials.some((trial) =>
-      trial.phaseCoverage?.mode !== 'draw-milestones' ||
-      !Array.isArray(trial.phaseCheckpoints) ||
-      trial.phaseCheckpoints.length !== expected.length + 1 ||
-      trial.phaseCheckpoints.slice(0, -1).some((checkpoint, i) =>
-        checkpoint.afterDraw !== expected[i] ||
-        checkpoint.status !== 'valid' ||
-        !checkpoint.hash,
-      ) ||
-      trial.phaseCoverage?.finalFrameCaptured !== true ||
-      trial.phaseCheckpoints.at(-1)?.afterDraw !== trial.native?.calls
-    ))
+    if (
+      report.trials.some(
+        (trial) =>
+          trial.phaseCoverage?.mode !== 'draw-milestones' ||
+          !Array.isArray(trial.phaseCheckpoints) ||
+          trial.phaseCheckpoints.length !== expected.length + 1 ||
+          trial.phaseCheckpoints
+            .slice(0, -1)
+            .some(
+              (checkpoint, i) =>
+                checkpoint.afterDraw !== expected[i] ||
+                checkpoint.status !== 'valid' ||
+                !checkpoint.hash,
+            ) ||
+          trial.phaseCoverage?.finalFrameCaptured !== true ||
+          trial.phaseCheckpoints.at(-1)?.afterDraw !== trial.native?.calls,
+      )
+    )
       return 'error';
     return 'diagnostic-complete';
   }
