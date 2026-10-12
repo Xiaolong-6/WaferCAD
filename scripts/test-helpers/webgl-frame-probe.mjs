@@ -136,6 +136,7 @@ export function installWebglFrameProbe() {
             phaseTransitionsObserved: 0,
             phaseTransitionsSkipped: 0,
             firstElectricalState: null,
+            forcedDitherDisabledDraws: 0,
             startedAt: performance.now(),
             query: timerBusy ? null : query,
             timerStatus: timerBusy ? 'busy' : query ? 'pending' : 'unsupported',
@@ -209,11 +210,24 @@ export function installWebglFrameProbe() {
           row.triangles += triangles;
           active.owners.set(key, row);
         }
-        const result = draw(...args);
-        if (active?.capturePhases && active.capturePhaseDraws.has(active.drawCalls)) {
-          capturePhaseFramebuffer(gl, active, owner.kind);
+        // Diagnostic-only isolation: disable dithering JUST for this draw,
+        // then restore its pre-draw GL state even when drawing throws. All
+        // browser/product settings stay unchanged in normal operation.
+        const restoreDither =
+          window.__waferCadDitherProbeForceOff === true && gl.isEnabled(gl.DITHER);
+        if (restoreDither) {
+          gl.disable(gl.DITHER);
+          if (active) active.forcedDitherDisabledDraws++;
         }
-        return result;
+        try {
+          const result = draw(...args);
+          if (active?.capturePhases && active.capturePhaseDraws.has(active.drawCalls)) {
+            capturePhaseFramebuffer(gl, active, owner.kind);
+          }
+          return result;
+        } finally {
+          if (restoreDither) gl.enable(gl.DITHER);
+        }
       };
     }
   }
@@ -243,6 +257,7 @@ export function installWebglFrameProbe() {
           rasterDiscard: active.rasterDiscard,
           drawCalls: active.drawCalls,
           triangles: active.triangles,
+          forcedDitherDisabledDraws: active.forcedDitherDisabledDraws,
           submissionMs: submittedAt - active.startedAt,
           finishWaitMs: finishedAt - submittedAt,
           completedDrawMs: finishedAt - active.startedAt,

@@ -3,7 +3,14 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { installWebglFrameProbe } from '../../scripts/test-helpers/webgl-frame-probe.mjs';
 
-function harness({ timer = false, disjoint = false, busy = false, priorDiscard = false } = {}) {
+function harness({
+  timer = false,
+  disjoint = false,
+  busy = false,
+  priorDiscard = false,
+  forceDitherOff = false,
+  throwOnDraw = false,
+} = {}) {
   const host = {
     dataset: {
       renderState: 'ready',
@@ -17,9 +24,11 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     calls = [];
   const extension = { TIME_ELAPSED_EXT: 10, GPU_DISJOINT_EXT: 11 };
   let discard = priorDiscard;
+  let dither = true;
   const gl = {
     TRIANGLES: 4,
     RASTERIZER_DISCARD: 5,
+    DITHER: 18,
     CURRENT_QUERY: 6,
     QUERY_RESULT_AVAILABLE: 7,
     QUERY_RESULT: 8,
@@ -54,14 +63,24 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     deleteQuery: () => calls.push('delete-query'),
     isContextLost: () => false,
     getError: () => 0,
-    isEnabled: () => discard,
-    enable: () => {
-      discard = true;
-      calls.push('enable-discard');
+    isEnabled: (cap) => (cap === 18 ? dither : discard),
+    enable: (cap) => {
+      if (cap === 18) {
+        dither = true;
+        calls.push('enable-dither');
+      } else {
+        discard = true;
+        calls.push('enable-discard');
+      }
     },
-    disable: () => {
-      discard = false;
-      calls.push('disable-discard');
+    disable: (cap) => {
+      if (cap === 18) {
+        dither = false;
+        calls.push('disable-dither');
+      } else {
+        discard = false;
+        calls.push('disable-discard');
+      }
     },
     finish: () => calls.push('finish'),
   };
@@ -71,7 +90,10 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     'drawArraysInstanced',
     'drawElementsInstanced',
   ]) {
-    gl[name] = () => calls.push(`draw:${name}:${discard}`);
+    gl[name] = () => {
+      calls.push(`draw:${name}:${discard}:${dither}`);
+      if (throwOnDraw && name === 'drawArrays') throw new Error('diagnostic draw exception');
+    };
   }
   class Canvas {
     getContext() {
@@ -82,7 +104,10 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     }
   }
   let now = 0;
-  const window = { requestAnimationFrame: (callback) => raf.push(callback) };
+  const window = {
+    requestAnimationFrame: (callback) => raf.push(callback),
+    __waferCadDitherProbeForceOff: forceDitherOff,
+  };
   runInNewContext(`(${installWebglFrameProbe.toString()})()`, {
     HTMLCanvasElement: Canvas,
     window,
@@ -97,6 +122,7 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     calls,
     probe,
     discard: () => discard,
+    dither: () => dither,
     frame(callback) {
       window.requestAnimationFrame(callback);
       raf.shift()(0);
@@ -112,7 +138,36 @@ test('inactive probe preserves native draws and does not add a finish barrier', 
     h.frame(() => h.gl.drawArrays(4, 0, 6)),
     null,
   );
-  assert.deepEqual(h.calls, ['draw:drawArrays:false']);
+  assert.deepEqual(h.calls, ['draw:drawArrays:false:true']);
+});
+
+
+test('diagnostic-only dither isolation wraps draws and restores GL state on error', () => {
+  const off = harness({ forceDitherOff: true });
+  off.frame(() => off.gl.drawArrays(4, 0, 6));
+  assert.deepEqual(off.calls, [
+    'disable-dither',
+    'draw:drawArrays:false:false',
+    'enable-dither',
+  ]);
+  assert.equal(off.dither(), true);
+  const sampled = harness({ forceDitherOff: true });
+  sampled.probe.arm({ captureFramebuffer: true });
+  const measured = sampled.frame(() => sampled.gl.drawArrays(4, 0, 6));
+  assert.equal(measured.forcedDitherDisabledDraws, 1);
+  assert.equal(sampled.dither(), true);
+  const normal = harness();
+  normal.frame(() => normal.gl.drawArrays(4, 0, 6));
+  assert.deepEqual(normal.calls, ['draw:drawArrays:false:true']);
+  assert.equal(normal.dither(), true);
+  const exceptional = harness({ forceDitherOff: true, throwOnDraw: true });
+  assert.throws(() => exceptional.gl.drawArrays(4, 0, 6), /diagnostic draw exception/);
+  assert.deepEqual(exceptional.calls, [
+    'disable-dither',
+    'draw:drawArrays:false:false',
+    'enable-dither',
+  ]);
+  assert.equal(exceptional.dither(), true);
 });
 
 test('census honors actual indexed/instanced submissions, including second passes and line calls', () => {
@@ -238,14 +293,14 @@ test('diagnostic discard restores GL state before later normal draws', () => {
   assert.deepEqual(h.calls, [
     'begin-query',
     'enable-discard',
-    'draw:drawArrays:true',
+    'draw:drawArrays:true:true',
     'end-query',
     'finish',
     'disable-discard',
     'delete-query',
   ]);
   h.frame(() => h.gl.drawArrays(4, 0, 6));
-  assert.equal(h.calls.at(-1), 'draw:drawArrays:false');
+  assert.equal(h.calls.at(-1), 'draw:drawArrays:false:true');
 });
 
 test('discard leaves an existing enabled rasterizer state intact', () => {

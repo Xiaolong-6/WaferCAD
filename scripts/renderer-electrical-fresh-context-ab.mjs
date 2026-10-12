@@ -23,10 +23,17 @@ import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/
 
 const reportOnly = process.argv.includes('--report-only');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
+const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
+assert.ok(
+  !diagnosticNoDither || (hardwareRtx3060 && reportOnly),
+  '--diagnose-no-dither requires --hardware-rtx3060 --report-only; never treat isolation as acceptance',
+);
 const output = new URL(
   hardwareRtx3060
-    ? '../test-results/renderer-hardware-fresh-context-ab/'
+    ? diagnosticNoDither
+      ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
+      : '../test-results/renderer-hardware-fresh-context-ab/'
     : '../test-results/product-review/electrical-fresh-context/',
   import.meta.url,
 );
@@ -44,6 +51,8 @@ const report = {
   hardwareRtx3060,
   headed: hardwareRtx3060 ? true : !launchOptions.headless,
   reportOnly,
+  diagnosticNoDither,
+  acceptanceEligible: !diagnosticNoDither,
   strictPixelTolerance: 0,
   trials: [],
   comparisons: [],
@@ -71,6 +80,11 @@ async function trial(enabled, index) {
     deviceScaleFactor: 1,
   });
   await context.addInitScript(installWebglFrameProbe);
+  if (diagnosticNoDither) {
+    await context.addInitScript(() => {
+      window.__waferCadDitherProbeForceOff = true;
+    });
+  }
   const page = await context.newPage();
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
@@ -242,6 +256,7 @@ async function trial(enabled, index) {
         native: {
           calls: frame.drawCalls,
           triangles: frame.triangles,
+          forcedDitherDisabledDraws: frame.forcedDitherDisabledDraws,
           glError: frame.glError,
           renderer: frame.unmaskedRenderer || frame.renderer,
           vendor: frame.vendor,
@@ -270,6 +285,12 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
+    if (diagnosticNoDither) {
+      assert.ok(
+        native.forcedDitherDisabledDraws > 0,
+        `${label}: diagnostic never disabled GL_DITHER during its captured frame`,
+      );
+    }
     native.drawInputs = native.drawInputs.map(({ shaders, buffers, ...draw }) => ({
       ...draw,
       shaderHashes: shaders.map(({ type, source }) => ({
@@ -469,7 +490,9 @@ try {
       c.layoutIdentical,
   );
   report.stage = 'completed';
-  report.passed = report.strictParity;
+  // Strict comparisons are still computed for scientific diagnostics, but
+  // an intentionally altered raster state can NEVER approve the product.
+  report.passed = report.strictParity && !diagnosticNoDither;
 } catch (error) {
   report.passed = false;
   report.error = String(error);
