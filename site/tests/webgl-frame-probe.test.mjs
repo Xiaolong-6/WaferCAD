@@ -9,6 +9,7 @@ function harness({
   busy = false,
   priorDiscard = false,
   forceDitherOff = false,
+  forceMsaaOff = false,
   throwOnDraw = false,
 } = {}) {
   const host = {
@@ -25,10 +26,12 @@ function harness({
   const extension = { TIME_ELAPSED_EXT: 10, GPU_DISJOINT_EXT: 11 };
   let discard = priorDiscard;
   let dither = true;
+  let contextOptions = null;
   const gl = {
     TRIANGLES: 4,
     RASTERIZER_DISCARD: 5,
     DITHER: 18,
+    SAMPLES: 19,
     CURRENT_QUERY: 6,
     QUERY_RESULT_AVAILABLE: 7,
     QUERY_RESULT: 8,
@@ -54,7 +57,9 @@ function harness({
     },
     getExtension: (name) =>
       name === 'EXT_disjoint_timer_query_webgl2' && timer ? extension : null,
-    getParameter: (key) => (key === extension.GPU_DISJOINT_EXT ? disjoint : 'mock'),
+    getParameter: (key) =>
+      key === 19 ? (forceMsaaOff ? 0 : 4) : key === extension.GPU_DISJOINT_EXT ? disjoint : 'mock',
+    getContextAttributes: () => ({ antialias: contextOptions?.antialias ?? true }),
     getQuery: () => busy,
     getQueryParameter: (query, key) => (key === 7 ? true : 123000000),
     createQuery: () => ({}),
@@ -96,7 +101,8 @@ function harness({
     };
   }
   class Canvas {
-    getContext() {
+    getContext(_type, options) {
+      contextOptions = options || {};
       return gl;
     }
     closest() {
@@ -107,6 +113,7 @@ function harness({
   const window = {
     requestAnimationFrame: (callback) => raf.push(callback),
     __waferCadDitherProbeForceOff: forceDitherOff,
+    __waferCadMsaaProbeForceOff: forceMsaaOff,
   };
   runInNewContext(`(${installWebglFrameProbe.toString()})()`, {
     HTMLCanvasElement: Canvas,
@@ -114,7 +121,7 @@ function harness({
     performance: { now: () => ++now },
     setTimeout: (callback) => timers.push(callback),
   });
-  new Canvas().getContext('webgl2');
+  new Canvas().getContext('webgl2', { antialias: true, alpha: true });
   const probe = window.__waferCadWebglProbe;
   return {
     gl,
@@ -123,6 +130,7 @@ function harness({
     probe,
     discard: () => discard,
     dither: () => dither,
+    contextOptions: () => contextOptions,
     frame(callback) {
       window.requestAnimationFrame(callback);
       raf.shift()(0);
@@ -141,6 +149,25 @@ test('inactive probe preserves native draws and does not add a finish barrier', 
   assert.deepEqual(h.calls, ['draw:drawArrays:false:true']);
 });
 
+
+test('MSAA isolation changes only WebGL context creation and reports actual samples', () => {
+  const noMsaa = harness({ forceMsaaOff: true });
+  assert.equal(noMsaa.contextOptions().antialias, false);
+  assert.equal(noMsaa.contextOptions().alpha, true);
+  noMsaa.probe.arm({ captureGlState: true, captureFramebuffer: true });
+  const measured = noMsaa.frame(() => noMsaa.gl.drawArrays(4, 0, 6));
+  assert.equal(measured.contextAntialias, false);
+  assert.equal(measured.defaultFramebufferSamples, 0);
+  assert.equal(measured.forcedDitherDisabledDraws, 0);
+  assert.equal(noMsaa.dither(), true);
+
+  const standard = harness();
+  assert.equal(standard.contextOptions().antialias, true);
+  standard.probe.arm({ captureFramebuffer: true });
+  const defaultFrame = standard.frame(() => standard.gl.drawArrays(4, 0, 6));
+  assert.equal(defaultFrame.contextAntialias, true);
+  assert.equal(defaultFrame.defaultFramebufferSamples, 4);
+});
 
 test('diagnostic-only dither isolation wraps draws and restores GL state on error', () => {
   const off = harness({ forceDitherOff: true });

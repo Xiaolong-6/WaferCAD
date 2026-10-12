@@ -24,16 +24,23 @@ import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/
 const reportOnly = process.argv.includes('--report-only');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
+const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
 assert.ok(
   !diagnosticNoDither || (hardwareRtx3060 && reportOnly),
   '--diagnose-no-dither requires --hardware-rtx3060 --report-only; never treat isolation as acceptance',
 );
+assert.ok(
+  !diagnosticNoMsaa || (hardwareRtx3060 && reportOnly && !diagnosticNoDither),
+  '--diagnose-no-msaa requires --hardware-rtx3060 --report-only; isolation flags cannot be combined',
+);
 const output = new URL(
   hardwareRtx3060
     ? diagnosticNoDither
       ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
-      : '../test-results/renderer-hardware-fresh-context-ab/'
+      : diagnosticNoMsaa
+        ? '../test-results/renderer-hardware-fresh-context-ab-no-msaa/'
+        : '../test-results/renderer-hardware-fresh-context-ab/'
     : '../test-results/product-review/electrical-fresh-context/',
   import.meta.url,
 );
@@ -52,7 +59,8 @@ const report = {
   headed: hardwareRtx3060 ? true : !launchOptions.headless,
   reportOnly,
   diagnosticNoDither,
-  acceptanceEligible: !diagnosticNoDither,
+  diagnosticNoMsaa,
+  acceptanceEligible: !diagnosticNoDither && !diagnosticNoMsaa,
   strictPixelTolerance: 0,
   trials: [],
   comparisons: [],
@@ -80,6 +88,11 @@ async function trial(enabled, index) {
     deviceScaleFactor: 1,
   });
   await context.addInitScript(installWebglFrameProbe);
+  if (diagnosticNoMsaa) {
+    await context.addInitScript(() => {
+      window.__waferCadMsaaProbeForceOff = true;
+    });
+  }
   if (diagnosticNoDither) {
     await context.addInitScript(() => {
       window.__waferCadDitherProbeForceOff = true;
@@ -257,6 +270,8 @@ async function trial(enabled, index) {
           calls: frame.drawCalls,
           triangles: frame.triangles,
           forcedDitherDisabledDraws: frame.forcedDitherDisabledDraws,
+          contextAntialias: frame.contextAntialias,
+          defaultFramebufferSamples: frame.defaultFramebufferSamples,
           glError: frame.glError,
           renderer: frame.unmaskedRenderer || frame.renderer,
           vendor: frame.vendor,
@@ -285,6 +300,23 @@ async function trial(enabled, index) {
       };
     });
     const native = evidence.native;
+    if (diagnosticNoMsaa) {
+      assert.equal(
+        native.contextAntialias,
+        false,
+        `${label}: requested no-MSAA WebGL context still reports antialiasing`,
+      );
+      assert.equal(
+        native.defaultFramebufferSamples,
+        0,
+        `${label}: unexpected multisampled default framebuffer`,
+      );
+      assert.equal(
+        native.glState?.framebuffer,
+        'default',
+        `${label}: multisampling census did not capture the default framebuffer`,
+      );
+    }
     if (diagnosticNoDither) {
       assert.ok(
         native.forcedDitherDisabledDraws > 0,
@@ -492,7 +524,7 @@ try {
   report.stage = 'completed';
   // Strict comparisons are still computed for scientific diagnostics, but
   // an intentionally altered raster state can NEVER approve the product.
-  report.passed = report.strictParity && !diagnosticNoDither;
+  report.passed = report.strictParity && !diagnosticNoDither && !diagnosticNoMsaa;
 } catch (error) {
   report.passed = false;
   report.error = String(error);
