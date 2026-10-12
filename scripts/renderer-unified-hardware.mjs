@@ -13,6 +13,7 @@ import { writeRendererHardwareZip } from './test-helpers/renderer-hardware-zip.m
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
+  buildRendererV3DitherDiagnosticPlan,
   classifyRendererHardwareStep,
 } from './test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -20,8 +21,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const options = process.argv.slice(2);
 const planOnly = options.includes('--plan-only');
 const modesArg = options.find((arg) => arg.startsWith('--modes='));
+const ditherDiagnostic = options.includes('--diagnose-v3-dither');
+if (ditherDiagnostic && modesArg) {
+  throw new Error('--diagnose-v3-dither cannot be combined with V4 --modes');
+}
 const modes = modesArg ? modesArg.slice('--modes='.length).split(',') : undefined;
-const plan = buildRendererHardwarePlan(modes);
+const plan = ditherDiagnostic
+  ? buildRendererV3DitherDiagnosticPlan()
+  : buildRendererHardwarePlan(modes);
 if (planOnly) {
   console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, plan }, null, 2));
 } else {
@@ -175,7 +182,7 @@ async function runHardware() {
         evidenceFolder: artifactsCopied ? step.id : null,
         logFile: step.id + '.log',
         strictPixelParity:
-          step.id === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
+          step.branch === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
         candidateActivation: report?.trials
           ?.filter((trial) => trial.policy === 'B')
           .map((trial) => trial.candidateActivation),
@@ -196,9 +203,15 @@ async function runHardware() {
       completed,
       fatalError,
       passed:
+        !ditherDiagnostic &&
         !fatalError &&
         completed.length === plan.length &&
         completed.every((step) => step.status === 'passed'),
+      diagnosticComplete:
+        ditherDiagnostic &&
+        !fatalError &&
+        completed.length === plan.length &&
+        completed.every((step) => step.status === 'diagnostic-complete'),
     };
     await writeFile(join(evidence, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
     for (const key of ['v3', 'v4']) {
@@ -218,6 +231,6 @@ async function runHardware() {
       console.log('Renderer evidence directory is preserved: ' + evidence);
       process.exitCode = 1;
     }
-    if (!summary.passed) process.exitCode = 1;
+    if (!summary.passed && !summary.diagnosticComplete) process.exitCode = 1;
   }
 }

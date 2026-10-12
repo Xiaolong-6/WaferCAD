@@ -71,3 +71,34 @@ with attempted paths, preserves partial artifacts and produces ZIP without
 PowerShell. Linux CI exercises the HTTP service/ZIP unit tests; the focused
 workflow also runs an independent Windows Chromium navigation job. **Do not
 ask for the next RTX 3060 collection until that Windows preflight is green.**
+
+## Targeted raster-isolation diagnostic (separate from acceptance)
+
+The October 12 RTX 3060 ZIP identified **54 OFF/OFF and 78 ON/ON**
+fresh-context changed pixels in V3; the first differing *sampled* GL
+checkpoint was in a material-exterior draw interval. Pixel changes were
+small (mostly single-channel ±1) and located in nonuniform shading areas.
+The recorded WebGL state had `GL_DITHER` enabled; this motivates a single
+controlled **hypothesis test**, without claiming dithering caused the drift.
+
+On the **latest V4 branch**, the following one-command experiment runs only
+V3 on two fresh contexts per electrical policy with GL dithering disabled
+during each WebGL draw; the original GL state is restored after every draw:
+
+```powershell
+node scripts/renderer-unified-hardware.mjs --hardware-rtx3060 --diagnose-v3-dither
+```
+
+It uses the updated V3 exact SHA, separately writes
+`renderer-hardware-fresh-context-ab-no-dither` evidence, and records a
+per-frame count proving GL_DITHER was actually disabled. This produces
+`diagnosticComplete` **never** `passed` regardless of raw pixel parity.
+The renderer's production/default output, strict zero-pixel acceptance gate
+and approved visual baselines remain untouched.
+
+Compare with the archived standard-dither hardware evidence before drawing
+conclusions; if both fresh-context pairs become identical, this is evidence
+for dithering sensitivity, subject to independent replay. If either still
+drifts, the next isolated variable is multisample antialiasing or shader
+precision. Do not turn this flag into a production rendering default without
+a separate visual and scientific review.

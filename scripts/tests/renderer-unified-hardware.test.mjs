@@ -7,6 +7,7 @@ import { preserveRendererHardwareEvidence } from '../test-helpers/renderer-hardw
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
+  buildRendererV3DitherDiagnosticPlan,
   classifyRendererHardwareStep,
 } from '../test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -29,6 +30,47 @@ test('one hardware plan retains exact V3 and three independent V4 candidate arti
   assert.throws(() => buildRendererHardwarePlan([]), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['index', 'index']), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['unknown']), /Select unique/);
+});
+
+test('DITHER-off diagnostic is one V3-only experiment, never product acceptance', () => {
+  const [only] = buildRendererV3DitherDiagnosticPlan();
+  assert.equal(buildRendererV3DitherDiagnosticPlan().length, 1);
+  assert.equal(only.id, 'v3-dither-off');
+  assert.equal(only.branch, 'v3');
+  assert.deepEqual(only.args, ['--hardware-rtx3060', '--report-only', '--diagnose-no-dither']);
+  assert.notEqual(only.artifact, buildRendererHardwarePlan()[0].artifact);
+  const report = {
+    stage: 'completed',
+    passed: false,
+    strictParity: true,
+    diagnosticNoDither: true,
+    acceptanceEligible: false,
+    trials: Array.from({ length: 4 }, () => ({
+      native: { forcedDitherDisabledDraws: 1408 },
+    })),
+  };
+  assert.equal(
+    classifyRendererHardwareStep({ ...only, exitCode: 0 }, report),
+    'diagnostic-complete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...only, exitCode: 0 }, { ...report, acceptanceEligible: true }),
+    'error',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...only, exitCode: 0 }, {
+      ...report,
+      trials: [{ native: { forcedDitherDisabledDraws: 0 } }],
+    }),
+    'incomplete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...only, exitCode: 0 }, {
+      ...report,
+      trials: [{ native: { forcedDitherDisabledDraws: 0 } }, ...report.trials.slice(1)],
+    }),
+    'error',
+  );
 });
 
 const step = (id, exitCode = 0) => ({ id, exitCode });
