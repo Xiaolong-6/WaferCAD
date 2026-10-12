@@ -50,7 +50,7 @@ Available commands:
 
 - `npm run lint` — ESLint over the active JavaScript only; vendored code is excluded.
 - `npm run format` — Prettier rewrite for the active application and current documentation.
-- `npm run format:check` — local formatting verification for the active application and current docs; the fast CI gate intentionally omits Prettier.
+- `npm run format:check` — local formatting verification for the active application and current docs; the PR and release Quality gates enforce Prettier; `check:ci` remains available to focused legacy/specialized jobs.
 - `npm test` — vector/GDS/project-schema smoke tests plus focused regression tests for XY units, GDS error handling, project files, snapshots, surface morphology, Implant clipping, palette behavior, and material boundaries.
 
 The project-IO/schema path is intentionally separated from `app.js`: project files are fully validated before editor state is replaced, and the quantized storage representation is expanded and validated again before export. Interactive project/layout parsing, .wafercad packing/serialization, Mask GDS/OAS serialization, and process-result geometry validation run in workers so large file transforms do not monopolize the UI thread. Process candidates must be validated before Variant/model/History commit; rejected geometry leaves the live workspace unchanged. Polygon booleans and strict model validation share one lazy robust kernel with a single 0.1 nm canonical retry, matching the compact storage grid rather than introducing a looser fallback or quantizing all canonical lengths. Keep worker handoff transactional: Abort/error/rejection must not replace live state or leave the shared task controller busy.
@@ -75,7 +75,7 @@ The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md)
 
 ## Deployment
 
-`.github/workflows/pages.yml` deploys `site/` to GitHub Pages when `main` changes. Full Quality/browser regression belongs to pull-request CI; superseded PR runs are cancelled. Pages performs only a lightweight release sanity check plus asset stamping/deployment, avoiding a second full browser regression after an already-validated merge. KLayout compatibility is path-scoped to layout parser/export changes and remains manually runnable for broader corpus checks.
+`.github/workflows/pages.yml` deploys `site/` from `main` only after the **same revision** passes Release Quality (including formatting), targeted Browser regression and the real UI v2 Stage C/M4 integration checks. Release jobs reuse the existing Browser/UI workflow owners, which no longer trigger independent duplicate `main` push runs. Weekly/manual full browser checks remain separate; KLayout compatibility stays path-scoped and manually runnable for broader corpus checks.
 
 There is no application build step.
 

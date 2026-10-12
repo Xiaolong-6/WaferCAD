@@ -1,6 +1,13 @@
 name: Browser regression
 
 on:
+  workflow_call:
+    inputs:
+      skip_node_gate:
+        description: The release workflow owns the Node gate for this revision
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches:
       - main
@@ -32,23 +39,12 @@ on:
       - "scripts/process-benchmarks.mjs"
       - "scripts/ci-test-plan.mjs"
       - ".github/workflows/browser-regression.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - "site/**"
-      - "!site/tests/**"
-      - "examples/**"
-      - "scripts/**"
-      - ".github/workflows/browser-regression.yml"
   schedule:
     - cron: "17 2 * * 1"
   workflow_dispatch:
 
 concurrency:
-  group: browser-regression-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  group: browser-regression-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -129,7 +125,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Run Node test gate outside PRs
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && !inputs.skip_node_gate }}
         run: npm test
 
       - name: Install Chromium

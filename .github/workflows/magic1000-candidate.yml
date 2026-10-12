@@ -27,6 +27,7 @@ permissions:
 
 jobs:
   kernel-reconstruction:
+    if: ${{ github.ref_name == 'feat/magic-1000-mos2-beol-reconstruction' }}
     name: Kernel, browser Run All, preview and mask roundtrip
     runs-on: ubuntu-latest
     timeout-minutes: 70
