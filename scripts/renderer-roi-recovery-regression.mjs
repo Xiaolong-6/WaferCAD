@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Scientific regression for bounded full-wafer ROI rejection and recovery.
 // The ROI's point-budget guard must not leave an unhandled async rejection,
 // destroy the previous valid scene, or strand #threeHost in "building".
@@ -17,6 +18,7 @@ import {
 
 const output = new URL('../test-results/product-review/renderer-roi-recovery/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
 const page = await context.newPage();
@@ -40,7 +42,7 @@ const waitNewReadyFrame = async (previous, timeout = 120000) => {
 
 try {
   report.stage = 'load-fixture';
-  await page.goto(baseUrl + '/app.html?rendererV3RoiTrace=1');
+  await page.goto(rendererWorkstationUrl + '?rendererV3RoiTrace=1');
   await waitForAppReady(page);
   await page.locator('#openProjectInput').setInputFiles(
     fileURLToPath(

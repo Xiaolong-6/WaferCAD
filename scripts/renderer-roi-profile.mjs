@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Manual-only CPU profile for the default 625-site Quality ROI build.
 // Isolates fresh ROI from the original post-transition reproduction; does not
 // enable any renderer optimization, alter the canonical model or relax gates.
@@ -30,6 +31,7 @@ await mkdir(out, { recursive: true });
 const fixture = fileURLToPath(
   new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
 );
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({ ...launchOptions, headless: false });
 const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
 const page = await context.newPage();
@@ -97,7 +99,7 @@ let session = null;
 let profiling = false;
 try {
   result.stage = 'load-project';
-  await page.goto(`${baseUrl}/app.html?rendererV3RoiTrace=1`);
+  await page.goto(`${rendererWorkstationUrl}?rendererV3RoiTrace=1`);
   await waitForAppReady(page);
   await page.locator('#openProjectInput').setInputFiles(fixture);
   await chooseConfirmation(page);
