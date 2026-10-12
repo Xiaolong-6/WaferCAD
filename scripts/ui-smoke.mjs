@@ -53,7 +53,16 @@ try {
   );
 
   // The smoke gate requires the real 3D renderer to reach a stable frame.
-  await waitForThreeReady(page);
+  try {
+    await waitForThreeReady(page);
+  } catch (error) {
+    const state = await page.locator('#threeHost').evaluate((host) => ({
+      dataset: { ...host.dataset },
+      canvasCount: host.querySelectorAll('canvas').length,
+    }));
+    console.error('TEMP_RENDERER_LIFECYCLE_DIAGNOSTIC', JSON.stringify({ state, errors }));
+    throw error;
+  }
   assert.equal(await page.locator('#threeHost').getAttribute('data-render-error'), null);
 
   // Contract 3: Core tool navigation is bound and Project remains the default tool.
