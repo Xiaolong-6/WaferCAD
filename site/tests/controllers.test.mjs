@@ -219,12 +219,12 @@ test('workspace session blocks unsafe writes until explicit takeover', () => {
       values.delete(key);
     },
   };
-  let renew = null;
+  let renewFirst = null;
   const windowRef = {
     sessionStorage: null,
     crypto: { randomUUID: () => 'private-tab' },
     setInterval: (fn) => {
-      renew = fn;
+      renewFirst = fn;
       return 1;
     },
     clearInterval: () => {},
@@ -238,7 +238,13 @@ test('workspace session blocks unsafe writes until explicit takeover', () => {
     tabId: 'first',
     onStateChange: (state) => states.push(state),
   });
-  const second = createWorkspaceSessionController({ storage, windowRef, tabId: 'second' });
+  // The tabs must have independent timer registries: the second tab must not
+  // replace the first tab's renewal callback in this shared-storage test.
+  const second = createWorkspaceSessionController({
+    storage,
+    windowRef: { ...windowRef, setInterval: () => 2 },
+    tabId: 'second',
+  });
 
   assert.equal(first.start(), false);
   assert.equal(second.start(), false);
@@ -249,7 +255,7 @@ test('workspace session blocks unsafe writes until explicit takeover', () => {
   assert.equal(states.at(-1).storageUnavailable, true);
 
   blocked = false;
-  renew?.();
+  renewFirst?.();
   assert.equal(states.at(-1).storageUnavailable, false);
   assert.equal(first.canWrite(), false, 'storage restoration never silently takes ownership');
   assert.equal(first.takeOver(), true);
@@ -260,7 +266,7 @@ test('workspace session blocks unsafe writes until explicit takeover', () => {
   // becomes unreadable, including while IndexedDB might remain available.
   blocked = true;
   assert.equal(first.hasWriteLease(), false);
-  renew?.();
+  renewFirst?.();
   assert.equal(first.canWrite(), false);
   assert.equal(states.at(-1).storageUnavailable, true);
   blocked = false;
