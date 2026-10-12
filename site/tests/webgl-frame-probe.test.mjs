@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { installWebglFrameProbe } from '../../scripts/test-helpers/webgl-frame-probe.mjs';
+import { validRendererRasterState } from '../../scripts/test-helpers/renderer-v3-raster-state.mjs';
 
 function harness({
   timer = false,
@@ -383,4 +384,56 @@ test('reference axes are attributed separately, without concealing unknown mater
       ['reference-axes', 0],
     ],
   );
+});
+
+test('opt-in raster census records comparable WebGL2 state at bounded draw milestones', () => {
+  const h = harness();
+  const values = {
+    VIEWPORT: [0, 0, 531, 275],
+    SCISSOR_BOX: [0, 0, 531, 275],
+    BLEND_COLOR: [0, 0, 0, 0],
+    COLOR_WRITEMASK: [true, true, true, true],
+    DEPTH_RANGE: [0, 1],
+  };
+  const booleanValues = new Set(['DEPTH_WRITEMASK', 'SAMPLE_COVERAGE_INVERT']);
+  const enumerations = [
+    'VIEWPORT', 'SCISSOR_BOX', 'BLEND_SRC_RGB', 'BLEND_DST_RGB',
+    'BLEND_SRC_ALPHA', 'BLEND_DST_ALPHA', 'BLEND_EQUATION_RGB',
+    'BLEND_EQUATION_ALPHA', 'BLEND_COLOR', 'COLOR_WRITEMASK',
+    'DEPTH_WRITEMASK', 'DEPTH_FUNC', 'DEPTH_RANGE', 'CULL_FACE_MODE',
+    'FRONT_FACE', 'POLYGON_OFFSET_FACTOR', 'POLYGON_OFFSET_UNITS',
+    'SAMPLE_COVERAGE_VALUE', 'SAMPLE_COVERAGE_INVERT',
+  ];
+  const readings = new Map();
+  enumerations.forEach((name, index) => {
+    h.gl[name] = index + 70;
+    readings.set(
+      index + 70,
+      Object.hasOwn(values, name)
+        ? (name === 'COLOR_WRITEMASK'
+          ? values[name]
+          : new Float32Array(values[name]))
+        : booleanValues.has(name)
+          ? true
+          : 1,
+    );
+  });
+  const originalGet = h.gl.getParameter;
+  h.gl.getParameter = (key) => readings.has(key) ? readings.get(key) : originalGet(key);
+  h.probe.arm({
+    capturePhases: true,
+    captureRasterState: true,
+    capturePhaseDraws: [1],
+  });
+  const frame = h.frame(() => h.gl.drawArrays(h.gl.TRIANGLES, 0, 6));
+  assert.deepEqual(frame.phases.map((phase) => phase.afterDraw), [1, 1]);
+  assert.ok(frame.phases.every((phase) => validRendererRasterState(phase.rasterState)));
+  assert.deepEqual(Array.from(frame.phases[0].rasterState.viewport), [0, 0, 531, 275]);
+  assert.equal(frame.phases[0].rasterState.samples, 4);
+  assert.equal(frame.phases[0].rasterState.depthMask, true);
+  assert.equal(frame.phases[0].rasterState.dither, true);
+  const unused = harness();
+  unused.probe.arm({ capturePhases: true, capturePhaseDraws: [1] });
+  const normal = unused.frame(() => unused.gl.drawArrays(unused.gl.TRIANGLES, 0, 6));
+  assert.equal(normal.phases[0].rasterState, undefined, 'ordinary probe does no raster census');
 });

@@ -116,6 +116,7 @@ export function classifyRendererHardwareStep(step, report) {
             milestones: expected,
             drawCalls: trial.native?.calls,
             framebuffer: trial.native?.framebuffer,
+            requireRasterState: true,
           }).valid,
       )
     )
@@ -195,6 +196,7 @@ export function classifyRendererHardwareStep(step, report) {
             milestones: rendererPhaseMilestones(null),
             drawCalls: trial.native?.calls,
             framebuffer: trial.native?.framebuffer,
+            requireRasterState: true,
           }).valid,
       )
     )

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { preserveRendererHardwareEvidence } from '../test-helpers/renderer-hardware-evidence.mjs';
 import { rendererPhaseMilestones } from '../test-helpers/renderer-v3-phase-window.mjs';
+import { RENDERER_RASTER_STATE_FIELDS } from '../test-helpers/renderer-v3-raster-state.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
@@ -148,6 +149,30 @@ test('no-MSAA mode requires verified zero sample framebuffer and never approves 
 });
 
 const step = (id, exitCode = 0) => ({ id, exitCode });
+const rasterState = () => {
+  const arrays = {
+    viewport: [0, 0, 531, 275],
+    scissorBox: [0, 0, 531, 275],
+    blendColor: [0, 0, 0, 0],
+    colorMask: [true, true, true, true],
+    depthRange: [0, 1],
+  };
+  const booleans = new Set([
+    'scissorTest', 'blend', 'depthTest', 'depthMask', 'stencilTest',
+    'cullFace', 'dither', 'polygonOffsetFill', 'sampleAlphaToCoverage',
+    'sampleCoverage', 'sampleCoverageInvert',
+  ]);
+  return Object.fromEntries(
+    RENDERER_RASTER_STATE_FIELDS.map((field) => [
+      field,
+      Object.hasOwn(arrays, field)
+        ? [...arrays[field]]
+        : booleans.has(field)
+          ? false
+          : 1,
+    ]),
+  );
+};
 const completePhaseTrial = (milestones = rendererPhaseMilestones(null), calls = 1408) => {
   const checkpoints = [...milestones, calls].map((afterDraw) => ({
     afterDraw,
@@ -155,6 +180,7 @@ const completePhaseTrial = (milestones = rendererPhaseMilestones(null), calls = 
     hash: 'a'.repeat(64),
     width: 531,
     height: 275,
+    rasterState: rasterState(),
   }));
   return {
     native: { calls, framebuffer: { status: 'valid', width: 531, height: 275 } },
@@ -218,6 +244,9 @@ test('targeted phase-window evidence cannot approve V3 production raster parity'
   const wrong = structuredClone(report);
   wrong.trials[2].phaseCheckpoints[1].afterDraw = 400;
   assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, wrong), 'error');
+  const missingState = structuredClone(report);
+  delete missingState.trials[2].phaseCheckpoints[1].rasterState;
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, missingState), 'error');
 });
 
 test('strict acceptance never infers V3 success from report-only exit code', () => {
@@ -235,6 +264,9 @@ test('strict acceptance never infers V3 success from report-only exit code', () 
   const changedDimensions = structuredClone(complete);
   changedDimensions.trials[1].phaseCheckpoints[5].height++;
   assert.equal(classifyRendererHardwareStep(step('v3'), changedDimensions), 'error');
+  const noRaster = structuredClone(complete);
+  delete noRaster.trials[0].phaseCheckpoints[7].rasterState;
+  assert.equal(classifyRendererHardwareStep(step('v3'), noRaster), 'error');
   assert.equal(
     classifyRendererHardwareStep(step('v3'), { ...complete, passed: true, strictParity: true }),
     'passed',
