@@ -1322,7 +1322,8 @@ export function createThreeView({
 
   function startSceneVariantBuild(mode) {
     cacheActiveSceneVariant();
-    if (group) scene.remove(group);
+    // Keep the previous committed variant attached until the replacement is complete.
+    // The building group stays invisible, so no partial transparent scene is shown.
     group = new THREE.Group();
     group.visible = false;
     scene.add(group);
@@ -3365,7 +3366,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordRoiStage('topology-complete');
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
-      suppressAssemblyFrames = v3FinalFrameOnlyExperiment && cooperativeAssembly;
+      // Building a new opacity variant must not draw a half-assembled 3D scene.
+      // Leave the last committed canvas frame visible until the atomic swap.
+      suppressAssemblyFrames = variantBuild || (v3FinalFrameOnlyExperiment && cooperativeAssembly);
       assemblySkippedFrames = 0;
       host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
       host.dataset.rendererAssemblySkippedFrames = '0';
@@ -4151,6 +4154,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       physicalSurfacePlan = plan;
       activeSceneVariant = targetVariant;
       host.dataset.sceneVariant = targetVariant;
+      // The previous cached group stays resident for fast reverse switching,
+      // but must be detached before the new transparent scene becomes visible.
+      if (variantBuild) {
+        const previous = sceneVariantCache.get(previousVariant);
+        if (previous?.group && previous.group !== group) scene.remove(previous.group);
+      }
       group.visible = true;
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
@@ -4188,7 +4197,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       } catch (cleanupError) {
         console.warn('3D rebuild cleanup failed:', cleanupError);
       }
-      if (group) group.visible = false;
+      // An ordinary failed rebuild remains fail-closed. For a variant-only
+      // failure, restore the committed group, without claiming the new mode rendered.
+      if (group && !variantBuild) group.visible = false;
       const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
       console.warn('3D rebuild rejected:', failure.code, failure.detail);
     } finally {
