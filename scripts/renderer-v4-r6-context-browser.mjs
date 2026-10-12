@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R6: browser-driven WebGL context loss/restoration and post-recovery redraw.
 // This is software-WebGL functional evidence, not physical GPU VRAM or timing.
 import assert from 'node:assert/strict';
@@ -16,6 +17,7 @@ import {
 
 const output = new URL('../test-results/renderer-v4-r6-context/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const events = [];
 try {
@@ -24,7 +26,7 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(90000);
     const errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1');
+    await page.goto(rendererWorkstationUrl + '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1');
     await waitForAppReady(page);
     await page
       .locator('#openProjectInput')

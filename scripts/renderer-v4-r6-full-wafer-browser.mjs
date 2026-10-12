@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R6 Phase B — two real 625-site scene variants across WebGL context loss.
 // This is a software-WebGL functional/pixel/resource test, not physical GPU VRAM.
 import assert from 'node:assert/strict';
@@ -17,6 +18,7 @@ import {
 
 const output = new URL('../test-results/renderer-v4-r6-full-wafer/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const history = [];
 const comparisons = [];
@@ -248,8 +250,8 @@ try {
     // Collect asynchronous page errors by reference, not by snapshot.
     const observedErrors = observePageErrors(page);
     await page.goto(
-      baseUrl +
-        '/app.html?rendererV3RoiTrace=1&rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
+      rendererWorkstationUrl +
+        '?rendererV3RoiTrace=1&rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
     );
     await waitForAppReady(page);
     await page

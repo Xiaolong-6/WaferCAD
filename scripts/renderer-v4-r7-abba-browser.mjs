@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R7: strict fresh-context A-B-B-A renderer experiment.
 // CI smoke proves the harness and visual gate only. Hardware mode requires a
 // real Windows RTX 3060 and still cannot infer VRAM or pure GPU time from WebGL.
@@ -70,6 +71,7 @@ const report = {
   pureGpuFrameTimeMs: null,
   passed: false,
 };
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({
   ...launchOptions,
   headless: hardwareRtx3060 ? false : launchOptions.headless,
@@ -95,7 +97,7 @@ async function oneArm(policy, index) {
     const page = await context.newPage();
     page.setDefaultTimeout(timeout);
     const errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?' + flags.join('&'));
+    await page.goto(rendererWorkstationUrl + '?' + flags.join('&'));
     await waitForAppReady(page);
     await page.locator('#openProjectInput').setInputFiles(fixture);
     await chooseConfirmation(page);

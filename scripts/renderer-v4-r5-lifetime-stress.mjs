@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R5 bounded multi-cycle acceptance on a lightweight real WaferCAD project.
 // Measures *owned JS buffers/scene objects* and actual dispose invocations.
 // Chromium SwiftShader results must not be described as hardware-GPU VRAM.
@@ -22,6 +23,7 @@ const fixture = await readFile(
     new URL('../site/examples/previews/tio2-metalens-four-unit.wafercad', import.meta.url),
   ),
 );
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const states = [];
 
@@ -124,7 +126,7 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(120000);
     const errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1');
+    await page.goto(rendererWorkstationUrl + '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1');
     await waitForAppReady(page);
     await importFixture(page, 0);
     await closeFunctionPanel(page);
