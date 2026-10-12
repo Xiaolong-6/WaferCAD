@@ -1,5 +1,32 @@
 # M5-Lite default entry handoff — 2026-10-12
 
+## 上线交接摘要
+
+M5-Lite 原计划 Step 1–4 已完成。PR #177 已合并并正式上线；本轮没有剩余实施步骤。
+
+- 上线提交：`80e01d1a0571f357782bda3dffcadbe252f90086`。
+- 产品修复提交：`481ccb82`；最终验收 HEAD：`5e0b9f6851a434f144a58e397f5188ae81e7842f`。
+- 正式入口：<https://xiaolong-6.github.io/WaferCAD/app.html>。
+- 同源回退入口：<https://xiaolong-6.github.io/WaferCAD/app-legacy.html>；先使用 v2 页脚的 “Use legacy interface” 保存并切换。
+- 发布记录：[Pages run 38217432460](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38217432460)，结果 SUCCESS。
+- 合并记录：[PR #177](https://github.com/Xiaolong-6/WaferCAD/pull/177)。最终 HEAD 的 33 项有效 CI 检查全部通过；一个重复触发的 Stage C 任务因并发策略取消，不计为通过。
+- 公开预览及正式站点均验证了 Code 切走后隐藏且草稿保留、MASK 点击最大化、History 真实滚轮滚动。正式站点 History 列表高 541 px、内容高 2042 px、滚轮后 scrollTop 为 600 px；无页面错误。
+- 正式站点 `build-info.json` 已确认上线提交；Legacy 入口 HTTP 200。浏览器验证使用隔离存储及固定 Three 0.179.1，未触碰用户项目。
+
+### 下轮工作顺序
+
+| 优先级 | 交接任务                                           | 边界                                 |
+| ------ | -------------------------------------------------- | ------------------------------------ |
+| P1     | Recipe 复杂 Run All、失败/Abort 恢复及重放边界     | 保留当前事务、失败原子性和恢复门禁   |
+| P1     | Variants 编辑、Insert、Copy-on-write、复杂分支重放 | 保留实体 ID、完整 History 与项目格式 |
+| P2     | M2 全量视觉细节、四档宽度、真实触控设备收口        | 不替换批准基线以掩盖失败             |
+| P2     | RTX 3060、透明渲染、重型阵列与性能专项             | 本轮软件 WebGL 不等于硬件 GPU 验收   |
+| P3     | 旧 DOM/CSS 清理、收敛测试/预览双入口               | 保留 Legacy 回退及 Preview 协议      |
+
+下一位接手者先拉取 `origin/main` 并检查最新 HEAD、PR 和工作树。不要继续在已合并的
+`codex/ui-v2-main-wip` 上实施产品改动。若需回滚默认 UI，使用普通修复提交恢复 Legacy
+入口；不要清空 IndexedDB/localStorage 或删除 Recovery。
+
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
@@ -51,8 +78,8 @@ Tests use isolated browser storage. No user browser data was edited.
 
 These local results are distinct from final-head CI. Review-interactions now
 passes locally at all four widths plus touch, including Electrical controls,
-with the complete four-unit fixture saved before reload checks. Its final-head
-CI result remains pending.
+with the complete four-unit fixture saved before reload checks. Final-head CI
+also passed, including review-interactions.
 No approved visual baseline or scientific assertion was relaxed.
 
 ## Public-preview corrections
@@ -77,12 +104,12 @@ Playwright 1.55.1, Chromium 140 and Three 0.179.1 with SwiftShader.
 
 ## PR and release status
 
-Product commits are pushed incrementally on the existing branch. PR #177 is
-Ready for review with an updated title and implementation/validation summary.
-The prior head `8f57d6d9` passed all 33 effective CI checks. The public-preview
-correction head must pass CI before merge. The user explicitly authorized merge
-and formal publication on 2026-10-12; merge and Pages verification are pending
-these corrections. No production deployment has yet been performed.
+PR #177 was merged after final head `5e0b9f68` passed all 33 effective CI
+checks. The user explicitly authorized merge and formal publication on
+2026-10-12. Merge commit `80e01d1a0571f357782bda3dffcadbe252f90086` was deployed
+successfully by automatic Pages run `38217432460`. Production build metadata
+and the actual three reported interactions were checked after deployment.
+The documentation-only handoff commit does not change the deployed site.
 
 ## Rollback and follow-up
 
