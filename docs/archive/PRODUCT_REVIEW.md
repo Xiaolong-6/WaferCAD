@@ -4,7 +4,7 @@
 
 ## Review scope
 
-The 2026-10-05 integrated Windows run passed all browser groups, with 109 layout and 14 renderer captures. Five 2D/UI references were accepted and committed separately from generated galleries. See [validation](../VALIDATION_2026-10-05.md) for the exact tested revision and limitations; the dated September review below remains historical evidence.
+The 2026-10-05 integrated Windows run passed all browser groups, with 109 layout and 14 renderer captures. Five 2D/UI references were accepted and committed separately from generated galleries. See [validation](VALIDATION_2026-10-05.md) for the exact tested revision and limitations; the dated September review below remains historical evidence.
 
 The product regression covers Main, Mask, 3D, Section, all five tool tabs, KLayout transform/hierarchy GDS and compressed OASIS imports, snapshots, and process benchmark projects.
 
