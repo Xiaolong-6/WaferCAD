@@ -81,7 +81,7 @@ Source pages in `docs/wiki/` are checked on every `main` push and synchronized t
 
 ## Operations
 
-Manual operations target **Front** or **Back**. The restricted **Recipe Code** interface also supports `face: 'both'` for compatible operations: the Kernel applies **Front → Back** atomically as one logical Step. One Both-face Deposit creates **two distinct material Layer IDs** (Front and Back), even when they share the same material name. Both Lift-off and Both Planarize/CMP are unsupported. The current Manual Surface selector offers only Front/Back; Both is not a separate inspection face. See the [Both-face Kernel contract](docs/PROCESS_BOTH_FACE_2026-10-11.md).
+The current v2 **Process → Manual → Surface** selector offers **Front / Back / Both**. Compatible Both operations execute **Front → Back** atomically as one logical History Step. One Both-face Deposit creates **two distinct, paired Layer IDs** (Front and Back), even for the same material name; paired Extend or selective Etch requires an eligible material on both faces. **Both Lift-off and absolute-Z Planarize/CMP are unsupported**, and choosing Both does not change the Front/Back inspection face. Recipe Code also supports `face: 'both'`; the Legacy UI retains its previous selector. See the [Both-face Kernel contract](docs/PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual Both acceptance](docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 
 Process operations use one of three areas:
 
