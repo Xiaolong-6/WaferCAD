@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import {
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   closeFunctionPanel,
   waitForAppReady,
   waitForPaint,

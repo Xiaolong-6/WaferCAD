@@ -7,7 +7,7 @@ import {
   openFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
 } from './test-helpers/ui.mjs';
 
 const welcomeLayoutBuffer = await readFile(
@@ -40,7 +40,7 @@ const context = await newUiContext(browser, {
 const page = await context.newPage();
 const errors = observePageErrors(page);
 
-await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
-import { gotoWelcome, launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
+import {
+  gotoWelcome,
+  launchBrowser,
+  newLegacyUiPage as newUiPage,
+  observePageErrors,
+} from './test-helpers/ui.mjs';
 import { checkSectionSeams, exportCurrentProject } from './test-helpers/product-scientific.mjs';
 import {
   assertAnnotationKeepsMaterialTopology,
@@ -408,7 +413,7 @@ await page.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: sahliProjectBuffer,
 });
-await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await page.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await page.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===

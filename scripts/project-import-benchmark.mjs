@@ -88,7 +88,7 @@ try {
         }
       };
     });
-    await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4174') + '/app.html', {
+    await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4174') + '/app-legacy.html', {
       waitUntil: 'domcontentloaded',
     });
     await waitForAppReady(page);

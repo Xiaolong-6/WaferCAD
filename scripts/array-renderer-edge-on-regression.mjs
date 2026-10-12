@@ -6,7 +6,7 @@ import {
   chooseConfirmation,
   closeFunctionPanel,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   waitForAppReady,
   waitForThreeReady,
@@ -25,7 +25,7 @@ try {
   const snapshot = () => page.locator('#threeHost').evaluate((element) => ({ ...element.dataset }));
   const frameSerial = async () => Number((await snapshot()).rendererFrameSerial || 0);
 
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app-legacy.html');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')

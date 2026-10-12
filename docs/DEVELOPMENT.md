@@ -4,6 +4,11 @@
 
 The active product is entirely under `site/`.
 
+`app.html` opens the v2 Workstation. `app-legacy.html` retains the previous
+workspace and the embedded Welcome preview protocol. Both use the same
+workspace storage and writer lease; v2's interface switch saves pending
+structural and view state before navigating to Legacy.
+
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
 ## Local run

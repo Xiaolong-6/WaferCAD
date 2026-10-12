@@ -5,7 +5,7 @@ import {
   waitForAppReady,
   observePageErrors,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
 } from './test-helpers/ui.mjs';
 import { openFunctionPanel } from './test-helpers/product.mjs';
 
@@ -25,7 +25,9 @@ try {
   await card.locator('img').evaluate((img) => img.decode());
   assert.equal(await card.locator('img').evaluate((img) => img.naturalWidth), 640);
   await card.locator('.welcome-example-title-link').click();
-  await page.waitForURL('**/app.html?start=example&example=m3d-selfpowered-heterogeneous-ic');
+  await page.waitForURL(
+    '**/app-legacy.html?start=example&example=m3d-selfpowered-heterogeneous-ic',
+  );
   await waitForAppReady(page);
   await openFunctionPanel(page, 'snapshots', { timeout: 120000 });
   await page.locator('.history-step-wrap').first().waitFor({ timeout: 180000 });

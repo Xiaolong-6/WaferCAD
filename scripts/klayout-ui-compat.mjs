@@ -81,7 +81,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 
-await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });

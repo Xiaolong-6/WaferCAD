@@ -3,6 +3,7 @@ const globals = {
   Blob: 'readonly',
   DataView: 'readonly',
   Error: 'readonly',
+  File: 'readonly',
   Infinity: 'readonly',
   JSON: 'readonly',
   Map: 'readonly',

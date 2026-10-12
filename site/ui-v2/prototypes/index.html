@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>M1.5 第一轮 · 静态原型入口</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="./layout.css" />
+  </head>
+  <body class="index">
+    <h1>M1.5：已选 A 方案，Recipe 在 Process 内</h1>
+    <p>
+      九个静态页面，可直接双击打开。每页调试条可切换 1440/1024/768/390、空/有列表、Recipe
+      失败步骤和两种 Recipe 位置。不使用 Playwright，不出截图，不接核心数据。
+    </p>
+    <section class="card">
+      <h2>第二轮 · A 完整工作区</h2>
+      <p>已按你的选择固定 A / Process 内 Recipe。下面保留第一轮比较作为存档。</p>
+      <a href="a-full/index.html">打开完整原型 · Project / Mask / Process / History / 四视图</a
+      ><a href="a-full/fonts.html">字体对比 · 系统栈 vs 本地 Inter WOFF2（已选 Inter）</a>
+      <p class="aux">
+        1440 / 1024 / 768 / 390 实际视口；示例、空 History、失败步骤、字体可切换。Split /
+        Maximize、Z-break、busy / progress、分隔条、溢出菜单均为 UI 演示。
+      </p>
+    </section>
+    <div class="cards">
+      <section class="card">
+        <h2>A 方案</h2>
+        <p>
+          左导航 + 左停靠面板。参数顺手、画布高度完整；代价是横向宽度。适合 1440px，1024px 仍停靠。
+        </p>
+        <a href="a-process.html">Process · M3D 27 层</a
+        ><a href="a-recipe.html">Recipe · M3D 35 步 · 第 3 步失败</a
+        ><a href="a-history.html">History · Photodetector 7 个真实 Variants / 空列表</a>
+        <p class="aux">768/390px 使用普通上下文档流；预览在上、编辑在下，返回结果始终可达。</p>
+      </section>
+      <section class="card">
+        <h2>B 方案</h2>
+        <p>
+          顶部导航 + 右上下文面板。省去左栏，Variants 集中；代价是顶部高度与左右视线移动。适合
+          1024–1440px。
+        </p>
+        <a href="b-process.html">Process · M3D 27 层</a
+        ><a href="b-recipe.html">Recipe · M3D 35 步 · 第 3 步失败</a
+        ><a href="b-history.html">History · Photodetector 7 个真实 Variants / 空列表</a>
+        <p class="aux">768/390px 使用普通上下文档流；预览在上、编辑在下，返回结果始终可达。</p>
+      </section>
+      <section class="card">
+        <h2>C 方案</h2>
+        <p>
+          左工作流导航 + 底部面板。横向画布大，长列表可并排；代价是画布高度与短屏滚动。适合较高的
+          1024/1440px 屏幕。
+        </p>
+        <a href="c-process.html">Process · M3D 27 层</a
+        ><a href="c-recipe.html">Recipe · M3D 35 步 · 第 3 步失败</a
+        ><a href="c-history.html">History · Photodetector 7 个真实 Variants / 空列表</a>
+        <p class="aux">768/390px 使用普通上下文档流；预览在上、编辑在下，返回结果始终可达。</p>
+      </section>
+    </div>
+    <h2>逐项回答 PR #161 的三个失败</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>失败</th>
+          <th>A</th>
+          <th>B</th>
+          <th>C</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>① 空 History 浪费桌面</td>
+          <td>移除左 inspector 和分隔列，画布回收宽度；紧凑提示代替空栏。</td>
+          <td>移除右 inspector，画布回收宽度；只留紧凑提示。</td>
+          <td>移除空底部面板，画布回收高度；只留提示行。</td>
+        </tr>
+        <tr>
+          <td>② 1024px 遮挡画布</td>
+          <td>270px 面板参与 Grid，不转 overlay。</td>
+          <td>270px 右面板参与 Grid，不浮到画布上。</td>
+          <td>底部面板占独立 Grid 行，牺牲高度而不是遮挡。</td>
+        </tr>
+        <tr>
+          <td>③ 390px flyout 满屏</td>
+          <td colspan="3">
+            768/390px 均采用单画布预览 + 下方编辑区，没有 flyout / overlay / 假 Dock
+            按钮；顶部保持“返回结果”。
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>Recipe 两种位置</h2>
+    <p>
+      <strong>一级工作区：</strong>长 Recipe 与失败定位直接可达，代价是多一个主导航入口。<strong
+        >Process 内模式：</strong
+      >Manual / Recipe
+      统一，代价是多一次模式切换；失败提示和编辑仍留在该模式。第一轮存档仍可切换两种放法；当前已由用户选定
+      Process 内模式。
+    </p>
+    <h2>真实内容与边界</h2>
+    <p>
+      M3D：27 层、551 区域、35 Recipe 步骤、36 History 节点；Photodetector：46 节点、7 个真实
+      Variants。空切换只隐藏列表/编辑，不清空模型。Main 使用源多边形，3D 是已有真实最终缩略图。
+    </p>
+    <p>
+      第二轮已补齐，已选 Inter Variable WOFF2 / system fallback。停在 M1.5，不进入
+      M2；没有核心执行与产品存储接线。
+    </p>
+    <p class="aux">
+      M3D SHA-256 31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b<br />Photodetector
+      SHA-256 da8f27008658db1fdbcd2822405d71f8f7a19b87406e7fe379d309c411836d09
+    </p>
+  </body>
+</html>

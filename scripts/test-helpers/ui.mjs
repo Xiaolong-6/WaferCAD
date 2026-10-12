@@ -47,6 +47,27 @@ export async function newUiPage(browser, options = {}) {
   return { context, page };
 }
 
+// Existing scientific/controller suites own the Legacy DOM contract. Their
+// explicit Legacy contexts follow Welcome handoffs to the retained entry;
+// default-v2 routes are checked separately by the M5 startup/recovery owners.
+export async function newLegacyUiContext(browser, options = {}) {
+  const context = await newUiContext(browser, options);
+  await context.route('**/app.html*', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (!request.isNavigationRequest() || !url.pathname.endsWith('/app.html'))
+      return route.continue();
+    url.pathname = url.pathname.replace(/app\.html$/, 'app-legacy.html');
+    await route.fulfill({ status: 307, headers: { location: url.href }, body: '' });
+  });
+  return context;
+}
+
+export async function newLegacyUiPage(browser, options = {}) {
+  const context = await newLegacyUiContext(browser, options);
+  return { context, page: await context.newPage() };
+}
+
 export async function gotoWelcome(page) {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 10000 });

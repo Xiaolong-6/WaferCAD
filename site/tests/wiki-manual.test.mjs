@@ -87,7 +87,7 @@ test('the novice path is discoverable and names the current UI controls', async 
   assert.match(guide, /\*\*Base\*\* is the default layer name/);
   assert.match(guide, /uncheck Also add to Recipe/);
 
-  const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
   const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
   const projectPanel = html.slice(
     html.indexOf('id="settingsTools"'),

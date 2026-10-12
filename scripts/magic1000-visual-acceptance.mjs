@@ -32,7 +32,9 @@ try {
     const page = await context.newPage();
     const errors = observePageErrors(page);
     await page.goto(
-      baseUrl + '/app.html?preview=1&start=example&example=magic-1000-mos2-beol&view=' + view,
+      baseUrl +
+        '/app-legacy.html?preview=1&start=example&example=magic-1000-mos2-beol&view=' +
+        view,
       { waitUntil: 'domcontentloaded', timeout: 120000 },
     );
     await page.waitForFunction(

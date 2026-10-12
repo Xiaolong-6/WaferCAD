@@ -6,7 +6,7 @@ import { performance } from 'node:perf_hooks';
 import {
   baseUrl,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   waitForAppReady,
 } from './test-helpers/ui.mjs';

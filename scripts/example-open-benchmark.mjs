@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
-import { gotoWelcome, waitForStatus } from './test-helpers/ui.mjs';
+import { gotoWelcome } from './test-helpers/ui.mjs';
 
 const id = process.argv[2] || 'three-tier-silicon-jlfets';
 const repeat = Number(process.argv[3] || 3);
@@ -76,7 +76,14 @@ try {
       const started = performance.now();
       // Direct activation avoids accidentally triggering a cold-case hover prefetch.
       await link.evaluate((element) => element.click());
-      await waitForStatus(page, /^Opened /, 180000);
+      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 180000,
+      });
+      assert.equal(
+        await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model.revision),
+        expectedRevision,
+      );
+      await page.locator('[data-action="view:three"]').click();
       const openedMs = performance.now() - started;
       await page.waitForFunction(
         (revision) => {

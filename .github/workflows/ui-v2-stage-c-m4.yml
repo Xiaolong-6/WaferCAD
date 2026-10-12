@@ -1,0 +1,85 @@
+name: UI v2 Stage C and M4 acceptance
+
+on:
+  push:
+    branches: [codex/ui-v2-main-wip]
+    paths:
+      - 'site/**'
+      - 'scripts/**'
+      - '.github/workflows/ui-v2-stage-c-m4.yml'
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'site/**'
+      - 'scripts/**'
+      - '.github/workflows/ui-v2-stage-c-m4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-v2-stage-c-m4-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  shared-workstation:
+    name: Stage C shared runtime and M4 real projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start integrated UI v2 server
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app-v2-workstation.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Run Stage C and M4 owners; report each failure
+        shell: bash
+        run: |
+          failures=0
+          for script in check-startup check-cross-ui-recovery check-sync check-review-interactions check-m4-projects check-m2-live-parity; do
+            echo "::group::${script}"
+            if ! node "scripts/v2/${script}.mjs"; then
+              echo "::error::UI v2 regression failed: ${script}"
+              failures=$((failures + 1))
+            fi
+            echo "::endgroup::"
+          done
+          echo "Stage C/M4 failures: ${failures}"
+          test "${failures}" -eq 0
+      - name: Upload actual screenshots and failed-test evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wafercad-ui-v2-m4-${{ github.sha }}
+          path: |
+            test-results/ui-v2-sync/
+            test-results/ui-v2-startup/
+            test-results/ui-v2-cross-ui-recovery/
+            test-results/ui-v2-review-interactions/
+            test-results/ui-v2-m4-projects/
+            test-results/ui-v2-m2-parity/
+            serve-v2.log
+          retention-days: 14
+          if-no-files-found: warn

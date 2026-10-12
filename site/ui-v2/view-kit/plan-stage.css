@@ -1,0 +1,21 @@
+/* Shared planar canvas surface; views supply canvas and readout hooks. */
+.v2-plan-stage {
+  position: relative;
+}
+.v2-plan-stage > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.v2-plan-stage > .p-scale {
+  position: absolute;
+  left: 8px;
+  bottom: 6px !important;
+  font-size: var(--wc-font-aux);
+  pointer-events: none;
+}
+.v2-plan-stage > canvas.plan-pan-active {
+  cursor: grab;
+}

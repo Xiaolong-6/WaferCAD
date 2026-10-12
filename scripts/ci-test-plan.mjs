@@ -58,7 +58,7 @@ const PERSISTENCE_PATHS = [
 
 const INTERACTION_PATHS = [
   /^site\/(?:selection-geometry|mask-instance-index)\.js$/,
-  /^site\/app\.html$/,
+  /^site\/app(?:-legacy)?\.html$/,
   /^site\/(?:style|workstation)\.css$/,
   /^site\/controllers\/(?:base-controls|draw-mask|export|main-canvas|mask-|plan-view|roi|section-|view-maximize|view-popover)-controller\.js$/,
   /^site\/(?:draw-mask|mask-|roi-|plan-)/,
@@ -118,7 +118,7 @@ const EXAMPLE_PATHS = [
 ];
 
 const PRODUCT_LAYOUT_PATHS = [
-  /^site\/app\.html$/,
+  /^site\/app(?:-legacy)?\.html$/,
   /^site\/(?:style|workstation)\.css$/,
   /^site\/controllers\/(?:base-controls|main-canvas|section-|tool-tabs|view-maximize|view-popover|workspace-view)-controller\.js$/,
   ...LAYOUT_PATHS,

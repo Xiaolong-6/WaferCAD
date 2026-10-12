@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
-import { newUiContext, waitForAppReady, waitForThreeReady } from './test-helpers/ui.mjs';
+import {
+  newLegacyUiContext as newUiContext,
+  waitForAppReady,
+  waitForThreeReady,
+} from './test-helpers/ui.mjs';
 import {
   closeFunctionPanel,
   ensurePrimaryViewVisible,
@@ -525,7 +529,7 @@ const timings = [];
 const stageChecks = [];
 let finalProject;
 try {
-  await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4173') + '/app.html', {
+  await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4173') + '/app-legacy.html', {
     waitUntil: 'domcontentloaded',
   });
   await waitForAppReady(page);

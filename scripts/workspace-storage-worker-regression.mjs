@@ -6,7 +6,7 @@ import {
   baseUrl,
   gotoWelcome,
   launchBrowser,
-  newUiPage,
+  newLegacyUiPage as newUiPage,
   observePageErrors,
 } from './test-helpers/ui.mjs';
 

@@ -100,7 +100,7 @@ try {
       }
     };
   });
-  await page.goto(`${baseUrl}/app.html`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/app-legacy.html`, { waitUntil: 'domcontentloaded' });
   await waitForAppReady(page);
   await loadProject(page, project, 'full-wafer-rough-conformal-implant');
   await page.waitForFunction(() =>
