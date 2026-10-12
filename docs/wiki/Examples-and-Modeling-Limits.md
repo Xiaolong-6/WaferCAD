@@ -121,7 +121,7 @@ The editable example opens with **10 History nodes**, **6 saved fabrication chec
 3. Use **Section** to examine real exposed/covered geometry and **3D** to understand morphology and layer overlap. Inspect each step's scientific assumptions.
 4. To test reproducibility, start from the intended Base, confirm captured Masks, replay all intended steps with the **current Kernel**, and compare intermediate and final states. A saved History can be restorable without having been freshly replayed on every geometry scale.
 5. **Export** the `.wafercad` file, re-import and verify states, and separately export the required Masks using GDS/OAS/SVG. Check ROI, Cells and Layers when exporting.
-6. To author a new flow, use the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).
+6. To author a new flow, use the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [Using WaferCAD with AI](AI-Assisted-Workflows).
 
 ## What WaferCAD computes
 
