@@ -89,6 +89,36 @@ export async function captureVisibleThree(page, path, { fullPage = true } = {}) 
     },
     { png: screenshot.toString('base64'), canvas, viewportWidth: dimensions.viewportWidth },
   );
+  if (coloredPixels < 64) {
+    // Strict visual rejection is unchanged. Preserve independent canvas
+    // evidence so a full-page compositor crop is distinguishable from an
+    // empty WebGL frame without changing the approved screenshot baseline.
+    const renderer = await page.locator('#threeHost').evaluate((host) => {
+      const canvas = host.querySelector('canvas');
+      const gl = canvas?.getContext('webgl2');
+      return {
+        renderState: host.dataset.renderState,
+        renderPhase: host.dataset.renderPhase,
+        renderQuality: host.dataset.renderQuality,
+        frameSerial: host.dataset.rendererFrameSerial,
+        drawCalls: host.dataset.rendererDrawCalls,
+        triangles: host.dataset.rendererDrawTriangles,
+        sceneGeneration: host.dataset.sceneGeneration,
+        cameraWorld: host.dataset.rendererCameraWorld,
+        cameraProjection: host.dataset.rendererCameraProjection,
+        canvasBacking: canvas ? [canvas.width, canvas.height] : null,
+        framebuffer: gl ? [gl.drawingBufferWidth, gl.drawingBufferHeight] : null,
+        contextLost: gl?.isContextLost() ?? null,
+      };
+    });
+    await page.locator('#threeHost canvas').screenshot({
+      path: path.replace(/\.png$/, '-canvas.png'),
+    });
+    await writeFile(
+      path.replace(/\.png$/, '.failure.json'),
+      JSON.stringify({ fullPage, coloredPixels, dimensions, afterCapture, renderer }, null, 2),
+    );
+  }
   assert.ok(coloredPixels >= 64, `3D capture must show material pixels; found ${coloredPixels}`);
   return { fullPage, ...dimensions, afterCapture, coloredPixels };
 }
