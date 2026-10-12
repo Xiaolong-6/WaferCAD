@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Exact scientific A/B inside ONE WebGL context: preserves geometry, camera,
 // projection, shaders, adapter and presentation objects across policy arms.
 // This is diagnostic only; it does not turn on the default renderer candidate.
@@ -20,6 +21,7 @@ import { compareScreenshotPngPixels } from './test-helpers/png-pixel-diff.mjs';
 
 const output = new URL('../test-results/product-review/electrical-same-context/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
 await context.addInitScript(installWebglFrameProbe);
@@ -37,7 +39,7 @@ let stage = 'boot';
 try {
   // Build the *accepted* candidate scene once. The only test-time variable
   // is material.forceSinglePass on its explicitly tagged smooth planar caps.
-  await page.goto(baseUrl + '/app.html?rendererV3ElectricalPlanarSinglePass=1');
+  await page.goto(rendererWorkstationUrl + '?rendererV3ElectricalPlanarSinglePass=1');
   await waitForAppReady(page);
   stage = 'load-project';
   await page.locator('#openProjectInput').setInputFiles(

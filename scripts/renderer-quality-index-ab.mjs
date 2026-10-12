@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Same-run A/B experiments for Quality indexing, raster-discard profiling,
 // final-frame-only assembly and smooth Electrical Region cap passes.
 // All product experiments remain default-off.
@@ -57,6 +58,7 @@ const fixture = fileURLToPath(
   new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
 );
 // Manual hardware mode uses a visible browser; CI keeps its original launch.
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = hardwareElectricalAb
   ? await chromium.launch({ ...launchOptions, headless: false })
   : await launchBrowser();
@@ -97,7 +99,7 @@ async function trial(enabled, ordinal) {
     if (trialFinalFrameOnly) params.set('rendererV3FinalFrameOnly', '1');
     if ((electricalPlanarAb || hardwareElectricalAb) && enabled)
       params.set('rendererV3ElectricalPlanarSinglePass', '1');
-    await page.goto(baseUrl + '/app.html' + (params.size ? `?${params}` : ''));
+    await page.goto(rendererWorkstationUrl + (params.size ? `?${params}` : ''));
     await waitForAppReady(page);
     stage = 'open-fixture';
     const setupBegan = performance.now();

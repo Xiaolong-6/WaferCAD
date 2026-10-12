@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Manual scientific gate for the default-off electrical planar cap pilot.
 // Collect every mismatch, including same-policy controls; never accept a tolerance.
 import assert from 'node:assert/strict';
@@ -31,6 +32,7 @@ const output = new URL(
   import.meta.url,
 );
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({ ...launchOptions, headless: false });
 const references = new Map();
 const policyReferences = new Map();
@@ -57,7 +59,7 @@ async function runTrial(enabled, ordinal) {
   trials.push(result);
   try {
     await page.goto(
-      baseUrl + '/app.html' + (enabled ? '?rendererV3ElectricalPlanarSinglePass=1' : ''),
+      rendererWorkstationUrl + (enabled ? '?rendererV3ElectricalPlanarSinglePass=1' : ''),
     );
     await waitForAppReady(page);
     await page

@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Scientific OFF/OFF/ON/ON acceptance: production policy selected at page boot.
 // NO test-only forceSinglePass hot switching, geometry changes, or visual tolerance.
 // Captures native GL buffer before compositor and CSS-sized browser screenshot.
@@ -45,6 +46,7 @@ const output = new URL(
   import.meta.url,
 );
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({
   ...launchOptions,
   headless: hardwareRtx3060 ? false : launchOptions.headless,
@@ -121,8 +123,8 @@ async function trial(enabled, index) {
   };
   try {
     await page.goto(
-      baseUrl +
-        '/app.html?rendererV3RoiTrace=1' +
+      rendererWorkstationUrl +
+        '?rendererV3RoiTrace=1' +
         (enabled ? '&rendererV3ElectricalPlanarSinglePass=1' : ''),
     );
     await waitForAppReady(page);
