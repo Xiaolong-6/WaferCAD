@@ -2626,6 +2626,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
     pendingRender = false;
+    delete host.dataset.rendererBuildFailure;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
@@ -2668,16 +2669,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + 8;
       const maybeYieldAssembly = async () => {
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
-        if (variantBuild) {
-          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-        } else {
-          await yieldSceneAssembly();
-        }
-        nextAssemblyYieldAt = performance.now() + 32;
+        // A frame callback can resume in a microtask before the browser paints.
+        // Yield a macrotask so input and other viewports get a chance to run.
+        if (!variantBuild) await yieldSceneAssembly();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        nextAssemblyYieldAt = performance.now() + 8;
       };
 
       host.dataset.materialLayerIds = JSON.stringify(
@@ -3426,6 +3426,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'ready';
       }
       console.error('3D scene rebuild failed:', error);
+      host.dataset.renderPhase = previousVariantGroup ? 'variant-build-failed' : 'build-failed';
       host.dataset.rendererBuildFailure = error?.message || String(error);
       if (!previousVariantGroup) {
         host.dataset.renderState = 'error';
@@ -3445,7 +3446,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
-    if (roughTasks.length) {
+    if (host.dataset.renderState !== 'error' && roughTasks.length) {
       host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });
