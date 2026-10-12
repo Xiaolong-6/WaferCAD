@@ -58,17 +58,23 @@ test('DITHER-off diagnostic is one V3-only experiment, never product acceptance'
     'error',
   );
   assert.equal(
-    classifyRendererHardwareStep({ ...only, exitCode: 0 }, {
-      ...report,
-      trials: [{ native: { forcedDitherDisabledDraws: 0 } }],
-    }),
+    classifyRendererHardwareStep(
+      { ...only, exitCode: 0 },
+      {
+        ...report,
+        trials: [{ native: { forcedDitherDisabledDraws: 0 } }],
+      },
+    ),
     'incomplete',
   );
   assert.equal(
-    classifyRendererHardwareStep({ ...only, exitCode: 0 }, {
-      ...report,
-      trials: [{ native: { forcedDitherDisabledDraws: 0 } }, ...report.trials.slice(1)],
-    }),
+    classifyRendererHardwareStep(
+      { ...only, exitCode: 0 },
+      {
+        ...report,
+        trials: [{ native: { forcedDitherDisabledDraws: 0 } }, ...report.trials.slice(1)],
+      },
+    ),
     'error',
   );
 });

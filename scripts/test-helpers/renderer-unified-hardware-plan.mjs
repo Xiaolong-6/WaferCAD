@@ -42,13 +42,15 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
 // Raster isolation produces diagnostic-only evidence; it must never satisfy
 // the unchanged production-renderer zero-pixel acceptance gate.
 export function buildRendererV3DitherDiagnosticPlan() {
-  return [{
-    id: 'v3-dither-off',
-    branch: 'v3',
-    script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-    args: ['--hardware-rtx3060', '--report-only', '--diagnose-no-dither'],
-    artifact: 'test-results/renderer-hardware-fresh-context-ab-no-dither',
-  }];
+  return [
+    {
+      id: 'v3-dither-off',
+      branch: 'v3',
+      script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+      args: ['--hardware-rtx3060', '--report-only', '--diagnose-no-dither'],
+      artifact: 'test-results/renderer-hardware-fresh-context-ab-no-dither',
+    },
+  ];
 }
 
 export function classifyRendererHardwareStep(step, report) {
@@ -60,7 +62,8 @@ export function classifyRendererHardwareStep(step, report) {
       report.failure ||
       report.diagnosticNoDither !== true ||
       report.acceptanceEligible !== false
-    ) return 'error';
+    )
+      return 'error';
     if (report.stage !== 'completed' || report.trials?.length !== 4) return 'incomplete';
     if (report.trials.some((trial) => !(trial.native?.forcedDitherDisabledDraws > 0))) {
       return 'error';

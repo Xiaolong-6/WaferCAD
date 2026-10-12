@@ -75,7 +75,7 @@ ask for the next RTX 3060 collection until that Windows preflight is green.**
 ## Targeted raster-isolation diagnostic (separate from acceptance)
 
 The October 12 RTX 3060 ZIP identified **54 OFF/OFF and 78 ON/ON**
-fresh-context changed pixels in V3; the first differing *sampled* GL
+fresh-context changed pixels in V3; the first differing _sampled_ GL
 checkpoint was in a material-exterior draw interval. Pixel changes were
 small (mostly single-channel ±1) and located in nonuniform shading areas.
 The recorded WebGL state had `GL_DITHER` enabled; this motivates a single
