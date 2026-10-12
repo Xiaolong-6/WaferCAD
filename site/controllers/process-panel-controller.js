@@ -407,11 +407,9 @@ export function createProcessPanelController({
     $('operationNote').hidden = !materialExists && !recordOnly;
     if (!materialExists && !recordOnly) return;
 
-    $('operationNote').textContent = unsupportedBoth
-      ? 'Both faces are unsupported for Lift-off and absolute-Z Planarize. Select Front or Back.'
-      : recordOnly
-        ? 'Records fabrication metadata in History without changing material geometry.'
-        : liftoff
+    $('operationNote').textContent = recordOnly
+      ? 'Records fabrication metadata in History without changing material geometry.'
+      : liftoff
         ? 'Ideal lift-off removes the selected resist and directly supported films. Deposits in openings survive; ambiguous bridging films are rejected. This does not model solvents, adhesion, or tearing.'
         : t === 'implant'
           ? 'Structural implant annotation: starts at the outermost selected surface, ignores material boundaries, and renders a user-defined depth with optional geometric tilt. It is not a dopant-physics solver.'
@@ -444,6 +442,10 @@ export function createProcessPanelController({
                     ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
                     : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
                   : 'Directional coverage follows the selected footprint.';
+    if (unsupportedBoth) {
+      $('operationNote').textContent =
+        'Both faces are unsupported for Lift-off and absolute-Z Planarize. Select Front or Back.';
+    }
   }
 
   function optionalNumber(id, label) {
