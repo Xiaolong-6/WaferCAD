@@ -22,6 +22,8 @@ Use this page to find the document that owns a question. Current contracts descr
 | Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
 | Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
 
+The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release guarantees and remaining administration controls.
+
 ## Scientific and interchange contracts
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
