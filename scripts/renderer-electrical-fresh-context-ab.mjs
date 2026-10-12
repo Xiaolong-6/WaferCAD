@@ -35,9 +35,7 @@ const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
 const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
-const phaseWindowOptions = process.argv.filter((arg) =>
-  arg.startsWith('--diagnose-phase-window'),
-);
+const phaseWindowOptions = process.argv.filter((arg) => arg.startsWith('--diagnose-phase-window'));
 assert.ok(phaseWindowOptions.length <= 1, 'Select at most one phase window');
 const phaseWindow = phaseWindowOptions.length
   ? parseRendererPhaseWindow(phaseWindowOptions[0].split('--diagnose-phase-window=')[1] ?? '')
@@ -56,8 +54,7 @@ assert.ok(
   '--diagnose-no-msaa requires --hardware-gpu --report-only; isolation flags cannot be combined',
 );
 assert.ok(
-  !phaseWindowDiagnostic ||
-    (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa),
+  !phaseWindowDiagnostic || (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa),
   '--diagnose-phase-window=LOW:HIGH requires --hardware-gpu --report-only without other raster interventions',
 );
 const output = new URL(
@@ -244,24 +241,27 @@ async function trial(enabled, index) {
       })),
     );
     row.stage = 'capture-product-frame';
-    await page.evaluate(({ pixelSamples, captureDrawInputs, capturePhaseDraws }) => {
-      window.__waferCadWebglProbe.arm({
-        rasterDiscard: false,
-        captureGlState: true,
-        captureFramebuffer: true,
-        captureDrawInputs,
-        capturePhases: captureDrawInputs,
-        captureRasterState: captureDrawInputs,
-        capturePhaseDraws,
-        pixelSamples,
-      });
-      const input = document.getElementById('threeOpacityRange');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, {
-      pixelSamples: samples,
-      captureDrawInputs: hardwareGpu,
-      capturePhaseDraws: hardwareGpu ? phaseMilestones : [],
-    });
+    await page.evaluate(
+      ({ pixelSamples, captureDrawInputs, capturePhaseDraws }) => {
+        window.__waferCadWebglProbe.arm({
+          rasterDiscard: false,
+          captureGlState: true,
+          captureFramebuffer: true,
+          captureDrawInputs,
+          capturePhases: captureDrawInputs,
+          captureRasterState: captureDrawInputs,
+          capturePhaseDraws,
+          pixelSamples,
+        });
+        const input = document.getElementById('threeOpacityRange');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      {
+        pixelSamples: samples,
+        captureDrawInputs: hardwareGpu,
+        capturePhaseDraws: hardwareGpu ? phaseMilestones : [],
+      },
+    );
     await page.waitForFunction(
       () => {
         const host = document.getElementById('threeHost');
@@ -288,16 +288,19 @@ async function trial(enabled, index) {
             .map((value) => value.toString(16).padStart(2, '0'))
             .join('')
         : null;
-      const phases = await Promise.all((frame.phases || []).map(async (phase) => {
-        const { rgba, ...details } = phase;
-        return {
-          ...details,
-          hash: rgba
-            ? Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', rgba)))
-                .map((value) => value.toString(16).padStart(2, '0')).join('')
-            : null,
-        };
-      }));
+      const phases = await Promise.all(
+        (frame.phases || []).map(async (phase) => {
+          const { rgba, ...details } = phase;
+          return {
+            ...details,
+            hash: rgba
+              ? Array.from(new Uint8Array(await window.crypto.subtle.digest('SHA-256', rgba)))
+                  .map((value) => value.toString(16).padStart(2, '0'))
+                  .join('')
+              : null,
+          };
+        }),
+      );
       const trace = window.__freshContextTrace;
       const canvas = document.querySelector('#threeHost canvas');
       const rect = canvas.getBoundingClientRect();
@@ -371,21 +374,27 @@ async function trial(enabled, index) {
           ...attribute,
           ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
         })),
-        indices: buffers.indices && (() => {
-          const { bytes, ...index } = buffers.indices;
-          return {
-            ...index,
-            ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
-          };
-        })(),
+        indices:
+          buffers.indices &&
+          (() => {
+            const { bytes, ...index } = buffers.indices;
+            return {
+              ...index,
+              ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+            };
+          })(),
       },
     }));
     row.drawInputsHash = hashJson(native.drawInputs);
     row.phaseCheckpoints = native.phases;
     row.phaseCoverage = native.phaseCoverage;
-    row.phaseSequenceHash = hashJson(native.phases.map(({ afterDraw, kind, status }) => ({
-      afterDraw, kind, status,
-    })));
+    row.phaseSequenceHash = hashJson(
+      native.phases.map(({ afterDraw, kind, status }) => ({
+        afterDraw,
+        kind,
+        status,
+      })),
+    );
     row.drawInputsCount = native.drawInputs.length;
     if (hardwareGpu) {
       const phaseCapture = checkRendererPhaseCapture({
@@ -397,21 +406,17 @@ async function trial(enabled, index) {
         requireRasterState: true,
       });
       assert.ok(phaseCapture.valid, `${label}: ${phaseCapture.reason}`);
-      assert.equal(
-        row.drawInputsCount,
-        48,
-        `${label}: expected bounded native draw samples`,
-      );
+      assert.equal(row.drawInputsCount, 48, `${label}: expected bounded native draw samples`);
       assert.ok(
-        native.drawInputs.some((draw) =>
-          draw.shaderHashes.some((shader) => shader.length > 0),
-        ),
+        native.drawInputs.some((draw) => draw.shaderHashes.some((shader) => shader.length > 0)),
         `${label}: shader source evidence missing`,
       );
       assert.ok(
-        native.drawInputs.some((draw) => draw.buffers.attributes.some((attribute) =>
-          attribute.status === 'read' && attribute.sampledBytes > 0,
-        )),
+        native.drawInputs.some((draw) =>
+          draw.buffers.attributes.some(
+            (attribute) => attribute.status === 'read' && attribute.sampledBytes > 0,
+          ),
+        ),
         `${label}: vertex buffer evidence missing`,
       );
     }
@@ -530,9 +535,10 @@ try {
   // A/B attribution is valid only when every context uses the same GPU.
   if (hardwareGpu) {
     assert.ok(
-      report.trials.every((trial) =>
-        trial.backend?.hardwareVerified === true &&
-        trial.backend.adapter === report.trials[0].backend.adapter,
+      report.trials.every(
+        (trial) =>
+          trial.backend?.hardwareVerified === true &&
+          trial.backend.adapter === report.trials[0].backend.adapter,
       ),
       'All four fresh contexts must use the same verified hardware GPU',
     );
