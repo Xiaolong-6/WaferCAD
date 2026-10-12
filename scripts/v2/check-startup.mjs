@@ -157,6 +157,7 @@ try {
       assert.equal(recovery.steps, 46, 'Recovery contains the displaced History');
       assert.equal(recovery.branches, 7, 'Recovery contains every Variant');
     }
+    await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
   }
 
   assert.deepEqual(errors, [], 'Startup scenarios produce no uncaught page errors');

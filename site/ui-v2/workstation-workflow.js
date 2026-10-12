@@ -148,8 +148,26 @@ export function createWorkstationWorkflow({ store, workstation }) {
     onStateChange: (value) => persistence?.syncSessionState(value),
   });
   window.addEventListener('pagehide', () => {
-    session.stop();
+    // View persistence is synchronous. Structural saves start on hidden/
+    // beforeunload; pending structural edits are guarded by the unload prompt.
+    // Release on actual departure so a successor document can acquire its lease.
+    void persistence?.persistNow({ force: true }).catch(() => false);
     task.dispose();
+    session.stop();
+  });
+  window.addEventListener('beforeunload', (event) => {
+    if (task.isBusy() || persistence?.isDirty()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    void persistence?.persistNow({ force: true }).catch(() => false);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden')
+      void persistence?.persistNow({ force: true }).catch(() => false);
+  });
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) globalThis.location.reload();
   });
   const checkpoint = (reason) => persistence?.checkpointCurrent(reason) ?? Promise.resolve(false);
   const refreshRecovery = () => persistence?.refreshRecoveryOptions() ?? Promise.resolve();

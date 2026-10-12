@@ -120,6 +120,23 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   await stalePage.close();
+  const exitTitle = 'Protected reload with pending edits';
+  await page.locator('#projectNameInput').fill(exitTitle);
+  assert.equal(
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('beforeunload', { cancelable: true })),
+    ),
+    false,
+    'Pending structural edits prevent silent unload and start a final save',
+  );
+  await waitForSavedProject({ name: exitTitle });
+  await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
+  const reloaded = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  assert.equal(reloaded.projectName, exitTitle);
+  assert.deepEqual(reloaded.model, fromLegacy.model);
+  assert.equal(reloaded.workflow.steps.length, 46);
   assert.deepEqual(errors, [], 'Cross-interface and lease scenarios produce no page errors');
   console.log(
     'M5 cross-UI: Legacy → V2 → Legacy → V2 restores exact geometry, History and Variants PASS',

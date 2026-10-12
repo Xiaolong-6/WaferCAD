@@ -15,4 +15,5 @@ export async function openMetalensUnitProject(page, base) {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, { timeout: 120000 });
+  await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
 }
