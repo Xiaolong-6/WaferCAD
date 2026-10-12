@@ -3,9 +3,11 @@
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
-Product revision: `643417c8c7002d2a8d2d90522b22d0c7e6f3e222`.
+Product revision: `5ce8f7e7278baf52f7380abd399af7d083704e29`.
 Startup adaptation is in `f0078376`; default entry promotion is in `0e746cb1`;
 remaining browser entry fixes and formatting normalization are in `643417c8`.
+`5ce8f7e7` uses the shared versioned Example URL and existing Project worker so
+Welcome-prefetched bytes are reused by the new default workstation.
 
 - `site/app.html` opens the v2 Workstation. `site/app-legacy.html` preserves the previous application page and its relative assets.
 - Welcome opens Empty, full canonical Examples, and staged imports in v2. Embedded previews use Legacy and retain their source/view parameters on refresh.
@@ -23,8 +25,9 @@ Tests use isolated browser storage. No user browser data was edited.
 
 - `npm test`: 616 passed, 0 failed before final route wiring. Quality CI also passed on `0e746cb1`; the later product patch changes test routes and formatting only.
 - `npm run lint`, `npm run format:check`, `npm run docs:check`: passed. The pre-existing formatting warnings were normalized without changing behavior.
-- `node scripts/v2/check-startup.mjs`: passed against `app.html`; includes actual Welcome Example, GDS/OAS upload, Legacy preview/postMessage, no-intent recovery, Empty, invalid intent, failed staged retry and full staged Project History.
-- `node scripts/v2/check-cross-ui-recovery.mjs`: passed; exercises the save-before-switch link with pending edits, exact Legacy → v2 → Legacy → v2 geometry/History/Variant restoration, and a simultaneous Legacy tab that cannot overwrite the v2 writer.
+- `node scripts/v2/check-startup.mjs`: passed again after the bundled Project worker integration against `app.html`; includes actual Welcome Example, GDS/OAS upload, Legacy preview/postMessage, no-intent recovery, Empty, invalid intent, failed staged retry and full staged Project History.
+- `node scripts/v2/check-cross-ui-recovery.mjs`: passed again after the bundled Project worker integration; exercises the save-before-switch link with pending edits, exact Legacy → v2 → Legacy → v2 geometry/History/Variant restoration, and a simultaneous Legacy tab that cannot overwrite the v2 writer.
+- `WAFERCAD_URL=http://127.0.0.1:4174 node scripts/example-open-benchmark.mjs photodetector-literature 1 --headless`: passed on the real default v2 route with the original cache assertions. The warmed project used 690,775 cached body bytes and transferred 0 bytes; its 46 History nodes were decoded by the Project worker. This cache owner deliberately uses no Playwright routes.
 - Legacy `npm run test:ui:workstation`: passed after the route migration, including stalled Three.js and navigation scenarios.
 - Legacy `npm run test:ui:persistence`: passed after the route migration, including recovery checkpoints, staged handoffs, writer takeover and failed-save protection.
 - Stage C synchronization: passed at 1440, 1024, 768 and 390 px, plus 1024 px touch simulation.
