@@ -456,14 +456,19 @@ try {
         await page.locator('#revertBaseBtn').click();
         assert.deepEqual((await snap()).model, beforeBase.model);
         await panel('mask');
-        await page
-          .locator('#gdsInput')
-          .setInputFiles('site/samples/klayout/gds-basic-instances.gds');
+        const importedGdsName = 'gds-basic-instances.gds';
+        await page.locator('#gdsInput').setInputFiles(`site/samples/klayout/${importedGdsName}`);
         await page.waitForFunction(
-          () =>
-            window.WaferCadV2Workstation.snapshot().layout.cells?.length > 0 ||
-            /basic_instances/.test(window.WaferCadV2Workstation.snapshot().layout.name || ''),
-          null,
+          (filename) => {
+            const imported = window.WaferCadV2Workstation.snapshot();
+            return (
+              imported.layout.name === filename &&
+              imported.layout.elements.length > 0 &&
+              imported.maskSourceMode === 'file' &&
+              Boolean(imported.activeCell)
+            );
+          },
+          importedGdsName,
           { timeout: 10000 },
         );
         assert.deepEqual((await snap()).model, beforeBase.model);
