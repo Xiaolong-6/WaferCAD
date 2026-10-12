@@ -62,6 +62,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [PR #166 continued acceptance](PR166_ACCEPTANCE_2026-10-10.md) — historical 625-site pixel evidence, current CI, Electrical A/B census repairs and open hardware/runtime gates.
 - [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
 - [R8 targeted WebGL phase-window diagnostics](RENDERER_R8_PHASE_WINDOW_2026-10-12.md) — bounded draw-checkpoint localization of hardware raster drift, fail-closed evidence, and GPU-neutral command.
+- [R9 Renderer consolidation decision](RENDERER_R9_CONSOLIDATION_2026-10-12.md) — single-engine architecture, V4 safe-fix upstream promotion, measured tradeoffs, and exact hardware merge blockers.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
 - [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
