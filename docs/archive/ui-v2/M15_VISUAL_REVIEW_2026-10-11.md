@@ -2,7 +2,7 @@
 
 ## User review: FAIL against approved M2 layout
 
-The user rejected the real D1 layout on 2026-10-11: it differs substantially from the M2 layout they approved. This supersedes any favorable interpretation of the initial findings below. The comparison target must include the later accepted M2 presentation and repairs in [UI acceptance](../../ui-v2/UI_ACCEPTANCE_2026-10-10.md) and the current `app-v2.html` shell, rather than using the early M1.5 prototype alone.
+The user rejected the real D1 layout on 2026-10-11: it differs substantially from the M2 layout they approved. This supersedes any favorable interpretation of the initial findings below. The comparison target must include the later accepted M2 presentation and repairs in [UI acceptance](UI_ACCEPTANCE_2026-10-10.md) and the current `app-v2.html` shell, rather than using the early M1.5 prototype alone.
 
 Confirmed discrepancies: M2 requires icon-only Fit/Pan/Zoom in all four view headers, while real D1 desktop headers restore visible labels; M2 narrow Section places the legend below the plot, while real D1 retains a right-hand legend that squeezes the plot; real D1 substitutes unconnected domain placeholders for the approved editor panels. The last item is an integration boundary, but still prevents full layout/user-journey acceptance. Green canvas containment and browser assertions do not close these discrepancies.
 

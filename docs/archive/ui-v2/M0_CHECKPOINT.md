@@ -4,11 +4,11 @@
 
 ## 交付
 
-- [用户 r2 执行计划](../../ui-v2/R2_PLAN.md)：阶段门槛与禁止修改范围。
+- [用户 r2 执行计划](R2_PLAN.md)：阶段门槛与禁止修改范围。
 - [DOM 契约](../../ui-v2/CONTRACT.md) / [contract.json](../../ui-v2/contract.json)：静态 ID、属性、引用方、动态创建/结构/状态和未解析点。
 - [隐式依赖](../../ui-v2/IMPLICIT_DEPS.md)：40 条，包括启动先后、重挂、祖先选择器、可见性、事件传播、测试耦合。
-- [PR #161 复盘](../../ui-v2/PR161_POSTMORTEM.md)：描述/diff/讨论/CI，视觉失败与 interaction/格式失败分开。
-- [风险和估算](../../ui-v2/RISKS_AND_ESTIMATE.md)：装配重写、DOM 适配域和分阶段工作量。
+- [PR #161 复盘](PR161_POSTMORTEM.md)：描述/diff/讨论/CI，视觉失败与 interaction/格式失败分开。
+- [风险和估算](RISKS_AND_ESTIMATE.md)：装配重写、DOM 适配域和分阶段工作量。
 - [问题与决策](../../ui-v2/ISSUES.md)：存储域、路由和只读耦合。
 - 生成命令：`node scripts/ui-contract-extract.mjs`；复核：`node scripts/ui-contract-extract.mjs --check`。
 - 独立浏览器核对：`node scripts/ui-contract-verify.mjs`，比较真实 HTML parser 与库存，并检查 Recipe 初始化和重复 ID。
@@ -51,7 +51,7 @@ node scripts/ui-contract-verify.mjs
 
 ## PR #161 结论与剩余项
 
-布局拒绝不是自动化误报：桌面空 History inspector 浪费视野，1024px overlay 遮挡画布，390px flyout 占满手机，Recipe/History 信息架构未重组。专用验收从空项目开始且漏测 768px/真实复杂工程。CI 另外实证 Main/3D ROI 垂直偏移 1.7857px，格式 job 五文件失败。参见 [完整复盘](../../ui-v2/PR161_POSTMORTEM.md)。
+布局拒绝不是自动化误报：桌面空 History inspector 浪费视野，1024px overlay 遮挡画布，390px flyout 占满手机，Recipe/History 信息架构未重组。专用验收从空项目开始且漏测 768px/真实复杂工程。CI 另外实证 Main/3D ROI 垂直偏移 1.7857px，格式 job 五文件失败。参见 [完整复盘](PR161_POSTMORTEM.md)。
 
 本轮没有独立复看 PR screenshot artifact，也没有 base/head 对照复现其 ROI 失败，因此不声称锁定该偏移的代码根因。视觉基线未执行/创建/更新；M1.5/M4 保留逐屏人工验收。后续 17–30 工作日的实现估算不包含用户审批/原型迭代等待。
 

@@ -1,8 +1,8 @@
 # M2：独立 mock 壳层与实时预览
 
-> 后续补齐更新（2026-10-09）：G01–G08 的 M2 mock 界面/本地 draft 交互已完成；原始自查与 19 项结果已被 [M2_GAP_AUDIT.md](../../ui-v2/M2_GAP_AUDIT.md) 中的 25 项复核取代。上游 `origin/main` 已合并。该更新不代表已接通 M3 核心。
+> 后续补齐更新（2026-10-09）：G01–G08 的 M2 mock 界面/本地 draft 交互已完成；原始自查与 19 项结果已被 [M2_GAP_AUDIT.md](M2_GAP_AUDIT.md) 中的 25 项复核取代。上游 `origin/main` 已合并。该更新不代表已接通 M3 核心。
 
-> 交接状态更新（2026-10-09）：M2 快速迭代补齐的 History 行操作菜单、固定操作栏/内部滚动、Mask Draw 与 ROI 分离、Section Legend 预制色板/随机色均已纳入 [M2 iteration handoff](../../ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md)。该 handoff supersedes 下文的原始 M2 iteration/status 描述；仍是 mock UI，不代表真实 M3 域事务已经接通。
+> 交接状态更新（2026-10-09）：M2 快速迭代补齐的 History 行操作菜单、固定操作栏/内部滚动、Mask Draw 与 ROI 分离、Section Legend 预制色板/随机色均已纳入 [M2 iteration handoff](M2_ITERATION_HANDOFF_2026-10-09.md)。该 handoff supersedes 下文的原始 M2 iteration/status 描述；仍是 mock UI，不代表真实 M3 域事务已经接通。
 
 日期：2026-10-09。分支 `refactor/ui-v2-m0`，HEAD `c7856da2b81aaea4c088d0d5f7cd4489e8e4d1e2`。
 用户批准进入 M2；快速迭代阶段暂不 commit，之后已明确允许本地提交检查点。不进入 M3，不接科学核心，不 push。
@@ -42,7 +42,7 @@
 壳层通过 `getProjectName` / `renderEditor` / `renderView` 接受 slots；M3 的 renderer / transaction 所有权仍由既有服务持有。
 旧 `app.html`、`app.js`、`workstation-ui.js`、controllers、科学核心、workers 与持久化未修改、未导入。
 当前提供的是 mock 视图容器，不声称契约中全部真实控件 ID 已覆盖；控制器接线和动态控件映射属于 M3。
-完整自查见 [剩余界面缺口](../../ui-v2/M2_GAP_AUDIT.md)：History 树、Manual 参数、Recipe 构建流程等仍有原型欠账，不将其伪装成已完整覆盖。
+完整自查见 [剩余界面缺口](M2_GAP_AUDIT.md)：History 树、Manual 参数、Recipe 构建流程等仍有原型欠账，不将其伪装成已完整覆盖。
 
 ## Section Legend 补齐
 
@@ -78,7 +78,7 @@ Windows，Node `v26.7.0`，原生 Chrome `155.0.8059.40`；此次不是 M4 视�
 
 ## 尚待确认 / 后续
 
-- 本文件保留原始 M2 检查点记录；本轮授权将其快速迭代交接为独立分支，准确分支/提交与发布状态见 [iteration handoff](../../ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md)。不触发 CI、不切换默认入口。
+- 本文件保留原始 M2 检查点记录；本轮授权将其快速迭代交接为独立分支，准确分支/提交与发布状态见 [iteration handoff](M2_ITERATION_HANDOFF_2026-10-09.md)。不触发 CI、不切换默认入口。
 - `origin/main` 已更新至 `b81598b7d8f4c5e7d246df250c82b9de4c2d4178`；Workstation 模式源码相对当前基点未变。此前不 commit 的迭代期没有创建 merge commit 或留下 merge 状态；真实接线前仍需同步上游。
 - 5 个静态未解析动态表达式仍留 M3 逐项追踪，不算完成覆盖。
 - M4 创建视觉基线前，仍须询问用户浏览器和基线批准。

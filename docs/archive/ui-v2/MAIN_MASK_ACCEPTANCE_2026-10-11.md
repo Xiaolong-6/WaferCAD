@@ -1,6 +1,6 @@
 # UI v2 Main / Mask acceptance and decision review — 2026-10-11
 
-The subsequent [Stage A checkpoint](../../ui-v2/STAGE_A_ACCEPTANCE_2026-10-11.md) records shared-runtime and Section integration; it does not replace the four-view final acceptance.
+The subsequent [Stage A checkpoint](STAGE_A_ACCEPTANCE_2026-10-11.md) records shared-runtime and Section integration; it does not replace the four-view final acceptance.
 
 Repository: Xiaolong-6/WaferCAD. Branch: `codex/ui-v2-main-wip`. Tested product commit: `1664405ef7835a3e974a8551f19c8879186255bf`, identical to the fetched remote HEAD and Draft PR #177 at takeover. The working tree was clean before installation and edits. No branch was created, no merge or manual workflow was dispatched.
 
