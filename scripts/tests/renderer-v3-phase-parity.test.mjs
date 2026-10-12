@@ -20,7 +20,11 @@ test('phase parity reports first mismatching observed stage and final capture', 
   const result = compareRendererPhaseEvidence(arm(['a', 'b']), arm(['a', 'c']));
   assert.equal(result.status, 'checkpoint-mismatch');
   assert.deepEqual(result.firstDifferentPhase, {
-    index: 1, afterDraw: 100, kind: 'electrical-surface', finalFrame: true,
+    index: 1,
+    afterDraw: 100,
+    kind: 'electrical-surface',
+    finalFrame: true,
+    precedingMatchingCheckpoint: { index: 0, afterDraw: 10, kind: 'substrate' },
   });
   assert.equal(result.coverageComplete, true);
 });
@@ -45,5 +49,22 @@ test('different native phase sequences are explicitly incomparable', () => {
 test('unarmed software controls report missing evidence without fabrication', () => {
   const result = compareRendererPhaseEvidence({}, {});
   assert.equal(result.status, 'not-captured');
+  assert.equal(result.firstDifferentPhase, null);
+});
+
+test('a first-checkpoint mismatch has no inferred matching lower bound', () => {
+  const result = compareRendererPhaseEvidence(arm(['a', 'b']), arm(['different', 'b']));
+  assert.equal(result.status, 'checkpoint-mismatch');
+  assert.equal(result.firstDifferentPhase.afterDraw, 10);
+  assert.equal(result.firstDifferentPhase.precedingMatchingCheckpoint, null);
+});
+
+test('missing hashes cannot masquerade as identical native framebuffers', () => {
+  const left = arm(['a', 'b']);
+  const right = arm(['a', 'b']);
+  left.phaseCheckpoints[0].hash = null;
+  right.phaseCheckpoints[0].hash = null;
+  const result = compareRendererPhaseEvidence(left, right);
+  assert.equal(result.status, 'invalid-checkpoints');
   assert.equal(result.firstDifferentPhase, null);
 });

@@ -31,8 +31,19 @@ export function compareRendererPhaseEvidence(left, right) {
   if (!sequenceIdentical) {
     return { ...base, status: 'sequence-mismatch', firstDifferentPhase: null };
   }
+  // A missing/invalid hash is not evidence of raster parity, even if both
+  // contexts omitted it at the same checkpoint.
+  if (
+    [...a, ...b].some(
+      (item) => item.status !== 'valid' || typeof item.hash !== 'string' || !item.hash,
+    )
+  ) {
+    return { ...base, status: 'invalid-checkpoints', firstDifferentPhase: null };
+  }
   const index = a.findIndex((item, i) => item.hash !== b[i].hash);
   if (index >= 0) {
+    // The prior matching checkpoint bounds the observed divergence; the
+    // reported owner/draw is not proof of the first causative draw.
     return {
       ...base,
       status: 'checkpoint-mismatch',
@@ -41,6 +52,14 @@ export function compareRendererPhaseEvidence(left, right) {
         afterDraw: a[index].afterDraw,
         kind: a[index].kind,
         finalFrame: index === a.length - 1 && firstFrameComplete,
+        precedingMatchingCheckpoint:
+          index === 0
+            ? null
+            : {
+                index: index - 1,
+                afterDraw: a[index - 1].afterDraw,
+                kind: a[index - 1].kind,
+              },
       },
     };
   }
