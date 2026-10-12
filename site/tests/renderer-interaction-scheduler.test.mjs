@@ -19,9 +19,18 @@ test('assembly resumes after frame callback and separate task', async () => {
   let frame, task;
   let completed = false;
   const pending = yieldRendererAssembly({
-    requestFrame(callback) { events.push('frame-queued'); frame = callback; },
-    postTask(callback) { events.push('task-queued'); task = callback; },
-  }).then(() => { completed = true; events.push('resumed'); });
+    requestFrame(callback) {
+      events.push('frame-queued');
+      frame = callback;
+    },
+    postTask(callback) {
+      events.push('task-queued');
+      task = callback;
+    },
+  }).then(() => {
+    completed = true;
+    events.push('resumed');
+  });
   assert.equal(completed, false);
   frame();
   await Promise.resolve();
