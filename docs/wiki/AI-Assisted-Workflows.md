@@ -38,7 +38,7 @@ Provide these details before generating executable code:
 - **Starting Base:** footprint (rectangle/circle), width/height or diameter, thickness, face orientation and existing stack. The Recipe does not create a Base.
 - **Units and coordinates:** use explicit nm, µm or mm; specify the mask-to-substrate position, scale and rotation. WaferCAD stores canonical physical dimensions in µm.
 - **Mask mapping:** file source or Draw source; actual Cell name; layer/datatype pairs such as `3|0`; which patterns are openings versus protected material.
-- **Process intent:** ordered operations, material names, thickness/depth, front/back face, and **Whole face / Selected mask / Invert mask** for each step.
+- **Process intent:** ordered operations, material names, thickness/depth, front/back face (or a supported Recipe `face: 'both'` operation), and **Whole face / Selected mask / Invert mask** for each step. Do not use Both for Lift-off or Planarize/CMP.
 - **Evidence versus inference:** article section or figure for each claimed parameter, with unknowns clearly labeled *assumption* or *illustrative*.
 
 **Important ROI distinction:** Mask ROI limits Process operations, even Whole face, and limits mask exports. Main/3D ROI only clips inspection and applicable 3D exports. Clear an unintended Mask ROI before a truly full-face step.
