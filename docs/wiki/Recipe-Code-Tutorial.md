@@ -6,7 +6,7 @@ WaferCAD Recipe v1 is a **restricted, declarative process language**. Each comma
 
 ## 1. Five-minute quick start
 
-Begin with a project containing a suitable **Base** substrate (for example, Si); applying a Recipe does not create the Base. Navigate to **Process → Recipe → Code**, paste:
+Begin with a project containing a suitable **Base** substrate (for example, Si); applying a Recipe does not create the Base. Navigate to **Process → Code** (beside **Recipe** in the current workstation), paste:
 
 ```javascript
 // Simple oxide and ALD passivation
