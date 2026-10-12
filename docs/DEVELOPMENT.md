@@ -7,7 +7,12 @@ The active product is entirely under `site/`.
 `app.html` opens the v2 Workstation. `app-legacy.html` retains the previous
 workspace and the embedded Welcome preview protocol. Both use the same
 workspace storage and writer lease; v2's interface switch saves pending
-structural and view state before navigating to Legacy.
+structural and view state before navigating to Legacy. If `localStorage` is
+unreadable or unwritable, both interfaces remain editable in memory, but
+persistent autosave is disabled rather than risking cross-tab overwrite. Export
+a `.wafercad` project while storage coordination is unavailable; after restoring
+storage access, use the explicit takeover/reconciliation flow. A missing or
+expired write lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
