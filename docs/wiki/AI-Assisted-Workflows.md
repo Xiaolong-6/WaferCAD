@@ -85,7 +85,7 @@ single-device model before suggesting a full-wafer array.
 
 **Review before running:** verify the extraction table against the paper yourself. In particular, figure scale bars, mask polarity, lateral offsets and unreported process parameters must not silently become "paper-derived" facts. Where necessary, ask the AI to propose two labeled interpretations rather than invent one definitive geometry.
 
-**Bring the result into WaferCAD:** establish the Base in Project/Base; import the generated or original GDS/OAS into Mask; inspect its Cell, layer/datatype and position; then open **Process → Recipe → Code**, paste the Recipe, click **Apply code**, and **Validate**. For a clean run select **Start → Rebuild Base first (new Main)**, review the History/Variant confirmation, and use **Run All**. Inspect the Section at each major step and make sure the A–B line crosses the intended feature.
+**Bring the result into WaferCAD:** establish the Base in Project/Base; import the generated or original GDS/OAS into Mask; inspect its Cell, layer/datatype and position; then open **Process → Code** (beside Recipe in the current workstation), paste the Recipe, click **Apply code**, and **Validate**. For a clean run select **Start → Rebuild Base first (new Main)**, review the History/Variant confirmation, and use **Run All**. Inspect the Section at each major step and make sure the A–B line crosses the intended feature.
 
 ### A minimal reference Recipe
 
