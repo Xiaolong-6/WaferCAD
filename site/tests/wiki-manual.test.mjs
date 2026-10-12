@@ -3,6 +3,7 @@ import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
+import { PROCESS_GUIDE } from '../process-guide.js';
 import { parseProcessRecipeSource } from '../process-recipe.js';
 
 const manual = (page) => readFile(new URL(`../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
@@ -14,6 +15,13 @@ test('Wiki examples cover exactly the published Welcome project families and the
     tableRows.length,
     BUNDLED_EXAMPLES.length,
     'add/update the Wiki catalog when Welcome families change',
+  );
+  const rows = page.split('\n');
+  const catalog = rows.findIndex((line) => line.includes(`[**${BUNDLED_EXAMPLES[0].title}**]`));
+  assert.ok(catalog >= 0, 'Welcome example table must contain actual project links');
+  assert.ok(
+    rows.slice(catalog, catalog + BUNDLED_EXAMPLES.length).every((line) => line.startsWith('| [')),
+    'Welcome example entries must form one contiguous Markdown table',
   );
   for (const example of BUNDLED_EXAMPLES) {
     const row = tableRows.find((line) => line.includes(`[**${example.title}**]`));
@@ -66,13 +74,14 @@ test('the novice path is discoverable and names the current UI controls', async 
     );
   }
   for (const step of [
-    'Apply base',
+    'Rebuild Base',
     'Whole face',
     'Selected mask',
     'Draw',
-    'Directional',
+    'Direct',
     'SiO2',
     'Section A–B',
+    'Also add to Recipe → No',
     'Undo',
     'Recovery',
     '.wafercad',
@@ -82,10 +91,22 @@ test('the novice path is discoverable and names the current UI controls', async 
   const welcome = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(welcome, /id="welcomeEmptyBtn"[^>]*href="\.\/app\.html\?start=empty"/);
   assert.match(guide, /click \*\*Start empty\*\*/);
-  assert.match(guide, /\*\*Project\*\* tab[\s\S]*\*\*XYZ unit/);
-  assert.match(guide, /separate \*\*Base\*\* tab/);
+  assert.match(guide, /Open \*\*Project\*\*[\s\S]*XYZ display unit/);
+  assert.match(guide, /\*\*Base\*\* editor within Project/);
   assert.match(guide, /\*\*Base\*\* is the default layer name/);
-  assert.match(guide, /uncheck Also add to Recipe/);
+  assert.match(guide, /Also add to Recipe → No/);
+
+  const v2Project = await readFile(new URL('../ui-v2/project-mask-panels.js', import.meta.url), 'utf8');
+  assert.match(v2Project, /'XYZ display unit'/);
+  assert.match(v2Project, /button\('Rebuild Base'/);
+  assert.match(v2Project, /host\('panel.base'\)/);
+  const v2Workflow = await readFile(new URL('../ui-v2/workstation-workflow.js', import.meta.url), 'utf8');
+  assert.match(v2Workflow, /\['step', 'Manual', 'manual'\]/);
+  assert.match(v2Workflow, /'Also add to Recipe'[\s\S]*?'false'/);
+  assert.match(v2Workflow, /fields.input\('Thickness \/ depth/);
+  const v2Mask = await readFile(new URL('../ui-v2/mask-view.js', import.meta.url), 'utf8');
+  assert.match(v2Mask, /'mask-source'/);
+  assert.match(v2Mask, /'draw-toggle'/);
 
   const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
   const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
@@ -141,6 +162,53 @@ test('all JavaScript Recipe examples in the English Wiki parse as v1 recipes', a
     for (const [index, snippet] of snippets.entries()) {
       const recipe = parseProcessRecipeSource(snippet[1]);
       assert.ok(recipe.steps.length > 0, `${page}: snippet ${index + 1} is empty`);
+    }
+  }
+});
+
+
+test('Wiki uses real first-party images, relevant captions, and the generated Process catalog', async () => {
+  const home = await manual('Home');
+  assert.ok(
+    home.includes(`all ${PROCESS_GUIDE.length} before/after operation diagrams`),
+    'Home must report the actual Process guide variant count',
+  );
+  const pages = [
+    'Home',
+    'First-10-Minutes',
+    'Getting-Started',
+    'Workspace-and-Views',
+    'Masks-and-ROI',
+    'Process-and-Recipes',
+    'Recipe-Code-Tutorial',
+    'AI-Assisted-Workflows',
+    'Examples-and-Modeling-Limits',
+    'Troubleshooting',
+    'Process-Operations',
+  ];
+  for (const page of pages) {
+    const source = await manual(page);
+    const images = [...source.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)];
+    assert.ok(images.length >= 1, `${page}: expected a specific scientific or application visual`);
+    for (const match of images) {
+      const [, alt, url] = match;
+      assert.ok(alt.length >= 14, `${page}: image must have descriptive alt text`);
+      const prefix = 'https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/';
+      assert.ok(url.startsWith(prefix), `${page}: no stock or unverified external imagery (${url})`);
+      const asset = url.slice(prefix.length).split('?')[0];
+      assert.ok(
+        /^(?:docs\/wiki\/assets\/process|site\/(?:examples\/thumbnails|example-previews)|tests\/visual-baselines\/windows-chromium)\//.test(asset),
+        `${page}: image path must be from an approved reviewed asset family (${asset})`,
+      );
+      await access(new URL('../../' + asset, import.meta.url));
+      if (page !== 'Process-Operations') {
+        const after = source.slice(match.index + match[0].length).trimStart();
+        assert.match(
+          after.slice(0, 400),
+          /^_[^\n]+_\s*\n/,
+          `${page}: explain image provenance, purpose and schematic/actual status immediately below it`,
+        );
+      }
     }
   }
 });
