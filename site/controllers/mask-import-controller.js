@@ -72,7 +72,8 @@ export function createMaskImportController({
 
   function bind() {
     populateSampleLayouts();
-    $('sampleMaskSelect').onchange = openSample;
+    const sampleSelect = $('sampleMaskSelect');
+    if (sampleSelect) sampleSelect.onchange = openSample;
     $('gdsInput').onchange = openFile;
 
     for (const id of ['maskOffsetX', 'maskOffsetY', 'maskScale', 'maskRotation']) {

@@ -24,7 +24,7 @@ export function createProjectMaskPanels({
 }) {
   const { state, history, projectState } = store;
   const units = createDisplayUnits(() => state);
-  const { el, button, panelHeader } = window.WaferCadV2Components;
+  const { el, button } = window.WaferCadV2Components;
   const { hook, root, input, choice, fields, host } = controls;
   let baseRevert = null;
   const normalizedProjectName = (value) =>
@@ -36,8 +36,21 @@ export function createProjectMaskPanels({
     'openProjectInput',
     el('input', { type: 'file', accept: '.wafercad,.json', hidden: true }),
   );
+  hook('saveProjectBtn', button('Save', null, 'save', { 'data-variant': 'ghost' }));
   projectHost.append(
-    panelHeader('Project'),
+    el(
+      'div',
+      { class: 'p-actions' },
+      hook('newProjectBtn', button('New', null, 'plus', { 'data-variant': 'ghost' })),
+      el(
+        'label',
+        { class: 'wc-button', 'data-size': 'sm', 'data-variant': 'ghost' },
+        window.WaferCadV2Icons.icon('folder'),
+        'Open',
+        open,
+      ),
+      hook('exportProjectBtn', button('Export', null, 'export', { 'data-variant': 'ghost' })),
+    ),
     input('Project name', 'projectNameInput', state.projectName, { maxlength: 256 }),
     choice(
       'XYZ display unit',
@@ -50,14 +63,6 @@ export function createProjectMaskPanels({
       units.key(),
     ),
     projectSummary,
-    el(
-      'div',
-      { class: 'p-actions' },
-      hook('newProjectBtn', button('New', null, 'project')),
-      el('label', { class: 'wc-button' }, 'Open', open),
-      hook('saveProjectBtn', button('Save', null, 'project')),
-      hook('exportProjectBtn', button('Export', null, 'export')),
-    ),
   );
   root.getElementById('xyUnitSelect').onchange = (event) => {
     state.xyDisplayUnit = event.target.value;
@@ -168,9 +173,20 @@ export function createProjectMaskPanels({
   const tree = hook('cellTree', el('div', { class: 'v2-mask-browser' }));
   const list = hook('maskLayerList', el('div', { class: 'v2-mask-browser' }));
   maskHost.append(
-    panelHeader('Mask', 'Native file coordinates in µm'),
+    el(
+      'div',
+      { class: 'p-actions p-mask-source-controls', role: 'group', 'aria-label': 'Mask source' },
+      el('span', { class: 'wc-label' }, 'Source'),
+      ...[
+        ['file', 'File', 'folder'],
+        ['draw', 'Draw', 'palette'],
+      ].map(([key, label, icon]) =>
+        button(label, `mask-source:${key}`, icon, {
+          'aria-pressed': String(state.maskSourceMode === key),
+        }),
+      ),
+    ),
     el('label', { class: 'wc-button' }, 'Import GDS / OAS', layoutFile),
-    choice('Sample layout', 'sampleMaskSelect', [['', 'Choose sample…']]),
     hook('maskCellLabel', el('p', { class: 'p-aux' })),
     el('details', { open: true }, el('summary', {}, 'Cell'), tree),
     el('details', { open: true }, el('summary', {}, 'Layers'), list),

@@ -5,6 +5,7 @@ import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
+import { mountToolPopover } from './view-kit/tool-popover.js';
 import { maskRoiAnchorPoint } from '../mask-roi-geometry.js';
 
 export async function createMaskView({ project, sharedState, workstation } = {}) {
@@ -56,7 +57,15 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function sync() {
     syncDisplayUnitFields(document, units.key());
     if (!state) return;
+    const opacity = Number.isFinite(state.maskOpacity) ? state.maskOpacity : 0.65;
+    if (document.activeElement !== maskOpacityRange) maskOpacityRange.value = String(opacity);
+    maskOpacityValue.textContent = `${Math.round(opacity * 100)}%`;
     state.drawOpen = state.maskSourceMode === 'draw';
+    for (const node of document.querySelectorAll('[data-action^="mask-source:"]'))
+      node.setAttribute(
+        'aria-pressed',
+        String(node.dataset.action === `mask-source:${state.maskSourceMode}`),
+      );
     const sourceButton = document.querySelector('[data-action="mask-source"]');
     if (sourceButton) {
       const drawn = state.maskSourceMode === 'draw';
@@ -230,6 +239,32 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     ),
     button('Apply', 'alignment-apply', 'check', { primary: true }),
   );
+  const maskOpacityRange = el('input', {
+    id: 'maskOpacityRange',
+    type: 'range',
+    min: 0,
+    max: 1,
+    step: 0.05,
+    value: 0.65,
+    'aria-label': 'Mask opacity',
+  });
+  const maskOpacityValue = el('output', { id: 'maskOpacityValue', for: 'maskOpacityRange' }, '65%');
+  const opacityForm = el(
+    'div',
+    { class: 'p-form' },
+    el(
+      'label',
+      { class: 'wc-field', for: 'maskOpacityRange' },
+      el('span', { class: 'wc-label' }, 'Opacity ', maskOpacityValue),
+      maskOpacityRange,
+    ),
+  );
+  maskOpacityRange.oninput = () => {
+    state.maskOpacity = Math.max(0, Math.min(1, Number(maskOpacityRange.value)));
+    maskOpacityValue.textContent = `${Math.round(state.maskOpacity * 100)}%`;
+    runtime.render();
+    workstation?.changed('mask');
+  };
   for (const id of ['maskOffsetXUnit', 'maskOffsetYUnit'])
     hook(id, el('span', { hidden: true }, 'µm'));
   for (const id of [
@@ -291,8 +326,9 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           iconButton('Zoom', 'tool:zoom:mask', 'zoom'),
         ],
         [
-          iconButton('Mask source', 'mask-source', 'folder'),
+          ...(workstation ? [] : [iconButton('Mask source', 'mask-source', 'folder')]),
           iconButton('Draw', 'draw-toggle', 'palette'),
+          iconButton('Mask opacity', 'opacity:mask', 'eye'),
           iconButton('ROI', 'mask-roi-toggle', 'roi'),
           iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
         ],
@@ -478,7 +514,12 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     document.addEventListener('click', async (event) => {
       const trigger = event.target.closest('button[data-action]');
       if (!trigger || trigger.disabled) return;
-      if (workstation && !trigger.closest('#maskPanel, .v2-mask-floating')) return;
+      if (
+        workstation &&
+        !trigger.closest('#maskPanel, .v2-mask-floating') &&
+        !trigger.matches('[data-action^="mask-source:"]')
+      )
+        return;
       const action = trigger.dataset.action;
       if (action === 'fit:mask') runtime.fit();
       else if (action === 'tool:pan:mask') runtime.setPanEnabled(!state.panEnabled);
@@ -493,8 +534,14 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       else if (action === 'draw-apply') runtime.draw.applyEditor();
       else if (action === 'draw-delete') runtime.draw.removeSelected();
       else if (action === 'draw-clear') await runtime.draw.clear();
-      else if (action === 'mask-source') {
-        runtime.draw.setSourceMode(state.maskSourceMode === 'draw' ? 'file' : 'draw');
+      else if (action === 'mask-source' || action.startsWith('mask-source:')) {
+        runtime.draw.setSourceMode(
+          action === 'mask-source'
+            ? state.maskSourceMode === 'draw'
+              ? 'file'
+              : 'draw'
+            : action.split(':')[1],
+        );
         roiOpen = false;
         if (state.maskSourceMode === 'file') overlays.closeFloating('maskDrawSettings', 'hidden');
         sync();
@@ -517,7 +564,10 @@ export async function createMaskView({ project, sharedState, workstation } = {})
         runtime.alignment.syncTransformInputs();
         floating('maskAlignmentSettings', 'Mask alignment', alignmentForm, trigger);
       } else if (action === 'alignment-apply') runtime.alignment.updateTransform();
-      else if (action === 'mask-export-menu') {
+      else if (action === 'opacity:mask') {
+        sync();
+        mountToolPopover(overlays, { label: 'Mask opacity', content: opacityForm, trigger });
+      } else if (action === 'mask-export-menu') {
         runtime.exporter.syncMaskExportOptions();
         floating(
           'maskExportSettings',

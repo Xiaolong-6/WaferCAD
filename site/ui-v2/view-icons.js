@@ -2,6 +2,11 @@
 (() => {
   // Original 16px outline set: currentColor, 1.6px round strokes; no icon dependency.
   const iconPaths = {
+    bookmark: 'M4 2h8v12l-4-3-4 3Z',
+    moveUp: 'M8 13V3 M4 7l4-4 4 4',
+    moveDown: 'M8 3v10 M4 9l4 4 4-4',
+    copy: 'M6 5h8v9H6Z M3 11H2V2h8v1',
+    grip: 'M5 3h.01 M11 3h.01 M5 8h.01 M11 8h.01 M5 13h.01 M11 13h.01',
     code: 'M5 3L1 8l4 5 M11 3l4 5-4 5 M9 2L7 14',
     project: 'M2 4h5l2 2h5v8H2Z M2 4V2h5l2 2',
     mask: 'M2 2h12v12H2Z M5 5h6v6H5Z',
@@ -31,6 +36,7 @@
     depthSmooth: 'M1 5h14 M1 11h14 M8 2v3 M6 3l2 2 2-2',
     export: 'M8 10V1 M5 4l3-3 3 3 M2 8v6h12V8',
     maximize: 'M2 6V2h4 M10 2h4v4 M14 10v4h-4 M6 14H2v-4 M5 5l-3-3 M11 5l3-3 M11 11l3 3 M5 11l-3 3',
+    restore: 'M2 2l4 4 M2 6h4V2 M14 2l-4 4 M10 2v4h4 M14 14l-4-4 M14 10h-4v4 M2 14l4-4 M6 14v-4H2',
     more: 'M3 8h.01 M8 8h.01 M13 8h.01',
     play: 'M4 2l10 6-10 6Z',
     stop: 'M3 3h10v10H3Z',

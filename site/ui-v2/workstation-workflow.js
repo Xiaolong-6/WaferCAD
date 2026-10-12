@@ -17,7 +17,7 @@ import { loadBundledProject } from './workstation-runtime.js';
 import { readStartupFile, removeStartupFile } from '../startup-file.js';
 
 export function createWorkstationWorkflow({ store, workstation }) {
-  const { el, button, field, panelHeader } = window.WaferCadV2Components;
+  const { el, button, field } = window.WaferCadV2Components;
   const { state, history, projectState } = store;
   const hooks = new Map();
   const hook = (id, node) => {
@@ -201,7 +201,6 @@ export function createWorkstationWorkflow({ store, workstation }) {
     processFace,
   );
   step.append(
-    panelHeader('Process', 'Physical lengths in µm'),
     el(
       'div',
       { id: 'operationTools', class: 'p-form v2-process-form' },
@@ -355,7 +354,6 @@ export function createWorkstationWorkflow({ store, workstation }) {
     ),
   );
   hook('operationTools', step.querySelector('#operationTools'));
-  step.querySelector('header').remove();
   const form = hooks.get('operationTools');
   const materialPreview = choice(
     'Material / target',
@@ -588,15 +586,38 @@ export function createWorkstationWorkflow({ store, workstation }) {
     hook(id, el('span'));
   const historyHost = host('panel.history');
   const bookmark = input('Bookmark name', 'v2BookmarkName');
-  const addBookmark = button('Bookmark current state', null, 'history');
+  bookmark.querySelector('.wc-label').remove();
+  hooks.get('v2BookmarkName').placeholder = 'Bookmark name…';
+  hooks.get('v2BookmarkName').setAttribute('aria-label', 'Bookmark name');
+  const addBookmark = button('Add', null, 'bookmark', {
+    'data-variant': 'ghost',
+    'aria-label': 'Bookmark current state',
+    title: 'Bookmark current state',
+  });
+  for (const [id, label, icon] of [
+    ['undoBtn', 'Undo', 'undo'],
+    ['redoBtn', 'Redo', 'redo'],
+  ]) {
+    const control = hooks.get(id);
+    control.replaceChildren(window.WaferCadV2Icons.icon(icon));
+    control.setAttribute('aria-label', label);
+    control.title = label;
+    control.dataset.variant = 'icon';
+  }
   const recovery = choice('Recovery', 'workspaceRecoverySelect', [['', 'Choose checkpoint…']]);
+  recovery.querySelector('.wc-label').remove();
+  hooks.get('workspaceRecoverySelect').setAttribute('aria-label', 'Recovery checkpoint');
   const recover = hook(
     'workspaceRestoreBtn',
-    button('Restore', null, 'history', { disabled: true }),
+    button('Restore', null, 'history', { disabled: true, 'data-variant': 'ghost' }),
   );
-  const clearRecovery = hook('workspaceRecoveryClearBtn', button('Clear Recovery'));
+  const clearRecovery = hook(
+    'workspaceRecoveryClearBtn',
+    button('Clear Recovery', null, 'delete', { 'data-variant': 'ghost' }),
+  );
   const takeOver = hook('workspaceTakeOverBtn', button('Take over storage'));
-  const reload = hook('safeReloadBtn', button('Save and reload'));
+  // Retain the controller hook without exposing the development reload shortcut.
+  hook('safeReloadBtn', button('Save and reload', null, 'save', { hidden: true }));
   hook('workspaceSaveStatus', workstation.shell.getSlot('status.save'));
   const conflict = hook(
     'workspaceConflictDialog',
@@ -609,11 +630,14 @@ export function createWorkstationWorkflow({ store, workstation }) {
       el(
         'div',
         { class: 'p-history-fixed' },
-        panelHeader('History', 'Steps, Variants and bookmarks'),
-        hook('snapshotCount', el('span', { class: 'p-aux' })),
-        bookmark,
-        el('div', { class: 'p-actions' }, hooks.get('undoBtn'), hooks.get('redoBtn')),
-        addBookmark,
+        el(
+          'div',
+          { class: 'p-history-toolbar' },
+          el('span', { class: 'p-aux' }, 'Steps · ', hook('snapshotCount', el('span'))),
+          el('div', { class: 'p-actions' }, hooks.get('undoBtn'), hooks.get('redoBtn')),
+        ),
+        el('div', { class: 'p-history-bookmark-row' }, bookmark, addBookmark),
+        hook('snapshotContinuation', el('div', { class: 'v2-history p-history-reminder' })),
       ),
       hook('snapshotList', el('div', { class: 'v2-history p-history-scroll' })),
     ),
@@ -621,9 +645,9 @@ export function createWorkstationWorkflow({ store, workstation }) {
   const recoveryPanel = el(
     'details',
     { open: true },
-    el('summary', {}, 'Recovery'),
+    el('summary', {}, el('strong', {}, 'Recovery')),
     recovery,
-    el('div', { class: 'p-actions' }, recover, clearRecovery, reload),
+    el('div', { class: 'p-actions' }, recover, clearRecovery),
   );
   const openProcess = () => {
     workstation.uiState.domain = 'process';
@@ -716,9 +740,31 @@ export function createWorkstationWorkflow({ store, workstation }) {
     refreshRecovery,
     dirty,
   });
-  host('panel.project').append(recoveryPanel, conflict);
+  recoveryPanel.querySelector('.p-actions').prepend(hooks.get('saveProjectBtn'));
+  host('panel.base').append(recoveryPanel, conflict);
+  let historyMenuId = 0;
   project = createProjectController({
     root,
+    compactHistory: true,
+    decorateHistoryMenu({ details, trigger, content }) {
+      // Keep controller-owned content in place while native top-layer popovers
+      // avoid clipping inside the History scroller and share overlay lifecycle.
+      content.id = `v2-history-menu-${++historyMenuId}`;
+      content.popover = 'auto';
+      workstation.shell.overlays.adoptPopover(content, trigger);
+      details.addEventListener('toggle', () => {
+        if (!details.isConnected) return;
+        if (details.open) {
+          content.showPopover();
+          const anchor = trigger.getBoundingClientRect();
+          content.style.left = `${Math.max(8, Math.min(anchor.right - content.offsetWidth, innerWidth - content.offsetWidth - 8))}px`;
+          content.style.top = `${Math.max(8, Math.min(anchor.bottom + 4, innerHeight - content.offsetHeight - 8))}px`;
+        } else if (content.matches(':popover-open')) content.hidePopover();
+      });
+      content.addEventListener('toggle', (event) => {
+        if (event.newState === 'closed') details.open = false;
+      });
+    },
     ...domain.bindings,
     snapshotManager: history,
     renderAll: refresh,
@@ -768,7 +814,6 @@ export function createWorkstationWorkflow({ store, workstation }) {
     el(
       'div',
       { class: 'v2-diagnostics' },
-      panelHeader('Diagnostics', 'Canonical geometry'),
       hook('diagnosticsAnalyzeBtn', button('Analyze', null, 'process')),
       hook('diagnosticsStatus', el('p', { class: 'p-aux' })),
       hook('diagnosticsResults', el('div')),
@@ -777,6 +822,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
   host('panel.process.diagnostics').append(diagnosticsPane);
   recipe = createProcessRecipeController({
     root,
+    inlineStepEditor: true,
+    templatesEnabled: false,
     getRecipe: () => state.processRecipe,
     setRecipe: (value) => {
       state.processRecipe = value ? structuredClone(value) : null;
@@ -840,8 +887,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
         else {
           host(`panel.process.${mode}`).append(recipePane);
           recipePane.hidden = false;
-          root.getElementById('recipeStepsPane').hidden = mode === 'code';
-          root.getElementById('recipeCodePane').hidden = mode !== 'code';
+          recipe.setCodeMode(mode === 'code');
         }
       },
       onHide() {},

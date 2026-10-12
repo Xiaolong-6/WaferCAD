@@ -114,6 +114,9 @@ try {
       }
       const historyScroll = page.locator('#snapshotList');
       assert.equal(await historyScroll.isVisible(), true);
+      // Compact rows can fit this fixture at full height. Exercise the real
+      // scroll owner in a short window instead of depending on row padding.
+      await page.setViewportSize({ width, height: 420 });
       const historyBounds = await historyScroll.evaluate((node) => ({
         client: node.clientHeight,
         scroll: node.scrollHeight,
@@ -122,6 +125,7 @@ try {
       await historyScroll.hover();
       await page.mouse.wheel(0, 500);
       await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      await page.setViewportSize({ width, height: 960 });
       await panel('process');
       await page.locator('[data-action="process-mode:code"]').click();
       assert.equal(await page.locator('#recipeCodeEditor').inputValue(), '// retained draft');
@@ -452,7 +456,9 @@ try {
         await page.locator('#revertBaseBtn').click();
         assert.deepEqual((await snap()).model, beforeBase.model);
         await panel('mask');
-        await page.locator('#sampleMaskSelect').selectOption('gds-basic-instances');
+        await page
+          .locator('#gdsInput')
+          .setInputFiles('site/samples/klayout/gds-basic-instances.gds');
         await page.waitForFunction(
           () =>
             window.WaferCadV2Workstation.snapshot().layout.cells?.length > 0 ||
