@@ -2,13 +2,13 @@
 
 ## Source of truth
 
-- `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, the English/Chinese Recipe Code Tutorial, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
+- `docs/wiki/*.md`: complete product user manual (Welcome/Getting Started, views, mask, Process, the English Recipe Code Tutorial and AI-assisted workflows guide, History, Variants, Recovery, I/O, examples, limits and troubleshooting).
 - `site/bundled-examples.js`: canonical Welcome project catalog. Keep `docs/wiki/Examples-and-Modeling-Limits.md` aligned with every promoted example ID/title; do not count unpromoted development fixtures as Welcome examples.
 - `site/process-guide.js`: canonical metadata for the 18 Process operation variants.
 - `site/process-guide-svg.js`: the paired Before → After diagrams.
 - `docs/wiki/assets/process/*.svg`: generated, version-controlled Before → After diagrams embedded directly in the Process wiki chapter.
 - `site/guide/index.html`: compatibility redirect only; old fragment bookmarks resolve into Wiki headings.
-- `docs/wiki/Process-Operations.md`: **generated** by `npm run docs:build`. Do not edit it manually; edits will be overwritten.
+- `docs/wiki/Process-Operations.md`: **generated** by `npm run docs:build`. Do not edit it manually; edits will be overwritten.\n- All actively maintained product documentation is in **English**. Legacy localized URLs may be retained as short English pointers so existing links still resolve.
 
 To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 
