@@ -77,19 +77,22 @@ test('successful PNG restores interactive ratio and original camera aspect', asy
 });
 
 for (const failure of ['prepare', 'capture']) {
-  test('PNG ' + failure + ' failure always restores interactive scene and disposes capture GL', async () => {
-    const h = setup({ failure });
-    await assert.rejects(
-      runTemporaryRendererCapture(h.options),
-      failure === 'prepare' ? /rough build failed/ : /PNG encoding failed/,
-    );
-    assert.equal(h.mainRenderer.ratio, 1.25);
-    assert.equal(h.camera.aspect, 1.4);
-    assert.ok(h.calls.includes('dispose'));
-    assert.ok(h.calls.includes('restore-rough'));
-    assert.equal(h.calls.at(-1), 'frame');
-    assert.equal(h.calls.includes('capture'), failure === 'capture');
-  });
+  test(
+    'PNG ' + failure + ' failure always restores interactive scene and disposes capture GL',
+    async () => {
+      const h = setup({ failure });
+      await assert.rejects(
+        runTemporaryRendererCapture(h.options),
+        failure === 'prepare' ? /rough build failed/ : /PNG encoding failed/,
+      );
+      assert.equal(h.mainRenderer.ratio, 1.25);
+      assert.equal(h.camera.aspect, 1.4);
+      assert.ok(h.calls.includes('dispose'));
+      assert.ok(h.calls.includes('restore-rough'));
+      assert.equal(h.calls.at(-1), 'frame');
+      assert.equal(h.calls.includes('capture'), failure === 'capture');
+    },
+  );
 }
 
 test('failed temporary WebGL setup disposes resources without modifying main view', async () => {
@@ -104,8 +107,10 @@ test('restoration remains attempted even when capture WebGL dispose fails', asyn
   const h = setup({ failure: 'dispose' });
   await assert.rejects(
     runTemporaryRendererCapture(h.options),
-    (error) => error instanceof AggregateError &&
-      error.errors.length === 1 && /dispose failed/.test(error.errors[0].message),
+    (error) =>
+      error instanceof AggregateError &&
+      error.errors.length === 1 &&
+      /dispose failed/.test(error.errors[0].message),
   );
   assert.equal(h.mainRenderer.ratio, 1.25);
   assert.equal(h.camera.aspect, 1.4);
