@@ -102,3 +102,46 @@ for dithering sensitivity, subject to independent replay. If either still
 drifts, the next isolated variable is multisample antialiasing or shader
 precision. Do not turn this flag into a production rendering default without
 a separate visual and scientific review.
+
+## October 12 DITHER-off diagnostic: hypothesis falsified as a sole fix
+
+Hardware bundle `rtx3060-v3-dither-3b07cf2-2026-10-12T05-17-55-947Z.zip`
+was captured on a genuine RTX 3060 / ANGLE D3D11.
+V3 `3b07cf2`, V4 `465dfc2`. The four contexts completed with
+`GL_DITHER` disabled during **1,408 OFF draws / 1,291 ON draws** in
+their respective captured frames. Both same-policy draw-input hashes,
+material hashes, camera matrices and draw order agreed.
+
+| Fresh-context same policy | Oct 12 baseline | DITHER disabled |
+| --- | ---: | ---: |
+| OFF/OFF changed pixels | 54 | 33 |
+| ON/ON changed pixels | 78 | 134 |
+
+Differences persisted in native GL framebuffer with zero GL errors,
+1/255 maximum channel delta and unchanged alpha. DITHER-off is not a
+strict-parity solution; comparing only one baseline and one intervention
+does not establish a reliable direction of effect. The earliest sampled
+material-exterior differences remain at draw 256 (OFF) and draw 384 (ON).
+Most changed pixels have high local gradients (in DITHER-off: 29/33
+OFF pixels and 129/134 ON pixels exceed an RGB mean local gradient of
+2, versus ~6.5% of all frame pixels). This suggests sampling/raster
+or shading quantization at rendered edges.
+
+## Next targeted test: disable MSAA, leave DITHER unchanged
+
+From the latest V4 runner branch, after the Windows preflight and
+software CI succeed:
+
+```powershell
+node scripts/renderer-unified-hardware.mjs --hardware-rtx3060 --diagnose-v3-msaa
+```
+
+This runs **V3 only** on the pinned V3 HEAD, intercepting WebGL2 context
+creation to request `antialias: false`; it confirms
+`contextAntialias=false`, default framebuffer samples = 0 and
+default framebuffer ownership for all four captured frames.
+`GL_DITHER` is not overridden. Results are marked
+`diagnosticComplete`, never product `passed`; previously approved
+pixel baselines, normal renderer settings and strict zero tolerance are
+unchanged. If parity still drifts, investigate shader float/color
+quantization instead of another unstructured full-wafer benchmark.

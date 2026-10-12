@@ -53,8 +53,44 @@ export function buildRendererV3DitherDiagnosticPlan() {
   ];
 }
 
+// Isolate MSAA at context creation; record actual antialias/sample counts.
+export function buildRendererV3MsaaDiagnosticPlan() {
+  return [
+    {
+      id: 'v3-msaa-off',
+      branch: 'v3',
+      script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+      args: ['--hardware-rtx3060', '--report-only', '--diagnose-no-msaa'],
+      artifact: 'test-results/renderer-hardware-fresh-context-ab-no-msaa',
+    },
+  ];
+}
+
 export function classifyRendererHardwareStep(step, report) {
   if (!report) return step.exitCode === 0 ? 'incomplete' : 'error';
+  if (step.id === 'v3-msaa-off') {
+    if (
+      step.exitCode !== 0 ||
+      report.error ||
+      report.failure ||
+      report.diagnosticNoMsaa !== true ||
+      report.diagnosticNoDither !== false ||
+      report.acceptanceEligible !== false
+    )
+      return 'error';
+    if (report.stage !== 'completed' || report.trials?.length !== 4) return 'incomplete';
+    if (
+      report.trials.some(
+        (trial) =>
+          trial.native?.contextAntialias !== false ||
+          trial.native?.defaultFramebufferSamples !== 0 ||
+          trial.native?.glState?.framebuffer !== 'default',
+      )
+    ) {
+      return 'error';
+    }
+    return 'diagnostic-complete';
+  }
   if (step.id === 'v3-dither-off') {
     if (
       step.exitCode !== 0 ||

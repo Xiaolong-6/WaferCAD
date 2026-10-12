@@ -14,6 +14,7 @@ import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
   buildRendererV3DitherDiagnosticPlan,
+  buildRendererV3MsaaDiagnosticPlan,
   classifyRendererHardwareStep,
 } from './test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -22,13 +23,17 @@ const options = process.argv.slice(2);
 const planOnly = options.includes('--plan-only');
 const modesArg = options.find((arg) => arg.startsWith('--modes='));
 const ditherDiagnostic = options.includes('--diagnose-v3-dither');
-if (ditherDiagnostic && modesArg) {
-  throw new Error('--diagnose-v3-dither cannot be combined with V4 --modes');
+const msaaDiagnostic = options.includes('--diagnose-v3-msaa');
+const diagnostic = ditherDiagnostic || msaaDiagnostic;
+if ((diagnostic && modesArg) || (ditherDiagnostic && msaaDiagnostic)) {
+  throw new Error('Select only one V3 diagnostic or V4 --modes');
 }
 const modes = modesArg ? modesArg.slice('--modes='.length).split(',') : undefined;
 const plan = ditherDiagnostic
   ? buildRendererV3DitherDiagnosticPlan()
-  : buildRendererHardwarePlan(modes);
+  : msaaDiagnostic
+    ? buildRendererV3MsaaDiagnosticPlan()
+    : buildRendererHardwarePlan(modes);
 if (planOnly) {
   console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, plan }, null, 2));
 } else {
@@ -203,12 +208,12 @@ async function runHardware() {
       completed,
       fatalError,
       passed:
-        !ditherDiagnostic &&
+        !diagnostic &&
         !fatalError &&
         completed.length === plan.length &&
         completed.every((step) => step.status === 'passed'),
       diagnosticComplete:
-        ditherDiagnostic &&
+        diagnostic &&
         !fatalError &&
         completed.length === plan.length &&
         completed.every((step) => step.status === 'diagnostic-complete'),

@@ -8,6 +8,7 @@ import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
   buildRendererV3DitherDiagnosticPlan,
+  buildRendererV3MsaaDiagnosticPlan,
   classifyRendererHardwareStep,
 } from '../test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -77,6 +78,59 @@ test('DITHER-off diagnostic is one V3-only experiment, never product acceptance'
     ),
     'error',
   );
+});
+
+test('no-MSAA mode requires verified zero sample framebuffer and never approves product', () => {
+  const [step] = buildRendererV3MsaaDiagnosticPlan();
+  assert.deepEqual(step.args, ['--hardware-rtx3060', '--report-only', '--diagnose-no-msaa']);
+  assert.notEqual(step.artifact, buildRendererV3DitherDiagnosticPlan()[0].artifact);
+  const standard = {
+    stage: 'completed',
+    passed: false,
+    strictParity: true,
+    diagnosticNoMsaa: true,
+    diagnosticNoDither: false,
+    acceptanceEligible: false,
+    trials: Array.from({ length: 4 }, () => ({
+      native: {
+        contextAntialias: false,
+        defaultFramebufferSamples: 0,
+        glState: { framebuffer: 'default' },
+      },
+    })),
+  };
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, standard),
+    'diagnostic-complete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...standard, acceptanceEligible: true }),
+    'error',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...standard, diagnosticNoDither: true }),
+    'error',
+  );
+  assert.equal(
+    classifyRendererHardwareStep(
+      { ...step, exitCode: 0 },
+      { ...standard, trials: standard.trials.slice(0, 1) },
+    ),
+    'incomplete',
+  );
+  for (const changed of [
+    { contextAntialias: true },
+    { defaultFramebufferSamples: 4 },
+    { glState: { framebuffer: 'offscreen' } },
+  ]) {
+    assert.equal(
+      classifyRendererHardwareStep(
+        { ...step, exitCode: 0 },
+        { ...standard, trials: [{ native: { ...standard.trials[0].native, ...changed } }, ...standard.trials.slice(1)] },
+      ),
+      'error',
+    );
+  }
 });
 
 const step = (id, exitCode = 0) => ({ id, exitCode });
