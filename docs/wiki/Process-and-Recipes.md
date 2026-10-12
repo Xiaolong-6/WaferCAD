@@ -1,6 +1,6 @@
 # Process and Recipes
 
-[Home](Home) · [Recipe Code Tutorial](Recipe-Code-Tutorial) · [中文教程](Recipe-Code-Tutorial-zh-CN) · [Illustrated operations](Process-Operations)
+[Home](Home) · [Recipe Code Tutorial](Recipe-Code-Tutorial) · [AI-assisted workflows](AI-Assisted-Workflows) · [Illustrated operations](Process-Operations)
 
 ## Manual Process
 
@@ -30,7 +30,7 @@ Switch from **Step** to **Recipe** to build an ordered list of typed operations.
 
 Recipe uses the same Process worker/kernel as Manual. Typed physical lengths retain their exact normalized µm values independently of the Manual editing grid and current display unit; nonfinite conversions are rejected. A Recipe is stored in the exported `.wafercad` project. Applying it again to an already processed model repeats its geometry operations; use the fresh-Base start option if you need a reproducible new lineage.
 
-**Learn the syntax:** Follow the [complete Recipe Code Tutorial](Recipe-Code-Tutorial) (also available [in Chinese](Recipe-Code-Tutorial-zh-CN)). It includes a copy-ready oxide/ALD example, all seven supported commands, Mask capture, rough/pyramid morphology, a masked contact-window flow, and Run All/replay checks. Code drafts must be applied with **Apply code** before execution, and `area: "mask"` / `"invert"` steps require a captured File or Draw Mask context.
+**Learn the syntax:** Follow the [complete Recipe Code Tutorial](Recipe-Code-Tutorial) (and the [practical AI collaboration guide](AI-Assisted-Workflows)). It includes a copy-ready oxide/ALD example, all seven supported commands, Mask capture, rough/pyramid morphology, a masked contact-window flow, and Run All/replay checks. Code drafts must be applied with **Apply code** before execution, and `area: "mask"` / `"invert"` steps require a captured File or Draw Mask context.
 
 **Starting state:** **Continue current model** appends changes to the current geometry. **Rebuild Base first (new Main)** is the clean-replay option, subject to the confirmation and History handling. **Replay 1 → Step** replays the prefix from Step 1; **Stop** retains steps that already committed.
 
