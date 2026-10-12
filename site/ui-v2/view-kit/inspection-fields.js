@@ -43,7 +43,11 @@ export function createInspectionFields({
       return el(
         'label',
         { class: 'wc-field' },
-        el('span', { class: 'wc-label' }, kind === 'points' && units ? units.labelText(label) : label),
+        el(
+          'span',
+          { class: 'wc-label' },
+          kind === 'points' && units ? units.labelText(label) : label,
+        ),
         control,
       );
     },

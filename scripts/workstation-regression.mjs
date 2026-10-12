@@ -351,7 +351,9 @@ await familyExampleContext.close();
 
 // A stalled Three.js CDN must never block the editor shell. The old top-level
 // await implementation left Main/Mask blank and all tool tabs unbound here.
-const blockedThreePage = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+const { page: blockedThreePage, context: blockedThreeContext } = await newUiPage(browser, {
+  viewport: { width: 1100, height: 760 },
+});
 const blockedThreeErrors = observePageErrors(blockedThreePage);
 await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
   await new Promise((resolve) => setTimeout(resolve, 12000));
@@ -369,7 +371,7 @@ await openFunctionPanel(blockedThreePage, 'process', { timeout: 2000 });
 await blockedThreePage.locator('#operationTools:not([hidden])').waitFor({ timeout: 2000 });
 assert.ok((await canvasInkFraction(blockedThreePage, '#mainCanvas')) > 0.01);
 assert.deepEqual(blockedThreeErrors, []);
-await blockedThreePage.close();
+await blockedThreeContext.close();
 
 // Project is the first/default tool tab and owns local Save, file Export, recovery, and XYZ units.
 assert.equal(await page.locator('#settingsTab').getAttribute('aria-selected'), 'true');

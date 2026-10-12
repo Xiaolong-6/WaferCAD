@@ -1,17 +1,15 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { installPinnedThreeRoute, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
+import { newLegacyUiContext, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
 
 export { waitForCanvasSizeSync, waitForPaint };
 
 export async function openProductPage(browser, viewport, touch, errors) {
-  const context = await browser.newContext({
+  const context = await newLegacyUiContext(browser, {
     viewport,
     deviceScaleFactor: touch ? 2 : 1,
     hasTouch: touch,
   });
-
-  await installPinnedThreeRoute(context);
 
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));

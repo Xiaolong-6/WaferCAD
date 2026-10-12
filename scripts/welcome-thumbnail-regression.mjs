@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
-import { gotoWelcome, installPinnedThreeRoute, observePageErrors } from './test-helpers/ui.mjs';
+import { gotoWelcome, newLegacyUiContext, observePageErrors } from './test-helpers/ui.mjs';
 const output = process.argv[2] || 'test-results/welcome-thumbnails.json';
 const repeat = Number(process.argv[3] || 3);
 const interaction = process.argv.includes('--check-interaction');
@@ -16,8 +16,7 @@ await mkdir('test-results/product-review', { recursive: true });
 const runs = [];
 try {
   for (let index = 0; index < repeat; index++) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
-    await installPinnedThreeRoute(context);
+    const context = await newLegacyUiContext(browser, { viewport: { width: 1440, height: 960 } });
     await context.addInitScript(() => {
       window.__previewImports = [];
       const NativeWorker = window.Worker;

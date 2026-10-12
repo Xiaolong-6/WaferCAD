@@ -22,8 +22,7 @@ export function createDisplayUnits(getState) {
 export function convertPolygonPointUnits(text, previous, unit) {
   return text.replace(
     /(^|[,\s])([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?=$|[,\s])/gm,
-    (_match, separator, value) =>
-      separator + String(fromMicron(toMicron(value, previous), unit)),
+    (_match, separator, value) => separator + String(fromMicron(toMicron(value, previous), unit)),
   );
 }
 export function syncDisplayUnitFields(root, unit) {
