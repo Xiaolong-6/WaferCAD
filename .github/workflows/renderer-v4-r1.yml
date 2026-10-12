@@ -23,6 +23,15 @@ on:
       - site/tests/renderer-v4-interaction-policy.test.mjs
       - site/tests/renderer-v4-flat-geometry-sharing.test.mjs
       - site/three-view.js
+      # Main UI v2 writer/lease and render-route changes affect this stacked renderer.
+      - site/controllers/workspace-persistence-controller.js
+      - site/controllers/workspace-session-controller.js
+      - site/tests/controllers.test.mjs
+      - site/tests/ci-test-plan.test.mjs
+      - scripts/ci-test-plan.mjs
+      - scripts/v2/three-visibility.mjs
+      - .github/workflows/ui-v2-stage-c-m4.yml
+      - docs/testing.md
       - scripts/renderer-electrical-fresh-context-ab.mjs
       - scripts/renderer-roi-profile.mjs
       - scripts/test-helpers/webgl-frame-probe.mjs
