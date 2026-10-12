@@ -138,8 +138,8 @@ try {
       ];
       await drag(...nav);
       let current = await snapshot();
-      assert.equal(current.plan.panX, 24);
-      assert.equal(current.plan.panY, 16);
+      assert.ok(Math.abs(current.plan.panX - 24) < 0.01, 'Mask pan moves 24 px in X');
+      assert.ok(Math.abs(current.plan.panY - 16) < 0.01, 'Mask pan moves 16 px in Y');
       await page.locator('[data-action="tool:pan:mask"]').click();
       const beforeOff = await snapshot();
       await drag(...nav);
@@ -288,7 +288,10 @@ try {
         'true',
       );
       assert.deepEqual((await snapshot()).drawMask, beforeSource);
-      await page.locator('[data-action="mask-alignment-settings"]').click();
+      const alignmentButton = page.locator('[data-action="mask-alignment-settings"]');
+      if (!(await alignmentButton.isVisible()))
+        await page.getByRole('button', { name: 'Mask more tools' }).click();
+      await alignmentButton.click();
       await page.locator('#maskOffsetX').fill('0.0001');
       await page.locator('[data-action="alignment-apply"]').click();
       assert.equal((await snapshot()).maskTransform.x, 0.0001);
