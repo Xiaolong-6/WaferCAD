@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -71,31 +71,25 @@ test('heading links retain Unicode, duplicate suffixes and explicit generated an
   assert.ok(anchors.has('deposit-transfer-follow'));
 });
 
-test('archived documents have indexed full copies and old-path compatibility pointers', async () => {
+test('archived documents have canonical links and no obsolete originals', async () => {
   const archiveRoot = new URL('../../docs/archive/', import.meta.url);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');
   const archived = (await readdir(archiveRoot, { recursive: true }))
-    .map((entry) => String(entry).replaceAll('\\', '/'))
+    .map((entry) => String(entry).replaceAll('\\\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
 
-  assert.ok(archived.length >= 68, 'expected migrated revision-specific evidence');
+  assert.equal(archived.length, 68, 'archive inventory must be reviewed deliberately');
+  assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
   for (const entry of archived) {
     assert.ok(
       archiveIndex.includes(`](${entry})`),
-      `archive index must link directly to archived full report: ${entry}`,
+      `archive index must link directly to the canonical report: ${entry}`,
     );
-    const oldPath = new URL(`../../docs/${entry}`, import.meta.url);
-    const pointer = await readFile(oldPath, 'utf8');
-    const archiveLink = entry.startsWith('ui-v2/')
-      ? `../archive/${entry}`
-      : `archive/${entry}`;
-    assert.ok(
-      pointer.includes(`](${archiveLink})`),
-      `original path must be a valid compatibility pointer: ${entry}`,
-    );
-    assert.ok(
-      pointer.split('\n').length <= 12,
-      `the former location must not duplicate full historical text: ${entry}`,
+    const obsoletePath = new URL(`../../docs/${entry}`, import.meta.url);
+    await assert.rejects(
+      access(obsoletePath),
+      { code: 'ENOENT' },
+      `obsolete historical stub must be deleted: ${entry}`,
     );
   }
 });
