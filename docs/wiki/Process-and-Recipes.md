@@ -4,10 +4,6 @@
 
 ## Manual Process
 
-![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
-
-_The same schematic geometry source is used here and in the expandable Process guide. These drawings do not depict the currently opened project._
-
 **New to Process?** Follow the [First 10 Minutes](First-10-Minutes) walkthrough for exact controls, numbers and before/after checks. The live Process panel now uses a single **Operation** selector; archived screenshots from the older multi-button layout should not be used to identify current controls.
 
 The **Step** form places **Operation** and **Surface** selectors side by side. A contextual parameter heading follows: **Area** and material/target fields span the form, and **Coverage** and **Thickness** share a row for applicable operations. **Apply** performs the selected operation. **Also add to Recipe → No** is selected by default in the current workstation, requiring explicit opt-in to append a successful manual Step to Recipe; History is still recorded. **How it works** expands conceptual Before → After diagrams and caveats, not a live simulation of the opened project.
@@ -17,11 +13,19 @@ The main Actions are **Deposit**, **Extend**, **Etch**, **Lift-off**, **Implant*
 ### Special cases
 
 - **Conformal** covers horizontal surfaces and true sidewalls. It uses geometric normal-offset sidewall bands; it does not predict conformal growth kinetics.
+
+  ![Conformal Deposit: process-guide before and after for exposed sidewalls](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
+
+  _The same schematic is used by the in-app guide; geometry changes depend on actual exposed surfaces, not this example outline._
 - **Transfer / Laminate** has **Follow surface** (local exposed planes) and **Flat bridge** (one global plane spanning openings).
 - **Directional Etch** can be unselective through continuous stack layers or material-selective, stopping at a different material.
 - **Isotropic release** and **Undercut release** create canonical cavities. Rough/Pyramid forms are deterministic visual metadata on directional etch faces.
 - **Planarize / CMP** removes material beyond an **absolute Z** plane, without adding fill.
 - **Lift-off** removes sacrificial resist and the film directly supported above it while preserving lower opening deposits. Ambiguous continuous bridges fail closed.
+
+  ![Lift-off: process-guide before and after removal of supported sacrificial material](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/liftoff.svg?sanitize=true)
+
+  _The drawing illustrates only the supported geometric removal rule; solvent, adhesion and film bridging physics are not simulated._
 - **Implant/Electrical** create separate annotations. **Record** only adds process metadata to History.
 
 ## Process Recipe
