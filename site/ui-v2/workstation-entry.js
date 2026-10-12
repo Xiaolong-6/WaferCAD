@@ -27,7 +27,7 @@ try {
     mobile: 'view',
     splitViews: ['main', 'mask'],
   };
-  let message = 'Ready',
+  let message = 'Opening workspace…',
     starting = true;
   const adapters = window.WaferCadV2DomainAdapters.create();
   const registry = window.WaferCadV2ShellRegistry.define({
@@ -55,6 +55,8 @@ try {
       save: shell.getSlot('status.save').textContent || 'Shared project · Stage C',
     }),
   });
+  const workspaceBody = document.querySelector('.p-body');
+  workspaceBody.inert = true;
   const render = () => {
     if (starting) return;
     shell.render();
@@ -163,8 +165,10 @@ try {
   window.addEventListener('resize', render);
   await workflow.start();
   starting = false;
+  if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
+  workspaceBody.inert = false;
   const legacyLink = el(
     'a',
     {
