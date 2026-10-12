@@ -112,12 +112,19 @@ export function createWorkspaceSessionController({
 
   function refreshOwnership() {
     if (!storageAccessible()) {
-      writable = false;
-      storageUnavailable = true;
-      emit();
+      if (writable || !storageUnavailable) {
+        writable = false;
+        storageUnavailable = true;
+        emit();
+      }
       return false;
     }
-    storageUnavailable = false;
+    if (storageUnavailable) {
+      // Re-enable the explicit Take over action after storage permissions return;
+      // a paused tab must still never silently acquire an expired lease.
+      storageUnavailable = false;
+      emit();
+    }
     const lease = currentLease();
     if (writable) {
       if (leaseIsActive(lease) && lease.tabId !== resolvedTabId) {
