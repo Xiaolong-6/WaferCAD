@@ -1,46 +1,46 @@
-# M2 Self-Review: Closing UI Gaps and Defining the M3 Boundary
+# M2 自查：UI 缺口闭环与 M3 边界
 
-Date: 2026-10-09; handoff branch `codex/ui-v2-m2-handoff-2026-10-09`, product commit `0d5fb4e` (derived from integration point `refactor/ui-v2-m0`). This list compares the r2 plan, M0 CONTRACT/IMPLICIT_DEPS, legacy `app.html` and the relevant controllers.
+2026-10-09；交接分支 `codex/ui-v2-m2-handoff-2026-10-09`，产品提交 `0d5fb4e`（从 `refactor/ui-v2-m0` 集成点派生）。本清单核对 r2、M0 CONTRACT / IMPLICIT_DEPS、旧 `app.html` 与相关控制器。
 
-Here, **completed** means an operable M2 static/semi-static shell with local drafts and visible states. It does **not** mean domain transactions, scientific computation, renderer, storage or file import/export are actually connected.
+“完成”只表示 M2 静态/半静态壳层有可操作的本地 draft 和可见状态；不代表接通真实领域事务、科学计算、renderer、存储或文件导入导出。
 
-## Gaps addressed in M2
+## M2 已补齐
 
-| ID | Self-review item | M2 deliverable and boundary |
-| --- | --- | --- |
-| G01 | Actual History Variant origins and HEAD/cursor | Added the pure Step-first `history-tree.js` projection. Uses real `rootNodeId` / `parentBranchId` to nest Variants recursively; HEAD and selected cursor have distinct markers. Each Step has a `⋯` row menu. Photodetector has browser assertions for the real branch tree. Source History remains frozen. |
-| G02 | Manual operation form | Covers Deposit, Extend (Coverage/Placement), Etch (Directional/Isotropic separated from Smooth/Rough/Pyramid), Implant, Electrical and Record. Implant Tilt supports negative increments within −80…80. Edits local mock drafts only. |
-| G03 | Recipe construction and checks | Add/Delete/Move, field editing, independent Undo/Redo, Validate entry and local field errors, template preview/explicit replacement confirmation, and Run All / Continue / Rebuild / Run to Step. This is not a production Recipe validator/parser. |
-| G04 | Main / ROI / Section A–B | ROI shapes, anchor, position/size/radius/rotation and Clear; Mask alignment X/Y/scale/rotation; Section A/B coordinate editing. nm/µm/mm affects display/input only; length drafts normalize to µm. Actual pointer behavior remains M3 work. |
-| G05 | Mask tools and File tree | Draw mode provides Select/Rect/Circle/Polygon/Ring/Ring-Sector plus Add/Delete/Clear drafts. ROI/alignment/opacity use separate floating canvas panels. A real GDS example displays a Cell tree recursively through TOP references, plus File-layer visibility drafts. More contains SVG/GDS/OAS scope controls. There is no real GDS import or geometry mutation. |
-| G06 | Section display and Z-break | Auto/1:1, Borders, Z-break start/end/front/back scaling, Detail ROI set/clear and Legend preset/random-color controls, affecting local UI drafts only. The Section plot remains an explicitly labeled schematic stack, not the real Section renderer. |
-| G07 | View export and appearance | Every view exposes export through the header More menu: Main SVG/PNG, Mask GDS/OAS, 3D GLB/PNG, Section options, cancel-export and opacity/border drafts as appropriate. No scientific output files are generated. |
-| G08 | Project units and Apply History | XYZ nm/µm/mm are Project workspace options; UI-draft Undo/Redo snapshots appear beneath Manual Apply. Recipe has separate Undo/Redo. Rebuild Base explicitly offers Keep / Clear (with second confirmation) / Cancel. None writes to the source project or History. |
+| ID  | 自查项                                    | M2 交付与边界                                                                                                                                                                                                                                                          |
+| --- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G01 | History 的真实 Variant 起点与 HEAD/cursor | 新增纯 `history-tree.js` Step-first 投影。使用真实 `rootNodeId` / `parentBranchId` 递归嵌套 Variant；HEAD 与选中 cursor 分开标识。每个 Step 另有 `⋯` 行菜单；Photodetector 有真实分支树浏览器断言。源 History 冻结。                                                   |
+| G02 | Manual 操作表单                           | Deposit、Extend（Coverage/Placement）、Etch（Directional/Isotropic 与 Smooth/Rough/Pyramid 分离）、Implant、Electrical、Record。Implant Tilt 可负向步进并限于 −80…80。仅改 mock draft。                                                                                |
+| G03 | Recipe 构建与校验                         | Add/Delete/Move、字段编辑、独立 Undo/Redo、Validate 入口和本地字段错误、模板预览/显式替换确认，以及 Run All / Continue / Rebuild / Run to Step。不是生产级 Recipe validator/parser。                                                                                   |
+| G04 | Main / ROI / Section A–B                  | ROI 形状、锚点、位置/尺寸/半径/旋转、Clear；Mask 对齐 X/Y/scale/rotation；Section A/B 坐标编辑。nm/µm/mm 仅变更显示/输入，长度 draft 归一到 µm。真实指针交互留 M3。                                                                                                    |
+| G05 | Mask 工具与 File 树                       | Draw source 下显示 Select/Rect/Circle/Polygon/Ring/Ring-Sector 与 Add/Delete/Clear 草稿；ROI/alignment/opacity 为并行画布浮窗；实际 GDS 样例按 TOP references 递归显示 Cell 树，File Layers 可见性草稿；More 中 SVG/GDS/OAS 范围表单。无真实 GDS 导入或几何 mutation。 |
+| G06 | Section 显示与 Z-break                    | Auto/1:1、Borders、Z-break start/end/front/back scale、Detail ROI 设置/清除、Legend 行预制色板与随机色按钮（只改本地 UI draft 色值）。Section plot 仍是注明为 schematic 的层堆叠，不是真实截面 renderer。                                                              |
+| G07 | 视图导出与显示                            | 所有 view export 只在标题栏 More 菜单；按 Main/Mask/3D/Section 提供 SVG/PNG、GDS/OAS、GLB/PNG、取消导出与透明度/边界草稿。无科学文件或计算结果产出。                                                                                                                   |
+| G08 | Project 单位与 Apply 历史                 | XYZ nm/µm/mm 是 Project 工作区选项；Manual Apply 下方提供 UI draft Undo/Redo 快照；Recipe 另有自己的 Undo/Redo。Project Rebuild Base 明确提供 Keep / Clear（二次确认）/ Cancel。均不写入源项目或 History。                                                             |
 
-## Explicitly deferred to M3 / M4
+## 仍明确留给 M3 / M4
 
-- Project file IO, Base transactions, Recovery/IndexedDB/writer lease/reload. The current Save exports a UI draft clearly labeled as *not a project file*.
-- Process workers, Recipe parser/validator/replay, failure rollback, and real History restore/fork/HEAD/bookmark transactions.
-- Four real renderers, pointer coordinate paths, scientific Section, 3D Fast/Quality and physical GLB. Choosing History does not rebuild real scientific views.
-- Static ID/dynamic control coverage of the 259-ID inventory remains unfinished; five dynamic expressions require M3 tracking.
-- Welcome startup, default-entry switch and fallback route remain M3 work. M4 full regression and visual baseline were not performed; user still needs to approve baseline browser.
-- Section Legend real rename/visibility/color/profile editing is M3; at this point only real read-only names, colors, IDs and Implant annotations are shown.
-- `origin/main` at `b81598b` was merged; recheck and synchronize the then-current main before real wiring.
-- At handoff publication `origin/main` advanced to `fbbc261`. New formatting commit `21b2318` and Lift-off commit `fbbc261` had not yet been merged into this branch. M3 must reconcile the latest Process/Recipe contract, add Lift-off to relevant UI and refresh the inventory. See [handoff](M2_ITERATION_HANDOFF_2026-10-09.md).
+- Project 文件读写、Base 事务、Recovery / IndexedDB / writer lease / reload；当前 Save 只导出标记为非项目文件的 UI draft。
+- Process worker、Recipe parser/validator/replay、失败回滚、真实 History restore/fork/HEAD/bookmark 事务。
+- 四个真实 renderer、指针坐标路径、科学 Section、3D Fast/Quality 与物理 GLB；History 选择不会重建实际科学视图。
+- 259 静态 ID / 动态控件库存未完成追踪；5 个动态表达式仍按计划留 M3 逐一追踪。
+- Welcome 启动、默认入口切换与降级路径留 M3；M4 全量回归与视觉基线未执行。基线浏览器仍须用户确认。
+- Section Legend 真实重命名/显隐/调色/profile 编辑属于 M3；当前只读真实标签、颜色、ID 与 Implant 注释。
+- `origin/main` 的 `b81598b` 已合并；开始真实接线前仍需同步并检查当时最新主线。
+- 交接发布时已刷新 `origin/main` 至 `fbbc261`；新增的 `21b2318` 格式修正与 `fbbc261` Lift-off 尚未合入本分支。M3 需对照最新 Process/Recipe 契约补齐 Lift-off 并更新控件库存。详见 [交接文档](M2_ITERATION_HANDOFF_2026-10-09.md)。
 
-## Iteration corrections
+## 迭代修正
 
-- Moved XYZ display units to Project; Manual Undo/Redo sits below Apply, while Recipe retains its independent Step Undo/Redo.
-- Moved Mask Draw tools into a floating canvas strip with distinct inline-SVG select/draw icons. ROI, Alignment and Opacity parameters use floating in-canvas panels instead of consuming left Cells/Layers space.
-- Show Draw tools only when Mask source is Draw. ROI and ROI parameter entry remain independently available. Canvas strips share a consistent visual form, 16 px icons and at least 40 px touch targets.
-- Removed native list numbering/bullets and card borders from History tree rows; compact rows, branch lines and indentation convey structure. Step actions remain fixed at the panel top; each Step row has an anchored `⋯` menu (Select / Restore / Edit / Create Variant). The list scrolls independently and preserves its position.
+- XYZ display unit 位于 Project 工作区；Undo/Redo 位于 Manual 的 Apply 下方，Recipe 仍保留独立步骤 Undo/Redo。
+- Mask Draw 工具移入画布浮动工具条，各种选择/绘图动作使用独立内联 SVG 图标；ROI、Alignment、Opacity 参数改为画布内浮动面板，不占左侧 Cells/Layers 面板空间。
+- Mask source 选 Draw 时才显示 Draw 工具；ROI 与 ROI 参数入口独立且始终可用。工具同属一个一致的画布浮条，图标 16px、触控目标至少 40px。
+- History 树行取消浏览器默认序号/圆点及卡片边框，使用紧凑行、分支线与缩进表达层级；Step 操作固定在面板上方，每个 Step 行有锚定的 `⋯` 菜单（Select / Restore / Edit / Create Variant），列表独立滚动并保留位置。
 
-## Self-review evidence
+## 自查结果
 
-- Native Chrome 155 / CDP: `node scripts/v2/check-m2-shell.mjs` passed 25 checks with zero page/console errors. No Playwright and no screenshots.
-- At 1440/1024 px, mock Main versus 3D ROI top/bottom DOM alignment had 0 px delta (0.25 px threshold). This checks the mock registration plane, **not** the real PR #161 renderer root cause.
-- Checks also covered 768/390 single-view document flow, absence of overlays/flyouts, Section Legend layout, real Photodetector's seven Variants and nested origin Steps, empty History, and frozen source objects.
-- `node --test scripts/v2/view-state.test.mjs`: 5/5. ESLint and M2-scoped Prettier passed; the 18 preexisting main formatting failures were not reformatted.
-- `git diff --check` passed. v2 mock data was derived from original examples, with no scientific execution.
+- 原生 Chrome 155 / CDP：`node scripts/v2/check-m2-shell.mjs` 25 项通过，无页面/控制台错误；不使用 Playwright、不截图。
+- 1440 / 1024 下 mock Main 与 3D ROI top/bottom DOM 对齐差均为 0px（阈值 0.25px）。这是 mock registration plane 检查，不是 #161 真实 renderer 根因已修复的证据。
+- 检查还覆盖 768 / 390 单视图文档流、无 overlay/flyout、Section Legend 布局、真实 Photodetector 7 Variant 及 origin Step 嵌套、空 History、源对象 frozen。
+- `node --test scripts/v2/view-state.test.mjs`：5/5。ESLint 与本次 M2 范围 Prettier 检查通过；不格式化 main 上既有 18 个失败文件。
+- `git diff --check` 通过；v2 mock 数据由原始示例生成，无科学执行。
 
-M2 ended as an isolated mock-shell checkpoint. At that historical checkpoint, do not enter M3, change default entry, deploy or push.
+M2 到此为独立 mock 壳层检查点；不进入 M3、不切换默认入口、不部署、不 push。
