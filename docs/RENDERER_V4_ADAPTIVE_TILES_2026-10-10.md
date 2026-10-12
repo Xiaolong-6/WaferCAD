@@ -866,3 +866,40 @@ No hardware re-run was required to derive these six comparisons.
 **Gate: RED.** Renderer V4 optimization remains opt-in, PR #174 Draft,
 PR #166 independent, no visual baseline changes and no hardware
 performance approval.
+
+## 2026-10-12 follow-up: production lifecycle cleanup fault containment
+
+Product change, head `a7631110de6ef24c6b2cfe5163e55a8980121727`
+(on PR #174, not merged). During a renderer-scene teardown, the old
+resource lifecycle implementation could stop on the first failed
+`dispose()` call after already detaching the group. That left later
+geometries, textures and materials unretired, even though their scene
+objects had been removed.
+
+`site/renderer-v4-resource-lifetime.js` now attempts retirement of
+**every** unique geometry, texture and material after a group has been
+detached. A standalone caller still receives an `AggregateError`
+containing individual disposal failures. The actual `site/three-view.js`
+call sites provide an error callback, record failures on the host and
+continue cache/scene reset rather than abandoning a rebuild.
+
+The new regressions in `site/tests/renderer-v4-resource-lifetime.test.mjs`
+exercise one thrown geometry dispose, several simultaneously thrown
+geometry/texture/material disposes, and the product callback path.
+The tests assert both the failure reporting and that other resources
+were still retired; the existing idempotent disposal and 100-cycle
+tests remain intact.
+
+CI on the exact product commit: R1–R7 focused, R2 browser parity,
+R3–R5 buffer/pixel parity, R4–R5 dynamic lifecycle parity,
+R5 dual-variant cache, R5 lifetime stress, R6 WebGL recovery,
+R6 full-wafer context parity, and R7 ABBA smoke all **success**.
+These are CI-run Chromium/Node checks, not RTX 3060 physical
+hardware acceptance. The renderer output code, approved visual
+baselines, and strict zero-pixel threshold were not changed.
+
+**Decision:** retain both #166 and #174 as Draft; maintain V4
+Index/Caps experimental opt-in gates. CPU TypedArray savings
+observed on RTX 3060 are not proof of a GPU speedup, and fresh
+WebGL-context pixel drift remains unresolved. No additional GPU
+measurement is requested for this lifecycle correction.
