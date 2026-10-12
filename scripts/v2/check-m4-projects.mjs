@@ -8,6 +8,8 @@ import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 await loadGeometryKernel();
+const { parseGDS, flattenGDS } = await import('../../site/gds.js');
+const { parseOAS } = await import('../../site/oasis.js');
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-m4-projects');
 await mkdir(output, { recursive: true });
@@ -101,6 +103,41 @@ try {
       assert.equal(legacyBoot, false, 'UI v2 must not boot legacy app.js');
       for (const view of ['mask', 'main']) {
         await page.locator(`[data-action="view:${view}"]`).click();
+        await waitForPaint(page);
+      }
+      if (example === 'metalens') {
+        // End-to-end Mask export goes through the actual v2 toolbar, floating
+        // settings panel and worker; existing Node export tests alone cannot
+        // catch missing UI wiring or an empty browser download.
+        await page.locator('[data-action="view:mask"]').click();
+        await waitForPaint(page);
+        const beforeMaskExport = await snapshot();
+        const exportMenu = page.locator('[data-action="mask-export-menu"]');
+        if (!(await exportMenu.isVisible()))
+          await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+        await exportMenu.click();
+        for (const format of ['gds', 'oas']) {
+          const exportAction = page.locator(`[data-action="mask-export:${format}"]`);
+          if (!(await exportAction.isVisible())) await exportMenu.click();
+          const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+          await exportAction.click();
+          const download = await downloadPromise;
+          assert.equal(download.suggestedFilename(), `wafercad-mask.${format}`);
+          const filename = resolve(output, `metalens-mask.${format}`);
+          await download.saveAs(filename);
+          const raw = Uint8Array.from(await readFile(filename)).buffer;
+          const parsed = format === 'gds' ? parseGDS(raw) : await parseOAS(raw);
+          assert.ok(
+            flattenGDS(parsed, parsed.root).elements.length > 0,
+            `Real Mask ${format.toUpperCase()} download must contain parseable physical shapes`,
+          );
+          const unchangedMask = await snapshot();
+          assert.deepEqual(unchangedMask.model, beforeMaskExport.model, 'Mask export is read-only');
+          assert.deepEqual(unchangedMask.maskRoi, beforeMaskExport.maskRoi);
+          assert.deepEqual(unchangedMask.maskTransform, beforeMaskExport.maskTransform);
+        }
+        console.log('M4 metalens: real v2 GDSII and OASIS Mask downloads round-trip PASS');
+        await page.locator('[data-action="view:main"]').click();
         await waitForPaint(page);
       }
       if (example === 'metalens-array') {
