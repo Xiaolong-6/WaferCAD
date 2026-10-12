@@ -1,28 +1,38 @@
-# Foreground-first renderer: initial P0 scene continuity
+# Foreground-first renderer: P0 scene continuity
 
-## Scope and status
+**Status:** Draft, runtime acceptance pending.
 
-This is the first narrowly scoped step toward responsive, progressively refined 3D. It does not implement GPU LOD, background WebGL rendering, or fully non-blocking input. The current `site/three-view.js` renderer stays the only rendering engine, and no experimental V3/V4 Index/Caps flags are enabled.
+## Scope
 
-## Implemented
+This is an initial step toward responsive 3D. The existing renderer stays
+the sole rendering engine. It does not implement GPU LOD, background WebGL
+rendering, interruptible frames, or a complete progressive pipeline.
 
-When an opaque/transparent presentation variant needs a new scene (rather than a cached variant swap), the renderer retains the previous completed group in the scene while constructing the replacement group hidden. Once the new group has been assembled and its presentation state applied, the old group is detached and left available in the existing variant cache. A failed variant build disposes the partial group and attempts to restore the complete cached group, preserving a usable viewport.
+## Implementation
 
-The existing per-model initial scene rebuild, rough-mesh refinement, and full WebGL draw path are unchanged. They may still cause main-thread stalls or an empty viewport. This work does not claim that GPU rendering is interruptible, or that retained frames remain cheap to draw while a build runs.
+For an uncached opaque/transparent scene-variant rebuild,
+`site/three-view.js` keeps the previous complete scene visible while
+the replacement is assembled hidden. After applying the new presentation,
+the old group is detached and remains in the scene-variant cache.
+On a variant-build failure, the partial scene is disposed and the previous
+cached presentation is restored where possible.
 
-## Verification and boundaries
+Initial model rebuilds and expensive WebGL frame submissions remain unchanged.
+Worker availability alone does not guarantee responsive foreground input.
 
-- Branch: `perf/foreground-responsive-rendering-20261012`, forked from current `main`.
-- Touches only the variant-build presentation lifecycle and this handoff.
-- Preserve canonical geometry in micrometres, layer/Process/ROI identity, project revisions, export geometry, and existing visual policies.
-- CI must confirm Node/format/lint, existing 3D and renderer browser regressions. Runtime acceptance is still pending; no physical GPU speedup, FPS, or exact-pixel acceptance is claimed.
-- Do not merge this branch into `main` until CI and a focused runtime variant transition are verified.
+## Validation
 
-## Next stages
+- Branch: `perf/foreground-responsive-rendering-20261012`.
+- Unit, lint, formatting, and browser CI need to pass on the new HEAD.
+- Focused variant-transition and injected-failure browser tests are pending.
+- No FPS, strict-pixel, hardware-GPU, or memory improvement is claimed.
+- Scientific geometry, project data, approved visual baselines, and
+  experimental renderer defaults remain unchanged.
 
-1. Exercise opaque to transparent to opaque rebuilds with large arrays and injected build exceptions; assert no blank visible scene, no leak and correct final single-group presentation.
-2. Separate interaction preview from exact rendering using explicit frame budgets and revision-aware invalidation. Defer expensive scene/mesh work while the user is actively dragging; cancel obsolete builds before publishing.
-3. Move chunkable geometry preparation into worker jobs with bounded transfer and upload budgets. Retain valid old output until new output is ready and never treat a preview as exact geometry for scientific inspection or export.
-4. Extend proven far-field presentation LOD to more eligible mesh owners, retaining all near/ROI/edge-on exact geometry contracts. Measure input-to-visible-frame latency, long tasks, driver finish timing, triangulation work and memory on both software WebGL and physical hardware.
+## Follow-up work
 
-The existing strict visual acceptance baselines remain unchanged. Preview-specific visual requirements need separate explicit review.
+1. Add real input-latency and scene-continuity browser acceptance.
+2. Implement revision-aware cancellation and interaction-first scheduling.
+3. Prepare and transfer mesh chunks with bounded main-thread GPU uploads.
+4. Extend safe presentation-only LOD with exact near/ROI/edge-on restoration.
+5. Consider OffscreenCanvas after measuring actual foreground contention.
