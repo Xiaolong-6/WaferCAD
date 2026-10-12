@@ -980,8 +980,10 @@ export function createThreeView({
   }
 
   function startSceneVariantBuild(mode) {
+    // Keep the last complete variant visible while preparing the replacement.
+    // The incoming group remains hidden until its presentation is ready.
     cacheActiveSceneVariant();
-    if (group) scene.remove(group);
+    const previousGroup = group;
     group = new THREE.Group();
     group.visible = false;
     scene.add(group);
@@ -999,6 +1001,7 @@ export function createThreeView({
     lastLodSignature = null;
     activeSceneVariant = mode;
     host.dataset.sceneVariant = mode;
+    return previousGroup;
   }
 
   function clearSceneVariantCache({ includeActive = false } = {}) {
@@ -2571,6 +2574,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    let previousVariantGroup = null;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2608,7 +2612,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       if (Number(host.dataset.arrayInstances || 0) >= 64 && !roughTasks.length) {
         variantBuild = true;
-        startSceneVariantBuild(targetVariant);
+        previousVariantGroup = startSceneVariantBuild(targetVariant);
       } else {
         pendingRender = false;
         host.dataset.renderState = 'updating';
@@ -3392,6 +3396,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       group.visible = true;
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
+      // The next frame must contain exactly one presentation variant.
+      // Keep the retired group cached but detached for fast future switches.
+      if (previousVariantGroup && previousVariantGroup !== group) {
+        scene.remove(previousVariantGroup);
+      }
       recordVariantStage('presentation-complete');
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
@@ -3399,6 +3408,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
+    } catch (error) {
+      if (previousVariantGroup) {
+        // Never strand the viewport with a partially constructed, hidden group.
+        const failedGroup = group;
+        scene.remove(failedGroup);
+        disposeSceneGroup(failedGroup);
+        const cached = [...sceneVariantCache.values()].find(
+          (entry) => entry.group === previousVariantGroup,
+        );
+        if (cached) restoreSceneVariant(cached);
+        else {
+          group = previousVariantGroup;
+          if (group.parent !== scene) scene.add(group);
+        }
+        host.dataset.renderPhase = 'complete';
+        host.dataset.renderState = 'ready';
+      }
+      console.error('3D scene rebuild failed:', error);
+      host.dataset.rendererBuildFailure = error?.message || String(error);
+      if (!previousVariantGroup) {
+        host.dataset.renderState = 'error';
+      }
+      stats.textContent = previousVariantGroup ? '3D update failed; previous view retained' : '3D build failed';
     } finally {
       rendering = false;
     }
