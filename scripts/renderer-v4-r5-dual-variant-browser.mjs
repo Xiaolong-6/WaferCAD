@@ -129,6 +129,16 @@ try {
     assert.equal(first.groups, 1, 'first variant should not retain old model allocations');
     const second = await setOpacity(page, '0.5', 'transparent', 'warm-transparent');
     assert.equal(second.groups, 2, 'full 625-site model must retain both distinct scene variants');
+    const firstTransition = await page.locator('#threeHost').evaluate((node) => ({
+      retained: Number(node.dataset.rendererRetainedVariantBuilds || 0),
+      committed: Number(node.dataset.rendererCommittedVariantSwaps || 0),
+    }));
+    assert.ok(firstTransition.retained >= 1, 'initial opacity switch must retain the previous group');
+    assert.equal(
+      firstTransition.committed,
+      firstTransition.retained,
+      'every completed variant build must commit its atomic swap',
+    );
     const back = await setOpacity(page, '1', 'opaque', 'return-opaque');
     for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
       assert.equal(back[key], second[key], key + ': cached variant reuse must not allocate again');
