@@ -1,12 +1,12 @@
 # Documentation architecture and maintenance
 
-## Authority and readers
+## Authority and readers\n\n**Documentation language:** English is the only language for new or revised WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Translate remaining historical Chinese Markdown without changing dates, test results, SHAs or acceptance claims. Retain an English pointer at a formerly published URL when removing its localized content.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 
 | Layer                      | Source and purpose                                                                                  | Maintenance rule                                                                                                                           |
 | -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Product manual             | `docs/wiki/`: tasks, controls, Recipe syntax, examples and modeling limits                          | Authored pages describe shipped behavior; `Process-Operations.md` is generated. English/Chinese tutorials share the same parser contract.  |
+| Product manual             | `docs/wiki/`: tasks, controls, Recipe syntax, examples and modeling limits                          | Authored pages describe shipped behavior; `Process-Operations.md` is generated. The Recipe tutorial and AI-assisted guide document the same parser contract in English.  |
 | Engineering contracts      | Architecture, Development, Testing, CI and the scientific/interchange documents linked from the map | Own module boundaries, invariants and acceptance. Update the owning contract when behavior changes.                                        |
 | Forward plans              | Renderer transparency roadmap                                                                       | Label measured evidence, proposals and open acceptance separately; a proposed feature is not a current contract.                           |
 | Revision-specific evidence | [Archive index](archive/README.md)                                                                  | Preserve dates, SHAs, environments and original results. Add a status/provenance banner rather than rewriting old measurements as current. |
@@ -43,7 +43,7 @@ flowchart LR
 
 ## Change workflow
 
-1. Identify the owning engineering contract and affected manual task, including both Recipe tutorials when syntax/units change.
+1. Identify the owning engineering contract and affected manual task, including the English Recipe tutorial and AI-assisted guide when syntax/units change.
 2. Check the current implementation and relevant tests; preserve inferred-versus-source-reported scientific provenance.
 3. Update authored pages, regenerate only derived content, and keep previous evidence revision-specific.
 4. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable from `docs/README.md`; do not move historical paths merely to reorganize the index.
