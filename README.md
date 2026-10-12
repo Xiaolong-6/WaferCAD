@@ -11,7 +11,7 @@ Its core question is practical: **given this mask and this sequence of process s
 - [Open the default Workstation (UI v2)](https://xiaolong-6.github.io/WaferCAD/app.html) — the released four-view workspace.
 - [Start with a blank project](https://xiaolong-6.github.io/WaferCAD/app.html?start=empty) — intentionally create a new Base; ordinary opening of the Workstation may instead restore existing browser state.
 
-The Workstation footer displays the deployed commit (short SHA, with full SHA on hover); local builds show `commit local`. The optional Legacy URL remains available for compatibility, but is not linked from the Workstation. Save or export your project before opening it directly.
+The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The optional Legacy URL remains available for compatibility, but is not linked from the Workstation. Save or export your project before opening it directly.
 
 The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 

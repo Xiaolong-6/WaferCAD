@@ -353,6 +353,26 @@
         activeAdapter = adapterKey;
       } else adapters.refresh(adapterKey);
     }
+    function renderVersion(info = presentation()) {
+      const host = slots.get('status.version');
+      const commit = info.versionCommit;
+      if (!commit) {
+        host.textContent = info.version || '';
+        return;
+      }
+      host.replaceChildren(
+        el(
+          'a',
+          {
+            href: `https://github.com/Xiaolong-6/WaferCAD/commit/${commit}`,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            title: `Open deployed commit ${commit} on GitHub`,
+          },
+          `commit ${commit.slice(0, 7)}`,
+        ),
+      );
+    }
     function render(focusAction) {
       const info = presentation();
       const preserve = Boolean(info.preserveScroll);
@@ -399,7 +419,7 @@
       renderStage(info);
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
-      slots.get('status.version').textContent = info.version || '';
+      renderVersion(info);
       if (focusAction)
         [...root.querySelectorAll('[data-action]')]
           .find((node) => node.dataset.action === focusAction)
@@ -414,6 +434,7 @@
     }
     return Object.freeze({
       render,
+      renderVersion,
       overlays,
       adapters,
       getRoot: () => mounted,

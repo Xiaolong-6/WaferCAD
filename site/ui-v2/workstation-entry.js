@@ -29,6 +29,7 @@ try {
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
+    commitSha = '',
     starting = true;
   const adapters = window.WaferCadV2DomainAdapters.create();
   const registry = window.WaferCadV2ShellRegistry.define({
@@ -55,6 +56,7 @@ try {
       message,
       save: shell.getSlot('status.save').textContent || 'Shared project · Stage C',
       version: commitVersion,
+      versionCommit: commitSha,
     }),
   });
   const workspaceBody = document.querySelector('.p-body');
@@ -180,10 +182,9 @@ try {
     .then((build) => {
       const commit = String(build?.commit || '').trim();
       if (!/^[0-9a-f]{7,64}$/i.test(commit)) return;
+      commitSha = commit;
       commitVersion = `commit ${commit.slice(0, 7)}`;
-      const versionSlot = shell.getSlot('status.version');
-      versionSlot.textContent = commitVersion;
-      versionSlot.title = `Deployed commit ${commit}`;
+      shell.renderVersion();
     })
     .catch(() => {});
   window.WaferCadV2Workstation = {
