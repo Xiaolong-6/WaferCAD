@@ -285,7 +285,7 @@
       }
       for (const sub of registry.processModes) {
         const host = slots.get(`panel.process.${sub}`);
-        if (host) host.hidden = sub !== mode;
+        if (host) host.hidden = name !== registry.subpanelOwner || sub !== mode || editorHidden;
       }
       for (const [child, owner] of Object.entries(registry.nestedPanels || {})) {
         const id = `panel.${child}`;

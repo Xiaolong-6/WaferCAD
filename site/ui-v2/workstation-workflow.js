@@ -603,12 +603,20 @@ export function createWorkstationWorkflow({ store, workstation }) {
     el('div', { hidden: true, class: 'p-form' }, el('strong'), el('span'), takeOver),
   );
   historyHost.append(
-    panelHeader('History', 'Steps, Variants and bookmarks'),
-    hook('snapshotCount', el('span', { class: 'p-aux' })),
-    bookmark,
-    el('div', { class: 'p-actions' }, hooks.get('undoBtn'), hooks.get('redoBtn')),
-    addBookmark,
-    hook('snapshotList', el('div', { class: 'v2-history' })),
+    el(
+      'div',
+      { class: 'p-history-workspace' },
+      el(
+        'div',
+        { class: 'p-history-fixed' },
+        panelHeader('History', 'Steps, Variants and bookmarks'),
+        hook('snapshotCount', el('span', { class: 'p-aux' })),
+        bookmark,
+        el('div', { class: 'p-actions' }, hooks.get('undoBtn'), hooks.get('redoBtn')),
+        addBookmark,
+      ),
+      hook('snapshotList', el('div', { class: 'v2-history p-history-scroll' })),
+    ),
   );
   const recoveryPanel = el(
     'details',

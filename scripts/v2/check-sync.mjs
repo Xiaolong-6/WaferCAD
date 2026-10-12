@@ -95,6 +95,39 @@ try {
         } else await page.locator(`[data-action="view:${key}"]`).click();
         await waitForPaint(page);
       };
+      await panel('process');
+      await page.locator('[data-action="process-mode:code"]').click();
+      const originalCode = await page.locator('#recipeCodeEditor').inputValue();
+      await page.locator('#recipeCodeEditor').fill('// retained draft');
+      for (const domain of ['project', 'mask', 'history']) {
+        await panel(domain);
+        assert.equal(await page.locator('#recipeCodeEditor').isVisible(), false);
+        assert.equal(
+          await page.locator('[data-slot="panel.process"]').isVisible(),
+          false,
+          'The Code layout must not override its hidden Process ancestor',
+        );
+        if (domain === 'mask') {
+          assert.equal((await snap()).ui.maximize, 'mask');
+          assert.equal((await snap()).ui.view, 'mask');
+        }
+      }
+      const historyScroll = page.locator('#snapshotList');
+      assert.equal(await historyScroll.isVisible(), true);
+      const historyBounds = await historyScroll.evaluate((node) => ({
+        client: node.clientHeight,
+        scroll: node.scrollHeight,
+      }));
+      assert.ok(historyBounds.client > 0 && historyBounds.scroll > historyBounds.client);
+      await historyScroll.hover();
+      await page.mouse.wheel(0, 500);
+      await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      await panel('process');
+      await page.locator('[data-action="process-mode:code"]').click();
+      assert.equal(await page.locator('#recipeCodeEditor').inputValue(), '// retained draft');
+      await page.locator('#recipeCodeEditor').fill(originalCode);
+      await page.locator('[data-action="process-mode:step"]').click();
+      await panel('project');
       const command = async (key, action) => {
         const button = page.locator(`[data-action="${action}"]`);
         if (!(await button.isVisible()))

@@ -912,7 +912,7 @@ p {
   overflow: hidden;
 }
 /* History owns an inner scroller; its persistent ancestor chain must be bounded. */
-.v2-panel-host[data-slot='panel.history'],
+.v2-panel-host[data-slot='panel.history']:not([hidden]),
 .v2-panel-host[data-slot='panel.history'] > [data-slot-content],
 .v2-panel-host[data-slot='panel.history'] > [data-slot-content] > .p-history-workspace {
   display: flex;
@@ -1426,8 +1426,8 @@ html[data-font='inter'] {
 ) {
   overflow: hidden;
 }
-.v2-panel-host:has(> [data-slot='panel.process.code']:not([hidden])),
-.v2-panel-subhost[data-slot='panel.process.code'],
+.v2-panel-host:not([hidden]):has(> [data-slot='panel.process.code']:not([hidden])),
+.v2-panel-subhost[data-slot='panel.process.code']:not([hidden]),
 .v2-panel-subhost[data-slot='panel.process.code'] > [data-slot-content] {
   display: flex;
   flex-direction: column;

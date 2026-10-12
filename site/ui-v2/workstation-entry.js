@@ -127,6 +127,8 @@ try {
     const action = trigger.dataset.action;
     if (action.startsWith('domain:')) {
       uiState.domain = action.split(':')[1];
+      uiState.maximize = uiState.domain === 'mask' ? 'mask' : null;
+      if (uiState.domain === 'mask') uiState.view = 'mask';
       uiState.editorHidden = false;
       uiState.mobile = 'edit';
       render();
