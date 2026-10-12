@@ -173,7 +173,7 @@ try {
   await fieldPage.locator('#recipeRunToBtn').click();
   await waitForStatus(fieldPage, /Recipe completed: 1\/1 steps committed/, 45000);
   await fieldRows.nth(1).click();
-  await fieldPage.getByRole('button', { name: '×', exact: true }).click();
+  await fieldPage.getByRole('button', { name: 'Delete step', exact: true }).click();
   await fieldPage.locator('#recipeValidateBtn').click();
   assert.equal(await fieldRows.count(), 1);
   assert.match(

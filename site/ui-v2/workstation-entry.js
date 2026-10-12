@@ -28,6 +28,8 @@ try {
     splitViews: ['main', 'mask'],
   };
   let message = 'Opening workspace…',
+    commitVersion = 'commit local',
+    commitSha = '',
     starting = true;
   const adapters = window.WaferCadV2DomainAdapters.create();
   const registry = window.WaferCadV2ShellRegistry.define({
@@ -53,6 +55,8 @@ try {
       editorHidden: uiState.editorHidden,
       message,
       save: shell.getSlot('status.save').textContent || 'Shared project · Stage C',
+      version: commitVersion,
+      versionCommit: commitSha,
     }),
   });
   const workspaceBody = document.querySelector('.p-body');
@@ -171,47 +175,18 @@ try {
   workflow.refresh();
   store.start();
   workspaceBody.inert = false;
-  const legacyLink = el(
-    'a',
-    {
-      class: 'v2-legacy-link',
-      href: './app-legacy.html',
-      'aria-label': 'Save workspace and use legacy interface',
-    },
-    'Use legacy interface',
-  );
-  let switchingInterface = false;
-  legacyLink.addEventListener('click', async (event) => {
-    event.preventDefault();
-    // Navigation itself must not enqueue another autosave after this flush.
-    event.stopPropagation();
-    if (switchingInterface) return;
-    if (workflow.task.isBusy()) {
-      status('Finish or abort the current task before switching interfaces.');
-      return;
-    }
-    switchingInterface = true;
-    legacyLink.setAttribute('aria-disabled', 'true');
-    try {
-      const persistence = workflow.persistence;
-      const saved = workflow.snapshot().writable
-        ? await persistence.persistNow({ force: true })
-        : !persistence.isDirty() && !persistence.isViewDirty();
-      if (!saved || persistence.isDirty() || persistence.isViewDirty()) {
-        status(
-          'Could not save the workspace. Resolve the save or ownership issue before switching interfaces.',
-        );
-        return;
-      }
-      window.location.href = legacyLink.href;
-    } catch (error) {
-      status(`Could not save before switching interfaces: ${error.message}`);
-    } finally {
-      switchingInterface = false;
-      legacyLink.removeAttribute('aria-disabled');
-    }
-  });
-  shell.getSlot('status.save').parentElement.append(legacyLink);
+  // Pages stamps this file at publication; local servers may have no build metadata.
+  // Read it without caching so the footer identifies the deployed revision.
+  void fetch('./build-info.json', { cache: 'no-store' })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((build) => {
+      const commit = String(build?.commit || '').trim();
+      if (!/^[0-9a-f]{7,64}$/i.test(commit)) return;
+      commitSha = commit;
+      commitVersion = `commit ${commit.slice(0, 7)}`;
+      shell.renderVersion();
+    })
+    .catch(() => {});
   window.WaferCadV2Workstation = {
     ready: true,
     snapshot: () =>

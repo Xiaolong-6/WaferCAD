@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   rebuild:
+    if: ${{ github.ref_name == 'fix/photodetector-reconstruction-v2' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -1,16 +1,12 @@
 # Process Recipe Code Tutorial
 
-![Conformal deposition in a Recipe](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
-
-_Illustrative geometry only; actual results depend on the selected Base, Mask, Face and preceding steps._
-
-[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [中文教程](Recipe-Code-Tutorial-zh-CN)
+[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [AI-assisted workflows](AI-Assisted-Workflows)
 
 WaferCAD Recipe v1 is a **restricted, declarative process language**. Each command describes a step executed through the same Process Geometry Kernel used by the Manual panel. It is not general JavaScript and it is not calibrated TCAD. This tutorial documents the shipped v1 parser and execution contract in main; older saved replays can retain explicit legacy semantics.
 
 ## 1. Five-minute quick start
 
-Begin with a project containing a suitable **Base** substrate (for example, Si); applying a Recipe does not create the Base. Navigate to **Process → Recipe → Code**, paste:
+Begin with a project containing a suitable **Base** substrate (for example, Si); applying a Recipe does not create the Base. Navigate to **Process → Code** (beside **Recipe** in the current workstation), paste:
 
 ```javascript
 // Simple oxide and ALD passivation
@@ -58,12 +54,12 @@ The parser deliberately rejects variables, expressions, loops, arbitrary functio
 
 ### Shared parameters
 
-| Field                 | Values                         | Meaning                                          |
-| --------------------- | ------------------------------ | ------------------------------------------------ |
-| `face`                | `"front"`, `"back"`            | Which exposed face is processed (default: front) |
-| `area`                | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement        |
-| `mask`                | Captured File/Draw context     | Required for masked or inverted steps            |
-| `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate   |
+| Field                 | Values                         | Meaning                                                                         |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------------- |
+| `face`                | `"front"`, `"back"`, `"both"`  | Process target (default: front); Both is supported only for eligible operations |
+| `area`                | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement                                       |
+| `mask`                | Captured File/Draw context     | Required for masked or inverted steps                                           |
+| `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate                                  |
 
 A **Mask ROI** clips masked Process operations; a **Main ROI** controls inspection/export view and does not limit Apply. See [Masks and ROI](Masks-and-ROI).
 
@@ -103,7 +99,25 @@ deposit({
 });
 ```
 
+![Conformal deposition: actual Process Guide before/after schematic](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
+
+_This is the **Conformal Deposit** guide illustration, not the result of running the code above. The specific geometry depends on which surfaces are exposed._
+
 Directional covers exposed horizontal surfaces. Conformal also creates ideal geometric sidewall bands. For transfer, `placement: "follow"` follows local exposed planes; `"flat"` places a global bridge plane. Neither models deposition kinetics or mechanical sag.
+
+**Both-face Recipe support:** For supported Deposit, Extend, directional/isotropic Etch, Transfer, Implant and Electrical operations, `face: 'both'` applies **Front then Back** as one atomic logical Step. A successful Both Deposit produces **two independent material Layer IDs** (one per face), not a shared layer. Both Lift-off and Both Planarize/CMP are intentionally unsupported. The v2 Manual **Surface** selector also offers **Both**, and this same `face: 'both'` value is available in Recipe Code. The Legacy interface is unchanged. Example:
+
+```javascript
+deposit({
+  material: 'Al2O3',
+  thickness: '20 nm',
+  coverage: 'conformal',
+  face: 'both',
+  area: 'full',
+});
+```
+
+See the [Kernel contract and operation limits](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PROCESS_BOTH_FACE_2026-10-11.md).
 
 ### Etch, release and planarization
 
@@ -178,6 +192,10 @@ snapshot('After activation');
 Implant marks a depth-graded area but does not simulate dose, energy, activation, or diffusion. Electrical marks a region; it does not solve electrostatics. Record keeps chronological metadata without mutating geometry. For `regionType` the editor offers p/n type, inversion, accumulation, depletion and custom; `source` includes induced, doped, interface and custom.
 
 ## 4. Mask-specific recipes
+
+![Selective etch of a patterned surface: in-app Process Guide schematic](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-selective.svg?sanitize=true)
+
+_Conceptual selective Etch: the mask footprint controls where oxide is removed. The drawing does not verify any particular GDS hierarchy, dimensions or step result._
 
 **File Mask:** Import a GDSII/OASIS layout first. The Cell and layer/datatype must actually exist. For example `"3|0"` means GDS layer 3 / datatype 0; `"3/0"` is also normalized.
 

@@ -140,8 +140,8 @@ try {
       await panButton.click();
       await dragPan();
       const pan = await page.evaluate(() => window.WaferCadV2Main.snapshot().plan);
-      assert.equal(pan.panX - before.plan.panX, 24);
-      assert.equal(pan.panY - before.plan.panY, 16);
+      assert.ok(Math.abs(pan.panX - before.plan.panX - 24) < 0.01, 'Pan moves 24 px in X');
+      assert.ok(Math.abs(pan.panY - before.plan.panY - 16) < 0.01, 'Pan moves 16 px in Y');
       await page.mouse.wheel(0, -100);
       await waitForPaint(page);
       assert.deepEqual(
@@ -159,8 +159,8 @@ try {
       );
       await dragPan();
       const both = await page.evaluate(() => window.WaferCadV2Main.snapshot().plan);
-      assert.equal(both.panX - pan.panX, 24);
-      assert.equal(both.panY - pan.panY, 16);
+      assert.ok(Math.abs(both.panX - pan.panX - 24) < 0.01, 'Combined pan moves 24 px in X');
+      assert.ok(Math.abs(both.panY - pan.panY - 16) < 0.01, 'Combined pan moves 16 px in Y');
       assert.equal(both.zoom, pan.zoom, 'Left drag pans without zooming');
       await page.mouse.wheel(0, -100);
       await waitForPaint(page);

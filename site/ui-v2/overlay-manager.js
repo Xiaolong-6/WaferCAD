@@ -139,7 +139,8 @@
       // accessibility selectors, but share the same close/focus semantics.
       node.addEventListener('toggle', (event) => {
         if (event.newState === 'open') {
-          if (active.has('popover') && active.get('popover').node !== node)
+          const previous = active.get('popover');
+          if (previous && previous.node !== node && !previous.node.contains(node))
             close('popover', 'replaced');
           active.set('popover', { node, trigger, external: true });
           trigger.setAttribute('aria-expanded', 'true');

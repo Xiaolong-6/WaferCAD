@@ -38,6 +38,8 @@ export function createProjectController({
   beginHistoricalStepInsert = async () => false,
   getHistoricalStepInsert = () => null,
   cancelHistoricalStepInsert = () => {},
+  compactHistory = false,
+  decorateHistoryMenu = () => {},
 }) {
   const $ = (id) => root.getElementById(id);
   const expandedHistoryVariants = new Set();
@@ -89,6 +91,8 @@ export function createProjectController({
 
     $('snapshotCount').textContent = String(historyNodes.length + legacyBookmarks.length);
     host.innerHTML = '';
+    const continuationHost = $('snapshotContinuation') || host;
+    if (continuationHost !== host) continuationHost.replaceChildren();
 
     async function prepareHistoryReplacement(reason, label = 'History navigation') {
       if (getHistoricalStepEdit()) cancelHistoricalStepEdit();
@@ -175,7 +179,13 @@ export function createProjectController({
       } else {
         hint.textContent = `Viewing ${activeBranch.name}. The next successful Apply creates a Variant from here.`;
       }
-      copy.append(title, context, hint);
+      if (compactHistory) {
+        banner.dataset.tone = 'warning';
+        banner.setAttribute('role', 'status');
+        if (!historyMutation) hint.textContent = 'Applying from this step creates a new Variant.';
+        banner.title = `${title.textContent}\n${context.textContent}`;
+        copy.append(hint);
+      } else copy.append(title, context, hint);
 
       const returnButton = root.createElement('button');
       returnButton.type = 'button';
@@ -185,6 +195,10 @@ export function createProjectController({
         : historyInsert
           ? 'Cancel insert'
           : 'Return to Variant HEAD';
+      if (compactHistory && !historyMutation) {
+        returnButton.textContent = 'Return to HEAD';
+        returnButton.setAttribute('aria-label', 'Return to Variant HEAD');
+      }
       returnButton.title = historyEdit
         ? 'Cancel historical Step editing'
         : historyInsert
@@ -207,7 +221,7 @@ export function createProjectController({
       };
 
       banner.append(copy, returnButton);
-      host.append(banner);
+      continuationHost.append(banner);
     }
 
     if (!historyNodes.length && !legacyBookmarks.length) {
@@ -273,6 +287,7 @@ export function createProjectController({
       }
 
       details.append(summary, menu);
+      if (compactHistory) decorateHistoryMenu({ details, trigger: summary, content: menu });
       return details;
     }
 
@@ -519,6 +534,10 @@ export function createProjectController({
       const marker = root.createElement('span');
       marker.className = 'process-history-marker';
       marker.setAttribute('aria-hidden', 'true');
+      if (compactHistory) {
+        marker.textContent = isVariantHead ? 'HEAD' : `r${node.processRevision}`;
+        marker.title = isVariantHead ? 'Variant HEAD' : `Revision ${node.processRevision}`;
+      }
 
       const body = root.createElement('div');
       body.className = 'process-history-body';
@@ -541,6 +560,11 @@ export function createProjectController({
         .join(' · ');
       meta.title = meta.textContent;
       body.append(label, meta);
+      if (compactHistory) {
+        wrap.classList.add('history-step-compact');
+        label.title = label.textContent;
+        body.title = `${label.textContent}\n${meta.textContent}`;
+      }
 
       const actions = [];
       if (node.restorable) {
@@ -629,6 +653,10 @@ export function createProjectController({
       }
 
       wrap.append(row);
+      if (compactHistory) {
+        const menu = row.querySelector('.snapshot-more-menu');
+        if (menu) wrap.append(menu);
+      }
       const nodeBookmarks = bookmarksByNode.get(node.id) || [];
       if (nodeBookmarks.length) {
         const group = root.createElement('details');
@@ -641,12 +669,20 @@ export function createProjectController({
           'aria-label',
           `${nodeBookmarks.length} bookmark${nodeBookmarks.length === 1 ? '' : 's'} for ${label.textContent}`,
         );
+        if (compactHistory) {
+          summary.title = summary.getAttribute('aria-label');
+          const count = root.createElement('span');
+          count.textContent = String(nodeBookmarks.length);
+          summary.replaceChildren(window.WaferCadV2Icons.icon('bookmark'), count);
+        }
 
         const bookmarkList = root.createElement('div');
         bookmarkList.className = 'history-bookmarks-list';
         for (const bookmark of nodeBookmarks) bookmarkList.append(createBookmarkRow(bookmark));
 
         group.append(summary, bookmarkList);
+        if (compactHistory)
+          decorateHistoryMenu({ details: group, trigger: summary, content: bookmarkList });
         wrap.append(group);
       }
       return wrap;
@@ -710,6 +746,11 @@ export function createProjectController({
       nameButton.type = 'button';
       nameButton.className = 'history-variant-name';
       nameButton.textContent = variant.name;
+      if (compactHistory) {
+        const name = root.createElement('span');
+        name.textContent = variant.name;
+        nameButton.replaceChildren(window.WaferCadV2Icons.icon('branch'), name);
+      }
       nameButton.title = `Switch to ${variant.name} HEAD`;
       nameButton.onclick = (event) => {
         event.stopPropagation();

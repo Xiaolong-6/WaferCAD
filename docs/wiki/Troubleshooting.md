@@ -22,6 +22,10 @@ Check **Project → XYZ unit** and the number typed in Process Z. For example **
 
 ## A conformal coating has no sidewalls
 
+![Conformal coating on actual exposed horizontal faces and sidewalls — conceptual before/after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
+
+_This is the in-app Process Guide's **Conformal Deposit** schematic. Check the actual Section and exposed sidewall in your own project._
+
 Confirm **Coverage → Conformal**. Directional adds material on horizontal exposed surfaces; a conformal operation may coat actual exposed steps/sidewalls. Align A–B with the step to inspect it.
 
 ## I drew a rectangle, but it does not affect Process
@@ -40,11 +44,19 @@ The Recipe may be set to **Continue current model**. For a clean reconstruction,
 
 **Save** keeps Recovery checkpoints in one browser profile. Use **Project → Export** for a portable `.wafercad` file, then import it elsewhere.
 
-![Schematic of conformal coverage](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
-
-_Illustrative geometry, not a prediction of the current project's coating._
-
 ## Visual artifacts versus actual geometry
+
+```mermaid
+flowchart TD
+  Symptom["Unexpected line, gap or film appearance"] --> Section["Place A–B through the location; inspect Section 1:1"]
+  Section --> Check{"Geometry visible in Section?"}
+  Check -->|No| Display["Check 3D Border, opacity and ROI / display mode"]
+  Check -->|Yes| Stack["Inspect exposed layers, process step and Mask footprint"]
+  Display --> Record["Export project + capture both views for diagnosis"]
+  Stack --> Record
+```
+
+_This is a diagnostic checklist, not a proof that any specific artifact is display-only._
 
 If you see an unexplained **black line**, toggle **3D Border** once to see whether the outline is merely visual. **That alone does not prove the geometry is correct.** Check a Section crossing the same XY location, and inspect the layer structure with different 3D opacity/ROI. A genuine thin sheet, seam or buried void that persists without Border deserves investigation; do not hide it by changing outline color or visibility. Save an exported project with the exact History step and the relevant Mask state when reporting it.
 

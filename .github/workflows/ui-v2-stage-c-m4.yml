@@ -1,8 +1,9 @@
 name: UI v2 Stage C and M4 acceptance
 
 on:
+  workflow_call:
   push:
-    branches: [codex/ui-v2-main-wip, main]
+    branches: [codex/ui-v2-main-wip]
     paths:
       - 'site/ui-v2/**'
       - 'site/app.html'

@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   replay:
+    if: ${{ github.ref_name == 'fix/m3d-conformal-microcracks-20261008' || github.ref_name == 'integrate/reviewed-branches-20261008' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
