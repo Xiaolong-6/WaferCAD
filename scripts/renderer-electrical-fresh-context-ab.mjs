@@ -21,6 +21,7 @@ import { classifyWebglBackend } from './test-helpers/webgl-backend-classificatio
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
 import { compareRendererPhaseEvidence } from './test-helpers/renderer-v3-phase-parity.mjs';
 import {
+  checkRendererPhaseCapture,
   isRendererPhaseAcceptanceEligible,
   parseRendererPhaseWindow,
   rendererPhaseMilestones,
@@ -385,24 +386,14 @@ async function trial(enabled, index) {
     })));
     row.drawInputsCount = native.drawInputs.length;
     if (hardwareGpu) {
-      assert.ok(
-        row.phaseCoverage?.finalFrameCaptured === true &&
-          row.phaseCheckpoints.at(-1)?.afterDraw === native.calls,
-        `${label}: final drawn owner phase must be captured`,
-      );
-      assert.ok(
-        row.phaseCheckpoints.length > 0 &&
-          row.phaseCheckpoints.every((checkpoint) => checkpoint.status === 'valid' && checkpoint.hash),
-        `${label}: complete phase checkpoint evidence required`,
-      );
-      if (phaseWindowDiagnostic) {
-        assert.deepEqual(
-          row.phaseCheckpoints.map((checkpoint) => checkpoint.afterDraw),
-          [...phaseMilestones, native.calls],
-          `${label}: each requested milestone plus final framebuffer must be captured`,
-        );
-        assert.equal(row.phaseCoverage?.mode, 'draw-milestones');
-      }
+      const phaseCapture = checkRendererPhaseCapture({
+        checkpoints: row.phaseCheckpoints,
+        coverage: row.phaseCoverage,
+        milestones: phaseMilestones,
+        drawCalls: native.calls,
+        framebuffer: native.framebuffer,
+      });
+      assert.ok(phaseCapture.valid, `${label}: ${phaseCapture.reason}`);
       assert.equal(
         row.drawInputsCount,
         48,
