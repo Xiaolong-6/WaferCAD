@@ -4,7 +4,7 @@
 
 _Illustrative geometry only; actual results depend on the selected Base, Mask, Face and preceding steps._
 
-[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [中文教程](Recipe-Code-Tutorial-zh-CN)
+[Home](Home) · [Process and Recipes](Process-and-Recipes) · [Examples](Examples-and-Modeling-Limits) · [AI-assisted workflows](AI-Assisted-Workflows)
 
 WaferCAD Recipe v1 is a **restricted, declarative process language**. Each command describes a step executed through the same Process Geometry Kernel used by the Manual panel. It is not general JavaScript and it is not calibrated TCAD. This tutorial documents the shipped v1 parser and execution contract in main; older saved replays can retain explicit legacy semantics.
 
