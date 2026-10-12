@@ -8,7 +8,7 @@
 
 The **Step** form places **Operation** and **Surface** selectors side by side. A contextual parameter heading follows: **Area** and material/target fields span the form, and **Coverage** and **Thickness** share a row for applicable operations. **Apply** performs the selected operation. **Also add to Recipe → No** is selected by default in the current workstation, requiring explicit opt-in to append a successful manual Step to Recipe; History is still recorded. **How it works** expands conceptual Before → After diagrams and caveats, not a live simulation of the opened project.
 
-The main Actions are **Deposit**, **Extend**, **Etch**, **Lift-off**, **Implant**, **Electrical**, and **Record**. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
+The main Actions are **Deposit**, **Extend**, **Etch**, **Lift-off**, **Implant**, **Electrical**, and **Record**. The current Manual **Surface** selector offers **Front/Back**; Recipe Code also supports **Both** for compatible operations (Front → Back in one atomic Step, with independent deposited Layer IDs). Both Lift-off and Both Planarize/CMP are unsupported. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
 ### Special cases
 
