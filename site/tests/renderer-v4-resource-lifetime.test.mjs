@@ -162,10 +162,13 @@ test('R5 finishes every independent resource retirement after one dispose throws
       return true;
     },
   );
-  assert.deepEqual(
-    calls.sort(),
-    ['broken-geometry', 'good-geometry', 'good-material', 'good-texture', 'retired-geometry'],
-  );
+  assert.deepEqual(calls.sort(), [
+    'broken-geometry',
+    'good-geometry',
+    'good-material',
+    'good-texture',
+    'retired-geometry',
+  ]);
   assert.equal(scene.children.length, 0);
   assert.equal(scene.userData.waferCadRetiredFlatGeometries.size, 0);
   assert.equal(disposeRendererSceneResources(scene).geometries, 0);
@@ -180,7 +183,10 @@ test('R5 collects multiple independent disposal failures after group removal', (
     },
   });
   const scene = group([
-    { geometry: faulty('geometry'), material: { ...faulty('material'), bumpMap: faulty('texture') } },
+    {
+      geometry: faulty('geometry'),
+      material: { ...faulty('material'), bumpMap: faulty('texture') },
+    },
   ]);
   assert.throws(
     () => disposeRendererSceneResources(scene),
