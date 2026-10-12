@@ -3,7 +3,7 @@
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
-Product revision: `b42c24aa46485cf7dba3fee967117da472115fad`.
+Product revision: `1142c9e94d98cff0e04bfcb89c4c6bcc2ddcc4e6`.
 Startup adaptation is in `f0078376`; default entry promotion is in `0e746cb1`;
 remaining browser entry fixes and formatting normalization are in `643417c8`.
 `5ce8f7e7` uses the shared versioned Example URL and existing Project worker so
@@ -13,7 +13,9 @@ covering the existing footer links.
 The final departure patch requests save on tab hiding/unload, preserves view
 preferences before releasing the lease, and guards pending structural edits or
 active tasks with the browser unload confirmation. A cached page reloads to
-reestablish a live session.
+reestablish a live session. The workspace body is inert during startup; task
+dialogs remain available, and editing begins only after validated project
+installation completes.
 
 - `site/app.html` opens the v2 Workstation. `site/app-legacy.html` preserves the previous application page and its relative assets.
 - Welcome opens Empty, full canonical Examples, and staged imports in v2. Embedded previews use Legacy and retain their source/view parameters on refresh.
@@ -36,6 +38,7 @@ Tests use isolated browser storage. No user browser data was edited.
 - `WAFERCAD_URL=http://127.0.0.1:4174 node scripts/example-open-benchmark.mjs photodetector-literature 1 --headless`: passed on the real default v2 route with the original cache assertions. The warmed project used 690,775 cached body bytes and transferred 0 bytes; its 46 History nodes were decoded by the Project worker. This cache owner deliberately uses no Playwright routes.
 - Legacy `npm run test:ui:workstation`: passed after the route migration, including stalled Three.js and navigation scenarios.
 - Legacy `npm run test:ui:persistence`: passed after the route migration, including recovery checkpoints, staged handoffs, writer takeover and failed-save protection.
+- A delayed Example-load check confirms the workspace cannot be edited before startup completes and enables the full 46-node project on Ready.
 - The departure regression proves pending structural edits cancel a silent unload, start a final save, and reload with exact geometry and 46 History nodes.
 - Published preview on `cf139be1`: actual `preview/app.html` loaded the full Photodetector through its Project worker; the product link navigated to `preview/app-legacy.html` and restored exact geometry/Variants with no page errors. Production root remained at main revision `27e38640`.
 - Stage C synchronization: passed at 1440, 1024, 768 and 390 px, plus 1024 px touch simulation.
