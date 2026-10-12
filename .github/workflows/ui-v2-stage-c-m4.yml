@@ -86,3 +86,15 @@ jobs:
             serve-v2.log
           retention-days: 14
           if-no-files-found: warn
+
+  formatter-diagnostic:
+    name: Manual Both Prettier diff (temporary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx prettier scripts/v2/check-manual-both.mjs | diff -u scripts/v2/check-manual-both.mjs - || true
