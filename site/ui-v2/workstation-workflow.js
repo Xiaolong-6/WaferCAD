@@ -369,8 +369,10 @@ export function createWorkstationWorkflow({ store, workstation }) {
     };
     stepActions.append(control);
   }
-  hooks.get('operationThicknessRow').classList.add('p-stepper');
-  hooks.get('operationThicknessRow').append(stepActions);
+  // M2 stepper is a two-column wrapper around the entire labelled field.
+  // Putting the grid on the label itself stacks +/- below a narrow, wrapped label.
+  const thicknessStepper = el('div', { class: 'p-stepper' });
+  thicknessStepper.append(hooks.get('operationThicknessRow'), stepActions);
   const addToRecipe = choice(
     'Also add to Recipe',
     'v2RecordManual',
@@ -469,7 +471,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     materialPreview,
     hooks.get('targetLayerRow'),
     hooks.get('etchTargetLayerRow'),
-    hooks.get('operationThicknessRow'),
+    thicknessStepper,
     ...parameterRows.map((id) => hooks.get(id)),
     face,
     hooks.get('operationAreaRow'),
@@ -493,6 +495,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
   );
   function syncManualPresentation() {
     const type = hooks.get('operationType').value;
+    // The Process controller toggles the labelled row, so its wrapper follows it.
+    thicknessStepper.hidden = hooks.get('operationThicknessRow').classList.contains('hidden');
     materialPreview.hidden = !['add', 'implant', 'electrical'].includes(type);
     inputUnit.textContent = `Input unit: ${units.label()}`;
     processSummary.textContent = `${modelInventoryCount(state.model)} · ${state.model.layers.length} layers`;

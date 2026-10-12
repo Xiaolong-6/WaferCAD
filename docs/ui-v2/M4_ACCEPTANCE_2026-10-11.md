@@ -45,3 +45,7 @@ The browser environment used by these reports is Linux Chromium 140.0.7339.186 /
 ## M2 source-to-live chrome comparison (pending CI)
 
 `scripts/v2/check-m2-live-parity.mjs` captures isolated M2 mock and integrated Manual panels at 1440/1024/768/390, and compares navigation order, font, workbench and inspector widths, desktop canvas-column origin and the M2 Manual field sequence. It records two screenshots per width under `test-results/ui-v2-m2-parity/` for reviewer comparison. It is a **structural and visual-review gate**, with no claim that live scientific canvas pixels should equal the prototype's schematic drawings. This paragraph records the test being added; its execution outcome must be checked on the next CI revision.
+
+### M2 Manual thickness stepper visual defect — corrected in next code revision
+
+A direct inspection of the 1440 and 390 px prototype-versus-real screenshots from `caf19b1` caught a discrepancy missed by the initial structure-only test: the real stepper applied the M2 two-column grid to the input `label` rather than its enclosing wrapper. That forced the label into a narrow column and stacked the decrement/increment buttons vertically. The following repair moves the unmodified labelled input and step buttons into an explicit `.p-stepper` wrapper, preserves Record/Lift-off hidden semantics and extends the browser parity gate to compare label-above-input and horizontally aligned +/- controls at all four widths. The new revision's CI outcome is pending and is not represented as a passing gate here.

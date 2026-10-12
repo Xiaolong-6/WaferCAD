@@ -38,7 +38,7 @@ function requireOrdered(labels, contract, kind) {
 async function capture(page) {
   return page.evaluate(() => {
     const box = (selector) => {
-      const node = document.querySelector(selector);
+      const node = typeof selector === 'string' ? document.querySelector(selector) : selector;
       if (!node || !node.checkVisibility()) return null;
       const rect = node.getBoundingClientRect();
       return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
@@ -48,6 +48,14 @@ async function capture(page) {
       .map((node) => node.textContent.trim());
     const root = document.querySelector('.p-workbench');
     const style = getComputedStyle(root);
+    const stepper = [...document.querySelectorAll('.p-inspector .p-stepper')]
+      .find((node) => node.querySelector('input'));
+    const thickness = stepper && {
+      box: box(stepper),
+      label: box(stepper.querySelector('.wc-label')),
+      input: box(stepper.querySelector('input')),
+      buttons: [...stepper.querySelectorAll('.p-actions button')].map(box),
+    };
     return {
       root: box('.p-workbench'),
       topbar: box('.p-topbar'),
@@ -55,6 +63,7 @@ async function capture(page) {
       inspector: box('.p-inspector'),
       stage: box('.p-stage'),
       labels,
+      thickness,
       font: style.fontFamily,
       theme: document.documentElement.dataset.theme,
       overflowX: Math.max(0, document.documentElement.scrollWidth - innerWidth),
@@ -110,6 +119,21 @@ try {
       const realLabels = real.labels.map(normalize);
       requireOrdered(m2Labels, expected, 'M2 source');
       requireOrdered(realLabels, expected, 'Live v2');
+      for (const [kind, stepper] of [['M2', m2.thickness], ['real', real.thickness]]) {
+        assert.ok(stepper?.box && stepper.label && stepper.input, `${kind} labelled stepper`);
+        assert.equal(stepper.buttons.length, 2, `${kind} stepper owns +/- controls`);
+        assert.ok(
+          stepper.label.y + stepper.label.height <= stepper.input.y + 2,
+          `${kind} stepper label must be above, not beside, the input`,
+        );
+        near(stepper.buttons[0].y, stepper.buttons[1].y, 2, `${kind} +/- horizontal row`);
+        assert.ok(
+          stepper.buttons[0].x >= stepper.input.x + stepper.input.width - 2,
+          `${kind} +/- controls must follow the input in the same row`,
+        );
+      }
+      near(m2.thickness.box.height, real.thickness.box.height, 2, 'M2 stepper total height');
+      near(m2.thickness.input.width, real.thickness.input.width, 2, 'M2 stepper input width');
       report.cases.push({ width, result: 'pass', m2, real });
       console.log(`M2 live parity ${width}px: chrome, Manual control order and layout PASS`);
     } catch (error) {
