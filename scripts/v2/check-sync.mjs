@@ -425,6 +425,54 @@ try {
           null,
           { timeout: 120000 },
         );
+        // M4 failure/recovery: a malformed Code draft must fail before a
+        // Recipe confirmation, Process operation or History mutation.
+        const goodCode = await page.locator('#recipeCodeEditor').inputValue();
+        const recipeBeforeFailure = await snap();
+        await page.locator('#recipeCodeEditor').fill('deposit({');
+        await page.locator('#recipeApplyCodeBtn').click();
+        await page.waitForFunction(() =>
+          /Recipe code error:/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
+        );
+        assert.deepEqual((await snap()).model, recipeBeforeFailure.model);
+        await page.locator('#recipeRunAllBtn').click();
+        await page.waitForFunction(() =>
+          /Recipe preflight failed/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
+        );
+        const recipeAfterFailure = await snap();
+        assert.deepEqual(
+          recipeAfterFailure.model,
+          recipeBeforeFailure.model,
+          'Invalid Recipe must not change canonical geometry',
+        );
+        assert.deepEqual(
+          recipeAfterFailure.workflow.steps,
+          recipeBeforeFailure.workflow.steps,
+          'Invalid Recipe must not record Process History',
+        );
+        assert.deepEqual(
+          recipeAfterFailure.workflow.branches,
+          recipeBeforeFailure.workflow.branches,
+          'Invalid Recipe must not create History Variants',
+        );
+        assert.equal(
+          await page.getByRole('button', { name: 'Continue and apply', exact: true }).isVisible(),
+          false,
+          'Preflight must block before asking to continue',
+        );
+        await page.locator('#recipeCodeEditor').fill(goodCode);
+        await page.locator('#recipeApplyCodeBtn').click();
+        await page.waitForFunction(() =>
+          /Recipe code applied/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
+        );
+        assert.deepEqual((await snap()).model, recipeBeforeFailure.model);
+        console.log('Sync Recipe: invalid-code rejection, preflight atomicity and recovery verified');
         const precise = (await snap()).model;
         const film = precise.layers.find((l) => l.name === 'Graphene precision');
         assert.ok(film);
