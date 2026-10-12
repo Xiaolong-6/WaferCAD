@@ -4,6 +4,8 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Product users
 
+- **[Launch WaferCAD](https://xiaolong-6.github.io/WaferCAD/)** — open Welcome or go directly to the [default v2 Workstation](https://xiaolong-6.github.io/WaferCAD/app.html).
+- [First 10 Minutes](wiki/First-10-Minutes.md) — build a Base, draw a mask, deposit/etch, inspect Section and export a project.
 - [Product manual](wiki/Home.md) — complete English task-oriented user manual, Recipe tutorial and AI-assisted workflows.
 - [Using WaferCAD with AI](wiki/AI-Assisted-Workflows.md) — copy-ready prompts, attachment checklists, GDS/Recipe workflows and validation.
 - [Usage](USAGE.md) — compact repository reference for daily operations.
