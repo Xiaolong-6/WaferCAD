@@ -32,13 +32,15 @@ For concrete dimensions and expected results, follow the [10-minute hands-on tut
 - **Main** — front/back surface view with XY axes, an A–B coordinate editor, SVG export, and in-page maximize.
 - **Section A–B** — cross-section generated from the same vector geometry model, with Auto/1:1 scaling, SVG export, and in-page maximize.
 
-The following two images are **real WaferCAD output previews of the same shipped MAGIC-1000 example**. They illustrate why 3D and Section are complementary; the device stack and routing are research-derived reconstructions, not published microscopy or exact mask data.
+```mermaid
+flowchart LR
+  Model["One physical geometry model"] --> Main["Main: surface and A–B"]
+  Model --> Mask["Mask: File or Draw"]
+  Model --> ThreeD["3D: material stack and transparency"]
+  Main --> Section["Section: physical slice along A–B"]
+```
 
-| 3D view — reconstructed stack | Section A–B — buried layer sequence |
-| --- | --- |
-| ![WaferCAD 3D example output of the MAGIC-1000 MoS2 device and buried interconnects](site/examples/thumbnails/magic-1000-mos2-beol-three.webp) | ![WaferCAD Section A–B output of the same MAGIC-1000 example showing the layer cross-section](site/examples/thumbnails/magic-1000-mos2-beol-section.webp) |
-
-For visual interpretation and source limitations, see [Examples and Modeling Limits](docs/wiki/Examples-and-Modeling-Limits.md).
+_This is a relationship diagram, not a current UI screenshot. For actual example-specific render previews, see [Examples and Modeling Limits](docs/wiki/Examples-and-Modeling-Limits.md). Thumbnail images are not suitable for reading workstation controls at full size._
 
 ## Geometry model
 
