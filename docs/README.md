@@ -49,4 +49,4 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Historical documents
 
-Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. **68 completed/superseded documents have been relocated** to `docs/archive/` with short compatibility pointers at their former paths. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
+Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. **68 completed/superseded documents have been relocated** to `docs/archive/`; obsolete paths were deleted and internal links were updated. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
