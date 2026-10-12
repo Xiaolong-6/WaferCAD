@@ -13,6 +13,18 @@ test('WebGL hardware gate accepts a surfaced real adapter', () => {
   assert.match(result.adapter, /RTX 3060/);
 });
 
+test('WebGL hardware gate accepts Intel and AMD integrated adapters', () => {
+  for (const name of [
+    'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0)',
+    'ANGLE (Intel, Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0)',
+    'ANGLE (AMD, AMD Radeon 780M Graphics Direct3D11 vs_5_0 ps_5_0)',
+    'Mesa Intel(R) Arc(TM) Graphics (MTL)',
+  ]) {
+    const result = classifyWebglBackend({ unmaskedRenderer: name });
+    assert.equal(result.hardwareVerified, true, name);
+  }
+});
+
 test('WebGL hardware gate rejects software and obscured adapters', () => {
   for (const name of [
     'Google SwiftShader',

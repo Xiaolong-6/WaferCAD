@@ -24,19 +24,22 @@ import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/
 
 const reportOnly = process.argv.includes('--report-only');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
+const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
 const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
+// Preserve the older pinned RTX command while allowing verified integrated
+// and discrete adapters through --hardware-gpu.
 assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
 assert.ok(
-  !diagnosticNoDither || (hardwareRtx3060 && reportOnly),
-  '--diagnose-no-dither requires --hardware-rtx3060 --report-only; never treat isolation as acceptance',
+  !diagnosticNoDither || (hardwareGpu && reportOnly),
+  '--diagnose-no-dither requires --hardware-gpu --report-only; never treat isolation as acceptance',
 );
 assert.ok(
-  !diagnosticNoMsaa || (hardwareRtx3060 && reportOnly && !diagnosticNoDither),
-  '--diagnose-no-msaa requires --hardware-rtx3060 --report-only; isolation flags cannot be combined',
+  !diagnosticNoMsaa || (hardwareGpu && reportOnly && !diagnosticNoDither),
+  '--diagnose-no-msaa requires --hardware-gpu --report-only; isolation flags cannot be combined',
 );
 const output = new URL(
-  hardwareRtx3060
+  hardwareGpu
     ? diagnosticNoDither
       ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
       : diagnosticNoMsaa
@@ -49,7 +52,7 @@ await mkdir(output, { recursive: true });
 const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({
   ...launchOptions,
-  headless: hardwareRtx3060 ? false : launchOptions.headless,
+  headless: hardwareGpu ? false : launchOptions.headless,
 });
 const report = {
   experiment: 'production-boot-policy-fresh-context-off-off-on-on',
@@ -58,7 +61,8 @@ const report = {
   platform: process.platform,
   baseUrl,
   hardwareRtx3060,
-  headed: hardwareRtx3060 ? true : !launchOptions.headless,
+  hardwareGpu,
+  headed: hardwareGpu ? true : !launchOptions.headless,
   reportOnly,
   diagnosticNoDither,
   diagnosticNoMsaa,
@@ -223,8 +227,8 @@ async function trial(enabled, index) {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     }, {
       pixelSamples: samples,
-      captureDrawInputs: hardwareRtx3060,
-      capturePhaseDraws: hardwareRtx3060
+      captureDrawInputs: hardwareGpu,
+      capturePhaseDraws: hardwareGpu
         ? [1, 128, 256, 384, 512, 640, 768, 896, 1024, 1152, 1280]
         : [],
     });
@@ -353,7 +357,7 @@ async function trial(enabled, index) {
       afterDraw, kind, status,
     })));
     row.drawInputsCount = native.drawInputs.length;
-    if (hardwareRtx3060) {
+    if (hardwareGpu) {
       assert.ok(
         row.phaseCoverage?.finalFrameCaptured === true &&
           row.phaseCheckpoints.at(-1)?.afterDraw === native.calls,
@@ -409,10 +413,13 @@ async function trial(enabled, index) {
     };
     // Keep complete per-context evidence, including state and gate errors.
     await writeFile(new URL(`${label}-trace.json`, output), JSON.stringify(row, null, 2));
-    if (hardwareRtx3060) {
+    if (hardwareGpu) {
       assert.ok(
-        row.backend.hardwareVerified && /NVIDIA.*GeForce RTX 3060/i.test(native.renderer || ''),
-        `${label}: expected a recognized NVIDIA GeForce RTX 3060 adapter, got ${native.renderer || 'unknown'}`,
+        row.backend.hardwareVerified &&
+          (!hardwareRtx3060 || /NVIDIA.*GeForce RTX 3060/i.test(row.backend.adapter || '')),
+        `${label}: requires a verified hardware GPU` +
+          (hardwareRtx3060 ? ' (RTX 3060 for the legacy command)' : '') +
+          `, got ${row.backend.adapter || 'unknown'}`,
       );
     }
     const expectedCalls = enabled ? 1291 : 1408;
@@ -489,6 +496,16 @@ async function trial(enabled, index) {
 try {
   for (const [i, enabled] of [false, false, true, true].entries()) {
     await trial(enabled, i + 1);
+  }
+  // A/B attribution is valid only when every context uses the same GPU.
+  if (hardwareGpu) {
+    assert.ok(
+      report.trials.every((trial) =>
+        trial.backend?.hardwareVerified === true &&
+        trial.backend.adapter === report.trials[0].backend.adapter,
+      ),
+      'All four fresh contexts must use the same verified hardware GPU',
+    );
   }
   const off = report.trials[0];
   const on = report.trials[2];
