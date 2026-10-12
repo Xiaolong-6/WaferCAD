@@ -118,7 +118,11 @@ try {
         await exportMenu.click();
         for (const format of ['gds', 'oas']) {
           const exportAction = page.locator(`[data-action="mask-export:${format}"]`);
-          if (!(await exportAction.isVisible())) await exportMenu.click();
+          if (!(await exportAction.isVisible())) {
+            if (!(await exportMenu.isVisible()))
+              await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+            await exportMenu.click();
+          }
           const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
           await exportAction.click();
           const download = await downloadPromise;
