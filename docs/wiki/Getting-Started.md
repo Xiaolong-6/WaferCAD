@@ -13,7 +13,7 @@
 - **Project:** Select **New**, **Open**, **Save**, **Export** and **Recovery**. Under **Display**, choose the **XYZ unit** before typing dimensions.
 - **Base:** In **Project → Base**, choose **Rectangle** or **Circle**, enter width/height/diameter and thickness, then click **Rebuild Base**. The legacy button is **Apply base**. Base is a generic starting geometry; its default layer is labeled **Base**.
 - **Mask:** switch the Mask source from **File** to **Draw**, select **Rect** on the Mask canvas toolbar and drag a rectangle. No GDS/OAS file is required for the first tutorial.
-- **Process → Manual:** Choose **Surface (Front/Back)**, **Operation**, **Area**, and an applicable layer/material and **Thickness / depth**; click **Apply** once. Leave **Also add to Recipe → No** for a manual-only exercise.
+- **Process → Manual:** Choose **Surface (Front/Back/Both)**, **Operation**, **Area**, and an applicable layer/material and **Thickness / depth**; click **Apply** once. Leave **Also add to Recipe → No** for a manual-only exercise.
 - **Main / Section A–B / 3D:** See a top view, a slice along A–B, and a rotatable 3D view. Move the A–B line through the feature you want to inspect.
 - **Process → Recipe:** Collect several Process operations into an ordered procedure. Use **Validate** before execution and choose the starting state carefully.
 
@@ -25,7 +25,7 @@ _Illustration of a directional film on a flat face; the geometry and scaling dep
 
 ## Four choices that change the outcome
 
-- **Front vs Back:** which side of the device receives a manual operation. Recipe Code also supports `face: 'both'` for supported operations, with separate Front/Back layers. The current workstation's Manual Surface selector offers Front/Back.
+- **Front, Back or Both:** the v2 Manual Surface selector and Recipe Code support **Both** for compatible operations. Both applies **Front → Back** atomically, with two distinct paired Layer IDs for a dual-face Deposit. Paired Extend/targeted Etch needs an exposed matching material on both faces; Both Lift-off and absolute-Z Planarize/CMP are unsupported. Both is an operation target, never a third Main/Mask inspection face. [Acceptance and limitations](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - **Area:** **Whole face** applies without a mask; **Selected mask** acts within the current File/Draw mask; **Invert mask** acts in its complement.
 - **Coverage / Profile:** **Directional** grows/etches along Z; **Conformal** deposition follows true exposed sidewalls; isotropic/undercut release removes material laterally.
 - **Thickness and units:** Choose **XYZ display unit** first. `0.2` with unit **µm** means **200 nm**; it differs from `0.2` in **nm**. Base Thickness is physical substrate height; manual Process Thickness/depth represents film thickness or etch depth as applicable.
