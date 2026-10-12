@@ -1,161 +1,163 @@
-# WaferCAD UI v2 Refactoring Plan r2 (Agent Execution Version)
+# WaferCAD UI v2 重构计划 r2(agent 执行版)
 
-> Changes from r1: an M1.5 UX prototype hard gate; explicit Workstation assembly rewrite; separate legacy/v2 testing tracks; a globally light theme; user selection of Recipe placement after prototype comparisons; no legacy entry migration in M5; and a three-part completion standard covering function, visuals and workflow.
+> 相对 r1 的修订:增加 M1.5 UX 原型硬门槛;明确重写 Workstation 装配层;测试改为 legacy / v2 双通道;主题改为全局浅色;Recipe 的位置交给原型比较;M5 不搬迁旧入口;完成标准改为"功能 + 视觉 + 流程"三合一。
 
-## 0. Goals, scope and rules
+## 0. 目标、边界、规则
 
-**Goal:** deliver a consistent, usable WaferCAD interface (new design system and workspace layout), functionally equivalent to the existing product, and switch the default entry only after acceptance. The objective is a usable product interface, not merely cleaner CSS.
+**目标**:交付一套统一、好用的 WaferCAD 界面(新设计系统 + 新工作区布局),功能与现有版本等价,通过验收后切换入口。**目标是好用的产品界面,不是更干净的 CSS。**
 
-**Follow `AGENTS.md`:**
+**必须遵守**(`AGENTS.md`):
 
-- Geometry is stored in µm; display scaling, ROI and morphology must not change canonical stored geometry.
-- Preserve project migration, worker transactions, History restore and browser recovery contracts.
-- Never change visual baselines to conceal failures. **Keep the existing baseline unchanged**; create a separate new one only after human review and approval.
-- Run `npm ci`; report commands, results, commit and environment. Do not force-push or trigger expensive manual CI.
+- 几何以微米存储,显示缩放/ROI/形貌不得改动存储几何。
+- 保持 project migration、worker 事务、History 恢复、浏览器恢复契约。
+- 不为掩盖失败而替换视觉基线;**旧基线不动**,新基线只在人工检查并获批后建立。
+- `npm ci`;汇报命令、结果、commit、环境。不 force push;不触发昂贵的手动 CI。
 
-**Prohibited changes (read-only dependencies):** `site/model*.js`, `process-*.js`, `project-*.js`, `workspace-snapshots.js`, `workspace-persistence*.js`, `three-view.js`, `plan-renderers.js`, `oasis.js`, `gds.js`, `*-worker.js`, and `vendor/`. If a change is needed, document it in `docs/ui-v2/ISSUES.md` and report to the user first.
+**禁止修改(只读依赖)**:`site/model*.js`、`process-*.js`、`project-*.js`、`workspace-snapshots.js`、`workspace-persistence*.js`、`three-view.js`、`plan-renderers.js`、`oasis.js`、`gds.js`、`*-worker.js`、`vendor/`。如需改动,先写入 `docs/ui-v2/ISSUES.md` 并向用户汇报。
 
-**Explicitly allowed to rewrite:** the UI assembly portion of `site/workstation-ui.js` (`createRail / createTopbarControls / createViewbar / createViewStage / setupToolFlyout`), workstation startup self-checks in `app.js` (around line 1667 at this revision), `welcome.js` entry navigation within the v2 channel, and controller DOM bindings/class names. **Preserve** single/overview/split behavioral contracts and the historically named storage keys (`wafercad.workstation-view-mode.v1`, `wafercad.workstation-split-views.v1`). Verify the actual storage scope from source rather than trusting the original plan's `localStorage` wording.
+**明确允许重写**:`site/workstation-ui.js` 的 UI 装配部分(`createRail / createTopbarControls / createViewbar / createViewStage / setupToolFlyout`)、`app.js` 中的 workstation 启动自检(约 1667 行附近)、`welcome.js` 的入口跳转(v2 通道内)、各控制器中的 DOM 绑定与类名。**必须保留**:single / overview / split 视图模式的行为契约及其 localStorage 键(`wafercad.workstation-view-mode.v1`、`wafercad.workstation-split-views.v1`)。
 
-**Strategy:** run old and new entries in parallel. Keep legacy `app.html` and its assets at their original paths to avoid breaking relative assets, Worker URLs and hardcoded `welcome.js` routes. Create the new entry at `site/app-v2.html`, with assets under `site/ui-v2/`.
+**策略**:新旧并行,双入口。旧 `app.html` 及其资源**保持原路径不动**(避免相对路径、Worker 路径、`welcome.js` 硬编码失效)。新入口为 `site/app-v2.html`,资源放 `site/ui-v2/`。
 
-**Completion rule:** finished components, 100% ID inventory coverage, reduced CSS size and green CI are each necessary evidence, but none alone is sufficient. Every workspace must pass all three criteria: (1) correct functionality, (2) fidelity to the approved prototype, and (3) a usable real interaction flow verified against §4.
+**完成标准(重要)**:以下都只是必要条件,**不是充分条件**:组件实现完成、id 覆盖率 100%、CSS 行数达标、CI 全绿。每个工作区必须同时满足 ① 功能正确 ② 视觉与已批准原型一致 ③ 操作流程合理(按 §4 的验收场景实测)。
 
-## 1. Known problems to address
+## 1. 已知问题(要解决的)
 
-- Two token families (`--bg…` and `--wc-*`), 483 distinct color values, and mixed 3–7 px radii.
-- More than 11 font sizes between 7.5 and 12 px, with many below 10 px.
-- 94 `!important` uses and more than 20 discrete z-index values.
-- Eight button variants; copied `view-head` HTML across four views.
-- `style.css` (5,758 lines) plus `workstation.css` (2,078 lines) relying on late overrides.
-- Five right-panel tabs containing nested tabs and several popover variants.
-- The failed prior refactor (PR #161): **M0 must establish the root causes first**.
+- 两套 token(`--bg…` / `--wc-*`),483 个不同色值,圆角 3~7px 混用。
+- 字号 7.5~12px 共 11+ 档,大量 <10px。
+- 94 处 `!important`;z-index 20+ 个离散值。
+- 按钮变体 8 种;4 个 view 的 `view-head` 为复制粘贴 HTML。
+- `style.css` 5758 行 + `workstation.css` 2078 行,靠后置覆盖。
+- 右侧 5 个 tab 内再嵌子 tab 与多种 popover。
+- 前一次重构尝试(PR #161)失败:**M0 必须先查明原因**(见 M0)。
 
-## 2. Phases and checkpoints
+## 2. 阶段与检查点
 
-**Stop and report at each checkpoint. Do not enter the next phase until the user explicitly approves. Do not silently run multiple phases together.** This is the historical r2 plan; later separately authorized work is recorded in subsequent handoffs.
+**每个检查点结束必须停下汇报,得到用户明确确认后才能进入下一阶段。禁止连续执行多个阶段。**
 
-### M0 — Baseline, contracts, implicit dependencies (complete this only, then stop)
+### M0 基线、契约、隐式依赖(只做这一步,然后停)
 
-1. `npm ci`; record baseline `lint`, `npm test`, `test:ui:fast` results and note any unavailable browser.
-2. Investigate PR #161: read description, diff, comments and CI; record specific causes (layout, assembly, tests) in `docs/ui-v2/PR161_POSTMORTEM.md`. If records cannot be retrieved, state the limitation and request them.
-3. Run `scripts/ui-contract-extract.mjs` to generate `docs/ui-v2/CONTRACT.md` and `contract.json`:
-   - Every `app.html` ID, `data-*`, role and `aria-controls` target;
-   - each ID's caller (`site/**`, `scripts/**`) and element type;
-   - dynamically generated markup/classes/structure from `innerHTML`, `createElement`, `classList.add/toggle` and `dataset`.
-4. Produce the **implicit DOM dependencies** list `docs/ui-v2/IMPLICIT_DEPS.md`, the most important M0 output:
-   - DOM moved, created or reparented by `workstation-ui.js`;
-   - `app.js` startup self-checks and creation/binding order;
-   - parent/sibling/closest-selector requirements, delegated/bubbling events, `hidden`/`:visible` semantics, CSS-as-state (`.active`, `aria-selected`, `workstation-ui-v2`, `workstation-boot`);
-   - test assertions against legacy DOM (`.workstation-rail`, for example).
-5. Write the risk register and effort estimates, including assembly rewrite and controller adaptation scope.
+1. `npm ci`;记录 `lint`、`npm test`、`test:ui:fast` 基线(浏览器不可用则注明)。
+2. 查明 PR #161:读其描述、diff、评论、CI 结果,总结**失败的具体原因**(布局?装配层?测试?),写入 `docs/ui-v2/PR161_POSTMORTEM.md`。读不到则说明并请用户提供。
+3. 脚本 `scripts/ui-contract-extract.mjs` → `docs/ui-v2/CONTRACT.md` + `contract.json`:
+   - `app.html` 全部 id、`data-*`、`role`、`aria-controls` 目标;
+   - 每个 id 的引用方(`site/**`、`scripts/**`);元素类型;
+   - 动态生成标记:所有 `innerHTML`、`createElement`、`classList.add/toggle`、`dataset` 使用的类名与结构。
+4. **隐式 DOM 依赖清单** `docs/ui-v2/IMPLICIT_DEPS.md`(本阶段最重要的产出):
+   - `workstation-ui.js` 搬移/创建/重挂的 DOM;
+   - `app.js` 启动自检与启动顺序(谁先创建、谁后绑定);
+   - 依赖父子关系、兄弟顺序、`closest()`、事件委托/传播、可见性(`hidden`/`:visible`)、CSS 类即状态(如 `.active`、`aria-selected`、`workstation-ui-v2`、`workstation-boot`)的位置;
+   - 测试对旧 DOM 的断言(例如 `.workstation-rail`)。
+5. 风险清单 + 工作量估计(装配层需重写多少、控制器需改多少)。
 
-**M0 checkpoint report:** static ID total, dynamic class count, implicit dependency count, PR #161 failure causes, risks and estimate.
+**检查点 M0 汇报**:id 总数、动态类名数、隐式依赖条目数、PR #161 失败原因、风险与估算。
 
-### M1 — Design system and component gallery
+### M1 设计系统与组件 Gallery
 
-`site/ui-v2/tokens.css` must be the single source of design tokens:
+`site/ui-v2/tokens.css`(唯一 token 源):
 
-- Approximately 20 semantic colors (surface, border, text, accent, success, warning, danger).
-- **Global light theme.** Use surfaces, boundaries and weight to establish hierarchy; no dark global top bar. Scientific canvases may retain independent display themes. Reserve a `[data-theme]` hook, but ship only the light theme in this phase.
-- Body/form/action text **12–13 px**, support text **at least 11 px**, titles 15/18 px. No text below 11 px.
-- 4 px spacing grid, 4/8 px radii, two shadow levels, documented z-index layers: canvas 0, toolbar 10, panel 20, popover 30, dialog 40, toast 50.
+- 颜色 ≈20 个(surface / border / text / accent / success / warning / danger)。
+- **全局浅色**;层级靠背景、边框、字重建立;不使用深色顶栏。科学画布可保持独立显示主题。预留 `[data-theme]` 钩子,本次只交付浅色。
+- 字号:**正文/表单/操作 12–13px;辅助文字下限 11px**;标题 15 / 18。禁止 <11px。
+- 4px 间距栅格;圆角 4 / 8;阴影 2 档;z-index 分层表(canvas 0 / toolbar 10 / panel 20 / popover 30 / dialog 40 / toast 50)。
 
-In `site/ui-v2/components.css` define each component once, **without `!important`**: Button (primary/secondary/ghost/icon × sm/md), Field (label/input/unit), Select, Segmented, Tabs, collapsible Section, Popover, Dialog, Toast/Status, Tooltip, Badge, Tree item, Readout.
+`site/ui-v2/components.css`:每个组件只定义一次,**禁止 `!important`**:Button(primary/secondary/ghost/icon × sm/md)、Field(label+input+unit)、Select、Segmented、Tabs、Section(可折叠)、Popover、Dialog、Toast/Status、Tooltip、Badge、Tree item、Readout。
 
-Use native template functions and ordinary DOM: no Shadow DOM or new framework. Create components **before** controllers bind events. Deliver `site/ui-v2/gallery.html` showing hover, active, disabled, focus and error states.
+组件采用**原生模板函数 + 普通 DOM**(不用 Shadow DOM,不引入框架),并保证组件在控制器绑定事件**之前**创建完成。
 
-**M1 checkpoint:** user approval of colors, fonts and control states.
+交付 `site/ui-v2/gallery.html`(含 hover/active/disabled/focus/error 状态)。
 
-### M1.5 — Complete workspace UX prototypes (hard gate; no M2 without approval)
+**检查点 M1**:用户确认颜色、字体、控件状态。
 
-Show a **realistic complete workspace** using static or semi-static prototypes without connecting the scientific core. Data must reflect the complexity of **M3D and Photodetector** (many layers, long step lists, multiple Variants), not a blank project.
+### M1.5 完整工作区 UX 原型(硬门槛;不通过不得进入 M2)
 
-**Mandatory layout comparison:** present at least two or three options, for example (A) left icon rail plus dockable panel, (B) top navigation plus contextual right panel, and (C) left workflow navigator plus bottom History drawer. Describe tradeoffs and avoid the PR #161 failure pattern based on the M0 postmortem. Compare **Recipe as a primary workspace** versus **a Process mode** in the prototypes. The user decides placement; the agent must not decide unilaterally.
+用静态/半静态原型(可用假数据驱动,不接核心)呈现**真实工作区**,内容使用 **M3D 与 Photodetector 示例**的真实规模与复杂度(多层、长步骤列表、多 variants),不得用空白项目。
 
-Prototype screens and flows must cover:
+**布局方案比较(必做)**:至少提出 2~3 种工作区布局(例如:A 左图标栏 + 可停靠面板;B 顶部主导航 + 右侧上下文面板;C 左侧工作流导航 + 底部 History 抽屉),各附优缺点;**避开 PR #161 的失败结构**(依据 M0 的 postmortem)。同时在原型中比较 **Recipe 作为一级工作区 vs Process 内的模式** 两种放法。由用户选定,不由 agent 自行决定。
 
-- Project: new, open, save and Recovery.
-- Mask: File/Draw, Cells/Layers, ROI and export.
-- Process: operation, parameters, Apply, busy and error.
-- Recipe: list, edit, Run All, failed-step location and continue/rebuild.
-- History: restore, editing earlier Steps, Variant tree.
-- Main/Mask/3D/Section: shared toolbar, Single/Overview/Split, Maximize, Section Z-break and Section ROI.
+必须覆盖的屏幕/流程:
 
-Review and capture screenshots at **1440 / 1024 / 768 / 390 px**.
+- Project:创建、加载、保存、Recovery。
+- Mask:File/Draw、Cells/Layers、ROI、导出。
+- Process:操作选择、参数、Apply、处理中、失败。
+- Recipe:步骤列表、编辑、Run All、失败步骤定位、继续/重建。
+- History:恢复、修改旧步骤、Variants 树。
+- Main / Mask / 3D / Section:统一工具栏、Single / Overview / Split、Maximize、Section Z-break、Section ROI。
 
-**M1.5 checkpoint:** human review of each screen. Iterate if rejected; **do not proceed to M2**.
+在 **1440 / 1024 / 768 / 390px** 四档宽度检查并附截图。
 
-### M2 — New shell and assembly (layout and interaction only; no scientific wiring)
+**检查点 M1.5**:用户逐屏审核。不合格则迭代,**不得进入 M2**。
 
-- Create `site/app-v2.html` and `site/ui-v2/**`.
-- Rewrite the v2 Workstation assembly in `site/ui-v2/workstation-v2.js` or equivalent, preserving single/overview/split behavior and storage keys. **Leave legacy `workstation-ui.js` in place for legacy entry users.**
-- Instantiate Main/Mask/3D/Section from a shared view-panel template; define common title, More, Export, Maximize and readout once, injecting view-specific tools through named slots.
-- Responsive behavior: Single view at width ≤820 px; phone, tablet and desktop must remain operable.
-- Mark the document `<html data-ui="v2">` for reliable test routing.
+### M2 新 Shell 与装配层(不接核心数据,先证明布局与交互成立)
 
-**M2 checkpoint:** demonstrate navigation, view-mode switching, panels and responsiveness with mock data.
+- 新建 `site/app-v2.html` 与 `site/ui-v2/**`。
+- 重写 Workstation 装配层(v2 版本,置于 `site/ui-v2/workstation-v2.js` 或等价位置),保留 single / overview / split 行为契约与存储键。**旧 `workstation-ui.js` 保持给 legacy 入口使用,不破坏旧版。**
+- 一个共享的 view-panel 模板实例化 Main / Mask / 3D / Section;公共部分(标题、More、Export、Maximize、readout)只写一次,专属控件通过 slot 注入。
+- 响应式:≤820px 单视图;phone/tablet/desktop 均可操作。
+- 页面以 `<html data-ui="v2">` 标识,便于测试断言。
 
-### M3 — Controller migration and real wiring (dual acceptance per domain)
+**检查点 M2**:用 mock 数据演示壳层,确认导航、视图模式切换、面板、响应式。
 
-Order: view toolbars → Mask → Project/Export → Process → Recipe → History → Section → 3D → Welcome/status bar.
+### M3 控制器迁移与真实接线(逐域,每域双验收)
 
-After each domain, require **functional and visual acceptance** against the M1.5 prototype before moving to the next.
+顺序:view 工具栏 → Mask → Project/Export → Process → Recipe → History → Section → 3D → Welcome/状态栏。
 
-- Handle dynamically generated classes from `CONTRACT.md` first. Prefer updating DOM generators to new component classes. Temporary compatibility rules, if unavoidable, belong to `ui-v2/legacy-bridge.css` with TODO markers and must eventually reach zero. Special attention: History/Variant tree, layer legend, Recipe Step list, Mask browser, Welcome cards/thumbnails, Confirmation and process-task dialogs.
-- Provide shared Popover/Dialog semantics for Escape, outside click, focus management and `aria-expanded`.
-- Route v2 Welcome to `app-v2.html` through a v2-specific entry/parameter, without changing legacy behavior.
+每个域完成后立即做**功能验收 + 视觉验收**(对照 M1.5 原型),通过才进入下一个。
 
-**M3 checkpoint:** short per-domain report and final summary covering ID contract, console errors and domain acceptance scenarios.
+- 动态生成标记(最易漏):逐项处理 `CONTRACT.md` 中的 dynamic-classes。优先改生成函数使用新组件类名;不便改的放 `ui-v2/legacy-bridge.css`(带 TODO,最终清零)。重点:History/Variant 树、layer legend、Recipe 步骤列表、mask browser、welcome 卡片与缩略图、confirmation / process-task dialog。
+- 统一 Popover / Dialog 实现(Esc、点击外部、焦点管理、`aria-expanded`)。
+- v2 的 `welcome` 跳转指向 `app-v2.html`(通过 v2 专用入口或参数,不改动 legacy 行为)。
 
-### M4 — Real-project flows and full regression
+**检查点 M3(每域一次简短汇报,全部完成后一次总汇报)**:契约覆盖率、控制台错误数、该域验收场景结果。
 
-**Dual-track testing:**
+### M4 真实工程与全面回归
 
-| Track | Scope | Requirement |
-| --- | --- | --- |
-| Legacy | All existing scripts against `app.html` | Keep original results and assertions; prove legacy remains intact. |
-| UI v2 | `scripts/v2/*.mjs` plus helpers against `app-v2.html` | Every script starts by asserting both `html[data-ui="v2"]` and the v2 URL, preventing false green runs against legacy. |
+**双通道测试**:
 
-The v2 track must cover smoke, workstation/navigation/views, History, persistence/Recovery, process geometry, project IO, arrays, examples, interactions and resilience. Reuse geometry/History/storage assertions from legacy, **changing entry/locator adapters only and never weakening assertions**.
+| 通道   | 内容                                                  | 要求                                                                                 |
+| ------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Legacy | 现有全部脚本,指向 `app.html`,断言不改                 | 保持原结果,证明旧版未被破坏                                                          |
+| UI v2  | 新增 `scripts/v2/*.mjs`(及 helper),指向 `app-v2.html` | 每个脚本开头断言 `html[data-ui="v2"]` 与 URL 为 `app-v2.html`,防止误跑旧页产生假绿灯 |
 
-Walk through the complete §4 scenarios on M3D, Photodetector and one large-array example.
+v2 通道必须覆盖:smoke、workstation(新导航/视图模式)、history、persistence/recovery、process geometry、project-io、array、examples、interaction、resilience。核心几何/History/存储相关断言从 legacy 复用,**只替换选择器与入口,不弱化断言**。
 
-Maintain an **independent v2 visual baseline directory**, isolated from legacy; **ask the user before creating or updating** any visual baseline.
+真实工程:M3D、Photodetector、一个大阵列示例,各自完整走一遍 §4 场景。
 
-**M4 checkpoint:** dual-track matrix, failures, manually checked `docs/ui-v2/MANUAL_CHECKLIST.md`, and a decision on approving the v2 baseline.
+视觉:v2 建立**独立**基线目录(与旧基线隔离);**更新/创建基线前先向用户请示**。
 
-### M5 — Isolated preview, switching and cleanup
+**检查点 M4**:双通道矩阵、失败项分析、手工清单(`docs/ui-v2/MANUAL_CHECKLIST.md`)勾选结果、是否批准 v2 基线。
 
-1. Deploy an isolated Preview, without overwriting the existing Pages entry, for user review.
-2. Switch the default entry (`index.html` / Welcome route) **only after explicit approval**. Keep legacy `app.html` and its assets at the same path for at least one release cycle for rollback.
-3. Remove unused mappings in `legacy-bridge.css`; target v2 CSS under 3,000 lines, ≤5 `!important` directives, colors sourced only from tokens and text ≥11 px.
-4. Update `docs/ARCHITECTURE.md` (UI layer) and `docs/testing.md`; add `docs/ui-v2/README.md` for tokens, components, new control workflow and dual-track tests, plus handoff.
+### M5 隔离部署、切换与清理
 
-## 3. Definition of Done
+1. 独立 Preview 部署(不覆盖现有 Pages 入口),交用户评审。
+2. 用户明确批准后,才切换默认入口(`index.html` / welcome 跳转)。**旧 `app.html` 与资源保持原路径**,仅标记为 legacy,保留一个版本周期以便回退。
+3. 清理:删除 `legacy-bridge.css` 中无引用映射;v2 目标:新 CSS < 3000 行、`!important` ≤ 5、色值仅来自 token、字号 ≥ 11px。
+4. 更新 `docs/ARCHITECTURE.md`(UI 层)、`docs/testing.md`、新增 `docs/ui-v2/README.md`(token 规范、组件用法、新增控件流程、双通道测试说明)与 handoff。
 
-- [ ] Every workspace meets all three: function, prototype visual fidelity and workflow (§4).
-- [ ] Contract IDs exist and behave correctly in the v2 shell (necessary, not sufficient).
-- [ ] Legacy tests match their baseline and the v2 track passes (visual baselines follow M4 separately).
-- [ ] Prohibited core files have an empty `git diff`, except minimal changes explicitly approved by the user.
-- [ ] All §4 scenarios work at 1440 / 1024 / 768 / 390 px.
-- [ ] The old entry is available for immediate rollback.
+## 3. 总验收(Definition of Done)
 
-## 4. Required hands-on workspace acceptance scenarios
+- [ ] 每个工作区同时满足:功能正确 / 与原型一致 / 流程合理(§4)。
+- [ ] 契约中的 id 在 v2 壳中全部存在且行为正确(必要条件)。
+- [ ] Legacy 通道结果与基线一致;v2 通道全绿(视觉基线按 M4 规则单独处理)。
+- [ ] 核心禁改文件 `git diff` 为空,或仅含用户批准的最小改动。
+- [ ] 1440 / 1024 / 768 / 390px 均可完成全部 §4 场景。
+- [ ] 旧入口可随时回退。
 
-- **Recipe:** open existing Recipe → change parameter → Run All → locate failing Step → repair and continue/rebuild → inspect Main/3D/Section.
-- **Process:** choose operation → enter parameters → Apply → busy state → verify error rollback/model unchanged → verify all three views after success.
-- **History:** return to an old Step → edit and create Variant → switch Variants → restore.
-- **Mask:** import GDS/OASIS → choose Cell/Layer → draw a Draw Mask → set ROI → export SVG/GDS/OASIS.
-- **Project:** new → save/export → import → refresh and Recovery → open example.
-- **Views:** switch and remember Single/Overview/Split; Maximize; Section Z-break and detail ROI; 3D Fast/Quality and GLB/PNG export.
+## 4. 工作区验收场景(必须实测)
 
-## 5. Report format and agent constraints
+- **Recipe**:载入既有 Recipe → 修改参数 → Run All → 定位失败步骤 → 修复后继续/重建 → 在 Main / 3D / Section 中核对结果。
+- **Process**:选操作 → 填参数 → Apply → 处理中状态 → 失败回滚且模型不变 → 成功后三视图一致。
+- **History**:回退到旧步骤 → 修改并创建 Variant → 切换 Variants → 恢复。
+- **Mask**:导入 GDS/OASIS → 选 Cell/Layer → 画 Draw mask → 设 ROI → 导出 SVG/GDS/OASIS。
+- **Project**:新建 → 保存/导出 → 导入 → 刷新后 Recovery → 打开示例。
+- **Views**:Single / Overview / Split 切换并记忆;Maximize;Section Z-break 与 detail ROI;3D Fast/Quality、GLB/PNG 导出。
 
-- Each report: one-sentence status → changed files → exact commands/results → unresolved items → questions needing user decisions. Include branch and commit SHA.
-- Put key decisions under `docs/ui-v2/`, not solely in chat.
-- **Carry out M0 and stop first**; do not prematurely write CSS or create the new sidebar.
-- Document unanticipated coupling or prohibited-file changes in `ISSUES.md` and report before proceeding.
-- Do not split modules to reduce line count or rename core exports.
-- Do not declare success based only on completed components, coverage percentage, line count or green CI.
-- For long multi-step coding or generation tasks, obtain user authorization before moving beyond the next checkpoint.
+## 5. 汇报格式与 agent 行为约束
+
+- 每次汇报:一句话状态 → 做了什么(文件清单)→ 命令与结果 → 未解决项 → 需要用户决策的问题。附分支名与 commit hash。
+- 关键决策写入 `docs/ui-v2/`,不只留在对话里。
+- **先做 M0 并停下**;不要提前写 CSS、不要提前建新侧边栏。
+- 遇到契约外的耦合或需要改禁改文件:记录到 `ISSUES.md`,汇报后再动。
+- 不为减少行数拆文件;不重命名核心模块导出。
+- 不以"组件完成 / 覆盖率 / 行数 / CI 绿"宣告某工作区完成。
+- 长任务(多步编码、大量文件生成)每个检查点先向用户确认再启动。
