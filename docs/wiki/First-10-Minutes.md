@@ -65,6 +65,8 @@ _This diagram illustrates the operation, not your project's exact dimensions._
 
 ![Directional etch: before and after (schematic)](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/etch-selective.svg?sanitize=true)
 
+_This schematic illustrates a selective oxide opening; check your **own** rectangular Draw Mask and A–B slice for the actual result._
+
 **Check:** The oxide should be removed **within the drawn rectangle**, leaving oxide around it and the original **Base** layer below. In **Section A–B**, place the A–B line so it **passes through the opening**; a section line that misses the opening will look unchanged. The **3D** view can help locate the opening, but Section is the better check of layer ownership and actual depth.
 
 **If the whole film disappears:** Confirm **Area = Selected mask**, the active Mask source says **Draw**, the rectangle is inside the substrate, and no Mask ROI is unexpectedly active. **Undo** a wrong operation, correct the input, and apply once. If silicon was removed, check that you selected **SiO2** as the Etch Material rather than **All exposed materials**.
