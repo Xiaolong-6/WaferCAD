@@ -71,12 +71,17 @@ try {
 
   const v2Title = 'V2 cross-interface save';
   await page.locator('#projectNameInput').fill(v2Title);
-  // Navigate through the product action while edits are still pending. It
-  // must flush both structural and view state before leaving the v2 runtime.
-  await page.getByRole('link', { name: 'Save workspace and use legacy interface' }).click();
-  await page.waitForURL('**/app-legacy.html');
-  await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
+  // The optional Legacy URL is no longer linked from v2. Save through
+  // the visible Project action and verify persisted state before navigation.
+  await page.locator('#saveProjectBtn').click();
+  await page.waitForFunction(() =>
+    /Saved "V2 cross-interface save" locally/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '',
+    ),
+  );
   const fromV2 = await waitForSavedProject({ name: v2Title });
+  await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
+  await open('/app-legacy.html', 'legacy');
   await waitForProjectName(v2Title);
   assert.deepEqual(fromV2.model, fromLegacy.model, 'V2 autosave preserves exact physical geometry');
   assert.equal(fromV2.branches, 7);

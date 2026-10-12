@@ -34,8 +34,10 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
-`scripts/v2/check-cross-ui-recovery.mjs` checks the product's save-before-switch
-action, exact cross-interface recovery, and concurrent Legacy/v2 writer ownership.
+`scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
+opening the optional Legacy URL, exact cross-interface recovery, and concurrent
+Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
+from `build-info.json` (or `commit local` in local development).
 Existing scientific/controller suites retain their Legacy DOM assertions at
 `app-legacy.html`. Suites that start through Welcome explicitly use
 `newLegacyUiContext` / `newLegacyUiPage`; these test contexts redirect the

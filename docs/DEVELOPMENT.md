@@ -6,8 +6,11 @@ The active product is entirely under `site/`.
 
 `app.html` opens the v2 Workstation. `app-legacy.html` retains the previous
 workspace and the embedded Welcome preview protocol. Both use the same
-workspace storage and writer lease; v2's interface switch saves pending
-structural and view state before navigating to Legacy. If `localStorage` is
+workspace storage and writer lease. The v2 footer shows the short SHA from
+the deployment's `build-info.json` (or `commit local` without deployment
+metadata). The Workstation no longer offers a Legacy switch; if the optional
+Legacy URL is used directly, save or export pending changes before navigation.
+If `localStorage` is
 unreadable or unwritable, both interfaces remain editable in memory, but
 persistent autosave is disabled rather than risking cross-tab overwrite. Export
 a `.wafercad` project while storage coordination is unavailable; after restoring
