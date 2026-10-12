@@ -167,11 +167,13 @@ try {
       );
       assert.deepEqual(unchanged.roi, before.roi);
       assert.deepEqual(unchanged.section, before.section);
-      // Full M3D History packing can exceed Playwright's 30-second event
-      // default on constrained software-rendering CI/local runners.
-      const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
-      await page.locator('#exportProjectBtn').click();
-      const download = await downloadPromise;
+      // Large projects may pack History for over 30 seconds on software-WebGL
+      // runners. Do not wait for click-triggered navigation: the authoritative
+      // completion signal is a real download, checked and round-tripped below.
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 120000 }),
+        page.locator('#exportProjectBtn').click({ timeout: 120000, noWaitAfter: true }),
+      ]);
       const path = resolve(output, `${example}.wafercad`);
       await download.saveAs(path);
       const exported = await readProjectFile(new Blob([await readFile(path)]));

@@ -1,36 +1,40 @@
 # Process and Recipes
 
-[Home](Home) · [Recipe Code Tutorial](Recipe-Code-Tutorial) · [中文教程](Recipe-Code-Tutorial-zh-CN) · [Illustrated operations](Process-Operations)
+[Home](Home) · [Recipe Code Tutorial](Recipe-Code-Tutorial) · [AI-assisted workflows](AI-Assisted-Workflows) · [Illustrated operations](Process-Operations)
 
 ## Manual Process
 
-![Conformal deposition before and after](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
-
-_The same schematic geometry source is used here and in the expandable Process guide. These drawings do not depict the currently opened project._
-
 **New to Process?** Follow the [First 10 Minutes](First-10-Minutes) walkthrough for exact controls, numbers and before/after checks. The live Process panel now uses a single **Operation** selector; archived screenshots from the older multi-button layout should not be used to identify current controls.
 
-The **Step** form places **Operation** and **Surface** selectors side by side. A contextual parameter heading follows: **Area** and material/target fields span the form, and **Coverage** and **Thickness** share a row for applicable operations. **Apply** performs the selected operation. **Also add to Recipe** is unchecked by default, requiring explicit opt-in to append a successful manual Step to Recipe; History is still recorded. **How it works** expands conceptual Before → After diagrams and caveats, not a live simulation of the opened project.
+The **Manual** form places **Operation** and **Surface** selectors side by side. A contextual parameter heading follows: **Area** and material/target fields span the form, and **Coverage** and **Thickness** share a row for applicable operations. **Apply** performs the selected operation. **Also add to Recipe → No** is selected by default in the current workstation, requiring explicit opt-in to append a successful manual Step to Recipe; History is still recorded. **How it works** expands conceptual Before → After diagrams and caveats, not a live simulation of the opened project.
 
-The main Actions are **Deposit**, **Extend**, **Etch**, **Lift-off**, **Implant**, **Electrical**, and **Record**. An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
+The main Actions are **Deposit**, **Extend**, **Etch**, **Lift-off**, **Implant**, **Electrical**, and **Record**. The current v2 Manual **Surface** selector offers **Front / Back / Both**, and Recipe Code also accepts `face: 'both'` for compatible operations. Both targets Front → Back atomically in one History Step; a dual Deposit creates separate paired Front/Back Layer IDs. Both Extend and selective Etch require eligible paired exposed materials on both sides. Both Lift-off and absolute-Z Planarize/CMP are unsupported; Legacy UI controls remain unchanged. [Manual Both acceptance](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md). An active **Mask ROI** clips even **Whole face** Process operations; clear it before applying truly wafer-wide steps. The [Process Operations](Process-Operations) reference documents each supported submode, its inputs and modeling limits.
 
 ### Special cases
 
 - **Conformal** covers horizontal surfaces and true sidewalls. It uses geometric normal-offset sidewall bands; it does not predict conformal growth kinetics.
+
+  ![Conformal Deposit: process-guide before and after for exposed sidewalls](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
+
+  _The same schematic is used by the in-app guide; geometry changes depend on actual exposed surfaces, not this example outline._
 - **Transfer / Laminate** has **Follow surface** (local exposed planes) and **Flat bridge** (one global plane spanning openings).
 - **Directional Etch** can be unselective through continuous stack layers or material-selective, stopping at a different material.
 - **Isotropic release** and **Undercut release** create canonical cavities. Rough/Pyramid forms are deterministic visual metadata on directional etch faces.
 - **Planarize / CMP** removes material beyond an **absolute Z** plane, without adding fill.
 - **Lift-off** removes sacrificial resist and the film directly supported above it while preserving lower opening deposits. Ambiguous continuous bridges fail closed.
+
+  ![Lift-off: process-guide before and after removal of supported sacrificial material](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/liftoff.svg?sanitize=true)
+
+  _The drawing illustrates only the supported geometric removal rule; solvent, adhesion and film bridging physics are not simulated._
 - **Implant/Electrical** create separate annotations. **Record** only adds process metadata to History.
 
 ## Process Recipe
 
-Switch from **Step** to **Recipe** to build an ordered list of typed operations. The Recipe panel separates step building, readiness checking and execution. Template selection only previews its steps; **Load template** must be clicked to apply it, and replacing an existing Recipe requires another explicit confirmation. **Cancel** leaves the Recipe unchanged. An existing Recipe can be restored with **Undo** during the same editing session; confirmed replacement also saves the previous project and Recipe in browser-local **Recovery** before committing the new template. The Undo stack is not a persistent version archive. An unapplied Code draft is not included in Recovery, so apply or copy it before replacement. The guided editor supports step creation, reorder, parameter inspection, validation and per-step execution. Its restricted Code editor is a declarative recipe format; it is **not** an arbitrary JavaScript execution environment.
+Switch from **Manual** to **Recipe** to build an ordered list of typed operations. The Recipe panel separates step building, readiness checking and execution. Template selection only previews its steps; **Load template** must be clicked to apply it, and replacing an existing Recipe requires another explicit confirmation. **Cancel** leaves the Recipe unchanged. An existing Recipe can be restored with **Undo** during the same editing session; confirmed replacement also saves the previous project and Recipe in browser-local **Recovery** before committing the new template. The Undo stack is not a persistent version archive. An unapplied Code draft is not included in Recovery, so apply or copy it before replacement. The guided editor supports step creation, reorder, parameter inspection, validation and per-step execution. Its restricted Code editor is a declarative recipe format; it is **not** an arbitrary JavaScript execution environment.
 
 Recipe uses the same Process worker/kernel as Manual. Typed physical lengths retain their exact normalized µm values independently of the Manual editing grid and current display unit; nonfinite conversions are rejected. A Recipe is stored in the exported `.wafercad` project. Applying it again to an already processed model repeats its geometry operations; use the fresh-Base start option if you need a reproducible new lineage.
 
-**Learn the syntax:** Follow the [complete Recipe Code Tutorial](Recipe-Code-Tutorial) (also available [in Chinese](Recipe-Code-Tutorial-zh-CN)). It includes a copy-ready oxide/ALD example, all seven supported commands, Mask capture, rough/pyramid morphology, a masked contact-window flow, and Run All/replay checks. Code drafts must be applied with **Apply code** before execution, and `area: "mask"` / `"invert"` steps require a captured File or Draw Mask context.
+**Learn the syntax:** Follow the [complete Recipe Code Tutorial](Recipe-Code-Tutorial) (and the [practical AI collaboration guide](AI-Assisted-Workflows)). It includes a copy-ready oxide/ALD example, all eight supported commands, Mask capture, rough/pyramid morphology, a masked contact-window flow, and Run All/replay checks. Code drafts must be applied with **Apply code** before execution, and `area: "mask"` / `"invert"` steps require a captured File or Draw Mask context.
 
 **Starting state:** **Continue current model** appends changes to the current geometry. **Rebuild Base first (new Main)** is the clean-replay option, subject to the confirmation and History handling. **Replay 1 → Step** replays the prefix from Step 1; **Stop** retains steps that already committed.
 

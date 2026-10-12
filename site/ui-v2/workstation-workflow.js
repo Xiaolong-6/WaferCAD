@@ -197,6 +197,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     [
       ['front', 'Front'],
       ['back', 'Back'],
+      ['both', 'Both'],
     ],
     processFace,
   );
@@ -563,7 +564,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
       el(
         'small',
         { class: 'p-aux' },
-        `${hooks.get('operationArea').selectedOptions[0].textContent} · ${processFace === 'back' ? 'Back' : 'Front'}`,
+        `${hooks.get('operationArea').selectedOptions[0].textContent} · ${processFace === 'both' ? 'Both' : processFace === 'back' ? 'Back' : 'Front'}`,
       ),
       el(
         'a',
@@ -694,7 +695,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
     },
     getActiveFace: () => processFace,
     setActiveFace: (value) => {
-      processFace = value;
+      processFace = ['front', 'back', 'both'].includes(value) ? value : 'front';
+      hooks.get('faceToggleBtn').value = processFace;
     },
     getMaskState: () => state,
     operationAreaGeometry: store.selection.operationAreaGeometry,
@@ -845,7 +847,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
       refresh();
     },
     setActiveFace: (value) => {
-      processFace = value === 'back' ? 'back' : 'front';
+      processFace = ['front', 'back', 'both'].includes(value) ? value : 'front';
+      hooks.get('faceToggleBtn').value = processFace;
     },
     processPanelController: process,
     processTaskController: task,

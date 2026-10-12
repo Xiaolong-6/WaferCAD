@@ -4,9 +4,13 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Product users
 
-- [Product manual](wiki/Home.md) — complete task-oriented user manual and English/Chinese Recipe tutorials.
+- **[Launch WaferCAD](https://xiaolong-6.github.io/WaferCAD/)** — open Welcome or go directly to the [default v2 Workstation](https://xiaolong-6.github.io/WaferCAD/app.html).
+- [First 10 Minutes](wiki/First-10-Minutes.md) — build a Base, draw a mask, deposit/etch, inspect Section and export a project.
+- [Product manual](wiki/Home.md) — complete English task-oriented user manual, Recipe tutorial and AI-assisted workflows.
+- [Using WaferCAD with AI](wiki/AI-Assisted-Workflows.md) — copy-ready prompts, attachment checklists, GDS/Recipe workflows and validation.
 - [Usage](USAGE.md) — compact repository reference for daily operations.
 - [Wiki navigation](wiki/_Sidebar.md) — the navigation published with the manual.
+- [Wiki visual audit (2026-10-12)](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) — case-specific image provenance and verification scope.
 - [Illustrated Process Operations](wiki/Process-Operations.md) — the same Before → After schematics as the in-app Process panel.
 
 ## Developers and reviewers
@@ -25,7 +29,7 @@ Use this page to find the document that owns a question. Current contracts descr
 ## Scientific and interchange contracts
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
-- [Both-face Process Kernel](PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, one-layer identity, atomic failure and future UI contract.
+- [Both-face Process Kernel](PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
 - [TiO2 metalens reconstruction](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
@@ -35,43 +39,17 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Mask File/Draw](MASK_DRAW.md) — independent sources, Process selection and export scope.
 - [KLayout compatibility](KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
 
-## Plans and verification evidence
+## Current work and verification
 
-- [UI v2 M3 D1 code audit — 2026-10-10](ui-v2/M3_D1_CODE_AUDIT_2026-10-10.md) — verified Section state/overlay blockers, regression expectations and acceptance boundaries for the ongoing D1 fix.\n- [UI v2 M3 D1 real-view execution — 2026-10-10](ui-v2/M3_D1_EXECUTION_2026-10-10.md) — isolated real-canvas/bootstrap experiment and strict acceptance runner; **core/extended/camera gates inspected, native toolbar/Mask overflow and physical Section centering repaired; full D1 remains open**.
-- [UI v2 M3 latest-main pre-wiring audit — 2026-10-10](ui-v2/M3_MAIN_AUDIT_2026-10-10.md) — exact main/feature-branch integration status, 267-ID contract delta, per-domain static/dynamic/event/transaction ownership, refreshed AST inventory, executable shell/legacy acceptance and remaining D1 blockers; historical pre-D1 checkpoint; current D1 execution is linked above.
-- [Legacy / UI v2 browser comparison — 2026-10-10](ui-v2/LEGACY_BROWSER_COMPARISON_2026-10-10.md) — actual legacy operations and current mock comparison; compact History/plot/guide fixes at `9a43d0d`, 60 shell checks, and remaining UI gaps. Does not claim all 258 features executed or complete product parity.
-- [UI v2 全量功能比较审计 — 2026-10-09](ui-v2/FULL_PARITY_AUDIT_2026-10-09.md) — all 258 legacy feature IDs, current shell/mock/missing states, source evidence and ordered repair ledger; M2.5 checks do not establish product parity.
-- [UI v2 actual UI acceptance — 2026-10-10](ui-v2/UI_ACCEPTANCE_2026-10-10.md) — targeted UI PASS at `2ae4ca3`; all eight findings closed, compact tools, visual rechecks and 49 passing shell checks; initial FAIL retained as history.
-- [Main-only course correction — 2026-10-11](ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md) — local Main floating-editor/Pan/Zoom checkpoint, exact validation evidence, architecture health report and shared floating-strip proposal; view-kit extraction and Mask await approval.
-- [Mask-only v2 checkpoint — 2026-10-11](ui-v2/MASK_HANDOFF_2026-10-11.md) — approved shared view-kit Mask adapter, local run/review, stage budget, source preservation and acceptance evidence.
-- [UI v2 WIP handoff — 2026-10-11](ui-v2/HANDOFF_2026-10-11.md) — branch state, local gate evidence, stage budgets and standing rules.
-- [UI v2 Stage C local WIP handoff — 2026-10-11](ui-v2/LOCAL_STAGE_C_WIP_HANDOFF_2026-10-11.md) — current Project/Mask/Process/History wiring, M2 decisions, local synchronization results and unfinished acceptance paths.
-- [UI v2 Stage C / M4 acceptance — 2026-10-11](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — current two-channel gate matrix, three-project browser owner, M2 visual review checklist and outstanding verification.
-- [UI v2 Stage B local checkpoint — 2026-10-11](ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) — restored Mask ROI tools, real shared-model 3D work, browser diagnostics and WIP preview status.
-- [UI v2 Stage B review handoff — 2026-10-11](ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) — current implementation, passing lightweight checks, review captures and explicit verification limits.
-- [UI v2 legacy cross-view synchronization table — 2026-10-11](ui-v2/SYNC_TABLE_2026-10-11.md) — audited render dispatch and ROI/Section/3D linkage, with unconfirmed behavior marked.
-- [UI v2 Section M2/legacy contract audit — 2026-10-11](ui-v2/SECTION_CONTRACT_AUDIT_2026-10-11.md) — Section control parity, unsupported mock behavior and additive port estimates.
-- [UI v2 3D M2/legacy contract audit — 2026-10-11](ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md) — OrbitControls gestures, rendering/export contract and additive port estimates.
-- [M1.5 Windows visual comparison — 2026-10-11](ui-v2/M15_VISUAL_REVIEW_2026-10-11.md) — real-view and matched prototype captures, initial visual findings and pending human acceptance.
-- [UI v2 visual polish — 2026-10-09](ui-v2/VISUAL_POLISH_2026-10-09.md) — historical shell presentation changes; current UI acceptance is recorded separately above.
-- [UI v2 M0 checkpoint](ui-v2/M0_CHECKPOINT.md) — baseline, generated DOM contract, implicit dependencies, PR #161 postmortem, risks and the required stop before M1.
-- [UI v2 M2 iteration handoff — 2026-10-09](ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md) — latest M2 UI iteration, exact branch/revision, reproducible preview, checks and M3 boundaries.
-- [TiO2 full-array loading performance — 2026-10-10](TIO2_METALENS_PERFORMANCE_2026-10-10.md) — exact shared-state comparison, unchanged full-array assets and paired browser measurements.
-- [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
-- [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
-- [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
-- [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
-- [Illustrated Wiki consolidation — 2026-10-08](WIKI_ILLUSTRATED_MANUAL_2026-10-08.md) — canonical process illustrations, links and verification limits.
-- [First-time user Wiki usability audit — 2026-10-08](WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md) — checked onboarding controls, source-specific fixes, tests and remaining acceptance boundaries.
-- [M3D Conformal microcrack repair — 2026-10-08](M3D_CONFORMAL_MICROCRACK_FIX_2026-10-08.md) — precise XY coverage failure, repair and S00–S26 acceptance evidence.
-- [Conformal corner connectivity review — 2026-10-09](CONFORMAL_CORNER_REVIEW_2026-10-09.md) — corrected Process diagrams, Kernel topology assessment, cross-view regression contracts and pending GLB review.
-- [Process workflow v2 branch handoff — 2026-10-08](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) — operation selector, safe Recipe templates, latest-main baseline recheck and pending browser acceptance.
-- [Process Step layout parity — 2026-10-09](PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md) — integrated Operation/Surface and Step form layout changes.
-- [View UX v3 architecture and acceptance — 2026-10-09](VIEW_UX_V3_2026-10-09.md) — four-view chrome, explicit modes, responsive overflow, Z Break and review scope.
-- [Three-branch integration review — 2026-10-08](INTEGRATION_REVIEW_2026-10-08.md) — merged source-branch audit and final CI acceptance.
-- [Main P0/P1 data-safety hardening — 2026-10-08](MAIN_P0_P1_STABILITY_2026-10-08.md) — Recipe/History destructive-action checkpoint guards, regression and validation limits.
-- [Recovery Open/Welcome safety audit — 2026-10-09](RECOVERY_OPEN_STARTUP_SAFETY_AUDIT_2026-10-09.md) — fail-closed Project/Mask import and protected startup transaction boundaries.
-- [M5-Lite default entry handoff — 2026-10-12](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, startup and cross-UI recovery status.
-- [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.
+- [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
+- [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
+- [UI v2 Stage C / M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — testing ownership and remaining workflow/visual checks; interpret results at the stated revision.
+- [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
+- [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
+- [TiO₂ full-array performance evidence](TIO2_METALENS_PERFORMANCE_2026-10-10.md) — dated benchmark results and limitations.
+- [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) — figure provenance, text corrections, and manual gates.
+- [Documentation lifecycle audit](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md) — full Markdown inventory classification, retained work and archival decisions.
 
-For a current behavior question, follow the owner above. For a claim that a test, deployment or scientific replay passed, use the evidence for the exact revision and environment. An old pending/approved banner does not establish the state of today's main.
+## Historical documents
+
+Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. **68 completed/superseded documents have been relocated** to `docs/archive/`; obsolete paths were deleted and internal links were updated. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
