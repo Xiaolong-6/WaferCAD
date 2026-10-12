@@ -14,7 +14,7 @@ run from a desktop browser session:
 node scripts/renderer-unified-hardware.mjs --hardware-gpu
 ```
 
-The runner checks the actual *unmasked* GPU adapter for each context and
+The runner checks the actual _unmasked_ GPU adapter for each context and
 rejects SwiftShader/llvmpipe/WARP, unknown adapters and changes of adapter
 within an experiment. On Linux a headed Chromium session requires a display.
 The older `--hardware-rtx3060` spelling remains supported for the exact
@@ -52,7 +52,7 @@ after a strict pixel mismatch. Missing artifacts, wrong candidate flags,
 unexercised V4 optimizations, and nonzero error exits remain failures.
 
 CI uses software WebGL (SwiftShader) and cannot validate Windows Direct3D11
-or actual GPU execution time. Within the *same verified adapter and driver configuration*, the strict
+or actual GPU execution time. Within the _same verified adapter and driver configuration_, the strict
 zero-pixel requirement is unchanged. Cross-vendor byte identity is not required. The previously observed 45 stable A/B pixels are an attribution
 lead, not proof of a specific geometry or material defect. No approved visual
 baseline is modified by this script.

@@ -199,7 +199,9 @@ async function runHardware() {
         candidateActivation: report?.trials
           ?.filter((trial) => trial.policy === 'B')
           .map((trial) => trial.candidateActivation),
-        adapters: [...new Set((report?.trials || []).map((trial) => trial.backend?.adapter).filter(Boolean))],
+        adapters: [
+          ...new Set((report?.trials || []).map((trial) => trial.backend?.adapter).filter(Boolean)),
+        ],
         failureReasons: report?.failureReasons || [],
         error: report?.failure || report?.error || execution.error || null,
       });
