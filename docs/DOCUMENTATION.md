@@ -1,6 +1,6 @@
 # Documentation architecture and maintenance
 
-## Authority and readers\n\n**Documentation language:** English is the only language for new or revised WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Translate remaining historical Chinese Markdown without changing dates, test results, SHAs or acceptance claims. Retain an English pointer at a formerly published URL when removing its localized content.
+## Authority and readers\n\n**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 
