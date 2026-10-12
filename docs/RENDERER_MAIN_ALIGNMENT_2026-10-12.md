@@ -66,3 +66,49 @@ parity hardware findings and default-off V4 experiments are unchanged.
 A passing software/browser gate is not approval of hardware strict
 parity or a replacement screenshot baseline. Do not update the
 approved visual reference to mask an experimental failure.
+
+## R8 follow-up: main #178, GPU-neutral harness, and CI follow-through
+
+This section supersedes the `main` HEAD snapshot above for subsequent work;
+the earlier section remains provenance for the October 12 PR #177 merge.
+
+- Updated `main`: `77957774e8d37a37b410e29b3a2c6201037250c8`
+  (PR #178, writer-lease fail-closed and CI ownership).
+- V3 integrated that main commit in ordinary two-parent merge `4064e04`,
+  reviewing the sole overlapping `docs/testing.md` change and retaining
+  renderer diagnostics. V4 integrated the matching V3 parent as `21b40a4`.
+  The branch ancestry was verified main → V3 → V4, each with `behind_by=0`.
+- Hardware acceptance is **adapter-neutral** under `--hardware-gpu`:
+  Intel/AMD integrated and discrete GPUs are eligible if unmasked hardware
+  identification succeeds; SwiftShader/other software backends are excluded.
+  Each four-context experiment requires the same adapter, and the zero-pixel
+  same-environment parity gate is unchanged. Older Windows/RTX 3060
+  commands remain compatible. Sources: V3 `e209a40`, V4 `74c690f`,
+  and `docs/RENDERER_V3_V4_UNIFIED_HARDWARE.md`.
+- The fresh-context phase comparison now rejects absent checkpoint hashes
+  and reports the preceding matching draw checkpoint; the observation remains
+  a bounded interval and does not establish a causative draw. V3 `0f22d6c`,
+  V4 `6f5c5c7`. Focused Node tests passed in V4 CI `38231925008`.
+- V4 real UI v2/Legacy compatibility `38234177383` **passed**:
+  Photodetector 3D at 1440/1024/768/390, emulated touch, legacy route,
+  and V4 R2 strict screenshot comparison 0/146025 pixels. The prior
+  768 px material-pixel absence in `38233140360` was not reproduced;
+  do not claim its root cause fixed. The updated failure path now captures
+  a dedicated canvas PNG, scene/camera/frame counters, and a JSON sidecar;
+  the actual colored-material assertion remains strict and unchanged.
+- V4 R1–R7 focused `38234841947` **passed** including the Node gate
+  after main #178 sync, with full-gate trigger ownership expanded to
+  writer-lease and renderer-capture sources.
+- V3 Stage C/M4 `38233960016` **failed** in Metalens Project export after
+  successful GDS/OAS mask round-trips: Playwright finished click dispatch
+  but timed out awaiting implicit navigation. V3 `69a8b8b` and V4
+  `aa6be63` now use real pointer click, preserve the 120-second
+  actual download event and scientific project round-trip assertions.
+  Recheck the owning V3 Stage C/M4 run `38235061321`; its outcome was
+  **pending at the time of this handoff**.
+
+Current boundaries: both PRs are Draft, no default-on V4 paths, no main
+merge and no approved visual baseline changes. This work adds no new
+physical-GPU capture or performance claim. The prior RTX 3060
+fresh-context mismatch is still a strict hardware acceptance blocker,
+and the no-MSAA experiment remains a hypothesis test rather than approval.
