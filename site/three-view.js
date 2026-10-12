@@ -1322,6 +1322,9 @@ export function createThreeView({
 
   function startSceneVariantBuild(mode) {
     cacheActiveSceneVariant();
+    host.dataset.rendererRetainedVariantBuilds = String(
+      Number(host.dataset.rendererRetainedVariantBuilds || 0) + 1,
+    );
     // Keep the previous committed variant attached until the replacement is complete.
     // The building group stays invisible, so no partial transparent scene is shown.
     group = new THREE.Group();
@@ -4159,6 +4162,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (variantBuild) {
         const previous = sceneVariantCache.get(previousVariant);
         if (previous?.group && previous.group !== group) scene.remove(previous.group);
+        host.dataset.rendererCommittedVariantSwaps = String(
+          Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
+        );
       }
       group.visible = true;
       recordVariantStage('presentation-begin');
