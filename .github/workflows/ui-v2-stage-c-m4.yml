@@ -10,7 +10,10 @@ on:
       - 'site/index.html'
       - 'site/welcome.js'
       - 'site/controllers/workspace-session-controller.js'
-      - 'site/controllers/workspace-persistence-controller.js'
+      - 'site/controllers/**'
+      - 'site/process-*.js'
+      - 'site/project-*.js'
+      - 'site/model*.js'
       - 'scripts/v2/**'
       - '.github/workflows/ui-v2-stage-c-m4.yml'
   pull_request:
