@@ -1155,8 +1155,15 @@ export function createProcessRecipeController({
       return true;
     }
 
-    // Both is a Process execution target; the current inspection view remains Front/Back.
-    if (p.face === 'front' || p.face === 'back') setActiveFace(p.face);
+    // Legacy has a two-face selector; v2 also offers the Both target.
+    const manualFaceOptions = $('faceToggleBtn')?.options || [];
+    if (
+      p.face === 'front' ||
+      p.face === 'back' ||
+      (p.face === 'both' && [...manualFaceOptions].some((option) => option.value === 'both'))
+    ) {
+      setActiveFace(p.face);
+    }
     if (p.area && p.area !== 'full') {
       const state = maskStateFromRecipe(p.mask);
       if (!state) throw new Error('This step requires a captured Mask context.');

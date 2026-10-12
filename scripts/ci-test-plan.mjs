@@ -19,10 +19,7 @@ const COMMON_TEST_INFRA = [
   /^scripts\/test-helpers\/product-scientific\.mjs$/,
 ];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
-const V2_WORKSPACE_PATHS = [
-  /^site\/ui-v2\//,
-  /^scripts\/v2\//,
-];
+const V2_WORKSPACE_PATHS = [/^site\/ui-v2\//, /^scripts\/v2\//];
 const V2_CROSS_UI_PATHS = [
   /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
   /^site\/app(?:-legacy)?\.html$/,
