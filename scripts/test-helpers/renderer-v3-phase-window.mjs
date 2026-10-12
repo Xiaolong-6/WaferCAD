@@ -62,3 +62,38 @@ export function isRendererPhaseAcceptanceEligible({
 } = {}) {
   return !diagnosticNoDither && !diagnosticNoMsaa && !phaseWindowDiagnostic;
 }
+
+/**
+ * Confirm that a hardware raster trace contains every requested readback,
+ * including the final framebuffer. A matching hash is only useful when
+ * the correct draw, GL buffer size and collection stage were observed.
+ * Shared by the direct V3 probe and V4's artifact classifier.
+ */
+export function checkRendererPhaseCapture({ checkpoints, coverage, milestones, drawCalls, framebuffer }) {
+  const reject = (reason) => ({ valid: false, reason });
+  if (!Array.isArray(milestones) || milestones.length === 0 || milestones.length > 11 ||
+      milestones.some((draw, i) =>
+        !Number.isSafeInteger(draw) || draw <= 0 || (i > 0 && draw <= milestones[i - 1])))
+    return reject('invalid milestones');
+  if (!Number.isSafeInteger(drawCalls) || drawCalls <= milestones.at(-1))
+    return reject('draw count does not include a final frame after milestones');
+  if (!framebuffer || framebuffer.status !== 'valid' ||
+      !Number.isInteger(framebuffer.width) || framebuffer.width <= 0 ||
+      !Number.isInteger(framebuffer.height) || framebuffer.height <= 0)
+    return reject('invalid final framebuffer');
+  const expected = [...milestones, drawCalls];
+  if (!Array.isArray(checkpoints) || checkpoints.length !== expected.length ||
+      coverage?.mode !== 'draw-milestones' ||
+      coverage?.captured !== expected.length ||
+      coverage?.finalFrameCaptured !== true)
+    return reject('incomplete draw-milestone coverage');
+  for (let i = 0; i < expected.length; i++) {
+    const checkpoint = checkpoints[i];
+    if (checkpoint?.afterDraw !== expected[i] || checkpoint.status !== 'valid' ||
+        typeof checkpoint.hash !== 'string' || !/^[a-f0-9]{64}$/.test(checkpoint.hash))
+      return reject(`missing or invalid checkpoint at index ${i}`);
+    if (checkpoint.width !== framebuffer.width || checkpoint.height !== framebuffer.height)
+      return reject(`framebuffer dimensions changed at checkpoint ${i}`);
+  }
+  return { valid: true, reason: null };
+}

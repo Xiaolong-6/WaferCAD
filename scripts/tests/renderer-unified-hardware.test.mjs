@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { preserveRendererHardwareEvidence } from '../test-helpers/renderer-hardware-evidence.mjs';
+import { rendererPhaseMilestones } from '../test-helpers/renderer-v3-phase-window.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
@@ -147,6 +148,24 @@ test('no-MSAA mode requires verified zero sample framebuffer and never approves 
 });
 
 const step = (id, exitCode = 0) => ({ id, exitCode });
+const completePhaseTrial = (milestones = rendererPhaseMilestones(null), calls = 1408) => {
+  const checkpoints = [...milestones, calls].map((afterDraw) => ({
+    afterDraw,
+    status: 'valid',
+    hash: 'a'.repeat(64),
+    width: 531,
+    height: 275,
+  }));
+  return {
+    native: { calls, framebuffer: { status: 'valid', width: 531, height: 275 } },
+    phaseCoverage: {
+      mode: 'draw-milestones',
+      captured: checkpoints.length,
+      finalFrameCaptured: true,
+    },
+    phaseCheckpoints: checkpoints,
+  };
+};
 const v4Report = (mode, active = true) => ({
   stage: 'complete',
   candidateMode: mode,
@@ -171,15 +190,7 @@ test('targeted phase-window evidence cannot approve V3 production raster parity'
   ]);
   assert.match(step.artifact, /phase-window-256-384$/);
   assert.throws(() => buildRendererV3PhaseWindowDiagnosticPlan('0:384'), /Phase window/);
-  const milestones = [256, 269, 282, 294, 307, 320, 333, 346, 358, 371, 384];
-  const trial = {
-    phaseCoverage: { mode: 'draw-milestones', finalFrameCaptured: true },
-    native: { calls: 1408 },
-    phaseCheckpoints: [
-      ...milestones.map((afterDraw) => ({ afterDraw, status: 'valid', hash: 'abc' })),
-      { afterDraw: 1408, status: 'valid', hash: 'xyz' },
-    ],
-  };
+  const trial = completePhaseTrial(rendererPhaseMilestones(step.phaseWindow));
   const report = {
     stage: 'completed',
     passed: false,
@@ -212,11 +223,18 @@ test('targeted phase-window evidence cannot approve V3 production raster parity'
 test('strict acceptance never infers V3 success from report-only exit code', () => {
   const complete = {
     stage: 'completed',
-    trials: [{}, {}, {}, {}],
+    trials: Array.from({ length: 4 }, () => completePhaseTrial()),
     passed: false,
     strictParity: false,
+    acceptanceEligible: true,
   };
   assert.equal(classifyRendererHardwareStep(step('v3'), complete), 'blocked');
+  const incompletePhase = structuredClone(complete);
+  incompletePhase.trials[0].phaseCheckpoints.splice(4, 1);
+  assert.equal(classifyRendererHardwareStep(step('v3'), incompletePhase), 'error');
+  const changedDimensions = structuredClone(complete);
+  changedDimensions.trials[1].phaseCheckpoints[5].height++;
+  assert.equal(classifyRendererHardwareStep(step('v3'), changedDimensions), 'error');
   assert.equal(
     classifyRendererHardwareStep(step('v3'), { ...complete, passed: true, strictParity: true }),
     'passed',

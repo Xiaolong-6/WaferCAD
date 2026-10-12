@@ -1,5 +1,9 @@
 // One hardware invocation, two exact Git revisions, isolated evidence.
-import { parseRendererPhaseWindow, rendererPhaseMilestones } from './renderer-v3-phase-window.mjs';
+import {
+  checkRendererPhaseCapture,
+  parseRendererPhaseWindow,
+  rendererPhaseMilestones,
+} from './renderer-v3-phase-window.mjs';
 // This manifest is testable without a Windows GPU or a browser.
 export const RENDERER_HARDWARE_BRANCHES = Object.freeze({
   v3: 'perf/transparent-renderer-v3-20261009',
@@ -106,19 +110,13 @@ export function classifyRendererHardwareStep(step, report) {
     if (
       report.trials.some(
         (trial) =>
-          trial.phaseCoverage?.mode !== 'draw-milestones' ||
-          !Array.isArray(trial.phaseCheckpoints) ||
-          trial.phaseCheckpoints.length !== expected.length + 1 ||
-          trial.phaseCheckpoints
-            .slice(0, -1)
-            .some(
-              (checkpoint, i) =>
-                checkpoint.afterDraw !== expected[i] ||
-                checkpoint.status !== 'valid' ||
-                !checkpoint.hash,
-            ) ||
-          trial.phaseCoverage?.finalFrameCaptured !== true ||
-          trial.phaseCheckpoints.at(-1)?.afterDraw !== trial.native?.calls,
+          !checkRendererPhaseCapture({
+            checkpoints: trial.phaseCheckpoints,
+            coverage: trial.phaseCoverage,
+            milestones: expected,
+            drawCalls: trial.native?.calls,
+            framebuffer: trial.native?.framebuffer,
+          }).valid,
       )
     )
       return 'error';
@@ -187,6 +185,20 @@ export function classifyRendererHardwareStep(step, report) {
   if (report.stage === 'initialization') return 'incomplete';
   if (step.id === 'v3') {
     if (report.stage !== 'completed' || report.trials?.length !== 4) return 'incomplete';
+    if (report.acceptanceEligible !== true) return 'error';
+    if (
+      report.trials.some(
+        (trial) =>
+          !checkRendererPhaseCapture({
+            checkpoints: trial.phaseCheckpoints,
+            coverage: trial.phaseCoverage,
+            milestones: rendererPhaseMilestones(null),
+            drawCalls: trial.native?.calls,
+            framebuffer: trial.native?.framebuffer,
+          }).valid,
+      )
+    )
+      return 'error';
     return report.passed === true && report.strictParity === true ? 'passed' : 'blocked';
   }
   if (report.candidateMode !== step.id.slice(3)) return 'error';

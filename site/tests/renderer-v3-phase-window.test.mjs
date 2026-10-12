@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   DEFAULT_RENDERER_PHASE_DRAWS,
+  checkRendererPhaseCapture,
   MAX_RENDERER_PHASE_DRAW,
   isRendererPhaseAcceptanceEligible,
   parseRendererPhaseWindow,
@@ -122,4 +123,63 @@ test('targeted raster isolation never satisfies ordinary product acceptance', ()
   assert.equal(isRendererPhaseAcceptanceEligible({ phaseWindowDiagnostic: true }), false);
   assert.equal(isRendererPhaseAcceptanceEligible({ diagnosticNoDither: true }), false);
   assert.equal(isRendererPhaseAcceptanceEligible({ diagnosticNoMsaa: true }), false);
+});
+
+test('hardware milestone capture requires every draw, stable framebuffer dimensions and a final frame', () => {
+  const milestones = DEFAULT_RENDERER_PHASE_DRAWS;
+  const framebuffer = { status: 'valid', width: 531, height: 275 };
+  const checkpoints = [...milestones, 1408].map((afterDraw) => ({
+    afterDraw,
+    status: 'valid',
+    hash: 'a'.repeat(64),
+    width: 531,
+    height: 275,
+  }));
+  const coverage = {
+    mode: 'draw-milestones',
+    captured: checkpoints.length,
+    finalFrameCaptured: true,
+  };
+  const input = { milestones, framebuffer, checkpoints, coverage, drawCalls: 1408 };
+  const valid = checkRendererPhaseCapture(input);
+  assert.equal(valid.valid, true);
+
+  const corrupted = [
+    { checkpoints: checkpoints.slice(1) },
+    { checkpoints: checkpoints.slice(0, -1) },
+    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, afterDraw: 385 } : c) },
+    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, hash: null } : c) },
+    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, hash: 'f'.repeat(63) } : c) },
+    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, width: 532 } : c) },
+    { coverage: { ...coverage, captured: 4 } },
+    { coverage: { ...coverage, mode: 'owner-transitions' } },
+    { coverage: { ...coverage, finalFrameCaptured: false } },
+    { framebuffer: { ...framebuffer, status: 'gl-error' } },
+    { drawCalls: 1280 },
+  ];
+  for (const change of corrupted) {
+    const result = checkRendererPhaseCapture({ ...input, ...change });
+    assert.equal(result.valid, false, result.reason);
+    assert.ok(result.reason);
+  }
+});
+
+test('targeted two-draw window still demands the exact ordered final capture', () => {
+  const milestones = rendererPhaseMilestones(parseRendererPhaseWindow('256:257'));
+  const framebuffer = { status: 'valid', width: 531, height: 275 };
+  const checkpoints = [256, 257, 1291].map((afterDraw) => ({
+    afterDraw,
+    status: 'valid',
+    hash: 'b'.repeat(64),
+    width: 531,
+    height: 275,
+  }));
+  assert.deepEqual(milestones, [256, 257]);
+  assert.equal(checkRendererPhaseCapture({
+    milestones,
+    checkpoints,
+    framebuffer,
+    coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
+    drawCalls: 1291,
+  }).valid, true);
 });
