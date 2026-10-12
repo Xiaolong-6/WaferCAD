@@ -40,6 +40,8 @@ jobs:
       - name: Build actual integration tree without modifying either PR or main
         run: |
           git fetch origin main
+          git config user.name "WaferCAD CI Integration"
+          git config user.email "ci@wafercad.invalid"
           git merge --no-commit --no-ff origin/main
           test -f site/app-legacy.html
           grep -q 'data-ui="v2"' site/app.html
@@ -73,5 +75,4 @@ jobs:
           path: |
             test-results/ui-v2-three-review
             test-results/renderer-v4-r2
-            /tmp/wafercad-v2-serve.log
-          if-no-files-found: ignore
+           if-no-files-found: ignore
