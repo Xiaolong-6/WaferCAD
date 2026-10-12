@@ -94,7 +94,7 @@ test('archived documents have indexed full copies and old-path compatibility poi
       `original path must be a valid compatibility pointer: ${entry}`,
     );
     assert.ok(
-      pointer.split('\\n').length <= 12,
+      pointer.split('\n').length <= 12,
       `the former location must not duplicate full historical text: ${entry}`,
     );
   }
