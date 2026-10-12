@@ -1,8 +1,8 @@
 # Revision-specific documentation archive
 
-This is an evidence index, not an alternative product contract. Files keep their original paths so existing repository/Wiki links and revision citations remain valid. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
+This is an evidence index, not an alternative product contract. Canonical historical text lives under `docs/archive/`. Original paths contain short English compatibility pointers so existing GitHub/Wiki links and revision citations still resolve. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
 
-## Latest verification
+## Historical verification (revision-specific; not current acceptance)
 
 - [Unified toolbar integration — 2026-10-08](../UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md): reviewed branch merge, Pan palette repair and real browser acceptance.
 
@@ -51,3 +51,50 @@ This is an evidence index, not an alternative product contract. Files keep their
 
 - [Competitive landscape and product direction](../COMPETITIVE_LANDSCAPE.md)
 - [Mask File / Draw plan](../MASK_DRAW_PLAN.md)
+
+## Relocated full records (2026-10-12)
+
+The files below have been **relocated**, retaining their original technical claims, historical test outcomes and language. Relative Markdown links were updated to follow the new directory layout. Each previous URL is a lightweight compatibility pointer, never the authoritative text.
+
+### UI v2 pre-release checkpoints and superseded audits
+
+- [ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md](ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md) · [legacy permalink](../ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md)
+- [ui-v2/M0_CHECKPOINT.md](ui-v2/M0_CHECKPOINT.md) · [legacy permalink](../ui-v2/M0_CHECKPOINT.md)
+- [ui-v2/M2_CHECKPOINT.md](ui-v2/M2_CHECKPOINT.md) · [legacy permalink](../ui-v2/M2_CHECKPOINT.md)
+- [ui-v2/M2_GAP_AUDIT.md](ui-v2/M2_GAP_AUDIT.md) · [legacy permalink](../ui-v2/M2_GAP_AUDIT.md)
+- [ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md](ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md) · [legacy permalink](../ui-v2/M2_ITERATION_HANDOFF_2026-10-09.md)
+- [ui-v2/M3_D1_CODE_AUDIT_2026-10-10.md](ui-v2/M3_D1_CODE_AUDIT_2026-10-10.md) · [legacy permalink](../ui-v2/M3_D1_CODE_AUDIT_2026-10-10.md)
+- [ui-v2/M3_D1_EXECUTION_2026-10-10.md](ui-v2/M3_D1_EXECUTION_2026-10-10.md) · [legacy permalink](../ui-v2/M3_D1_EXECUTION_2026-10-10.md)
+- [ui-v2/M3_MAIN_AUDIT_2026-10-10.md](ui-v2/M3_MAIN_AUDIT_2026-10-10.md) · [legacy permalink](../ui-v2/M3_MAIN_AUDIT_2026-10-10.md)
+- [ui-v2/PR161_POSTMORTEM.md](ui-v2/PR161_POSTMORTEM.md) · [legacy permalink](../ui-v2/PR161_POSTMORTEM.md)
+- [ui-v2/R2_PLAN.md](ui-v2/R2_PLAN.md) · [legacy permalink](../ui-v2/R2_PLAN.md)
+- [ui-v2/RISKS_AND_ESTIMATE.md](ui-v2/RISKS_AND_ESTIMATE.md) · [legacy permalink](../ui-v2/RISKS_AND_ESTIMATE.md)
+- [ui-v2/VISUAL_POLISH_2026-10-09.md](ui-v2/VISUAL_POLISH_2026-10-09.md) · [legacy permalink](../ui-v2/VISUAL_POLISH_2026-10-09.md)
+
+### Superseded root-level reports, plans, and handoffs
+
+- [DOCUMENTATION_AUDIT.md](DOCUMENTATION_AUDIT.md) · [legacy permalink](../DOCUMENTATION_AUDIT.md)
+- [DOCUMENTATION_AUDIT_2026-10-08.md](DOCUMENTATION_AUDIT_2026-10-08.md) · [legacy permalink](../DOCUMENTATION_AUDIT_2026-10-08.md)
+- [EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md](EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md) · [legacy permalink](../EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md)
+- [INTEGRATION_REVIEW_2026-10-08.md](INTEGRATION_REVIEW_2026-10-08.md) · [legacy permalink](../INTEGRATION_REVIEW_2026-10-08.md)
+- [LOCAL_REGRESSION_2026-10-06.md](LOCAL_REGRESSION_2026-10-06.md) · [legacy permalink](../LOCAL_REGRESSION_2026-10-06.md)
+- [M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md) · [legacy permalink](../M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md)
+- [MASK_DRAW_PLAN.md](MASK_DRAW_PLAN.md) · [legacy permalink](../MASK_DRAW_PLAN.md)
+- [NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md](NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md) · [legacy permalink](../NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md)
+- [NATIVE_FIG3_EXAMPLE_2026-10-06.md](NATIVE_FIG3_EXAMPLE_2026-10-06.md) · [legacy permalink](../NATIVE_FIG3_EXAMPLE_2026-10-06.md)
+- [PRE_MAIN_AUDIT_2026-10-07.md](PRE_MAIN_AUDIT_2026-10-07.md) · [legacy permalink](../PRE_MAIN_AUDIT_2026-10-07.md)
+- [PRE_MAIN_INTEGRATION_AUDIT_2026-10-08.md](PRE_MAIN_INTEGRATION_AUDIT_2026-10-08.md) · [legacy permalink](../PRE_MAIN_INTEGRATION_AUDIT_2026-10-08.md)
+- [PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md](PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md) · [legacy permalink](../PROCESS_PANEL_WORKFLOW_V2_HANDOFF_2026-10-08.md)
+- [PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md](PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md) · [legacy permalink](../PROCESS_STEP_LAYOUT_PARITY_2026-10-09.md)
+- [PROJECT_STORAGE_OPTIMIZATION_2026-10-06.md](PROJECT_STORAGE_OPTIMIZATION_2026-10-06.md) · [legacy permalink](../PROJECT_STORAGE_OPTIMIZATION_2026-10-06.md)
+- [STABILIZATION_2026-10-05.md](STABILIZATION_2026-10-05.md) · [legacy permalink](../STABILIZATION_2026-10-05.md)
+- [UI_ACCEPTANCE_2026-10-06.md](UI_ACCEPTANCE_2026-10-06.md) · [legacy permalink](../UI_ACCEPTANCE_2026-10-06.md)
+- [UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md](UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md) · [legacy permalink](../UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md)
+- [VALIDATION_2026-10-05.md](VALIDATION_2026-10-05.md) · [legacy permalink](../VALIDATION_2026-10-05.md)
+- [VIEW_UX_V3_2026-10-09.md](VIEW_UX_V3_2026-10-09.md) · [legacy permalink](../VIEW_UX_V3_2026-10-09.md)
+- [WELCOME_LOADING_2026-10-07.md](WELCOME_LOADING_2026-10-07.md) · [legacy permalink](../WELCOME_LOADING_2026-10-07.md)
+- [WELCOME_THUMBNAILS_2026-10-07.md](WELCOME_THUMBNAILS_2026-10-07.md) · [legacy permalink](../WELCOME_THUMBNAILS_2026-10-07.md)
+- [WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md](WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md) · [legacy permalink](../WIKI_FIRST_TIME_USER_AUDIT_2026-10-08.md)
+- [WIKI_ILLUSTRATED_MANUAL_2026-10-08.md](WIKI_ILLUSTRATED_MANUAL_2026-10-08.md) · [legacy permalink](../WIKI_ILLUSTRATED_MANUAL_2026-10-08.md)
+- [Z_COLLAPSE_FRONT_BACK_2026-10-06.md](Z_COLLAPSE_FRONT_BACK_2026-10-06.md) · [legacy permalink](../Z_COLLAPSE_FRONT_BACK_2026-10-06.md)
+
