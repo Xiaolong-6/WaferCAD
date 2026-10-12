@@ -108,6 +108,9 @@ export function applyArrayOperation(model, params, apply) {
         )
       : worldDomain;
     const localArea = localGeometry(area, part, localDomain, maskBoundsCache);
+    // Sparse file-Mask queries may select none of a background cell.
+    // Avoid constructing or caching any Kernel working set for that cell.
+    if (!localArea.length) continue;
     const neighborhoodId = neighborhoodKey(part, neighbors);
     let contextEntry = contexts.get(neighborhoodId);
     if (!contextEntry) {
@@ -165,7 +168,20 @@ export function applyArrayOperation(model, params, apply) {
   });
   // Commit only after every working set has completed successfully.
   model.array = { ...model.array, templates, instances };
-  model.layers = metadata.layers;
+  // Preserve per-face provenance on existing material IDs when array working
+  // sets regenerate their layer metadata from canonical template models.
+  const previousLayers = new Map(model.layers.map((layer) => [layer.id, layer]));
+  model.layers = metadata.layers.map((layer) => {
+    const previous = previousLayers.get(layer.id);
+    return previous?.processGroupId
+      ? {
+          ...layer,
+          processGroupId: previous.processGroupId,
+          processFace: previous.processFace,
+          pairedLayerId: previous.pairedLayerId,
+        }
+      : layer;
+  });
   for (const key of ['implants', 'electricalRegions']) {
     const definitions = new Map((model[key] || []).map((a) => [a.id, a]));
     for (const leaf of replacements.values())

@@ -1,17 +1,15 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { installPinnedThreeRoute, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
+import { newLegacyUiContext, waitForCanvasSizeSync, waitForPaint } from './ui.mjs';
 
 export { waitForCanvasSizeSync, waitForPaint };
 
 export async function openProductPage(browser, viewport, touch, errors) {
-  const context = await browser.newContext({
+  const context = await newLegacyUiContext(browser, {
     viewport,
     deviceScaleFactor: touch ? 2 : 1,
     hasTouch: touch,
   });
-
-  await installPinnedThreeRoute(context);
 
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
@@ -21,7 +19,7 @@ export async function openProductPage(browser, viewport, touch, errors) {
   });
 
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
-  await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+  await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`);
   await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
   await page.locator('#threeHost canvas').waitFor({ state: 'attached', timeout: 10000 });
   assert.equal(

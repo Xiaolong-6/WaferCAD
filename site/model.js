@@ -1,4 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { applyProcessFaces } from './process-face-execution.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
 import {
@@ -161,7 +162,9 @@ export function baseCoverageState(model) {
 export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
   if (isArrayModel(model)) {
     const ids = new Set(),
-      full = area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary),
+      full =
+        !area?.arrayMaskQuery &&
+        (area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary)),
       seen = new Set(),
       queries = new Map(),
       maskBoundsCache = new WeakMap();
@@ -353,6 +356,14 @@ export function isLayerExposed(model, id) {
   return found;
 }
 
+function unlinkDeletedLayerPair(model, removedId) {
+  // A Both deposit is two independently removable Layers. Keep the surviving
+  // Layer's process provenance, but never retain a dangling counterpart ID.
+  for (const layer of model.layers) {
+    if (layer.pairedLayerId === removedId) delete layer.pairedLayerId;
+  }
+}
+
 export function deleteExposedLayer(model, id) {
   if (isArrayModel(model)) {
     if (!isLayerExposed(model, id)) return false;
@@ -364,6 +375,7 @@ export function deleteExposedLayer(model, id) {
     });
     model.array = { ...model.array, templates };
     model.layers = model.layers.filter((l) => l.id !== id);
+    unlinkDeletedLayerPair(model, id);
     model.revision++;
     model.processRevision = (model.processRevision || 0) + 1;
     return true;
@@ -376,6 +388,7 @@ export function deleteExposedLayer(model, id) {
   }
   model.regions = mergeRegions(model, next);
   model.layers = model.layers.filter((layer) => layer.id !== id);
+  unlinkDeletedLayerPair(model, id);
   model.revision++;
   model.processRevision = (model.processRevision || 0) + 1;
   return true;
@@ -1536,6 +1549,17 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  if (params?.face === 'both') {
+    const applied = applyProcessFaces(model, params, applyOperation);
+    if (applied.result?.changed) {
+      for (const key of Object.keys(model)) delete model[key];
+      Object.assign(model, applied.model);
+    }
+    return applied.result;
+  }
+  if (!['front', 'back', undefined, null].includes(params?.face)) {
+    return { changed: false, error: 'Unsupported Process face.' };
+  }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
       params?.growth === 'conformal' ||

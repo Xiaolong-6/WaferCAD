@@ -34,9 +34,18 @@ export function captureHistoryReplayResult(operation, sourceStep, result, layerI
   const refs = sourceStep?.entityRefs || {};
 
   if (operation.kind === 'add' && result?.layerId) {
+    const previousIds = refs.resultLayerIds || operation.resultLayerIds || null;
+    if (previousIds && result.layerIds) {
+      for (const face of ['front', 'back']) {
+        if (previousIds[face] && result.layerIds[face])
+          layerIdMap?.set(previousIds[face], result.layerIds[face]);
+      }
+    }
     const previousId = refs.resultLayerId || operation.resultLayerId || null;
     if (previousId) layerIdMap?.set(previousId, result.layerId);
     operation.resultLayerId = result.layerId;
+    operation.resultLayerIds = result.layerIds || null;
+    operation.resultLayerGroupId = result.layerGroupId || null;
   } else if (operation.kind === 'implant' && result?.implantId) {
     operation.resultImplantId = result.implantId;
   } else if (operation.kind === 'electrical' && result?.electricalRegionId) {

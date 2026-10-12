@@ -9,7 +9,7 @@ import {
   waitForAppReady,
   waitForStatus,
   waitForThreeReady,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
 } from './test-helpers/ui.mjs';
 
 const browser = await launchBrowser();
@@ -39,7 +39,7 @@ try {
 
   // Contract 2: A normal start reaches the usable workstation.
   await page.locator('#welcomeEmptyBtn').click();
-  await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+  await page.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
   await waitForAppReady(page);
 
   assert.equal(await page.locator('#welcomeScreen').count(), 0);

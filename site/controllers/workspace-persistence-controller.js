@@ -96,6 +96,7 @@ export function createWorkspacePersistenceController({
   renderSnapshots,
   fit3d,
   initializeWorkspaceStart,
+  hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start'),
   normalizedProjectName,
   getProjectName,
   setProjectName,
@@ -971,7 +972,6 @@ export function createWorkspacePersistenceController({
   }
 
   async function initializePersistedWorkspace() {
-    const hasExplicitStart = new URLSearchParams(globalThis.location?.search || '').has('start');
     let allowInitialAutosave = true,
       restoredSaved = false;
     const marker = readMarker();

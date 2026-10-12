@@ -7,7 +7,7 @@ import {
   chooseConfirmation,
   closeFunctionPanel,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   waitForAppReady,
   waitForThreeReady,

@@ -112,3 +112,48 @@ test('History replay refreshes annotation result IDs without treating them as ma
   assert.equal(electrical.resultElectricalRegionId, 'electrical-2');
   assert.equal(layerIdMap.size, 0);
 });
+
+test('History replay remaps both deposited layer IDs independently', () => {
+  const mapping = new Map();
+  const original = {
+    kind: 'add',
+    face: 'both',
+    resultLayerId: 'layer-3',
+    resultLayerIds: { front: 'layer-3', back: 'layer-4' },
+  };
+  captureHistoryReplayResult(
+    original,
+    {
+      entityRefs: {
+        resultLayerId: 'layer-3',
+        resultLayerIds: { front: 'layer-3', back: 'layer-4' },
+      },
+    },
+    {
+      layerId: 'layer-7',
+      layerIds: { front: 'layer-7', back: 'layer-8' },
+      layerGroupId: 'both-layer-7-layer-8',
+    },
+    mapping,
+  );
+  assert.deepEqual(original.resultLayerIds, { front: 'layer-7', back: 'layer-8' });
+  assert.equal(original.resultLayerGroupId, 'both-layer-7-layer-8');
+  assert.equal(mapping.get('layer-3'), 'layer-7');
+  assert.equal(mapping.get('layer-4'), 'layer-8');
+
+  for (const face of ['front', 'back']) {
+    const oldId = face === 'front' ? 'layer-3' : 'layer-4';
+    const newId = face === 'front' ? 'layer-7' : 'layer-8';
+    const downstream = {
+      kind: 'etch',
+      face,
+      etchTargetLayerIds: [oldId],
+      replay: {
+        version: 1,
+        params: { type: 'etch', face, etchTargetLayerIds: [oldId] },
+      },
+    };
+    remapHistoryReplayOperation(downstream, structuredClone(downstream.replay.params), mapping);
+    assert.deepEqual(downstream.replay.params.etchTargetLayerIds, [newId]);
+  }
+});

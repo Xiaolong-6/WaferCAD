@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { baseUrl, launchBrowser, newUiContext, observePageErrors } from './test-helpers/ui.mjs';
+import {
+  baseUrl,
+  launchBrowser,
+  newLegacyUiContext as newUiContext,
+  observePageErrors,
+} from './test-helpers/ui.mjs';
 
 // Core editor must still boot when the external Three.js CDN is unavailable.
 const degradedBrowser = await launchBrowser();
@@ -14,7 +19,7 @@ try {
   });
   const degraded = await degradedContext.newPage();
   const degradedErrors = observePageErrors(degraded);
-  await degraded.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  await degraded.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
@@ -53,7 +58,7 @@ try {
   });
   const noWebGl = await noWebGlContext.newPage();
   const noWebGlErrors = observePageErrors(noWebGl);
-  await noWebGl.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+  await noWebGl.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });

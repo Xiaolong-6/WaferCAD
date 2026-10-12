@@ -87,7 +87,7 @@ function previewUrl(example, view = 'main') {
     example: example.id,
     view,
   });
-  return `./app.html?${params.toString()}`;
+  return `./app-legacy.html?${params.toString()}`;
 }
 
 function createProjectPreview(example) {

@@ -12,6 +12,7 @@ function modules() {
       return url.href;
     };
     modulesPromise = Promise.all([
+      import(versioned('./process-face-execution.js')),
       import(versioned('./model.js')),
       import(versioned('./vector-geometry.js')),
       import(versioned('./draw-mask-geometry.js')),
@@ -24,6 +25,7 @@ function modules() {
       import(versioned('./process-boundary-index.js')),
     ]).then(
       ([
+        processFacesApi,
         modelApi,
         vectorApi,
         drawApi,
@@ -35,6 +37,7 @@ function modules() {
         maskIndexApi,
         boundaryIndexApi,
       ]) => ({
+        processFacesApi,
         modelApi,
         vectorApi,
         drawApi,
@@ -95,6 +98,30 @@ function processArea(
   maskIndexApi,
 ) {
   const mode = request?.mode || 'full';
+  const fileArray = arrayApi.isArrayModel(model) && request?.maskSourceMode === 'file';
+  const roiTransform =
+      request?.maskSourceMode === 'draw'
+        ? { x: 0, y: 0, scale: 1, rotation: 0 }
+        : request?.maskTransform,
+    limiter = request?.maskRoi
+      ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
+      : null;
+
+  // Array + file Mask is resolved per cell through the spatial instance index.
+  // Global union/difference of a 60k-polygon lens can stall the process worker
+  // before its first Kernel operation.
+  if (fileArray) {
+    const index =
+      mode === 'full'
+        ? null
+        : request.maskIndex ||
+          maskIndexApi.compileMaskInstanceIndex(request.elements || [], request.maskTransform);
+    return maskIndexApi.deferredArrayMaskArea(
+      { boundary: model.boundary, index, mode, limiter },
+      vectorApi,
+    );
+  }
+
   let area;
   if (mode === 'full') {
     area = modelApi.fullFaceGeometry(model);
@@ -107,29 +134,7 @@ function processArea(
     const clipped = vectorApi.intersection(selected, model.boundary);
     area = mode === 'invert' ? vectorApi.difference(model.boundary, clipped) : clipped;
   }
-
-  const roiTransform =
-      request?.maskSourceMode === 'draw'
-        ? { x: 0, y: 0, scale: 1, rotation: 0 }
-        : request?.maskTransform,
-    limiter = request?.maskRoi
-      ? maskRoiApi.maskRoiWorldGeometry(request.maskRoi, roiTransform, 96)
-      : null;
-  const result = limiter ? vectorApi.intersection(area, limiter) : area;
-  if (arrayApi.isArrayModel(model) && request.maskSourceMode === 'file')
-    Object.defineProperty(result, 'arrayMaskQuery', {
-      value: {
-        index:
-          mode === 'full'
-            ? null
-            : request.maskIndex ||
-              maskIndexApi.compileMaskInstanceIndex(request.elements || [], request.maskTransform),
-        mode,
-        limiter,
-        boundary: model.boundary,
-      },
-    });
-  return result;
+  return limiter ? vectorApi.intersection(area, limiter) : area;
 }
 
 self.onmessage = async (event) => {
@@ -138,6 +143,7 @@ self.onmessage = async (event) => {
   const currentEpoch = ++prewarmEpoch;
   try {
     const {
+      processFacesApi,
       modelApi,
       vectorApi,
       drawApi,
@@ -176,7 +182,6 @@ self.onmessage = async (event) => {
     }
 
     self.postMessage({ id, type: 'progress', stage: 'Computing process geometry…' });
-    const nextModel = structuredClone(model);
     const apply = (candidate, localParams) =>
       advancedApi.applyAdvancedProcessOperation(
         candidate,
@@ -185,9 +190,14 @@ self.onmessage = async (event) => {
         modelApi,
         vectorApi,
       ) ?? modelApi.applyOperation(candidate, localParams);
-    const result = arrayApi.isArrayModel(nextModel)
-      ? arrayProcess.applyArrayOperation(nextModel, { ...params, area }, apply)
-      : apply(nextModel, { ...params, area });
+    const { model: nextModel, result } = processFacesApi.applyProcessFaces(
+      model,
+      { ...params, area },
+      (candidate, localParams) =>
+        arrayApi.isArrayModel(candidate)
+          ? arrayProcess.applyArrayOperation(candidate, localParams, apply)
+          : apply(candidate, localParams),
+    );
     if (result?.changed) {
       self.postMessage({ id, type: 'progress', stage: 'Validating process geometry…' });
       try {

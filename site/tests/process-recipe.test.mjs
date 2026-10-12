@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeProcessRecipe,
+  normalizeRecipeBase,
   parseProcessRecipeSource,
   recipeLengthUm,
   serializeProcessRecipe,
@@ -177,4 +178,36 @@ test('Lift-off recipe round-trips without synthetic thickness and validates requ
     () => parseProcessRecipeSource('liftoff({ area: "full" });'),
     /sacrificial is required/,
   );
+});
+
+test('rectangular GRID Base normalizes without changing circular wafer contracts', () => {
+  const base = {
+    shape: 'rect',
+    width: 30,
+    height: 30,
+    thickness: 2,
+    material: 'Glass',
+    array: {
+      kind: 'rect-grid',
+      rows: 80,
+      columns: 80,
+      pitchX: 0.375,
+      pitchY: 0.375,
+      activeSites: 4725,
+    },
+  };
+  assert.deepEqual(normalizeRecipeBase(base), base);
+  assert.throws(() => normalizeRecipeBase({ ...base, array: { ...base.array, rows: 79 } }));
+  assert.throws(() =>
+    normalizeRecipeBase({ ...base, array: { ...base.array, activeSites: 6401 } }),
+  );
+  const wafer = {
+    shape: 'circle',
+    width: 100,
+    height: 100,
+    thickness: 2,
+    material: 'Si',
+    array: { rows: 3, columns: 3, pitchX: 5, pitchY: 5, diameter: 100 },
+  };
+  assert.deepEqual(normalizeRecipeBase(wafer), wafer);
 });

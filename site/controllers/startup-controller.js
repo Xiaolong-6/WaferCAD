@@ -16,7 +16,11 @@ export function createStartupController({
     if (!start) return true;
 
     try {
-      historyRef.replaceState(null, '', './app.html');
+      const entry = /(?:^|\/)app-legacy\.html$/.test(locationRef?.pathname || '')
+        ? './app-legacy.html'
+        : './app.html';
+      // Embedded previews must retain their source/view protocol on reload.
+      if (params.get('preview') !== '1') historyRef.replaceState(null, '', entry);
     } catch {}
 
     if (start === 'empty') return true;

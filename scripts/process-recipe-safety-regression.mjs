@@ -4,7 +4,7 @@ import {
   assertNoPageErrors,
   gotoWelcome,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   openFunctionPanel,
   waitForAppReady,
@@ -18,7 +18,7 @@ try {
   const errors = observePageErrors(page);
   await gotoWelcome(page);
   await page.locator('#welcomeEmptyBtn').click();
-  await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+  await page.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
   await waitForAppReady(page);
   await openFunctionPanel(page, 'process');
   await page.locator('[data-process-input-mode="recipe"]').click();
@@ -119,7 +119,7 @@ try {
   const stressErrors = observePageErrors(stressPage);
   await gotoWelcome(stressPage);
   await stressPage.locator('#welcomeEmptyBtn').click();
-  await stressPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+  await stressPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
   await waitForAppReady(stressPage);
   await openFunctionPanel(stressPage, 'process');
   await stressPage.locator('[data-process-input-mode="recipe"]').click();
@@ -149,7 +149,7 @@ try {
   const fieldPageErrors = observePageErrors(fieldPage);
   await gotoWelcome(fieldPage);
   await fieldPage.locator('#welcomeEmptyBtn').click();
-  await fieldPage.waitForURL(/\/app\.html(?:\?.*)?$/);
+  await fieldPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/);
   await waitForAppReady(fieldPage);
   await openFunctionPanel(fieldPage, 'process');
   await fieldPage.locator('[data-process-input-mode="recipe"]').click();

@@ -7,7 +7,7 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 import { exportCurrentProject, loadProject } from './test-helpers/product-scientific.mjs';
 import {
   chooseConfirmation,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   openFunctionPanel,
   waitForAppReady,
   waitForStatus,
@@ -53,9 +53,12 @@ export async function runTransactionAcceptance(
       }
     };
   });
-  await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4174') + '/app.html?start=empty', {
-    waitUntil: 'domcontentloaded',
-  });
+  await page.goto(
+    (process.env.WAFERCAD_URL || 'http://127.0.0.1:4174') + '/app-legacy.html?start=empty',
+    {
+      waitUntil: 'domcontentloaded',
+    },
+  );
   await waitForAppReady(page);
   const project = projectForBenchmark({
     model: createModel({ shape: 'rect', width: 20, height: 12, thickness: 8 }),

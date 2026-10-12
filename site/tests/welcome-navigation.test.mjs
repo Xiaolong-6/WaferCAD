@@ -3,9 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = new URL('../', import.meta.url);
-const [welcomeHtml, appHtml, appJs, welcomeJs] = await Promise.all([
+const [welcomeHtml, appHtml, legacyHtml, appJs, welcomeJs] = await Promise.all([
   readFile(new URL('index.html', root), 'utf8'),
   readFile(new URL('app.html', root), 'utf8'),
+  readFile(new URL('app-legacy.html', root), 'utf8'),
   readFile(new URL('app.js', root), 'utf8'),
   readFile(new URL('welcome.js', root), 'utf8'),
 ]);
@@ -17,10 +18,11 @@ test('welcome and workspace are separate browser pages', () => {
   assert.match(welcomeHtml, /id="welcomeExampleGrid"/);
   assert.match(welcomeHtml, /Example families/);
 
-  assert.match(appHtml, /class="app-shell"/);
-  assert.doesNotMatch(appHtml, /id="welcomeScreen"/);
-  assert.match(appHtml, /id="welcomeHomeLink"/);
-  assert.match(appHtml, /href="\.\/"/);
+  assert.match(appHtml, /ui-v2\/workstation-entry\.js/);
+  assert.match(legacyHtml, /class="app-shell"/);
+  assert.doesNotMatch(legacyHtml, /id="welcomeScreen"/);
+  assert.match(legacyHtml, /id="welcomeHomeLink"/);
+  assert.match(legacyHtml, /href="\.\/"/);
 });
 
 test('workspace startup consumes welcome-page intents without embedding welcome state', () => {

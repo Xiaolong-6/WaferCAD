@@ -31,6 +31,8 @@ export function createDrawMaskController({
   claimPopover = () => {},
   status,
   confirmAction = async () => false,
+  onUiSync = null,
+  onEditorSync = null,
 }) {
   const $ = (id) => root.getElementById(id);
   let tool = null,
@@ -60,6 +62,7 @@ export function createDrawMaskController({
   }
 
   function closeEditor() {
+    if (onEditorSync) return onEditorSync('close', selectedShape());
     if ($('drawShapeEditor')) $('drawShapeEditor').hidden = true;
   }
 
@@ -93,6 +96,7 @@ export function createDrawMaskController({
   }
 
   function renderEditor() {
+    if (onEditorSync) return onEditorSync('render', selectedShape());
     const editor = $('drawShapeEditor'),
       body = $('drawShapeEditorBody'),
       shape = selectedShape();
@@ -146,6 +150,7 @@ export function createDrawMaskController({
   }
 
   function syncOpenEditorValues() {
+    if (onEditorSync) return onEditorSync('sync', selectedShape());
     const editor = $('drawShapeEditor'),
       shape = selectedShape();
     if (!editor || editor.hidden || !shape) return;
@@ -184,6 +189,12 @@ export function createDrawMaskController({
   function openEditor(shape = selectedShape()) {
     if (!shape) return;
     selectedId = shape.id;
+    if (onEditorSync) {
+      onEditorSync('open', shape);
+      syncUi({ preserveEditor: true });
+      renderMask();
+      return;
+    }
     renderEditor();
     claimPopover($('drawShapeEditor'));
     $('drawShapeEditor').hidden = false;
@@ -320,6 +331,13 @@ export function createDrawMaskController({
       mask = currentMask();
     if (selectedId && !mask.shapes.some((shape) => shape.id === selectedId)) selectedId = null;
     const selected = selectedShape();
+
+    if (onUiSync) {
+      if (!draw || !selected) closeEditor();
+      onUiSync({ draw, tool, selected, mask, polygonDraft });
+      syncSourceSummary();
+      return;
+    }
 
     if ($('maskSourceToggleBtn')) {
       // The select states the current source explicitly rather than cycling ambiguously.
@@ -870,5 +888,11 @@ export function createDrawMaskController({
     getTool: () => tool,
     getSelectedId: () => selectedId,
     resetInteraction,
+    setTool,
+    setSourceMode,
+    applyEditor,
+    removeSelected,
+    openEditor,
+    clear: () => $('drawMaskClearBtn').onclick(),
   };
 }

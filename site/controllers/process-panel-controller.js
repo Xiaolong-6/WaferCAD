@@ -726,8 +726,10 @@ export function createProcessPanelController({
         clearBaseRevertSnapshot();
         setModel(task.model);
         captureHistoryReplayResult(operation, sourceStep, task.result, layerIdMap);
-        if (operation.kind === 'add' && task.result.layerId) colorNewLayer(task.result.layerId);
-        else if (operation.kind === 'implant' && task.result.implantId) {
+        if (operation.kind === 'add' && task.result.layerId) {
+          for (const id of Object.values(task.result.layerIds || { front: task.result.layerId }))
+            colorNewLayer(id);
+        } else if (operation.kind === 'implant' && task.result.implantId) {
           colorNewImplant(task.result.implantId);
         } else if (operation.kind === 'electrical' && task.result.electricalRegionId) {
           colorNewElectricalRegion(task.result.electricalRegionId);
@@ -814,9 +816,16 @@ export function createProcessPanelController({
     status(`Recorded process Step “${label}” without changing geometry.`, 'success');
   }
 
-  async function applyOperation({ canonicalLengthUm = null, canonicalSurface = null } = {}) {
+  async function applyOperation({
+    canonicalLengthUm = null,
+    canonicalSurface = null,
+    canonicalFace = null,
+    canonicalTargetLayerId = null,
+    canonicalEtchTargetLayerId = null,
+  } = {}) {
     let model = getModel();
     const activeFace = getActiveFace(),
+      processFace = canonicalFace || activeFace,
       { maskSourceMode, maskRoi, drawMask, maskTransform, layout, activeCell, selectedLayerKeys } =
         getMaskState();
     if (processTaskController?.isBusy()) {
@@ -863,8 +872,8 @@ export function createProcessPanelController({
             ? $('electricalName').value.trim() ||
               `Electrical Region ${model.nextElectricalRegionId || 1}`
             : $('layerName').value.trim() || `Layer ${model.layers.length}`,
-      targetLayerId = $('targetLayer').value,
-      etchTargetLayerId = $('etchTargetLayer')?.value || '';
+      targetLayerId = canonicalTargetLayerId || $('targetLayer').value,
+      etchTargetLayerId = canonicalEtchTargetLayerId ?? $('etchTargetLayer')?.value ?? '';
     if (type === 'liftoff' && !$('liftoffTargetLayer').value)
       return status('Choose a sacrificial layer for Lift-off.', 'warning');
     if (type === 'grow' && !targetLayerId) {
@@ -946,7 +955,7 @@ export function createProcessPanelController({
     }
 
     const beforeBase = baseCoverageState(model),
-      params = { type, name, targetLayerId, thickness, face: activeFace };
+      params = { type, name, targetLayerId, thickness, face: processFace };
     if (type === 'etch') {
       params.surface = roughSurface;
       params.etchProfile = etchProfile;
@@ -1005,11 +1014,15 @@ export function createProcessPanelController({
             ...(isArrayModel(model)
               ? { maskIndex: selectedMaskInstanceIndex(layout, selectedElement, maskTransform) }
               : {}),
-            elements: (layout.elements || []).filter(selectedElement).map((element) => ({
-              kind: element.kind,
-              width: element.width,
-              points: element.points,
-            })),
+            // Canonical arrays carry the selected, spatially indexed Mask.
+            // Do not also clone/transfer 60k raw elements to the worker.
+            elements: isArrayModel(model)
+              ? []
+              : (layout.elements || []).filter(selectedElement).map((element) => ({
+                  kind: element.kind,
+                  width: element.width,
+                  points: element.points,
+                })),
           }),
     };
 
@@ -1047,14 +1060,17 @@ export function createProcessPanelController({
     model = task.model;
 
     if (type === 'add' && result.layerId) {
-      colorNewLayer(result.layerId);
+      for (const id of Object.values(result.layerIds || { front: result.layerId }))
+        colorNewLayer(id);
       $('layerName').value = `Layer ${model.nextLayerId}`;
     } else if (type === 'implant' && result.implantId) {
-      colorNewImplant(result.implantId);
+      if (result.implantIds) result.implantIds.forEach(colorNewImplant);
+      else colorNewImplant(result.implantId);
       $('implantName').value =
         `Implant ${model.nextImplantId || (model.implants?.length || 0) + 1}`;
     } else if (type === 'electrical' && result.electricalRegionId) {
-      colorNewElectricalRegion(result.electricalRegionId);
+      if (result.electricalRegionIds) result.electricalRegionIds.forEach(colorNewElectricalRegion);
+      else colorNewElectricalRegion(result.electricalRegionId);
       $('electricalName').value =
         `Electrical Region ${model.nextElectricalRegionId || (model.electricalRegions?.length || 0) + 1}`;
     }
@@ -1095,8 +1111,8 @@ export function createProcessPanelController({
 
     const operation = {
       kind: type,
-      label: operationLabel,
-      face: activeFace,
+      label: processFace === 'both' ? `${operationLabel} · Both` : operationLabel,
+      face: processFace,
       areaMode,
       areaLabel,
       thickness,
@@ -1130,6 +1146,8 @@ export function createProcessPanelController({
       maskRoi: Boolean(maskRoi),
       maskContext: structuredClone(maskContext),
       resultLayerId: type === 'add' ? result.layerId || null : null,
+      resultLayerIds: type === 'add' ? result.layerIds || null : null,
+      resultLayerGroupId: type === 'add' ? result.layerGroupId || null : null,
       resultImplantId: type === 'implant' ? result.implantId || null : null,
       resultElectricalRegionId: type === 'electrical' ? result.electricalRegionId || null : null,
       replay: {
