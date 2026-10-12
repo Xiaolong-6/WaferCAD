@@ -2670,7 +2670,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 8;
+      const cancelSupersededVariant = () => {
+        if (!variantBuild || !pendingRender) return;
+        const error = new Error('Superseded by a newer 3D presentation request');
+        error.name = 'SceneVariantSuperseded';
+        throw error;
+      };
       const maybeYieldAssembly = async () => {
+        cancelSupersededVariant();
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
         // A frame callback can resume in a microtask before the browser paints.
@@ -2678,6 +2685,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!variantBuild) await yieldSceneAssembly();
         await new Promise((resolve) => setTimeout(resolve, 0));
         nextAssemblyYieldAt = performance.now() + 8;
+        cancelSupersededVariant();
       };
 
       host.dataset.materialLayerIds = JSON.stringify(
@@ -3380,6 +3388,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
+      cancelSupersededVariant();
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
@@ -3409,6 +3418,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
     } catch (error) {
+      const superseded = error?.name === 'SceneVariantSuperseded';
       if (previousVariantGroup) {
         // Never strand the viewport with a partially constructed, hidden group.
         const failedGroup = group;
@@ -3422,18 +3432,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
           group = previousVariantGroup;
           if (group.parent !== scene) scene.add(group);
         }
-        host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
       }
-      console.error('3D scene rebuild failed:', error);
-      host.dataset.renderPhase = previousVariantGroup ? 'variant-build-failed' : 'build-failed';
-      host.dataset.rendererBuildFailure = error?.message || String(error);
-      if (!previousVariantGroup) {
-        host.dataset.renderState = 'error';
+      if (superseded) {
+        host.dataset.rendererSupersededBuilds = String(
+          Number(host.dataset.rendererSupersededBuilds || 0) + 1,
+        );
+        host.dataset.renderPhase = 'superseded';
+        stats.textContent = 'updating 3D…';
+      } else {
+        console.error('3D scene rebuild failed:', error);
+        host.dataset.renderPhase = previousVariantGroup ? 'variant-build-failed' : 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        if (!previousVariantGroup) {
+          host.dataset.renderState = 'error';
+        }
+        stats.textContent = previousVariantGroup
+          ? '3D update failed; previous view retained'
+          : '3D build failed';
       }
-      stats.textContent = previousVariantGroup
-        ? '3D update failed; previous view retained'
-        : '3D build failed';
     } finally {
       rendering = false;
     }
