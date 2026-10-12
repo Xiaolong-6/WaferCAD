@@ -47,12 +47,13 @@
 - Made Quality unconditional for all PRs to `main`, including docs-only, and switched it to `npm run check` (lint, format, generated-doc consistency and Node tests).
 - Avoided duplicating Node tests between the release Quality and reused Browser job; scheduled/manual Browser still runs its own Node suite.
 - Restricted write-back generators to their named branches, including manually dispatched runs.
+- Made the preview publisher resolve the last successful production Pages run before selecting the root site checkout. A preview push cannot publish an unverified newer `main` tree as the production root.
 - Added Node tests that lock workflow triggers, release dependencies and generator write guards.
 
 ## Explicitly outstanding (not represented as solved)
 
 - **Admin action**: protect `main` using a GitHub ruleset or branch protection. Require at least `Quality / quality`; do not mark path-filtered or Draft-deferred checks required without a reliable always-present aggregator. Record the selected check names from actual check runs.
-- **Preview publication**: `ui-v2-preview.yml` also has Pages write permission and can publish an isolated preview tree. Audit its publication policy before treating production availability as fully protected by the new Pages DAG.
+- **Preview publication**: `ui-v2-preview.yml` still has Pages write permission and publishes an unapproved preview under `/preview`. It now preserves the last successfully released production tree, but preview quality and cross-workflow deployment/concurrency policy remain independently reviewable.
 - **Release efficiency**: the release UI v2 suite is intentionally conservative and runs for every product publication. After collecting measured CI times, add tested impact-routing if needed; do not weaken protection by making jobs silently optional.
 - **Scientific and visual evidence**: software WebGL does not establish hardware GPU parity, human M2/UX review, or physical process validity. Preserve independent release acceptance.
 - **Workflow consolidation**: branch-era workflows should be archived only after verifying their unique scenario ownership and replacing any active consumers.

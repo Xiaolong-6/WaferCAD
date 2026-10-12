@@ -30,6 +30,13 @@ test('browser and v2 owners are reusable without racing main-push jobs', () => {
   assert.match(browser, /!inputs\.skip_node_gate/);
 });
 
+test('preview publishes from the last successful production Pages run', () => {
+  const preview = workflow('ui-v2-preview');
+  assert.match(preview, /actions\/workflows\/pages\.yml\/runs\?branch=main/);
+  assert.match(preview, /ref: \$\{\{ steps\.verified-main\.outputs\.sha \}\}/);
+  assert.doesNotMatch(preview, /^          ref: main$/m);
+});
+
 test('Quality covers docs-only PRs and enforces pinned formatter', () => {
   const quality = workflow('quality');
   assert.match(quality, /branches: \[main\]/);
