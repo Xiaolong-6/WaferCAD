@@ -61,6 +61,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [PR #166 continued acceptance](PR166_ACCEPTANCE_2026-10-10.md) — historical 625-site pixel evidence, current CI, Electrical A/B census repairs and open hardware/runtime gates.
 - [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
+- [Renderer V3/V4 main alignment (2026-10-12)](RENDERER_MAIN_ALIGNMENT_2026-10-12.md) — reviewed PR #177 merge conflict resolutions, base/stack ancestry, and acceptance limits.
 - [Renderer V3/V4 unified RTX 3060 diagnostics](RENDERER_V3_V4_UNIFIED_HARDWARE.md) — one command for exact-SHA worktrees, bounded GPU evidence and the single combined upload.
 - [V3/V4 RTX 3060 acceptance, October 12](RENDERER_V3_V4_RTX3060_ACCEPTANCE_2026-10-12.md) — completed four-mode hardware data, fresh-context GL drift intervals and blocked promotion decision.
 - [RTX 3060 V3 DITHER isolation](RENDERER_V3_DITHER_DIAGNOSTIC_2026-10-12.md) — completed DITHER-off hardware run, persistent 33/134 same-policy drift and next MSAA hypothesis.
