@@ -41,6 +41,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
 - [Renderer V3/V4 unified RTX 3060 diagnostics](RENDERER_V3_V4_UNIFIED_HARDWARE.md) — one command for exact-SHA worktrees, bounded GPU evidence and the single combined upload.
+- [V3/V4 RTX 3060 acceptance, October 12](RENDERER_V3_V4_RTX3060_ACCEPTANCE_2026-10-12.md) — completed four-mode hardware data, fresh-context GL drift intervals and blocked promotion decision.
 - [Desktop release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — exact integration/repair revision and runtime validation.
 - [Complete example open latency — 2026-10-08](EXAMPLE_OPEN_LATENCY_2026-10-08.md) — branch-specific cache/prefetch optimization, risks and cold/warm verification.
 - [Documentation audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md) — navigation, content repairs and check results.
