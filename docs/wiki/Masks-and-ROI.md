@@ -1,12 +1,21 @@
 # Masks and ROI
 
-![Mask visualization preview from WaferCAD](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/example-previews/visualization-mask.jpg)
-
-_Existing WaferCAD visualization reference. Actual Process selection follows the selected File/Draw Mask, its hierarchy/geometry, and Mask ROI._
-
 [Home](Home) · [Process and Recipes](Process-and-Recipes)
 
 ## File masks
+
+```mermaid
+flowchart LR
+  Source["Import GDS / OAS or select Draw"] --> Cell["File: choose Cell + Layer/Datatype"]
+  Cell --> Verify["Confirm units, footprint and alignment"]
+  Source --> Draw["Draw: inspect rectangles / polygons / rings"]
+  Draw --> Verify
+  Verify --> ROI["Optional Mask ROI: geometric clip"]
+  ROI --> Process["Selected / Invert / Whole-face Process area"]
+```
+
+_This illustrates actual data selection and clipping, **not a screenshot**. Review the selected geometry in your current Mask view before processing._
+
 
 Import GDSII (`.gds`, `.gdsii`) or OASIS (`.oas`, `.oasis`). Hierarchical **Cells** and global **Layers** are independent selections. The layout keeps its physical database units on import; alignment may change X/Y translation, scale and rotation. Zero-width linework is visible but not an operable area.
 
