@@ -45,6 +45,14 @@ const SNAPSHOT_MUTATION_METHODS = [
   'importRecords',
 ];
 
+function safeLocalStorage() {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function parseMarker(raw) {
   try {
     const value = JSON.parse(raw || 'null');
@@ -104,7 +112,7 @@ export function createWorkspacePersistenceController({
   taskController = null,
   confirmAction = async () => false,
   chooseAction = async () => 'cancel',
-  storage = globalThis.localStorage,
+  storage = safeLocalStorage(),
   windowRef = globalThis.window,
   channelFactory = (name) =>
     typeof globalThis.BroadcastChannel === 'function' ? new BroadcastChannel(name) : null,
@@ -552,7 +560,11 @@ export function createWorkspacePersistenceController({
     }
   }
 
-  function syncSessionState({ writable, ownerTabId: nextOwnerTabId = null }) {
+  function syncSessionState({
+    writable,
+    ownerTabId: nextOwnerTabId = null,
+    storageUnavailable = false,
+  }) {
     ownerTabId = nextOwnerTabId;
     const workspace = root.querySelector('.workspace'),
       dialog = $('workspaceConflictDialog');
@@ -565,15 +577,21 @@ export function createWorkspacePersistenceController({
       const title = dialog.querySelector('strong'),
         copy = dialog.querySelector('span');
       if (title) {
-        title.textContent = dirty
-          ? 'This tab has unsaved changes.'
-          : 'This workspace is open in another tab.';
+        title.textContent = storageUnavailable
+          ? 'Browser storage coordination is unavailable.'
+          : dirty
+            ? 'This tab has unsaved changes.'
+            : 'This workspace is open in another tab.';
       }
       if (copy) {
-        copy.textContent = dirty
-          ? 'Autosave is paused here. Take over to reconcile this tab with the latest saved workspace.'
-          : 'Editing stays available, but local autosave is paused here to prevent conflicts.';
+        copy.textContent = storageUnavailable
+          ? 'Autosave is paused to protect the saved project. Export a project file or restore browser storage access before saving.'
+          : dirty
+            ? 'Autosave is paused here. Take over to reconcile this tab with the latest saved workspace.'
+            : 'Editing stays available, but local autosave is paused here to prevent conflicts.';
       }
+      const takeOver = $('workspaceTakeOverBtn');
+      if (takeOver) takeOver.disabled = storageUnavailable;
     }
 
     if (!writable) {
@@ -582,9 +600,11 @@ export function createWorkspacePersistenceController({
       if ($('workspaceRecoveryClearBtn')) $('workspaceRecoveryClearBtn').disabled = true;
       syncSaveStatus();
       status(
-        dirty
-          ? 'This tab has unsaved changes while another tab owns local autosave. Use Take over to reconcile both states.'
-          : 'Another tab owns local autosave. Editing remains available; use Take over before saving from this tab.',
+        storageUnavailable
+          ? 'Browser storage coordination is unavailable. Autosave paused to prevent overwriting another tab; export your project or restore storage access.'
+          : dirty
+            ? 'This tab has unsaved changes while another tab owns local autosave. Use Take over to reconcile both states.'
+            : 'Another tab owns local autosave. Editing remains available; use Take over before saving from this tab.',
         'warning',
       );
     } else {

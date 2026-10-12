@@ -202,31 +202,103 @@ test('workspace session keeps a stable tab identity across reloads', () => {
   afterReload.stop();
 });
 
-test('workspace session stays usable when localStorage is unavailable', () => {
+test('workspace session blocks unsafe writes until explicit takeover', () => {
+  const values = new Map();
+  let blocked = true;
   const storage = {
-    getItem: () => {
-      throw new Error('storage blocked');
+    getItem: (key) => {
+      if (blocked) throw new Error('storage blocked');
+      return values.get(key) ?? null;
     },
-    setItem: () => {
-      throw new Error('storage blocked');
+    setItem: (key, value) => {
+      if (blocked) throw new Error('storage blocked');
+      values.set(key, value);
     },
-    removeItem: () => {
-      throw new Error('storage blocked');
+    removeItem: (key) => {
+      if (blocked) throw new Error('storage blocked');
+      values.delete(key);
     },
   };
+  let renewFirst = null;
   const windowRef = {
     sessionStorage: null,
     crypto: { randomUUID: () => 'private-tab' },
-    setInterval: () => 1,
+    setInterval: (fn) => {
+      renewFirst = fn;
+      return 1;
+    },
     clearInterval: () => {},
     addEventListener: () => {},
     removeEventListener: () => {},
   };
-  const session = createWorkspaceSessionController({ storage, windowRef });
-  assert.equal(session.start(), true);
-  assert.equal(session.canWrite(), true);
-  assert.equal(session.hasWriteLease(), true);
-  session.stop();
+  const states = [];
+  const first = createWorkspaceSessionController({
+    storage,
+    windowRef,
+    tabId: 'first',
+    onStateChange: (state) => states.push(state),
+  });
+  // The tabs must have independent timer registries: the second tab must not
+  // replace the first tab's renewal callback in this shared-storage test.
+  const second = createWorkspaceSessionController({
+    storage,
+    windowRef: { ...windowRef, setInterval: () => 2 },
+    tabId: 'second',
+  });
+
+  assert.equal(first.start(), false);
+  assert.equal(second.start(), false);
+  assert.equal(first.canWrite(), false);
+  assert.equal(first.hasWriteLease(), false);
+  assert.equal(first.takeOver(), false);
+  assert.equal(second.takeOver(), false);
+  assert.equal(states.at(-1).storageUnavailable, true);
+
+  blocked = false;
+  renewFirst?.();
+  assert.equal(states.at(-1).storageUnavailable, false);
+  assert.equal(first.canWrite(), false, 'storage restoration never silently takes ownership');
+  assert.equal(first.takeOver(), true);
+  assert.equal(first.hasWriteLease(), true);
+  assert.equal(second.start(), false);
+
+  // Even a previously acquired owner cannot commit while the lease store
+  // becomes unreadable, including while IndexedDB might remain available.
+  blocked = true;
+  assert.equal(first.hasWriteLease(), false);
+  renewFirst?.();
+  assert.equal(first.canWrite(), false);
+  assert.equal(states.at(-1).storageUnavailable, true);
+  blocked = false;
+  assert.equal(first.takeOver(), true);
+  assert.equal(first.hasWriteLease(), true);
+  assert.equal(second.hasWriteLease(), false);
+  first.stop();
+  second.stop();
+});
+
+test('workspace session refuses a backend that cannot persist a lease', () => {
+  const storage = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error('quota denied');
+    },
+    removeItem: () => {},
+  };
+  const owner = createWorkspaceSessionController({
+    storage,
+    tabId: 'no-lease',
+    windowRef: {
+      setInterval: () => 1,
+      clearInterval: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    },
+  });
+  assert.equal(owner.start(), false);
+  assert.equal(owner.hasWriteLease(), false);
+  assert.equal(owner.takeOver(), false);
+  owner.stop();
 });
 
 test('copied sessionStorage creates an independent identity on fresh navigation', () => {
