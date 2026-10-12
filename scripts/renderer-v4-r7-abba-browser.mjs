@@ -215,7 +215,8 @@ async function oneArm(policy, index) {
       assert.ok(
         row.backend.hardwareVerified &&
           (!hardwareRtx3060 || /NVIDIA.*GeForce RTX 3060/i.test(row.backend.adapter || '')),
-        label + ': expected a verified hardware GPU' +
+        label +
+          ': expected a verified hardware GPU' +
           (hardwareRtx3060 ? ' (RTX 3060 for the legacy command)' : ''),
       );
     }
