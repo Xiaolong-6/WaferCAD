@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ import {
   baseUrl,
 } from './test-helpers/ui.mjs';
 
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const output = new URL('../test-results/renderer-pipeline/', import.meta.url);
 await mkdir(output, { recursive: true });
@@ -80,7 +82,7 @@ try {
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
 
-  await page.goto(baseUrl + '/app.html?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
+  await page.goto(rendererWorkstationUrl + '?rendererV3Diagnostics=1&rendererV3QualityIndex=1');
   await waitForAppReady(page);
   const openStarted = performance.now();
   await page

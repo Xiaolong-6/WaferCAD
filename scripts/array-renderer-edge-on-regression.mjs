@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +15,7 @@ import {
 
 // Separate browser process from the 20-toggle regression. Software WebGL's
 // 625-site exact transparent compositor can saturate the browser after orbiting.
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const output = new URL('../test-results/array-renderer-edge-on/', import.meta.url);
 await mkdir(output, { recursive: true });
@@ -25,7 +27,7 @@ try {
   const snapshot = () => page.locator('#threeHost').evaluate((element) => ({ ...element.dataset }));
   const frameSerial = async () => Number((await snapshot()).rendererFrameSerial || 0);
 
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(rendererWorkstationUrl);
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')
