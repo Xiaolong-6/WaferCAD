@@ -41,9 +41,20 @@ test('one-draw span does not repeat checkpoints or exceed diagnostic budget', ()
 
 test('invalid or oversized intervals fail before starting a hardware browser', () => {
   for (const value of [
-    '', '0:10', '10:10', '10:9', '1:1281', '-1:20', '1.5:5',
-    '0x1:5', '1:Infinity', 'NaN:5', '1:2:3', '2: 3',
-    '9007199254740991:9007199254740993', '2:999999999999999999999',
+    '',
+    '0:10',
+    '10:10',
+    '10:9',
+    '1:1281',
+    '-1:20',
+    '1.5:5',
+    '0x1:5',
+    '1:Infinity',
+    'NaN:5',
+    '1:2:3',
+    '2: 3',
+    '9007199254740991:9007199254740993',
+    '2:999999999999999999999',
   ]) {
     assert.throws(() => parseRendererPhaseWindow(value), /Phase window/, value);
   }
@@ -152,10 +163,10 @@ test('hardware milestone capture requires every draw, stable framebuffer dimensi
   const corrupted = [
     { checkpoints: checkpoints.slice(1) },
     { checkpoints: checkpoints.slice(0, -1) },
-    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, afterDraw: 385 } : c) },
-    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, hash: null } : c) },
-    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, hash: 'f'.repeat(63) } : c) },
-    { checkpoints: checkpoints.map((c, i) => i === 3 ? { ...c, width: 532 } : c) },
+    { checkpoints: checkpoints.map((c, i) => (i === 3 ? { ...c, afterDraw: 385 } : c)) },
+    { checkpoints: checkpoints.map((c, i) => (i === 3 ? { ...c, hash: null } : c)) },
+    { checkpoints: checkpoints.map((c, i) => (i === 3 ? { ...c, hash: 'f'.repeat(63) } : c)) },
+    { checkpoints: checkpoints.map((c, i) => (i === 3 ? { ...c, width: 532 } : c)) },
     { coverage: { ...coverage, captured: 4 } },
     { coverage: { ...coverage, mode: 'owner-transitions' } },
     { coverage: { ...coverage, finalFrameCaptured: false } },
@@ -180,13 +191,16 @@ test('targeted two-draw window still demands the exact ordered final capture', (
     height: 275,
   }));
   assert.deepEqual(milestones, [256, 257]);
-  assert.equal(checkRendererPhaseCapture({
-    milestones,
-    checkpoints,
-    framebuffer,
-    coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
-    drawCalls: 1291,
-  }).valid, true);
+  assert.equal(
+    checkRendererPhaseCapture({
+      milestones,
+      checkpoints,
+      framebuffer,
+      coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
+      drawCalls: 1291,
+    }).valid,
+    true,
+  );
 });
 
 const rasterState = () => {
@@ -198,18 +212,22 @@ const rasterState = () => {
     depthRange: [0, 1],
   };
   const booleans = new Set([
-    'scissorTest', 'blend', 'depthTest', 'depthMask',
-    'stencilTest', 'cullFace', 'dither', 'polygonOffsetFill',
-    'sampleAlphaToCoverage', 'sampleCoverage', 'sampleCoverageInvert',
+    'scissorTest',
+    'blend',
+    'depthTest',
+    'depthMask',
+    'stencilTest',
+    'cullFace',
+    'dither',
+    'polygonOffsetFill',
+    'sampleAlphaToCoverage',
+    'sampleCoverage',
+    'sampleCoverageInvert',
   ]);
   return Object.fromEntries(
     RENDERER_RASTER_STATE_FIELDS.map((field) => [
       field,
-      Object.hasOwn(arrays, field)
-        ? [...arrays[field]]
-        : booleans.has(field)
-          ? false
-          : 1,
+      Object.hasOwn(arrays, field) ? [...arrays[field]] : booleans.has(field) ? false : 1,
     ]),
   );
 };
@@ -227,10 +245,12 @@ test('draw-level GL raster state accepts comparable primitives but rejects gaps 
 
 test('same-policy raster comparison identifies sampled state divergence independently of pixels', () => {
   const base = rasterState();
-  const left = { phaseCheckpoints: [
-    { afterDraw: 256, rasterState: base },
-    { afterDraw: 384, rasterState: base },
-  ] };
+  const left = {
+    phaseCheckpoints: [
+      { afterDraw: 256, rasterState: structuredClone(base) },
+      { afterDraw: 384, rasterState: structuredClone(base) },
+    ],
+  };
   const right = structuredClone(left);
   assert.equal(compareRendererRasterStateEvidence(left, right).status, 'sampled-states-identical');
   right.phaseCheckpoints[1].rasterState.blendSrcAlpha = 770;
@@ -255,11 +275,18 @@ test('hardware phase gate requires GL raster census when requested, and rejects 
   const state = rasterState();
   const frame = { status: 'valid', width: 531, height: 275 };
   const checkpoints = [256, 384, 1408].map((afterDraw) => ({
-    afterDraw, status: 'valid', hash: 'c'.repeat(64), width: 531, height: 275,
+    afterDraw,
+    status: 'valid',
+    hash: 'c'.repeat(64),
+    width: 531,
+    height: 275,
     rasterState: structuredClone(state),
   }));
   const input = {
-    checkpoints, milestones, drawCalls: 1408, framebuffer: frame,
+    checkpoints,
+    milestones,
+    drawCalls: 1408,
+    framebuffer: frame,
     coverage: { mode: 'draw-milestones', captured: 3, finalFrameCaptured: true },
     requireRasterState: true,
   };

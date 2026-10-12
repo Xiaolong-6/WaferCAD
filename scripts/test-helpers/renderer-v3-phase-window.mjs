@@ -12,8 +12,12 @@ export function parseRendererPhaseWindow(value) {
   if (typeof value !== 'string' || !/^[1-9]\d*:[1-9]\d*$/.test(value))
     throw new Error('Phase window must be LOW:HIGH positive integer draw indices');
   const [low, high] = value.split(':').map(Number);
-  if (!Number.isSafeInteger(low) || !Number.isSafeInteger(high) ||
-      high <= low || high > MAX_RENDERER_PHASE_DRAW)
+  if (
+    !Number.isSafeInteger(low) ||
+    !Number.isSafeInteger(high) ||
+    high <= low ||
+    high > MAX_RENDERER_PHASE_DRAW
+  )
     throw new Error('Phase window must satisfy 1 <= LOW < HIGH <= 1280');
   return { low, high };
 }
@@ -24,8 +28,9 @@ export function rendererPhaseMilestones(window) {
   // Verify even programmatic callers: a malformed window cannot arm a
   // misleading or unbounded GL readback schedule.
   const normalized = parseRendererPhaseWindow(`${low}:${high}`);
-  const draws = Array.from({ length: 11 }, (_, i) =>
-    normalized.low + Math.round(((normalized.high - normalized.low) * i) / 10),
+  const draws = Array.from(
+    { length: 11 },
+    (_, i) => normalized.low + Math.round(((normalized.high - normalized.low) * i) / 10),
   );
   return [...new Set(draws)];
 }
@@ -47,7 +52,8 @@ export function summarizeRendererPhaseWindow(comparisons) {
         // A later acquisition can resample the bounded interval; this
         // does NOT prove the first causal draw or authorize product parity.
         nextDiagnosticWindow:
-          evidence?.status === 'checkpoint-mismatch' && preceding &&
+          evidence?.status === 'checkpoint-mismatch' &&
+          preceding &&
           preceding.afterDraw >= 1 &&
           first.afterDraw <= MAX_RENDERER_PHASE_DRAW &&
           first.afterDraw - preceding.afterDraw > 1
@@ -80,26 +86,43 @@ export function checkRendererPhaseCapture({
   requireRasterState = false,
 }) {
   const reject = (reason) => ({ valid: false, reason });
-  if (!Array.isArray(milestones) || milestones.length === 0 || milestones.length > 11 ||
-      milestones.some((draw, i) =>
-        !Number.isSafeInteger(draw) || draw <= 0 || (i > 0 && draw <= milestones[i - 1])))
+  if (
+    !Array.isArray(milestones) ||
+    milestones.length === 0 ||
+    milestones.length > 11 ||
+    milestones.some(
+      (draw, i) => !Number.isSafeInteger(draw) || draw <= 0 || (i > 0 && draw <= milestones[i - 1]),
+    )
+  )
     return reject('invalid milestones');
   if (!Number.isSafeInteger(drawCalls) || drawCalls <= milestones.at(-1))
     return reject('draw count does not include a final frame after milestones');
-  if (!framebuffer || framebuffer.status !== 'valid' ||
-      !Number.isInteger(framebuffer.width) || framebuffer.width <= 0 ||
-      !Number.isInteger(framebuffer.height) || framebuffer.height <= 0)
+  if (
+    !framebuffer ||
+    framebuffer.status !== 'valid' ||
+    !Number.isInteger(framebuffer.width) ||
+    framebuffer.width <= 0 ||
+    !Number.isInteger(framebuffer.height) ||
+    framebuffer.height <= 0
+  )
     return reject('invalid final framebuffer');
   const expected = [...milestones, drawCalls];
-  if (!Array.isArray(checkpoints) || checkpoints.length !== expected.length ||
-      coverage?.mode !== 'draw-milestones' ||
-      coverage?.captured !== expected.length ||
-      coverage?.finalFrameCaptured !== true)
+  if (
+    !Array.isArray(checkpoints) ||
+    checkpoints.length !== expected.length ||
+    coverage?.mode !== 'draw-milestones' ||
+    coverage?.captured !== expected.length ||
+    coverage?.finalFrameCaptured !== true
+  )
     return reject('incomplete draw-milestone coverage');
   for (let i = 0; i < expected.length; i++) {
     const checkpoint = checkpoints[i];
-    if (checkpoint?.afterDraw !== expected[i] || checkpoint.status !== 'valid' ||
-        typeof checkpoint.hash !== 'string' || !/^[a-f0-9]{64}$/.test(checkpoint.hash))
+    if (
+      checkpoint?.afterDraw !== expected[i] ||
+      checkpoint.status !== 'valid' ||
+      typeof checkpoint.hash !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(checkpoint.hash)
+    )
       return reject(`missing or invalid checkpoint at index ${i}`);
     if (checkpoint.width !== framebuffer.width || checkpoint.height !== framebuffer.height)
       return reject(`framebuffer dimensions changed at checkpoint ${i}`);

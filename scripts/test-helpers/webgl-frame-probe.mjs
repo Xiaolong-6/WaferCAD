@@ -27,7 +27,8 @@ export function installWebglFrameProbe() {
         const data = new Uint8Array(length);
         gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
         attributes.push({
-          index: i, status: 'read',
+          index: i,
+          status: 'read',
           totalBytes: gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE),
           offset: gl.getVertexAttribOffset(i, gl.VERTEX_ATTRIB_ARRAY_POINTER),
           size: gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_SIZE),
@@ -54,7 +55,6 @@ export function installWebglFrameProbe() {
       gl.bindBuffer(gl.ARRAY_BUFFER, priorArray);
     }
   }
-
 
   // Exact GL raster state at the draw checkpoint. Object identities and
   // program handles differ between contexts; only comparable scalar/array
@@ -225,18 +225,30 @@ export function installWebglFrameProbe() {
           const triangles = args[0] === gl.TRIANGLES ? (count / 3) * instances : 0;
           active.drawCalls++;
           active.triangles += triangles;
-          if (active.captureDrawInputs && active.drawInputs.length < 48 &&
-              (active.drawCalls <= 8 || active.drawCalls % 32 === 0)) {
+          if (
+            active.captureDrawInputs &&
+            active.drawInputs.length < 48 &&
+            (active.drawCalls <= 8 || active.drawCalls % 32 === 0)
+          ) {
             const program = gl.getParameter(gl.CURRENT_PROGRAM);
-            const shaders = program ? (gl.getAttachedShaders(program) || []).map(shader => ({
-              type: gl.getShaderParameter(shader, gl.SHADER_TYPE),
-              source: (gl.getShaderSource(shader) || '').slice(0, 100000),
-            })) : [];
+            const shaders = program
+              ? (gl.getAttachedShaders(program) || []).map((shader) => ({
+                  type: gl.getShaderParameter(shader, gl.SHADER_TYPE),
+                  source: (gl.getShaderSource(shader) || '').slice(0, 100000),
+                }))
+              : [];
             active.drawInputs.push({
-              draw: active.drawCalls, kind: owner.kind, name: owner.name,
-              method, mode: args[0], count, instances, shaders,
+              draw: active.drawCalls,
+              kind: owner.kind,
+              name: owner.name,
+              method,
+              mode: args[0],
+              count,
+              instances,
+              shaders,
               indexedBuffer: Boolean(gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING)),
-              blend: gl.isEnabled(gl.BLEND), cull: gl.isEnabled(gl.CULL_FACE),
+              blend: gl.isEnabled(gl.BLEND),
+              cull: gl.isEnabled(gl.CULL_FACE),
               cullMode: gl.getParameter(gl.CULL_FACE_MODE),
               depthTest: gl.isEnabled(gl.DEPTH_TEST),
               depthMask: gl.getParameter(gl.DEPTH_WRITEMASK),
@@ -279,11 +291,8 @@ export function installWebglFrameProbe() {
   HTMLCanvasElement.prototype.getContext = function (...args) {
     // Test-only raster isolation, prior to Three.js WebGL context creation.
     // No change to the product or ordinary browser context attributes.
-    const forcedNoMsaa =
-      args[0] === 'webgl2' && window.__waferCadMsaaProbeForceOff === true;
-    const contextArgs = forcedNoMsaa
-      ? [args[0], { ...(args[1] || {}), antialias: false }]
-      : args;
+    const forcedNoMsaa = args[0] === 'webgl2' && window.__waferCadMsaaProbeForceOff === true;
+    const contextArgs = forcedNoMsaa ? [args[0], { ...(args[1] || {}), antialias: false }] : args;
     const gl = originalGetContext.apply(this, contextArgs);
     if (args[0] === 'webgl2' && gl) instrument(gl, this);
     return gl;

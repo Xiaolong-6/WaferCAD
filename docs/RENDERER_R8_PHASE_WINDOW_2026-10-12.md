@@ -52,7 +52,7 @@ between draws 256 and 384, and ON/ON drift between 128 and 256 in an
 earlier acquisition. These are examples of **observed bounds**, not
 a guaranteed recurring location; subsequent drivers, platforms or
 runs may differ. First use the current standard fresh-context report,
-then choose a window relevant to the *same hardware environment*.
+then choose a window relevant to the _same hardware environment_.
 
 ## Reading the evidence
 

@@ -150,7 +150,6 @@ test('inactive probe preserves native draws and does not add a finish barrier', 
   assert.deepEqual(h.calls, ['draw:drawArrays:false:true']);
 });
 
-
 test('MSAA isolation changes only WebGL context creation and reports actual samples', () => {
   const noMsaa = harness({ forceMsaaOff: true });
   assert.equal(noMsaa.contextOptions().antialias, false);
@@ -173,11 +172,7 @@ test('MSAA isolation changes only WebGL context creation and reports actual samp
 test('diagnostic-only dither isolation wraps draws and restores GL state on error', () => {
   const off = harness({ forceDitherOff: true });
   off.frame(() => off.gl.drawArrays(4, 0, 6));
-  assert.deepEqual(off.calls, [
-    'disable-dither',
-    'draw:drawArrays:false:false',
-    'enable-dither',
-  ]);
+  assert.deepEqual(off.calls, ['disable-dither', 'draw:drawArrays:false:false', 'enable-dither']);
   assert.equal(off.dither(), true);
   const sampled = harness({ forceDitherOff: true });
   sampled.probe.arm({ captureFramebuffer: true });
@@ -251,7 +246,10 @@ test('opt-in WebGL readback samples the completed frame, with vertical flip', ()
       [301, 139, [45, 135, 7, 255]],
     ],
   );
-  assert.equal(frame.pixelSamples.every((sample) => sample.status === 'valid'), true);
+  assert.equal(
+    frame.pixelSamples.every((sample) => sample.status === 'valid'),
+    true,
+  );
   assert.equal(frame.glState.firstElectricalState.blend, false);
   assert.ok(h.calls.indexOf('finish') < h.calls.indexOf('read:301:136'));
   assert.equal(h.calls.includes('read:301:135'), true);
@@ -308,7 +306,10 @@ test('invalid or excessive WebGL readback coordinates fail before arming', () =>
   h.probe.arm({ rasterDiscard: false });
   const frame = h.frame(() => h.gl.drawArrays(4, 0, 6));
   assert.equal(frame.pixelSamples, undefined);
-  assert.equal(h.calls.some((call) => call.startsWith('read:')), false);
+  assert.equal(
+    h.calls.some((call) => call.startsWith('read:')),
+    false,
+  );
 });
 
 test('diagnostic discard restores GL state before later normal draws', () => {
@@ -397,12 +398,25 @@ test('opt-in raster census records comparable WebGL2 state at bounded draw miles
   };
   const booleanValues = new Set(['DEPTH_WRITEMASK', 'SAMPLE_COVERAGE_INVERT']);
   const enumerations = [
-    'VIEWPORT', 'SCISSOR_BOX', 'BLEND_SRC_RGB', 'BLEND_DST_RGB',
-    'BLEND_SRC_ALPHA', 'BLEND_DST_ALPHA', 'BLEND_EQUATION_RGB',
-    'BLEND_EQUATION_ALPHA', 'BLEND_COLOR', 'COLOR_WRITEMASK',
-    'DEPTH_WRITEMASK', 'DEPTH_FUNC', 'DEPTH_RANGE', 'CULL_FACE_MODE',
-    'FRONT_FACE', 'POLYGON_OFFSET_FACTOR', 'POLYGON_OFFSET_UNITS',
-    'SAMPLE_COVERAGE_VALUE', 'SAMPLE_COVERAGE_INVERT',
+    'VIEWPORT',
+    'SCISSOR_BOX',
+    'BLEND_SRC_RGB',
+    'BLEND_DST_RGB',
+    'BLEND_SRC_ALPHA',
+    'BLEND_DST_ALPHA',
+    'BLEND_EQUATION_RGB',
+    'BLEND_EQUATION_ALPHA',
+    'BLEND_COLOR',
+    'COLOR_WRITEMASK',
+    'DEPTH_WRITEMASK',
+    'DEPTH_FUNC',
+    'DEPTH_RANGE',
+    'CULL_FACE_MODE',
+    'FRONT_FACE',
+    'POLYGON_OFFSET_FACTOR',
+    'POLYGON_OFFSET_UNITS',
+    'SAMPLE_COVERAGE_VALUE',
+    'SAMPLE_COVERAGE_INVERT',
     'FRAMEBUFFER_BINDING',
   ];
   const readings = new Map();
@@ -413,23 +427,26 @@ test('opt-in raster census records comparable WebGL2 state at bounded draw miles
       name === 'FRAMEBUFFER_BINDING'
         ? null
         : Object.hasOwn(values, name)
-        ? (name === 'COLOR_WRITEMASK'
-          ? values[name]
-          : new Float32Array(values[name]))
-        : booleanValues.has(name)
-          ? true
-          : 1,
+          ? name === 'COLOR_WRITEMASK'
+            ? values[name]
+            : new Float32Array(values[name])
+          : booleanValues.has(name)
+            ? true
+            : 1,
     );
   });
   const originalGet = h.gl.getParameter;
-  h.gl.getParameter = (key) => readings.has(key) ? readings.get(key) : originalGet(key);
+  h.gl.getParameter = (key) => (readings.has(key) ? readings.get(key) : originalGet(key));
   h.probe.arm({
     capturePhases: true,
     captureRasterState: true,
     capturePhaseDraws: [1],
   });
   const frame = h.frame(() => h.gl.drawArrays(h.gl.TRIANGLES, 0, 6));
-  assert.deepEqual(frame.phases.map((phase) => phase.afterDraw), [1, 1]);
+  assert.deepEqual(
+    frame.phases.map((phase) => phase.afterDraw),
+    [1, 1],
+  );
   assert.ok(frame.phases.every((phase) => validRendererRasterState(phase.rasterState)));
   assert.deepEqual(Array.from(frame.phases[0].rasterState.viewport), [0, 0, 531, 275]);
   assert.equal(frame.phases[0].rasterState.samples, 4);
