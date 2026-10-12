@@ -120,9 +120,34 @@ export function createProcessPanelController({
     )
       return targetExposureCache.exposed;
     const area = operationAreaGeometry(mode);
-    const exposed = new Set(exposedLayerIds(model, area, activeFace));
+    const exposed = new Set(
+      exposedLayerIds(model, area, activeFace === 'both' ? 'front' : activeFace),
+    );
     targetExposureCache = { model, elements: state.layout?.elements, signature, exposed };
     return exposed;
+  }
+
+  // Both uses the Front ID as its canonical target. The worker maps its
+  // linked independent Back layer during the atomic second face execution.
+  function eligibleBothTargets(model, exposed) {
+    const back = new Set(
+      exposedLayerIds(model, operationAreaGeometry($('operationArea').value), 'back'),
+    );
+    return new Set(
+      model.layers
+        .filter((layer) => {
+          if (!exposed.has(layer.id)) return false;
+          if (layer.id === 'base') return back.has('base');
+          const pair = model.layers.find((item) => item.id === layer.pairedLayerId);
+          return (
+            layer.processFace === 'front' &&
+            pair?.processFace === 'back' &&
+            pair.pairedLayerId === layer.id &&
+            back.has(pair.id)
+          );
+        })
+        .map((layer) => layer.id),
+    );
   }
 
   function updateGrowTargets() {
@@ -132,9 +157,10 @@ export function createProcessPanelController({
     select.innerHTML = '';
 
     const model = getModel(),
-      exposed = targetExposure();
+      exposed = targetExposure(),
+      targets = getActiveFace() === 'both' ? eligibleBothTargets(model, exposed) : exposed;
     for (const layer of model.layers) {
-      if (!exposed.has(layer.id)) continue;
+      if (!targets.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
     }
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
@@ -151,9 +177,10 @@ export function createProcessPanelController({
     select.add(new Option(requiresMaterial ? 'Select material…' : 'All exposed materials', ''));
 
     const model = getModel(),
-      exposed = targetExposure();
+      exposed = targetExposure(),
+      targets = getActiveFace() === 'both' ? eligibleBothTargets(model, exposed) : exposed;
     for (const layer of model.layers) {
-      if (!exposed.has(layer.id)) continue;
+      if (!targets.has(layer.id)) continue;
       select.add(new Option(layer.name, layer.id));
     }
     if ([...select.options].some((option) => option.value === previous)) select.value = previous;
@@ -251,10 +278,12 @@ export function createProcessPanelController({
     const model = getModel(),
       activeFace = getActiveFace(),
       materialExists = hasMaterial(model);
-    const missingSacrificial = liftoff && !$('liftoffTargetLayer').value;
+    const missingSacrificial = liftoff && !$('liftoffTargetLayer').value,
+      unsupportedBoth = activeFace === 'both' && (liftoff || planarizeEtch);
     $('applyOperationBtn').disabled =
       (!materialExists && !recordOnly) ||
       missingSacrificial ||
+      unsupportedBoth ||
       Boolean(processTaskController?.isBusy());
     if (liftoff) {
       $('liftoffTargetHint').textContent = $('liftoffTargetLayer').disabled
@@ -413,6 +442,10 @@ export function createProcessPanelController({
                     ? `Conformal Extend continues the target material over every exposed surface in the selected area, then follows physical steps and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
                     : `Conformal coverage follows exposed surfaces, physical steps, and sidewalls.${$('operationArea').value === 'full' ? '' : ' Process-mask edges remain hard-clipped.'} On Rough/Pyramid surfaces, the displayed conformal topography is a visual approximation.`
                   : 'Directional coverage follows the selected footprint.';
+    if (unsupportedBoth) {
+      $('operationNote').textContent =
+        'Both faces are unsupported for Lift-off and absolute-Z Planarize. Select Front or Back.';
+    }
   }
 
   function optionalNumber(id, label) {
@@ -835,6 +868,15 @@ export function createProcessPanelController({
 
     const type = $('operationType').value;
     if (type === 'record') return recordProcessStep();
+    if (
+      processFace === 'both' &&
+      (type === 'liftoff' || (type === 'etch' && selectedEtchProfile() === 'planarize'))
+    ) {
+      return status(
+        'Both faces are unsupported for Lift-off and absolute-Z Planarize. Select Front or Back.',
+        'warning',
+      );
+    }
 
     const etchProfile = type === 'etch' ? selectedEtchProfile() : 'directional',
       planarizeEtch = type === 'etch' && etchProfile === 'planarize',
