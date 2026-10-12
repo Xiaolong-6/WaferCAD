@@ -1,0 +1,51 @@
+# One-shot exception approved by the repository owner on 2026-10-12.
+# Bypasses unfinished release acceptance only for the explicitly named push.
+# Ordinary releases continue to use pages.yml and its full same-SHA gate.
+name: Emergency Pages deployment (2026-10-12)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/emergency-pages-20261012.yml'
+
+permissions:
+  contents: read
+
+# Cancel an older publication DAG to prevent it deploying a stale revision later.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  emergency-deploy:
+    name: Publish owner-approved main immediately
+    if: ${{ github.event.head_commit.message == 'release: one-off emergency Pages publish 2026-10-12' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout exact emergency revision
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Stamp the emergency build commit
+        shell: bash
+        run: |
+          printf '{"commit":"%s"}\\n' "$GITHUB_SHA" > site/build-info.json
+          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Publish emergency main build
+        id: deployment
+        uses: actions/deploy-pages@v4
