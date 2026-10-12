@@ -249,6 +249,9 @@ test('workspace session fails closed without shared storage and recovers only af
   assert.equal(states.at(-1).storageUnavailable, true);
 
   blocked = false;
+  renew?.();
+  assert.equal(states.at(-1).storageUnavailable, false);
+  assert.equal(first.canWrite(), false, 'storage restoration never silently takes ownership');
   assert.equal(first.takeOver(), true);
   assert.equal(first.hasWriteLease(), true);
   assert.equal(second.start(), false);
