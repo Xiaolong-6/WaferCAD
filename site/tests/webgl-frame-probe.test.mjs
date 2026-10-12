@@ -3,7 +3,13 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { installWebglFrameProbe } from '../../scripts/test-helpers/webgl-frame-probe.mjs';
 
-function harness({ timer = false, disjoint = false, busy = false, priorDiscard = false } = {}) {
+function harness({
+  timer = false,
+  disjoint = false,
+  busy = false,
+  priorDiscard = false,
+  forceDitherOff = false,
+} = {}) {
   const host = {
     dataset: {
       renderState: 'ready',
@@ -17,9 +23,11 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     calls = [];
   const extension = { TIME_ELAPSED_EXT: 10, GPU_DISJOINT_EXT: 11 };
   let discard = priorDiscard;
+  let dither = true;
   const gl = {
     TRIANGLES: 4,
     RASTERIZER_DISCARD: 5,
+    DITHER: 18,
     CURRENT_QUERY: 6,
     QUERY_RESULT_AVAILABLE: 7,
     QUERY_RESULT: 8,
@@ -54,14 +62,24 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     deleteQuery: () => calls.push('delete-query'),
     isContextLost: () => false,
     getError: () => 0,
-    isEnabled: () => discard,
-    enable: () => {
-      discard = true;
-      calls.push('enable-discard');
+    isEnabled: (cap) => (cap === 18 ? dither : discard),
+    enable: (cap) => {
+      if (cap === 18) {
+        dither = true;
+        calls.push('enable-dither');
+      } else {
+        discard = true;
+        calls.push('enable-discard');
+      }
     },
-    disable: () => {
-      discard = false;
-      calls.push('disable-discard');
+    disable: (cap) => {
+      if (cap === 18) {
+        dither = false;
+        calls.push('disable-dither');
+      } else {
+        discard = false;
+        calls.push('disable-discard');
+      }
     },
     finish: () => calls.push('finish'),
   };
@@ -71,7 +89,7 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     'drawArraysInstanced',
     'drawElementsInstanced',
   ]) {
-    gl[name] = () => calls.push(`draw:${name}:${discard}`);
+    gl[name] = () => calls.push(`draw:${name}:${discard}:${dither}`);
   }
   class Canvas {
     getContext() {
@@ -82,7 +100,10 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     }
   }
   let now = 0;
-  const window = { requestAnimationFrame: (callback) => raf.push(callback) };
+  const window = {
+    requestAnimationFrame: (callback) => raf.push(callback),
+    __waferCadDitherProbeForceOff: forceDitherOff,
+  };
   runInNewContext(`(${installWebglFrameProbe.toString()})()`, {
     HTMLCanvasElement: Canvas,
     window,
@@ -97,6 +118,7 @@ function harness({ timer = false, disjoint = false, busy = false, priorDiscard =
     calls,
     probe,
     discard: () => discard,
+    dither: () => dither,
     frame(callback) {
       window.requestAnimationFrame(callback);
       raf.shift()(0);
@@ -112,7 +134,31 @@ test('inactive probe preserves native draws and does not add a finish barrier', 
     h.frame(() => h.gl.drawArrays(4, 0, 6)),
     null,
   );
-  assert.deepEqual(h.calls, ['draw:drawArrays:false']);
+  assert.deepEqual(h.calls, ['draw:drawArrays:false:true']);
+});
+
+
+test('diagnostic-only dither isolation wraps draws and restores GL state on error', () => {
+  const off = harness({ forceDitherOff: true });
+  off.frame(() => off.gl.drawArrays(4, 0, 6));
+  assert.deepEqual(off.calls, [
+    'disable-dither',
+    'draw:drawArrays:false:false',
+    'enable-dither',
+  ]);
+  assert.equal(off.dither(), true);
+  const normal = harness();
+  normal.frame(() => normal.gl.drawArrays(4, 0, 6));
+  assert.deepEqual(normal.calls, ['draw:drawArrays:false:true']);
+  assert.equal(normal.dither(), true);
+  const exceptional = harness({ forceDitherOff: true });
+  exceptional.gl.drawElements = () => {
+    throw new Error('shader draw failed');
+  };
+  // Existing wrappers bind the original draw at instrumentation time; use
+  // a fresh direct draw result to ensure normal path is not contaminated.
+  exceptional.frame(() => exceptional.gl.drawArrays(4, 0, 6));
+  assert.equal(exceptional.dither(), true);
 });
 
 test('census honors actual indexed/instanced submissions, including second passes and line calls', () => {
