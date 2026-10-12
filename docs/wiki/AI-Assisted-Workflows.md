@@ -8,6 +8,20 @@ Use an AI assistant to turn a research paper, a process description, a mask layo
 
 ## 1. Choose your starting point
 
+```mermaid
+flowchart LR
+  Inputs["Paper + SI / GDS-OAS / process flow / sketch"] --> AI["AI: extract facts and explicit assumptions"]
+  AI --> Mask["Mask plan → external GDS/OAS or in-app Draw"]
+  AI --> Recipe["Supported Recipe Code"]
+  Mask --> Import["Import/verify Cell, Layer and µm coordinates"]
+  Import --> Run["Apply code → Validate → Run All"]
+  Recipe --> Run
+  Run --> Inspect["Section / 3D / History / Export-reimport"]
+```
+
+_This is a human-reviewed file handoff, **not** an automatic connection between an AI service and the WaferCAD browser. Geometry and acceptance are checked in WaferCAD after import._
+
+
 | I have... | Attach to the AI conversation | Ask for... | Deliverable to open in WaferCAD |
 | --- | --- | --- | --- |
 | A published device | Article PDF, relevant figures, supplementary information (SI) and Methods | Source-derived geometry, mask specification, process sequence, code | GDSII/OASIS mask plus Recipe |
@@ -32,6 +46,10 @@ Provide these details before generating executable code:
 ## 2. Workflow A — Research paper to a process model
 
 **Example task:** reconstruct a patterned oxide/contact-window structure described in a semiconductor paper. The numerical values below are **illustrative**, not sourced process parameters from a particular publication.
+
+![Actual WaferCAD 3D preview of its shipped paper-derived photodetector reconstruction](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
+
+_An **actual WaferCAD literature-reconstruction output** (photodetector example), showing the kind of inspectable model AI can help you prepare. This preview is **not** the oxide-window exercise below and is **not** the paper's original microscopy image. [Open the documented example](Examples-and-Modeling-Limits)._
 
 **Upload:** (1) the paper PDF, (2) relevant SI/Methods, (3) screenshots of the cross-section and top-view layout, and (4) an existing GDS/OAS file if the authors provide one. If no layout exists, include a dimensioned sketch or approximate dimensions and ask for an explicitly illustrative mask.
 
@@ -100,9 +118,17 @@ record({
 snapshot('02 - Passivated');
 ```
 
+![Actual Process Guide schematic showing the before/after of conformal deposition](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/docs/wiki/assets/process/deposit-conformal.svg?sanitize=true)
+
+_Conceptual **conformal** coverage on exposed horizontal/sidewall faces; the Recipe's specific flat Base does not necessarily expose sidewalls. The diagram is not a screenshot of the result above._
+
 The `record()` statement adds a History entry; it does not calculate an annealing reaction. For mask-conditioned etching, continue with the [complete code tutorial](Recipe-Code-Tutorial).
 
 ## 3. Workflow B — Existing mask and process flow to Recipe code
+
+![Mask visualization from the WaferCAD product's own preview assets](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/example-previews/visualization-mask.jpg)
+
+_This is a **WaferCAD Mask-view reference**, not the contents of your uploaded GDS/OAS. Inspect the actual imported file's Cell, Layer/Datatype, geometry footprint and alignment before creating the Recipe._
 
 **Upload:** original `.gds`/`.gdsii` or `.oas`/`.oasis`, the step-by-step process flow (PDF, spreadsheet or plain text), Base size/thickness/material, and a layer map. Helpful extras include a top-view screenshot, cross-section and intended mask alignment.
 
@@ -166,7 +192,11 @@ To use a **Draw Mask**, create shapes in the Mask view and use **Use current Mas
 
 ## 4. Workflow C — Device idea to mask and process
 
-Start with a dimensioned sketch: for example, four different TiO₂ nanopillar sizes on a substrate. The AI should return a **parameter/assumption table**, not claim that the dimensions are an optical design optimization.
+Start with a dimensioned sketch: for example, four different TiO₂ meta-atom geometries on a substrate. The AI should return a **parameter/assumption table**, not claim that the dimensions are an optical design optimization.
+
+![Illustrative four-unit TiO2 meta-atom cross-sections included with WaferCAD](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/tio2-metalens-four-unit-schematic.svg)
+
+_The **actual example's illustrative schematic** contains four geometry families; it is neither the authors' optimized GDS nor a computed optical phase map. See the [metalens example and its assumptions](Examples-and-Modeling-Limits)._
 
 **Upload:** sketch or diagram, substrate footprint, target dimensions and material stack, desired number of cells/features, allowed mask layers, and any process constraints. If an actual publication is the inspiration, include it and distinguish its reported parameters from your proposed design.
 
@@ -223,6 +253,19 @@ Recipe (or precise UI correction), and a test that would have caught it.
 Do not hide errors by changing the visual baseline, deleting History,
 or replacing known dimensions with guessed values.
 ```
+
+```mermaid
+flowchart TD
+  Fail["Unexpected result or failed Recipe"] --> Parse{"Apply code / Validate error?"}
+  Parse -->|Yes| Code["Check supported syntax, step fields and exact errors"]
+  Parse -->|No| Mask["Check Cell / layer:datatype / polarity / Mask ROI"]
+  Mask --> Section["Place A–B through affected geometry; inspect Section 1:1"]
+  Section --> Run["Rebuild intended Base → replay and compare steps"]
+  Code --> Run
+  Run --> Export["Export .wafercad + report earliest mismatching Step"]
+```
+
+_Use this order to isolate the failure; the diagram does not imply that every unexpected render is a parser defect._
 
 **Common failure checks:** `Validate` confirms syntax and some dependencies but is not geometric certification. An incorrect A–B line can miss a correctly etched opening. Running a Recipe using **Continue current model** can deposit the same material twice. `Stop` retains steps already committed. A true clean-replay check uses the intended Base plus imported Masks.
 
