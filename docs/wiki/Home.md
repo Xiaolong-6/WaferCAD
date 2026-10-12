@@ -22,7 +22,7 @@ _Real preview of a bundled device. Your first structure will be simpler._
 
 **I want to build a process sequence.** Read [Process and Recipes](Process-and-Recipes); then the [Recipe Code Tutorial](Recipe-Code-Tutorial).
 
-**An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 18 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
+**An operation gave me the wrong geometry.** Start with [Troubleshooting](Troubleshooting). For all 19 before/after operation diagrams, use [Illustrated Process Operations](Process-Operations).
 
 ## Three things to understand
 
