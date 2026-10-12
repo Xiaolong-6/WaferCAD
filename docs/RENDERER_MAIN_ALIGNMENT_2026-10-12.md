@@ -112,3 +112,35 @@ merge and no approved visual baseline changes. This work adds no new
 physical-GPU capture or performance claim. The prior RTX 3060
 fresh-context mismatch is still a strict hardware acceptance blocker,
 and the no-MSAA experiment remains a hypothesis test rather than approval.
+
+## R8 follow-up: main #179 Manual Both and UI compatibility
+
+- Current upstream main at reconciliation:
+  `d0161e0c6c4234a55e3ef807795f62403c6ad943` (#179).
+- V3 merged this exact upstream commit through two-parent merge
+  `b2fe274957ed9020f00b6e4e4ec5cdb2440601ba`; V4 then inherited
+  V3 in merge `117deea6189be503d07c2f9a6588b33e5cd212a8`.
+  GitHub ancestry checks showed main → V3 → V4 with zero commits behind.
+  No force push or main mutation was performed.
+- Reconciled exactly 11 #179 paths. `docs/README.md` retains the
+  R8 diagnostic links and adds the Manual Both integration handoff.
+  `scripts/v2/check-m4-projects.mjs` takes the main #179 download
+  event + `noWaitAfter` behavior, retaining real project export and
+  round-trip scientific comparisons.
+- The production Process UI's Both target, independent paired layer
+  IDs, paired Extend/Etch targeting, fail-closed unsupported operations,
+  Recipe restoration and browser regression were inherited from main.
+  This does not alter the renderer's material ownership algorithms.
+- V4 integration workflow `.github/workflows/renderer-v4-pr177-compat.yml`
+  now validates the real Manual Both end-to-end scenario alongside
+  3D/Legacy and renderer screenshot checks on its temporary merge tree.
+  Failure artifacts include `test-results/ui-v2-manual-both/`.
+  The workflow remains in its historic filename but is labeled
+  current-main compatibility.
+- The latest V3 Quality/Browser/UI suites and the expanded V4 compatibility
+  run were **in progress** when this handoff section was authored; look up
+  GitHub Actions by the exact SHAs before treating them as accepted.
+  Hardware strict framebuffer/screenshot parity remains independently
+  blocked by prior fresh-context evidence. No GPU benchmark, production
+  optimization activation or approved visual-baseline change is claimed.
+
