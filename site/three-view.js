@@ -108,6 +108,8 @@ export function createThreeView({
   let scene = null;
   let camera = null;
   let controls = null;
+  let gestureMode = null;
+  let gestureWheelZoom = null;
   let group = null;
   let axesHelper = null;
   let ready = false;
@@ -198,6 +200,27 @@ export function createThreeView({
       target: [controls.target.x, controls.target.y, controls.target.z],
       fov: camera.fov,
     };
+  }
+
+  // PR177's UI v2 uses the existing OrbitControls instance.
+  // Legacy callers never opt in and retain the original interaction policy.
+  function setGestureMode(mode, { wheelZoom = null } = {}) {
+    if (!['rotate', 'pan', 'zoom', 'none'].includes(mode)) return false;
+    gestureMode = mode;
+    gestureWheelZoom = wheelZoom;
+    if (!controls || !THREE) return true;
+    controls.mouseButtons.LEFT =
+      mode === 'rotate'
+        ? THREE.MOUSE.ROTATE
+        : mode === 'pan'
+          ? THREE.MOUSE.PAN
+          : mode === 'zoom'
+            ? THREE.MOUSE.DOLLY
+            : null;
+    controls.touches.ONE =
+      mode === 'rotate' ? THREE.TOUCH.ROTATE : mode === 'pan' ? THREE.TOUCH.PAN : null;
+    controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+    return true;
   }
 
   function setViewState(value) {
@@ -818,7 +841,7 @@ export function createThreeView({
         host.dataset.transparentArrayLodTier === 'exact' &&
         Number(host.dataset.arrayInstances || 0) >= 64;
       const wasDampingEnabled = Boolean(controls?.enableDamping);
-      if (controls) controls.enableDamping = !heavyExactTransparency;
+      if (controls) controls.enableDamping = gestureMode === null && !heavyExactTransparency;
       host.dataset.cameraDampingEnabled = String(Boolean(controls?.enableDamping));
       // OrbitControls already updates the camera on pointer/fit/setViewState.
       // Calling update() on every *idle* exact frame, with damping disabled,
@@ -2587,7 +2610,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
           camera.up.set(0, 0, 1);
           camera.position.set(115, -125, 95);
 
+          renderer.domElement.addEventListener(
+            'wheel',
+            (event) => {
+              if (gestureMode !== null && !(gestureWheelZoom ?? gestureMode === 'zoom')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+              }
+            },
+            { capture: true, passive: false },
+          );
           controls = new OrbitControls(camera, renderer.domElement);
+          if (gestureMode !== null) setGestureMode(gestureMode, { wheelZoom: gestureWheelZoom });
           controls.target.set(0, 0, 0);
           controls.enableDamping = true;
           controls.addEventListener('start', () => {
@@ -4176,6 +4210,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     fit,
     getViewState,
     setViewState,
+    setGestureMode,
     updateZCollapse,
     exportGlb,
     capturePng,
