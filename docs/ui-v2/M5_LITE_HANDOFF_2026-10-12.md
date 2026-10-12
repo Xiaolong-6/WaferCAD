@@ -3,13 +3,17 @@
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
-Product revision: `9c19907e2111cd11b3f4dca56c191e89e5f96d00`.
+Product revision: `b42c24aa46485cf7dba3fee967117da472115fad`.
 Startup adaptation is in `f0078376`; default entry promotion is in `0e746cb1`;
 remaining browser entry fixes and formatting normalization are in `643417c8`.
 `5ce8f7e7` uses the shared versioned Example URL and existing Project worker so
 Welcome-prefetched bytes are reused by the new default workstation.
 `9c19907e` places the Legacy switch in the wrapping status controls, without
 covering the existing footer links.
+The final departure patch requests save on tab hiding/unload, preserves view
+preferences before releasing the lease, and guards pending structural edits or
+active tasks with the browser unload confirmation. A cached page reloads to
+reestablish a live session.
 
 - `site/app.html` opens the v2 Workstation. `site/app-legacy.html` preserves the previous application page and its relative assets.
 - Welcome opens Empty, full canonical Examples, and staged imports in v2. Embedded previews use Legacy and retain their source/view parameters on refresh.
@@ -32,15 +36,18 @@ Tests use isolated browser storage. No user browser data was edited.
 - `WAFERCAD_URL=http://127.0.0.1:4174 node scripts/example-open-benchmark.mjs photodetector-literature 1 --headless`: passed on the real default v2 route with the original cache assertions. The warmed project used 690,775 cached body bytes and transferred 0 bytes; its 46 History nodes were decoded by the Project worker. This cache owner deliberately uses no Playwright routes.
 - Legacy `npm run test:ui:workstation`: passed after the route migration, including stalled Three.js and navigation scenarios.
 - Legacy `npm run test:ui:persistence`: passed after the route migration, including recovery checkpoints, staged handoffs, writer takeover and failed-save protection.
+- The departure regression proves pending structural edits cancel a silent unload, start a final save, and reload with exact geometry and 46 History nodes.
+- Published preview on `cf139be1`: actual `preview/app.html` loaded the full Photodetector through its Project worker; the product link navigated to `preview/app-legacy.html` and restored exact geometry/Variants with no page errors. Production root remained at main revision `27e38640`.
 - Stage C synchronization: passed at 1440, 1024, 768 and 390 px, plus 1024 px touch simulation.
 - A focused Legacy-link layout check passed at 1440 and 390 px: link visible inside the footer, within the viewport, with no horizontal overflow.
-- M2 live parity: passed at the four widths before the small interaction fixture migration.
+- M2 live parity: passed at the four widths in CI on `cf139be1`, using the complete small fixture.
 - M4 projects: passed for M3D, Photodetector, canonical full Metalens and its compatibility alias.
 - Focused route-sensitive Node tests: 49 passed; startup-controller/CI-planner/Welcome tests: 38 passed.
 
-These local results are distinct from final-head CI. Review-interactions originally
-ran out of resources while repeatedly importing the complete Metalens array;
-its final owner now uses the complete four-unit Process fixture and awaits CI.
+These local results are distinct from final-head CI. Review-interactions now
+passes locally at all four widths plus touch, including Electrical controls,
+with the complete four-unit fixture saved before reload checks. Its final-head
+CI result remains pending.
 No approved visual baseline or scientific assertion was relaxed.
 
 ## PR and release status
