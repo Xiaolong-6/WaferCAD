@@ -3,6 +3,14 @@ const TAB_ID_KEY = 'wafercad.workspace.tab.v1';
 const DEFAULT_LEASE_MS = 7000;
 const DEFAULT_RENEW_MS = 2500;
 
+function safeLocalStorage() {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function parseLease(raw) {
   try {
     const value = JSON.parse(raw || 'null');
@@ -41,7 +49,7 @@ function persistentTabId(windowRef) {
 }
 
 export function createWorkspaceSessionController({
-  storage = globalThis.localStorage,
+  storage = safeLocalStorage(),
   windowRef = globalThis.window,
   now = () => Date.now(),
   leaseMs = DEFAULT_LEASE_MS,
@@ -51,7 +59,19 @@ export function createWorkspaceSessionController({
 } = {}) {
   const resolvedTabId = tabId || persistentTabId(windowRef);
   let writable = false;
+  let storageUnavailable = false;
   let timer = null;
+
+  function storageAccessible() {
+    try {
+      if (typeof storage?.getItem !== 'function' || typeof storage?.setItem !== 'function')
+        return false;
+      storage.getItem(LEASE_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   function currentLease() {
     try {
@@ -71,6 +91,7 @@ export function createWorkspaceSessionController({
       writable,
       tabId: resolvedTabId,
       ownerTabId: leaseIsActive(lease) ? lease.tabId : null,
+      storageUnavailable,
     });
   }
 
@@ -90,6 +111,13 @@ export function createWorkspaceSessionController({
   }
 
   function refreshOwnership() {
+    if (!storageAccessible()) {
+      writable = false;
+      storageUnavailable = true;
+      emit();
+      return false;
+    }
+    storageUnavailable = false;
     const lease = currentLease();
     if (writable) {
       if (leaseIsActive(lease) && lease.tabId !== resolvedTabId) {
@@ -97,7 +125,12 @@ export function createWorkspaceSessionController({
         emit();
         return false;
       }
-      if (!writeLease()) emit();
+      if (!writeLease()) {
+        writable = false;
+        storageUnavailable = true;
+        emit();
+        return false;
+      }
       return true;
     }
     // A tab that started as a non-owner never acquires the workspace silently.
@@ -107,6 +140,15 @@ export function createWorkspaceSessionController({
   }
 
   function tryAcquire({ force = false } = {}) {
+    if (!storageAccessible()) {
+      // If IndexedDB is still writable, a second tab could overwrite it without
+      // a shared lease. Keep editing possible, but refuse all persistent writes.
+      writable = false;
+      storageUnavailable = true;
+      emit();
+      return false;
+    }
+    storageUnavailable = false;
     const lease = currentLease();
     if (!force && leaseIsActive(lease) && lease.tabId !== resolvedTabId) {
       writable = false;
@@ -115,12 +157,10 @@ export function createWorkspaceSessionController({
     }
 
     if (!writeLease()) {
-      // Privacy/sandbox settings can make localStorage unavailable. In that
-      // case cross-tab coordination is impossible, so keep the editor usable
-      // and simply operate as a local single-tab session.
-      writable = true;
+      writable = false;
+      storageUnavailable = true;
       emit();
-      return true;
+      return false;
     }
 
     const confirmed = currentLease();
@@ -134,18 +174,10 @@ export function createWorkspaceSessionController({
   }
 
   function hasWriteLease() {
-    if (!writable) return false;
-    try {
-      if (typeof storage?.getItem !== 'function' || typeof storage?.setItem !== 'function') {
-        return true;
-      }
-      const lease = currentLease();
-      if (!leaseIsActive(lease)) return true;
-      return lease.tabId === resolvedTabId;
-    } catch {
-      // Cross-tab coordination is unavailable; preserve the single-tab fallback.
-      return true;
-    }
+    if (!writable || !storageAccessible()) return false;
+    const lease = currentLease();
+    // Missing or expired ownership is never a valid storage-commit token.
+    return leaseIsActive(lease) && lease.tabId === resolvedTabId;
   }
 
   function release() {
