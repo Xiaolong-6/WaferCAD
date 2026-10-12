@@ -1,5 +1,0 @@
-# Archived UI v2 report: FULL_PARITY_AUDIT_2026-10-09.md
-
-The original historical report is now in the [UI v2 archive](../archive/ui-v2/FULL_PARITY_AUDIT_2026-10-09.md). It is not the current product acceptance status.
-
-See the [M5-Lite handoff](M5_LITE_HANDOFF_2026-10-12.md) and [documentation map](../README.md).
