@@ -14,18 +14,22 @@ try {
   await server.verify();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  const response = await page.goto(server.url + '/app.html?rendererV3RoiTrace=1', {
+  const response = await page.goto(server.entryUrl + '?rendererV3RoiTrace=1', {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
-  assert.equal(response?.status(), 200, 'Chromium failed to navigate to app.html');
+  assert.equal(response?.status(), 200, 'Chromium failed to navigate to scientific renderer entry');
   assert.ok(
-    (await page.locator('html').count()) === 1,
-    'Chromium did not receive an HTML document',
+    (await page.locator('#threeHost').count()) === 1,
+    'Chromium did not receive the retained scientific 3D host',
   );
   console.log(
     'RENDERER_HTTP_PREFLIGHT_PASS',
-    JSON.stringify({ platform: process.platform, status: response.status() }),
+    JSON.stringify({
+      platform: process.platform,
+      entryName: server.entryName,
+      status: response.status(),
+    }),
   );
 } catch (error) {
   console.error('RENDERER_HTTP_PREFLIGHT_FAIL', String(error));

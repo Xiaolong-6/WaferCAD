@@ -3,6 +3,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { isScientificRendererWorkstation } from './renderer-workstation-route.mjs';
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -21,10 +22,25 @@ const mimeTypes = {
 
 export async function startRendererHardwareSite(worktree, diagnostic = () => {}) {
   const site = resolve(worktree, 'site');
-  const entrypoint = resolve(site, 'app.html');
-  const page = await stat(entrypoint);
-  if (!page.isFile() || page.size < 1000) {
-    throw new Error('Missing or truncated app.html in worktree ' + worktree);
+  let entryName = null;
+  for (const candidate of ['app-legacy.html', 'app.html']) {
+    try {
+      const entrypoint = resolve(site, candidate);
+      const page = await stat(entrypoint);
+      if (
+        page.isFile() &&
+        page.size >= 1000 &&
+        isScientificRendererWorkstation(await readFile(entrypoint, 'utf8'))
+      ) {
+        entryName = candidate;
+        break;
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+  if (!entryName) {
+    throw new Error('Scientific renderer entry absent: app-legacy.html or old app.html required');
   }
   const server = createServer(async (request, response) => {
     let target = null;
@@ -66,22 +82,26 @@ export async function startRendererHardwareSite(worktree, diagnostic = () => {})
   const url = 'http://127.0.0.1:' + server.address().port;
   return {
     url,
+    entryName,
+    entryUrl: url + '/' + entryName,
     async verify() {
-      const response = await fetch(url + '/app.html', {
+      const response = await fetch(url + '/' + entryName, {
         signal: globalThis.AbortSignal.timeout(10000),
       });
       const body = await response.text();
-      if (response.status !== 200 || !body.includes('<html')) {
+      if (response.status !== 200 || !isScientificRendererWorkstation(body)) {
         throw new Error(
           'Static worktree preflight failed: ' +
             response.status +
             ' ' +
             url +
-            '/app.html, body=' +
+            '/' +
+            entryName +
+            ', body=' +
             body.slice(0, 120),
         );
       }
-      diagnostic({ status: response.status, path: '/app.html', bytes: body.length });
+      diagnostic({ status: response.status, path: '/' + entryName, bytes: body.length });
     },
     close: () => new Promise((done) => server.close(done)),
   };

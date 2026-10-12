@@ -13,12 +13,16 @@ test('isolated server preflight serves actual app.html and rejects path escape',
   let server;
   try {
     await mkdir(join(temp, 'site'));
-    const app = '<!doctype html><html><body>' + 'x'.repeat(1200) + '</body></html>';
+    const app =
+      '<!doctype html><html><body id="threeHost"><script src="app.js"></script>' +
+      'x'.repeat(1200) +
+      '</body></html>';
     await writeFile(join(temp, 'site', 'app.html'), app);
     await writeFile(join(temp, 'site', 'index.html'), app);
     server = await startRendererHardwareSite(temp, (value) => diagnostics.push(value));
     await server.verify();
-    const response = await fetch(server.url + '/app.html?rendererV3RoiTrace=1');
+    assert.equal(server.entryName, 'app.html');
+    const response = await fetch(server.entryUrl + '?rendererV3RoiTrace=1');
     assert.equal(response.status, 200);
     assert.equal(await response.text(), app);
     assert.equal((await fetch(server.url + '/%5cprivate')).status, 403);
@@ -27,6 +31,40 @@ test('isolated server preflight serves actual app.html and rejects path escape',
     assert.ok(diagnostics.some((value) => value.status === 404 && value.error));
   } finally {
     if (server) await server.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test('after PR177 the hardware preflight checks Legacy and keeps v2 default intact', async () => {
+  const temp = await mkdtemp(join(tmpdir(), 'wafercad-legacy-http-'));
+  let server;
+  try {
+    await mkdir(join(temp, 'site'));
+    const v2 = '<!doctype html><html data-ui="v2"><main id="app-root"></main></html>';
+    const legacy =
+      '<!doctype html><html><div id="threeHost"></div><script src="app.js"></script>' +
+      'x'.repeat(1200) +
+      '</html>';
+    await writeFile(join(temp, 'site', 'app.html'), v2);
+    await writeFile(join(temp, 'site', 'app-legacy.html'), legacy);
+    server = await startRendererHardwareSite(temp);
+    assert.equal(server.entryName, 'app-legacy.html');
+    await server.verify();
+    assert.equal((await fetch(server.entryUrl)).status, 200);
+    assert.equal(await (await fetch(server.url + '/app.html')).text(), v2);
+  } finally {
+    if (server) await server.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test('post-PR177 worktree without Legacy science DOM fails before a GPU launch', async () => {
+  const temp = await mkdtemp(join(tmpdir(), 'wafercad-missing-legacy-'));
+  try {
+    await mkdir(join(temp, 'site'));
+    await writeFile(join(temp, 'site', 'app.html'), '<html data-ui="v2"></html>');
+    await assert.rejects(startRendererHardwareSite(temp), /Scientific renderer entry absent/);
+  } finally {
     await rm(temp, { recursive: true, force: true });
   }
 });
