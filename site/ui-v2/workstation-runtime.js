@@ -7,6 +7,7 @@ import { createSnapshotManager } from '../workspace-snapshots.js';
 import { createModel } from '../model.js';
 import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
+import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
 
 export async function loadWorkstationProject() {
   const model = createModel();
@@ -29,7 +30,7 @@ export async function loadWorkstationProject() {
   };
 }
 
-export async function loadBundledProject(id) {
+export async function loadBundledProject(id, readProject = readProjectFile) {
   const aliases = {
     m3d: 'm3d-selfpowered-heterogeneous-ic',
     photodetector: 'photodetector-literature',
@@ -40,13 +41,24 @@ export async function loadBundledProject(id) {
   const example = BUNDLED_EXAMPLES.find((entry) => entry.id === (aliases[id] || id));
   if (!example) throw Error(`Unknown example: ${id}`);
   const path = example.path.replace(/^\.\//, '');
-  const response = await fetch(path);
+  let version = new URL(import.meta.url).searchParams.get('v') || 'local';
+  if (version === 'local') {
+    try {
+      const build = await fetch('./build-info.json', { cache: 'no-store' });
+      if (build.ok) version = String((await build.json()).commit || version);
+    } catch {}
+  }
+  const response = await fetch(versionedExampleAssetPath(example.path, version), {
+    cache: 'default',
+  });
   if (!response.ok) throw Error(`Project: HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
-  return { source: path, hash, data: await readProjectFile(new Blob([bytes])) };
+  const data = await readProject(bufferBackedProjectFile(bytes, example.filename));
+  if (!data) throw Error('The example project was not imported.');
+  return { source: path, hash, data };
 }
 
 export function createWorkstationRuntime(project) {

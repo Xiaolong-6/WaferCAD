@@ -845,6 +845,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
         } else if (intent === 'example') {
           const bundled = await loadBundledProject(
             params.get('example') || 'photodetector-literature',
+            domain.bindings.readProjectFileTask,
           );
           domain.load(bundled.data);
           history.importRecords(bundled.data.snapshots || [], bundled.data.snapshotBranches);
