@@ -44,11 +44,13 @@ try {
   report.stage = 'load-fixture';
   await page.goto(rendererWorkstationUrl + '?rendererV3RoiTrace=1');
   await waitForAppReady(page);
-  await page.locator('#openProjectInput').setInputFiles(
-    fileURLToPath(
-      new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-    ),
-  );
+  await page
+    .locator('#openProjectInput')
+    .setInputFiles(
+      fileURLToPath(
+        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+      ),
+    );
   await chooseConfirmation(page);
   await page.waitForFunction(
     () => document.getElementById('statusText')?.textContent?.startsWith('Opened '),
