@@ -26,7 +26,9 @@ try {
   assert.equal(initial.model.layers.length, 1);
   await page.locator('[data-action="domain:process"]').click();
   const face = page.locator('#faceToggleBtn');
-  const faceOptions = await face.locator('option').evaluateAll((nodes) => nodes.map((n) => n.value));
+  const faceOptions = await face
+    .locator('option')
+    .evaluateAll((nodes) => nodes.map((n) => n.value));
   assert.deepEqual(faceOptions, ['front', 'back', 'both']);
   await face.selectOption('both');
   await page.locator('#operationArea').selectOption('full');
