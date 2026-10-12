@@ -1,6 +1,8 @@
 # Documentation architecture and maintenance
 
-## Authority and readers\n\n**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
+## Authority and readers
+
+**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 
@@ -38,7 +40,7 @@ flowchart LR
 - Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference **and all affected SVG assets** with their sources. The old `site/guide/` route is a compatibility redirect to the Wiki.
 - The same command generates `site/ui-v2/process-guide.generated.js`, a classic-script bridge used only by the portable mock preview, including direct `file://` boot. Never hand-edit its catalog or diagrams. `docs:check` rejects bridge drift; `process-guide.test.mjs` compares all 19 Before/After pairs to the canonical modules. This does not connect production Process controllers or alter geometry.
 - Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
-- Edit other Wiki pages directly. `site/bundled-examples.js` owns the six-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
+- `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
 - [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
@@ -47,7 +49,7 @@ flowchart LR
 1. Identify the owning engineering contract and affected manual task, including the English Recipe tutorial and AI-assisted guide when syntax/units change.
 2. Check the current implementation and relevant tests; preserve inferred-versus-source-reported scientific provenance.
 3. Update authored pages, regenerate only derived content, and keep previous evidence revision-specific.
-4. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable from `docs/README.md`; do not move historical paths merely to reorganize the index.
+4. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable through `docs/README.md` or its lifecycle/archive indices. Relocate completed or superseded revision-specific records to `docs/archive/`, retaining a short compatibility pointer at previously published paths and repairing relative links without changing historical test claims.
 5. Run `npm run docs:check`, `npm run format:check`, and the focused documentation/guide tests. Code changes still require the checks owned by [Testing](testing.md).
 6. Record the audited product SHA, exact commands/results and limits in a dated handoff. Publish under the user's existing authorization and verify the remote revision; main publication is not proof that deployment finished.
 
@@ -55,6 +57,6 @@ flowchart LR
 
 `npm run docs:check` checks generated operation output, managed manual pages, all tracked/new non-ignored Markdown internal destinations and headings, documentation reachability, current Architecture module paths, published Welcome links and atlas operation IDs. The standalone link/navigation gate is `node scripts/check-documentation.mjs` and uses only Node built-ins plus the existing application catalogs.
 
-`site/tests/wiki-manual.test.mjs` checks the catalog and parses the actual English/Chinese Recipe code examples. `site/tests/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The Wiki publishing workflow runs the same documentation checks before synchronization.
+`site/tests/wiki-manual.test.mjs` checks the eight-entry catalog, validates repository-owned images, and parses English Recipe and AI-assisted code examples. `site/tests/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The Wiki publishing workflow runs the same documentation checks before synchronization.
 
 These checks cannot prove prose/scientific correctness, execute every example as a fabrication process, validate external DOI/vendor URLs, certify the live Wiki/Pages deployment, or accept pixel baselines. External research statements retain their recorded date; full replay and visual acceptance remain in their scientific/browser suites.
