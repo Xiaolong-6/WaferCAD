@@ -91,7 +91,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs ESLint, the current Prettier gate, documentation generation/link checks, and the focused Node geometry/project-format regression tests. Use `npm run format` to format the active application and current documentation. See the [documentation map](docs/README.md) for current contracts, [Testing](docs/testing.md) for browser groups and approved platform-specific baselines, and [Development handoff](docs/COLLABORATION.md) for shared ChatGPT/Codex workflow. Dated validation files such as [2026-10-05 validation](docs/VALIDATION_2026-10-05.md) are historical evidence for their recorded revision, not a claim about the latest `main`.
+`npm run check` runs ESLint, the current Prettier gate, documentation generation/link checks, and the focused Node geometry/project-format regression tests. Use `npm run format` to format the active application and current documentation. See the [documentation map](docs/README.md) for current contracts, [Testing](docs/testing.md) for browser groups and approved platform-specific baselines, and [Development handoff](docs/COLLABORATION.md) for shared ChatGPT/Codex workflow. Dated validation files such as [2026-10-05 validation](docs/archive/VALIDATION_2026-10-05.md) are historical evidence for their recorded revision, not a claim about the latest `main`.
 
 ## Project-file safety
 
@@ -105,4 +105,4 @@ WaferCAD is released under the MIT License. See `LICENSE`.
 
 ### Product verification
 
-[Interaction and visual regression](docs/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits. [Process Geometry Kernel v2](docs/PROCESS_GEOMETRY_KERNEL_V2.md) defines the shared topology contract used by Process, Section, and 3D.
+[Interaction and visual regression](docs/archive/PRODUCT_REVIEW.md) covers wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser review artifacts. [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits. [Process Geometry Kernel v2](docs/PROCESS_GEOMETRY_KERNEL_V2.md) defines the shared topology contract used by Process, Section, and 3D.
