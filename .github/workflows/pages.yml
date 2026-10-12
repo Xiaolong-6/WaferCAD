@@ -1,60 +1,89 @@
 name: Deploy WaferCAD to Pages
 
+# Every production publication waits for quality, targeted browser checks and
+# the real UI v2 integration suite at the same main revision.
 on:
   push:
     branches: [main]
     paths:
       - 'site/**'
-      - 'scripts/stamp-pages-assets.mjs'
+      - '!site/tests/**'
+      - 'examples/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/pages.yml'
+      - '.github/workflows/browser-regression.yml'
+      - '.github/workflows/ui-v2-stage-c-m4.yml'
+      - '.github/workflows/quality.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
+  release-quality:
+    name: Release lint, format, docs and Node tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+
+  release-browser:
+    name: Release targeted browser regression
+    uses: ./.github/workflows/browser-regression.yml
+    with:
+      skip_node_gate: true
+    permissions:
+      contents: read
+
+  release-ui-v2:
+    name: Release real UI v2 acceptance
+    uses: ./.github/workflows/ui-v2-stage-c-m4.yml
+    permissions:
+      contents: read
+
   deploy:
+    name: Publish verified main
+    needs: [release-quality, release-browser, release-ui-v2]
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout verified revision
         uses: actions/checkout@v6
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
-
       - name: Install locked development dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Run lightweight release sanity
-        run: npm test
-
-      - name: Write build commit
-        run: printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
-
-      - name: Version browser module imports
-        run: node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v4
+      - name: Stamp the validated revision
+        run: |
+          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
+          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: site
-
-      - name: Deploy
+      - name: Deploy verified main
         id: deployment
         uses: actions/deploy-pages@v4

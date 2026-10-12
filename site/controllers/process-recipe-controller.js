@@ -60,6 +60,8 @@ export function createProcessRecipeController({
   checkpointWorkspace = async () => true,
   status,
   onChanged = () => {},
+  inlineStepEditor = false,
+  templatesEnabled = true,
 }) {
   const $ = (id) => root.getElementById(id);
   let recipe = recipeTemplate('blank'),
@@ -77,6 +79,8 @@ export function createProcessRecipeController({
     templateReplaceArmed = false,
     templateLoadPending = false;
   const recipeHistoryLimit = 100;
+  let draggedStepId = null;
+  let collapsedStepId = null;
   const recipeSignature = () => JSON.stringify(recipe.steps);
   const fieldId = (stepId, key) => `${stepId}:${key}`;
 
@@ -423,6 +427,56 @@ export function createProcessRecipeController({
           <button id="recipeStopBtn" class="compact-btn" type="button" disabled hidden>Stop</button>
         </div>
       </div>`;
+    if (inlineStepEditor) {
+      host.classList.add('v2-recipe-inline');
+      const fixed = make(root, 'div', 'v2-recipe-fixed');
+      const execution = host.querySelector('.recipe-execution');
+      const runActions = execution.querySelector('.recipe-run-actions');
+      runActions.append(
+        $('recipeValidateBtn'),
+        $('recipeRunToBtn'),
+        $('recipeRunAllBtn'),
+        $('recipeStopBtn'),
+      );
+      const startingModel = execution.querySelector('.recipe-start-mode');
+      startingModel.querySelector('span').textContent = 'Start from';
+      execution.prepend(startingModel, runActions);
+      const addRow = host.querySelector('.recipe-add-row');
+      const historyActions = host.querySelector('.recipe-history-actions');
+      for (const [id, glyph, label] of [
+        ['recipeUndoBtn', 'undo', 'Undo Recipe edit'],
+        ['recipeRedoBtn', 'redo', 'Redo Recipe edit'],
+      ]) {
+        const control = $(id);
+        control.replaceChildren(window.WaferCadV2Icons.icon(glyph));
+        control.setAttribute('aria-label', label);
+        control.classList.add('v2-recipe-history-action');
+      }
+      fixed.append(
+        host.querySelector('.recipe-toolbar'),
+        $('recipeTemplatePreview'),
+        addRow,
+        execution,
+      );
+      host.querySelector('.recipe-options-row').remove();
+      host.prepend(fixed);
+      const clear = make(root, 'button', 'compact-btn', 'Clear all');
+      clear.id = 'recipeClearAllBtn';
+      clear.type = 'button';
+      clear.title = 'Clear Recipe steps. Undo restores them.';
+      addRow.append(clear, historyActions);
+      const codePane = $('recipeCodePane');
+      fixed.append(codePane.querySelector('.recipe-code-actions'));
+      codePane.prepend(codePane.querySelector('p'));
+      const feedback = make(root, 'div', 'v2-recipe-feedback');
+      feedback.append($('recipeValidation'), $('recipeProgress'), $('recipeRunSummary'));
+      $('recipeStepsPane').prepend(feedback);
+      new ResizeObserver(sizeCodeEditor).observe(codePane);
+    }
+    if (!templatesEnabled) {
+      $('recipeTemplateSelect').remove();
+      $('recipeTemplatePreview').remove();
+    }
   }
 
   function resetTemplatePreview() {
@@ -602,6 +656,8 @@ export function createProcessRecipeController({
   function renderEditor() {
     const host = $('recipeStepEditor');
     if (!host) return;
+    host.hidden = inlineStepEditor && activeStepId !== null && collapsedStepId === activeStepId;
+    if (host.hidden) return;
     host.replaceChildren();
     const step = recipe.steps.find((item) => item.id === activeStepId);
     if (!step) {
@@ -634,13 +690,29 @@ export function createProcessRecipeController({
       changeStepCommand(step.id, operationSelect.value),
     );
     const actions = make(root, 'div', 'recipe-step-editor-actions');
+    const styleAction = (node, label, glyph, action) => {
+      node.title = label;
+      node.setAttribute('aria-label', label);
+      node.dataset.recipeAction = action;
+      if (inlineStepEditor) {
+        node.classList.add('v2-recipe-step-action');
+        node.replaceChildren(window.WaferCadV2Icons.icon(glyph));
+      }
+    };
     for (const [text, delta] of [
       ['↑', -1],
       ['↓', 1],
     ]) {
       const button = make(root, 'button', 'compact-btn', text);
       button.type = 'button';
-      button.title = delta < 0 ? 'Move step up' : 'Move step down';
+      styleAction(
+        button,
+        delta < 0 ? 'Move step up' : 'Move step down',
+        delta < 0 ? 'moveUp' : 'moveDown',
+        delta < 0 ? 'move-up' : 'move-down',
+      );
+      const position = recipe.steps.findIndex((item) => item.id === step.id);
+      button.disabled = delta < 0 ? position === 0 : position === recipe.steps.length - 1;
       button.addEventListener('click', () => {
         const index = recipe.steps.findIndex((item) => item.id === step.id),
           nextIndex = index + delta;
@@ -655,6 +727,7 @@ export function createProcessRecipeController({
     }
     const duplicate = make(root, 'button', 'compact-btn', 'Copy');
     duplicate.type = 'button';
+    styleAction(duplicate, 'Copy step', 'copy', 'copy');
     duplicate.addEventListener('click', () => {
       const index = recipe.steps.findIndex((item) => item.id === step.id),
         next = clone(recipe),
@@ -667,7 +740,7 @@ export function createProcessRecipeController({
     });
     const remove = make(root, 'button', 'compact-btn quiet', '×');
     remove.type = 'button';
-    remove.title = 'Delete step';
+    styleAction(remove, 'Delete step', 'delete', 'delete');
     remove.addEventListener('click', () => {
       const index = recipe.steps.findIndex((item) => item.id === step.id),
         next = clone(recipe);
@@ -953,14 +1026,96 @@ export function createProcessRecipeController({
     renderMaskContext(step, host);
   }
 
+  function clearDragIndicators() {
+    for (const node of root.querySelectorAll('.recipe-step-row'))
+      node.classList.remove('recipe-drop-before', 'recipe-drop-after', 'recipe-dragging');
+  }
+
+  function reorderStep(sourceId, targetId, after) {
+    if (running || processTaskController?.isBusy?.()) return;
+    const source = recipe.steps.findIndex((step) => step.id === sourceId);
+    const target = recipe.steps.findIndex((step) => step.id === targetId);
+    if (source < 0 || target < 0) return;
+    let insertion = target + (after ? 1 : 0);
+    if (source < insertion) insertion--;
+    if (source === insertion) return;
+    const next = clone(recipe);
+    const [moved] = next.steps.splice(source, 1);
+    next.steps.splice(insertion, 0, moved);
+    persist(next);
+    render();
+    status(`Step moved to position ${insertion + 1}. Undo restores the previous order.`, 'success');
+  }
+
+  function attachStepDrag(row, step) {
+    const handle = make(root, 'span', 'recipe-step-drag-handle');
+    handle.draggable = true;
+    handle.title = 'Drag to reorder step';
+    handle.setAttribute('aria-label', 'Drag to reorder step');
+    handle.setAttribute('role', 'img');
+    handle.append(window.WaferCadV2Icons.icon('grip'));
+    handle.addEventListener('click', (event) => event.stopPropagation());
+    handle.addEventListener('dragstart', (event) => {
+      if (running || processTaskController?.isBusy?.()) {
+        event.preventDefault();
+        return;
+      }
+      draggedStepId = step.id;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', step.id);
+      row.classList.add('recipe-dragging');
+    });
+    handle.addEventListener('dragend', () => {
+      draggedStepId = null;
+      clearDragIndicators();
+    });
+    const afterRow = (event) => {
+      const bounds = row.getBoundingClientRect();
+      return event.clientY > bounds.top + bounds.height / 2;
+    };
+    row.addEventListener('dragover', (event) => {
+      if (!draggedStepId || running) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      for (const node of root.querySelectorAll('.recipe-drop-before, .recipe-drop-after'))
+        node.classList.remove('recipe-drop-before', 'recipe-drop-after');
+      row.classList.add(afterRow(event) ? 'recipe-drop-after' : 'recipe-drop-before');
+    });
+    row.addEventListener('dragleave', () =>
+      row.classList.remove('recipe-drop-before', 'recipe-drop-after'),
+    );
+    row.addEventListener('drop', (event) => {
+      if (!draggedStepId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const source = draggedStepId;
+      draggedStepId = null;
+      clearDragIndicators();
+      reorderStep(source, step.id, afterRow(event));
+    });
+    return handle;
+  }
+
   function renderSteps() {
     const host = $('recipeStepsList');
     if (!host) return;
+    const editor = inlineStepEditor ? $('recipeStepEditor') : null;
+    const pane = $('recipeStepsPane');
+    const scrollTop = pane?.scrollTop || 0;
     host.replaceChildren();
     for (const [index, step] of recipe.steps.entries()) {
       const button = make(root, 'button', 'recipe-step-row');
       button.type = 'button';
+      button.dataset.recipeStepId = step.id;
       button.classList.toggle('active', step.id === activeStepId);
+      button.setAttribute('aria-pressed', String(step.id === activeStepId));
+      if (inlineStepEditor) {
+        button.setAttribute('aria-controls', 'recipeStepEditor');
+        button.setAttribute(
+          'aria-expanded',
+          String(step.id === activeStepId && collapsedStepId !== step.id),
+        );
+      }
       const num = make(root, 'span', 'recipe-step-num', String(index + 1).padStart(2, '0'));
       const copy = make(root, 'span', 'recipe-step-copy');
       const fullTitle = recipeStepLabel(step),
@@ -975,12 +1130,28 @@ export function createProcessRecipeController({
         lastRunResult.modelRef.deref() === getModel()
           ? lastRunResult
           : null;
-      const stateText = run?.failedIndex === index ? '✕' : run && index < run.completed ? '✓' : '○';
+      const stateText =
+        run?.failedIndex === index
+          ? '✕'
+          : run && index < run.completed
+            ? '✓'
+            : inlineStepEditor
+              ? ''
+              : '○';
       button.classList.toggle('complete', stateText === '✓');
       button.classList.toggle('failed', stateText === '✕');
       const state = make(root, 'span', 'recipe-step-state', stateText);
-      button.append(num, copy, state);
+      const trailing = inlineStepEditor ? make(root, 'span', 'recipe-step-trailing') : state;
+      if (inlineStepEditor) {
+        if (stateText) trailing.append(state);
+        trailing.append(attachStepDrag(button, step));
+      }
+      button.append(num, copy, trailing);
       button.addEventListener('click', () => {
+        collapsedStepId =
+          inlineStepEditor && activeStepId === step.id && collapsedStepId !== step.id
+            ? step.id
+            : null;
         activeStepId = step.id;
         recipe.activeStepId = activeStepId;
         setRecipe(clone(recipe));
@@ -988,13 +1159,27 @@ export function createProcessRecipeController({
         renderEditor();
       });
       host.append(button);
+      if (editor && step.id === activeStepId) host.append(editor);
     }
+    if (editor && !host.contains(editor)) host.append(editor);
+    if (inlineStepEditor && pane) pane.scrollTop = scrollTop;
+  }
+
+  function sizeCodeEditor() {
+    const editor = $('recipeCodeEditor');
+    if (!inlineStepEditor || !editor?.checkVisibility()) return;
+    const pane = $('recipeCodePane');
+    const scrollTop = pane.scrollTop;
+    editor.style.height = 'auto';
+    editor.style.height = `${Math.max(240, editor.scrollHeight + 2)}px`;
+    pane.scrollTop = scrollTop;
   }
 
   function syncCode() {
     const editor = $('recipeCodeEditor');
     if (!editor || codeDraftDirty || root.activeElement === editor) return;
     editor.value = serializeProcessRecipe(recipe);
+    sizeCodeEditor();
   }
 
   function validateContext(
@@ -1052,6 +1237,7 @@ export function createProcessRecipeController({
 
   function render() {
     if (!$('recipeProcessPane')) return;
+    if ($('recipeClearAllBtn')) $('recipeClearAllBtn').disabled = running || !recipe.steps.length;
     $('recipeNameInput').value = recipe.name;
     $('recipeRecordManual').checked = recordManual;
     renderTemplatePreview();
@@ -1096,8 +1282,13 @@ export function createProcessRecipeController({
     $('recipeCodePane').hidden = !codeMode;
     $('recipeStepsTab').classList.toggle('active', !codeMode);
     $('recipeCodeTab').classList.toggle('active', codeMode);
+    if (inlineStepEditor) {
+      const feedback = $('recipeProcessPane').querySelector('.v2-recipe-feedback');
+      (codeMode ? $('recipeCodePane') : $('recipeStepsPane')).prepend(feedback);
+    }
     if (codeMode) syncCode(); // Never overwrite an unapplied draft.
     showValidation();
+    sizeCodeEditor();
   }
 
   function maskStateFromRecipe(mask) {
@@ -1575,13 +1766,24 @@ export function createProcessRecipeController({
     });
     $('recipeUndoBtn').addEventListener('click', undoRecipe);
     $('recipeRedoBtn').addEventListener('click', redoRecipe);
-    $('recipeTemplateSelect').addEventListener('change', () => {
+    $('recipeTemplateSelect')?.addEventListener('change', () => {
       pendingTemplateId = $('recipeTemplateSelect').value;
       templateReplaceArmed = false;
       renderTemplatePreview();
     });
-    $('recipeTemplateCancelBtn').addEventListener('click', resetTemplatePreview);
-    $('recipeTemplateLoadBtn').addEventListener('click', requestTemplateLoad);
+    $('recipeTemplateCancelBtn')?.addEventListener('click', resetTemplatePreview);
+    $('recipeTemplateLoadBtn')?.addEventListener('click', requestTemplateLoad);
+    $('recipeClearAllBtn')?.addEventListener('click', () => {
+      if (running || !recipe.steps.length) return;
+      const next = clone(recipe);
+      next.steps = [];
+      next.activeStepId = null;
+      activeStepId = null;
+      persist(next);
+      lastRunResult = null;
+      render();
+      status('Recipe steps cleared. Undo restores them.', 'success');
+    });
     $('recipeAddStepBtn').addEventListener('click', () => {
       const next = clone(recipe),
         step = defaultStep($('recipeAddKind').value),
@@ -1596,6 +1798,7 @@ export function createProcessRecipeController({
     $('recipeCodeEditor').addEventListener('input', () => {
       codeDraftDirty = $('recipeCodeEditor').value !== serializeProcessRecipe(recipe);
       showValidation();
+      sizeCodeEditor();
     });
     $('recipeApplyCodeBtn').addEventListener('click', applyCode);
     $('recipeFormatCodeBtn').addEventListener('click', () => {
@@ -1636,6 +1839,7 @@ export function createProcessRecipeController({
 
   return {
     bind,
+    setCodeMode,
     refresh,
     recordManualOperation,
     getRecipe: () => clone(recipe),

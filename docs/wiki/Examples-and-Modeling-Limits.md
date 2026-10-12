@@ -6,25 +6,24 @@
 
 The **Welcome** screen presents **eight editable device/application families** across literature and fabrication examples. The current source of truth is [`site/bundled-examples.js`](https://github.com/Xiaolong-6/WaferCAD/blob/main/site/bundled-examples.js); the cards link to full `.wafercad` projects, including their History, Variants, Mask state and inspection views. Click a project's **title or description** on Welcome to open it. The preview offers Main/Mask/3D/Section inspection of a curated state, not the complete process replay.
 
-| Welcome project                                                                                                                                                | What you can inspect                                                                                                                                  | Literature and provenance                                                                                                                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [**Photodetectors with nanopatterns**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=photodetector-literature)                          | Black-Si Fig. 1a and Ge Fig. 15 in one family project; branched process histories and final/QA or A/B structures                                      | Setälä _et al._, _ACS Photonics_ (2023), [DOI](https://doi.org/10.1021/acsphotonics.2c01984); Liu _et al._, _Light: Science & Applications_ (2025), [DOI](https://doi.org/10.1038/s41377-024-01670-4) |
-| [**PERC solar cells with point contacts**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=perc-point-contact-solar-cell)                 | Silicon texturing, junction/passivation annotations, local rear contact openings and metallization; source-order and patterned-contact alternatives   | Blakers _et al._, _Applied Physics Letters_ (1989), [DOI](https://doi.org/10.1063/1.101596)                                                                                                           |
-| [**Fully textured perovskite–silicon tandems**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=fully-textured-perovskite-silicon-tandem) | Double-sided pyramid texture, SHJ bottom cell, conformal perovskite top-cell layers, ALD SnO₂, IZO and surrogate Ag grid; nc-Si:H / ITO branches      | Sahli _et al._, _Nature Materials_ (2018), [DOI](https://doi.org/10.1038/s41563-018-0115-4)                                                                                                           |
-| [**Suspended silica microdisks**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=suspended-silica-microdisk)                             | Geometrically released annular air gap, silica disk and surviving central Si support pedestal                                                         | Basiri-Esfahani _et al._, _Nature Communications_ (2019), [DOI](https://doi.org/10.1038/s41467-018-08038-4)                                                                                           |
-| [**Self-powered heterogeneous M3D circuits**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=m3d-selfpowered-heterogeneous-ic)           | 27 stage bookmarks (S00–S26) and 36 History nodes: Si photovoltaic supply tier, WSe₂/MoS₂ logic, graphene sensing, vias and encapsulation             | Ghosh _et al._, _Nature Electronics_ (2026), [DOI](https://doi.org/10.1038/s41928-026-01624-1)                                                                                                        |
-| [**MoS₂ computer with four-level BEOL interconnect**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=magic-1000-mos2-beol)               | Representative M4–M1 Al wiring, four W via tiers, ILD/CMP, W gates, HfO₂, transferred MoS₂ and local D/E-mode FET pair                                | Fan _et al._, _Nature Electronics_ (2026), [DOI](https://doi.org/10.1038/s41928-026-01641-0). Mask coordinates and ILD overfill are inferred; ~0.5 µm CMP clearance follows Methods.                  |
-| [**Three-tier silicon junctionless transistors**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=three-tier-silicon-jlfets)              | Three stacked transistor tiers, conformal HfO₂ gates, contacts, ILD, transfer and CMP assumptions; 625-site wafer project with 40 saved History Steps | Lam _et al._, _Nature_ (2026), [DOI](https://doi.org/10.1038/s41586-026-10496-6)                                                                                                                      |
+| Welcome project                                                                                                                                                | What you can inspect                                                                                                                                  | Literature and provenance                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [**Photodetectors with nanopatterns**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=photodetector-literature)                          | Black-Si Fig. 1a and Ge Fig. 15 in one family project; branched process histories and final/QA or A/B structures                                      | Setälä _et al._, _ACS Photonics_ (2023), [DOI](https://doi.org/10.1021/acsphotonics.2c01984); Liu _et al._, _Light: Science & Applications_ (2025), [DOI](https://doi.org/10.1038/s41377-024-01670-4)        |
+| [**PERC solar cells with point contacts**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=perc-point-contact-solar-cell)                 | Silicon texturing, junction/passivation annotations, local rear contact openings and metallization; source-order and patterned-contact alternatives   | Blakers _et al._, _Applied Physics Letters_ (1989), [DOI](https://doi.org/10.1063/1.101596)                                                                                                                  |
+| [**Fully textured perovskite–silicon tandems**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=fully-textured-perovskite-silicon-tandem) | Double-sided pyramid texture, SHJ bottom cell, conformal perovskite top-cell layers, ALD SnO₂, IZO and surrogate Ag grid; nc-Si:H / ITO branches      | Sahli _et al._, _Nature Materials_ (2018), [DOI](https://doi.org/10.1038/s41563-018-0115-4)                                                                                                                  |
+| [**Suspended silica microdisks**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=suspended-silica-microdisk)                             | Geometrically released annular air gap, silica disk and surviving central Si support pedestal                                                         | Basiri-Esfahani _et al._, _Nature Communications_ (2019), [DOI](https://doi.org/10.1038/s41467-018-08038-4)                                                                                                  |
+| [**Self-powered heterogeneous M3D circuits**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=m3d-selfpowered-heterogeneous-ic)           | 27 stage bookmarks (S00–S26) and 36 History nodes: Si photovoltaic supply tier, WSe₂/MoS₂ logic, graphene sensing, vias and encapsulation             | Ghosh _et al._, _Nature Electronics_ (2026), [DOI](https://doi.org/10.1038/s41928-026-01624-1)                                                                                                               |
+| [**MoS₂ computer with four-level BEOL interconnect**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=magic-1000-mos2-beol)               | Representative M4–M1 Al wiring, four W via tiers, ILD/CMP, W gates, HfO₂, transferred MoS₂ and local D/E-mode FET pair                                | Fan _et al._, _Nature Electronics_ (2026), [DOI](https://doi.org/10.1038/s41928-026-01641-0). Mask coordinates and ILD overfill are inferred; ~0.5 µm CMP clearance follows Methods.                         |
+| [**Three-tier silicon junctionless transistors**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=three-tier-silicon-jlfets)              | Three stacked transistor tiers, conformal HfO₂ gates, contacts, ILD, transfer and CMP assumptions; 625-site wafer project with 40 saved History Steps | Lam _et al._, _Nature_ (2026), [DOI](https://doi.org/10.1038/s41586-026-10496-6)                                                                                                                             |
+| [**TiO₂ achromatic metalens · four meta-atoms**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=tio2-metalens-four-unit)                 | 4,725-site illustrative array with four meta-atom families, matching Mask and nine-step compiled History; cover previews four units                   | Wang _et al._, _Nature Communications_ (2021), [DOI](https://doi.org/10.1038/s41467-021-25797-9). Unit sizes and site placement are illustrative; the article does not publish the optimized 4,725-site GDS. |
 
-| [**TiO₂ achromatic metalens · four meta-atoms**](https://xiaolong-6.github.io/WaferCAD/app.html?start=example&example=tio2-metalens-four-unit) | 4,725-site illustrative array with four meta-atom families, matching Mask and nine-step compiled History; cover previews four units | Wang _et al._, _Nature Communications_ (2021), [DOI](https://doi.org/10.1038/s41467-021-25797-9). Unit sizes and site placement are illustrative; the article does not publish the optimized 4,725-site GDS. |
-
-These eight entries match the Welcome catalog on this reconstruction branch; they become shipped examples after merging to main. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
+These eight entries are registered in the current main-branch Welcome catalog; these are shipped example projects, not unmerged candidate fixtures. Other research reconstructions or development fixtures in `examples/projects/` are not necessarily Welcome examples. When a new example is actually added to `BUNDLED_EXAMPLES`, update this catalog and keep the documented title and project ID synchronized. The repository's Welcome example tests validate the promoted project files.
 
 ## 1. Photodetectors with nanopatterns
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
+![Actual WaferCAD 3D preview of the photodetector example, including reconstructed passivation and patterned regions](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD 3D preview, not experimental microscopy. Open this photodetector project to compare Black-Si/Ge History branches, Mask states, and Section cross-sections._
 
 ![Photodetector Section screenshot from the accepted Windows visual baseline](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/tests/visual-baselines/windows-chromium/photodetector-section.png)
 
@@ -46,17 +45,17 @@ For detailed assumptions, source differences, and the reconstruction acceptance 
 
 ## 2. PERC solar cells with point contacts
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/perc-point-contact-solar-cell-three.webp)
+![Actual WaferCAD PERC solar cell 3D preview with point-contact geometry](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/perc-point-contact-solar-cell-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD 3D preview of the PERC reconstruction. Inspect its patterned rear contacts and the source-order versus alternate GDS-based History branches._
 
 The PERC family demonstrates front/back processing and locally patterned rear contacts. Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
 
 ## 3. Fully textured perovskite–silicon tandems
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
+![Actual WaferCAD 3D preview of the reconstructed textured perovskite-silicon tandem](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD 3D preview of the textured tandem; the visible pyramids are appearance metadata and must not be interpreted as a simulated etch profile._
 
 This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
 
@@ -64,17 +63,17 @@ This project illustrates two-sided silicon pyramid texture and a multilayer tand
 
 ## 4. Suspended silica microdisks
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-silica-microdisk-three.webp)
+![Actual WaferCAD 3D preview of suspended silica microdisk and support pedestal](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/suspended-silica-microdisk-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD 3D preview of the suspended microdisk. Check a Section through the pedestal to distinguish the canonical undercut cavity from the visible surface._
 
 Use Main, Section and 3D to inspect the actual canonical void and supported disk. This example is most useful for explaining isotropic/undercut release and the difference between an open cavity and a hidden or painted surface. It does not simulate release chemistry, device motion, optical modes or acoustic sensitivity.
 
 ## 5. Self-powered heterogeneous M3D circuits
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp)
+![Actual WaferCAD 3D preview of the reconstructed heterogeneous M3D device stack](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/m3d-selfpowered-heterogeneous-ic-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD 3D preview of the M3D stack. Inspect saved fabrication stages and inferred interconnect mask routes rather than assuming this is the authors' exact layout._
 
 The kernel-reconstructed literature example includes the silicon photovoltaic power tier, WSe₂/MoS₂ logic, graphene sensor, vias, conformal Al₂O₃ encapsulation and selective sensing windows. The full editable project contains **36 History nodes** and **27 stage bookmarks (S00–S26)**.
 
@@ -82,13 +81,13 @@ The kernel-reconstructed literature example includes the silicon photovoltaic po
 
 ## 6. MoS₂ computer with four-level BEOL interconnect
 
-![WaferCAD 3D preview of the paper-derived MAGIC-1000 local stack](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-three.webp)
+![Actual WaferCAD 3D preview of the paper-derived MAGIC-1000 representative local stack](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-three.webp)
 
-![Real WaferCAD Section screenshot showing four buried metal interconnect levels, vias and upper MoS2 FETs](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-section.webp)
+_3D preview from the shipped MAGIC-1000 representative-cell project; routing is inferred from published information. This is a WaferCAD rendering, not an author's device micrograph._
 
-_Chromium-generated Section with a 2.5D reconstructed material stack; visually compare material sequence against the paper's Fig. 1e, not actual published mask coordinates. The grey horizontal break is the Section Z-collapse display control, not a material void._
+![Actual WaferCAD Section of the same MAGIC-1000 local stack, showing buried interconnect levels and upper FETs](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-section.webp)
 
-_Real WaferCAD browser-rendered 3D preview, generated by the candidate branch acceptance workflow. It becomes available at the main URL upon merge; see the candidate [reconstruction README](https://github.com/Xiaolong-6/WaferCAD/blob/feat/magic-1000-mos2-beol-reconstruction/examples/projects/magic-1000-2026-candidate/README.md) before then._
+_Section inspection of the reconstructed 2.5D material stack. Compare its layer sequence with the paper's Fig. 1e, **not** unpublished mask coordinates. The grey horizontal Z-break is a display transformation, not a material void._
 
 This local Figure 1-inspired reconstruction demonstrates a paper-derived 300 nm SiO₂ isolation and four prefabricated aluminium interconnect levels (M4–M1), each with patterned 10/20/250/20/10 nm Ti/TiN/Al/TiN/Ti films. Interlevel dielectric overfill, CMP, W vias, a planarized 400 nm W gate, conformal 10 nm HfO₂ and transferred monolayer MoS₂ are built with the live Process Kernel. Sb 20 nm/Au 40 nm contacts and local D-mode AlOx complete a two-transistor representative cell.
 
@@ -96,9 +95,9 @@ This local Figure 1-inspired reconstruction demonstrates a paper-derived 300 nm 
 
 ## 7. Three-tier silicon junctionless transistors
 
-![Shipped WaferCAD 3D example preview](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/three-tier-silicon-jlfets-three.webp)
+![Actual WaferCAD 3D preview of one representative three-tier junctionless transistor site](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/three-tier-silicon-jlfets-three.webp)
 
-_Preview image from the current Welcome example. Open the project and inspect individual History states, Section and Masks to evaluate the actual process sequence._
+_A WaferCAD single-device 3D preview. Opening the associated project loads the 625-site array; the cover alone is not evidence of full-array processing._
 
 The Welcome preview uses a **single-site source** for responsive inspection. Opening the project loads the **625-site full-wafer array**, containing three stacked silicon transistor tiers and **40 stored History Steps**. Deposition, conformal gate dielectrics, inter-tier transfer and CMP are represented with documented geometric assumptions.
 
@@ -121,7 +120,7 @@ The editable example opens with **10 History nodes**, **6 saved fabrication chec
 3. Use **Section** to examine real exposed/covered geometry and **3D** to understand morphology and layer overlap. Inspect each step's scientific assumptions.
 4. To test reproducibility, start from the intended Base, confirm captured Masks, replay all intended steps with the **current Kernel**, and compare intermediate and final states. A saved History can be restorable without having been freshly replayed on every geometry scale.
 5. **Export** the `.wafercad` file, re-import and verify states, and separately export the required Masks using GDS/OAS/SVG. Check ROI, Cells and Layers when exporting.
-6. To author a new flow, use the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [中文教程](Recipe-Code-Tutorial-zh-CN).
+6. To author a new flow, use the [Recipe Code Tutorial](Recipe-Code-Tutorial) or [Using WaferCAD with AI](AI-Assisted-Workflows).
 
 ## What WaferCAD computes
 

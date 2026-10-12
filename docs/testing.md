@@ -34,8 +34,10 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
-`scripts/v2/check-cross-ui-recovery.mjs` checks the product's save-before-switch
-action, exact cross-interface recovery, and concurrent Legacy/v2 writer ownership.
+`scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
+opening the optional Legacy URL, exact cross-interface recovery, and concurrent
+Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
+from `build-info.json` (or `commit local` in local development).
 Existing scientific/controller suites retain their Legacy DOM assertions at
 `app-legacy.html`. Suites that start through Welcome explicitly use
 `newLegacyUiContext` / `newLegacyUiPage`; these test contexts redirect the
@@ -47,7 +49,7 @@ The catalog's full 6,400-instance Metalens remains covered by the M4 project own
 
 Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
 
-The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; the Process/History Stage C workflow is owned by the integrated Stage C gate below.
+The [desktop review checkpoint](archive/ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; the Process/History Stage C workflow is owned by the integrated Stage C gate below.
 
 Stage C now uses one genuine M2-derived four-view workstation with a shared model and the existing scientific controllers. The [Stage C / M4 CI gate](../.github/workflows/ui-v2-stage-c-m4.yml) runs these commands at 4182 (Node 24; Chromium 140 / Playwright 1.55.1):
 
@@ -58,6 +60,21 @@ node scripts/v2/check-cross-ui-recovery.mjs
 node scripts/v2/check-review-interactions.mjs
 node scripts/v2/check-m4-projects.mjs
 ```
+
+The Stage C `check-sync.mjs` file-import scenario uses the native
+`#gdsInput` control. Its success gate checks the imported GDS filename,
+non-empty flattened geometry, File mask source, and the active cell.
+The flattened layout has `elements`, not a `cells` collection; the
+file-input name is `gds-basic-instances.gds` (distinct from the
+internal `basic_instances` cell name). This prevents a false timeout
+after a successful GDS import. Product import, checkpoint, and model
+invariance remain in scope; no visual baseline is changed.
+
+The Main and Mask view gate uses a 0.01 px tolerance for pointer-based
+pan deltas (which can contain browser subpixel rounding). In the 390 px
+Mask layout, the Alignment action is reached through the responsive
+`Mask more tools` menu. Neither adjustment relaxes geometry, export,
+History, or scientific state assertions.
 
 The shared synchronization owner checks independent Main/Mask/Section ROIs, real mask-limited Process geometry, front/back process targeting versus Main orientation, History Undo/Redo/restore, Layers preference, Project Open/Save/Recovery, Recipe precise deposition, Diagnostics read-only behavior, and 1440/1024/768/390 plus emulated-touch layout invariants. The M4 project owner additionally checks M3D, Photodetector, four-unit TiO2 Metalens and the true 6,400-tile / 49-template full array with real imports, unit round trips and exported project verification at the documented 0.1 nm persistence precision. Its `metalens-array` route loads the complete fixture, not the four-unit preview. Both owners report errors and upload browser screenshots without updating approved visual baselines. `check-sync` and its latest checkpoint are documented in [M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md).
 
@@ -76,7 +93,7 @@ The first checker covers four widths, touch, Main ROI/Section linkage, unchanged
 
 Final captures also require visible colored material pixels in the compositor PNG, canvas/host agreement and screenshot-time layout stability within 0.25 px. Four-width checks use full-page capture. Touch uses an actual viewport capture, requires the entire 3D canvas to fit, and preserves coarse-pointer emulation: Chromium 140 full-page `captureBeyondViewport` switches the emulated pointer to fine. Capture dimensions and pointer diagnostics are saved beside each PNG as `.visibility.json`; the portable report includes the same data and material-pixel count. This does not replace scientific model/geometry assertions or human visual acceptance.
 
-[The Phase B CI workflow](../.github/workflows/ui-v2-three.yml) runs these two browser owners separately from the Main/Mask/Section job. It has no manual dispatch entry. Local reports are under `test-results/ui-v2-three-review-metalens/` and `test-results/ui-v2-three-export-abort/`. Passing these checks does not establish hardware GPU or physical touchscreen acceptance; see the [WIP checkpoint](ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for actual results and the [current review handoff](ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) for the user-approved lightweight acceptance scope. The full-model interaction rerun was stopped at the user's request; its checker remains available and unchanged in scope.
+[The Phase B CI workflow](../.github/workflows/ui-v2-three.yml) runs these two browser owners separately from the Main/Mask/Section job. It has no manual dispatch entry. Local reports are under `test-results/ui-v2-three-review-metalens/` and `test-results/ui-v2-three-export-abort/`. Passing these checks does not establish hardware GPU or physical touchscreen acceptance; see the [WIP checkpoint](archive/ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for actual results and the [current review handoff](archive/ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) for the user-approved lightweight acceptance scope. The full-model interaction rerun was stopped at the user's request; its checker remains available and unchanged in scope.
 
 For **frame-accurate transparency measurements**, wait for `rendererFrameSerial` to advance after the opacity change, then sample diagnostics. `renderState=ready` alone may precede the next WebGL frame. `rendererFrameMs` is CPU-observed submission time, while `rendererDrawCalls`/`rendererDrawTriangles` and retained geometry/material counters expose the active and cached scene costs. A browser screenshot/compositor checkpoint is needed when comparing user-visible cold and warm latency. The 625-site transparency benchmark **continues to measure** cold/warm complete-frame latency, but the <15 s cold budget and relative swap times are **temporarily non-blocking** under the recorded renderer acceptance policy. Failures of transparency geometry, buried Electrical/Implant visibility, scene ownership, retained resource stability, interaction, or genuine frame hangs still fail CI. Timing overruns are emitted as `ARRAY_RENDERER_PERF_WARNING` and stored in the renderer report. See [the transparency performance roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) for the evidence, phases and conditions for restoring the hard timing gate.
 
@@ -278,8 +295,8 @@ $env:WAFERCAD_VISUAL_BASELINE_DIR = 'tests/visual-baselines/windows-chromium'
 npm run test:ui:visual
 ```
 
-See [local validation](VALIDATION_2026-10-05.md) for the tested revision, environment, runtime results and human acceptance. Windows references must not be used as evidence of Linux raster stability. Generate a separate Linux set and review it before enabling a Linux pixel gate.
+See [local validation](archive/VALIDATION_2026-10-05.md) for the tested revision, environment, runtime results and human acceptance. Windows references must not be used as evidence of Linux raster stability. Generate a separate Linux set and review it before enabling a Linux pixel gate.
 
 Visual baselines are intentionally **not** part of `test:ui:all` or the GitHub Actions gate yet. Generate them in a controlled Chromium/Linux environment, review the PNGs, commit only approved baselines, then enable the gate in a separate change. WebGL screenshots remain review artifacts until cross-run raster stability is characterized.
 
-The later [rendering stabilization](STABILIZATION_2026-10-05.md) intentionally changed the Photodetector Section profile/gradient. The updated Photodetector Windows reference was subsequently reviewed and accepted, so all five committed Windows Chromium references represent the accepted 2026-10-05 Windows set. Product renderer tests independently measure Si/ALD/Implant registration, local depth gradients and the thin sidewall floor in a Detail inset; accepted Windows pixels still do not establish Linux raster stability.
+The later [rendering stabilization](archive/STABILIZATION_2026-10-05.md) intentionally changed the Photodetector Section profile/gradient. The updated Photodetector Windows reference was subsequently reviewed and accepted, so all five committed Windows Chromium references represent the accepted 2026-10-05 Windows set. Product renderer tests independently measure Si/ALD/Implant registration, local depth gradients and the thin sidewall floor in a Detail inset; accepted Windows pixels still do not establish Linux raster stability.

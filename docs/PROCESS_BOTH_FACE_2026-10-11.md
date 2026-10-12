@@ -2,7 +2,7 @@
 
 ## Scope
 
-Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The future Process Surface selector may pass `both`; **it must not change the global inspection face to `both`**.
+Adds `face: 'both'` as a single logical Process operation executed by the Kernel in a deterministic order: **Front → Back**. This is a Kernel/Recipe integration feature isolated from the in-progress Workstation UI v2 redesign. The active Main/Mask inspection face and persisted `project.activeFace` remain `front | back`. The current v2 Manual Process Surface selector supports **Front / Back / Both** (integrated in [Manual Both acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md)); **Both must not change the global inspection face to `both`**. The original Kernel work preceded this UI integration.
 
 A current Recipe code example:
 
@@ -31,18 +31,18 @@ The same syntax is available for directional deposition, Extend, directional/iso
 - **Intentionally unsupported:** Lift-off, because the first face may remove the shared sacrificial material needed for the second pass; and Planarize/CMP with one absolute Z target, which would have ambiguous/opposed semantics. These explicitly fail rather than silently using Front only.
 - A face with no eligible change causes the complete Both Step to fail. Users needing a one-sided operation should choose Front/Back explicitly. This prevents silently half-complete `Both` operations.
 
-## Contract for the future UI
+## UI v2 integration (implemented 2026-10-12) and remaining presentation work
 
 - Process Surface options: Front / Back / Both. `Both` is an **operation target** only.
-- Recipe editor must preserve and display `params.face === 'both'`. The legacy Recipe code editor already accepts it; replacing the UI selector is work for the UI v2 track.
+- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the Legacy UI continues to use its previous selector. See the [dated integration and test report](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - Send a _single_ worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
-- Show one History Step labeled Both, with two linked children in future layer/legend UI. Each child has its own edit/delete/color and face-specific target actions. Show a clear error if either surface cannot be processed.
+- One Both application creates one restorable History Step with two distinct, paired material Layer IDs. The v2 Manual form exposes valid paired material targets and rejects unsupported Both combinations; a more explicit two-child layer/legend presentation remains a **future UX enhancement**.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.
 
 ## Regression / reproducibility
 
-Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. Broader Process and History browser gates should cover the eventual UI selector.
+Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.
 
 Repository: `Xiaolong-6/WaferCAD`. Branch: `feat/kernel-process-face-both-20261011` based on main, without merge. Implemented using the GitHub-connected repository interface. **Local `npm ci`, `npm run check`, and browser tests were not executed in this environment** because a checked-out workspace was unavailable. PR CI provides executable evidence; preserve Draft until green. PR CI is the initial executable verification and must be reviewed before merge; do not claim a product pass from source inspection alone.
 
-Scope remains Kernel, Process Recipe plumbing, regression tests, and this document. The new Workstation UI layout/visual baselines are unchanged.
+Original delivery scope was Kernel, Process Recipe plumbing, regression tests, and this document. **Update (2026-10-12):** the new Workstation has since integrated Manual Both without changing the global inspection-face contract; its acceptance is recorded separately, and this earlier Kernel report remains revision-specific.

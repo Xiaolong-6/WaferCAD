@@ -14,9 +14,9 @@ Set:
 - H in the same display unit for rectangular bases;
 - Z as a physical thickness in the selected display/input unit.
 
-Use **Apply base** to create or rebuild it.
+Use **Rebuild Base** in the current v2 **Project → Base** editor to create or rebuild it. The corresponding button in Legacy is **Apply base**.
 
-If the structure has Process Steps or saved Variants, **Apply base** offers **Keep previous history**, **Clear history**, or **Cancel**. Keep archives the previous Main as a restorable Variant (including its original HEAD and child Variants), then creates a clean Main with the new Base. Clear permanently replaces the process lineage; Cancel makes no changes. **Revert** and **Undo** restore both geometry and the History branch graph. With no existing process history, Apply base proceeds directly.
+If the structure has Process Steps or saved Variants, rebuilding Base offers **Keep previous history**, **Clear history**, or **Cancel**. Keep archives the previous Main as a restorable Variant (including its original HEAD and child Variants), then creates a clean Main with the new Base. Clear permanently replaces the process lineage; Cancel makes no changes. **Revert** and **Undo** restore both geometry and the History branch graph. With no existing process history, Apply base proceeds directly.
 
 ## 2. Import a mask
 
@@ -41,7 +41,7 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 ## 4. Inspect and author the Mask view
 
-The Mask header starts in **File** mode. Click **File** to toggle to **Draw**; the same button then reads **Draw**.
+Use the **Mask source** control to choose **File** or **Draw**. Depending on the interface/version, this is shown as a source toggle in the Mask header.
 
 **File** mode keeps imported GDSII/OASIS behavior:
 
@@ -91,9 +91,9 @@ The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lo
 
 ## 6. Apply an operation
 
-A compact **Before → After Process schematic** appears beneath **Apply** and above the existing operation note. It follows the selected Action, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
+The v2 **How it works** control opens a compact **Before → After Process schematic** for the selected Operation, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. Older interfaces may show the schematic directly beneath **Apply**. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
 
-Choose Front or Back.
+In the v2 **Process → Manual → Surface** selector choose **Front**, **Back** or **Both**. Both executes Front then Back as one atomic logical Step when the operation supports it. A successful Both Deposit produces **two paired, independent Layer IDs**; both-side selective Etch or Extend requires a compatible exposed paired target. Lift-off and absolute-Z Planarize/CMP are unavailable for Both. Both does not change the Main/Mask inspection face. The Legacy interface retains Front/Back. See [Kernel behavior](PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 
 Choose an action:
 
