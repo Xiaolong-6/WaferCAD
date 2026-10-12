@@ -58,10 +58,7 @@ test('Wiki navigation links to English Recipe and AI workflow tutorials', async 
   for (const page of ['Home', '_Sidebar', 'Process-and-Recipes', 'Getting-Started']) {
     const text = await manual(page);
     assert.ok(text.includes('(Recipe-Code-Tutorial)'), `${page}: missing English tutorial link`);
-    assert.ok(
-      text.includes('(AI-Assisted-Workflows)'),
-      `${page}: missing AI workflow link`,
-    );
+    assert.ok(text.includes('(AI-Assisted-Workflows)'), `${page}: missing AI workflow link`);
   }
 });
 
@@ -96,11 +93,17 @@ test('the novice path is discoverable and names the current UI controls', async 
   assert.match(guide, /\*\*Base\*\* is the default layer name/);
   assert.match(guide, /Also add to Recipe → No/);
 
-  const v2Project = await readFile(new URL('../ui-v2/project-mask-panels.js', import.meta.url), 'utf8');
+  const v2Project = await readFile(
+    new URL('../ui-v2/project-mask-panels.js', import.meta.url),
+    'utf8',
+  );
   assert.match(v2Project, /'XYZ display unit'/);
   assert.match(v2Project, /button\('Rebuild Base'/);
   assert.match(v2Project, /host\('panel.base'\)/);
-  const v2Workflow = await readFile(new URL('../ui-v2/workstation-workflow.js', import.meta.url), 'utf8');
+  const v2Workflow = await readFile(
+    new URL('../ui-v2/workstation-workflow.js', import.meta.url),
+    'utf8',
+  );
   assert.match(v2Workflow, /\['step', 'Manual', 'manual'\]/);
   assert.match(v2Workflow, /'Also add to Recipe'[\s\S]*?'false'/);
   assert.match(v2Workflow, /fields.input\('Thickness \/ depth/);
@@ -166,7 +169,6 @@ test('all JavaScript Recipe examples in the English Wiki parse as v1 recipes', a
   }
 });
 
-
 test('Wiki uses legible first-party visual evidence or task-specific diagrams, and the generated Process catalog', async () => {
   const home = await manual('Home');
   assert.ok(
@@ -203,10 +205,15 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       const [, alt, url] = match;
       assert.ok(alt.length >= 14, `${page}: image must have descriptive alt text`);
       const prefix = 'https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/';
-      assert.ok(url.startsWith(prefix), `${page}: no stock or unverified external imagery (${url})`);
+      assert.ok(
+        url.startsWith(prefix),
+        `${page}: no stock or unverified external imagery (${url})`,
+      );
       const asset = url.slice(prefix.length).split('?')[0];
       assert.ok(
-        /^(?:docs\/wiki\/assets\/process|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(asset),
+        /^(?:docs\/wiki\/assets\/process|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(
+          asset,
+        ),
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
       await access(new URL('../../' + asset, import.meta.url));
@@ -214,8 +221,12 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
         const allowed =
           page === 'Examples-and-Modeling-Limits' ||
           (page === 'Workspace-and-Views' && asset.endsWith('magic-1000-mos2-beol-section.webp')) ||
-          (page === 'AI-Assisted-Workflows' && asset.endsWith('tio2-metalens-four-unit-schematic.svg'));
-        assert.ok(allowed, `${page}: example cover is irrelevant to this instructional step (${asset})`);
+          (page === 'AI-Assisted-Workflows' &&
+            asset.endsWith('tio2-metalens-four-unit-schematic.svg'));
+        assert.ok(
+          allowed,
+          `${page}: example cover is irrelevant to this instructional step (${asset})`,
+        );
       }
       if (page !== 'Process-Operations') {
         const after = source.slice(match.index + match[0].length).trimStart();

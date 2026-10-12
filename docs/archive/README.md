@@ -129,4 +129,3 @@ This is an evidence index, not an alternative product contract. Canonical histor
 - [ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md](ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md)
 - [ui-v2/UI_ACCEPTANCE_2026-10-10.md](ui-v2/UI_ACCEPTANCE_2026-10-10.md)
 - [ui-v2/VISUAL_POLISH_2026-10-09.md](ui-v2/VISUAL_POLISH_2026-10-09.md)
-

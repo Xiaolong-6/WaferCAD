@@ -54,12 +54,12 @@ The parser deliberately rejects variables, expressions, loops, arbitrary functio
 
 ### Shared parameters
 
-| Field                 | Values                         | Meaning                                          |
-| --------------------- | ------------------------------ | ------------------------------------------------ |
+| Field                 | Values                         | Meaning                                                                         |
+| --------------------- | ------------------------------ | ------------------------------------------------------------------------------- |
 | `face`                | `"front"`, `"back"`, `"both"`  | Process target (default: front); Both is supported only for eligible operations |
-| `area`                | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement        |
-| `mask`                | Captured File/Draw context     | Required for masked or inverted steps            |
-| `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate   |
+| `area`                | `"full"`, `"mask"`, `"invert"` | Entire face, selected Mask, or complement                                       |
+| `mask`                | Captured File/Draw context     | Required for masked or inverted steps                                           |
+| `thickness` / `depth` | Positive physical length       | How much to deposit, extend, etch, or annotate                                  |
 
 A **Mask ROI** clips masked Process operations; a **Main ROI** controls inspection/export view and does not limit Apply. See [Masks and ROI](Masks-and-ROI).
 

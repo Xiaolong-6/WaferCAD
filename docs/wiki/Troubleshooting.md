@@ -58,7 +58,6 @@ flowchart TD
 
 _This is a diagnostic checklist, not a proof that any specific artifact is display-only._
 
-
 If you see an unexplained **black line**, toggle **3D Border** once to see whether the outline is merely visual. **That alone does not prove the geometry is correct.** Check a Section crossing the same XY location, and inspect the layer structure with different 3D opacity/ROI. A genuine thin sheet, seam or buried void that persists without Border deserves investigation; do not hide it by changing outline color or visibility. Save an exported project with the exact History step and the relevant Mask state when reporting it.
 
 **Why can a conformal shell look wider in Section?** Section **Auto** may exaggerate Z; compare **1:1**. A real sidewall coating also has a physical XY normal offset equal to its thickness.

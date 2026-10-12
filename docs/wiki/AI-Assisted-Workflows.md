@@ -21,13 +21,12 @@ flowchart LR
 
 _This is a human-reviewed file handoff, **not** an automatic connection between an AI service and the WaferCAD browser. Geometry and acceptance are checked in WaferCAD after import._
 
-
-| I have... | Attach to the AI conversation | Ask for... | Deliverable to open in WaferCAD |
-| --- | --- | --- | --- |
-| A published device | Article PDF, relevant figures, supplementary information (SI) and Methods | Source-derived geometry, mask specification, process sequence, code | GDSII/OASIS mask plus Recipe |
-| An existing mask and process | GDSII/OASIS (or a text-exported layout manifest), step table, substrate specification | Mask-to-step mapping and Recipe code | Original imported mask plus Recipe |
-| Only a device concept | Dimensioned sketch, intended materials, device footprint and fabrication constraints | Annotated assumptions, geometric layout and feasible sequence | AI-generated external GDSII/OASIS plus Recipe |
-| A failing project | Recipe code, exact error, exported `.wafercad` file if available, and screenshots | Minimal repair preserving existing geometry and intent | Corrected Recipe and a reproducible check |
+| I have...                    | Attach to the AI conversation                                                         | Ask for...                                                          | Deliverable to open in WaferCAD               |
+| ---------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- |
+| A published device           | Article PDF, relevant figures, supplementary information (SI) and Methods             | Source-derived geometry, mask specification, process sequence, code | GDSII/OASIS mask plus Recipe                  |
+| An existing mask and process | GDSII/OASIS (or a text-exported layout manifest), step table, substrate specification | Mask-to-step mapping and Recipe code                                | Original imported mask plus Recipe            |
+| Only a device concept        | Dimensioned sketch, intended materials, device footprint and fabrication constraints  | Annotated assumptions, geometric layout and feasible sequence       | AI-generated external GDSII/OASIS plus Recipe |
+| A failing project            | Recipe code, exact error, exported `.wafercad` file if available, and screenshots     | Minimal repair preserving existing geometry and intent              | Corrected Recipe and a reproducible check     |
 
 **Attach the actual source files whenever possible.** Screenshots alone cannot reliably convey GDS hierarchy, datatype, original database units, or complete process parameters. If an AI tool cannot read binary GDS/OASIS files, give it a trustworthy exported cell/layer/coordinate manifest or use a coding environment capable of parsing the originals. Never have the assistant guess that an uninspected binary mask contains a particular cell or layer.
 
@@ -39,7 +38,7 @@ Provide these details before generating executable code:
 - **Units and coordinates:** use explicit nm, µm or mm; specify the mask-to-substrate position, scale and rotation. WaferCAD stores canonical physical dimensions in µm.
 - **Mask mapping:** file source or Draw source; actual Cell name; layer/datatype pairs such as `3|0`; which patterns are openings versus protected material.
 - **Process intent:** ordered operations, material names, thickness/depth, front/back face (or a supported Recipe `face: 'both'` operation), and **Whole face / Selected mask / Invert mask** for each step. Do not use Both for Lift-off or Planarize/CMP.
-- **Evidence versus inference:** article section or figure for each claimed parameter, with unknowns clearly labeled *assumption* or *illustrative*.
+- **Evidence versus inference:** article section or figure for each claimed parameter, with unknowns clearly labeled _assumption_ or _illustrative_.
 
 **Important ROI distinction:** Mask ROI limits Process operations, even Whole face, and limits mask exports. Main/3D ROI only clips inspection and applicable 3D exports. Clear an unintended Mask ROI before a truly full-face step.
 
@@ -140,10 +139,10 @@ _This is a verification workflow, not an image of your imported mask. A blurred 
 
 **Provide a layer map in this form (replace these sample values with the actual file contents):**
 
-| Actual Cell | Layer/Datatype | Meaning in the process | Tone / area | Units |
-| --- | --- | --- | --- | --- |
-| `TOP` | `3|0` | Oxide contact windows | Etch **inside** polygons | µm |
-| `TOP` | `7|0` | Contact metal pattern | Process **inside** polygons | µm |
+| Actual Cell | Layer/Datatype | Meaning in the process | Tone / area           | Units                       |
+| ----------- | -------------- | ---------------------- | --------------------- | --------------------------- |
+| `TOP`       | `3             | 0`                     | Oxide contact windows | Etch **inside** polygons    | µm  |
+| `TOP`       | `7             | 0`                     | Contact metal pattern | Process **inside** polygons | µm  |
 
 **Prompt:**
 

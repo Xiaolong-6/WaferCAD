@@ -16,7 +16,6 @@ flowchart LR
 
 _This illustrates actual data selection and clipping, **not a screenshot**. Review the selected geometry in your current Mask view before processing._
 
-
 Import GDSII (`.gds`, `.gdsii`) or OASIS (`.oas`, `.oasis`). Hierarchical **Cells** and global **Layers** are independent selections. The layout keeps its physical database units on import; alignment may change X/Y translation, scale and rotation. Zero-width linework is visible but not an operable area.
 
 ## Draw masks
@@ -39,7 +38,6 @@ flowchart TD
 
 _This is the actual **selection logic**, independent of material thickness. Mask ROI clips every Area choice; it never modifies the source GDS/OAS polygons._
 
-
 | Choice            | Affected area                                                          |
 | ----------------- | ---------------------------------------------------------------------- |
 | **Selected mask** | Selected File geometry or union of current Draw geometry.              |
@@ -58,7 +56,6 @@ flowchart LR
 ```
 
 _Three different controls, three different effects. A 3D ROI does not limit Etch or Deposit._
-
 
 **3D ROI** in Main may be rectangular, circular or sector-shaped. It limits the 3D viewport and GLB export; it does **not** limit Apply. This is a frequent source of confusion: to restrict Process, use **Mask ROI**.
 
