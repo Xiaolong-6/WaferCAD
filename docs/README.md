@@ -4,8 +4,8 @@ Use this page to find the document that owns a question. Current contracts descr
 
 ## Product users
 
-- [Product manual](wiki/Home.md) — complete task-oriented user manual and English/Chinese Recipe tutorials.
-- [Usage](USAGE.md) — compact repository reference for daily operations.
+- [Product manual](wiki/Home.md) — complete English task-oriented user manual, Recipe tutorial and AI-assisted workflows.
+- [Using WaferCAD with AI](wiki/AI-Assisted-Workflows.md) — copy-ready prompts, attachment checklists, GDS/Recipe workflows and validation.\n- [Usage](USAGE.md) — compact repository reference for daily operations.
 - [Wiki navigation](wiki/_Sidebar.md) — the navigation published with the manual.
 - [Illustrated Process Operations](wiki/Process-Operations.md) — the same Before → After schematics as the in-app Process panel.
 
@@ -40,7 +40,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [UI v2 M3 D1 code audit — 2026-10-10](ui-v2/M3_D1_CODE_AUDIT_2026-10-10.md) — verified Section state/overlay blockers, regression expectations and acceptance boundaries for the ongoing D1 fix.\n- [UI v2 M3 D1 real-view execution — 2026-10-10](ui-v2/M3_D1_EXECUTION_2026-10-10.md) — isolated real-canvas/bootstrap experiment and strict acceptance runner; **core/extended/camera gates inspected, native toolbar/Mask overflow and physical Section centering repaired; full D1 remains open**.
 - [UI v2 M3 latest-main pre-wiring audit — 2026-10-10](ui-v2/M3_MAIN_AUDIT_2026-10-10.md) — exact main/feature-branch integration status, 267-ID contract delta, per-domain static/dynamic/event/transaction ownership, refreshed AST inventory, executable shell/legacy acceptance and remaining D1 blockers; historical pre-D1 checkpoint; current D1 execution is linked above.
 - [Legacy / UI v2 browser comparison — 2026-10-10](ui-v2/LEGACY_BROWSER_COMPARISON_2026-10-10.md) — actual legacy operations and current mock comparison; compact History/plot/guide fixes at `9a43d0d`, 60 shell checks, and remaining UI gaps. Does not claim all 258 features executed or complete product parity.
-- [UI v2 全量功能比较审计 — 2026-10-09](ui-v2/FULL_PARITY_AUDIT_2026-10-09.md) — all 258 legacy feature IDs, current shell/mock/missing states, source evidence and ordered repair ledger; M2.5 checks do not establish product parity.
+- [UI v2 full feature parity audit — 2026-10-09](ui-v2/FULL_PARITY_AUDIT_2026-10-09.md) — all 258 legacy feature IDs, current shell/mock/missing states, source evidence and ordered repair ledger; M2.5 checks do not establish product parity.
 - [UI v2 actual UI acceptance — 2026-10-10](ui-v2/UI_ACCEPTANCE_2026-10-10.md) — targeted UI PASS at `2ae4ca3`; all eight findings closed, compact tools, visual rechecks and 49 passing shell checks; initial FAIL retained as history.
 - [Main-only course correction — 2026-10-11](ui-v2/MAIN_COURSE_CORRECTION_2026-10-11.md) — local Main floating-editor/Pan/Zoom checkpoint, exact validation evidence, architecture health report and shared floating-strip proposal; view-kit extraction and Mask await approval.
 - [Mask-only v2 checkpoint — 2026-10-11](ui-v2/MASK_HANDOFF_2026-10-11.md) — approved shared view-kit Mask adapter, local run/review, stage budget, source preservation and acceptance evidence.
