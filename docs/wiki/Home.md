@@ -4,9 +4,15 @@
 
 [**Open WaferCAD**](https://xiaolong-6.github.io/WaferCAD/) · [**Try the 10-minute tutorial**](First-10-Minutes) · [Browse example devices](Examples-and-Modeling-Limits)
 
-![Real 3D view from the shipped Photodetector example](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
+```mermaid
+flowchart LR
+  Start["Choose Base or bundled project"] --> Mask["Import / draw Mask"]
+  Mask --> Process["Apply Process or run Recipe"]
+  Process --> Inspect["Inspect Main, Section A–B and 3D"]
+  Inspect --> Export["Export portable .wafercad project"]
+```
 
-_Real preview of a bundled device. Your first structure will be simpler._
+_This is the user journey, not a capture of the live interface. Actual device preview thumbnails are shown with the named projects in [Examples and Modeling Limits](Examples-and-Modeling-Limits)._
 
 ## Choose your path
 
