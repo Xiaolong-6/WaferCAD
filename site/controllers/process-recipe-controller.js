@@ -1129,6 +1129,23 @@ export function createProcessRecipeController({
     select.value = match.value;
   }
 
+  // Recipe material names are not guaranteed unique after independent
+  // Front/Back deposits. Resolve the source Front ID deterministically or
+  // reject ambiguous names rather than selecting a Back/UI-view dependent ID.
+  function bothMaterialId(name) {
+    const matches = (getModel()?.layers || []).filter(
+      (layer) => layer.name === name && layer.processFace !== 'back',
+    );
+    if (matches.length !== 1) {
+      throw new Error(
+        matches.length
+          ? `Material "${name}" is ambiguous for Both; use distinct layer names.`
+          : `Material "${name}" is unavailable for Both.`,
+      );
+    }
+    return matches[0].id;
+  }
+
   async function applyProcessStep(step) {
     const p = step.params;
     if (step.command === 'snapshot') {
@@ -1138,7 +1155,8 @@ export function createProcessRecipeController({
       return true;
     }
 
-    if (p.face) setActiveFace(p.face);
+    // Both is a Process execution target; the current inspection view remains Front/Back.
+    if (p.face === 'front' || p.face === 'back') setActiveFace(p.face);
     if (p.area && p.area !== 'full') {
       const state = maskStateFromRecipe(p.mask);
       if (!state) throw new Error('This step requires a captured Mask context.');
@@ -1170,7 +1188,7 @@ export function createProcessRecipeController({
         $('growthMode').value = p.coverage || 'direct';
         setThickness(p.thicknessUm);
         updateOperationUI();
-        selectMaterialByName('targetLayer', p.material);
+        if (p.face !== 'both') selectMaterialByName('targetLayer', p.material);
       } else if (step.command === 'liftoff') {
         $('operationType').value = 'liftoff';
         updateOperationUI();
@@ -1181,7 +1199,8 @@ export function createProcessRecipeController({
         setThickness(p.thicknessUm);
         updateOperationUI();
         if (p.profile !== 'planarize') {
-          selectMaterialByName('etchTargetLayer', p.target, { optional: true });
+          if (p.face !== 'both')
+            selectMaterialByName('etchTargetLayer', p.target, { optional: true });
         }
         const surface = p.surface;
         if (p.profile === 'directional' && surface && surface !== 'smooth') {
@@ -1233,6 +1252,11 @@ export function createProcessRecipeController({
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
+      canonicalFace: p.face || 'front',
+      canonicalTargetLayerId:
+        step.command === 'extend' && p.face === 'both' ? bothMaterialId(p.material) : null,
+      canonicalEtchTargetLayerId:
+        step.command === 'etch' && p.face === 'both' && p.target ? bothMaterialId(p.target) : null,
     });
     const after = Number(getModel()?.processRevision || 0);
     if (after <= before) throw new Error('The Process step did not commit a model revision.');

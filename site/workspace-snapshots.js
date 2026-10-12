@@ -1,34 +1,8 @@
 import { historyOperationAreaLabel, historyOperationLabel } from './history-operation-label.js';
+import { equalStatePairs, stateValuesEqual } from './state-equality.js';
 
 function clone(value) {
   return structuredClone(value);
-}
-
-function deepEqual(left, right) {
-  const pending = [[left, right]];
-  while (pending.length) {
-    const [a, b] = pending.pop();
-    if (Object.is(a, b)) continue;
-    if (typeof a !== typeof b || a === null || b === null) return false;
-    if (typeof a !== 'object') return false;
-
-    const aArray = Array.isArray(a);
-    if (aArray !== Array.isArray(b)) return false;
-    if (aArray) {
-      if (a.length !== b.length) return false;
-      for (let index = 0; index < a.length; index++) pending.push([a[index], b[index]]);
-      continue;
-    }
-
-    const aKeys = Object.keys(a);
-    const bKeys = Object.keys(b);
-    if (aKeys.length !== bKeys.length) return false;
-    for (const key of aKeys) {
-      if (!Object.hasOwn(b, key)) return false;
-      pending.push([a[key], b[key]]);
-    }
-  }
-  return true;
 }
 
 function createStateCloner() {
@@ -148,7 +122,7 @@ function withoutInspectionView(state) {
 
 function processStateEqual(left, right) {
   try {
-    return deepEqual(withoutInspectionView(left), withoutInspectionView(right));
+    return stateValuesEqual(withoutInspectionView(left), withoutInspectionView(right));
   } catch {
     return false;
   }
@@ -271,16 +245,23 @@ export function createSnapshotManager({
   }
 
   function list() {
-    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId, state }) => {
-      const node = historyNodeId ? nodeById(historyNodeId) : null;
-      let legacyCheckpoint = false;
-      if (node?.state && state) {
+    const pairs = records.map((record) => {
+      const state = nodeById(record.historyNodeId)?.state;
+      return state && record.state ? [record.state, state] : [null, null];
+    });
+    let matches;
+    try {
+      matches = equalStatePairs(pairs);
+    } catch {
+      matches = pairs.map(([left, right]) => {
         try {
-          legacyCheckpoint = !deepEqual(state, node.state);
+          return stateValuesEqual(left, right);
         } catch {
-          legacyCheckpoint = true;
+          return false;
         }
-      }
+      });
+    }
+    return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId }, index) => {
       return {
         id,
         name,
@@ -288,7 +269,7 @@ export function createSnapshotManager({
         branchId,
         parentId,
         historyNodeId,
-        legacyCheckpoint,
+        legacyCheckpoint: !matches[index],
       };
     });
   }
@@ -331,6 +312,7 @@ export function createSnapshotManager({
             ? [...replay.params.etchTargetLayerIds]
             : [],
         resultLayerId: operation.resultLayerId || null,
+        resultLayerIds: operation.resultLayerIds || null,
         resultImplantId: operation.resultImplantId || null,
         resultElectricalRegionId: operation.resultElectricalRegionId || null,
       };
@@ -343,10 +325,20 @@ export function createSnapshotManager({
       return added.length === 1 ? added[0].id : null;
     };
 
-    if (!refs.resultLayerId && operation.kind === 'add') {
-      refs.resultLayerId = addedId(nodeState?.model?.layers, parentState?.model?.layers, {
-        exclude: (item) => item.id === 'base',
-      });
+    if (operation.kind === 'add') {
+      const beforeIds = new Set((parentState?.model?.layers || []).map((layer) => layer.id));
+      const added = (nodeState?.model?.layers || []).filter(
+        (layer) => layer.id !== 'base' && !beforeIds.has(layer.id),
+      );
+      if (!refs.resultLayerId && added.length === 1) refs.resultLayerId = added[0].id;
+      if (!refs.resultLayerIds && added.length === 2) {
+        const front = added.find((layer) => layer.processFace === 'front');
+        const back = added.find((layer) => layer.processFace === 'back');
+        if (front && back) {
+          refs.resultLayerIds = { front: front.id, back: back.id };
+          refs.resultLayerId ||= front.id;
+        }
+      }
     }
     if (!refs.resultImplantId && operation.kind === 'implant') {
       refs.resultImplantId = addedId(nodeState?.model?.implants, parentState?.model?.implants);

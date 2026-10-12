@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const feedback = await readFile(
   new URL('../controllers/feedback-controller.js', import.meta.url),
@@ -290,9 +290,12 @@ test('Mask owns an independent Square/Circle ROI for Process and export', () => 
   assert.match(html, /data-tool="circle"[^>]*>\s*Circle\s*</);
   assert.match(html, /id="maskRoiSize"/);
   assert.match(selectionGeometry, /function maskRoiGeometry\(\)/);
+  // Scalar/Draw selections intersect the Mask ROI directly. Canonical
+  // arrays keep a deferred per-cell Mask query and carry the same limiter.
+  assert.match(selectionGeometry, /return limiter \? intersection\(area, limiter\) : area;/);
   assert.match(
     selectionGeometry,
-    /const result = limiter \? intersection\(area, limiter\) : area;[\s\S]*return result;/,
+    /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
   );
   assert.match(planRenderers, /getMaskRoiController\(\)\?\.render\(ctx, v\)/);
   assert.match(maskRoiController, /Math\.max\(Math\.abs\(dx\), Math\.abs\(dy\)\)/);

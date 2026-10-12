@@ -131,6 +131,36 @@ test('snapshot manager shares unchanged large model and layout assets internally
   assert.strictEqual(exported[0].state.model, exported[1].state.model);
 });
 
+test('pending History changes detect unversioned edits in shared geometry after equality checks', () => {
+  const geom = [
+    [
+      [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 0],
+      ],
+    ],
+  ];
+  let live = { model: { revision: 1, processRevision: 0, regions: [{ geom }, { geom }] } };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: () => true,
+  });
+  const first = manager.recordOperation({ kind: 'record' });
+  live = { model: { ...live.model, revision: 2, processRevision: 1 } };
+  manager.recordOperation({ kind: 'record' });
+  assert.equal(manager.restoreProcessNode(first.id), true);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+  assert.equal(manager.hasHistoricalWorkingEdits(), false);
+  live.model.regions[0].geom[0][0][0][0] = 0.25;
+  assert.equal(manager.hasHistoricalWorkingEdits(), true);
+  assert.equal(live.model.revision, 1);
+});
+
 test('snapshot preserves Draw mask source independently from imported layout assets', () => {
   let live = {
     maskSourceMode: 'draw',

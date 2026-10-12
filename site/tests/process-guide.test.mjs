@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { PROCESS_GUIDE, processGuideEntry, processGuideKey } from '../process-guide.js';
 import { processGuideSvg } from '../process-guide-svg.js';
 import { processOperationsMarkdown } from '../../scripts/build-process-guide.mjs';
@@ -112,7 +113,7 @@ test('generated Wiki operation documentation is identical to current Process cat
 });
 
 test('both product manual entry points and the inline guide are wired', async () => {
-  const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
   const guide = await readFile(new URL('../guide/index.html', import.meta.url), 'utf8');
   const panel = await readFile(
     new URL('../controllers/process-panel-controller.js', import.meta.url),
@@ -125,4 +126,22 @@ test('both product manual entry points and the inline guide are wired', async ()
   assert.match(guide, /wiki\/Process-Operations/);
   assert.match(guide, /location\.replace\(target\)/);
   assert.match(panel, /wiki\/Process-Operations#/);
+});
+
+test('portable v2 guide uses the canonical catalog and all 19 SVG pairs without module loading', async () => {
+  const script = await readFile(
+    new URL('../ui-v2/process-guide.generated.js', import.meta.url),
+    'utf8',
+  );
+  const window = {};
+  runInNewContext(script, { window });
+  const portable = window.WaferCadProcessGuide;
+  assert.deepEqual(JSON.parse(JSON.stringify(portable.PROCESS_GUIDE)), PROCESS_GUIDE);
+  for (const entry of PROCESS_GUIDE) {
+    assert.equal(portable.processGuideEntry(entry.id).summary, entry.summary);
+    for (const after of [false, true])
+      assert.equal(portable.processGuideSvg(entry.id, after), processGuideSvg(entry.id, after));
+  }
+  const input = { type: 'add', growth: 'transfer', placement: 'flat' };
+  assert.equal(portable.processGuideKey(input), processGuideKey(input));
 });

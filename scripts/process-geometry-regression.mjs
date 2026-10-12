@@ -18,7 +18,7 @@ import {
   openFunctionPanel,
   waitForAppReady,
   waitForThreeReady,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
 } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
@@ -72,7 +72,7 @@ const recipeContext = await newUiContext(browser, {
 });
 const recipePage = await recipeContext.newPage();
 const recipeErrors = observePageErrors(recipePage);
-await recipePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await recipePage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -318,7 +318,7 @@ for (const unit of ['um', 'nm', 'mm']) {
   const precisionContext = await newUiContext(browser, { acceptDownloads: true });
   const precisionPage = await precisionContext.newPage();
   const precisionErrors = observePageErrors(precisionPage);
-  await precisionPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+  await precisionPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`);
   await waitForAppReady(precisionPage);
   await loadProject(
     precisionPage,
@@ -380,7 +380,7 @@ const context = await newUiContext(browser, {
 const page = await context.newPage();
 const errors = observePageErrors(page);
 
-await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -1113,7 +1113,7 @@ assert.ok(
 const liftRecipeContext = await newUiContext(browser, { acceptDownloads: true });
 const liftRecipePage = await liftRecipeContext.newPage();
 const liftRecipeErrors = observePageErrors(liftRecipePage);
-await liftRecipePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await liftRecipePage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });

@@ -87,7 +87,7 @@ test('the novice path is discoverable and names the current UI controls', async 
   assert.match(guide, /\*\*Base\*\* is the default layer name/);
   assert.match(guide, /uncheck Also add to Recipe/);
 
-  const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
   const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
   const projectPanel = html.slice(
     html.indexOf('id="settingsTools"'),
@@ -121,7 +121,13 @@ test('Mask ROI documentation agrees with Whole face worker clipping', async () =
   const worker = await readFile(new URL('../process-worker.js', import.meta.url), 'utf8');
   assert.match(masks, /even \*\*Whole face\*\*/);
   assert.match(gettingStarted, /including Whole face/);
-  assert.match(worker, /const result = limiter \? vectorApi\.intersection\(area, limiter\) : area/);
+  assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
+  assert.match(worker, /deferredArrayMaskArea\([\s\S]*?limiter \},[\s\S]*?vectorApi/);
+  const selection = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
+  assert.match(
+    selection,
+    /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
+  );
 });
 
 test('all code blocks labeled JavaScript in the Recipe tutorials parse as v1 recipes', async () => {

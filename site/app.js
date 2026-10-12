@@ -8,6 +8,11 @@ import { transformMulti } from './vector-geometry.js';
 import { createThreeView } from './three-view.js';
 import { setRendererBuildFailure } from './renderer-rebuild-status.js';
 import {
+  normalizeSectionViewport,
+  panSectionViewport,
+  zoomSectionViewportAt,
+} from './section-view-viewport.js';
+import {
   formatLengthInput,
   formatXY as formatXYValue,
   fromMicron,
@@ -62,6 +67,8 @@ import { createSelectionGeometry } from './selection-geometry.js';
 const $ = (id) => document.getElementById(id);
 const APP_PARAMS = new URLSearchParams(globalThis.location?.search || '');
 const EMBEDDED_PREVIEW = APP_PARAMS.get('preview') === '1';
+// The experimental v2 view entry creates the real DOM and its shell before importing this module.
+const V2_REAL_VIEWS = document.documentElement.dataset.ui === 'v2';
 let embeddedPreviewView = ['main', 'mask', 'three', 'section'].includes(APP_PARAMS.get('view'))
   ? APP_PARAMS.get('view')
   : 'main';
@@ -107,6 +114,7 @@ let projectName = 'Untitled',
   processRecipe = null,
   section = { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
   sectionScaleMode = 'auto',
+  sectionViewport = normalizeSectionViewport(),
   sectionShowBorders = false,
   sectionCollapse = null,
   sectionDetailRoi = null,
@@ -772,6 +780,32 @@ function fit3d() {
   threeView?.fit();
 }
 
+// D1-only presentation seam: reuse the live OrbitControls camera state and
+// existing view-dirty transaction owner. No duplicate renderer or model math.
+if (V2_REAL_VIEWS) {
+  const bridge = globalThis.WaferCadV2RealBridge;
+  if (!bridge) throw new Error('Real v2 camera bridge was not registered before bootstrap.');
+  bridge.cancelSectionDetailDrawing = () => sectionDetailRoiController.cancelDrawing();
+  bridge.getSectionViewport = () => structuredClone(sectionViewport);
+  bridge.setSectionViewport = (value) => {
+    sectionViewport = normalizeSectionViewport(value);
+    renderSection();
+    markViewDirty();
+    return structuredClone(sectionViewport);
+  };
+  bridge.panSectionViewport = (dx, dy) =>
+    bridge.setSectionViewport(panSectionViewport(sectionViewport, dx, dy));
+  bridge.zoomSectionViewportAt = (factor, x, y, width, height, origin = sectionViewport) =>
+    bridge.setSectionViewport(zoomSectionViewportAt(origin, factor, x, y, width, height));
+  bridge.getThreeCamera = () => threeView?.getViewState?.() || null;
+  bridge.setThreeCamera = (viewState) => {
+    if (!threeView?.ready || !threeView.setViewState?.(viewState)) return false;
+    pendingThreeCamera = threeView.getViewState?.() || null;
+    markViewDirty();
+    return true;
+  };
+}
+
 let workspaceViewController = null;
 
 function renderAll() {
@@ -824,6 +858,7 @@ const projectStateController = createProjectStateController({
     roiAnchor,
     section,
     sectionScaleMode,
+    sectionViewport,
     sectionShowBorders,
     sectionCollapse,
     sectionDetailRoi,
@@ -874,6 +909,7 @@ const projectStateController = createProjectStateController({
     processRecipe = next.processRecipe ? structuredClone(next.processRecipe) : null;
     processRecipeController?.refresh();
     if (next.sectionScaleMode) sectionScaleMode = next.sectionScaleMode;
+    sectionViewport = normalizeSectionViewport(next.sectionViewport);
     sectionShowBorders = Boolean(next.sectionShowBorders);
     sectionCollapse = next.sectionCollapse || null;
     sectionDetailRoi = next.sectionDetailRoi || null;
@@ -982,7 +1018,9 @@ const historyMutationController = createHistoryMutationController({
   markProjectDirty,
   renderSnapshots: () => projectController?.renderSnapshots?.(),
   openProcessPanel: () =>
-    document.querySelector('.workstation-rail-button[data-tool="process"]')?.click(),
+    V2_REAL_VIEWS
+      ? globalThis.WaferCadV2RealBridge?.openProcessPanel()
+      : document.querySelector('.workstation-rail-button[data-tool="process"]')?.click(),
   updateOperationUI,
   captureReplayTransaction: captureHistoryReplayTransaction,
   restoreReplayTransaction: restoreHistoryReplayTransaction,
@@ -1465,7 +1503,10 @@ workspacePersistenceController = createWorkspacePersistenceController({
   chooseAction: (options) => confirmationDialog.ask(options),
 });
 
-const workstationUiController = createWorkstationUiController({ root: document, win: window });
+const workstationUiController = V2_REAL_VIEWS
+  ? globalThis.WaferCadV2RealBridge?.workstationController
+  : createWorkstationUiController({ root: document, win: window });
+if (!workstationUiController) throw new Error('Missing v2 workstation bootstrap.');
 
 function resetEmbeddedPreviewPlanFraming() {
   if (!EMBEDDED_PREVIEW) return;
@@ -1604,7 +1645,8 @@ function bindUi() {
 
   viewPopovers.bind();
   viewToolbars.bind();
-  viewMaximizeController.bind();
+  // Native v2 view buttons are owned by the single v2 shell; do not double-bind them.
+  if (!V2_REAL_VIEWS) viewMaximizeController.bind();
   roiController.bind();
   processTaskController.bind();
   processRecipeController.bind();
@@ -1637,6 +1679,7 @@ planRenderers = createPlanRenderers({
     layout,
     section,
     sectionScaleMode,
+    sectionViewport: V2_REAL_VIEWS ? sectionViewport : null,
     sectionShowBorders,
     sectionCollapse,
     maskOpacity,
@@ -1688,7 +1731,10 @@ renderAll();
 if (threeView) fit3d();
 if (EMBEDDED_PREVIEW) applyEmbeddedPreviewView(embeddedPreviewView);
 
-if (
+if (V2_REAL_VIEWS) {
+  if (!globalThis.WaferCadV2RealBridge?.verifyNativeIdentity())
+    throw new Error('Real v2 scientific view identity failed to initialize.');
+} else if (
   !document.documentElement.classList.contains('workstation-ui-v2') ||
   !document.querySelector('.workstation-rail') ||
   !document.querySelector('.workstation-view-stage')

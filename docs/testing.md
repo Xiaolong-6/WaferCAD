@@ -31,6 +31,53 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### UI v2 shared-workstation checks
+
+The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
+`scripts/v2/check-cross-ui-recovery.mjs` checks the product's save-before-switch
+action, exact cross-interface recovery, and concurrent Legacy/v2 writer ownership.
+Existing scientific/controller suites retain their Legacy DOM assertions at
+`app-legacy.html`. Suites that start through Welcome explicitly use
+`newLegacyUiContext` / `newLegacyUiPage`; these test contexts redirect the
+Welcome navigation to Legacy. Default-route owners use unmodified contexts.
+
+Small Metalens interaction owners import the complete
+`tio2-metalens-four-unit-process.wafercad` through the staged Project path.
+The catalog's full 6,400-instance Metalens remains covered by the M4 project owner.
+
+Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
+
+The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; the Process/History Stage C workflow is owned by the integrated Stage C gate below.
+
+Stage C now uses one genuine M2-derived four-view workstation with a shared model and the existing scientific controllers. The [Stage C / M4 CI gate](../.github/workflows/ui-v2-stage-c-m4.yml) runs these commands at 4182 (Node 24; Chromium 140 / Playwright 1.55.1):
+
+```bash
+node scripts/v2/check-sync.mjs
+node scripts/v2/check-startup.mjs
+node scripts/v2/check-cross-ui-recovery.mjs
+node scripts/v2/check-review-interactions.mjs
+node scripts/v2/check-m4-projects.mjs
+```
+
+The shared synchronization owner checks independent Main/Mask/Section ROIs, real mask-limited Process geometry, front/back process targeting versus Main orientation, History Undo/Redo/restore, Layers preference, Project Open/Save/Recovery, Recipe precise deposition, Diagnostics read-only behavior, and 1440/1024/768/390 plus emulated-touch layout invariants. The M4 project owner additionally checks M3D, Photodetector, four-unit TiO2 Metalens and the true 6,400-tile / 49-template full array with real imports, unit round trips and exported project verification at the documented 0.1 nm persistence precision. Its `metalens-array` route loads the complete fixture, not the four-unit preview. Both owners report errors and upload browser screenshots without updating approved visual baselines. `check-sync` and its latest checkpoint are documented in [M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md).
+
+For revision-specific passing evidence use PR #177 at `b127ce8` and the [M4 CI run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38161661083). These are software-WebGL, programmatic and Chromium touch-emulation results. Physical RTX GPU, physical touchscreen, M2 visual acceptance, heavy full-array Recipe Run All, complete Variant editing and new screenshot baseline approval remain separate checks.
+
+Phase B 3D separates small-example interaction coverage from a substantial real export that can be cancelled through the task panel:
+
+```bash
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" WAFERCAD_V2_EXAMPLE=metalens \
+  node scripts/v2/check-three-view.mjs
+WAFERCAD_THREE_DIR="$PWD/node_modules/three" \
+  node scripts/v2/check-three-export-abort.mjs
+```
+
+The first checker covers four widths, touch, Main ROI/Section linkage, unchanged model, PNG 3× and GLB metres. The second uses the complete 27-layer/551-region M3D model, real GLB work and task-panel Abort, requiring no download, unchanged model/ROI and a released task. Only its camera comparison allows the user-approved maximum numerical error of `1e-9`; existing `0.25 px` geometry assertions remain unchanged. A tiny clipped export may complete before an Abort click and cannot establish cancellation. `check-three-view.mjs` still defaults to complete M3D for full-model diagnostics when no example is supplied.
+
+Final captures also require visible colored material pixels in the compositor PNG, canvas/host agreement and screenshot-time layout stability within 0.25 px. Four-width checks use full-page capture. Touch uses an actual viewport capture, requires the entire 3D canvas to fit, and preserves coarse-pointer emulation: Chromium 140 full-page `captureBeyondViewport` switches the emulated pointer to fine. Capture dimensions and pointer diagnostics are saved beside each PNG as `.visibility.json`; the portable report includes the same data and material-pixel count. This does not replace scientific model/geometry assertions or human visual acceptance.
+
+[The Phase B CI workflow](../.github/workflows/ui-v2-three.yml) runs these two browser owners separately from the Main/Mask/Section job. It has no manual dispatch entry. Local reports are under `test-results/ui-v2-three-review-metalens/` and `test-results/ui-v2-three-export-abort/`. Passing these checks does not establish hardware GPU or physical touchscreen acceptance; see the [WIP checkpoint](ui-v2/STAGE_B_LOCAL_CHECKPOINT_2026-10-11.md) for actual results and the [current review handoff](ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md) for the user-approved lightweight acceptance scope. The full-model interaction rerun was stopped at the user's request; its checker remains available and unchanged in scope.
+
 For **frame-accurate transparency measurements**, wait for `rendererFrameSerial` to advance after the opacity change, then sample diagnostics. `renderState=ready` alone may precede the next WebGL frame. `rendererFrameMs` is CPU-observed submission time, while `rendererDrawCalls`/`rendererDrawTriangles` and retained geometry/material counters expose the active and cached scene costs. A browser screenshot/compositor checkpoint is needed when comparing user-visible cold and warm latency. The 625-site transparency benchmark **continues to measure** cold/warm complete-frame latency, but the <15 s cold budget and relative swap times are **temporarily non-blocking** under the recorded renderer acceptance policy. Failures of transparency geometry, buried Electrical/Implant visibility, scene ownership, retained resource stability, interaction, or genuine frame hangs still fail CI. Timing overruns are emitted as `ARRAY_RENDERER_PERF_WARNING` and stored in the renderer report. See [the transparency performance roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) for the evidence, phases and conditions for restoring the hard timing gate.
 
 For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundled 625-site full-wafer project and records stage timings exposed by the 3D renderer (ownership/topology, smooth caps, sidewalls, annotations/scene assembly, presentation updates, and rough preview/final readiness). It also asserts the persistent-scene contract: opacity changes must retain the same scene generation and surface-plan build count, report a presentation update, perform zero physical assembly work, and keep scene object/geometry/material counts stable. The benchmark writes diagnostic output under ignored `test-results/renderer-pipeline/`. It is **not** a CI performance threshold: hardware/browser timing varies, so use it to compare the same environment before/after a renderer change. Changes to the benchmark script route to the renderer browser owner so its surrounding product contracts are still exercised.

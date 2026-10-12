@@ -6,7 +6,7 @@ import { appendFile } from 'node:fs/promises';
 const before = process.env.PREVIOUS_MAIN_SHA || '';
 const after = process.env.GITHUB_SHA || 'HEAD';
 const sourcePatterns = [
-  /^site\/app\.html$/,
+  /^site\/app(?:-legacy)?\.html$/,
   /^site\/controllers\/(?:process-panel|process-recipe|workspace-actions|mask-roi|draw-mask|project|history-mutation|base-controls|export|roi)-controller\.js$/,
   /^site\/(?:process-recipe|project-io|project-schema|selection-geometry|layout-export)\.js$/,
 ];

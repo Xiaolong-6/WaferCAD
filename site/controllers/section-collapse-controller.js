@@ -361,6 +361,14 @@ export function createSectionCollapseController({
     bind,
     sync,
     close,
+    current,
+    setCurrent,
+    toggleEnabled,
+    setSurfaceScale,
+    zToRulerY,
+    startDrag,
+    moveDrag,
+    endDrag,
     defaultForCurrentModel: () => defaultSectionCollapseForModel(getModel(), bounds()),
   };
 }

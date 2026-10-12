@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import { newUiContext, waitForAppReady, waitForThreeReady } from './test-helpers/ui.mjs';
+import {
+  newLegacyUiContext as newUiContext,
+  waitForAppReady,
+  waitForThreeReady,
+} from './test-helpers/ui.mjs';
 import {
   checkSectionSeams,
   exportCurrentProject,
@@ -265,7 +269,7 @@ const timings = [];
 const semanticDrifts = [];
 let replayed;
 try {
-  await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4173') + '/app.html', {
+  await page.goto((process.env.WAFERCAD_URL || 'http://127.0.0.1:4173') + '/app-legacy.html', {
     waitUntil: 'domcontentloaded',
   });
   await waitForAppReady(page);

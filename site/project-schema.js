@@ -984,6 +984,12 @@ function validateDisplay(display) {
     );
     assertFinite(view.fov, 'display.threeCamera.fov', { min: 1.000001, max: 178.999999 });
   }
+  if (display.sectionViewport != null) {
+    const view = assertObject(display.sectionViewport, 'display.sectionViewport');
+    assertFinite(view.zoom, 'display.sectionViewport.zoom', { min: 0.25, max: 32 });
+    assertFinite(view.panX, 'display.sectionViewport.panX', { min: -100000, max: 100000 });
+    assertFinite(view.panY, 'display.sectionViewport.panY', { min: -100000, max: 100000 });
+  }
   if (display.sectionShowBorders != null && typeof display.sectionShowBorders !== 'boolean') {
     fail('display.sectionShowBorders', 'must be boolean.');
   }

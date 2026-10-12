@@ -7,6 +7,12 @@ function enabled(plan) {
   return BROWSER_SUITES.filter((suite) => plan.suites[suite]);
 }
 
+test('shared state comparison changes run History and persistence coverage', () => {
+  const plan = buildCiTestPlan(['site/state-equality.js']);
+  assert.equal(plan.full, false);
+  assert.deepEqual(enabled(plan), ['smoke', 'history', 'persistence']);
+});
+
 test('bundled example History changes run focused state and example coverage', () => {
   const plan = buildCiTestPlan(['site/bundled-example-history.js']);
   assert.equal(plan.full, false);

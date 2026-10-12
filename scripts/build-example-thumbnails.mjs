@@ -53,7 +53,7 @@ try {
     const page = await context.newPage(),
       errors = observePageErrors(page);
     await page.goto(
-      baseUrl + '/app.html?preview=1&start=example&example=' + example.id + '&view=three',
+      baseUrl + '/app-legacy.html?preview=1&start=example&example=' + example.id + '&view=three',
       { waitUntil: 'domcontentloaded' },
     );
     await page.waitForFunction(

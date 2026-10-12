@@ -87,7 +87,7 @@ try {
       }
     };
   });
-  await page.goto(baseUrl + '/app.html', { waitUntil: 'domcontentloaded' });
+  await page.goto(baseUrl + '/app-legacy.html', { waitUntil: 'domcontentloaded' });
   await waitForAppReady(page);
   async function open(file) {
     const start = performance.now();
