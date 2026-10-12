@@ -403,13 +403,16 @@ test('opt-in raster census records comparable WebGL2 state at bounded draw miles
     'DEPTH_WRITEMASK', 'DEPTH_FUNC', 'DEPTH_RANGE', 'CULL_FACE_MODE',
     'FRONT_FACE', 'POLYGON_OFFSET_FACTOR', 'POLYGON_OFFSET_UNITS',
     'SAMPLE_COVERAGE_VALUE', 'SAMPLE_COVERAGE_INVERT',
+    'FRAMEBUFFER_BINDING',
   ];
   const readings = new Map();
   enumerations.forEach((name, index) => {
     h.gl[name] = index + 70;
     readings.set(
       index + 70,
-      Object.hasOwn(values, name)
+      name === 'FRAMEBUFFER_BINDING'
+        ? null
+        : Object.hasOwn(values, name)
         ? (name === 'COLOR_WRITEMASK'
           ? values[name]
           : new Float32Array(values[name]))
