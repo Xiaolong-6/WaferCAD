@@ -221,7 +221,16 @@ test('3D large-array assembly yields an input macrotask within each time slice',
   assert.match(scheduler, /nextAssemblyYieldAt = performance\.now\(\) \+ 8/);
   assert.match(scheduler, /await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\)/);
   assert.match(scheduler, /if \(!variantBuild\) await yieldSceneAssembly\(\)/);
-  assert.doesNotMatch(scheduler, /if \(variantBuild\) \{\s*await new Promise\(\(resolve\) => requestAnimationFrame/);
+  assert.match(scheduler, /const cancelSupersededVariant = \(\) =>/);
+  assert.match(scheduler, /if \(!variantBuild \|\| !pendingRender\) return/);
+  assert.match(scheduler, /error\.name = 'SceneVariantSuperseded'/);
+  assert.equal((scheduler.match(/cancelSupersededVariant\(\);/g) || []).length, 2);
+  assert.doesNotMatch(
+    scheduler,
+    /if \(variantBuild\) \{\s*await new Promise\(\(resolve\) => requestAnimationFrame/,
+  );
+  assert.match(threeView, /const superseded = error\?\.name === 'SceneVariantSuperseded'/);
+  assert.match(threeView, /rendererSupersededBuilds/);
 });
 
 test('3D lifecycle disposal replaces the original direct-resource loops without undefined sets', () => {
