@@ -16,6 +16,21 @@ The Draw source keeps independently editable Rectangle, Circle, Polygon, Ring, a
 
 ## Process Area
 
+```mermaid
+flowchart TD
+  Layout["Selected File Cell/Layers or Draw shapes"] --> Area{"Process Area"}
+  Area -->|Selected mask| Inside["Inside the selected polygons"]
+  Area -->|Invert mask| Outside["Complement within the Process domain"]
+  Area -->|Whole face| Full["Entire active face"]
+  Inside --> Clip["Intersect with Mask ROI if set"]
+  Outside --> Clip
+  Full --> Clip
+  Clip --> Apply["Process Kernel applies operation"]
+```
+
+_This is the actual **selection logic**, independent of material thickness. Mask ROI clips every Area choice; it never modifies the source GDS/OAS polygons._
+
+
 | Choice            | Affected area                                                          |
 | ----------------- | ---------------------------------------------------------------------- |
 | **Selected mask** | Selected File geometry or union of current Draw geometry.              |
@@ -25,6 +40,16 @@ The Draw source keeps independently editable Rectangle, Circle, Polygon, Ring, a
 **Mask ROI** clips the final Process domain for **Selected mask**, **Invert mask**, and even **Whole face** when active, as well as SVG/GDSII/OASIS mask exports. Clear Mask ROI before using Whole face if you truly intend the entire substrate. It never rewrites the source layout. It is independent of the Main ROI and A–B line.
 
 ## 3D ROI (Main view)
+
+```mermaid
+flowchart LR
+  Main["Main view ROI"] --> Three["3D inspection / GLB export clip"]
+  Mask["Mask ROI"] --> Process["Process coverage and mask export clip"]
+  Section["Section A–B line"] --> Slice["Section cross-section path"]
+```
+
+_Three different controls, three different effects. A 3D ROI does not limit Etch or Deposit._
+
 
 **3D ROI** in Main may be rectangular, circular or sector-shaped. It limits the 3D viewport and GLB export; it does **not** limit Apply. This is a frequent source of confusion: to restrict Process, use **Mask ROI**.
 
