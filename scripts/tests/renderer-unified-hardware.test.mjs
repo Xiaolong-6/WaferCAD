@@ -9,6 +9,7 @@ import {
   buildRendererHardwarePlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
+  buildRendererV3PhaseWindowDiagnosticPlan,
   classifyRendererHardwareStep,
 } from '../test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -157,6 +158,55 @@ const v4Report = (mode, active = true) => ({
   ],
   parity: { strictPixelParity: true },
   passed: true,
+});
+
+test('targeted phase-window evidence cannot approve V3 production raster parity', () => {
+  const [step] = buildRendererV3PhaseWindowDiagnosticPlan('256:384');
+  assert.equal(step.id, 'v3-phase-window');
+  assert.deepEqual(step.phaseWindow, { low: 256, high: 384 });
+  assert.deepEqual(step.args, [
+    '--hardware-gpu',
+    '--report-only',
+    '--diagnose-phase-window=256:384',
+  ]);
+  assert.match(step.artifact, /phase-window-256-384$/);
+  assert.throws(() => buildRendererV3PhaseWindowDiagnosticPlan('0:384'), /Phase window/);
+  const milestones = [256, 269, 282, 294, 307, 320, 333, 346, 358, 371, 384];
+  const trial = {
+    phaseCoverage: { mode: 'draw-milestones', finalFrameCaptured: true },
+    native: { calls: 1408 },
+    phaseCheckpoints: [
+      ...milestones.map((afterDraw) => ({ afterDraw, status: 'valid', hash: 'abc' })),
+      { afterDraw: 1408, status: 'valid', hash: 'xyz' },
+    ],
+  };
+  const report = {
+    stage: 'completed',
+    passed: false,
+    strictParity: true,
+    phaseWindowDiagnostic: true,
+    phaseWindow: { low: 256, high: 384 },
+    acceptanceEligible: false,
+    trials: Array.from({ length: 4 }, () => structuredClone(trial)),
+  };
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, report),
+    'diagnostic-complete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...report, passed: true }),
+    'error',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...report, acceptanceEligible: true }),
+    'error',
+  );
+  const missing = structuredClone(report);
+  missing.trials[0].phaseCheckpoints[3].hash = null;
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, missing), 'error');
+  const wrong = structuredClone(report);
+  wrong.trials[2].phaseCheckpoints[1].afterDraw = 400;
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, wrong), 'error');
 });
 
 test('strict acceptance never infers V3 success from report-only exit code', () => {

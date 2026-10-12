@@ -15,6 +15,7 @@ import {
   buildRendererHardwarePlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
+  buildRendererV3PhaseWindowDiagnosticPlan,
   classifyRendererHardwareStep,
 } from './test-helpers/renderer-unified-hardware-plan.mjs';
 
@@ -24,8 +25,17 @@ const planOnly = options.includes('--plan-only');
 const modesArg = options.find((arg) => arg.startsWith('--modes='));
 const ditherDiagnostic = options.includes('--diagnose-v3-dither');
 const msaaDiagnostic = options.includes('--diagnose-v3-msaa');
-const diagnostic = ditherDiagnostic || msaaDiagnostic;
-if ((diagnostic && modesArg) || (ditherDiagnostic && msaaDiagnostic)) {
+const phaseWindowOptions = options.filter((arg) => arg.startsWith('--diagnose-v3-phase-window'));
+if (phaseWindowOptions.length > 1) throw new Error('Select only one phase window');
+const phaseWindowDiagnostic = phaseWindowOptions.length === 1;
+const phaseWindowValue = phaseWindowDiagnostic
+  ? (phaseWindowOptions[0].split('--diagnose-v3-phase-window=')[1] ?? '')
+  : null;
+const diagnostic = ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic;
+if (
+  (diagnostic && modesArg) ||
+  [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
+) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
 }
 const modes = modesArg ? modesArg.slice('--modes='.length).split(',') : undefined;
@@ -35,7 +45,9 @@ const plan = ditherDiagnostic
   ? buildRendererV3DitherDiagnosticPlan()
   : msaaDiagnostic
     ? buildRendererV3MsaaDiagnosticPlan()
-    : buildRendererHardwarePlan(modes);
+    : phaseWindowDiagnostic
+      ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+      : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {
