@@ -24,7 +24,7 @@ and is **not** counted as functional full-size ROI acceptance.
 2. `site/three-view.js` previously disposed the last valid scene before
    resolving bounded ROI topology. An exception left `renderState=building`
    and could destroy the scene. The clipped surface plan is now evaluated
-   *before* disposing the prior group. An awaited or synchronous rebuild
+   _before_ disposing the prior group. An awaited or synchronous rebuild
    failure ends in `renderState=error` / `renderPhase=failed`, with a readable
    error code and message; previous geometry is retained but hidden, never
    misrepresented as a valid clipped ROI. The rendering lock is released.
@@ -53,16 +53,16 @@ and is **not** counted as functional full-size ROI acceptance.
   explicit 625-site ROI recovery gate. Chromium **140.0.7339.186**.
   Extracted `RENDERER_ROI_RECOVERY` result:
 
-  | Property | Reference | Rejected oversized ROI | Cleared ROI |
-  | --- | --- | --- | --- |
-  | Render state | ready | error | ready |
-  | Render phase | complete | failed | complete |
-  | Render error code | absent | geometry-point-budget | absent |
-  | Scene generation | 3 | 3 | 3 |
-  | Model revision | 61 | 61 | 61 |
-  | Process revision | 40 | 40 | 40 |
-  | Submitted triangles | 57,040,012 | no accepted ROI frame | 57,040,012 |
-  | Frame serial | 13 | 14 | 15 |
+  | Property            | Reference  | Rejected oversized ROI | Cleared ROI |
+  | ------------------- | ---------- | ---------------------- | ----------- |
+  | Render state        | ready      | error                  | ready       |
+  | Render phase        | complete   | failed                 | complete    |
+  | Render error code   | absent     | geometry-point-budget  | absent      |
+  | Scene generation    | 3          | 3                      | 3           |
+  | Model revision      | 61         | 61                     | 61          |
+  | Process revision    | 40         | 40                     | 40          |
+  | Submitted triangles | 57,040,012 | no accepted ROI frame  | 57,040,012  |
+  | Frame serial        | 13         | 14                     | 15          |
 
   ROI guard message was retained; page errors were **zero**.
   Renderer rejected the geometry limit and successfully restored the complete
@@ -209,7 +209,7 @@ hot-switch diagnostic CI step has been removed again from
 625-site ROI error/clear/restore browser gate remains active.
 
 **Next technical hypothesis to test in isolation:** compare the
-*normal product path* in fresh identical hardware WebGL contexts with
+_normal product path_ in fresh identical hardware WebGL contexts with
 explicitly recorded (a) backing store versus capture dimensions,
 (b) same-camera raw GL sample neighborhoods, (c) shader/material
 program configuration, and (d) alpha/dither state. Never qualify
@@ -236,13 +236,13 @@ exact PNG bytes and decoded pixel data, camera matrices, presentation draw
 order, presentation material descriptors, CSS/canvas/PNG dimensions,
 model/process revision and native WebGL submissions.
 
-| Verification | Fresh OFF/OFF | Fresh ON/ON | Fresh OFF/ON |
-| --- | --- | --- | --- |
-| PNG pixel difference | **0** | **0** | **0** |
-| PNG bytes identical | yes | yes | yes |
-| Complete GL framebuffer SHA-256 identical | yes | yes | yes |
-| Exact camera world/projection and draw order | yes | yes | yes |
-| Viewport/canvas/GL backing size | identical | identical | identical |
+| Verification                                 | Fresh OFF/OFF | Fresh ON/ON | Fresh OFF/ON |
+| -------------------------------------------- | ------------- | ----------- | ------------ |
+| PNG pixel difference                         | **0**         | **0**       | **0**        |
+| PNG bytes identical                          | yes           | yes         | yes          |
+| Complete GL framebuffer SHA-256 identical    | yes           | yes         | yes          |
+| Exact camera world/projection and draw order | yes           | yes         | yes          |
+| Viewport/canvas/GL backing size              | identical     | identical   | identical    |
 
 All four native GL framebuffers had a **530 × 273** backing store while
 the canvas screenshot was **531 × 275**; this difference does not produce

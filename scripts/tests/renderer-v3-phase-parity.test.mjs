@@ -4,8 +4,10 @@ import { compareRendererPhaseEvidence } from '../test-helpers/renderer-v3-phase-
 
 const checkpoints = (hashes) =>
   hashes.map((hash, index) => ({
-    hash, kind: index === 0 ? 'substrate' : 'electrical-surface',
-    afterDraw: index === 0 ? 10 : 100, status: 'valid',
+    hash,
+    kind: index === 0 ? 'substrate' : 'electrical-surface',
+    afterDraw: index === 0 ? 10 : 100,
+    status: 'valid',
   }));
 const arm = (hashes, skipped = 0) => ({
   phaseCheckpoints: checkpoints(hashes),

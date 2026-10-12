@@ -17,10 +17,7 @@ import {
   baseUrl,
 } from './test-helpers/ui.mjs';
 import { installWebglFrameProbe } from './test-helpers/webgl-frame-probe.mjs';
-import {
-  compareScreenshotPngPixels,
-  decodeScreenshotPng,
-} from './test-helpers/png-pixel-diff.mjs';
+import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 
 const output = new URL('../test-results/product-review/electrical-same-context/', import.meta.url);
 await mkdir(output, { recursive: true });
@@ -45,11 +42,13 @@ try {
   await page.goto(rendererWorkstationUrl + '?rendererV3ElectricalPlanarSinglePass=1');
   await waitForAppReady(page);
   stage = 'load-project';
-  await page.locator('#openProjectInput').setInputFiles(
-    fileURLToPath(
-      new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-    ),
-  );
+  await page
+    .locator('#openProjectInput')
+    .setInputFiles(
+      fileURLToPath(
+        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+      ),
+    );
   await chooseConfirmation(page);
   await page.waitForFunction(
     () => document.getElementById('statusText')?.textContent?.startsWith('Opened '),
@@ -82,9 +81,7 @@ try {
   await page.locator('#threePanel details[open]').evaluateAll((nodes) => {
     for (const node of nodes) node.open = false;
   });
-  const captureRect = decodeScreenshotPng(
-    await page.locator('#threeHost canvas').screenshot(),
-  );
+  const captureRect = decodeScreenshotPng(await page.locator('#threeHost canvas').screenshot());
   const captureGeometry = { width: captureRect.width, height: captureRect.height };
   report.captureGeometry = captureGeometry;
   const baseline = await snapshot();
@@ -139,28 +136,31 @@ try {
     const label = `${index + 1}-${singlePass ? 'single' : 'double'}`;
     stage = label;
     const serial = Number((await snapshot()).rendererFrameSerial || 0);
-    await page.evaluate(({ enabled, geometry }) => {
-      window.__waferCadSameContextPolicy = enabled;
-      window.__waferCadSameContextEligible = 0;
-      // The native draw probe is one-shot. Arm it independently for every
-      // policy arm; otherwise later trials would reuse the first frame.
-      window.__waferCadWebglProbe.arm({
-        rasterDiscard: false,
-        captureGlState: true,
-        pixelSamples: [299, 300, 301, 302].flatMap((x) =>
-          [137, 138, 139, 140].map((y) => ({
-            x,
-            y,
-            sourceWidth: geometry.width,
-            sourceHeight: geometry.height,
-          })),
-        ),
-      });
-      // Even with the same value, the input event routes through the existing
-      // presentation-only invalidation, scheduling a fresh complete frame.
-      const input = document.getElementById('threeOpacityRange');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    }, { enabled: singlePass, geometry: captureGeometry });
+    await page.evaluate(
+      ({ enabled, geometry }) => {
+        window.__waferCadSameContextPolicy = enabled;
+        window.__waferCadSameContextEligible = 0;
+        // The native draw probe is one-shot. Arm it independently for every
+        // policy arm; otherwise later trials would reuse the first frame.
+        window.__waferCadWebglProbe.arm({
+          rasterDiscard: false,
+          captureGlState: true,
+          pixelSamples: [299, 300, 301, 302].flatMap((x) =>
+            [137, 138, 139, 140].map((y) => ({
+              x,
+              y,
+              sourceWidth: geometry.width,
+              sourceHeight: geometry.height,
+            })),
+          ),
+        });
+        // Even with the same value, the input event routes through the existing
+        // presentation-only invalidation, scheduling a fresh complete frame.
+        const input = document.getElementById('threeOpacityRange');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      { enabled: singlePass, geometry: captureGeometry },
+    );
     await page.waitForFunction(
       (previous) => {
         const host = document.getElementById('threeHost');
@@ -207,7 +207,9 @@ try {
     const pngPixelSamples = rawPixelSamples.map(({ x, y }) => ({
       x,
       y,
-      rgba: Array.from(decoded.rgba.subarray((y * decoded.width + x) * 4, (y * decoded.width + x) * 4 + 4)),
+      rgba: Array.from(
+        decoded.rgba.subarray((y * decoded.width + x) * 4, (y * decoded.width + x) * 4 + 4),
+      ),
     }));
     for (const key of [
       'sceneGeneration',
@@ -247,8 +249,8 @@ try {
       orderHash: order,
       pixelDifference: comparison,
       samePolicyPixelDifference: samePolicyComparison,
-      rawPixelsIdentical: JSON.stringify(referenceRaw) ===
-        JSON.stringify(rawPixelSamples.map(({ rgba }) => rgba)),
+      rawPixelsIdentical:
+        JSON.stringify(referenceRaw) === JSON.stringify(rawPixelSamples.map(({ rgba }) => rgba)),
       rawPixelSamples,
       pngPixelSamples,
       glState: probe.last.glState,

@@ -19,7 +19,7 @@ have not been demonstrated.
 
 1. **3D PNG transactional recovery.** V3 previously created a temporary
    WebGL renderer, changed interactive pixel ratio and camera aspect, then
-   awaited rough geometry preparation *before* entering its cleanup
+   awaited rough geometry preparation _before_ entering its cleanup
    `try/finally`. A failed rough build skipped cleanup and could leave
    the main viewport altered. Successful cleanup also restored the
    capture aspect instead of the original aspect.
@@ -42,19 +42,19 @@ still requires browser and CI validation at the exact new head.
 
 ## Performance and hardware evidence
 
-| Metric / behavior | Measured result | Interpretation |
-| --- | --- | --- |
-| V3 Quality 625-site OFF | 1,408 draws; 57,040,012 triangles | Prior RTX 3060 native capture; hardware parity blocked |
-| V3 opt-in planar single pass ON | 1,291 draws; 54,066,262 triangles | Lower submission counts, not proof of a GPU speedup |
-| V4 R7 625-site A and B | 1,409 draws; 16,906,262 triangles each | Candidate Index/Caps does not reduce submitted draws or triangles |
-| V4 R7 CPU TypedArrays | 32,513,760 B A; 32,063,184 B B | 450,576 B (1.386%) saved; *not* driver VRAM |
-| V4 R7 wall time, A1 / A2 | 40.40 / 72.20 ms | Baseline nonstationarity; no reliable speedup inference |
-| V4 R7 wall time, B1 / B2 | 31.55 / 39.80 ms | Candidate nonstationarity; not GPU timer queries |
-| V4 same-policy fresh context A1/A2 | 78 changed pixels | Strict baseline parity fails on RTX 3060 |
-| V4 same-policy fresh context B1/B2 | 147 changed pixels | Strict candidate parity fails |
-| V4 all four PNG policy-consistent | 45 coordinates | Candidate-correlated difference is real observation; feature attribution unproven |
-| V3 fresh-context OFF/OFF and ON/ON | 54 and 78 changed pixels in prior capture | Native framebuffer drift persisted with equal camera/material/draw hashes |
-| V3 DITHER-off diagnostic | 33 OFF/OFF; 134 ON/ON | Dithering is **not** a complete remedy |
+| Metric / behavior                  | Measured result                           | Interpretation                                                                    |
+| ---------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------- |
+| V3 Quality 625-site OFF            | 1,408 draws; 57,040,012 triangles         | Prior RTX 3060 native capture; hardware parity blocked                            |
+| V3 opt-in planar single pass ON    | 1,291 draws; 54,066,262 triangles         | Lower submission counts, not proof of a GPU speedup                               |
+| V4 R7 625-site A and B             | 1,409 draws; 16,906,262 triangles each    | Candidate Index/Caps does not reduce submitted draws or triangles                 |
+| V4 R7 CPU TypedArrays              | 32,513,760 B A; 32,063,184 B B            | 450,576 B (1.386%) saved; _not_ driver VRAM                                       |
+| V4 R7 wall time, A1 / A2           | 40.40 / 72.20 ms                          | Baseline nonstationarity; no reliable speedup inference                           |
+| V4 R7 wall time, B1 / B2           | 31.55 / 39.80 ms                          | Candidate nonstationarity; not GPU timer queries                                  |
+| V4 same-policy fresh context A1/A2 | 78 changed pixels                         | Strict baseline parity fails on RTX 3060                                          |
+| V4 same-policy fresh context B1/B2 | 147 changed pixels                        | Strict candidate parity fails                                                     |
+| V4 all four PNG policy-consistent  | 45 coordinates                            | Candidate-correlated difference is real observation; feature attribution unproven |
+| V3 fresh-context OFF/OFF and ON/ON | 54 and 78 changed pixels in prior capture | Native framebuffer drift persisted with equal camera/material/draw hashes         |
+| V3 DITHER-off diagnostic           | 33 OFF/OFF; 134 ON/ON                     | Dithering is **not** a complete remedy                                            |
 
 These numbers are from the existing R7 hardware forensic record and
 V3 hardware diagnostics; they are different experiments and **must not
@@ -65,16 +65,16 @@ attribution is established. Zero-pixel tolerance remains unchanged.
 
 ## Consolidation decisions
 
-| Capability | Decision | Rationale |
-| --- | --- | --- |
-| Existing geometry, transparent sorting and physical-model ownership | **Keep** in one shared renderer | Correct scientific baseline; no alternative acceptance |
-| V4 owner-scoped disposal and transactional PNG capture | **Promote to V3 now** | Independent failure-case tests, no pixel-policy change |
-| V3 planar-cap single pass, quality wall index | **Keep gated off** | Native strict pixel parity unresolved |
-| V4 FastSmoothIndex and SharedFlatCaps | **Keep gated off in V4** | ~1.4% CPU buffer reduction, zero draw/triangle reduction, strict hardware block |
-| V4 adaptive-tile classifier/cache and feature survey | **Diagnostics only; no rendering promotion** | No alpha-coverage proof, no actual mesh replacement / skipped triangles |
-| V4 no-damping interaction pilot | **Experimental only** | Not relevant to pixel correctness; performance acceptance absent |
-| Additional GL-state probes | **Freeze unless evidence identifies a precise missing measurement** | Stop expanding tools without a discriminating hypothesis |
-| Separate “Renderer V5” architecture | **Do not create** | Existing engine + selected proven helpers is the consolidation target |
+| Capability                                                          | Decision                                                            | Rationale                                                                       |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Existing geometry, transparent sorting and physical-model ownership | **Keep** in one shared renderer                                     | Correct scientific baseline; no alternative acceptance                          |
+| V4 owner-scoped disposal and transactional PNG capture              | **Promote to V3 now**                                               | Independent failure-case tests, no pixel-policy change                          |
+| V3 planar-cap single pass, quality wall index                       | **Keep gated off**                                                  | Native strict pixel parity unresolved                                           |
+| V4 FastSmoothIndex and SharedFlatCaps                               | **Keep gated off in V4**                                            | ~1.4% CPU buffer reduction, zero draw/triangle reduction, strict hardware block |
+| V4 adaptive-tile classifier/cache and feature survey                | **Diagnostics only; no rendering promotion**                        | No alpha-coverage proof, no actual mesh replacement / skipped triangles         |
+| V4 no-damping interaction pilot                                     | **Experimental only**                                               | Not relevant to pixel correctness; performance acceptance absent                |
+| Additional GL-state probes                                          | **Freeze unless evidence identifies a precise missing measurement** | Stop expanding tools without a discriminating hypothesis                        |
+| Separate “Renderer V5” architecture                                 | **Do not create**                                                   | Existing engine + selected proven helpers is the consolidation target           |
 
 ## Remaining acceptance blockers
 

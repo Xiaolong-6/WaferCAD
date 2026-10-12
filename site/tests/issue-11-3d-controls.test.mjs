@@ -164,10 +164,19 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   // independent buffered WebGL, detailed rough meshes, original camera/ratio
   // restoration, and redraw even when capture preparation or encoding fails.
   assert.match(threeView, /runTemporaryRendererCapture\(\{/);
-  assert.match(threeView, /new THREE\.WebGLRenderer\(\{ antialias: true, preserveDrawingBuffer: true \}\)/);
-  assert.match(threeView, /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/);
+  assert.match(
+    threeView,
+    /new THREE\.WebGLRenderer\(\{ antialias: true, preserveDrawingBuffer: true \}\)/,
+  );
+  assert.match(
+    threeView,
+    /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
+  );
   assert.match(threeView, /captureRenderer\.render\(scene, camera\)/);
-  assert.match(threeView, /restoreScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/);
+  assert.match(
+    threeView,
+    /restoreScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
+  );
   assert.match(captureTransaction, /originalPixelRatio = mainRenderer\.getPixelRatio\(\)/);
   assert.match(captureTransaction, /originalAspect = camera\.aspect/);
   assert.match(captureTransaction, /temporaryRenderer\.dispose\(\)/);

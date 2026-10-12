@@ -15,9 +15,7 @@ export function compareRendererPhaseEvidence(left, right) {
     a.length === b.length &&
     a.every(
       (item, i) =>
-        item.afterDraw === b[i].afterDraw &&
-        item.kind === b[i].kind &&
-        item.status === b[i].status,
+        item.afterDraw === b[i].afterDraw && item.kind === b[i].kind && item.status === b[i].status,
     );
   const base = {
     sequenceIdentical,
@@ -65,9 +63,10 @@ export function compareRendererPhaseEvidence(left, right) {
   }
   return {
     ...base,
-    status: coverageComplete && firstFrameComplete
-      ? 'observed-checkpoints-identical'
-      : 'bounded-checkpoints-identical',
+    status:
+      coverageComplete && firstFrameComplete
+        ? 'observed-checkpoints-identical'
+        : 'bounded-checkpoints-identical',
     firstDifferentPhase: null,
   };
 }
