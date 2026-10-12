@@ -14,13 +14,9 @@ flowchart LR
 
 _Conceptual view relationship (not a screenshot): Main and Section share the same physical coordinates, while Mask decides patterned Process areas and 3D displays the resulting stack._
 
-![Actual WaferCAD 3D reconstruction of a MoS2 device above multiple interconnect levels](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-three.webp)
-
-_3D inspection image from the shipped MAGIC-1000 representative-stack example; the materials and routes are an explicitly simplified research reconstruction._
-
 ![Actual WaferCAD Section view of the same MAGIC-1000 example](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-section.webp)
 
-_Section A–B inspection image from the same example. The horizontal grey Z-break is a **display transformation**, not an air gap. These images illustrate two output views, not interchangeable camera angles or a process-physics prediction._
+_A genuine 920 × 600-pixel **Section A–B** output from the shipped MAGIC-1000 representative stack. The horizontal grey Z-break is a **display transformation**, not an air gap. Open this example and switch to 3D to inspect its volume; the small 3D thumbnail was omitted here because it could not explain the material interfaces at instructional scale._
 
 **Find the current controls:** The title bar offers **Overview / Main / Mask / 3D / Split**. The workstation tools include distinct **Project**, **Base**, **Mask**, **Process**, and **History** tabs. On a narrow screen, view choices may require horizontal scrolling. Use the [First 10 Minutes](First-10-Minutes) walkthrough for the exact sequence, rather than an older UI screenshot.
 
