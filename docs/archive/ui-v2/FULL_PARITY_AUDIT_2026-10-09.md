@@ -1,8 +1,8 @@
 # UI v2 全量功能比较审计 — 2026-10-09
 
-> 最新实际 UI 结论请看 [2026-10-10 UI 验收与修复](../../ui-v2/UI_ACCEPTANCE_2026-10-10.md)：`2ae4ca3` 已修复并视觉复验八项报告问题，49 项正式壳层检查通过。下表保留完整对照审计基线；本轮定向 UI 验收不代表 258 项功能全部完成或 M4 获批。
+> 最新实际 UI 结论请看 [2026-10-10 UI 验收与修复](UI_ACCEPTANCE_2026-10-10.md)：`2ae4ca3` 已修复并视觉复验八项报告问题，49 项正式壳层检查通过。下表保留完整对照审计基线；本轮定向 UI 验收不代表 258 项功能全部完成或 M4 获批。
 
-> 后续 [旧版实际浏览器对照](../../ui-v2/LEGACY_BROWSER_COMPARISON_2026-10-10.md) 记录 `9a43d0d` 的 Manual 示意图、窄屏图高/History 修复和 60 项壳层检查，以及仍未完成的表单、ROI、Legend 等缺口。不能以这些修复宣称整体 UI 验收通过。
+> 后续 [旧版实际浏览器对照](LEGACY_BROWSER_COMPARISON_2026-10-10.md) 记录 `9a43d0d` 的 Manual 示意图、窄屏图高/History 修复和 60 项壳层检查，以及仍未完成的表单、ROI、Legend 等缺口。不能以这些修复宣称整体 UI 验收通过。
 
 审计基线：分支 `codex/ui-v2-m2-handoff-2026-10-09`，HEAD `feab69b` 加本轮尚未提交的滚动/Base/Recipe布局/色块修复。逐项修复开始前冻结本表。用户要求：先全面审计，再逐项修复；History 顶部 Restore/Edit/Create Variant 重复按钮移除，统一行内 ⋯。
 
@@ -51,7 +51,7 @@ Windows NT 10.0.26300.0；Node v24.16.0；Chrome 155.0.8059.40；npm ci 锁定 P
 - 审计先独立提交为 `0982433`；随后产品修复提交 `af64d67`。下面 258 行保留修复前状态，不能作为修复后的计数。
 - 第一批已补 UI draft：F190 滚动约束，F192/F193/F195/F196 分支折叠/数量/改名/删除保护，F203/F204 历史编辑入口 draft，F207/F208/F209 书签增删改与 Step 子组，F211/F212 返回 HEAD/取消；History 顶部重复操作按钮删除。真实 History 事务仍未接通。
 - 同批补齐 Base Rectangle/Circle/W/H/Z/Revert 与确认；Recipe operation change/Copy/captured Mask/Surface draft；Process front/back、mask/invert/full、Transfer placement、CMP/Undercut、Rough 参数、Record kind/note、Add-to-Recipe draft；直接 Legend 色块，3D Border draft toggle。所有 source fixture 保持 frozen。
-- 正式 Chrome 43 个命名检查、8 个契约、ESLint、变更文件 Prettier 全通过。详见 [当前 M2.5 审计](../../ui-v2/BROWSER_ACCEPTANCE_2026-10-09.md)。这些不是生产 parity 通过。
+- 正式 Chrome 43 个命名检查、8 个契约、ESLint、变更文件 Prettier 全通过。详见 [当前 M2.5 审计](BROWSER_ACCEPTANCE_2026-10-09.md)。这些不是生产 parity 通过。
 - 当时用户范围为“只审计 M2.5 过了没有”，因此停止扩展功能。后续用户要求实际 UI 验收，并指定 Fit/Pan/Zoom 只留图标、其他工具不变。本轮 `5ec5082` 完成该修改和 Legend 开发文案移除；44 个正式检查通过，**实际 UI 验收 FAIL / 待修复**。未进入 M3。
 
 ## 全部 258 项

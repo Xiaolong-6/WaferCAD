@@ -1,6 +1,6 @@
 # UI v2 desktop review and Stage C entry
 
-This checkpoint records the user's directed local review on 2026-10-11. It supersedes toolbar/gesture presentation in the [earlier Stage B handoff](../../ui-v2/STAGE_B_REVIEW_HANDOFF_2026-10-11.md); it does not claim Stage C acceptance.
+This checkpoint records the user's directed local review on 2026-10-11. It supersedes toolbar/gesture presentation in the [earlier Stage B handoff](STAGE_B_REVIEW_HANDOFF_2026-10-11.md); it does not claim Stage C acceptance.
 
 Branch: `codex/ui-v2-main-wip`. Parent: `39d016e942a106b1bdfdd4d6bac622e9ac7384ff`. Product revision: the commit containing this file (`git log -1 --format=%H -- docs/ui-v2/DESKTOP_REVIEW_2026-10-11.md`). [PR #177](https://github.com/Xiaolong-6/WaferCAD/pull/177) remains Draft. The user explicitly authorized commit/push after this review. No merge or expensive manual workflow was authorized.
 

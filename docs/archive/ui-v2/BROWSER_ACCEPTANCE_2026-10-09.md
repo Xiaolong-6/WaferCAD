@@ -1,6 +1,6 @@
 # UI v2 browser acceptance — 2026-10-09
 
-> Current targeted disposition: **automated M2.5 shell PASS (49 checks); eight reported UI findings repaired and visually rechecked at `2ae4ca3`**. See the [2026-10-10 UI review and repair](../../ui-v2/UI_ACCEPTANCE_2026-10-10.md). The checks at `af64d67` below remain historical evidence for their named contracts; they do not establish complete production parity or M4 approval.
+> Current targeted disposition: **automated M2.5 shell PASS (49 checks); eight reported UI findings repaired and visually rechecked at `2ae4ca3`**. See the [2026-10-10 UI review and repair](UI_ACCEPTANCE_2026-10-10.md). The checks at `af64d67` below remain historical evidence for their named contracts; they do not establish complete production parity or M4 approval.
 
 ## Current M2.5 audit at af64d67
 
@@ -16,7 +16,7 @@ User narrowed the request to whether M2.5 passes; further feature implementation
 
 The M2.5 criteria pass: registry-defined primary navigation and named slots; shared view chrome; stable four science hosts and five domain hosts; generic adapter lifecycle; production entry excludes mocks; shell excludes domain state; two original sessionStorage keys; responsive 1440/1024/768/390 behavior; shared Dialog/More/Toast lifecycle; direct `file://` boot. Main/3D mock ROI top and bottom deltas are 0 px at 1440 and 1024. A new real mouse-wheel probe reaches the bottom of Manual, Recipe and History at 1440×650; History selection retains scrolling. The History header contains context only, with no duplicated Restore/Edit/Create Variant buttons.
 
-The runner also verifies local Base/Recipe/History draft repairs. These do not enlarge the M2.5 acceptance boundary: real model transactions, History replay/rollback, project IO/recovery/lease, scientific renderers/exports, full legacy parity, and approved platform visual baselines are **not accepted by this result**. The [258-item comparison audit](../../ui-v2/FULL_PARITY_AUDIT_2026-10-09.md) records those separate gaps; they do not automatically fail the agreed shell-only gate.
+The runner also verifies local Base/Recipe/History draft repairs. These do not enlarge the M2.5 acceptance boundary: real model transactions, History replay/rollback, project IO/recovery/lease, scientific renderers/exports, full legacy parity, and approved platform visual baselines are **not accepted by this result**. The [258-item comparison audit](FULL_PARITY_AUDIT_2026-10-09.md) records those separate gaps; they do not automatically fail the agreed shell-only gate.
 
 Reproducible local evidence: `test-results/ui-v2-acceptance/parity-repairs-official.txt` (ignored; commands and outcome are committed here). In-app browser visual inspection confirmed the independent History scrollbar, branch ⋯ menu and direct Legend color swatch. No approved baseline was replaced. No merge, deployment or manual CI run occurred.
 

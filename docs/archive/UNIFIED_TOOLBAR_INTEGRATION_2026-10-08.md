@@ -5,7 +5,7 @@
 ## Revisions and scope
 
 - Product baseline: main `82c35a845946835451fd7da9fcbe92be47593e7f`.
-- Documentation architecture audit: `52d83c2b2b6925cb1fe758dd87dd322f4818d7a3`; see [the documentation audit](../DOCUMENTATION_AUDIT_2026-10-08.md).
+- Documentation architecture audit: `52d83c2b2b6925cb1fe758dd87dd322f4818d7a3`; see [the documentation audit](DOCUMENTATION_AUDIT_2026-10-08.md).
 - Requested UI branch: `fix/unified-toolbar-state-20261008`, fetched at `8d9f7a4f3bd561a0bf2974ba0ae878ce37b2e47c`.
 - Conflict-free integration merge: `0bde3c1816b6bda339be9fa3f551d2826e4b5c12`.
 - Tested UI repair: `14d8a3f2eba604b9c183b79c44ec9ad6ffcf50a3`.
