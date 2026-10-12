@@ -2,7 +2,7 @@
 
 **Result:** All five R9 evidence steps completed on an identified Intel Iris Xe
 Direct3D 11 WebGL adapter with **zero changed pixels within their respective
-policy comparisons**. This is valid *adapter-specific* evidence.
+policy comparisons**. This is valid _adapter-specific_ evidence.
 Previously failing RTX 3060 fresh-context hardware evidence remains a P0 blocker.
 No product defaults, approved visual baseline, pixel tolerance, or geometry
 kernel contract was changed.
@@ -12,7 +12,7 @@ kernel contract was changed.
 - Input: two private operator-uploaded evidence ZIPs; their raw images,
   device-local paths and logs are **not committed to this public repository**.
 - First ZIP (13:33 UTC prefix) contains `fatalError: Chromium installation
-  failed` and **no completed experimental steps**. It is infrastructure
+failed` and **no completed experimental steps**. It is infrastructure
   evidence, not an additional sample.
 - Complete ZIP (13:37 UTC prefix), captured at
   `2026-10-12T13:42:18.078Z`: `campaign=r9`, `campaignComplete=true`,
@@ -36,13 +36,13 @@ kernel contract was changed.
 
 ## Results by experiment
 
-| Step | Native hardware evidence | Pixel result | Status |
-| --- | --- | --- | --- |
-| V3 standard | Four fresh contexts, OFF/OFF/ON/ON, GL final-frame and required draw milestones, sampled raster states | OFF/OFF, ON/ON and OFF/ON: zero pixels changed; same-policy native framebuffer hashes agree | **Passed (Intel)** |
-| V3 MSAA-off control | Four fresh contexts; `contextAntialias=false`, framebuffer `SAMPLES=0` (standard had `SAMPLES=4`) | Same-policy and cross-policy comparisons all zero pixels changed *within this control* | **Diagnostic complete only** |
-| V4 Index only | A/B/B/A, four contexts; observed 2,750,000 indexed vs 4,125,000 original vertices in B | All six pairwise PNG comparisons zero changed pixels; candidate exercised | **Passed (Intel)** |
-| V4 Caps only | A/B/B/A; B avoids 106 geometry clones | All six pairwise PNG comparisons zero changed pixels; candidate exercised | **Passed (Intel)** |
-| V4 Index + Caps | A/B/B/A; both activity counters positive | All six pairwise PNG comparisons zero changed pixels; candidate exercised | **Passed (Intel)** |
+| Step                | Native hardware evidence                                                                               | Pixel result                                                                                | Status                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ---------------------------- |
+| V3 standard         | Four fresh contexts, OFF/OFF/ON/ON, GL final-frame and required draw milestones, sampled raster states | OFF/OFF, ON/ON and OFF/ON: zero pixels changed; same-policy native framebuffer hashes agree | **Passed (Intel)**           |
+| V3 MSAA-off control | Four fresh contexts; `contextAntialias=false`, framebuffer `SAMPLES=0` (standard had `SAMPLES=4`)      | Same-policy and cross-policy comparisons all zero pixels changed _within this control_      | **Diagnostic complete only** |
+| V4 Index only       | A/B/B/A, four contexts; observed 2,750,000 indexed vs 4,125,000 original vertices in B                 | All six pairwise PNG comparisons zero changed pixels; candidate exercised                   | **Passed (Intel)**           |
+| V4 Caps only        | A/B/B/A; B avoids 106 geometry clones                                                                  | All six pairwise PNG comparisons zero changed pixels; candidate exercised                   | **Passed (Intel)**           |
+| V4 Index + Caps     | A/B/B/A; both activity counters positive                                                               | All six pairwise PNG comparisons zero changed pixels; candidate exercised                   | **Passed (Intel)**           |
 
 V3 bounded checkpoint sampling recorded 12 hashes per trial, not a
 per-draw complete framebuffer trace (`phaseCoverage.complete=false`
@@ -56,12 +56,12 @@ Pixel and native framebuffer equality were exact for this Intel test.
 
 ### Candidate resources
 
-| V4 state | CPU TypedArray bytes | Difference from A | Three geometries | Draws / triangles |
-| --- | ---: | ---: | ---: | --- |
-| A (unchanged R7 baseline) | 32,513,760 | — | 1,468 | 1,409 / 16,906,262 |
-| Index B | 32,394,960 | −118,800 B (−0.365%) | 1,468 | unchanged |
-| Caps B | 32,181,984 | −331,776 B (−1.020%) | 1,362 | unchanged |
-| Combined B | 32,063,184 | −450,576 B (−1.386%) | 1,362 | unchanged |
+| V4 state                  | CPU TypedArray bytes |    Difference from A | Three geometries | Draws / triangles  |
+| ------------------------- | -------------------: | -------------------: | ---------------: | ------------------ |
+| A (unchanged R7 baseline) |           32,513,760 |                    — |            1,468 | 1,409 / 16,906,262 |
+| Index B                   |           32,394,960 | −118,800 B (−0.365%) |            1,468 | unchanged          |
+| Caps B                    |           32,181,984 | −331,776 B (−1.020%) |            1,362 | unchanged          |
+| Combined B                |           32,063,184 | −450,576 B (−1.386%) |            1,362 | unchanged          |
 
 These are JS/CPU-side allocations and Three geometry identities.
 They do not establish lower driver VRAM, GPU workload or draw count.
@@ -69,10 +69,10 @@ They do not establish lower driver VRAM, GPU workload or draw count.
 ### Wall-clock measurements: informative only
 
 | Independent V4 ABBA mode | A median (ms) | B median (ms) | A/B observed |
-| --- | ---: | ---: | ---: |
-| Index | 90.45 | 69.80 | 1.296 |
-| Caps | 74.20 | 58.45 | 1.269 |
-| Combined | 88.50 | 70.35 | 1.258 |
+| ------------------------ | ------------: | ------------: | -----------: |
+| Index                    |         90.45 |         69.80 |        1.296 |
+| Caps                     |         74.20 |         58.45 |        1.269 |
+| Combined                 |         88.50 |         70.35 |        1.258 |
 
 Eight wall-clock samples per policy per mode. The sampler measures
 browser input-to-next-frame plus `gl.finish()` **wall time**,
@@ -86,7 +86,7 @@ explicitly sets `stats.hardwareAcceptable=false`,
 
 The standard Intel V3 run was already strictly repeatable with 4
 framebuffer samples. The forced no-MSAA diagnostic was also repeatable
-with zero samples. Direct PNG comparison *between* normal and no-MSAA
+with zero samples. Direct PNG comparison _between_ normal and no-MSAA
 raster policies finds 6,553/146,025 changed pixels (~4.49%).
 Disabling MSAA changes visual output and is **not indicated as a
 production fix by this run**; it remains an untested RTX 3060 hypothesis.

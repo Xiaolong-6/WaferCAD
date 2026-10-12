@@ -21,7 +21,7 @@ The `--campaign=r9` mode performs, in order:
 
 A single invocation fetches both HEADs, verifies V4 descends from V3,
 creates detached temporary Git worktrees, installs locked dependencies,
-checks Chromium navigation, runs the steps and saves *each experiment's*
+checks Chromium navigation, runs the steps and saves _each experiment's_
 report, screenshots and logs before producing a portable ZIP. It does
 **not** switch, clean, reset or modify the operator's active worktree.
 

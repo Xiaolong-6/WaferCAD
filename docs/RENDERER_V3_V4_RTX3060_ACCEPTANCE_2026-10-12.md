@@ -19,12 +19,12 @@ were inspected. All four experiments completed. The previous
 
 ## Experimental results
 
-| Run | Same policy A1/A2 changed px | Same policy B1/B2 changed px | Stable policy-specific px | Strict parity |
-| --- | ---: | ---: | ---: | --- |
-| V3 OFF/OFF and ON/ON | 54 | 78 | Not evaluated | FAIL |
-| V4 Index-only | 84 | 107 | 9 | FAIL |
-| V4 Caps-only | 95 | 79 | 24 | FAIL |
-| V4 Combined | 163 | 179 | 5 | FAIL |
+| Run                  | Same policy A1/A2 changed px | Same policy B1/B2 changed px | Stable policy-specific px | Strict parity |
+| -------------------- | ---------------------------: | ---------------------------: | ------------------------: | ------------- |
+| V3 OFF/OFF and ON/ON |                           54 |                           78 |             Not evaluated | FAIL          |
+| V4 Index-only        |                           84 |                          107 |                         9 | FAIL          |
+| V4 Caps-only         |                           95 |                           79 |                        24 | FAIL          |
+| V4 Combined          |                          163 |                          179 |                         5 | FAIL          |
 
 The stable policy-specific pixel sets for V4 Index-only, Caps-only and
 Combined have **zero shared coordinates between any pair** in this run.
@@ -37,7 +37,7 @@ appears between fresh contexts. Reported changes are sparse, generally
 
 For each pair with the same V3 policy, sampled draw-input hashes, camera,
 material fingerprint and draw-order fingerprint agree. WebGL framebuffer
-hashes disagree *before* the browser screenshot/compositor stage. Both
+hashes disagree _before_ the browser screenshot/compositor stage. Both
 arms have `glError = 0`. The phase checkpoints establish the earliest
 **observed** drift boundaries:
 
@@ -60,12 +60,12 @@ exercise **exactly** their requested optimization(s).
 All arms: **1,409 draw calls / 16,906,262 triangles**. Both independent
 in-context repeat screenshots match byte-for-byte per arm.
 
-| V4 mode | B CPU estimated buffer bytes | Change vs A | B geometries | Median A / B finish-wall ms |
-| --- | ---: | ---: | ---: | --- |
-| A (all modes) | 32,513,760 | — | 1,468 | — |
-| Index-only | 32,394,960 | −118,800 | 1,468 | 41.40 / 47.45 |
-| Caps-only | 32,181,984 | −331,776 | 1,362 | 44.35 / 49.95 |
-| Combined | 32,063,184 | −450,576 | 1,362 | 41.70 / 50.45 |
+| V4 mode       | B CPU estimated buffer bytes | Change vs A | B geometries | Median A / B finish-wall ms |
+| ------------- | ---------------------------: | ----------: | -----------: | --------------------------- |
+| A (all modes) |                   32,513,760 |           — |        1,468 | —                           |
+| Index-only    |                   32,394,960 |    −118,800 |        1,468 | 41.40 / 47.45               |
+| Caps-only     |                   32,181,984 |    −331,776 |        1,362 | 44.35 / 49.95               |
+| Combined      |                   32,063,184 |    −450,576 |        1,362 | 41.70 / 50.45               |
 
 Index-only B registers 2,750,000 indexed vertices against 4,125,000
 original vertices. Caps-only and Combined avoid 106 flat-cap clones.
@@ -78,7 +78,7 @@ the data do **not** demonstrate a hardware speedup.
 
 1. V3 and V4 **remain Draft**. Do not merge, enable optimizations by
    default, change baseline images or weaken the zero-pixel gate.
-2. The three V4 stable-pixel signatures are *associative* only; since
+2. The three V4 stable-pixel signatures are _associative_ only; since
    A/A and B/B drift, source attribution to Index or Caps is blocked.
 3. Investigate shared `material-exterior` draw/raster reproducibility
    before changing the Electrical optimization or flat-cap geometry.

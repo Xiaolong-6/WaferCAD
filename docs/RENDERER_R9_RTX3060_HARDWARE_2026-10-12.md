@@ -12,27 +12,27 @@
 
 ## V3: controlled MSAA isolation
 
-| Trial comparison | Default `SAMPLES=4` | Diagnostic `SAMPLES=0` |
-| --- | ---: | ---: |
-| OFF/OFF (same policy) | **46** changed PNG pixels (maximum channel delta 1) | **0** |
-| ON/ON (same policy) | **75** changed PNG pixels (maximum channel delta 1) | **0** |
-| OFF/ON (candidate comparison) | **37** changed PNG pixels (maximum channel delta 1) | **0** |
-| GL framebuffer fingerprint | Same-policy mismatches | Identical in all four arms |
-| Draw inputs and sampled raster GL state | Same-policy inputs and states agree | Same-policy inputs and states agree |
-| Sampled GL phase fingerprints | Same-policy checkpoint mismatch | Same-policy checkpoints identical |
-| Acceptance | Standard `strictParity=false` | `strictParity=true` **but `acceptanceEligible=false`** |
+| Trial comparison                        |                                 Default `SAMPLES=4` |                                 Diagnostic `SAMPLES=0` |
+| --------------------------------------- | --------------------------------------------------: | -----------------------------------------------------: |
+| OFF/OFF (same policy)                   | **46** changed PNG pixels (maximum channel delta 1) |                                                  **0** |
+| ON/ON (same policy)                     | **75** changed PNG pixels (maximum channel delta 1) |                                                  **0** |
+| OFF/ON (candidate comparison)           | **37** changed PNG pixels (maximum channel delta 1) |                                                  **0** |
+| GL framebuffer fingerprint              |                              Same-policy mismatches |                             Identical in all four arms |
+| Draw inputs and sampled raster GL state |                 Same-policy inputs and states agree |                    Same-policy inputs and states agree |
+| Sampled GL phase fingerprints           |                     Same-policy checkpoint mismatch |                      Same-policy checkpoints identical |
+| Acceptance                              |                       Standard `strictParity=false` | `strictParity=true` **but `acceptanceEligible=false`** |
 
-Native draw counts remain OFF **1,408 / 57,040,012 triangles** and ON **1,291 / 54,066,262 triangles** in both raster policies. Disabling MSAA removes the *observed* divergence in this controlled capture, which strongly implicates MSAA/resolve or a coupled driver rasterization path. It does not distinguish all possible driver causes, establish a cross-driver fix, or approve changing production antialias settings.
+Native draw counts remain OFF **1,408 / 57,040,012 triangles** and ON **1,291 / 54,066,262 triangles** in both raster policies. Disabling MSAA removes the _observed_ divergence in this controlled capture, which strongly implicates MSAA/resolve or a coupled driver rasterization path. It does not distinguish all possible driver causes, establish a cross-driver fix, or approve changing production antialias settings.
 
 Comparing the **standard-MSAA output against no-MSAA output** changes 6,554 PNG pixels on OFF1 (6,554 OFF2; 6,555 ON3; 6,554 ON4), up to **70/255** per channel, across the rendered structure. This is a substantive visual-policy change and cannot silently replace the approved image. A general `antialias:false` production switch is **not** authorized by the diagnostic result.
 
 ## V4: RTX 3060 A/B/B/A results
 
 | V4 candidate | Same-policy A1/A2 changed pixels | Same-policy B1/B2 changed pixels | Baseline median wall ms | Candidate median wall ms | Median A/B ratio |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Index only | 72 | 57 | 36.65 | 36.85 | **0.995** |
-| Caps only | 129 | 108 | 42.85 | 45.45 | **0.943** |
-| Both | 63 | 134 | 36.95 | 39.00 | **0.947** |
+| ------------ | -------------------------------: | -------------------------------: | ----------------------: | -----------------------: | ---------------: |
+| Index only   |                               72 |                               57 |                   36.65 |                    36.85 |        **0.995** |
+| Caps only    |                              129 |                              108 |                   42.85 |                    45.45 |        **0.943** |
+| Both         |                               63 |                              134 |                   36.95 |                    39.00 |        **0.947** |
 
 Every V4 step has all six ABBA pixel pairs mismatching, even the independent **baseline A/A** pair. Candidate activation is verified in all cases. Therefore cross-policy differences **cannot be attributed solely to the optimizations** and fail the existing strict gate. Captured V4 frame submissions stay at **1,409 draw calls / 16,906,262 triangles** in every policy. Typed-array accounting still supports the independent CPU-memory savings (Index 118,800 B; Caps 331,776 B; Both 450,576 B), but not reduced GPU primitives.
 

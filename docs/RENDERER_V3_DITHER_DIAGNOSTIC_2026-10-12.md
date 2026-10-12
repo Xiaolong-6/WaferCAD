@@ -14,9 +14,9 @@ No infrastructure errors; `diagnosticComplete=true`,
 ## Pixel result
 
 | Same-policy pair | Baseline changed pixels | DITHER-off changed pixels | Max channel deviation |
-| --- | ---: | ---: | ---: |
-| OFF/OFF | 54 | 33 | 1 |
-| ON/ON | 78 | 134 | 1 |
+| ---------------- | ----------------------: | ------------------------: | --------------------: |
+| OFF/OFF          |                      54 |                        33 |                     1 |
+| ON/ON            |                      78 |                       134 |                     1 |
 
 All four GL contexts used the RTX 3060 hardware backend and reported
 `glError=0`. The no-DITHER probe counted **1,408 actual disabled

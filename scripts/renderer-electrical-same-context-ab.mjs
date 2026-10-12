@@ -42,11 +42,13 @@ try {
   await page.goto(rendererWorkstationUrl + '?rendererV3ElectricalPlanarSinglePass=1');
   await waitForAppReady(page);
   stage = 'load-project';
-  await page.locator('#openProjectInput').setInputFiles(
-    fileURLToPath(
-      new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-    ),
-  );
+  await page
+    .locator('#openProjectInput')
+    .setInputFiles(
+      fileURLToPath(
+        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
+      ),
+    );
   await chooseConfirmation(page);
   await page.waitForFunction(
     () => document.getElementById('statusText')?.textContent?.startsWith('Opened '),

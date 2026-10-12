@@ -18,11 +18,9 @@ try {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
-  await page.waitForFunction(
-    () => document.body.dataset.ready === 'true',
-    null,
-    { timeout: 120000 },
-  );
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
   const initial = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model);
   await page.locator('[data-action="view:three"]').click();
@@ -36,7 +34,9 @@ try {
   const host = page.locator('#threeHost');
   assert.equal(await host.locator('canvas').count(), 1);
   assert.equal(
-    await page.locator('#threePanel [data-action="tool:rotate:three"]').getAttribute('aria-pressed'),
+    await page
+      .locator('#threePanel [data-action="tool:rotate:three"]')
+      .getAttribute('aria-pressed'),
     'true',
   );
   await page.locator('#threePanel [data-action="tool:pan:three"]').click();
@@ -51,11 +51,9 @@ try {
   );
   assert.deepEqual(errors, []);
   await page.goto(base + '/app-legacy.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(
-    () => document.documentElement.dataset.appReady === 'true',
-    null,
-    { timeout: 120000 },
-  );
+  await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true', null, {
+    timeout: 120000,
+  });
   assert.equal(await page.locator('#threeHost').count(), 1);
   assert.notEqual(await page.locator('html').getAttribute('data-ui'), 'v2');
   assert.deepEqual(errors, []);

@@ -143,4 +143,3 @@ and the no-MSAA experiment remains a hypothesis test rather than approval.
   Hardware strict framebuffer/screenshot parity remains independently
   blocked by prior fresh-context evidence. No GPU benchmark, production
   optimization activation or approved visual-baseline change is claimed.
-
