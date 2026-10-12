@@ -40,19 +40,16 @@ html[data-ui='v2'] {
   margin: 16px;
 }
 .v2-legacy-link {
-  position: fixed;
-  z-index: 20;
-  right: 12px;
-  bottom: 12px;
-  padding: 7px 10px;
+  padding: 3px 6px;
   border: 1px solid var(--wc-border-strong);
   border-radius: var(--wc-radius-sm);
   background: var(--wc-surface);
   color: var(--wc-muted);
   font-family: var(--wc-font);
-  font-size: 12px;
+  font-size: inherit;
   line-height: 1.2;
   text-decoration: none;
+  white-space: nowrap;
 }
 .v2-legacy-link:hover,
 .v2-legacy-link:focus-visible {

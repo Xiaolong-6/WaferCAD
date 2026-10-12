@@ -205,7 +205,7 @@ try {
       legacyLink.removeAttribute('aria-disabled');
     }
   });
-  document.body.append(legacyLink);
+  shell.getSlot('status.save').parentElement.append(legacyLink);
   window.WaferCadV2Workstation = {
     ready: true,
     snapshot: () =>
