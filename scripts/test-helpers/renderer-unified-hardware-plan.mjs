@@ -43,13 +43,24 @@ export function classifyRendererHardwareStep(step, report) {
   if (!report) return step.exitCode === 0 ? 'incomplete' : 'error';
   // A browser/HTTP/fixture exception is an infrastructure failure, not a
   // strict-pixel failure. V3 report-only mode may exit 0 even on an exception.
-  if (report.error || report.failure) {
+  if (report.error) return 'error';
+  if (report.failure) {
+    const failure = String(report.failure);
     const candidateError =
       step.id.startsWith('v4-') &&
-      /candidate optimization|Index\/Caps activity|instrumentation counters/.test(
-        String(report.failure || report.error),
-      );
-    return candidateError ? 'candidate-not-exercised' : 'error';
+      /candidate optimization|Index\/Caps activity|instrumentation counters/.test(failure);
+    if (candidateError) return 'candidate-not-exercised';
+    // R7 throws *after* writing a complete six-pair report if the strict
+    // parity assertion fails. Do not relabel this expected gate as a crash.
+    const strictParityFailure =
+      step.id.startsWith('v4-') &&
+      report.stage === 'complete' &&
+      report.passed === false &&
+      report.parity?.strictPixelParity === false &&
+      report.trials?.length === 4 &&
+      report.comparisons?.length === 6 &&
+      /^AssertionError \[ERR_ASSERTION\]: R7 strict parity blocked: /.test(failure);
+    if (!strictParityFailure) return 'error';
   }
   if (step.exitCode !== 0 && report.passed === true) return 'error';
   if (report.stage === 'initialization') return 'incomplete';
@@ -65,6 +76,8 @@ export function classifyRendererHardwareStep(step, report) {
   ) {
     return 'candidate-not-exercised';
   }
-  if (report.trials?.length !== 4 || !report.parity) return 'incomplete';
+  if (report.stage !== 'complete' || report.trials?.length !== 4 || !report.parity) {
+    return 'incomplete';
+  }
   return report.passed === true && report.parity.strictPixelParity === true ? 'passed' : 'blocked';
 }
