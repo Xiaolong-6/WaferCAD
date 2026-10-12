@@ -20,7 +20,7 @@ concurrency:
 jobs:
   emergency-deploy:
     name: Publish owner-approved main immediately
-    if: ${{ github.event.head_commit.message == 'release: one-off emergency Pages publish 2026-10-12' }}
+    if: "${{ github.event.head_commit.message == 'release: one-off emergency Pages publish 2026-10-12' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -40,7 +40,7 @@ jobs:
       - name: Stamp the emergency build commit
         shell: bash
         run: |
-          printf '{"commit":"%s"}\\n' "$GITHUB_SHA" > site/build-info.json
+          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
           node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
