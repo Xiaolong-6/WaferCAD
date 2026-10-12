@@ -158,18 +158,22 @@ const rasterState = () => {
     depthRange: [0, 1],
   };
   const booleans = new Set([
-    'scissorTest', 'blend', 'depthTest', 'depthMask', 'stencilTest',
-    'cullFace', 'dither', 'polygonOffsetFill', 'sampleAlphaToCoverage',
-    'sampleCoverage', 'sampleCoverageInvert',
+    'scissorTest',
+    'blend',
+    'depthTest',
+    'depthMask',
+    'stencilTest',
+    'cullFace',
+    'dither',
+    'polygonOffsetFill',
+    'sampleAlphaToCoverage',
+    'sampleCoverage',
+    'sampleCoverageInvert',
   ]);
   return Object.fromEntries(
     RENDERER_RASTER_STATE_FIELDS.map((field) => [
       field,
-      Object.hasOwn(arrays, field)
-        ? [...arrays[field]]
-        : booleans.has(field)
-          ? false
-          : 1,
+      Object.hasOwn(arrays, field) ? [...arrays[field]] : booleans.has(field) ? false : 1,
     ]),
   );
 };
