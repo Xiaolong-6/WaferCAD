@@ -122,6 +122,26 @@ test('workstation shell changes select only their owned UI suites', () => {
   assert.deepEqual(enabled(plan), ['smoke', 'workstation', 'interaction', 'product_layout']);
 });
 
+test('real UI v2 changes select workstation and shared cross-interface regressions', () => {
+  for (const path of [
+    'site/ui-v2/workstation-entry.js',
+    'site/ui-v2/workstation-workflow.js',
+    'site/ui-v2/project-mask-panels.js',
+    'scripts/v2/check-cross-ui-recovery.mjs',
+  ]) {
+    assert.deepEqual(
+      enabled(buildCiTestPlan([path])),
+      ['smoke', 'workstation', 'history', 'persistence', 'interaction'],
+      path,
+    );
+  }
+  assert.deepEqual(enabled(buildCiTestPlan(['site/ui-v2/main-view.css'])), [
+    'smoke',
+    'workstation',
+  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['site/ui-v2/mask-view.js'])), ['smoke', 'workstation']);
+});
+
 test('explicit full mode runs every suite independent of changed paths', () => {
   const plan = buildCiTestPlan([], { full: true });
   assert.equal(plan.full, true);
