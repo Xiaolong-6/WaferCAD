@@ -12,6 +12,12 @@
 
 To change an operation description, update the catalog and diagram, then run `npm run docs:build` and `npm run docs:check`. Commit the catalog, regenerated Markdown and any changed SVG assets together. `docs:check` checks images byte-for-byte against the in-app renderer. The tests check every defined operation ID and the exact operation-document snapshot. The [documentation architecture](DOCUMENTATION.md) owns navigation, authority and authored-versus-generated boundaries.
 
+## Figure and screenshot policy
+
+Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact, shipped WaferCAD example screenshots tied to the named example, or Before → After SVGs generated from the same `site/process-guide.js` catalog as the Process UI. When explaining ROI selection, workflows or History rather than a particular screen state, use a narrowly scoped Mermaid flowchart instead of unrelated imagery. Do not add stock, random microscopy, speculative AI renderings or publication figures without provenance and rights. Every manually inserted image needs descriptive alt text, an immediate caption identifying **actual app output / saved capture / conceptual guide schematic**, and a limitation where warranted. A green link check proves the asset path exists, not that its pixels are scientifically correct. Review images against current product views before treating them as the current visual baseline.
+
+See [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
+
 ## Deploy workflow
 
 `.github/workflows/product-manual-wiki.yml` runs after **every push to main**, with no path filters, and can also be started manually. It:
