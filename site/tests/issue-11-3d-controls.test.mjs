@@ -187,6 +187,16 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /createThreeView/);
 });
 
+test('3D lifecycle disposal replaces the original direct-resource loops without undefined sets', () => {
+  const start = threeView.indexOf('function disposeGroup()');
+  const end = threeView.indexOf('function presentationMode(', start);
+  const section = threeView.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(section, /disposeSceneResourcesSafely\(group\)/);
+  assert.doesNotMatch(section, /for \(const (geometry|texture|material) of/);
+  assert.match(threeView, /disposeRendererSceneResources\(targetGroup/);
+});
+
 test('3D renderer is event-driven and lazy-loads remote dependencies after app startup', () => {
   assert.doesNotMatch(threeView, /requestAnimationFrame\(animate\)/);
   assert.match(threeView, /function scheduleFrame\(\)/);

@@ -867,9 +867,6 @@ export function createThreeView({
     disposeSceneResourcesSafely(group);
     zDisplayObjects = new Set();
     currentZDisplay = null;
-    for (const geometry of geometries) geometry.dispose();
-    for (const texture of textures) texture.dispose();
-    for (const material of materials) material.dispose();
     roughMeshes = [];
     roughTasks = [];
     roughOwnedObjects = new Set();
