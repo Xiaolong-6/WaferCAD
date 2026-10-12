@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R4 acceptance: compare *real* browser actions at the same input pose.
 // The shared cap path must match the default in Section display, camera and ROI.
 // SwiftShader is valid for pixel parity, NOT for GPU timing or VRAM claims.
@@ -18,6 +19,7 @@ import {
 
 const output = new URL('../test-results/renderer-v4-r4-dynamic/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const all = [];
 
@@ -88,7 +90,7 @@ async function run(name, flags) {
     const page = await context.newPage();
     page.setDefaultTimeout(180000);
     const errors = observePageErrors(page);
-    await page.goto(baseUrl + '/app.html?' + flags);
+    await page.goto(rendererWorkstationUrl + '?' + flags);
     await waitForAppReady(page);
     await page
       .locator('#openProjectInput')

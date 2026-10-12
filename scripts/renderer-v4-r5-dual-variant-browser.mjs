@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R5: exercise BOTH real 625-site scene variants in one Chromium context.
 // Large-array allocations are cached by opaque/transparent mode. The small
 // preview lifetime probe tests re-imports, but cannot exercise this cache.
@@ -18,6 +19,7 @@ import {
 
 const output = new URL('../test-results/renderer-v4-r5-dual-variant/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const history = [];
 
@@ -96,8 +98,8 @@ try {
     page.setDefaultTimeout(180000);
     const errors = observePageErrors(page);
     await page.goto(
-      baseUrl +
-        '/app.html?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
+      rendererWorkstationUrl +
+        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
     );
     await waitForAppReady(page);
     await page

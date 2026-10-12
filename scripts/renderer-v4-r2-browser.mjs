@@ -1,3 +1,4 @@
+import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // Single-pose R1/R2 625-site parity probe, deliberately not a GPU performance benchmark.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -16,6 +17,7 @@ import {
 
 const output = new URL('../test-results/renderer-v4-r2/', import.meta.url);
 await mkdir(output, { recursive: true });
+const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await launchBrowser();
 const observations = [];
 
@@ -26,7 +28,7 @@ async function runArm(name, search) {
     page.setDefaultTimeout(180000);
     const errors = observePageErrors(page);
     const openedAt = performance.now();
-    await page.goto(baseUrl + '/app.html?' + search);
+    await page.goto(rendererWorkstationUrl + '?' + search);
     await waitForAppReady(page);
     await page
       .locator('#openProjectInput')
