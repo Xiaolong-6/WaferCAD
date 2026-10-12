@@ -8,7 +8,7 @@ const browser = await launchBrowser();
 let context;
 try {
   const launched = await newUiPage(browser, {
-    viewport: { width: 1024, height: 768 },
+    viewport: { width: 1440, height: 960 },
   });
   context = launched.context;
   const page = launched.page;

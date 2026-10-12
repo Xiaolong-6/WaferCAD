@@ -15,6 +15,7 @@ on:
       - scripts/test-helpers/renderer-workstation-route.mjs
       - scripts/test-helpers/renderer-hardware-site.mjs
       - scripts/renderer-hardware-http-smoke.mjs
+      - scripts/renderer-v4-pr177-default-smoke.mjs
       - .github/workflows/renderer-v4-pr177-compat.yml
   workflow_dispatch:
 
@@ -86,7 +87,8 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:4182/app-legacy.html > /dev/null
-          node scripts/v2/check-three-view.mjs
+          node scripts/renderer-v4-pr177-default-smoke.mjs
+          WAFERCAD_V2_EXAMPLE=photodetector node scripts/v2/check-three-view.mjs
           node scripts/renderer-v4-r2-browser.mjs
       - name: Upload non-baseline integration evidence on failure
         if: failure()
