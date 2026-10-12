@@ -169,8 +169,15 @@ try {
       assert.deepEqual(unchanged.section, before.section);
       // Full M3D History packing can exceed Playwright's 30-second event
       // default on constrained software-rendering CI/local runners.
+      // A full Project download can take longer than Playwright's implicit
+      // navigation wait after locator.click(). Use the actual pointer input,
+      // then require the real download and verify its scientific payload.
+      const exportButton = page.locator('#exportProjectBtn');
+      await exportButton.scrollIntoViewIfNeeded();
+      const box = await exportButton.boundingBox();
+      assert.ok(box && box.width > 0 && box.height > 0, 'Visible Project export control');
       const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
-      await page.locator('#exportProjectBtn').click();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       const download = await downloadPromise;
       const path = resolve(output, `${example}.wafercad`);
       await download.saveAs(path);
