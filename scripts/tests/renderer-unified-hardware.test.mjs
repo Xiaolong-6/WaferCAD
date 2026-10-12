@@ -102,6 +102,24 @@ test('V4 no-op, incomplete and mismatched policies fail closed', () => {
   parityFail.passed = false;
   parityFail.parity.strictPixelParity = false;
   assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), parityFail), 'blocked');
+
+  // Reproduces the actual October 12 Windows capture shape. R7 records all
+  // six pairs, then intentionally throws a strict-parity assertion: blocked
+  // is a scientific acceptance result, not an infrastructure crash.
+  const captured = v4Report('caps');
+  captured.passed = false;
+  captured.parity.strictPixelParity = false;
+  captured.comparisons = Array.from({ length: 6 }, (_, i) => ({ pair: i }));
+  captured.failure =
+    'AssertionError [ERR_ASSERTION]: R7 strict parity blocked: baseline A1/A2 fresh-context pixel parity failed';
+  assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), captured), 'blocked');
+
+  const bootCrash = { ...captured, stage: 'capture-1-A' };
+  assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), bootCrash), 'error');
+  const incomplete = { ...captured, comparisons: [] };
+  assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), incomplete), 'error');
+  const unrelated = { ...captured, failure: 'AssertionError: wrong geometry' };
+  assert.equal(classifyRendererHardwareStep(step('v4-caps', 1), unrelated), 'error');
 });
 
 test('aborted GPU report keeps already saved PNG and trace artifacts', async () => {
