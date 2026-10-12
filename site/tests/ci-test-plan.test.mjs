@@ -139,10 +139,7 @@ test('real UI v2 changes select workstation and shared cross-interface regressio
     'smoke',
     'workstation',
   ]);
-  assert.deepEqual(enabled(buildCiTestPlan(['site/ui-v2/mask-view.js'])), [
-    'smoke',
-    'workstation',
-  ]);
+  assert.deepEqual(enabled(buildCiTestPlan(['site/ui-v2/mask-view.js'])), ['smoke', 'workstation']);
 });
 
 test('explicit full mode runs every suite independent of changed paths', () => {
