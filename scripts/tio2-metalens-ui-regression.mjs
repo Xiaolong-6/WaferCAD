@@ -9,7 +9,7 @@ import {
   baseUrl,
   chooseConfirmation,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   openFunctionPanel,
   waitForAppReady,
@@ -27,7 +27,7 @@ const page = await context.newPage(),
 try {
   const { project } = await buildMetalensLocal();
   const { pointInMulti } = await import('../site/vector-geometry.js');
-  await page.goto(baseUrl + '/app.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(baseUrl + '/app-legacy.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await waitForAppReady(page);
   await loadProject(page, project, 'TiO2-metalens-four-unit');
   await openFunctionPanel(page, 'process');

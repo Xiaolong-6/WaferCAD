@@ -110,7 +110,7 @@ const sources = await Promise.all(
     text: (await readFile(resolve(repo, path), 'utf8')).replaceAll('\r\n', '\n'),
   })),
 );
-const appSource = sources.find((source) => source.path === 'site/app.html');
+const appSource = sources.find((source) => source.path === 'site/app-legacy.html');
 const elements = elementsIn(appSource.text);
 const ids = elements
   .filter((element) => element.attributes.id)
@@ -396,7 +396,7 @@ const duplicateIds = ids
   .filter((id, index, all) => all.indexOf(id) !== index);
 const contract = {
   schemaVersion: 1,
-  source: 'site/app.html',
+  source: 'site/app-legacy.html',
   auditedBase: execFileSync('git', ['rev-parse', 'origin/main'], {
     cwd: repo,
     encoding: 'utf8',
@@ -451,7 +451,7 @@ const doc = [
   '',
   `Audited main: \`${contract.auditedBase}\`. Generated with \`node scripts/ui-contract-extract.mjs\`; verify with \`--check\`.`,
   '',
-  'This inventories the legacy entry at the recorded main revision. IDs/ARIA/data attributes come from app.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Runtime-site counts include ui-v2 previews and prototypes and exclude test-only evidence; they are not legacy-only counts. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.',
+  'This inventories the legacy entry at the recorded revision. IDs/ARIA/data attributes come from app-legacy.html; references are textual candidates across site and scripts (vendor excluded). JavaScript operations use the locked ESLint Espree parser. Runtime-site counts include ui-v2 previews and prototypes and exclude test-only evidence; they are not legacy-only counts. Computed classes/IDs are patterns or unresolved operations, not fabricated concrete names. This does not establish v2 coverage or runtime reachability.',
   '',
   '## Counts',
   '',

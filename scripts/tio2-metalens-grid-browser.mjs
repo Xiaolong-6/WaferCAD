@@ -8,7 +8,7 @@ import {
   baseUrl,
   chooseConfirmation,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   openFunctionPanel,
   closeFunctionPanel,
@@ -29,7 +29,7 @@ const page = await context.newPage();
 const errors = observePageErrors(page);
 const begin = performance.now();
 try {
-  await page.goto(baseUrl + '/app.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(baseUrl + '/app-legacy.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await waitForAppReady(page);
   await openFunctionPanel(page, 'project', { timeout: 120000 });
   await page.locator('#openProjectInput').setInputFiles({

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   waitForAppReady,
   waitForThreeReady,
   observePageErrors,
@@ -63,7 +63,9 @@ const report = {
 
 try {
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
-  await page.goto(baseUrl.replace(/\/$/, '') + '/app.html', { waitUntil: 'domcontentloaded' });
+  await page.goto(baseUrl.replace(/\/$/, '') + '/app-legacy.html', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAppReady(page);
   await loadProject(page, JSON.parse(originalText), 'm3d-kernel-final');
   report.import = true;

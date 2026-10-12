@@ -9,6 +9,7 @@ on:
       - '.github/workflows/ui-v2-stage-c-m4.yml'
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'site/**'
       - 'scripts/**'
@@ -19,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ui-v2-stage-c-m4-${{ github.event.pull_request.number || github.ref }}
+  group: ui-v2-stage-c-m4-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -57,7 +58,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-sync check-review-interactions check-m4-projects check-m2-live-parity; do
+          for script in check-startup check-cross-ui-recovery check-sync check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"
@@ -74,6 +75,8 @@ jobs:
           name: wafercad-ui-v2-m4-${{ github.sha }}
           path: |
             test-results/ui-v2-sync/
+            test-results/ui-v2-startup/
+            test-results/ui-v2-cross-ui-recovery/
             test-results/ui-v2-review-interactions/
             test-results/ui-v2-m4-projects/
             test-results/ui-v2-m2-parity/

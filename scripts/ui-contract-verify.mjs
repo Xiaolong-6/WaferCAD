@@ -7,14 +7,14 @@ import { resolve } from 'node:path';
 import {
   baseUrl,
   launchBrowser,
-  newUiPage,
+  newLegacyUiPage as newUiPage,
   observePageErrors,
   waitForAppReady,
 } from './test-helpers/ui.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const contract = JSON.parse(await readFile(resolve(repo, 'docs/ui-v2/contract.json'), 'utf8'));
-const html = await readFile(resolve(repo, 'site/app.html'), 'utf8');
+const html = await readFile(resolve(repo, 'site/app-legacy.html'), 'utf8');
 const browser = await launchBrowser();
 try {
   const { page, context } = await newUiPage(browser);
@@ -38,7 +38,7 @@ try {
     }
 
     const errors = observePageErrors(page);
-    await page.goto(`${baseUrl}/app.html?start=empty`);
+    await page.goto(`${baseUrl}/app-legacy.html?start=empty`);
     await waitForAppReady(page);
     assert.equal(await page.locator('#recipeProcessPane').getAttribute('data-ready'), 'true');
     const liveIds = await page.locator('[id]').evaluateAll((nodes) => nodes.map((node) => node.id));

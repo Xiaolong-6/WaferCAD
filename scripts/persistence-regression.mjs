@@ -8,8 +8,8 @@ import {
   chooseConfirmation,
   gotoWelcome,
   launchBrowser,
-  newUiContext,
-  newUiPage,
+  newLegacyUiContext as newUiContext,
+  newLegacyUiPage as newUiPage,
   openFunctionPanel,
   waitForAppReady,
 } from './test-helpers/ui.mjs';
@@ -41,7 +41,7 @@ bookmarkPage.on('dialog', (dialog) => {
   bookmarkErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
   void dialog.dismiss();
 });
-await bookmarkPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+await bookmarkPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`);
 await waitForAppReady(bookmarkPage);
 await openFunctionPanel(bookmarkPage, 'process');
 await bookmarkPage.locator('[data-process-input-mode="recipe"]').click();
@@ -90,7 +90,7 @@ page.on('dialog', (dialog) => {
   void dialog.dismiss();
 });
 
-await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -149,7 +149,7 @@ await legacyPage.evaluate(
     }),
   legacyWorkspace,
 );
-await legacyPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await legacyPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -188,7 +188,7 @@ await interactionAutosavePage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(welcomeProject)),
 });
-await interactionAutosavePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await interactionAutosavePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await interactionAutosavePage.waitForFunction(
   () => document.documentElement.dataset.appReady === 'true',
   null,
@@ -353,7 +353,7 @@ const { page: refreshPage, context: refreshContext } = await newUiPage(browser, 
 });
 const refreshErrors = [];
 refreshPage.on('pageerror', (error) => refreshErrors.push(error.message));
-await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await refreshPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -385,7 +385,7 @@ await layoutHandoffPage.locator('#welcomeLayoutInput').setInputFiles({
   mimeType: 'application/octet-stream',
   buffer: welcomeLayoutBuffer,
 });
-await layoutHandoffPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await layoutHandoffPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await layoutHandoffPage.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '') === 'Opened welcome-layout.oas.',
   null,
@@ -407,7 +407,7 @@ await projectHandoffPage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(welcomeProject)),
 });
-await projectHandoffPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await projectHandoffPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await projectHandoffPage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -433,7 +433,7 @@ welcomeCheckpointPage.on('dialog', (dialog) => {
   welcomeCheckpointErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
   void dialog.dismiss();
 });
-await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await welcomeCheckpointPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -454,7 +454,7 @@ await welcomeCheckpointPage
     '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
-await welcomeCheckpointPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await welcomeCheckpointPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await welcomeCheckpointPage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -520,7 +520,7 @@ failedWelcomePage.on('dialog', (dialog) => {
   failedWelcomeErrors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
   void dialog.dismiss();
 });
-await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await failedWelcomePage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -541,7 +541,7 @@ await failedWelcomePage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from('{not valid json'),
 });
-await failedWelcomePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await failedWelcomePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await failedWelcomePage.waitForFunction(
   () =>
     /Welcome action failed; restored local workspace/.test(
@@ -574,7 +574,7 @@ await examplePage
     '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-summary-link',
   )
   .click();
-await examplePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await examplePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await examplePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -775,7 +775,7 @@ for (const safetyPage of [safetyFirst, safetySecond]) {
     void dialog.dismiss();
   });
 }
-await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await safetyFirst.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -784,7 +784,7 @@ await safetyFirst.waitForFunction(
   null,
   { timeout: 30000 },
 );
-await safetySecond.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+await safetySecond.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'networkidle',
   timeout: 30000,
 });
@@ -930,7 +930,7 @@ const guardErrors = [];
 guardPage.on('pageerror', (error) => guardErrors.push(error.message));
 await gotoWelcome(guardPage);
 await guardPage.locator('#welcomeEmptyBtn').click();
-await guardPage.waitForURL(/\/app\.html(?:\?.*)?$/);
+await guardPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/);
 await waitForAppReady(guardPage);
 await guardPage.waitForFunction(
   () => /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),

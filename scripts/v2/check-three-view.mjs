@@ -1,3 +1,4 @@
+import { openMetalensUnitProject } from './project-fixtures.mjs';
 // Real shared-model 3D acceptance: user gestures, independent inspection and physical exporters.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -33,7 +34,8 @@ try {
     try {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await page.goto(url);
+      if (example === 'metalens') await openMetalensUnitProject(page, base);
+      else await page.goto(url);
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
       });
@@ -307,7 +309,8 @@ try {
   try {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(url);
+    if (example === 'metalens') await openMetalensUnitProject(page, base);
+    else await page.goto(url);
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });

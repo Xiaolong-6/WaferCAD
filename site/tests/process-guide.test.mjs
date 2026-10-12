@@ -113,7 +113,7 @@ test('generated Wiki operation documentation is identical to current Process cat
 });
 
 test('both product manual entry points and the inline guide are wired', async () => {
-  const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
   const guide = await readFile(new URL('../guide/index.html', import.meta.url), 'utf8');
   const panel = await readFile(
     new URL('../controllers/process-panel-controller.js', import.meta.url),

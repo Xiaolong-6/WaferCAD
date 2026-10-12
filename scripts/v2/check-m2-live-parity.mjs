@@ -1,3 +1,4 @@
+import { openMetalensUnitProject } from './project-fixtures.mjs';
 // Compare M2 prototype chrome and Manual editor against the real integrated v2 UI.
 // Raster screenshots are review artifacts; no unapproved pixel baseline is created.
 import assert from 'node:assert/strict';
@@ -116,7 +117,8 @@ try {
         opened.push({ role, page, context });
         const errors = [];
         page.on('pageerror', (error) => errors.push(error.message));
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+        if (role === 'real') await openMetalensUnitProject(page, base);
+        else await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
         await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
           timeout: 120000,
         });

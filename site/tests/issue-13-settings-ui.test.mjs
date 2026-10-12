@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const html = await readFile(new URL('../app.html', import.meta.url), 'utf8');
+const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const persistence = await readFile(new URL('../workspace-persistence.js', import.meta.url), 'utf8');
 const workspacePersistenceController = await readFile(

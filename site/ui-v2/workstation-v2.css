@@ -39,6 +39,27 @@ html[data-ui='v2'] {
 .v2-boot-message {
   margin: 16px;
 }
+.v2-legacy-link {
+  position: fixed;
+  z-index: 20;
+  right: 12px;
+  bottom: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--wc-border-strong);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-surface);
+  color: var(--wc-muted);
+  font-family: var(--wc-font);
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.v2-legacy-link:hover,
+.v2-legacy-link:focus-visible {
+  color: var(--wc-text);
+  outline: 2px solid var(--wc-focus);
+  outline-offset: 2px;
+}
 .v2-split-select {
   font: inherit;
   font-weight: 600;

@@ -7,7 +7,7 @@ import {
   gotoWelcome,
   launchBrowser,
   openFunctionPanel,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
 } from './test-helpers/ui.mjs';
 
@@ -52,7 +52,7 @@ await historyRestorePage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(welcomeProject)),
 });
-await historyRestorePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyRestorePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyRestorePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -503,7 +503,7 @@ await historyRecomputePage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(welcomeProject)),
 });
-await historyRecomputePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyRecomputePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyRecomputePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -607,7 +607,7 @@ await historyReplayFailurePage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: Buffer.from(JSON.stringify(welcomeProject)),
 });
-await historyReplayFailurePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await historyReplayFailurePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await historyReplayFailurePage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===
@@ -698,7 +698,7 @@ await projectDownloadPage.locator('#welcomeProjectInput').setInputFiles({
   mimeType: 'application/json',
   buffer: snapshotExportFixtureBuffer,
 });
-await projectDownloadPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await projectDownloadPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await projectDownloadPage.waitForFunction(
   () =>
     (document.getElementById('statusText')?.textContent || '') ===

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   waitForAppReady,
   waitForThreeReady,
@@ -74,7 +74,7 @@ try {
     return elapsed;
   };
   const errors = observePageErrors(page);
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app-legacy.html');
   await waitForAppReady(page);
   await page
     .locator('#openProjectInput')

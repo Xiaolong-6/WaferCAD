@@ -165,6 +165,47 @@ try {
   starting = false;
   workflow.refresh();
   store.start();
+  const legacyLink = el(
+    'a',
+    {
+      class: 'v2-legacy-link',
+      href: './app-legacy.html',
+      'aria-label': 'Save workspace and use legacy interface',
+    },
+    'Use legacy interface',
+  );
+  let switchingInterface = false;
+  legacyLink.addEventListener('click', async (event) => {
+    event.preventDefault();
+    // Navigation itself must not enqueue another autosave after this flush.
+    event.stopPropagation();
+    if (switchingInterface) return;
+    if (workflow.task.isBusy()) {
+      status('Finish or abort the current task before switching interfaces.');
+      return;
+    }
+    switchingInterface = true;
+    legacyLink.setAttribute('aria-disabled', 'true');
+    try {
+      const persistence = workflow.persistence;
+      const saved = workflow.snapshot().writable
+        ? await persistence.persistNow({ force: true })
+        : !persistence.isDirty() && !persistence.isViewDirty();
+      if (!saved || persistence.isDirty() || persistence.isViewDirty()) {
+        status(
+          'Could not save the workspace. Resolve the save or ownership issue before switching interfaces.',
+        );
+        return;
+      }
+      window.location.href = legacyLink.href;
+    } catch (error) {
+      status(`Could not save before switching interfaces: ${error.message}`);
+    } finally {
+      switchingInterface = false;
+      legacyLink.removeAttribute('aria-disabled');
+    }
+  });
+  document.body.append(legacyLink);
   window.WaferCadV2Workstation = {
     ready: true,
     snapshot: () =>

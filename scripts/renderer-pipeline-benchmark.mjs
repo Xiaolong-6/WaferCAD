@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   waitForAppReady,
   waitForThreeReady,
@@ -51,7 +51,7 @@ try {
   page.setDefaultTimeout(180000);
   const errors = observePageErrors(page);
 
-  await page.goto(baseUrl + '/app.html');
+  await page.goto(baseUrl + '/app-legacy.html');
   await waitForAppReady(page);
   const openStarted = performance.now();
   await page

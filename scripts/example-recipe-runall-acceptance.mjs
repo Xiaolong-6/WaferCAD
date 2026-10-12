@@ -9,7 +9,7 @@ import {
   baseUrl,
   chooseConfirmation,
   launchBrowser,
-  newUiContext,
+  newLegacyUiContext as newUiContext,
   observePageErrors,
   openFunctionPanel,
   waitForAppReady,
@@ -122,7 +122,7 @@ try {
     });
     try {
       await page.goto(
-        `${baseUrl}/app.html?start=example&example=${encodeURIComponent(example.id)}`,
+        `${baseUrl}/app-legacy.html?start=example&example=${encodeURIComponent(example.id)}`,
         { waitUntil: 'domcontentloaded', timeout: 120000 },
       );
       await waitForAppReady(page);

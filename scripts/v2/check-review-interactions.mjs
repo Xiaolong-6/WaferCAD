@@ -1,3 +1,4 @@
+import { openMetalensUnitProject } from './project-fixtures.mjs';
 // User-approved desktop review contracts, exercised through actual controls and shared model.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -28,7 +29,7 @@ try {
     try {
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await page.goto(`${base}/app-v2-workstation.html?start=example&example=metalens`);
+      await openMetalensUnitProject(page, base);
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const initial = await snapshot();

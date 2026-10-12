@@ -21,7 +21,7 @@ export async function openProductPage(browser, viewport, touch, errors) {
   });
 
   const baseUrl = process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
-  await page.goto(`${baseUrl.replace(/\/$/, '')}/app.html`);
+  await page.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`);
   await page.waitForFunction(() => document.documentElement.dataset.appReady === 'true');
   await page.locator('#threeHost canvas').waitFor({ state: 'attached', timeout: 10000 });
   assert.equal(

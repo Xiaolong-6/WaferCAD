@@ -383,7 +383,7 @@
   }
 
   async function start() {
-    const response = await fetch('./app.html', { cache: 'no-store' });
+    const response = await fetch('./app-legacy.html', { cache: 'no-store' });
     if (!response.ok) throw Error(`Unable to load real view contract: HTTP ${response.status}`);
     attachNativeContract(await response.text());
     buildShell();

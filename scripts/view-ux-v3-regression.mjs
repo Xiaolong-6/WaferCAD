@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises';
 import {
   gotoWelcome,
   launchBrowser,
-  newUiPage,
+  newLegacyUiPage as newUiPage,
   observePageErrors,
   waitForAppReady,
   waitForPaint,

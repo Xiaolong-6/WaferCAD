@@ -6,7 +6,7 @@ import {
   canvasInkFraction,
   gotoWelcome,
   launchBrowser,
-  newUiPage,
+  newLegacyUiPage as newUiPage,
   observePageErrors,
   openFunctionPanel,
 } from './test-helpers/ui.mjs';
@@ -37,7 +37,7 @@ await bootPage.route('**/app.js*', async (route) => {
   appRequestedBeforeCss = true;
   await route.continue();
 });
-const bootNavigation = bootPage.goto(`${baseUrl.replace(/\/$/, '')}/app.html`, {
+const bootNavigation = bootPage.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
   waitUntil: 'domcontentloaded',
   timeout: 30000,
 });
@@ -258,7 +258,7 @@ const percCard = page.locator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"]',
 );
 await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
-assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?/);
+assert.match(await previewFrames.nth(1).getAttribute('src'), /app-legacy\.html\?/);
 assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
 const percPreview = page.frameLocator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
@@ -270,7 +270,7 @@ await percPreview.locator('html.welcome-project-preview[data-preview-view="three
 assert.equal(await percPreview.locator('#threePanel').isVisible(), true);
 
 await page.locator('#welcomeEmptyBtn').click();
-await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await page.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await page.waitForLoadState('networkidle');
 await page.waitForFunction(
   () => (document.getElementById('statusText')?.textContent || '').startsWith('Ready'),
@@ -299,7 +299,7 @@ const { page: navigationPage, context: navigationContext } = await newUiPage(bro
 const navigationErrors = observePageErrors(navigationPage);
 await gotoWelcome(navigationPage);
 await navigationPage.locator('#welcomeEmptyBtn').click();
-await navigationPage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await navigationPage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await navigationPage.waitForLoadState('networkidle');
 await navigationPage.goBack({ waitUntil: 'domcontentloaded' });
 await navigationPage.waitForFunction(
@@ -359,7 +359,7 @@ await blockedThreePage.route('https://cdn.jsdelivr.net/**', async (route) => {
 });
 await blockedThreePage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await blockedThreePage.locator('#welcomeEmptyBtn').click();
-await blockedThreePage.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 30000 });
+await blockedThreePage.waitForURL(/\/app-legacy\.html(?:\?.*)?$/, { timeout: 30000 });
 await blockedThreePage.waitForFunction(
   () => document.documentElement.dataset.appReady === 'true',
   null,

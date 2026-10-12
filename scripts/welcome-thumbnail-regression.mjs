@@ -67,7 +67,9 @@ try {
     }
     const allThumbnailsMs = performance.now() - started;
     assert.equal(
-      requests.filter((path) => path.endsWith('.wafercad') || path === '/app.html').length,
+      requests.filter(
+        (path) => path.endsWith('.wafercad') || ['/app.html', '/app-legacy.html'].includes(path),
+      ).length,
       0,
     );
     for (const module of [
