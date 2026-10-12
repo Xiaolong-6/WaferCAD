@@ -33,15 +33,28 @@ These commands assume WaferCAD is already served at `WAFERCAD_URL` or the defaul
 
 ### UI v2 shared-workstation checks
 
+The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
+`scripts/v2/check-cross-ui-recovery.mjs` checks the product's save-before-switch
+action, exact cross-interface recovery, and concurrent Legacy/v2 writer ownership.
+Existing scientific/controller suites retain their Legacy DOM assertions at
+`app-legacy.html`. Suites that start through Welcome explicitly use
+`newLegacyUiContext` / `newLegacyUiPage`; these test contexts redirect the
+Welcome navigation to Legacy. Default-route owners use unmodified contexts.
+
+Small Metalens interaction owners import the complete
+`tio2-metalens-four-unit-process.wafercad` through the staged Project path.
+The catalog's full 6,400-instance Metalens remains covered by the M4 project owner.
+
 Serve `site/` with `node scripts/v2/serve-v2.mjs` on port 4182. Main, Mask and integrated Section have separate owners: `check-main-view.mjs`, `check-mask-view.mjs` and `check-section-view.mjs` under `scripts/v2/`.
 
 The [desktop review checkpoint](ui-v2/DESKTOP_REVIEW_2026-10-11.md) records user-approved toolbar and gesture changes. `node scripts/v2/check-review-interactions.mjs` owns responsive inline rename, real-canvas focus/restoration without saved-color changes, repeated Random, aligned visibility and real Electrical depth/visibility. It runs four widths plus touch and loads JLFET for Electrical coverage; the Process/History Stage C workflow is owned by the integrated Stage C gate below.
-
 
 Stage C now uses one genuine M2-derived four-view workstation with a shared model and the existing scientific controllers. The [Stage C / M4 CI gate](../.github/workflows/ui-v2-stage-c-m4.yml) runs these commands at 4182 (Node 24; Chromium 140 / Playwright 1.55.1):
 
 ```bash
 node scripts/v2/check-sync.mjs
+node scripts/v2/check-startup.mjs
+node scripts/v2/check-cross-ui-recovery.mjs
 node scripts/v2/check-review-interactions.mjs
 node scripts/v2/check-m4-projects.mjs
 ```

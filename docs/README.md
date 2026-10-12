@@ -70,6 +70,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Three-branch integration review — 2026-10-08](INTEGRATION_REVIEW_2026-10-08.md) — merged source-branch audit and final CI acceptance.
 - [Main P0/P1 data-safety hardening — 2026-10-08](MAIN_P0_P1_STABILITY_2026-10-08.md) — Recipe/History destructive-action checkpoint guards, regression and validation limits.
 - [Recovery Open/Welcome safety audit — 2026-10-09](RECOVERY_OPEN_STARTUP_SAFETY_AUDIT_2026-10-09.md) — fail-closed Project/Mask import and protected startup transaction boundaries.
+- [M5-Lite default entry handoff — 2026-10-12](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, startup and cross-UI recovery status.
 - [Revision-specific archive](archive/README.md) — every earlier audit, reconstruction, optimization and design/research snapshot; original paths are preserved.
 
 For a current behavior question, follow the owner above. For a claim that a test, deployment or scientific replay passed, use the evidence for the exact revision and environment. An old pending/approved banner does not establish the state of today's main.
