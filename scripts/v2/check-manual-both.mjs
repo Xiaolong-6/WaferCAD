@@ -26,11 +26,8 @@ try {
   assert.equal(initial.model.layers.length, 1);
   await page.locator('[data-action="domain:process"]').click();
   const face = page.locator('#faceToggleBtn');
-  assert.deepEqual(await face.locator('option').evaluateAll((nodes) => nodes.map((n) => n.value)), [
-    'front',
-    'back',
-    'both',
-  ]);
+  const faceOptions = await face.locator('option').evaluateAll((nodes) => nodes.map((n) => n.value));
+  assert.deepEqual(faceOptions, ['front', 'back', 'both']);
   await face.selectOption('both');
   await page.locator('#operationArea').selectOption('full');
   await page.locator('#growthMode').selectOption('conformal');
@@ -56,9 +53,10 @@ try {
   report.cases.push('deposit:two-distinct-paired-layers');
 
   await page.locator('#operationType').selectOption('grow');
-  assert.deepEqual(await page.locator('#targetLayer option').evaluateAll((options) =>
-    options.map((option) => option.value),
-  ), [front.id], 'Extend offers only the valid front of the linked pair');
+  const growOptions = await page
+    .locator('#targetLayer option')
+    .evaluateAll((options) => options.map((option) => option.value));
+  assert.deepEqual(growOptions, [front.id], 'Extend offers only the linked Front film');
   await page.locator('#targetLayer').selectOption(front.id);
   await page.locator('#growthMode').selectOption('direct');
   await page.locator('#operationThickness').fill('0.05');
@@ -74,9 +72,9 @@ try {
   report.cases.push('extend:paired-target-atomic');
 
   await page.locator('#operationType').selectOption('etch');
-  const etchOptions = await page.locator('#etchTargetLayer option').evaluateAll((options) =>
-    options.map((option) => option.value),
-  );
+  const etchOptions = await page
+    .locator('#etchTargetLayer option')
+    .evaluateAll((options) => options.map((option) => option.value));
   assert.ok(etchOptions.includes(front.id));
   assert.ok(!etchOptions.includes(back.id), 'Back film cannot be the canonical Both target');
   await page.locator('#etchTargetLayer').selectOption(front.id);
