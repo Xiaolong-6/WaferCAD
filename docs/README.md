@@ -60,6 +60,7 @@ Use this page to find the document that owns a question. Current contracts descr
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — Fast full-wafer far-array presentation LOD shipped in PR #155; exact near/ROI inspection, unshipped hierarchy phases and non-blocking performance debt remain documented.
 - [PR #166 continued acceptance](PR166_ACCEPTANCE_2026-10-10.md) — historical 625-site pixel evidence, current CI, Electrical A/B census repairs and open hardware/runtime gates.
 - [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
+- [R8 targeted WebGL phase-window diagnostics](RENDERER_R8_PHASE_WINDOW_2026-10-12.md) — bounded draw-checkpoint localization of hardware raster drift, fail-closed evidence, and GPU-neutral command.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
 - [Renderer V3/V4 main alignment (2026-10-12)](RENDERER_MAIN_ALIGNMENT_2026-10-12.md) — reviewed PR #177 merge conflict resolutions, base/stack ancestry, and acceptance limits.
 - [Renderer V3/V4 unified RTX 3060 diagnostics](RENDERER_V3_V4_UNIFIED_HARDWARE.md) — one command for exact-SHA worktrees, bounded GPU evidence and the single combined upload.
