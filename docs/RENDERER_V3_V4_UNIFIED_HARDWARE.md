@@ -1,17 +1,26 @@
-# Renderer V3 + V4 unified RTX 3060 evidence
+# Renderer V3 + V4 unified hardware GPU evidence
 
 This is a **diagnostic tool**, not a replacement for either PR's acceptance gates.
 PR #166 (V3) targets `main`; PR #174 (V4) targets the V3 branch.
 Both remain Draft until their individual hardware parity requirements pass.
 
-## One command on Windows
+## One command on a hardware GPU
 
-From any checkout of PR #174, with Node 24, npm, Git, network
-access to the repository, and a working RTX 3060:
+From PR #174 with Node 24, npm, Git, network access and a working **hardware
+WebGL2 GPU** (Intel/AMD integrated graphics or NVIDIA/AMD discrete graphics),
+run from a desktop browser session:
 
 ```powershell
-node scripts/renderer-unified-hardware.mjs --hardware-rtx3060
+node scripts/renderer-unified-hardware.mjs --hardware-gpu
 ```
+
+The runner checks the actual *unmasked* GPU adapter for each context and
+rejects SwiftShader/llvmpipe/WARP, unknown adapters and changes of adapter
+within an experiment. On Linux a headed Chromium session requires a display.
+The older `--hardware-rtx3060` spelling remains supported for the exact
+Windows RTX 3060 adapter, but is **not required** for valid hardware results.
+Each GPU/driver/backend must be evaluated independently; do not compare an
+Intel capture byte-for-byte with an NVIDIA capture as an acceptance criterion.
 
 The script first verifies actual Chromium navigation to the locally served\n`app.html`, before any GPU trial. If it fails, `preflight-chromium.log`\nexplains the HTTP response or browser error and the run ends without wasting\nGPU captures.\n\nThe script fetches both remote branch heads, checks that the V4 HEAD contains
 the V3 HEAD, makes two **detached temporary Git worktrees**, installs pinned
@@ -43,8 +52,8 @@ after a strict pixel mismatch. Missing artifacts, wrong candidate flags,
 unexercised V4 optimizations, and nonzero error exits remain failures.
 
 CI uses software WebGL (SwiftShader) and cannot validate Windows Direct3D11
-or actual GPU execution time. On RTX 3060, the strict zero-pixel requirement
-is unchanged. The previously observed 45 stable A/B pixels are an attribution
+or actual GPU execution time. Within the *same verified adapter and driver configuration*, the strict
+zero-pixel requirement is unchanged. Cross-vendor byte identity is not required. The previously observed 45 stable A/B pixels are an attribution
 lead, not proof of a specific geometry or material defect. No approved visual
 baseline is modified by this script.
 
@@ -86,7 +95,7 @@ V3 on two fresh contexts per electrical policy with GL dithering disabled
 during each WebGL draw; the original GL state is restored after every draw:
 
 ```powershell
-node scripts/renderer-unified-hardware.mjs --hardware-rtx3060 --diagnose-v3-dither
+node scripts/renderer-unified-hardware.mjs --hardware-gpu --diagnose-v3-dither
 ```
 
 It uses the updated V3 exact SHA, separately writes
@@ -133,7 +142,7 @@ From the latest V4 runner branch, after the Windows preflight and
 software CI succeed:
 
 ```powershell
-node scripts/renderer-unified-hardware.mjs --hardware-rtx3060 --diagnose-v3-msaa
+node scripts/renderer-unified-hardware.mjs --hardware-gpu --diagnose-v3-msaa
 ```
 
 This runs **V3 only** on the pinned V3 HEAD, intercepting WebGL2 context

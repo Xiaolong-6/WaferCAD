@@ -19,10 +19,10 @@ test('one hardware plan retains exact V3 and three independent V4 candidate arti
     plan.map(({ id }) => id),
     ['v3', 'v4-index', 'v4-caps', 'v4-combined'],
   );
-  assert.deepEqual(plan[0].args, ['--hardware-rtx3060', '--report-only']);
-  assert.deepEqual(plan[1].args, ['--hardware-rtx3060', '--isolate-index']);
-  assert.deepEqual(plan[2].args, ['--hardware-rtx3060', '--isolate-caps']);
-  assert.deepEqual(plan[3].args, ['--hardware-rtx3060']);
+  assert.deepEqual(plan[0].args, ['--hardware-gpu', '--report-only']);
+  assert.deepEqual(plan[1].args, ['--hardware-gpu', '--isolate-index']);
+  assert.deepEqual(plan[2].args, ['--hardware-gpu', '--isolate-caps']);
+  assert.deepEqual(plan[3].args, ['--hardware-gpu']);
   assert.equal(new Set(plan.map(({ artifact }) => artifact)).size, plan.length);
   assert.deepEqual(
     buildRendererHardwarePlan(['caps']).map(({ id }) => id),
@@ -38,7 +38,7 @@ test('DITHER-off diagnostic is one V3-only experiment, never product acceptance'
   assert.equal(buildRendererV3DitherDiagnosticPlan().length, 1);
   assert.equal(only.id, 'v3-dither-off');
   assert.equal(only.branch, 'v3');
-  assert.deepEqual(only.args, ['--hardware-rtx3060', '--report-only', '--diagnose-no-dither']);
+  assert.deepEqual(only.args, ['--hardware-gpu', '--report-only', '--diagnose-no-dither']);
   assert.notEqual(only.artifact, buildRendererHardwarePlan()[0].artifact);
   const report = {
     stage: 'completed',
@@ -82,7 +82,7 @@ test('DITHER-off diagnostic is one V3-only experiment, never product acceptance'
 
 test('no-MSAA mode requires verified zero sample framebuffer and never approves product', () => {
   const [step] = buildRendererV3MsaaDiagnosticPlan();
-  assert.deepEqual(step.args, ['--hardware-rtx3060', '--report-only', '--diagnose-no-msaa']);
+  assert.deepEqual(step.args, ['--hardware-gpu', '--report-only', '--diagnose-no-msaa']);
   assert.notEqual(step.artifact, buildRendererV3DitherDiagnosticPlan()[0].artifact);
   const standard = {
     stage: 'completed',

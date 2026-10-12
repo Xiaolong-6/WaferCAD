@@ -21,7 +21,7 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
       id: 'v3',
       branch: 'v3',
       script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-      args: ['--hardware-rtx3060', '--report-only'],
+      args: ['--hardware-gpu', '--report-only'],
       artifact: 'test-results/renderer-hardware-fresh-context-ab',
     },
     ...modes.map((mode) => ({
@@ -29,7 +29,7 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
       branch: 'v4',
       script: 'scripts/renderer-v4-r7-abba-browser.mjs',
       args: [
-        '--hardware-rtx3060',
+        '--hardware-gpu',
         ...(mode === 'index' ? ['--isolate-index'] : mode === 'caps' ? ['--isolate-caps'] : []),
       ],
       artifact:
@@ -47,7 +47,7 @@ export function buildRendererV3DitherDiagnosticPlan() {
       id: 'v3-dither-off',
       branch: 'v3',
       script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-      args: ['--hardware-rtx3060', '--report-only', '--diagnose-no-dither'],
+      args: ['--hardware-gpu', '--report-only', '--diagnose-no-dither'],
       artifact: 'test-results/renderer-hardware-fresh-context-ab-no-dither',
     },
   ];
@@ -60,7 +60,7 @@ export function buildRendererV3MsaaDiagnosticPlan() {
       id: 'v3-msaa-off',
       branch: 'v3',
       script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-      args: ['--hardware-rtx3060', '--report-only', '--diagnose-no-msaa'],
+      args: ['--hardware-gpu', '--report-only', '--diagnose-no-msaa'],
       artifact: 'test-results/renderer-hardware-fresh-context-ab-no-msaa',
     },
   ];

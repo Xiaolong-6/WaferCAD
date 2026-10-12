@@ -1,4 +1,4 @@
-// Windows RTX 3060 diagnostic only: pin each PR to its own clean Git worktree.
+// Verified hardware GPU diagnostic: pin each PR to its own clean Git worktree.
 // Do not treat either A/B comparison as accepted when strict parity fails.
 // One command runs V3 then V4 index/caps/combined, preserving all artifacts.
 import { spawn, execFileSync } from 'node:child_process';
@@ -29,16 +29,24 @@ if ((diagnostic && modesArg) || (ditherDiagnostic && msaaDiagnostic)) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
 }
 const modes = modesArg ? modesArg.slice('--modes='.length).split(',') : undefined;
+const hardwareRtx3060 = options.includes('--hardware-rtx3060');
+const hardwareGpu = options.includes('--hardware-gpu') || hardwareRtx3060;
 const plan = ditherDiagnostic
   ? buildRendererV3DitherDiagnosticPlan()
   : msaaDiagnostic
     ? buildRendererV3MsaaDiagnosticPlan()
     : buildRendererHardwarePlan(modes);
+// Retain the original Windows/RTX 3060 switch for historical, pinned runs.
+if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
+  for (const step of plan) {
+    step.args = step.args.map((arg) => (arg === '--hardware-gpu' ? '--hardware-rtx3060' : arg));
+  }
+}
 if (planOnly) {
   console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, plan }, null, 2));
 } else {
-  if (!options.includes('--hardware-rtx3060') || process.platform !== 'win32') {
-    throw new Error('Use --hardware-rtx3060 on Windows, or --plan-only on any platform.');
+  if (!hardwareGpu || (hardwareRtx3060 && process.platform !== 'win32')) {
+    throw new Error('Use --hardware-gpu on a real GPU, or --plan-only for dry-run planning.');
   }
   await runHardware();
 }
@@ -191,6 +199,7 @@ async function runHardware() {
         candidateActivation: report?.trials
           ?.filter((trial) => trial.policy === 'B')
           .map((trial) => trial.candidateActivation),
+        adapters: [...new Set((report?.trials || []).map((trial) => trial.backend?.adapter).filter(Boolean))],
         failureReasons: report?.failureReasons || [],
         error: report?.failure || report?.error || execution.error || null,
       });
@@ -201,7 +210,7 @@ async function runHardware() {
     console.error(fatalError);
   } finally {
     const summary = {
-      source: 'Windows RTX 3060, exact remote Git revisions, fresh-context diagnostics',
+      source: 'Verified hardware WebGL GPU, exact remote Git revisions, fresh-context diagnostics',
       capturedAt: new Date().toISOString(),
       refs,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),

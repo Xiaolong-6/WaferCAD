@@ -1,7 +1,7 @@
 import { resolveRendererWorkstationUrl } from './test-helpers/renderer-workstation-route.mjs';
 // R7: strict fresh-context A-B-B-A renderer experiment.
-// CI smoke proves the harness and visual gate only. Hardware mode requires a
-// real Windows RTX 3060 and still cannot infer VRAM or pure GPU time from WebGL.
+// CI smoke proves the harness and visual gate only. Hardware mode accepts a
+// verified discrete or integrated GPU; wall measurements are not pure GPU time.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -31,13 +31,14 @@ import {
 
 const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
+const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const candidate = selectR7Candidate(process.argv);
 const { candidateName, flags: candidateFlags, artifactSuffix } = candidate;
-assert.notEqual(ciSmoke, hardwareRtx3060, 'select exactly one: --ci-smoke or --hardware-rtx3060');
-assert.ok(!hardwareRtx3060 || process.platform === 'win32', 'hardware mode requires Windows');
+assert.notEqual(ciSmoke, hardwareGpu, 'select exactly one: --ci-smoke or --hardware-gpu');
+assert.ok(!hardwareRtx3060 || process.platform === 'win32', '--hardware-rtx3060 requires Windows');
 const output = new URL(
   '../test-results/' +
-    (hardwareRtx3060 ? 'renderer-v4-r7-hardware-abba' : 'renderer-v4-r7-ci-smoke') +
+    (hardwareGpu ? 'renderer-v4-r7-hardware-abba' : 'renderer-v4-r7-ci-smoke') +
     artifactSuffix +
     '/',
   import.meta.url,
@@ -45,7 +46,7 @@ const output = new URL(
 await mkdir(output, { recursive: true });
 const fixture = fileURLToPath(
   new URL(
-    hardwareRtx3060
+    hardwareGpu
       ? '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad'
       : '../site/examples/previews/tio2-metalens-four-unit.wafercad',
     import.meta.url,
@@ -57,8 +58,8 @@ const report = {
   candidateMode: candidate.mode,
   candidateFlags,
   fixture,
-  backendClass: hardwareRtx3060 ? 'hardware-intended, verified per trial' : 'CI probe only',
-  mode: hardwareRtx3060 ? 'hardware-rtx3060' : 'ci-smoke',
+  backendClass: hardwareGpu ? 'hardware-intended, verified per trial' : 'CI probe only',
+  mode: hardwareRtx3060 ? 'hardware-rtx3060' : hardwareGpu ? 'hardware-gpu' : 'ci-smoke',
   nodeVersion: process.version,
   platform: process.platform,
   comparisons: [],
@@ -74,7 +75,7 @@ const report = {
 const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
 const browser = await chromium.launch({
   ...launchOptions,
-  headless: hardwareRtx3060 ? false : launchOptions.headless,
+  headless: hardwareGpu ? false : launchOptions.headless,
 });
 const pngs = [];
 const timeout = 180000;
@@ -210,10 +211,12 @@ async function oneArm(policy, index) {
       };
     });
     row.backend = classifyWebglBackend(adapter);
-    if (hardwareRtx3060) {
+    if (hardwareGpu) {
       assert.ok(
-        row.backend.hardwareVerified && /NVIDIA.*GeForce RTX 3060/i.test(row.backend.adapter),
-        label + ': GPU is not a verified RTX 3060; cannot accept hardware experiment',
+        row.backend.hardwareVerified &&
+          (!hardwareRtx3060 || /NVIDIA.*GeForce RTX 3060/i.test(row.backend.adapter || '')),
+        label + ': expected a verified hardware GPU' +
+          (hardwareRtx3060 ? ' (RTX 3060 for the legacy command)' : ''),
       );
     }
     row.state = {
@@ -241,7 +244,7 @@ async function oneArm(policy, index) {
     // Strict isolation needs both halves: A must have neither optimization,
     // B must enable ONLY those selected by its candidate mode. An unexpected
     // extra optimization invalidates causal attribution just like a no-op.
-    if (hardwareRtx3060) {
+    if (hardwareGpu) {
       assert.ok(
         row.candidateActivation.countersComplete,
         label + ': R7 candidate instrumentation counters are missing or invalid',
