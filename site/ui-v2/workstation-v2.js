@@ -122,12 +122,27 @@
     function bindDividers() {
       const horizontal = state.layout === 'c';
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
+      separator.setAttribute(
+        'aria-valuemax',
+        String(horizontal ? 380 : Math.max(240, window.innerWidth - 320)),
+      );
+      separator.setAttribute(
+        'aria-valuenow',
+        String(
+          horizontal
+            ? state.bottomSize || 250
+            : state.panelSize || Math.max(240, window.innerWidth / 3),
+        ),
+      );
       const update = (delta) => {
         const current = horizontal
           ? state.bottomSize || 250
-          : state.panelSize || (window.innerWidth <= 1180 ? 270 : 300);
+          : state.panelSize || Math.max(240, window.innerWidth / 3);
         const next = Math.round(
-          Math.max(horizontal ? 180 : 240, Math.min(horizontal ? 380 : 400, current + delta)),
+          Math.max(
+            horizontal ? 180 : 240,
+            Math.min(horizontal ? 380 : Math.max(240, window.innerWidth - 320), current + delta),
+          ),
         );
         if (horizontal) state.bottomSize = next;
         else state.panelSize = next;
@@ -194,22 +209,25 @@
       stage.dataset.splitRight = state.splitViews[1];
       canvases.dataset.mode = mode;
       canvases.dataset.maximized = String(Boolean(state.maximize));
+      const modeButton = (key) => {
+        const entry = registry.viewModes.find((item) => item.key === key);
+        return entry
+          ? button(entry.label, `mode:${key}`, null, {
+              disabled: narrow() && key !== 'single',
+              'aria-pressed': String(mode === key),
+              title: narrow() ? 'Tablet / phone use Single' : '',
+            })
+          : null;
+      };
+      const viewDivider = () => el('span', { class: 'p-viewbar-divider', 'aria-hidden': 'true' });
       viewbar.replaceChildren(
         el(
           'div',
           { class: 'p-actions' },
           state.editorHidden ? button('Restore panel', 'expand-empty', 'process') : null,
-          registry.viewModes.map(({ key, label }) =>
-            button(label, `mode:${key}`, null, {
-              disabled: narrow() && key !== 'single',
-              'aria-pressed': String(mode === key),
-              title: narrow() ? 'Tablet / phone use Single' : '',
-            }),
-          ),
-        ),
-        el(
-          'div',
-          { class: 'p-actions' },
+          modeButton('overview'),
+          viewDivider(),
+          modeButton('single'),
           registry.views
             .filter(({ key }) => key !== 'section')
             .map(({ key, label, icon }) =>
@@ -217,6 +235,12 @@
                 'aria-pressed': String(mode === 'single' && state.view === key),
               }),
             ),
+          viewDivider(),
+          modeButton('split'),
+        ),
+        el(
+          'div',
+          { class: 'p-actions p-section-dock-actions' },
           narrow()
             ? button('Section', 'mobile-section', 'section', {
                 'aria-pressed': String(state.view === 'section'),
@@ -234,6 +258,19 @@
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
+        const maximizeButton = panel.querySelector(`[data-action="maximize:${key}"]`);
+        if (maximizeButton) {
+          const maximized = state.maximize === key;
+          const label = registry.views.find((view) => view.key === key).label;
+          maximizeButton.title = maximized ? 'Restore view' : 'Maximize view';
+          maximizeButton.setAttribute(
+            'aria-label',
+            `${label} ${maximized ? 'restore' : 'maximize'}`,
+          );
+          maximizeButton
+            .querySelector('use')
+            ?.setAttribute('href', `#p-icon-${maximized ? 'restore' : 'maximize'}`);
+        }
         if (info.splitChoices && key !== 'section') {
           const title = panel.querySelector(`[data-slot="view.${key}.header"]`);
           const index = state.splitViews.indexOf(key);
@@ -333,6 +370,19 @@
       mounted.dataset.mobile = state.mobile;
       if (state.panelSize) mounted.style.setProperty('--p-panel', `${state.panelSize}px`);
       if (state.bottomSize) mounted.style.setProperty('--p-bottom', `${state.bottomSize}px`);
+      const horizontalDivider = state.layout === 'c';
+      separator.setAttribute(
+        'aria-valuemax',
+        String(horizontalDivider ? 380 : Math.max(240, window.innerWidth - 320)),
+      );
+      separator.setAttribute(
+        'aria-valuenow',
+        String(
+          horizontalDivider
+            ? state.bottomSize || 250
+            : state.panelSize || Math.max(240, window.innerWidth / 3),
+        ),
+      );
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';

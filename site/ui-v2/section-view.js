@@ -82,14 +82,26 @@ export function createSectionView({ store, main, workstation }) {
       hook('sectionDetailInsetCanvas', el('canvas')),
     ),
   );
+  const legendResizer = el('div', {
+    class: 'v2-section-legend-resizer',
+    role: 'separator',
+    tabindex: 0,
+    'aria-label': 'Resize Layers pane',
+    'aria-orientation': 'vertical',
+    'aria-controls': 'layerLegend',
+    'aria-valuemin': 160,
+    'aria-valuemax': 400,
+    title: 'Drag to resize Layers pane',
+  });
   const body = hook(
     'sectionBody',
     el(
       'div',
-      { class: 'v2-section-body' },
+      { class: 'v2-section-body v2-section-body-resizable' },
       el('div', { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' }, canvas),
       detailOverlay,
       inset,
+      legendResizer,
     ),
   );
   let legendOpen = state.sectionLayersVisible !== false,
@@ -97,6 +109,58 @@ export function createSectionView({ store, main, workstation }) {
     legendPalette = 'balanced',
     paletteOpen = null,
     legend;
+  const legendWidthKey = 'wafercad.v2.section-legend-width.v1';
+  try {
+    const savedWidth = Number(sessionStorage.getItem(legendWidthKey));
+    if (Number.isFinite(savedWidth) && savedWidth >= 160 && savedWidth <= 400)
+      body.style.setProperty('--v2-legend-width', `${savedWidth}px`);
+  } catch {
+    // Resizing stays available when browser preference storage is blocked.
+  }
+  let legendResizeStart = null;
+  const resizeLegend = (requested) => {
+    const maximum = Math.min(400, Math.max(160, body.clientWidth - 160));
+    const width = Math.round(Math.max(160, Math.min(maximum, requested)));
+    body.style.setProperty('--v2-legend-width', `${width}px`);
+    legendResizer.setAttribute('aria-valuenow', String(width));
+    legendResizer.setAttribute('aria-valuemax', String(maximum));
+    return width;
+  };
+  const rememberLegendWidth = () => {
+    try {
+      sessionStorage.setItem(
+        legendWidthKey,
+        String(Math.round(legend.getBoundingClientRect().width)),
+      );
+    } catch {
+      // View-only width never blocks the workspace.
+    }
+  };
+  legendResizer.onpointerdown = (event) => {
+    if (!legendOpen || window.innerWidth <= 820) return;
+    event.preventDefault();
+    legendResizeStart = { x: event.clientX, width: legend.getBoundingClientRect().width };
+    legendResizer.setPointerCapture(event.pointerId);
+  };
+  legendResizer.onpointermove = (event) => {
+    if (legendResizeStart)
+      resizeLegend(legendResizeStart.width + legendResizeStart.x - event.clientX);
+  };
+  const finishLegendResize = () => {
+    if (!legendResizeStart) return;
+    legendResizeStart = null;
+    rememberLegendWidth();
+  };
+  legendResizer.onpointerup = finishLegendResize;
+  legendResizer.onpointercancel = finishLegendResize;
+  legendResizer.onlostpointercapture = finishLegendResize;
+  legendResizer.onkeydown = (event) => {
+    const delta = { ArrowLeft: 16, ArrowRight: -16 }[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    resizeLegend(legend.getBoundingClientRect().width + delta);
+    rememberLegendWidth();
+  };
   const zSettings = hook('sectionCollapseAxisBtn', icon('Z Break', 'zbreak-settings', 'zbreak'));
   const tools = toolbar(
     'Section',
@@ -366,7 +430,7 @@ export function createSectionView({ store, main, workstation }) {
       name.tabIndex = 0;
       name.setAttribute('role', 'button');
       name.setAttribute('aria-label', `Rename ${item.name}`);
-      name.title = `Rename ${item.name}`;
+      name.title = `${item.name}${item.kind ? `\n${item.kind} · ${item.depthProfile || 'smooth'} · ${item.visible === false ? 'Hidden' : 'Visible'}` : ''}\nClick to rename`;
       const editName = () => {
         if (name.querySelector('input')) return;
         editingName = true;
@@ -432,6 +496,11 @@ export function createSectionView({ store, main, workstation }) {
     if (legend) legend.replaceWith(next);
     else body.append(next);
     legend = next;
+    legendResizer.hidden = !legendOpen;
+    legendResizer.setAttribute(
+      'aria-valuenow',
+      String(Math.round(legend.getBoundingClientRect().width)),
+    );
     body.dataset.legendOpen = String(legendOpen);
     panel.querySelector('[data-action="legend"]').setAttribute('aria-pressed', String(legendOpen));
   }

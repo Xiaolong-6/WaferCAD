@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -26,10 +27,23 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout current production main
+      - name: Resolve last successfully deployed production revision
+        id: verified-main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/pages.yml/runs?branch=main&status=success&per_page=20" --jq '.workflow_runs[0].head_sha // empty')"
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::No verified production Pages revision found; cannot publish preview.'
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout last verified production revision
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ steps.verified-main.outputs.sha }}
           path: base
       - name: Checkout preview branch
         uses: actions/checkout@v6

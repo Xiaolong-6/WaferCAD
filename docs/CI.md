@@ -4,7 +4,7 @@ WaferCAD keeps the full regression inventory, but pull requests do not run every
 
 ## Pull-request gates
 
-`Quality` remains the fast code gate for every non-documentation pull request. It installs the pinned development dependencies, runs ESLint and documentation checks, and runs the complete Node test suite.
+`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes. It runs pinned ESLint, Prettier format verification, generated-document consistency and the complete Node test suite (`npm run check`). It is a stable required-check candidate; repository ruleset configuration is a separate GitHub administration action.
 
 `Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 
@@ -22,7 +22,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) additionally runs on `main` pushes affecting the v2 source, published entry/Welcome, shared controllers, model/process/project core or its browser harness. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
+The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs and on the active v2 feature branch. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
@@ -30,14 +30,14 @@ Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit
 
 Draft PRs still receive the applicable fast Quality/targeted browser checks. Heavy acceptance is deferred by explicit workflow conditions until `ready_for_review`:
 
-| Workflow                                                                                | Actual trigger and Draft behavior                                                                                         |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [Browser regression](../.github/workflows/browser-regression.yml)                       | Impact-selected PR/main runs plus weekly/manual full runs; the separate 625-site renderer job skips Draft PRs.            |
-| [Example Recipe reconstruction](../.github/workflows/example-recipe-reconstruction.yml) | Path-filtered PR/manual; fixture verification and nine example/Variant Run All jobs skip Draft PRs. No main-push trigger. |
-| [Native Fig3 full replay](../.github/workflows/native-fig3-full-replay.yml)             | Path-filtered PR/manual; skips Draft PRs. No main-push trigger.                                                           |
-| [Recipe safety](../.github/workflows/process-recipe-safety.yml)                         | Path-filtered PR and the explicitly named Recipe feature branches; skips Draft PRs. No main-push trigger.                 |
-| [Pre-main full inventory](../.github/workflows/pre-main-integration-validation.yml)     | Manual only; does not run just because a PR is opened or main changes.                                                    |
-| [M3D Welcome integration](../.github/workflows/m3d-example-integration.yml)             | The named M3D feature branch, PRs targeting the named Recipe feature branch, or manual dispatch; not a general main gate. |
+| Workflow                                                                                | Actual trigger and Draft behavior                                                                                                   |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [Browser regression](../.github/workflows/browser-regression.yml)                       | Impact-selected PR runs, production-release calls plus weekly/manual full runs; the separate 625-site renderer job skips Draft PRs. |
+| [Example Recipe reconstruction](../.github/workflows/example-recipe-reconstruction.yml) | Path-filtered PR/manual; fixture verification and nine example/Variant Run All jobs skip Draft PRs. No main-push trigger.           |
+| [Native Fig3 full replay](../.github/workflows/native-fig3-full-replay.yml)             | Path-filtered PR/manual; skips Draft PRs. No main-push trigger.                                                                     |
+| [Recipe safety](../.github/workflows/process-recipe-safety.yml)                         | Path-filtered PR and the explicitly named Recipe feature branches; skips Draft PRs. No main-push trigger.                           |
+| [Pre-main full inventory](../.github/workflows/pre-main-integration-validation.yml)     | Manual only; does not run just because a PR is opened or main changes.                                                              |
+| [M3D Welcome integration](../.github/workflows/m3d-example-integration.yml)             | The named M3D feature branch, PRs targeting the named Recipe feature branch, or manual dispatch; not a general main gate.           |
 
 A skipped/deferred check is unverified, not passed. Marking a PR ready triggers its existing final-review jobs; direct main publication does not implicitly run every dedicated replay workflow. Costly manual acceptance still follows user authorization.
 
@@ -45,7 +45,7 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
-[Pages deployment](../.github/workflows/pages.yml) runs on main changes to `site/**`, the asset-stamping script or its own workflow, plus manual dispatch. It runs Node release sanity before deploying. A change only under `docs/` does not trigger Pages by itself. [Quality](../.github/workflows/quality.yml) is PR/manual rather than a general main-push gate; the selected Browser non-PR gate owns post-merge Node coverage.
+[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression and UI v2 Stage C/M4 acceptance. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The `deploy` job runs only for `refs/heads/main`; no failed or skipped upstream job qualifies.
 
 ## Heavy Process Geometry job
 
@@ -59,16 +59,16 @@ The complete browser suite, including Process Geometry, runs for:
 
 - the weekly Browser regression schedule (Monday at `02:17 UTC`);
 - manual `workflow_dispatch` runs;
-- pull requests or main pushes whose changed paths conservatively select the full suite, such as dependency lockfiles or shared browser-test infrastructure.
+- pull requests or production-release calls whose changed paths conservatively select the full suite, such as dependency lockfiles or shared browser-test infrastructure.
 
-A push to `main` now computes the changed paths from the previous main revision to the pushed revision and feeds that list through the same impact planner used by pull requests. This preserves a post-merge verification pass while avoiding an unconditional second full sweep after every merge.
+A production-release call computes changed paths from the previous `main` revision to the candidate and feeds them through the same impact planner as pull requests. Release UI v2 acceptance runs on each product publication, while Browser tests remain impact-selected. Production Pages waits for these suites and the release Quality gate; there is no independent, racing main-push deployment.
 
 This keeps PR and main validation change-aware while leaving the expensive unconditional integration sweep to weekly/manual runs.
 
 ## Cost controls
 
 - Browser PR jobs do not repeat the Node test gate already owned by `Quality`.
-- Node tests are repeated inside Browser regression for non-PR runs, including targeted `main` pushes, because a separate Quality workflow may not exist for direct pushes.
+- Node tests run inside independent weekly/manual Browser regression, but are skipped in the Pages release call where the release Quality job already owns them.
 - Chromium and npm downloads remain cached.
 - Normal targeted suites share one Chromium job to avoid repeated setup cost.
 - Human-review screenshot galleries are disabled on pull requests and targeted main pushes; they are retained for weekly/manual full runs.
@@ -88,3 +88,9 @@ Use the smallest existing npm group that matches the change:
 - `npm run test:ui:all` — every non-baseline browser suite.
 
 The planner changes CI scheduling only. It does not remove or weaken any underlying regression suite.
+
+## Merge protection and review evidence
+
+GitHub branch protection/rulesets are repository settings, **not** workflow YAML. A contributor with administration permission must enable protection of `main` and require the stable `Quality / quality` check, with pull requests and stale-review protection as appropriate. The specialized path-selected and Draft-deferred checks cannot safely be made individually required without a stable aggregator: a workflow omitted by a path filter has no successful check to report. Before merging a science, browser, or UI change, inspect the applicable targeted jobs and uploaded evidence; `Quality` success alone is not sufficient for scientific or human acceptance.
+
+The full release DAG prevents ordinary `main` Pages publication until the post-merge checks finish. UI v2 Preview reads the most recent successful production Pages workflow SHA rather than current, possibly unverified, `main`. Preview itself remains an isolated path and still needs separate acceptance; repository-specific administrative rules also require review, and this workflow does not turn software WebGL into physical-GPU evidence. See [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) for the remaining controls.

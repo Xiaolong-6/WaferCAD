@@ -4,9 +4,19 @@
 
 ## Primary views
 
-![Actual fully textured tandem 3D preview from the Welcome catalog](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/fully-textured-perovskite-silicon-tandem-three.webp)
+```mermaid
+flowchart LR
+  Model["One shared geometric model"] --> Main["Main: surface + A–B line"]
+  Model --> Mask["Mask: File / Draw selection"]
+  Model --> Three["3D: geometry and presentation"]
+  Main --> Section["Section: cut along A–B"]
+```
 
-_Real saved example preview. Rough/Pyramid display morphology is visual metadata, so use Section and the scientific modeling limits when interpreting physical layer boundaries._
+_Conceptual view relationship (not a screenshot): Main and Section share the same physical coordinates, while Mask decides patterned Process areas and 3D displays the resulting stack._
+
+![Actual WaferCAD Section view of the same MAGIC-1000 example](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/magic-1000-mos2-beol-section.webp)
+
+_A genuine 920 × 600-pixel **Section A–B** output from the shipped MAGIC-1000 representative stack. The horizontal grey Z-break is a **display transformation**, not an air gap. Open this example and switch to 3D to inspect its volume; the small 3D thumbnail was omitted here because it could not explain the material interfaces at instructional scale._
 
 **Find the current controls:** The title bar offers **Overview / Main / Mask / 3D / Split**. The workstation tools include distinct **Project**, **Base**, **Mask**, **Process**, and **History** tabs. On a narrow screen, view choices may require horizontal scrolling. Use the [First 10 Minutes](First-10-Minutes) walkthrough for the exact sequence, rather than an older UI screenshot.
 
