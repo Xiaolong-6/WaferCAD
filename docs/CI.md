@@ -15,7 +15,6 @@ The planner then enables focused suites as needed:
 | History, replay, project History controls           | History + bundled examples                                                      |
 | Persistence, project IO/schema, startup/recovery    | Persistence + bundled examples                                                  |
 | Workstation/startup shell                           | Workstation integration; resilience only for Three/WebGL bootstrap paths        |
-| UI v2 modules / Stage C scripts                      | Workstation; shared entry/workflow paths also select History, Persistence and Interaction |
 | Pointer/view/layout controls                        | Interaction, and product layout only for layout-owning files                    |
 | Bundled example fixtures/metadata                   | Bundled examples                                                                |
 | GDS/OAS/layout pipeline                             | Interaction + product layout; KLayout keeps its separate compatibility workflow |
