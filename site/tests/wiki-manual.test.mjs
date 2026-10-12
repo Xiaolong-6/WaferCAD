@@ -206,7 +206,7 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
       assert.ok(url.startsWith(prefix), `${page}: no stock or unverified external imagery (${url})`);
       const asset = url.slice(prefix.length).split('?')[0];
       assert.ok(
-        /^(?:docs\/wiki\/assets\/process|site\/(?:examples\/thumbnails|example-previews)|tests\/visual-baselines\/windows-chromium)\//.test(asset),
+        /^(?:docs\/wiki\/assets\/process|site\/examples\/thumbnails|tests\/visual-baselines\/windows-chromium)\//.test(asset),
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
       await access(new URL('../../' + asset, import.meta.url));
