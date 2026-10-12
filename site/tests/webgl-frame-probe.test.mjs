@@ -9,6 +9,7 @@ function harness({
   busy = false,
   priorDiscard = false,
   forceDitherOff = false,
+  throwOnDraw = false,
 } = {}) {
   const host = {
     dataset: {
@@ -89,7 +90,10 @@ function harness({
     'drawArraysInstanced',
     'drawElementsInstanced',
   ]) {
-    gl[name] = () => calls.push(`draw:${name}:${discard}:${dither}`);
+    gl[name] = () => {
+      calls.push(`draw:${name}:${discard}:${dither}`);
+      if (throwOnDraw && name === 'drawArrays') throw new Error('diagnostic draw exception');
+    };
   }
   class Canvas {
     getContext() {
@@ -151,13 +155,13 @@ test('diagnostic-only dither isolation wraps draws and restores GL state on erro
   normal.frame(() => normal.gl.drawArrays(4, 0, 6));
   assert.deepEqual(normal.calls, ['draw:drawArrays:false:true']);
   assert.equal(normal.dither(), true);
-  const exceptional = harness({ forceDitherOff: true });
-  exceptional.gl.drawElements = () => {
-    throw new Error('shader draw failed');
-  };
-  // Existing wrappers bind the original draw at instrumentation time; use
-  // a fresh direct draw result to ensure normal path is not contaminated.
-  exceptional.frame(() => exceptional.gl.drawArrays(4, 0, 6));
+  const exceptional = harness({ forceDitherOff: true, throwOnDraw: true });
+  assert.throws(() => exceptional.gl.drawArrays(4, 0, 6), /diagnostic draw exception/);
+  assert.deepEqual(exceptional.calls, [
+    'disable-dither',
+    'draw:drawArrays:false:false',
+    'enable-dither',
+  ]);
   assert.equal(exceptional.dither(), true);
 });
 
@@ -284,14 +288,14 @@ test('diagnostic discard restores GL state before later normal draws', () => {
   assert.deepEqual(h.calls, [
     'begin-query',
     'enable-discard',
-    'draw:drawArrays:true',
+    'draw:drawArrays:true:true',
     'end-query',
     'finish',
     'disable-discard',
     'delete-query',
   ]);
   h.frame(() => h.gl.drawArrays(4, 0, 6));
-  assert.equal(h.calls.at(-1), 'draw:drawArrays:false');
+  assert.equal(h.calls.at(-1), 'draw:drawArrays:false:true');
 });
 
 test('discard leaves an existing enabled rasterizer state intact', () => {
