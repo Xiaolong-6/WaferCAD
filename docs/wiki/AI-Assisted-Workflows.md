@@ -47,9 +47,7 @@ Provide these details before generating executable code:
 
 **Example task:** reconstruct a patterned oxide/contact-window structure described in a semiconductor paper. The numerical values below are **illustrative**, not sourced process parameters from a particular publication.
 
-![Actual WaferCAD 3D preview of its shipped paper-derived photodetector reconstruction](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/examples/thumbnails/photodetector-literature-three.webp)
-
-_An **actual WaferCAD literature-reconstruction output** (photodetector example), showing the kind of inspectable model AI can help you prepare. This preview is **not** the oxide-window exercise below and is **not** the paper's original microscopy image. [Open the documented example](Examples-and-Modeling-Limits)._
+For a real paper-derived WaferCAD reconstruction, see the [photodetector example and its scientific assumptions](Examples-and-Modeling-Limits). Its saved example thumbnail depicts a **different structure** from this oxide-window exercise, so it is intentionally not reused here.
 
 **Upload:** (1) the paper PDF, (2) relevant SI/Methods, (3) screenshots of the cross-section and top-view layout, and (4) an existing GDS/OAS file if the authors provide one. If no layout exists, include a dimensioned sketch or approximate dimensions and ask for an explicitly illustrative mask.
 
@@ -126,9 +124,17 @@ The `record()` statement adds a History entry; it does not calculate an annealin
 
 ## 3. Workflow B — Existing mask and process flow to Recipe code
 
-![Mask visualization from the WaferCAD product's own preview assets](https://raw.githubusercontent.com/Xiaolong-6/WaferCAD/main/site/example-previews/visualization-mask.jpg)
+```mermaid
+flowchart LR
+  GDS["Original GDSII / OASIS file"] --> Inspect["Import in WaferCAD Mask view"]
+  Inspect --> Cell["Select actual Cell + Layer/Datatype"]
+  Cell --> Check["Check footprint, units, alignment and polarity"]
+  Check --> Flow["Map each process step to area + material + depth"]
+  Flow --> Recipe["Write declarative Recipe Code"]
+  Recipe --> Validate["Validate, execute and check Section A–B"]
+```
 
-_This is a **WaferCAD Mask-view reference**, not the contents of your uploaded GDS/OAS. Inspect the actual imported file's Cell, Layer/Datatype, geometry footprint and alignment before creating the Recipe._
+_This is a verification workflow, not an image of your imported mask. A blurred legacy UI thumbnail was removed because its text and geometry were unreadable._
 
 **Upload:** original `.gds`/`.gdsii` or `.oas`/`.oasis`, the step-by-step process flow (PDF, spreadsheet or plain text), Base size/thickness/material, and a layer map. Helpful extras include a top-view screenshot, cross-section and intended mask alignment.
 
