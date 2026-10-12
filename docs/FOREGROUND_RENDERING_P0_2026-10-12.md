@@ -24,6 +24,13 @@ pointer events but does not preempt an expensive individual synchronous mesh
 operation or GPU submission. Variant failure is recorded separately in the
 3D host diagnostics; a subsequent build clears the previous failure marker.
 
+On subsequent opacity or view updates, a superseded transparency variant
+build now aborts at its next cooperative checkpoint. The partial scene is
+disposed, the last completed variant is restored, and the pending request
+continues normally. `rendererSupersededBuilds` exposes the cancellation count
+for browser verification. Cancellation is not yet available for a general
+initial-model rebuild or inside a single long synchronous geometry/GPU call.
+
 Initial model replacement still drops the previous physical scene, and
 expensive WebGL frame submissions remain unchanged.
 Worker availability alone does not guarantee responsive foreground input.
