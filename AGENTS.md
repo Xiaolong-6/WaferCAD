@@ -1,4 +1,4 @@
-# WaferCAD development
+# WaferCAD development\n\n**English-only project convention:** Write all documentation, UI copy, prompts, examples, commit messages, source comments and handoff reports in English. Convert historical Chinese documentation to English while preserving its exact technical meaning, source references, SHAs, measurements, and original acceptance status. Keep compatibility links when retiring translated Wiki pages.
 
 Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `docs/DEVELOPMENT.md` for product contracts, and `docs/testing.md` for test ownership.
 
