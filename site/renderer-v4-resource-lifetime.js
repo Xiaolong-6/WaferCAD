@@ -49,12 +49,35 @@ export function disposeRendererSceneResources(root) {
   // Detach objects before disposing their GPU-facing allocations. Repeating
   // retirement on this emptied group must not dispose any resource again.
   root.clear?.();
-  for (const geometry of geometries) geometry?.dispose?.();
-  for (const texture of textures) texture?.dispose?.();
-  for (const material of materials) material?.dispose?.();
+
+  // An individual WebGL resource can fail to retire (for example after
+  // context loss or a faulty custom material). Never abandon disposal of
+  // the remaining scene after one failure: it would leak GPU allocations
+  // even though the scene graph has already been detached.
+  const disposalErrors = [];
+  const disposeAll = (resources, kind) => {
+    for (const resource of resources) {
+      try {
+        resource?.dispose?.();
+      } catch (error) {
+        disposalErrors.push({ kind, error });
+      }
+    }
+  };
+  disposeAll(geometries, 'geometry');
+  disposeAll(textures, 'texture');
+  disposeAll(materials, 'material');
 
   counts.geometries = geometries.size;
   counts.materials = materials.size;
   counts.textures = textures.size;
+  if (disposalErrors.length) {
+    throw new globalThis.AggregateError(
+      disposalErrors.map(({ error }) => error),
+      'Renderer scene disposal failed for ' +
+        disposalErrors.map(({ kind }) => kind).join(', ') +
+        '; remaining resources were still retired.',
+    );
+  }
   return counts;
 }
