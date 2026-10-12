@@ -1,4 +1,4 @@
-name: Renderer V4 UI v2 / PR177 compatibility
+name: Renderer V4 current-main UI v2 / Legacy compatibility
 
 on:
   push:
@@ -6,6 +6,12 @@ on:
       - perf/renderer-v4-adaptive-tiles-20261010
     paths:
       - site/three-view.js
+      - site/ui-v2/workstation-workflow.js
+      - site/controllers/process-panel-controller.js
+      - site/controllers/process-recipe-controller.js
+      - scripts/v2/check-manual-both.mjs
+      - scripts/v2/check-m4-projects.mjs
+      - .github/workflows/ui-v2-stage-c-m4.yml
       - site/renderer-capture-transaction.js
       - site/tests/renderer-workstation-route.test.mjs
       - scripts/renderer-v4-*.mjs
@@ -73,7 +79,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Route, lifecycle and scientific DOM contracts
         run: node --test site/tests/renderer-workstation-route.test.mjs site/tests/renderer-capture-transaction.test.mjs site/tests/renderer-v4-resource-lifetime.test.mjs
-      - name: Real UI v2 3D gestures and retained Legacy renderer
+      - name: Real UI v2 Manual Both, 3D gestures and retained Legacy renderer
         env:
           WAFERCAD_URL: http://127.0.0.1:4182
           WAFERCAD_V2_BASE: http://127.0.0.1:4182
@@ -88,6 +94,7 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:4182/app-legacy.html > /dev/null
           node scripts/renderer-v4-pr177-default-smoke.mjs
+          node scripts/v2/check-manual-both.mjs
           WAFERCAD_V2_EXAMPLE=photodetector node scripts/v2/check-three-view.mjs
           node scripts/renderer-v4-r2-browser.mjs
       - name: Upload non-baseline integration evidence on failure
@@ -97,5 +104,6 @@ jobs:
           name: renderer-v4-pr177-compat
           path: |
             test-results/ui-v2-three-review*
+            test-results/ui-v2-manual-both/
             test-results/renderer-v4-r2
           if-no-files-found: ignore
