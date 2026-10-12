@@ -44,6 +44,15 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
   ];
 }
 
+// One operator-assisted GPU session: baseline integrity, one isolated
+// raster hypothesis, then independently attributable V4 candidates.
+// This reuses a single dependency installation and preserves a single ZIP.
+// Never accept the diagnostic arm as a production-renderer pass.
+export function buildRendererR9HardwareCampaignPlan() {
+  const regular = buildRendererHardwarePlan();
+  return [regular[0], ...buildRendererV3MsaaDiagnosticPlan(), ...regular.slice(1)];
+}
+
 // Raster isolation produces diagnostic-only evidence; it must never satisfy
 // the unchanged production-renderer zero-pixel acceptance gate.
 export function buildRendererV3DitherDiagnosticPlan() {

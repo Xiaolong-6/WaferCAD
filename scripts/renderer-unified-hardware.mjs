@@ -13,6 +13,7 @@ import { writeRendererHardwareZip } from './test-helpers/renderer-hardware-zip.m
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
+  buildRendererR9HardwareCampaignPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
   buildRendererV3PhaseWindowDiagnosticPlan,
@@ -22,6 +23,11 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const options = process.argv.slice(2);
 const planOnly = options.includes('--plan-only');
+const r9Campaign = options.includes('--campaign=r9');
+const unknownCampaign = options.filter((arg) => arg.startsWith('--campaign=') && arg !== '--campaign=r9');
+if (unknownCampaign.length || options.filter((arg) => arg === '--campaign=r9').length > 1) {
+  throw new Error('Only one --campaign=r9 is supported.');
+}
 const modesArg = options.find((arg) => arg.startsWith('--modes='));
 const ditherDiagnostic = options.includes('--diagnose-v3-dither');
 const msaaDiagnostic = options.includes('--diagnose-v3-msaa');
@@ -34,6 +40,7 @@ const phaseWindowValue = phaseWindowDiagnostic
 const diagnostic = ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic;
 if (
   (diagnostic && modesArg) ||
+  (r9Campaign && (diagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -41,7 +48,9 @@ if (
 const modes = modesArg ? modesArg.slice('--modes='.length).split(',') : undefined;
 const hardwareRtx3060 = options.includes('--hardware-rtx3060');
 const hardwareGpu = options.includes('--hardware-gpu') || hardwareRtx3060;
-const plan = ditherDiagnostic
+const plan = r9Campaign
+  ? buildRendererR9HardwareCampaignPlan()
+  : ditherDiagnostic
   ? buildRendererV3DitherDiagnosticPlan()
   : msaaDiagnostic
     ? buildRendererV3MsaaDiagnosticPlan()
@@ -166,11 +175,13 @@ async function runHardware() {
     for (const step of plan) {
       console.log('Running ' + step.id + ' on ' + refs[step.branch].slice(0, 10));
       const worktree = worktrees[step.branch];
-      const site = await startRendererHardwareSite(worktree, (diagnostic) => {
-        console.log(step.id + ' HTTP ' + JSON.stringify(diagnostic));
-      });
-      let execution;
+      let execution = { exitCode: 127 };
+      let stepError = null;
+      let site = null;
       try {
+        site = await startRendererHardwareSite(worktree, (entry) => {
+          console.log(step.id + ' HTTP ' + JSON.stringify(entry));
+        });
         await site.verify();
         execution = await runLogged(
           process.execPath,
@@ -183,8 +194,14 @@ async function runHardware() {
             WAFERCAD_THREE_DIR: join(worktree, 'node_modules', 'three'),
           },
         );
+      } catch (error) {
+        stepError = String(error);
+        await writeFile(join(evidence, step.id + '.error.txt'), stepError + '\n');
+        console.error(step.id + ': ' + stepError);
       } finally {
-        await site.close();
+        if (site) await site.close().catch((error) => {
+          console.error(step.id + ' server cleanup: ' + String(error));
+        });
       }
       const source = join(worktree, step.artifact);
       const target = join(evidence, step.id);
@@ -193,10 +210,9 @@ async function runHardware() {
         target,
       );
       for (const warning of warnings) console.log(step.id + ': ' + warning);
-      const status = classifyRendererHardwareStep(
-        { ...step, exitCode: execution.exitCode },
-        report,
-      );
+      const status = stepError
+        ? 'error'
+        : classifyRendererHardwareStep({ ...step, exitCode: execution.exitCode }, report);
       completed.push({
         id: step.id,
         branch: step.branch,
@@ -215,7 +231,7 @@ async function runHardware() {
           ...new Set((report?.trials || []).map((trial) => trial.backend?.adapter).filter(Boolean)),
         ],
         failureReasons: report?.failureReasons || [],
-        error: report?.failure || report?.error || execution.error || null,
+        error: stepError || report?.failure || report?.error || execution.error || null,
       });
       console.log(step.id + ': ' + status);
     }
@@ -227,6 +243,7 @@ async function runHardware() {
       source: 'Verified hardware WebGL GPU, exact remote Git revisions, fresh-context diagnostics',
       capturedAt: new Date().toISOString(),
       refs,
+      campaign: r9Campaign ? 'r9' : null,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,
       fatalError,
@@ -234,7 +251,20 @@ async function runHardware() {
         !diagnostic &&
         !fatalError &&
         completed.length === plan.length &&
-        completed.every((step) => step.status === 'passed'),
+        completed.every((step) =>
+          r9Campaign && step.id === 'v3-msaa-off'
+            ? step.status === 'diagnostic-complete'
+            : step.status === 'passed',
+        ),
+      campaignComplete:
+        r9Campaign &&
+        !fatalError &&
+        completed.length === plan.length &&
+        completed.every((step) =>
+          step.id === 'v3-msaa-off'
+            ? step.status === 'diagnostic-complete'
+            : ['passed', 'blocked'].includes(step.status),
+        ),
       diagnosticComplete:
         diagnostic &&
         !fatalError &&

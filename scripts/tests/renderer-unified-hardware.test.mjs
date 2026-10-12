@@ -9,6 +9,7 @@ import { RENDERER_RASTER_STATE_FIELDS } from '../test-helpers/renderer-v3-raster
 import {
   RENDERER_HARDWARE_BRANCHES,
   buildRendererHardwarePlan,
+  buildRendererR9HardwareCampaignPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
   buildRendererV3PhaseWindowDiagnosticPlan,
@@ -34,6 +35,20 @@ test('one hardware plan retains exact V3 and three independent V4 candidate arti
   assert.throws(() => buildRendererHardwarePlan([]), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['index', 'index']), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['unknown']), /Select unique/);
+});
+
+test('R9 single-GPU-session campaign captures baseline, no-MSAA control and independent V4 modes', () => {
+  const plan = buildRendererR9HardwareCampaignPlan();
+  assert.deepEqual(
+    plan.map(({ id }) => id),
+    ['v3', 'v3-msaa-off', 'v4-index', 'v4-caps', 'v4-combined'],
+  );
+  assert.deepEqual(plan[0], buildRendererHardwarePlan()[0]);
+  assert.deepEqual(plan[1], buildRendererV3MsaaDiagnosticPlan()[0]);
+  assert.equal(plan.length, new Set(plan.map(({ artifact }) => artifact)).size);
+  assert.equal(plan.every(({ args }) => args.includes('--hardware-gpu')), true);
+  assert.ok(plan[1].args.includes('--diagnose-no-msaa'));
+  assert.ok(plan.slice(2).every(({ args }) => !args.includes('--diagnose-no-msaa')));
 });
 
 test('DITHER-off diagnostic is one V3-only experiment, never product acceptance', () => {
