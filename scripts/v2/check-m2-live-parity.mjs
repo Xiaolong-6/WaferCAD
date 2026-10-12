@@ -26,7 +26,7 @@ const expected = [
   'Area',
   'Also add to Recipe',
 ];
-const normalize = (label) => label.replace(/\\s*·\\s*(µm|nm|mm)\\s*$/, '').replace(/\\s+/g, ' ').trim();
+const normalize = (label) => label.replace(/\s*·\s*(µm|nm|mm)\s*$/, '').replace(/\s+/g, ' ').trim();
 function requireOrdered(labels, contract, kind) {
   let cursor = -1;
   for (const label of contract) {
