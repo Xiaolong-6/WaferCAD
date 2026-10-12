@@ -980,8 +980,9 @@ export function createThreeView({
   }
 
   function startSceneVariantBuild(mode) {
+    // Keep the last complete view visible while the next variant is assembled.
+    // The replacement is hidden until its presentation state is ready.
     cacheActiveSceneVariant();
-    if (group) scene.remove(group);
     group = new THREE.Group();
     group.visible = false;
     scene.add(group);
@@ -2571,6 +2572,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    let variantBuildFallback = null;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2608,6 +2610,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       if (Number(host.dataset.arrayInstances || 0) >= 64 && !roughTasks.length) {
         variantBuild = true;
+        variantBuildFallback = snapshotSceneVariant();
         startSceneVariantBuild(targetVariant);
       } else {
         pendingRender = false;
@@ -2664,16 +2667,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + 8;
       const maybeYieldAssembly = async () => {
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
+        // Yield a macrotask so pointer input and other panes can be serviced.
+        // An animation-frame callback alone can resume assembly before paint.
         if (variantBuild) {
-          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+          await new Promise((resolve) => setTimeout(resolve, 0));
         } else {
           await yieldSceneAssembly();
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + 8;
       };
 
       host.dataset.materialLayerIds = JSON.stringify(
@@ -3393,12 +3399,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
       recordVariantStage('presentation-complete');
+      // Only retire the old visible variant after the new scene is prepared.
+      // Its cached resources remain owned by sceneVariantCache for later reuse.
+      if (variantBuildFallback?.group?.parent === scene) {
+        scene.remove(variantBuildFallback.group);
+      }
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
+    } catch (error) {
+      if (variantBuild && variantBuildFallback) {
+        const failedGroup = group;
+        restoreSceneVariant(variantBuildFallback);
+        if (failedGroup !== group) disposeSceneGroup(failedGroup);
+        host.dataset.renderState = 'error';
+        host.dataset.renderPhase = 'variant-build-failed';
+        stats.textContent = '3D refinement failed; previous view retained';
+      }
+      throw error;
     } finally {
       rendering = false;
     }
