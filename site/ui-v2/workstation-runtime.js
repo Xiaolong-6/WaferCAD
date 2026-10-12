@@ -4,26 +4,49 @@ import { createProjectStateController } from '../controllers/project-state-contr
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
+import { createModel } from '../model.js';
+import { createEmptyLayout } from '../controllers/project-state-controller.js';
+import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 
 export async function loadWorkstationProject() {
-  const examples = {
-    m3d: 'examples/m3d-selfpowered-full-replay.wafercad',
-    photodetector: 'examples/previews/photodetector-literature.wafercad',
-    metalens: 'examples/previews/tio2-metalens-four-unit.wafercad',
-    'metalens-array': 'examples/tio2-metalens-full-array.wafercad',
-    jlfet: 'examples/previews/three-tier-silicon-jlfets.wafercad',
+  const model = createModel();
+  return {
+    source: 'empty',
+    hash: '',
+    data: {
+      name: 'Untitled',
+      model,
+      layout: createEmptyLayout(),
+      selectedLayerKeys: [],
+      activeCell: null,
+      maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+      maskSourceMode: 'file',
+      drawMask: { nextShapeId: 1, shapes: [] },
+      activeFace: 'front',
+      section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
+      planViews: { main: { zoom: 1, panX: 0, panY: 0 }, mask: { zoom: 1, panX: 0, panY: 0 } },
+    },
   };
-  const example = new URLSearchParams(location.search).get('example') || 'm3d';
-  if (!Object.hasOwn(examples, example)) throw Error(`Unknown example: ${example}`);
-  const path = examples[example];
-  const source = `site/${path}`;
+}
+
+export async function loadBundledProject(id) {
+  const aliases = {
+    m3d: 'm3d-selfpowered-heterogeneous-ic',
+    photodetector: 'photodetector-literature',
+    metalens: 'tio2-metalens-four-unit',
+    'metalens-array': 'tio2-metalens-four-unit',
+    jlfet: 'three-tier-silicon-jlfets',
+  };
+  const example = BUNDLED_EXAMPLES.find((entry) => entry.id === (aliases[id] || id));
+  if (!example) throw Error(`Unknown example: ${id}`);
+  const path = example.path.replace(/^\.\//, '');
   const response = await fetch(path);
   if (!response.ok) throw Error(`Project: HTTP ${response.status}`);
   const bytes = await response.arrayBuffer();
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
-  return { source, hash, data: await readProjectFile(new Blob([bytes])) };
+  return { source: path, hash, data: await readProjectFile(new Blob([bytes])) };
 }
 
 export function createWorkstationRuntime(project) {

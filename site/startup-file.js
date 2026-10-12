@@ -73,3 +73,37 @@ export async function takeStartupFile() {
     database.close();
   }
 }
+
+// V2 reads staged input without consuming it. The caller removes the record
+// only after parsing and installing the input succeeds, so retries survive a
+// worker/validation failure or a page refresh.
+export async function readStartupFile() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const completed = transactionDone(transaction);
+    const record = await requestResult(transaction.objectStore(STORE_NAME).get(RECORD_KEY));
+    await completed;
+    if (!record?.blob) return null;
+    return {
+      kind: record.kind,
+      file: new File([record.blob], record.name, {
+        type: record.type || record.blob.type || '',
+        lastModified: Number(record.lastModified) || Date.now(),
+      }),
+    };
+  } finally {
+    database.close();
+  }
+}
+
+export async function removeStartupFile() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(RECORD_KEY);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}

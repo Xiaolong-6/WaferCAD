@@ -26,12 +26,19 @@ const expected = [
   'Area',
   'Also add to Recipe',
 ];
-const normalize = (label) => label.replace(/\s*·\s*(µm|nm|mm)\s*$/, '').replace(/\s+/g, ' ').trim();
+const normalize = (label) =>
+  label
+    .replace(/\s*·\s*(µm|nm|mm)\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 function requireOrdered(labels, contract, kind) {
   let cursor = -1;
   for (const label of contract) {
     const next = labels.findIndex((entry, index) => index > cursor && entry === label);
-    assert.ok(next >= 0, `${kind}: expected ${label} after index ${cursor}; got ${labels.join(' | ')}`);
+    assert.ok(
+      next >= 0,
+      `${kind}: expected ${label} after index ${cursor}; got ${labels.join(' | ')}`,
+    );
     cursor = next;
   }
 }
@@ -46,21 +53,26 @@ async function capture(page) {
     const labels = [...document.querySelectorAll('.p-inspector label .wc-label')]
       .filter((node) => node.checkVisibility())
       .map((node) => node.textContent.trim());
-    const fieldLabels = [...document.querySelectorAll('.p-inspector label .wc-label')]
-      .filter((node) => node.checkVisibility());
+    const fieldLabels = [...document.querySelectorAll('.p-inspector label .wc-label')].filter(
+      (node) => node.checkVisibility(),
+    );
     const operationLabel = fieldLabels[0];
     const modes = box('.p-inspector [aria-label="Process modes"]');
-    const gapAfterModes = modes && operationLabel
-      ? operationLabel.getBoundingClientRect().top - modes.y - modes.height
-      : null;
+    const gapAfterModes =
+      modes && operationLabel
+        ? operationLabel.getBoundingClientRect().top - modes.y - modes.height
+        : null;
     const areaLabel = fieldLabels.find((node) => node.textContent.trim() === 'Area');
     const areaOptions = areaLabel
-      ? [...areaLabel.closest('label').querySelectorAll('option')].map((node) => node.textContent.trim())
+      ? [...areaLabel.closest('label').querySelectorAll('option')].map((node) =>
+          node.textContent.trim(),
+        )
       : [];
     const root = document.querySelector('.p-workbench');
     const style = getComputedStyle(root);
-    const stepper = [...document.querySelectorAll('.p-inspector .p-stepper')]
-      .find((node) => node.querySelector('input'));
+    const stepper = [...document.querySelectorAll('.p-inspector .p-stepper')].find((node) =>
+      node.querySelector('input'),
+    );
     const thickness = stepper && {
       box: box(stepper),
       label: box(stepper.querySelector('.wc-label')),
@@ -80,8 +92,9 @@ async function capture(page) {
       font: style.fontFamily,
       theme: document.documentElement.dataset.theme,
       overflowX: Math.max(0, document.documentElement.scrollWidth - innerWidth),
-      chrome: [...document.querySelectorAll('.p-nav [data-action^="domain:"]')]
-        .map((node) => node.dataset.action),
+      chrome: [...document.querySelectorAll('.p-nav [data-action^="domain:"]')].map(
+        (node) => node.dataset.action,
+      ),
     };
   });
 }
@@ -95,7 +108,7 @@ try {
     try {
       for (const [role, url] of [
         ['m2', `${base}/app-v2.html?domain=process`],
-        ['real', `${base}/app-v2-workstation.html?example=metalens`],
+        ['real', `${base}/app-v2-workstation.html?start=example&example=metalens`],
       ]) {
         const { page, context } = await newUiPage(browser, {
           viewport: { width, height: 960 },
@@ -112,7 +125,9 @@ try {
         const process = page.locator('.p-nav [data-action="domain:process"]');
         await process.click();
         await waitForPaint(page);
-        await page.locator('.p-inspector').screenshot({ path: resolve(out, `${role}-manual-${width}.png`) });
+        await page
+          .locator('.p-inspector')
+          .screenshot({ path: resolve(out, `${role}-manual-${width}.png`) });
         assert.deepEqual(errors, [], `${role} page errors`);
       }
       const m2 = await capture(opened[0].page);
@@ -135,7 +150,10 @@ try {
       assert.deepEqual(real.areaOptions, m2.areaOptions, 'M2 Area choice wording and order');
       assert.ok(Number.isFinite(m2.gapAfterModes) && Number.isFinite(real.gapAfterModes));
       near(m2.gapAfterModes, real.gapAfterModes, 2, 'M2 mode-to-Manual top spacing');
-      for (const [kind, stepper] of [['M2', m2.thickness], ['real', real.thickness]]) {
+      for (const [kind, stepper] of [
+        ['M2', m2.thickness],
+        ['real', real.thickness],
+      ]) {
         assert.ok(stepper?.box && stepper.label && stepper.input, `${kind} labelled stepper`);
         assert.equal(stepper.buttons.length, 2, `${kind} stepper owns +/- controls`);
         assert.ok(

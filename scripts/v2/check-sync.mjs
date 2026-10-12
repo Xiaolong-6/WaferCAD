@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
-import { readProjectFile } from '../../site/project-io.js';
+import { PROJECT_LENGTH_QUANTUM_UM, readProjectFile } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
@@ -15,6 +15,39 @@ const report = {
   result: 'running',
   cases: [],
 };
+
+function assertModelPersistence(actual, expected, path = 'model') {
+  if (typeof expected === 'number') {
+    const physicalLength =
+      /(?:boundary|geom|width|height|thickness|diameter|radius|depth|length|distance|offset|\.z[01](?:\.|$))/i.test(
+        path,
+      );
+    if (physicalLength) {
+      assert.equal(typeof actual, 'number', `${path}: numeric type`);
+      assert.ok(
+        Math.abs(actual - expected) <= PROJECT_LENGTH_QUANTUM_UM + 1e-12,
+        `${path}: physical serialization drift exceeds 0.1 nm`,
+      );
+    } else assert.equal(actual, expected, `${path}: metadata value`);
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.ok(Array.isArray(actual), `${path}: array type`);
+    assert.equal(actual.length, expected.length, `${path}: topology length`);
+    for (let index = 0; index < expected.length; index++)
+      assertModelPersistence(actual[index], expected[index], `${path}[${index}]`);
+    return;
+  }
+  if (expected !== null && typeof expected === 'object') {
+    assert.ok(actual !== null && typeof actual === 'object', `${path}: object type`);
+    assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), `${path}: keys`);
+    for (const key of Object.keys(expected))
+      assertModelPersistence(actual[key], expected[key], `${path}.${key}`);
+    return;
+  }
+  assert.equal(actual, expected, `${path}: value`);
+}
+
 const browser = await launchBrowser();
 try {
   report.browser = browser.version();
@@ -33,7 +66,9 @@ try {
     try {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await page.goto(`${base}/app-v2-workstation.html?example=metalens`);
+      await page.goto(
+        `${base}/app-v2-workstation.html?start=example&example=photodetector-literature`,
+      );
       await page.waitForFunction(() => document.body.dataset.ready !== 'false');
       assert.equal(
         await page.locator('body').getAttribute('data-ready'),
@@ -189,7 +224,7 @@ try {
         assert.deepEqual((await snap()).maskRoi, inspection.maskRoi);
       }
       if (width === 1440) {
-        await page.getByText('Base', { exact: true }).click();
+        await page.getByRole('heading', { name: 'Base', exact: true }).click();
         assert.equal(await page.locator('#substrateShape').isVisible(), false);
         assert.equal(await page.locator('#baseHeight').isVisible(), true);
       }
@@ -324,7 +359,7 @@ try {
         await download.saveAs(path);
         const exported = await readProjectFile(new Blob([await readFile(path)]));
         console.log('Sync Project: exported project strictly validated');
-        assert.deepEqual(exported.model, (await snap()).model);
+        assertModelPersistence(exported.model, (await snap()).model);
         await page.locator('#projectNameInput').fill('Temporary review name');
         await page.locator('#projectNameInput').press('Tab');
         await page.locator('#openProjectInput').setInputFiles(path);
@@ -372,7 +407,7 @@ try {
         assert.deepEqual((await snap()).sectionDetailRoi, saved.sectionDetailRoi);
         assert.equal((await snap()).sharedIdentity, true);
         console.log('Sync Project: Recovery Restore verified');
-        await page.getByText('Base', { exact: true }).click();
+        await page.getByRole('heading', { name: 'Base', exact: true }).click();
         await page.locator('#baseWidth').fill('6');
         await page.locator('#baseHeight').fill('4');
         await page.locator('#baseThickness').fill('2');
@@ -472,7 +507,9 @@ try {
           ),
         );
         assert.deepEqual((await snap()).model, recipeBeforeFailure.model);
-        console.log('Sync Recipe: invalid-code rejection, preflight atomicity and recovery verified');
+        console.log(
+          'Sync Recipe: invalid-code rejection, preflight atomicity and recovery verified',
+        );
         const precise = (await snap()).model;
         const film = precise.layers.find((l) => l.name === 'Graphene precision');
         assert.ok(film);
@@ -491,16 +528,22 @@ try {
           { timeout: 120000 },
         );
         assert.deepEqual((await snap()).model, precise, 'Diagnostics is read-only');
-        const diagnosticsPresentation = await page.locator('#diagnosticsResults').evaluate((root) => ({
-          metrics: root.querySelectorAll('.diagnostics-metric').length,
-          metricLayout: getComputedStyle(root.querySelector('.diagnostics-metric')).display,
-          layerLayout: getComputedStyle(root.querySelector('.diagnostics-layer')).display,
-          overflow: Math.max(0, root.scrollWidth - root.clientWidth),
-        }));
+        const diagnosticsPresentation = await page
+          .locator('#diagnosticsResults')
+          .evaluate((root) => ({
+            metrics: root.querySelectorAll('.diagnostics-metric').length,
+            metricLayout: getComputedStyle(root.querySelector('.diagnostics-metric')).display,
+            layerLayout: getComputedStyle(root.querySelector('.diagnostics-layer')).display,
+            overflow: Math.max(0, root.scrollWidth - root.clientWidth),
+          }));
         assert.ok(diagnosticsPresentation.metrics >= 4, 'Diagnostics metrics stay visible');
         assert.equal(diagnosticsPresentation.metricLayout, 'flex');
         assert.equal(diagnosticsPresentation.layerLayout, 'grid');
-        assert.equal(diagnosticsPresentation.overflow, 0, 'Diagnostics inspector must not overflow');
+        assert.equal(
+          diagnosticsPresentation.overflow,
+          0,
+          'Diagnostics inspector must not overflow',
+        );
       }
       await view('main');
       if (await page.locator('[data-action="mode:split"]').isVisible()) {

@@ -52,7 +52,7 @@ try {
   for (const [example, sourceName] of [
     ['m3d', 'm3d-selfpowered'],
     ['photodetector', 'photodetector-literature'],
-    ['metalens', 'tio2-metalens-four-unit'],
+    ['metalens', 'tio2-metalens-full-array'],
     ['metalens-array', 'tio2-metalens-full-array'],
   ]) {
     const { page, context } = await newUiPage(browser, {
@@ -62,7 +62,7 @@ try {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     try {
-      await page.goto(`${base}/app-v2-workstation.html?example=${example}`, {
+      await page.goto(`${base}/app-v2-workstation.html?start=example&example=${example}`, {
         waitUntil: 'domcontentloaded',
         timeout: 120000,
       });
@@ -70,13 +70,17 @@ try {
         timeout: 120000,
       });
       assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
-      assert.match(page.url(), /\/app-v2-workstation\.html\?example=/);
+      assert.match(page.url(), /\/app-v2-workstation\.html$/);
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const before = await snapshot();
       assert.equal(before.sharedIdentity, true);
       assert.equal(before.workflow.writable, true, 'Fresh independent context owns autosave');
       const conflict = page.locator('#workspaceConflictDialog');
-      assert.equal(await conflict.isVisible(), false, 'Current owner must not see Take over warning');
+      assert.equal(
+        await conflict.isVisible(),
+        false,
+        'Current owner must not see Take over warning',
+      );
       const conflictShownWhenRequired = await conflict.evaluate((node) => {
         const previous = node.hidden;
         node.hidden = false;
@@ -91,14 +95,14 @@ try {
           before.model.array?.templates?.some((template) => template.model.regions.length > 0),
       );
       assert.equal(before.source.includes(sourceName), true);
-      if (example === 'metalens-array') {
+      if (example === 'metalens-array' || example === 'metalens') {
         assert.equal(before.model.array.instances.length, 6400, 'Real 80×80 full array');
         assert.equal(before.model.array.templates.length, 49, '49 shared physical templates');
       }
       const legacyBoot = await page.evaluate(() =>
-        performance.getEntriesByType('resource').some((entry) =>
-          /\/app\.js(?:\?|$)/.test(entry.name),
-        ),
+        performance
+          .getEntriesByType('resource')
+          .some((entry) => /\/app\.js(?:\?|$)/.test(entry.name)),
       );
       assert.equal(legacyBoot, false, 'UI v2 must not boot legacy app.js');
       for (const view of ['mask', 'main']) {
@@ -156,10 +160,16 @@ try {
       await page.locator('#xyUnitSelect').selectOption('nm');
       await page.locator('#xyUnitSelect').selectOption('um');
       const unchanged = await snapshot();
-      assert.deepEqual(unchanged.model, before.model, 'Navigation and unit changes do not alter geometry');
+      assert.deepEqual(
+        unchanged.model,
+        before.model,
+        'Navigation and unit changes do not alter geometry',
+      );
       assert.deepEqual(unchanged.roi, before.roi);
       assert.deepEqual(unchanged.section, before.section);
-      const downloadPromise = page.waitForEvent('download');
+      // Full M3D History packing can exceed Playwright's 30-second event
+      // default on constrained software-rendering CI/local runners.
+      const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
       await page.locator('#exportProjectBtn').click();
       const download = await downloadPromise;
       const path = resolve(output, `${example}.wafercad`);
@@ -168,7 +178,12 @@ try {
       assertModelPersistence(exported.model, unchanged.model);
       assert.deepEqual(errors, [], 'No page errors');
       await page.screenshot({ path: resolve(output, `${example}.png`) });
-      report.cases.push({ example, result: 'pass', layers: before.model.layers.length, regions: before.model.regions.length });
+      report.cases.push({
+        example,
+        result: 'pass',
+        layers: before.model.layers.length,
+        regions: before.model.regions.length,
+      });
       console.log(`M4 ${example}: integrated route, isolation, units and Project export PASS`);
     } catch (error) {
       report.cases.push({ example, result: 'fail', error: error.stack || error.message, errors });

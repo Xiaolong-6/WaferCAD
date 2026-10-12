@@ -13,6 +13,8 @@ import { recolorLayer, recolorImplant, recolorElectricalRegion } from '../model.
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
+import { loadBundledProject } from './workstation-runtime.js';
+import { readStartupFile, removeStartupFile } from '../startup-file.js';
 
 export function createWorkstationWorkflow({ store, workstation }) {
   const { el, button, field, panelHeader } = window.WaferCadV2Components;
@@ -831,8 +833,73 @@ export function createWorkstationWorkflow({ store, workstation }) {
     renderAll: refresh,
     renderSnapshots: project.renderSnapshots,
     fit3d: domain.bindings.fit3d,
-    initializeWorkspaceStart: async () => true,
-    hasExplicitStart: performance.getEntriesByType('navigation')[0]?.type !== 'reload',
+    initializeWorkspaceStart: async () => {
+      const params = new URLSearchParams(globalThis.location?.search || '');
+      const intent = params.get('start');
+      if (!intent) return true;
+      try {
+        let staged = false;
+        if (intent === 'empty') {
+          domain.bindings.resetProjectState();
+          history.importRecords([], null);
+        } else if (intent === 'example') {
+          const bundled = await loadBundledProject(
+            params.get('example') || 'photodetector-literature',
+          );
+          domain.load(bundled.data);
+          history.importRecords(bundled.data.snapshots || [], bundled.data.snapshotBranches);
+          store.project.source = bundled.source;
+          store.project.hash = bundled.hash;
+        } else if (intent === 'staged') {
+          const pending = await readStartupFile();
+          if (!pending)
+            throw Error(
+              'No pending Welcome file was found. Return to Welcome and choose it again.',
+            );
+          if (pending.kind === 'layout') {
+            const imported = await domain.bindings.importLayoutBuffer(
+              await pending.file.arrayBuffer(),
+              pending.file.name,
+              pending.file.name,
+              { startupProtected: true },
+            );
+            if (!imported) throw Error('The staged layout was not imported.');
+          } else if (pending.kind === 'project') {
+            const imported = await domain.bindings.readProjectFileTask(pending.file);
+            if (!imported) throw Error('The staged project could not be read.');
+            domain.load(imported);
+            history.importRecords(imported.snapshots || [], imported.snapshotBranches);
+          } else {
+            throw Error('The staged file type is unsupported.');
+          }
+          await removeStartupFile();
+          staged = true;
+        } else {
+          throw Error(`Unknown startup intent: ${intent}`);
+        }
+        domain.syncBaseControls();
+        domain.importer.syncTransformInputs();
+        project.renderSnapshots();
+        refresh();
+        const url = new URL(globalThis.location.href);
+        url.searchParams.delete('start');
+        url.searchParams.delete('example');
+        globalThis.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        status(
+          staged
+            ? 'Staged file opened.'
+            : intent === 'empty'
+              ? 'New empty project.'
+              : 'Example opened.',
+        );
+        return true;
+      } catch (error) {
+        console.error(error);
+        status(`Could not start workspace: ${error.message}`);
+        return false;
+      }
+    },
+    hasExplicitStart: new URLSearchParams(globalThis.location?.search || '').has('start'),
     normalizedProjectName: domain.bindings.normalizedProjectName,
     getProjectName: () => state.projectName,
     setProjectName: (value) => {
