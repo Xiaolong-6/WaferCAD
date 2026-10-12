@@ -200,3 +200,30 @@ test('R5 collects multiple independent disposal failures after group removal', (
   assert.deepEqual(calls, ['geometry', 'texture', 'material']);
   assert.equal(scene.children.length, 0);
 });
+
+test('R5 product callback reports failed disposal but preserves full retirement counts', () => {
+  const calls = [];
+  const fault = {
+    dispose() {
+      calls.push('bad-geometry');
+      throw new Error('lost context');
+    },
+  };
+  const good = disposable('good-geometry', calls);
+  const material = disposable('good-material', calls);
+  const target = group([
+    { geometry: fault, material, children: [] },
+    { geometry: good, material, children: [] },
+  ]);
+  const failures = [];
+  const result = disposeRendererSceneResources(target, {
+    onError: (error) => failures.push(error),
+  });
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].name, 'AggregateError');
+  assert.equal(failures[0].errors.length, 1);
+  assert.equal(result.geometries, 2);
+  assert.equal(result.materials, 1);
+  assert.deepEqual(calls.sort(), ['bad-geometry', 'good-geometry', 'good-material']);
+  assert.equal(target.children.length, 0);
+});

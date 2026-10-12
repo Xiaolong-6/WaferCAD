@@ -5,7 +5,7 @@
 // template is referenced by several chunk meshes *within the same variant*.
 // After copy-on-write a retired template has no mesh reference, but stays
 // owned by the original group until that group is evicted.
-export function disposeRendererSceneResources(root) {
+export function disposeRendererSceneResources(root, { onError } = {}) {
   const counts = {
     objects: 0,
     geometries: 0,
@@ -72,12 +72,16 @@ export function disposeRendererSceneResources(root) {
   counts.materials = materials.size;
   counts.textures = textures.size;
   if (disposalErrors.length) {
-    throw new globalThis.AggregateError(
+    const failure = new globalThis.AggregateError(
       disposalErrors.map(({ error }) => error),
       'Renderer scene disposal failed for ' +
         disposalErrors.map(({ kind }) => kind).join(', ') +
         '; remaining resources were still retired.',
     );
+    // Product callers can log the fault without abandoning scene reset.
+    // Standalone tests and unhandled callers remain fail-closed.
+    if (typeof onError === 'function') onError(failure);
+    else throw failure;
   }
   return counts;
 }

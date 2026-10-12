@@ -1050,6 +1050,16 @@ export function createThreeView({
     host.dataset.v4GpuResourceComplete = String(result.complete);
   }
 
+  function disposeSceneResourcesSafely(targetGroup) {
+    return disposeRendererSceneResources(targetGroup, {
+      onError: (error) => {
+        const failures = Number(host.dataset.rendererDisposalFailures || 0);
+        host.dataset.rendererDisposalFailures = String(failures + error.errors.length);
+        console.warn('3D scene resource disposal failed; continuing cleanup:', error);
+      },
+    });
+  }
+
   function disposeGroup() {
     if (!group) return;
     clearRoughRefineTimer();
@@ -1063,7 +1073,7 @@ export function createThreeView({
       renderer.domElement.dataset.roughMeshMode = 'none';
       renderer.domElement.dataset.roughMeshWorker = 'false';
     }
-    recordV4R5Disposal(disposeRendererSceneResources(group));
+    recordV4R5Disposal(disposeSceneResourcesSafely(group));
     zDisplayObjects = new Set();
     currentZDisplay = null;
     roughMeshes = [];
@@ -1194,7 +1204,7 @@ export function createThreeView({
 
   function disposeSceneGroup(targetGroup) {
     if (!targetGroup) return;
-    recordV4R5Disposal(disposeRendererSceneResources(targetGroup));
+    recordV4R5Disposal(disposeSceneResourcesSafely(targetGroup));
   }
 
   function cacheActiveSceneVariant() {
