@@ -1155,8 +1155,9 @@ export function createProcessRecipeController({
       return true;
     }
 
-    // Both is a Process execution target; the current inspection view remains Front/Back.
-    if (p.face === 'front' || p.face === 'back') setActiveFace(p.face);
+    // Restore the Process face selector from the Recipe execution target.
+    // View inspection remains independent from the operation face.
+    if (p.face === 'front' || p.face === 'back' || p.face === 'both') setActiveFace(p.face);
     if (p.area && p.area !== 'full') {
       const state = maskStateFromRecipe(p.mask);
       if (!state) throw new Error('This step requires a captured Mask context.');
