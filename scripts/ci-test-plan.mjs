@@ -19,6 +19,16 @@ const COMMON_TEST_INFRA = [
   /^scripts\/test-helpers\/product-scientific\.mjs$/,
 ];
 const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
+const V2_WORKSPACE_PATHS = [
+  /^site\/ui-v2\//,
+  /^scripts\/v2\//,
+];
+const V2_CROSS_UI_PATHS = [
+  /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
+  /^site\/app(?:-legacy)?\.html$/,
+  /^scripts\/v2\/(?:check-startup|check-cross-ui-recovery|check-sync|check-m4-projects)\.mjs$/,
+];
+
 const WORKSTATION_PATHS = [
   /^site\/app\.(?:js|html)$/,
   /^site\/workstation\.css$/,
@@ -157,6 +167,11 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
   }
 
   for (const path of paths) {
+    // The dedicated Stage C/M4 job owns real v2 behavior on main and PRs.
+    // Legacy cross-interface owners still guard shared recovery and History.
+    if (matchesAny(path, V2_WORKSPACE_PATHS)) enable(plan, 'workstation');
+    if (matchesAny(path, V2_CROSS_UI_PATHS))
+      enable(plan, 'workstation', 'history', 'persistence', 'interaction');
     if (matchesAny(path, WORKSTATION_PATHS)) enable(plan, 'workstation');
     if (matchesAny(path, RESILIENCE_PATHS)) enable(plan, 'resilience');
     if (matchesAny(path, HISTORY_PATHS)) enable(plan, 'history');
