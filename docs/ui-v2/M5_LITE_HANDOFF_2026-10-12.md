@@ -3,7 +3,7 @@
 ## Revision and behavior
 
 Repository: `Xiaolong-6/WaferCAD`; branch: `codex/ui-v2-main-wip`; PR: #177.
-Product revision: `15c120b7cc9535efdf4256bd33ca1c18d9caa841`.
+Product revision: `481ccb82` (public-preview corrections).
 Startup adaptation is in `f0078376`; default entry promotion is in `0e746cb1`;
 remaining browser entry fixes and formatting normalization are in `643417c8`.
 `5ce8f7e7` uses the shared versioned Example URL and existing Project worker so
@@ -55,12 +55,34 @@ with the complete four-unit fixture saved before reload checks. Its final-head
 CI result remains pending.
 No approved visual baseline or scientific assertion was relaxed.
 
+## Public-preview corrections
+
+User review found Code controls leaking after leaving Process, Mask navigation
+missing the M2 maximize behavior, and an unscrollable History list.
+`481ccb82` limits Code flex layout to visible hosts and hides all Process
+subhosts outside Process. Mask navigation selects and maximizes Mask, and
+leaving Mask clears that maximization, matching M2. The real History host now
+uses the bounded fixed-header/inner-scroller structure already defined by M2.
+Code drafts remain mounted and retained; no project geometry or History data
+is changed by these navigation fixes.
+
+Validation: `WAFERCAD_THREE_DIR="$PWD/node_modules/three" node scripts/v2/check-sync.mjs`
+passed at 1440, 1024, 768 and 390 px, plus 1024 px touch. Its new regressions
+switch Code to Project/Mask/History, check hidden controls and preserved draft,
+assert Mask maximization, and scroll the full 46-node History with an actual
+mouse wheel. Existing ROI, Process, History restore, Undo/Redo, export/recovery
+and Recipe atomicity checks also passed. `npm run lint`, focused Prettier
+checks and `git diff --check` passed. Environment remains Linux, Node 24.19.0,
+Playwright 1.55.1, Chromium 140 and Three 0.179.1 with SwiftShader.
+
 ## PR and release status
 
 Product commits are pushed incrementally on the existing branch. PR #177 is
 Ready for review with an updated title and implementation/validation summary.
-Final-head CI must pass before merge. No merge or production Pages deployment
-has been performed in this session.
+The prior head `8f57d6d9` passed all 33 effective CI checks. The public-preview
+correction head must pass CI before merge. The user explicitly authorized merge
+and formal publication on 2026-10-12; merge and Pages verification are pending
+these corrections. No production deployment has yet been performed.
 
 ## Rollback and follow-up
 
