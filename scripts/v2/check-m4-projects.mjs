@@ -72,6 +72,17 @@ try {
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const before = await snapshot();
       assert.equal(before.sharedIdentity, true);
+      assert.equal(before.workflow.writable, true, 'Fresh independent context owns autosave');
+      const conflict = page.locator('#workspaceConflictDialog');
+      assert.equal(await conflict.isVisible(), false, 'Current owner must not see Take over warning');
+      const conflictShownWhenRequired = await conflict.evaluate((node) => {
+        const previous = node.hidden;
+        node.hidden = false;
+        const displayed = getComputedStyle(node).display !== 'none';
+        node.hidden = previous;
+        return displayed;
+      });
+      assert.equal(conflictShownWhenRequired, true, 'Non-owner warning remains available');
       assert.ok(before.model.layers.length > 0);
       assert.ok(
         before.model.regions.length > 0 ||
