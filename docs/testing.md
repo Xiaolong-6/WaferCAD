@@ -115,8 +115,9 @@ GitHub Actions caches both npm downloads and the Playwright Chromium browser dir
 - Browser PR jobs do not repeat `npm test`; non-PR runs execute the Node gate because a separate Quality run may not exist for direct pushes.
 - Process Geometry no longer runs on unrelated pull requests. When selected, it runs in a separate job in parallel with the targeted browser suites.
 - Pushes to `main` diff the previous and current main revisions and reuse the same change-impact planner as pull requests, so only the owning suites are repeated after merge.
+- Changes to `site/ui-v2/**` or `scripts/v2/**` select Workstation regression; changes to shared v2 entry/workflow modules also select Legacy History, Persistence and Interaction. Real v2 Stage C/M4 runs separately on relevant `main` pushes and PRs.
 - The weekly Browser regression schedule (Monday 02:17 UTC) and manual `workflow_dispatch` runs execute the full browser inventory, including Process Geometry.
-- Workflow/planner-only changes stay on UI smoke; planner routing is covered by Node tests.
+- Workflow/planner-only changes stay on UI smoke; planner routing is covered by Node tests. The Product manual/Wiki job installs pinned dependencies before executing its generator.
 - Pull-request and targeted-main product checks suppress human-review screenshot galleries. Weekly/manual full runs retain galleries plus renderer stress and full Process Geometry permutations.
 - Dependency-lockfile or shared browser-test-helper changes conservatively request the full browser suite.
 - KLayout compatibility keeps its dedicated parser/UI workflow and caches Chromium for the browser import sweep.
