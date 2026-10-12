@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-sync check-review-interactions check-m4-projects; do
+          for script in check-sync check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"
@@ -76,6 +76,7 @@ jobs:
             test-results/ui-v2-sync/
             test-results/ui-v2-review-interactions/
             test-results/ui-v2-m4-projects/
+            test-results/ui-v2-m2-parity/
             serve-v2.log
           retention-days: 14
           if-no-files-found: warn
