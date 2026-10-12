@@ -15,6 +15,7 @@ import { shouldDisableV4HeavyCameraDamping } from './renderer-v4-interaction-pol
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
+import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import {
   sharedFlatCapZ,
   mappedFlatCapTranslation,
@@ -4497,44 +4498,41 @@ diffuseColor.a *= waferCadAlphaScale;`,
   async function capturePng(scale = 3) {
     if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
     const rect = host.getBoundingClientRect(),
-      oldPixelRatio = renderer.getPixelRatio(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),
-      height = Math.max(2, rect.height),
-      captureRenderer = new THREE.WebGLRenderer({
-        antialias: true,
-        preserveDrawingBuffer: true,
-      });
+      height = Math.max(2, rect.height);
 
-    captureRenderer.setPixelRatio(multiplier);
-    captureRenderer.setSize(width, height, false);
-    captureRenderer.setClearColor(0xf5f7f9);
-    captureRenderer.outputColorSpace = renderer.outputColorSpace;
-    captureRenderer.toneMapping = renderer.toneMapping;
-    captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
-
-    // The main renderer's pixel ratio feeds adaptive rough LOD decisions. Raise
-    // it for the capture build without retaining a persistent drawing buffer.
-    renderer.setPixelRatio(multiplier);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    await requestRoughGeometry('detailed', { force: true });
-    try {
-      captureRenderer.render(scene, camera);
-      return await new Promise((resolve, reject) =>
-        captureRenderer.domElement.toBlob(
-          (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
-          'image/png',
-        ),
-      );
-    } finally {
-      captureRenderer.dispose();
-      renderer.setPixelRatio(oldPixelRatio);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      await requestRoughGeometry('detailed', { force: true });
-      scheduleFrame();
-    }
+    // Temporary pixel ratio and camera state also affect rough-mesh LOD.
+    // Guard the *preparation* and capture setup, not just PNG encoding:
+    // a rejected rough build must restore the interactive renderer as well.
+    return runTemporaryRendererCapture({
+      mainRenderer: renderer,
+      camera,
+      pixelRatio: multiplier,
+      aspect: width / height,
+      createRenderer: () =>
+        new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }),
+      configureRenderer: (captureRenderer) => {
+        captureRenderer.setPixelRatio(multiplier);
+        captureRenderer.setSize(width, height, false);
+        captureRenderer.setClearColor(0xf5f7f9);
+        captureRenderer.outputColorSpace = renderer.outputColorSpace;
+        captureRenderer.toneMapping = renderer.toneMapping;
+        captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
+      },
+      prepareScene: () => requestRoughGeometry('detailed', { force: true }),
+      capture: (captureRenderer) => {
+        captureRenderer.render(scene, camera);
+        return new Promise((resolve, reject) =>
+          captureRenderer.domElement.toBlob(
+            (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),
+            'image/png',
+          ),
+        );
+      },
+      restoreScene: () => requestRoughGeometry('detailed', { force: true }),
+      scheduleFrame,
+    });
   }
 
   return {
