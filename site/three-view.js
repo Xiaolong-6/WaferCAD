@@ -3459,8 +3459,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     } catch (error) {
       rebuildAborted = true;
-      const superseded =
-        error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError';
+      const superseded = error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError';
       if (previousVariantGroup) {
         // Never strand the viewport with a partially constructed, hidden group.
         const failedGroup = group;
