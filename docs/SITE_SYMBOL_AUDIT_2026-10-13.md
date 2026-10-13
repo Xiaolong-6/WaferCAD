@@ -35,6 +35,11 @@ without changing their owning APIs or application behavior:
 - Developer M2 previews: `field` and `select` from mock views;
   `icon` and `stepper` from mock workspace.
 
+A further M2-only cleanup in the same PR removes six unused component
+bindings from `ui-v2/mock-workspace.js`: `emptyState`, `busy`,
+`panelHeader`, `divider`, `toolbar`, and `row`. This leaves the
+actual DOM helpers, event handlers and scientific renderers untouched.
+
 The underlying controller methods and exported Kernel functions remain
 intact. The audit report is an observation, not permission to delete code.
 

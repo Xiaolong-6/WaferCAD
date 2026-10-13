@@ -12,19 +12,7 @@
     });
   }
   const { installSprite } = window.WaferCadV2Icons;
-  const {
-    el,
-    button,
-    select,
-    field,
-    emptyState,
-    busy,
-    panelHeader,
-    divider,
-    toolbar,
-    row,
-    notice,
-  } = window.WaferCadV2Components;
+  const { el, button, select, field, notice } = window.WaferCadV2Components;
 
   const root = document.querySelector('#app-root');
   const query = new URL(window.location.href).searchParams;
