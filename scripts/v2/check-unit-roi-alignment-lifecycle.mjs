@@ -53,34 +53,48 @@ try {
       await page.locator('[data-action="mask-roi-settings"]').click();
       await page.locator('#maskRoiX').waitFor({ state: 'visible' });
       const initialX = Number(await page.locator('#maskRoiX').inputValue());
-      const angle = shape === 'square'
-        ? await page.locator('#maskRoiRotation').inputValue()
-        : null;
-      for (const [key, factor] of [['nm', 1000], ['mm', 0.001], ['um', 1]]) {
+      const angle = shape === 'square' ? await page.locator('#maskRoiRotation').inputValue() : null;
+      for (const [key, factor] of [
+        ['nm', 1000],
+        ['mm', 0.001],
+        ['um', 1],
+      ]) {
         await unit(key);
         const draft = Number(await page.locator('#maskRoiX').inputValue());
-        assert.ok(Math.abs(draft - initialX * factor) <
-          Math.max(1e-8, Math.abs(initialX * factor) * 1e-11),
-          shape + ' draft unit ' + key);
-        assert.deepEqual((await snapshot()).maskRoi, created.maskRoi,
-          shape + ' unit change is non-mutating');
+        assert.ok(
+          Math.abs(draft - initialX * factor) < Math.max(1e-8, Math.abs(initialX * factor) * 1e-11),
+          shape + ' draft unit ' + key,
+        );
+        assert.deepEqual(
+          (await snapshot()).maskRoi,
+          created.maskRoi,
+          shape + ' unit change is non-mutating',
+        );
         await checkImmutable(created, shape + ' unit ' + key);
         if (shape === 'square') {
           assert.equal(await page.locator('#maskRoiRotation').inputValue(), angle);
         }
       }
       await page.locator('.v2-mask-floating [data-action="roi-apply"]').click();
-      assert.deepEqual((await snapshot()).maskRoi, created.maskRoi,
-        shape + ' untouched Apply is exact no-op');
+      assert.deepEqual(
+        (await snapshot()).maskRoi,
+        created.maskRoi,
+        shape + ' untouched Apply is exact no-op',
+      );
       await page.locator('.v2-mask-floating [data-action="roi-apply"]').click();
-      assert.deepEqual((await snapshot()).maskRoi, created.maskRoi,
-        shape + ' repeated Apply is exact no-op');
+      assert.deepEqual(
+        (await snapshot()).maskRoi,
+        created.maskRoi,
+        shape + ' repeated Apply is exact no-op',
+      );
       const xEdited = initialX + 0.001;
       await page.locator('#maskRoiX').fill(String(xEdited));
       await page.locator('.v2-mask-floating [data-action="roi-apply"]').click();
       const changed = await snapshot();
-      assert.ok(Math.abs(changed.maskRoi.c[0] - created.maskRoi.c[0] - 0.001) < 1e-8,
-        shape + ' intentional 1 nm edit commits');
+      assert.ok(
+        Math.abs(changed.maskRoi.c[0] - created.maskRoi.c[0] - 0.001) < 1e-8,
+        shape + ' intentional 1 nm edit commits',
+      );
       await checkImmutable(created, shape + ' intentional ROI edit');
       await page.getByRole('button', { name: 'Close Mask ROI settings', exact: true }).click();
       report.cases.push({ type: 'roi-' + shape, units: ['nm', 'mm', 'um'] });
@@ -101,27 +115,45 @@ try {
     const offsetX = Number(await page.locator('#maskOffsetX').inputValue());
     const scale = await page.locator('#maskScale').inputValue();
     const angle = await page.locator('#maskRotation').inputValue();
-    for (const [key, factor] of [['nm', 1000], ['mm', 0.001], ['um', 1]]) {
+    for (const [key, factor] of [
+      ['nm', 1000],
+      ['mm', 0.001],
+      ['um', 1],
+    ]) {
       await unit(key);
-      assert.ok(Math.abs(Number(await page.locator('#maskOffsetX').inputValue()) -
-        offsetX * factor) < 1e-8, 'Alignment X draft unit ' + key);
-      assert.equal(await page.locator('#maskScale').inputValue(), scale,
-        'Alignment scale is dimensionless');
-      assert.equal(await page.locator('#maskRotation').inputValue(), angle,
-        'Alignment angle is dimensionless');
+      assert.ok(
+        Math.abs(Number(await page.locator('#maskOffsetX').inputValue()) - offsetX * factor) < 1e-8,
+        'Alignment X draft unit ' + key,
+      );
+      assert.equal(
+        await page.locator('#maskScale').inputValue(),
+        scale,
+        'Alignment scale is dimensionless',
+      );
+      assert.equal(
+        await page.locator('#maskRotation').inputValue(),
+        angle,
+        'Alignment angle is dimensionless',
+      );
       assert.deepEqual((await snapshot()).maskTransform, aligned.maskTransform);
       assert.deepEqual((await snapshot()).maskRoi, aligned.maskRoi);
       await checkImmutable(aligned, 'alignment unit ' + key);
     }
     await page.locator('[data-action="alignment-apply"]').click();
-    assert.deepEqual((await snapshot()).maskTransform, aligned.maskTransform,
-      'Alignment untouched Apply must not quantize physical offsets');
+    assert.deepEqual(
+      (await snapshot()).maskTransform,
+      aligned.maskTransform,
+      'Alignment untouched Apply must not quantize physical offsets',
+    );
     await page.locator('#maskOffsetX').fill(String(offsetX + 0.001));
     await page.locator('[data-action="alignment-apply"]').click();
     const changed = await snapshot();
     assert.ok(Math.abs(changed.maskTransform.x - aligned.maskTransform.x - 0.001) < 1e-10);
-    assert.equal(changed.maskTransform.y, aligned.maskTransform.y,
-      'Editing X cannot quantize untouched Alignment Y');
+    assert.equal(
+      changed.maskTransform.y,
+      aligned.maskTransform.y,
+      'Editing X cannot quantize untouched Alignment Y',
+    );
     assert.equal(changed.maskTransform.scale, aligned.maskTransform.scale);
     assert.equal(changed.maskTransform.rotation, aligned.maskTransform.rotation);
     await checkImmutable(aligned, 'alignment intentional edit');
@@ -131,10 +163,14 @@ try {
     // depend on whichever display unit was active while the editor was open.
     await page.locator('.p-nav [data-action="domain:project"]').click();
     await page.locator('#saveProjectBtn').click();
-    await page.waitForFunction(() =>
-      /Saved .* locally/.test(
-        document.querySelector('[data-slot="status.message"]')?.textContent || '',
-      ), null, { timeout: 120000 });
+    await page.waitForFunction(
+      () =>
+        /Saved .* locally/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent || '',
+        ),
+      null,
+      { timeout: 120000 },
+    );
     const beforeReload = await snapshot();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
@@ -146,8 +182,7 @@ try {
     assert.deepEqual(restored.maskTransform, beforeReload.maskTransform, 'Reload Alignment');
     assert.deepEqual(restored.drawMask, beforeReload.drawMask, 'Reload Draw IDs');
     assert.deepEqual(restored.workflow.steps, beforeReload.workflow.steps, 'Reload History');
-    assert.deepEqual(restored.workflow.branches, beforeReload.workflow.branches,
-      'Reload Variants');
+    assert.deepEqual(restored.workflow.branches, beforeReload.workflow.branches, 'Reload Variants');
     assert.deepEqual(restored.model, original.model, 'Unit editor never changes physical model');
     assert.deepEqual(errors, []);
     report.cases.push({ type: 'explicit-save-reload', result: 'pass' });

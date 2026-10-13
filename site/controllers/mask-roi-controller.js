@@ -85,9 +85,7 @@ export function createMaskRoiController({
     const xChanged = changed('maskRoiX', currentPoint[0]);
     const yChanged = changed('maskRoiY', currentPoint[1]);
     const dimensionChanged =
-      roi.type === 'square'
-        ? changed('maskRoiSize', roi.size)
-        : changed('maskRoiRadius', roi.r);
+      roi.type === 'square' ? changed('maskRoiSize', roi.size) : changed('maskRoiRadius', roi.r);
     const rotationChanged =
       roi.type === 'square' &&
       Number($('maskRoiRotation').value) !== Number(formatNumericField(roi.rotation, 3));

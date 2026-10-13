@@ -63,8 +63,14 @@ export function createMaskImportController({
 
   function updateTransform() {
     const current = getMaskTransform();
-    const xChanged = displayLengthDraftChanged($('maskOffsetX').value, formatLengthField(current.x));
-    const yChanged = displayLengthDraftChanged($('maskOffsetY').value, formatLengthField(current.y));
+    const xChanged = displayLengthDraftChanged(
+      $('maskOffsetX').value,
+      formatLengthField(current.x),
+    );
+    const yChanged = displayLengthDraftChanged(
+      $('maskOffsetY').value,
+      formatLengthField(current.y),
+    );
     const scaleChanged =
       Number($('maskScale').value) !== Number(formatNumericField(current.scale, 6));
     const rotationChanged =
@@ -75,9 +81,7 @@ export function createMaskImportController({
     setMaskTransform({
       x: xChanged ? manualMicron($('maskOffsetX').value || 0) : current.x,
       y: yChanged ? manualMicron($('maskOffsetY').value || 0) : current.y,
-      scale: scaleChanged
-        ? Math.max(1e-8, Number($('maskScale').value) || 1)
-        : current.scale,
+      scale: scaleChanged ? Math.max(1e-8, Number($('maskScale').value) || 1) : current.scale,
       rotation: rotationChanged ? Number($('maskRotation').value) || 0 : current.rotation,
     });
     renderMask();
