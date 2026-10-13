@@ -334,6 +334,7 @@ async function trial(enabled, index) {
           triangles: frame.triangles,
           forcedDitherDisabledDraws: frame.forcedDitherDisabledDraws,
           contextAntialias: frame.contextAntialias,
+          contextPreserveDrawingBuffer: frame.contextPreserveDrawingBuffer,
           defaultFramebufferSamples: frame.defaultFramebufferSamples,
           glError: frame.glError,
           renderer: frame.unmaskedRenderer || frame.renderer,
