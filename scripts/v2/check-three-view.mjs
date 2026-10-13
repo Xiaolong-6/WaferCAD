@@ -223,7 +223,7 @@ try {
         await ready();
         assert.equal(await host.getAttribute('data-z-collapse-enabled'), collapseEnabled);
         await page
-          .getByRole('button', { name: 'Close Z Break · physical µm', exact: true })
+          .getByRole('button', { name: 'Close Z Break', exact: true })
           .click();
         const clippedGeneration = await host.getAttribute('data-scene-generation');
         await page.locator('#sectionDetailRoiBtn').click();
