@@ -1,0 +1,59 @@
+name: Scoped M4 formatting and focused browser diagnostic
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/physical-units-formatter-diagnostic-temp.yml'
+permissions:
+  contents: write
+jobs:
+  format-and-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/physical-units-process-m4-20261013
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format scientific browser test using pinned Prettier
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          ./node_modules/.bin/prettier --write scripts/v2/check-physical-process-units.mjs
+          git add scripts/v2/check-physical-process-units.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(science): format M4 physical unit diagnostics"
+            git push origin HEAD:refs/heads/test/physical-units-process-m4-20261013
+          fi
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start production V2 preview
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then exit 0; fi
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Run focused real browser physical-unit lifecycle
+        run: node scripts/v2/check-physical-process-units.mjs
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: scoped-physical-unit-diag-${{ github.sha }}
+          path: |
+            test-results/ui-v2-physical-process/
+            serve-v2.log
+          if-no-files-found: warn
