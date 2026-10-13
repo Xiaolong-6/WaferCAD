@@ -76,6 +76,56 @@ try {
         [1, 0],
         'One plain-text surface with no help icon or duplicate',
       );
+      // Regression: native Project Export menus occupy the browser top layer.
+      // Menu-item help must appear above that layer without obscuring either
+      // export choice, at workstation and phone widths.
+      const exportTrigger = page.locator('#projectExportMenuBtn');
+      await exportTrigger.click();
+      const exportMenu = page.getByRole('menu', { name: 'Project export formats' });
+      await exportMenu.waitFor({ state: 'visible' });
+      for (const [id, description] of [
+        ['exportProjectBtn', /Editable project/],
+        ['exportReportBtn', /Offline Process report/],
+      ]) {
+        const item = page.locator(`#${id}`);
+        await item.hover();
+        await page.waitForFunction(
+          (controlId) => {
+            const control = document.getElementById(controlId);
+            const tooltip = document.getElementById('wc-context-tooltip');
+            return (
+              tooltip?.matches(':popover-open') &&
+              control?.getAttribute('aria-describedby')?.split(/\\s+/).includes(tooltip.id)
+            );
+          },
+          id,
+        );
+        const tooltip = page.locator('#wc-context-tooltip');
+        assert.match(await tooltip.innerText(), description);
+        const [menuRect, tipRect] = await Promise.all([
+          exportMenu.boundingBox(),
+          tooltip.boundingBox(),
+        ]);
+        assert.ok(menuRect && tipRect, 'Export menu and tooltip are both measurable');
+        assert.ok(
+          tipRect.y + tipRect.height <= menuRect.y + 1 ||
+            tipRect.y >= menuRect.y + menuRect.height - 1 ||
+            tipRect.x + tipRect.width <= menuRect.x + 1 ||
+            tipRect.x >= menuRect.x + menuRect.width - 1,
+          'Tooltip must sit outside the native Export menu',
+        );
+        assert.equal(
+          await tooltip.evaluate((node) => getComputedStyle(node).pointerEvents),
+          'none',
+          'Tooltip must not steal clicks from export options',
+        );
+      }
+      await page.keyboard.press('Escape');
+      assert.equal(await exportTrigger.getAttribute('aria-expanded'), 'false');
+      assert.equal(await page.getByRole('menu', { name: 'Project export formats' }).count(), 0);
+      await page.mouse.move(0, 0);
+      await exportTrigger.evaluate((element) => element.blur());
+      await page.locator('#wc-context-tooltip').waitFor({ state: 'hidden' });
       if (width === 1440) {
         const colorTrigger = page.locator('#sectionPanel .v2-legend-palette-trigger').first();
         assert.equal(await colorTrigger.getAttribute('data-help'), 'section.color');
