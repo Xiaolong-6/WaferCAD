@@ -55,6 +55,7 @@ Stage C now uses one genuine M2-derived four-view workstation with a shared mode
 
 ```bash
 node scripts/v2/check-sync.mjs
+node scripts/v2/check-startup-shell.mjs
 node scripts/v2/check-startup.mjs
 node scripts/v2/check-cross-ui-recovery.mjs
 node scripts/v2/check-review-interactions.mjs

@@ -59,6 +59,7 @@ try {
       versionCommit: commitSha,
     }),
   });
+  shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   const render = () => {
@@ -169,6 +170,8 @@ try {
     }
   });
   window.addEventListener('resize', render);
+  // Keep the incomplete Shell covered until the restored project is ready.
+  // The initial workflow.refresh() applies panel ownership and view order.
   await workflow.start();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
@@ -226,6 +229,7 @@ try {
       }),
     projection: () => window.WaferCadV2Main.projection(),
   };
+  shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
 } catch (error) {
   document.body.dataset.ready = 'error';
