@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { shouldPublishSitePath, stagePagesAssets } from '../../scripts/build-pages-artifact.mjs';
 
@@ -70,4 +71,35 @@ test('staging copies production files without altering source or shipping tests'
   await assert.rejects(access(join(destination, 'tests')));
   assert.equal(await readFile(join(source, 'ui-v2', 'mock-data.js'), 'utf8'), 'fixture');
   await assert.rejects(stagePagesAssets({ source, destination: join(source, 'published') }));
+});
+
+test('real Pages staging preserves each entrypoint local stylesheet and script', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'wafercad-pages-real-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const source = fileURLToPath(new URL('..', import.meta.url));
+  const destination = join(root, 'pages');
+  await stagePagesAssets({ source, destination });
+
+  for (const page of ['index.html', 'app.html', 'app-legacy.html']) {
+    const html = await readFile(join(destination, page), 'utf8');
+    const resourceTags = html.match(/<(?:script|link)\b[^>]*>/g) || [];
+    for (const tag of resourceTags) {
+      const reference = tag.match(/(?:src|href)=["']([^"']+)["']/)?.[1] || '';
+      if (!reference || /^(?:https?:|data:|\/|#)/.test(reference)) continue;
+      const file = reference.split(/[?#]/)[0].replace(/^\.\//, '');
+      if (!file) continue;
+      await access(join(destination, file));
+    }
+  }
+  for (const file of [
+    'welcome.js',
+    'ui-v2/workstation-entry.js',
+    'app-legacy.html',
+    'vendor/polygon-clipping.umd.js',
+    'examples/tio2-metalens-full-array.wafercad',
+  ]) {
+    await access(join(destination, file));
+  }
+  await assert.rejects(access(join(destination, 'ui-v2', 'prototypes')));
+  await assert.rejects(access(join(destination, 'tests')));
 });
