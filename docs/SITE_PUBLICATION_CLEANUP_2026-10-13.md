@@ -32,7 +32,7 @@ It does not establish an equivalent reduction in page startup downloads.
 ## Validation and ownership
 
 - `site/tests/pages-artifact.test.mjs` checks the publish/omit policy, copy
-  behavior, source immutability and output-path guard.
+  behavior, source immutability, output-path guard, and real staged entrypoint assets.
 - `site/tests/ci-workflow-architecture.test.mjs` checks release and preview
   deployment workflow contracts.
 - PR #193 owns `npm run check`, Stage C/M4, Main/Mask, D1 and Phase B gates.
