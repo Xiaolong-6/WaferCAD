@@ -51,8 +51,11 @@ try {
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const initial = await snapshot();
       await page.locator('#xyUnitSelect').selectOption(displayUnit);
-      assert.deepEqual((await snapshot()).model, initial.model,
-        'Selecting ' + displayUnit + ' cannot mutate canonical Base');
+      assert.deepEqual(
+        (await snapshot()).model,
+        initial.model,
+        'Selecting ' + displayUnit + ' cannot mutate canonical Base',
+      );
       const baseWidth = page.locator('#baseWidth');
       if (!(await baseWidth.isVisible())) {
         await page.getByRole('heading', { name: 'Base', exact: true }).click();
@@ -65,9 +68,11 @@ try {
         await page.locator('#' + id).fill(String(value * factor));
       }
       await page.locator('#applyBaseBtn').click();
-      await page.waitForFunction((width) =>
-        window.WaferCadV2Workstation.snapshot().model.width === width,
-        baseDimensions.width, { timeout: 120000 });
+      await page.waitForFunction(
+        (width) => window.WaferCadV2Workstation.snapshot().model.width === width,
+        baseDimensions.width,
+        { timeout: 120000 },
+      );
       const based = await snapshot();
       for (const [key, value] of Object.entries(baseDimensions))
         near(based.model[key], value, displayUnit + ' Base ' + key);
@@ -80,26 +85,36 @@ try {
       await page.locator('#layerName').fill('M4 manual film');
       await page.locator('#operationThickness').fill(String(manualThickness * factor));
       await page.locator('#applyOperationBtn').click();
-      await page.waitForFunction(() =>
-        window.WaferCadV2Workstation.snapshot().workflow.steps.length === 1 &&
-        !window.WaferCadV2Workstation.snapshot().workflow.busy,
-        null, { timeout: 120000 });
+      await page.waitForFunction(
+        () =>
+          window.WaferCadV2Workstation.snapshot().workflow.steps.length === 1 &&
+          !window.WaferCadV2Workstation.snapshot().workflow.busy,
+        null,
+        { timeout: 120000 },
+      );
       const afterManual = await snapshot();
       physicalFilms(afterManual.model, 'M4 manual film').forEach((value) =>
-        near(value, manualThickness, displayUnit + ' Manual film Z'));
+        near(value, manualThickness, displayUnit + ' Manual film Z'),
+      );
       assert.equal(afterManual.workflow.steps.length, 1);
       await page.locator('#undoBtn').click();
-      assert.deepEqual((await snapshot()).model, based.model,
-        displayUnit + ' Manual Undo restores Base geometry');
+      assert.deepEqual(
+        (await snapshot()).model,
+        based.model,
+        displayUnit + ' Manual Undo restores Base geometry',
+      );
       await page.locator('#redoBtn').click();
-      assert.deepEqual((await snapshot()).model, afterManual.model,
-        displayUnit + ' Manual Redo restores exact physical film');
+      assert.deepEqual(
+        (await snapshot()).model,
+        afterManual.model,
+        displayUnit + ' Manual Redo restores exact physical film',
+      );
       report.cases.push(displayUnit + ':manual-undo-redo');
 
       await page.locator('[data-action="process-mode:code"]').click();
-      await page.locator('#recipeCodeEditor').fill(
-        'deposit({ material: "M4 typed film", thickness: "0.35 nm", area: "full" });',
-      );
+      await page
+        .locator('#recipeCodeEditor')
+        .fill('deposit({ material: "M4 typed film", thickness: "0.35 nm", area: "full" });');
       await page.locator('#recipeApplyCodeBtn').click();
       await page.locator('#recipeRunAllBtn').click();
       const continuation = page.getByRole('button', {
@@ -108,15 +123,21 @@ try {
       });
       await continuation.waitFor({ state: 'visible', timeout: 15000 });
       await continuation.click();
-      await page.waitForFunction(() =>
-        /Recipe completed: 1\/1/.test(
-          document.querySelector('[data-slot="status.message"]')?.textContent || '',
-        ), null, { timeout: 120000 });
+      await page.waitForFunction(
+        () =>
+          /Recipe completed: 1\/1/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
+        null,
+        { timeout: 120000 },
+      );
       const afterRecipe = await snapshot();
       physicalFilms(afterRecipe.model, 'M4 typed film').forEach((value) =>
-        near(value, recipeThickness, displayUnit + ' typed Recipe Z'));
+        near(value, recipeThickness, displayUnit + ' typed Recipe Z'),
+      );
       physicalFilms(afterRecipe.model, 'M4 manual film').forEach((value) =>
-        near(value, manualThickness, displayUnit + ' retained Manual film Z'));
+        near(value, manualThickness, displayUnit + ' retained Manual film Z'),
+      );
       assert.equal(afterRecipe.workflow.steps.length, 2);
       report.cases.push(displayUnit + ':recipe-0.35nm-physical');
 
@@ -128,28 +149,45 @@ try {
       const filename = resolve(output, 'physical-' + displayUnit + '.wafercad');
       await download.saveAs(filename);
       const exported = await readProjectFile(new Blob([await readFile(filename)]));
-      assert.deepEqual(exported.model, afterRecipe.model,
-        displayUnit + ' exported project must retain sub-nm geometry bit for bit');
+      assert.deepEqual(
+        exported.model,
+        afterRecipe.model,
+        displayUnit + ' exported project must retain sub-nm geometry bit for bit',
+      );
       physicalFilms(exported.model, 'M4 typed film').forEach((value) =>
-        near(value, recipeThickness, displayUnit + ' exported typed Recipe Z'));
+        near(value, recipeThickness, displayUnit + ' exported typed Recipe Z'),
+      );
       report.cases.push(displayUnit + ':project-export-physical');
 
       await page.locator('#saveProjectBtn').click();
-      await page.waitForFunction(() =>
-        /Saved .* locally/.test(
-          document.querySelector('[data-slot="status.message"]')?.textContent || '',
-        ), null, { timeout: 120000 });
+      await page.waitForFunction(
+        () =>
+          /Saved .* locally/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
+        null,
+        { timeout: 120000 },
+      );
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
       });
       const restored = await snapshot();
-      assert.deepEqual(restored.model, afterRecipe.model,
-        displayUnit + ' Save/Reload restores exact canonical Z and geometry');
-      assert.deepEqual(restored.workflow.steps, afterRecipe.workflow.steps,
-        displayUnit + ' Save/Reload restores Process History');
-      assert.deepEqual(restored.workflow.branches, afterRecipe.workflow.branches,
-        displayUnit + ' Save/Reload restores Variants');
+      assert.deepEqual(
+        restored.model,
+        afterRecipe.model,
+        displayUnit + ' Save/Reload restores exact canonical Z and geometry',
+      );
+      assert.deepEqual(
+        restored.workflow.steps,
+        afterRecipe.workflow.steps,
+        displayUnit + ' Save/Reload restores Process History',
+      );
+      assert.deepEqual(
+        restored.workflow.branches,
+        afterRecipe.workflow.branches,
+        displayUnit + ' Save/Reload restores Variants',
+      );
       assert.deepEqual(errors, []);
       report.cases.push(displayUnit + ':save-reload-history');
     } finally {
