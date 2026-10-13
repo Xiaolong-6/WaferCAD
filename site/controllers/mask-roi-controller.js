@@ -12,6 +12,7 @@ import {
   worldToMaskLocal,
 } from '../mask-roi-geometry.js';
 import { nearestNamedPoint } from '../view-interactions.js';
+import { displayLengthDraftChanged } from '../units.js';
 
 export function createMaskRoiController({
   root = document,
@@ -77,19 +78,40 @@ export function createMaskRoiController({
     const roi = normalizeMaskRoi(getRoi());
     if (!roi) return;
 
-    const x = manualMicron($('maskRoiX').value),
-      y = manualMicron($('maskRoiY').value),
-      anchor = getAnchor(),
-      next =
-        roi.type === 'square'
-          ? squareMaskRoiFromAnchor(
-              manualMicron($('maskRoiSize').value),
-              Number($('maskRoiRotation').value),
-              anchor,
-              x,
-              y,
-            )
-          : circleMaskRoiFromAnchor(manualMicron($('maskRoiRadius').value), anchor, x, y);
+    const anchor = getAnchor();
+    const currentPoint = maskRoiAnchorPoint(roi, anchor);
+    const changed = (id, physical) =>
+      displayLengthDraftChanged($(id).value, formatLengthField(physical));
+    const xChanged = changed('maskRoiX', currentPoint[0]);
+    const yChanged = changed('maskRoiY', currentPoint[1]);
+    const dimensionChanged =
+      roi.type === 'square'
+        ? changed('maskRoiSize', roi.size)
+        : changed('maskRoiRadius', roi.r);
+    const rotationChanged =
+      roi.type === 'square' &&
+      Number($('maskRoiRotation').value) !== Number(formatNumericField(roi.rotation, 3));
+
+    // A unit switch or no-edit Apply must not commit the rounded editor
+    // representation of sub-grid physical geometry.
+    if (!xChanged && !yChanged && !dimensionChanged && !rotationChanged) return;
+    const x = xChanged ? manualMicron($('maskRoiX').value) : currentPoint[0];
+    const y = yChanged ? manualMicron($('maskRoiY').value) : currentPoint[1];
+    const next =
+      roi.type === 'square'
+        ? squareMaskRoiFromAnchor(
+            dimensionChanged ? manualMicron($('maskRoiSize').value) : roi.size,
+            rotationChanged ? Number($('maskRoiRotation').value) : roi.rotation,
+            anchor,
+            x,
+            y,
+          )
+        : circleMaskRoiFromAnchor(
+            dimensionChanged ? manualMicron($('maskRoiRadius').value) : roi.r,
+            anchor,
+            x,
+            y,
+          );
 
     if (!next) {
       syncEditor();
