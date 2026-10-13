@@ -55,10 +55,8 @@ export function summarizeRendererR9SpatialDrift(reference, candidate) {
     for (const adjacent of neighbors) {
       for (let channel = 0; channel < 3; channel++) {
         const neighborOffset = adjacent * 4 + channel;
-        localVariation = Math.max(
-          localVariation,
-          Math.abs(before[offset + channel] - before[neighborOffset]),
-        );
+        const delta = Math.abs(before[offset + channel] - before[neighborOffset]);
+        localVariation = Math.max(localVariation, delta);
       }
     }
     if (localVariation === 0) changedWithNoNeighborVariation++;
