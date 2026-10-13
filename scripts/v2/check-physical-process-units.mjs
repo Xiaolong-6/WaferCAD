@@ -103,13 +103,24 @@ try {
         near(value, manualThickness, displayUnit + ' Manual film Z'),
       );
       assert.equal(afterManual.workflow.steps.length, 1);
+      // In UI v2 the canonical model Undo/Redo buttons live in History;
+      // Process displays independent "Undo form edit" draft controls.
+      await page.locator('[data-action="domain:history"]').click();
       await page.locator('#undoBtn').click();
+      await page.waitForFunction((expected) =>
+        window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
+        based.model.layers.length,
+      );
       assert.deepEqual(
         (await snapshot()).model,
         based.model,
         displayUnit + ' Manual Undo restores Base geometry',
       );
       await page.locator('#redoBtn').click();
+      await page.waitForFunction((expected) =>
+        window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
+        afterManual.model.layers.length,
+      );
       assert.deepEqual(
         (await snapshot()).model,
         afterManual.model,
@@ -117,6 +128,7 @@ try {
       );
       report.cases.push(displayUnit + ':manual-undo-redo');
 
+      await page.locator('[data-action="domain:process"]').click();
       await page.locator('[data-action="process-mode:code"]').click();
       await page
         .locator('#recipeCodeEditor')
