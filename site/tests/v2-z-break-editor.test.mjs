@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createSectionCollapseController } from '../controllers/section-collapse-controller.js';
+import { readFileSync } from 'node:fs';
+
+// This controller imports the strict polygon kernel; bootstrap the project's
+// vendored CommonJS kernel before loading it, as in the existing model tests.
+const vendor = readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.meta.url), 'utf8');
+const cjs = { exports: {} };
+new Function('module', 'exports', vendor)(cjs, cjs.exports);
+globalThis.polygonClipping = cjs.exports;
+const { createSectionCollapseController } = await import('../controllers/section-collapse-controller.js');
 
 test('Z Break editor keeps geometry and tooltip ownership in existing controllers', async () => {
   const source = await readFile('site/ui-v2/z-break-editor.js', 'utf8');
