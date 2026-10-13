@@ -43,6 +43,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 
 ## Current work and verification
 
+- [Progressive Workstation startup (P1)](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md) — UI/view first-frame lifecycle, transient 3D preview, cooperative scheduling and hardware acceptance limits.
 - [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
 - [UI v2 human-review code audit — 2026-10-12](ui-v2/HUMAN_REVIEW_CODE_AUDIT_2026-10-12.md) — dated manual review of workstation/Recipe/Mask/Section refinements, observed checks and explicit remaining validation limits.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
