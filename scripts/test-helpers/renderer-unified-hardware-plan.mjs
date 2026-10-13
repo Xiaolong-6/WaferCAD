@@ -5,6 +5,7 @@ import {
   rendererPhaseMilestones,
 } from './renderer-v3-phase-window.mjs';
 import { checkRendererR9FocusEvidence } from './renderer-r9-focus-evidence.mjs';
+import { rendererFreshContextEvidencePath } from './renderer-hardware-output-path.mjs';
 // This manifest is testable without a Windows GPU or a browser.
 export const RENDERER_HARDWARE_BRANCHES = Object.freeze({
   v3: 'perf/transparent-renderer-v3-20261009',
@@ -88,7 +89,7 @@ export function buildRendererR9CurrentV4PhaseWindowPlan(value = '128:384') {
       branch: 'v4',
       script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
       args: ['--hardware-gpu', '--report-only', '--diagnose-phase-window=128:384'],
-      artifact: 'test-results/renderer-hardware-fresh-context-ab-phase-window-128-384',
+      artifact: rendererFreshContextEvidencePath({ phaseWindow: window }),
       phaseWindow: window,
     },
   ];
@@ -103,7 +104,10 @@ export function buildRendererR9FocusedDrawPlan() {
       ...phase,
       id: 'v4-focused-draws',
       args: [...phase.args, '--diagnose-focus-window=129:154'],
-      artifact: phase.artifact + '-focused-129-154',
+      artifact: rendererFreshContextEvidencePath({
+        phaseWindow: phase.phaseWindow,
+        focusWindowDiagnostic: true,
+      }),
     },
   ];
 }
