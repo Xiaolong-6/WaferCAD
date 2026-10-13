@@ -170,9 +170,8 @@ try {
     }
   });
   window.addEventListener('resize', render);
-  // Commit navigation, panel ownership and view order before async restore.
-  // The boot mask remains until the recovered project has rendered.
-  shell.render();
+  // Keep the incomplete Shell covered until the restored project is ready.
+  // The initial workflow.refresh() applies panel ownership and view order.
   await workflow.start();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
