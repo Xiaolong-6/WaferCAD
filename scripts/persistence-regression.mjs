@@ -888,6 +888,30 @@ await safetySecond.waitForFunction(
   ownerSaveCount,
   { timeout: 30000 },
 );
+// An earlier in-flight autosave can finish after the name field changes.
+// Verify the *new value* is durable before refreshing the owner tab.
+await safetySecond.waitForFunction(
+  async (expectedName) =>
+    new Promise((resolve) => {
+      const open = indexedDB.open('wafercad-workspace-v1', 2);
+      open.onerror = () => resolve(false);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction('workspace', 'readonly');
+        const current = tx.objectStore('workspace').get('current');
+        tx.oncomplete = () => {
+          resolve(current.result?.project?.name === expectedName);
+          db.close();
+        };
+        tx.onerror = () => {
+          resolve(false);
+          db.close();
+        };
+      };
+    }),
+  'Opener owner saved workspace',
+  { timeout: 30000, polling: 500 },
+);
 await copiedTab.locator('#projectNameInput').fill('Copied tab unsaved edits');
 assert.match(await copiedTab.locator('#workspaceSaveStatus').textContent(), /autosave paused/i);
 await safetySecond.reload();
