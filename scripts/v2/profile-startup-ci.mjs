@@ -113,7 +113,9 @@ try {
   if (process.exitCode) {
     console.log('P1 CPU profiling stopped: initial startup failed.');
   } else {
-    const fast = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().threeDisplay.fast);
+    const fast = await page.evaluate(
+      () => window.WaferCadV2Workstation.snapshot().threeDisplay.fast,
+    );
     if (fast) await page.locator('[data-action="quality:three"]').click();
     await page.locator('#saveProjectBtn').click();
     await page.waitForFunction(
