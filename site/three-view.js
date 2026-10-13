@@ -37,6 +37,7 @@ import {
   observePreparedAdaptiveTiles,
 } from './renderer-v4-tile-plan.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
+import { canPrepareSmoothSidewallsInWorker } from './renderer-v4-smooth-sidewall-data.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -128,6 +129,7 @@ export function createThreeView({
   // No default change until full-wafer, rejection, and revision-supersession gates pass.
   const responsiveModelStaging = rendererParams.get('rendererResponsiveModelStage') === '1';
   const responsiveInteractionPreview = rendererParams.get('rendererResponsiveInteraction') === '1';
+  const responsiveSmoothSidewallWorker = rendererParams.get('rendererResponsiveSmoothWorker') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
@@ -3143,6 +3145,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     let sceneReplaced = false;
     let rebuildFailed = false;
     let stagedPreviousScene = null;
+    let smoothSidewallWorker = null;
+    let smoothSidewallWorkerJobs = 0;
+    let smoothSidewallWorkerFallbacks = 0;
+    let smoothSidewallWorkerWallMs = 0;
     pendingRender = false;
     const rejectSupersededBuild = () => {
       if (!pendingRender) return;
@@ -3169,6 +3175,52 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.rendererUpdateKind = variantBuild ? 'variant-build' : 'rebuild';
     stats.textContent = variantBuild ? 'preparing 3D transparency…' : 'rebuilding 3D…';
     const rendererProfileStart = performance.now();
+    // Opt-in CPU-only worker: no new WebGL context or change to scientific
+    // geometry, sorting, material policy, or final GPU renderer.
+    const prepareSidewallGeometry = async (parts, tolerance = 0, options = {}) => {
+      if (
+        !responsiveSmoothSidewallWorker ||
+        !canPrepareSmoothSidewallsInWorker(parts, {
+          displayTolerance: tolerance,
+          indexedSmooth: options.indexedSmooth === true,
+        })
+      ) {
+        return geometryFromSidewallParts(parts, tolerance, options);
+      }
+      const startedAt = performance.now();
+      try {
+        if (!smoothSidewallWorker) {
+          const url = new URL('./renderer-v4-smooth-sidewall-worker.js', import.meta.url);
+          url.search = new URL(import.meta.url).search;
+          smoothSidewallWorker = new Worker(url);
+        }
+        const id = ++smoothSidewallWorkerJobs;
+        const result = await new Promise((resolve, reject) => {
+          smoothSidewallWorker.onmessage = ({ data }) => {
+            if (data?.id !== id) return;
+            if (data.type === 'done') resolve(data);
+            else if (data.type === 'error') reject(new Error(data.message));
+          };
+          smoothSidewallWorker.onerror = (event) => {
+            reject(new Error(event.message || 'Smooth-sidewall worker failed'));
+          };
+          smoothSidewallWorker.postMessage({ id, parts });
+        });
+        rejectSupersededBuild();
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(result.positions, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(result.normals, 3));
+        smoothSidewallWorkerWallMs += performance.now() - startedAt;
+        return geometry;
+      } catch (error) {
+        if (error instanceof SupersededRendererBuild) throw error;
+        smoothSidewallWorkerFallbacks++;
+        smoothSidewallWorker?.terminate();
+        smoothSidewallWorker = null;
+        console.warn('Smooth-sidewall worker unavailable; using original exact builder.', error);
+        return geometryFromSidewallParts(parts, tolerance, options);
+      }
+    };
     // Manual-only ROI performance breadcrumbs. No geometry or presentation changes.
     const recordRoiStage = (name) => {
       if (!v3RoiTraceEnabled || !clip) return;
@@ -3780,7 +3832,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state) continue;
         if (sidewall.instanceTranslations) {
           const parts = displaySidewallParts(sidewall.parts || [sidewall]);
-          const geometry = geometryFromSidewallParts(
+          const geometry = await prepareSidewallGeometry(
               parts,
               sidewall.buried ? transparentArrayDisplayTolerance : 0,
               {
@@ -3838,7 +3890,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
           if (instances.instanceCount > 0) {
             for (const groupInstances of instances.groups) {
-              const geometry = geometryFromSidewallParts([groupInstances.template]),
+              const geometry = await prepareSidewallGeometry([groupInstances.template]),
                 presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
@@ -3863,7 +3915,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             }
 
             if (instances.leftovers.length) {
-              const geometry = geometryFromSidewallParts(instances.leftovers),
+              const geometry = await prepareSidewallGeometry(instances.leftovers),
                 presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
                   layerById(model, bucket.part.layerId),
@@ -3886,7 +3938,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           }
         }
 
-        const geometry = geometryFromSidewallParts(
+        const geometry = await prepareSidewallGeometry(
             visibleParts,
             bucket.part.buried ? transparentArrayDisplayTolerance : 0,
           ),
@@ -3908,6 +3960,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           presentation,
         );
       }
+      host.dataset.rendererSmoothWorkerJobs = String(smoothSidewallWorkerJobs);
+      host.dataset.rendererSmoothWorkerFallbacks = String(smoothSidewallWorkerFallbacks);
+      host.dataset.rendererSmoothWorkerWallMs = String(smoothSidewallWorkerWallMs);
       recordVariantStage('sidewalls-complete');
       recordRoiStage('sidewalls-complete');
       host.dataset.smoothSidewallInstanceGroups = String(smoothSidewallInstanceGroupCount);
@@ -4400,6 +4455,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         console.warn('3D rebuild rejected:', failure.code, failure.detail);
       }
     } finally {
+      smoothSidewallWorker?.terminate();
       recordRoiStage('build-exited');
       suppressAssemblyFrames = false;
       rendering = false;
