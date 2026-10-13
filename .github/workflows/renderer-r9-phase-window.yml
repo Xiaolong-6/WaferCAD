@@ -52,7 +52,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate read-only native phase-window plan
         run: |
-          node --test scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs scripts/test-helpers/renderer-r9-phase-patterns.mjs site/tests/renderer-r9-phase-patterns.test.mjs scripts/renderer-r9-phase-readout.mjs site/tests/renderer-r9-phase-patterns.test.mjs
+          node --test scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs site/tests/renderer-r9-phase-patterns.test.mjs
           node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-phase-window
       - name: Check focused formatting
         run: |
