@@ -13,6 +13,7 @@ import {
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
   buildRendererR9PreservedMsaaPlan,
+  buildRendererR9CurrentV4PhaseWindowPlan,
   buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
@@ -319,6 +320,94 @@ const v4Report = (mode, active = true) => ({
   ],
   parity: { strictPixelParity: true },
   passed: true,
+});
+
+test('R9 native 4x-MSAA phase-window plan is strictly V4-only and bounded', () => {
+  const [step] = buildRendererR9CurrentV4PhaseWindowPlan();
+  assert.equal(step.id, 'v4-phase-window');
+  assert.equal(step.branch, 'v4');
+  assert.equal(step.phaseWindow.low, 128);
+  assert.equal(step.phaseWindow.high, 384);
+  assert.deepEqual(step.args, [
+    '--hardware-gpu',
+    '--report-only',
+    '--diagnose-phase-window=128:384',
+  ]);
+  assert.equal(rendererPhaseMilestones(step.phaseWindow).length, 11);
+  assert.equal(buildRendererR9CurrentV4PhaseWindowPlan('128:384').length, 1);
+  assert.throws(() => buildRendererR9CurrentV4PhaseWindowPlan('0:384'), /Phase window/);
+  assert.throws(() => buildRendererR9CurrentV4PhaseWindowPlan('256:384'), /128:384/);
+  assert.throws(() => buildRendererR9CurrentV4PhaseWindowPlan('128:1280'), /128:384/);
+});
+
+test('R9 V4 phase-window classification requires real production 4x-MSAA evidence', () => {
+  const [step] = buildRendererR9CurrentV4PhaseWindowPlan();
+  const checkpoint = completePhaseTrial(rendererPhaseMilestones(step.phaseWindow));
+  const labels = ['1-OFF', '2-OFF', '3-ON', '4-ON'];
+  const valid = {
+    phaseWindowDiagnostic: true,
+    phaseWindow: { low: 128, high: 384 },
+    acceptanceEligible: false,
+    passed: false,
+    stage: 'completed',
+    strictParity: false,
+    comparisons: [
+      { first: '1-OFF', second: '2-OFF', samePolicy: true },
+      { first: '3-ON', second: '4-ON', samePolicy: true },
+      { first: '1-OFF', second: '3-ON', samePolicy: false },
+    ].map((comparison) => ({
+      ...comparison,
+      pixelDifference: { pixelIdentical: false },
+      framebufferIdentical: false,
+    })),
+    trials: labels.map((label) => ({
+      ...structuredClone(checkpoint),
+      label,
+      backend: { hardwareVerified: true, adapter: 'NVIDIA GeForce RTX 3060' },
+      native: {
+        ...structuredClone(checkpoint.native),
+        contextAntialias: true,
+        contextPreserveDrawingBuffer: false,
+        defaultFramebufferSamples: 4,
+        glState: { framebuffer: 'default' },
+      },
+    })),
+  };
+  const status = (evidence) =>
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, evidence);
+  assert.equal(status(valid), 'diagnostic-complete');
+
+  const accidentallyApproved = structuredClone(valid);
+  accidentallyApproved.passed = true;
+  assert.equal(status(accidentallyApproved), 'error');
+
+  const unverified = structuredClone(valid);
+  unverified.trials[1].backend.hardwareVerified = false;
+  assert.equal(status(unverified), 'error');
+
+  const wrongSample = structuredClone(valid);
+  wrongSample.trials[0].native.defaultFramebufferSamples = 0;
+  assert.equal(status(wrongSample), 'error');
+
+  const preserved = structuredClone(valid);
+  preserved.trials[2].native.contextPreserveDrawingBuffer = true;
+  assert.equal(status(preserved), 'error');
+
+  const missingReadback = structuredClone(valid);
+  missingReadback.trials[0].phaseCheckpoints[3].hash = null;
+  assert.equal(status(missingReadback), 'error');
+
+  const wrongWindow = structuredClone(valid);
+  wrongWindow.phaseWindow = { low: 256, high: 384 };
+  assert.equal(status(wrongWindow), 'error');
+
+  const wrongAdapter = structuredClone(valid);
+  wrongAdapter.trials[3].backend.adapter = 'SwiftShader';
+  assert.equal(status(wrongAdapter), 'error');
+
+  const noComparisons = structuredClone(valid);
+  noComparisons.comparisons.pop();
+  assert.equal(status(noComparisons), 'error');
 });
 
 test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance', () => {
