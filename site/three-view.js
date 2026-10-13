@@ -8,6 +8,7 @@ import {
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
+import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -2662,7 +2663,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
 
-      const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
+      const cooperativeAssembly = shouldYieldDuringSceneAssembly({
+        arrayInstances: Number(plan.arrayInstances || 0),
+        capCount: plan.caps.length,
+        sidewallCount: plan.sidewalls.length,
+        annotationCount: (model.implants?.length || 0) + (model.electricalRegions?.length || 0),
+      });
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 32;
       const maybeYieldAssembly = async () => {
@@ -3062,6 +3068,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.arrayNeighborhoods = String(plan.arrayNeighborhoods || 0);
 
       for (const implant of arrayAnnotations(implantSolids)) {
+        await maybeYieldAssembly();
         const inspectionSegments = annotationInspectionCutSegments(implant, clip),
           outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
@@ -3240,6 +3247,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         electricalRegionSurfaceCount = 0,
         electricalFarLodBodyCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
+        await maybeYieldAssembly();
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
             electrical.surfaceAppearance?.kind === 'rough' ? electrical.surfaceAppearance : null,
