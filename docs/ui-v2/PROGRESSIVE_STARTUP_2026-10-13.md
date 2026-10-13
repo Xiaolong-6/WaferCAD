@@ -53,3 +53,43 @@ isolation until a measured hardware run covers those tasks.
   final geometry/pixel stability and visible recovery from a 3D failure.
 
 **Do not change accepted visual baselines or merge into main before review.**
+
+## Hardware evidence and CPU root-cause update (13 October 2026)
+
+Two independent Windows Chrome/ANGLE D3D11 runs confirmed NVIDIA RTX 3060,
+stable repeated Quality PNGs, unchanged 27-layer model hash and correct
+Fast → Refining → Quality readiness transitions. The original acceptance
+remains **blocked**: worst observed main-thread Long Tasks were between
+15–27 seconds. Neither uploaded "profile" ZIP contained a Chrome CPU profile,
+so those archives alone do not identify the blocking functions.
+
+CI Chromium CPU profiling (run 38370377108) reproduced about 16.0 s and
+27.0 s Long Tasks. Hotspots include `polygon-clipping.umd.js` sweep
+comparators and `renderer-instancing.js::ringKey`. Project import additionally
+performed a redundant main-thread JSON serialization, parse and validation
+after the strict import Worker had already validated the entire project.
+
+Two byte-preserving mitigations landed on the P1 branch:
+
+- Linear-time canonical ring rotation, verified against historical signatures
+  for rotated, reversed, repeated and numeric-prefix point sequences.
+- Direct adoption of validated `project-worker.js` output, without the redundant
+  `JSON.stringify → Blob → JSON.parse → validate` round trip. Snapshot
+  integrity copies and History mutation validation remain in place.
+
+Software-CI A/B timing (Chromium, **not physical RTX**):
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| M3D Project Ready | 30.41 s | 14.84 s |
+| M3D first scientific frame | 31.37 s | 16.09 s |
+| M3D worst Long Task | 16.01 s | 12.60 s |
+| Restored Quality Project Ready | 27.38 s | 28.30 s |
+| Restored Quality worst Long Task | 26.99 s | 27.95 s |
+
+Focused renderer parity, snapshot integrity and profiling CI checks passed.
+The persistent-workspace restore and material-topology ownership still perform
+expensive synchronous processing. A future change must move verified heavy
+restore/geometry work off the foreground thread, preserving Recovery
+transactions, physical geometry, ownership, GL state and visual baselines.
+Do **not** close the P1 hardware responsiveness gate or merge on this evidence.
