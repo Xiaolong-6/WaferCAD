@@ -41,6 +41,7 @@ test('Mask public ports use optional v2 callbacks without constructing controlle
       mask = value;
     },
     manualMicron: Number,
+    formatLengthField: (value) => String(Number(value.toFixed(4))),
     renderMask: () => {},
     status: () => {},
     onMaskChanged: () => {
@@ -112,4 +113,70 @@ test('Legacy Mask defaults retain source/toolbar sync; ROI callback is opt-in', 
     },
   }).syncEditor();
   assert.equal(received, roi);
+});
+
+// prettier-ignore
+test('unchanged polygon, circle and annular editors preserve original sub-grid coordinates', () => {
+  const format = (value) => String(Number(value.toFixed(4)));
+  const shapes = [
+    { id: 'circle-1', type: 'circle', c: [0.001237, -1.000024], r: 0.500027 },
+    {
+      id: 'poly-1',
+      type: 'polygon',
+      points: [
+        [0.000034, 0.15],
+        [0.5, 0.150024],
+        [0.25, 1.5],
+      ],
+    },
+    { id: 'ring-1', type: 'ring', c: [0.123456, -0.123456], innerR: 0.2, outerR: 0.400023 },
+    {
+      id: 'sector-1',
+      type: 'ring-sector',
+      c: [0.123456, -0.123456],
+      innerR: 0.2,
+      outerR: 0.400023,
+      startDeg: 30,
+      endDeg: 120,
+    },
+  ];
+  for (const shape of shapes) {
+    let mask = { nextShapeId: 9, shapes: [structuredClone(shape)] };
+    let changed = 0;
+    const fields = new Map();
+    const set = (id, value) => fields.set(id, { value: String(value) });
+    if (shape.type === 'polygon') {
+      set('drawShapePoints', shape.points.map((point) => point.map(format).join(', ')).join('\n'));
+    } else {
+      set('drawShapeCx', format(shape.c[0]));
+      set('drawShapeCy', format(shape.c[1]));
+      if (shape.type === 'circle') set('drawShapeRadius', format(shape.r));
+      else {
+        set('drawShapeInnerRadius', format(shape.innerR));
+        set('drawShapeOuterRadius', format(shape.outerR));
+        if (shape.type === 'ring-sector') {
+          set('drawShapeStartDeg', shape.startDeg);
+          set('drawShapeEndDeg', shape.endDeg);
+        }
+      }
+    }
+    const controller = createDrawMaskController({
+      root: { getElementById: (id) => fields.get(id) },
+      getMode: () => 'draw',
+      getDrawMask: () => mask,
+      setDrawMask: (value) => { mask = value; },
+      manualMicron: Number,
+      formatLengthField: format,
+      renderMask: () => {},
+      onEditorSync: () => {},
+      onMaskChanged: () => { changed += 1; },
+      status: () => {},
+      onUiSync: () => {},
+    });
+    const before = structuredClone(mask);
+    controller.openEditor(shape);
+    controller.applyEditor();
+    assert.deepEqual(mask, before, `${shape.type} must retain the exact original coordinates`);
+    assert.equal(changed, 0, `${shape.type} must not create a dirty project`);
+  }
 });

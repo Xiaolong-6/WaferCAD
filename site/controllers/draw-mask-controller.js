@@ -233,6 +233,7 @@ export function createDrawMaskController({
   // unchanged displayed fields must not silently snap physical geometry.
   // prettier-ignore
   function shapeEditorHasChanges(shape) {
+    if (typeof formatLengthField !== 'function') return true;
     const lengthChanged = (id, physical) => {
       const value = $(id)?.value;
       return (
