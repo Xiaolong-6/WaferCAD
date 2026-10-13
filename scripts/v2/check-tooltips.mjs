@@ -89,17 +89,14 @@ try {
       ]) {
         const item = page.locator(`#${id}`);
         await item.hover();
-        await page.waitForFunction(
-          (controlId) => {
-            const control = document.getElementById(controlId);
-            const tooltip = document.getElementById('wc-context-tooltip');
-            return (
-              tooltip?.matches(':popover-open') &&
-              control?.getAttribute('aria-describedby')?.split(/\\s+/).includes(tooltip.id)
-            );
-          },
-          id,
-        );
+        await page.waitForFunction((controlId) => {
+          const control = document.getElementById(controlId);
+          const tooltip = document.getElementById('wc-context-tooltip');
+          return (
+            tooltip?.matches(':popover-open') &&
+            control?.getAttribute('aria-describedby')?.split(/\s+/).includes(tooltip.id)
+          );
+        }, id);
         const tooltip = page.locator('#wc-context-tooltip');
         assert.match(await tooltip.innerText(), description);
         const [menuRect, tipRect] = await Promise.all([
