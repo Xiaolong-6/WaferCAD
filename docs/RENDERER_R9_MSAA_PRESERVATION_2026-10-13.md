@@ -233,7 +233,7 @@ verifies that referenced sampler units lie within the captured set.
 Active vertex attributes beyond the first eight are explicitly
 reported as incomplete.
 
-These are complete *draw-sequence observations*, not complete GPU
+These are complete _draw-sequence observations_, not complete GPU
 resource snapshots. Buffer content beyond the bounded readback
 remains unverified. Texture image bytes are **not** captured or
 verified, so matching fingerprints cannot exclude differences in
