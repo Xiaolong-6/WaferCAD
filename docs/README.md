@@ -46,12 +46,12 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Process History transaction integrity — 2026-10-13](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — fault injection and atomicity boundaries for Recipe, edit and insertion.
 - [Material/target scientific semantics — design proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — review-only parameter matrix and open choices; no UI activation.
 - [Main protection runbook — 2026-10-13](MAIN_PROTECTION_RUNBOOK_2026-10-13.md) — GitHub Admin-only repository rules and fail-closed verification.
-
 - [Site publication cleanup (2026-10-13)](SITE_PUBLICATION_CLEANUP_2026-10-13.md) — Pages staging exclusions, canonical Workstation entry migration, and verification boundaries.
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
 - [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
+- [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.
