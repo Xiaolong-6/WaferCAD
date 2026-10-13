@@ -139,7 +139,11 @@ export async function auditDocumentation({ rootDir = repositoryRoot, files } = {
       errors.push(source + ': contains an unsanitized Windows user path');
     if (/(?:\/home\/|\/Users\/)[a-z0-9_.-]+\//i.test(content))
       errors.push(source + ': contains an unsanitized Unix user path');
-    if (/(?:gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{25,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----)/i.test(content))
+    if (
+      /(?:gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{25,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----)/i.test(
+        content,
+      )
+    )
       errors.push(source + ': contains a possible credential');
   }
   let links = 0,
