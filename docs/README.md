@@ -50,6 +50,8 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.
+- [Responsive 3D staging P0/P1](RENDERER_RESPONSIVENESS_P0_2026-10-12.md) — opt-in retained-scene loading, interaction previews, rollback and exact-output safeguards.
+- [Renderer interaction scheduling](RENDERER_INTERACTIVE_SCHEDULING_2026-10-12.md) — frame budgets, cooperative assembly and measured tradeoffs.
 - [PR #166 continued acceptance](PR166_ACCEPTANCE_2026-10-10.md) — historical 625-site pixel evidence, current CI, Electrical A/B census repairs and open hardware/runtime gates.
 - [PR #166 ROI recovery follow-up](PR166_ROI_FAILURE_RECOVERY_2026-10-10.md) — bounded 625-site ROI error handling, clear/recovery browser acceptance and remaining constraints.
 - [R8 targeted WebGL phase-window diagnostics](RENDERER_R8_PHASE_WINDOW_2026-10-12.md) — bounded draw-checkpoint localization of hardware raster drift, fail-closed evidence, and GPU-neutral command.
