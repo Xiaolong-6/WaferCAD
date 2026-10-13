@@ -7,7 +7,9 @@ portable, read-only research narrative alongside the existing **Export**
 ## Contents
 
 - `index.html`: standalone, responsive, offline overview, layers, Variants,
-  and navigation. No CDN, script, external fonts, or online fetch.
+  linked Bookmarks and Variant HEADs, and a searchable Step index with Variant
+  filtering. Only a small inline local filter script is used; no CDN, external
+  scripts, external fonts, or online fetch.
 - `history/steps-NNNN.html`: static HTML pages containing up to **50 History
   entries** each. Details expand to show operation descriptors.
 - `history/steps-NNNN.json`: the corresponding complete Process operation
@@ -23,7 +25,9 @@ portable, read-only research narrative alongside the existing **Export**
 
 Open `index.html` directly after unpacking the ZIP. Do not rely on browsers
 allowing `file://` fetch requests: links between static pages and JSON assets
-work without a local HTTP server.
+work without a local HTTP server. The Step finder operates on the embedded
+index, without loading JSON through `file://`. Every Step link points to its
+specific paginated HTML anchor.
 
 ## Large-history and image policy
 
@@ -69,7 +73,8 @@ failures must be explicitly disclosed.
   offline pagination, JSON fidelity, HTML escaping, resource policy, and ZIP
   directory/CRC checks.
 - `node scripts/v2/check-report-export.mjs`: real integrated v2 download,
-  Photodetector History/Variants, ZIP contents and no mutation.
+  Photodetector History/Variants, ZIP contents, interactive offline Step search
+  and Variant filtering, and no model or History mutation.
 - `npm run check`: repository formatting, lint, docs and Node tests.
 - `ui-v2-stage-c-m4.yml`: CI integration browser gate.
 
