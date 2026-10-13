@@ -95,10 +95,11 @@ test('archived documents have canonical links and no obsolete originals', async 
 });
 
 
+
 test('documentation rejects published local user paths and credential strings', async (t) => {
   const result = await fixture(t, {
-    'docs/README.md': '# Map\\n[Evidence](evidence.txt)\\n',
-    'docs/evidence.txt': 'C:/Users/ExamplePerson/private\\n',
+    'docs/README.md': '# Map\n[Evidence](evidence.txt)\n',
+    'docs/evidence.txt': 'C:/Users/ExamplePerson/private\n',
   });
   assert.ok(result.errors.some((error) => error.includes('unsanitized Windows user path')));
 });
