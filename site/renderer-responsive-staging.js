@@ -16,3 +16,26 @@ export function isRendererBuildSuperseded({ pending = false, originalModel = nul
     originalModel !== currentModel || originalSignature !== currentSignature || originalVariant !== currentVariant
   );
 }
+
+// Preview may omit costly internal display surfaces only while the camera
+// is actively manipulated. Never omit exposed material geometry or ROI cuts.
+const INTERACTION_PREVIEW_HIDDEN_KINDS = new Set([
+  'material-interface',
+  'electrical-internal',
+  'electrical-depth',
+  'implant-internal',
+  'implant-depth',
+]);
+
+export function shouldHideRendererPreviewMesh({
+  enabled = false,
+  sceneVariant = null,
+  arrayInstances = 0,
+  kind = null,
+  visible = false,
+  hasRoi = false,
+} = {}) {
+  return enabled === true && sceneVariant === 'transparent' && !hasRoi &&
+    Number.isFinite(Number(arrayInstances)) && Number(arrayInstances) >= 64 &&
+    visible === true && INTERACTION_PREVIEW_HIDDEN_KINDS.has(kind);
+}
