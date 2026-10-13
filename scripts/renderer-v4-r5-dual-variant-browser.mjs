@@ -159,9 +159,11 @@ try {
     await page.waitForFunction(
       (serial) => {
         const data = document.getElementById('threeHost')?.dataset;
-        return data?.rendererInteractionPreview === 'active' &&
+        return (
+          data?.rendererInteractionPreview === 'active' &&
           Number(data.rendererPreviewHiddenMeshes || 0) > 0 &&
-          Number(data.rendererFrameSerial || 0) > serial;
+          Number(data.rendererFrameSerial || 0) > serial
+        );
       },
       exactSerial,
       { timeout: 180000 },
@@ -177,9 +179,11 @@ try {
     await page.waitForFunction(
       (serial) => {
         const data = document.getElementById('threeHost')?.dataset;
-        return data?.rendererInteractionPreview !== 'active' &&
+        return (
+          data?.rendererInteractionPreview !== 'active' &&
           data?.renderPhase === 'complete' &&
-          Number(data.rendererFrameSerial || 0) > serial;
+          Number(data.rendererFrameSerial || 0) > serial
+        );
       },
       preview.serial,
       { timeout: 180000 },
@@ -188,11 +192,14 @@ try {
       await page.locator('#threeHost').evaluate((node) => node.dataset.rendererDrawTriangles),
     );
     assert.ok(restoredTriangles > preview.triangles, 'exact internal geometry must return');
-    console.log('RENDERER_RESPONSIVE_PREVIEW', JSON.stringify({
-      exactTriangles,
-      preview,
-      restoredTriangles,
-    }));
+    console.log(
+      'RENDERER_RESPONSIVE_PREVIEW',
+      JSON.stringify({
+        exactTriangles,
+        preview,
+        restoredTriangles,
+      }),
+    );
     const back = await setOpacity(page, '1', 'opaque', 'return-opaque');
     for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
       assert.equal(back[key], second[key], key + ': cached variant reuse must not allocate again');

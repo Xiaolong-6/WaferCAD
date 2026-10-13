@@ -11,7 +11,7 @@ This is an experimental P0/P1 implementation, not evidence of a 60 FPS interacti
 - On a variant-build exception, the existing rollback path restores the previous committed variant; a failed ROI/full scene rebuild remains fail-closed rather than misrepresenting stale geometry as the requested model.
 - Two read-only counters expose retained builds and committed swaps for targeted full-wafer browser regression.
 - Opt-in `rendererResponsiveModelStage=1` keeps the last committed model on screen during changed-model or ROI construction. A new scene commits only after completion; failures restore previous ownership and show an explicit stale-view label. A newer pending revision can supersede unfinished assembly at the next cooperative yield.
-- Opt-in `rendererResponsiveInteraction=1` hides selected costly buried/electrical/implant *presentation* meshes while the camera is manipulated on a full-array transparent view without ROI, then restores exact visibility 180 ms after activity settles. The preview is labeled and explicitly prohibited as a final PNG source.
+- Opt-in `rendererResponsiveInteraction=1` hides selected costly buried/electrical/implant _presentation_ meshes while the camera is manipulated on a full-array transparent view without ROI, then restores exact visibility 180 ms after activity settles. The preview is labeled and explicitly prohibited as a final PNG source.
 
 ### Not implemented by this patch
 
