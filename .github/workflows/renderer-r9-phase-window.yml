@@ -14,6 +14,7 @@ on:
       - site/tests/renderer-r9-phase-patterns.test.mjs
       - scripts/test-helpers/renderer-r9-phase-patterns.mjs
       - scripts/renderer-r9-phase-readout.mjs
+      - docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
       - .github/workflows/renderer-r9-phase-window.yml
   pull_request:
     branches:
@@ -28,6 +29,7 @@ on:
       - site/tests/renderer-r9-phase-patterns.test.mjs
       - scripts/test-helpers/renderer-r9-phase-patterns.mjs
       - scripts/renderer-r9-phase-readout.mjs
+      - docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
       - .github/workflows/renderer-r9-phase-window.yml
   workflow_dispatch:
 
@@ -56,10 +58,10 @@ jobs:
           node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-phase-window
       - name: Check focused formatting
         run: |
-          npx prettier --check scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs scripts/test-helpers/renderer-r9-phase-patterns.mjs site/tests/renderer-r9-phase-patterns.test.mjs scripts/renderer-r9-phase-readout.mjs
+          npx prettier --check scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs scripts/test-helpers/renderer-r9-phase-patterns.mjs site/tests/renderer-r9-phase-patterns.test.mjs scripts/renderer-r9-phase-readout.mjs docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
       - name: Show actual formatter differences on failure
         if: failure()
         run: |
-          for file in scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs scripts/test-helpers/renderer-r9-phase-patterns.mjs site/tests/renderer-r9-phase-patterns.test.mjs scripts/renderer-r9-phase-readout.mjs; do
+          for file in scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs scripts/test-helpers/renderer-r9-phase-patterns.mjs site/tests/renderer-r9-phase-patterns.test.mjs scripts/renderer-r9-phase-readout.mjs docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md; do
             npx prettier "$file" | diff -u "$file" - || true
           done
