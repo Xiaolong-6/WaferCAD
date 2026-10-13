@@ -214,3 +214,46 @@ existing 48 sampled draws) within (128,154], by read-only bounded
 instrumentation in CI. No additional GPU acquisition is requested
 at this stage. Do not repeat the older R9, preservation or
 no-MSAA campaigns.
+
+## Follow-up: focused per-draw WebGL input fingerprints
+
+The next bounded diagnostic is a separate `r9-focus` campaign.
+The previous `r9-phase-window` records and their classifiers remain
+valid without the new focused fields. The new campaign preserves the
+same four fresh WebGL contexts and draw-128-to-384 framebuffer
+checkpoints, then adds consecutive input snapshots before each draw
+from 129 through 154.
+
+Each of the 26 observations includes the draw operation, primitive
+arguments, material owner, attached shader source hashes, active
+uniform values (capped at 128 uniforms), measured raster state, and
+bounded vertex/index buffer samples (up to 4096 bytes per binding).
+It records texture binding presence for up to 16 texture units and
+verifies that referenced sampler units lie within the captured set.
+Active vertex attributes beyond the first eight are explicitly
+reported as incomplete.
+
+These are complete *draw-sequence observations*, not complete GPU
+resource snapshots. Buffer content beyond the bounded readback
+remains unverified. Texture image bytes are **not** captured or
+verified, so matching fingerprints cannot exclude differences in
+texture contents, driver state, or unsampled geometry bytes. The
+instrumentation itself may perturb GPU scheduling and must not be
+used as a speed benchmark.
+
+The isolated campaign is diagnostic-only. A missing draw,
+unavailable shader/uniform, over-budget sampler, or incomplete
+buffer evidence fails closed. It cannot satisfy product acceptance,
+regardless of matching fingerprints. No physical acquisition with
+this instrumented campaign has been performed yet.
+
+```powershell
+node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-focus
+```
+
+Run a physical `--hardware-gpu --campaign=r9-focus` acquisition
+only after the revised CI gates succeed and only if a new
+decision-relevant comparison remains necessary. Do not re-run the
+older R9, preservation, or candidate no-MSAA campaigns. Keep PR
+#174 Draft, experimental feature flags off, production 4x-MSAA
+unchanged, and strict zero-pixel parity as the acceptance target.
