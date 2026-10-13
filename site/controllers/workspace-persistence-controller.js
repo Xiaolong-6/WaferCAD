@@ -473,10 +473,12 @@ export function createWorkspacePersistenceController({
           );
           if (result === 'rejected') throw new Error('Invalid History branch head.');
           if (result === 'stale' || editVersion !== savingVersion || !hasWriteAccess()) {
-            root.querySelector('.workspace')?.setAttribute(
-              'data-autosave-retry-reason',
-              !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
-            );
+            root
+              .querySelector('.workspace')
+              ?.setAttribute(
+                'data-autosave-retry-reason',
+                !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
+              );
             saving = false;
             dirty = true;
             syncSaveStatus();
