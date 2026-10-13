@@ -16,6 +16,8 @@ function markdownEscape(value) {
   return String(value ?? '')
     .replaceAll('\\', '\\\\')
     .replaceAll('|', '\\|')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
     .replaceAll('\n', ' ');
 }
 
