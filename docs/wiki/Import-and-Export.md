@@ -32,6 +32,20 @@ Export SVG, GDSII or OASIS from the active Mask view. Select export scope as app
 - **GLB** exports the visible physical inspection geometry and respects an active Main ROI.
 - GLB can embed deterministic rough/pyramid relief. Export mesh quality is constrained by a triangle budget and is not a TCAD mesh.
 
+## Read-only Process Report export
+
+The native v2 Project panel also offers **Export report (ZIP)**. This creates a
+portable offline HTML report with editable Markdown, paginated Process History
+(up to 50 steps per page), exact operation descriptors, saved Recipe, Variants,
+Bookmarks, and independent PNG captures of currently visible views. No images
+are fabricated for historical states. Hidden views are omitted with explicit
+warnings.
+
+The report is read-only and does not include historical physical geometry.
+**Export a separate `.wafercad`** to preserve a restorable engineering backup.
+See [Process Report Export](../REPORT_EXPORT.md) for schema, large-history
+limits, and acceptance coverage.
+
 ## Persistence safety
 
 Save and Open validate project content, including size and geometry. The local Recovery cache is convenient for continuing browser work but cannot replace a downloaded project backup.

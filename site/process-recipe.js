@@ -116,6 +116,9 @@ function normalizeEtchSurface(value, etchDepthUm) {
     featureCv: normalizeCv(source.featureCv, 'etch.surface.featureCv'),
     heightCv: normalizeCv(source.heightCv, 'etch.surface.heightCv'),
     ...(seedValue == null ? {} : { seed: seedValue >>> 0 }),
+    ...(typeof source.profileId === 'string' && source.profileId
+      ? { profileId: source.profileId }
+      : {}),
     geometryMode: 'ideal',
   };
 }
@@ -219,6 +222,25 @@ function normalizeStep(command, input, index = 0) {
       params.profile === 'directional'
         ? normalizeEtchSurface(params.surface, params.thicknessUm)
         : 'smooth';
+    if (params.faceSurfaces != null) {
+      if (
+        params.face !== 'both' ||
+        params.profile !== 'directional' ||
+        !params.faceSurfaces ||
+        typeof params.faceSurfaces !== 'object' ||
+        Array.isArray(params.faceSurfaces) ||
+        !Object.hasOwn(params.faceSurfaces, 'front') ||
+        !Object.hasOwn(params.faceSurfaces, 'back')
+      ) {
+        throw new Error(
+          'etch.faceSurfaces requires Both directional Etch with front/back surfaces.',
+        );
+      }
+      params.faceSurfaces = {
+        front: normalizeEtchSurface(params.faceSurfaces.front, params.thicknessUm),
+        back: normalizeEtchSurface(params.faceSurfaces.back, params.thicknessUm),
+      };
+    }
     delete params.depth;
     delete params.targetZ;
     delete params.thickness;
@@ -604,6 +626,7 @@ export function serializeProcessRecipe(recipeValue) {
         add(p.profile === 'planarize' ? 'targetZ' : 'depth', displayLength(p.thicknessUm));
         add('profile', p.profile);
         if (p.surface && p.surface !== 'smooth') add('surface', JSON.stringify(p.surface), true);
+        if (p.faceSurfaces) add('faceSurfaces', JSON.stringify(p.faceSurfaces), true);
       } else if (step.command === 'liftoff') {
         add('sacrificial', p.sacrificial);
       } else if (step.command === 'implant') {

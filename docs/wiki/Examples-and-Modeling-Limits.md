@@ -31,7 +31,7 @@ _Section screenshot from a reproducible browser visual reference (2026-10-05); d
 
 **Black-Si photodiode — Setälä 2023, Fig. 1a**
 
-- Silicon Base, SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts.
+- Silicon Base, **double-sided 650 nm thermal SiO₂ geometry surrogate** with a dedicated Back oxide strip before rear P implantation, front SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts. Oxidation and back oxide removal are reconstructed geometry assumptions, not a thermal reaction or measured backside sequence.
 - A **FINAL** Variant protects the active ALD and selectively removes blanket Al; the **QA** Variant intentionally illustrates nonselective overetch and is **not** a fabrication recommendation.
 - Morphology relief, inferred masks and some lateral dimensions are **illustrative reconstructions**. Implantation is a depth annotation; drive-in and forming-gas anneals are metadata records.
 
@@ -49,7 +49,7 @@ For detailed assumptions, source differences, and the reconstruction acceptance 
 
 _A WaferCAD 3D preview of the PERC reconstruction. Inspect its patterned rear contacts and the source-order versus alternate GDS-based History branches._
 
-The PERC family demonstrates front/back processing and locally patterned rear contacts. Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
+The PERC family demonstrates front/back processing and locally patterned rear contacts. A symmetric 110 nm conformal SiO₂ passivation uses one atomic Both Deposit with distinct paired Front/Back material IDs; front and rear contact windows retain different GDS masks (`4|0` / `5|0`). Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
 
 ## 3. Fully textured perovskite–silicon tandems
 
@@ -57,7 +57,7 @@ The PERC family demonstrates front/back processing and locally patterned rear co
 
 _A WaferCAD 3D preview of the textured tandem; the visible pyramids are appearance metadata and must not be interpreted as a simulated etch profile._
 
-This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
+This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The Front/Back 4.5 µm texturing is one Both Etch with independent seeds (2018/2019) and preserved per-face texture profile IDs; the asymmetric junction doped films remain separate. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
 
 **Interpretation limit:** Pyramid morphology is renderer metadata; the geometry Kernel still processes the ideal 2.5D material interfaces. The project is not a resolved nanoscale ALD/perovskite growth prediction.
 
@@ -77,7 +77,7 @@ _A WaferCAD 3D preview of the M3D stack. Inspect saved fabrication stages and in
 
 The kernel-reconstructed literature example includes the silicon photovoltaic power tier, WSe₂/MoS₂ logic, graphene sensor, vias, conformal Al₂O₃ encapsulation and selective sensing windows. The full editable project contains **36 History nodes** and **27 stage bookmarks (S00–S26)**.
 
-**Modeling and persistence boundary:** The source paper does not supply original layout polygons for every route; reconstructed masks are inferred, and 2D-material film thicknesses are visualization surrogates. Exact material interfaces require **lossless** `.wafercad` persistence; quantizing to the compact 0.1 nm grid is unsafe and should automatically fall back to lossless storage. A fresh `Rebuild Base first → Run All` completed all 35 operations on the desktop-audited product revision, with actual Kernel length requests and final export checked. The [desktop audit](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) also records 36-node History, 27 bookmarks, Border/Opacity and lossless import/export checks. This is geometric replay evidence for that revision and environment, not fabrication validation.
+**Modeling and persistence boundary:** The source paper does not supply original layout polygons for every route; reconstructed masks are inferred, and 2D-material film thicknesses are visualization surrogates. Exact material interfaces require **lossless** `.wafercad` persistence; quantizing to the compact 0.1 nm grid is unsafe and should automatically fall back to lossless storage. A fresh `Rebuild Base first → Run All` completed all 35 operations on the desktop-audited product revision, with actual Kernel length requests and final export checked. The [desktop audit](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/archive/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) also records 36-node History, 27 bookmarks, Border/Opacity and lossless import/export checks. This is geometric replay evidence for that revision and environment, not fabrication validation.
 
 ## 6. MoS₂ computer with four-level BEOL interconnect
 
@@ -101,7 +101,7 @@ _A WaferCAD single-device 3D preview. Opening the associated project loads the 6
 
 The Welcome preview uses a **single-site source** for responsive inspection. Opening the project loads the **625-site full-wafer array**, containing three stacked silicon transistor tiers and **40 stored History Steps**. Deposition, conformal gate dielectrics, inter-tier transfer and CMP are represented with documented geometric assumptions.
 
-**Important acceptance distinction:** A 625-site file with a saved 40-Step process history is not, by itself, proof that every operation was recomputed on the full wafer by `Run All`. The [desktop audit](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) records a fresh 40/40-step Recipe rebuild on the 625-site production project with final export and actual Kernel length checks. Check the exact revision and the distinct native-replay/Recipe acceptance scope when reproducibility is a requirement. Do not silently equate a single-site replay or full-wafer assembly with freshly verified full-wafer native replay.
+**Important acceptance distinction:** A 625-site file with a saved 40-Step process history is not, by itself, proof that every operation was recomputed on the full wafer by `Run All`. The [desktop audit](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/archive/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) records a fresh 40/40-step Recipe rebuild on the 625-site production project with final export and actual Kernel length checks. Check the exact revision and the distinct native-replay/Recipe acceptance scope when reproducibility is a requirement. Do not silently equate a single-site replay or full-wafer assembly with freshly verified full-wafer native replay.
 
 ## 8. TiO₂ achromatic metalens · four meta-atoms
 

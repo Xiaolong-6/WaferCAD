@@ -30,7 +30,7 @@ Run the ordinary local Node/lint/example/product commands from package.json. For
 ```powershell
 $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
-$env:WAFERCAD_CHROMIUM = 'C:/Users/liux16/AppData/Local/Google/Chrome/Application/chrome.exe'
+$env:WAFERCAD_CHROMIUM = 'C:/Users/<USERNAME>/AppData/Local/Google/Chrome/Application/chrome.exe'
 $env:WAFERCAD_HEADFUL = '1'
 node scripts/tandem-visual-acceptance.mjs
 node scripts/process-transaction-ui-regression.mjs

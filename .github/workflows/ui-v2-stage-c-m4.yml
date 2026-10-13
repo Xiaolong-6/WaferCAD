@@ -57,7 +57,7 @@ jobs:
         run: |
           node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app-v2-workstation.html; then
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
               exit 0
             fi
             sleep 1
@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-startup-shell check-progressive-quality check-startup check-cross-ui-recovery check-sync check-manual-both check-review-interactions check-m4-projects check-m2-live-parity; do
+          for script in check-startup-shell check-progressive-quality check-startup check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"

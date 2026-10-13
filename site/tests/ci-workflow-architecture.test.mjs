@@ -17,6 +17,15 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
+  assert.match(pages, /node scripts\/build-pages-artifact\.mjs/);
+  assert.match(pages, /node scripts\/stamp-pages-assets\.mjs .*build\/pages/);
+  assert.match(pages, /path: build\/pages/);
+  const commitLines = pages.split('\n');
+  const commitLine = commitLines.find((line) => line.includes('> build/pages/build-info.json'));
+  assert.equal(
+    commitLine?.trim(),
+    String.raw`printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json`,
+  );
 });
 
 test('browser and v2 owners are reusable without racing main-push jobs', () => {
@@ -34,6 +43,8 @@ test('preview publishes from the last successful production Pages run', () => {
   const preview = workflow('ui-v2-preview');
   assert.match(preview, /actions\/workflows\/pages\.yml\/runs\?branch=main/);
   assert.match(preview, /ref: \$\{\{ steps\.verified-main\.outputs\.sha \}\}/);
+  assert.match(preview, /node scripts\/build-pages-artifact\.mjs/);
+  assert.match(preview, /cp -a base\/build\/pages\/\. _site\//);
   assert.doesNotMatch(preview, /^          ref: main$/m);
 });
 

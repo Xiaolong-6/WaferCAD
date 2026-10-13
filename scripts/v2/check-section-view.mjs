@@ -29,7 +29,7 @@ try {
         errors.push(d.type());
         await d.dismiss();
       });
-      await page.goto(`${base}/app-v2-workstation.html?start=example&example=m3d`);
+      await page.goto(`${base}/app.html?start=example&example=m3d`);
       await page.waitForFunction(() => document.body.dataset.ready !== 'false', null, {
         timeout: 120000,
       });
@@ -242,7 +242,7 @@ try {
     const page = await touchContext.newPage(),
       errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(`${base}/app-v2-workstation.html?start=example&example=m3d`);
+    await page.goto(`${base}/app.html?start=example&example=m3d`);
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });

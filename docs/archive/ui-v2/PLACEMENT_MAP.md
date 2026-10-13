@@ -1,8 +1,8 @@
 # UI v2 Placement Map — 审核前不得动代码
 
-> 当前状态请看 [2026-10-09 全量功能比较审计](../archive/ui-v2/FULL_PARITY_AUDIT_2026-10-09.md)。本文件保留 M2/M2.5 历史落位诊断；其中 History 改名/删除/折叠、Legend 全局色板和稳定宿主状态有过时或错误标注，不能作为当前功能完成证明。
+> 当前状态请看 [2026-10-09 全量功能比较审计](FULL_PARITY_AUDIT_2026-10-09.md)。本文件保留 M2/M2.5 历史落位诊断；其中 History 改名/删除/折叠、Legend 全局色板和稳定宿主状态有过时或错误标注，不能作为当前功能完成证明。
 
-> 日期 2026-10-09；目标分支 `codex/ui-v2-m2-handoff-2026-10-09`。基准：[FEATURE_INVENTORY.md](FEATURE_INVENTORY.md)、[CONTRACT.md](CONTRACT.md)、M1.5批准的 `site/ui-v2/prototypes/a-full/`、M2 `site/app-v2.html` / `site/ui-v2/**`。**源码审计；没有重新跑浏览器，也不是功能覆盖证明。** M2=壳/Mock/无均不代表生产控制器已连线。
+> 日期 2026-10-09；目标分支 `codex/ui-v2-m2-handoff-2026-10-09`。基准：[FEATURE_INVENTORY.md](FEATURE_INVENTORY.md)、[CONTRACT.md](../../ui-v2/CONTRACT.md)、M1.5批准的 `site/ui-v2/prototypes/a-full/`、M2 `site/app-v2.html` / `site/ui-v2/**`。**源码审计；没有重新跑浏览器，也不是功能覆盖证明。** M2=壳/Mock/无均不代表生产控制器已连线。
 >
 > 列名中的“设计”仅判断 M1.5 原型是否明确画出**该形态**：**有**=对应入口与相近组件，**部分**=概念/入口有而完整参数与状态未设计，**无**=没有明确设计。对“无”的功能，先补一张 M1.5 设计稿再迁移。M2列：**壳**=容器或布局本体，**mock**=M2的 UI draft 演示，**无**=尚未有可维护落点。**X**=当前摆放/形式与 M1.5 或旧功能语义有偏差；**G**=缺乏稳定落点/入口或只是零散临时 UI；**U**=M1.5 形式未设计；**-**=暂未识别布局差异。
 

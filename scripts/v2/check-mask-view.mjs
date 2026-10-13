@@ -86,7 +86,9 @@ try {
             .map((item) => item.name)
             .filter((name) => /\/app\.(js|html)(\?|$)/.test(name)),
           strip: [...document.querySelectorAll('#maskDrawTools button')].map((node) => ({
-            hint: node.title,
+            hint: node.getAttribute('aria-label'),
+            title: node.title,
+            help: node.dataset.help,
             text: node.textContent.trim(),
             width: node.getBoundingClientRect().width,
             height: node.getBoundingClientRect().height,
@@ -103,6 +105,7 @@ try {
       assert.equal(isolation.headerOverflow, 0);
       assert.equal(isolation.stripOverflow, 0);
       assert.deepEqual(isolation.imports, []);
+      assert.ok(isolation.strip.every((item) => item.help && !item.title));
       assert.deepEqual(
         isolation.strip.map((item) => item.hint),
         [
