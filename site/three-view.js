@@ -3101,6 +3101,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         pendingRender = false;
         // A rejected ROI may have hidden the retained, otherwise valid scene.
         group.visible = true;
+        delete host.dataset.rendererDisplayedState;
         host.dataset.renderState = 'updating';
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
@@ -3112,6 +3113,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const cachedVariant = sceneVariantCache.get(targetVariant);
       if (cachedVariant && restoreSceneVariant(cachedVariant)) {
         pendingRender = false;
+        delete host.dataset.rendererDisplayedState;
         host.dataset.renderState = 'updating';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
@@ -4321,6 +4323,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       }
       group.visible = true;
+      if (!stagedPreviousScene) delete host.dataset.rendererDisplayedState;
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
       recordVariantStage('presentation-complete');
@@ -4737,6 +4740,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
   async function capturePng(scale = 3) {
     if (!ready || !renderer || !scene || !camera) throw new Error('3D view is unavailable.');
+    if (interacting) throw new Error('Finish camera interaction before capturing an exact 3D PNG.');
+    if (previewHiddenMeshes.size) {
+      leaveInteractionPreview();
+      syncRenderPolicy();
+      transparencyOrderDirty = true;
+      updateTransparentOrder();
+    }
+    if (host.dataset.rendererDisplayedState === 'stale')
+      throw new Error('Current 3D model is still building or failed; outdated preview cannot be exported.');
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),
