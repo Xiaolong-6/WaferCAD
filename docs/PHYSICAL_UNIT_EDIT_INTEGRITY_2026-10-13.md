@@ -11,6 +11,10 @@ WaferCAD stores physical XY/Z values in µm. The Project XYZ selector (nm, µm, 
 - `site/ui-v2/view-kit/inspection-fields.js` marks physically dimensional controls. Mask Draw and Mask ROI operate through their existing controller and runtime ports.
 - `site/tests/v2-display-units.test.mjs` now covers an open combined editor with lengths, polygon vertices and an untouched angular field, including three successive unit changes, canonical-model immutability, and overflow retention.
 
+## Browser ownership
+
+The dedicated `scripts/v2/check-open-mask-unit-editor.mjs` gate exercises the production `app.html` entry: create a real Rect Mask Draw shape, keep its editor open, drive the Project unit selector through its existing `change` handler, apply the shape, and compare canonical Draw geometry/model and IDs. This is one focused smoke path, not a complete shape-family matrix.
+
 ## Explicit outstanding browser matrix
 
 A unit test does not establish an end-to-end Apply result. Before promoting this branch, cover **real v2** Mask Draw: Rect, Circle, Polygon, Ring, Ring-sector, ROI and alignment, with edits open during µm → nm → mm → µm. Then check Apply, Cancel, Undo/Redo, save/export/import and exact physical geometry. Include Base dimensions, Manual thickness/depth and Recipe typed-unit execution at representative sub-nm values. Reuse `scripts/v2/check-sync.mjs`, `scripts/v2/check-m4-projects.mjs` and `scripts/process-geometry-regression.mjs`; avoid duplicating scientific fixtures.
