@@ -73,8 +73,7 @@ if (
     (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   (r9PhaseWindowCampaign &&
     (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
-  (r9FocusCampaign &&
-    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (r9FocusCampaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -93,12 +92,12 @@ const plan = r9Campaign
         : r9FocusCampaign
           ? buildRendererR9FocusedDrawPlan()
           : ditherDiagnostic
-          ? buildRendererV3DitherDiagnosticPlan()
-          : msaaDiagnostic
-            ? buildRendererV3MsaaDiagnosticPlan()
-            : phaseWindowDiagnostic
-              ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
-              : buildRendererHardwarePlan(modes);
+            ? buildRendererV3DitherDiagnosticPlan()
+            : msaaDiagnostic
+              ? buildRendererV3MsaaDiagnosticPlan()
+              : phaseWindowDiagnostic
+                ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+                : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {
