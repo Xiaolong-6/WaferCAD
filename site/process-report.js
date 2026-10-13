@@ -119,6 +119,13 @@ h3{font-size:17px}a{color:#175fb5}a:hover{text-decoration-thickness:2px}p{max-wi
 .card,details,figure{background:#fff;border:1px solid #dce2e9;border-radius:10px;padding:14px 18px}
 .card b{display:block;font-size:22px}.muted{color:#66778a}.pages{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:9px}
 .pages a{padding:10px 14px;background:#fff;border:1px solid #dce2e9;border-radius:8px}
+.finder{background:#fff;border:1px solid #dce2e9;border-radius:10px;padding:16px;margin:16px 0 20px}
+.finder-fields{display:flex;flex-wrap:wrap;gap:12px}.finder-fields label{display:grid;gap:4px;flex:1;min-width:180px}
+.finder input,.finder select{font:inherit;padding:8px 10px;border:1px solid #bbc9d9;border-radius:6px;background:inherit;color:inherit}
+.finder ol{list-style:none;padding:0;margin:12px 0 0;max-height:330px;overflow:auto}
+.finder li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #e1e5ea}
+.finder li[hidden]{display:none}.finder li span{font-size:12px}
+
 table{width:100%;border-collapse:collapse;background:#fff}th,td{text-align:left;border-bottom:1px solid #e1e5ea;padding:9px 12px;vertical-align:top}
 th{font-size:12px;text-transform:uppercase;color:#66778a}td{overflow-wrap:anywhere}details{margin:10px 0}
 summary{cursor:pointer;font-weight:650}summary span{font-weight:400;color:#66778a;margin-left:8px}
@@ -126,7 +133,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;b
 .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 figure{margin:0;padding:12px}figure img{width:100%;height:auto}figcaption{color:#66778a;font-size:13px}
 nav{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:26px 0}
-@media(prefers-color-scheme:dark){body{background:#131c28;color:#e3e8f1}.card,details,figure,table,.pages a{background:#1b2939;border-color:#39495c}header,th,td{border-color:#39495c}.muted,summary span,figcaption{color:#a3b2c5}a{color:#94c0ff}pre{background:#121e2b}}`;
+@media(prefers-color-scheme:dark){body{background:#131c28;color:#e3e8f1}.card,details,figure,table,.pages a,.finder{background:#1b2939;border-color:#39495c}header,th,td{border-color:#39495c}.muted,summary span,figcaption{color:#a3b2c5}a{color:#94c0ff}pre{background:#121e2b}}`;
 
 function documentShell(title, body, root = '') {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -158,6 +165,32 @@ ${number + 1 < pages ? `<a href="${path(number + 1)}">Next 50 steps →</a>` : '
 
 function reportHtml(data, pageNames, images, notes) {
   const p = data.project;
+  const stepLink = new Map(
+    data.steps.map((step) => [
+      step.id,
+      `history/${pageNames[Math.floor((step.number - 1) / PAGE_SIZE)].html}#step-${step.number}`,
+    ]),
+  );
+  const linkedNode = (nodeId) =>
+    stepLink.has(nodeId)
+      ? `<a href="${stepLink.get(nodeId)}">${htmlEscape(nodeId)}</a>`
+      : htmlEscape(nodeId || 'Not available');
+  const searchRows = data.steps
+    .map(
+      (step) =>
+        `<li data-variant="${htmlEscape(step.branchId)}"><a href="${stepLink.get(step.id)}">#${step.number} · ${htmlEscape(step.label)}</a><span class="muted">${htmlEscape(step.branchId)} · r${htmlEscape(step.processRevision)}</span></li>`,
+    )
+    .join('');
+  const variantOptions = data.branches
+    .map((variant) => `<option value="${htmlEscape(variant.id)}">${htmlEscape(variant.name)}</option>`)
+    .join('');
+  const bookmarks = data.bookmarks
+    .map(
+      (bookmark) =>
+        `<li>${htmlEscape(bookmark.name || 'Bookmark')} — ${linkedNode(bookmark.historyNodeId)}</li>`,
+    )
+    .join('');
+
   const card = (label, value) =>
     `<div class="card"><span class="muted">${htmlEscape(label)}</span><b>${htmlEscape(
       value,
@@ -175,7 +208,7 @@ function reportHtml(data, pageNames, images, notes) {
       (branch) =>
         `<tr><td>${htmlEscape(branch.name)}</td><td>${htmlEscape(
           branch.processStepCount ?? '—',
-        )}</td><td>${htmlEscape(branch.headNodeId || '—')}</td></tr>`,
+        )}</td><td>${linkedNode(branch.headNodeId)}</td></tr>`,
     )
     .join('');
   const gallery = images
@@ -197,12 +230,40 @@ function reportHtml(data, pageNames, images, notes) {
 <h2>Current inspection captures</h2>${gallery ? `<div class="gallery">${gallery}</div>` : '<p>No visible canvas could be captured.</p>'}
 <p class="muted">Only rendered, visible canvases are captured in P1. For a final-state figure, return to the Variant HEAD before exporting. Hidden views and historical steps have no synthesized images.</p>
 <h2>Process History</h2><p>Every recorded step is indexed below, with exact operation descriptors in separate JSON files. Pages contain at most ${PAGE_SIZE} steps for fast offline browsing.</p>
+<section class="finder" aria-label="Find process steps">
+<div class="finder-fields"><label>Search steps<input id="stepSearch" type="search" placeholder="Step number, material or operation" autocomplete="off"></label>
+<label>Variant<select id="stepVariant"><option value="">All variants</option>${variantOptions}</select></label></div>
+<p class="muted" id="stepMatches">${data.steps.length} steps</p>
+<ol id="stepSearchResults">${searchRows}</ol></section>
 <div class="pages">${pageNames.map((p, index) => `<a href="history/${p.html}">Steps ${index * PAGE_SIZE + 1}–${Math.min(data.steps.length, (index + 1) * PAGE_SIZE)} →</a>`).join('')}</div>
 <h2>Variants</h2><table><thead><tr><th>Variant</th><th>Own steps</th><th>HEAD node</th></tr></thead><tbody>${branches}</tbody></table>
+<h2>Bookmarks</h2>${bookmarks ? `<ul>${bookmarks}</ul>` : '<p>No bookmarks.</p>'}
 <h2>Materials and layers</h2><table><thead><tr><th>Layer</th><th>Stable ID</th><th>Face</th></tr></thead><tbody>${layers}</tbody></table>
 <h2>Data and limitations</h2><p>The report includes a complete Process operation ledger, Variant and Bookmark metadata, and the saved Recipe where available. It excludes historical physical-state geometry and cannot replace a .wafercad backup.</p>
 <p>Image coverage: ${images.length} current-view captures. ${htmlEscape(notes.join(' '))}</p>
-<p><a href="report.md">Markdown source</a> · <a href="manifest.json">Manifest</a> · <a href="recipe.json">Recipe data</a></p>`,
+<p><a href="report.md">Markdown source</a> · <a href="manifest.json">Manifest</a> · <a href="recipe.json">Recipe data</a></p>
+<script>
+(() => {
+  const search = document.getElementById('stepSearch');
+  const variant = document.getElementById('stepVariant');
+  const rows = Array.from(document.querySelectorAll('#stepSearchResults li'));
+  const matches = document.getElementById('stepMatches');
+  const searchable = rows.map((row) => row.textContent.toLocaleLowerCase());
+  function filter() {
+    const query = search.value.trim().toLocaleLowerCase();
+    let count = 0;
+    rows.forEach((row, index) => {
+      const show = (!query || searchable[index].includes(query)) &&
+        (!variant.value || row.dataset.variant === variant.value);
+      row.hidden = !show;
+      if (show) count++;
+    });
+    matches.textContent = `${count} of ${rows.length} steps`;
+  }
+  search.addEventListener('input', filter);
+  variant.addEventListener('change', filter);
+})();
+</script>`,
   );
 }
 
