@@ -19,8 +19,9 @@ try {
       await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
         timeout: 120000,
       });
-      const mode = page.locator('[data-action="mode:single"]');
-      assert.equal(await mode.getAttribute('data-help'), 'shell.single');
+      const mobile = width <= 820;
+      const mode = page.locator(mobile ? '[data-action="domain:project"]' : '[data-action="mode:single"]');
+      assert.equal(await mode.getAttribute('data-help'), mobile ? 'shell.navigation' : 'shell.single');
       assert.equal(
         await mode.getAttribute('title'),
         null,
@@ -28,7 +29,10 @@ try {
       );
       await mode.hover();
       await page.locator('.wc-context-tooltip:visible').waitFor({ timeout: 5000 });
-      assert.match(await page.locator('.wc-context-tooltip').innerText(), /Single view/);
+      assert.match(
+        await page.locator('.wc-context-tooltip').innerText(),
+        mobile ? /Workspace panel/ : /Single view/,
+      );
       assert.equal(await page.locator('.wc-context-tooltip').getAttribute('role'), 'tooltip');
       assert.equal(await mode.getAttribute('aria-describedby'), 'wc-context-tooltip');
       assert.equal(

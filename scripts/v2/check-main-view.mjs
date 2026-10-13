@@ -206,13 +206,14 @@ try {
           label: node.getAttribute('aria-label'),
           text: node.textContent.trim(),
           title: node.title,
+          help: node.dataset.help,
         })),
       );
       assert.deepEqual(
         floating.map((item) => item.label),
         ['Select', 'Slice', 'Slice settings', 'Rectangle', 'Square', 'Sector', 'ROI settings'],
       );
-      assert.ok(floating.every((item) => item.text === '' && item.title));
+      assert.ok(floating.every((item) => item.text === '' && item.help && !item.title));
       assert.equal(await page.locator('#mainRoiTools .p-mask-tool-divider').count(), 2);
       assert.equal(
         await page
