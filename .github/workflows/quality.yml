@@ -30,8 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Show exact formatter difference (temporary diagnostics)
-        run: npx prettier site/ui-v2/workstation-v2.js --parser babel | diff -u site/ui-v2/workstation-v2.js - || true
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
