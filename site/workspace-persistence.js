@@ -282,8 +282,8 @@ export async function loadWorkspaceStateDirect() {
 // Only one validated project is posted back to the UI. IndexedDB reads,
 // geometry dictionary expansion and strict schema checks run in the worker.
 // Older environments without Worker retain the exact synchronous fallback.
-export async function loadWorkspaceState() {
-  if (typeof globalThis.Worker !== 'function') return loadWorkspaceStateDirect();
+export async function loadWorkspaceState({ background = false } = {}) {
+  if (!background || typeof globalThis.Worker !== 'function') return loadWorkspaceStateDirect();
   return new Promise((resolve, reject) => {
     let worker;
     let settled = false;
