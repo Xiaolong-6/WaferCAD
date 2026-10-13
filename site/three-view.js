@@ -17,6 +17,11 @@ import {
   shouldYieldRendererAssembly,
   yieldRendererAssembly,
 } from './renderer-interaction-scheduler.js';
+import {
+  SupersededRendererBuild,
+  isRendererBuildSuperseded,
+  shouldStageRendererScene,
+} from './renderer-responsive-staging.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
@@ -118,6 +123,9 @@ export function createThreeView({
   const v3FinalFrameOnlyExperiment = rendererParams.get('rendererV3FinalFrameOnly') === '1';
   const v3ElectricalPlanarSinglePassExperiment =
     rendererParams.get('rendererV3ElectricalPlanarSinglePass') === '1';
+  // Experimental P0: retain the last committed scene during a new model/ROI build.
+  // No default change until full-wafer, rejection, and revision-supersession gates pass.
+  const responsiveModelStaging = rendererParams.get('rendererResponsiveModelStage') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
@@ -1320,11 +1328,12 @@ export function createThreeView({
     return true;
   }
 
-  function startSceneVariantBuild(mode) {
+  function startSceneVariantBuild(mode, { countVariant = true } = {}) {
     cacheActiveSceneVariant();
-    host.dataset.rendererRetainedVariantBuilds = String(
-      Number(host.dataset.rendererRetainedVariantBuilds || 0) + 1,
-    );
+    if (countVariant)
+      host.dataset.rendererRetainedVariantBuilds = String(
+        Number(host.dataset.rendererRetainedVariantBuilds || 0) + 1,
+      );
     // Keep the previous committed variant attached until the replacement is complete.
     // The building group stays invisible, so no partial transparent scene is shown.
     group = new THREE.Group();
@@ -3042,7 +3051,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
     let sceneReplaced = false;
     let rebuildFailed = false;
+    let stagedPreviousScene = null;
     pendingRender = false;
+    const rejectSupersededBuild = () => {
+      if (!pendingRender) return;
+      const currentModel = getModel();
+      if (isRendererBuildSuperseded({
+        pending: true,
+        originalModel: model,
+        currentModel,
+        originalSignature: signature,
+        currentSignature: currentModel
+          ? sceneSignature(currentModel, getClipGeometry(), getInspection() || {})
+          : '',
+        originalVariant: targetVariant,
+        currentVariant: presentationMode(),
+      })) throw new SupersededRendererBuild();
+    };
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
@@ -3078,7 +3103,32 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordRoiStage('surface-plan-complete');
       if (!variantBuild) {
         sceneReplaced = true;
-        disposeGroup();
+        if (shouldStageRendererScene({
+          enabled: responsiveModelStaging,
+          hasCommittedGroup: Boolean(group?.visible && group?.parent === scene),
+          hasPresentation: presentationObjects.size > 0,
+          variant: activeSceneVariant,
+        })) {
+          stagedPreviousScene = {
+            snapshot: snapshotSceneVariant(),
+            cachedVariants: sceneVariantCache,
+            physicalSurfacePlan,
+          };
+          clearRoughRefineTimer();
+          terminateRoughWorker({ invalidate: true });
+          // New revision must never inherit cached presentation groups from
+          // the previous model. Keep them separately until commit/rollback.
+          sceneVariantCache = new Map();
+          startSceneVariantBuild(targetVariant, { countVariant: false });
+          sceneVariantCache = new Map();
+          host.dataset.rendererDisplayedState = 'stale';
+          host.dataset.rendererStagedModelBuilds = String(
+            Number(host.dataset.rendererStagedModelBuilds || 0) + 1,
+          );
+          stats.textContent = 'Building 3D · previous model shown (outdated)…';
+        } else {
+          disposeGroup();
+        }
       }
       syncRenderPolicy();
       applyZDisplayState(model);
@@ -3371,7 +3421,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       // Building a new opacity variant must not draw a half-assembled 3D scene.
       // Leave the last committed canvas frame visible until the atomic swap.
-      suppressAssemblyFrames = variantBuild || (v3FinalFrameOnlyExperiment && cooperativeAssembly);
+      suppressAssemblyFrames =
+        Boolean(stagedPreviousScene) || variantBuild || (v3FinalFrameOnlyExperiment && cooperativeAssembly);
       assemblySkippedFrames = 0;
       host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
       host.dataset.rendererAssemblySkippedFrames = '0';
@@ -3390,6 +3441,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         } else {
           await yieldSceneAssembly();
         }
+        rejectSupersededBuild();
         nextAssemblyYieldAt = performance.now() + INTERACTIVE_ASSEMBLY_SLICE_MS;
       };
 
@@ -4152,6 +4204,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.rendererAssemblyMs = String(rendererAssemblyAt - rendererProfileStart);
       host.dataset.rendererPresentationMs = '0';
       host.dataset.presentationUpdateCount = String(presentationUpdateCount);
+      rejectSupersededBuild();
       physicalSceneModel = model;
       physicalSceneSignature = signature;
       physicalSurfacePlan = plan;
@@ -4164,6 +4217,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (previous?.group && previous.group !== group) scene.remove(previous.group);
         host.dataset.rendererCommittedVariantSwaps = String(
           Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
+        );
+      }
+      if (stagedPreviousScene) {
+        const retired = new Set([
+          stagedPreviousScene.snapshot.group,
+          ...[...stagedPreviousScene.cachedVariants.values()].map((entry) => entry?.group),
+        ]);
+        for (const oldGroup of retired) {
+          if (!oldGroup || oldGroup === group) continue;
+          if (oldGroup.parent) oldGroup.parent.remove(oldGroup);
+          disposeSceneGroup(oldGroup);
+        }
+        delete host.dataset.rendererDisplayedState;
+        host.dataset.rendererCommittedModelSwaps = String(
+          Number(host.dataset.rendererCommittedModelSwaps || 0) + 1,
         );
       }
       group.visible = true;
@@ -4180,11 +4248,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     } catch (error) {
       rebuildFailed = true;
-      recordRoiStage('build-failed');
+      const superseded = error instanceof SupersededRendererBuild;
+      recordRoiStage(superseded ? 'build-superseded' : 'build-failed');
       // Keep the last good geometry for a subsequent ROI clear, but never
       // display it as though it were the failed clipped geometry.
       try {
-        if (variantBuild) {
+        if (stagedPreviousScene) {
+          const failedGroup = group;
+          if (failedGroup.parent) failedGroup.parent.remove(failedGroup);
+          disposeSceneGroup(failedGroup);
+          sceneVariantCache = stagedPreviousScene.cachedVariants;
+          restoreSceneVariant(stagedPreviousScene.snapshot);
+          physicalSurfacePlan = stagedPreviousScene.physicalSurfacePlan;
+          sceneGeneration = previousSceneGeneration;
+          host.dataset.sceneGeneration = String(sceneGeneration);
+          host.dataset.modelRevision = String(physicalSceneModel?.revision ?? 0);
+          host.dataset.processRevision = String(physicalSceneModel?.processRevision ?? 0);
+          host.dataset.rendererDisplayedState = 'stale';
+        } else if (variantBuild) {
           const previous = sceneVariantCache.get(previousVariant);
           if (previous) {
             const failedGroup = group;
@@ -4205,9 +4286,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       // An ordinary failed rebuild remains fail-closed. For a variant-only
       // failure, restore the committed group, without claiming the new mode rendered.
-      if (group && !variantBuild) group.visible = false;
-      const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
-      console.warn('3D rebuild rejected:', failure.code, failure.detail);
+      if (group && !variantBuild && !stagedPreviousScene) group.visible = false;
+      if (superseded) {
+        host.dataset.renderState = 'building';
+        host.dataset.renderPhase = 'superseded';
+        stats.textContent = '3D update superseded · preparing latest revision…';
+      } else {
+        const failure = setRendererBuildFailure(host, stats, error, { roi: Boolean(clip) });
+        if (stagedPreviousScene) stats.textContent += ' · previous image is outdated';
+        console.warn('3D rebuild rejected:', failure.code, failure.detail);
+      }
     } finally {
       recordRoiStage('build-exited');
       suppressAssemblyFrames = false;
