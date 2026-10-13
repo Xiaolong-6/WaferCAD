@@ -18,6 +18,7 @@ import {
   buildRendererR9HardwareCampaignPlan,
   buildRendererR9PreservedMsaaPlan,
   buildRendererR9CurrentV4PhaseWindowPlan,
+  buildRendererR9FocusedDrawPlan,
   buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
@@ -32,6 +33,7 @@ const r9Campaign = options.includes('--campaign=r9');
 const r9V4NoMsaaCampaign = options.includes('--campaign=r9-v4-msaa');
 const r9PreservedMsaaCampaign = options.includes('--campaign=r9-preserved-msaa');
 const r9PhaseWindowCampaign = options.includes('--campaign=r9-phase-window');
+const r9FocusCampaign = options.includes('--campaign=r9-focus');
 const unknownCampaign = options.filter(
   (arg) =>
     arg.startsWith('--campaign=') &&
@@ -40,6 +42,7 @@ const unknownCampaign = options.filter(
       '--campaign=r9-v4-msaa',
       '--campaign=r9-preserved-msaa',
       '--campaign=r9-phase-window',
+      '--campaign=r9-focus',
     ].includes(arg),
 );
 if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
@@ -60,7 +63,8 @@ const diagnostic =
   phaseWindowDiagnostic ||
   r9V4NoMsaaCampaign ||
   r9PreservedMsaaCampaign ||
-  r9PhaseWindowCampaign;
+  r9PhaseWindowCampaign ||
+  r9FocusCampaign;
 if (
   (diagnostic && modesArg && !r9V4NoMsaaCampaign) ||
   (r9Campaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
@@ -68,6 +72,8 @@ if (
   (r9PreservedMsaaCampaign &&
     (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   (r9PhaseWindowCampaign &&
+    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (r9FocusCampaign &&
     (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
@@ -84,7 +90,9 @@ const plan = r9Campaign
       ? buildRendererR9PreservedMsaaPlan()
       : r9PhaseWindowCampaign
         ? buildRendererR9CurrentV4PhaseWindowPlan()
-        : ditherDiagnostic
+        : r9FocusCampaign
+          ? buildRendererR9FocusedDrawPlan()
+          : ditherDiagnostic
           ? buildRendererV3DitherDiagnosticPlan()
           : msaaDiagnostic
             ? buildRendererV3MsaaDiagnosticPlan()
@@ -271,7 +279,10 @@ async function runHardware() {
         evidenceFolder: artifactsCopied ? step.id : null,
         logFile: step.id + '.log',
         strictPixelParity:
-          step.branch === 'v3' || step.id === 'v4-phase-window' || step.id === 'v4-preserved-msaa'
+          step.branch === 'v3' ||
+          step.id === 'v4-phase-window' ||
+          step.id === 'v4-focused-draws' ||
+          step.id === 'v4-preserved-msaa'
             ? report?.strictParity
             : report?.parity?.strictPixelParity,
         candidateActivation: report?.trials
@@ -305,7 +316,9 @@ async function runHardware() {
             ? 'r9-preserved-msaa'
             : r9PhaseWindowCampaign
               ? 'r9-phase-window'
-              : null,
+              : r9FocusCampaign
+                ? 'r9-focus'
+                : null,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,
       fatalError,
@@ -319,7 +332,7 @@ async function runHardware() {
             : step.status === 'passed',
         ),
       campaignComplete:
-        ((r9PreservedMsaaCampaign || r9PhaseWindowCampaign) &&
+        ((r9PreservedMsaaCampaign || r9PhaseWindowCampaign || r9FocusCampaign) &&
           !fatalError &&
           completed.length === 1 &&
           completed[0].status === 'diagnostic-complete') ||
