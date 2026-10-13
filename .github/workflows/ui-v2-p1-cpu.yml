@@ -9,6 +9,8 @@ on:
       - 'site/renderer-instancing.js'
       - 'site/controllers/project-state-controller.js'
       - 'site/ui-v2/project-mask-panels.js'
+      - 'site/tests/worker-validated-project-import.test.mjs'
+      - 'site/tests/renderer-instancing.test.mjs'
       - '.github/workflows/ui-v2-p1-cpu.yml'
   workflow_dispatch:
 
