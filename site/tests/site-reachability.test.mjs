@@ -20,10 +20,8 @@ test('site reachability resolver honors versioned URLs without traversing outsid
 });
 
 test('site reachability extracts HTML, CSS and module literal paths', () => {
-  assert.deepEqual(
-    extractLiteralReferences('<script src="./js/app.js"></script>', '.html'),
-    ['./js/app.js'],
-  );
+  const htmlReferences = extractLiteralReferences('<script src="./js/app.js"></script>', '.html');
+  assert.deepEqual(htmlReferences, ['./js/app.js']);
   assert.ok(extractLiteralReferences("import './worker.js';", '.js').includes('./worker.js'));
   assert.ok(extractLiteralReferences("background: url('./x.svg');", '.css').includes('./x.svg'));
 });
@@ -51,10 +49,11 @@ test('audit real site entrypoint reachability without deleting uncertain modules
   assert.ok(report.productionRoots.includes('app.html'));
   assert.ok(report.productionRoots.includes('app-legacy.html'));
   assert.ok(report.productionReachable > 20);
-  console.log('SITE_REACHABILITY_AUDIT ' + JSON.stringify({
+  const summary = {
     scannedFiles: report.scannedFiles,
     productionReachable: report.productionReachable,
     developerOnly: report.developerOnly,
     unproven: report.unproven,
-  }));
+  };
+  console.log('SITE_REACHABILITY_AUDIT ' + JSON.stringify(summary));
 });

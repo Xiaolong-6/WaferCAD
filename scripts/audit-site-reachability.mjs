@@ -33,8 +33,99 @@ function isDevelopment(path) {
 }
 
 export function resolveReference(from, reference, inventory) {
-  if (!reference || reference.includes('$' + '{') ||
-      /^(?:https?:|data:|blob:|mailto:|javascript:|#|\/\/)/i.test(reference)) return null;
+  if (!reference) return null;
+  if (reference.includes('
+  const clean = reference.split(/[?#]/)[0].trim();
+  if (!clean || clean.includes('\\') || /%[0-9a-f]{2}/i.test(clean)) return null;
+  const path = clean.startsWith('/') ? clean.slice(1) : posix.join(posix.dirname(from), clean);
+  const target = posix.normalize(path);
+  if (!target || target === '.' || target === '..' || target.startsWith('../')) return null;
+  if (inventory.has(target)) return target;
+  if (inventory.has(target + '/index.html')) return target + '/index.html';
+  return null;
+}
+
+export function extractLiteralReferences(source, extension) {
+  const results = new Set();
+  if (extension === '.html') {
+    const references = source.matchAll(/\b(?:src|href|poster|data-preview-src)\s*=\s*["']([^"']+)["']/gi);
+    for (const match of references) results.add(match[1]);
+  }
+  if (extension === '.css' || extension === '.html') {
+    const urls = source.matchAll(/url\(\s*["']?([^'"\s)]+)["']?\s*\)/gi);
+    const imports = source.matchAll(/@import\s+(?:url\()?\s*["']([^"']+)["']/gi);
+    for (const match of urls) results.add(match[1]);
+    for (const match of imports) results.add(match[1]);
+  }
+  if (extension === '.js' || extension === '.mjs' || extension === '.html') {
+    // A conservative approximation for static imports, workers, fetches and literal paths.
+    const paths = source.matchAll(/["'\x60]((?:\.{1,2}\/|\/)[^"'\x60\n]{1,350})["'\x60]/g);
+    for (const match of paths) results.add(match[1]);
+  }
+  return [...results];
+}
+
+function reachableFrom(roots, edges) {
+  const seen = new Set();
+  const pending = [...roots];
+  while (pending.length) {
+    const current = pending.pop();
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const next of edges.get(current) || []) {
+      if (!seen.has(next)) pending.push(next);
+    }
+  }
+  return seen;
+}
+
+export async function auditSiteReachability(root = resolve('site')) {
+  const inventory = new Set(await listFiles(root));
+  const edges = new Map();
+  for (const file of inventory) {
+    const extension = extname(file);
+    if (!textExtensions.has(extension)) continue;
+    const content = await readFile(join(root, file), 'utf8');
+    const targets = extractLiteralReferences(content, extension)
+      .map((ref) => resolveReference(file, ref, inventory))
+      .filter(Boolean);
+    edges.set(file, new Set(targets));
+  }
+  const productionRoots = productEntries.filter((file) => inventory.has(file));
+  const developerRoots = [...inventory].filter(
+    (file) => isDevelopment(file) && textExtensions.has(extname(file)),
+  );
+  const production = reachableFrom(productionRoots, edges);
+  const developer = reachableFrom(developerRoots, edges);
+  const candidates = [...inventory].filter(
+    (file) =>
+      sourceExtensions.has(extname(file)) &&
+      !isDevelopment(file) &&
+      !file.startsWith('vendor/'),
+  );
+  const developerOnly = candidates.filter((file) => !production.has(file) && developer.has(file));
+  const unproven = candidates.filter((file) => !production.has(file) && !developer.has(file));
+  return {
+    scannedFiles: inventory.size,
+    productionRoots,
+    productionReachable: production.size,
+    developerReachable: developer.size,
+    developerOnly,
+    unproven,
+    limitations: [
+      'Static file-level evidence does not establish function- or export-level dead code.',
+      'Computed URLs, implicit globals and dynamically constructed module paths can be missed.',
+      'Unproven paths require manual review and are never automatically deleted.',
+    ],
+  };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const report = await auditSiteReachability(resolve(process.argv[2] || 'site'));
+  console.log(JSON.stringify(report, null, 2));
+}
+ + '{')) return null;
+  if (/^(?:https?:|data:|blob:|mailto:|javascript:|#|\/\/)/i.test(reference)) return null;
   const clean = reference.split(/[?#]/)[0].trim();
   if (!clean || clean.includes('\\') || /%[0-9a-f]{2}/i.test(clean)) return null;
   const target = posix.normalize(clean.startsWith('/')
