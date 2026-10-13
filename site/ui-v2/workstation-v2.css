@@ -318,7 +318,7 @@ p {
   font-size: var(--wc-font-aux);
 }
 .p-workbench {
-  --p-panel: max(240px, 33.333vw);
+  --p-panel: clamp(320px, 27vw, 460px);
   --p-bottom: 250px;
   --p-divider-size: 8px;
   min-height: min(560px, calc(100dvh - 58px));
@@ -330,6 +330,34 @@ p {
   border-radius: var(--wc-radius-md);
   background: var(--wc-surface);
   overflow: hidden;
+}
+/* Shell geometry stays fixed while startup restores/imports the scientific state.
+   Hidden content can be initialized, but no stale Base/Process or unordered views
+   should be presented before the first committed workstation render. */
+.p-workbench[data-boot='loading'] .p-panel-content,
+.p-workbench[data-boot='loading'] .p-viewbar,
+.p-workbench[data-boot='loading'] .p-canvases {
+  visibility: hidden;
+}
+.p-workbench[data-boot='loading'] .p-inspector,
+.p-workbench[data-boot='loading'] .p-stage {
+  position: relative;
+}
+.p-workbench[data-boot='loading'] .p-inspector::after,
+.p-workbench[data-boot='loading'] .p-stage::after {
+  content: 'Opening project…';
+  position: absolute;
+  inset: var(--wc-space-2);
+  display: grid;
+  place-items: center;
+  color: var(--wc-muted);
+  background: var(--wc-subtle);
+  border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-sm);
+  pointer-events: none;
+}
+.p-workbench[data-boot='loading'] .p-stage::after {
+  content: 'Preparing views…';
 }
 .p-topbar {
   display: flex;
