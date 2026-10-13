@@ -119,16 +119,17 @@
     root.replaceChildren(workbench);
     mounted = workbench;
 
+    // Share one measured default between initial ARIA state, drag/keyboard
+    // resizing and subsequent Shell renders.
+    function panelWidth() {
+      if (state.panelSize) return state.panelSize;
+      const measured = inspector.getBoundingClientRect().width;
+      if (measured) return Math.round(measured);
+      return Math.round(Math.min(460, Math.max(320, window.innerWidth * 0.27)));
+    }
+
     function bindDividers() {
       const horizontal = state.layout === 'c';
-      // Read the rendered CSS default so first keyboard/pointer resize never
-      // snaps back to the old one-third inspector width.
-      const panelWidth = () => {
-        if (state.panelSize) return state.panelSize;
-        const measured = inspector.getBoundingClientRect().width;
-        if (measured) return Math.round(measured);
-        return Math.round(Math.min(460, Math.max(320, window.innerWidth * 0.27)));
-      };
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
       separator.setAttribute(
         'aria-valuemax',
