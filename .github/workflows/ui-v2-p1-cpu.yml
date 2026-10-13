@@ -52,6 +52,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Diagnose P1 formatting
+        run: npx prettier scripts/v2/check-progressive-quality.mjs | diff -u scripts/v2/check-progressive-quality.mjs - || true
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
