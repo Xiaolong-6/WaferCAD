@@ -137,7 +137,7 @@ test('Markdown labels cannot inject another report link', async () => {
   data.steps[0].label = '[untrusted](https://example.invalid)';
   const bundle = buildProcessReportArchive(data);
   const archive = await entries(bundle.blob);
-  assert.ok(archive.content('report.md').includes('\\\\[untrusted\\\\]'));
+  assert.ok(archive.content('report.md').includes(String.raw`\[untrusted\]`));
   assert.match(archive.content('history/steps-0001.html'), /\[untrusted\]/);
 });
 
