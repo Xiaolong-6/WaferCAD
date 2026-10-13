@@ -26,8 +26,16 @@ await page.addInitScript(() => {
     const phase = shell?.dataset.boot;
     const view = document.getElementById('threePanel')?.dataset.viewLoad;
     if (phase && !summary.marks['boot:' + phase]) summary.marks['boot:' + phase] = elapsed;
+    if (shell?.dataset.projectReady === 'true' && !summary.marks.projectReady) {
+      summary.marks.projectReady = elapsed;
+    }
     if (shell?.dataset.firstFrameReady === 'true' && !summary.marks.firstFrameReady) {
       summary.marks.firstFrameReady = elapsed;
+    }
+    for (const key of ['main', 'mask', 'section', 'three']) {
+      if (summary.marks['view:' + key]) continue;
+      const panel = document.querySelector(`.p-view[data-view="${key}"]`);
+      if (panel?.dataset.viewLoad === 'ready') summary.marks['view:' + key] = elapsed;
     }
     if (view && view !== summary.transitions.at(-1)?.state) {
       summary.transitions.push({ state: view, ms: elapsed });
