@@ -16,6 +16,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -2654,7 +2655,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         plan =
           variantBuild && physicalSurfacePlan
             ? physicalSurfacePlan
-            : buildRenderSurfacePlan(model, clip);
+            : await buildRenderSurfacePlanAsync(model, clip);
+      if (!variantBuild && pendingRender) {
+        // While exact topology was built in the worker, a newer request may
+        // have superseded the model/ROI. Never commit that stale scene.
+        const superseded = new Error('Superseded during background surface ownership');
+        superseded.name = 'SceneVariantSuperseded';
+        throw superseded;
+      }
       if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
