@@ -11,6 +11,7 @@ function harness({
   priorDiscard = false,
   forceDitherOff = false,
   forceMsaaOff = false,
+  forcePreservedMsaa = false,
   throwOnDraw = false,
 } = {}) {
   const host = {
@@ -60,7 +61,10 @@ function harness({
       name === 'EXT_disjoint_timer_query_webgl2' && timer ? extension : null,
     getParameter: (key) =>
       key === 19 ? (forceMsaaOff ? 0 : 4) : key === extension.GPU_DISJOINT_EXT ? disjoint : 'mock',
-    getContextAttributes: () => ({ antialias: contextOptions?.antialias ?? true }),
+    getContextAttributes: () => ({
+      antialias: contextOptions?.antialias ?? true,
+      preserveDrawingBuffer: contextOptions?.preserveDrawingBuffer ?? false,
+    }),
     getQuery: () => busy,
     getQueryParameter: (query, key) => (key === 7 ? true : 123000000),
     createQuery: () => ({}),
@@ -115,6 +119,7 @@ function harness({
     requestAnimationFrame: (callback) => raf.push(callback),
     __waferCadDitherProbeForceOff: forceDitherOff,
     __waferCadMsaaProbeForceOff: forceMsaaOff,
+    __waferCadPreservedMsaaProbeForceOn: forcePreservedMsaa,
   };
   runInNewContext(`(${installWebglFrameProbe.toString()})()`, {
     HTMLCanvasElement: Canvas,
@@ -167,6 +172,30 @@ test('MSAA isolation changes only WebGL context creation and reports actual samp
   const defaultFrame = standard.frame(() => standard.gl.drawArrays(4, 0, 6));
   assert.equal(defaultFrame.contextAntialias, true);
   assert.equal(defaultFrame.defaultFramebufferSamples, 4);
+});
+
+test('preserved-MSAA probe changes only fresh context attributes, not standard GL draws', () => {
+  const h = harness({ forcePreservedMsaa: true });
+  assert.equal(h.contextOptions().antialias, true);
+  assert.equal(h.contextOptions().preserveDrawingBuffer, true);
+  assert.deepEqual(h.calls, []);
+  h.probe.arm({ captureFramebuffer: true });
+  const sample = h.frame(() => h.gl.drawArrays(4, 0, 6));
+  assert.equal(sample.contextAntialias, true);
+  assert.equal(sample.contextPreserveDrawingBuffer, true);
+  assert.equal(sample.defaultFramebufferSamples, 4);
+  assert.equal(sample.forcedDitherDisabledDraws, 0);
+
+  const baseline = harness();
+  assert.equal(baseline.contextOptions().preserveDrawingBuffer, undefined);
+  baseline.probe.arm({ captureFramebuffer: true });
+  const regular = baseline.frame(() => baseline.gl.drawArrays(4, 0, 6));
+  assert.equal(regular.contextPreserveDrawingBuffer, false);
+  assert.equal(regular.defaultFramebufferSamples, 4);
+  assert.deepEqual(
+    h.calls.filter((call) => call.startsWith('draw:')),
+    baseline.calls.filter((call) => call.startsWith('draw:')),
+  );
 });
 
 test('diagnostic-only dither isolation wraps draws and restores GL state on error', () => {

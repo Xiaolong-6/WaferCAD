@@ -292,7 +292,13 @@ export function installWebglFrameProbe() {
     // Test-only raster isolation, prior to Three.js WebGL context creation.
     // No change to the product or ordinary browser context attributes.
     const forcedNoMsaa = args[0] === 'webgl2' && window.__waferCadMsaaProbeForceOff === true;
-    const contextArgs = forcedNoMsaa ? [args[0], { ...(args[1] || {}), antialias: false }] : args;
+    const preservedMsaa =
+      args[0] === 'webgl2' && window.__waferCadPreservedMsaaProbeForceOn === true;
+    const contextArgs = forcedNoMsaa
+      ? [args[0], { ...(args[1] || {}), antialias: false }]
+      : preservedMsaa
+        ? [args[0], { ...(args[1] || {}), antialias: true, preserveDrawingBuffer: true }]
+        : args;
     const gl = originalGetContext.apply(this, contextArgs);
     if (args[0] === 'webgl2' && gl) instrument(gl, this);
     return gl;
@@ -319,6 +325,7 @@ export function installWebglFrameProbe() {
           triangles: active.triangles,
           forcedDitherDisabledDraws: active.forcedDitherDisabledDraws,
           contextAntialias: gl.getContextAttributes?.().antialias ?? null,
+          contextPreserveDrawingBuffer: gl.getContextAttributes?.().preserveDrawingBuffer ?? null,
           defaultFramebufferSamples: gl.getParameter(gl.SAMPLES),
           submissionMs: submittedAt - active.startedAt,
           finishWaitMs: finishedAt - submittedAt,

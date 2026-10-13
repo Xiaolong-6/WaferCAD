@@ -66,9 +66,10 @@ export function summarizeRendererPhaseWindow(comparisons) {
 export function isRendererPhaseAcceptanceEligible({
   diagnosticNoDither = false,
   diagnosticNoMsaa = false,
+  diagnosticPreservedMsaa = false,
   phaseWindowDiagnostic = false,
 } = {}) {
-  return !diagnosticNoDither && !diagnosticNoMsaa && !phaseWindowDiagnostic;
+  return !diagnosticNoDither && !diagnosticNoMsaa && !diagnosticPreservedMsaa && !phaseWindowDiagnostic;
 }
 
 /**

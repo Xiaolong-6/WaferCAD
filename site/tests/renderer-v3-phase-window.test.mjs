@@ -139,6 +139,7 @@ test('targeted raster isolation never satisfies ordinary product acceptance', ()
   assert.equal(isRendererPhaseAcceptanceEligible({ phaseWindowDiagnostic: true }), false);
   assert.equal(isRendererPhaseAcceptanceEligible({ diagnosticNoDither: true }), false);
   assert.equal(isRendererPhaseAcceptanceEligible({ diagnosticNoMsaa: true }), false);
+  assert.equal(isRendererPhaseAcceptanceEligible({ diagnosticPreservedMsaa: true }), false);
 });
 
 test('hardware milestone capture requires every draw, stable framebuffer dimensions and a final frame', () => {

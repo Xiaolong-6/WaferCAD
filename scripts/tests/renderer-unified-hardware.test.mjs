@@ -12,6 +12,7 @@ import {
   buildRendererHardwareFetchArgs,
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
+  buildRendererR9PreservedMsaaPlan,
   buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
@@ -299,6 +300,41 @@ const v4Report = (mode, active = true) => ({
   ],
   parity: { strictPixelParity: true },
   passed: true,
+});
+
+test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance', () => {
+  const [step] = buildRendererR9PreservedMsaaPlan();
+  assert.equal(step.branch, 'v4');
+  assert.equal(step.id, 'v4-preserved-msaa');
+  assert.deepEqual(step.args, ['--hardware-gpu', '--report-only', '--diagnose-preserved-msaa']);
+  const valid = {
+    diagnosticPreservedMsaa: true,
+    diagnosticNoMsaa: false,
+    acceptanceEligible: false,
+    passed: false,
+    stage: 'completed',
+    strictParity: true,
+    comparisons: [{}, {}, {}],
+    trials: Array.from({ length: 4 }, () => ({
+      ...completePhaseTrial(),
+      backend: { hardwareVerified: true, adapter: 'RTX 3060' },
+      native: {
+        ...completePhaseTrial().native,
+        contextAntialias: true,
+        contextPreserveDrawingBuffer: true,
+        defaultFramebufferSamples: 4,
+        glState: { framebuffer: 'default' },
+      },
+    })),
+  };
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, valid), 'diagnostic-complete');
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...valid, passed: true }), 'error');
+  const invalid = structuredClone(valid);
+  invalid.trials[2].native.defaultFramebufferSamples = 0;
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, invalid), 'error');
+  const mismatched = structuredClone(valid);
+  mismatched.trials[1].backend.adapter = 'different adapter';
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, mismatched), 'error');
 });
 
 test('targeted phase-window evidence cannot approve V3 production raster parity', () => {

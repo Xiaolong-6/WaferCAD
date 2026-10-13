@@ -35,6 +35,7 @@ const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const diagnosticNoDither = process.argv.includes('--diagnose-no-dither');
 const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
+const diagnosticPreservedMsaa = process.argv.includes('--diagnose-preserved-msaa');
 const phaseWindowOptions = process.argv.filter((arg) => arg.startsWith('--diagnose-phase-window'));
 assert.ok(phaseWindowOptions.length <= 1, 'Select at most one phase window');
 const phaseWindow = phaseWindowOptions.length
@@ -54,7 +55,17 @@ assert.ok(
   '--diagnose-no-msaa requires --hardware-gpu --report-only; isolation flags cannot be combined',
 );
 assert.ok(
-  !phaseWindowDiagnostic || (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa),
+  !diagnosticPreservedMsaa ||
+    (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa && !phaseWindowDiagnostic),
+  '--diagnose-preserved-msaa requires --hardware-gpu --report-only and cannot be combined',
+);
+assert.ok(
+  !phaseWindowDiagnostic ||
+    (hardwareGpu &&
+      reportOnly &&
+      !diagnosticNoDither &&
+      !diagnosticNoMsaa &&
+      !diagnosticPreservedMsaa),
   '--diagnose-phase-window=LOW:HIGH requires --hardware-gpu --report-only without other raster interventions',
 );
 const output = new URL(
@@ -63,6 +74,8 @@ const output = new URL(
       ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
       : diagnosticNoMsaa
         ? '../test-results/renderer-hardware-fresh-context-ab-no-msaa/'
+        : diagnosticPreservedMsaa
+          ? '../test-results/renderer-hardware-fresh-context-ab-preserved-msaa/'
         : phaseWindowDiagnostic
           ? `../test-results/renderer-hardware-fresh-context-ab-phase-window-${phaseWindow.low}-${phaseWindow.high}/`
           : '../test-results/renderer-hardware-fresh-context-ab/'
@@ -87,12 +100,14 @@ const report = {
   reportOnly,
   diagnosticNoDither,
   diagnosticNoMsaa,
+  diagnosticPreservedMsaa,
   phaseWindowDiagnostic,
   phaseWindow,
   phaseMilestones: hardwareGpu ? phaseMilestones : [],
   acceptanceEligible: isRendererPhaseAcceptanceEligible({
     diagnosticNoDither,
     diagnosticNoMsaa,
+    diagnosticPreservedMsaa,
     phaseWindowDiagnostic,
   }),
   strictPixelTolerance: 0,
@@ -125,6 +140,11 @@ async function trial(enabled, index) {
   if (diagnosticNoMsaa) {
     await context.addInitScript(() => {
       window.__waferCadMsaaProbeForceOff = true;
+    });
+  }
+  if (diagnosticPreservedMsaa) {
+    await context.addInitScript(() => {
+      window.__waferCadPreservedMsaaProbeForceOn = true;
     });
   }
   if (diagnosticNoDither) {
@@ -355,6 +375,16 @@ async function trial(enabled, index) {
         'default',
         `${label}: multisampling census did not capture the default framebuffer`,
       );
+    }
+    if (diagnosticPreservedMsaa) {
+      assert.equal(native.contextAntialias, true, label + ': multisampling unexpectedly disabled');
+      assert.equal(
+        native.contextPreserveDrawingBuffer,
+        true,
+        label + ': default framebuffer was not preserved',
+      );
+      assert.equal(native.defaultFramebufferSamples, 4, label + ': expected real 4-sample MSAA');
+      assert.equal(native.glState?.framebuffer, 'default', label + ': framebuffer must be default');
     }
     if (diagnosticNoDither) {
       assert.ok(

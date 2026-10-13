@@ -73,6 +73,19 @@ export function buildRendererR9V4NoMsaaDiagnosticPlan(modes = RENDERER_HARDWARE_
     }));
 }
 
+// One 4x-MSAA hypothesis: preserve the default framebuffer through browser
+// presentation. Run V3's OFF/OFF/ON/ON evidence collector on current V4 source;
+// archived V3 git objects and all product rendering settings remain untouched.
+export function buildRendererR9PreservedMsaaPlan() {
+  return [{
+    id: 'v4-preserved-msaa',
+    branch: 'v4',
+    script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+    args: ['--hardware-gpu', '--report-only', '--diagnose-preserved-msaa'],
+    artifact: 'test-results/renderer-hardware-fresh-context-ab-preserved-msaa',
+  }];
+}
+
 export function buildRendererR9HardwareCampaignPlan() {
   const regular = buildRendererHardwarePlan();
   return [regular[0], ...buildRendererV3MsaaDiagnosticPlan(), ...regular.slice(1)];
@@ -127,6 +140,45 @@ export function buildRendererV3PhaseWindowDiagnosticPlan(value) {
 }
 
 export function classifyRendererHardwareStep(step, report) {
+  if (step.id === 'v4-preserved-msaa') {
+    if (
+      step.exitCode !== 0 ||
+      report?.error ||
+      report?.failure ||
+      report?.diagnosticPreservedMsaa !== true ||
+      report?.diagnosticNoMsaa !== false ||
+      report?.acceptanceEligible !== false ||
+      report?.passed !== false ||
+      report?.stage !== 'completed' ||
+      report?.trials?.length !== 4 ||
+      report?.comparisons?.length !== 3 ||
+      typeof report?.strictParity !== 'boolean'
+    )
+      return 'error';
+    const adapter = report.trials[0].backend?.adapter;
+    if (
+      !adapter ||
+      report.trials.some(
+        (trial) =>
+          trial.backend?.hardwareVerified !== true ||
+          trial.backend.adapter !== adapter ||
+          trial.native?.contextAntialias !== true ||
+          trial.native?.contextPreserveDrawingBuffer !== true ||
+          trial.native?.defaultFramebufferSamples !== 4 ||
+          trial.native?.glState?.framebuffer !== 'default' ||
+          !checkRendererPhaseCapture({
+            checkpoints: trial.phaseCheckpoints,
+            coverage: trial.phaseCoverage,
+            milestones: rendererPhaseMilestones(null),
+            drawCalls: trial.native?.calls,
+            framebuffer: trial.native?.framebuffer,
+            requireRasterState: true,
+          }).valid,
+      )
+    )
+      return 'error';
+    return 'diagnostic-complete';
+  }
   if (!report) return step.exitCode === 0 ? 'incomplete' : 'error';
   if (step.id.startsWith('v4-') && step.id.endsWith('-msaa-off')) {
     const candidate = step.id.slice(3, -'-msaa-off'.length);
