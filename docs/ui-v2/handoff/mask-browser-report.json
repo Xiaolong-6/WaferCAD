@@ -1,9 +1,0 @@
-{
-  "revision": "22358329e9dc68f934c8ed17823eff1c6c587377",
-  "result": "fail",
-  "widths": [],
-  "errors": [
-    "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok((await snapshot()).plan.zoom > 1)\n\n    at file:///C:/Users/carll/Documents/ChatGPT/wafercad/scripts/v2/check-mask-view.mjs:154:14"
-  ],
-  "browser": "140.0.7339.186"
-}

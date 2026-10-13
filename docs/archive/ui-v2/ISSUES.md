@@ -19,7 +19,7 @@
 
 ## M1.5 / M2 决策更新（2026-10-09）
 
-上表保留 M0 审计原貌。当前结果见 [M2 检查点](../archive/ui-v2/M2_CHECKPOINT.md)：
+上表保留 M0 审计原貌。当前结果见 [M2 检查点](M2_CHECKPOINT.md)：
 
 - **I01 已确认并实现**：按源码保留两个 sessionStorage 键，不使用 localStorage；模式默认值、Split 去重/交换、跨刷新与拒绝存储均有 v2 检查。
 - **I04 已选定 UI 位置**：A 布局，Recipe / Code 在 Process 内；真实事务适配与跨域导航仍待 M3。
@@ -30,18 +30,19 @@
 ## M2 补漏自查
 
 Section Legend 已补只读材料/注释显示和响应式布局，真实编辑待 M3。
-其余原型缺口见 [M2 自查](../archive/ui-v2/M2_GAP_AUDIT.md) G01–G08：尤其 History 仍平铺、Manual 缺 Extend / Etch 分类不一致 / Tilt 不支持负值。
+其余原型缺口见 [M2 自查](M2_GAP_AUDIT.md) G01–G08：尤其 History 仍平铺、Manual 缺 Extend / Etch 分类不一致 / Tilt 不支持负值。
 这些未完成的界面项不计入已覆盖，不以 M2 浏览器检查通过代替全工作区验收。用户允许本地提交；停下审核，不进入 M3。
 
 ## D1 实施期间新增待验收项（2026-10-10）
 
+<!-- prettier-ignore -->
 | ID  | 发现与风险                                                                                                                                                                                                                                                                                                                                                                                   | 处理要求                                                                                                                                                                                                                                                                    | 状态                                                      |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| I16 | D1 已提交独立 `app-v2-real.html` 的真实视图装配实验：复用现有 DOM/canvas/控制器，`app.js` 在 v2 标记下使用单一 bootstrap。已取得可执行工作区并补跑 Chromium、软件 WebGL、Main 指针 ROI、四档截图及旧入口回归；修复可见布局、Single 刷新、Section readout 和键盘焦点。完整几何、共享 toolbar/portal 及批准平台视觉仍未通过；原生 view-head 暂未转为最终共享 chrome，`app-v2.html` 仍为 mock。 | 严格执行 `scripts/v2/check-d1-real-views.mjs` 及原有回归，复核生成库存、四宽度截图、真实 pointer/ROI ≤0.25px、浮层键盘与焦点、3D 完整帧；修复并复验后再决定是否替换 mock 入口，不得直接批准 D1。完整步骤见 [D1 execution](../archive/ui-v2/M3_D1_EXECUTION_2026-10-10.md)。 | **P1 / 部分 runtime gate 通过，D1 仍未通过；D2 不得启动** |
+| I16 | D1 已提交独立 `app-v2-real.html` 的真实视图装配实验：复用现有 DOM/canvas/控制器，`app.js` 在 v2 标记下使用单一 bootstrap。已取得可执行工作区并补跑 Chromium、软件 WebGL、Main 指针 ROI、四档截图及旧入口回归；修复可见布局、Single 刷新、Section readout 和键盘焦点。完整几何、共享 toolbar/portal 及批准平台视觉仍未通过；原生 view-head 暂未转为最终共享 chrome，`app-v2.html` 仍为 mock。 | 严格执行 `scripts/v2/check-d1-real-views.mjs` 及原有回归，复核生成库存、四宽度截图、真实 pointer/ROI ≤0.25px、浮层键盘与焦点、3D 完整帧；修复并复验后再决定是否替换 mock 入口，不得直接批准 D1。完整步骤见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md)。                  | **P1 / 部分 runtime gate 通过，D1 仍未通过；D2 不得启动** |
 
 ## M3 前置 main 审计差异（2026-10-10）
 
-完整按域“静态控件 / 动态生成 / 状态 / 事件与导航 / 真实事务回调”表见 [M3 latest-main audit](../archive/ui-v2/M3_MAIN_AUDIT_2026-10-10.md)。初始轮次只写文档；后续已完成运行时前置审计、生成清单和脚本修复，无产品接线。以下编号在 I01–I10 的历史问题上递增，未表示已有核心修改授权。
+完整按域“静态控件 / 动态生成 / 状态 / 事件与导航 / 真实事务回调”表见 [M3 latest-main audit](M3_MAIN_AUDIT_2026-10-10.md)。初始轮次只写文档；后续已完成运行时前置审计、生成清单和脚本修复，无产品接线。以下编号在 I01–I10 的历史问题上递增，未表示已有核心修改授权。
 
 | ID  | 发现与影响                                                                                                                                                                                                                              | 处理边界 / 验收条件                                                                                                                                                                     | 状态                                                                                                                                                                  |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -67,11 +68,11 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 
 ### D1 运行时复验更新
 
-详见 [D1 execution](../archive/ui-v2/M3_D1_EXECUTION_2026-10-10.md) 的 Executable inspection。AST 最新 267 IDs / 214 classes / 1109 operations / 60 dynamic IDs / 14 unresolved；I11 旧数字保留为前置审计历史。I12 已有隔离真实 bootstrap，尚未获准替换 mock；I06 仅 Main 矩形 pointer 回算通过，不宣告真实 Main↔3D 边界对齐或旧 CI 根因关闭。科学核心、持久化与生产入口没有本轮修改。
+详见 [D1 execution](M3_D1_EXECUTION_2026-10-10.md) 的 Executable inspection。AST 最新 267 IDs / 214 classes / 1109 operations / 60 dynamic IDs / 14 unresolved；I11 旧数字保留为前置审计历史。I12 已有隔离真实 bootstrap，尚未获准替换 mock；I06 仅 Main 矩形 pointer 回算通过，不宣告真实 Main↔3D 边界对齐或旧 CI 根因关闭。科学核心、持久化与生产入口没有本轮修改。
 
 ### D1 extended gate follow-up (`c960107` input)
 
-已实跑新 gate 并修复 390px Mask ROI 打开时关闭自身 More 祖先的真实缺陷；保留原始节点与几何算法。工具栏已有原生 Fit / Main Pan / Main+Mask Zoom / More / Max 图标、顺序和尺寸统一，Zoom 实际缩放验证通过；3D/Section 通用动作与完整 M1.5 一致性仍开放。Section Detail ≤0.25px、Z Break 原生 modal/inline 的 Escape/Close/背景关闭与回挂已验证，不能代替独立物理 Z、旋转 Mask、全部 portal 场景。最新 AST 为 267 IDs / 215 classes / 1114 operations / 60 dynamic IDs / 14 unresolved。I16 仍为 D1 未通过；D2 未启动。完整环境、命令及范围见 [D1 report](../archive/ui-v2/M3_D1_EXECUTION_2026-10-10.md)。
+已实跑新 gate 并修复 390px Mask ROI 打开时关闭自身 More 祖先的真实缺陷；保留原始节点与几何算法。工具栏已有原生 Fit / Main Pan / Main+Mask Zoom / More / Max 图标、顺序和尺寸统一，Zoom 实际缩放验证通过；3D/Section 通用动作与完整 M1.5 一致性仍开放。Section Detail ≤0.25px、Z Break 原生 modal/inline 的 Escape/Close/背景关闭与回挂已验证，不能代替独立物理 Z、旋转 Mask、全部 portal 场景。最新 AST 为 267 IDs / 215 classes / 1114 operations / 60 dynamic IDs / 14 unresolved。I16 仍为 D1 未通过；D2 未启动。完整环境、命令及范围见 [D1 report](M3_D1_EXECUTION_2026-10-10.md)。
 
 ### D1 follow-up after `096def1` — code pushed; real-browser gate pending
 
@@ -82,7 +83,7 @@ Section Legend 已补只读材料/注释显示和响应式布局，真实编辑�
 
 ### D1 camera / physical Section runtime inspection (`b44b5d4` input)
 
-上述待运行状态由实际复验替代：camera 脚本存在 appReady→WebGL 竞态，已改为完整帧+真实相机等待；3D Pan/Zoom、回归 Orbit 和实际拖拽 capture 释放已验证。新 Base 1:1 物理检查实际发现薄截面居中偏差 **0.42866px >0.25px**，已在显示 helper `section-z-collapse.js` 限定修复非折叠 Physical 的亚像素高度下限；原阈值/公式保留，四档复验 **0px**。Auto/折叠布局不变，新增 owning-suite 物理回归；未改 `plan-renderers.js` / `three-view.js` 等禁止修改服务或任何基线。最新 AST 267 IDs / 215 classes / 1116 operations / 60 dynamic IDs / 14 unresolved；Node 586/586，focused 12/12。其余实跑结果和剩余 I16 门槛见 [D1 report](../archive/ui-v2/M3_D1_EXECUTION_2026-10-10.md) 最新小节。Section viewport、统一 portal、完整 M1.5/物理/硬件 GPU 与入口批准仍未完成；D2 未启动。
+上述待运行状态由实际复验替代：camera 脚本存在 appReady→WebGL 竞态，已改为完整帧+真实相机等待；3D Pan/Zoom、回归 Orbit 和实际拖拽 capture 释放已验证。新 Base 1:1 物理检查实际发现薄截面居中偏差 **0.42866px >0.25px**，已在显示 helper `section-z-collapse.js` 限定修复非折叠 Physical 的亚像素高度下限；原阈值/公式保留，四档复验 **0px**。Auto/折叠布局不变，新增 owning-suite 物理回归；未改 `plan-renderers.js` / `three-view.js` 等禁止修改服务或任何基线。最新 AST 267 IDs / 215 classes / 1116 operations / 60 dynamic IDs / 14 unresolved；Node 586/586，focused 12/12。其余实跑结果和剩余 I16 门槛见 [D1 report](M3_D1_EXECUTION_2026-10-10.md) 最新小节。Section viewport、统一 portal、完整 M1.5/物理/硬件 GPU 与入口批准仍未完成；D2 未启动。
 
 ### D1 after `8408352`: Section/Pan/Zoom + overlay lifecycle implementation, pending gate
 

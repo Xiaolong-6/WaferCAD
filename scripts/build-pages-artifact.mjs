@@ -1,0 +1,59 @@
+import { cp, mkdir, rm } from 'node:fs/promises';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Developer fixtures are versioned in Git but are not part of the public application.
+const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/'];
+const excludedFiles = new Set([
+  'app-v2.html',
+  'app-v2-main.html',
+  'app-v2-mask.html',
+  'app-v2-real.html',
+  'ui-v2/app.html',
+  'ui-v2/gallery.html',
+  'ui-v2/mock-data.js',
+  'ui-v2/mock-domain-panels.js',
+  'ui-v2/mock-views.js',
+  'ui-v2/mock-workspace.js',
+  'ui-v2/production-workspace.js',
+  'ui-v2/live-preview.js',
+  'ui-v2/shell-preview.js',
+  'ui-v2/real-view-bridge.js',
+  'ui-v2/real-view-bridge.css',
+  'ui-v2/real-section-controls.js',
+]);
+
+export function shouldPublishSitePath(siteRelativePath) {
+  const path = String(siteRelativePath).replaceAll('\\', '/').replace(/^\.\//, '');
+  if (!path || path === '.') return true;
+  if (path.startsWith('/') || path.split('/').includes('..')) return false;
+  return (
+    !excludedFiles.has(path) &&
+    !excludedDirectories.some((dir) => path === dir.slice(0, -1) || path.startsWith(dir))
+  );
+}
+
+export async function stagePagesAssets({
+  source = resolve('site'),
+  destination = resolve('build/pages'),
+} = {}) {
+  const sourceRoot = resolve(source);
+  const destinationRoot = resolve(destination);
+  const nested = relative(sourceRoot, destinationRoot);
+  if (!nested || (!nested.startsWith('..' + sep) && nested !== '..' && !isAbsolute(nested))) {
+    throw new Error('Pages output must be outside the site source directory.');
+  }
+
+  await rm(destinationRoot, { recursive: true, force: true });
+  await mkdir(dirname(destinationRoot), { recursive: true });
+  await cp(sourceRoot, destinationRoot, {
+    recursive: true,
+    filter: (path) => shouldPublishSitePath(relative(sourceRoot, path)),
+  });
+  return destinationRoot;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const destination = await stagePagesAssets();
+  console.log(`Staged public Pages assets in ${destination}`);
+}

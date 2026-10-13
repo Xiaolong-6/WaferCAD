@@ -61,7 +61,7 @@ Feature implementation is pushed to `codex/project-io-geometry-sharing`; no CI o
 Reproduction:
 
 ```powershell
-$env:WAFERCAD_CHROMIUM = 'C:\Users\liux16\AppData\Local\Google\Chrome\Application\chrome.exe'
+$env:WAFERCAD_CHROMIUM = 'C:\Users\<USERNAME>\AppData\Local\Google\Chrome\Application\chrome.exe'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
 node scripts/build-example-previews.mjs
 node scripts/welcome-preview-benchmark.mjs test-results/welcome-preview.json 3

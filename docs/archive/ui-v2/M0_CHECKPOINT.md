@@ -6,10 +6,10 @@
 
 - [用户 r2 执行计划](R2_PLAN.md)：阶段门槛与禁止修改范围。
 - [DOM 契约](../../ui-v2/CONTRACT.md) / [contract.json](../../ui-v2/contract.json)：静态 ID、属性、引用方、动态创建/结构/状态和未解析点。
-- [隐式依赖](../../ui-v2/IMPLICIT_DEPS.md)：40 条，包括启动先后、重挂、祖先选择器、可见性、事件传播、测试耦合。
+- [隐式依赖](IMPLICIT_DEPS.md)：40 条，包括启动先后、重挂、祖先选择器、可见性、事件传播、测试耦合。
 - [PR #161 复盘](PR161_POSTMORTEM.md)：描述/diff/讨论/CI，视觉失败与 interaction/格式失败分开。
 - [风险和估算](RISKS_AND_ESTIMATE.md)：装配重写、DOM 适配域和分阶段工作量。
-- [问题与决策](../../ui-v2/ISSUES.md)：存储域、路由和只读耦合。
+- [问题与决策](ISSUES.md)：存储域、路由和只读耦合。
 - 生成命令：`node scripts/ui-contract-extract.mjs`；复核：`node scripts/ui-contract-extract.mjs --check`。
 - 独立浏览器核对：`node scripts/ui-contract-verify.mjs`，比较真实 HTML parser 与库存，并检查 Recipe 初始化和重复 ID。
 
@@ -35,7 +35,7 @@ Windows / PowerShell，Node `v26.7.0`，npm `11.19.0`；锁定 Playwright `1.55.
 
 ```powershell
 $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
-$env:WAFERCAD_CHROMIUM = 'C:\Users\liux16\AppData\Local\Google\Chrome\Application\chrome.exe'
+$env:WAFERCAD_CHROMIUM = 'C:\Users\<USERNAME>\AppData\Local\Google\Chrome\Application\chrome.exe'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
 npm run test:ui:fast
 node scripts/ui-contract-verify.mjs
@@ -59,4 +59,4 @@ node scripts/ui-contract-verify.mjs
 
 ## 检查点决策
 
-用户确认 M0 后才能开始 M1 的浅色 token 与 Gallery。默认按实际源码保留视图 sessionStorage 键和语义；[I01](../../ui-v2/ISSUES.md) 记录了计划中的 localStorage 用词差异。布局与 Recipe 位置保留到 M1.5 的比较原型逐屏审核，本轮不代选。
+用户确认 M0 后才能开始 M1 的浅色 token 与 Gallery。默认按实际源码保留视图 sessionStorage 键和语义；[I01](ISSUES.md) 记录了计划中的 localStorage 用词差异。布局与 Recipe 位置保留到 M1.5 的比较原型逐屏审核，本轮不代选。

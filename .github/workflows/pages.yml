@@ -76,14 +76,15 @@ jobs:
           cache: npm
       - name: Install locked development dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Stamp the validated revision
+      - name: Stage production assets and stamp the validated revision
         run: |
-          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > site/build-info.json
-          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA"
+          node scripts/build-pages-artifact.mjs
+          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json
+          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA" build/pages
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: build/pages
       - name: Deploy verified main
         id: deployment
         uses: actions/deploy-pages@v4

@@ -24,7 +24,7 @@ try {
   });
   try {
     page.on('pageerror', (error) => report.errors.push(error.message));
-    await page.goto(`${base}/app-v2-workstation.html?start=example&example=m3d`);
+    await page.goto(`${base}/app.html?start=example&example=m3d`);
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
