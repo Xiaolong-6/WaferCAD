@@ -68,7 +68,13 @@ if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   }
 }
 if (planOnly) {
-  console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, pinnedV3Sha: RENDERER_HARDWARE_V3_PINNED_SHA, plan }, null, 2));
+  console.log(
+    JSON.stringify(
+      { branches: RENDERER_HARDWARE_BRANCHES, pinnedV3Sha: RENDERER_HARDWARE_V3_PINNED_SHA, plan },
+      null,
+      2,
+    ),
+  );
 } else {
   if (!hardwareGpu || (hardwareRtx3060 && process.platform !== 'win32')) {
     throw new Error('Use --hardware-gpu on a real GPU, or --plan-only for dry-run planning.');
@@ -138,14 +144,17 @@ async function runHardware() {
       git(['cat-file', '-e', refs.v3 + '^{commit}']);
     } catch {
       throw new Error(
-        'Pinned V3 baseline ' + refs.v3 +
+        'Pinned V3 baseline ' +
+          refs.v3 +
           ' is missing locally. Ensure the V4 clone has full history (not shallow).',
       );
     }
     try {
       git(['merge-base', '--is-ancestor', refs.v3, refs.v4]);
     } catch {
-      throw new Error('Fetched V4 does not contain pinned V3 baseline; refusing mixed-revision evidence.');
+      throw new Error(
+        'Fetched V4 does not contain pinned V3 baseline; refusing mixed-revision evidence.',
+      );
     }
     for (const key of ['v3', 'v4']) {
       console.log('Preparing ' + key.toUpperCase() + ' ' + refs[key].slice(0, 10));

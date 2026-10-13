@@ -47,7 +47,9 @@ test('R9 fetch only needs live V4 and pins the deleted V3 branch to exact PR #16
     'origin',
     'refs/heads/perf/renderer-v4-adaptive-tiles-20261010:refs/remotes/origin/perf/renderer-v4-adaptive-tiles-20261010',
   ]);
-  assert.ok(!buildRendererHardwareFetchArgs().some((arg) => arg.includes(RENDERER_HARDWARE_BRANCHES.v3)));
+  assert.ok(
+    !buildRendererHardwareFetchArgs().some((arg) => arg.includes(RENDERER_HARDWARE_BRANCHES.v3)),
+  );
 });
 
 test('R9 single-GPU-session campaign captures baseline, no-MSAA control and independent V4 modes', () => {
