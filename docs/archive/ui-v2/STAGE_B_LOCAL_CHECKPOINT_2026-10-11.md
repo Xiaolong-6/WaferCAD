@@ -24,11 +24,11 @@ The shared workstation registers real 3D using the existing renderer, the same m
 
 At the user's request, development can use smaller existing examples through the shared loader. No duplicate model or renderer is created. Default remains the complete M3D project for existing acceptance gates:
 
-- Lightweight four-unit metalens: `http://127.0.0.1:4182/app-v2-workstation.html?example=metalens` — 5 layers, 2 regions, 22,757-byte fixture.
-- Photodetector: `http://127.0.0.1:4182/app-v2-workstation.html?example=photodetector` — 5 layers, 5 regions, 100,579-byte fixture; its rough surfaces still cost software rendering time.
-- Complete M3D: `http://127.0.0.1:4182/app-v2-workstation.html?example=m3d` — 27 layers, 551 regions.
+- Lightweight four-unit metalens: `http://127.0.0.1:4182/app.html?example=metalens` — 5 layers, 2 regions, 22,757-byte fixture.
+- Photodetector: `http://127.0.0.1:4182/app.html?example=photodetector` — 5 layers, 5 regions, 100,579-byte fixture; its rough surfaces still cost software rendering time.
+- Complete M3D: `http://127.0.0.1:4182/app.html?example=m3d` — 27 layers, 551 regions.
 
-These local URLs point to the same [shared workstation entry](../../../site/app-v2-workstation.html). They are loopback routes on the development machine, not public previews. Online updates remain paused; a future `/preview/` deployment is assembled by Pages rather than stored as a source directory.
+These local URLs point to the same [shared workstation entry](../../../site/app.html). They are loopback routes on the development machine, not public previews. Online updates remain paused; a future `/preview/` deployment is assembled by Pages rather than stored as a source directory.
 
 Legacy delta against budget base `1664405`: Section collapse public port 8 additions, 3D opt-in gesture port 33 additions, zero deletions; cumulative **41/100**. Callers that do not opt into the new gesture port retain legacy defaults. No scientific geometry algorithm, worker, schema, IO implementation or legacy assertion was modified.
 
