@@ -52,6 +52,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect exact autosave formatting delta (temporary)
+        run: npx prettier site/controllers/workspace-persistence-controller.js | diff -u site/controllers/workspace-persistence-controller.js - || true
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
