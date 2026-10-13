@@ -40,7 +40,7 @@ test('tooltip service keeps native canvas event and model code untouched', () =>
   const controller = readFileSync(new URL('../ui-v2/tooltip-controller.js', import.meta.url), 'utf8');
   assert.match(controller, /pointerover/);
   assert.match(controller, /focusin/);
-  assert.doesNotMatch(controller, /preventDefault\\(|stopPropagation\\(/);
+  assert.doesNotMatch(controller, /preventDefault|stopPropagation/);
   assert.doesNotMatch(controller, /innerHTML|requestAnimationFrame|setInterval/);
   assert.match(controller, /textContent/);
 });

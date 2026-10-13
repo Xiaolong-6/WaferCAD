@@ -38,6 +38,7 @@ try {
       await page.locator('.wc-context-tooltip:visible').waitFor();
       await page.keyboard.press('Escape');
       await page.locator('.wc-context-tooltip').waitFor({ state: 'hidden' });
+      await mode.evaluate((node) => node.blur());
       await mode.focus();
       await page.locator('.wc-context-tooltip:visible').waitFor();
       await page.evaluate(() => window.dispatchEvent(new Event('resize')));

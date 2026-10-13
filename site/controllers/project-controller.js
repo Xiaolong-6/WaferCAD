@@ -568,12 +568,11 @@ export function createProjectController({
       ]
         .filter(Boolean)
         .join(' · ');
-      meta.title = meta.textContent;
+      if (!compactHistory) meta.title = meta.textContent;
       body.append(label, meta);
       if (compactHistory) {
         wrap.classList.add('history-step-compact');
-        label.title = label.textContent;
-        body.title = `${label.textContent}\n${meta.textContent}`;
+        // Avoid stacking native titles over the compact Step's contextual tooltip.
       }
 
       const actions = [];
