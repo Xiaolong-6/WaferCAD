@@ -103,3 +103,14 @@ Warmup renders to an offscreen buffer and must not affect exported PNG or
 final scientific pixels. Experimental flags stay default-off; P2.6,
 ROI supersession, context recovery, exact pixel parity and physical GPU
 latency are to be accepted together at the final branch revision.
+
+## P2.7 exact-export readiness rule
+
+The normal capture transaction must reject a model or opacity presentation
+that is still assembling, uncommitted, stale, out of sync with the current
+model/ROI signature, or unavailable after context loss. When the scientific
+scene itself is committed but optional Rough detail remains in preview,
+`prepareScene` may force detailed refinement; PNG encoding requires
+`currentRoughMode === 'detailed'` if there are rough tasks. Rejection enters
+the existing transactional restoration path and cannot yield a preview PNG.
+This does not change GLB export or approved image baselines.

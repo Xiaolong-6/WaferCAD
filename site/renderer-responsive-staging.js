@@ -65,3 +65,30 @@ export function shouldHideRendererPreviewMesh({
     INTERACTION_PREVIEW_HIDDEN_KINDS.has(kind)
   );
 }
+
+
+// Exact export is intentionally independent from the approximate interaction
+// preview. The presenter may prepare rough detail on demand, but cannot
+// capture a stale, uncommitted, superseded, or context-lost main scene.
+export function assertRendererExactCaptureReady({
+  rendererReady = false,
+  contextStatus = 'uninitialized',
+  assembling = false,
+  hasCommittedGroup = false,
+  stale = false,
+  modelMatches = false,
+  signatureMatches = false,
+  variantMatches = false,
+} = {}) {
+  if (!rendererReady || contextStatus !== 'ready')
+    throw new Error('Exact 3D export requires a ready WebGL renderer.');
+  if (
+    assembling ||
+    !hasCommittedGroup ||
+    stale ||
+    !modelMatches ||
+    !signatureMatches ||
+    !variantMatches
+  )
+    throw new Error('Exact 3D model is still building or outdated; cannot export preview.');
+}

@@ -90,3 +90,32 @@ test('P1 display-only preview hides only heavy internal transparent meshes and r
   ])
     assert.equal(shouldHideRendererPreviewMesh({ ...eligible, ...patch }), false);
 });
+
+test('P2.7 exact export accepts only the current committed presentation', async () => {
+  const { assertRendererExactCaptureReady } = await import('../renderer-responsive-staging.js');
+  const valid = {
+    rendererReady: true,
+    contextStatus: 'ready',
+    assembling: false,
+    hasCommittedGroup: true,
+    stale: false,
+    modelMatches: true,
+    signatureMatches: true,
+    variantMatches: true,
+  };
+  assert.doesNotThrow(() => assertRendererExactCaptureReady(valid));
+  for (const patch of [
+    { rendererReady: false },
+    { contextStatus: 'lost' },
+    { contextStatus: 'restoring' },
+    { assembling: true },
+    { hasCommittedGroup: false },
+    { stale: true },
+    { modelMatches: false },
+    { signatureMatches: false },
+    { variantMatches: false },
+  ]) {
+    assert.throws(() => assertRendererExactCaptureReady({ ...valid, ...patch }), /Exact 3D/);
+  }
+  assert.throws(() => assertRendererExactCaptureReady(), /ready WebGL renderer/);
+});

@@ -22,6 +22,7 @@ import {
   isRendererBuildSuperseded,
   shouldStageRendererScene,
   shouldHideRendererPreviewMesh,
+  assertRendererExactCaptureReady,
 } from './renderer-responsive-staging.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
@@ -5144,10 +5145,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
       transparencyOrderDirty = true;
       updateTransparentOrder();
     }
-    if (host.dataset.rendererDisplayedState === 'stale')
-      throw new Error(
-        'Current 3D model is still building or failed; outdated preview cannot be exported.',
-      );
+    const exportModel = getModel();
+    assertRendererExactCaptureReady({
+      rendererReady: ready,
+      contextStatus: webglContextStatus,
+      assembling: rendering,
+      hasCommittedGroup: Boolean(group?.visible && group?.parent === scene),
+      stale: host.dataset.rendererDisplayedState === 'stale',
+      modelMatches: Boolean(exportModel && physicalSceneModel === exportModel),
+      signatureMatches: Boolean(
+        exportModel &&
+          physicalSceneSignature ===
+            sceneSignature(exportModel, getClipGeometry(), getInspection() || {}),
+      ),
+      variantMatches: activeSceneVariant === presentationMode(),
+    });
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),
@@ -5171,7 +5183,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         captureRenderer.toneMapping = renderer.toneMapping;
         captureRenderer.toneMappingExposure = renderer.toneMappingExposure;
       },
-      prepareScene: () => requestRoughGeometry('detailed', { force: true }),
+      prepareScene: async () => {
+        await requestRoughGeometry('detailed', { force: true });
+        // A rejected Worker or cancelled refinement must never silently
+        // encode the interactive rough preview as an exact scientific PNG.
+        if (roughTasks.length && currentRoughMode !== 'detailed') {
+          throw new Error('Exact rough detail is unavailable; preview cannot be exported.');
+        }
+      },
       capture: (captureRenderer) => {
         captureRenderer.render(scene, camera);
         return new Promise((resolve, reject) =>
