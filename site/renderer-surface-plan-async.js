@@ -17,18 +17,22 @@ export function shouldBuildSurfacePlanInWorker(model) {
   );
 }
 
-export async function buildRenderSurfacePlanAsync(model, clip = null) {
+export async function buildRenderSurfacePlanAsync(model, clip = null, { signal } = {}) {
   if (!shouldBuildSurfacePlanInWorker(model)) {
     return buildRenderSurfacePlan(model, clip);
   }
   const cached = cachedRenderSurfacePlan(model, clip);
   if (cached) return cached;
+  if (signal?.aborted) throw Object.assign(new Error('Surface build superseded'), { name: 'AbortError' });
   return new Promise((resolve, reject) => {
     let worker;
     let settled = false;
+    const onAbort = () =>
+      finish(Object.assign(new Error('Surface build superseded'), { name: 'AbortError' }));
     const finish = (error, plan) => {
       if (settled) return;
       settled = true;
+      signal?.removeEventListener('abort', onAbort);
       worker?.terminate();
       if (error) reject(error);
       else resolve(rememberRenderSurfacePlan(model, clip, plan));
@@ -47,6 +51,11 @@ export async function buildRenderSurfacePlanAsync(model, clip = null) {
         finish(new Error(event.message || 'Surface ownership worker crashed.'));
       worker.onmessageerror = () =>
         finish(new Error('Surface ownership worker returned unreadable geometry.'));
+      signal?.addEventListener('abort', onAbort, { once: true });
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
       worker.postMessage({ id: 1, action: 'surface-plan', model, clip });
     } catch (error) {
       finish(error);
