@@ -99,7 +99,7 @@ try {
     const errors = observePageErrors(page);
     await page.goto(
       rendererWorkstationUrl +
-        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1',
+        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1&rendererResponsiveSmoothWorker=1',
     );
     await waitForAppReady(page);
     await page

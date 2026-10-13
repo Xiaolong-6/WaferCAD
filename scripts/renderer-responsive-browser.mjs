@@ -40,7 +40,7 @@ try {
         { timeout: 90000 },
       );
     };
-    await page.goto(workstationUrl + '?rendererResponsiveModelStage=1&rendererV4GpuCensus=1');
+    await page.goto(workstationUrl + '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererV4GpuCensus=1');
     await waitForAppReady(page);
     await load();
     await closeFunctionPanel(page);
@@ -78,6 +78,44 @@ try {
     assert.equal(after.v4GpuResourceStatus, 'measured');
     assert.equal(after.v4GpuResourceComplete, 'true');
     assert.ok(Number(after.v4GpuResourceSceneGroups) <= 2, 'old scene resources retired');
+    // Directly exercise the real CPU Worker in Chromium, even when this
+    // small fixture has no eligible large smooth-sidewall groups.
+    const smoothWorkerSmoke = await page.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const worker = new Worker(
+            new URL('renderer-v4-smooth-sidewall-worker.js', document.baseURI),
+          );
+          const id = 'responsive-worker-smoke';
+          const timeout = setTimeout(() => {
+            worker.terminate();
+            reject(new Error('Smooth-sidewall Worker timed out'));
+          }, 10000);
+          const finish = (result, error = null) => {
+            clearTimeout(timeout);
+            worker.terminate();
+            if (error) reject(error);
+            else resolve(result);
+          };
+          worker.onerror = (event) => finish(null, new Error(event.message));
+          worker.onmessage = ({ data }) => {
+            if (data?.id !== id) return;
+            if (data.type === 'error') finish(null, new Error(data.message));
+            else
+              finish({
+                positions: data.positions instanceof Float32Array ? data.positions.length : -1,
+                normals: data.normals instanceof Float32Array ? data.normals.length : -1,
+              });
+          };
+          worker.postMessage({ id, parts: [{ p: [0, 0], q: [1, 0], z0: 0, z1: 1 }] });
+        }),
+    );
+    assert.deepEqual(smoothWorkerSmoke, { positions: 18, normals: 18 });
+    report.smoothSidewallWorker = {
+      ...smoothWorkerSmoke,
+      sceneJobs: Number(after.rendererSmoothWorkerJobs || 0),
+      fallbackCount: Number(after.rendererSmoothWorkerFallbacks || 0),
+    };
     await host.screenshot({ path: fileURLToPath(new URL('committed.png', output)) });
     assert.deepEqual(errors, [], 'no browser errors');
     report.after = {
