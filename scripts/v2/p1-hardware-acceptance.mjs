@@ -33,7 +33,9 @@ let server, browser, context, page;
 const save = () => writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 const checkServer = async () => {
   try {
-    const response = await fetch(base + '/app.html', { signal: globalThis.AbortSignal.timeout(1200) });
+    const response = await fetch(base + '/app.html', {
+      signal: globalThis.AbortSignal.timeout(1200),
+    });
     return response.ok;
   } catch {
     return false;
@@ -106,7 +108,8 @@ async function open(url) {
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
 }
 try {
-  if (await checkServer()) throw new Error(`Port ${port} is in use. Stop the existing server or set WAFERCAD_HW_PORT.`);
+  if (await checkServer())
+    throw new Error(`Port ${port} is in use. Stop the existing server or set WAFERCAD_HW_PORT.`);
   server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
     env: { ...process.env, WAFERCAD_V2_PORT: String(port) },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -184,7 +187,12 @@ try {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['data-boot', 'data-project-ready', 'data-first-frame-ready', 'data-view-load'],
+      attributeFilter: [
+        'data-boot',
+        'data-project-ready',
+        'data-first-frame-ready',
+        'data-view-load',
+      ],
     });
   });
 
@@ -202,7 +210,9 @@ try {
     !/swiftshader|llvmpipe|software|warp|basic render driver/i.test(glText);
   console.log('P1 hardware GPU:', glText || '(unmasked adapter not available)');
   if (!report.hardwareVerified) {
-    report.errors.push('GPU identity is not verified as NVIDIA hardware; do not treat results as RTX acceptance.');
+    report.errors.push(
+      'GPU identity is not verified as NVIDIA hardware; do not treat results as RTX acceptance.',
+    );
   }
 
   console.log('P1 hardware: storing Quality preference for M3D…');
@@ -216,7 +226,8 @@ try {
   );
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
-    () => /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
+    () =>
+      /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
     null,
     { timeout },
   );
@@ -264,14 +275,17 @@ try {
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
   if (server) server.kill();
-  console.log('P1_HARDWARE_RESULT', JSON.stringify({
-    passed: report.passed,
-    revision: report.revision,
-    gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
-    modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
-    stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
-    folder: output,
-    errors: report.errors.slice(0, 3).map((x) => x.slice(0, 180)),
-  }));
+  console.log(
+    'P1_HARDWARE_RESULT',
+    JSON.stringify({
+      passed: report.passed,
+      revision: report.revision,
+      gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
+      modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
+      stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
+      folder: output,
+      errors: report.errors.slice(0, 3).map((x) => x.slice(0, 180)),
+    }),
+  );
   if (!report.passed) process.exitCode = 1;
 }
