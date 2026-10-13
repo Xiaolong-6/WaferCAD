@@ -95,9 +95,7 @@ export function checkRendererR9FocusEvidence(draws) {
       !Array.isArray(row.samplerUnitsReferenced) ||
       row.samplerUnitsReferenced.some(
         (unit) =>
-          !Number.isInteger(unit) ||
-          unit < 0 ||
-          unit >= Math.min(16, row.totalTextureUnits),
+          !Number.isInteger(unit) || unit < 0 || unit >= Math.min(16, row.totalTextureUnits),
       ) ||
       row.textureContentVerified !== false
     ) {
