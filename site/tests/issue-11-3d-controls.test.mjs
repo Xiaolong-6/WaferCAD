@@ -168,10 +168,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
     threeView,
     /new THREE\.WebGLRenderer\(\{ antialias: true, preserveDrawingBuffer: true \}\)/,
   );
-  assert.match(
-    threeView,
-    /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
-  );
+  assert.match(threeView, /prepareScene: async \(\) => \{/);
+  assert.match(threeView, /await requestRoughGeometry\('detailed', \{ force: true \}\)/);
+  assert.match(threeView, /if \(roughTasks\.length && currentRoughMode !== 'detailed'\)/);
   assert.match(threeView, /captureRenderer\.render\(scene, camera\)/);
   assert.match(
     threeView,
