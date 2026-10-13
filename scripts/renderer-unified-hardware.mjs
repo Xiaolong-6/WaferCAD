@@ -35,7 +35,12 @@ const r9PhaseWindowCampaign = options.includes('--campaign=r9-phase-window');
 const unknownCampaign = options.filter(
   (arg) =>
     arg.startsWith('--campaign=') &&
-    !['--campaign=r9', '--campaign=r9-v4-msaa', '--campaign=r9-preserved-msaa', '--campaign=r9-phase-window'].includes(arg),
+    ![
+      '--campaign=r9',
+      '--campaign=r9-v4-msaa',
+      '--campaign=r9-preserved-msaa',
+      '--campaign=r9-phase-window',
+    ].includes(arg),
 );
 if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
   throw new Error('Select one known hardware campaign.');
@@ -80,12 +85,12 @@ const plan = r9Campaign
       : r9PhaseWindowCampaign
         ? buildRendererR9CurrentV4PhaseWindowPlan()
         : ditherDiagnostic
-        ? buildRendererV3DitherDiagnosticPlan()
-        : msaaDiagnostic
-          ? buildRendererV3MsaaDiagnosticPlan()
-          : phaseWindowDiagnostic
-            ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
-            : buildRendererHardwarePlan(modes);
+          ? buildRendererV3DitherDiagnosticPlan()
+          : msaaDiagnostic
+            ? buildRendererV3MsaaDiagnosticPlan()
+            : phaseWindowDiagnostic
+              ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+              : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {
