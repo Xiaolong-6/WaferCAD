@@ -21,9 +21,9 @@ Date: 2026-10-13. Base: production UI v2 on `main`. Branch: `feat/ui-v2-z-break-
 
 ## Tooltip migration
 
-Parallel branch `feat/ui-v2-contextual-tooltips-20261013` owns the global tooltip catalog/service. This branch does not edit or duplicate that global service.
+The contextual tooltip service is now present in `main` (formerly PR #189). This editor reuses the existing catalog/controller and does not create or modify another tooltip owner.
 
-The editor uses the parallel branch's existing `data-help` keys (`section.zbreak`, `section.scale`) and `data-help-detail` descriptions on the original, keyboard-focusable controls. Until that branch merges, native `title` is a fallback. When its catalog is present, the editor does not set a duplicate native title. During integration, adjust help copy in the centralized catalog if required; **do not** add new local tooltip DOM or listeners.
+The editor uses the parallel branch's existing `data-help` keys (`section.zbreak`, `section.scale`) and `data-help-detail` descriptions on the original, keyboard-focusable controls. When the central catalog is present, the editor does not set duplicate native titles. Only isolated previews without the service use a native `title` fallback. Help copy stays in `data-help-detail` or the central catalog; **never** add local tooltip DOM or listeners.
 
 ## Verification
 

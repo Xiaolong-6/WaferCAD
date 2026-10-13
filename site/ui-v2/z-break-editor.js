@@ -1,6 +1,6 @@
 // UI-v2-only presentation adapter. All physical Z and snapping stay in the shared controller.
-// data-help/data-help-detail follow the contextual-tooltip branch contract; title is a
-// native fallback until that service is merged. No separate tooltip owner is created.
+// data-help/data-help-detail are consumed by the central v2 tooltip service.
+// A native title is used only in isolated previews without that service.
 export function createZBreakEditor({ el, button, fields, hook, units, collapse }) {
   const help = (node, key, description) => {
     node.dataset.help = key;

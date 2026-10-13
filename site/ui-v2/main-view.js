@@ -68,7 +68,6 @@ export async function createMainView({ project, sharedState, workstation, render
     const face = hooks.get('mainFaceBtn');
     if (face) {
       const back = state.activeFace === 'back';
-      face.title = `${back ? 'Back' : 'Front'} view · click to switch`;
       face.setAttribute('aria-label', back ? 'Back view' : 'Front view');
       face.querySelector('use').setAttribute('href', `#p-icon-${back ? 'faceBack' : 'faceFront'}`);
     }
@@ -84,7 +83,6 @@ export async function createMainView({ project, sharedState, workstation, render
       open: uiState.roiOpen,
       selected: state.roiTool || (state.sectionEditEnabled ? 'line' : state.tool),
     });
-    if (hooks.has('sectionControlsBtn')) hooks.get('sectionControlsBtn').title = 'Slice';
     const canvas = root.getElementById('mainCanvas');
     canvas.dataset.tool = state.tool;
     shell?.getSlot('view.main.readout')?.replaceChildren(caption());
@@ -217,7 +215,7 @@ export async function createMainView({ project, sharedState, workstation, render
         el(
           'div',
           { class: 'v2-floating-editor-actions' },
-          button('Clear ROI', 'clear-roi', 'close'),
+          button('Clear ROI', 'clear-roi', 'close', { 'data-help': 'main.roi.clear' }),
           apply,
         ),
       ),
@@ -250,13 +248,19 @@ export async function createMainView({ project, sharedState, workstation, render
         glyph,
         path,
         action: key ? `roi-tool:${key}` : 'slice-coordinates',
+        helpKey: !key ? 'main.slice.settings' : key === 'line' ? 'main.slice' : 'main.roi',
       })),
     );
     roiStrip = createFloatingStrip({
       id: 'mainRoiTools',
       label: 'Main ROI tools',
       groups,
-      settings: { label: 'ROI settings', action: 'settings:main', glyph: 'settings' },
+      settings: {
+        label: 'ROI settings',
+        action: 'settings:main',
+        glyph: 'settings',
+        helpKey: 'main.roi.settings',
+      },
       toolAttribute: 'data-roi-tool',
       owner: () => document.querySelector('#mainPanel [data-action="roi"]'),
       onToolCreated: (key, node) => {
@@ -322,18 +326,27 @@ export async function createMainView({ project, sharedState, workstation, render
   }
   function buildMain() {
     const common = [
-      hook('mainZoomFit', button('', 'fit:main', 'fit', { title: 'Fit', 'aria-label': 'Fit' })),
+      hook(
+        'mainZoomFit',
+        button('', 'fit:main', 'fit', {
+          title: 'Fit',
+          'aria-label': 'Fit',
+          'data-help': 'view.fit',
+        }),
+      ),
       hook(
         'mainPanBtn',
         button('', 'tool:pan:main', 'pan', {
           title: 'Pan',
           'aria-label': 'Pan',
+          'data-help': 'view.pan',
           'aria-pressed': 'true',
         }),
       ),
       button('', 'tool:zoom:main', 'zoom', {
         title: 'Zoom',
         'aria-label': 'Zoom',
+        'data-help': 'view.zoom',
         'aria-pressed': 'false',
       }),
     ];
@@ -347,14 +360,21 @@ export async function createMainView({ project, sharedState, workstation, render
             button('', 'face:main', 'faceFront', {
               title: 'Front view',
               'aria-label': 'Front view',
+              'data-help': 'main.face',
             }),
           ),
-          button('', 'roi', 'roi', { title: 'ROI', 'aria-label': 'ROI', 'aria-pressed': 'false' }),
+          button('', 'roi', 'roi', {
+            title: 'ROI',
+            'aria-label': 'ROI',
+            'aria-pressed': 'false',
+            'data-help': 'main.roi',
+          }),
         ],
         [
           button('', 'export-menu', 'export', {
             title: 'Export',
             'aria-label': 'Export',
+            'data-help': 'view.export',
             'aria-haspopup': 'menu',
           }),
         ],
@@ -365,6 +385,7 @@ export async function createMainView({ project, sharedState, workstation, render
       button('', 'maximize:main', 'maximize', {
         title: 'Maximize view',
         'aria-label': 'Main maximize',
+        'data-help': 'shell.maximize',
       }),
     );
     const stage = el(
@@ -451,7 +472,6 @@ export async function createMainView({ project, sharedState, workstation, render
       else if (action === 'maximize:main' && !workstation) {
         uiState.maximize = uiState.maximize ? null : 'main';
         renderShell();
-        trigger.title = uiState.maximize ? 'Restore view' : 'Maximize view';
         trigger.setAttribute('aria-label', uiState.maximize ? 'Main restore' : 'Main maximize');
       } else if (action === 'hide-editor' || action === 'return-results') {
         uiState.editorHidden = true;
