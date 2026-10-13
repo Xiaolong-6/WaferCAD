@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { summarizeRendererR9SpatialDrift } from '../../scripts/test-helpers/renderer-r9-spatial-drift.mjs';
+import {
+  summarizeRendererR9SpatialDrift,
+} from '../../scripts/test-helpers/renderer-r9-spatial-drift.mjs';
 
 const png = (width, height, pixels) => ({
   width,
