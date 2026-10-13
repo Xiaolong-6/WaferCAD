@@ -27,7 +27,10 @@ export function shouldPublishSitePath(siteRelativePath) {
   const path = String(siteRelativePath).replaceAll('\\', '/').replace(/^\.\//, '');
   if (!path || path === '.') return true;
   if (path.startsWith('/') || path.split('/').includes('..')) return false;
-  return !excludedFiles.has(path) && !excludedDirectories.some((dir) => path.startsWith(dir));
+  return (
+    !excludedFiles.has(path) &&
+    !excludedDirectories.some((dir) => path === dir.slice(0, -1) || path.startsWith(dir))
+  );
 }
 
 export async function stagePagesAssets({
