@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { auditSiteReachability } from '../../scripts/audit-site-reachability.mjs';
 import { shouldPublishSitePath, stagePagesAssets } from '../../scripts/build-pages-artifact.mjs';
 
 test('Pages includes product assets but excludes previews and developer-only fixtures', () => {
@@ -30,6 +31,7 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'app-v2-real.html',
     'ui-v2/app.html',
     'ui-v2/gallery.html',
+    'ui-v2/history-tree.js',
     'ui-v2/mock-data.js',
     'ui-v2/mock-domain-panels.js',
     'ui-v2/mock-views.js',
@@ -47,6 +49,17 @@ test('Pages includes product assets but excludes previews and developer-only fix
   ]) {
     assert.equal(shouldPublishSitePath(path), false, path);
   }
+});
+
+test('development-only JS and CSS must be excluded from the public Pages artifact', async () => {
+  const source = fileURLToPath(new URL('..', import.meta.url));
+  const audit = await auditSiteReachability(source);
+  assert.ok(audit.developerOnly.includes('ui-v2/history-tree.js'));
+  assert.deepEqual(
+    audit.developerOnly.filter((file) => shouldPublishSitePath(file)),
+    [],
+    'Developer-only modules reached by test/preview roots must remain private to Git source',
+  );
 });
 
 test('staging copies production files without altering source or shipping tests', async (t) => {
@@ -101,5 +114,6 @@ test('real Pages staging preserves each entrypoint local stylesheet and script',
     await access(join(destination, file));
   }
   await assert.rejects(access(join(destination, 'ui-v2', 'prototypes')));
+  await assert.rejects(access(join(destination, 'ui-v2', 'history-tree.js')));
   await assert.rejects(access(join(destination, 'tests')));
 });

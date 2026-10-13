@@ -30,6 +30,14 @@ export function createHistoryMutationController({
     }
   }
 
+  function safelyRestoreReplayTransaction(transaction) {
+    try {
+      return restoreReplayTransaction(transaction) === true;
+    } catch {
+      return false;
+    }
+  }
+
   function cancelEdit() {
     pendingEdit = null;
   }
@@ -279,11 +287,21 @@ export function createHistoryMutationController({
 
     beginReplayInteraction();
     let replay;
+    let restored = true;
     try {
       replay = await getProcessPanelController()?.replayOperations(replaySteps, {
         taskLabel: `Recomputing ${replaySteps.length} existing Step${replaySteps.length === 1 ? '' : 's'}…`,
       });
-      if (!replay?.ok) restoreReplayTransaction(transaction);
+      if (!replay?.ok) restored = safelyRestoreReplayTransaction(transaction);
+    } catch (error) {
+      // A rejected worker/controller replay is also a failed transaction.
+      // Restore the entire pre-edit/pre-insert workspace, not just the last Step.
+      restored = safelyRestoreReplayTransaction(transaction);
+      replay = {
+        ok: false,
+        completed: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
     } finally {
       endReplayInteraction();
     }
@@ -293,8 +311,8 @@ export function createHistoryMutationController({
           replay?.failedOperation?.label || replay?.failedOperation?.kind || 'later Step',
         completed = replay?.completed ?? 0;
       status(
-        `Recompute stopped after ${completed}/${replaySteps.length} existing Steps at "${failedLabel}": ${replay?.error || 'Replay failed.'} Original Variant restored; the pre-insertion Recovery checkpoint is also available.`,
-        'warning',
+        `Recompute stopped after ${completed}/${replaySteps.length} existing Steps at "${failedLabel}": ${replay?.error || 'Replay failed.'} ${restored ? 'Original Variant restored; the pre-insertion Recovery checkpoint is also available.' : 'Automatic rollback failed. Restore the pre-insertion Recovery checkpoint before editing again.'}`,
+        restored ? 'warning' : 'error',
       );
       return true;
     }
@@ -359,12 +377,22 @@ export function createHistoryMutationController({
 
     beginReplayInteraction();
     let replay;
+    let restored = true;
     try {
       replay = await getProcessPanelController()?.replayOperations(downstream, {
         taskLabel: `Recalculating ${downstream.length} later Step${downstream.length === 1 ? '' : 's'}…`,
         initialLayerIdMap,
       });
-      if (!replay?.ok) restoreReplayTransaction(transaction);
+      if (!replay?.ok) restored = safelyRestoreReplayTransaction(transaction);
+    } catch (error) {
+      // A rejected worker/controller replay is also a failed transaction.
+      // Restore the entire pre-edit/pre-insert workspace, not just the last Step.
+      restored = safelyRestoreReplayTransaction(transaction);
+      replay = {
+        ok: false,
+        completed: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
     } finally {
       endReplayInteraction();
     }
@@ -374,8 +402,8 @@ export function createHistoryMutationController({
           replay?.failedOperation?.label || replay?.failedOperation?.kind || 'later Step',
         completed = replay?.completed ?? 0;
       status(
-        `Replay stopped after ${completed}/${downstream.length} later Steps at "${failedLabel}": ${replay?.error || 'Replay failed.'} Original Variant restored; the pre-edit Recovery checkpoint is also available.`,
-        'warning',
+        `Replay stopped after ${completed}/${downstream.length} later Steps at "${failedLabel}": ${replay?.error || 'Replay failed.'} ${restored ? 'Original Variant restored; the pre-edit Recovery checkpoint is also available.' : 'Automatic rollback failed. Restore the pre-edit Recovery checkpoint before editing again.'}`,
+        restored ? 'warning' : 'error',
       );
       return true;
     }
