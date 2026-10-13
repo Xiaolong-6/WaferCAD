@@ -31,7 +31,7 @@ Validation completed with exit code 0:
 - `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs site/tests/process-guide.test.mjs site/tests/ci-test-plan.test.mjs`: 36 passed, 0 failed, 0 skipped. Includes negative link/navigation fixtures, actual English/Chinese Recipe parsing, guide/catalog contracts and CI planner behavior.
 - `npm run format:check`: final full configured formatting gate passed.
 
-No unresolved P0/P1 finding remains in the audited documentation scope. The previous scientific/browser release checks are recorded in [the desktop release audit](../PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md); they are not repeated or relabeled as a new scientific run for prose changes.
+No unresolved P0/P1 finding remains in the audited documentation scope. The previous scientific/browser release checks are recorded in [the desktop release audit](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md); they are not repeated or relabeled as a new scientific run for prose changes.
 
 The committed source and tests are reproducible via `npm run docs:check`, `npm run lint`, `npm run format:check` and `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs site/tests/process-guide.test.mjs`. New manual editing follows [Documentation architecture](../DOCUMENTATION.md).
 

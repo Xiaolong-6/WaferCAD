@@ -49,9 +49,10 @@ flowchart LR
 1. Identify the owning engineering contract and affected manual task, including the English Recipe tutorial and AI-assisted guide when syntax/units change.
 2. Check the current implementation and relevant tests; preserve inferred-versus-source-reported scientific provenance.
 3. Update authored pages, regenerate only derived content, and keep previous evidence revision-specific.
-4. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable through `docs/README.md` or its lifecycle/archive indices. Relocate completed or superseded revision-specific records to `docs/archive/`, removing the obsolete paths and updating internal links to the archive without changing historical test claims.
-5. Run `npm run docs:check`, `npm run format:check`, and the focused documentation/guide tests. Code changes still require the checks owned by [Testing](testing.md).
-6. Record the audited product SHA, exact commands/results and limits in a dated handoff. Publish under the user's existing authorization and verify the remote revision; main publication is not proof that deployment finished.
+4. Use repository-relative source paths in handoffs. Remove or anonymize local home directories, personal workstation paths, authentication headers and tokens from logs and screenshots before committing; never rewrite third-party license attribution.
+5. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable through `docs/README.md` or its lifecycle/archive indices. Relocate completed or superseded revision-specific records to `docs/archive/`, removing the obsolete paths and updating internal links to the archive without changing historical test claims.
+6. Run `npm run docs:check`, `npm run format:check`, and the focused documentation/guide tests. Code changes still require the checks owned by [Testing](testing.md).
+7. Record the audited product SHA, exact commands/results and limits in a dated handoff. Publish under the user's existing authorization and verify the remote revision; main publication is not proof that deployment finished.
 
 ## Automated checks and their limits
 

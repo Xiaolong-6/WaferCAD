@@ -37,4 +37,4 @@
 
 审阅中临时扩展的自动化场景已撤回。最终修复没有完整自动化回归结论，后续以 dev 页面人工确认。运行日志在忽略目录 test-results/ui-review/，不作为跨环境可复现的唯一证据。
 
-参照：[M2 检查点](../archive/ui-v2/M2_CHECKPOINT.md)、[开发规范](../DEVELOPMENT.md)、[测试所有权](../testing.md)。
+参照：[M2 检查点](M2_CHECKPOINT.md)、[开发规范](../../DEVELOPMENT.md)、[测试所有权](../../testing.md)。

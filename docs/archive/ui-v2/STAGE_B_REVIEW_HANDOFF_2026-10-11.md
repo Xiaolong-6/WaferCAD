@@ -21,12 +21,12 @@ Latest product delta: `site/ui-v2/workstation-views.css`, `position: absolute; i
 
 These are review captures, not replacements for approved visual baselines:
 
-- [3D at 390 px](../../ui-v2/handoff/stage-b-review/three-390.png), [3D at 768 px](../../ui-v2/handoff/stage-b-review/three-768.png): final metalens product captures after real mouse gestures and display controls.
-- [3D touch](../../ui-v2/handoff/stage-b-review/three-touch.png): final actual viewport after all one-finger and pinch checks, coarse pointer retained.
-- [Circular phone A/B](../../ui-v2/handoff/stage-b-review/ab-mobile-fixed.png): complete M3D phone capture from the preceding Main acceptance, both handles 40×40.
-- [Final lightweight passing report](../../ui-v2/handoff/stage-b-three-metalens-visible-report.json): four widths 1440/1024/768/390 and touch; unchanged model, shared ROI/Section linkage, real exporters, visible material pixels and stable capture dimensions.
-- [Layout experiment](../../ui-v2/handoff/stage-b-three-layout-experiment-report.json): full-M3D diagnosis before the CSS repair, isolated absolute-canvas comparison. Diagnostic evidence, not a completed full-model acceptance gate.
-- [Earlier Main](../../ui-v2/handoff/stage-b-main-report.json), [Mask](../../ui-v2/handoff/stage-b-mask-report.json), [Section](../../ui-v2/handoff/stage-b-section-report.json) and [full-M3D cancellation](../../ui-v2/handoff/stage-b-three-abort-pass-report.json): passing evidence for the revisions recorded in those reports. Cancellation was not rerun after the latest CSS-only repair.
+- [3D at 390 px](handoff/stage-b-review/three-390.png), [3D at 768 px](handoff/stage-b-review/three-768.png): final metalens product captures after real mouse gestures and display controls.
+- [3D touch](handoff/stage-b-review/three-touch.png): final actual viewport after all one-finger and pinch checks, coarse pointer retained.
+- [Circular phone A/B](handoff/stage-b-review/ab-mobile-fixed.png): complete M3D phone capture from the preceding Main acceptance, both handles 40×40.
+- [Final lightweight passing report](handoff/stage-b-three-metalens-visible-report.json): four widths 1440/1024/768/390 and touch; unchanged model, shared ROI/Section linkage, real exporters, visible material pixels and stable capture dimensions.
+- [Layout experiment](handoff/stage-b-three-layout-experiment-report.json): full-M3D diagnosis before the CSS repair, isolated absolute-canvas comparison. Diagnostic evidence, not a completed full-model acceptance gate.
+- [Earlier Main](handoff/stage-b-main-report.json), [Mask](handoff/stage-b-mask-report.json), [Section](handoff/stage-b-section-report.json) and [full-M3D cancellation](handoff/stage-b-three-abort-pass-report.json): passing evidence for the revisions recorded in those reports. Cancellation was not rerun after the latest CSS-only repair.
 
 Latest command: `WAFERCAD_V2_EXAMPLE=metalens node scripts/v2/check-three-view.mjs`, **PASS, exit 0**. Environment: Linux, Node 24.19.0, Playwright 1.55.1 / Chromium 140.0.7339.186, pinned local Three 0.179.1. Server port 4182; `PLAYWRIGHT_BROWSERS_PATH=/tmp/wafercad-playwright`; `WAFERCAD_THREE_DIR` points to this checkout's `node_modules/three`. Log: `/tmp/wafercad-phase-b-small-visible-final.log`. Portable report records parent revision and `dirty: true`, because validation preceded the local commit.
 

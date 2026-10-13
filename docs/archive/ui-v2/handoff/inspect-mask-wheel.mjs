@@ -1,4 +1,4 @@
-import { launchBrowser, waitForPaint } from '../../../scripts/test-helpers/ui.mjs';
+import { launchBrowser, waitForPaint } from '../../../../scripts/test-helpers/ui.mjs';
 const browser = await launchBrowser();
 try {
   const page = await browser.newPage({viewport:{width:1440,height:960}});
