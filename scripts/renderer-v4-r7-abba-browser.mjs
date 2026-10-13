@@ -32,6 +32,7 @@ import {
 const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
+const gpuTiming = process.argv.includes('--gpu-timing');
 const candidate = selectR7Candidate(process.argv);
 const { candidateName, flags: candidateFlags, artifactSuffix } = candidate;
 assert.notEqual(ciSmoke, hardwareGpu, 'select exactly one: --ci-smoke or --hardware-gpu');
@@ -70,6 +71,8 @@ const report = {
   stage: 'initialization',
   gpuVramBytes: null,
   pureGpuFrameTimeMs: null,
+  gpuTimerRequested: gpuTiming,
+  gpuTimerTrials: [],
   passed: false,
 };
 const rendererWorkstationUrl = await resolveRendererWorkstationUrl(baseUrl);
@@ -89,6 +92,7 @@ async function oneArm(policy, index) {
   const flags = [
     'rendererV4GpuCensus=1',
     'rendererV3RoiTrace=1',
+    ...(gpuTiming ? ['rendererResponsiveGpuTimer=1'] : []),
     ...(policy === 'B' ? candidateFlags : []),
   ];
   const row = { label, policy, flags, samples: [] };
@@ -187,7 +191,42 @@ async function oneArm(policy, index) {
       row.samples.push(measurement);
     }
     await waitForPaint(page);
+    if (gpuTiming) {
+      const available = await page.locator('#threeHost').evaluate(
+        (node) => node.dataset.rendererGpuTimerSupported === 'true',
+      );
+      if (available) {
+        // Query results are polled in separate tasks without a GPU sync read.
+        // Do not reject a valid hardware run when the extension is available
+        // but no result arrives within this bounded observation window.
+        await page
+          .waitForFunction(
+            () => Number(document.getElementById('threeHost')?.dataset.rendererGpuSamples || 0) > 0,
+            null,
+            { timeout: 5000 },
+          )
+          .catch(() => {});
+      }
+    }
     const host = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
+    if (gpuTiming) {
+      row.gpuTimer = {
+        supported: host.rendererGpuTimerSupported === 'true',
+        samples: Number(host.rendererGpuSamples || 0),
+        p95Ms:
+          host.rendererGpuP95Ms !== '' && host.rendererGpuP95Ms != null
+            ? Number(host.rendererGpuP95Ms)
+            : null,
+        maxMs:
+          host.rendererGpuMaxMs !== '' && host.rendererGpuMaxMs != null
+            ? Number(host.rendererGpuMaxMs)
+            : null,
+        dropped: Number(host.rendererGpuDroppedQueries || 0),
+        disjoint: Number(host.rendererGpuDisjointCount || 0),
+      };
+      report.gpuTimerTrials.push({ label, adapter: null, ...row.gpuTimer });
+      console.log('RENDERER_R7_GPU_TIMER', JSON.stringify({ label, ...row.gpuTimer }));
+    }
     assert.equal(host.renderState, 'ready');
     assert.equal(host.sceneVariant, 'transparent');
     assert.equal(host.v4GpuResourceStatus, 'measured');
@@ -211,6 +250,7 @@ async function oneArm(policy, index) {
       };
     });
     row.backend = classifyWebglBackend(adapter);
+    if (gpuTiming) report.gpuTimerTrials.at(-1).adapter = row.backend.adapter;
     if (hardwareGpu) {
       assert.ok(
         row.backend.hardwareVerified &&
@@ -276,6 +316,23 @@ try {
   report.parity = summarizeR7PixelParity(report.comparisons);
   report.pixelSignature = classifyR7PixelSignatures(pngs.map(decodeScreenshotPng));
   report.stats = summarizeR7Abba(report.trials);
+  // This optional result is GPU *execution time*, not wall time or pixels.
+  // Expose a single hardware aggregate only if ALL four independent contexts
+  // produced valid query samples on a verified physical GPU adapter.
+  if (
+    gpuTiming &&
+    hardwareGpu &&
+    report.trials.every(
+      (row) =>
+        row.backend?.hardwareVerified &&
+        row.gpuTimer?.supported &&
+        row.gpuTimer.samples > 0 &&
+        Number.isFinite(row.gpuTimer.p95Ms),
+    )
+  ) {
+    const sorted = report.trials.map((row) => row.gpuTimer.p95Ms).sort((a, b) => a - b);
+    report.pureGpuFrameTimeMs = (sorted[1] + sorted[2]) / 2;
+  }
   const failures = report.failureReasons;
   for (const row of report.trials) {
     if (!row.sameContextPixels.pixelIdentical) {
