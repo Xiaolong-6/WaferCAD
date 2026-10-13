@@ -20,7 +20,8 @@ async function javascriptFiles(root) {
   return files;
 }
 
-const files = await javascriptFiles('site');
+const root = process.argv[3] || 'site';
+const files = await javascriptFiles(root);
 const suffix = `?v=${commit}`;
 
 for (const filename of files) {

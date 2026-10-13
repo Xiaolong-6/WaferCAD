@@ -114,7 +114,7 @@ Rebuilding Base after Process edits requires an explicit History decision: keep 
 
 ## Repository layout
 
-- `site/` — deployed browser application, including `app.html` (default UI v2), `app-legacy.html` (fallback), eight Welcome example families and bundled editable examples
+- `site/` — browser application source, including `app.html` (default UI v2), `app-legacy.html` (Welcome preview and compatibility), eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`, omitting developer-only UI previews and tests.
 - `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
 - `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
 - `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts

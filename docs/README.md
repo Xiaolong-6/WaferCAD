@@ -43,6 +43,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 
 ## Current work and verification
 
+- [Site publication cleanup (2026-10-13)](SITE_PUBLICATION_CLEANUP_2026-10-13.md) — Pages staging exclusions, canonical Workstation entry migration, and verification boundaries.
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
 - [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.

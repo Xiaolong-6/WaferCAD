@@ -144,7 +144,7 @@ try {
   }
   const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 960 } });
   try {
-    await page.goto(`${base}/app-v2-workstation.html?start=example&example=jlfet`);
+    await page.goto(`${base}/app.html?start=example&example=jlfet`);
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
     await page.locator('[data-action="view:main"]').click();
     await page.locator('[data-action="maximize:section"]').click();
