@@ -41,20 +41,31 @@ export function createProjectStateController({
 }) {
   let importedStates = new WeakMap();
 
-  async function readProjectSnapshot(file) {
+  function cacheImportedSnapshotStates(project) {
     importedStates = new WeakMap();
-    const project = await readValidatedFile(file);
     if (!project) return project;
     const states = [
       ...(project.snapshots || []).map((record) => record.state),
       ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
       ...(project.snapshotBranches?.branches || []).map((branch) => branch.headState),
     ].filter((state) => state && typeof state === 'object');
+    // History still compares snapshots against independent copies before accepting
+    // them; this protection applies equally to the Worker-validated import path.
     const copies = structuredClone(states);
     for (let index = 0; index < states.length; index++) {
       importedStates.set(states[index], copies[index]);
     }
     return project;
+  }
+
+  async function readProjectSnapshot(file) {
+    return cacheImportedSnapshotStates(await readValidatedFile(file));
+  }
+
+  // Only call with project-worker.js output: that Worker already expanded,
+  // migrated and strictly validated the project before posting its result.
+  function readWorkerValidatedProjectSnapshot(project) {
+    return cacheImportedSnapshotStates(project);
   }
 
   function buildProjectSnapshot(includeSnapshots = false) {
@@ -274,6 +285,7 @@ export function createProjectStateController({
 
   return {
     readProjectSnapshot,
+    readWorkerValidatedProjectSnapshot,
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,
