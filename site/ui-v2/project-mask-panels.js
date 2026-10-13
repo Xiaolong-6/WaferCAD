@@ -36,7 +36,10 @@ export function createProjectMaskPanels({
     'openProjectInput',
     el('input', { type: 'file', accept: '.wafercad,.json', hidden: true }),
   );
-  hook('saveProjectBtn', button('Save', null, 'save', { 'data-variant': 'ghost' }));
+  hook(
+    'saveProjectBtn',
+    button('Save', null, 'save', { 'data-variant': 'ghost', 'data-help': 'project.save' }),
+  );
   projectHost.append(
     el(
       'div',
@@ -49,7 +52,13 @@ export function createProjectMaskPanels({
         'Open',
         open,
       ),
-      hook('exportProjectBtn', button('Export', null, 'export', { 'data-variant': 'ghost' })),
+      hook(
+        'exportProjectBtn',
+        button('Export', null, 'export', {
+          'data-variant': 'ghost',
+          'data-help': 'project.export',
+        }),
+      ),
     ),
     input('Project name', 'projectNameInput', state.projectName, { maxlength: 256 }),
     choice(
@@ -64,6 +73,7 @@ export function createProjectMaskPanels({
     ),
     projectSummary,
   );
+  root.getElementById('xyUnitSelect').dataset.help = 'project.units';
   root.getElementById('xyUnitSelect').onchange = (event) => {
     state.xyDisplayUnit = event.target.value;
     syncDisplayUnitFields(document, units.key());
@@ -108,8 +118,20 @@ export function createProjectMaskPanels({
     el(
       'div',
       { class: 'p-actions' },
-      hook('applyBaseBtn', button('Rebuild Base', null, 'history', { primary: true })),
-      hook('revertBaseBtn', button('Revert changes', null, 'undo', { disabled: true })),
+      hook(
+        'applyBaseBtn',
+        button('Rebuild Base', null, 'history', {
+          primary: true,
+          'data-help': 'project.base.rebuild',
+        }),
+      ),
+      hook(
+        'revertBaseBtn',
+        button('Revert changes', null, 'undo', {
+          disabled: true,
+          'data-help': 'project.base.revert',
+        }),
+      ),
     ),
   );
   const baseHost = host('panel.base');
@@ -182,11 +204,12 @@ export function createProjectMaskPanels({
         ['draw', 'Draw', 'palette'],
       ].map(([key, label, icon]) =>
         button(label, `mask-source:${key}`, icon, {
+          'data-help': 'mask.source',
           'aria-pressed': String(state.maskSourceMode === key),
         }),
       ),
     ),
-    el('label', { class: 'wc-button' }, 'Import GDS / OAS', layoutFile),
+    el('label', { class: 'wc-button', 'data-help': 'mask.import' }, 'Import GDS / OAS', layoutFile),
     hook('maskCellLabel', el('p', { class: 'p-aux' })),
     el('details', { open: true }, el('summary', {}, 'Cell'), tree),
     el('details', { open: true }, el('summary', {}, 'Layers'), list),

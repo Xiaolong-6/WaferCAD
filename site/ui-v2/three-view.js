@@ -7,7 +7,20 @@ export function createWorkstationThreeView({ store, workstation }) {
   const state = store.state;
   const local = store.local.three;
   const icon = (label, action, glyph) =>
-    button('', action, glyph, { title: label, 'aria-label': label });
+    button('', action, glyph, {
+      title: label,
+      'aria-label': label,
+      'data-help': {
+        'fit:three': 'view.fit',
+        'tool:rotate:three': 'three.rotate',
+        'tool:pan:three': 'three.pan',
+        'tool:zoom:three': 'three.zoom',
+        'quality:three': 'three.quality',
+        'opacity:three': 'three.opacity',
+        'borders:three': 'three.borders',
+        'maximize:three': 'shell.maximize',
+      }[action],
+    });
   const host = el('div', {
     id: 'threeHost',
     class: 'p-science v2-three-host',
@@ -29,7 +42,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         icon('Borders', 'borders:three', 'rectangle'),
       ],
     ],
-    [button('Export', 'three-export-menu', 'export')],
+    [button('Export', 'three-export-menu', 'export', { 'data-help': 'view.export' })],
   );
   tools.append(icon('Maximize', 'maximize:three', 'maximize'));
   const panel = window.createWaferCadV2ViewPanels().update(
@@ -158,7 +171,7 @@ export function createWorkstationThreeView({ store, workstation }) {
         );
     const quality = panel.querySelector('[data-action="quality:three"]');
     quality.setAttribute('aria-label', state.threeFastMode ? 'Fast' : 'Quality');
-    quality.title = state.threeFastMode ? 'Render mode: Fast' : 'Render mode: Quality';
+    // The catalog resolves the current mode from aria-label, without a native title.
     quality
       .querySelector('use')
       .setAttribute('href', `#p-icon-${state.threeFastMode ? 'fast' : 'quality'}`);
@@ -203,8 +216,10 @@ export function createWorkstationThreeView({ store, workstation }) {
         content: el(
           'div',
           { class: 'p-form v2-three-floating' },
-          button('PNG · 3×', 'export:three:png', 'export'),
-          button('GLB · physical units', 'export:three:glb', 'export'),
+          button('PNG · 3×', 'export:three:png', 'export', { 'data-help': 'three.export.png' }),
+          button('GLB · physical units', 'export:three:glb', 'export', {
+            'data-help': 'three.export.glb',
+          }),
         ),
       });
     } else if (action === 'export:three:png' || action === 'export:three:glb') {
