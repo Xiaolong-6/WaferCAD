@@ -58,6 +58,8 @@ export function mockR9FocusEvidence() {
       texture2dArray: false,
     })),
     totalTextureUnits: 4,
+    samplerUnitsReferenced: [],
+    samplerBindingCoverageComplete: true,
     textureContentVerified: false,
   }));
 }
