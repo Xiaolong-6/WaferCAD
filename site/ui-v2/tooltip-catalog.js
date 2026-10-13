@@ -142,6 +142,14 @@
       'Annotation depth profile',
       'Choose a smooth profile or one following the underlying surface offset.',
     ],
+    'section.color': [
+      'Change display color',
+      'Open the color picker for this layer or annotation. Physical geometry is unchanged.',
+    ],
+    'section.color.option': (node) => [
+      'Apply color',
+      `Set the display color to ${node.dataset.color || 'the chosen color'}. Physical geometry is unchanged.`,
+    ],
     'section.legend.palette': [
       'Layer color palette',
       'Apply a color palette to visible structure layers.',

@@ -9,6 +9,7 @@ const paths = [
   '../ui-v2/mask-view.js',
   '../ui-v2/three-view.js',
   '../ui-v2/section-view.js',
+  '../ui-v2/section-legend.js',
   '../ui-v2/workstation-workflow.js',
   '../ui-v2/project-mask-panels.js',
   '../ui-v2/view-kit/floating-strip.js',
@@ -31,6 +32,13 @@ test('contextual help catalog resolves all literal opt-in keys', () => {
     assert.ok(text[0].trim() && text[1].trim(), `Empty tooltip: ${match[1]}`);
   }
   assert.ok(keys.length >= 20);
+});
+
+test('Section color swatches use the same contextual catalog, retaining the chosen color', () => {
+  assert.match(catalog.resolve('section.color', { dataset: {} })[1], /Physical geometry is unchanged/);
+  const description = catalog.resolve('section.color.option', { dataset: { color: '#A1B2C3' } });
+  assert.equal(description[0], 'Apply color');
+  assert.match(description[1], /#A1B2C3/);
 });
 
 test('Both-face help respects two independent deposited layers', () => {

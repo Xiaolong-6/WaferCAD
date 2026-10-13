@@ -60,6 +60,19 @@ try {
         'One plain-text surface with no help icon or duplicate',
       );
       if (width === 1440) {
+        const colorTrigger = page.locator('#sectionPanel .v2-legend-palette-trigger').first();
+        assert.equal(await colorTrigger.getAttribute('data-help'), 'section.color');
+        assert.equal(await colorTrigger.getAttribute('title'), null);
+        await colorTrigger.hover();
+        await page.locator('.wc-context-tooltip:visible').waitFor();
+        assert.match(await page.locator('.wc-context-tooltip').innerText(), /Change display color/);
+        await colorTrigger.click();
+        const colorChoice = page.locator('#sectionPanel .v2-legend-swatch-choice').first();
+        assert.equal(await colorChoice.getAttribute('data-help'), 'section.color.option');
+        assert.equal(await colorChoice.getAttribute('title'), null);
+        await colorChoice.hover();
+        await page.locator('.wc-context-tooltip:visible').waitFor();
+        assert.match(await page.locator('.wc-context-tooltip').innerText(), /Apply color/);
         await page.locator('[data-action="domain:process"]').click();
         const face = page.locator('#faceToggleBtn');
         assert.equal(await face.getAttribute('data-help'), 'process.face');

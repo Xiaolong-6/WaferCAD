@@ -41,7 +41,7 @@ pseudo-element affordance, or a new layout slot.
 
 P0 coverage includes view modes and tools, Main ROI and A-B slice,
 Mask source/Draw/ROI/alignment, 3D render policy and visual controls,
-Section Z Break and detail inspection, Process face/area/depth/Apply,
+Section Z Break, detail inspection and color-picker swatches, Process face/area/depth/Apply,
 Project Base actions, History restore/branch/delete and Recovery actions.
 P1 covers morphology parameters, cell and layer browser controls, and
 annotation visibility/profile choices.
