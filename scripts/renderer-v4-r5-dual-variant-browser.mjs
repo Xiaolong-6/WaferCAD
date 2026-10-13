@@ -99,7 +99,7 @@ try {
     const errors = observePageErrors(page);
     await page.goto(
       rendererWorkstationUrl +
-        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1&rendererResponsiveSmoothWorker=1',
+        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1',
     );
     await waitForAppReady(page);
     await page
@@ -188,6 +188,15 @@ try {
       preview.serial,
       { timeout: 180000 },
     );
+    const inputTelemetry = await page.locator('#threeHost').evaluate((node) => ({
+      samples: Number(node.dataset.rendererInputSamples || 0),
+      p95Ms: Number(node.dataset.rendererInputToSubmitP95Ms),
+      frameSubmitP95Ms: Number(node.dataset.rendererFrameSubmitP95Ms),
+    }));
+    assert.ok(inputTelemetry.samples > 0, 'pointer gesture must reach render-submit telemetry');
+    assert.ok(Number.isFinite(inputTelemetry.p95Ms) && inputTelemetry.p95Ms >= 0);
+    assert.ok(Number.isFinite(inputTelemetry.frameSubmitP95Ms) && inputTelemetry.frameSubmitP95Ms >= 0);
+    console.log('RENDERER_RESPONSIVE_INPUT_METRICS', JSON.stringify(inputTelemetry));
     const restoredTriangles = Number(
       await page.locator('#threeHost').evaluate((node) => node.dataset.rendererDrawTriangles),
     );
