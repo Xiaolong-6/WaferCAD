@@ -27,7 +27,7 @@ The preceding iteration needed 9.971 seconds for all five interactive Main previ
 ## Reproduction and checks
 
 ```powershell
-$env:WAFERCAD_CHROMIUM = 'C:\Users\liux16\AppData\Local\Google\Chrome\Application\chrome.exe'
+$env:WAFERCAD_CHROMIUM = 'C:\Users\<USERNAME>\AppData\Local\Google\Chrome\Application\chrome.exe'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
 node scripts/build-example-thumbnails.mjs
 node --test site/tests/welcome-example.test.mjs
