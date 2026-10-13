@@ -101,7 +101,9 @@ try {
         touch.width >= 44 && touch.height >= 44,
         `Primary touch target >= 44px; measured ${touch.width} × ${touch.height}`,
       );
-      await page.locator('[data-action="return-results"]').click();
+      // The Process pane also exposes a contextual View results action.
+      // Exercise the persistent mobile chrome control explicitly.
+      await page.locator('.p-mobile-return [data-action="return-results"]').click();
       await waitForPaint(page);
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
