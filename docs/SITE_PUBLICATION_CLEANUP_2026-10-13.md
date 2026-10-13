@@ -42,7 +42,6 @@ It does not establish an equivalent reduction in page startup downloads.
   A passing PR CI is required before merge; do not treat audit calculations as
   execution evidence.
 
-
 ## Developer asset ownership (follow-up to PR #197)
 
 The reachability report classifies 11 JS/CSS modules as developer-only.
