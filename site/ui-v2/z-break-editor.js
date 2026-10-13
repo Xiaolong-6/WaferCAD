@@ -84,7 +84,7 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     const handle = tagged(
       `sectionCollapse${name}Handle`,
       button(name, null, null, {
-        class: 'v2-z-handle',
+        class: 'wc-button v2-z-handle',
         role: 'slider',
         'aria-label': `${name} Z break boundary`,
         'aria-orientation': 'vertical',
@@ -139,7 +139,12 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     pair,
     el(
       'div',
-      { class: 'v2-z-plot' },
+      {
+        class: 'v2-z-plot',
+        'data-help': 'section.zbreak',
+        'data-help-detail':
+          'The shaded interval is omitted from display only. Drag Top and Bottom handles or enter exact coordinates above.',
+      },
       el(
         'div',
         { class: 'v2-z-plot-head' },
@@ -267,8 +272,9 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     windowNode.style.height = `${Math.max(2, yBottom - yTop)}px`;
     zeroLine.hidden = !(lo <= 0 && hi >= 0);
     if (!zeroLine.hidden) zeroLine.style.top = `${collapse.zToRulerY(0)}px`;
+    const ticks = lo <= 0 && hi >= 0 ? [hi, 0, lo] : [hi, (hi + lo) / 2, lo];
     marks.replaceChildren(
-      ...[hi, (hi + lo) / 2, lo].map((value) => {
+      ...ticks.map((value) => {
         const tick = el('span', { class: 'v2-z-mark', 'aria-hidden': 'true' }, units.format(value));
         tick.style.top = `${collapse.zToRulerY(value)}px`;
         return tick;

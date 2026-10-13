@@ -122,6 +122,44 @@ try {
       const fingerprint = () => sectionCanvas.evaluate((c) => c.toDataURL());
       const slicedImage = await fingerprint();
       await command('zbreak-settings');
+      // The visual geometry of the ruler is an acceptance contract. A custom
+      // class must preserve the shared wc-button base; otherwise both handles
+      // become normal-flow buttons at the top, despite passing state tests.
+      const layout = await page.evaluate(() => {
+        const ruler = document.getElementById('sectionCollapseRuler');
+        const upper = document.getElementById('sectionCollapseTopHandle');
+        const lower = document.getElementById('sectionCollapseBottomHandle');
+        const canvas = document.getElementById('sectionCanvas');
+        const rulerBox = ruler.getBoundingClientRect();
+        const upperBox = upper.getBoundingClientRect();
+        const lowerBox = lower.getBoundingClientRect();
+        const lo = Number(canvas.dataset.zMinUm);
+        const hi = Number(canvas.dataset.zMaxUm);
+        const upperZ = Number(upper.getAttribute('aria-valuenow'));
+        const lowerZ = Number(lower.getAttribute('aria-valuenow'));
+        return {
+          upperAbsolute: getComputedStyle(upper).position === 'absolute',
+          lowerAbsolute: getComputedStyle(lower).position === 'absolute',
+          rulerHeight: rulerBox.height,
+          upperY: upperBox.top + upperBox.height / 2 - rulerBox.top,
+          lowerY: lowerBox.top + lowerBox.height / 2 - rulerBox.top,
+          expectedUpperY: ((hi - upperZ) / (hi - lo)) * rulerBox.height,
+          expectedLowerY: ((hi - lowerZ) / (hi - lo)) * rulerBox.height,
+          hatch: getComputedStyle(document.getElementById('sectionCollapseWindow'))
+            .backgroundImage,
+        };
+      });
+      assert.equal(layout.upperAbsolute, true, 'Upper handle must use absolute ruler positioning');
+      assert.equal(layout.lowerAbsolute, true, 'Lower handle must use absolute ruler positioning');
+      assert.ok(layout.rulerHeight >= 130);
+      assert.ok(layout.upperY < layout.lowerY, 'Upper/Lower handle locations must be distinct');
+      assert.ok(Math.abs(layout.upperY - layout.expectedUpperY) < 2, 'Upper handle Z mapping');
+      assert.ok(Math.abs(layout.lowerY - layout.expectedLowerY) < 2, 'Lower handle Z mapping');
+      assert.match(layout.hatch, /repeating-linear-gradient/);
+      await page.screenshot({
+        path: resolve(output, `section-zbreak-${width}.png`),
+        fullPage: true,
+      });
       await page.locator('#section-collapse-enabled').uncheck();
       const toggled = await snapshot();
       assert.equal(toggled.sectionCollapse.enabled, false);

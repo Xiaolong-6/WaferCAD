@@ -46,16 +46,21 @@
 }
 .v2-z-ruler {
   position: relative;
-  margin: 14px 48px 10px 70px;
-  height: 132px;
+  margin: 14px 56px 10px 70px;
+  height: 152px;
   border-left: 1px solid var(--wc-border-strong);
-  background: linear-gradient(90deg, var(--wc-accent-tint), transparent);
+  background: transparent;
 }
 .v2-z-window {
   position: absolute;
   inset-inline: 0;
-  background: color-mix(in srgb, var(--wc-accent) 9%, transparent);
-  border-block: 1px dashed var(--wc-border-strong);
+  box-sizing: border-box;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--wc-accent) 10%, transparent) 0 1px,
+    color-mix(in srgb, var(--wc-accent) 4%, transparent) 1px 7px
+  );
+  border-block: 2px solid var(--wc-accent);
   pointer-events: none;
 }
 .v2-z-zero {
@@ -80,11 +85,16 @@
 }
 .v2-z-handle.wc-button {
   position: absolute;
-  right: -44px;
+  right: -52px;
   left: auto;
-  min-height: 28px;
+  box-sizing: border-box;
+  height: 20px;
+  min-height: 20px;
+  width: 47px;
   min-width: 47px;
-  padding: 3px 6px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 18px;
   background: var(--wc-surface);
   color: var(--wc-accent);
   border: 1px solid var(--wc-accent);
@@ -93,15 +103,6 @@
   cursor: ns-resize;
   touch-action: none;
   z-index: 2;
-}
-.v2-z-handle.wc-button::before {
-  content: '';
-  position: absolute;
-  right: 100%;
-  width: 152px;
-  max-width: calc(100% + 95px);
-  border-top: 2px solid var(--wc-accent);
-  pointer-events: none;
 }
 .v2-z-handle.wc-button:disabled {
   cursor: default;
@@ -180,10 +181,14 @@
   .v2-z-check {
     min-height: 40px;
   }
+  .v2-z-ruler {
+    height: 192px;
+  }
   .v2-z-handle.wc-button {
-    min-height: 40px;
-    min-width: 54px;
-    right: -52px;
+    height: 30px;
+    min-height: 30px;
+    min-width: 52px;
+    right: -57px;
   }
 }
 @media (max-width: 420px) {
@@ -195,6 +200,6 @@
   }
   .v2-z-ruler {
     margin-left: 64px;
-    margin-right: 54px;
+    margin-right: 58px;
   }
 }
