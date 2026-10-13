@@ -23,7 +23,7 @@ on:
       - scripts/test-helpers/renderer-r9-focus-evidence.mjs
       - scripts/tests/renderer-r9-focus-fixture.mjs
       - site/tests/renderer-r9-focus-evidence.test.mjs
-      - scripts/test-helpers/renderer-hardware-output-path.mjs scripts/test-helpers/renderer-hardware-inventory.mjs site/tests/renderer-r9-evidence-zip.test.mjs docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
+      - docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
       - .github/workflows/renderer-r9-phase-window.yml
   pull_request:
     branches:
@@ -47,7 +47,7 @@ on:
       - scripts/test-helpers/renderer-r9-focus-evidence.mjs
       - scripts/tests/renderer-r9-focus-fixture.mjs
       - site/tests/renderer-r9-focus-evidence.test.mjs
-      - scripts/test-helpers/renderer-hardware-output-path.mjs scripts/test-helpers/renderer-hardware-inventory.mjs site/tests/renderer-r9-evidence-zip.test.mjs docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
+      - docs/RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md
       - .github/workflows/renderer-r9-phase-window.yml
   workflow_dispatch:
 
