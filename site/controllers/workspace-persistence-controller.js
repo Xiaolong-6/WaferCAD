@@ -97,6 +97,9 @@ export function createWorkspacePersistenceController({
   status,
   buildProjectSnapshot,
   loadProjectSnapshot,
+  // Only projects returned from strict persistent-storage validation reach
+  // this hook. Snapshot mutation checks still compare detached copies.
+  cacheValidatedProjectSnapshots = () => {},
   snapshotManager,
   syncBaseControls,
   syncTransformInputs,
@@ -291,6 +294,10 @@ export function createWorkspacePersistenceController({
   function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
     if (restoreView) applyStoredViewState(project);
     loadProjectSnapshot(project);
+    // loadWorkspaceState / loadWorkspaceRecoveryPoint strictly validate the
+    // complete file before returning it. Reuse that attestation for unchanged
+    // imported snapshots instead of running huge geometry booleans twice.
+    cacheValidatedProjectSnapshots(project);
     snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
     return Boolean(project?.display?.threeCamera);
   }
