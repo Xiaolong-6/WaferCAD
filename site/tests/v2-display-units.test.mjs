@@ -30,11 +30,19 @@ test('unit conversion preserves polygon separators and invalid draft tokens', ()
   assert.equal(convertPolygonPointUnits('1e-3, -2.5e+1', 'um', 'nm'), '1, -25000');
 });
 
-
 test('open Mask shape inputs, polygon drafts and angles switch without changing physical geometry', () => {
   const model = {
     layers: [{ id: 'oxide-front', name: 'SiO2' }],
-    shapes: [{ id: 'shape-9', type: 'polygon', points: [[1.2346, -0.125], [0, 2]] }],
+    shapes: [
+      {
+        id: 'shape-9',
+        type: 'polygon',
+        points: [
+          [1.2346, -0.125],
+          [0, 2],
+        ],
+      },
+    ],
     processRevision: 12,
   };
   const original = structuredClone(model);
@@ -46,7 +54,7 @@ test('open Mask shape inputs, polygon drafts and angles switch without changing 
   });
   const position = control('1.2346', 'um', 'Center X · µm');
   const radius = control('0.0001', 'um', 'Radius · µm');
-  const points = control('1.2346, -0.125\\n0, 2', 'um', 'Points · µm', 'displayPoints');
+  const points = control('1.2346, -0.125\n0, 2', 'um', 'Points · µm', 'displayPoints');
   const angle = { value: '67.5', dataset: {} };
   const root = {
     querySelectorAll: (selector) => {
@@ -67,13 +75,16 @@ test('open Mask shape inputs, polygon drafts and angles switch without changing 
     assert.equal(angle.value, '67.5');
     assert.deepEqual(model, original, 'switching display units must not mutate the model');
   }
-  assert.equal(points.value, '1.2346, -0.125\\n0, 2');
+  assert.equal(points.value, '1.2346, -0.125\n0, 2');
   assert.equal(position.dataset.displayLength, 'um');
   assert.equal(points.dataset.displayPoints, 'um');
 });
 
 test('invalid and overflow Mask drafts remain for validation rather than becoming Infinity', () => {
-  assert.equal(convertPolygonPointUnits('1e309, 3\\ninvalid, 4', 'um', 'nm'), '1e309, 3000\\ninvalid, 4000');
+  assert.equal(
+    convertPolygonPointUnits('1e309, 3\ninvalid, 4', 'um', 'nm'),
+    '1e309, 3000\ninvalid, 4000',
+  );
   const length = {
     value: '1e308',
     dataset: { displayLength: 'mm' },
@@ -81,7 +92,7 @@ test('invalid and overflow Mask drafts remain for validation rather than becomin
     step: 'any',
   };
   const root = {
-    querySelectorAll: (selector) => selector === '[data-display-length]' ? [length] : [],
+    querySelectorAll: (selector) => (selector === '[data-display-length]' ? [length] : []),
   };
   syncDisplayUnitFields(root, 'nm');
   assert.equal(length.value, '1e308');
