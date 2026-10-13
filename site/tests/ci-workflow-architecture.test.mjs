@@ -17,6 +17,9 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
+  assert.match(pages, /node scripts\/build-pages-artifact\.mjs/);
+  assert.match(pages, /node scripts\/stamp-pages-assets\.mjs .*build\/pages/);
+  assert.match(pages, /path: build\/pages/);
 });
 
 test('browser and v2 owners are reusable without racing main-push jobs', () => {
