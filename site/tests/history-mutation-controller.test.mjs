@@ -507,7 +507,6 @@ test('thrown downstream replay restores the pre-edit graph and releases interact
   assert.match(events.at(-1), /worker context terminated/);
 });
 
-
 // Preserve the complete insertion fault fixture in readable chronological order.
 // prettier-ignore
 test('thrown insertion replay restores the complete pre-insert Variant state', async () => {
