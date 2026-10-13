@@ -72,6 +72,15 @@ test('large scenes use a disposable worker and cache the exact completed result'
       await assert.rejects(request);
       assert.equal(instance.terminated, true);
     }
+    const controller = new AbortController();
+    const aborted = buildRenderSurfacePlanAsync(model, null, { signal: controller.signal });
+    controller.abort();
+    await assert.rejects(aborted, { name: 'AbortError' });
+    assert.equal(instance.terminated, true);
+    assert.equal(cachedRenderSurfacePlan(model), null);
+    instance.onmessage({ data: { id: 1, type: 'done', plan: { caps: [], sidewalls: [] } } });
+    assert.equal(cachedRenderSurfacePlan(model), null, 'A late worker reply cannot commit stale geometry');
+
     globalThis.Worker.prototype.postMessage = () => {
       throw new Error('DataCloneError');
     };
