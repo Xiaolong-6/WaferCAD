@@ -10,6 +10,8 @@ test('large non-array M3D scenes use cooperative assembly', () => {
   assert.equal(shouldYieldDuringSceneAssembly({ annotationCount: 32 }), true);
   assert.equal(shouldYieldDuringSceneAssembly({ capCount: 95 }), false);
   assert.equal(shouldYieldDuringSceneAssembly({ capCount: 96 }), true);
+  assert.equal(shouldYieldDuringSceneAssembly({ polygonCount: 63, capCount: 2 }), false);
+  assert.equal(shouldYieldDuringSceneAssembly({ polygonCount: 64, capCount: 2 }), true);
 });
 
 test('array scenes retain the established threshold and small scenes stay synchronous', () => {

@@ -2696,7 +2696,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
 
+      const polygonCount = plan.caps.reduce((sum, cap) => sum + (cap.polys?.length || 0), 0);
       const cooperativeAssembly = shouldYieldDuringSceneAssembly({
+        polygonCount,
         arrayInstances: Number(plan.arrayInstances || 0),
         capCount: plan.caps.length,
         sidewallCount: plan.sidewalls.length,
