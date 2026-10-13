@@ -145,8 +145,7 @@ try {
           lowerY: lowerBox.top + lowerBox.height / 2 - rulerBox.top,
           expectedUpperY: ((hi - upperZ) / (hi - lo)) * rulerBox.height,
           expectedLowerY: ((hi - lowerZ) / (hi - lo)) * rulerBox.height,
-          hatch: getComputedStyle(document.getElementById('sectionCollapseWindow'))
-            .backgroundImage,
+          hatch: getComputedStyle(document.getElementById('sectionCollapseWindow')).backgroundImage,
         };
       });
       assert.equal(layout.upperAbsolute, true, 'Upper handle must use absolute ruler positioning');
