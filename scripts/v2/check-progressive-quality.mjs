@@ -48,7 +48,9 @@ try {
   try {
     await page.waitForFunction(
       () =>
-        /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
+        /Saved .* locally/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent,
+        ),
       null,
       { timeout: 45000 },
     );
