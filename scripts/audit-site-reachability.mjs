@@ -101,9 +101,7 @@ export async function auditSiteReachability(root = resolve('site')) {
   const developer = reachableFrom(developerRoots, edges);
   const candidates = [...inventory].filter(
     (file) =>
-      sourceExtensions.has(extname(file)) &&
-      !isDevelopment(file) &&
-      !file.startsWith('vendor/'),
+      sourceExtensions.has(extname(file)) && !isDevelopment(file) && !file.startsWith('vendor/'),
   );
   const onlyDeveloper = (file) => !production.has(file) && developer.has(file);
   const isUnproven = (file) => !production.has(file) && !developer.has(file);
