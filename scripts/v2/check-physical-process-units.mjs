@@ -60,9 +60,11 @@ try {
       if (!(await baseWidth.isVisible())) {
         await page.getByRole('heading', { name: 'Base', exact: true }).click();
       }
-      // A fresh workstation defaults to Circle: Height is disabled there.
-      // Select the real Rectangle control before entering independent X/Y.
-      await page.locator('#substrateShape button[data-shape="rect"]').click();
+      // Production UI v2 exposes the Shape select. The legacy segmented
+      // buttons are deliberately hidden and are only its controller bridge.
+      // Selecting Rectangle enables an independently editable Base height.
+      await page.locator('#v2BaseShape').selectOption('rect');
+      assert.equal(await page.locator('#baseHeight').isVisible(), true);
       assert.equal(await page.locator('#baseHeight').isEnabled(), true);
       for (const [id, value] of Object.entries({
         baseWidth: baseDimensions.width,
