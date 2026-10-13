@@ -32,6 +32,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Targeted renderer parity and History integrity tests
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
