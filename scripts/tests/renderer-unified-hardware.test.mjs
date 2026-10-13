@@ -327,8 +327,14 @@ test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance
       },
     })),
   };
-  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, valid), 'diagnostic-complete');
-  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...valid, passed: true }), 'error');
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, valid),
+    'diagnostic-complete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, { ...valid, passed: true }),
+    'error',
+  );
   const invalid = structuredClone(valid);
   invalid.trials[2].native.defaultFramebufferSamples = 0;
   assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, invalid), 'error');

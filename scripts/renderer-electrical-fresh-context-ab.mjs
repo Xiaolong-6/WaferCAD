@@ -56,7 +56,11 @@ assert.ok(
 );
 assert.ok(
   !diagnosticPreservedMsaa ||
-    (hardwareGpu && reportOnly && !diagnosticNoDither && !diagnosticNoMsaa && !phaseWindowDiagnostic),
+    (hardwareGpu &&
+      reportOnly &&
+      !diagnosticNoDither &&
+      !diagnosticNoMsaa &&
+      !phaseWindowDiagnostic),
   '--diagnose-preserved-msaa requires --hardware-gpu --report-only and cannot be combined',
 );
 assert.ok(
@@ -76,9 +80,9 @@ const output = new URL(
         ? '../test-results/renderer-hardware-fresh-context-ab-no-msaa/'
         : diagnosticPreservedMsaa
           ? '../test-results/renderer-hardware-fresh-context-ab-preserved-msaa/'
-        : phaseWindowDiagnostic
-          ? `../test-results/renderer-hardware-fresh-context-ab-phase-window-${phaseWindow.low}-${phaseWindow.high}/`
-          : '../test-results/renderer-hardware-fresh-context-ab/'
+          : phaseWindowDiagnostic
+            ? `../test-results/renderer-hardware-fresh-context-ab-phase-window-${phaseWindow.low}-${phaseWindow.high}/`
+            : '../test-results/renderer-hardware-fresh-context-ab/'
     : '../test-results/product-review/electrical-fresh-context/',
   import.meta.url,
 );

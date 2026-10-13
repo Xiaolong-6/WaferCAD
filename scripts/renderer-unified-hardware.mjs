@@ -32,7 +32,8 @@ const r9V4NoMsaaCampaign = options.includes('--campaign=r9-v4-msaa');
 const r9PreservedMsaaCampaign = options.includes('--campaign=r9-preserved-msaa');
 const unknownCampaign = options.filter(
   (arg) =>
-    arg.startsWith('--campaign=') && !['--campaign=r9', '--campaign=r9-v4-msaa', '--campaign=r9-preserved-msaa'].includes(arg),
+    arg.startsWith('--campaign=') &&
+    !['--campaign=r9', '--campaign=r9-v4-msaa', '--campaign=r9-preserved-msaa'].includes(arg),
 );
 if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
   throw new Error('Select one known hardware campaign.');
@@ -56,7 +57,8 @@ if (
   (diagnostic && modesArg && !r9V4NoMsaaCampaign) ||
   (r9Campaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   (r9V4NoMsaaCampaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic)) ||
-  (r9PreservedMsaaCampaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (r9PreservedMsaaCampaign &&
+    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -70,13 +72,13 @@ const plan = r9Campaign
     ? buildRendererR9V4NoMsaaDiagnosticPlan(modes)
     : r9PreservedMsaaCampaign
       ? buildRendererR9PreservedMsaaPlan()
-    : ditherDiagnostic
-      ? buildRendererV3DitherDiagnosticPlan()
-      : msaaDiagnostic
-        ? buildRendererV3MsaaDiagnosticPlan()
-        : phaseWindowDiagnostic
-          ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
-          : buildRendererHardwarePlan(modes);
+      : ditherDiagnostic
+        ? buildRendererV3DitherDiagnosticPlan()
+        : msaaDiagnostic
+          ? buildRendererV3MsaaDiagnosticPlan()
+          : phaseWindowDiagnostic
+            ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+            : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {

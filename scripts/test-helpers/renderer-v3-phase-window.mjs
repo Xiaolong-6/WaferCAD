@@ -69,7 +69,9 @@ export function isRendererPhaseAcceptanceEligible({
   diagnosticPreservedMsaa = false,
   phaseWindowDiagnostic = false,
 } = {}) {
-  return !diagnosticNoDither && !diagnosticNoMsaa && !diagnosticPreservedMsaa && !phaseWindowDiagnostic;
+  return (
+    !diagnosticNoDither && !diagnosticNoMsaa && !diagnosticPreservedMsaa && !phaseWindowDiagnostic
+  );
 }
 
 /**

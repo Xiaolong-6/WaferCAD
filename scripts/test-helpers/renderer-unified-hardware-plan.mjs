@@ -77,13 +77,15 @@ export function buildRendererR9V4NoMsaaDiagnosticPlan(modes = RENDERER_HARDWARE_
 // presentation. Run V3's OFF/OFF/ON/ON evidence collector on current V4 source;
 // archived V3 git objects and all product rendering settings remain untouched.
 export function buildRendererR9PreservedMsaaPlan() {
-  return [{
-    id: 'v4-preserved-msaa',
-    branch: 'v4',
-    script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
-    args: ['--hardware-gpu', '--report-only', '--diagnose-preserved-msaa'],
-    artifact: 'test-results/renderer-hardware-fresh-context-ab-preserved-msaa',
-  }];
+  return [
+    {
+      id: 'v4-preserved-msaa',
+      branch: 'v4',
+      script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+      args: ['--hardware-gpu', '--report-only', '--diagnose-preserved-msaa'],
+      artifact: 'test-results/renderer-hardware-fresh-context-ab-preserved-msaa',
+    },
+  ];
 }
 
 export function buildRendererR9HardwareCampaignPlan() {
