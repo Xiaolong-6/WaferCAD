@@ -47,6 +47,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [UI v2 human-review code audit — 2026-10-12](ui-v2/HUMAN_REVIEW_CODE_AUDIT_2026-10-12.md) — dated manual review of workstation/Recipe/Mask/Section refinements, observed checks and explicit remaining validation limits.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 Stage C / M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — testing ownership and remaining workflow/visual checks; interpret results at the stated revision.
+- [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.
