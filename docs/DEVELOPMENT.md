@@ -78,9 +78,9 @@ The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md)
 
 ## Deployment
 
-`.github/workflows/pages.yml` deploys `site/` from `main` only after the **same revision** passes Release Quality (including formatting), targeted Browser regression and the real UI v2 Stage C/M4 integration checks. Release jobs reuse the existing Browser/UI workflow owners, which no longer trigger independent duplicate `main` push runs. Weekly/manual full browser checks remain separate; KLayout compatibility stays path-scoped and manually runnable for broader corpus checks.
+`.github/workflows/pages.yml` deploys a filtered copy of `site/` from `main` only after the **same revision** passes Release Quality (including formatting), targeted Browser regression and the real UI v2 Stage C/M4 integration checks. Release jobs reuse the existing Browser/UI workflow owners, which no longer trigger independent duplicate `main` push runs. Weekly/manual full browser checks remain separate; KLayout compatibility stays path-scoped and manually runnable for broader corpus checks.
 
-There is no application build step.
+There is no application bundling step. `node scripts/build-pages-artifact.mjs` stages the public runtime in `build/pages/`, excluding historical UI prototypes, mocks, review pages and Node tests. The release stamps only staged JavaScript and writes `build-info.json` there; source fixtures remain available in Git and local tests.
 
 ## Current design contracts
 

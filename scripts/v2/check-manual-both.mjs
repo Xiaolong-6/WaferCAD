@@ -17,7 +17,7 @@ const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot
 const report = { result: 'running', cases: [] };
 
 try {
-  await page.goto(`${base}/app-v2-workstation.html?start=empty`, {
+  await page.goto(`${base}/app.html?start=empty`, {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
