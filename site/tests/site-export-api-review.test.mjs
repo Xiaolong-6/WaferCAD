@@ -28,7 +28,6 @@ test('known externally reviewable exports remain guarded, without removing publi
 });
 
 test('export candidates with active in-module consumers are not dead functions', async () => {
-  const root = fileURLToPath(new URL('../../', import.meta.url));
   const locallyUsed = reviewed.filter(({ symbol }) =>
     [
       'simplifyDisplayPolyline',
