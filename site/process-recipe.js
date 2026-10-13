@@ -116,6 +116,9 @@ function normalizeEtchSurface(value, etchDepthUm) {
     featureCv: normalizeCv(source.featureCv, 'etch.surface.featureCv'),
     heightCv: normalizeCv(source.heightCv, 'etch.surface.heightCv'),
     ...(seedValue == null ? {} : { seed: seedValue >>> 0 }),
+    ...(typeof source.profileId === 'string' && source.profileId
+      ? { profileId: source.profileId }
+      : {}),
     geometryMode: 'ideal',
   };
 }
