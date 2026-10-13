@@ -67,3 +67,33 @@ gate remains mandatory before enabling V3/V4 experimental flags.
 PR #174 remains Draft, and no main merge or screenshot-tolerance
 change is authorized. Do not repeat the completed Index/Caps/Combined
 no-MSAA hardware campaigns.
+
+## 2026-10-13 first native acquisition: harness error, no parity conclusion
+
+The operator's private Windows evidence archive
+`2026-10-13T10-19-54-987Z.zip` (SHA-256
+`8c3363a81535f6371fdb98f4403768f4df3df9640c622398ed3d2067b25e7a8e`)
+used V4 `b911b832` and the intended `r9-preserved-msaa` campaign.
+The HTTP preflight reached `app-legacy.html` (200); Chromium produced
+`1-OFF.png`. The first trial then threw
+`default framebuffer was not preserved: actual undefined, expected true`.
+The ZIP has only one partial trial, no GL adapter/phase comparisons,
+`campaignComplete=false`, and `diagnosticComplete=false`.
+
+**Root cause in the diagnostic harness:** the injected GL probe already
+captured `frame.contextPreserveDrawingBuffer` from
+`gl.getContextAttributes()`, but
+`renderer-electrical-fresh-context-ab.mjs` omitted the field when
+projecting the probe frame into the serialized `native` record.
+The assertion therefore received `undefined` regardless of the actual
+WebGL attribute. Commit `9c527ea` forwards the recorded value unchanged;
+the focused evidence-projection regression and existing fail-closed
+classifier checks guard this boundary. The original hardware trial cannot
+be reclassified and must remain incomplete.
+
+Once **automated gates pass**, repeat only the isolated
+`--campaign=r9-preserved-msaa` diagnostic from the corrected V4 HEAD;
+do not repeat the completed V4 Index/Caps/Combined no-MSAA runs or the
+full five-stage R9. This diagnostic can distinguish preserved-buffer
+behavior under **actual four-sample** MSAA, but cannot approve production
+pixel parity or experimental V4 speedups. Keep the branch Draft/default-off.
