@@ -65,12 +65,27 @@ try {
     const data = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
     assert.ok(Number(data.rendererRoughAssemblyUnits) >= 8, 'multiple rough surface units');
     assert.ok(Number(data.rendererRoughAssemblyYields) >= 1, 'frame/task boundaries yielded');
+    assert.ok(
+      Number(data.rendererRoughRetainedPreviewMeshes || 0) > 0,
+      'previous rough preview must remain owned until detailed geometry commits',
+    );
+    assert.ok(
+      Number(data.rendererRoughRefinementSwaps || 0) >= 1,
+      'one transactional rough detail swap must finish',
+    );
+    assert.ok(
+      Number(data.rendererRoughStagedMeshes || 0) >= Number(data.rendererRoughAssemblyUnits),
+      'new exact rough objects were staged before commit',
+    );
     assert.equal(data.rendererRoughAssemblyCancelled, 'false');
     assert.ok(Number.isFinite(Number(data.rendererRoughAssemblyMaxUnitMs)));
     assert.ok(Number(data.rendererFrameSerial || 0) > 0);
     assert.deepEqual(errors, [], 'no unexpected browser errors');
     result.rough = {
       units: Number(data.rendererRoughAssemblyUnits),
+      retainedPreviewMeshes: Number(data.rendererRoughRetainedPreviewMeshes),
+      stagedMeshes: Number(data.rendererRoughStagedMeshes),
+      committedSwaps: Number(data.rendererRoughRefinementSwaps),
       yields: Number(data.rendererRoughAssemblyYields),
       maxUnitMs: Number(data.rendererRoughAssemblyMaxUnitMs),
       wallMs: Number(data.rendererRoughAssemblyWallMs),
