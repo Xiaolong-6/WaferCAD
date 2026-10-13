@@ -1,0 +1,52 @@
+name: Temporary Tooltip branch formatter
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+    paths:
+      - '.github/workflows/tooltip-format-branch.yml'
+      - 'site/ui-v2/**'
+      - 'site/controllers/project-controller.js'
+      - 'site/tests/v2-tooltip-catalog.test.mjs'
+      - 'scripts/v2/check-tooltips.mjs'
+permissions:
+  contents: write
+jobs:
+  format-tooltip:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/ui-v2-contextual-tooltips-20261013'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format only Tooltip feature changes and push once
+        shell: bash
+        run: |
+          npx prettier --write \
+            site/controllers/project-controller.js \
+            site/tests/v2-tooltip-catalog.test.mjs \
+            site/ui-v2/components.css \
+            site/ui-v2/main-view.js \
+            site/ui-v2/mask-view.js \
+            site/ui-v2/native-components.js \
+            site/ui-v2/project-mask-panels.js \
+            site/ui-v2/section-view.js \
+            site/ui-v2/three-view.js \
+            site/ui-v2/tooltip-catalog.js \
+            site/ui-v2/tooltip-controller.js \
+            site/ui-v2/workstation-workflow.js \
+            scripts/v2/check-tooltips.mjs
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/controllers/project-controller.js site/tests/v2-tooltip-catalog.test.mjs site/ui-v2 scripts/v2/check-tooltips.mjs
+            git commit -m "style(ui): apply pinned Prettier to tooltip changes"
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
