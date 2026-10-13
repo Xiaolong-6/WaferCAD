@@ -123,24 +123,6 @@
   width: 200px;
   height: 160px;
 }
-.v2-z-ruler {
-  position: relative;
-  height: 168px;
-  border-left: 1px solid var(--wc-border);
-  margin: 20px 40px;
-  background: var(--wc-subtle);
-}
-.v2-z-window {
-  position: absolute;
-  inset-inline: 0;
-  background: var(--wc-accent-tint);
-}
-.v2-z-handle {
-  position: absolute;
-  left: 0;
-  transform: translateY(-50%);
-  touch-action: none;
-}
 body[data-workstation] {
   margin: 0;
 }

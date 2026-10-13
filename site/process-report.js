@@ -1,4 +1,6 @@
 import { buildReportZip } from './report-zip.js';
+import { planHistoryKeyframes } from './report-keyframe-plan.js';
+import { historicalSectionPath, MAX_HISTORY_SVG_BYTES } from './report-history-captures.js';
 
 const PAGE_SIZE = 50;
 const VIEWS = new Set(['main', 'mask', 'section', 'three']);
@@ -163,7 +165,7 @@ ${number + 1 < pages ? `<a href="${path(number + 1)}">Next 50 steps →</a>` : '
   );
 }
 
-function reportHtml(data, pageNames, images, notes) {
+function reportHtml(data, pageNames, images, notes, keyframePlan, historicalFigures) {
   const p = data.project;
   const stepLink = new Map(
     data.steps.map((step) => [
@@ -213,6 +215,12 @@ function reportHtml(data, pageNames, images, notes) {
         )}</td><td>${linkedNode(branch.headNodeId)}</td></tr>`,
     )
     .join('');
+  const historicalGallery = historicalFigures
+    .map(
+      (figure) =>
+        `<figure><a href="${figure.path}"><img loading="lazy" src="${figure.path}" alt="Saved Section at Step ${figure.number}"></a><figcaption>Step #${figure.number} · ${htmlEscape(figure.nodeId)} · physical X/Z scale · saved state</figcaption></figure>`,
+    )
+    .join('');
   const gallery = images
     .map(
       (view) =>
@@ -238,6 +246,10 @@ function reportHtml(data, pageNames, images, notes) {
 <p class="muted" id="stepMatches">${data.steps.length} steps</p>
 <ol id="stepSearchResults">${searchRows}</ol></section>
 <div class="pages">${pageNames.map((p, index) => `<a href="history/${p.html}">Steps ${index * PAGE_SIZE + 1}–${Math.min(data.steps.length, (index + 1) * PAGE_SIZE)} →</a>`).join('')}</div>
+<h2>Historical Sections</h2>
+<p>${historicalFigures.length} historical Section figures generated from saved Process states; ${keyframePlan.keyframes.length} selected nodes, within a budget of ${keyframePlan.imageBudget} images. Every successful figure has node and physical-axis evidence in <a href="keyframe-plan.json">keyframe-plan.json</a>.</p>
+${historicalGallery ? `<div class="gallery">${historicalGallery}</div>` : '<p>No historical Section images were generated for this report.</p>'}
+<p>${keyframePlan.unavailableAnchors.length} anchored nodes lack a restorable state; ${keyframePlan.omittedAnchors.length} anchored nodes were excluded by the image budget. ${keyframePlan.unresolvedReferences.length} references no longer resolve to a History node. Full details: <a href="keyframe-plan.json">Keyframe plan (JSON)</a>.</p>
 <h2>Variants</h2><table><thead><tr><th>Variant</th><th>Own steps</th><th>HEAD node</th></tr></thead><tbody>${branches}</tbody></table>
 <h2>Bookmarks</h2>${bookmarks ? `<ul>${bookmarks}</ul>` : '<p>No bookmarks.</p>'}
 <h2>Materials and layers</h2><table><thead><tr><th>Layer</th><th>Stable ID</th><th>Face</th></tr></thead><tbody>${layers}</tbody></table>
@@ -269,7 +281,7 @@ function reportHtml(data, pageNames, images, notes) {
   );
 }
 
-function reportMarkdown(data, pageNames, images) {
+function reportMarkdown(data, pageNames, images, keyframePlan, historicalFigures) {
   const p = data.project;
   const lines = [
     `# ${markdownEscape(p.name)} — WaferCAD Process Report`,
@@ -305,6 +317,17 @@ function reportMarkdown(data, pageNames, images) {
   }
   lines.push(
     '',
+    '## Historical keyframe plan',
+    '',
+    `${keyframePlan.keyframes.length} historical nodes were selected, and ${historicalFigures.length} genuine Section figures captured within ${keyframePlan.imageBudget} images.`,
+    'Uncaptured nodes remain listed in keyframe-plan.json, with a reason where available.',
+    '',
+    ...historicalFigures.map(
+      (figure) => `- [Step #${figure.number} — ${markdownEscape(figure.nodeId)}](${figure.path})`,
+    ),
+    '',
+    'Full evidence, including the physical axes and source revisions, is in keyframe-plan.json.',
+    '',
     '## Data files',
     '',
     'The complete structured operation descriptors are in history/*.json.',
@@ -314,9 +337,71 @@ function reportMarkdown(data, pageNames, images) {
   return lines.join('\n');
 }
 
-export function buildProcessReportArchive(data, { captures = [], warnings = [] } = {}) {
+export function buildProcessReportArchive(
+  data,
+  { captures = [], warnings = [], historicalSections = [], historicalFailures = [] } = {},
+) {
+  const keyframePlan = planHistoryKeyframes({
+    history: data.steps,
+    branches: data.branches,
+    bookmarks: data.bookmarks,
+  });
+  const selected = new Map(keyframePlan.keyframes.map((step) => [step.nodeId, step]));
+  const recorded = new Set();
+  const validatedFigures = [];
+  for (const figure of historicalSections) {
+    const step = selected.get(figure?.nodeId);
+    const evidence = figure?.evidence;
+    if (
+      !step ||
+      recorded.has(step.nodeId) ||
+      step.number !== figure.number ||
+      !data.steps.some(
+        (item) =>
+          item.id === step.nodeId &&
+          item.processRevision === figure.processRevision &&
+          item.restorable === true,
+      ) ||
+      evidence?.nodeId !== step.nodeId ||
+      evidence?.sourceNodeId !== step.nodeId ||
+      evidence?.sourceProcessRevision !== figure.processRevision ||
+      evidence?.provenanceVerified !== true ||
+      evidence?.view !== 'section' ||
+      figure.path !== historicalSectionPath(step.number) ||
+      typeof figure.svg !== 'string' ||
+      !figure.svg.startsWith('<svg ') ||
+      /<script\b|<foreignObject\b|\bon[a-z]+\s*=/i.test(figure.svg) ||
+      new TextEncoder().encode(figure.svg).length > MAX_HISTORY_SVG_BYTES
+    ) {
+      throw new Error('Unverified historical Section figure cannot enter a report.');
+    }
+    recorded.add(step.nodeId);
+    validatedFigures.push(figure);
+  }
+  const failures = historicalFailures
+    .filter((item) => selected.has(item?.nodeId) && !recorded.has(item.nodeId))
+    .map((item) => ({
+      nodeId: item.nodeId,
+      number: selected.get(item.nodeId).number,
+      reason: String(item.reason || 'unknown').slice(0, 160),
+    }));
+  const statusByNode = new Map(validatedFigures.map((item) => [item.nodeId, item]));
+  keyframePlan.keyframes = keyframePlan.keyframes.map((step) => {
+    const figure = statusByNode.get(step.nodeId);
+    const failure = failures.find((entry) => entry.nodeId === step.nodeId);
+    return figure
+      ? { ...step, status: 'captured', figure: figure.path, evidence: figure.evidence }
+      : failure
+        ? { ...step, status: 'failed', failure: failure.reason }
+        : step;
+  });
+  keyframePlan.generatedImages = validatedFigures.length;
+  keyframePlan.renderFailures = failures;
   const accepted = [];
   const files = [{ path: 'styles/report.css', content: CSS }];
+  for (const figure of validatedFigures) {
+    files.push({ path: figure.path, content: figure.svg });
+  }
   for (const capture of captures) {
     if (!VIEWS.has(capture?.view) || accepted.includes(capture.view)) continue;
     if (!(capture.bytes instanceof Uint8Array) || !capture.bytes.length) continue;
@@ -353,11 +438,34 @@ export function buildProcessReportArchive(data, { captures = [], warnings = [] }
     historyStepCount: data.steps.length,
     historyFiles: pages.map(({ html, json: filename }) => ({ html, json: filename })),
     captures: accepted,
+    historicalSections: validatedFigures.map((figure) => ({
+      nodeId: figure.nodeId,
+      processRevision: figure.processRevision,
+      path: figure.path,
+      evidence: figure.evidence,
+    })),
+    keyframePlan: {
+      path: 'keyframe-plan.json',
+      mode: keyframePlan.mode,
+      selectedNodes: keyframePlan.keyframes.length,
+      generatedImages: keyframePlan.generatedImages,
+      renderFailures: failures.length,
+      unavailableAnchors: keyframePlan.unavailableAnchors.length,
+      omittedAnchors: keyframePlan.omittedAnchors.length,
+      unresolvedReferences: keyframePlan.unresolvedReferences.length,
+    },
     warnings,
   };
   files.push(
-    { path: 'index.html', content: reportHtml(data, pages, accepted, warnings) },
-    { path: 'report.md', content: reportMarkdown(data, pages, accepted) },
+    {
+      path: 'index.html',
+      content: reportHtml(data, pages, accepted, warnings, keyframePlan, validatedFigures),
+    },
+    {
+      path: 'report.md',
+      content: reportMarkdown(data, pages, accepted, keyframePlan, validatedFigures),
+    },
+    { path: 'keyframe-plan.json', content: json(keyframePlan) },
     { path: 'manifest.json', content: json(manifest) },
     { path: 'recipe.json', content: json(data.recipe) },
   );
@@ -367,6 +475,7 @@ export function buildProcessReportArchive(data, { captures = [], warnings = [] }
     filename: `${safeName(data.project.name)}-report.zip`,
     stepCount: data.steps.length,
     imageCount: accepted.length,
+    historicalImageCount: validatedFigures.length,
     fileCount: files.length,
   };
 }

@@ -23,8 +23,11 @@ The first cleanup removes six unused import bindings:
 - `site/controllers/section-collapse-controller.js`:
   `translateSectionCollapse`.
 
-Underlying exported Kernel functions remain intact. The audit report
-is an observation, not permission to delete code.
+Subsequent cleanup also retired the uncalled `refreshRecoveryOptions` and
+`invMaskPoint` helpers, plus the unused `activeScopeCells` and
+`setActiveCell` destructured Mask Browser bindings in `site/app.js`.
+The underlying controller methods and exported Kernel functions remain
+intact. The audit report is an observation, not permission to delete code.
 
 ## Exported API review boundary
 
@@ -40,5 +43,5 @@ Namespace and literal dynamic-import consumers are handled conservatively.
 ## Acceptance
 
 `site/tests/site-symbol-reachability.test.mjs` verifies static imports,
-dynamic import conservatism, real-repository parsing, and the six
-retired bindings. Browser acceptance remains a separate release gate.
+dynamic import conservatism, real-repository parsing, and retired
+bindings. Browser acceptance remains a separate release gate.
