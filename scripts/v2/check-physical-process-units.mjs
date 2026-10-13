@@ -109,7 +109,7 @@ try {
       await continuation.waitFor({ state: 'visible', timeout: 15000 });
       await continuation.click();
       await page.waitForFunction(() =>
-        /Recipe completed: 1\\/1/.test(
+        /Recipe completed: 1\/1/.test(
           document.querySelector('[data-slot="status.message"]')?.textContent || '',
         ), null, { timeout: 120000 });
       const afterRecipe = await snapshot();
@@ -164,6 +164,6 @@ try {
   console.error('V2_PHYSICAL_PROCESS_UNITS_FAIL', report.error);
   process.exitCode = 1;
 } finally {
-  await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\\n');
+  await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
   await browser.close();
 }
