@@ -73,6 +73,7 @@ test('real WaferCAD code symbol audit is read-only and parseable', async () => {
     ['site/ui-v2/mock-workspace.js', 'divider'],
     ['site/ui-v2/mock-workspace.js', 'toolbar'],
     ['site/ui-v2/mock-workspace.js', 'row'],
+    ['site/ui-v2/mock-workspace.js', 'originFocus'],
     ['site/model.js', 'maskBoundsCache'],
     ['site/model.js', 'uncoveredGeometry'],
     ['site/plan-renderers.js', 'x0'],
