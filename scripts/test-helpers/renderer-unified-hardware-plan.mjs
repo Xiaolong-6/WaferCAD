@@ -157,6 +157,23 @@ export function classifyRendererHardwareStep(step, report) {
       typeof report?.strictParity !== 'boolean'
     )
       return 'error';
+    const expectedLabels = ['1-OFF', '2-OFF', '3-ON', '4-ON'];
+    const expectedPairs = [
+      ['1-OFF', '2-OFF', true],
+      ['3-ON', '4-ON', true],
+      ['1-OFF', '3-ON', false],
+    ];
+    if (
+      report.trials.some((trial, i) => trial.label !== expectedLabels[i]) ||
+      report.comparisons.some((comparison, i) =>
+        comparison.first !== expectedPairs[i][0] ||
+        comparison.second !== expectedPairs[i][1] ||
+        comparison.samePolicy !== expectedPairs[i][2] ||
+        typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
+        typeof comparison.framebufferIdentical !== 'boolean'
+      )
+    )
+      return 'error';
     const adapter = report.trials[0].backend?.adapter;
     if (
       !adapter ||

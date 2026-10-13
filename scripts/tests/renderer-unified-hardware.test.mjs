@@ -314,9 +314,18 @@ test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance
     passed: false,
     stage: 'completed',
     strictParity: true,
-    comparisons: [{}, {}, {}],
-    trials: Array.from({ length: 4 }, () => ({
+    comparisons: [
+      { first: '1-OFF', second: '2-OFF', samePolicy: true },
+      { first: '3-ON', second: '4-ON', samePolicy: true },
+      { first: '1-OFF', second: '3-ON', samePolicy: false },
+    ].map((pair) => ({
+      ...pair,
+      pixelDifference: { pixelIdentical: true },
+      framebufferIdentical: true,
+    })),
+    trials: Array.from({ length: 4 }, (_, index) => ({
       ...completePhaseTrial(),
+      label: ['1-OFF', '2-OFF', '3-ON', '4-ON'][index],
       backend: { hardwareVerified: true, adapter: 'RTX 3060' },
       native: {
         ...completePhaseTrial().native,
@@ -341,6 +350,20 @@ test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance
   const mismatched = structuredClone(valid);
   mismatched.trials[1].backend.adapter = 'different adapter';
   assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, mismatched), 'error');
+  const missingComparison = structuredClone(valid);
+  delete missingComparison.comparisons[1].pixelDifference;
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, missingComparison), 'error');
+  const reordered = structuredClone(valid);
+  reordered.trials.reverse();
+  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, reordered), 'error');
+  const actualDrift = structuredClone(valid);
+  actualDrift.strictParity = false;
+  actualDrift.comparisons[0].pixelDifference.pixelIdentical = false;
+  actualDrift.comparisons[0].framebufferIdentical = false;
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, actualDrift),
+    'diagnostic-complete',
+  );
 });
 
 test('targeted phase-window evidence cannot approve V3 production raster parity', () => {
