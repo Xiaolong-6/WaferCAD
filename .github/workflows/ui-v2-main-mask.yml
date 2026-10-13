@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-main-view check-mask-view check-section-view check-mobile-workstation; do
+          for script in check-mobile-workstation check-main-view check-mask-view check-section-view; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::View gate failed: ${script}"
