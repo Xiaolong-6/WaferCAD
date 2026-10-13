@@ -2645,9 +2645,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
     buildStageStartedAt = performance.now();
     recordVariantStage('begin');
     try {
-      if (!variantBuild) disposeGroup();
+      // Keep the previous complete scene visible while exact topology is
+      // built off-thread. Do not dispose it until a usable plan is available.
       syncRenderPolicy();
-      applyZDisplayState(model);
 
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
@@ -2663,7 +2663,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         superseded.name = 'SceneVariantSuperseded';
         throw superseded;
       }
-      if (!variantBuild) physicalSurfacePlan = plan;
+      if (!variantBuild) {
+        disposeGroup();
+        physicalSurfacePlan = plan;
+      }
+      applyZDisplayState(model);
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
       // GLB export remain independent of these presentation-only meshes.
