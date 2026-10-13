@@ -12,7 +12,7 @@ The compact pane is owned by `uiState.mobile` (`view | edit`). `presentation.edi
 
 ## Layout and scroll contract
 
-`workstation-v2.css` bounds the mobile Workstation to `100dvh` minus its shell margins, with the topbar, navigation and status as non-scrolling chrome.
+`mobile-workstation.css` (loaded only by the two production Workstation entries) bounds the mobile Workstation to `100dvh` minus its shell margins, with the topbar, navigation and status as non-scrolling chrome.
 
 Only one primary region scrolls at a time:
 
@@ -20,7 +20,7 @@ Only one primary region scrolls at a time:
 - View: `.p-stage`, only if the view contents cannot fit (e.g. Section with expanded legend).
 - The document body is not a second vertical scroller in the mobile Workstation.
 
-The former 390px editor canvas and fixed 480px inspector are deliberately removed from compact mode. Touch controls in primary navigation/view toolbar and scientific legend use a 44px minimum on coarse pointers.
+The former 390px editor canvas and fixed 480px inspector are deliberately overridden in the production compact layout; M2/mock preview geometry is untouched. Touch controls in primary navigation/view toolbar and scientific legend use a 44px minimum on coarse pointers.
 
 ## Rendering and DOM identity
 
