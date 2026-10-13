@@ -35,6 +35,29 @@ The launcher first fetches V4, then verifies the V3 Git object is present
 and is an ancestor; if either fails, it stops rather than comparing the
 wrong renderer. A normal full-history clone of V4 has the V3 commit.
 
+## Targeted V4 follow-up after R9 evidence (diagnostic only)
+
+The 2026-10-13 physical RTX 3060 R9 session established that production
+4-sample MSAA had same-policy fresh-context drift, while V3 no-MSAA made
+all four frames and native GL framebuffer hashes identical. To isolate
+whether V4 Index/Caps independently cause pixel changes, the new
+`--campaign=r9-v4-msaa` collects only the **three V4 A/B/B/A modes**.
+The launcher installs V4 only, never reruns V3 and never accepts no-MSAA
+as a production pass. The report records actual default framebuffer
+`SAMPLES=0` and `contextAntialias=false` in all twelve contexts.
+Run from an updated WaferCAD worktree with a verified real GPU:
+
+```powershell
+node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-v4-msaa
+node scripts/renderer-unified-hardware.mjs --hardware-gpu --campaign=r9-v4-msaa
+```
+
+Do not compare wall-time values from this diagnostic with normal production
+MSAA runs as evidence of speedup. It exists to attribute **pixel parity**
+on a controlled alternative raster path. Share one ZIP from the runner.
+Even a zero-pixel result in all three diagnostic arms leaves production
+4-sample MSAA hardware acceptance blocked.
+
 ## Exact PowerShell procedure
 
 From your existing Windows WaferCAD checkout (replace the first line

@@ -60,6 +60,20 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
 // raster hypothesis, then independently attributable V4 candidates.
 // This reuses a single dependency installation and preserves a single ZIP.
 // Never accept the diagnostic arm as a production-renderer pass.
+// Candidate-only no-MSAA isolation: never a production acceptance run, and
+// never repeats the expensive full-wafer V3 baseline in the same campaign.
+export function buildRendererR9V4NoMsaaDiagnosticPlan() {
+  return RENDERER_HARDWARE_MODES.map((mode) => {
+    const original = buildRendererHardwarePlan([mode])[1];
+    return {
+      ...original,
+      id: original.id + '-msaa-off',
+      args: [...original.args, '--diagnose-no-msaa'],
+      artifact: original.artifact + '-no-msaa',
+    };
+  });
+}
+
 export function buildRendererR9HardwareCampaignPlan() {
   const regular = buildRendererHardwarePlan();
   return [regular[0], ...buildRendererV3MsaaDiagnosticPlan(), ...regular.slice(1)];
@@ -115,6 +129,32 @@ export function buildRendererV3PhaseWindowDiagnosticPlan(value) {
 
 export function classifyRendererHardwareStep(step, report) {
   if (!report) return step.exitCode === 0 ? 'incomplete' : 'error';
+  if (step.id.startsWith('v4-') && step.id.endsWith('-msaa-off')) {
+    const candidate = step.id.slice(3, -'-msaa-off'.length);
+    if (report.error || report.failure) return 'error';
+    if (
+      step.exitCode !== 0 ||
+      report.diagnosticNoMsaa !== true ||
+      report.acceptanceEligible !== false ||
+      report.passed !== false ||
+      report.diagnosticComplete !== true ||
+      report.candidateMode !== candidate ||
+      report.stage !== 'complete' ||
+      report.trials?.length !== 4 ||
+      report.comparisons?.length !== 6 ||
+      !report.parity
+    ) return 'error';
+    if (report.trials.some((trial) =>
+      trial.rasterIsolation?.contextAntialias !== false ||
+      trial.rasterIsolation?.defaultFramebufferSamples !== 0 ||
+      trial.rasterIsolation?.defaultFramebuffer !== true
+    )) return 'error';
+    if (report.trials.some((trial) => !trial.backend?.hardwareVerified)) return 'error';
+    if (report.trials.some((trial) => trial.candidateActivation?.candidateExercised !== true)) {
+      return 'candidate-not-exercised';
+    }
+    return 'diagnostic-complete';
+  }
   if (step.id === 'v3-phase-window') {
     if (
       step.exitCode !== 0 ||

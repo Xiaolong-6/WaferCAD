@@ -16,6 +16,7 @@ import {
   buildRendererHardwareFetchArgs,
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
+  buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
   buildRendererV3PhaseWindowDiagnosticPlan,
@@ -26,11 +27,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const options = process.argv.slice(2);
 const planOnly = options.includes('--plan-only');
 const r9Campaign = options.includes('--campaign=r9');
+const r9V4NoMsaaCampaign = options.includes('--campaign=r9-v4-msaa');
 const unknownCampaign = options.filter(
-  (arg) => arg.startsWith('--campaign=') && arg !== '--campaign=r9',
+  (arg) => arg.startsWith('--campaign=') && !['--campaign=r9', '--campaign=r9-v4-msaa'].includes(arg),
 );
-if (unknownCampaign.length || options.filter((arg) => arg === '--campaign=r9').length > 1) {
-  throw new Error('Only one --campaign=r9 is supported.');
+if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
+  throw new Error('Select one known hardware campaign.');
 }
 const modesArg = options.find((arg) => arg.startsWith('--modes='));
 const ditherDiagnostic = options.includes('--diagnose-v3-dither');
@@ -41,10 +43,10 @@ const phaseWindowDiagnostic = phaseWindowOptions.length === 1;
 const phaseWindowValue = phaseWindowDiagnostic
   ? (phaseWindowOptions[0].split('--diagnose-v3-phase-window=')[1] ?? '')
   : null;
-const diagnostic = ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic;
+const diagnostic = ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || r9V4NoMsaaCampaign;
 if (
   (diagnostic && modesArg) ||
-  (r9Campaign && (diagnostic || modesArg)) ||
+  ((r9Campaign || r9V4NoMsaaCampaign) && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -54,6 +56,8 @@ const hardwareRtx3060 = options.includes('--hardware-rtx3060');
 const hardwareGpu = options.includes('--hardware-gpu') || hardwareRtx3060;
 const plan = r9Campaign
   ? buildRendererR9HardwareCampaignPlan()
+  : r9V4NoMsaaCampaign
+    ? buildRendererR9V4NoMsaaDiagnosticPlan()
   : ditherDiagnostic
     ? buildRendererV3DitherDiagnosticPlan()
     : msaaDiagnostic
@@ -156,7 +160,7 @@ async function runHardware() {
         'Fetched V4 does not contain pinned V3 baseline; refusing mixed-revision evidence.',
       );
     }
-    for (const key of ['v3', 'v4']) {
+    for (const key of [...new Set(plan.map((step) => step.branch))]) {
       console.log('Preparing ' + key.toUpperCase() + ' ' + refs[key].slice(0, 10));
       git(['worktree', 'add', '--detach', worktrees[key], refs[key]]);
       const install = await runLogged(
@@ -265,7 +269,7 @@ async function runHardware() {
         v3: 'immutable final commit of closed PR #166',
         v4: 'fetched origin/' + RENDERER_HARDWARE_BRANCHES.v4,
       },
-      campaign: r9Campaign ? 'r9' : null,
+      campaign: r9Campaign ? 'r9' : r9V4NoMsaaCampaign ? 'r9-v4-msaa' : null,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,
       fatalError,
@@ -279,14 +283,18 @@ async function runHardware() {
             : step.status === 'passed',
         ),
       campaignComplete:
-        r9Campaign &&
+        (r9V4NoMsaaCampaign &&
+          !fatalError &&
+          completed.length === plan.length &&
+          completed.every((step) => step.status === 'diagnostic-complete')) ||
+        (r9Campaign &&
         !fatalError &&
         completed.length === plan.length &&
         completed.every((step) =>
           step.id === 'v3-msaa-off'
             ? step.status === 'diagnostic-complete'
             : ['passed', 'blocked'].includes(step.status),
-        ),
+        )),
       diagnosticComplete:
         diagnostic &&
         !fatalError &&

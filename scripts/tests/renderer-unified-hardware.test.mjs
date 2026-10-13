@@ -12,6 +12,7 @@ import {
   buildRendererHardwareFetchArgs,
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
+  buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
   buildRendererV3PhaseWindowDiagnosticPlan,
@@ -67,6 +68,45 @@ test('R9 single-GPU-session campaign captures baseline, no-MSAA control and inde
   );
   assert.ok(plan[1].args.includes('--diagnose-no-msaa'));
   assert.ok(plan.slice(2).every(({ args }) => !args.includes('--diagnose-no-msaa')));
+});
+
+test('V4 zero-MSAA diagnostic plans only Index, Caps and Combined without V3 repeat', () => {
+  const plans = buildRendererR9V4NoMsaaDiagnosticPlan();
+  assert.deepEqual(plans.map(({ id }) => id), [
+    'v4-index-msaa-off',
+    'v4-caps-msaa-off',
+    'v4-combined-msaa-off',
+  ]);
+  assert.ok(plans.every((p) => p.branch === 'v4' && p.args.includes('--diagnose-no-msaa')));
+  assert.equal(new Set(plans.map((p) => p.artifact)).size, 3);
+  const mode = plans[0];
+  const report = {
+    diagnosticNoMsaa: true,
+    acceptanceEligible: false,
+    passed: false,
+    diagnosticComplete: true,
+    stage: 'complete',
+    candidateMode: 'index',
+    parity: { strictPixelParity: false },
+    comparisons: Array.from({ length: 6 }, () => ({})),
+    trials: Array.from({ length: 4 }, () => ({
+      rasterIsolation: {
+        contextAntialias: false,
+        defaultFramebuffer: true,
+        defaultFramebufferSamples: 0,
+      },
+      backend: { hardwareVerified: true },
+      candidateActivation: { candidateExercised: true },
+    })),
+  };
+  assert.equal(classifyRendererHardwareStep({ ...mode, exitCode: 0 }, report), 'diagnostic-complete');
+  assert.equal(classifyRendererHardwareStep({ ...mode, exitCode: 0 }, { ...report, passed: true }), 'error');
+  const withSamples = structuredClone(report);
+  withSamples.trials[0].rasterIsolation.defaultFramebufferSamples = 4;
+  assert.equal(classifyRendererHardwareStep({ ...mode, exitCode: 0 }, withSamples), 'error');
+  const inactive = structuredClone(report);
+  inactive.trials[1].candidateActivation.candidateExercised = false;
+  assert.equal(classifyRendererHardwareStep({ ...mode, exitCode: 0 }, inactive), 'candidate-not-exercised');
 });
 
 test('DITHER-off diagnostic is one V3-only experiment, never product acceptance', () => {

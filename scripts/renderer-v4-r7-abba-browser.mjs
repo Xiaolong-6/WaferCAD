@@ -33,6 +33,8 @@ const ciSmoke = process.argv.includes('--ci-smoke');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const gpuTiming = process.argv.includes('--gpu-timing');
+const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
+assert.ok(!diagnosticNoMsaa || hardwareGpu, '--diagnose-no-msaa requires verified --hardware-gpu');
 const candidate = selectR7Candidate(process.argv);
 const { candidateName, flags: candidateFlags, artifactSuffix } = candidate;
 assert.notEqual(ciSmoke, hardwareGpu, 'select exactly one: --ci-smoke or --hardware-gpu');
@@ -41,6 +43,7 @@ const output = new URL(
   '../test-results/' +
     (hardwareGpu ? 'renderer-v4-r7-hardware-abba' : 'renderer-v4-r7-ci-smoke') +
     artifactSuffix +
+    (diagnosticNoMsaa ? '-no-msaa' : '') +
     '/',
   import.meta.url,
 );
@@ -72,6 +75,9 @@ const report = {
   gpuVramBytes: null,
   pureGpuFrameTimeMs: null,
   gpuTimerRequested: gpuTiming,
+  diagnosticNoMsaa,
+  acceptanceEligible: !diagnosticNoMsaa,
+  diagnosticComplete: false,
   gpuTimerTrials: [],
   passed: false,
 };
@@ -88,6 +94,19 @@ async function oneArm(policy, index) {
     viewport: { width: 1440, height: 960 },
     deviceScaleFactor: 1,
   });
+  if (diagnosticNoMsaa) {
+    // Instrument no product source and no render materials: only force the
+    // fresh WebGL2 context allocation to use zero multisample samples.
+    await context.addInitScript(() => {
+      const native = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+        if (kind === 'webgl2') {
+          return native.call(this, kind, { ...(args[0] || {}), antialias: false });
+        }
+        return native.call(this, kind, ...args);
+      };
+    });
+  }
   const label = index + '-' + policy;
   const flags = [
     'rendererV4GpuCensus=1',
@@ -113,6 +132,22 @@ async function oneArm(policy, index) {
     );
     await closeFunctionPanel(page);
     await waitForThreeReady(page, timeout);
+    if (diagnosticNoMsaa) {
+      row.rasterIsolation = await page.locator('#threeHost canvas').evaluate((canvas) => {
+        const gl = canvas.getContext('webgl2');
+        if (!gl || gl.isContextLost()) throw new Error('Missing diagnostic WebGL2 context');
+        return {
+          contextAntialias: gl.getContextAttributes()?.antialias ?? null,
+          defaultFramebuffer: gl.getParameter(gl.FRAMEBUFFER_BINDING) === null,
+          defaultFramebufferSamples: gl.getParameter(gl.SAMPLES),
+        };
+      });
+      assert.deepEqual(
+        row.rasterIsolation,
+        { contextAntialias: false, defaultFramebuffer: true, defaultFramebufferSamples: 0 },
+        label + ': no-MSAA diagnostic did not disable actual default framebuffer sampling',
+      );
+    }
     // Ensure a common render policy and pose; never reuse a warmed context
     // across ABBA arms (that would hide GPU initialization costs).
     if ((await page.locator('#threeFastBtn').inputValue()) !== 'fast') {
@@ -377,10 +412,21 @@ try {
       }
     }
   }
-  report.passed = failures.length === 0 && report.parity.strictPixelParity;
+  report.passed = !diagnosticNoMsaa && failures.length === 0 && report.parity.strictPixelParity;
   report.stage = 'complete';
+  report.diagnosticComplete =
+    diagnosticNoMsaa &&
+    report.trials.length === R7_ORDER.length &&
+    report.comparisons.length === R7_PIXEL_PAIRS.length &&
+    report.trials.every((row) => row.rasterIsolation?.defaultFramebufferSamples === 0);
   console.log('RENDERER_V4_R7_ABBA_REPORT', JSON.stringify(report));
-  assert.ok(report.passed, 'R7 strict parity blocked: ' + failures.join('; '));
+  // Complete diagnostic evidence is valuable even when strict pixels differ.
+  // Its zero-MSAA screenshots must never approve the 4-sample product policy.
+  if (!diagnosticNoMsaa) {
+    assert.ok(report.passed, 'R7 strict parity blocked: ' + failures.join('; '));
+  } else {
+    assert.ok(report.diagnosticComplete, 'R7 no-MSAA diagnostic evidence incomplete');
+  }
 } catch (error) {
   report.failure = String(error);
   throw error;
@@ -388,4 +434,8 @@ try {
   await writeFile(new URL('report.json', output), JSON.stringify(report, null, 2) + '\n');
   await browser.close();
 }
-assert.equal(report.passed, true, 'R7 parity, backend or ABBA invariants failed');
+if (!diagnosticNoMsaa) {
+  assert.equal(report.passed, true, 'R7 parity, backend or ABBA invariants failed');
+} else {
+  assert.equal(report.diagnosticComplete, true, 'R7 no-MSAA diagnostic incomplete');
+}
