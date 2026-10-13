@@ -3,6 +3,9 @@ on:
   push:
     branches: [test/history-recovery-fault-matrix-20261013]
     paths: [.github/workflows/temp-test-format.yml]
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/temp-test-format.yml]
 
 permissions:
   contents: write
