@@ -60,6 +60,10 @@ try {
       if (!(await baseWidth.isVisible())) {
         await page.getByRole('heading', { name: 'Base', exact: true }).click();
       }
+      // A fresh workstation defaults to Circle: Height is disabled there.
+      // Select the real Rectangle control before entering independent X/Y.
+      await page.locator('#substrateShape button[data-shape="rect"]').click();
+      assert.equal(await page.locator('#baseHeight').isEnabled(), true);
       for (const [id, value] of Object.entries({
         baseWidth: baseDimensions.width,
         baseHeight: baseDimensions.height,
