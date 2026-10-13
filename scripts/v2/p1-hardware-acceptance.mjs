@@ -162,6 +162,8 @@ async function open(url) {
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
 }
 try {
+  if (report.revision === 'unknown')
+    throw new Error('WaferCAD Git revision unavailable. Run this tool from the checked-out worktree root.');
   if (await checkServer())
     throw new Error(`Port ${port} is in use. Stop the existing server or set WAFERCAD_HW_PORT.`);
   server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
