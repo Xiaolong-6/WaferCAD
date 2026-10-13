@@ -110,7 +110,7 @@
     window.WaferCadV2ActiveOverlays = overlays;
     const workbench = el(
       'div',
-      { class: 'p-workbench', 'data-layout': state.layout },
+      { class: 'p-workbench', 'data-layout': state.layout, 'data-boot': 'loading' },
       topbar,
       body,
       status,
@@ -121,6 +121,12 @@
 
     function bindDividers() {
       const horizontal = state.layout === 'c';
+      // Read the rendered CSS default so first keyboard/pointer resize never
+      // snaps back to the old one-third inspector width.
+      const panelWidth = () =>
+        state.panelSize ||
+        Math.round(inspector.getBoundingClientRect().width) ||
+        Math.round(Math.min(460, Math.max(320, window.innerWidth * 0.27)));
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
       separator.setAttribute(
         'aria-valuemax',
@@ -131,13 +137,13 @@
         String(
           horizontal
             ? state.bottomSize || 250
-            : state.panelSize || Math.max(240, window.innerWidth / 3),
+            : panelWidth(),
         ),
       );
       const update = (delta) => {
         const current = horizontal
           ? state.bottomSize || 250
-          : state.panelSize || Math.max(240, window.innerWidth / 3);
+          : panelWidth();
         const next = Math.round(
           Math.max(
             horizontal ? 180 : 240,
@@ -174,6 +180,9 @@
       });
     }
     bindDividers();
+    // Primary navigation does not depend on view or project adapters. Display
+    // it immediately, including during async example and Recovery loading.
+    renderNav({ selectedNavigation: state.domain || registry.primaryNav[0]?.key });
 
     function renderNav(info) {
       navHost.replaceChildren(
@@ -400,7 +409,7 @@
         String(
           horizontalDivider
             ? state.bottomSize || 250
-            : state.panelSize || Math.max(240, window.innerWidth / 3),
+            : panelWidth(),
         ),
       );
       slots.get('topbar.project').textContent = getProjectName();
