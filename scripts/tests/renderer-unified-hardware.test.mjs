@@ -15,6 +15,7 @@ import {
   buildRendererR9HardwareCampaignPlan,
   buildRendererR9PreservedMsaaPlan,
   buildRendererR9CurrentV4PhaseWindowPlan,
+  buildRendererR9FocusedDrawPlan,
   buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
@@ -378,6 +379,21 @@ test('R9 V4 phase-window classification requires real production 4x-MSAA evidenc
   };
   const status = (evidence) => classifyRendererHardwareStep({ ...step, exitCode: 0 }, evidence);
   assert.equal(status(valid), 'diagnostic-complete');
+
+  const [focus] = buildRendererR9FocusedDrawPlan();
+  assert.equal(focus.id, 'v4-focused-draws');
+  assert.equal(focus.branch, 'v4');
+  assert.deepEqual(focus.args.at(-1), '--diagnose-focus-window=129:154');
+  assert.equal(focus.artifact.endsWith('focused-129-154'), true);
+  const focusEvidence = structuredClone(valid);
+  focusEvidence.focusWindowDiagnostic = true;
+  const focusedStatus = (report) =>
+    classifyRendererHardwareStep({ ...focus, exitCode: 0 }, report);
+  assert.equal(focusedStatus(focusEvidence), 'diagnostic-complete');
+  assert.equal(focusedStatus(valid), 'error');
+  const missingFocusedDraw = structuredClone(focusEvidence);
+  missingFocusedDraw.trials[0].native.focusDraws.pop();
+  assert.equal(focusedStatus(missingFocusedDraw), 'error');
 
   const accidentallyApproved = structuredClone(valid);
   accidentallyApproved.passed = true;
