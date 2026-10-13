@@ -182,7 +182,9 @@ export function classifyRendererHardwareStep(step, report) {
     if (
       baseStatus !== 'diagnostic-complete' ||
       report?.focusWindowDiagnostic !== true ||
-      report.trials.some((trial) => !checkRendererR9FocusEvidence(trial.native?.focusDraws).valid) ||
+      report.trials.some(
+        (trial) => !checkRendererR9FocusEvidence(trial.native?.focusDraws).valid,
+      ) ||
       report.comparisons.some(
         (comparison) => typeof comparison.focusedDrawInputsIdentical !== 'boolean',
       )
