@@ -44,6 +44,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Show P1 formatting deltas (temporary diagnostic)
+        shell: bash
+        run: |
+          for file in site/renderer-surface-plan-async.js site/tests/renderer-surface-plan-worker.test.mjs site/three-view.js scripts/v2/profile-startup-ci.mjs docs/ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md; do
+            npx prettier "$file" | diff -u "$file" - || true
+          done
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
