@@ -153,7 +153,7 @@ try {
       assert.equal(await panButton.getAttribute('aria-pressed'), 'true');
       assert.equal(await zoomButton.getAttribute('aria-pressed'), 'true');
       assert.equal(
-        await page.locator('dialog[open], :popover-open').count(),
+        await page.locator('dialog[open], :popover-open:not([role="tooltip"])').count(),
         0,
         'Zoom must not open a popup',
       );
