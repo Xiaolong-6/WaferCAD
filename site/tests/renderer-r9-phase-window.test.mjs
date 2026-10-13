@@ -95,14 +95,19 @@ test('R9 V4 production MSAA probe has one bounded plan without V3 captures', () 
   assert.deepEqual(rendererPhaseMilestones(step.phaseWindow).length, 11);
   assert.throws(() => buildRendererR9CurrentV4PhaseWindowPlan('256:384'), /128:384/);
 
-  const script = fileURLToPath(new URL('../../scripts/renderer-unified-hardware.mjs', import.meta.url));
-  const stdout = execFileSync(process.execPath, [
-    script,
-    '--plan-only',
-    '--campaign=r9-phase-window',
-  ], { encoding: 'utf8' });
+  const script = fileURLToPath(
+    new URL('../../scripts/renderer-unified-hardware.mjs', import.meta.url),
+  );
+  const stdout = execFileSync(
+    process.execPath,
+    [script, '--plan-only', '--campaign=r9-phase-window'],
+    { encoding: 'utf8' },
+  );
   const planned = JSON.parse(stdout);
-  assert.deepEqual(planned.plan.map((item) => item.id), ['v4-phase-window']);
+  assert.deepEqual(
+    planned.plan.map((item) => item.id),
+    ['v4-phase-window'],
+  );
   assert.equal(planned.plan[0].branch, 'v4');
 });
 
@@ -116,12 +121,28 @@ test('R9 V4 diagnostic requires 4 production-MSAA GPU arms and complete checkpoi
     change(report);
     assert.equal(classify(report), 'error');
   };
-  altered((report) => { report.passed = true; });
-  altered((report) => { report.trials[0].backend.hardwareVerified = false; });
-  altered((report) => { report.trials[1].native.defaultFramebufferSamples = 0; });
-  altered((report) => { report.trials[2].native.contextPreserveDrawingBuffer = true; });
-  altered((report) => { report.trials[3].backend.adapter = 'SwiftShader'; });
-  altered((report) => { report.trials[0].phaseCheckpoints[3].hash = null; });
-  altered((report) => { report.comparisons.pop(); });
-  altered((report) => { report.phaseWindow.low = 256; });
+  altered((report) => {
+    report.passed = true;
+  });
+  altered((report) => {
+    report.trials[0].backend.hardwareVerified = false;
+  });
+  altered((report) => {
+    report.trials[1].native.defaultFramebufferSamples = 0;
+  });
+  altered((report) => {
+    report.trials[2].native.contextPreserveDrawingBuffer = true;
+  });
+  altered((report) => {
+    report.trials[3].backend.adapter = 'SwiftShader';
+  });
+  altered((report) => {
+    report.trials[0].phaseCheckpoints[3].hash = null;
+  });
+  altered((report) => {
+    report.comparisons.pop();
+  });
+  altered((report) => {
+    report.phaseWindow.low = 256;
+  });
 });
