@@ -183,8 +183,7 @@ function reportHtml(data, pageNames, images, notes) {
     .join('');
   const variantOptions = data.branches
     .map(
-      (variant) =>
-        `<option value="${htmlEscape(variant.id)}">${htmlEscape(variant.name)}</option>`,
+      (variant) => `<option value="${htmlEscape(variant.id)}">${htmlEscape(variant.name)}</option>`,
     )
     .join('');
   const bookmarks = data.bookmarks
