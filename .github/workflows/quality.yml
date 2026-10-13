@@ -30,12 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Print API audit formatting diff (temporary)
-        run: |
-          for path in site/tests/site-export-api-review.test.mjs docs/SITE_EXPORT_API_REVIEW_2026-10-13.md; do
-            npx prettier "$path" > /tmp/api-audit-formatted
-            diff -u "$path" /tmp/api-audit-formatted || true
-          done
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check

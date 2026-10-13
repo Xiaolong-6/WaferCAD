@@ -19,9 +19,9 @@ test('known externally reviewable exports remain guarded, without removing publi
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const report = await auditSiteSymbols(root);
   assert.deepEqual(report.parseErrors, []);
-  const candidates = new Set(report.namedExportCandidates.map(
-    ({ file, symbol }) => file + ':' + symbol,
-  ));
+  const candidates = new Set(
+    report.namedExportCandidates.map(({ file, symbol }) => file + ':' + symbol),
+  );
   for (const { file, symbol } of reviewed) {
     assert.ok(candidates.has(file + ':' + symbol), file + ':' + symbol);
   }
@@ -29,13 +29,15 @@ test('known externally reviewable exports remain guarded, without removing publi
 
 test('export candidates with active in-module consumers are not dead functions', async () => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
-  const locallyUsed = reviewed.filter(({ symbol }) => [
-    'simplifyDisplayPolyline',
-    'MAX_HISTORY_SVG_TOTAL_BYTES',
-    'MAX_SNAPSHOT_BRANCHES',
-    'MAX_PROCESS_HISTORY_NODES',
-    'MAIN_SNAPSHOT_BRANCH_ID',
-  ].includes(symbol));
+  const locallyUsed = reviewed.filter(({ symbol }) =>
+    [
+      'simplifyDisplayPolyline',
+      'MAX_HISTORY_SVG_TOTAL_BYTES',
+      'MAX_SNAPSHOT_BRANCHES',
+      'MAX_PROCESS_HISTORY_NODES',
+      'MAIN_SNAPSHOT_BRANCH_ID',
+    ].includes(symbol),
+  );
   for (const { file, symbol } of locallyUsed) {
     const source = await readFile(new URL('../../' + file, import.meta.url), 'utf8');
     const occurrences = source.match(new RegExp('\\b' + symbol + '\\b', 'g')) || [];
