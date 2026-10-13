@@ -10,7 +10,7 @@ const png = (width, height, pixels) => ({
   rgba: Uint8Array.from(pixels.flatMap((rgb) => [...rgb, 255])),
 });
 
-test('saved hardware drift census localizes single-LSB RGB changes without altering pixels', () => {
+test('spatial census records one-LSB RGB changes without mutation', () => {
   const reference = png(3, 1, [
     [10, 10, 10],
     [20, 20, 20],
@@ -36,10 +36,10 @@ test('saved hardware drift census localizes single-LSB RGB changes without alter
     20: 0,
     50: 0,
   });
-  assert.deepEqual(reference.rgba, original, 'diagnostic must not mutate the framebuffer input');
+  assert.deepEqual(reference.rgba, original, 'source remains unchanged');
 });
 
-test('flat-region one-LSB drift is distinguished from a real reference gradient', () => {
+test('flat drift is distinct from a reference gradient', () => {
   const reference = png(3, 1, [[10, 10, 10], [10, 10, 10], [10, 10, 10]]);
   const candidate = png(3, 1, [[10, 10, 10], [11, 10, 10], [10, 10, 10]]);
   const census = summarizeRendererR9SpatialDrift(reference, candidate);
