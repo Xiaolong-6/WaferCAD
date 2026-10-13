@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createProjectStateController } from '../controllers/project-state-controller.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { createProjectStateController } = await import('../controllers/project-state-controller.js');
 
 function controller(readValidatedFile) {
   return createProjectStateController({
