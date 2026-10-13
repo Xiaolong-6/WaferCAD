@@ -43,7 +43,9 @@ test('Mask public ports use optional v2 callbacks without constructing controlle
     manualMicron: Number,
     renderMask: () => {},
     status: () => {},
-    onMaskChanged: () => { changed += 1; },
+    onMaskChanged: () => {
+      changed += 1;
+    },
     onUiSync: (value) => sync.push(value),
     onEditorSync: (kind, shape) => events.push({ kind, shape }),
     syncSourceSummary: () => {

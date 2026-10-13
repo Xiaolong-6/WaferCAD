@@ -231,6 +231,7 @@ export function createDrawMaskController({
   // An open editor displays quantized values while geometry can retain the
   // original sub-grid coordinates from canvas input or imported data. Reapplying
   // unchanged displayed fields must not silently snap physical geometry.
+  // prettier-ignore
   function shapeEditorHasChanges(shape) {
     const lengthChanged = (id, physical) => {
       const value = $(id)?.value;
@@ -251,13 +252,13 @@ export function createDrawMaskController({
     }
     if (shape.type === 'polygon') {
       const rows = String($('drawShapePoints')?.value ?? '')
-        .split(/\\r?\\n/)
+        .split(/\r?\n/)
         .map((row) => row.trim())
         .filter(Boolean);
       return (
         rows.length !== shape.points.length ||
         rows.some((row, index) => {
-          const values = row.split(/[\\s,]+/).filter(Boolean);
+          const values = row.split(/[\s,]+/).filter(Boolean);
           return (
             values.length !== 2 ||
             values.some(

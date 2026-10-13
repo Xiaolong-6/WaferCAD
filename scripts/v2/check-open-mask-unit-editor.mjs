@@ -77,7 +77,8 @@ try {
       'repeated Apply without edits does not accumulate rounding error',
     );
     const beforeCenter = (shape.a[0] + shape.b[0]) / 2;
-    await page.locator('#drawShapeCx').fill(String(Number(await page.locator('#drawShapeCx').inputValue()) + 0.01));
+    const nextCenter = Number(await page.locator('#drawShapeCx').inputValue()) + 0.01;
+    await page.locator('#drawShapeCx').fill(String(nextCenter));
     await page.locator('[data-action="draw-apply"]').click();
     const afterEdit = await snapshot();
     const moved = afterEdit.drawMask.shapes.find((entry) => entry.id === shape.id);
