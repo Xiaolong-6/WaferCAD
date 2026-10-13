@@ -5,6 +5,7 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import { createProgressiveStartup } from './progressive-startup.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -60,6 +61,18 @@ try {
     }),
   });
   shell.getRoot().dataset.boot = 'loading';
+  const progressive = createProgressiveStartup({
+    onChange: (snapshot) => {
+      const root = shell.getRoot();
+      root.dataset.shellReady = String(snapshot.shell === 'ready');
+      root.dataset.projectReady = String(snapshot.project === 'ready');
+      root.dataset.firstFrameReady = String(snapshot.firstFrame === 'ready');
+      for (const [key, stage] of Object.entries(snapshot.views)) {
+        const panel = store.views.get(key)?.panel;
+        if (panel) panel.dataset.viewLoad = stage;
+      }
+    },
+  });
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   const render = () => {
@@ -77,6 +90,7 @@ try {
     uiState,
     render,
     status,
+    progressive,
     changed: store.changed,
     selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
@@ -108,12 +122,32 @@ try {
   store.views.set('section', section);
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
+  // Non-WebGL canvases can become visible after their own completed paint.
+  // Hidden Single-mode panels remain pending until their first visible render.
+  for (const key of ['main', 'mask', 'section']) {
+    const view = store.views.get(key);
+    const originalRender = view.runtime.render;
+    view.runtime.render = (...args) => {
+      const result = originalRender(...args);
+      if (progressive.snapshot().project === 'ready') {
+        requestAnimationFrame(() => {
+          if (!view.panel.hidden && view.panel.getClientRects().length) {
+            progressive.viewFrame(key);
+          }
+        });
+      }
+      return result;
+    };
+  }
+  progressive.shellReady();
   adapters.register('view.three', {
     mount: (host) => {
       host.append(three.panel);
       return three.panel;
     },
-    onShow: three.runtime.render,
+    onShow: () => {
+      if (!starting) three.runtime.render();
+    },
     onHide() {},
     destroy() {},
   });
@@ -170,9 +204,12 @@ try {
     }
   });
   window.addEventListener('resize', render);
-  // Keep the incomplete Shell covered until the restored project is ready.
-  // The initial workflow.refresh() applies panel ownership and view order.
+  // Build the final navigation/grid now, while data remains protected.
+  // Project restore can yield to the browser without exposing the dummy Base.
+  shell.render();
+  shell.getRoot().dataset.boot = 'project';
   await workflow.start();
+  progressive.projectReady();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
@@ -192,6 +229,7 @@ try {
     .catch(() => {});
   window.WaferCadV2Workstation = {
     ready: true,
+    startup: () => progressive.snapshot(),
     snapshot: () =>
       structuredClone({
         source: project.source,
