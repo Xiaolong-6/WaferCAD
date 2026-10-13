@@ -56,6 +56,37 @@ for (const outcome of ['front-throw', 'front-decline', 'back-throw', 'back-decli
   });
 }
 
+test('invalid zero, negative and nonfinite process thickness fails closed on both faces', () => {
+  for (const face of ['front', 'back', 'both']) {
+    for (const [label, thickness] of [
+      ['zero', 0],
+      ['negative', -0.5],
+      ['NaN', Number.NaN],
+      ['infinite', Number.POSITIVE_INFINITY],
+    ]) {
+      for (const type of ['add', 'etch', 'implant', 'electrical']) {
+        const model = modelApi.createModel({
+          shape: 'rect',
+          width: 20,
+          height: 20,
+          thickness: 10,
+        });
+        const before = structuredClone(model);
+        const result = modelApi.applyOperation(model, {
+          type,
+          name: 'Invalid thickness probe',
+          thickness,
+          face,
+          area: model.boundary,
+        });
+        assert.equal(result.changed, false, `${face}/${type}/${label}: ${result.error}`);
+        assert.match(result.error, /thickness must be finite and greater than zero/i);
+        assert.deepEqual(model, before, `${face}/${type}/${label} must not alter Layer IDs or Z`);
+      }
+    }
+  }
+});
+
 for (const seed of [3, 11, 29, 47]) {
   test(`seed=${seed}: Deposit both → selective Front/Back Etch preserves stack invariants`, () => {
     const width = 15 + seed / 10;
