@@ -68,7 +68,7 @@ export function createProjectStateController({
     return cacheImportedSnapshotStates(project);
   }
 
-  function buildProjectSnapshot(includeSnapshots = false) {
+  function buildProjectSnapshot(includeSnapshots = false, { skipHistoryHeadSync = false } = {}) {
     ensureHierarchy();
     const state = getState();
     const project = {
@@ -118,7 +118,7 @@ export function createProjectStateController({
     if (includeSnapshots) {
       project.name = state.projectName;
       project.snapshots = getSnapshotRecords();
-      const snapshotBranches = getSnapshotBranchState();
+      const snapshotBranches = getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
       if (snapshotBranches) project.snapshotBranches = snapshotBranches;
     }
     return project;
