@@ -134,16 +134,10 @@
       );
       separator.setAttribute(
         'aria-valuenow',
-        String(
-          horizontal
-            ? state.bottomSize || 250
-            : panelWidth(),
-        ),
+        String(horizontal ? state.bottomSize || 250 : panelWidth()),
       );
       const update = (delta) => {
-        const current = horizontal
-          ? state.bottomSize || 250
-          : panelWidth();
+        const current = horizontal ? state.bottomSize || 250 : panelWidth();
         const next = Math.round(
           Math.max(
             horizontal ? 180 : 240,
