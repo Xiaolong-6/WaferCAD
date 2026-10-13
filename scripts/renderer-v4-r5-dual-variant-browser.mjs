@@ -133,7 +133,10 @@ try {
       retained: Number(node.dataset.rendererRetainedVariantBuilds || 0),
       committed: Number(node.dataset.rendererCommittedVariantSwaps || 0),
     }));
-    assert.ok(firstTransition.retained >= 1, 'initial opacity switch must retain the previous group');
+    assert.ok(
+      firstTransition.retained >= 1,
+      'initial opacity switch must retain the previous group',
+    );
     assert.equal(
       firstTransition.committed,
       firstTransition.retained,

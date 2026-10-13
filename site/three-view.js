@@ -127,8 +127,7 @@ export function createThreeView({
   // Experimental P0: retain the last committed scene during a new model/ROI build.
   // No default change until full-wafer, rejection, and revision-supersession gates pass.
   const responsiveModelStaging = rendererParams.get('rendererResponsiveModelStage') === '1';
-  const responsiveInteractionPreview =
-    rendererParams.get('rendererResponsiveInteraction') === '1';
+  const responsiveInteractionPreview = rendererParams.get('rendererResponsiveInteraction') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
@@ -1560,14 +1559,16 @@ export function createThreeView({
     if (!responsiveInteractionPreview || !presentationObjects.size) return false;
     const hasRoi = Boolean(getClipGeometry());
     for (const object of presentationObjects) {
-      if (shouldHideRendererPreviewMesh({
-        enabled: responsiveInteractionPreview,
-        sceneVariant: activeSceneVariant,
-        arrayInstances: host.dataset.arrayInstances,
-        kind: object.userData?.waferCadPresentation?.kind,
-        visible: object.visible === true,
-        hasRoi,
-      })) {
+      if (
+        shouldHideRendererPreviewMesh({
+          enabled: responsiveInteractionPreview,
+          sceneVariant: activeSceneVariant,
+          arrayInstances: host.dataset.arrayInstances,
+          kind: object.userData?.waferCadPresentation?.kind,
+          visible: object.visible === true,
+          hasRoi,
+        })
+      ) {
         previewHiddenMeshes.set(object, true);
         object.visible = false;
       }
@@ -1610,7 +1611,9 @@ export function createThreeView({
       refreshCameraArrayLod();
       host.dataset.renderPhase = 'complete';
       stats.textContent = hasMaterial(getModel())
-        ? getClipGeometry() ? 'ROI' : 'full model'
+        ? getClipGeometry()
+          ? 'ROI'
+          : 'full model'
         : 'no material';
       scheduleFrame();
     }, 180);
@@ -3144,17 +3147,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const rejectSupersededBuild = () => {
       if (!pendingRender) return;
       const currentModel = getModel();
-      if (isRendererBuildSuperseded({
-        pending: true,
-        originalModel: model,
-        currentModel,
-        originalSignature: signature,
-        currentSignature: currentModel
-          ? sceneSignature(currentModel, getClipGeometry(), getInspection() || {})
-          : '',
-        originalVariant: targetVariant,
-        currentVariant: presentationMode(),
-      })) throw new SupersededRendererBuild();
+      if (
+        isRendererBuildSuperseded({
+          pending: true,
+          originalModel: model,
+          currentModel,
+          originalSignature: signature,
+          currentSignature: currentModel
+            ? sceneSignature(currentModel, getClipGeometry(), getInspection() || {})
+            : '',
+          originalVariant: targetVariant,
+          currentVariant: presentationMode(),
+        })
+      )
+        throw new SupersededRendererBuild();
     };
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
@@ -3191,12 +3197,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
       recordRoiStage('surface-plan-complete');
       if (!variantBuild) {
         sceneReplaced = true;
-        if (shouldStageRendererScene({
-          enabled: responsiveModelStaging,
-          hasCommittedGroup: Boolean(group?.visible && group?.parent === scene),
-          hasPresentation: presentationObjects.size > 0,
-          variant: activeSceneVariant,
-        })) {
+        if (
+          shouldStageRendererScene({
+            enabled: responsiveModelStaging,
+            hasCommittedGroup: Boolean(group?.visible && group?.parent === scene),
+            hasPresentation: presentationObjects.size > 0,
+            variant: activeSceneVariant,
+          })
+        ) {
           stagedPreviousScene = {
             snapshot: snapshotSceneVariant(),
             cachedVariants: sceneVariantCache,
@@ -3510,16 +3518,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Building a new opacity variant must not draw a half-assembled 3D scene.
       // Leave the last committed canvas frame visible until the atomic swap.
       suppressAssemblyFrames =
-        Boolean(stagedPreviousScene) || variantBuild || (v3FinalFrameOnlyExperiment && cooperativeAssembly);
+        Boolean(stagedPreviousScene) ||
+        variantBuild ||
+        (v3FinalFrameOnlyExperiment && cooperativeAssembly);
       assemblySkippedFrames = 0;
       host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
       host.dataset.rendererAssemblySkippedFrames = '0';
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + INTERACTIVE_ASSEMBLY_SLICE_MS;
       const maybeYieldAssembly = async () => {
-        if (!shouldYieldRendererAssembly(performance.now(), nextAssemblyYieldAt, {
-          heavy: cooperativeAssembly,
-        })) return;
+        if (
+          !shouldYieldRendererAssembly(performance.now(), nextAssemblyYieldAt, {
+            heavy: cooperativeAssembly,
+          })
+        )
+          return;
         sceneAssemblyYields++;
         if (variantBuild) {
           await yieldRendererAssembly({
@@ -4748,7 +4761,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       updateTransparentOrder();
     }
     if (host.dataset.rendererDisplayedState === 'stale')
-      throw new Error('Current 3D model is still building or failed; outdated preview cannot be exported.');
+      throw new Error(
+        'Current 3D model is still building or failed; outdated preview cannot be exported.',
+      );
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
       width = Math.max(2, rect.width),

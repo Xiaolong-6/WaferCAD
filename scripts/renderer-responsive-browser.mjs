@@ -57,10 +57,12 @@ try {
     await page.waitForFunction(
       (priorFrame) => {
         const node = document.getElementById('threeHost');
-        return node?.dataset.renderState === 'ready' &&
+        return (
+          node?.dataset.renderState === 'ready' &&
           Number(node.dataset.rendererStagedModelBuilds || 0) >= 1 &&
           Number(node.dataset.rendererCommittedModelSwaps || 0) >= 1 &&
-          Number(node.dataset.rendererFrameSerial || 0) > priorFrame;
+          Number(node.dataset.rendererFrameSerial || 0) > priorFrame
+        );
       },
       report.first.serial,
       { timeout: 90000 },

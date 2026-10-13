@@ -6,14 +6,34 @@ export class SupersededRendererBuild extends Error {
   }
 }
 
-export function shouldStageRendererScene({ enabled = false, hasCommittedGroup = false, hasPresentation = false, variant = null } = {}) {
-  return enabled === true && hasCommittedGroup === true && hasPresentation === true &&
-    (variant === 'opaque' || variant === 'transparent');
+export function shouldStageRendererScene({
+  enabled = false,
+  hasCommittedGroup = false,
+  hasPresentation = false,
+  variant = null,
+} = {}) {
+  return (
+    enabled === true &&
+    hasCommittedGroup === true &&
+    hasPresentation === true &&
+    (variant === 'opaque' || variant === 'transparent')
+  );
 }
 
-export function isRendererBuildSuperseded({ pending = false, originalModel = null, currentModel = null, originalSignature = '', currentSignature = '', originalVariant = '', currentVariant = '' } = {}) {
-  return pending === true && (
-    originalModel !== currentModel || originalSignature !== currentSignature || originalVariant !== currentVariant
+export function isRendererBuildSuperseded({
+  pending = false,
+  originalModel = null,
+  currentModel = null,
+  originalSignature = '',
+  currentSignature = '',
+  originalVariant = '',
+  currentVariant = '',
+} = {}) {
+  return (
+    pending === true &&
+    (originalModel !== currentModel ||
+      originalSignature !== currentSignature ||
+      originalVariant !== currentVariant)
   );
 }
 
@@ -35,7 +55,13 @@ export function shouldHideRendererPreviewMesh({
   visible = false,
   hasRoi = false,
 } = {}) {
-  return enabled === true && sceneVariant === 'transparent' && !hasRoi &&
-    Number.isFinite(Number(arrayInstances)) && Number(arrayInstances) >= 64 &&
-    visible === true && INTERACTION_PREVIEW_HIDDEN_KINDS.has(kind);
+  return (
+    enabled === true &&
+    sceneVariant === 'transparent' &&
+    !hasRoi &&
+    Number.isFinite(Number(arrayInstances)) &&
+    Number(arrayInstances) >= 64 &&
+    visible === true &&
+    INTERACTION_PREVIEW_HIDDEN_KINDS.has(kind)
+  );
 }

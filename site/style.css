@@ -657,13 +657,17 @@ canvas {
   background: rgba(250, 253, 255, 0.94);
   border: 1px solid #aab9c6;
   border-radius: 6px;
-  font: 12px/1.4 system-ui, sans-serif;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
   pointer-events: none;
 }
 #threeHost[data-renderer-displayed-state='stale']::after {
   content: 'Outdated 3D view · new model / ROI is not yet displayed';
 }
-#threeHost[data-renderer-interaction-preview='active']:not([data-renderer-displayed-state='stale'])::after {
+#threeHost[data-renderer-interaction-preview='active']:not(
+    [data-renderer-displayed-state='stale']
+  )::after {
   content: '3D preview · internal details deferred';
 }
 .section-body {
