@@ -73,6 +73,26 @@ export function buildRendererR9V4NoMsaaDiagnosticPlan(modes = RENDERER_HARDWARE_
     }));
 }
 
+// One current-V4 raster diagnostic over both previously observed drift intervals.
+// 128:384 captures 11 bounded checkpoints plus the final GL framebuffer.
+// No pinned/deleted V3 revision or experimental V4 geometry flags are used.
+export function buildRendererR9CurrentV4PhaseWindowPlan(value = '128:384') {
+  const window = parseRendererPhaseWindow(value);
+  if (!window || window.low !== 128 || window.high !== 384) {
+    throw new Error('R9 V4 phase window must be 128:384');
+  }
+  return [
+    {
+      id: 'v4-phase-window',
+      branch: 'v4',
+      script: 'scripts/renderer-electrical-fresh-context-ab.mjs',
+      args: ['--hardware-gpu', '--report-only', '--diagnose-phase-window=128:384'],
+      artifact: 'test-results/renderer-hardware-fresh-context-ab-phase-window-128-384',
+      phaseWindow: window,
+    },
+  ];
+}
+
 // One 4x-MSAA hypothesis: preserve the default framebuffer through browser
 // presentation. Run V3's OFF/OFF/ON/ON evidence collector on current V4 source;
 // archived V3 git objects and all product rendering settings remain untouched.
@@ -142,6 +162,62 @@ export function buildRendererV3PhaseWindowDiagnosticPlan(value) {
 }
 
 export function classifyRendererHardwareStep(step, report) {
+  if (step.id === 'v4-phase-window') {
+    if (
+      step.exitCode !== 0 ||
+      report?.error ||
+      report?.failure ||
+      report?.phaseWindowDiagnostic !== true ||
+      report?.acceptanceEligible !== false ||
+      report?.passed !== false ||
+      report?.stage !== 'completed' ||
+      report?.trials?.length !== 4 ||
+      report?.comparisons?.length !== 3 ||
+      JSON.stringify(report.phaseWindow) !== JSON.stringify(step.phaseWindow) ||
+      typeof report.strictParity !== 'boolean'
+    ) {
+      return 'error';
+    }
+    const labels = ['1-OFF', '2-OFF', '3-ON', '4-ON'];
+    const pairs = [
+      ['1-OFF', '2-OFF', true],
+      ['3-ON', '4-ON', true],
+      ['1-OFF', '3-ON', false],
+    ];
+    const adapter = report.trials[0].backend?.adapter;
+    if (
+      !adapter ||
+      report.trials.some(
+        (trial, i) =>
+          trial.label !== labels[i] ||
+          trial.backend?.hardwareVerified !== true ||
+          trial.backend.adapter !== adapter ||
+          trial.native?.contextAntialias !== true ||
+          trial.native?.contextPreserveDrawingBuffer !== false ||
+          trial.native?.defaultFramebufferSamples !== 4 ||
+          trial.native?.glState?.framebuffer !== 'default' ||
+          !checkRendererPhaseCapture({
+            checkpoints: trial.phaseCheckpoints,
+            coverage: trial.phaseCoverage,
+            milestones: rendererPhaseMilestones(step.phaseWindow),
+            drawCalls: trial.native?.calls,
+            framebuffer: trial.native?.framebuffer,
+            requireRasterState: true,
+          }).valid,
+      ) ||
+      report.comparisons.some(
+        (comparison, i) =>
+          comparison.first !== pairs[i][0] ||
+          comparison.second !== pairs[i][1] ||
+          comparison.samePolicy !== pairs[i][2] ||
+          typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
+          typeof comparison.framebufferIdentical !== 'boolean',
+      )
+    ) {
+      return 'error';
+    }
+    return 'diagnostic-complete';
+  }
   if (step.id === 'v4-preserved-msaa') {
     if (
       step.exitCode !== 0 ||
