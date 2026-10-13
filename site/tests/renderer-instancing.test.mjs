@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  ringKey,
   translatedPolygonInstanceGroups,
   translatedSidewallInstanceGroups,
   spatialInstanceChunks,
@@ -104,4 +105,49 @@ test('spatial instance chunks keep repeated arrays cullable without losing insta
   assert.ok(chunks.every((chunk) => chunk.length <= 64));
   assert.deepEqual(chunks[0][0], [0, 0]);
   assert.deepEqual(chunks.at(-1).at(-1), [190, 190]);
+});
+
+function historicalRingKey(points, quantum) {
+  if (!points.length) return '';
+  const snap = (value) => {
+    const q = Math.max(1e-12, Number(quantum) || 1e-4);
+    const rounded = Math.round(Number(value) / q) * q;
+    return Object.is(rounded, -0) ? 0 : Number(rounded.toPrecision(15));
+  };
+  const tokens = points.map(([x, y]) => `${snap(x)},${snap(y)}`);
+  const candidates = [];
+  for (const source of [tokens, [...tokens].reverse()]) {
+    for (let offset = 0; offset < source.length; offset++) {
+      candidates.push(source.slice(offset).concat(source.slice(0, offset)).join(';'));
+    }
+  }
+  candidates.sort();
+  return candidates[0];
+}
+
+test('fast ring keys preserve historical byte-identical signatures', () => {
+  let seed = 0x1a3f09bd;
+  const next = () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return seed >>> 0;
+  };
+  const coordinates = [0, 1, 1.01, 1.1, 11, 110, -1, -11, 0.0001, -0.0001];
+  for (const size of [1, 2, 3, 4, 7, 16, 32, 64]) {
+    for (let iteration = 0; iteration < 40; iteration++) {
+      const points = Array.from({ length: size }, () => [
+        coordinates[next() % coordinates.length],
+        coordinates[next() % coordinates.length],
+      ]);
+      const quantum = iteration % 2 ? 1e-3 : 1e-4;
+      assert.equal(ringKey(points, quantum), historicalRingKey(points, quantum));
+      // All rotated or reversed signatures must still share one instancing key.
+      const index = next() % size;
+      const rotated = points.slice(index).concat(points.slice(0, index));
+      assert.equal(ringKey(rotated, quantum), ringKey(points, quantum));
+      assert.equal(ringKey([...points].reverse(), quantum), ringKey(points, quantum));
+    }
+  }
+  assert.equal(ringKey([], 1e-4), '');
 });
