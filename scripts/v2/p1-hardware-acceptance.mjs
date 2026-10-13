@@ -24,6 +24,7 @@ const report = {
   viewport: { width: 1600, height: 950 },
   cases: {},
   errors: [],
+  validationFailures: [],
   cpuProfileCollected: false,
   profiling,
 };
@@ -294,6 +295,13 @@ try {
     stages.indexOf('coarse') >= 0 &&
     stages.indexOf('refining') > stages.indexOf('coarse') &&
     stages.lastIndexOf('ready') > stages.indexOf('refining');
+  for (const [label, sample] of Object.entries(report.cases)) {
+    if (sample.responsiveness && !sample.responsiveness.responsive) {
+      report.validationFailures.push(
+        `${label}: ${sample.responsiveness.longestLongTaskMs}ms main-thread Long Task (limit ${RESPONSIVENESS_LONG_TASK_LIMIT_MS}ms)`,
+      );
+    }
+  }
   report.passed =
     report.hardwareVerified &&
     report.cases.qualityReload.fastSetting === false &&
@@ -320,10 +328,11 @@ try {
   }
 } finally {
   report.finishedAt = new Date().toISOString();
+  if (profiler)
+    await endCpuProfile().catch((error) => {
+      report.errors.push('CPU profiler cleanup: ' + error.message);
+    });
   await save();
-  if (profiler) await endCpuProfile().catch((error) => {
-    report.errors.push('CPU profiler cleanup: ' + error.message);
-  });
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
   if (server) server.kill();
@@ -340,6 +349,7 @@ try {
       stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
       folder: output,
       errors: report.errors.slice(0, 3).map((x) => x.slice(0, 180)),
+      validationFailures: report.validationFailures,
     }),
   );
   if (!report.passed) process.exitCode = 1;
