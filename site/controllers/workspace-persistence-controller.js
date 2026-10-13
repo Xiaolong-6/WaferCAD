@@ -6,6 +6,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
 } from '../workspace-persistence.js';
+import { validateHistoryHeadOffThread } from '../history-head-validation.js';
 import {
   applyWorkspaceViewState,
   captureWorkspaceStructuralIdentity,
@@ -96,6 +97,7 @@ export function createWorkspacePersistenceController({
   appCommit = '',
   status,
   buildProjectSnapshot,
+  progressiveHistoryValidation = false,
   loadProjectSnapshot,
   // Only projects returned from strict persistent-storage validation reach
   // this hook. Snapshot mutation checks still compare detached copies.
@@ -450,15 +452,37 @@ export function createWorkspacePersistenceController({
 
     clearTimer();
     const savingIdentity = currentStructuralIdentity(),
-      project = buildProjectSnapshot(true),
       savingVersion = editVersion;
+    // Legacy callers keep their synchronous History contract. UI v2 performs
+    // strict polygon-boolean validation in a background worker before commit.
+    const offThreadHistory =
+      progressiveHistoryValidation &&
+      typeof snapshotManager?.syncActiveHeadStateAsync === 'function';
+    const immediateProject = offThreadHistory ? null : buildProjectSnapshot(true);
     saving = true;
     failed = false;
     syncSaveStatus();
 
     write = write
       .catch(() => {})
-      .then(() => saveCurrentProject(project))
+      .then(async () => {
+        let project = immediateProject;
+        if (offThreadHistory) {
+          const result = await snapshotManager.syncActiveHeadStateAsync((candidate) =>
+            validateHistoryHeadOffThread(candidate, snapshotManager.validateHeadState),
+          );
+          if (result === 'rejected') throw new Error('Invalid History branch head.');
+          if (result === 'stale' || editVersion !== savingVersion || !hasWriteAccess()) {
+            saving = false;
+            dirty = true;
+            syncSaveStatus();
+            schedule({ markDirty: false });
+            return false;
+          }
+          project = buildProjectSnapshot(true, { skipHistoryHeadSync: true });
+        }
+        return saveCurrentProject(project);
+      })
       .then((saved) => {
         if (!saved) return false;
         writeMarker();
