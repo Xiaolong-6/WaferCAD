@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-startup-shell check-startup check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
+          for script in check-physical-process-units check-startup-shell check-startup check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"
@@ -86,6 +86,7 @@ jobs:
           path: |
             test-results/ui-v2-sync/
             test-results/ui-v2-manual-both/
+            test-results/ui-v2-physical-process/
             test-results/ui-v2-startup/
             test-results/ui-v2-cross-ui-recovery/
             test-results/ui-v2-review-interactions/
