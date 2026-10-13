@@ -32,3 +32,9 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      - name: Temporary tooltip Prettier evidence
+        if: failure()
+        run: |
+          npx prettier --write site/ui-v2/tooltip-controller.js scripts/v2/check-tooltips.mjs
+          git diff -- site/ui-v2/tooltip-controller.js scripts/v2/check-tooltips.mjs
