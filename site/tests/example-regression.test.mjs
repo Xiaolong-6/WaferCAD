@@ -13,7 +13,7 @@ globalThis.polygonClipping = commonJsModule.exports;
 const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { upgradeBundledExampleHistory } = await import('../bundled-example-history.js');
 const { expandProjectStorage } = await import('../project-io.js');
-const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
+const { validateProjectFile } = await import('../project-schema.js');
 const {
   appearanceSurfaceGroups,
   electricalRegionSolids,

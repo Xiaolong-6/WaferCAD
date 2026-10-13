@@ -116,7 +116,6 @@ export function parseGDS(arrayBuffer) {
     if (len < 4 || pos + len > view.byteLength)
       throw new Error(`Invalid GDS record at byte ${pos}.`);
     const type = u8[pos + 2],
-      dataType = u8[pos + 3],
       start = pos + 4,
       end = pos + len,
       data = u8.slice(start, end);

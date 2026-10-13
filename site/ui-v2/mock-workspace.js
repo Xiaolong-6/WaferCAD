@@ -11,13 +11,12 @@
       document.head.append(script);
     });
   }
-  const { installSprite, icon } = window.WaferCadV2Icons;
+  const { installSprite } = window.WaferCadV2Icons;
   const {
     el,
     button,
     select,
     field,
-    stepper,
     emptyState,
     busy,
     panelHeader,

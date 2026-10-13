@@ -26,6 +26,15 @@ The first cleanup removes six unused import bindings:
 Subsequent cleanup also retired the uncalled `refreshRecoveryOptions` and
 `invMaskPoint` helpers, plus the unused `activeScopeCells` and
 `setActiveCell` destructured Mask Browser bindings in `site/app.js`.
+The next low-risk cleanup removes six additional unused local bindings
+without changing their owning APIs or application behavior:
+
+- GDS: the unused record-header `dataType` local; GDS record parsing
+  and `REC.DATATYPE` handling remain unchanged.
+- Example regression: the unused `migrateProjectFile` import.
+- Developer M2 previews: `field` and `select` from mock views;
+  `icon` and `stepper` from mock workspace.
+
 The underlying controller methods and exported Kernel functions remain
 intact. The audit report is an observation, not permission to delete code.
 
