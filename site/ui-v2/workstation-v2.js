@@ -118,6 +118,7 @@
     );
     root.replaceChildren(workbench);
     mounted = workbench;
+    const tooltips = window.WaferCadV2TooltipController?.create({ root: document });
 
     // Share one measured default between initial ARIA state, drag/keyboard
     // resizing and subsequent Shell renders.
@@ -380,6 +381,7 @@
       );
     }
     function render(focusAction) {
+      tooltips?.hide();
       const info = presentation();
       const preserve = Boolean(info.preserveScroll);
       const selectors = info.scrollSelectors || ['.p-panel-content'];
@@ -448,6 +450,7 @@
         ]),
       destroy: () => {
         adapters.destroy();
+        tooltips?.destroy();
         overlays.destroy();
       },
     });

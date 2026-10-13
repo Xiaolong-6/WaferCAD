@@ -7,7 +7,7 @@
     for (const [key, value] of Object.entries(attrs)) {
       if (value === false || value == null) continue;
       if (key === 'class') node.className = value;
-      else node.setAttribute(key, value === true ? '' : String(value));
+      else if (!(key === 'title' && attrs['data-help'])) node.setAttribute(key, value === true ? '' : String(value));
     }
     node.append(...children.flat().filter((c) => c != null));
     return node;
@@ -112,7 +112,7 @@
     commands.forEach((item) => {
       const name = item.getAttribute('aria-label') || item.textContent.trim() || item.title;
       item.setAttribute('aria-label', name);
-      if (!item.title) item.title = name;
+      if (!item.title && !item.hasAttribute('data-help')) item.title = name;
       // Menu text returns only when the command overflows; title-bar commands stay icon-only.
       [...item.childNodes]
         .filter((node) => node.nodeType === Node.TEXT_NODE)

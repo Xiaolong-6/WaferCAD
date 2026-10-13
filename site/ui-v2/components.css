@@ -498,3 +498,16 @@
   --wc-hit-min: var(--wc-control-coarse);
   --wc-control-inset: 0px;
 }
+
+/* Plain, noninteractive contextual text on the existing control; no affordance icon. */
+.wc-context-tooltip {
+  z-index: var(--wc-z-tooltip);
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 7px 10px;
+  pointer-events: none;
+  white-space: normal;
+  line-height: 1.45;
+}
+.wc-context-tooltip[hidden] { display: none; }
+.wc-context-tooltip strong { display: block; font-size: 12px; font-weight: 600; }
+.wc-context-tooltip span { display: block; font-size: 11px; color: var(--wc-muted); }
