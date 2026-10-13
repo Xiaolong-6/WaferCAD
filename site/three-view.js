@@ -2398,20 +2398,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
   }
 
-  function clearAdaptiveRoughObjects() {
-    if (!roughOwnedObjects.size) {
-      roughMeshes = [];
-      return;
-    }
-    const owned = new Set(roughOwnedObjects);
+  function releaseAdaptiveRoughSubset(objects) {
+    const owned = new Set([...objects].filter((object) => roughOwnedObjects.has(object)));
+    if (!owned.size) return;
     transparentMeshes = transparentMeshes.filter((entry) => !owned.has(entry.mesh));
     for (const object of owned) {
       zDisplayObjects.delete(object);
       presentationObjects.delete(object);
-      group?.remove(object);
-      disposeObjectResources(object);
+      object.parent?.remove(object);
+      object.geometry?.dispose?.();
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        // Non-rough scene objects may share pooled opaque materials.
+        if (!material || material.userData?.waferCadPooledPresentationMaterial) continue;
+        material.bumpMap?.dispose?.();
+        material.dispose?.();
+      }
+      roughOwnedObjects.delete(object);
     }
-    roughOwnedObjects.clear();
+    roughMeshes = roughMeshes.filter((entry) => !owned.has(entry.mesh));
+  }
+
+  function clearAdaptiveRoughObjects() {
+    releaseAdaptiveRoughSubset(roughOwnedObjects);
     roughMeshes = [];
   }
 
@@ -2701,36 +2710,63 @@ diffuseColor.a *= waferCadAlphaScale;`,
       sceneGeneration === sceneToken &&
       generation === roughWorkerGeneration;
     if (!current()) return false;
-    clearAdaptiveRoughObjects();
+    // Transactional refinement: retain the complete interactive representation
+    // while new detailed meshes are assembled invisibly in bounded slices.
+    const retained = new Set(roughOwnedObjects);
+    const staged = new Set();
+    const sceneGroup = group;
+    host.dataset.rendererRoughRetainedPreviewMeshes = String(retained.size);
+    host.dataset.rendererRoughStagedMeshes = '0';
     host.dataset.renderState = 'refining';
     host.dataset.renderPhase = 'assembling-rough';
     const started = performance.now();
-    const applied = await runRendererUnitsInSlices(
-      results || [],
-      (result) => appendRoughMeshResult(result, context, mode, { hidden: true }),
-      {
-        now: () => performance.now(),
-        yieldControl: () =>
-          yieldRendererAssembly({
-            requestFrame: requestAnimationFrame,
-            postTask: (resume) => setTimeout(resume, 0),
-          }),
-        isCurrent: current,
-        foregroundBusy: () => interacting || rendering,
-        budgetMs: INTERACTIVE_ASSEMBLY_SLICE_MS,
-        maxUnitsPerSlice: 8,
-      },
-    );
+    let applied;
+    try {
+      applied = await runRendererUnitsInSlices(
+        results || [],
+        (result) => {
+          appendRoughMeshResult(result, context, mode, { hidden: true });
+          for (const object of roughOwnedObjects) {
+            if (!retained.has(object)) staged.add(object);
+          }
+          host.dataset.rendererRoughStagedMeshes = String(staged.size);
+        },
+        {
+          now: () => performance.now(),
+          yieldControl: () =>
+            yieldRendererAssembly({
+              requestFrame: requestAnimationFrame,
+              postTask: (resume) => setTimeout(resume, 0),
+            }),
+          isCurrent: () => current() && group === sceneGroup,
+          foregroundBusy: () => interacting || rendering,
+          budgetMs: INTERACTIVE_ASSEMBLY_SLICE_MS,
+          maxUnitsPerSlice: 8,
+        },
+      );
+    } catch (error) {
+      releaseAdaptiveRoughSubset(staged);
+      host.dataset.rendererRoughAssemblyCancelled = 'true';
+      throw error;
+    }
     host.dataset.rendererRoughAssemblyYields = String(applied.yields);
     host.dataset.rendererRoughAssemblyUnits = String(applied.processed);
     host.dataset.rendererRoughAssemblyWallMs = String(performance.now() - started);
     host.dataset.rendererRoughAssemblyMaxUnitMs = String(applied.maxUnitMs);
-    if (!applied.completed || !current()) {
-      if (current()) clearAdaptiveRoughObjects();
+    if (!applied.completed || !current() || group !== sceneGroup) {
+      // Clean ONLY our staging objects. Another input or model revision may
+      // have already committed a new interactive scene in the meantime.
+      releaseAdaptiveRoughSubset(staged);
       host.dataset.rendererRoughAssemblyCancelled = 'true';
       return false;
     }
+    // The old representation is retired only once the new exact mesh set is
+    // complete. applyPresentationState makes the staged set visible at commit.
+    releaseAdaptiveRoughSubset(retained);
     host.dataset.rendererRoughAssemblyCancelled = 'false';
+    host.dataset.rendererRoughRefinementSwaps = String(
+      Number(host.dataset.rendererRoughRefinementSwaps || 0) + 1,
+    );
     return finalizeRoughMeshResults(diagnostics, mode, signature, context);
   }
 
@@ -2860,10 +2896,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           console.warn('Budgeted rough scene application failed.', error);
           // Do not misrepresent partially staged geometry as a final scene.
           if (generation === roughWorkerGeneration && sceneGeneration === sceneToken) {
-            clearAdaptiveRoughObjects();
+            // The transactional detailed path already removed its partial
+            // meshes. Keep the previous preview available for recovery.
             host.dataset.renderState = 'error';
             host.dataset.renderPhase = 'failed';
-            stats.textContent = '3D rough geometry failed';
+            stats.textContent = '3D rough geometry failed; previous preview retained';
           }
         }
         if (host?.dataset) {
