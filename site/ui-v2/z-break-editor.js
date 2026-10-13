@@ -15,8 +15,8 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     'sectionCollapseScaleLinked',
     el('input', { type: 'checkbox', checked: true }),
   );
-  const topField = fields.input('Top', 'sectionCollapseTopInput');
-  const bottomField = fields.input('Bottom', 'sectionCollapseBottomInput');
+  const topField = fields.input('Top · µm', 'sectionCollapseTopInput');
+  const bottomField = fields.input('Bottom · µm', 'sectionCollapseBottomInput');
   const topInput = topField.querySelector('input');
   const bottomInput = bottomField.querySelector('input');
   const frontField = fields.input('Front scale', 'sectionCollapseFrontScale', 1, { kind: 'scale' });
@@ -157,14 +157,11 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
       const raw = input.value.trim();
       const z = raw === '' ? NaN : units.parse(raw);
       const current = collapse.current();
-      const [lo, hi] = collapse.bounds();
-      const valid =
-        Number.isFinite(z) &&
-        z >= lo &&
-        z <= hi &&
-        (field === 'top' ? z > current.bottom : z < current.top);
+      const valid = collapse.acceptsBoundary(field, z);
       if (!valid) {
-        input.setCustomValidity('Enter a value inside the physical Z range with Top above Bottom.');
+        input.setCustomValidity(
+          'Enter a physical Z boundary that keeps both edges in range and preserves the minimum break width.',
+        );
         input.reportValidity();
         return;
       }
@@ -223,6 +220,7 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
         key === 'top'
           ? Math.max(current.bottom + 1e-9, Math.min(hi, value))
           : Math.min(current.top - 1e-9, Math.max(lo, value));
+      if (!collapse.acceptsBoundary(key, clamped)) return;
       collapse.setCurrent({ ...current, [key]: clamped }, { settled: true });
       sync();
     });

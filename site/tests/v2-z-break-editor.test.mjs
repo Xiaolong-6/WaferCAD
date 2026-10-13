@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createSectionCollapseController } from '../controllers/section-collapse-controller.js';
 
 test('Z Break editor keeps geometry and tooltip ownership in existing controllers', async () => {
   const source = await readFile('site/ui-v2/z-break-editor.js', 'utf8');
@@ -13,4 +14,27 @@ test('Z Break editor keeps geometry and tooltip ownership in existing controller
   assert.match(section, /createZBreakEditor\(/);
   assert.match(section, /workstation\.overlays\.mountFloating\(/);
   assert.doesNotMatch(source, /createCollapsedZDisplayTransform|modelBoundsZ|setSectionCollapse/);
+});
+
+test('typed Z break boundaries are accepted only when normalization preserves both edges', () => {
+  const original = { top: 80, bottom: 20, enabled: true };
+  const controller = createSectionCollapseController({
+    root: { getElementById: () => ({ dataset: { zMinUm: '0', zMaxUm: '100' } }) },
+    getModel: () => ({ regions: [] }),
+    getSectionCollapse: () => original,
+    setSectionCollapse: () => {
+      throw Error('Validation must not mutate the displayed state');
+    },
+    renderSection: () => {},
+    formatXY: String,
+    xyUnitLabel: () => 'µm',
+  });
+  assert.equal(controller.acceptsBoundary('top', 90), true);
+  assert.equal(controller.acceptsBoundary('bottom', 10), true);
+  assert.equal(controller.acceptsBoundary('top', 21), false);
+  assert.equal(controller.acceptsBoundary('bottom', 79), false);
+  assert.equal(controller.acceptsBoundary('top', 100), false);
+  assert.equal(controller.acceptsBoundary('bottom', -1), false);
+  assert.equal(controller.acceptsBoundary('top', Number.NaN), false);
+  assert.deepEqual(original, { top: 80, bottom: 20, enabled: true });
 });
