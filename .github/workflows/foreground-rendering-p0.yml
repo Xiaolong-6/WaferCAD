@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: foreground-p0-${{ github.ref }}
@@ -32,16 +32,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Normalize source formatting once
-        run: |
-          npx prettier --write site/tests/issue-11-3d-controls.test.mjs scripts/foreground-rendering-p0-browser.mjs docs/FOREGROUND_RENDERING_P0_2026-10-12.md
-          if ! git diff --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add site/tests/issue-11-3d-controls.test.mjs scripts/foreground-rendering-p0-browser.mjs docs/FOREGROUND_RENDERING_P0_2026-10-12.md
-            git commit -m 'style(renderer): format P0 cancellation acceptance'
-            git push origin HEAD:refs/heads/perf/foreground-responsive-rendering-20261012
-          fi
       - name: Focused source checks
         run: |
           node --test site/tests/issue-11-3d-controls.test.mjs
