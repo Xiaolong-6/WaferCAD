@@ -33,7 +33,7 @@ let server, browser, context, page;
 const save = () => writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 const checkServer = async () => {
   try {
-    const response = await fetch(base + '/app.html', { signal: AbortSignal.timeout(1200) });
+    const response = await fetch(base + '/app.html', { signal: globalThis.AbortSignal.timeout(1200) });
     return response.ok;
   } catch {
     return false;
@@ -50,7 +50,7 @@ const hostMetrics = () =>
     let modelHash = null;
     if (model) {
       const bytes = new TextEncoder().encode(JSON.stringify(model));
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const digest = await window.crypto.subtle.digest('SHA-256', bytes);
       modelHash = [...new Uint8Array(digest)]
         .map((byte) => byte.toString(16).padStart(2, '0'))
         .join('');
@@ -153,14 +153,14 @@ try {
     };
     window.__waferHardwareVitals = vitals;
     let previous = performance.now();
-    setInterval(() => {
+    window.setInterval(() => {
       const now = performance.now();
       const delay = Math.max(0, now - previous - 50);
       previous = now;
       if (vitals.eventLoopLagMs.length < 15000) vitals.eventLoopLagMs.push(delay);
     }, 50);
     try {
-      new PerformanceObserver((list) => {
+      new window.PerformanceObserver((list) => {
         for (const item of list.getEntries()) {
           if (vitals.longTasksMs.length < 15000) vitals.longTasksMs.push(item.duration);
         }
@@ -180,7 +180,7 @@ try {
         vitals.viewTransitions.push({ state: view, timeMs: Math.round(now) });
       }
     };
-    new MutationObserver(record).observe(document, {
+    new window.MutationObserver(record).observe(document, {
       childList: true,
       subtree: true,
       attributes: true,
