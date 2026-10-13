@@ -3,8 +3,7 @@ import { isArrayModel } from './model-array.js';
 import { prepareMaskInstanceIndex } from './mask-instance-index.js';
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
-import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from './model.js';
-import { transformMulti } from './vector-geometry.js';
+import { cloneModel, createModel, hasMaterial } from './model.js';
 import { createThreeView } from './three-view.js';
 import {
   normalizeSectionViewport,
