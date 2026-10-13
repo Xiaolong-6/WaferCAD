@@ -4,6 +4,7 @@ import {
   parseRendererPhaseWindow,
   rendererPhaseMilestones,
 } from './renderer-v3-phase-window.mjs';
+import { checkRendererR9FocusEvidence } from './renderer-r9-focus-evidence.mjs';
 // This manifest is testable without a Windows GPU or a browser.
 export const RENDERER_HARDWARE_BRANCHES = Object.freeze({
   v3: 'perf/transparent-renderer-v3-20261009',
@@ -196,6 +197,7 @@ export function classifyRendererHardwareStep(step, report) {
           trial.native?.contextPreserveDrawingBuffer !== false ||
           trial.native?.defaultFramebufferSamples !== 4 ||
           trial.native?.glState?.framebuffer !== 'default' ||
+          !checkRendererR9FocusEvidence(trial.native?.focusDraws).valid ||
           !checkRendererPhaseCapture({
             checkpoints: trial.phaseCheckpoints,
             coverage: trial.phaseCoverage,
@@ -211,7 +213,8 @@ export function classifyRendererHardwareStep(step, report) {
           comparison.second !== pairs[i][1] ||
           comparison.samePolicy !== pairs[i][2] ||
           typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
-          typeof comparison.framebufferIdentical !== 'boolean',
+          typeof comparison.framebufferIdentical !== 'boolean' ||
+          typeof comparison.focusedDrawInputsIdentical !== 'boolean',
       )
     ) {
       return 'error';
