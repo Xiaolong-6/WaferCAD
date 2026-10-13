@@ -67,6 +67,10 @@ test('texture binding observations must explicitly admit missing texture content
   const falselyVerified = structuredClone(rows);
   falselyVerified[0].textureContentVerified = true;
   assert.equal(checkRendererR9FocusEvidence(falselyVerified).valid, false);
+  const outsideSamplers = structuredClone(rows);
+  outsideSamplers[0].samplerBindingCoverageComplete = false;
+  outsideSamplers[0].samplerUnitsReferenced = [17];
+  assert.equal(checkRendererR9FocusEvidence(outsideSamplers).valid, false);
   const missingUnit = structuredClone(rows);
   missingUnit[0].textureUnits.pop();
   assert.equal(checkRendererR9FocusEvidence(missingUnit).valid, false);
