@@ -29,6 +29,7 @@ import {
   summarizeRendererPhaseWindow,
 } from './test-helpers/renderer-v3-phase-window.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
+import { checkRendererR9FocusEvidence } from './test-helpers/renderer-r9-focus-evidence.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
@@ -461,6 +462,8 @@ async function trial(enabled, index) {
             })(),
         },
       }));
+      const focusGate = checkRendererR9FocusEvidence(native.focusDraws);
+      assert.ok(focusGate.valid, label + ': ' + focusGate.reason);
       row.focusDrawHash = hashJson(native.focusDraws);
     }
     row.drawInputsHash = hashJson(native.drawInputs);
@@ -564,6 +567,17 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
+        ...(phaseWindowDiagnostic
+          ? {
+              focusedDrawInputsIdentical: previous.row.focusDrawHash === row.focusDrawHash,
+              firstDifferentFocusedDraw:
+                native.focusDraws.find(
+                  (draw, i) =>
+                    JSON.stringify(draw) !==
+                    JSON.stringify(previous.row.native.focusDraws[i]),
+                )?.draw ?? null,
+            }
+          : {}),
         phaseEvidence: compareRendererPhaseEvidence(previous.row, row),
         rasterStateEvidence: compareRendererRasterStateEvidence(previous.row, row),
         layoutIdentical: JSON.stringify(previous.row.layout) === JSON.stringify(row.layout),
@@ -638,6 +652,9 @@ try {
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
+    ...(phaseWindowDiagnostic
+      ? { focusedDrawInputsIdentical: off.focusDrawHash === on.focusDrawHash }
+      : {}),
     phaseEvidence: compareRendererPhaseEvidence(off, on),
     rasterStateEvidence: compareRendererRasterStateEvidence(off, on),
     differenceStage: differenceStage(off, on, cross.pixelIdentical),
