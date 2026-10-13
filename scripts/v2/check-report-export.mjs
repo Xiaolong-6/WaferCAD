@@ -74,11 +74,7 @@ try {
     assert.ok(entries.get('index.html').includes('WaferCAD / Process Report'));
     const after = await snapshot();
     assert.deepEqual(after.model, before.model, 'Export must not change the canonical model');
-    assert.deepEqual(
-      after.workflow.steps,
-      before.workflow.steps,
-      'Export must not change History',
-    );
+    assert.deepEqual(after.workflow.steps, before.workflow.steps, 'Export must not change History');
     assert.deepEqual(errors, []);
     console.log(
       `Report ZIP PASS: ${manifest.historyStepCount} steps, ${manifest.branches.length} variants, ${entries.size} files`,
