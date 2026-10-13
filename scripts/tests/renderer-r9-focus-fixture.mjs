@@ -1,9 +1,6 @@
 // Synthetic trace fixture for parser/gate tests. No browser or GPU needed.
 import { RENDERER_RASTER_STATE_FIELDS } from '../test-helpers/renderer-v3-raster-state.mjs';
-import {
-  R9_FOCUS_END,
-  R9_FOCUS_START,
-} from '../test-helpers/renderer-r9-focus-evidence.mjs';
+import { R9_FOCUS_END, R9_FOCUS_START } from '../test-helpers/renderer-r9-focus-evidence.mjs';
 
 const arrays = {
   viewport: [0, 0, 530, 273],
