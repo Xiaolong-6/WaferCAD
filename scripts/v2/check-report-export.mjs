@@ -34,13 +34,10 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
-    await page.goto(
-      `${base}/app.html?start=example&example=photodetector-literature`,
-      {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      },
-    );
+    await page.goto(`${base}/app.html?start=example&example=photodetector-literature`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000,
+    });
     await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
       timeout: 120000,
     });
