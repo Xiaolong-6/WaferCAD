@@ -52,21 +52,6 @@ node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-v4-msaa
 node scripts/renderer-unified-hardware.mjs --hardware-gpu --campaign=r9-v4-msaa
 ```
 
-The 2026-10-13 session completed Caps and Combined with six zero-pixel
-comparisons each. Index produced three byte-identical A/B/B screenshots
-before its fourth A context hit the Playwright *element stability* wait.
-For a focused Index-only follow-up, do not repeat those completed modes:
-
-```powershell
-node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-v4-msaa --modes=index
-node scripts/renderer-unified-hardware.mjs --hardware-gpu --campaign=r9-v4-msaa --modes=index
-```
-
-The diagnostic screenshot capture now clips the already-visible canvas via
-`page.screenshot` instead of waiting for an element to stop moving.
-Capture mode is recorded in the report; standard 4-sample R7 screenshots
-are unchanged. A missing/out-of-viewport canvas remains a hard error.
-
 Do not compare wall-time values from this diagnostic with normal production
 MSAA runs as evidence of speedup. It exists to attribute **pixel parity**
 on a controlled alternative raster path. Share one ZIP from the runner.
