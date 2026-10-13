@@ -91,10 +91,23 @@ try {
       await page.locator('#maskRoiX').fill(String(xEdited));
       await page.locator('.v2-mask-floating [data-action="roi-apply"]').click();
       const changed = await snapshot();
+      // The canvas source may be sub-grid while the editor exposes a 0.1 nm
+      // draft. The intended target is the edited displayed coordinate, not
+      // original canvas center + 1 nm (which differs by display rounding).
       assert.ok(
-        Math.abs(changed.maskRoi.c[0] - created.maskRoi.c[0] - 0.001) < 1e-8,
-        shape + ' intentional 1 nm edit commits',
+        Math.abs(changed.maskRoi.c[0] - xEdited) < 1e-9,
+        shape + ' edited X equals the requested physical coordinate',
       );
+      assert.notEqual(changed.maskRoi.c[0], created.maskRoi.c[0],
+        shape + ' intentional edit changes canonical X');
+      assert.equal(changed.maskRoi.c[1], created.maskRoi.c[1],
+        shape + ' X edit preserves sub-grid Y');
+      if (shape === 'square') {
+        assert.equal(changed.maskRoi.size, created.maskRoi.size);
+        assert.equal(changed.maskRoi.rotation, created.maskRoi.rotation);
+      } else {
+        assert.equal(changed.maskRoi.r, created.maskRoi.r);
+      }
       await checkImmutable(created, shape + ' intentional ROI edit');
       await page.getByRole('button', { name: 'Close Mask ROI settings', exact: true }).click();
       report.cases.push({ type: 'roi-' + shape, units: ['nm', 'mm', 'um'] });
