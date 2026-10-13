@@ -50,6 +50,11 @@ jobs:
           node --test site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/tests/renderer-responsive-jank.test.mjs site/tests/renderer-responsive-gpu-timer.test.mjs
           npx eslint site/three-view.js site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js scripts/renderer-responsive-browser.mjs site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
           npx prettier --check site/three-view.js site/style.css site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs scripts/renderer-responsive-browser.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
+      - name: Diagnose formatting suggestions (temporary; no repository writes)
+        if: always()
+        run: |
+          npx prettier --write site/three-view.js site/renderer-responsive-staging.js site/tests/renderer-responsive-gpu-prewarm.test.mjs scripts/renderer-responsive-rough-browser.mjs scripts/renderer-v4-r5-dual-variant-browser.mjs
+          git --no-pager diff -- site/three-view.js site/renderer-responsive-staging.js site/tests/renderer-responsive-gpu-prewarm.test.mjs scripts/renderer-responsive-rough-browser.mjs scripts/renderer-v4-r5-dual-variant-browser.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Serve WaferCAD
