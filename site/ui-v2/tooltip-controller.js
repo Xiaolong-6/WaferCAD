@@ -11,7 +11,10 @@
     node.hidden = true;
     node.append(heading, detail);
     document.body.append(node);
-    let target = null, pending = null, requested = null, destroyed = false;
+    let target = null,
+      pending = null,
+      requested = null,
+      destroyed = false;
     const listeners = [];
     const listen = (owner, type, fn, opts) => {
       owner.addEventListener(type, fn, opts);
@@ -36,7 +39,8 @@
       node.hidden = true;
     }
     function usable(anchor) {
-      if (!anchor?.isConnected || !root.contains(anchor) || anchor.closest('[hidden],[inert]')) return false;
+      if (!anchor?.isConnected || !root.contains(anchor) || anchor.closest('[hidden],[inert]'))
+        return false;
       if (!anchor.getClientRects().length) return false;
       return Boolean(catalog.resolve(anchor.dataset.help, anchor));
     }
@@ -52,16 +56,24 @@
       detail.textContent = copy[1];
       node.hidden = false;
       const rect = anchor.getBoundingClientRect();
-      const width = node.offsetWidth, height = node.offsetHeight, gap = 8, edge = 8;
+      const width = node.offsetWidth,
+        height = node.offsetHeight,
+        gap = 8,
+        edge = 8;
       node.style.left = `${Math.max(edge, Math.min(rect.left + (rect.width - width) / 2, innerWidth - width - edge))}px`;
       const below = rect.bottom + gap;
       node.style.top = `${below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap)}px`;
-      const descriptions = (anchor.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+      const descriptions = (anchor.getAttribute('aria-describedby') || '')
+        .split(/\\s+/)
+        .filter(Boolean);
       if (!descriptions.includes(node.id))
         anchor.setAttribute('aria-describedby', [...descriptions, node.id].join(' '));
     }
     function schedule(anchor, keyboard = false) {
-      if (destroyed || !anchor || !usable(anchor)) { hide(); return; }
+      if (destroyed || !anchor || !usable(anchor)) {
+        hide();
+        return;
+      }
       if (target === anchor && !node.hidden) {
         show(anchor); // Refresh state-dependent copy without waiting.
         return;
@@ -100,8 +112,17 @@
     listen(document, 'scroll', hide, true);
     listen(window, 'resize', hide);
     listen(window, 'blur', hide);
-    listen(document, 'visibilitychange', () => { if (document.hidden) hide(); });
-    listen(document, 'keydown', (event) => { if (event.key === 'Escape') hide(); }, true);
+    listen(document, 'visibilitychange', () => {
+      if (document.hidden) hide();
+    });
+    listen(
+      document,
+      'keydown',
+      (event) => {
+        if (event.key === 'Escape') hide();
+      },
+      true,
+    );
     return Object.freeze({
       hide,
       destroy() {

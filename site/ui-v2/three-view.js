@@ -10,12 +10,16 @@ export function createWorkstationThreeView({ store, workstation }) {
     button('', action, glyph, {
       title: label,
       'aria-label': label,
-      'data-help': ({
-        'fit:three': 'view.fit', 'tool:rotate:three': 'three.rotate',
-        'tool:pan:three': 'three.pan', 'tool:zoom:three': 'three.zoom',
-        'quality:three': 'three.quality', 'opacity:three': 'three.opacity',
-        'borders:three': 'three.borders', 'maximize:three': 'shell.maximize',
-      })[action],
+      'data-help': {
+        'fit:three': 'view.fit',
+        'tool:rotate:three': 'three.rotate',
+        'tool:pan:three': 'three.pan',
+        'tool:zoom:three': 'three.zoom',
+        'quality:three': 'three.quality',
+        'opacity:three': 'three.opacity',
+        'borders:three': 'three.borders',
+        'maximize:three': 'shell.maximize',
+      }[action],
     });
   const host = el('div', {
     id: 'threeHost',
@@ -213,7 +217,9 @@ export function createWorkstationThreeView({ store, workstation }) {
           'div',
           { class: 'p-form v2-three-floating' },
           button('PNG · 3×', 'export:three:png', 'export', { 'data-help': 'three.export.png' }),
-          button('GLB · physical units', 'export:three:glb', 'export', { 'data-help': 'three.export.glb' }),
+          button('GLB · physical units', 'export:three:glb', 'export', {
+            'data-help': 'three.export.glb',
+          }),
         ),
       });
     } else if (action === 'export:three:png' || action === 'export:three:glb') {

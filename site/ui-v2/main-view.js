@@ -257,7 +257,12 @@ export async function createMainView({ project, sharedState, workstation, render
       id: 'mainRoiTools',
       label: 'Main ROI tools',
       groups,
-      settings: { label: 'ROI settings', action: 'settings:main', glyph: 'settings', helpKey: 'main.roi.settings' },
+      settings: {
+        label: 'ROI settings',
+        action: 'settings:main',
+        glyph: 'settings',
+        helpKey: 'main.roi.settings',
+      },
       toolAttribute: 'data-roi-tool',
       owner: () => document.querySelector('#mainPanel [data-action="roi"]'),
       onToolCreated: (key, node) => {
@@ -323,7 +328,14 @@ export async function createMainView({ project, sharedState, workstation, render
   }
   function buildMain() {
     const common = [
-      hook('mainZoomFit', button('', 'fit:main', 'fit', { title: 'Fit', 'aria-label': 'Fit', 'data-help': 'view.fit' })),
+      hook(
+        'mainZoomFit',
+        button('', 'fit:main', 'fit', {
+          title: 'Fit',
+          'aria-label': 'Fit',
+          'data-help': 'view.fit',
+        }),
+      ),
       hook(
         'mainPanBtn',
         button('', 'tool:pan:main', 'pan', {
@@ -353,7 +365,12 @@ export async function createMainView({ project, sharedState, workstation, render
               'data-help': 'main.face',
             }),
           ),
-          button('', 'roi', 'roi', { title: 'ROI', 'aria-label': 'ROI', 'aria-pressed': 'false', 'data-help': 'main.roi' }),
+          button('', 'roi', 'roi', {
+            title: 'ROI',
+            'aria-label': 'ROI',
+            'aria-pressed': 'false',
+            'data-help': 'main.roi',
+          }),
         ],
         [
           button('', 'export-menu', 'export', {

@@ -56,13 +56,17 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     button('', action, glyph, {
       title: hint,
       'aria-label': hint,
-      'data-help': ({
-        'fit:mask': 'view.fit', 'tool:pan:mask': 'view.pan',
-        'tool:zoom:mask': 'view.zoom', 'mask-source': 'mask.source',
-        'draw-toggle': 'mask.draw', 'opacity:mask': 'mask.opacity',
-        'mask-roi-toggle': 'mask.roi', 'mask-alignment-settings': 'mask.alignment',
+      'data-help': {
+        'fit:mask': 'view.fit',
+        'tool:pan:mask': 'view.pan',
+        'tool:zoom:mask': 'view.zoom',
+        'mask-source': 'mask.source',
+        'draw-toggle': 'mask.draw',
+        'opacity:mask': 'mask.opacity',
+        'mask-roi-toggle': 'mask.roi',
+        'mask-alignment-settings': 'mask.alignment',
         'maximize:mask': 'shell.maximize',
-      })[action],
+      }[action],
       ...extra,
     });
   function sync() {
@@ -398,13 +402,38 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       id: 'maskRoiTools',
       label: 'Mask ROI tools',
       groups: [
-        [{ key: 'select', label: 'Select', glyph: 'select', action: 'mask-roi-tool:select', helpKey: 'mask.roi' }],
         [
-          { key: 'square', label: 'Square', glyph: 'rectangle', action: 'mask-roi-tool:square', helpKey: 'mask.roi' },
-          { key: 'circle', label: 'Circle', glyph: 'circle', action: 'mask-roi-tool:circle', helpKey: 'mask.roi' },
+          {
+            key: 'select',
+            label: 'Select',
+            glyph: 'select',
+            action: 'mask-roi-tool:select',
+            helpKey: 'mask.roi',
+          },
+        ],
+        [
+          {
+            key: 'square',
+            label: 'Square',
+            glyph: 'rectangle',
+            action: 'mask-roi-tool:square',
+            helpKey: 'mask.roi',
+          },
+          {
+            key: 'circle',
+            label: 'Circle',
+            glyph: 'circle',
+            action: 'mask-roi-tool:circle',
+            helpKey: 'mask.roi',
+          },
         ],
       ],
-      settings: { label: 'ROI settings', action: 'mask-roi-settings', glyph: 'settings', helpKey: 'mask.roi.settings' },
+      settings: {
+        label: 'ROI settings',
+        action: 'mask-roi-settings',
+        glyph: 'settings',
+        helpKey: 'mask.roi.settings',
+      },
       toolAttribute: 'data-mask-roi-tool',
       owner: () => document.querySelector('#maskPanel [data-action="mask-roi-toggle"]'),
     });

@@ -21,14 +21,20 @@ try {
       });
       const mode = page.locator('[data-action="mode:single"]');
       assert.equal(await mode.getAttribute('data-help'), 'shell.single');
-      assert.equal(await mode.getAttribute('title'), null, 'opted-in controls have no native title');
+      assert.equal(
+        await mode.getAttribute('title'),
+        null,
+        'opted-in controls have no native title',
+      );
       await mode.hover();
       await page.locator('.wc-context-tooltip:visible').waitFor({ timeout: 5000 });
       assert.match(await page.locator('.wc-context-tooltip').innerText(), /Single view/);
       assert.equal(await page.locator('.wc-context-tooltip').getAttribute('role'), 'tooltip');
       assert.equal(await mode.getAttribute('aria-describedby'), 'wc-context-tooltip');
       assert.equal(
-        await page.locator('.wc-context-tooltip').evaluate((node) => getComputedStyle(node).pointerEvents),
+        await page
+          .locator('.wc-context-tooltip')
+          .evaluate((node) => getComputedStyle(node).pointerEvents),
         'none',
       );
       await page.mouse.move(0, 0);
@@ -44,10 +50,12 @@ try {
       await page.evaluate(() => window.dispatchEvent(new Event('resize')));
       await page.locator('.wc-context-tooltip').waitFor({ state: 'hidden' });
       assert.deepEqual(
-        await page.locator('#wc-context-tooltip').evaluate((node) => [
-          node.ownerDocument.querySelectorAll('#wc-context-tooltip').length,
-          node.querySelectorAll('svg,img,button').length,
-        ]),
+        await page
+          .locator('#wc-context-tooltip')
+          .evaluate((node) => [
+            node.ownerDocument.querySelectorAll('#wc-context-tooltip').length,
+            node.querySelectorAll('svg,img,button').length,
+          ]),
         [1, 0],
         'One plain-text surface with no help icon or duplicate',
       );

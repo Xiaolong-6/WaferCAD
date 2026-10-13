@@ -36,7 +36,10 @@ export function createProjectMaskPanels({
     'openProjectInput',
     el('input', { type: 'file', accept: '.wafercad,.json', hidden: true }),
   );
-  hook('saveProjectBtn', button('Save', null, 'save', { 'data-variant': 'ghost', 'data-help': 'project.save' }));
+  hook(
+    'saveProjectBtn',
+    button('Save', null, 'save', { 'data-variant': 'ghost', 'data-help': 'project.save' }),
+  );
   projectHost.append(
     el(
       'div',
@@ -49,7 +52,13 @@ export function createProjectMaskPanels({
         'Open',
         open,
       ),
-      hook('exportProjectBtn', button('Export', null, 'export', { 'data-variant': 'ghost', 'data-help': 'project.export' })),
+      hook(
+        'exportProjectBtn',
+        button('Export', null, 'export', {
+          'data-variant': 'ghost',
+          'data-help': 'project.export',
+        }),
+      ),
     ),
     input('Project name', 'projectNameInput', state.projectName, { maxlength: 256 }),
     choice(
@@ -109,8 +118,20 @@ export function createProjectMaskPanels({
     el(
       'div',
       { class: 'p-actions' },
-      hook('applyBaseBtn', button('Rebuild Base', null, 'history', { primary: true, 'data-help': 'project.base.rebuild' })),
-      hook('revertBaseBtn', button('Revert changes', null, 'undo', { disabled: true, 'data-help': 'project.base.revert' })),
+      hook(
+        'applyBaseBtn',
+        button('Rebuild Base', null, 'history', {
+          primary: true,
+          'data-help': 'project.base.rebuild',
+        }),
+      ),
+      hook(
+        'revertBaseBtn',
+        button('Revert changes', null, 'undo', {
+          disabled: true,
+          'data-help': 'project.base.revert',
+        }),
+      ),
     ),
   );
   const baseHost = host('panel.base');

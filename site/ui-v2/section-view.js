@@ -51,13 +51,17 @@ export function createSectionView({ store, main, workstation }) {
     button('', action, glyph, {
       title: label,
       'aria-label': label,
-      'data-help': ({
-        'fit:section': 'view.fit', 'tool:pan:section': 'view.pan',
-        'tool:zoom:section': 'view.zoom', 'zbreak-settings': 'section.zbreak',
-        'scale:section': 'section.scale', 'borders:section': 'section.borders',
-        'detail': 'section.detail', 'legend': 'section.layers',
+      'data-help': {
+        'fit:section': 'view.fit',
+        'tool:pan:section': 'view.pan',
+        'tool:zoom:section': 'view.zoom',
+        'zbreak-settings': 'section.zbreak',
+        'scale:section': 'section.scale',
+        'borders:section': 'section.borders',
+        detail: 'section.detail',
+        legend: 'section.layers',
         'maximize:section': 'shell.maximize',
-      })[action],
+      }[action],
     });
   const canvas = hook(
     'sectionCanvas',
@@ -188,7 +192,10 @@ export function createSectionView({ store, main, workstation }) {
         detailButton,
       ],
     ],
-    [icon('Layers', 'legend', 'main'), button('Export', 'section-export-menu', 'export', { 'data-help': 'view.export' })],
+    [
+      icon('Layers', 'legend', 'main'),
+      button('Export', 'section-export-menu', 'export', { 'data-help': 'view.export' }),
+    ],
   );
   tools.append(icon('Maximize', 'maximize:section', 'maximize'));
   hook('sectionScaleModeBtn', el('select'));

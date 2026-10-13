@@ -200,11 +200,12 @@ export function createProjectController({
         returnButton.setAttribute('aria-label', 'Return to Variant HEAD');
       }
       if (compactHistory) returnButton.dataset.help = 'history.head';
-      if (!compactHistory) returnButton.title = historyEdit
-        ? 'Cancel historical Step editing'
-        : historyInsert
-          ? 'Cancel Step insertion'
-          : `Return to ${activeBranch.name} HEAD`;
+      if (!compactHistory)
+        returnButton.title = historyEdit
+          ? 'Cancel historical Step editing'
+          : historyInsert
+            ? 'Cancel Step insertion'
+            : `Return to ${activeBranch.name} HEAD`;
       returnButton.onclick = async () => {
         if (
           !(await prepareHistoryReplacement('pre-snapshot-return-head', 'Return to Variant HEAD'))
@@ -278,13 +279,13 @@ export function createProjectController({
         button.textContent = item.label;
         if (item.danger) button.dataset.danger = 'true';
         if (item.disabled) button.disabled = true;
-        const helpKey = ({
+        const helpKey = {
           'Continue from here…': 'history.continue',
           'New Variant from here': 'history.variant',
           'Delete last Step': 'history.delete.step',
           'Delete bookmark': 'history.delete.bookmark',
           'Add bookmark': 'history.bookmark',
-        })[item.label];
+        }[item.label];
         if (compactHistory && helpKey) button.dataset.help = helpKey;
         else if (item.title) button.title = item.title;
         button.onclick = async (event) => {

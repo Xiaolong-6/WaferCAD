@@ -7,7 +7,8 @@
     for (const [key, value] of Object.entries(attrs)) {
       if (value === false || value == null) continue;
       if (key === 'class') node.className = value;
-      else if (!(key === 'title' && attrs['data-help'])) node.setAttribute(key, value === true ? '' : String(value));
+      else if (!(key === 'title' && attrs['data-help']))
+        node.setAttribute(key, value === true ? '' : String(value));
     }
     node.append(...children.flat().filter((c) => c != null));
     return node;

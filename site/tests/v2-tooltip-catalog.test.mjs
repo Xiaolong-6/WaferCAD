@@ -21,7 +21,10 @@ const catalog = win.WaferCadV2TooltipCatalog;
 const source = paths.map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
 
 test('contextual help catalog resolves all literal opt-in keys', () => {
-  const keys = [...source.matchAll(/['"]data-help['"]\s*:\s*['"]([^'"]+)['"]/g), ...source.matchAll(/\.dataset\.help\s*=\s*['"]([^'"]+)['"]/g)];
+  const keys = [
+    ...source.matchAll(/['"]data-help['"]\s*:\s*['"]([^'"]+)['"]/g),
+    ...source.matchAll(/\.dataset\.help\s*=\s*['"]([^'"]+)['"]/g),
+  ];
   for (const match of keys) {
     assert.ok(catalog.has(match[1]), `Missing tooltip catalog entry ${match[1]}`);
     const text = catalog.resolve(match[1], { value: 'front', dataset: {}, getAttribute: () => '' });
@@ -37,7 +40,10 @@ test('Both-face help respects two independent deposited layers', () => {
 });
 
 test('tooltip service keeps native canvas event and model code untouched', () => {
-  const controller = readFileSync(new URL('../ui-v2/tooltip-controller.js', import.meta.url), 'utf8');
+  const controller = readFileSync(
+    new URL('../ui-v2/tooltip-controller.js', import.meta.url),
+    'utf8',
+  );
   assert.match(controller, /pointerover/);
   assert.match(controller, /focusin/);
   assert.doesNotMatch(controller, /preventDefault|stopPropagation/);

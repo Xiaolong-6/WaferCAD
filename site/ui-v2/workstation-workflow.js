@@ -346,7 +346,10 @@ export function createWorkstationWorkflow({ store, workstation }) {
       el(
         'div',
         { class: 'p-actions' },
-        hook('applyOperationBtn', button('Apply', null, 'play', { primary: true, 'data-help': 'process.apply' })),
+        hook(
+          'applyOperationBtn',
+          button('Apply', null, 'play', { primary: true, 'data-help': 'process.apply' }),
+        ),
         hook('undoBtn', button('Undo', null, 'back')),
         hook('redoBtn', button('Redo')),
       ),
@@ -356,15 +359,23 @@ export function createWorkstationWorkflow({ store, workstation }) {
   );
   hook('operationTools', step.querySelector('#operationTools'));
   for (const [id, help] of Object.entries({
-    operationType: 'process.operation', operationArea: 'process.area',
-    operationThickness: 'process.thickness', growthMode: 'process.growth',
-    transferMode: 'process.transfer', etchProfile: 'process.profile',
-    etchSurfaceMode: 'process.surface', implantTilt: 'process.implant.tilt',
-    roughFeatureSize: 'process.rough.feature', roughFeatureCv: 'process.rough.featurecv',
-    roughAmplitude: 'process.rough.height', roughHeightCv: 'process.rough.heightcv',
-    roughPolarity: 'process.rough.polarity', roughSeed: 'process.rough.seed',
+    operationType: 'process.operation',
+    operationArea: 'process.area',
+    operationThickness: 'process.thickness',
+    growthMode: 'process.growth',
+    transferMode: 'process.transfer',
+    etchProfile: 'process.profile',
+    etchSurfaceMode: 'process.surface',
+    implantTilt: 'process.implant.tilt',
+    roughFeatureSize: 'process.rough.feature',
+    roughFeatureCv: 'process.rough.featurecv',
+    roughAmplitude: 'process.rough.height',
+    roughHeightCv: 'process.rough.heightcv',
+    roughPolarity: 'process.rough.polarity',
+    roughSeed: 'process.rough.seed',
     liftoffTargetLayer: 'process.liftoff',
-  })) hooks.get(id)?.setAttribute('data-help', help);
+  }))
+    hooks.get(id)?.setAttribute('data-help', help);
   const form = hooks.get('operationTools');
   const materialPreview = choice(
     'Material / target',
@@ -628,13 +639,23 @@ export function createWorkstationWorkflow({ store, workstation }) {
   hooks.get('workspaceRecoverySelect').dataset.help = 'recovery.restore';
   const recover = hook(
     'workspaceRestoreBtn',
-    button('Restore', null, 'history', { disabled: true, 'data-variant': 'ghost', 'data-help': 'recovery.restore' }),
+    button('Restore', null, 'history', {
+      disabled: true,
+      'data-variant': 'ghost',
+      'data-help': 'recovery.restore',
+    }),
   );
   const clearRecovery = hook(
     'workspaceRecoveryClearBtn',
-    button('Clear Recovery', null, 'delete', { 'data-variant': 'ghost', 'data-help': 'recovery.clear' }),
+    button('Clear Recovery', null, 'delete', {
+      'data-variant': 'ghost',
+      'data-help': 'recovery.clear',
+    }),
   );
-  const takeOver = hook('workspaceTakeOverBtn', button('Take over storage', null, null, { 'data-help': 'recovery.takeover' }));
+  const takeOver = hook(
+    'workspaceTakeOverBtn',
+    button('Take over storage', null, null, { 'data-help': 'recovery.takeover' }),
+  );
   // Retain the controller hook without exposing the development reload shortcut.
   hook('safeReloadBtn', button('Save and reload', null, 'save', { hidden: true }));
   hook('workspaceSaveStatus', workstation.shell.getSlot('status.save'));
@@ -814,8 +835,11 @@ export function createWorkstationWorkflow({ store, workstation }) {
         label,
         `process-mode:${key}`,
         key === 'step' ? 'process' : key === 'diagnostics' ? 'settings' : key,
-        { 'data-process-input-mode': mode, 'aria-pressed': String(key === 'step'),
-          'data-help': `process.mode.${key === 'step' ? 'manual' : key}` },
+        {
+          'data-process-input-mode': mode,
+          'aria-pressed': String(key === 'step'),
+          'data-help': `process.mode.${key === 'step' ? 'manual' : key}`,
+        },
       ),
     ),
   );
