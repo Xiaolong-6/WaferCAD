@@ -1,0 +1,30 @@
+name: Scoped M4 Prettier fix
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/physical-units-prettier-temp.yml'
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/physical-units-process-m4-20261013
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format one M4 test with repository pinned Prettier
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          ./node_modules/.bin/prettier --write scripts/v2/check-physical-process-units.mjs
+          git add scripts/v2/check-physical-process-units.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(science): format M4 Undo/Redo browser acceptance"
+            git push origin HEAD:refs/heads/test/physical-units-process-m4-20261013
+          fi
