@@ -34,6 +34,20 @@
     );
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
     navHost.setAttribute('aria-label', 'Workspaces');
+    // Stable navigation controls: shell refreshes must not drop focus or scroll position.
+    const navButtons = new Map(
+      registry.primaryNav.map(({ key, label, icon }) => [
+        key,
+        button(label, `domain:${key}`, icon, { 'aria-pressed': 'false' }),
+      ]),
+    );
+    navHost.append(
+      el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
+      ...navButtons.values(),
+      button('', 'hide-editor', 'close', {
+        'aria-label': 'Hide navigation and workflow editor',
+      }),
+    );
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
     const editorContent = el('div', { class: 'p-panel-content' });
     inspector.append(editorContent);
@@ -182,17 +196,8 @@
     renderNav({ selectedNavigation: state.domain || registry.primaryNav[0]?.key });
 
     function renderNav(info) {
-      navHost.replaceChildren(
-        el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
-        ...registry.primaryNav.map(({ key, label, icon }) =>
-          button(label, `domain:${key}`, icon, {
-            'aria-pressed': String(info.selectedNavigation === key),
-          }),
-        ),
-        button('', 'hide-editor', 'close', {
-          'aria-label': 'Hide navigation and workflow editor',
-        }),
-      );
+      for (const [key, control] of navButtons)
+        control.setAttribute('aria-pressed', String(info.selectedNavigation === key));
     }
     function selectedViews(info) {
       const mode = narrow() ? 'single' : state.mode;
@@ -258,7 +263,7 @@
       );
       for (const { key } of registry.views) {
         const id = `view.${key}`;
-        const visible = names.includes(key);
+        const visible = names.includes(key) && (!narrow() || state.mobile === 'view');
         const panel = adapters.prepare(id, canvases);
         if (!panel) throw Error(`Missing view adapter ${id}`);
         if (panel.parentNode !== canvases) canvases.append(panel);
@@ -409,13 +414,16 @@
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';
       const mobile = topbar.querySelector('.p-mobile-return');
-      mobile.replaceChildren(
-        button(
-          state.mobile === 'edit' ? 'Back to results' : 'Edit workspace',
-          state.mobile === 'edit' ? 'return-results' : 'show-editor',
-          state.mobile === 'edit' ? 'back' : 'process',
-        ),
-      );
+      if (mobile.dataset.pane !== state.mobile) {
+        mobile.replaceChildren(
+          button(
+            state.mobile === 'edit' ? 'View results' : 'Edit workspace',
+            state.mobile === 'edit' ? 'return-results' : 'show-editor',
+            state.mobile === 'edit' ? 'back' : 'process',
+          ),
+        );
+        mobile.dataset.pane = state.mobile;
+      }
       renderNav(info);
       renderPanel(info);
       renderStage(info);
