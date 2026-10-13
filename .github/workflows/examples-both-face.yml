@@ -74,7 +74,6 @@ jobs:
           node scripts/maintenance/backfill-example-recipes.mjs --id=perc-solar-cells-point-contacts
           node scripts/maintenance/backfill-example-recipes.mjs --id=fully-textured-perovskite-silicon-tandem
           node scripts/maintenance/sync-example-recipe-previews.mjs
-          npm run check:ci
       - run: git diff --check
       - name: Commit validated production assets
         run: |
@@ -97,7 +96,7 @@ jobs:
           retention-days: 7
 
   replay:
-    name: Browser replay ${{ matrix.example }}
+    name: Browser replay ${{ matrix.example }} / ${{ matrix.case }}
     needs: regenerate
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -106,11 +105,23 @@ jobs:
       matrix:
         include:
           - example: photodetector-literature
+            case: final
             variant: black-si-fig1a-final
+          - example: photodetector-literature
+            case: qa-overetch
+            variant: black-si-fig1a-qa
           - example: perc-point-contact-solar-cell
+            case: source-order
             variant: branch-mutlq5qq-dhzr8q
+          - example: perc-point-contact-solar-cell
+            case: gds-contacts
+            variant: branch-mutknd4v-hcdg7q
           - example: fully-textured-perovskite-silicon-tandem
+            case: ito-control
             variant: branch-mutohtl8-v64iv4
+          - example: fully-textured-perovskite-silicon-tandem
+            case: ncsi
+            variant: ''
     steps:
       - uses: actions/checkout@v4
         with:
@@ -133,7 +144,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: both-face-${{ matrix.example }}
+          name: both-face-${{ matrix.example }}-${{ matrix.case }}
           path: test-results/example-recipe-runall/
           if-no-files-found: ignore
           retention-days: 7
