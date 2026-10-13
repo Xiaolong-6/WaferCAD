@@ -10,6 +10,18 @@ export const RENDERER_HARDWARE_BRANCHES = Object.freeze({
   v4: 'perf/renderer-v4-adaptive-tiles-20261010',
 });
 
+// PR #166 closed and its source branch was deleted. This exact final PR
+// revision is an ancestor of the V4 branch and remains retrievable through
+// that history. Never silently replace it with the current V4 HEAD.
+export const RENDERER_HARDWARE_V3_PINNED_SHA = '4e7128042fb5ef86908e4ee7e3df7084ae7ce52f';
+
+// Fetch only the still-existing V4 branch; V3 is checked out by immutable SHA.
+// Keep this command pure so a regression test catches deleted-ref fetches.
+export function buildRendererHardwareFetchArgs() {
+  const branch = RENDERER_HARDWARE_BRANCHES.v4;
+  return ['fetch', '--no-tags', 'origin', `refs/heads/${branch}:refs/remotes/origin/${branch}`];
+}
+
 export const RENDERER_HARDWARE_MODES = Object.freeze(['index', 'caps', 'combined']);
 
 export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {

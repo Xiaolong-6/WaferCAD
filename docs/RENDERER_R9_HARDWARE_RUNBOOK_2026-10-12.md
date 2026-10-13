@@ -19,11 +19,21 @@ The `--campaign=r9` mode performs, in order:
 4. `v4-caps` — four A/B/B/A contexts, isolated SharedFlatCaps.
 5. `v4-combined` — four A/B/B/A contexts, both candidates.
 
-A single invocation fetches both HEADs, verifies V4 descends from V3,
+A single invocation fetches the live V4 HEAD and pins the archived V3 revision, verifies V4 descends from V3,
 creates detached temporary Git worktrees, installs locked dependencies,
 checks Chromium navigation, runs the steps and saves _each experiment's_
 report, screenshots and logs before producing a portable ZIP. It does
 **not** switch, clean, reset or modify the operator's active worktree.
+
+## Revision provenance (PR #166 branch deleted)
+
+PR #166 is closed and its remote `perf/transparent-renderer-v3-20261009`
+branch has been deleted. The launcher **does not fetch that missing ref**.
+It uses the immutable final V3 commit `4e7128042fb5ef86908e4ee7e3df7084ae7ce52f`, verified as an
+ancestor of the still-live V4 branch `perf/renderer-v4-adaptive-tiles-20261010`.
+The launcher first fetches V4, then verifies the V3 Git object is present
+and is an ancestor; if either fails, it stops rather than comparing the
+wrong renderer. A normal full-history clone of V4 has the V3 commit.
 
 ## Exact PowerShell procedure
 
@@ -84,7 +94,7 @@ machine paths to the public repository.
 
 ## Interpretation / stop criteria
 
-- `summary.json` records the exact two remote SHAs, all five steps,
+- `summary.json` records both exact SHAs (pinned V3 and fetched V4), all five steps,
   classification and their report/log paths.
 - `campaignComplete=true` means all five steps produced valid evidence,
   including MSAA diagnostic evidence; `passed=true` additionally means

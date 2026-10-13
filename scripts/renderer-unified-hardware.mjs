@@ -12,6 +12,8 @@ import { startRendererHardwareSite } from './test-helpers/renderer-hardware-site
 import { writeRendererHardwareZip } from './test-helpers/renderer-hardware-zip.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
+  RENDERER_HARDWARE_V3_PINNED_SHA,
+  buildRendererHardwareFetchArgs,
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
   buildRendererV3DitherDiagnosticPlan,
@@ -66,7 +68,7 @@ if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   }
 }
 if (planOnly) {
-  console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, plan }, null, 2));
+  console.log(JSON.stringify({ branches: RENDERER_HARDWARE_BRANCHES, pinnedV3Sha: RENDERER_HARDWARE_V3_PINNED_SHA, plan }, null, 2));
 } else {
   if (!hardwareGpu || (hardwareRtx3060 && process.platform !== 'win32')) {
     throw new Error('Use --hardware-gpu on a real GPU, or --plan-only for dry-run planning.');
@@ -125,21 +127,25 @@ async function runHardware() {
     if (actualRoot.toLowerCase() !== root.toLowerCase()) {
       throw new Error('Run this script from the WaferCAD Git repository.');
     }
-    // Read remote heads once. Never change the user's current branch or files.
-    const fetchArgs = ['fetch', '--no-tags', 'origin'];
-    for (const [key, name] of Object.entries(RENDERER_HARDWARE_BRANCHES)) {
-      fetchArgs.push('refs/heads/' + name + ':refs/remotes/origin/' + name);
-      refs[key] = name;
-    }
-    console.log('Fetching exact V3/V4 Git revisions...');
-    git(fetchArgs);
-    for (const [key, name] of Object.entries(refs)) {
-      refs[key] = git(['rev-parse', 'refs/remotes/origin/' + name]);
+    // PR #166 is closed and the V3 remote branch was deleted. Fetch only
+    // the live V4 branch, then select the immutable final V3 PR commit.
+    // Never change the user's current branch, checkout or working files.
+    console.log('Fetching V4 and selecting pinned V3 baseline...');
+    git(buildRendererHardwareFetchArgs());
+    refs.v4 = git(['rev-parse', 'refs/remotes/origin/' + RENDERER_HARDWARE_BRANCHES.v4]);
+    refs.v3 = RENDERER_HARDWARE_V3_PINNED_SHA;
+    try {
+      git(['cat-file', '-e', refs.v3 + '^{commit}']);
+    } catch {
+      throw new Error(
+        'Pinned V3 baseline ' + refs.v3 +
+          ' is missing locally. Ensure the V4 clone has full history (not shallow).',
+      );
     }
     try {
       git(['merge-base', '--is-ancestor', refs.v3, refs.v4]);
     } catch {
-      throw new Error('V4 does not include the fetched V3 HEAD; refusing mixed-revision evidence.');
+      throw new Error('Fetched V4 does not contain pinned V3 baseline; refusing mixed-revision evidence.');
     }
     for (const key of ['v3', 'v4']) {
       console.log('Preparing ' + key.toUpperCase() + ' ' + refs[key].slice(0, 10));
@@ -246,6 +252,10 @@ async function runHardware() {
       source: 'Verified hardware WebGL GPU, exact remote Git revisions, fresh-context diagnostics',
       capturedAt: new Date().toISOString(),
       refs,
+      revisionSources: {
+        v3: 'immutable final commit of closed PR #166',
+        v4: 'fetched origin/' + RENDERER_HARDWARE_BRANCHES.v4,
+      },
       campaign: r9Campaign ? 'r9' : null,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,

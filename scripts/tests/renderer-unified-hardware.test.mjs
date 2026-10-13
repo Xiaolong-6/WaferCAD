@@ -8,6 +8,8 @@ import { rendererPhaseMilestones } from '../test-helpers/renderer-v3-phase-windo
 import { RENDERER_RASTER_STATE_FIELDS } from '../test-helpers/renderer-v3-raster-state.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
+  RENDERER_HARDWARE_V3_PINNED_SHA,
+  buildRendererHardwareFetchArgs,
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
   buildRendererV3DitherDiagnosticPlan,
@@ -35,6 +37,17 @@ test('one hardware plan retains exact V3 and three independent V4 candidate arti
   assert.throws(() => buildRendererHardwarePlan([]), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['index', 'index']), /Select unique/);
   assert.throws(() => buildRendererHardwarePlan(['unknown']), /Select unique/);
+});
+
+test('R9 fetch only needs live V4 and pins the deleted V3 branch to exact PR #166 commit', () => {
+  assert.equal(RENDERER_HARDWARE_V3_PINNED_SHA, '4e7128042fb5ef86908e4ee7e3df7084ae7ce52f');
+  assert.deepEqual(buildRendererHardwareFetchArgs(), [
+    'fetch',
+    '--no-tags',
+    'origin',
+    'refs/heads/perf/renderer-v4-adaptive-tiles-20261010:refs/remotes/origin/perf/renderer-v4-adaptive-tiles-20261010',
+  ]);
+  assert.ok(!buildRendererHardwareFetchArgs().some((arg) => arg.includes(RENDERER_HARDWARE_BRANCHES.v3)));
 });
 
 test('R9 single-GPU-session campaign captures baseline, no-MSAA control and independent V4 modes', () => {
