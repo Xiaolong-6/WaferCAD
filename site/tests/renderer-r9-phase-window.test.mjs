@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   buildRendererR9CurrentV4PhaseWindowPlan,
+  buildRendererR9FocusedDrawPlan,
   classifyRendererHardwareStep,
 } from '../../scripts/test-helpers/renderer-unified-hardware-plan.mjs';
 import { rendererPhaseMilestones } from '../../scripts/test-helpers/renderer-v3-phase-window.mjs';
@@ -119,6 +120,18 @@ test('R9 V4 diagnostic requires 4 production-MSAA GPU arms and complete checkpoi
   const classify = (report) => classifyRendererHardwareStep({ ...step, exitCode: 0 }, report);
   const complete = evidence();
   assert.equal(classify(complete), 'diagnostic-complete');
+  const [focused] = buildRendererR9FocusedDrawPlan();
+  const focusEvidence = structuredClone(complete);
+  focusEvidence.focusWindowDiagnostic = true;
+  assert.equal(
+    classifyRendererHardwareStep({ ...focused, exitCode: 0 }, focusEvidence),
+    'diagnostic-complete',
+  );
+  assert.equal(
+    classifyRendererHardwareStep({ ...focused, exitCode: 0 }, complete),
+    'error',
+  );
+
   const altered = (change) => {
     const report = structuredClone(complete);
     change(report);
