@@ -2,7 +2,7 @@
 // separate browser context and localhost server; it cannot access your regular
 // Chrome profile, cookies, tabs, or pre-existing WaferCAD workspace.
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -14,9 +14,12 @@ const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
 const profiling = process.argv.includes('--profile');
 const RESPONSIVENESS_LONG_TASK_LIMIT_MS = 500;
 const output = join('test-results', 'p1-hardware');
+const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v2';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const report = {
-  schema: 'wafercad-p1-hardware-v1',
+  schema: 'wafercad-p1-hardware-v2',
+  harnessVersion: HARNESS_VERSION,
+  cwd: process.cwd(),
   startedAt: new Date().toISOString(),
   revision: 'unknown',
   platform: process.platform,
@@ -28,7 +31,13 @@ const report = {
   cpuProfileCollected: false,
   profiling,
 };
+// A previous successful report must never be mistaken for evidence from a failed rerun.
+await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
+await writeFile(
+  join(output, 'harness.json'),
+  JSON.stringify({ version: HARNESS_VERSION, profilingRequested: profiling }, null, 2) + '\n',
+);
 try {
   report.revision = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
     encoding: 'utf8',
@@ -137,6 +146,7 @@ async function endCpuProfile() {
     .sort((a, b) => b.samples - a.samples)
     .slice(0, 25);
   report.cpuProfileCollected = true;
+  report.cpuProfileSamples = (profile.samples || []).length;
   await profiler.detach();
   profiler = null;
 }
@@ -332,6 +342,17 @@ try {
     await endCpuProfile().catch((error) => {
       report.errors.push('CPU profiler cleanup: ' + error.message);
     });
+  if (profiling) {
+    let profileSize = 0;
+    try {
+      profileSize = (await stat(join(output, 'cpu-m3d-startup.cpuprofile'))).size;
+    } catch {}
+    report.cpuProfileBytes = profileSize;
+    if (!report.cpuProfileCollected || profileSize < 1000) {
+      report.errors.push('The requested Chrome CPU profile is missing or empty.');
+      report.passed = false;
+    }
+  }
   await save();
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
@@ -343,6 +364,8 @@ try {
       worstInitialLongTaskMs: report.cases.initialM3D?.responsiveness?.longestLongTaskMs ?? null,
       worstReloadLongTaskMs: report.cases.qualityReload?.responsiveness?.longestLongTaskMs ?? null,
       cpuProfileCollected: report.cpuProfileCollected,
+      harnessVersion: HARNESS_VERSION,
+      cpuProfileBytes: report.cpuProfileBytes ?? null,
       revision: report.revision,
       gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
       modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
