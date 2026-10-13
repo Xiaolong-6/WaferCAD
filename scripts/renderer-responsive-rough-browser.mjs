@@ -29,12 +29,16 @@ try {
     await page.goto(url + '?rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1');
     await waitForAppReady(page);
     result.stage = 'open-rough-tandem';
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(new URL(
-        '../site/examples/fully-textured-perovskite-silicon-tandem.wafercad',
-        import.meta.url,
-      )),
-    );
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/fully-textured-perovskite-silicon-tandem.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
     await chooseConfirmation(page);
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent?.startsWith('Opened '),
@@ -44,16 +48,20 @@ try {
     await closeFunctionPanel(page);
     await waitForThreeReady(page, 180000);
     result.stage = 'wait-cooperative-detailed-geometry';
-    await page.waitForFunction(() => {
-      const host = document.getElementById('threeHost');
-      const canvas = host?.querySelector('canvas');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.rendererRoughAssemblyUnits || 0) >= 8 &&
-        host.dataset.rendererRoughAssemblyCancelled === 'false' &&
-        canvas?.dataset.roughMeshMode === 'detailed'
-      );
-    }, null, { timeout: 180000 });
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        const canvas = host?.querySelector('canvas');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          Number(host.dataset.rendererRoughAssemblyUnits || 0) >= 8 &&
+          host.dataset.rendererRoughAssemblyCancelled === 'false' &&
+          canvas?.dataset.roughMeshMode === 'detailed'
+        );
+      },
+      null,
+      { timeout: 180000 },
+    );
     const data = await page.locator('#threeHost').evaluate((node) => ({ ...node.dataset }));
     assert.ok(Number(data.rendererRoughAssemblyUnits) >= 8, 'multiple rough surface units');
     assert.ok(Number(data.rendererRoughAssemblyYields) >= 1, 'frame/task boundaries yielded');
