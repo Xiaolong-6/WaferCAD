@@ -95,7 +95,6 @@
     branch,
     variants = [],
     activeStep = 0,
-    originFocus,
     recipeUndoStack = [],
     recipeRedoStack = [],
     draftUndoStack = [],
