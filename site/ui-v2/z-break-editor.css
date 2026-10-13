@@ -1,0 +1,200 @@
+/* Z Break editor: scoped to the current UI-v2 Floating Editor. No global tooltip or renderer styles. */
+.v2-section-floating .v2-floating-editor-body:has(.v2-z-editor) {
+  padding: 0;
+}
+.v2-z-editor {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  font-size: var(--wc-font-body);
+  min-width: 0;
+}
+.v2-z-editor [hidden] {
+  display: none !important;
+}
+.v2-z-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+  color: var(--wc-text);
+  white-space: nowrap;
+}
+.v2-z-check input {
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--wc-accent);
+}
+.v2-z-enable-row {
+  font-weight: 600;
+}
+.v2-z-plot {
+  border: 1px solid var(--wc-border);
+  background: var(--wc-subtle);
+  border-radius: var(--wc-radius-md);
+  padding: 8px 10px 12px;
+  min-width: 0;
+}
+.v2-z-plot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--wc-font-aux);
+  color: var(--wc-muted);
+  font-weight: 600;
+}
+.v2-z-ruler {
+  position: relative;
+  margin: 14px 48px 10px 70px;
+  height: 132px;
+  border-left: 1px solid var(--wc-border-strong);
+  background: linear-gradient(90deg, var(--wc-accent-tint), transparent);
+}
+.v2-z-window {
+  position: absolute;
+  inset-inline: 0;
+  background: color-mix(in srgb, var(--wc-accent) 9%, transparent);
+  border-block: 1px dashed var(--wc-border-strong);
+  pointer-events: none;
+}
+.v2-z-zero {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px dashed var(--wc-border-strong);
+  pointer-events: none;
+}
+.v2-z-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.v2-z-mark {
+  position: absolute;
+  right: calc(100% + 10px);
+  font-size: 10px;
+  color: var(--wc-muted);
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+.v2-z-handle.wc-button {
+  position: absolute;
+  right: -44px;
+  left: auto;
+  min-height: 28px;
+  min-width: 47px;
+  padding: 3px 6px;
+  background: var(--wc-surface);
+  color: var(--wc-accent);
+  border: 1px solid var(--wc-accent);
+  border-radius: var(--wc-radius-sm);
+  transform: translateY(-50%);
+  cursor: ns-resize;
+  touch-action: none;
+  z-index: 2;
+}
+.v2-z-handle.wc-button::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  width: 152px;
+  max-width: calc(100% + 95px);
+  border-top: 2px solid var(--wc-accent);
+  pointer-events: none;
+}
+.v2-z-handle.wc-button:disabled {
+  cursor: default;
+  color: var(--wc-disabled);
+  border-color: var(--wc-border);
+}
+.v2-z-handle.wc-button:disabled::before {
+  border-color: var(--wc-border-strong);
+}
+.v2-z-handle.wc-button:focus-visible {
+  outline: 2px solid var(--wc-focus);
+  outline-offset: 2px;
+}
+.v2-z-field-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--wc-space-3);
+}
+.v2-z-field-pair .wc-field {
+  min-width: 0;
+}
+.v2-z-field-pair .wc-input {
+  font-variant-numeric: tabular-nums;
+}
+.v2-z-editor[data-enabled='false'] .v2-z-plot {
+  opacity: 0.55;
+}
+.v2-z-snap-row {
+  font-weight: 400;
+}
+.v2-z-advanced {
+  border-top: 1px solid var(--wc-border);
+  padding-top: 10px;
+}
+.v2-z-advanced summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: var(--wc-text);
+  font-weight: 600;
+  min-height: 28px;
+}
+.v2-z-advanced summary::-webkit-details-marker {
+  display: none;
+}
+.v2-z-advanced summary::after {
+  content: '⌄';
+  font-size: 16px;
+  color: var(--wc-muted);
+  font-weight: 400;
+  line-height: 1;
+}
+.v2-z-advanced[open] summary::after {
+  transform: rotate(180deg);
+}
+.v2-z-advanced summary:focus-visible {
+  outline: 2px solid var(--wc-focus);
+  outline-offset: 2px;
+}
+.v2-z-advanced-body {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+.v2-z-link-row span:nth-child(2) {
+  flex: 1;
+}
+.v2-z-linked-value {
+  margin-left: auto;
+  color: var(--wc-muted);
+  font-variant-numeric: tabular-nums;
+}
+@media (pointer: coarse) {
+  .v2-z-check {
+    min-height: 40px;
+  }
+  .v2-z-handle.wc-button {
+    min-height: 40px;
+    min-width: 54px;
+    right: -52px;
+  }
+}
+@media (max-width: 420px) {
+  .v2-section-floating .v2-floating-editor-body:has(.v2-z-editor) {
+    padding: 0;
+  }
+  .v2-z-editor {
+    gap: 10px;
+  }
+  .v2-z-ruler {
+    margin-left: 64px;
+    margin-right: 54px;
+  }
+}

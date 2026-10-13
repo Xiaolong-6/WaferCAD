@@ -8,7 +8,8 @@ import {
   panSectionViewport,
   zoomSectionViewportAt,
 } from '../section-view-viewport.js';
-import { createInspectionFields, formatInspectionLength } from './view-kit/inspection-fields.js';
+import { createInspectionFields } from './view-kit/inspection-fields.js';
+import { createZBreakEditor } from './z-break-editor.js';
 import { bindPlanGestures } from './view-kit/plan-gestures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
@@ -271,82 +272,12 @@ export function createSectionView({ store, main, workstation }) {
     sync();
   });
   detail.bind();
-  const ruler = hook(
-    'sectionCollapseRuler',
-    el(
-      'div',
-      { class: 'v2-z-ruler' },
-      hook('sectionCollapseWindow', el('div', { class: 'v2-z-window' })),
-      ...['Top', 'Bottom'].map((key) =>
-        hook(`sectionCollapse${key}Handle`, button(key, null, null, { class: 'v2-z-handle' })),
-      ),
-    ),
-  );
-  const zForm = el(
-    'div',
-    { class: 'p-form' },
-    el(
-      'label',
-      {},
-      hook('section-collapse-enabled', el('input', { type: 'checkbox' })),
-      ' Show Z Break',
-    ),
-    el(
-      'label',
-      {},
-      hook('sectionCollapseSnap', el('input', { type: 'checkbox', checked: true })),
-      ' Snap to structure',
-    ),
-    ruler,
-    fields.pair(
-      fields.input('Top · µm', 'sectionCollapseTopInput'),
-      fields.input('Bottom · µm', 'sectionCollapseBottomInput'),
-    ),
-    el(
-      'label',
-      {},
-      hook('sectionCollapseScaleLinked', el('input', { type: 'checkbox', checked: true })),
-      ' Link Front / Back scales',
-    ),
-    fields.pair(
-      fields.input('Front scale', 'sectionCollapseFrontScale', 1, { kind: 'scale' }),
-      fields.input('Back scale', 'sectionCollapseBackScale', 1, { kind: 'scale' }),
-    ),
-  );
-  hooks.get('section-collapse-enabled').onchange = (event) =>
-    collapse.setCurrent(
-      { ...collapse.current(), enabled: event.target.checked },
-      { settled: true },
-    );
-  for (const [id, key] of [
-    ['sectionCollapseTopInput', 'top'],
-    ['sectionCollapseBottomInput', 'bottom'],
-  ])
-    hooks.get(id).onchange = (e) => {
-      const value = units.parse(e.target.value);
-      if (Number.isFinite(value))
-        collapse.setCurrent({ ...collapse.current(), [key]: value }, { settled: true });
-    };
-  for (const key of ['Front', 'Back'])
-    hooks.get(`sectionCollapse${key}Scale`).onchange = (e) =>
-      collapse.setSurfaceScale(key.toLowerCase(), e.target.value);
-  hooks.get('sectionCollapseScaleLinked').onchange = (e) =>
-    collapse.setCurrent(
-      {
-        ...collapse.current(),
-        scaleLinked: e.target.checked,
-        ...(e.target.checked ? { frontScale: 1, backScale: 1 } : {}),
-      },
-      { settled: true },
-    );
-  for (const key of ['Top', 'Bottom'])
-    hooks.get(`sectionCollapse${key}Handle`).onpointerdown = (e) =>
-      collapse.startDrag(key.toLowerCase(), e);
-  window.addEventListener('pointermove', collapse.moveDrag);
-  window.addEventListener('pointerup', collapse.endDrag);
-  window.addEventListener('pointercancel', collapse.endDrag);
+  // Pure UI-v2 presentation; the shared collapse controller retains Z and drag semantics.
+  const zEditor = createZBreakEditor({ el, button, fields, hook, units, collapse });
+  const zForm = zEditor.form;
   function sync() {
     syncDisplayUnitFields(zForm, units.key());
+    zEditor.sync();
     for (const key of ['pan', 'zoom'])
       panel
         .querySelector(`[data-action="tool:${key}:section"]`)
@@ -354,8 +285,6 @@ export function createSectionView({ store, main, workstation }) {
     panel
       .querySelector('[data-action="borders:section"]')
       .setAttribute('aria-pressed', String(state.sectionShowBorders));
-    const z = collapse.current();
-    hooks.get('section-collapse-enabled').checked = z.enabled !== false;
     const scaleButton = panel.querySelector('[data-action="scale:section"]');
     const physicalScale = state.sectionScaleMode === 'physical';
     scaleButton.setAttribute('aria-pressed', String(physicalScale));
@@ -364,25 +293,6 @@ export function createSectionView({ store, main, workstation }) {
       .querySelector('use')
       .setAttribute('href', `#p-icon-${physicalScale ? 'scalePhysical' : 'scaleAuto'}`);
     detailButton.title = state.sectionDetailRoi ? 'Hide Section ROI' : 'Draw Section ROI';
-    for (const [id, value] of [
-      ['sectionCollapseTopInput', z.top],
-      ['sectionCollapseBottomInput', z.bottom],
-      ['sectionCollapseFrontScale', z.frontScale],
-      ['sectionCollapseBackScale', z.backScale],
-    ]) {
-      const input = hooks.get(id);
-      if (input !== document.activeElement)
-        input.value = id.includes('Scale') ? formatInspectionLength(value) : units.format(value);
-    }
-    hooks.get('sectionCollapseScaleLinked').checked = z.scaleLinked !== false;
-    for (const key of ['Front', 'Back'])
-      hooks.get(`sectionCollapse${key}Scale`).disabled = z.scaleLinked !== false;
-    const top = collapse.zToRulerY(z.top),
-      bottom = collapse.zToRulerY(z.bottom);
-    hooks.get('sectionCollapseTopHandle').style.top = `${top}px`;
-    hooks.get('sectionCollapseBottomHandle').style.top = `${bottom}px`;
-    hooks.get('sectionCollapseWindow').style.top = `${top}px`;
-    hooks.get('sectionCollapseWindow').style.height = `${bottom - top}px`;
     panel.querySelector('[data-slot="view.section.readout"]').textContent =
       hooks.get('sectionMeta').textContent;
   }
@@ -511,8 +421,6 @@ export function createSectionView({ store, main, workstation }) {
     formatXY: units.format,
     status: workstation.status,
   });
-  const floating = (id, title, content, trigger) =>
-    workstation.overlays.mountFloating({ id, title, content, trigger });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && paletteOpen) {
       paletteOpen = null;
@@ -542,7 +450,13 @@ export function createSectionView({ store, main, workstation }) {
       state.sectionShowBorders = !state.sectionShowBorders;
       render();
     } else if (action === 'zbreak-settings') {
-      floating('sectionZSettings', 'Z Break · physical µm', zForm, trigger);
+      workstation.overlays.mountFloating({
+        id: 'sectionZSettings',
+        title: 'Z Break',
+        content: zForm,
+        trigger,
+        width: 352,
+      });
       sync();
     } else if (action === 'legend') {
       legendOpen = !legendOpen;

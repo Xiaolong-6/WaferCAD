@@ -361,6 +361,7 @@ export function createSectionCollapseController({
     bind,
     sync,
     close,
+    bounds,
     current,
     setCurrent,
     toggleEnabled,

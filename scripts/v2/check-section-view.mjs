@@ -128,11 +128,15 @@ try {
       assert.equal(await sectionCanvas.getAttribute('data-section-collapse-enabled'), 'false');
       assert.notEqual(await fingerprint(), slicedImage);
       await page.locator('#section-collapse-enabled').check();
+      const zEditor = page.locator('#sectionZSettings');
+      assert.equal(await zEditor.locator('#sectionCollapseFrontScale').isVisible(), false);
+      await zEditor.locator('.v2-z-advanced > summary').click();
       await page.locator('#sectionCollapseScaleLinked').uncheck();
+      assert.equal(await zEditor.locator('#sectionCollapseFrontScale').isVisible(), true);
       await page.locator('#sectionCollapseFrontScale').fill('2');
       await page.locator('#sectionCollapseFrontScale').press('Tab');
       assert.equal((await snapshot()).sectionCollapse.frontScale, 2);
-      await page.locator('#sectionZSettings [aria-label="Close Z Break · physical µm"]').click();
+      await page.locator('#sectionZSettings [aria-label="Close Z Break"]').click();
       await command('tool:zoom:section');
       let box = await sectionCanvas.boundingBox();
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
