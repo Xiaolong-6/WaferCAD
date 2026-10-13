@@ -2,7 +2,7 @@
 
 ## Objective
 
-Collect **one** reproducible ZIP using the latest remote V3/V4 revisions,
+Collect **one** reproducible ZIP using a pinned V3 revision and current V4,
 rather than asking the operator to run five independent commands or
 reinstall dependencies five times. This is a hardware acquisition, **not**
 a promise that either PR will pass.
@@ -41,7 +41,7 @@ From your existing Windows WaferCAD checkout (replace the first line
 with your actual checkout path if different), in **PowerShell**:
 
 ```powershell
-Set-Location 'C:\Users\carll\Documents\ChatGPT\wafercad'
+Set-Location 'C:\path\to\WaferCAD'
 git status --short
 git fetch origin perf/renderer-v4-adaptive-tiles-20261010
 git switch perf/renderer-v4-adaptive-tiles-20261010
