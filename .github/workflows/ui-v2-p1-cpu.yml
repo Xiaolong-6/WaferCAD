@@ -30,6 +30,7 @@ on:
       - 'site/ui-v2/workstation-runtime.js'
       - 'site/ui-v2/workstation-workflow.js'
       - 'site/tests/history-head-worker.test.mjs'
+      - 'site/tests/issue-13-settings-ui.test.mjs'
       - '.github/workflows/ui-v2-p1-cpu.yml'
   workflow_dispatch:
 
