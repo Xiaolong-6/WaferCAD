@@ -8,7 +8,10 @@ import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/
 import { summarizeRendererR9SpatialDrift } from './test-helpers/renderer-r9-spatial-drift.mjs';
 
 const folder = process.argv[2];
-assert.ok(folder && !folder.startsWith('-') && process.argv.length === 3, 'Pass one extracted R9 evidence directory');
+assert.ok(
+  folder && !folder.startsWith('-') && process.argv.length === 3,
+  'Pass one extracted R9 evidence directory',
+);
 const directory = resolve(folder);
 const report = JSON.parse(await readFile(join(directory, 'report.json'), 'utf8'));
 assert.equal(report.diagnosticPreservedMsaa, true, 'requires preserved 4-sample R9 evidence');
@@ -56,10 +59,7 @@ for (const [first, second] of [
     boundingBox: pixels.boundingBox,
     phaseWindow: summary.observedInterval,
     nextDiagnosticWindow: summary.nextDiagnosticWindow,
-    locality: summarizeRendererR9SpatialDrift(
-      decodeScreenshotPng(pngA),
-      decodeScreenshotPng(pngB),
-    ),
+    locality: summarizeRendererR9SpatialDrift(decodeScreenshotPng(pngA), decodeScreenshotPng(pngB)),
   });
 }
 console.log(
