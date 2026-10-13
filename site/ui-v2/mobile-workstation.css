@@ -1,0 +1,69 @@
+/* Production-only compact layout. M2/mock preview keeps its approved shell geometry.
+   One viewport-bound pane owns vertical scrolling; scientific hosts stay mounted. */
+@media (max-width: 820px) {
+  body[data-workstation] {
+    overflow: hidden;
+  }
+
+  body[data-workstation] .p-workbench {
+    height: calc(100dvh - 2 * var(--wc-space-2));
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  body[data-workstation] .p-topbar {
+    position: relative;
+    top: auto;
+    z-index: var(--wc-z-toolbar);
+  }
+
+  body[data-workstation] .p-body {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body[data-workstation] .p-nav {
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+  }
+
+  body[data-workstation] .p-inspector {
+    order: 2;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow: hidden;
+    scroll-margin-top: 0;
+  }
+
+  body[data-workstation] .p-panel-content {
+    overscroll-behavior-y: contain;
+  }
+
+  body[data-workstation] .p-stage {
+    order: 2;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  body[data-workstation] .p-canvases {
+    min-height: max(300px, calc(100dvh - 190px));
+    flex: 1 0 auto;
+  }
+
+  body[data-workstation] .p-view {
+    min-height: min(320px, 52dvh);
+  }
+
+  body[data-workstation] .p-workbench[data-mobile='edit'] .p-stage,
+  body[data-workstation] .p-workbench[data-mobile='view'] .p-nav,
+  body[data-workstation] .p-workbench[data-mobile='view'] .p-inspector {
+    display: none;
+  }
+}
