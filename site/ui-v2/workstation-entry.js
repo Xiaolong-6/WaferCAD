@@ -59,6 +59,7 @@ try {
       versionCommit: commitSha,
     }),
   });
+  shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   const render = () => {
