@@ -34,10 +34,13 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
-    await page.goto(`${base}/app-v2-workstation.html?start=example&example=photodetector-literature`, {
-      waitUntil: 'domcontentloaded',
-      timeout: 120000,
-    });
+    await page.goto(
+      `${base}/app-v2-workstation.html?start=example&example=photodetector-literature`,
+      {
+        waitUntil: 'domcontentloaded',
+        timeout: 120000,
+      },
+    );
     await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
       timeout: 120000,
     });
@@ -71,7 +74,11 @@ try {
     assert.ok(entries.get('index.html').includes('WaferCAD / Process Report'));
     const after = await snapshot();
     assert.deepEqual(after.model, before.model, 'Export must not change the canonical model');
-    assert.deepEqual(after.workflow.steps, before.workflow.steps, 'Export must not change History');
+    assert.deepEqual(
+      after.workflow.steps,
+      before.workflow.steps,
+      'Export must not change History',
+    );
     assert.deepEqual(errors, []);
     console.log(
       `Report ZIP PASS: ${manifest.historyStepCount} steps, ${manifest.branches.length} variants, ${entries.size} files`,
