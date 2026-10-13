@@ -2,7 +2,7 @@
 // The published metalens Example remains the full 6,400-instance project and
 // is covered by the M4 owner; this fixture exercises real staged Project IO.
 export async function openMetalensUnitProject(page, base) {
-  await page.goto(`${base}/app-v2-workstation.html`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${base}/app.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
   await page.evaluate(async () => {
     const filename = 'tio2-metalens-four-unit-process.wafercad';
@@ -11,7 +11,7 @@ export async function openMetalensUnitProject(page, base) {
     const { stageStartupFile } = await import('/startup-file.js');
     await stageStartupFile(new File([await response.arrayBuffer()], filename), 'project');
   });
-  await page.goto(`${base}/app-v2-workstation.html?start=staged`, {
+  await page.goto(`${base}/app.html?start=staged`, {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, { timeout: 120000 });
