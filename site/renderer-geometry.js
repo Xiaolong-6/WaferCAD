@@ -193,6 +193,16 @@ export function buildRenderSurfacePlan(model, clip = null) {
       ...plan,
       ...decorated,
     };
-  surfacePlanCache.set(model, { key, plan: result });
+  rememberRenderSurfacePlan(model, clip, result);
   return result;
+}
+
+// A background worker returns the very same deterministic physical plan.
+// Register it under the same revision/visibility/clip key used by the
+// foreground and GLB exporter; no second geometry ownership implementation.
+export function rememberRenderSurfacePlan(model, clip, plan) {
+  if (model && typeof model === 'object') {
+    surfacePlanCache.set(model, { key: surfacePlanCacheKey(model, clip), plan });
+  }
+  return plan;
 }
