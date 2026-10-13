@@ -52,6 +52,8 @@ jobs:
           exit 1
       - name: CI smoke ABBA four-context parity (not a hardware speed benchmark)
         run: node scripts/renderer-v4-r7-abba-browser.mjs --ci-smoke --gpu-timing
+      - name: CI smoke V4 Index no-MSAA page-clip capture (diagnostic only)
+        run: node scripts/renderer-v4-r7-abba-browser.mjs --ci-smoke --isolate-index --diagnose-no-msaa
       - name: Verify offline R7 pairwise analyzer on saved smoke artifacts
         run: node scripts/renderer-v4-r7-compare-saved.mjs --ci-smoke
       - name: Print exact Prettier diffs on formatting failure
@@ -65,6 +67,8 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: renderer-v4-r7-abba-smoke
-          path: test-results/renderer-v4-r7-ci-smoke/
+          path: |
+            test-results/renderer-v4-r7-ci-smoke/
+            test-results/renderer-v4-r7-ci-smoke-index-only-no-msaa/
           if-no-files-found: warn
           retention-days: 14

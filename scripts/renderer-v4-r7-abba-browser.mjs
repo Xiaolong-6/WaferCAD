@@ -34,7 +34,10 @@ const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
 const hardwareGpu = process.argv.includes('--hardware-gpu') || hardwareRtx3060;
 const gpuTiming = process.argv.includes('--gpu-timing');
 const diagnosticNoMsaa = process.argv.includes('--diagnose-no-msaa');
-assert.ok(!diagnosticNoMsaa || hardwareGpu, '--diagnose-no-msaa requires verified --hardware-gpu');
+assert.ok(
+  !diagnosticNoMsaa || hardwareGpu || ciSmoke,
+  '--diagnose-no-msaa requires --hardware-gpu or software-only --ci-smoke',
+);
 const candidate = selectR7Candidate(process.argv);
 const { candidateName, flags: candidateFlags, artifactSuffix } = candidate;
 assert.notEqual(ciSmoke, hardwareGpu, 'select exactly one: --ci-smoke or --hardware-gpu');
