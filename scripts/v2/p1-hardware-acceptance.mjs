@@ -29,6 +29,7 @@ const report = {
   errors: [],
   validationFailures: [],
   cpuProfileCollected: false,
+  cpuProfiles: {},
   profiling,
 };
 // A previous successful report must never be mistaken for evidence from a failed rerun.
@@ -43,7 +44,7 @@ try {
     encoding: 'utf8',
   }).trim();
 } catch {}
-let server, browser, context, page, profiler;
+let server, browser, context, page, profiler, activeProfileName;
 const save = () => writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 const checkServer = async () => {
   try {
@@ -122,8 +123,9 @@ function responsiveness(vitals) {
     responsive: worst <= RESPONSIVENESS_LONG_TASK_LIMIT_MS,
   };
 }
-async function beginCpuProfile() {
+async function beginCpuProfile(name) {
   if (!profiling) return;
+  activeProfileName = name;
   profiler = await context.newCDPSession(page);
   await profiler.send('Profiler.enable');
   await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
@@ -132,7 +134,7 @@ async function beginCpuProfile() {
 async function endCpuProfile() {
   if (!profiler) return;
   const { profile } = await profiler.send('Profiler.stop');
-  await writeFile(join(output, 'cpu-m3d-startup.cpuprofile'), JSON.stringify(profile));
+  await writeFile(join(output, `cpu-${activeProfileName}.cpuprofile`), JSON.stringify(profile));
   const counts = new Map();
   for (const sample of profile.samples || []) counts.set(sample, (counts.get(sample) || 0) + 1);
   report.cpuHotspots = (profile.nodes || [])
@@ -145,10 +147,14 @@ async function endCpuProfile() {
     .filter((node) => node.samples > 0)
     .sort((a, b) => b.samples - a.samples)
     .slice(0, 25);
-  report.cpuProfileCollected = true;
+  report.cpuProfiles[activeProfileName] = {
+    sampleCount: (profile.samples || []).length,
+    hotspots: report.cpuHotspots,
+  };
   report.cpuProfileSamples = (profile.samples || []).length;
   await profiler.detach();
   profiler = null;
+  activeProfileName = null;
 }
 async function waitReady(stage = 'ready') {
   await page.waitForFunction(
@@ -253,7 +259,7 @@ try {
   });
 
   console.log('P1 hardware: loading M3D example…');
-  await beginCpuProfile();
+  await beginCpuProfile('m3d-startup');
   await open('/app.html?start=example&example=m3d');
   await waitReady();
   await endCpuProfile();
@@ -291,8 +297,10 @@ try {
     { timeout },
   );
   console.log('P1 hardware: reloading saved M3D project with Quality…');
+  await beginCpuProfile('quality-reload');
   await open('/app.html');
   await waitReady();
+  await endCpuProfile();
   report.cases.qualityReload = await hostMetrics();
   report.cases.qualityReload.responsiveness = responsiveness(report.cases.qualityReload.vitals);
   report.cases.qualityReload.screenshotSha256 = await photograph('02-quality-final.png');
@@ -307,6 +315,9 @@ try {
     stages.indexOf('coarse') >= 0 &&
     stages.indexOf('refining') > stages.indexOf('coarse') &&
     stages.lastIndexOf('ready') > stages.indexOf('refining');
+  if (!report.cases.qualityReload.sameFramePixels) {
+    report.validationFailures.push('Quality repeat screenshots have different pixels.');
+  }
   for (const [label, sample] of Object.entries(report.cases)) {
     if (sample.responsiveness && !sample.responsiveness.responsive) {
       report.validationFailures.push(
@@ -319,6 +330,7 @@ try {
     report.cases.qualityReload.fastSetting === false &&
     report.cases.qualityReload.stageSequencePassed &&
     report.cases.qualityReload.modelUnchanged &&
+    report.cases.qualityReload.sameFramePixels &&
     report.cases.initialM3D.responsiveness.responsive &&
     report.cases.qualityReload.responsiveness.responsive &&
     report.errors.length === 0;
@@ -345,15 +357,21 @@ try {
       report.errors.push('CPU profiler cleanup: ' + error.message);
     });
   if (profiling) {
-    let profileSize = 0;
-    try {
-      profileSize = (await stat(join(output, 'cpu-m3d-startup.cpuprofile'))).size;
-    } catch {}
-    report.cpuProfileBytes = profileSize;
-    if (!report.cpuProfileCollected || profileSize < 1000) {
-      report.errors.push('The requested Chrome CPU profile is missing or empty.');
-      report.passed = false;
+    report.cpuProfileBytes = {};
+    for (const name of ['m3d-startup', 'quality-reload']) {
+      let size = 0;
+      try {
+        size = (await stat(join(output, `cpu-${name}.cpuprofile`))).size;
+      } catch {}
+      report.cpuProfileBytes[name] = size;
+      if (size < 1000 || !report.cpuProfiles[name]?.sampleCount) {
+        report.errors.push(`The Chrome CPU profile for ${name} is missing or empty.`);
+        report.passed = false;
+      }
     }
+    report.cpuProfileCollected = report.errors.every(
+      (error) => !error.includes('Chrome CPU profile'),
+    );
   }
   await save();
   if (context) await context.close().catch(() => {});
