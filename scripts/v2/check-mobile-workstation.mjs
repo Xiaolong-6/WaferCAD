@@ -97,7 +97,10 @@ try {
       assert.ok(Math.abs(afterScroll.y - beforeScroll.y) <= 1, 'Navigation stays fixed');
 
       const touch = await processNav.boundingBox();
-      assert.ok(touch.width >= 44 && touch.height >= 44, 'Primary touch target >= 44px');
+      assert.ok(
+        touch.width >= 44 && touch.height >= 44,
+        `Primary touch target >= 44px; measured ${touch.width} × ${touch.height}`,
+      );
       await page.locator('[data-action="return-results"]').click();
       await waitForPaint(page);
       assert.equal(await stage.isVisible(), true);
