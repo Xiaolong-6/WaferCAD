@@ -68,7 +68,6 @@ export async function createMainView({ project, sharedState, workstation, render
     const face = hooks.get('mainFaceBtn');
     if (face) {
       const back = state.activeFace === 'back';
-      face.title = `${back ? 'Back' : 'Front'} view · click to switch`;
       face.setAttribute('aria-label', back ? 'Back view' : 'Front view');
       face.querySelector('use').setAttribute('href', `#p-icon-${back ? 'faceBack' : 'faceFront'}`);
     }
@@ -84,7 +83,6 @@ export async function createMainView({ project, sharedState, workstation, render
       open: uiState.roiOpen,
       selected: state.roiTool || (state.sectionEditEnabled ? 'line' : state.tool),
     });
-    if (hooks.has('sectionControlsBtn')) hooks.get('sectionControlsBtn').title = 'Slice';
     const canvas = root.getElementById('mainCanvas');
     canvas.dataset.tool = state.tool;
     shell?.getSlot('view.main.readout')?.replaceChildren(caption());
@@ -474,7 +472,6 @@ export async function createMainView({ project, sharedState, workstation, render
       else if (action === 'maximize:main' && !workstation) {
         uiState.maximize = uiState.maximize ? null : 'main';
         renderShell();
-        trigger.title = uiState.maximize ? 'Restore view' : 'Maximize view';
         trigger.setAttribute('aria-label', uiState.maximize ? 'Main restore' : 'Main maximize');
       } else if (action === 'hide-editor' || action === 'return-results') {
         uiState.editorHidden = true;
