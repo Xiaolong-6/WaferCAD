@@ -188,7 +188,7 @@ all four native framebuffers are identical. At every recorded
 checkpoint from draw 154 through draw 358, `1-OFF` exactly matches
 `3-ON`, while `2-OFF` exactly matches `4-ON`, and the two pairs
 differ from one another. At draw 384, all four hashes differ.
-This is **replicate-index grouping** in four *distinct* contexts;
+This is **replicate-index grouping** in four _distinct_ contexts;
 no WebGL context is actually reused between OFF and ON arms.
 It suggests the first observable divergence precedes any relevant
 policy-specific raster-output difference in this window; it is not
