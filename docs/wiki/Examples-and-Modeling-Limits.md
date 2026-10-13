@@ -31,7 +31,7 @@ _Section screenshot from a reproducible browser visual reference (2026-10-05); d
 
 **Black-Si photodiode — Setälä 2023, Fig. 1a**
 
-- Silicon Base, SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts.
+- Silicon Base, **double-sided 650 nm thermal SiO₂ geometry surrogate** with a dedicated Back oxide strip before rear P implantation, front SiO₂ patterning, schematic ICP-RIE Black-Si morphology, front B/rear P Implant markers, thermal/clean process records, conformal Al₂O₃ passivation and Al contacts. Oxidation and back oxide removal are reconstructed geometry assumptions, not a thermal reaction or measured backside sequence.
 - A **FINAL** Variant protects the active ALD and selectively removes blanket Al; the **QA** Variant intentionally illustrates nonselective overetch and is **not** a fabrication recommendation.
 - Morphology relief, inferred masks and some lateral dimensions are **illustrative reconstructions**. Implantation is a depth annotation; drive-in and forming-gas anneals are metadata records.
 
@@ -49,7 +49,7 @@ For detailed assumptions, source differences, and the reconstruction acceptance 
 
 _A WaferCAD 3D preview of the PERC reconstruction. Inspect its patterned rear contacts and the source-order versus alternate GDS-based History branches._
 
-The PERC family demonstrates front/back processing and locally patterned rear contacts. Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
+The PERC family demonstrates front/back processing and locally patterned rear contacts. A symmetric 110 nm conformal SiO₂ passivation uses one atomic Both Deposit with distinct paired Front/Back material IDs; front and rear contact windows retain different GDS masks (`4|0` / `5|0`). Inspect the source-order fabrication Variant and the alternative GDS-patterned-contact Variant to understand which geometry comes from a mask and which parts are structural simplifications. Doping/diffusion regions are represented schematically: **photovoltaic conversion efficiency is not calculated**.
 
 ## 3. Fully textured perovskite–silicon tandems
 
@@ -57,7 +57,7 @@ The PERC family demonstrates front/back processing and locally patterned rear co
 
 _A WaferCAD 3D preview of the textured tandem; the visible pyramids are appearance metadata and must not be interpreted as a simulated etch profile._
 
-This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
+This project illustrates two-sided silicon pyramid texture and a multilayer tandem stack. The Front/Back 4.5 µm texturing is one Both Etch with independent seeds (2018/2019) and preserved per-face texture profile IDs; the asymmetric junction doped films remain separate. The saved Variants compare an nc-Si:H recombination-junction construction with an ITO control. The 3D and Section views are useful for inspecting conformal materials across the ideal texture and the surrogate front Ag fingers.
 
 **Interpretation limit:** Pyramid morphology is renderer metadata; the geometry Kernel still processes the ideal 2.5D material interfaces. The project is not a resolved nanoscale ALD/perovskite growth prediction.
 

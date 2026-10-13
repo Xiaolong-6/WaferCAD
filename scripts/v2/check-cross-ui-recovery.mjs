@@ -55,8 +55,8 @@ async function waitForProjectName(name) {
 
 try {
   await open('/app-legacy.html?start=example&example=photodetector-literature', 'legacy');
-  const fromLegacy = await waitForSavedProject({ layers: 5 });
-  assert.equal(fromLegacy.model.layers.length, 5);
+  const fromLegacy = await waitForSavedProject({ layers: 6 });
+  assert.equal(fromLegacy.model.layers.length, 6);
   assert.equal(fromLegacy.branches, 7);
 
   await open('/app.html', 'v2');
@@ -66,7 +66,7 @@ try {
     fromLegacy.model,
     'V2 restores Legacy geometry without drift',
   );
-  assert.equal(v2FirstLoad.workflow.steps.length, 46, 'V2 restores Legacy History');
+  assert.equal(v2FirstLoad.workflow.steps.length, 47, 'V2 restores Legacy History');
   assert.equal(v2FirstLoad.workflow.branches.length, 7, 'V2 restores all Legacy Variants');
 
   const v2Title = 'V2 cross-interface save';
@@ -93,7 +93,7 @@ try {
   const restoredInV2 = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.equal(restoredInV2.projectName, legacyTitle);
   assert.deepEqual(restoredInV2.model, fromLegacy.model);
-  assert.equal(restoredInV2.workflow.steps.length, 46);
+  assert.equal(restoredInV2.workflow.steps.length, 47);
 
   const stalePage = await context.newPage();
   stalePage.on('pageerror', (error) => errors.push(error.message));
@@ -141,7 +141,7 @@ try {
   const reloaded = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.equal(reloaded.projectName, exitTitle);
   assert.deepEqual(reloaded.model, fromLegacy.model);
-  assert.equal(reloaded.workflow.steps.length, 46);
+  assert.equal(reloaded.workflow.steps.length, 47);
   assert.deepEqual(errors, [], 'Cross-interface and lease scenarios produce no page errors');
   console.log(
     'M5 cross-UI: Legacy → V2 → Legacy → V2 restores exact geometry, History and Variants PASS',

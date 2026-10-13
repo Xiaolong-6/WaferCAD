@@ -39,6 +39,10 @@ The same syntax is available for directional deposition, Extend, directional/iso
 - One Both application creates one restorable History Step with two distinct, paired material Layer IDs. The v2 Manual form exposes valid paired material targets and rejects unsupported Both combinations; a more explicit two-child layer/legend presentation remains a **future UX enhancement**.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.
 
+## 2026-10-13: Face-specific texture profiles in Both Etch
+
+The bundled Perovskite–Si Tandem now uses one atomic Both Etch for symmetric substrate depth while preserving front/back pyramid appearance seeds and profile identities. In declarative Recipe Code, a directional `etch({ face: 'both' })` can specify `faceSurfaces: { front, back }` with one rough/pyramid appearance profile per face. Both model passes still share the same physical etch depth, area and target material. Individual `seed` and `profileId` values are preserved during Recipe serialization, Process worker dispatch, History replay and migration backfill. The face-specific surface is **display-only morphology**, not a physical random etch solver. See [example consolidation](EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md).
+
 ## Regression / reproducibility
 
 Owned Node coverage: `site/tests/process-both-face.test.mjs` (two distinct linked material IDs, Mask footprint, paired Extend/Etch, independent single-face Etch, atomic rejection, Transfer, annotations, canonical arrays, Recipe round trip, unsupported methods) plus History replay ID-mapping regression. The v2 Manual selector has an additional browser owner, `scripts/v2/check-manual-both.mjs`; its dated [acceptance report](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) describes the tested commit and remaining CI gates.

@@ -1450,6 +1450,7 @@ export function createProcessRecipeController({
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
+      canonicalFaceSurfaces: p.faceSurfaces || null,
       canonicalFace: p.face || 'front',
       canonicalTargetLayerId:
         step.command === 'extend' && p.face === 'both' ? bothMaterialId(p.material) : null,
@@ -1680,6 +1681,7 @@ export function createProcessRecipeController({
           [p.etchProfile === 'planarize' ? 'targetZ' : 'depth']: Number(p.targetZ ?? p.thickness),
           profile: p.etchProfile || 'directional',
           surface: p.surface || 'smooth',
+          ...(p.faceSurfaces ? { faceSurfaces: clone(p.faceSurfaces) } : {}),
           ...common,
         },
       };
