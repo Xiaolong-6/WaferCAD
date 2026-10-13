@@ -33,6 +33,7 @@ export function createProjectStateController({
   applyState,
   getSnapshotRecords = () => [],
   getSnapshotBranchState = () => null,
+  getWorkerSnapshotHistory = () => null,
   syncDisplayControls = () => {},
   setSectionEditEnabled,
   // This reader must validate the entire migrated project before returning it.
@@ -68,7 +69,10 @@ export function createProjectStateController({
     return cacheImportedSnapshotStates(project);
   }
 
-  function buildProjectSnapshot(includeSnapshots = false, { skipHistoryHeadSync = false } = {}) {
+  function buildProjectSnapshot(
+    includeSnapshots = false,
+    { skipHistoryHeadSync = false, workerStorage = false } = {},
+  ) {
     ensureHierarchy();
     const state = getState();
     const project = {
@@ -117,9 +121,21 @@ export function createProjectStateController({
 
     if (includeSnapshots) {
       project.name = state.projectName;
-      project.snapshots = getSnapshotRecords();
-      const snapshotBranches = getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
-      if (snapshotBranches) project.snapshotBranches = snapshotBranches;
+      // Only the async autosave path can request borrowed History references.
+      // It immediately posts this object to a Worker (a synchronous clone);
+      // regular exports always remain independently cloned.
+      const workerHistory =
+        workerStorage && skipHistoryHeadSync ? getWorkerSnapshotHistory() : null;
+      if (workerHistory) {
+        project.snapshots = workerHistory.snapshots;
+        if (workerHistory.snapshotBranches) {
+          project.snapshotBranches = workerHistory.snapshotBranches;
+        }
+      } else {
+        project.snapshots = getSnapshotRecords();
+        const snapshotBranches = getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
+        if (snapshotBranches) project.snapshotBranches = snapshotBranches;
+      }
     }
     return project;
   }

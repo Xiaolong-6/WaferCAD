@@ -92,6 +92,7 @@ export function createWorkstationRuntime(project) {
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
     getSnapshotRecords: () => history?.exportRecords() || [],
+    getWorkerSnapshotHistory: () => history?.exportForWorkerStorage() || null,
     getSnapshotBranchState: ({ skipSync = false } = {}) => {
       if (!skipSync) history?.syncActiveHeadState();
       return history?.exportBranchState() || null;

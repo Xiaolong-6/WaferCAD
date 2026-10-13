@@ -486,7 +486,14 @@ export function createWorkspacePersistenceController({
             schedule({ markDirty: false });
             return false;
           }
-          project = buildProjectSnapshot(true, { skipHistoryHeadSync: true });
+          // Worker.postMessage performs the one required synchronous clone.
+          // Avoid copying large History records/branches a second time on UI.
+          // If Worker is unavailable, retain deep-copy semantics for the
+          // foreground storage fallback.
+          project = buildProjectSnapshot(true, {
+            skipHistoryHeadSync: true,
+            workerStorage: typeof globalThis.Worker === 'function',
+          });
         }
         return saveCurrentProject(project);
       })

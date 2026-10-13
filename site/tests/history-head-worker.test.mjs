@@ -84,3 +84,37 @@ test('async History head rejects invalid and edited candidates atomically', asyn
   assert.deepEqual(manager.exportBranchState().branches[0].headState.model, live.model);
   assert.equal(manager.syncActiveHeadState(), true);
 });
+
+test('Worker autosave transfer preserves snapshot payload and independent public exports', () => {
+  const largeState = {
+    model: { revision: 7, processRevision: 0, regions: [{ id: 'r1', value: 13 }] },
+    layout: { elements: [{ id: 'mask-1' }] },
+  };
+  const manager = createSnapshotManager({
+    capture: () => largeState,
+    restore: () => {},
+    validateState: () => true,
+    idFactory: () => 'save-1',
+  });
+  manager.create('Initial');
+  assert.equal(manager.syncActiveHeadState(), true);
+
+  const transfer = manager.exportForWorkerStorage();
+  const ordinary = {
+    snapshots: manager.exportRecords(),
+    snapshotBranches: manager.exportBranchState(),
+  };
+  assert.deepEqual(transfer, ordinary, 'Worker must receive identical scientific History');
+  assert.notStrictEqual(transfer.snapshots, ordinary.snapshots);
+  assert.notStrictEqual(transfer.snapshotBranches.branches, ordinary.snapshotBranches.branches);
+
+  // The worker communication boundary is synchronous and produces an isolated
+  // candidate before the rest of autosave continues asynchronously.
+  const posted = structuredClone(transfer);
+  largeState.model.regions[0].value = 42;
+  ordinary.snapshots[0].state.model.regions[0].value = 99;
+  assert.equal(posted.snapshots[0].state.model.regions[0].value, 13);
+  assert.equal(posted.snapshotBranches.branches[0].headState.model.regions[0].value, 13);
+  assert.equal(manager.exportRecords()[0].state.model.regions[0].value, 13);
+  assert.equal(manager.exportBranchState().branches[0].headState.model.regions[0].value, 13);
+});

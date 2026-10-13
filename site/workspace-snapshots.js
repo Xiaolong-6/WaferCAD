@@ -1479,7 +1479,11 @@ export function createSnapshotManager({
     return clone(records);
   }
 
-  function exportBranchState() {
+  // Transfer-only view: do not mutate or expose this to UI consumers. The
+  // autosave caller must hand it immediately to Worker.postMessage(), which
+  // synchronously structured-clones the entire candidate before returning.
+  // Normal export APIs retain their independent-copy contract.
+  function exportForWorkerStorage() {
     const exportedNodes = historyNodes.map((node) => {
       const state = stateForProcessNode(node);
       return {
@@ -1488,14 +1492,21 @@ export function createSnapshotManager({
       };
     });
     const fullyRestorable = exportedNodes.every((node) => Boolean(node.state));
-    return clone({
-      version: fullyRestorable ? 3 : 2,
-      activeBranchId,
-      cursorNodeId,
-      cursorSnapshotId,
-      branches,
-      nodes: exportedNodes,
-    });
+    return {
+      snapshots: records,
+      snapshotBranches: {
+        version: fullyRestorable ? 3 : 2,
+        activeBranchId,
+        cursorNodeId,
+        cursorSnapshotId,
+        branches,
+        nodes: exportedNodes,
+      },
+    };
+  }
+
+  function exportBranchState() {
+    return clone(exportForWorkerStorage().snapshotBranches);
   }
 
   function importRecords(value, branchState = null) {
@@ -1810,6 +1821,7 @@ export function createSnapshotManager({
     clear,
     exportRecords,
     exportBranchState,
+    exportForWorkerStorage,
     importRecords,
   };
 }
