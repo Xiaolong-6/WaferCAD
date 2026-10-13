@@ -1212,6 +1212,44 @@ export function createSnapshotManager({
     return true;
   }
 
+  // Autosave must not run the full polygon-boolean schema validator on the UI
+  // thread. Validate the detached candidate in a worker, then atomically
+  // commit only while branch, cursor and *all* captured state remain unchanged.
+  // Interactive snapshot actions keep the existing synchronous validation.
+  async function syncActiveHeadStateAsync(validateCandidate) {
+    const branch = branchById(activeBranchId);
+    if (!branch || !isCursorAtBranchHead()) return 'skipped';
+    const branchId = activeBranchId,
+      cursorId = cursorNodeId,
+      snapshotId = cursorSnapshotId,
+      headNodeId = branch.headNodeId,
+      state = cloneState(capture());
+    if (!(await validateCandidate(state))) return 'rejected';
+    if (
+      branchById(branchId) !== branch ||
+      activeBranchId !== branchId ||
+      cursorNodeId !== cursorId ||
+      cursorSnapshotId !== snapshotId ||
+      branch.headNodeId !== headNodeId ||
+      !isCursorAtBranchHead() ||
+      !stateValuesEqual(capture(), state)
+    ) {
+      return 'stale';
+    }
+    const headNode = headNodeId ? nodeById(headNodeId) : null;
+    const processRevision = Number(state?.model?.processRevision);
+    if (
+      headNode &&
+      (!Number.isInteger(processRevision) || processRevision !== headNode.processRevision)
+    ) {
+      return 'skipped';
+    }
+    branch.headState = state;
+    cursorBaselineState = cloneState(state);
+    cursorDetachedFromHead = false;
+    return 'updated';
+  }
+
   function parentBranchId(branch) {
     if (!branch || branch.id === MAIN_SNAPSHOT_BRANCH_ID) return null;
     const explicit = branchById(branch.parentBranchId)?.id || null;
@@ -1752,6 +1790,7 @@ export function createSnapshotManager({
     restoreProcessNode,
     hasHistoricalWorkingEdits,
     syncActiveHeadState,
+    syncActiveHeadStateAsync,
     rebuildMainBase,
     clear,
     exportRecords,
