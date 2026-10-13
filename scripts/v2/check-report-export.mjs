@@ -75,6 +75,28 @@ try {
     const after = await snapshot();
     assert.deepEqual(after.model, before.model, 'Export must not change the canonical model');
     assert.deepEqual(after.workflow.steps, before.workflow.steps, 'Export must not change History');
+    const reportPage = await context.newPage();
+    try {
+      await reportPage.setContent(entries.get('index.html'));
+      const results = reportPage.locator('#stepSearchResults li:visible');
+      assert.equal(await results.count(), steps.length, 'Offline index must list all steps');
+      await reportPage.locator('#stepSearch').fill('no-matching-step-7cd49281');
+      assert.equal(await results.count(), 0, 'Offline search must filter locally');
+      await reportPage.locator('#stepSearch').fill('');
+      const variantId = steps[0].branchId;
+      await reportPage.locator('#stepVariant').selectOption(variantId);
+      assert.equal(
+        await results.count(),
+        steps.filter((step) => step.branchId === variantId).length,
+        'Variant filter must preserve only matching History nodes',
+      );
+      assert.equal(
+        await reportPage.locator('#stepSearchResults a').first().getAttribute('href'),
+        'history/steps-0001.html#step-1',
+      );
+    } finally {
+      await reportPage.close();
+    }
     assert.deepEqual(errors, []);
     console.log(
       `Report ZIP PASS: ${manifest.historyStepCount} steps, ${manifest.branches.length} variants, ${entries.size} files`,
