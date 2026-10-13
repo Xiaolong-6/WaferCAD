@@ -32,10 +32,3 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
-
-      # Temporary, report-scoped formatting diagnostics. Remove after P1 is formatted.
-      - name: Show report formatting diff on check failure
-        if: failure()
-        run: |
-          npx prettier --write site/tests/process-report.test.mjs scripts/v2/check-report-export.mjs
-          git diff -- site/tests/process-report.test.mjs scripts/v2/check-report-export.mjs
