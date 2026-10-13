@@ -31,10 +31,7 @@ export async function checkRendererHardwareEvidenceInventory(stepId, folder, rep
       }
       if (filename.endsWith('.png')) {
         const bytes = await readFile(full);
-        if (
-          bytes.length < 24 ||
-          bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a'
-        ) {
+        if (bytes.length < 24 || bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
           missing.push(filename + ':invalid-png');
         }
       } else if (filename.endsWith('-trace.json')) {
