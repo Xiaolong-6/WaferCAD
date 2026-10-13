@@ -41,6 +41,7 @@ import { canPrepareSmoothSidewallsInWorker } from './renderer-v4-smooth-sidewall
 import { runRendererUnitsInSlices } from './renderer-responsive-budget.js';
 import { createRendererLatencyTracker } from './renderer-responsive-latency.js';
 import { createRendererLongTaskSampler } from './renderer-responsive-jank.js';
+import { createRendererGpuTimer } from './renderer-responsive-gpu-timer.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -136,6 +137,7 @@ export function createThreeView({
     rendererParams.get('rendererResponsiveSmoothWorker') === '1';
   const responsiveRoughBudget = rendererParams.get('rendererResponsiveRoughBudget') === '1';
   const responsiveInputMetrics = rendererParams.get('rendererResponsiveMetrics') === '1';
+  const responsiveGpuMetrics = rendererParams.get('rendererResponsiveGpuTimer') === '1';
   const responsiveLatency = createRendererLatencyTracker();
   const responsiveLongTasks = createRendererLongTaskSampler();
   // LongTask entries represent event-loop blocking, not GPU/compositor work.
@@ -181,6 +183,26 @@ export function createThreeView({
   let assemblySkippedFrames = 0;
 
   let renderer = null;
+  let gpuTimer = null;
+  function resetGpuTimer({ contextLost = false } = {}) {
+    gpuTimer?.dispose({ contextLost });
+    gpuTimer = null;
+  }
+  function initializeGpuTimer() {
+    if (!responsiveGpuMetrics || !renderer) return;
+    resetGpuTimer();
+    gpuTimer = createRendererGpuTimer(renderer.getContext(), {
+      onUpdate: (metrics) => {
+        host.dataset.rendererGpuTimerSupported = String(metrics.supported);
+        host.dataset.rendererGpuSamples = String(metrics.samples);
+        host.dataset.rendererGpuPendingQueries = String(metrics.pending);
+        host.dataset.rendererGpuP95Ms = String(metrics.p95Ms ?? '');
+        host.dataset.rendererGpuMaxMs = String(metrics.maxMs ?? '');
+        host.dataset.rendererGpuDroppedQueries = String(metrics.dropped);
+        host.dataset.rendererGpuDisjointCount = String(metrics.disjointCount);
+      },
+    });
+  }
   let webglContextStatus = 'uninitialized';
   let webglContextLossCount = 0;
   let webglContextRestoreCount = 0;
@@ -342,6 +364,7 @@ export function createThreeView({
     host.dataset.threeUnavailableReason = reason;
     delete host.dataset.renderError;
 
+    resetGpuTimer();
     try {
       renderer?.dispose?.();
     } catch {
@@ -1042,9 +1065,11 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
+      gpuTimer?.beginFrame();
       try {
         renderer.render(scene, camera);
       } catch (error) {
+        resetGpuTimer({ contextLost: webglContextStatus === 'lost' });
         webglContextStatus = 'error';
         host.dataset.rendererWebglContext = 'error';
         host.dataset.renderState = 'error';
@@ -1053,6 +1078,7 @@ export function createThreeView({
         console.warn('3D WebGL frame failed:', error);
         return;
       }
+      gpuTimer?.endFrame();
       // Opt-in camera evidence is sampled after the completed GL frame.
       if (v3RoiTraceEnabled) {
         host.dataset.rendererCameraWorld = JSON.stringify(camera.matrixWorld.elements);
@@ -3047,6 +3073,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           host.dataset.rendererWebglContext = 'ready';
           renderer.domElement.addEventListener('webglcontextlost', (event) => {
             event.preventDefault();
+            resetGpuTimer({ contextLost: true });
             webglContextStatus = 'lost';
             host.dataset.rendererWebglContext = 'lost';
             host.dataset.rendererWebglContextLosses = String(++webglContextLossCount);
@@ -3067,6 +3094,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             // Three recreates context-owned state internally. Reapply the
             // canvas/background state on its new GL context before drawing.
             renderer.setClearColor(0xf5f7f9);
+            initializeGpuTimer();
             // Match resize(): clientHeight rounds fractional CSS pixels, which
             // changed a 273px framebuffer into 274px after WebGL recovery.
             // Even one pixel changes geometry rasterization and breaks parity.
@@ -3075,6 +3103,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             if (pendingRender && !rendering) void render();
             scheduleFrame();
           });
+          initializeGpuTimer();
           preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
           renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
