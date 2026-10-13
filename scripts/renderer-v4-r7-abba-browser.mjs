@@ -78,6 +78,7 @@ const report = {
   diagnosticNoMsaa,
   acceptanceEligible: !diagnosticNoMsaa,
   diagnosticComplete: false,
+  captureMethod: diagnosticNoMsaa ? 'page-clip' : 'element',
   gpuTimerTrials: [],
   passed: false,
 };
@@ -88,6 +89,27 @@ const browser = await chromium.launch({
 });
 const pngs = [];
 const timeout = 180000;
+
+// Playwright locator.screenshot waits for a stable element before capture.
+// A hardware context can keep repainting while its WebGL camera and scene
+// remain stable; the last R9 Index A arm timed out in that UI wait. Only the
+// diagnostic pathway bypasses element auto-scroll/stability by clipping the
+// ready canvas from the page compositor. Ordinary product R7 is unchanged.
+async function captureR7CanvasPng(page) {
+  const canvas = page.locator('#threeHost canvas');
+  if (!diagnosticNoMsaa) return canvas.screenshot();
+  const box = await canvas.boundingBox();
+  const viewport = page.viewportSize();
+  assert.ok(box && viewport && box.width > 0 && box.height > 0, 'Missing canvas screenshot bounds');
+  assert.ok(
+    box.x >= 0 &&
+      box.y >= 0 &&
+      box.x + box.width <= viewport.width &&
+      box.y + box.height <= viewport.height,
+    'R7 canvas is outside the viewport; refusing to capture a different region',
+  );
+  return page.screenshot({ clip: box, timeout });
+}
 
 async function oneArm(policy, index) {
   const context = await newUiContext(browser, {
@@ -268,12 +290,12 @@ async function oneArm(policy, index) {
     assert.equal(host.v4GpuResourceComplete, 'true');
     assert.equal(host.v4GpuResourceCrossVariantGeometries, '0');
     assert.equal(host.v4GpuResourceCrossVariantMaterials, '0');
-    const png = await page.locator('#threeHost canvas').screenshot();
+    const png = await captureR7CanvasPng(page);
     await writeFile(new URL(label + '.png', output), png);
     pngs.push(png);
     // Two independent reads without touching Fit or the camera. Distinguish
     // screenshot/compositor instability from fresh-context reproducibility.
-    const duplicate = await page.locator('#threeHost canvas').screenshot();
+    const duplicate = await captureR7CanvasPng(page);
     await writeFile(new URL(label + '-duplicate.png', output), duplicate);
     row.sameContextPixels = compareScreenshotPngPixels(png, duplicate);
     const adapter = await page.locator('#threeHost canvas').evaluate((canvas) => {

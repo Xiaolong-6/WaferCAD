@@ -62,16 +62,15 @@ export function buildRendererHardwarePlan(modes = RENDERER_HARDWARE_MODES) {
 // Never accept the diagnostic arm as a production-renderer pass.
 // Candidate-only no-MSAA isolation: never a production acceptance run, and
 // never repeats the expensive full-wafer V3 baseline in the same campaign.
-export function buildRendererR9V4NoMsaaDiagnosticPlan() {
-  return RENDERER_HARDWARE_MODES.map((mode) => {
-    const original = buildRendererHardwarePlan([mode])[1];
-    return {
+export function buildRendererR9V4NoMsaaDiagnosticPlan(modes = RENDERER_HARDWARE_MODES) {
+  return buildRendererHardwarePlan(modes)
+    .slice(1)
+    .map((original) => ({
       ...original,
       id: original.id + '-msaa-off',
       args: [...original.args, '--diagnose-no-msaa'],
       artifact: original.artifact + '-no-msaa',
-    };
-  });
+    }));
 }
 
 export function buildRendererR9HardwareCampaignPlan() {

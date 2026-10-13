@@ -47,9 +47,9 @@ const phaseWindowValue = phaseWindowDiagnostic
 const diagnostic =
   ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || r9V4NoMsaaCampaign;
 if (
-  (diagnostic && modesArg) ||
-  ((r9Campaign || r9V4NoMsaaCampaign) &&
-    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (diagnostic && modesArg && !r9V4NoMsaaCampaign) ||
+  (r9Campaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (r9V4NoMsaaCampaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -60,7 +60,7 @@ const hardwareGpu = options.includes('--hardware-gpu') || hardwareRtx3060;
 const plan = r9Campaign
   ? buildRendererR9HardwareCampaignPlan()
   : r9V4NoMsaaCampaign
-    ? buildRendererR9V4NoMsaaDiagnosticPlan()
+    ? buildRendererR9V4NoMsaaDiagnosticPlan(modes)
     : ditherDiagnostic
       ? buildRendererV3DitherDiagnosticPlan()
       : msaaDiagnostic

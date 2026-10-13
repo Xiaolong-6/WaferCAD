@@ -78,6 +78,17 @@ test('V4 zero-MSAA diagnostic plans only Index, Caps and Combined without V3 rep
   );
   assert.ok(plans.every((p) => p.branch === 'v4' && p.args.includes('--diagnose-no-msaa')));
   assert.equal(new Set(plans.map((p) => p.artifact)).size, 3);
+  const indexOnly = buildRendererR9V4NoMsaaDiagnosticPlan(['index']);
+  assert.equal(indexOnly.length, 1);
+  assert.equal(indexOnly[0].id, 'v4-index-msaa-off');
+  assert.ok(indexOnly[0].args.includes('--isolate-index'));
+  assert.deepEqual(
+    buildRendererR9V4NoMsaaDiagnosticPlan(['caps', 'combined']).map((p) => p.id),
+    ['v4-caps-msaa-off', 'v4-combined-msaa-off'],
+  );
+  assert.throws(() => buildRendererR9V4NoMsaaDiagnosticPlan(['index', 'index']), /Select unique/);
+  assert.throws(() => buildRendererR9V4NoMsaaDiagnosticPlan([]), /Select unique/);
+  assert.throws(() => buildRendererR9V4NoMsaaDiagnosticPlan(['invalid']), /Select unique/);
   const mode = plans[0];
   const report = {
     diagnosticNoMsaa: true,
