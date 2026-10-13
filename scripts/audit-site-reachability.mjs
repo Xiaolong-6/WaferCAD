@@ -34,7 +34,8 @@ function isDevelopment(path) {
 
 export function resolveReference(from, reference, inventory) {
   if (!reference) return null;
-  if (reference.includes('
+  if (reference.includes(String.fromCharCode(36, 123))) return null;
+  if (/^(?:https?:|data:|blob:|mailto:|javascript:|#|\/\/)/i.test(reference)) return null;
   const clean = reference.split(/[?#]/)[0].trim();
   if (!clean || clean.includes('\\') || /%[0-9a-f]{2}/i.test(clean)) return null;
   const path = clean.startsWith('/') ? clean.slice(1) : posix.join(posix.dirname(from), clean);
