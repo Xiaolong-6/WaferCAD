@@ -43,11 +43,12 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 
 ## Current work and verification
 
-- [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
-- [UI v2 human-review code audit — 2026-10-12](ui-v2/HUMAN_REVIEW_CODE_AUDIT_2026-10-12.md) — dated manual review of workstation/Recipe/Mask/Section refinements, observed checks and explicit remaining validation limits.
-- [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
+- [Site publication cleanup (2026-10-13)](SITE_PUBLICATION_CLEANUP_2026-10-13.md) — Pages staging exclusions, canonical Workstation entry migration, and verification boundaries.
+- [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
+
 - [Mobile Workstation layout contract — 2026-10-13](ui-v2/MOBILE_WORKSTATION_LAYOUT_2026-10-13.md) — compact Edit/View pane, single-scroll ownership, retained scientific hosts, and mobile CI acceptance boundaries.
-- [UI v2 Stage C / M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — testing ownership and remaining workflow/visual checks; interpret results at the stated revision.
+- [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
+- [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 architecture health](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — implementation risk and ownership evidence; review against current main before applying recommendations.
 - [Renderer transparency roadmap](RENDERER_TRANSPARENCY_ROADMAP.md) — shipped phases, deferred work, and separate hardware validation.
 - [Renderer PNG capture and resource retirement](RENDERER_LIFECYCLE_CORRECTNESS_2026-10-12.md) — transaction-safe export, nested owned-resource cleanup and test boundaries.
@@ -58,4 +59,4 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 
 ## Historical documents
 
-Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. **68 completed/superseded documents have been relocated** to `docs/archive/`; obsolete paths were deleted and internal links were updated. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
+Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. The 2026-10-12 pass relocated **68** completed/superseded documents; the [2026-10-13 closeout](HANDOFF_STATUS_2026-10-13.md) archives additional pre-release records and handoff attachments to `docs/archive/`; obsolete paths were deleted and internal links were updated. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
