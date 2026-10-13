@@ -21,9 +21,12 @@ on:
 permissions:
   contents: read
 
+# Never abort a production release that has already passed some expensive
+# gates. New main pushes replace the queued run, then the newest pending
+# release publishes. Repeated merges must not starve GitHub Pages forever.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release-quality:
