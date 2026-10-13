@@ -52,7 +52,7 @@ node scripts/v2/check-three-export-abort.mjs
 node scripts/v2/check-review-interactions.mjs
 ```
 
-Exact results: [portable validation summary](../../ui-v2/handoff/desktop-review-validation.json). Ignored local logs: `test-results/ui-v2-integration/review-*.log`; screenshots/reports: `test-results/ui-v2-{main,mask,section}-review/`, `ui-v2-three-review-metalens/`, `ui-v2-three-export-abort/`, `ui-v2-review-interactions/`. These are review evidence, not approved baselines. Precommit reports correctly record parent HEAD and a dirty tree.
+Exact results: [portable validation summary](handoff/desktop-review-validation.json). Ignored local logs: `test-results/ui-v2-integration/review-*.log`; screenshots/reports: `test-results/ui-v2-{main,mask,section}-review/`, `ui-v2-three-review-metalens/`, `ui-v2-three-export-abort/`, `ui-v2-review-interactions/`. These are review evidence, not approved baselines. Precommit reports correctly record parent HEAD and a dirty tree.
 
 Two new checks initially failed: mobile canvas restoration sampled before the changed Section layout had painted; reference sampling now waits for the actual paint. The 390 px southeast resize handle was under the draggable inset; the sequence uses the visible northwest handle instead. Exact canvas equality and real ROI growth remain required. Narrow inset can cover part of ROI; use another handle or move the inset. CUA also exercised the visible integrated page, camera pan/wheel, Section ROI move/resize, opacity, rename, and palettes.
 
