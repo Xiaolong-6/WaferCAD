@@ -4,6 +4,7 @@ import {
   SupersededRendererBuild,
   isRendererBuildSuperseded,
   shouldStageRendererScene,
+  shouldHideRendererPreviewMesh,
 } from '../renderer-responsive-staging.js';
 
 test('P0 model staging only retains a committed presentation behind explicit opt-in', () => {
@@ -34,4 +35,22 @@ test('P0 aborts only when a pending newer model, ROI signature or mode differs',
   const error = new SupersededRendererBuild();
   assert.equal(error.name, 'SupersededRendererBuild');
   assert.match(error.message, /superseded/);
+});
+
+test('P1 display-only preview hides only heavy internal transparent meshes and restores exact inspection eligibility', () => {
+  const eligible = {
+    enabled: true, sceneVariant: 'transparent', arrayInstances: '1885',
+    kind: 'material-interface', visible: true, hasRoi: false,
+  };
+  assert.equal(shouldHideRendererPreviewMesh(eligible), true);
+  for (const kind of ['electrical-internal', 'electrical-depth', 'implant-internal', 'implant-depth']) {
+    assert.equal(shouldHideRendererPreviewMesh({ ...eligible, kind }), true);
+  }
+  for (const kind of ['material-exterior', 'electrical-surface', 'implant-surface', 'border', 'implant-cut']) {
+    assert.equal(shouldHideRendererPreviewMesh({ ...eligible, kind }), false);
+  }
+  for (const patch of [
+    { enabled: false }, { sceneVariant: 'opaque' }, { hasRoi: true },
+    { visible: false }, { arrayInstances: 63 }, { arrayInstances: 'invalid' },
+  ]) assert.equal(shouldHideRendererPreviewMesh({ ...eligible, ...patch }), false);
 });
