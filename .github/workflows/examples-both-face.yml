@@ -1,0 +1,143 @@
+name: Both-face examples integration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/examples-both-face.yml
+      - scripts/maintenance/rebuild-photodetectors.mjs
+      - scripts/maintenance/consolidate-perc-both-face.mjs
+      - scripts/maintenance/consolidate-tandem-texture-both.mjs
+      - scripts/maintenance/backfill-example-recipes.mjs
+      - site/process-face-execution.js
+      - site/process-recipe.js
+      - site/controllers/process-panel-controller.js
+      - site/controllers/process-recipe-controller.js
+      - site/tests/examples-both-face-migration.test.mjs
+      - site/tests/example-regression.test.mjs
+      - site/tests/welcome-example.test.mjs
+      - site/examples/photodetector-literature-examples.wafercad
+      - site/examples/perc-solar-cells-point-contacts.wafercad
+      - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/examples-both-face.yml
+      - scripts/maintenance/**
+      - site/process-face-execution.js
+      - site/process-recipe.js
+      - site/controllers/process-panel-controller.js
+      - site/controllers/process-recipe-controller.js
+      - site/tests/examples-both-face-migration.test.mjs
+      - site/tests/example-regression.test.mjs
+      - site/tests/welcome-example.test.mjs
+      - site/examples/photodetector-literature-examples.wafercad
+      - site/examples/perc-solar-cells-point-contacts.wafercad
+      - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    name: Verify reproducible example assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild all three examples
+        run: |
+          node scripts/maintenance/rebuild-photodetectors.mjs --write
+          node scripts/maintenance/consolidate-perc-both-face.mjs --write
+          node scripts/maintenance/consolidate-tandem-texture-both.mjs --write
+          node scripts/maintenance/backfill-example-recipes.mjs --write --id=perc-solar-cells-point-contacts
+          node scripts/maintenance/backfill-example-recipes.mjs --write --id=fully-textured-perovskite-silicon-tandem
+          node scripts/build-example-previews.mjs --write --id=photodetector-literature
+          node scripts/build-example-previews.mjs --write --id=perc-point-contact-solar-cell
+          node scripts/build-example-previews.mjs --write --id=fully-textured-perovskite-silicon-tandem
+          node scripts/maintenance/sync-example-recipe-previews.mjs --write
+      - name: Targeted scientific and persistence validation
+        run: |
+          node --test site/tests/examples-both-face-migration.test.mjs site/tests/example-recipe-audit.test.mjs site/tests/example-structure.test.mjs site/tests/process-both-face.test.mjs
+          node scripts/maintenance/rebuild-photodetectors.mjs
+          node scripts/maintenance/backfill-example-recipes.mjs --id=perc-solar-cells-point-contacts
+          node scripts/maintenance/backfill-example-recipes.mjs --id=fully-textured-perovskite-silicon-tandem
+          node scripts/maintenance/sync-example-recipe-previews.mjs
+      - run: git diff --check
+      - name: Verify regeneration is byte-for-byte committed
+        run: |
+          git diff --exit-code -- site/examples/photodetector-literature-examples.wafercad site/examples/perc-solar-cells-point-contacts.wafercad site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+          git diff --exit-code -- site/examples/previews/photodetector-literature.wafercad site/examples/previews/perc-point-contact-solar-cell.wafercad site/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad
+          git diff --exit-code -- tests/fixtures/project-io/example-thumbnails.json
+      - name: Preserve validation artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: both-face-regeneration-diagnostic
+          path: |
+            site/examples/photodetector-literature-examples.wafercad
+            site/examples/perc-solar-cells-point-contacts.wafercad
+            site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+          retention-days: 7
+
+  replay:
+    name: Browser replay ${{ matrix.example }} / ${{ matrix.case }}
+    needs: regenerate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: photodetector-literature
+            case: final
+            variant: black-si-fig1a-final
+          - example: photodetector-literature
+            case: qa-overetch
+            variant: black-si-fig1a-qa
+          - example: perc-point-contact-solar-cell
+            case: source-order
+            variant: branch-mutlq5qq-dhzr8q
+          - example: perc-point-contact-solar-cell
+            case: gds-contacts
+            variant: branch-mutknd4v-hcdg7q
+          - example: fully-textured-perovskite-silicon-tandem
+            case: ito-control
+            variant: branch-mutohtl8-v64iv4
+          - example: fully-textured-perovskite-silicon-tandem
+            case: ncsi
+            variant: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Run local example server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Real Chromium Run All
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=${{ matrix.example }} --variant=${{ matrix.variant }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: both-face-${{ matrix.example }}-${{ matrix.case }}
+          path: test-results/example-recipe-runall/
+          if-no-files-found: ignore
+          retention-days: 7

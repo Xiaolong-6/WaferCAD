@@ -43,7 +43,11 @@ export function applyProcessFaces(model, params, applySingleFace) {
   const candidate = structuredClone(model);
   let front;
   try {
-    front = applySingleFace(candidate, { ...params, face: 'front' });
+    front = applySingleFace(candidate, {
+      ...params,
+      face: 'front',
+      ...(params.faceSurfaces ? { surface: params.faceSurfaces.front } : {}),
+    });
   } catch (error) {
     return {
       model,
@@ -67,7 +71,11 @@ export function applyProcessFaces(model, params, applySingleFace) {
   // its selected Front film came from one earlier Both deposition.
   let back;
   try {
-    const backParams = { ...params, face: 'back' };
+    const backParams = {
+      ...params,
+      face: 'back',
+      ...(params.faceSurfaces ? { surface: params.faceSurfaces.back } : {}),
+    };
     if (params.type === 'grow') {
       backParams.targetLayerId = pairedTarget(candidate, params.targetLayerId, 'back');
     }

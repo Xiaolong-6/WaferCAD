@@ -190,7 +190,10 @@ function step(current, spec) {
       ? {
           etchProfile: 'directional',
           etchTargetLayerIds: targets.map((target) => {
-            const layer = current.model.layers.find((item) => item.name === target);
+            const layer =
+              current.model.layers.find(
+                (item) => item.name === target && item.processFace === face,
+              ) || current.model.layers.find((item) => item.name === target);
             assert.ok(layer, 'Cannot find target ' + target);
             return layer.id;
           }),
@@ -261,7 +264,7 @@ function step(current, spec) {
       ...(type === 'electrical' ? { electricalRegionType, electricalRegionSource } : {}),
       replay: { version: 1, params: copy(params), areaMode: area, maskContext: mask },
     },
-    { shapes, face, bookmark },
+    { shapes, face: face === 'both' ? current.face : face, bookmark },
   );
 }
 function record(
@@ -325,7 +328,13 @@ const black = branch(
   main.model,
   'Setälä et al. 2023 · Black-Si photodiode',
 );
-step(black, { type: 'add', name: 'Thermal SiO2 650 nm', thickness: 0.65, bookmark: true });
+step(black, {
+  type: 'add',
+  name: 'Thermal SiO2 650 nm',
+  thickness: 0.65,
+  face: 'both',
+  bookmark: true,
+});
 step(black, {
   type: 'etch',
   name: 'Open active SiO2 mask',
@@ -371,6 +380,14 @@ step(black, {
   area: 'mask',
   shapes: masks.frontImplant,
   bookmark: true,
+});
+step(black, {
+  type: 'etch',
+  name: 'Strip rear thermal SiO2 before phosphorus implantation',
+  thickness: 0.65,
+  face: 'back',
+  targets: ['Thermal SiO2 650 nm'],
+  recipeName: 'Remove rear thermal oxide before P implant · 650 nm geometry surrogate',
 });
 step(black, {
   type: 'implant',
