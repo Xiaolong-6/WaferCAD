@@ -66,7 +66,7 @@ capture, not proof of a particular driver, texture or resolve cause.
 The incomplete focus ZIP contains only text summaries, not the
 original screenshot/trace/report files. Its log records OFF/OFF
 106 differing screenshot pixels and ON/ON 80, maximum per-channel
-delta 3/255. The reported 26 per-draw *bounded sampled* input
+delta 3/255. The reported 26 per-draw _bounded sampled_ input
 fingerprints are same-policy identical, but GPU data beyond the
 4096-byte buffer samples, texture image contents and other
 uncaptured state remain unverified. The missing original artifacts
@@ -125,8 +125,8 @@ A software-WebGL functional trace demonstrated approximately
 interactive preview and restoring afterward. That establishes
 a useful opt-in mechanism, not end-user input latency, physical
 GPU frame-rate, visual parity across all modes or worker safety.
-It remains a possible *separately scoped* future UX proposal.
-Do not advance it via the 691+-commit #174 merge.
+It remains a possible _separately scoped_ future UX proposal.
+Do not advance it via the 700+-commit #174 merge.
 
 **Already integrated correctness fixes — Keep in main.** The
 previously accepted screenshot capture-state and resource
