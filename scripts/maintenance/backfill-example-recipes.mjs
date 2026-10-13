@@ -158,6 +158,7 @@ function stepFor(project, node, terminalModel, precedingModel) {
       thicknessUm: profile === 'planarize' ? Number(raw.targetZ ?? thickness) : thickness,
       profile,
       surface: surfaceFor(project, node, targetId),
+      ...(raw.faceSurfaces ? { faceSurfaces: clone(raw.faceSurfaces) } : {}),
     };
   } else if (op.kind === 'implant') {
     command = 'implant';
