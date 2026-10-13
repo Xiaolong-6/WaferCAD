@@ -84,6 +84,23 @@ export function installWebglFrameProbe() {
     }));
     const maxUnits = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
     const sampledUnits = Math.min(16, maxUnits);
+    const samplerTypes = [
+      gl.SAMPLER_2D,
+      gl.SAMPLER_CUBE,
+      gl.SAMPLER_3D,
+      gl.SAMPLER_2D_ARRAY,
+      gl.SAMPLER_2D_SHADOW,
+      gl.SAMPLER_CUBE_SHADOW,
+      gl.SAMPLER_2D_ARRAY_SHADOW,
+      gl.INT_SAMPLER_2D,
+      gl.UNSIGNED_INT_SAMPLER_2D,
+    ];
+    const samplerUnitsReferenced = uniforms
+      .filter((uniform) => samplerTypes.includes(uniform.type))
+      .flatMap((uniform) => (Array.isArray(uniform.value) ? uniform.value : [uniform.value]));
+    const samplerBindingCoverageComplete = samplerUnitsReferenced.every(
+      (unit) => Number.isInteger(unit) && unit >= 0 && unit < sampledUnits,
+    );
     const priorActive = gl.getParameter(gl.ACTIVE_TEXTURE);
     const textureUnits = [];
     try {
@@ -122,6 +139,8 @@ export function installWebglFrameProbe() {
       uninspectedAttributesEnabled,
       textureUnits,
       totalTextureUnits: maxUnits,
+      samplerUnitsReferenced,
+      samplerBindingCoverageComplete,
       textureContentVerified: false,
     };
   }
