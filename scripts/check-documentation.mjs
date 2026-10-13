@@ -127,6 +127,21 @@ export async function auditDocumentation({ rootDir = repositoryRoot, files } = {
     lowerPaths = new Map(paths.map((path) => [path.toLowerCase(), path]));
   const operationIds = new Set(PROCESS_GUIDE.map((entry) => entry.id)),
     exampleIds = new Set(BUNDLED_EXAMPLES.map((entry) => entry.id));
+  // Tracked documentation and handoff evidence must not publish workstation homes
+  // or common literal credential formats. Historical citations and license
+  // attribution are intentionally outside these pattern matches.
+  const evidence = paths.filter(
+    (path) => path.startsWith('docs/') && /\\.(?:md|txt|json)$/.test(path),
+  );
+  for (const source of evidence) {
+    const content = texts.get(source) || (await readFile(resolve(rootDir, source), 'utf8'));
+    if (/[A-Z]:[\\\\/]Users[\\\\/](?!<USERNAME>|<USER>)[^\\\\/\\s'"<>]+/i.test(content))
+      errors.push(`${source}: contains an unsanitized Windows user path`);
+    if (/(?:\\/home\\/|\\/Users\\/)[a-z0-9_.-]+\\//i.test(content))
+      errors.push(`${source}: contains an unsanitized Unix user path`);
+    if (/(?:gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{25,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----)/i.test(content))
+      errors.push(`${source}: contains a possible credential`);
+  }
   let links = 0,
     moduleReferences = 0;
   for (const [source, text] of texts) {
