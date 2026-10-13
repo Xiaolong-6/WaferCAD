@@ -57,6 +57,10 @@ test('real WaferCAD code symbol audit is read-only and parseable', async () => {
     ['site/controllers/project-controller.js', 'migrateProjectFile'],
     ['site/controllers/project-controller.js', 'validateProjectFile'],
     ['site/controllers/section-collapse-controller.js', 'translateSectionCollapse'],
+    ['site/app.js', 'refreshRecoveryOptions'],
+    ['site/app.js', 'invMaskPoint'],
+    ['site/app.js', 'activeScopeCells'],
+    ['site/app.js', 'setActiveCell'],
   ]) {
     const matches = result.localUnused.filter(
       (entry) => entry.file === file && entry.message.includes(symbol),

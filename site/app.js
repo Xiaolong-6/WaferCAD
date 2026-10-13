@@ -173,9 +173,6 @@ function markViewDirty() {
   workspacePersistenceController?.scheduleView();
 }
 
-function refreshRecoveryOptions() {
-  return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
-}
 
 function checkpointWorkspace(reason) {
   return workspacePersistenceController?.checkpointCurrent(reason) ?? Promise.resolve(false);
@@ -292,14 +289,6 @@ function formatNumericField(value, digits = 6) {
   const rounded = Number(number.toFixed(digits));
   return Object.is(rounded, -0) ? '0' : String(rounded);
 }
-function invMaskPoint([x, y]) {
-  const a = (-maskTransform.rotation * Math.PI) / 180,
-    c = Math.cos(a),
-    s = Math.sin(a),
-    dx = x - maskTransform.x,
-    dy = y - maskTransform.y;
-  return [(dx * c - dy * s) / maskTransform.scale, (dx * s + dy * c) / maskTransform.scale];
-}
 function maskPoint([x, y]) {
   const a = (maskTransform.rotation * Math.PI) / 180,
     c = Math.cos(a),
@@ -371,11 +360,9 @@ const maskBrowser = createMaskBrowserController({
 const {
   hierarchyFromParsed,
   ensureHierarchy,
-  activeScopeCells,
   selectedElement,
   globalLayers,
   syncMaskCellLabel,
-  setActiveCell,
   renderCellTree,
   renderMaskList,
 } = maskBrowser;
