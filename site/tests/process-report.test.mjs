@@ -102,7 +102,7 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   assert.equal(manifest.branches.length, 2);
   assert.equal(manifest.bookmarks.length, 1);
   assert.equal(JSON.parse(archive.content('recipe.json')).steps[0].params.thicknessUm, 0.00035);
-  assert.ok(archive.content('report.md').includes('Step 1000'));
+  assert.ok(archive.content('report.md').includes('Deposit 1000'));
 });
 
 test('reports include only supplied captured canvases and expose warnings', async () => {
