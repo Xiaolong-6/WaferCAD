@@ -56,6 +56,76 @@ export function installWebglFrameProbe() {
     }
   }
 
+  // Twenty-six consecutive draw submissions after the matching draw 128.
+  // Input observations are bounded; texture contents are not verified.
+  function captureFocusDraw(gl, active, method, args, drawOwner) {
+    const program = gl.getParameter(gl.CURRENT_PROGRAM);
+    if (!program) return { draw: active.drawCalls, status: 'no-program' };
+    const uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+    if (uniformCount > 128) {
+      return { draw: active.drawCalls, status: 'uniform-budget-exceeded' };
+    }
+    const uniforms = [];
+    for (let i = 0; i < uniformCount; i++) {
+      const descriptor = gl.getActiveUniform(program, i);
+      if (!descriptor) return { draw: active.drawCalls, status: 'missing-uniform' };
+      const location = gl.getUniformLocation(program, descriptor.name);
+      const value = location == null ? null : gl.getUniform(program, location);
+      uniforms.push({
+        name: descriptor.name,
+        size: descriptor.size,
+        type: descriptor.type,
+        value: ArrayBuffer.isView(value) ? Array.from(value) : value,
+      });
+    }
+    const shaders = (gl.getAttachedShaders(program) || []).map((shader) => ({
+      type: gl.getShaderParameter(shader, gl.SHADER_TYPE),
+      source: gl.getShaderSource(shader) || '',
+    }));
+    const maxUnits = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+    const sampledUnits = Math.min(16, maxUnits);
+    const priorActive = gl.getParameter(gl.ACTIVE_TEXTURE);
+    const textureUnits = [];
+    try {
+      for (let unit = 0; unit < sampledUnits; unit++) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        textureUnits.push({
+          unit,
+          texture2d: Boolean(gl.getParameter(gl.TEXTURE_BINDING_2D)),
+          textureCube: Boolean(gl.getParameter(gl.TEXTURE_BINDING_CUBE_MAP)),
+          texture3d: Boolean(gl.getParameter(gl.TEXTURE_BINDING_3D)),
+          texture2dArray: Boolean(gl.getParameter(gl.TEXTURE_BINDING_2D_ARRAY)),
+        });
+      }
+    } finally {
+      gl.activeTexture(priorActive);
+    }
+    const maxAttributes = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+    let uninspectedAttributesEnabled = false;
+    for (let i = 8; i < maxAttributes; i++) {
+      if (gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_ENABLED)) {
+        uninspectedAttributesEnabled = true;
+      }
+    }
+    return {
+      draw: active.drawCalls,
+      status: 'sampled',
+      kind: drawOwner.kind,
+      name: drawOwner.name,
+      method,
+      args: Array.from(args),
+      shaders,
+      uniforms,
+      rasterState: captureRasterState(gl),
+      buffers: sampleDrawBuffers(gl, method.startsWith('drawElements')),
+      bufferSampleBytesPerBinding: 4096,
+      uninspectedAttributesEnabled,
+      textureUnits,
+      totalTextureUnits: maxUnits,
+      textureContentVerified: false,
+    };
+  }
+
   // Exact GL raster state at the draw checkpoint. Object identities and
   // program handles differ between contexts; only comparable scalar/array
   // values belong in fresh-context fingerprints. Read-only, opt-in evidence.
@@ -172,6 +242,8 @@ export function installWebglFrameProbe() {
             captureFramebuffer: options.captureFramebuffer === true,
             captureDrawInputs: options.captureDrawInputs === true,
             drawInputs: [],
+            captureFocusDraws: options.captureFocusDraws === true,
+            focusDraws: [],
             capturePhases: options.capturePhases === true,
             captureRasterState: options.captureRasterState === true,
             phases: [],
@@ -260,6 +332,17 @@ export function installWebglFrameProbe() {
               buffers: sampleDrawBuffers(gl, method.startsWith('drawElements')),
             });
           }
+          if (active.captureFocusDraws && active.drawCalls >= 129 && active.drawCalls <= 154) {
+            try {
+              active.focusDraws.push(captureFocusDraw(gl, active, method, args, owner));
+            } catch (error) {
+              active.focusDraws.push({
+                draw: active.drawCalls,
+                status: 'capture-error',
+                error: String(error),
+              });
+            }
+          }
           const key = JSON.stringify([owner.kind, owner.name]);
           const row = active.owners.get(key) || { ...owner, drawCalls: 0, triangles: 0 };
           row.drawCalls++;
@@ -337,6 +420,7 @@ export function installWebglFrameProbe() {
           frameSerial: Number(entry.canvas.closest('#threeHost')?.dataset.rendererFrameSerial || 0),
           owners: [...active.owners.values()].sort((a, b) => b.triangles - a.triangles),
           ...(active.captureDrawInputs ? { drawInputs: active.drawInputs } : {}),
+          ...(active.captureFocusDraws ? { focusDraws: active.focusDraws } : {}),
           ...(active.capturePhases
             ? {
                 phases: active.phases,
@@ -503,6 +587,7 @@ export function installWebglFrameProbe() {
         captureGlState: options.captureGlState === true,
         captureFramebuffer: options.captureFramebuffer === true,
         captureDrawInputs: options.captureDrawInputs === true,
+        captureFocusDraws: options.captureFocusDraws === true,
         capturePhases: options.capturePhases === true,
         captureRasterState: options.captureRasterState === true,
         pixelSamples: pixels.map(({ x, y, sourceWidth, sourceHeight }) => ({
