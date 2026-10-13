@@ -106,6 +106,15 @@ try {
       await palette.selectOption('random');
       await waitForPaint(page);
       const first = (await snapshot()).model.layers.map((l) => l.color);
+      // Random intentionally returns the select to a 'Randomized' placeholder
+      // after the legend is reconstructed. Wait for that observable UI state
+      // before issuing the second choice; an old select still set to 'random'
+      // cannot dispatch a second change event.
+      await page.waitForFunction(
+        () => document.querySelector('.v2-legend-palette-select')?.value === 'randomized',
+        null,
+        { timeout: 15000 },
+      );
       await palette.selectOption('random');
       await waitForPaint(page);
       assert.notDeepEqual(
