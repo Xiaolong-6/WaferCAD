@@ -94,6 +94,20 @@ export function buildRendererR9CurrentV4PhaseWindowPlan(value = '128:384') {
   ];
 }
 
+// R10: reuse the checked R9 phase landmarks but capture every GL draw 129-154.
+// Keep historic R9 phase reports valid and never silently reclassify them.
+export function buildRendererR9FocusedDrawPlan() {
+  const [phase] = buildRendererR9CurrentV4PhaseWindowPlan();
+  return [
+    {
+      ...phase,
+      id: 'v4-focused-draws',
+      args: [...phase.args, '--diagnose-focus-window=129:154'],
+      artifact: phase.artifact + '-focused-129-154',
+    },
+  ];
+}
+
 // One 4x-MSAA hypothesis: preserve the default framebuffer through browser
 // presentation. Run V3's OFF/OFF/ON/ON evidence collector on current V4 source;
 // archived V3 git objects and all product rendering settings remain untouched.
@@ -163,6 +177,20 @@ export function buildRendererV3PhaseWindowDiagnosticPlan(value) {
 }
 
 export function classifyRendererHardwareStep(step, report) {
+  if (step.id === 'v4-focused-draws') {
+    const baseStatus = classifyRendererHardwareStep({ ...step, id: 'v4-phase-window' }, report);
+    if (
+      baseStatus !== 'diagnostic-complete' ||
+      report?.focusWindowDiagnostic !== true ||
+      report.trials.some((trial) => !checkRendererR9FocusEvidence(trial.native?.focusDraws).valid) ||
+      report.comparisons.some(
+        (comparison) => typeof comparison.focusedDrawInputsIdentical !== 'boolean',
+      )
+    ) {
+      return 'error';
+    }
+    return 'diagnostic-complete';
+  }
   if (step.id === 'v4-phase-window') {
     if (
       step.exitCode !== 0 ||
@@ -197,7 +225,6 @@ export function classifyRendererHardwareStep(step, report) {
           trial.native?.contextPreserveDrawingBuffer !== false ||
           trial.native?.defaultFramebufferSamples !== 4 ||
           trial.native?.glState?.framebuffer !== 'default' ||
-          !checkRendererR9FocusEvidence(trial.native?.focusDraws).valid ||
           !checkRendererPhaseCapture({
             checkpoints: trial.phaseCheckpoints,
             coverage: trial.phaseCoverage,
@@ -213,8 +240,7 @@ export function classifyRendererHardwareStep(step, report) {
           comparison.second !== pairs[i][1] ||
           comparison.samePolicy !== pairs[i][2] ||
           typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
-          typeof comparison.framebufferIdentical !== 'boolean' ||
-          typeof comparison.focusedDrawInputsIdentical !== 'boolean',
+          typeof comparison.framebufferIdentical !== 'boolean',
       )
     ) {
       return 'error';
