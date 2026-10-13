@@ -24,6 +24,11 @@ test('site reachability extracts HTML, CSS and module literal paths', () => {
   assert.deepEqual(htmlReferences, ['./js/app.js']);
   assert.ok(extractLiteralReferences("import './worker.js';", '.js').includes('./worker.js'));
   assert.ok(extractLiteralReferences("background: url('./x.svg');", '.css').includes('./x.svg'));
+  const versionSuffix = String.fromCharCode(36, 123) + 'suffix}';
+  for (const name of ['welcome.js', 'app.js', 'style.css']) {
+    const bootstrap = ['`./' + name, versionSuffix, '`'].join('');
+    assert.ok(extractLiteralReferences(bootstrap, '.html').includes('./' + name));
+  }
 });
 
 test('site reachability separates runtime, developer and unproven modules', async (t) => {
@@ -49,6 +54,10 @@ test('audit real site entrypoint reachability without deleting uncertain modules
   assert.ok(report.productionRoots.includes('app.html'));
   assert.ok(report.productionRoots.includes('app-legacy.html'));
   assert.ok(report.productionReachable > 20);
+  assert.ok(!report.unproven.includes('welcome.js'), 'Welcome must be reachable');
+  assert.ok(!report.unproven.includes('app.js'), 'Legacy app.js must be reachable');
+  assert.ok(!report.developerOnly.includes('app.js'), 'Legacy is a production dependency');
+  assert.ok(!report.unproven.includes('controllers/tool-tabs-controller.js'));
   const summary = {
     scannedFiles: report.scannedFiles,
     productionReachable: report.productionReachable,
