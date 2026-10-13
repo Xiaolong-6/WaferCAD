@@ -261,7 +261,7 @@ function reportHtml(data, pageNames, images, notes) {
       row.hidden = !show;
       if (show) count++;
     });
-    matches.textContent = `${count} of ${rows.length} steps`;
+    matches.textContent = count + ' of ' + rows.length + ' steps';
   }
   search.addEventListener('input', filter);
   variant.addEventListener('change', filter);
