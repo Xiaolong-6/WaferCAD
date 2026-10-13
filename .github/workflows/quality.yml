@@ -30,10 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Inspect exact P1 formatting delta
-        run: |
-          for file in site/ui-v2/three-view.js scripts/v2/check-startup-shell.mjs; do
-            npx prettier "$file" | diff -u "$file" - || true
-          done
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
