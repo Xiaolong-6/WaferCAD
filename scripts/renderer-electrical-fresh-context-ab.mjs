@@ -573,8 +573,7 @@ async function trial(enabled, index) {
               firstDifferentFocusedDraw:
                 native.focusDraws.find(
                   (draw, i) =>
-                    JSON.stringify(draw) !==
-                    JSON.stringify(previous.row.native.focusDraws[i]),
+                    JSON.stringify(draw) !== JSON.stringify(previous.row.native.focusDraws[i]),
                 )?.draw ?? null,
             }
           : {}),
