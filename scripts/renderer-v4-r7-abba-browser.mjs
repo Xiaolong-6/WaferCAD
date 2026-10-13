@@ -192,9 +192,9 @@ async function oneArm(policy, index) {
     }
     await waitForPaint(page);
     if (gpuTiming) {
-      const available = await page.locator('#threeHost').evaluate(
-        (node) => node.dataset.rendererGpuTimerSupported === 'true',
-      );
+      const available = await page
+        .locator('#threeHost')
+        .evaluate((node) => node.dataset.rendererGpuTimerSupported === 'true');
       if (available) {
         // Query results are polled in separate tasks without a GPU sync read.
         // Do not reject a valid hardware run when the extension is available
