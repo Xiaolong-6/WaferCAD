@@ -52,16 +52,17 @@ test('worker-import snapshot cache continues to reject modified invalid history 
   assert.equal(state.isValidSnapshotStates([project.snapshots[0].state]), false);
 });
 
-
 test('History consumes a validated detached copy without changing the import source', () => {
   const state = controller(async () => null);
   const imported = {
-    snapshots: [{
-      id: 's-1',
-      name: 'Validated milestone',
-      createdAt: '2026-10-13T00:00:00.000Z',
-      state: { model: { revision: 4, regions: [{ id: 'r-1' }] } },
-    }],
+    snapshots: [
+      {
+        id: 's-1',
+        name: 'Validated milestone',
+        createdAt: '2026-10-13T00:00:00.000Z',
+        state: { model: { revision: 4, regions: [{ id: 'r-1' }] } },
+      },
+    ],
   };
   state.readWorkerValidatedProjectSnapshot(imported);
   let adopted = 0;
