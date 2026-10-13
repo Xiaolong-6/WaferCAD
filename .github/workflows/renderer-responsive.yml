@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: renderer-responsive-${{ github.ref }}
@@ -34,17 +34,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Normalize final touched files once
-        if: github.ref == 'refs/heads/perf/renderer-v4-adaptive-tiles-20261010'
-        run: |
-          npx prettier --write scripts/renderer-v4-r5-dual-variant-browser.mjs docs/RENDERER_RESPONSIVENESS_P0_2026-10-12.md site/three-view.js
-          if ! git diff --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add scripts/renderer-v4-r5-dual-variant-browser.mjs docs/RENDERER_RESPONSIVENESS_P0_2026-10-12.md site/three-view.js
-            git commit -m 'style(renderer): finalize responsive formatting'
-            git push origin HEAD:refs/heads/perf/renderer-v4-adaptive-tiles-20261010
-          fi
       - name: Focused Node and source quality checks
         run: |
           node --test site/tests/renderer-responsive-staging.test.mjs
