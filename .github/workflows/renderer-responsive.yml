@@ -11,6 +11,8 @@ on:
       - site/renderer-responsive-budget.js
       - site/renderer-responsive-latency.js
       - site/renderer-responsive-jank.js
+      - site/renderer-responsive-gpu-timer.js
+      - site/tests/renderer-responsive-gpu-timer.test.mjs
       - site/tests/renderer-responsive-jank.test.mjs
       - site/tests/renderer-responsive-budget.test.mjs
       - site/tests/renderer-responsive-latency.test.mjs
@@ -45,9 +47,9 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Focused Node and source quality checks
         run: |
-          node --test site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/tests/renderer-responsive-jank.test.mjs
-          npx eslint site/three-view.js site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js scripts/renderer-responsive-browser.mjs site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs
-          npx prettier --check site/three-view.js site/style.css site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs scripts/renderer-responsive-browser.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs
+          node --test site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/tests/renderer-responsive-jank.test.mjs site/tests/renderer-responsive-gpu-timer.test.mjs
+          npx eslint site/three-view.js site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js scripts/renderer-responsive-browser.mjs site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
+          npx prettier --check site/three-view.js site/style.css site/renderer-responsive-staging.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs scripts/renderer-responsive-browser.mjs site/renderer-responsive-budget.js site/renderer-responsive-latency.js site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/renderer-responsive-jank.js site/tests/renderer-responsive-jank.test.mjs site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Serve WaferCAD

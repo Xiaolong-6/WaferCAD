@@ -42,7 +42,7 @@ try {
     };
     await page.goto(
       workstationUrl +
-        '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1&rendererV4GpuCensus=1',
+        '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1&rendererResponsiveGpuTimer=1&rendererV4GpuCensus=1',
     );
     await waitForAppReady(page);
     await load();
@@ -153,6 +153,24 @@ try {
       previousSerial,
       { timeout: 90000 },
     );
+    const gpu = await host.evaluate((node) => ({
+      supported: node.dataset.rendererGpuTimerSupported,
+      samples: Number(node.dataset.rendererGpuSamples || 0),
+      pending: Number(node.dataset.rendererGpuPendingQueries || 0),
+      p95Ms: Number(node.dataset.rendererGpuP95Ms || 0),
+      maxMs: Number(node.dataset.rendererGpuMaxMs || 0),
+      dropped: Number(node.dataset.rendererGpuDroppedQueries || 0),
+      disjoint: Number(node.dataset.rendererGpuDisjointCount || 0),
+    }));
+    assert.match(gpu.supported, /^(true|false)$/, 'GPU timer capability is explicit');
+    for (const value of Object.values(gpu).slice(1))
+      assert.ok(Number.isFinite(value) && value >= 0, 'GPU timer values must be finite');
+    if (gpu.samples) {
+      assert.equal(gpu.supported, 'true', 'GPU timer samples require extension support');
+      assert.ok(gpu.maxMs >= gpu.p95Ms);
+    }
+    report.gpuTimer = gpu;
+    console.log('RENDERER_GPU_TIMER', JSON.stringify(gpu));
     const latency = await snapshot();
     report.inputToSubmit = {
       samples: Number(latency.rendererInputSamples),
