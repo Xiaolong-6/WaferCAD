@@ -425,7 +425,8 @@ test('failed replay restores the pre-edit transaction and closes the persistence
   assert.match(statuses.at(-1)?.message || '', /Original Variant restored/);
 });
 
-
+// Keep the fault-injection graph fixture together for forensic review.
+// prettier-ignore
 test('thrown downstream replay restores the pre-edit graph and releases interaction ownership', async () => {
   let graph = {
     model: { processRevision: 8, layers: [{ id: 'film-a', name: 'Oxide' }] },

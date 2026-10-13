@@ -12,6 +12,7 @@
 
 ## Proposed operation matrix
 
+<!-- prettier-ignore -->
 | Operation | New material | Existing target | New Layer identity | Semantics requiring review |
 | --- | --- | --- | --- | --- |
 | Deposit/ALD | Required | None, except support surface | New Layer; Both creates two | Physical exposure and conformal coverage |

@@ -12,6 +12,7 @@ Previously `site/controllers/history-mutation-controller.js` restored a replay t
 
 ## Follow-up acceptance matrix
 
+<!-- prettier-ignore -->
 | Scenario | Required result |
 | --- | --- |
 | Preflight invalid Step 2 | No mutation of Base or existing History |
