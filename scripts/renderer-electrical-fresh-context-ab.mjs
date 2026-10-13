@@ -266,12 +266,13 @@ async function trial(enabled, index) {
     );
     row.stage = 'capture-product-frame';
     await page.evaluate(
-      ({ pixelSamples, captureDrawInputs, capturePhaseDraws }) => {
+      ({ pixelSamples, captureDrawInputs, capturePhaseDraws, captureFocusDraws }) => {
         window.__waferCadWebglProbe.arm({
           rasterDiscard: false,
           captureGlState: true,
           captureFramebuffer: true,
           captureDrawInputs,
+          captureFocusDraws,
           capturePhases: captureDrawInputs,
           captureRasterState: captureDrawInputs,
           capturePhaseDraws,
@@ -283,6 +284,7 @@ async function trial(enabled, index) {
       {
         pixelSamples: samples,
         captureDrawInputs: hardwareGpu,
+        captureFocusDraws: phaseWindowDiagnostic && hardwareGpu,
         capturePhaseDraws: hardwareGpu ? phaseMilestones : [],
       },
     );
@@ -341,6 +343,7 @@ async function trial(enabled, index) {
           vendor: frame.vendor,
           glState: frame.glState,
           drawInputs: frame.drawInputs || [],
+          focusDraws: frame.focusDraws || [],
           phases,
           phaseCoverage: frame.phaseCoverage || null,
           framebuffer: frame.framebuffer,
@@ -434,6 +437,32 @@ async function trial(enabled, index) {
           })(),
       },
     }));
+    if (phaseWindowDiagnostic && hardwareGpu) {
+      native.focusDraws = native.focusDraws.map(({ shaders, buffers, ...draw }) => ({
+        ...draw,
+        shaderHashes: (shaders || []).map(({ type, source }) => ({
+          type,
+          length: source.length,
+          hash: hashJson(source),
+        })),
+        buffers: {
+          attributes: (buffers?.attributes || []).map(({ bytes, ...attribute }) => ({
+            ...attribute,
+            ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+          })),
+          indices:
+            buffers?.indices &&
+            (() => {
+              const { bytes, ...index } = buffers.indices;
+              return {
+                ...index,
+                ...(bytes ? { sampledBytes: bytes.length, hash: hashJson(bytes) } : {}),
+              };
+            })(),
+        },
+      }));
+      row.focusDrawHash = hashJson(native.focusDraws);
+    }
     row.drawInputsHash = hashJson(native.drawInputs);
     row.phaseCheckpoints = native.phases;
     row.phaseCoverage = native.phaseCoverage;
