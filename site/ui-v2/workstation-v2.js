@@ -110,7 +110,7 @@
     window.WaferCadV2ActiveOverlays = overlays;
     const workbench = el(
       'div',
-      { class: 'p-workbench', 'data-layout': state.layout, 'data-boot': 'loading' },
+      { class: 'p-workbench', 'data-layout': state.layout },
       topbar,
       body,
       status,
