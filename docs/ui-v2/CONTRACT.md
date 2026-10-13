@@ -660,6 +660,10 @@ Concrete dynamic IDs also include all referencing files/lines in contract.json; 
 
 ## Dynamic structure and dataset sites
 
+This is a historical DOM operation inventory. The `site/controllers/tool-tabs-controller.js` row
+records the original snapshot; that module was removed during the 2026-10-13
+source reachability cleanup after confirming no runtime or test import.
+
 Every innerHTML assignment, createElement call, className/classList state change, dataset access, helper-class invocation and append/prepend/replace operation is recorded with the complete source expression in contract.json. No inferred parent is asserted for computed assembly. Review helper calls with variable arguments and unresolved operations before migrating a domain.
 
 | Runtime module                                              | Operation count | Kinds                                                                                                                                                               |
