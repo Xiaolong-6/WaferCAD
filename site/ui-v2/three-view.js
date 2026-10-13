@@ -134,7 +134,13 @@ export function createWorkstationThreeView({ store, workstation }) {
         startupPreview = false;
         progressive.viewFrame('three', 'ready');
       }
-    } else if (backgroundRefine && assemblyFinished && serial > refinementStartSerial) {
+    } else if (
+      backgroundRefine &&
+      assemblyFinished &&
+      serial > refinementStartSerial &&
+      host.dataset.renderQuality === 'quality' &&
+      host.dataset.renderState === 'ready'
+    ) {
       backgroundRefine = false;
       progressive.viewFrame('three', 'ready');
     }
