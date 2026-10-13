@@ -94,7 +94,15 @@ function fixture(kind, checkpointWorkspace, replayFailure = null) {
     displayLabel: 'Oxide',
     operation: { kind: 'add', replay: { version: 1, params: {} } },
   };
-  return { controller, node, original, events, get graph() { return graph; } };
+  return {
+    controller,
+    node,
+    original,
+    events,
+    get graph() {
+      return graph;
+    },
+  };
 }
 
 for (const kind of ['edit', 'insert']) {
@@ -102,16 +110,21 @@ for (const kind of ['edit', 'insert']) {
     test(`History ${kind} fails closed before modifying state when checkpoint is ${failure}`, async () => {
       const writer = () => {
         if (failure === 'declined') return false;
-        if (failure === 'quota') throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+        if (failure === 'quota')
+          throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
         throw new Error('IndexedDB transaction aborted');
       };
       const run = fixture(kind, writer);
-      const accepted = kind === 'edit'
-        ? await run.controller.beginEdit(run.node)
-        : await run.controller.beginInsert(run.node);
+      const accepted =
+        kind === 'edit'
+          ? await run.controller.beginEdit(run.node)
+          : await run.controller.beginInsert(run.node);
       assert.equal(accepted, false);
       assert.deepEqual(run.graph, run.original);
-      assert.deepEqual(run.events.filter((event) => typeof event === 'string'), ['checkpoint']);
+      assert.deepEqual(
+        run.events.filter((event) => typeof event === 'string'),
+        ['checkpoint'],
+      );
       assert.equal(run.controller.currentEdit(), null);
       assert.equal(run.controller.currentInsert(), null);
       assert.equal(run.events.at(-1).level, 'error');
@@ -122,16 +135,23 @@ for (const kind of ['edit', 'insert']) {
   for (const failure of ['reject', 'throw']) {
     test(`History ${kind} restores all Variant heads after partial replay ${failure}`, async () => {
       const run = fixture(kind, () => true, failure);
-      const accepted = kind === 'edit'
-        ? await run.controller.beginEdit(run.node)
-        : await run.controller.beginInsert(run.node);
+      const accepted =
+        kind === 'edit'
+          ? await run.controller.beginEdit(run.node)
+          : await run.controller.beginInsert(run.node);
       assert.equal(accepted, true);
       const gate = await run.controller.beforeApply();
       assert.equal(gate.mode, kind === 'edit' ? 'replace-replay' : 'current-replay');
       assert.equal(await run.controller.afterApply({ applyGate: gate }), true);
-      assert.deepEqual(run.graph, run.original, 'including Layer IDs, child heads and Recovery metadata');
       assert.deepEqual(
-        run.events.filter((event) => ['begin-interaction', 'replay', 'rollback', 'end-interaction'].includes(event)),
+        run.graph,
+        run.original,
+        'including Layer IDs, child heads and Recovery metadata',
+      );
+      assert.deepEqual(
+        run.events.filter((event) =>
+          ['begin-interaction', 'replay', 'rollback', 'end-interaction'].includes(event),
+        ),
         ['begin-interaction', 'replay', 'rollback', 'end-interaction'],
       );
       assert.equal(run.controller.currentEdit(), null);
