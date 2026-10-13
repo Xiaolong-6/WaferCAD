@@ -165,12 +165,13 @@ export function classifyRendererHardwareStep(step, report) {
     ];
     if (
       report.trials.some((trial, i) => trial.label !== expectedLabels[i]) ||
-      report.comparisons.some((comparison, i) =>
-        comparison.first !== expectedPairs[i][0] ||
-        comparison.second !== expectedPairs[i][1] ||
-        comparison.samePolicy !== expectedPairs[i][2] ||
-        typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
-        typeof comparison.framebufferIdentical !== 'boolean'
+      report.comparisons.some(
+        (comparison, i) =>
+          comparison.first !== expectedPairs[i][0] ||
+          comparison.second !== expectedPairs[i][1] ||
+          comparison.samePolicy !== expectedPairs[i][2] ||
+          typeof comparison.pixelDifference?.pixelIdentical !== 'boolean' ||
+          typeof comparison.framebufferIdentical !== 'boolean',
       )
     )
       return 'error';

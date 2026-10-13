@@ -58,6 +58,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [R8 targeted WebGL phase-window diagnostics](RENDERER_R8_PHASE_WINDOW_2026-10-12.md) — bounded draw-checkpoint localization of hardware raster drift, fail-closed evidence, and GPU-neutral command.
 - [R9 Renderer consolidation decision](RENDERER_R9_CONSOLIDATION_2026-10-12.md) — single-engine architecture, V4 safe-fix upstream promotion, measured tradeoffs, and exact hardware merge blockers.
 - [R9 physical GPU one-session acceptance runbook](RENDERER_R9_HARDWARE_RUNBOOK_2026-10-12.md) — one Windows command for V3 baseline, no-MSAA control and all three isolated V4 candidates; one evidence ZIP.
+- [R9 4×MSAA framebuffer preservation diagnostic](RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md) — default-framebuffer lifecycle hypothesis, true four-sample measurement and strict diagnostic-only boundaries.
 - [R9 Intel Iris Xe hardware acceptance](RENDERER_R9_INTEL_IRIS_XE_HARDWARE_2026-10-12.md) — verified native Intel raster parity, isolated CPU memory savings and platform boundaries.
 - [R9 RTX 3060 hardware diagnosis](RENDERER_R9_RTX3060_HARDWARE_2026-10-12.md) — MSAA-dependent fresh-context drift, strict parity blockers and candidate timing limits.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
