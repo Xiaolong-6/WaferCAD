@@ -247,7 +247,9 @@ export async function clearWorkspaceRecoveryPoints() {
   }
 }
 
-export async function loadWorkspaceState() {
+// Called by the restore worker. Keep migration, validation and its mandatory
+// pre-migration Recovery checkpoint within this existing transactional owner.
+export async function loadWorkspaceStateDirect() {
   const database = await openDatabase();
   let record = null;
   let metadata = null;
@@ -275,6 +277,42 @@ export async function loadWorkspaceState() {
     });
   }
   return migrated;
+}
+
+// Only one validated project is posted back to the UI. IndexedDB reads,
+// geometry dictionary expansion and strict schema checks run in the worker.
+// Older environments without Worker retain the exact synchronous fallback.
+export async function loadWorkspaceState() {
+  if (typeof globalThis.Worker !== 'function') return loadWorkspaceStateDirect();
+  return new Promise((resolve, reject) => {
+    let worker;
+    let settled = false;
+    const finish = (error, project) => {
+      if (settled) return;
+      settled = true;
+      worker?.terminate();
+      if (error) reject(error);
+      else resolve(project);
+    };
+    try {
+      const url = new URL('./workspace-restore-worker.js', import.meta.url);
+      url.search = new URL(import.meta.url).search;
+      worker = new globalThis.Worker(url);
+      worker.onmessage = ({ data }) => {
+        if (data?.id !== 1) return;
+        if (data.type === 'done') finish(null, data.project ?? null);
+        else if (data.type === 'error')
+          finish(new Error(data.message || 'Workspace restore failed.'));
+      };
+      worker.onerror = (event) =>
+        finish(new Error(event.message || 'Workspace restore worker failed.'));
+      worker.onmessageerror = () =>
+        finish(new Error('Workspace restore worker returned unreadable data.'));
+      worker.postMessage({ id: 1, action: 'load-current' });
+    } catch (error) {
+      finish(error);
+    }
+  });
 }
 
 export async function clearWorkspaceState() {
