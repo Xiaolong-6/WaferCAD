@@ -43,7 +43,7 @@ try {
   });
   state = await snapshot();
   assert.match(state.source, /photodetector-literature-examples\.wafercad$/);
-  assert.equal(state.workflow.steps.length, 46);
+  assert.equal(state.workflow.steps.length, 47);
   assert.equal(state.workflow.branches.length, 7);
   assert.ok(state.hash);
   assert.equal(
@@ -116,8 +116,8 @@ try {
   assert.equal(stagedProject, true);
   await open('/app.html?start=staged');
   state = await snapshot();
-  assert.equal(state.model.layers.length, 5, 'Staged project imports the complete model');
-  assert.equal(state.workflow.steps.length, 46, 'Staged project preserves History');
+  assert.equal(state.model.layers.length, 6, 'Staged project imports the complete model');
+  assert.equal(state.workflow.steps.length, 47, 'Staged project preserves History');
   assert.equal(
     await page.evaluate(async () =>
       Boolean(await (await import('/startup-file.js')).readStartupFile()),
@@ -162,8 +162,8 @@ try {
           : null;
       });
       assert.ok(recovery, 'Replacing a saved workspace creates a Recovery point');
-      assert.equal(recovery.layers, 5, 'Recovery contains the displaced physical model');
-      assert.equal(recovery.steps, 46, 'Recovery contains the displaced History');
+      assert.equal(recovery.layers, 6, 'Recovery contains the displaced physical model');
+      assert.equal(recovery.steps, 47, 'Recovery contains the displaced History');
       assert.equal(recovery.branches, 7, 'Recovery contains every Variant');
     }
     await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);

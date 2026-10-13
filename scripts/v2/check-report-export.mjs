@@ -43,7 +43,7 @@ try {
     });
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const before = await snapshot();
-    assert.equal(before.workflow.steps.length, 46);
+    assert.equal(before.workflow.steps.length, 47);
     assert.equal(before.workflow.branches.length, 7);
     await page.locator('.p-nav [data-action="domain:project"]').click();
     const button = page.locator('#exportReportBtn');
@@ -57,7 +57,7 @@ try {
     const entries = zipFiles(file);
     const manifest = JSON.parse(entries.get('manifest.json'));
     const recipe = JSON.parse(entries.get('recipe.json'));
-    assert.equal(manifest.historyStepCount, 46);
+    assert.equal(manifest.historyStepCount, before.workflow.steps.length);
     assert.equal(manifest.branches.length, 7);
     assert.ok(Array.isArray(recipe.steps));
     assert.ok(entries.has('index.html'));
@@ -66,7 +66,7 @@ try {
     assert.ok(entries.has('history/steps-0001.html'));
     assert.ok(entries.has('assets/current-main.png') || manifest.warnings.length > 0);
     const steps = JSON.parse(entries.get('history/steps-0001.json'));
-    assert.equal(steps.length, 46);
+    assert.equal(steps.length, before.workflow.steps.length);
     assert.equal(steps[0].id, before.workflow.steps[0].id);
     assert.ok(entries.get('index.html').includes('WaferCAD / Process Report'));
     const after = await snapshot();

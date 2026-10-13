@@ -51,7 +51,7 @@ test('welcome example catalog promotes eight literature-backed project families'
   assert.equal(branches.get('ge-fig15-b')?.parentBranchId, 'ge-fig15-common');
 
   assert.equal(packed.snapshotBranches.branches.length, 7);
-  assert.equal(packed.snapshotBranches.nodes.length, 46);
+  assert.equal(packed.snapshotBranches.nodes.length, 47);
   assert.equal(packed.snapshots.length, 20);
 
   const allModels = [
