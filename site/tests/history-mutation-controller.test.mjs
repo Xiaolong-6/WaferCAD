@@ -517,6 +517,7 @@ test('thrown insertion replay restores the complete pre-insert Variant state', a
   };
   const initial = structuredClone(graph);
   const events = [];
+  let rollbackAvailable = true;
   const snapshotManager = {
     insertBeforeContext: () => ({
       editable: true,
@@ -559,6 +560,7 @@ test('thrown insertion replay restores the complete pre-insert Variant state', a
     captureReplayTransaction: () => structuredClone(graph),
     restoreReplayTransaction: (value) => {
       events.push('rollback');
+      if (!rollbackAvailable) return false;
       graph = structuredClone(value);
       return true;
     },
@@ -581,4 +583,13 @@ test('thrown insertion replay restores the complete pre-insert Variant state', a
     'begin', 'rollback', 'end',
   ]);
   assert.match(events.at(-1), /Process worker terminated/);
+
+  // A second failing replay must never claim that the project was restored.
+  rollbackAvailable = false;
+  assert.equal(await controller.beginInsert(node), true);
+  const secondGate = await controller.beforeApply();
+  assert.equal(await controller.afterApply({ applyGate: secondGate }), true);
+  assert.equal(graph.heads.main, 'partial-step');
+  assert.match(events.at(-1), /Automatic rollback failed/);
+  assert.doesNotMatch(events.at(-1), /Original Variant restored/);
 });

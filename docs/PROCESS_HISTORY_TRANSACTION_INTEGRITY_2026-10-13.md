@@ -8,7 +8,7 @@ History Insert and Edit are separate graph transactions. A downstream replay fai
 
 ## Confirmed problem and scoped fix
 
-Previously `site/controllers/history-mutation-controller.js` restored a replay transaction only when `replayOperations()` returned `{ ok: false }`; a thrown error/rejected worker path bypassed restoration (though the interaction gate closed in `finally`). Both insertion and editing now invoke their existing transaction restoration hook on exceptions and report the exception as a failed replay. The regression drives a mutated model and two-Variant graph through a worker rejection, then checks full recovery and balanced interaction ownership.
+Previously `site/controllers/history-mutation-controller.js` restored a replay transaction only when `replayOperations()` returned `{ ok: false }`; a thrown error/rejected worker path bypassed restoration (though the interaction gate closed in `finally`). Both insertion and editing now invoke their existing transaction restoration hook on exceptions and report the exception as a failed replay. If restoration itself fails or declines, the UI reports an error and directs the user to the pre-edit/insert Recovery checkpoint without making a false claim that the workspace was restored. The regression drives a mutated model and two-Variant graph through a worker rejection, then checks full recovery and balanced interaction ownership.
 
 ## Follow-up acceptance matrix
 
