@@ -5161,8 +5161,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           sceneSignature(exportModel, getClipGeometry(), getInspection() || {}),
       ),
       variantMatches:
-        !presentationObjects.size ||
-        host.dataset.rendererPresentedVariant === presentationMode(),
+        !presentationObjects.size || host.dataset.rendererPresentedVariant === presentationMode(),
     });
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),
