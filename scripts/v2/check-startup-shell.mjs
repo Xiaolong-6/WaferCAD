@@ -46,8 +46,10 @@ try {
     await route.continue();
   });
   try {
+    // Commit does not wait for the entry module's top-level await, whose
+    // project fetch is deliberately paused below.
     await page.goto(`${base}/app.html?start=example&example=m3d`, {
-      waitUntil: 'domcontentloaded',
+      waitUntil: 'commit',
       timeout: 120000,
     });
     let requestTimeout;
