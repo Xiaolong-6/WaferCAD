@@ -1,0 +1,121 @@
+name: Both-face examples integration
+
+on:
+  push:
+    branches:
+      - feat/examples-both-face-consolidation-20261013
+    paths:
+      - .github/workflows/examples-both-face.yml
+      - scripts/maintenance/rebuild-photodetectors.mjs
+      - scripts/maintenance/consolidate-perc-both-face.mjs
+      - scripts/maintenance/consolidate-tandem-texture-both.mjs
+      - scripts/maintenance/backfill-example-recipes.mjs
+      - site/process-face-execution.js
+      - site/process-recipe.js
+      - site/controllers/process-panel-controller.js
+      - site/controllers/process-recipe-controller.js
+      - site/tests/examples-both-face-migration.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    name: Rebuild projects and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild all three examples
+        run: |
+          node scripts/maintenance/rebuild-photodetectors.mjs --write
+          node scripts/maintenance/consolidate-perc-both-face.mjs --write
+          node scripts/maintenance/consolidate-tandem-texture-both.mjs --write
+          node scripts/maintenance/backfill-example-recipes.mjs --write --id=perc-solar-cells-point-contacts
+          node scripts/maintenance/backfill-example-recipes.mjs --write --id=fully-textured-perovskite-silicon-tandem
+          node scripts/build-example-previews.mjs --write --id=photodetector-literature
+          node scripts/build-example-previews.mjs --write --id=perc-point-contact-solar-cell
+          node scripts/build-example-previews.mjs --write --id=fully-textured-perovskite-silicon-tandem
+          node scripts/maintenance/sync-example-recipe-previews.mjs --write
+      - name: Format changed code
+        run: |
+          npx prettier --write scripts/maintenance/rebuild-photodetectors.mjs scripts/maintenance/consolidate-perc-both-face.mjs scripts/maintenance/consolidate-tandem-texture-both.mjs scripts/maintenance/backfill-example-recipes.mjs site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs
+      - name: Targeted scientific and persistence validation
+        run: |
+          node --test site/tests/examples-both-face-migration.test.mjs site/tests/example-recipe-audit.test.mjs site/tests/example-structure.test.mjs site/tests/process-both-face.test.mjs
+          node scripts/maintenance/rebuild-photodetectors.mjs
+          node scripts/maintenance/backfill-example-recipes.mjs --id=perc-solar-cells-point-contacts
+          node scripts/maintenance/backfill-example-recipes.mjs --id=fully-textured-perovskite-silicon-tandem
+          node scripts/maintenance/sync-example-recipe-previews.mjs
+          npm run check:ci
+      - run: git diff --check
+      - name: Commit validated production assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/maintenance site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs site/examples tests/fixtures/project-io/example-thumbnails.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(examples): regenerate accepted Both-face projects, previews and recipe checksums"
+            git push origin HEAD:feat/examples-both-face-consolidation-20261013
+          fi
+      - name: Preserve validation artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: both-face-regeneration-diagnostic
+          path: |
+            site/examples/photodetector-literature-examples.wafercad
+            site/examples/perc-solar-cells-point-contacts.wafercad
+            site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+          retention-days: 7
+
+  replay:
+    name: Browser replay ${{ matrix.example }}
+    needs: regenerate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: photodetector-literature
+            variant: black-si-fig1a-final
+          - example: perc-point-contact-solar-cell
+            variant: branch-mutlq5qq-dhzr8q
+          - example: fully-textured-perovskite-silicon-tandem
+            variant: branch-mutohtl8-v64iv4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/examples-both-face-consolidation-20261013
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Run local example server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Real Chromium Run All
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=${{ matrix.example }} --variant=${{ matrix.variant }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: both-face-${{ matrix.example }}
+          path: test-results/example-recipe-runall/
+          if-no-files-found: ignore
+          retention-days: 7
