@@ -424,3 +424,84 @@ test('failed replay restores the pre-edit transaction and closes the persistence
   assert.equal(endCount, 1);
   assert.match(statuses.at(-1)?.message || '', /Original Variant restored/);
 });
+
+
+test('thrown downstream replay restores the pre-edit graph and releases interaction ownership', async () => {
+  let graph = {
+    model: { processRevision: 8, layers: [{ id: 'film-a', name: 'Oxide' }] },
+    branches: [
+      { id: 'main', headNodeId: 'node-d' },
+      { id: 'control', headNodeId: 'node-b' },
+    ],
+  };
+  const before = structuredClone(graph);
+  const events = [];
+  const snapshotManager = {
+    stepEditContext: () => ({
+      editable: true,
+      nodeId: 'node-b',
+      branchId: 'main',
+      branchName: 'Main',
+      parentNodeId: 'node-a',
+      downstreamCount: 1,
+      downstreamReplayable: true,
+      canReplaceCurrentVariant: true,
+      dependentVariants: [],
+      downstream: [
+        { id: 'node-c', operation: { kind: 'record', replay: { version: 1 } }, state: {} },
+      ],
+    }),
+    restoreStepInput: () => true,
+    restoreActiveBranchHead: () => true,
+    continuationContext: () => ({ branchId: 'main', cursorNodeId: 'node-a', snapshotId: null }),
+    canRecordOperation: () => true,
+    canCreateVariant: () => true,
+    activeBranch: () => ({ id: 'main', name: 'Main' }),
+    replaceBranchTailFrom: () => true,
+  };
+  const controller = createHistoryMutationController({
+    snapshotManager,
+    getProcessPanelController: () => ({
+      canReplayOperation: () => true,
+      loadOperationForEdit: () => true,
+      replayOperations: async () => {
+        graph.model.processRevision = 10;
+        graph.model.layers.push({ id: 'orphan', name: 'Incomplete' });
+        graph.branches[0].headNodeId = 'orphan';
+        throw new Error('worker context terminated');
+      },
+    }),
+    confirmationDialog: {
+      ask: async () => 'replace-replay',
+      confirm: async () => true,
+    },
+    checkpointWorkspace: async () => true,
+    captureReplayTransaction: () => structuredClone(graph),
+    restoreReplayTransaction: (transaction) => {
+      events.push('rollback');
+      graph = structuredClone(transaction);
+      return true;
+    },
+    beginReplayInteraction: () => events.push('begin'),
+    endReplayInteraction: () => events.push('end'),
+    status: (message) => events.push(message),
+  });
+  assert.equal(
+    await controller.beginEdit({
+      id: 'node-b',
+      replayable: true,
+      operation: { kind: 'add', replay: { version: 1, params: {} } },
+    }),
+    true,
+  );
+  const gate = await controller.beforeApply();
+  assert.equal(gate.mode, 'replace-replay');
+  assert.equal(await controller.afterApply({ applyGate: gate }), true);
+  assert.deepEqual(graph, before, 'worker rejection must restore layers and both Variant HEADs');
+  assert.deepEqual(events.filter((entry) => ['begin', 'rollback', 'end'].includes(entry)), [
+    'begin',
+    'rollback',
+    'end',
+  ]);
+  assert.match(events.at(-1), /worker context terminated/);
+});

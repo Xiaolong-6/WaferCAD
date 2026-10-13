@@ -284,6 +284,15 @@ export function createHistoryMutationController({
         taskLabel: `Recomputing ${replaySteps.length} existing Step${replaySteps.length === 1 ? '' : 's'}…`,
       });
       if (!replay?.ok) restoreReplayTransaction(transaction);
+    } catch (error) {
+      // A rejected worker/controller replay is also a failed transaction.
+      // Restore the entire pre-edit/pre-insert workspace, not just the last Step.
+      restoreReplayTransaction(transaction);
+      replay = {
+        ok: false,
+        completed: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
     } finally {
       endReplayInteraction();
     }
@@ -365,6 +374,15 @@ export function createHistoryMutationController({
         initialLayerIdMap,
       });
       if (!replay?.ok) restoreReplayTransaction(transaction);
+    } catch (error) {
+      // A rejected worker/controller replay is also a failed transaction.
+      // Restore the entire pre-edit/pre-insert workspace, not just the last Step.
+      restoreReplayTransaction(transaction);
+      replay = {
+        ok: false,
+        completed: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
     } finally {
       endReplayInteraction();
     }
