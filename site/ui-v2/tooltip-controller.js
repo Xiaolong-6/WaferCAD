@@ -89,9 +89,7 @@
       }
       if (y == null) {
         const below = rect.bottom + gap;
-        y = below + height <= innerHeight - edge
-          ? below
-          : Math.max(edge, rect.top - height - gap);
+        y = below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap);
       }
       node.style.left = `${x}px`;
       node.style.top = `${y}px`;
