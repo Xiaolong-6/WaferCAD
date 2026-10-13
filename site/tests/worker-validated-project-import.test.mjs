@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { createProjectStateController } = await import('../controllers/project-state-controller.js');
-const { createSnapshotManager } = await import('../workspace-snapshots.js');
 
 function controller(readValidatedFile) {
   return createProjectStateController({
