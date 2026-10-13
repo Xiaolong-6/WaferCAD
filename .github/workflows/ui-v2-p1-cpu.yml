@@ -6,6 +6,7 @@ on:
       - feat/ui-v2-progressive-startup-20261013
     paths:
       - 'scripts/v2/profile-startup-ci.mjs'
+      - 'site/renderer-instancing.js'
       - '.github/workflows/ui-v2-p1-cpu.yml'
   workflow_dispatch:
 
