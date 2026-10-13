@@ -852,6 +852,7 @@ export function createProcessPanelController({
   async function applyOperation({
     canonicalLengthUm = null,
     canonicalSurface = null,
+    canonicalFaceSurfaces = null,
     canonicalFace = null,
     canonicalTargetLayerId = null,
     canonicalEtchTargetLayerId = null,
@@ -1000,6 +1001,7 @@ export function createProcessPanelController({
       params = { type, name, targetLayerId, thickness, face: processFace };
     if (type === 'etch') {
       params.surface = roughSurface;
+      if (canonicalFaceSurfaces) params.faceSurfaces = structuredClone(canonicalFaceSurfaces);
       params.etchProfile = etchProfile;
       params.etchTargetLayerIds = etchTargetLayerId ? [etchTargetLayerId] : [];
       if (planarizeEtch) params.targetZ = thickness;
