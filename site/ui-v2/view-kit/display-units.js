@@ -22,15 +22,27 @@ export function createDisplayUnits(getState) {
 export function convertPolygonPointUnits(text, previous, unit) {
   return text.replace(
     /(^|[,\s])([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?=$|[,\s])/gm,
-    (_match, separator, value) => separator + String(fromMicron(toMicron(value, previous), unit)),
+    (match, separator, value) => {
+      const physical = toMicron(value, previous);
+      const converted = fromMicron(physical, unit);
+      // Reject overflow rather than introducing Infinity into an editable mask
+      // vertex. The Draw controller remains responsible for input validation.
+      return Number.isFinite(physical) && Number.isFinite(converted)
+        ? separator + String(converted)
+        : match;
+    },
   );
 }
 export function syncDisplayUnitFields(root, unit) {
   for (const control of root.querySelectorAll('[data-display-length]')) {
     const previous = control.dataset.displayLength;
     if (previous === unit) continue;
-    if (control.value !== '' && Number.isFinite(Number(control.value)))
-      control.value = String(fromMicron(toMicron(control.value, previous), unit));
+    if (control.value !== '' && Number.isFinite(Number(control.value))) {
+      const physical = toMicron(control.value, previous);
+      const converted = fromMicron(physical, unit);
+      if (Number.isFinite(physical) && Number.isFinite(converted))
+        control.value = String(converted);
+    }
     control.dataset.displayLength = unit;
     control.step = unit === 'nm' ? '0.1' : unit === 'mm' ? '0.0000001' : '0.0001';
     const label = control.closest('label')?.querySelector('.wc-label');
