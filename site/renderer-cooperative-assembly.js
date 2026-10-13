@@ -6,9 +6,5 @@ export function shouldYieldDuringSceneAssembly({
   sidewallCount = 0,
   annotationCount = 0,
 } = {}) {
-  return (
-    arrayInstances >= 64 ||
-    capCount + sidewallCount >= 96 ||
-    annotationCount >= 32
-  );
+  return arrayInstances >= 64 || capCount + sidewallCount >= 96 || annotationCount >= 32;
 }
