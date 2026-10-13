@@ -57,6 +57,7 @@ try {
     const entries = zipFiles(file);
     const manifest = JSON.parse(entries.get('manifest.json'));
     const recipe = JSON.parse(entries.get('recipe.json'));
+    const keyframes = JSON.parse(entries.get('keyframe-plan.json'));
     assert.equal(manifest.historyStepCount, before.workflow.steps.length);
     assert.equal(manifest.branches.length, 7);
     assert.ok(Array.isArray(recipe.steps));
@@ -68,7 +69,76 @@ try {
     const steps = JSON.parse(entries.get('history/steps-0001.json'));
     assert.equal(steps.length, before.workflow.steps.length);
     assert.equal(steps[0].id, before.workflow.steps[0].id);
+    assert.equal(manifest.keyframePlan.path, 'keyframe-plan.json');
+    assert.ok(keyframes.generatedImages >= 1, 'Real saved Photodetector History must yield an SVG');
+    assert.ok(keyframes.plannedImages <= keyframes.imageBudget);
+    assert.ok(keyframes.generatedImages <= keyframes.imageBudget);
+    assert.equal(manifest.keyframePlan.generatedImages, keyframes.generatedImages);
+    assert.equal(manifest.historicalSections.length, keyframes.generatedImages);
+    for (const figure of manifest.historicalSections) {
+      const step = JSON.parse(entries.get('history/steps-0001.json')).find(
+        (item) => item.id === figure.nodeId,
+      );
+      assert.ok(step?.restorable, 'SVG must be backed by a real restorable Process Step');
+      assert.equal(step.processRevision, figure.processRevision);
+      assert.equal(figure.evidence.sourceNodeId, figure.nodeId);
+      assert.equal(figure.evidence.sourceProcessRevision, step.processRevision);
+      assert.equal(figure.evidence.provenanceVerified, true);
+      assert.ok(figure.evidence.pixelsPerUm > 0);
+      assert.ok(figure.evidence.physicalSliceCount > 0);
+      assert.ok(figure.path.startsWith('history/figures/section-step-'));
+      assert.match(entries.get(figure.path), /<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    }
+    assert.ok(
+      keyframes.keyframes.every((item) =>
+        steps.some((step) => step.id === item.nodeId && step.restorable),
+      ),
+    );
+    assert.match(entries.get('index.html'), /historical Section figures generated/);
     assert.ok(entries.get('index.html').includes('WaferCAD / Process Report'));
+    const isolatedSection = await page.evaluate(async () => {
+      const { createModel } = await import('/model.js');
+      const worker = new Worker('/report-history-section-worker.js');
+      try {
+        return await new Promise((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('Historical SVG worker timed out')),
+            30000,
+          );
+          worker.onmessage = ({ data }) => {
+            if (data.id !== 'isolated-section-test') return;
+            if (data.type === 'error') {
+              clearTimeout(timer);
+              reject(new Error(data.message));
+            } else if (data.type === 'done') {
+              clearTimeout(timer);
+              resolve(data);
+            }
+          };
+          worker.onerror = ({ message }) => {
+            clearTimeout(timer);
+            reject(new Error(message));
+          };
+          worker.postMessage({
+            id: 'isolated-section-test',
+            nodeId: 'synthetic-node',
+            state: {
+              model: createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 }),
+              section: { a: [-9, 0], b: [9, 0] },
+            },
+          });
+        });
+      } finally {
+        worker.terminate();
+      }
+    });
+    assert.equal(isolatedSection.evidence.nodeId, 'synthetic-node');
+    assert.deepEqual(isolatedSection.evidence.layerIds, ['base']);
+    assert.equal(isolatedSection.evidence.lineLengthUm, 18);
+    assert.equal(isolatedSection.evidence.zMinUm, -5);
+    assert.equal(isolatedSection.evidence.zMaxUm, 5);
+    assert.equal(isolatedSection.evidence.provenanceVerified, false);
+    assert.match(isolatedSection.svg, /data-layer-id="base"/);
     const after = await snapshot();
     assert.deepEqual(after.model, before.model, 'Export must not change the canonical model');
     assert.deepEqual(after.workflow.steps, before.workflow.steps, 'Export must not change History');

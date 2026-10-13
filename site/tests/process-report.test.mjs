@@ -86,8 +86,8 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   const archive = await entries(bundle.blob);
   assert.equal(bundle.stepCount, 1000);
   assert.equal(bundle.imageCount, 0);
-  assert.equal(bundle.fileCount, 45);
-  assert.equal(archive.map.size, 45);
+  assert.equal(bundle.fileCount, 46);
+  assert.equal(archive.map.size, 46);
   assert.ok(archive.map.has('history/steps-0001.html'));
   assert.ok(archive.map.has('history/steps-0951.html'));
   const index = archive.content('index.html');
@@ -121,6 +121,12 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   assert.ok(!archive.content('index.html').includes('<script>alert(1)</script>'));
   const manifest = JSON.parse(archive.content('manifest.json'));
   assert.equal(manifest.historyStepCount, 1000);
+  assert.equal(manifest.keyframePlan.path, 'keyframe-plan.json');
+  const plan = JSON.parse(archive.content('keyframe-plan.json'));
+  assert.equal(plan.historyNodeCount, 1000);
+  assert.equal(plan.generatedImages, 0);
+  assert.ok(plan.plannedImages <= plan.imageBudget);
+  assert.match(archive.content('index.html'), /No historical Section images were generated/);
   assert.equal(manifest.branches.length, 2);
   assert.equal(manifest.bookmarks.length, 1);
   assert.equal(JSON.parse(archive.content('recipe.json')).steps[0].params.thicknessUm, 0.00035);
@@ -140,6 +146,93 @@ test('reports include only supplied captured canvases and expose warnings', asyn
   assert.match(archive.content('index.html'), /3D view was not rendered/);
   assert.match(archive.content('report.md'), /assets\/current-main.png/);
   assert.match(archive.content('index.html'), /captured visible canvas/);
+});
+
+test('saved historical Section SVG and revision evidence round-trip inside the portable report ZIP', async () => {
+  const data = sample(4);
+  const source = data.steps[0];
+  const path = 'history/figures/section-step-0001.svg';
+  const evidence = {
+    nodeId: source.id,
+    sourceNodeId: source.id,
+    sourceProcessRevision: source.processRevision,
+    provenanceVerified: true,
+    view: 'section',
+    lineAUm: [-9, 0],
+    lineBUm: [9, 0],
+    layerIds: ['layer-1'],
+  };
+  const historicalSections = [
+    {
+      nodeId: source.id,
+      processRevision: source.processRevision,
+      number: source.number,
+      path,
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="20"/></svg>',
+      evidence,
+    },
+  ];
+  const bundle = buildProcessReportArchive(data, {
+    historicalSections,
+    historicalFailures: [{ nodeId: data.steps[1].id, reason: 'missing-section' }],
+  });
+  const archive = await entries(bundle.blob);
+  const manifest = JSON.parse(archive.content('manifest.json'));
+  const plan = JSON.parse(archive.content('keyframe-plan.json'));
+  assert.equal(bundle.historicalImageCount, 1);
+  assert.equal(manifest.keyframePlan.generatedImages, 1);
+  assert.equal(manifest.historicalSections[0].nodeId, source.id);
+  assert.equal(manifest.historicalSections[0].processRevision, source.processRevision);
+  assert.match(archive.content(path), /<rect width="10"/);
+  assert.match(archive.content('index.html'), /history\/figures\/section-step-0001.svg/);
+  assert.match(archive.content('report.md'), /section-step-0001.svg/);
+  assert.equal(plan.keyframes.find((item) => item.nodeId === source.id).status, 'captured');
+  assert.equal(
+    plan.keyframes.find((item) => item.nodeId === source.id).evidence.provenanceVerified,
+    true,
+  );
+  assert.equal(plan.keyframes.find((item) => item.nodeId === data.steps[1].id).status, 'failed');
+});
+
+test('unverified historical figures and unscheduled node IDs are rejected atomically', () => {
+  const data = sample(3);
+  const base = {
+    nodeId: data.steps[0].id,
+    processRevision: data.steps[0].processRevision,
+    number: 1,
+    path: 'history/figures/section-step-0001.svg',
+    svg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    evidence: {
+      nodeId: data.steps[0].id,
+      sourceNodeId: data.steps[0].id,
+      sourceProcessRevision: data.steps[0].processRevision,
+      provenanceVerified: true,
+      view: 'section',
+    },
+  };
+  assert.throws(
+    () =>
+      buildProcessReportArchive(data, {
+        historicalSections: [
+          { ...base, evidence: { ...base.evidence, provenanceVerified: false } },
+        ],
+      }),
+    /Unverified/,
+  );
+  assert.throws(
+    () =>
+      buildProcessReportArchive(data, {
+        historicalSections: [{ ...base, nodeId: 'missing-node' }],
+      }),
+    /Unverified/,
+  );
+  assert.throws(
+    () =>
+      buildProcessReportArchive(data, {
+        historicalSections: [{ ...base, svg: '<svg onload="attack()"></svg>' }],
+      }),
+    /Unverified/,
+  );
 });
 
 test('Markdown labels cannot inject another report link', async () => {

@@ -83,11 +83,22 @@ try {
         await page.locator('.wc-context-tooltip:visible').waitFor();
         assert.match(await page.locator('.wc-context-tooltip').innerText(), /Apply color/);
         await page.locator('[data-action="domain:process"]').click();
+        // The cursor is still over the navigation tab after click. Avoid
+        // reading its previous tooltip while keyboard focus moves to Face.
+        await page.mouse.move(0, 0);
         const face = page.locator('#faceToggleBtn');
         assert.equal(await face.getAttribute('data-help'), 'process.face');
         await face.selectOption('both');
         await face.focus();
-        await page.locator('.wc-context-tooltip:visible').waitFor();
+        await page.waitForFunction(() => {
+          const control = document.getElementById('faceToggleBtn');
+          const tooltip = document.getElementById('wc-context-tooltip');
+          return (
+            control?.getAttribute('aria-describedby')?.split(/\s+/).includes(tooltip?.id) &&
+            !tooltip.hidden &&
+            /front, then the back.*two separate material layers/s.test(tooltip.textContent)
+          );
+        });
         assert.match(
           await page.locator('.wc-context-tooltip').innerText(),
           /front, then the back.*two separate material layers/s,
