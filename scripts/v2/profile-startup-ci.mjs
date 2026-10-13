@@ -56,7 +56,7 @@ function hotFunctions(profile) {
     const key = [frame.functionName || '(anonymous)', url, frame.lineNumber ?? -1].join('|');
     const entry = functions.get(key) || {
       function: frame.functionName || '(anonymous)',
-      file: url.replace(/^.*\\//, '').replace(/^.*\//, ''),
+      file: url.split('/').at(-1) || '',
       line: (frame.lineNumber ?? -1) + 1,
       samples: 0,
     };
