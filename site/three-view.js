@@ -42,6 +42,10 @@ import { runRendererUnitsInSlices } from './renderer-responsive-budget.js';
 import { createRendererLatencyTracker } from './renderer-responsive-latency.js';
 import { createRendererLongTaskSampler } from './renderer-responsive-jank.js';
 import { createRendererGpuTimer } from './renderer-responsive-gpu-timer.js';
+import {
+  collectRendererGpuUploadUnits,
+  prewarmRendererGpuUploads,
+} from './renderer-responsive-gpu-prewarm.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -138,6 +142,8 @@ export function createThreeView({
   const responsiveRoughBudget = rendererParams.get('rendererResponsiveRoughBudget') === '1';
   const responsiveInputMetrics = rendererParams.get('rendererResponsiveMetrics') === '1';
   const responsiveGpuMetrics = rendererParams.get('rendererResponsiveGpuTimer') === '1';
+  const responsiveGpuPrewarm = rendererParams.get('rendererResponsiveGpuPrewarm') === '1';
+  const responsiveForegroundFrames = rendererParams.get('rendererResponsiveForeground') === '1';
   const responsiveLatency = createRendererLatencyTracker();
   const responsiveLongTasks = createRendererLongTaskSampler();
   // LongTask entries represent event-loop blocking, not GPU/compositor work.
@@ -267,6 +273,75 @@ export function createThreeView({
   let sceneVariantCache = new Map();
   let previewRestoreTimer = null;
   const previewHiddenMeshes = new Map();
+
+  // P2.6: Pre-upload distinct geometry buffers through the existing renderer
+  // on a tiny offscreen target. No second context, approximate geometry, or
+  // partially assembled scientific frame is ever presented to the user.
+  async function prewarmGpuPresentation(objects, isCurrent) {
+    if (!responsiveGpuPrewarm || !renderer || !camera) return true;
+    const units = collectRendererGpuUploadUnits(objects);
+    if (!units.length) return true;
+    if (webglContextStatus !== 'ready') return false;
+    const previousTarget = renderer.getRenderTarget();
+    const target = new THREE.WebGLRenderTarget(1, 1, {
+      depthBuffer: false,
+      stencilBuffer: false,
+    });
+    const warmingScene = new THREE.Scene();
+    host.dataset.rendererGpuPrewarmStatus = 'warming';
+    try {
+      const result = await prewarmRendererGpuUploads(
+        units,
+        (batch) => {
+          try {
+            for (const original of batch) {
+              const proxy = original.clone(false);
+              proxy.visible = true;
+              proxy.frustumCulled = false;
+              warmingScene.add(proxy);
+            }
+            renderer.setRenderTarget(target);
+            renderer.render(warmingScene, camera);
+          } finally {
+            renderer.setRenderTarget(previousTarget);
+            // Proxies share source geometry/material. Never dispose either.
+            warmingScene.clear();
+          }
+        },
+        {
+          now: () => performance.now(),
+          yieldControl: () =>
+            yieldRendererAssembly({
+              requestFrame: requestAnimationFrame,
+              postTask: (resume) => setTimeout(resume, 0),
+            }),
+          isCurrent: () => isCurrent() && webglContextStatus === 'ready',
+          foregroundBusy: () => interacting,
+          maxUnitsPerBatch: 4,
+        },
+      );
+      host.dataset.rendererGpuPrewarmUnits = String(result.uploadedUnits);
+      host.dataset.rendererGpuPrewarmBatches = String(result.batches);
+      host.dataset.rendererGpuPrewarmYields = String(result.yields);
+      host.dataset.rendererGpuPrewarmMaxBatchMs = String(result.maxBatchMs);
+      host.dataset.rendererGpuPrewarmStatus = result.completed ? 'ready' : 'cancelled';
+      return result.completed;
+    } catch (error) {
+      host.dataset.rendererGpuPrewarmStatus = 'failed';
+      if (webglContextStatus !== 'ready') return false;
+      // Optional GPU warmup must not break a scene that the normal renderer
+      // can still draw. The scientific final frame remains the authority.
+      console.warn('Experimental GPU prewarm failed; using normal rendering.', error);
+      return true;
+    } finally {
+      try {
+        renderer.setRenderTarget(previousTarget);
+      } finally {
+        warmingScene.clear();
+        target.dispose();
+      }
+    }
+  }
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -2760,6 +2835,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.rendererRoughAssemblyCancelled = 'true';
       return false;
     }
+    // Pre-upload staged exact mesh buffers on the existing GL context before
+    // replacing the still-visible interactive rough preview.
+    if (
+      responsiveGpuPrewarm &&
+      !(await prewarmGpuPresentation(
+        [...staged],
+        () => current() && group === sceneGroup,
+      ))
+    ) {
+      releaseAdaptiveRoughSubset(staged);
+      host.dataset.rendererRoughAssemblyCancelled = 'true';
+      return false;
+    }
     // The old representation is retired only once the new exact mesh set is
     // complete. applyPresentationState makes the staged set visible at commit.
     releaseAdaptiveRoughSubset(retained);
@@ -3773,10 +3861,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       // Building a new opacity variant must not draw a half-assembled 3D scene.
       // Leave the last committed canvas frame visible until the atomic swap.
+      // Retained committed groups can be redrawn while a hidden replacement
+      // is prepared. Only opt in when an actual complete foreground group is
+      // available; otherwise preserve the existing final-only frame policy.
+      const retainedForeground =
+        responsiveForegroundFrames &&
+        (Boolean(stagedPreviousScene) || variantBuild) &&
+        [...scene.children].some((object) => object !== group && object.visible);
       suppressAssemblyFrames =
-        Boolean(stagedPreviousScene) ||
-        variantBuild ||
-        (v3FinalFrameOnlyExperiment && cooperativeAssembly);
+        !retainedForeground &&
+        (Boolean(stagedPreviousScene) ||
+          variantBuild ||
+          (v3FinalFrameOnlyExperiment && cooperativeAssembly) ||
+          (responsiveGpuPrewarm && cooperativeAssembly));
+      host.dataset.rendererForegroundRetained = String(retainedForeground);
       assemblySkippedFrames = 0;
       host.dataset.rendererAssemblyFramePolicy = suppressAssemblyFrames ? 'final-only' : 'preview';
       host.dataset.rendererAssemblySkippedFrames = '0';
@@ -4556,6 +4654,19 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
       recordRoiStage('annotations-complete');
+      // Warm GPU geometry submissions in small offscreen batches, while the
+      // invisible replacement still belongs to this scene generation.
+      if (responsiveGpuPrewarm && cooperativeAssembly) {
+        const buildingGroup = group;
+        const geometries = [];
+        buildingGroup.traverse((object) => geometries.push(object));
+        const warmed = await prewarmGpuPresentation(
+          geometries,
+          () => group === buildingGroup && sceneGeneration === renderGeneration,
+        );
+        if (!warmed) throw new SupersededRendererBuild();
+        rejectSupersededBuild();
+      }
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);

@@ -73,3 +73,33 @@ The existing fresh-context R7 ABBA runner now supports `--gpu-timing` with eithe
 ## P2.5 — Transactional rough detail refinement (2026-10-13)
 
 When `rendererResponsiveRoughBudget=1`, a detailed Rough Mesh Worker result is now assembled as an invisible, separately tracked replacement **while the existing complete rough preview stays visible**. After all result units have finished and the model/scene/Worker generation remains current, the previous rough representation is retired and the detailed representation is committed through the existing presentation path. On cancellation, only the staging objects belonging to that attempt are disposed; a subsequent camera interaction or model revision is never cleared by the obsolete task. Partial new geometry is not displayed as scientific output. Display-only counters `rendererRoughRetainedPreviewMeshes`, `rendererRoughStagedMeshes` and `rendererRoughRefinementSwaps` support browser acceptance. The textured-tandem test now requires at least one retained preview object and one completed exact-detail swap. The default renderer, GPU upload commands and accepted pixel baselines remain unchanged; do not equate a bounded CPU assembly slice with a preemptible GPU submission.
+
+## P2.6 optional GPU prewarm and retained foreground drawing (2026-10-13)
+
+Experimental flags (all default **off**): `rendererResponsiveGpuPrewarm=1`
+prepares unique scene BufferGeometry uploads in bounded groups using the
+**existing** WebGLRenderer with a disposable 1×1 offscreen render target.
+`rendererResponsiveForeground=1` permits normal foreground camera redraws
+of a retained, complete committed scene while its new model/opacity variant
+is built invisibly. The model/ROI and variant owner, final geometry, shader
+policy, rough detail and scientific material registry remain unchanged.
+
+The prewarm scheduler yields after each batch (maximum 4 distinct geometries)
+and pauses between batches for camera gestures; it verifies the scene
+generation and resource owner after each asynchronous yield. Rough detail
+uses the same hook before its atomic preview-to-exact swap. Stale work must
+never retire a newer committed scene. Per-scene diagnostic counters use
+`rendererGpuPrewarmStatus`, `rendererGpuPrewarmBatches`,
+`rendererGpuPrewarmUnits`, `rendererGpuPrewarmYields` and
+`rendererGpuPrewarmMaxBatchMs`. Failure of an optional warmup falls back
+to ordinary final rendering unless WebGL context loss/cancellation requires
+the existing rollback.
+
+**Limitations:** This is a scheduling experiment, not preemptible individual
+WebGL uploads, a second GPU rendering context, a hardware speedup claim,
+GPU memory profiling, or a substitute for true input-to-present measurements.
+Each WebGL batch can still block the main thread for longer than 8ms.
+Warmup renders to an offscreen buffer and must not affect exported PNG or
+final scientific pixels. Experimental flags stay default-off; P2.6,
+ROI supersession, context recovery, exact pixel parity and physical GPU
+latency are to be accepted together at the final branch revision.
