@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: renderer-responsive-${{ github.ref }}
@@ -37,6 +37,16 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Normalize P2 worker changes on experimental branch
+        run: |
+          npx prettier --write site/three-view.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js site/tests/renderer-v4-smooth-sidewall-data.test.mjs scripts/renderer-responsive-browser.mjs
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add site/three-view.js site/renderer-v4-smooth-sidewall-data.js site/renderer-v4-smooth-sidewall-worker.js site/tests/renderer-v4-smooth-sidewall-data.test.mjs scripts/renderer-responsive-browser.mjs
+            git commit -m 'style(renderer): format P2 smooth sidewall worker'
+            git push origin HEAD:refs/heads/perf/renderer-v4-adaptive-tiles-20261010
+          fi
       - name: Focused Node and source quality checks
         run: |
           node --test site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs
