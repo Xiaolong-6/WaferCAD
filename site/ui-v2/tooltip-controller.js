@@ -8,6 +8,10 @@
     node.id = 'wc-context-tooltip';
     node.className = 'wc-tooltip wc-context-tooltip';
     node.setAttribute('role', 'tooltip');
+    // Native tool menus live in the browser top layer. A regular body tooltip
+    // cannot rise above them with z-index alone, even using the tooltip token.
+    // Manual popovers share that top layer without stealing keyboard focus.
+    node.setAttribute('popover', 'manual');
     node.hidden = true;
     node.append(heading, detail);
     document.body.append(node);
@@ -36,6 +40,7 @@
       clearPending();
       removeDescription();
       target = null;
+      if (node.matches(':popover-open')) node.hidePopover();
       node.hidden = true;
     }
     function usable(anchor) {
@@ -55,14 +60,39 @@
       heading.textContent = copy[0];
       detail.textContent = anchor.dataset.helpDetail || copy[1];
       node.hidden = false;
+      if (!node.matches(':popover-open')) node.showPopover();
       const rect = anchor.getBoundingClientRect();
       const width = node.offsetWidth,
         height = node.offsetHeight,
         gap = 8,
         edge = 8;
-      node.style.left = `${Math.max(edge, Math.min(rect.left + (rect.width - width) / 2, innerWidth - width - edge))}px`;
-      const below = rect.bottom + gap;
-      node.style.top = `${below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap)}px`;
+      const clampX = (value) => Math.max(edge, Math.min(value, innerWidth - width - edge));
+      const preferredX = rect.left + (rect.width - width) / 2;
+      let x = clampX(preferredX);
+      let y;
+      // A menu item tooltip must not hide the actual menu choices. Place it
+      // outside the owning top-layer menu if sufficient viewport room exists.
+      const menu = anchor.closest(':popover-open');
+      if (menu) {
+        const bounds = menu.getBoundingClientRect();
+        if (bounds.bottom + gap + height <= innerHeight - edge) {
+          y = bounds.bottom + gap;
+        } else if (bounds.top - gap - height >= edge) {
+          y = bounds.top - gap - height;
+        } else if (bounds.right + gap + width <= innerWidth - edge) {
+          x = bounds.right + gap;
+          y = Math.max(edge, Math.min(rect.top, innerHeight - height - edge));
+        } else if (bounds.left - gap - width >= edge) {
+          x = bounds.left - gap - width;
+          y = Math.max(edge, Math.min(rect.top, innerHeight - height - edge));
+        }
+      }
+      if (y == null) {
+        const below = rect.bottom + gap;
+        y = below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap);
+      }
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
       const descriptions = (anchor.getAttribute('aria-describedby') || '')
         .split(/\s+/)
         .filter(Boolean);

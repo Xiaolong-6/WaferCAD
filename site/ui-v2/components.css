@@ -499,7 +499,12 @@
   --wc-control-inset: 0px;
 }
 
-/* Plain, noninteractive contextual text on the existing control; no affordance icon. */
+/* Plain, noninteractive contextual text on the existing control; no affordance icon.
+   A manual popover can stack above the native top-layer tool menus. */
+.wc-context-tooltip[popover] {
+  inset: auto;
+  margin: 0;
+}
 .wc-context-tooltip {
   z-index: var(--wc-z-tooltip);
   max-width: min(280px, calc(100vw - 16px));
