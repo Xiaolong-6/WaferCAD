@@ -8,7 +8,7 @@ function trials(patterns) {
   return labels.map((label, arm) => ({
     label,
     phaseCheckpoints: patterns.map((pattern, index) => ({
-      afterDraw: [128, 154, 384][index],
+      afterDraw: index === patterns.length - 1 ? (arm < 2 ? 1408 : 1291) : [128, 154, 384][index],
       kind: 'material-exterior',
       width: 530,
       height: 273,
@@ -19,7 +19,7 @@ function trials(patterns) {
 }
 
 test('hash groups identify replicate-index drift ahead of policy effects', () => {
-  const evidence = trials(['aaaa', 'abab', 'abcd']);
+  const evidence = trials(['aaaa', 'abab', 'abcd', 'abcd']);
   const result = summarizeRendererR9PhasePatterns(evidence);
   assert.equal(result.sampleCount, 3);
   assert.equal(result.firstSamePolicyDriftDraw, 154);
@@ -34,10 +34,11 @@ test('hash groups identify replicate-index drift ahead of policy effects', () =>
     ['2-OFF', '4-ON'],
   ]);
   assert.equal(result.source, 'native-framebuffer-hash-partitions-only');
+  assert.deepEqual(result.terminal.drawsByPolicy, { off: 1408, on: 1291 });
 });
 
 test('same-policy and cross-policy partitions stay distinct', () => {
-  const evidence = trials(['aaaa', 'aabb', 'aabb']);
+  const evidence = trials(['aaaa', 'aabb', 'aabb', 'aabb']);
   const result = summarizeRendererR9PhasePatterns(evidence);
   assert.equal(result.firstSamePolicyDriftDraw, null);
   assert.equal(result.firstReplicateIndexGroupingDraw, null);
@@ -45,7 +46,7 @@ test('same-policy and cross-policy partitions stay distinct', () => {
 });
 
 test('missing arms, reordered draws and incomplete hashes fail closed', () => {
-  const source = trials(['aaaa', 'abab', 'abcd']);
+  const source = trials(['aaaa', 'abab', 'abcd', 'abcd']);
   assert.throws(() => summarizeRendererR9PhasePatterns([]), /four complete/);
   const reordered = structuredClone(source);
   reordered.reverse();
@@ -56,6 +57,9 @@ test('missing arms, reordered draws and incomplete hashes fail closed', () => {
   const incomplete = structuredClone(source);
   incomplete[1].phaseCheckpoints.pop();
   assert.throws(() => summarizeRendererR9PhasePatterns(incomplete), /malformed/);
+  const misalignedTerminal = structuredClone(source);
+  misalignedTerminal[1].phaseCheckpoints[3].afterDraw = 1407;
+  assert.throws(() => summarizeRendererR9PhasePatterns(misalignedTerminal), /malformed/);
   const wrongIndex = structuredClone(source);
   wrongIndex[3].phaseCheckpoints[1].afterDraw = 153;
   assert.throws(() => summarizeRendererR9PhasePatterns(wrongIndex), /malformed/);
