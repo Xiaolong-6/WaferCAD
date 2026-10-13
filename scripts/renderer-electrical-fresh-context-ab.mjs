@@ -43,6 +43,19 @@ const phaseWindow = phaseWindowOptions.length
   ? parseRendererPhaseWindow(phaseWindowOptions[0].split('--diagnose-phase-window=')[1] ?? '')
   : null;
 const phaseWindowDiagnostic = phaseWindow !== null;
+const focusWindowOptions = process.argv.filter((arg) => arg.startsWith('--diagnose-focus-window'));
+assert.ok(focusWindowOptions.length <= 1, 'Select at most one focused draw interval');
+const focusWindowDiagnostic = focusWindowOptions.length === 1;
+assert.ok(
+  !focusWindowDiagnostic ||
+    (focusWindowOptions[0] === '--diagnose-focus-window=129:154' &&
+      phaseWindow?.low === 128 &&
+      phaseWindow?.high === 384 &&
+      hardwareGpu &&
+      reportOnly),
+  'Focused R9 draws require 129:154 inside the existing 128:384 hardware diagnostic',
+);
+
 const phaseMilestones = rendererPhaseMilestones(phaseWindow);
 // Preserve the older pinned RTX command while allowing verified integrated
 // and discrete adapters through --hardware-gpu.
@@ -107,6 +120,7 @@ const report = {
   diagnosticNoMsaa,
   diagnosticPreservedMsaa,
   phaseWindowDiagnostic,
+  focusWindowDiagnostic,
   phaseWindow,
   phaseMilestones: hardwareGpu ? phaseMilestones : [],
   acceptanceEligible: isRendererPhaseAcceptanceEligible({
@@ -285,7 +299,7 @@ async function trial(enabled, index) {
       {
         pixelSamples: samples,
         captureDrawInputs: hardwareGpu,
-        captureFocusDraws: phaseWindowDiagnostic && hardwareGpu,
+        captureFocusDraws: focusWindowDiagnostic && hardwareGpu,
         capturePhaseDraws: hardwareGpu ? phaseMilestones : [],
       },
     );
@@ -438,7 +452,7 @@ async function trial(enabled, index) {
           })(),
       },
     }));
-    if (phaseWindowDiagnostic && hardwareGpu) {
+    if (focusWindowDiagnostic && hardwareGpu) {
       native.focusDraws = native.focusDraws.map(({ shaders, buffers, ...draw }) => ({
         ...draw,
         shaderHashes: (shaders || []).map(({ type, source }) => ({
@@ -567,7 +581,7 @@ async function trial(enabled, index) {
         orderIdentical: previous.row.orderHash === row.orderHash,
         materialIdentical: previous.row.materialHash === row.materialHash,
         sampledDrawInputsIdentical: previous.row.drawInputsHash === row.drawInputsHash,
-        ...(phaseWindowDiagnostic
+        ...(focusWindowDiagnostic
           ? {
               focusedDrawInputsIdentical: previous.row.focusDrawHash === row.focusDrawHash,
               firstDifferentFocusedDraw:
@@ -651,7 +665,7 @@ try {
     materialIdentical: off.materialHash === on.materialHash,
     layoutIdentical: JSON.stringify(off.layout) === JSON.stringify(on.layout),
     sampledDrawInputsIdentical: off.drawInputsHash === on.drawInputsHash,
-    ...(phaseWindowDiagnostic
+    ...(focusWindowDiagnostic
       ? { focusedDrawInputsIdentical: off.focusDrawHash === on.focusDrawHash }
       : {}),
     phaseEvidence: compareRendererPhaseEvidence(off, on),
