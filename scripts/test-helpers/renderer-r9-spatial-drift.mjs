@@ -58,7 +58,6 @@ export function summarizeRendererR9SpatialDrift(reference, candidate) {
         localVariation = Math.max(
           localVariation,
           Math.abs(before[offset + channel] - before[neighborOffset]),
-          Math.abs(after[offset + channel] - after[neighborOffset]),
         );
       }
     }
@@ -77,7 +76,7 @@ export function summarizeRendererR9SpatialDrift(reference, candidate) {
     changedWithNoNeighborVariation,
     highestLocalRgbVariation,
     changedPixelsWithLocalRgbVariationAbove: thresholds,
-    gradientDefinition: 'maximum absolute 8-bit RGB difference to 4-connected neighbors in either PNG',
+    gradientDefinition: 'maximum absolute 8-bit RGB difference to 4-connected neighbors in the reference PNG',
     interpretation: 'observational-locality-only-not-proof-of-MSAA-or-edge-causation',
   };
 }
