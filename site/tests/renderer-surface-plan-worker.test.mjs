@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+  createSurfacePlanAssembler,
+  sendSurfacePlanChunks,
+} from '../renderer-surface-plan-stream.js';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
@@ -96,4 +100,48 @@ test('large scenes use a disposable worker and cache the exact completed result'
   } finally {
     globalThis.Worker = original;
   }
+});
+
+test('chunked worker transport preserves every cap, wall, and metadata field in original order', () => {
+  const plan = {
+    caps: Array.from({ length: 31 }, (_, i) => ({ id: i, polys: [[[i, i + 0.1]]] })),
+    sidewalls: Array.from({ length: 23 }, (_, i) => ({ id: i, z0: i / 7 })),
+    arrayInstances: 24,
+    arrayNeighborhoods: 7,
+    reserved: { owner: 'science', boundaries: [1, 2, 3] },
+  };
+  const messages = [];
+  sendSurfacePlanChunks(plan, (message) => messages.push(structuredClone(message)), 5);
+  assert.ok(messages.length > 10, 'Large payload arrives as independent tasks');
+  const assembler = createSurfacePlanAssembler();
+  let resolved = null;
+  for (const message of messages) {
+    const result = assembler.accept(message);
+    if (result) resolved = result;
+  }
+  assert.deepEqual(resolved, plan);
+  assert.notStrictEqual(resolved.caps, plan.caps);
+  assert.equal(messages[0].type, 'start');
+  assert.equal(messages.at(-1).type, 'done');
+});
+
+test('surface plan receiver rejects missing and out-of-order chunks rather than caching partial topology', () => {
+  const packets = [];
+  sendSurfacePlanChunks(
+    { caps: [{ id: 1 }, { id: 2 }], sidewalls: [{ id: 3 }], arrayInstances: 0 },
+    (packet) => packets.push(packet),
+    1,
+  );
+  const first = createSurfacePlanAssembler();
+  first.accept(packets[0]);
+  assert.throws(() => first.accept(packets[2]), /order or count/);
+  const second = createSurfacePlanAssembler();
+  second.accept(packets[0]);
+  second.accept(packets[1]);
+  assert.throws(() => second.accept(packets.at(-1)), /Incomplete/);
+  const empty = [];
+  sendSurfacePlanChunks({ caps: [], sidewalls: [], arrayInstances: 0 }, (part) => empty.push(part));
+  const third = createSurfacePlanAssembler();
+  third.accept(empty[0]);
+  assert.deepEqual(third.accept(empty[1]), { caps: [], sidewalls: [], arrayInstances: 0 });
 });
