@@ -10,6 +10,18 @@ import {
   translateDrawShape,
 } from '../draw-mask-geometry.js';
 
+// Treat binary floating-point tails from display-unit conversions as unchanged.
+// Tolerance is only a few ULPs in the current display unit, not a geometry-grid
+// tolerance: an intentional 0.1 nm editor edit must still be detected.
+export function displayLengthDraftChanged(value, formattedPhysicalValue) {
+  const draft = String(value ?? '').trim();
+  const parsed = Number(draft);
+  const expected = Number(formattedPhysicalValue);
+  if (!draft || !Number.isFinite(parsed) || !Number.isFinite(expected)) return true;
+  const ulpWindow = 8 * Number.EPSILON * Math.max(1, Math.abs(parsed), Math.abs(expected));
+  return Math.abs(parsed - expected) > ulpWindow;
+}
+
 export function createDrawMaskController({
   root = document,
   getMode,
@@ -236,12 +248,7 @@ export function createDrawMaskController({
     if (typeof formatLengthField !== 'function') return true;
     const lengthChanged = (id, physical) => {
       const value = $(id)?.value;
-      return (
-        value == null ||
-        String(value).trim() === '' ||
-        !Number.isFinite(Number(value)) ||
-        Number(value) !== Number(formatLengthField(physical))
-      );
+      return displayLengthDraftChanged(value, formatLengthField(physical));
     };
     if (shape.type === 'rect') {
       return (
@@ -264,8 +271,10 @@ export function createDrawMaskController({
             values.length !== 2 ||
             values.some(
               (value, axis) =>
-                !Number.isFinite(Number(value)) ||
-                Number(value) !== Number(formatLengthField(shape.points[index][axis])),
+                displayLengthDraftChanged(
+                  value,
+                  formatLengthField(shape.points[index][axis]),
+                ),
             )
           );
         })
