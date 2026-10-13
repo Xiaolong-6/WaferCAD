@@ -125,11 +125,15 @@ The pinned V4 source is `e231d8537bbd06ecfc47fe83c0b26e5b6cbacec6`.
   match. Only these **sampled** inputs are proven equal; an unmeasured
   input cannot be ruled out.
 
-| Fresh-context pair | Different PNG pixels / 146,025 | Maximum channel delta | Earliest mismatching native checkpoint |
-| --- | ---: | ---: | --- |
-| OFF/OFF | 11 | 1/255 | After draw 256; after draw 128 was identical |
-| ON/ON | 76 | 1/255 | After draw 384; after draw 256 was identical |
-| OFF/ON | 154 | 2/255 | Different rendering policies; not causally attributable |
+- **OFF/OFF:** 11 / 146,025 changed PNG pixels; max channel
+  delta 1/255; first differing native checkpoint after draw 256
+  (draw 128 matched).
+- **ON/ON:** 76 / 146,025 changed PNG pixels; max channel
+  delta 1/255; first differing native checkpoint after draw 384
+  (draw 256 matched).
+- **OFF/ON:** 154 / 146,025 changed PNG pixels; max channel
+  delta 2/255. Policies differ, so this comparison does not isolate
+  a raster-lifecycle cause.
 
 The matching-policy framebuffer hashes already differ **before**
 compositor capture. Both first differences arise during
