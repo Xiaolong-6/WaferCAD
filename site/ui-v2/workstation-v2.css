@@ -1471,21 +1471,16 @@ html[data-font='inter'] {
   .p-summary {
     align-items: flex-start;
   }
-  /* A mobile Workstation is a viewport-bound editor OR a viewport-bound view.
-     The document never competes with the active pane for vertical scrolling. */
-  body[data-workstation] {
-    overflow: hidden;
-  }
   .p-workbench {
-    height: calc(100dvh - 2 * var(--wc-space-2));
+    height: auto;
     min-height: 0;
     margin: var(--wc-space-2);
-    overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: visible;
   }
   .p-topbar {
-    position: relative;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
     z-index: var(--wc-z-toolbar);
     background: var(--wc-surface);
   }
@@ -1496,17 +1491,13 @@ html[data-font='inter'] {
     .p-body {
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
   }
   .p-workbench:is([data-layout='a'], [data-layout='b'], [data-layout='c']) .p-nav {
     flex-direction: row;
-    flex: 0 0 auto;
     overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
     border-right: 0;
     border-bottom: 1px solid var(--wc-border);
+    flex-shrink: 0;
   }
   .p-nav button {
     width: auto;
@@ -1516,29 +1507,18 @@ html[data-font='inter'] {
   .p-divider {
     display: none;
   }
-  .p-inspector {
-    order: 2;
-    flex: 1 1 0;
-    min-height: 0;
-    height: auto;
-    max-height: none;
-    border: 0;
-    overflow: hidden;
-  }
-  .p-panel-content {
-    overscroll-behavior-y: contain;
-  }
   .p-stage {
     order: 2;
-    flex: 1 1 0;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
+    min-height: 330px;
   }
-  .p-canvases {
-    min-height: max(300px, calc(100dvh - 190px));
-    grid-template-columns: minmax(0, 1fr);
-    flex: 1 0 auto;
+  .p-inspector {
+    order: 3;
+    border: 0;
+    border-top: 1px solid var(--wc-border);
+    max-height: 480px;
+    height: 480px;
+    flex-shrink: 0;
+    scroll-margin-top: 104px;
   }
   .p-workbench[data-layout='c'] .p-panel-content {
     display: flex;
@@ -1546,28 +1526,41 @@ html[data-font='inter'] {
   .p-workbench[data-layout='c'] .p-panel-content .p-list {
     max-height: none;
   }
+  .p-canvases {
+    min-height: 260px;
+    grid-template-columns: minmax(0, 1fr);
+  }
   .p-viewbar [data-action^='mode:'],
   .p-viewbar-divider,
   .p-viewbar [data-action='expand-empty'] {
     display: none;
   }
   .p-view {
-    min-height: min(320px, 52dvh);
+    min-height: 320px;
   }
   .p-mobile-return {
     display: flex;
   }
-  .p-workbench[data-mobile='edit'] .p-stage {
-    display: none;
-  }
   .p-workbench[data-mobile='view'] .p-inspector {
     display: none;
   }
-  .p-workbench[data-mobile='view'] .p-nav {
-    display: none;
+  .p-workbench[data-mobile='edit'] .p-stage {
+    min-height: 390px;
+  }
+  .p-workbench[data-mobile='edit'] .p-canvases {
+    min-height: 350px;
+  }
+  .p-workbench[data-mobile='edit'] .p-view {
+    min-height: 320px;
   }
   .p-workbench[data-mobile='edit'] .p-toolbar {
     display: none;
+  }
+  .p-workbench[data-mobile='edit'] .p-view .p-panel-head {
+    min-height: 32px;
+  }
+  .p-workbench[data-mobile='edit'] .p-science {
+    min-height: 240px;
   }
   .p-empty-strip {
     order: 1;
