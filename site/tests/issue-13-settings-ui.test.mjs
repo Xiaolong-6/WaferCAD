@@ -9,6 +9,7 @@ const workspacePersistenceController = await readFile(
   new URL('../controllers/workspace-persistence-controller.js', import.meta.url),
   'utf8',
 );
+const v2Workflow = await readFile(new URL('../ui-v2/workstation-workflow.js', import.meta.url), 'utf8');
 const workspaceSessionController = await readFile(
   new URL('../controllers/workspace-session-controller.js', import.meta.url),
   'utf8',
@@ -52,7 +53,10 @@ test('project replacement controls warn, Save is local, and Export downloads the
 });
 
 test('workspace state is restored locally after app reload', () => {
-  assert.match(workspacePersistenceController, /loadWorkspaceState\(\)/);
+  assert.match(workspacePersistenceController, /progressiveWorkspaceRestore = false/);
+  assert.match(workspacePersistenceController, /loadWorkspaceState\(\{ background: progressiveWorkspaceRestore \}\)/);
+  assert.match(persistence, /!background \|\| typeof globalThis\.Worker !== 'function'/);
+  assert.match(v2Workflow, /progressiveWorkspaceRestore: true/);
   assert.match(workspacePersistenceController, /saveWorkspaceState\([\s\S]*canCommit/);
   assert.match(workspaceSessionController, /hasWriteLease/);
   assert.match(persistence, /const DB_VERSION = 2/);
