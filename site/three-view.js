@@ -980,8 +980,13 @@ export function createThreeView({
   }
 
   function startSceneVariantBuild(mode) {
+    // Keep the last complete variant visible while preparing the replacement.
+    // The incoming group remains hidden until its presentation is ready.
     cacheActiveSceneVariant();
-    if (group) scene.remove(group);
+    const previousGroup = group;
+    host.dataset.rendererRetainedCompleteVisible = String(
+      Boolean(previousGroup?.visible && previousGroup.parent === scene),
+    );
     group = new THREE.Group();
     group.visible = false;
     scene.add(group);
@@ -999,6 +1004,7 @@ export function createThreeView({
     lastLodSignature = null;
     activeSceneVariant = mode;
     host.dataset.sceneVariant = mode;
+    return previousGroup;
   }
 
   function clearSceneVariantCache({ includeActive = false } = {}) {
@@ -2571,6 +2577,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       signature = sceneSignature(model, clip, inspection),
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
+    let previousVariantGroup = null;
+    let rebuildAborted = false;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -2608,7 +2616,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       if (Number(host.dataset.arrayInstances || 0) >= 64 && !roughTasks.length) {
         variantBuild = true;
-        startSceneVariantBuild(targetVariant);
+        previousVariantGroup = startSceneVariantBuild(targetVariant);
       } else {
         pendingRender = false;
         host.dataset.renderState = 'updating';
@@ -2622,6 +2630,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
     const renderGeneration = variantBuild ? sceneGeneration : ++sceneGeneration;
     pendingRender = false;
+    delete host.dataset.rendererBuildFailure;
     host.dataset.renderState = 'building';
     host.dataset.sceneGeneration = String(renderGeneration);
     host.dataset.modelRevision = String(model.revision ?? 0);
@@ -2664,16 +2673,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
 
       const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
-        nextAssemblyYieldAt = performance.now() + 32;
+        nextAssemblyYieldAt = performance.now() + 8;
+      const cancelSupersededVariant = () => {
+        if (!variantBuild || !pendingRender) return;
+        const error = new Error('Superseded by a newer 3D presentation request');
+        error.name = 'SceneVariantSuperseded';
+        throw error;
+      };
       const maybeYieldAssembly = async () => {
+        cancelSupersededVariant();
         if (!cooperativeAssembly || performance.now() < nextAssemblyYieldAt) return;
         sceneAssemblyYields++;
-        if (variantBuild) {
-          await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-        } else {
-          await yieldSceneAssembly();
-        }
-        nextAssemblyYieldAt = performance.now() + 32;
+        // A frame callback can resume in a microtask before the browser paints.
+        // Yield a macrotask so input and other viewports get a chance to run.
+        if (!variantBuild) await yieldSceneAssembly();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        nextAssemblyYieldAt = performance.now() + 8;
+        cancelSupersededVariant();
       };
 
       host.dataset.materialLayerIds = JSON.stringify(
@@ -3376,6 +3392,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
+      cancelSupersededVariant();
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
@@ -3392,12 +3409,60 @@ diffuseColor.a *= waferCadAlphaScale;`,
       group.visible = true;
       recordVariantStage('presentation-begin');
       applyPresentationState({ profile: false, settle: false });
+      // The next frame must contain exactly one presentation variant.
+      // Keep the retired group cached but detached for fast future switches.
+      if (previousVariantGroup && previousVariantGroup !== group) {
+        scene.remove(previousVariantGroup);
+        host.dataset.rendererRetainedCompleteVisible = 'false';
+        host.dataset.rendererCommittedVariantSwaps = String(
+          Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
+        );
+      }
       recordVariantStage('presentation-complete');
       cacheActiveSceneVariant();
       if (!roughTasks.length) {
         host.dataset.renderPhase = 'complete';
         host.dataset.renderState = 'ready';
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
+      }
+    } catch (error) {
+      rebuildAborted = true;
+      const superseded = error?.name === 'SceneVariantSuperseded';
+      if (previousVariantGroup) {
+        // Never strand the viewport with a partially constructed, hidden group.
+        const failedGroup = group;
+        scene.remove(failedGroup);
+        disposeSceneGroup(failedGroup);
+        const cached = [...sceneVariantCache.values()].find(
+          (entry) => entry.group === previousVariantGroup,
+        );
+        if (cached) restoreSceneVariant(cached);
+        else {
+          group = previousVariantGroup;
+          if (group.parent !== scene) scene.add(group);
+        }
+        host.dataset.renderState = 'ready';
+        host.dataset.rendererRetainedCompleteVisible = 'false';
+        host.dataset.rendererVariantRollbacks = String(
+          Number(host.dataset.rendererVariantRollbacks || 0) + 1,
+        );
+      }
+      if (superseded) {
+        host.dataset.rendererSupersededBuilds = String(
+          Number(host.dataset.rendererSupersededBuilds || 0) + 1,
+        );
+        host.dataset.renderPhase = 'superseded';
+        stats.textContent = 'updating 3D…';
+      } else {
+        console.error('3D scene rebuild failed:', error);
+        host.dataset.renderPhase = previousVariantGroup ? 'variant-build-failed' : 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        if (!previousVariantGroup) {
+          host.dataset.renderState = 'error';
+        }
+        stats.textContent = previousVariantGroup
+          ? '3D update failed; previous view retained'
+          : '3D build failed';
       }
     } finally {
       rendering = false;
@@ -3411,7 +3476,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
-    if (roughTasks.length) {
+    // Failed or superseded candidates must never trigger a fresh rough task
+    // against the previous committed scene before the latest request settles.
+    if (!rebuildAborted && host.dataset.renderState !== 'error' && roughTasks.length) {
       host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });

@@ -187,6 +187,55 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /createThreeView/);
 });
 
+test('3D variant builds retain the completed presentation until commit or rollback', () => {
+  const start = threeView.indexOf('function startSceneVariantBuild(');
+  const end = threeView.indexOf('function clearSceneVariantCache(', start);
+  const preparation = threeView.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(preparation, /const previousGroup = group/);
+  assert.match(preparation, /group\.visible = false/);
+  assert.doesNotMatch(preparation, /scene\.remove\(previousGroup\)/);
+
+  const commitStart = threeView.indexOf("recordVariantStage('presentation-begin')");
+  const commitEnd = threeView.indexOf("recordVariantStage('presentation-complete')", commitStart);
+  const commit = threeView.slice(commitStart, commitEnd);
+  assert.ok(commitStart >= 0 && commitEnd > commitStart);
+  assert.ok(
+    commit.indexOf('applyPresentationState(') <
+      commit.indexOf('scene.remove(previousVariantGroup)'),
+  );
+  assert.match(commit, /previousVariantGroup && previousVariantGroup !== group/);
+
+  const rollback = threeView.slice(
+    threeView.indexOf('} catch (error) {', commitEnd),
+    threeView.indexOf('} finally {', commitEnd),
+  );
+  assert.match(rollback, /scene\.remove\(failedGroup\)/);
+  assert.match(rollback, /disposeSceneGroup\(failedGroup\)/);
+  assert.match(rollback, /restoreSceneVariant\(cached\)/);
+  assert.match(rollback, /rendererBuildFailure/);
+});
+
+test('3D large-array assembly yields an input macrotask within each time slice', () => {
+  const start = threeView.indexOf('const cooperativeAssembly =');
+  const end = threeView.indexOf('host.dataset.materialLayerIds', start);
+  const scheduler = threeView.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(scheduler, /nextAssemblyYieldAt = performance\.now\(\) \+ 8/);
+  assert.match(scheduler, /await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\)/);
+  assert.match(scheduler, /if \(!variantBuild\) await yieldSceneAssembly\(\)/);
+  assert.match(scheduler, /const cancelSupersededVariant = \(\) =>/);
+  assert.match(scheduler, /if \(!variantBuild \|\| !pendingRender\) return/);
+  assert.match(scheduler, /error\.name = 'SceneVariantSuperseded'/);
+  assert.equal((scheduler.match(/cancelSupersededVariant\(\);/g) || []).length, 2);
+  assert.doesNotMatch(
+    scheduler,
+    /if \(variantBuild\) \{\s*await new Promise\(\(resolve\) => requestAnimationFrame/,
+  );
+  assert.match(threeView, /const superseded = error\?\.name === 'SceneVariantSuperseded'/);
+  assert.match(threeView, /rendererSupersededBuilds/);
+});
+
 test('3D lifecycle disposal replaces the original direct-resource loops without undefined sets', () => {
   const start = threeView.indexOf('function disposeGroup()');
   const end = threeView.indexOf('function presentationMode(', start);
