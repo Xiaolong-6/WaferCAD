@@ -34,10 +34,12 @@ function canonicalPolygon(points) {
 }
 
 function inventory(elements) {
-  return elements.map((element) => {
-    assert.equal(element.kind, 'polygon', 'unexpected path conversion');
-    return `${element.layer}|${element.datatype}|${canonicalPolygon(element.points)}`;
-  }).sort();
+  return elements
+    .map((element) => {
+      assert.equal(element.kind, 'polygon', 'unexpected path conversion');
+      return `${element.layer}|${element.datatype}|${canonicalPolygon(element.points)}`;
+    })
+    .sort();
 }
 
 async function decode(bytes, format) {
@@ -52,18 +54,52 @@ function exportBytes(elements, format) {
 }
 
 const source = [
-  { kind: 'polygon', layer: 1, datatype: 7, points: [
-    [-5.0001, -2], [5.0001, -2], [5.0001, 2], [-5.0001, 2],
-  ] },
-  { kind: 'polygon', layer: 1, datatype: 7, points: [
-    [10, 0], [14, 0], [14, 4], [12, 4], [12, 2], [10, 2],
-  ] },
-  { kind: 'polygon', layer: 9, datatype: 2, points: [
-    [-1, -1], [1, -1], [1, 1], [-1, 1],
-  ] },
-  { kind: 'polygon', layer: 9, datatype: 3, points: [
-    [20.0002, 3], [21.0002, 3], [21.0002, 4], [20.0002, 4],
-  ] },
+  {
+    kind: 'polygon',
+    layer: 1,
+    datatype: 7,
+    points: [
+      [-5.0001, -2],
+      [5.0001, -2],
+      [5.0001, 2],
+      [-5.0001, 2],
+    ],
+  },
+  {
+    kind: 'polygon',
+    layer: 1,
+    datatype: 7,
+    points: [
+      [10, 0],
+      [14, 0],
+      [14, 4],
+      [12, 4],
+      [12, 2],
+      [10, 2],
+    ],
+  },
+  {
+    kind: 'polygon',
+    layer: 9,
+    datatype: 2,
+    points: [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ],
+  },
+  {
+    kind: 'polygon',
+    layer: 9,
+    datatype: 3,
+    points: [
+      [20.0002, 3],
+      [21.0002, 3],
+      [21.0002, 4],
+      [20.0002, 4],
+    ],
+  },
 ];
 
 test('GDS/OAS preserve exact representable polygon topology and Layer/Datatype pairs', async () => {
@@ -108,9 +144,11 @@ test('ROI and Cell/Layer selection export exact geometry without mutating import
   assert.equal(exported.roiApplied, true);
   assert.deepEqual(layout, original, 'export must never change the source cell collection');
   assert.ok(exported.elements.length > 0);
-  assert.ok(exported.elements.every((element) => ['1|7', '9|2'].includes(
-    `${element.layer}|${element.datatype}`,
-  )));
+  assert.ok(
+    exported.elements.every((element) =>
+      ['1|7', '9|2'].includes(`${element.layer}|${element.datatype}`),
+    ),
+  );
   const expected = inventory(exported.elements);
   for (const format of ['gds', 'oas']) {
     const restored = await decode(exportBytes(exported.elements, format), format);
