@@ -1,5 +1,7 @@
 # M5-Lite default entry handoff — 2026-10-12
 
+> **Post-release correction, 2026-10-13:** The current v2 footer shows a linked deployed commit SHA, not the former “Use legacy interface” action. The legacy URL still exists for compatibility, but direct navigation is not an automatic save. Save or export the project before leaving v2. Historical tests below describe the earlier release revision. See [current handoff status](../HANDOFF_STATUS_2026-10-13.md).
+
 ## 上线交接摘要
 
 M5-Lite 原计划 Step 1–4 已完成。PR #177 已合并并正式上线；本轮没有剩余实施步骤。
@@ -7,7 +9,7 @@ M5-Lite 原计划 Step 1–4 已完成。PR #177 已合并并正式上线；本�
 - 上线提交：`80e01d1a0571f357782bda3dffcadbe252f90086`。
 - 产品修复提交：`481ccb82`；最终验收 HEAD：`5e0b9f6851a434f144a58e397f5188ae81e7842f`。
 - 正式入口：<https://xiaolong-6.github.io/WaferCAD/app.html>。
-- 同源回退入口：<https://xiaolong-6.github.io/WaferCAD/app-legacy.html>；先使用 v2 页脚的 “Use legacy interface” 保存并切换。
+- Historical same-origin fallback: <https://xiaolong-6.github.io/WaferCAD/app-legacy.html>. The automatic save-and-switch footer action has since been removed.
 - 发布记录：[Pages run 38217432460](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38217432460)，结果 SUCCESS。
 - 合并记录：[PR #177](https://github.com/Xiaolong-6/WaferCAD/pull/177)。最终 HEAD 的 33 项有效 CI 检查全部通过；一个重复触发的 Stage C 任务因并发策略取消，不计为通过。
 - 公开预览及正式站点均验证了 Code 切走后隐藏且草稿保留、MASK 点击最大化、History 真实滚轮滚动。正式站点 History 列表高 541 px、内容高 2042 px、滚轮后 scrollTop 为 600 px；无页面错误。
@@ -113,9 +115,10 @@ The documentation-only handoff commit does not change the deployed site.
 
 ## Rollback and follow-up
 
-For immediate UI fallback, use `app-legacy.html` on the same origin. The v2
-switch action saves first; shared storage, checkpoint/Recovery and exported
-`.wafercad` files remain the recovery mechanisms. The cross-UI owner exercises
+For direct Legacy navigation, save or export the current project first and then
+open `app-legacy.html` on the same origin. The release-time footer switch
+previously saved before navigating; that control is now removed. Shared storage,
+checkpoint/Recovery and exported `.wafercad` files remain recovery mechanisms. The cross-UI owner exercises
 this fallback with real persisted History and Variants.
 
 If the published default must be reverted, restore Legacy markup into

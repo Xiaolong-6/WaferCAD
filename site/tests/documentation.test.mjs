@@ -78,7 +78,7 @@ test('archived documents have canonical links and no obsolete originals', async 
     .map((entry) => String(entry).replaceAll('\\\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
 
-  assert.equal(archived.length, 68, 'archive inventory must be reviewed deliberately');
+  assert.equal(archived.length, 75, 'archive inventory must be reviewed deliberately');
   assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
   for (const entry of archived) {
     assert.ok(

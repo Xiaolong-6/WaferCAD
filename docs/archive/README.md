@@ -6,7 +6,7 @@ This is an evidence index, not an alternative product contract. Canonical histor
 
 - [Unified toolbar integration — 2026-10-08](UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md): reviewed branch merge, Pan palette repair and real browser acceptance.
 
-- [Desktop integration release audit — 2026-10-08](../PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md): physical precision, Recipe persistence, six production Run All families and desktop runtime evidence.
+- [Desktop integration release audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md): physical precision, Recipe persistence, six production Run All families and desktop runtime evidence.
 - [Documentation architecture audit — 2026-10-08](DOCUMENTATION_AUDIT_2026-10-08.md): content reconciliation, navigation and permanent documentation checks.
 
 ## Evidence by topic
@@ -129,3 +129,17 @@ This is an evidence index, not an alternative product contract. Canonical histor
 - [ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md](ui-v2/THREE_D_CONTRACT_AUDIT_2026-10-11.md)
 - [ui-v2/UI_ACCEPTANCE_2026-10-10.md](ui-v2/UI_ACCEPTANCE_2026-10-10.md)
 - [ui-v2/VISUAL_POLISH_2026-10-09.md](ui-v2/VISUAL_POLISH_2026-10-09.md)
+
+## Additional retired documents and handoff attachments (2026-10-13)
+
+These records describe earlier revisions. Open issues were transferred to the [current handoff disposition](../HANDOFF_STATUS_2026-10-13.md); original test claims are historical evidence, not current acceptance.
+
+- [Pre-main desktop audit](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md)
+- [UI v2 feature inventory](ui-v2/FEATURE_INVENTORY.md)
+- [UI v2 implicit dependencies](ui-v2/IMPLICIT_DEPS.md)
+- [UI v2 issues and migration state](ui-v2/ISSUES.md)
+- [UI v2 placement map](ui-v2/PLACEMENT_MAP.md)
+- [UI v2 M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md)
+- [UI v2 human-review code audit](ui-v2/HUMAN_REVIEW_CODE_AUDIT_2026-10-12.md)
+
+The original Stage B browser reports, diagnostic script, sanitized failure logs, patch files and screenshots are retained in [UI v2 handoff evidence](ui-v2/handoff/). The archived reacceptance patch is [here](ui-v2/REACCEPTANCE_DIAGNOSTIC_2026-10-09.patch).
