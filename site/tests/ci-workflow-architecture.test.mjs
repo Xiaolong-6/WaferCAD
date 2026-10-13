@@ -37,6 +37,8 @@ test('preview publishes from the last successful production Pages run', () => {
   const preview = workflow('ui-v2-preview');
   assert.match(preview, /actions\/workflows\/pages\.yml\/runs\?branch=main/);
   assert.match(preview, /ref: \$\{\{ steps\.verified-main\.outputs\.sha \}\}/);
+  assert.match(preview, /node scripts\/build-pages-artifact\.mjs/);
+  assert.match(preview, /cp -a base\/build\/pages\/\. _site\//);
   assert.doesNotMatch(preview, /^          ref: main$/m);
 });
 

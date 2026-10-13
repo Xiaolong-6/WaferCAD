@@ -54,24 +54,29 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Stamp each tree with its own commit
+      - name: Stage verified production root and stamp preview
         shell: bash
         run: |
           set -euo pipefail
-          for tree in base preview-src; do
-            (
-              cd "$tree"
-              sha="$(git rev-parse HEAD)"
-              printf '{"commit":"%s"}\n' "$sha" > site/build-info.json
-              node scripts/stamp-pages-assets.mjs "$sha"
-            )
-          done
+          (
+            cd base
+            sha="$(git rev-parse HEAD)"
+            node scripts/build-pages-artifact.mjs
+            printf '{"commit":"%s"}\n' "$sha" > build/pages/build-info.json
+            node scripts/stamp-pages-assets.mjs "$sha" build/pages
+          )
+          (
+            cd preview-src
+            sha="$(git rev-parse HEAD)"
+            printf '{"commit":"%s"}\n' "$sha" > site/build-info.json
+            node scripts/stamp-pages-assets.mjs "$sha"
+          )
       - name: Assemble production root and isolated preview directory
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p _site/preview
-          cp -a base/site/. _site/
+          cp -a base/build/pages/. _site/
           cp -a preview-src/site/. _site/preview/
       - name: Configure Pages
         uses: actions/configure-pages@v5
