@@ -90,6 +90,10 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   assert.equal(archive.map.size, 45);
   assert.ok(archive.map.has('history/steps-0001.html'));
   assert.ok(archive.map.has('history/steps-0951.html'));
+  assert.match(archive.content('history/steps-0001.html'), /href="steps-0051.html"/);
+  assert.match(archive.content('history/steps-0051.html'), /href="steps-0001.html"/);
+  assert.match(archive.content('history/steps-0051.html'), /href="steps-0101.html"/);
+  assert.match(archive.content('history/steps-0951.html'), /href="steps-0901.html"/);
   assert.ok(!archive.map.has('assets/current-three.png'));
   const all = Array.from({ length: 20 }, (_, index) => {
     const name = `history/steps-${String(index * 50 + 1).padStart(4, '0')}.json`;
@@ -126,6 +130,15 @@ test('reports include only supplied captured canvases and expose warnings', asyn
   assert.match(archive.content('index.html'), /3D view was not rendered/);
   assert.match(archive.content('report.md'), /assets\/current-main.png/);
   assert.match(archive.content('index.html'), /captured visible canvas/);
+});
+
+test('Markdown labels cannot inject another report link', async () => {
+  const data = sample(1);
+  data.steps[0].label = '[untrusted](https://example.invalid)';
+  const bundle = buildProcessReportArchive(data);
+  const archive = await entries(bundle.blob);
+  assert.ok(archive.content('report.md').includes('\\\\[untrusted\\\\]'));
+  assert.match(archive.content('history/steps-0001.html'), /\[untrusted\]/);
 });
 
 test('portable ZIP writes the expected CRC and rejects unsafe resource paths', async () => {
