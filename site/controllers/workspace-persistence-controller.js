@@ -473,6 +473,10 @@ export function createWorkspacePersistenceController({
           );
           if (result === 'rejected') throw new Error('Invalid History branch head.');
           if (result === 'stale' || editVersion !== savingVersion || !hasWriteAccess()) {
+            root.querySelector('.workspace')?.setAttribute(
+              'data-autosave-retry-reason',
+              !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
+            );
             saving = false;
             dirty = true;
             syncSaveStatus();
@@ -895,8 +899,21 @@ export function createWorkspacePersistenceController({
     const result = await runVisibleTask(
       async ({ updateStage }) => {
         updateStage('Saving current workspace…');
-        const persisted = await persistNow({ force: true });
-        if (!persisted) throw new Error('Another tab took over local autosave.');
+        // History validation yields to other views and may observe a new
+        // camera/inspection state while the exact model is being verified.
+        // Retry a fresh, atomic snapshot; never reuse a stale validated head.
+        let persisted = false;
+        for (let attempt = 0; attempt < 3 && hasWriteAccess(); attempt++) {
+          persisted = await persistNow({ force: true });
+          if (persisted) break;
+        }
+        if (!persisted) {
+          throw new Error(
+            hasWriteAccess()
+              ? 'Workspace changed during background validation. Save again.'
+              : 'Another tab took over local autosave.',
+          );
+        }
 
         updateStage('Creating Recovery checkpoint…');
         const project = buildProjectSnapshot(true);
