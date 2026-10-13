@@ -23,18 +23,42 @@ function openRing(ring) {
   return points;
 }
 
-function ringKey(points, quantum) {
+// Booth's minimum cyclic rotation on delimiter-terminated tokens. Comparing
+// token + ';' is essential: raw token order can differ from the order of the
+// joined signature when one numeric token is a prefix of another.
+function minimalRingRotation(tokens) {
+  const length = tokens.length;
+  if (!length) return '';
+  const units = tokens.map((token) => `${token};`);
+  let left = 0,
+    right = 1,
+    offset = 0;
+  while (left < length && right < length && offset < length) {
+    const a = units[(left + offset) % length],
+      b = units[(right + offset) % length];
+    if (a === b) {
+      offset++;
+      continue;
+    }
+    if (a > b) {
+      left += offset + 1;
+      if (left <= right) left = right + 1;
+    } else {
+      right += offset + 1;
+      if (right <= left) right = left + 1;
+    }
+    offset = 0;
+  }
+  const start = Math.min(left, right) % length;
+  return tokens.slice(start).concat(tokens.slice(0, start)).join(';');
+}
+
+export function ringKey(points, quantum) {
   if (!points.length) return '';
   const tokens = points.map(([x, y]) => `${snap(x, quantum)},${snap(y, quantum)}`);
-  const candidates = [];
-  for (const source of [tokens, [...tokens].reverse()]) {
-    for (let offset = 0; offset < source.length; offset++) {
-      const rotated = source.slice(offset).concat(source.slice(0, offset));
-      candidates.push(rotated.join(';'));
-    }
-  }
-  candidates.sort();
-  return candidates[0];
+  const forward = minimalRingRotation(tokens),
+    reverse = minimalRingRotation([...tokens].reverse());
+  return forward <= reverse ? forward : reverse;
 }
 
 function polygonBounds(poly) {
