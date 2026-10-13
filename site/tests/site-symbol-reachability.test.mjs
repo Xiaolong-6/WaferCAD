@@ -50,6 +50,19 @@ test('real WaferCAD code symbol audit is read-only and parseable', async () => {
   const result = await auditSiteSymbols(repo);
   assert.ok(result.scannedModules > 100);
   assert.deepEqual(result.parseErrors, []);
+  for (const [file, symbol] of [
+    ['site/app.js', 'surfaceSegment'],
+    ['site/app.js', 'surfaceZ'],
+    ['site/app.js', 'transformMulti'],
+    ['site/controllers/project-controller.js', 'migrateProjectFile'],
+    ['site/controllers/project-controller.js', 'validateProjectFile'],
+    ['site/controllers/section-collapse-controller.js', 'translateSectionCollapse'],
+  ]) {
+    const matches = result.localUnused.filter(
+      (entry) => entry.file === file && entry.message.includes(symbol),
+    );
+    assert.deepEqual(matches, [], file + ': unused import ' + symbol);
+  }
   console.log(
     'SITE_SYMBOL_AUDIT ' +
       JSON.stringify({
