@@ -2815,24 +2815,31 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const planes = new Map();
           for (const part of visibleCaps) {
+            await maybeYieldAssembly();
             const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
             if (!planes.has(key)) {
               planes.set(key, { z: part.z, normal: part.normal, polys: [] });
             }
             planes.get(key).polys.push(...(part.polys || []));
           }
-          const preparedPlanes = [...planes.values()].map((plane) => ({
+          const preparedPlanes = [];
+          for (const plane of planes.values()) {
+            await maybeYieldAssembly();
+            preparedPlanes.push({
               ...plane,
               instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
-            })),
-            totalInstances = preparedPlanes.reduce(
-              (sum, plane) => sum + plane.instances.instanceCount,
-              0,
-            );
+            });
+          }
+          const totalInstances = preparedPlanes.reduce(
+            (sum, plane) => sum + plane.instances.instanceCount,
+            0,
+          );
 
           if (totalInstances > 0) {
             for (const plane of preparedPlanes) {
+              await maybeYieldAssembly();
               for (const instances of plane.instances.groups) {
+                await maybeYieldAssembly();
                 const geometry = geometryFromSolid({
                     slabs: [],
                     caps: [
@@ -2986,6 +2993,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
           if (instances.instanceCount > 0) {
             for (const groupInstances of instances.groups) {
+              await maybeYieldAssembly();
               const geometry = geometryFromSidewallParts([groupInstances.template]),
                 presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
