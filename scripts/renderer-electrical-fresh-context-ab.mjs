@@ -399,7 +399,11 @@ async function trial(enabled, index) {
         label + ': phase window must retain production framebuffer policy',
       );
       assert.equal(native.defaultFramebufferSamples, 4, label + ': expected four MSAA samples');
-      assert.equal(native.glState?.framebuffer, 'default', label + ': expected default framebuffer');
+      assert.equal(
+        native.glState?.framebuffer,
+        'default',
+        label + ': expected default framebuffer',
+      );
     }
     if (diagnosticNoDither) {
       assert.ok(
