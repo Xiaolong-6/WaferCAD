@@ -96,9 +96,10 @@ try {
     });
     assert.equal(await page.locator('.p-workbench').getAttribute('data-boot'), 'ready');
     await page.waitForFunction(
-      () => ['main', 'mask', 'section'].every(
-        (key) => window.WaferCadV2Workstation.startup().views[key] === 'ready',
-      ),
+      () =>
+        ['main', 'mask', 'section'].every(
+          (key) => window.WaferCadV2Workstation.startup().views[key] === 'ready',
+        ),
       null,
       { timeout: 120000 },
     );
