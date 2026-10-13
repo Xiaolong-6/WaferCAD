@@ -18,7 +18,7 @@ page.on('pageerror', (error) => pageErrors.push(error.message));
 page.setDefaultTimeout(limit);
 await page.addInitScript(() => {
   const start = performance.now();
-  const summary = { marks: {}, longTasksMs: [], transitions: [] };
+  const summary = { marks: {}, longTasksMs: [], longTasks: [], transitions: [] };
   window.__cpuStartupTiming = summary;
   const sample = () => {
     const elapsed = Math.round(performance.now() - start);
@@ -49,7 +49,14 @@ await page.addInitScript(() => {
   });
   try {
     new window.PerformanceObserver((items) => {
-      for (const task of items.getEntries()) summary.longTasksMs.push(Math.round(task.duration));
+      for (const task of items.getEntries()) {
+        const durationMs = Math.round(task.duration);
+        summary.longTasksMs.push(durationMs);
+        summary.longTasks.push({
+          startEpochMs: Math.round(performance.timeOrigin + task.startTime),
+          durationMs,
+        });
+      }
     }).observe({ entryTypes: ['longtask'] });
   } catch {}
 });
@@ -74,11 +81,52 @@ function hotFunctions(profile) {
   return [...functions.values()].sort((a, b) => b.samples - a.samples).slice(0, 45);
 }
 
+// Align CPU samples with Long Task PerformanceObserver records by wall time.
+// This is approximate (CDP start-command latency), so treat top frames as
+// attribution clues, never as an exact per-task execution trace.
+function longTaskSampleAttribution(profile, startEpochMs, tasks = []) {
+  const nodes = new Map((profile.nodes || []).map((node) => [node.id, node.callFrame]));
+  const selected = tasks
+    .filter((task) => task.durationMs >= 500)
+    .sort((a, b) => b.durationMs - a.durationMs)
+    .slice(0, 12)
+    .map((task) => ({ ...task, counts: new Map(), sampleCount: 0 }));
+  let atEpochMs = startEpochMs;
+  const samples = profile.samples || [];
+  const deltas = profile.timeDeltas || [];
+  for (let index = 0; index < samples.length; index++) {
+    atEpochMs += Number(deltas[index] || 0) / 1000;
+    for (const task of selected) {
+      if (atEpochMs < task.startEpochMs || atEpochMs > task.startEpochMs + task.durationMs) {
+        continue;
+      }
+      const id = samples[index];
+      task.counts.set(id, (task.counts.get(id) || 0) + 1);
+      task.sampleCount++;
+    }
+  }
+  return selected.map(({ counts, sampleCount, ...task }) => ({
+    ...task,
+    sampleCount,
+    hottest: [...counts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 8)
+      .map(([id, count]) => ({
+        samples: count,
+        function: nodes.get(id)?.functionName || '(unknown)',
+        file: (nodes.get(id)?.url || '').split('/').at(-1) || '',
+        line: (nodes.get(id)?.lineNumber ?? -1) + 1,
+      })),
+  }));
+}
+
 async function profilePhase(name, action) {
   const cdp = await context.newCDPSession(page);
   await cdp.send('Profiler.enable');
   await cdp.send('Profiler.setSamplingInterval', { interval: 1000 });
+  const profileClockBefore = Date.now();
   await cdp.send('Profiler.start');
+  const profileStartEpochMs = (profileClockBefore + Date.now()) / 2;
   let error = null;
   try {
     await action();
@@ -97,9 +145,17 @@ async function profilePhase(name, action) {
     pageErrors: [...pageErrors],
     error,
   };
+  info.longTaskAttribution = longTaskSampleAttribution(
+    profile,
+    profileStartEpochMs,
+    info.timings?.longTasks,
+  );
   await writeFile(`${folder}/${name}.json`, JSON.stringify(info, null, 2) + '\n');
   console.log('P1_CPU_PROFILE', name, 'samples', info.sampleCount, 'error', error || 'none');
   console.log('P1_CPU_TIMING', name, JSON.stringify(info.timings));
+  for (const task of info.longTaskAttribution.slice(0, 8)) {
+    console.log('P1_CPU_LONG_TASK', name, JSON.stringify(task));
+  }
   for (const item of info.hot.slice(0, 35)) {
     console.log('P1_CPU_HOT', name, item.samples, item.function, item.file, item.line);
   }
