@@ -11,7 +11,10 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
   const tagged = (id, node) => hook(id, node);
   const enabled = tagged('section-collapse-enabled', el('input', { type: 'checkbox' }));
   const snap = tagged('sectionCollapseSnap', el('input', { type: 'checkbox', checked: true }));
-  const linked = tagged('sectionCollapseScaleLinked', el('input', { type: 'checkbox', checked: true }));
+  const linked = tagged(
+    'sectionCollapseScaleLinked',
+    el('input', { type: 'checkbox', checked: true }),
+  );
   const topField = fields.input('Top', 'sectionCollapseTopInput');
   const bottomField = fields.input('Bottom', 'sectionCollapseBottomInput');
   const topInput = topField.querySelector('input');
@@ -20,66 +23,145 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
   const backField = fields.input('Back scale', 'sectionCollapseBackScale', 1, { kind: 'scale' });
   const frontInput = frontField.querySelector('input');
   const backInput = backField.querySelector('input');
-  help(enabled, 'section.zbreak', 'Omit the interval between Top and Bottom in Section and 3D displays. Geometry and exports remain physical.');
-  help(snap, 'section.zbreak', 'During ruler dragging, snap to nearby material interfaces. Typed coordinates always remain exact.');
-  help(linked, 'section.scale', 'Keep Front and Back display weights at the same physical 1× scale. Unlink to adjust independently.');
-  help(topInput, 'section.zbreak', 'Precise upper boundary of the omitted physical Z interval; type a value in the current display units.');
-  help(bottomInput, 'section.zbreak', 'Precise lower boundary of the omitted physical Z interval; type a value in the current display units.');
-  help(frontInput, 'section.scale', 'Front-side display weight for Section Auto and 3D; range 0.1×–10×.');
-  help(backInput, 'section.scale', 'Back-side display weight for Section Auto and 3D; range 0.1×–10×.');
+  help(
+    enabled,
+    'section.zbreak',
+    'Omit the interval between Top and Bottom in Section and 3D displays. Geometry and exports remain physical.',
+  );
+  help(
+    snap,
+    'section.zbreak',
+    'During ruler dragging, snap to nearby material interfaces. Typed coordinates always remain exact.',
+  );
+  help(
+    linked,
+    'section.scale',
+    'Keep Front and Back display weights at the same physical 1× scale. Unlink to adjust independently.',
+  );
+  help(
+    topInput,
+    'section.zbreak',
+    'Precise upper boundary of the omitted physical Z interval; type a value in the current display units.',
+  );
+  help(
+    bottomInput,
+    'section.zbreak',
+    'Precise lower boundary of the omitted physical Z interval; type a value in the current display units.',
+  );
+  help(
+    frontInput,
+    'section.scale',
+    'Front-side display weight for Section Auto and 3D; range 0.1×–10×.',
+  );
+  help(
+    backInput,
+    'section.scale',
+    'Back-side display weight for Section Auto and 3D; range 0.1×–10×.',
+  );
 
   const handles = {};
   const marks = el('div', { class: 'v2-z-marks', 'aria-hidden': 'true' });
   const zeroLine = el('div', { class: 'v2-z-zero', 'aria-hidden': 'true' });
-  const windowNode = tagged('sectionCollapseWindow', el('div', { class: 'v2-z-window', 'aria-hidden': 'true' }));
-  const ruler = tagged('sectionCollapseRuler', el('div', {
-    class: 'v2-z-ruler',
-    'aria-label': 'Physical Z boundary preview',
-  }, marks, zeroLine, windowNode));
+  const windowNode = tagged(
+    'sectionCollapseWindow',
+    el('div', { class: 'v2-z-window', 'aria-hidden': 'true' }),
+  );
+  const ruler = tagged(
+    'sectionCollapseRuler',
+    el(
+      'div',
+      {
+        class: 'v2-z-ruler',
+        'aria-label': 'Physical Z boundary preview',
+      },
+      marks,
+      zeroLine,
+      windowNode,
+    ),
+  );
   for (const name of ['Top', 'Bottom']) {
     const key = name.toLowerCase();
-    const handle = tagged(`sectionCollapse${name}Handle`, button(name, null, null, {
-      class: 'v2-z-handle',
-      role: 'slider',
-      'aria-label': `${name} Z break boundary`,
-      'aria-orientation': 'vertical',
-      'aria-keyshortcuts': 'ArrowUp ArrowDown Shift+ArrowUp Shift+ArrowDown',
-    }));
-    help(handle, 'section.zbreak', 'Drag to adjust the boundary; arrow keys move by 0.1 µm and Shift + arrow keys by 1 µm. Type below for exact values.');
+    const handle = tagged(
+      `sectionCollapse${name}Handle`,
+      button(name, null, null, {
+        class: 'v2-z-handle',
+        role: 'slider',
+        'aria-label': `${name} Z break boundary`,
+        'aria-orientation': 'vertical',
+        'aria-keyshortcuts': 'ArrowUp ArrowDown Shift+ArrowUp Shift+ArrowDown',
+      }),
+    );
+    help(
+      handle,
+      'section.zbreak',
+      'Drag to adjust the boundary; arrow keys move by 0.1 µm and Shift + arrow keys by 1 µm. Type below for exact values.',
+    );
     handles[key] = handle;
     ruler.append(handle);
   }
   const pair = el('div', { class: 'v2-z-field-pair' }, topField, bottomField);
-  const independent = el('div', { class: 'v2-z-field-pair v2-z-independent' }, frontField, backField);
+  const independent = el(
+    'div',
+    { class: 'v2-z-field-pair v2-z-independent' },
+    frontField,
+    backField,
+  );
   const linkedReadout = el('span', { class: 'v2-z-linked-value' }, '1×');
-  const scaleDetails = el('details', { class: 'v2-z-advanced' },
-    el('summary', { 'data-help': 'section.scale', 'data-help-detail': 'Optional Front/Back display weighting for Auto Section and 3D; never alters physical geometry.' }, 'Advanced scaling'),
-    el('div', { class: 'v2-z-advanced-body' },
-      el('label', { class: 'v2-z-check v2-z-link-row' }, linked, el('span', {}, 'Link Front / Back'), linkedReadout),
+  const scaleDetails = el(
+    'details',
+    { class: 'v2-z-advanced' },
+    el(
+      'summary',
+      {
+        'data-help': 'section.scale',
+        'data-help-detail':
+          'Optional Front/Back display weighting for Auto Section and 3D; never alters physical geometry.',
+      },
+      'Advanced scaling',
+    ),
+    el(
+      'div',
+      { class: 'v2-z-advanced-body' },
+      el(
+        'label',
+        { class: 'v2-z-check v2-z-link-row' },
+        linked,
+        el('span', {}, 'Link Front / Back'),
+        linkedReadout,
+      ),
       independent,
     ),
   );
-  const form = el('div', { class: 'v2-z-editor' },
+  const form = el(
+    'div',
+    { class: 'v2-z-editor' },
     el('label', { class: 'v2-z-check v2-z-enable-row' }, enabled, el('span', {}, 'Enable Z Break')),
-    el('div', { class: 'v2-z-plot' },
-      el('div', { class: 'v2-z-plot-head' },
+    pair,
+    el(
+      'div',
+      { class: 'v2-z-plot' },
+      el(
+        'div',
+        { class: 'v2-z-plot-head' },
         el('span', {}, 'Z boundaries'),
         el('span', { class: 'v2-z-unit' }, 'µm'),
       ),
       ruler,
     ),
-    pair,
     el('label', { class: 'v2-z-check v2-z-snap-row' }, snap, el('span', {}, 'Snap to structure')),
     scaleDetails,
   );
 
   const numeric = (input, field) => {
     const update = () => {
-      if (input.value.trim() === '') return;
-      const z = units.parse(input.value);
+      const raw = input.value.trim();
+      const z = raw === '' ? NaN : units.parse(raw);
       const current = collapse.current();
       const [lo, hi] = collapse.bounds();
-      const valid = Number.isFinite(z) && z >= lo && z <= hi &&
+      const valid =
+        Number.isFinite(z) &&
+        z >= lo &&
+        z <= hi &&
         (field === 'top' ? z > current.bottom : z < current.top);
       if (!valid) {
         input.setCustomValidity('Enter a value inside the physical Z range with Top above Bottom.');
@@ -107,14 +189,20 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     sync();
   });
   linked.addEventListener('change', () => {
-    collapse.setCurrent({
-      ...collapse.current(),
-      scaleLinked: linked.checked,
-      ...(linked.checked ? { frontScale: 1, backScale: 1 } : {}),
-    }, { settled: true });
+    collapse.setCurrent(
+      {
+        ...collapse.current(),
+        scaleLinked: linked.checked,
+        ...(linked.checked ? { frontScale: 1, backScale: 1 } : {}),
+      },
+      { settled: true },
+    );
     sync();
   });
-  for (const [key, input] of [['front', frontInput], ['back', backInput]]) {
+  for (const [key, input] of [
+    ['front', frontInput],
+    ['back', backInput],
+  ]) {
     input.addEventListener('change', () => {
       collapse.setSurfaceScale(key, input.value);
       sync();
@@ -129,10 +217,12 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
       const current = collapse.current();
       const [lo, hi] = collapse.bounds();
       const increment = event.shiftKey ? 1 : 0.1;
-      const value = Math.round((current[key] + (event.key === 'ArrowUp' ? increment : -increment)) * 1e7) / 1e7;
-      const clamped = key === 'top'
-        ? Math.max(current.bottom + 1e-9, Math.min(hi, value))
-        : Math.min(current.top - 1e-9, Math.max(lo, value));
+      const value =
+        Math.round((current[key] + (event.key === 'ArrowUp' ? increment : -increment)) * 1e7) / 1e7;
+      const clamped =
+        key === 'top'
+          ? Math.max(current.bottom + 1e-9, Math.min(hi, value))
+          : Math.min(current.top - 1e-9, Math.max(lo, value));
       collapse.setCurrent({ ...current, [key]: clamped }, { settled: true });
       sync();
     });
@@ -158,14 +248,18 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     frontInput.disabled = !active || linkedState;
     backInput.disabled = !active || linkedState;
     for (const [input, value] of [
-      [topInput, current.top], [bottomInput, current.bottom],
+      [topInput, current.top],
+      [bottomInput, current.bottom],
     ]) {
       if (document.activeElement !== input) {
         input.setCustomValidity('');
         input.value = units.format(value);
       }
     }
-    for (const [input, value] of [[frontInput, current.frontScale], [backInput, current.backScale]]) {
+    for (const [input, value] of [
+      [frontInput, current.frontScale],
+      [backInput, current.backScale],
+    ]) {
       if (document.activeElement !== input) input.value = String(Number(value.toFixed(4)));
     }
     form.querySelector('.v2-z-unit').textContent = units.label();
@@ -175,11 +269,13 @@ export function createZBreakEditor({ el, button, fields, hook, units, collapse }
     windowNode.style.height = `${Math.max(2, yBottom - yTop)}px`;
     zeroLine.hidden = !(lo <= 0 && hi >= 0);
     if (!zeroLine.hidden) zeroLine.style.top = `${collapse.zToRulerY(0)}px`;
-    marks.replaceChildren(...[hi, (hi + lo) / 2, lo].map((value) => {
-      const tick = el('span', { class: 'v2-z-mark', 'aria-hidden': 'true' }, units.format(value));
-      tick.style.top = `${collapse.zToRulerY(value)}px`;
-      return tick;
-    }));
+    marks.replaceChildren(
+      ...[hi, (hi + lo) / 2, lo].map((value) => {
+        const tick = el('span', { class: 'v2-z-mark', 'aria-hidden': 'true' }, units.format(value));
+        tick.style.top = `${collapse.zToRulerY(value)}px`;
+        return tick;
+      }),
+    );
     for (const [key, handle] of Object.entries(handles)) {
       const z = current[key];
       handle.style.top = `${collapse.zToRulerY(z)}px`;

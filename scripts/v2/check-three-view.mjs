@@ -222,9 +222,7 @@ try {
         await page.locator('#section-collapse-enabled').setChecked(collapseEnabled === 'true');
         await ready();
         assert.equal(await host.getAttribute('data-z-collapse-enabled'), collapseEnabled);
-        await page
-          .getByRole('button', { name: 'Close Z Break', exact: true })
-          .click();
+        await page.getByRole('button', { name: 'Close Z Break', exact: true }).click();
         const clippedGeneration = await host.getAttribute('data-scene-generation');
         await page.locator('#sectionDetailRoiBtn').click();
         const sectionBox = await page.locator('#sectionCanvas').boundingBox();
