@@ -48,6 +48,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Main protection runbook — 2026-10-13](MAIN_PROTECTION_RUNBOOK_2026-10-13.md) — GitHub Admin-only repository rules and fail-closed verification.
 - [Physical unit edit integrity — 2026-10-13](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical-µm invariants, active editor conversions, and browser acceptance.
 - [Site publication cleanup (2026-10-13)](SITE_PUBLICATION_CLEANUP_2026-10-13.md) — Pages staging exclusions, canonical Workstation entry migration, and verification boundaries.
+- [Scientific unused-symbol review (2026-10-13)](SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md) — private Kernel and Renderer helper reachability, bounded deletion and acceptance requirements.
 - [Site symbol audit (2026-10-13)](SITE_SYMBOL_AUDIT_2026-10-13.md) — local bindings and named export reachability, initial cleanup and review boundaries.
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
