@@ -62,7 +62,7 @@ try {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     try {
-      await page.goto(`${base}/app-v2-workstation.html?start=example&example=${example}`, {
+      await page.goto(`${base}/app.html?start=example&example=${example}`, {
         waitUntil: 'domcontentloaded',
         timeout: 120000,
       });

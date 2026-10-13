@@ -12,7 +12,7 @@ try {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(
-    `${base}/app-v2-workstation.html?start=example&example=${encodeURIComponent(example)}`,
+    `${base}/app.html?start=example&example=${encodeURIComponent(example)}`,
   );
   await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
   await page.locator('[data-action="view:three"]').click();

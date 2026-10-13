@@ -67,7 +67,7 @@ try {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
       await page.goto(
-        `${base}/app-v2-workstation.html?start=example&example=photodetector-literature`,
+        `${base}/app.html?start=example&example=photodetector-literature`,
       );
       await page.waitForFunction(() => document.body.dataset.ready !== 'false');
       assert.equal(

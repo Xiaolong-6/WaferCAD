@@ -109,7 +109,7 @@ try {
     try {
       for (const [role, url] of [
         ['m2', `${base}/app-v2.html?domain=process`],
-        ['real', `${base}/app-v2-workstation.html?start=example&example=metalens`],
+        ['real', `${base}/app.html?start=example&example=metalens`],
       ]) {
         const { page, context } = await newUiPage(browser, {
           viewport: { width, height: 960 },
