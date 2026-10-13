@@ -5,9 +5,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { buildRenderSurfacePlan, cachedRenderSurfacePlan } = await import('../renderer-geometry.js');
-const { buildRenderSurfacePlanAsync, shouldBuildSurfacePlanInWorker } = await import(
-  '../renderer-surface-plan-async.js'
-);
+const { buildRenderSurfacePlanAsync, shouldBuildSurfacePlanInWorker } =
+  await import('../renderer-surface-plan-async.js');
 
 test('without a browser Worker, the async renderer returns the identical canonical surface plan', async () => {
   const original = globalThis.Worker;
@@ -25,9 +24,13 @@ test('without a browser Worker, the async renderer returns the identical canonic
 test('large scenes use a disposable worker and cache the exact completed result', async () => {
   const original = globalThis.Worker;
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 2 });
-  model.layers.push(...Array.from({ length: 5 }, (_, i) => ({
-    id: `ghost-${i}`, name: 'No region', color: '#000000',
-  })));
+  model.layers.push(
+    ...Array.from({ length: 5 }, (_, i) => ({
+      id: `ghost-${i}`,
+      name: 'No region',
+      color: '#000000',
+    })),
+  );
   let instance;
   globalThis.Worker = class {
     constructor(url) {
@@ -79,7 +82,11 @@ test('large scenes use a disposable worker and cache the exact completed result'
     assert.equal(instance.terminated, true);
     assert.equal(cachedRenderSurfacePlan(model), null);
     instance.onmessage({ data: { id: 1, type: 'done', plan: { caps: [], sidewalls: [] } } });
-    assert.equal(cachedRenderSurfacePlan(model), null, 'A late worker reply cannot commit stale geometry');
+    assert.equal(
+      cachedRenderSurfacePlan(model),
+      null,
+      'A late worker reply cannot commit stale geometry',
+    );
 
     globalThis.Worker.prototype.postMessage = () => {
       throw new Error('DataCloneError');
