@@ -1,0 +1,277 @@
+// One-command local Windows/Chrome acceptance. This intentionally uses a
+// separate browser context and localhost server; it cannot access your regular
+// Chrome profile, cookies, tabs, or pre-existing WaferCAD workspace.
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { chromium } from 'playwright';
+
+const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
+const base = `http://127.0.0.1:${port}`;
+const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
+const output = join('test-results', 'p1-hardware');
+const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const report = {
+  schema: 'wafercad-p1-hardware-v1',
+  startedAt: new Date().toISOString(),
+  revision: 'unknown',
+  platform: process.platform,
+  nodeVersion: process.version,
+  viewport: { width: 1600, height: 950 },
+  cases: {},
+  errors: [],
+};
+await mkdir(output, { recursive: true });
+try {
+  report.revision = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
+    encoding: 'utf8',
+  }).trim();
+} catch {}
+let server, browser, context, page;
+const save = () => writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+const checkServer = async () => {
+  try {
+    const response = await fetch(base + '/app.html', { signal: AbortSignal.timeout(1200) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+const hostMetrics = () =>
+  page.evaluate(async () => {
+    const host = document.getElementById('threeHost');
+    const canvas = host?.querySelector('canvas');
+    const gl = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
+    const debug = gl?.getExtension('WEBGL_debug_renderer_info');
+    const snapshot = window.WaferCadV2Workstation?.snapshot?.();
+    const model = snapshot?.model;
+    let modelHash = null;
+    if (model) {
+      const bytes = new TextEncoder().encode(JSON.stringify(model));
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      modelHash = [...new Uint8Array(digest)]
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    return {
+      startup: window.WaferCadV2Workstation?.startup?.(),
+      fastSetting: snapshot?.threeDisplay?.fast,
+      modelHash,
+      modelLayerCount: model?.layers?.length || 0,
+      gl: gl
+        ? {
+            vendor: gl.getParameter(gl.VENDOR),
+            renderer: gl.getParameter(gl.RENDERER),
+            unmaskedVendor: debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : null,
+            unmaskedRenderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : null,
+            version: gl.getParameter(gl.VERSION),
+          }
+        : null,
+      rendering: host
+        ? Object.fromEntries(
+            [
+              'renderQuality',
+              'renderState',
+              'rendererFrameSerial',
+              'rendererDrawCalls',
+              'rendererDrawTriangles',
+              'sceneAssemblyYields',
+              'rendererBuildFailure',
+              'arrayInstances',
+              'rendererFrameMs',
+            ].map((key) => [key, host.dataset[key] ?? null]),
+          )
+        : null,
+      vitals: window.__waferHardwareVitals || null,
+    };
+  });
+async function photograph(name) {
+  const element = page.locator('#threeHost canvas').first();
+  await element.waitFor({ state: 'visible', timeout });
+  const bytes = await element.screenshot({ animations: 'disabled', timeout: 60000 });
+  await writeFile(join(output, name), bytes);
+  return sha256(bytes);
+}
+async function waitReady(stage = 'ready') {
+  await page.waitForFunction(
+    (stage) => window.WaferCadV2Workstation?.startup?.().views.three === stage,
+    stage,
+    { timeout },
+  );
+}
+async function open(url) {
+  await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout });
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
+}
+try {
+  if (await checkServer()) throw new Error(`Port ${port} is in use. Stop the existing server or set WAFERCAD_HW_PORT.`);
+  server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
+    env: { ...process.env, WAFERCAD_V2_PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  let serverError = '';
+  server.stderr.on('data', (chunk) => {
+    serverError += String(chunk).slice(-500);
+  });
+  let listening = false;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await checkServer()) {
+      listening = true;
+      break;
+    }
+    if (server.exitCode !== null) break;
+    await sleep(200);
+  }
+  if (!listening) throw new Error('Local test server did not start: ' + serverError);
+  console.log('P1 hardware: opening local Chrome (headed) with ANGLE D3D11…');
+  browser = await chromium.launch({
+    channel: 'chrome',
+    headless: false,
+    args: ['--use-angle=d3d11', '--enable-webgl'],
+    timeout: 30000,
+  });
+  report.chromeVersion = browser.version();
+  context = await browser.newContext({
+    viewport: report.viewport,
+    deviceScaleFactor: 1,
+    serviceWorkers: 'block',
+  });
+  page = await context.newPage();
+  page.setDefaultTimeout(timeout);
+  page.on('pageerror', (error) => report.errors.push('PAGE: ' + error.message));
+  page.on('crash', () => report.errors.push('PAGE: renderer process crashed'));
+  await page.addInitScript(() => {
+    const vitals = {
+      startedAt: performance.now(),
+      marks: {},
+      viewTransitions: [],
+      eventLoopLagMs: [],
+      longTasksMs: [],
+    };
+    window.__waferHardwareVitals = vitals;
+    let previous = performance.now();
+    setInterval(() => {
+      const now = performance.now();
+      const delay = Math.max(0, now - previous - 50);
+      previous = now;
+      if (vitals.eventLoopLagMs.length < 15000) vitals.eventLoopLagMs.push(delay);
+    }, 50);
+    try {
+      new PerformanceObserver((list) => {
+        for (const item of list.getEntries()) {
+          if (vitals.longTasksMs.length < 15000) vitals.longTasksMs.push(item.duration);
+        }
+      }).observe({ entryTypes: ['longtask'] });
+    } catch {}
+    const record = () => {
+      const now = performance.now() - vitals.startedAt;
+      const shell = document.querySelector('.p-workbench');
+      const phase = shell?.dataset.boot;
+      const project = shell?.dataset.projectReady;
+      const first = shell?.dataset.firstFrameReady;
+      if (phase && !vitals.marks['boot:' + phase]) vitals.marks['boot:' + phase] = now;
+      if (project === 'true' && !vitals.marks.projectReady) vitals.marks.projectReady = now;
+      if (first === 'true' && !vitals.marks.firstFrameReady) vitals.marks.firstFrameReady = now;
+      const view = document.getElementById('threePanel')?.dataset.viewLoad;
+      if (view && vitals.viewTransitions.at(-1)?.state !== view) {
+        vitals.viewTransitions.push({ state: view, timeMs: Math.round(now) });
+      }
+    };
+    new MutationObserver(record).observe(document, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-boot', 'data-project-ready', 'data-first-frame-ready', 'data-view-load'],
+    });
+  });
+
+  console.log('P1 hardware: loading M3D example…');
+  await open('/app.html?start=example&example=m3d');
+  await waitReady();
+  report.cases.initialM3D = await hostMetrics();
+  report.cases.initialM3D.screenshotSha256 = await photograph('01-m3d-first-ready.png');
+  const glText = [
+    report.cases.initialM3D.gl?.unmaskedVendor,
+    report.cases.initialM3D.gl?.unmaskedRenderer,
+  ].join(' ');
+  report.hardwareVerified =
+    /nvidia|geforce|rtx 3060/i.test(glText) &&
+    !/swiftshader|llvmpipe|software|warp|basic render driver/i.test(glText);
+  console.log('P1 hardware GPU:', glText || '(unmasked adapter not available)');
+  if (!report.hardwareVerified) {
+    report.errors.push('GPU identity is not verified as NVIDIA hardware; do not treat results as RTX acceptance.');
+  }
+
+  console.log('P1 hardware: storing Quality preference for M3D…');
+  if (report.cases.initialM3D.fastSetting !== false) {
+    await page.locator('[data-action="quality:three"]').click();
+  }
+  await page.waitForFunction(
+    () => window.WaferCadV2Workstation?.snapshot?.().threeDisplay.fast === false,
+    null,
+    { timeout },
+  );
+  await page.locator('#saveProjectBtn').click();
+  await page.waitForFunction(
+    () => /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
+    null,
+    { timeout },
+  );
+  console.log('P1 hardware: reloading saved M3D project with Quality…');
+  await open('/app.html');
+  await waitReady();
+  report.cases.qualityReload = await hostMetrics();
+  report.cases.qualityReload.screenshotSha256 = await photograph('02-quality-final.png');
+  await sleep(400);
+  report.cases.qualityReload.repeatSha256 = await photograph('03-quality-repeat.png');
+  report.cases.qualityReload.sameFramePixels =
+    report.cases.qualityReload.screenshotSha256 === report.cases.qualityReload.repeatSha256;
+  report.cases.qualityReload.modelUnchanged =
+    report.cases.initialM3D.modelHash === report.cases.qualityReload.modelHash;
+  const stages = report.cases.qualityReload.vitals?.viewTransitions?.map((x) => x.state) || [];
+  report.cases.qualityReload.stageSequencePassed =
+    stages.indexOf('coarse') >= 0 &&
+    stages.indexOf('refining') > stages.indexOf('coarse') &&
+    stages.lastIndexOf('ready') > stages.indexOf('refining');
+  report.passed =
+    report.hardwareVerified &&
+    report.cases.qualityReload.fastSetting === false &&
+    report.cases.qualityReload.stageSequencePassed &&
+    report.cases.qualityReload.modelUnchanged &&
+    report.errors.length === 0;
+} catch (error) {
+  report.errors.push(String(error?.stack || error));
+  report.passed = false;
+  console.error('P1 hardware acceptance:', error.message);
+  if (page && !page.isClosed()) {
+    try {
+      report.partial = await hostMetrics();
+      await page.screenshot({
+        path: join(output, 'failure-full-page.png'),
+        fullPage: true,
+        timeout: 15000,
+      });
+    } catch (captureError) {
+      report.errors.push('Evidence capture: ' + captureError.message);
+    }
+  }
+} finally {
+  report.finishedAt = new Date().toISOString();
+  await save();
+  if (context) await context.close().catch(() => {});
+  if (browser) await browser.close().catch(() => {});
+  if (server) server.kill();
+  console.log('P1_HARDWARE_RESULT', JSON.stringify({
+    passed: report.passed,
+    revision: report.revision,
+    gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
+    modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
+    stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
+    folder: output,
+    errors: report.errors.slice(0, 3).map((x) => x.slice(0, 180)),
+  }));
+  if (!report.passed) process.exitCode = 1;
+}
