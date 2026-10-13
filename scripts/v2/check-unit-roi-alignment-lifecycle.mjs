@@ -98,10 +98,16 @@ try {
         Math.abs(changed.maskRoi.c[0] - xEdited) < 1e-9,
         shape + ' edited X equals the requested physical coordinate',
       );
-      assert.notEqual(changed.maskRoi.c[0], created.maskRoi.c[0],
-        shape + ' intentional edit changes canonical X');
-      assert.equal(changed.maskRoi.c[1], created.maskRoi.c[1],
-        shape + ' X edit preserves sub-grid Y');
+      assert.notEqual(
+        changed.maskRoi.c[0],
+        created.maskRoi.c[0],
+        shape + ' intentional edit changes canonical X',
+      );
+      assert.equal(
+        changed.maskRoi.c[1],
+        created.maskRoi.c[1],
+        shape + ' X edit preserves sub-grid Y',
+      );
       if (shape === 'square') {
         assert.equal(changed.maskRoi.size, created.maskRoi.size);
         assert.equal(changed.maskRoi.rotation, created.maskRoi.rotation);
