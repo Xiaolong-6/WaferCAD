@@ -1384,6 +1384,12 @@ export function createThreeView({
 
   function startSceneVariantBuild(mode, { countVariant = true } = {}) {
     cacheActiveSceneVariant();
+    // #186 production P0 diagnostics: the previous committed group must stay
+    // attached while the replacement variant is built without partial frames.
+    if (countVariant)
+      host.dataset.rendererRetainedCompleteVisible = String(
+        Boolean(group?.visible && group?.parent === scene),
+      );
     if (countVariant)
       host.dataset.rendererRetainedVariantBuilds = String(
         Number(host.dataset.rendererRetainedVariantBuilds || 0) + 1,
@@ -4503,6 +4509,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (variantBuild) {
         const previous = sceneVariantCache.get(previousVariant);
         if (previous?.group && previous.group !== group) scene.remove(previous.group);
+        delete host.dataset.rendererRetainedCompleteVisible;
         host.dataset.rendererCommittedVariantSwaps = String(
           Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
         );
@@ -4572,6 +4579,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       } catch (cleanupError) {
         console.warn('3D rebuild cleanup failed:', cleanupError);
+      }
+      if (variantBuild) {
+        delete host.dataset.rendererRetainedCompleteVisible;
+        host.dataset.rendererVariantRollbacks = String(
+          Number(host.dataset.rendererVariantRollbacks || 0) + 1,
+        );
+      }
+      if (superseded) {
+        host.dataset.rendererSupersededBuilds = String(
+          Number(host.dataset.rendererSupersededBuilds || 0) + 1,
+        );
       }
       // An ordinary failed rebuild remains fail-closed. For a variant-only
       // failure, restore the committed group, without claiming the new mode rendered.

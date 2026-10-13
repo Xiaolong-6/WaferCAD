@@ -187,6 +187,30 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(app, /createThreeView/);
 });
 
+test('merged P0 variant staging preserves a committed scene and rejects stale candidates', () => {
+  const start = threeView.indexOf('function startSceneVariantBuild(');
+  const end = threeView.indexOf('function clearSceneVariantCache(', start);
+  const preparation = threeView.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(preparation, /cacheActiveSceneVariant\(\)/);
+  assert.match(preparation, /group\.visible = false/);
+  assert.match(preparation, /rendererRetainedCompleteVisible/);
+  assert.doesNotMatch(preparation, /scene\.remove\(group\)/);
+
+  const begin = threeView.indexOf('const rejectSupersededBuild = () =>');
+  const commit = threeView.indexOf("recordVariantStage('presentation-begin')", begin);
+  const catchStart = threeView.indexOf('} catch (error) {\n      rebuildFailed = true;', commit);
+  const rollback = threeView.slice(catchStart, threeView.indexOf('} finally {', catchStart));
+  assert.ok(begin >= 0 && commit > begin && catchStart > commit);
+  assert.match(threeView.slice(begin, commit), /rejectSupersededBuild\(\)/);
+  assert.match(threeView.slice(begin, commit), /rendererCommittedVariantSwaps/);
+  assert.match(rollback, /disposeSceneGroup\(failedGroup\)/);
+  assert.match(rollback, /restoreSceneVariant\(previous\)/);
+  assert.match(rollback, /rendererVariantRollbacks/);
+  assert.match(rollback, /rendererSupersededBuilds/);
+  assert.match(threeView, /if \(rebuildFailed\) \{/);
+});
+
 test('3D lifecycle disposal replaces the original direct-resource loops without undefined sets', () => {
   const start = threeView.indexOf('function disposeGroup()');
   const end = threeView.indexOf('function presentationMode(', start);
