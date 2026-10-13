@@ -41,6 +41,13 @@ const faceSurfaces = structuredClone({
 });
 assert.equal(faceSurfaces.front.seed, 2018);
 assert.equal(faceSurfaces.back.seed, 2019);
+const modeledTexture = back.state.model.regions
+  .flatMap((region) => region.stack)
+  .find((segment) => segment.layerId === 'base' &&
+    segment.frontSurface?.seed === 2018 && segment.backSurface?.seed === 2019);
+assert.ok(modeledTexture, 'Expected legacy two-sided deterministic texture');
+faceSurfaces.front.profileId = modeledTexture.frontSurface.profileId;
+faceSurfaces.back.profileId = modeledTexture.backSurface.profileId;
 for (const surface of Object.values(faceSurfaces)) {
   assert.equal(surface.morphology, 'pyramid');
   assert.equal(surface.meanHeight, 4.5);
