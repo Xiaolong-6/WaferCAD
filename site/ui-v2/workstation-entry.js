@@ -169,6 +169,9 @@ try {
     }
   });
   window.addEventListener('resize', render);
+  // Commit navigation, panel ownership and view order before async restore.
+  // The boot mask remains until the recovered project has rendered.
+  shell.render();
   await workflow.start();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
@@ -226,6 +229,7 @@ try {
       }),
     projection: () => window.WaferCadV2Main.projection(),
   };
+  shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
 } catch (error) {
   document.body.dataset.ready = 'error';
