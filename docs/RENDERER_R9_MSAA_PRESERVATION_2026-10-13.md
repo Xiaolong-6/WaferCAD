@@ -98,68 +98,16 @@ full five-stage R9. This diagnostic can distinguish preserved-buffer
 behavior under **actual four-sample** MSAA, but cannot approve production
 pixel parity or experimental V4 speedups. Keep the branch Draft/default-off.
 
-## 2026-10-13 completed RTX 3060 preservation acquisition: drift persists
+## 2026-10-13 complete RTX 3060 preserved-MSAA acquisition
 
-This supersedes the previous *incomplete first run* as the final
-preservation hypothesis result. The operator's separate, complete private
-evidence archive is `2026-10-13T10-41-24-416Z.zip` (SHA-256
-`2f31df3cf1ec4c1b3f79d2cb99cef72b32f5aaee568f8ffd4efb0f692301b788`).
-It contains 14 files, including four 531x275 PNGs, four native
-per-arm traces and the full `report.json`; raw screenshots, driver
-logs and full trace contents are **not committed** to the repository.
-The pinned V4 source is `e231d8537bbd06ecfc47fe83c0b26e5b6cbacec6`.
+The operator's private evidence ZIP is `2026-10-13T10-41-24-416Z.zip` (SHA-256 `2f31df3cf1ec4c1b3f79d2cb99cef72b32f5aaee568f8ffd4efb0f692301b788`). Its 14 entries include four full PNGs, four traces and the report. Source revision is `e231d8537bbd06ecfc47fe83c0b26e5b6cbacec6`. Raw machine traces and screenshots remain outside the public repository.
 
-- One `r9-preserved-msaa` experiment completed the entire
-  `1-OFF / 2-OFF / 3-ON / 4-ON` fresh-context series.
-  `exitCode=0`, `fatalError=null`, `campaignComplete=true`,
-  `diagnosticComplete=true`, `stage=completed`.
-- Every context independently reported the same verified physical
-  `NVIDIA GeForce RTX 3060` / ANGLE D3D11 adapter,
-  `contextAntialias=true`, `contextPreserveDrawingBuffer=true`,
-  default `SAMPLES=4`, default framebuffer, and `glError=0`.
-  OFF/OFF submitted 1,408 calls / 57,040,012 triangles per arm;
-  ON/ON submitted 1,291 calls / 54,066,262 per arm.
-- The captured 12 per-arm GL checkpoints are valid with equal
-  comparable raster states. Matching-policy camera matrices, material
-  and object order hashes, 48 bounded sampled draw inputs, and layout
-  match. Only these **sampled** inputs are proven equal; an unmeasured
-  input cannot be ruled out.
+All four OFF/OFF/ON/ON contexts identified the same physical NVIDIA GeForce RTX 3060 through ANGLE D3D11. The native WebGL readback verified `antialias=true`, `preserveDrawingBuffer=true`, four actual default-framebuffer samples and no GL errors in every trial. The campaign completed with `diagnosticComplete=true`, `fatalError=null`, and `strictParity=false`. Diagnostic classification remains `passed=false` and `acceptanceEligible=false`.
 
-- **OFF/OFF:** 11 / 146,025 changed PNG pixels; max channel
-  delta 1/255; first differing native checkpoint after draw 256
-  (draw 128 matched).
-- **ON/ON:** 76 / 146,025 changed PNG pixels; max channel
-  delta 1/255; first differing native checkpoint after draw 384
-  (draw 256 matched).
-- **OFF/ON:** 154 / 146,025 changed PNG pixels; max channel
-  delta 2/255. Policies differ, so this comparison does not isolate
-  a raster-lifecycle cause.
+At 531x275, OFF/OFF differed in 11 of 146,025 pixels (maximum channel delta 1/255); ON/ON differed in 76 pixels (maximum 1/255). The different-policy OFF/ON comparison differed in 154 pixels (maximum 2/255) and is not evidence of a pure raster-lifecycle difference. Independent pixel-by-pixel PNG comparison reproduced those counts. Same-policy native framebuffer hashes had already diverged before browser screenshot composition.
 
-The matching-policy framebuffer hashes already differ **before**
-compositor capture. Both first differences arise during
-`material-exterior` submissions, in observed draw intervals
-`(128,256]` for OFF and `(256,384]` for ON; these do not identify a
-specific draw or hardware root cause. A separate manual RGBA comparison
-of the PNGs reproduced 11, 76 and 154 differing pixel counts.
-The matching-policy differences remain small and local, but strict
-zero-pixel parity is unambiguously **false**.
+Both same-policy pairs retained identical camera, layout, draw order, material signatures, sampled draw inputs and measured raster state. The first differing native `material-exterior` checkpoint occurred after draw 256 for OFF/OFF (draw 128 matched), and after draw 384 for ON/ON (draw 256 matched). These intervals bound the earliest observed mismatch; they do not establish a specific draw or prove a GPU-driver cause.
 
-Previous non-preserved production 4x-MSAA acquisition recorded 49
-OFF/OFF and 85 ON/ON differing pixels. Lower counts here are one
-independent capture sample, **not** statistical evidence of improvement.
-Preserving the default drawing buffer was **insufficient** to eliminate
-same-policy cross-context drift. The separate zero-MSAA experiments
-were deterministic, but change the approved rasterization baseline and
-remain diagnostic-only.
+The prior independent non-preserved 4x-MSAA run differed in 49 OFF/OFF and 85 ON/ON pixels. A smaller count in this run does not prove a stable improvement. Preserving the drawing buffer failed to eliminate strict production 4x-MSAA pixel drift. Earlier zero-MSAA experiments also cannot authorize changes to the production baseline.
 
-**Disposition:** this exact hypothesis is closed with a negative
-result. `strictParity=false`, `passed=false` and
-`acceptanceEligible=false` are correct. Do not change production
-`antialias`, shader/geometry paths or the strict zero-pixel threshold.
-Do not enable experimental flags or merge PR #174. Do not repeat this
-preservation experiment or the completed no-MSAA Index/Caps/Combined
-campaigns. The remaining scientific question is 4-sample coverage /
-resolve / quantization variability within those first observed
-exterior-material draw windows. Design and validate any next read-only
-diagnostic in automated CI before requesting a **new, strictly bounded**
-hardware capture; do not label a plausible cause as proven.
+This preservation hypothesis is closed as insufficient. Do not repeat this hardware campaign or the already completed Index, Caps and Combined no-MSAA campaigns. Keep PR #174 Draft, all experimental flags default-off, the original 4x-MSAA setting and a strict zero-pixel gate. Any subsequent exterior-material MSAA/resolve investigation should first validate its read-only instrumentation in CI and request hardware only for one bounded, decision-relevant experiment.
