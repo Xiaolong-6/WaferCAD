@@ -63,6 +63,7 @@
       button('Inspect', 'expand-empty', 'process'),
     );
     const separator = divider(false);
+    separator.dataset.help = 'shell.panel.resize';
     const canvases = el('div', { class: 'p-canvases' });
     const viewbar = el('div', { class: 'p-viewbar' });
     const stage = el(
@@ -187,11 +188,13 @@
         el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
         ...registry.primaryNav.map(({ key, label, icon }) =>
           button(label, `domain:${key}`, icon, {
+            'data-help': 'shell.navigation',
             'aria-pressed': String(info.selectedNavigation === key),
           }),
         ),
         button('', 'hide-editor', 'close', {
           'aria-label': 'Hide navigation and workflow editor',
+          'data-help': 'shell.navigation',
         }),
       );
     }
@@ -222,7 +225,7 @@
           ? button(entry.label, `mode:${key}`, null, {
               disabled: narrow() && key !== 'single',
               'aria-pressed': String(mode === key),
-              title: narrow() ? 'Tablet / phone use Single' : '',
+              'data-help': `shell.${key}`,
             })
           : null;
       };
@@ -240,6 +243,7 @@
             .map(({ key, label, icon }) =>
               button(label, `view:${key}`, icon, {
                 'aria-pressed': String(mode === 'single' && state.view === key),
+                'data-help': `shell.view.${key}`,
               }),
             ),
           viewDivider(),
@@ -251,9 +255,11 @@
           narrow()
             ? button('Section', 'mobile-section', 'section', {
                 'aria-pressed': String(state.view === 'section'),
+                'data-help': 'shell.section',
               })
             : button('Section dock', 'section', 'section', {
                 'aria-pressed': String(state.section),
+                'data-help': 'shell.section',
               }),
         ),
       );
@@ -269,7 +275,8 @@
         if (maximizeButton) {
           const maximized = state.maximize === key;
           const label = registry.views.find((view) => view.key === key).label;
-          maximizeButton.title = maximized ? 'Restore view' : 'Maximize view';
+          if (!maximizeButton.hasAttribute('data-help'))
+            maximizeButton.title = maximized ? 'Restore view' : 'Maximize view';
           maximizeButton.setAttribute(
             'aria-label',
             `${label} ${maximized ? 'restore' : 'maximize'}`,
@@ -287,6 +294,7 @@
               {
                 class: 'v2-split-select',
                 'aria-label': `${index === 0 ? 'Left' : 'Right'} Split view`,
+                'data-help': 'shell.split',
               },
               registry.views
                 .filter((v) => v.key !== 'section')

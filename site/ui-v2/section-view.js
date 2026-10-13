@@ -48,7 +48,17 @@ export function createSectionView({ store, main, workstation }) {
   const units = createDisplayUnits(() => state);
   const fields = createInspectionFields({ hook, units });
   const icon = (label, action, glyph) =>
-    button('', action, glyph, { title: label, 'aria-label': label });
+    button('', action, glyph, {
+      title: label,
+      'aria-label': label,
+      'data-help': ({
+        'fit:section': 'view.fit', 'tool:pan:section': 'view.pan',
+        'tool:zoom:section': 'view.zoom', 'zbreak-settings': 'section.zbreak',
+        'scale:section': 'section.scale', 'borders:section': 'section.borders',
+        'detail': 'section.detail', 'legend': 'section.layers',
+        'maximize:section': 'shell.maximize',
+      })[action],
+    });
   const canvas = hook(
     'sectionCanvas',
     el('canvas', { 'aria-label': 'Physical Section A–B', tabindex: 0 }),
@@ -92,6 +102,7 @@ export function createSectionView({ store, main, workstation }) {
     'aria-valuemin': 160,
     'aria-valuemax': 400,
     title: 'Drag to resize Layers pane',
+    'data-help': 'shell.section.resize',
   });
   const body = hook(
     'sectionBody',
@@ -177,7 +188,7 @@ export function createSectionView({ store, main, workstation }) {
         detailButton,
       ],
     ],
-    [icon('Layers', 'legend', 'main'), button('Export', 'section-export-menu', 'export')],
+    [icon('Layers', 'legend', 'main'), button('Export', 'section-export-menu', 'export', { 'data-help': 'view.export' })],
   );
   tools.append(icon('Maximize', 'maximize:section', 'maximize'));
   hook('sectionScaleModeBtn', el('select'));
@@ -416,6 +427,7 @@ export function createSectionView({ store, main, workstation }) {
         type: 'checkbox',
         checked: item.visible !== false,
         'aria-label': `Show ${item.name}`,
+        'data-help': 'section.visibility',
       });
       checkbox.onchange = () => {
         const fn = row.dataset.layerId
@@ -430,7 +442,7 @@ export function createSectionView({ store, main, workstation }) {
       name.tabIndex = 0;
       name.setAttribute('role', 'button');
       name.setAttribute('aria-label', `Rename ${item.name}`);
-      name.title = `${item.name}${item.kind ? `\n${item.kind} · ${item.depthProfile || 'smooth'} · ${item.visible === false ? 'Hidden' : 'Visible'}` : ''}\nClick to rename`;
+      name.dataset.help = 'section.layers';
       const editName = () => {
         if (name.querySelector('input')) return;
         editingName = true;
@@ -481,7 +493,7 @@ export function createSectionView({ store, main, workstation }) {
           null,
           smooth ? 'depthSmooth' : 'depthFollow',
         );
-        profile.title = `Depth profile: ${smooth ? 'Smooth' : 'Follow offset'}`;
+        profile.dataset.help = 'section.profile';
         profile.setAttribute('aria-pressed', String(smooth));
         profile.onclick = () => {
           const setProfile =

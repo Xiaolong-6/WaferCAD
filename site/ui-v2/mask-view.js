@@ -53,7 +53,18 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   const caption = () =>
     `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · ${units.label()}`;
   const iconButton = (hint, action, glyph, extra = {}) =>
-    button('', action, glyph, { title: hint, 'aria-label': hint, ...extra });
+    button('', action, glyph, {
+      title: hint,
+      'aria-label': hint,
+      'data-help': ({
+        'fit:mask': 'view.fit', 'tool:pan:mask': 'view.pan',
+        'tool:zoom:mask': 'view.zoom', 'mask-source': 'mask.source',
+        'draw-toggle': 'mask.draw', 'opacity:mask': 'mask.opacity',
+        'mask-roi-toggle': 'mask.roi', 'mask-alignment-settings': 'mask.alignment',
+        'maximize:mask': 'shell.maximize',
+      })[action],
+      ...extra,
+    });
   function sync() {
     syncDisplayUnitFields(document, units.key());
     if (!state) return;
@@ -333,7 +344,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           iconButton('Mask alignment', 'mask-alignment-settings', 'alignment'),
         ],
       ],
-      [button('Export', 'mask-export-menu', 'export')],
+      [button('Export', 'mask-export-menu', 'export', { 'data-help': 'view.export' })],
     );
     tools.append(iconButton('Maximize view', 'maximize:mask', 'maximize'));
     const descriptors = [
@@ -348,6 +359,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       label,
       glyph,
       action: `draw-tool:${key}`,
+      helpKey: 'mask.draw',
       enabled: () => state.maskSourceMode === 'draw',
     }));
     strip = createFloatingStrip({
@@ -360,12 +372,14 @@ export async function createMaskView({ project, sharedState, workstation } = {})
           {
             label: 'Delete selected',
             action: 'draw-delete',
+            helpKey: 'mask.draw.delete',
             glyph: 'delete',
             enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
           },
           {
             label: 'Clear Draw shapes',
             action: 'draw-clear',
+            helpKey: 'mask.draw.clear',
             glyph: 'clear',
             enabled: () => state.maskSourceMode === 'draw' && state.drawMask.shapes.length > 0,
           },
@@ -374,6 +388,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       settings: {
         label: 'Draw settings',
         action: 'draw-settings',
+        helpKey: 'mask.draw.settings',
         glyph: 'settings',
         enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
       },
@@ -383,13 +398,13 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       id: 'maskRoiTools',
       label: 'Mask ROI tools',
       groups: [
-        [{ key: 'select', label: 'Select', glyph: 'select', action: 'mask-roi-tool:select' }],
+        [{ key: 'select', label: 'Select', glyph: 'select', action: 'mask-roi-tool:select', helpKey: 'mask.roi' }],
         [
-          { key: 'square', label: 'Square', glyph: 'rectangle', action: 'mask-roi-tool:square' },
-          { key: 'circle', label: 'Circle', glyph: 'circle', action: 'mask-roi-tool:circle' },
+          { key: 'square', label: 'Square', glyph: 'rectangle', action: 'mask-roi-tool:square', helpKey: 'mask.roi' },
+          { key: 'circle', label: 'Circle', glyph: 'circle', action: 'mask-roi-tool:circle', helpKey: 'mask.roi' },
         ],
       ],
-      settings: { label: 'ROI settings', action: 'mask-roi-settings', glyph: 'settings' },
+      settings: { label: 'ROI settings', action: 'mask-roi-settings', glyph: 'settings', helpKey: 'mask.roi.settings' },
       toolAttribute: 'data-mask-roi-tool',
       owner: () => document.querySelector('#maskPanel [data-action="mask-roi-toggle"]'),
     });
