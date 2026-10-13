@@ -20,6 +20,11 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /node scripts\/build-pages-artifact\.mjs/);
   assert.match(pages, /node scripts\/stamp-pages-assets\.mjs .*build\/pages/);
   assert.match(pages, /path: build\/pages/);
+  const commitLine = pages.split('\n').find((line) => line.includes('> build/pages/build-info.json'));
+  assert.equal(
+    commitLine?.trim(),
+    String.raw`printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json`,
+  );
 });
 
 test('browser and v2 owners are reusable without racing main-push jobs', () => {

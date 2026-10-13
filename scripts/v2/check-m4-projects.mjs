@@ -70,7 +70,7 @@ try {
         timeout: 120000,
       });
       assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
-      assert.match(page.url(), /\/app-v2-workstation\.html$/);
+      assert.match(page.url(), /\/app\.html$/);
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const before = await snapshot();
       assert.equal(before.sharedIdentity, true);
