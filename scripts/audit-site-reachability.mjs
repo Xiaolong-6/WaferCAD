@@ -49,7 +49,8 @@ export function resolveReference(from, reference, inventory) {
 export function extractLiteralReferences(source, extension) {
   const results = new Set();
   if (extension === '.html') {
-    const references = source.matchAll(/\b(?:src|href|poster|data-preview-src)\s*=\s*["']([^"']+)["']/gi);
+    const htmlAttribute = /\b(?:src|href|poster|data-preview-src)\s*=\s*["']([^"']+)["']/gi;
+    const references = source.matchAll(htmlAttribute);
     for (const match of references) results.add(match[1]);
   }
   if (extension === '.css' || extension === '.html') {
@@ -104,8 +105,10 @@ export async function auditSiteReachability(root = resolve('site')) {
       !isDevelopment(file) &&
       !file.startsWith('vendor/'),
   );
-  const developerOnly = candidates.filter((file) => !production.has(file) && developer.has(file));
-  const unproven = candidates.filter((file) => !production.has(file) && !developer.has(file));
+  const onlyDeveloper = (file) => !production.has(file) && developer.has(file);
+  const isUnproven = (file) => !production.has(file) && !developer.has(file);
+  const developerOnly = candidates.filter(onlyDeveloper);
+  const unproven = candidates.filter(isUnproven);
   return {
     scannedFiles: inventory.size,
     productionRoots,
