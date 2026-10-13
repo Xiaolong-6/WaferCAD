@@ -173,7 +173,6 @@ function markViewDirty() {
   workspacePersistenceController?.scheduleView();
 }
 
-
 function checkpointWorkspace(reason) {
   return workspacePersistenceController?.checkpointCurrent(reason) ?? Promise.resolve(false);
 }
