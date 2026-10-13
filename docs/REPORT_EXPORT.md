@@ -18,6 +18,12 @@ portable, read-only research narrative alongside the existing **Export**
 - `report.md`: editable report text and a complete step index.
 - `manifest.json`: report schema, project dimensions, layer inventory, Branch
   and Bookmark metadata, current History cursor, resource index and any warnings.
+- `keyframe-plan.json` (P2): capped historical Section selections, source
+  revision and physical-coordinate evidence for successful figures, plus
+  rendering failures, unavailable states and budget omissions.
+- `history/figures/section-step-NNNN.svg`: genuine saved-state Section figures
+  for successfully rendered selected History nodes. Never inferred from the
+  current model. Failed nodes have no SVG resource.
 - `recipe.json`: saved Recipe. Recipe steps and recorded History are intentionally
   distinct; a saved descriptor does not prove deterministic replay.
 - `assets/current-*.png`: only successfully captured **visible canvases**.
@@ -32,9 +38,11 @@ specific paginated HTML anchor.
 ## Large-history and image policy
 
 The complete operation ledger is exported up to the current History cap (1,000
-nodes), across all Variants. Pages are segmented in chunks of 50. P1 does **not**
-render a picture for each historical step, generate inferred before/after
-images, or serialize physical model geometry for every historical state.
+nodes), across all Variants. Pages are segmented in chunks of 50. P2's default
+compact policy **attempts up to 24 independently rendered historical Section
+SVGs**; this is a best-effort cap, not a promise of one image per step.
+Missing saved states, invalid geometry and Worker failures are recorded with
+their node IDs. No inferred before/after images are generated.
 
 The current visible Main/Mask/Section/3D canvases are captured where available.
 Views hidden or not initialized at export time are **omitted with a warning**
@@ -43,12 +51,15 @@ they are not necessarily the Variant HEAD. For documentation of the final
 structure, return to the HEAD before exporting. A PNG is a presentation
 capture, not a vector scientific geometry artifact.
 
-Captured PNGs are capped at 16 MiB each; the total uncompressed ZIP payload
+Captured PNGs are capped at 16 MiB each. Historical SVGs are capped at 2 MiB
+each and 24 MiB combined. The total uncompressed ZIP payload
 limit is 128 MiB. Excess content fails explicitly and leaves the workspace
 unchanged. ZIP uses uncompressed (STORE) entries to avoid runtime libraries.
 Heavy page generation and packaging run inside the shared abortable Process
-Task worker; the live inspector is inert during the transaction. Cancelling
-produces no partial download.
+Task worker; historical Section geometry uses a separate Worker one saved
+state at a time, using physical X/Z scaling with no Z break. The live inspector
+is not restored or repainted during this transaction. Cancelling produces
+no partial download.
 
 The archive is for reading and reviewing. **Always export a separate
 `.wafercad` file** if you need History restoration, true source geometry,
@@ -56,9 +67,10 @@ Array models, or editable fabrication structures.
 
 ## Planned P2/P3
 
-- P2: dedicated history render snapshots without mutating the live workspace,
-  adaptive Keyframes, visual-difference ranking, before/after pairs, vector
-  Main/Mask/Section figures, user-controlled inclusion.
+- P2: budgeted Keyframe selection and independent physical Section SVGs are
+  implemented (see [Report Keyframes](REPORT_KEYFRAMES.md)).
+  Visual-difference ranking, before/after pairs and historical vector
+  Main/Mask views remain future work.
 - P3: Full Evidence mode, per-step imagery when requested, content-addressed
   image deduplication, progress and package-size estimates, split archives,
   and large-model performance/hardware validation.
@@ -78,5 +90,6 @@ failures must be explicitly disclosed.
 - `npm run check`: repository formatting, lint, docs and Node tests.
 - `ui-v2-stage-c-m4.yml`: CI integration browser gate.
 
-Do not claim acceptance for runs that have not been executed. P1 deliberately
-excludes historical image synthesis and full-array performance guarantees.
+Do not claim acceptance for runs that have not been executed. Historical SVG
+capture is best effort and cannot substitute for full-array performance
+guarantees or a restorable project file.
