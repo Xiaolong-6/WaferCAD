@@ -17,7 +17,7 @@ This is an evidence index, not an alternative product contract. Canonical histor
 - [Local regression and autosave fix — 2026-10-06](LOCAL_REGRESSION_2026-10-06.md)
 - [M3D / History / Border — desktop Agent handoff (2026-10-08)](M3D_HISTORY_BORDER_RECOVERY_HANDOFF_2026-10-08.md)
 - [Pre-main audit - 2026-10-07](PRE_MAIN_AUDIT_2026-10-07.md)
-- [Desktop pre-main audit — 2026-10-08](../PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md)
+- [Desktop pre-main audit — 2026-10-08](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md)
 - [Pre-main integration audit — 2026-10-08](PRE_MAIN_INTEGRATION_AUDIT_2026-10-08.md)
 - [Process Recipe safety review — 2026-10-08](PROCESS_RECIPE_SAFETY_AUDIT_2026-10-08.md)
 - [Product interaction and visual regression](PRODUCT_REVIEW.md)
