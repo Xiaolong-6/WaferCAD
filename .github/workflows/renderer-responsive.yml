@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: renderer-responsive-${{ github.ref }}
@@ -45,16 +45,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Normalize new GPU probe sources once
-        run: |
-          npx prettier --write site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
-          if ! git diff --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add site/renderer-responsive-gpu-timer.js site/tests/renderer-responsive-gpu-timer.test.mjs
-            git commit -m 'style(renderer): format GPU timer query experiment'
-            git push origin HEAD:refs/heads/perf/renderer-v4-adaptive-tiles-20261010
-          fi
       - name: Focused Node and source quality checks
         run: |
           node --test site/tests/renderer-responsive-staging.test.mjs site/tests/renderer-v4-smooth-sidewall-data.test.mjs site/tests/renderer-responsive-budget.test.mjs site/tests/renderer-responsive-latency.test.mjs site/tests/renderer-responsive-jank.test.mjs site/tests/renderer-responsive-gpu-timer.test.mjs
