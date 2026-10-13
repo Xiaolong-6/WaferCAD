@@ -100,6 +100,7 @@ export function createThreeView({
   let frame = null;
   let interacting = false;
   let rendering = false;
+  let activeSurfaceAbort = null;
   let lastLodSignature = null;
   let roughMeshes = [];
   let roughTasks = [];
@@ -2570,6 +2571,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!ready) return;
     if (rendering) {
       pendingRender = true;
+      activeSurfaceAbort?.abort();
       return;
     }
     const model = getModel();
@@ -2655,7 +2657,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
         plan =
           variantBuild && physicalSurfacePlan
             ? physicalSurfacePlan
-            : await buildRenderSurfacePlanAsync(model, clip);
+            : await (async () => {
+                const controller = new AbortController();
+                activeSurfaceAbort = controller;
+                try {
+                  return await buildRenderSurfacePlanAsync(model, clip, {
+                    signal: controller.signal,
+                  });
+                } finally {
+                  if (activeSurfaceAbort === controller) activeSurfaceAbort = null;
+                }
+              })();
       if (!variantBuild && pendingRender) {
         // While exact topology was built in the worker, a newer request may
         // have superseded the model/ROI. Never commit that stale scene.
@@ -3447,7 +3459,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     } catch (error) {
       rebuildAborted = true;
-      const superseded = error?.name === 'SceneVariantSuperseded';
+      const superseded =
+        error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError';
       if (previousVariantGroup) {
         // Never strand the viewport with a partially constructed, hidden group.
         const failedGroup = group;
