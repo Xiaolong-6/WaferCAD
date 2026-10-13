@@ -391,6 +391,16 @@ async function trial(enabled, index) {
       assert.equal(native.defaultFramebufferSamples, 4, label + ': expected real 4-sample MSAA');
       assert.equal(native.glState?.framebuffer, 'default', label + ': framebuffer must be default');
     }
+    if (phaseWindowDiagnostic) {
+      assert.equal(native.contextAntialias, true, label + ': production MSAA is required');
+      assert.equal(
+        native.contextPreserveDrawingBuffer,
+        false,
+        label + ': phase window must retain production framebuffer policy',
+      );
+      assert.equal(native.defaultFramebufferSamples, 4, label + ': expected four MSAA samples');
+      assert.equal(native.glState?.framebuffer, 'default', label + ': expected default framebuffer');
+    }
     if (diagnosticNoDither) {
       assert.ok(
         native.forcedDitherDisabledDraws > 0,
