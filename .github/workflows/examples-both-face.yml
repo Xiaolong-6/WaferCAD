@@ -15,6 +15,17 @@ on:
       - site/controllers/process-panel-controller.js
       - site/controllers/process-recipe-controller.js
       - site/tests/examples-both-face-migration.test.mjs
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/examples-both-face.yml
+      - scripts/maintenance/**
+      - site/process-face-execution.js
+      - site/process-recipe.js
+      - site/controllers/process-panel-controller.js
+      - site/controllers/process-recipe-controller.js
+      - site/tests/examples-both-face-migration.test.mjs
   workflow_dispatch:
 
 permissions:
@@ -28,6 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: feat/examples-both-face-consolidation-20261013
           persist-credentials: true
           fetch-depth: 0
       - uses: actions/setup-node@v4
