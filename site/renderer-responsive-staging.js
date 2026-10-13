@@ -66,7 +66,6 @@ export function shouldHideRendererPreviewMesh({
   );
 }
 
-
 // Exact export is intentionally independent from the approximate interaction
 // preview. The presenter may prepare rough detail on demand, but cannot
 // capture a stale, uncommitted, superseded, or context-lost main scene.

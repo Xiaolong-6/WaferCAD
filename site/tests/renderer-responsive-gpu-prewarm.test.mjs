@@ -61,16 +61,23 @@ test('P2.6 foreground wins and an obsolete scene never receives another GPU batc
   let current = true;
   let busy = true;
   const events = [];
-  const result = await prewarmRendererGpuUploads([1, 2, 3], (batch) => {
-    events.push(batch);
-    current = false;
-  }, {
-    now: () => 1,
-    maxUnitsPerBatch: 1,
-    isCurrent: () => current,
-    foregroundBusy: () => busy,
-    yieldControl: () => { events.push('foreground'); busy = false; },
-  });
+  const result = await prewarmRendererGpuUploads(
+    [1, 2, 3],
+    (batch) => {
+      events.push(batch);
+      current = false;
+    },
+    {
+      now: () => 1,
+      maxUnitsPerBatch: 1,
+      isCurrent: () => current,
+      foregroundBusy: () => busy,
+      yieldControl: () => {
+        events.push('foreground');
+        busy = false;
+      },
+    },
+  );
   assert.deepEqual(events, ['foreground', [1]]);
   assert.equal(result.completed, false);
   assert.equal(result.uploadedUnits, 1);
@@ -78,12 +85,21 @@ test('P2.6 foreground wins and an obsolete scene never receives another GPU batc
 });
 
 test('P2.6 rejects invalid settings and propagates upload errors for owner rollback', async () => {
-  await assert.rejects(prewarmRendererGpuUploads([], () => {}, {}), TypeError);
   await assert.rejects(
-    prewarmRendererGpuUploads([1], () => { throw new Error('WebGL lost'); }, {
-      now: () => 0,
-      yieldControl: async () => {},
-    }),
+    prewarmRendererGpuUploads([], () => {}, {}),
+    TypeError,
+  );
+  await assert.rejects(
+    prewarmRendererGpuUploads(
+      [1],
+      () => {
+        throw new Error('WebGL lost');
+      },
+      {
+        now: () => 0,
+        yieldControl: async () => {},
+      },
+    ),
     /WebGL lost/,
   );
   assert.equal(collectRendererGpuUploadUnits([source({})]).length, 1);

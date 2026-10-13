@@ -2840,10 +2840,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     // replacing the still-visible interactive rough preview.
     if (
       responsiveGpuPrewarm &&
-      !(await prewarmGpuPresentation(
-        [...staged],
-        () => current() && group === sceneGroup,
-      ))
+      !(await prewarmGpuPresentation([...staged], () => current() && group === sceneGroup))
     ) {
       releaseAdaptiveRoughSubset(staged);
       host.dataset.rendererRoughAssemblyCancelled = 'true';
@@ -5156,8 +5153,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       modelMatches: Boolean(exportModel && physicalSceneModel === exportModel),
       signatureMatches: Boolean(
         exportModel &&
-          physicalSceneSignature ===
-            sceneSignature(exportModel, getClipGeometry(), getInspection() || {}),
+        physicalSceneSignature ===
+          sceneSignature(exportModel, getClipGeometry(), getInspection() || {}),
       ),
       variantMatches: activeSceneVariant === presentationMode(),
     });
