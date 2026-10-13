@@ -30,6 +30,15 @@
     overscroll-behavior-x: contain;
   }
 
+  /* Mobile buttons must remain true 44px hit targets even when the browser
+     reports pointer:fine while touch emulation or hybrid hardware is active. */
+  body[data-workstation] .p-nav > .wc-button,
+  body[data-workstation] .p-mobile-return > .wc-button,
+  body[data-workstation] .p-viewbar .wc-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   body[data-workstation] .p-inspector {
     order: 2;
     flex: 1 1 0;
