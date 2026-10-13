@@ -42,7 +42,7 @@ try {
     };
     await page.goto(
       workstationUrl +
-        '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererV4GpuCensus=1',
+        '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1&rendererV4GpuCensus=1',
     );
     await waitForAppReady(page);
     await load();
@@ -119,6 +119,37 @@ try {
       sceneJobs: Number(after.rendererSmoothWorkerJobs || 0),
       fallbackCount: Number(after.rendererSmoothWorkerFallbacks || 0),
     };
+    // Input-to-WebGL-submit telemetry; this is not a compositor-presented
+    // latency or a physical GPU timing measurement.
+    const canvas = host.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    assert.ok(bounds && bounds.width > 80 && bounds.height > 80);
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    const previousSerial = Number((await snapshot()).rendererFrameSerial || 0);
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 18, cy + 14, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      (serial) => {
+        const d = document.getElementById('threeHost')?.dataset;
+        return Number(d?.rendererInputSamples || 0) >= 1 &&
+          Number(d?.rendererFrameSerial || 0) > serial;
+      },
+      previousSerial,
+      { timeout: 90000 },
+    );
+    const latency = await snapshot();
+    report.inputToSubmit = {
+      samples: Number(latency.rendererInputSamples),
+      p95Ms: Number(latency.rendererInputToSubmitP95Ms),
+      maxMs: Number(latency.rendererInputToSubmitMaxMs),
+      frameSubmitP95Ms: Number(latency.rendererFrameSubmitP95Ms),
+    };
+    for (const value of Object.values(report.inputToSubmit))
+      assert.ok(Number.isFinite(value) && value >= 0, 'finite JS submission metrics');
+    console.log('RENDERER_INPUT_TO_SUBMIT', JSON.stringify(report.inputToSubmit));
     await host.screenshot({ path: fileURLToPath(new URL('committed.png', output)) });
     assert.deepEqual(errors, [], 'no browser errors');
     report.after = {
