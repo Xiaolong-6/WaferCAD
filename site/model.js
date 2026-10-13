@@ -1259,6 +1259,12 @@ function applyOperationImpl(
   if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
     return { changed: false, error: 'Unsupported Etch profile.' };
   }
+  if (
+    ['add', 'grow', 'etch', 'implant', 'electrical'].includes(type) &&
+    (!Number.isFinite(Number(thickness)) || Number(thickness) <= 0)
+  ) {
+    return { changed: false, error: 'Process thickness must be finite and greater than zero.' };
+  }
   if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
     return {
       changed: false,
