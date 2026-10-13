@@ -4,11 +4,11 @@ Repository: `Xiaolong-6/WaferCAD`. Base: `main@1e34da5`. Integration: [Draft PR 
 
 ## Scope and scientific decisions
 
-| Project / saved branches | Consolidation | Intentional exception |
-| --- | --- | --- |
-| Black-Si photodetector (common, FINAL, QA) | Initial 650 nm thermal SiO₂ now uses `face: 'both'`. A dedicated rear oxide strip precedes rear P implantation | The journal reconstruction explicitly documents the front mask. Back oxidation and the oxide removal step are a geometric fabrication assumption, not a measured oxide-thickness profile. O₂ drive-in remains a non-geometric Record; no unspecified grown oxide is invented |
-| PERC (baseline, GDS contacts, source-order) | The 110 nm front and rear conformal SiO₂ passivation deposits become one atomic Both Deposit. It creates separate, linked Front/Back layer IDs | GDS front-window layer `4|0` and back-window layer `5|0` remain distinct Etch operations. Existing front/rear colors are retained in saved states, and original region geometry is held invariant |
-| Fully textured Perovskite–Si Tandem (nc-Si:H and ITO control) | Two consecutive 4.5 µm Si pyramid Etches become one Both Etch with face-specific appearance, seeds and profile IDs | Front seed 2018 and Back seed 2019 retain their own profile IDs. Front a-Si:H(n) and rear a-Si:H(p) remain separate; the separated intrinsic a-Si:H(i) steps stay unchanged because an intervening front doped-film step prevents an order-preserving simple consolidation |
+| Project / saved branches                                      | Consolidation                                                                                                                                  | Intentional exception                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Black-Si photodetector (common, FINAL, QA)                    | Initial 650 nm thermal SiO₂ now uses `face: 'both'`. A dedicated rear oxide strip precedes rear P implantation                                 | The journal reconstruction explicitly documents the front mask. Back oxidation and the oxide removal step are a geometric fabrication assumption, not a measured oxide-thickness profile. O₂ drive-in remains a non-geometric Record; no unspecified grown oxide is invented |
+| PERC (baseline, GDS contacts, source-order)                   | The 110 nm front and rear conformal SiO₂ passivation deposits become one atomic Both Deposit. It creates separate, linked Front/Back layer IDs | GDS front-window layer `4                                                                                                                                                                                                                                                    | 0`and back-window layer`5 | 0` remain distinct Etch operations. Existing front/rear colors are retained in saved states, and original region geometry is held invariant |
+| Fully textured Perovskite–Si Tandem (nc-Si:H and ITO control) | Two consecutive 4.5 µm Si pyramid Etches become one Both Etch with face-specific appearance, seeds and profile IDs                             | Front seed 2018 and Back seed 2019 retain their own profile IDs. Front a-Si:H(n) and rear a-Si:H(p) remain separate; the separated intrinsic a-Si:H(i) steps stay unchanged because an intervening front doped-film step prevents an order-preserving simple consolidation   |
 
 ## Kernel and Recipe contract
 
@@ -22,8 +22,28 @@ etch({
   face: 'both',
   area: 'full',
   faceSurfaces: {
-    front: { kind: 'rough', morphology: 'pyramid', polarity: 'normal', featureSize: 6.4, meanHeight: 4.5, featureCv: 0.3, heightCv: 0, seed: 2018, profileId: 'pyramid-front-2018' },
-    back: { kind: 'rough', morphology: 'pyramid', polarity: 'normal', featureSize: 6.4, meanHeight: 4.5, featureCv: 0.3, heightCv: 0, seed: 2019, profileId: 'pyramid-back-2019' },
+    front: {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 6.4,
+      meanHeight: 4.5,
+      featureCv: 0.3,
+      heightCv: 0,
+      seed: 2018,
+      profileId: 'pyramid-front-2018',
+    },
+    back: {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 6.4,
+      meanHeight: 4.5,
+      featureCv: 0.3,
+      heightCv: 0,
+      seed: 2019,
+      profileId: 'pyramid-back-2019',
+    },
   },
 });
 ```

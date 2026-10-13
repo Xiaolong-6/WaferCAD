@@ -475,11 +475,11 @@ test('PERC example exposes only curated reconstruction variants with a saved ins
   assert.equal(project.model.processRevision, 18);
   assert.equal(project.model.implants.length, 2);
   assert.ok(project.model.layers.some((layer) => /Front passivation SiO2/i.test(layer.name)));
-  const frontPassivation = project.model.layers.find((layer) =>
-    /Front passivation SiO2/i.test(layer.name) && layer.processFace === 'front',
+  const frontPassivation = project.model.layers.find(
+    (layer) => /Front passivation SiO2/i.test(layer.name) && layer.processFace === 'front',
   );
-  const rearPassivation = project.model.layers.find((layer) =>
-    layer.processFace === 'back' && layer.id === frontPassivation?.pairedLayerId,
+  const rearPassivation = project.model.layers.find(
+    (layer) => layer.processFace === 'back' && layer.id === frontPassivation?.pairedLayerId,
   );
   assert.ok(rearPassivation && rearPassivation.processGroupId === frontPassivation.processGroupId);
   assert.ok(project.model.layers.some((layer) => /rear contact/i.test(layer.name)));

@@ -10,17 +10,30 @@ const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile
   await import('../../site/project-io.js');
 const { validateProjectFile } = await import('../../site/project-schema.js');
 
-const target = new URL('../../site/examples/fully-textured-perovskite-silicon-tandem.wafercad', import.meta.url);
+const target = new URL(
+  '../../site/examples/fully-textured-perovskite-silicon-tandem.wafercad',
+  import.meta.url,
+);
 const source = await readFile(target, 'utf8');
 const project = expandProjectStorage(JSON.parse(source));
 const graph = project.snapshotBranches;
 const nodes = graph.nodes;
-const back = nodes.find((node) => node.operation?.kind === 'etch' &&
-  node.operation.face === 'back' && node.operation.thickness === 4.5);
+const back = nodes.find(
+  (node) =>
+    node.operation?.kind === 'etch' &&
+    node.operation.face === 'back' &&
+    node.operation.thickness === 4.5,
+);
 if (!back) {
-  assert.ok(nodes.some((node) => node.operation?.kind === 'etch' &&
-    node.operation.face === 'both' && node.operation.thickness === 4.5),
-    'Tandem double-texture stages absent');
+  assert.ok(
+    nodes.some(
+      (node) =>
+        node.operation?.kind === 'etch' &&
+        node.operation.face === 'both' &&
+        node.operation.thickness === 4.5,
+    ),
+    'Tandem double-texture stages absent',
+  );
   console.log('Tandem texture migration: already converted');
   process.exit(0);
 }
@@ -43,8 +56,12 @@ assert.equal(faceSurfaces.front.seed, 2018);
 assert.equal(faceSurfaces.back.seed, 2019);
 const modeledTexture = back.state.model.regions
   .flatMap((region) => region.stack)
-  .find((segment) => segment.layerId === 'base' &&
-    segment.frontSurface?.seed === 2018 && segment.backSurface?.seed === 2019);
+  .find(
+    (segment) =>
+      segment.layerId === 'base' &&
+      segment.frontSurface?.seed === 2018 &&
+      segment.backSurface?.seed === 2019,
+  );
 assert.ok(modeledTexture, 'Expected legacy two-sided deterministic texture');
 faceSurfaces.front.profileId = modeledTexture.frontSurface.profileId;
 faceSurfaces.back.profileId = modeledTexture.backSurface.profileId;
@@ -57,19 +74,29 @@ assert.ok(predecessor?.state?.model, 'Missing untextured Base stage');
 const candidate = structuredClone(predecessor.state.model);
 const full = candidate.boundary;
 const calculated = applyOperation(candidate, {
-  type: 'etch', face: 'both', etchProfile: 'directional', thickness: 4.5,
-  etchTargetLayerIds: ['base'], area: full,
-  surface: faceSurfaces.front, faceSurfaces,
+  type: 'etch',
+  face: 'both',
+  etchProfile: 'directional',
+  thickness: 4.5,
+  etchTargetLayerIds: ['base'],
+  area: full,
+  surface: faceSurfaces.front,
+  faceSurfaces,
 });
 assert.equal(calculated.changed, true, calculated.error || 'Both texturing failed');
 const expected = back.state.model;
 assert.deepEqual(candidate.regions, expected.regions, 'Both texturing changed scientific geometry');
 assert.deepEqual(candidate.layers, expected.layers, 'Both texturing changed substrate ownership');
 
-const originalHeads = new Map(graph.branches.map((branch) => [
-  branch.id, JSON.stringify({ regions: branch.headState.model.regions,
-    layers: branch.headState.model.layers }),
-]));
+const originalHeads = new Map(
+  graph.branches.map((branch) => [
+    branch.id,
+    JSON.stringify({
+      regions: branch.headState.model.regions,
+      layers: branch.headState.model.layers,
+    }),
+  ]),
+);
 front.operation = {
   ...front.operation,
   face: 'both',
@@ -78,8 +105,11 @@ front.operation = {
   replay: {
     version: 1,
     params: {
-      type: 'etch', face: 'both', etchProfile: 'directional',
-      etchTargetLayerIds: ['base'], thickness: 4.5,
+      type: 'etch',
+      face: 'both',
+      etchProfile: 'directional',
+      etchTargetLayerIds: ['base'],
+      thickness: 4.5,
       surface: structuredClone(faceSurfaces.front),
       faceSurfaces: structuredClone(faceSurfaces),
     },
@@ -103,11 +133,12 @@ for (const snapshot of project.snapshots || []) {
 }
 
 const recipes = new Set([project.processRecipe]);
-for (const node of graph.nodes) if (node.state?.processRecipe) recipes.add(node.state.processRecipe);
-for (const branch of graph.branches) if (branch.headState?.processRecipe)
-  recipes.add(branch.headState.processRecipe);
-for (const snap of project.snapshots || []) if (snap.state?.processRecipe)
-  recipes.add(snap.state.processRecipe);
+for (const node of graph.nodes)
+  if (node.state?.processRecipe) recipes.add(node.state.processRecipe);
+for (const branch of graph.branches)
+  if (branch.headState?.processRecipe) recipes.add(branch.headState.processRecipe);
+for (const snap of project.snapshots || [])
+  if (snap.state?.processRecipe) recipes.add(snap.state.processRecipe);
 for (const recipe of recipes) {
   const a = recipe.steps.findIndex((step) => step.id === firstId);
   const b = recipe.steps.findIndex((step) => step.id === lastId);
@@ -120,20 +151,36 @@ for (const recipe of recipes) {
   if (recipe.activeStepId === lastId) recipe.activeStepId = firstId;
 }
 for (const branch of graph.branches) {
-  assert.equal(JSON.stringify({ regions: branch.headState.model.regions,
-    layers: branch.headState.model.layers }), originalHeads.get(branch.id),
-  'Tandem final material geometry changed');
-  assert.equal(branch.headState.processRecipe.steps.filter((s) =>
-    s.command === 'etch' && s.params.face === 'both').length, 1);
+  assert.equal(
+    JSON.stringify({
+      regions: branch.headState.model.regions,
+      layers: branch.headState.model.layers,
+    }),
+    originalHeads.get(branch.id),
+    'Tandem final material geometry changed',
+  );
+  assert.equal(
+    branch.headState.processRecipe.steps.filter(
+      (s) => s.command === 'etch' && s.params.face === 'both',
+    ).length,
+    1,
+  );
 }
 validateProjectFile(project);
-const text = JSON.stringify(prepareProjectForWorkspaceStorage(project, { geometryTemplates: false }));
+const text = JSON.stringify(
+  prepareProjectForWorkspaceStorage(project, { geometryTemplates: false }),
+);
 const reopened = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
 assert.equal(reopened.snapshotBranches.nodes.length, nodes.length - 1);
 assert.equal(reopened.snapshotBranches.branches.length, 2);
 if (process.argv.includes('--write')) await writeFile(target, text);
 else assert.equal(text, source, 'Tandem Both migration requires --write');
-console.log(JSON.stringify({ historyNodes: reopened.snapshotBranches.nodes.length,
-  recipeSteps: reopened.processRecipe.steps.length,
-  faceSeeds: { front: 2018, back: 2019 },
-  savedBytes: Buffer.byteLength(text), write: process.argv.includes('--write') }));
+console.log(
+  JSON.stringify({
+    historyNodes: reopened.snapshotBranches.nodes.length,
+    recipeSteps: reopened.processRecipe.steps.length,
+    faceSeeds: { front: 2018, back: 2019 },
+    savedBytes: Buffer.byteLength(text),
+    write: process.argv.includes('--write'),
+  }),
+);

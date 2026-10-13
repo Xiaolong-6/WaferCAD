@@ -11,7 +11,10 @@ const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile
   await import('../../site/project-io.js');
 const { validateProjectFile } = await import('../../site/project-schema.js');
 
-const target = new URL('../../site/examples/perc-solar-cells-point-contacts.wafercad', import.meta.url);
+const target = new URL(
+  '../../site/examples/perc-solar-cells-point-contacts.wafercad',
+  import.meta.url,
+);
 const source = await readFile(target, 'utf8');
 const project = expandProjectStorage(JSON.parse(source));
 const graph = project.snapshotBranches;
@@ -20,11 +23,19 @@ const pairs = [];
 const isFront = (name) => /(?:Front passivating oxide|Front passivation SiO2)/i.test(name || '');
 const isBack = (name) => /(?:Rear passivating oxide|Rear passivation SiO2)/i.test(name || '');
 for (const front of nodes) {
-  if (front.operation?.kind !== 'add' || front.operation.face !== 'front' ||
-      !isFront(front.operation.name)) continue;
-  const back = nodes.find((candidate) => candidate.parentId === front.id &&
-    candidate.operation?.kind === 'add' && candidate.operation.face === 'back' &&
-    isBack(candidate.operation.name));
+  if (
+    front.operation?.kind !== 'add' ||
+    front.operation.face !== 'front' ||
+    !isFront(front.operation.name)
+  )
+    continue;
+  const back = nodes.find(
+    (candidate) =>
+      candidate.parentId === front.id &&
+      candidate.operation?.kind === 'add' &&
+      candidate.operation.face === 'back' &&
+      isBack(candidate.operation.name),
+  );
   assert.ok(back, front.id + ': missing immediately following rear oxide');
   assert.equal(front.operation.thickness, 0.11);
   assert.equal(back.operation.thickness, 0.11);
@@ -34,8 +45,12 @@ for (const front of nodes) {
   assert.equal(back.operation.areaMode, 'full');
   pairs.push({ front, back, frontName: front.operation.name, backName: back.operation.name });
 }
-const previouslyConverted = nodes.some((node) =>
-  node.operation?.kind === 'add' && node.operation.face === 'both' && isFront(node.operation.name));
+const previouslyConverted = nodes.some(
+  (node) =>
+    node.operation?.kind === 'add' &&
+    node.operation.face === 'both' &&
+    isFront(node.operation.name),
+);
 if (!pairs.length) {
   assert.ok(previouslyConverted, 'No eligible PERC oxide pair to consolidate');
   console.log('PERC Both migration: already converted, no further edits');
@@ -46,18 +61,25 @@ assert.equal(pairs.length, 2, 'Expected one shared baseline/GDS pair and one sou
 const beforeModels = new Map();
 for (const branch of graph.branches) {
   const model = branch.headState.model;
-  beforeModels.set(branch.id, JSON.stringify({
-    regions: model.regions,
-    implants: model.implants,
-    electricalRegions: model.electricalRegions,
-    boundary: model.boundary,
-  }));
+  beforeModels.set(
+    branch.id,
+    JSON.stringify({
+      regions: model.regions,
+      implants: model.implants,
+      electricalRegions: model.electricalRegions,
+      boundary: model.boundary,
+    }),
+  );
 }
 const byRemoved = new Map(pairs.map(({ front, back }) => [back.id, front.id]));
 for (const { front, back, frontName } of pairs) {
   // Front node now represents the completed atomic Front -> Back operation.
   const params = {
-    type: 'add', name: frontName, thickness: 0.11, growth: 'conformal', face: 'both',
+    type: 'add',
+    name: frontName,
+    thickness: 0.11,
+    growth: 'conformal',
+    face: 'both',
   };
   Object.assign(front.operation, {
     label: 'Deposit double-sided SiO2 passivation · Conformal · 110 nm',
@@ -101,8 +123,12 @@ function collapseRecipe(recipe) {
       if (second >= 0) recipe.steps.splice(second, 1);
       if (recipe.activeStepId === oldBackId) recipe.activeStepId = oldFrontId;
       for (const step of recipe.steps) {
-        if (step.command === 'etch' && step.params.face === 'back' &&
-            step.params.target === backName) step.params.target = frontName;
+        if (
+          step.command === 'etch' &&
+          step.params.face === 'back' &&
+          step.params.target === backName
+        )
+          step.params.target = frontName;
       }
     }
   }
@@ -143,24 +169,40 @@ for (const model of models) {
 for (const recipe of recipes) collapseRecipe(recipe);
 for (const branch of graph.branches) {
   const model = branch.headState.model;
-  assert.equal(JSON.stringify({
-    regions: model.regions,
-    implants: model.implants,
-    electricalRegions: model.electricalRegions,
-    boundary: model.boundary,
-  }), beforeModels.get(branch.id), branch.id + ': physical geometry changed');
-  assert.ok(branch.headState.processRecipe.steps.some((s) =>
-    s.command === 'deposit' && s.params.face === 'both'));
+  assert.equal(
+    JSON.stringify({
+      regions: model.regions,
+      implants: model.implants,
+      electricalRegions: model.electricalRegions,
+      boundary: model.boundary,
+    }),
+    beforeModels.get(branch.id),
+    branch.id + ': physical geometry changed',
+  );
+  assert.ok(
+    branch.headState.processRecipe.steps.some(
+      (s) => s.command === 'deposit' && s.params.face === 'both',
+    ),
+  );
 }
 assert.ok(pairedModels >= 3, 'No double-sided models were found');
 validateProjectFile(project);
-const text = JSON.stringify(prepareProjectForWorkspaceStorage(project, { geometryTemplates: false }));
+const text = JSON.stringify(
+  prepareProjectForWorkspaceStorage(project, { geometryTemplates: false }),
+);
 const reloaded = await readProjectFile({ size: Buffer.byteLength(text), text: async () => text });
 assert.equal(reloaded.snapshotBranches.nodes.length, nodes.length - pairs.length);
 assert.equal(reloaded.snapshotBranches.branches.length, 3);
 assert.equal(reloaded.processRecipe.steps.filter((s) => s.params?.face === 'both').length, 1);
 if (process.argv.includes('--write')) await writeFile(target, text);
 else assert.equal(text, source, 'PERC Both migration requires --write');
-console.log(JSON.stringify({ migratedPairs: pairs.length, modelsPaired: pairedModels,
-  historyNodes: reloaded.snapshotBranches.nodes.length, recipeSteps: reloaded.processRecipe.steps.length,
-  outputBytes: Buffer.byteLength(text), write: process.argv.includes('--write') }));
+console.log(
+  JSON.stringify({
+    migratedPairs: pairs.length,
+    modelsPaired: pairedModels,
+    historyNodes: reloaded.snapshotBranches.nodes.length,
+    recipeSteps: reloaded.processRecipe.steps.length,
+    outputBytes: Buffer.byteLength(text),
+    write: process.argv.includes('--write'),
+  }),
+);

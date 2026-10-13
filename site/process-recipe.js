@@ -223,12 +223,18 @@ function normalizeStep(command, input, index = 0) {
         ? normalizeEtchSurface(params.surface, params.thicknessUm)
         : 'smooth';
     if (params.faceSurfaces != null) {
-      if (params.face !== 'both' || params.profile !== 'directional' ||
-          !params.faceSurfaces || typeof params.faceSurfaces !== 'object' ||
-          Array.isArray(params.faceSurfaces) ||
-          !Object.hasOwn(params.faceSurfaces, 'front') ||
-          !Object.hasOwn(params.faceSurfaces, 'back')) {
-        throw new Error('etch.faceSurfaces requires Both directional Etch with front/back surfaces.');
+      if (
+        params.face !== 'both' ||
+        params.profile !== 'directional' ||
+        !params.faceSurfaces ||
+        typeof params.faceSurfaces !== 'object' ||
+        Array.isArray(params.faceSurfaces) ||
+        !Object.hasOwn(params.faceSurfaces, 'front') ||
+        !Object.hasOwn(params.faceSurfaces, 'back')
+      ) {
+        throw new Error(
+          'etch.faceSurfaces requires Both directional Etch with front/back surfaces.',
+        );
       }
       params.faceSurfaces = {
         front: normalizeEtchSurface(params.faceSurfaces.front, params.thicknessUm),
