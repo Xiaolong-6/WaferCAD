@@ -901,6 +901,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     workspaceSession: session,
     status,
     buildProjectSnapshot: projectState.buildProjectSnapshot,
+    progressiveHistoryValidation: true,
     loadProjectSnapshot: domain.load,
     cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshot,
     snapshotManager: history,
