@@ -64,7 +64,8 @@ export function extractLiteralReferences(source, extension) {
     const paths = source.matchAll(/["'\x60]((?:\.{1,2}\/|\/)[^"'\x60\n]{1,350})["'\x60]/g);
     for (const match of paths) results.add(match[1]);
     // An inline bootstrap can append a version-only suffix without changing the asset path.
-    const versioned = source.matchAll(/\x60((?:\.{1,2}\/|\/)[^\x60\r\n$]{1,300}\.(?:js|css))\$\{suffix\}\x60/g);
+    const versionedPattern = /\x60((?:\.{1,2}\/|\/)[^\x60\r\n$]{1,300}\.(?:js|css))\$\{suffix\}\x60/g;
+    const versioned = source.matchAll(versionedPattern);
     for (const match of versioned) results.add(match[1]);
   }
   return [...results];
