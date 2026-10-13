@@ -12,7 +12,7 @@ page.on('pageerror', (error) => errors.push(error.message));
 await page.addInitScript(() => {
   const stages = [];
   window.__threeStartupStages = stages;
-  const observer = new MutationObserver(() => {
+  const observer = new window.MutationObserver(() => {
     const value = document.querySelector('#threePanel')?.dataset.viewLoad;
     if (value && stages.at(-1) !== value) stages.push(value);
   });
@@ -46,7 +46,10 @@ try {
   const originalModel = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model);
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
-    () => /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
+    () =>
+      /Saved .* locally/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent,
+      ),
     null,
     { timeout: 120000 },
   );
