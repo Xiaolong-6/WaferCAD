@@ -200,7 +200,7 @@ export function createProjectController({
         returnButton.setAttribute('aria-label', 'Return to Variant HEAD');
       }
       if (compactHistory) returnButton.dataset.help = 'history.head';
-      returnButton.title = historyEdit
+      if (!compactHistory) returnButton.title = historyEdit
         ? 'Cancel historical Step editing'
         : historyInsert
           ? 'Cancel Step insertion'
@@ -762,7 +762,8 @@ export function createProjectController({
         name.textContent = variant.name;
         nameButton.replaceChildren(window.WaferCadV2Icons.icon('branch'), name);
       }
-      nameButton.title = `Switch to ${variant.name} HEAD`;
+      if (compactHistory) nameButton.dataset.help = 'history.branch.switch';
+      else nameButton.title = `Switch to ${variant.name} HEAD`;
       nameButton.onclick = (event) => {
         event.stopPropagation();
         void switchToBranch(variant.id);
