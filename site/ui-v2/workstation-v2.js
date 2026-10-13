@@ -402,11 +402,7 @@
       );
       separator.setAttribute(
         'aria-valuenow',
-        String(
-          horizontalDivider
-            ? state.bottomSize || 250
-            : panelWidth(),
-        ),
+        String(horizontalDivider ? state.bottomSize || 250 : panelWidth()),
       );
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
