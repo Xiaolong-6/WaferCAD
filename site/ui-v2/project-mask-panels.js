@@ -67,7 +67,10 @@ export function createProjectMaskPanels({
     el(
       'div',
       { class: 'p-actions' },
-      hook('exportReportBtn', button('Export report (ZIP)', null, 'export', { 'data-variant': 'ghost' })),
+      hook(
+        'exportReportBtn',
+        button('Export report (ZIP)', null, 'export', { 'data-variant': 'ghost' }),
+      ),
     ),
     el('p', { class: 'p-aux' }, 'Offline HTML, Markdown and full Process History data.'),
   );
@@ -455,7 +458,9 @@ export function createProjectMaskPanels({
       } finally {
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
-      workstation.status(`Report requested: ${result.stepCount} steps, ${result.imageCount} views.`);
+      workstation.status(
+        `Report requested: ${result.stepCount} steps, ${result.imageCount} views.`,
+      );
     } catch (error) {
       console.error(error);
       workstation.status(`Report export failed: ${error.message}`, 'error');
