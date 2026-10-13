@@ -148,3 +148,69 @@ No new hardware result is asserted here. All results from this campaign
 are diagnostic-only: `acceptanceEligible=false`, `passed=false`
 regardless of any observed pixels. The original strict zero-pixel
 production baseline remains the acceptance gate for PR #174.
+
+## 2026-10-13 RTX 3060 R9 phase-window: four-context acquisition
+
+The private `2026-10-13T12-25-04-372Z.zip` archive (SHA-256
+`078df6d16b8c3b94a51b8401710b09fc9dd61d078104f4ab4dcfec025d43c420`)
+contains 14 files, four fresh-context trace/PNG pairs, a complete
+`report.json` and the launcher's `summary.json`. The exact tested
+V4 source is `1d4dc4de8e41c1ba12083e3ab872050d4a274d35`. Raw GPU
+artifacts stay private; this text preserves derived diagnostics only.
+
+The native diagnostics verified one NVIDIA GeForce RTX 3060 / ANGLE
+D3D11 adapter in every context, `antialias=true`, `SAMPLES=4`,
+`preserveDrawingBuffer=false`, default framebuffer binding and
+`glError=0`. All four arms captured eleven requested checkpoints
+within draws 128–384 plus their respective final frames. The
+recorded native framebuffer measures 530x273; separately captured
+PNG screenshots measure 531x275. The checkpoint arrays match the
+intended draw schedule and raster states are identical between
+same-policy arms.
+
+The OFF/OFF screenshots differ in **83/146025** pixels, with maximum
+8-bit channel delta **3**; the ON/ON screenshots differ in
+**99/146025**, also maximum delta **3**. Alpha changes are zero.
+Native framebuffer SHA-256 hashes already differ, before browser
+screenshot composition. Same-policy camera matrices, draw order,
+material identifiers and **48 sampled** draw-input records match.
+The finite input sample cannot exclude all unsampled vertex,
+uniform, texture or driver-level state differences.
+
+The first identical native checkpoint is at draw 128. Both OFF/OFF
+and ON/ON pairs differ at the next checkpoint, draw 154. Thus
+the **first observed drift interval is (128,154]**, under
+`material-exterior` in both policies. This is a 26-draw observational
+bound and does not identify the causative draw.
+
+There is a striking cross-policy hash partition. At draw 128,
+all four native framebuffers are identical. At every recorded
+checkpoint from draw 154 through draw 358, `1-OFF` exactly matches
+`3-ON`, while `2-OFF` exactly matches `4-ON`, and the two pairs
+differ from one another. At draw 384, all four hashes differ.
+This is **replicate-index grouping** in four *distinct* contexts;
+no WebGL context is actually reused between OFF and ON arms.
+It suggests the first observable divergence precedes any relevant
+policy-specific raster-output difference in this window; it is not
+proof of an ANGLE/driver cause or of the identity of unsampled GL
+inputs. It also does not establish a universal breakpoint across
+independent launches.
+
+The ZIP classifier reports `campaignComplete=true`,
+`diagnosticComplete=true`, `fatalError=null`,
+`strictParity=false`, `passed=false` and
+`acceptanceEligible=false`. This is valid experimental evidence
+and an explicit product-acceptance failure. Keep the strict zero-pixel
+4x-MSAA gate; no visual threshold, shader, geometry or optimization
+default changes are authorized.
+
+The follow-up adds the read-only `renderer-r9-phase-readout.mjs`
+command and its small cross-policy fingerprint-partition module.
+For an already extracted ZIP, run the command with the saved
+`v4-phase-window/report.json` as its argument. It rejects missing,
+malformed or reordered checkpoint sequences. The next engineering
+step should inspect the complete GL draw inputs (not merely the
+existing 48 sampled draws) within (128,154], by read-only bounded
+instrumentation in CI. No additional GPU acquisition is requested
+at this stage. Do not repeat the older R9, preservation or
+no-MSAA campaigns.
