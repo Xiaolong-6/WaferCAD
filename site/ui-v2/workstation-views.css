@@ -49,16 +49,16 @@
 }
 @media (pointer: coarse) {
   .v2-legend-row {
-    min-height: 40px;
+    min-height: 44px;
   }
   .v2-legend-palette-anchor {
-    flex-basis: 40px;
-    width: 40px;
+    flex-basis: 44px;
+    width: 44px;
   }
   .v2-legend-palette-trigger,
   .v2-legend-row > .wc-button {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
 }
 .v2-section-body .p-science {
