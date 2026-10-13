@@ -769,9 +769,6 @@ export function createPlanRenderers({
         });
       }
 
-      const x0 = mapT(column.t0),
-        x1 = mapT(column.t1);
-
       for (let segmentIndex = 0; segmentIndex < column.stack.length; segmentIndex++) {
         const segment = column.stack[segmentIndex],
           layer = layerById(model, segment.layerId),

@@ -166,8 +166,7 @@ export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
         !area?.arrayMaskQuery &&
         (area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary)),
       seen = new Set(),
-      queries = new Map(),
-      maskBoundsCache = new WeakMap();
+      queries = new Map();
     for (const part of arrayParts(model, full ? null : arrayBounds(area))) {
       if (full && seen.has(part.model)) continue;
       seen.add(part.model);
@@ -1021,10 +1020,6 @@ function healNumericalCoverageCracks(model) {
   return changed;
 }
 
-function uncoveredGeometry(model) {
-  return uncoveredGeometryRaw(model);
-}
-
 function addVoidConformalSidewall(model, geom, layerId, face, source) {
   if (isEmpty(geom) || !layerId || source?.z == null || source?.oppositeZ == null) return;
   const z0 = face === 'front' ? source.oppositeZ : source.z,
@@ -1258,6 +1253,12 @@ function applyOperationImpl(
   const amount = Math.max(1e-5, Number(thickness) || 0);
   if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
     return { changed: false, error: 'Unsupported Etch profile.' };
+  }
+  if (
+    ['add', 'grow', 'etch', 'implant', 'electrical'].includes(type) &&
+    (!Number.isFinite(Number(thickness)) || Number(thickness) <= 0)
+  ) {
+    return { changed: false, error: 'Process thickness must be finite and greater than zero.' };
   }
   if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
     return {

@@ -21,8 +21,8 @@ The dedicated `scripts/v2/check-open-mask-unit-editor.mjs` gate exercises the pr
 
 ## Explicit outstanding browser matrix
 
-A unit test does not establish an end-to-end Apply result. Before promoting this branch, cover **real v2** Mask Draw: Rect, Circle, Polygon, Ring, Ring-sector, ROI and alignment, with edits open during µm → nm → mm → µm. Then check Apply, Cancel, Undo/Redo, save/export/import and exact physical geometry. Include Base dimensions, Manual thickness/depth and Recipe typed-unit execution at representative sub-nm values. Reuse `scripts/v2/check-sync.mjs`, `scripts/v2/check-m4-projects.mjs` and `scripts/process-geometry-regression.mjs`; avoid duplicating scientific fixtures.
+A unit test does not establish an end-to-end Apply result. After merged [PR #198](https://github.com/Xiaolong-6/WaferCAD/pull/198), the focused Rect browser test and Node shape precision cases are the established scope. The remaining acceptance work must cover **real v2** Mask Draw: Rect, Circle, Polygon, Ring, Ring-sector, ROI and alignment, with edits open during µm → nm → mm → µm. Then check Apply, Cancel, Undo/Redo, save/export/import and exact physical geometry. Include Base dimensions, Manual thickness/depth and Recipe typed-unit execution at representative sub-nm values. Reuse `scripts/v2/check-sync.mjs`, `scripts/v2/check-m4-projects.mjs` and `scripts/process-geometry-regression.mjs`; avoid duplicating scientific fixtures.
 
 ## Verification boundary
 
-Tests must compare canonical geometry and IDs, not canvas pixels or formatted string equality alone. Do not relax model/kernel precision limits or alter approved visual baselines. The branch's CI run and real browser acceptance must be recorded separately; successful Node conversion cases alone do not close this work package.
+Tests must compare canonical geometry and IDs, not canvas pixels or formatted string equality alone. Do not relax model/kernel precision limits or alter approved visual baselines. Record exact-head CI and real browser results separately for the remaining matrix; the merged focused Rect/Node regression does not close the entire work package.

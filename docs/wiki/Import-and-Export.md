@@ -11,6 +11,7 @@ flowchart LR
   Project --> Restore[Open/import project]
   Workspace --> MaskExport["Mask export SVG/GDS/OAS"]
   Workspace --> ViewExport["Section/Main SVG, 3D PNG or GLB"]
+  Workspace --> Report["Export report ZIP (offline HTML/Markdown)"]
 ```
 
 _The portable project includes more than the exported mask or a single rendered view._
@@ -37,14 +38,17 @@ Export SVG, GDSII or OASIS from the active Mask view. Select export scope as app
 The native v2 Project panel also offers **Export report (ZIP)**. This creates a
 portable offline HTML report with editable Markdown, paginated Process History
 (up to 50 steps per page), exact operation descriptors, saved Recipe, Variants,
-Bookmarks, and independent PNG captures of currently visible views. No images
-are fabricated for historical states. Hidden views are omitted with explicit
-warnings.
+Bookmarks, and independent PNG captures of currently visible views. The
+compact keyframe policy additionally attempts up to **24 genuine saved-state
+Section SVG figures** in an isolated Worker, with explicit per-node failures and
+omissions. It does not infer missing historical states or images. Hidden current
+views are omitted with explicit warnings.
 
-The report is read-only and does not include historical physical geometry.
-**Export a separate `.wafercad`** to preserve a restorable engineering backup.
-See [Process Report Export](../REPORT_EXPORT.md) for schema, large-history
-limits, and acceptance coverage.
+The report is read-only: the historical Section SVGs are inspection figures,
+not restorable or editable project geometry. **Export a separate `.wafercad`**
+to preserve the engineering backup. See [Process Report Export](../REPORT_EXPORT.md)
+and [Report Keyframes](../REPORT_KEYFRAMES.md) for provenance, export limits,
+and acceptance coverage.
 
 ## Persistence safety
 
