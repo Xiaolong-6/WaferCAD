@@ -20,8 +20,13 @@ try {
         timeout: 120000,
       });
       const mobile = width <= 820;
-      const mode = page.locator(mobile ? '[data-action="domain:project"]' : '[data-action="mode:single"]');
-      assert.equal(await mode.getAttribute('data-help'), mobile ? 'shell.navigation' : 'shell.single');
+      const mode = page.locator(
+        mobile ? '[data-action="domain:project"]' : '[data-action="mode:single"]',
+      );
+      assert.equal(
+        await mode.getAttribute('data-help'),
+        mobile ? 'shell.navigation' : 'shell.single',
+      );
       assert.equal(
         await mode.getAttribute('title'),
         null,

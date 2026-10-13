@@ -35,7 +35,10 @@ test('contextual help catalog resolves all literal opt-in keys', () => {
 });
 
 test('Section color swatches use the same contextual catalog, retaining the chosen color', () => {
-  assert.match(catalog.resolve('section.color', { dataset: {} })[1], /Physical geometry is unchanged/);
+  assert.match(
+    catalog.resolve('section.color', { dataset: {} })[1],
+    /Physical geometry is unchanged/,
+  );
   const description = catalog.resolve('section.color.option', { dataset: { color: '#A1B2C3' } });
   assert.equal(description[0], 'Apply color');
   assert.match(description[1], /#A1B2C3/);
