@@ -10,17 +10,8 @@ import {
   translateDrawShape,
 } from '../draw-mask-geometry.js';
 
-// Treat binary floating-point tails from display-unit conversions as unchanged.
-// Tolerance is only a few ULPs in the current display unit, not a geometry-grid
-// tolerance: an intentional 0.1 nm editor edit must still be detected.
-export function displayLengthDraftChanged(value, formattedPhysicalValue) {
-  const draft = String(value ?? '').trim();
-  const parsed = Number(draft);
-  const expected = Number(formattedPhysicalValue);
-  if (!draft || !Number.isFinite(parsed) || !Number.isFinite(expected)) return true;
-  const ulpWindow = 8 * Number.EPSILON * Math.max(1, Math.abs(parsed), Math.abs(expected));
-  return Math.abs(parsed - expected) > ulpWindow;
-}
+import { displayLengthDraftChanged } from '../units.js';
+export { displayLengthDraftChanged };
 
 export function createDrawMaskController({
   root = document,
