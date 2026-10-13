@@ -99,7 +99,7 @@ try {
     const errors = observePageErrors(page);
     await page.goto(
       rendererWorkstationUrl +
-        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1',
+        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1',
     );
     await waitForAppReady(page);
     await page
@@ -142,6 +142,57 @@ try {
       firstTransition.retained,
       'every completed variant build must commit its atomic swap',
     );
+    // P1: the temporary interaction tier may hide internal display meshes,
+    // but releasing the pointer must restore the exact full-wafer scene.
+    const canvas = page.locator('#threeHost canvas');
+    const box = await canvas.boundingBox();
+    assert.ok(box && box.width > 100 && box.height > 100, 'interactive 3D canvas exists');
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    const exactTriangles = Number(
+      await page.locator('#threeHost').evaluate((node) => node.dataset.rendererDrawTriangles),
+    );
+    const exactSerial = second.frameSerial;
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(centerX + 12, centerY + 9, { steps: 3 });
+    await page.waitForFunction(
+      (serial) => {
+        const data = document.getElementById('threeHost')?.dataset;
+        return data?.rendererInteractionPreview === 'active' &&
+          Number(data.rendererPreviewHiddenMeshes || 0) > 0 &&
+          Number(data.rendererFrameSerial || 0) > serial;
+      },
+      exactSerial,
+      { timeout: 180000 },
+    );
+    const preview = await page.locator('#threeHost').evaluate((node) => ({
+      hidden: Number(node.dataset.rendererPreviewHiddenMeshes),
+      triangles: Number(node.dataset.rendererDrawTriangles),
+      serial: Number(node.dataset.rendererFrameSerial),
+    }));
+    assert.ok(preview.hidden > 0, 'heavy internal transparent meshes are deferred');
+    assert.ok(preview.triangles < exactTriangles, 'preview must submit fewer triangles');
+    await page.mouse.up();
+    await page.waitForFunction(
+      (serial) => {
+        const data = document.getElementById('threeHost')?.dataset;
+        return data?.rendererInteractionPreview !== 'active' &&
+          data?.renderPhase === 'complete' &&
+          Number(data.rendererFrameSerial || 0) > serial;
+      },
+      preview.serial,
+      { timeout: 180000 },
+    );
+    const restoredTriangles = Number(
+      await page.locator('#threeHost').evaluate((node) => node.dataset.rendererDrawTriangles),
+    );
+    assert.ok(restoredTriangles > preview.triangles, 'exact internal geometry must return');
+    console.log('RENDERER_RESPONSIVE_PREVIEW', JSON.stringify({
+      exactTriangles,
+      preview,
+      restoredTriangles,
+    }));
     const back = await setOpacity(page, '1', 'opaque', 'return-opaque');
     for (const key of ['groups', 'geometries', 'materials', 'bytes']) {
       assert.equal(back[key], second[key], key + ': cached variant reuse must not allocate again');
