@@ -129,7 +129,8 @@ export function createThreeView({
   // No default change until full-wafer, rejection, and revision-supersession gates pass.
   const responsiveModelStaging = rendererParams.get('rendererResponsiveModelStage') === '1';
   const responsiveInteractionPreview = rendererParams.get('rendererResponsiveInteraction') === '1';
-  const responsiveSmoothSidewallWorker = rendererParams.get('rendererResponsiveSmoothWorker') === '1';
+  const responsiveSmoothSidewallWorker =
+    rendererParams.get('rendererResponsiveSmoothWorker') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';

@@ -17,9 +17,7 @@ export function canPrepareSmoothSidewallsInWorker(
         Array.isArray(part.q) &&
         part.p.length >= 2 &&
         part.q.length >= 2 &&
-        [...part.p.slice(0, 2), ...part.q.slice(0, 2), part.z0, part.z1].every(
-          Number.isFinite,
-        ) &&
+        [...part.p.slice(0, 2), ...part.q.slice(0, 2), part.z0, part.z1].every(Number.isFinite) &&
         !part.lowerSurface?.appearance &&
         !part.upperSurface?.appearance &&
         !Number.isFinite(Number(part.lowerDepth)) &&

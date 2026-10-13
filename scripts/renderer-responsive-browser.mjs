@@ -40,7 +40,10 @@ try {
         { timeout: 90000 },
       );
     };
-    await page.goto(workstationUrl + '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererV4GpuCensus=1');
+    await page.goto(
+      workstationUrl +
+        '?rendererResponsiveModelStage=1&rendererResponsiveSmoothWorker=1&rendererV4GpuCensus=1',
+    );
     await waitForAppReady(page);
     await load();
     await closeFunctionPanel(page);

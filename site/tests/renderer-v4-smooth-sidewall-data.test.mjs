@@ -12,22 +12,19 @@ test('worker smooth sidewalls retain exact triangle winding and normals', () => 
   const before = structuredClone(part);
   const result = prepareSmoothSidewallData([part]);
   assert.ok(result.positions instanceof Float32Array);
-  assert.deepEqual(Array.from(result.positions), [
-    0, 0, 0, 1, 0, 0, 1, 0, 1,
-    0, 0, 0, 1, 0, 1, 0, 0, 1,
-  ]);
-  assert.deepEqual(Array.from(result.normals), [
-    0, -1, 0, 0, -1, 0, 0, -1, 0,
-    0, -1, 0, 0, -1, 0, 0, -1, 0,
-  ]);
+  assert.deepEqual(
+    Array.from(result.positions),
+    [0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1],
+  );
+  assert.deepEqual(
+    Array.from(result.normals),
+    [0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0],
+  );
   assert.deepEqual(part, before);
 });
 
 test('worker data shares the exact collinear reduction without changing source', () => {
-  const result = prepareSmoothSidewallData([
-    wall([0, 0], [1, 0]),
-    wall([1, 0], [2, 0]),
-  ]);
+  const result = prepareSmoothSidewallData([wall([0, 0], [1, 0]), wall([1, 0], [2, 0])]);
   assert.equal(result.positions.length, 18);
   assert.equal(result.positions[3], 2);
   assert.equal(
@@ -43,7 +40,16 @@ test('worker path excludes scientific depth, roughness, index and display LOD', 
   assert.equal(canPrepareSmoothSidewallsInWorker(parts.slice(0, 7)), false);
   assert.equal(canPrepareSmoothSidewallsInWorker(parts, { indexedSmooth: true }), false);
   assert.equal(canPrepareSmoothSidewallsInWorker(parts, { displayTolerance: 0.5 }), false);
-  assert.equal(canPrepareSmoothSidewallsInWorker([{ ...parts[0], lowerDepth: 0 }, ...parts.slice(1)]), false);
-  assert.equal(canPrepareSmoothSidewallsInWorker([{ ...parts[0], lowerSurface: { appearance: { kind: 'rough' } } }, ...parts.slice(1)]), false);
+  assert.equal(
+    canPrepareSmoothSidewallsInWorker([{ ...parts[0], lowerDepth: 0 }, ...parts.slice(1)]),
+    false,
+  );
+  assert.equal(
+    canPrepareSmoothSidewallsInWorker([
+      { ...parts[0], lowerSurface: { appearance: { kind: 'rough' } } },
+      ...parts.slice(1),
+    ]),
+    false,
+  );
   assert.throws(() => prepareSmoothSidewallData([wall([NaN, 0], [1, 0])]), TypeError);
 });
