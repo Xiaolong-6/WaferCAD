@@ -373,8 +373,7 @@ test('R9 V4 phase-window classification requires real production 4x-MSAA evidenc
       },
     })),
   };
-  const status = (evidence) =>
-    classifyRendererHardwareStep({ ...step, exitCode: 0 }, evidence);
+  const status = (evidence) => classifyRendererHardwareStep({ ...step, exitCode: 0 }, evidence);
   assert.equal(status(valid), 'diagnostic-complete');
 
   const accidentallyApproved = structuredClone(valid);
