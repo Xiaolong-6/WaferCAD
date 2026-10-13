@@ -52,7 +52,10 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
-      editorHidden: uiState.editorHidden,
+      // Compact visibility has exactly one owner: mobile = view | edit.
+      editorHidden: window.WaferCadV2ViewState.compact(window)
+        ? uiState.mobile !== 'edit'
+        : Boolean(uiState.editorHidden),
       message,
       save: shell.getSlot('status.save').textContent || 'Shared project · Stage C',
       version: commitVersion,
@@ -126,6 +129,11 @@ try {
     onHide() {},
     destroy() {},
   });
+  // Centralized transition. On desktop the independent inspector toggle remains.
+  const selectPane = (pane) => {
+    uiState.mobile = pane;
+    if (!window.WaferCadV2ViewState.compact(window)) uiState.editorHidden = pane === 'view';
+  };
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
@@ -134,8 +142,7 @@ try {
       uiState.domain = action.split(':')[1];
       uiState.maximize = uiState.domain === 'mask' ? 'mask' : null;
       if (uiState.domain === 'mask') uiState.view = 'mask';
-      uiState.editorHidden = false;
-      uiState.mobile = 'edit';
+      selectPane('edit');
       render();
     } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
@@ -160,16 +167,25 @@ try {
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
-      uiState.editorHidden = true;
-      uiState.mobile = 'view';
+      selectPane('view');
       render();
     } else if (action === 'show-editor' || action === 'expand-empty') {
-      uiState.editorHidden = false;
-      uiState.mobile = 'edit';
+      selectPane('edit');
       render();
     }
   });
-  window.addEventListener('resize', render);
+  // Height-only browser chrome and keyboard resize is handled by CSS and the
+  // scientific view ResizeObservers. Avoid re-running the entire workflow.
+  let previousWidth = window.innerWidth;
+  let previousCompact = window.WaferCadV2ViewState.compact(window);
+  window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    const compact = window.WaferCadV2ViewState.compact(window);
+    if (width === previousWidth && compact === previousCompact) return;
+    previousWidth = width;
+    previousCompact = compact;
+    render();
+  });
   // Keep the incomplete Shell covered until the restored project is ready.
   // The initial workflow.refresh() applies panel ownership and view order.
   await workflow.start();

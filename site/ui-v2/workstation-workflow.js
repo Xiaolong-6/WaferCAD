@@ -692,6 +692,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
   const openProcess = () => {
     workstation.uiState.domain = 'process';
     workstation.uiState.mobile = 'edit';
+    workstation.uiState.editorHidden = false;
     refresh();
   };
   mutation = createHistoryMutationController({

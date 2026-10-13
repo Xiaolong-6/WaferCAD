@@ -1,4 +1,4 @@
-name: UI v2 Main and Mask acceptance
+name: UI v2 Main, Mask and Mobile acceptance
 
 on:
   pull_request:
@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-open-mask-unit-editor check-tooltips check-main-view check-mask-view check-section-view; do
+          for script in check-mobile-workstation check-open-mask-unit-editor check-tooltips check-main-view check-mask-view check-section-view; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::View gate failed: ${script}"
@@ -67,7 +67,7 @@ jobs:
             fi
             echo "::endgroup::"
           done
-          echo "Main/Mask browser gate failures: ${failures}"
+          echo "Main/Mask/Mobile browser gate failures: ${failures}"
           test "${failures}" -eq 0
       - name: Upload browser review and server evidence
         if: always()
@@ -80,6 +80,7 @@ jobs:
             test-results/ui-v2-unit-editor/
             test-results/ui-v2-section-review/
             test-results/ui-v2-tooltip-review/
+            test-results/ui-v2-mobile/
             serve.log
           retention-days: 14
           if-no-files-found: warn
