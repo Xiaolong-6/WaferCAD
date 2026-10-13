@@ -17,6 +17,7 @@ import {
   buildRendererHardwarePlan,
   buildRendererR9HardwareCampaignPlan,
   buildRendererR9PreservedMsaaPlan,
+  buildRendererR9CurrentV4PhaseWindowPlan,
   buildRendererR9V4NoMsaaDiagnosticPlan,
   buildRendererV3DitherDiagnosticPlan,
   buildRendererV3MsaaDiagnosticPlan,
@@ -30,10 +31,11 @@ const planOnly = options.includes('--plan-only');
 const r9Campaign = options.includes('--campaign=r9');
 const r9V4NoMsaaCampaign = options.includes('--campaign=r9-v4-msaa');
 const r9PreservedMsaaCampaign = options.includes('--campaign=r9-preserved-msaa');
+const r9PhaseWindowCampaign = options.includes('--campaign=r9-phase-window');
 const unknownCampaign = options.filter(
   (arg) =>
     arg.startsWith('--campaign=') &&
-    !['--campaign=r9', '--campaign=r9-v4-msaa', '--campaign=r9-preserved-msaa'].includes(arg),
+    !['--campaign=r9', '--campaign=r9-v4-msaa', '--campaign=r9-preserved-msaa', '--campaign=r9-phase-window'].includes(arg),
 );
 if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
   throw new Error('Select one known hardware campaign.');
@@ -52,12 +54,15 @@ const diagnostic =
   msaaDiagnostic ||
   phaseWindowDiagnostic ||
   r9V4NoMsaaCampaign ||
-  r9PreservedMsaaCampaign;
+  r9PreservedMsaaCampaign ||
+  r9PhaseWindowCampaign;
 if (
   (diagnostic && modesArg && !r9V4NoMsaaCampaign) ||
   (r9Campaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   (r9V4NoMsaaCampaign && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic)) ||
   (r9PreservedMsaaCampaign &&
+    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  (r9PhaseWindowCampaign &&
     (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
@@ -72,7 +77,9 @@ const plan = r9Campaign
     ? buildRendererR9V4NoMsaaDiagnosticPlan(modes)
     : r9PreservedMsaaCampaign
       ? buildRendererR9PreservedMsaaPlan()
-      : ditherDiagnostic
+      : r9PhaseWindowCampaign
+        ? buildRendererR9CurrentV4PhaseWindowPlan()
+        : ditherDiagnostic
         ? buildRendererV3DitherDiagnosticPlan()
         : msaaDiagnostic
           ? buildRendererV3MsaaDiagnosticPlan()
@@ -259,7 +266,9 @@ async function runHardware() {
         evidenceFolder: artifactsCopied ? step.id : null,
         logFile: step.id + '.log',
         strictPixelParity:
-          step.branch === 'v3' ? report?.strictParity : report?.parity?.strictPixelParity,
+          step.branch === 'v3' || step.id === 'v4-phase-window' || step.id === 'v4-preserved-msaa'
+            ? report?.strictParity
+            : report?.parity?.strictPixelParity,
         candidateActivation: report?.trials
           ?.filter((trial) => trial.policy === 'B')
           .map((trial) => trial.candidateActivation),
@@ -289,7 +298,9 @@ async function runHardware() {
           ? 'r9-v4-msaa'
           : r9PreservedMsaaCampaign
             ? 'r9-preserved-msaa'
-            : null,
+            : r9PhaseWindowCampaign
+              ? 'r9-phase-window'
+              : null,
       plannedSteps: plan.map(({ id, branch }) => ({ id, branch })),
       completed,
       fatalError,
@@ -303,7 +314,7 @@ async function runHardware() {
             : step.status === 'passed',
         ),
       campaignComplete:
-        (r9PreservedMsaaCampaign &&
+        ((r9PreservedMsaaCampaign || r9PhaseWindowCampaign) &&
           !fatalError &&
           completed.length === 1 &&
           completed[0].status === 'diagnostic-complete') ||
