@@ -129,11 +129,14 @@ try {
       await waitForPaint(page);
       assert.equal(await root.getAttribute('data-mobile'), 'edit');
       assert.equal(await label.inputValue(), 'Mobile draft remains');
-      assert.equal(await page.evaluate(
+      assert.equal(
+        await page.evaluate(
           () =>
             window.__mobileNavIdentity ===
             document.querySelector('.p-nav [data-action="domain:process"]'),
-        ), true);
+        ),
+        true,
+      );
       await page.setViewportSize({ width, height });
       await page.locator('.p-nav [data-action="domain:history"]').click();
       await waitForPaint(page);
