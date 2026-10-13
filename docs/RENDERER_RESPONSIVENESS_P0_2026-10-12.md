@@ -32,3 +32,9 @@ Automatic Quality, Browser regression, and owning UI v2 checks run on the branch
 2. Record input-to-present latency and jank under repeated camera/opacity/model changes, beyond submitted-triangle measurements.
 3. Isolate more CPU mesh preparation in workers and split WebGL upload on a bounded frame budget; profile GPU contention on at least one verified hardware adapter.
 4. Preserve exact scientific geometry, transparent sorting and pixel-baseline acceptance for final Quality. Preview uses its own declared display-only error contract.
+
+## 2026-10-13 software-browser checkpoint
+
+The scoped transactional-reload browser workflow completed successfully at `b9ed473`. The original 625-site R5 dual-variant browser test at `fdb1984` exercised `rendererResponsiveInteraction=1` on ANGLE SwiftShader: **16,906,262 submitted triangles** in the exact transparent view, **5,080,012** during pointer interaction with **291 internal display meshes** temporarily hidden, and **16,906,262** after settling. Its two cached scene variants retained **32,181,984 CPU TypedArray bytes** across repeated opacity switches, with no browser errors. These are software-backend geometry-submission and resource-census observations, not measured user input latency, GPU VRAM, or a guarantee of physical-GPU FPS.
+
+The default scene policy remains unchanged. Model/ROI staging, stale labels, and interaction preview require the opt-in query flags. Do not merge or default-enable #174 until independent ROI failure/recovery, context loss, and hardware interactive-latency gates are reviewed.

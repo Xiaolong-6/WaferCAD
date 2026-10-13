@@ -4389,6 +4389,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // An ordinary failed rebuild remains fail-closed. For a variant-only
       // failure, restore the committed group, without claiming the new mode rendered.
       if (group && !variantBuild && !stagedPreviousScene) group.visible = false;
+      if (variantBuild && group?.visible) host.dataset.rendererDisplayedState = 'stale';
       if (superseded) {
         host.dataset.renderState = 'building';
         host.dataset.renderPhase = 'superseded';
