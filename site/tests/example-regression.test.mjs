@@ -229,7 +229,7 @@ test('bundled examples remain valid renderer-ready regression fixtures', async (
 
   const literature = await loadLiteratureProject();
   assert.equal(literature.version, 14);
-  assert.equal(literature.snapshotBranches.nodes.length, 46);
+  assert.equal(literature.snapshotBranches.nodes.length, 47);
   assert.equal(literature.snapshotBranches.branches.length, 7);
   assert.equal(literature.snapshots.length, 20);
 });
@@ -249,7 +249,7 @@ test('literature example keeps the intended Variant ancestry and HEADs', async (
   const ownStepCount = (branchId) =>
     project.snapshotBranches.nodes.filter((node) => node.branchId === branchId).length;
   assert.equal(ownStepCount('main'), 1);
-  assert.equal(ownStepCount('black-si-fig1a'), 14);
+  assert.equal(ownStepCount('black-si-fig1a'), 15);
   assert.equal(ownStepCount('black-si-fig1a-final'), 1);
   assert.equal(ownStepCount('black-si-fig1a-qa'), 1);
   assert.equal(ownStepCount('ge-fig15-common'), 13);
@@ -319,9 +319,9 @@ test('Black-Si FINAL preserves ALD and front roughness while removing blanket Al
     frontAl = 'Front sputtered Al · 300 nm',
     rearAl = 'Rear cathode Al · 1000 nm';
 
-  assert.equal(common.processRevision, 15);
-  assert.equal(finalModel.processRevision, 16);
-  assert.equal(qa.processRevision, 16);
+  assert.equal(common.processRevision, 17);
+  assert.equal(finalModel.processRevision, 18);
+  assert.equal(qa.processRevision, 18);
 
   assertClose(finalVolumes.get(ald), commonVolumes.get(ald), 1e-3, 'FINAL ALD volume');
   assert.ok(
@@ -475,7 +475,13 @@ test('PERC example exposes only curated reconstruction variants with a saved ins
   assert.equal(project.model.processRevision, 18);
   assert.equal(project.model.implants.length, 2);
   assert.ok(project.model.layers.some((layer) => /Front passivation SiO2/i.test(layer.name)));
-  assert.ok(project.model.layers.some((layer) => /Rear passivation SiO2/i.test(layer.name)));
+  const frontPassivation = project.model.layers.find((layer) =>
+    /Front passivation SiO2/i.test(layer.name) && layer.processFace === 'front',
+  );
+  const rearPassivation = project.model.layers.find((layer) =>
+    layer.processFace === 'back' && layer.id === frontPassivation?.pairedLayerId,
+  );
+  assert.ok(rearPassivation && rearPassivation.processGroupId === frontPassivation.processGroupId);
   assert.ok(project.model.layers.some((layer) => /rear contact/i.test(layer.name)));
   assert.deepEqual(project.display.sectionCollapse, { top: 131.5727, bottom: -131.5727 });
   assert.equal(project.display.threeCamera?.position?.length, 3);
