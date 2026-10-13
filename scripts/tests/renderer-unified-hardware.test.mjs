@@ -42,6 +42,23 @@ test('R9 preserved-MSAA native evidence includes the WebGL drawing-buffer attrib
   assert.match(projection[1], /defaultFramebufferSamples:\s*frame\.defaultFramebufferSamples/);
 });
 
+test('R10 focus draw snapshots are forwarded from WebGL probe to serialized evidence', async () => {
+  const probe = await readFile(
+    new URL('../test-helpers/webgl-frame-probe.mjs', import.meta.url),
+    'utf8',
+  );
+  const native = await readFile(
+    new URL('../renderer-electrical-fresh-context-ab.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(probe, /focusDraws: active\.focusDraws/);
+  assert.match(probe, /captureFocusDraws: options\.captureFocusDraws === true/);
+  assert.match(native, /captureFocusDraws: focusWindowDiagnostic && hardwareGpu/);
+  assert.match(native, /focusDraws: frame\.focusDraws \|\| \[\]/);
+  assert.match(native, /checkRendererR9FocusEvidence\(native\.focusDraws\)/);
+  assert.match(native, /row\.focusDrawHash = hashJson\(native\.focusDraws\)/);
+});
+
 test('one hardware plan retains exact V3 and three independent V4 candidate artifacts', () => {
   assert.match(RENDERER_HARDWARE_BRANCHES.v3, /transparent-renderer-v3/);
   const plan = buildRendererHardwarePlan();
