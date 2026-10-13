@@ -27,9 +27,8 @@ function bindingNames(node) {
   if (node.type === 'RestElement' || node.type === 'AssignmentPattern')
     return bindingNames(node.argument || node.left);
   if (node.type === 'ArrayPattern') return node.elements.flatMap(bindingNames);
-  if (node.type === 'ObjectPattern') return node.properties.flatMap((part) =>
-    bindingNames(part.value || part.argument),
-  );
+  if (node.type === 'ObjectPattern')
+    return node.properties.flatMap((part) => bindingNames(part.value || part.argument));
   return [];
 }
 
@@ -46,7 +45,12 @@ function resolveModule(from, specifier, files) {
   if (typeof specifier !== 'string' || !specifier.startsWith('.')) return null;
   const normalized = posix.normalize(posix.join(posix.dirname(from), specifier));
   if (normalized.startsWith('../') || normalized === '..') return null;
-  for (const path of [normalized, normalized + '.js', normalized + '.mjs', normalized + '/index.js']) {
+  for (const path of [
+    normalized,
+    normalized + '.js',
+    normalized + '.mjs',
+    normalized + '/index.js',
+  ]) {
     if (files.has(path)) return path;
   }
   return null;
@@ -66,10 +70,12 @@ function inspectSource(path, source) {
               const names = item.specifiers
                 .filter((part) => part.type === 'ImportSpecifier')
                 .map((part) => part.imported.name || part.imported.value);
-              const wildcard = item.specifiers.some(
-                (part) => part.type === 'ImportNamespaceSpecifier' ||
-                  part.type === 'ImportDefaultSpecifier',
-              ) || item.specifiers.length === 0;
+              const wildcard =
+                item.specifiers.some(
+                  (part) =>
+                    part.type === 'ImportNamespaceSpecifier' ||
+                    part.type === 'ImportDefaultSpecifier',
+                ) || item.specifiers.length === 0;
               imports.push({ source: item.source.value, names, wildcard });
             }
             if (item.type === 'ExportNamedDeclaration') {
@@ -101,14 +107,19 @@ function inspectSource(path, source) {
   };
   const findings = linter.verify(
     source,
-    [{
-      plugins: { audit: { rules: { collect: collectionRule } } },
-      languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-      rules: {
-        'audit/collect': 'error',
-        'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true }],
+    [
+      {
+        plugins: { audit: { rules: { collect: collectionRule } } },
+        languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+        rules: {
+          'audit/collect': 'error',
+          'no-unused-vars': [
+            'warn',
+            { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true },
+          ],
+        },
       },
-    }],
+    ],
     { filename: path },
   );
   const parseErrors = findings.filter((entry) => entry.fatal);
@@ -134,11 +145,13 @@ export async function auditSiteSymbols(root = resolve('.')) {
     }
     const result = inspectSource(path, await readFile(absolute, 'utf8'));
     parsed.set(path, result);
-    parseErrors.push(...result.parseErrors.map((entry) => ({
-      file: path,
-      line: entry.line,
-      message: entry.message,
-    })));
+    parseErrors.push(
+      ...result.parseErrors.map((entry) => ({
+        file: path,
+        line: entry.line,
+        message: entry.message,
+      })),
+    );
     localUnused.push(...result.localUnused);
   }
 
@@ -180,14 +193,20 @@ export async function auditSiteSymbols(root = resolve('.')) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const report = await auditSiteSymbols(resolve(process.argv[2] || '.'));
-  console.log(JSON.stringify({
-    scannedModules: report.scannedModules,
-    skippedLarge: report.skippedLarge,
-    parseErrors: report.parseErrors.slice(0, 12),
-    localUnusedCount: report.localUnused.length,
-    localUnusedExamples: report.localUnused.slice(0, 25),
-    namedExportCandidateCount: report.namedExportCandidates.length,
-    namedExportExamples: report.namedExportCandidates.slice(0, 40),
-    limitations: report.limitations,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        scannedModules: report.scannedModules,
+        skippedLarge: report.skippedLarge,
+        parseErrors: report.parseErrors.slice(0, 12),
+        localUnusedCount: report.localUnused.length,
+        localUnusedExamples: report.localUnused.slice(0, 25),
+        namedExportCandidateCount: report.namedExportCandidates.length,
+        namedExportExamples: report.namedExportCandidates.slice(0, 40),
+        limitations: report.limitations,
+      },
+      null,
+      2,
+    ),
+  );
 }

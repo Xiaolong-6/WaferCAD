@@ -30,12 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Inspect symbol audit formatting (temporary)
-        run: |
-          for path in scripts/audit-site-symbols.mjs site/tests/site-symbol-reachability.test.mjs; do
-            npx prettier "$path" > /tmp/symbol-audit-formatted.mjs
-            diff -u "$path" /tmp/symbol-audit-formatted.mjs || true
-          done
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
