@@ -1,8 +1,10 @@
 # Process Report Export (P1)
 
-The native v2 Workstation offers **Project → Export report (ZIP)**. This is a
-portable, read-only research narrative alongside the existing **Export**
-(`.wafercad`) engineering backup. The two exports have separate purposes.
+In the native v2 Workstation, open **Project → Export** and choose
+**Process report · .zip**. The same menu offers **Project file · .wafercad**,
+an editable engineering backup. These exports have separate purposes: the
+report is a portable, read-only research narrative; the project file can be
+reopened to continue editing and restoring History.
 
 ## Contents
 

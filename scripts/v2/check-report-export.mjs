@@ -46,8 +46,25 @@ try {
     assert.equal(before.workflow.steps.length, 47);
     assert.equal(before.workflow.branches.length, 7);
     await page.locator('.p-nav [data-action="domain:project"]').click();
+    assert.equal(await page.locator('#projectExportMenuBtn').count(), 1);
+    assert.equal(await page.locator('#exportReportBtn').isVisible(), false);
+    assert.equal(
+      await page.getByText('Offline HTML, Markdown and full Process History data.').count(),
+      0,
+    );
+    const exportTrigger = page.locator('#projectExportMenuBtn');
+    await exportTrigger.click();
+    assert.equal(await exportTrigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(await page.getByRole('menu', { name: 'Project export formats' }).count(), 1);
+    assert.equal(await page.locator('#exportProjectBtn').getAttribute('role'), 'menuitem');
+    await page.keyboard.press('Escape');
+    assert.equal(await exportTrigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(await exportTrigger.evaluate((node) => document.activeElement === node), true);
+    assert.equal(await page.locator('#exportProjectBtn').isVisible(), false);
+    await exportTrigger.click();
     const button = page.locator('#exportReportBtn');
     await button.waitFor({ state: 'visible' });
+    assert.equal(await button.getAttribute('role'), 'menuitem');
     const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
     await button.click();
     const download = await downloadPromise;
@@ -164,6 +181,26 @@ try {
     } finally {
       await reportPage.close();
     }
+    // Narrow screen: the same Project Export trigger must stay in view, with
+    // both choices available and without adding an extra Report action.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('[data-action="domain:project"]').click();
+    await page.locator('#projectExportMenuBtn').click();
+    const mobileMenu = page.getByRole('menu', { name: 'Project export formats' });
+    await mobileMenu.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#exportProjectBtn').isVisible(), true);
+    assert.equal(await page.locator('#exportReportBtn').isVisible(), true);
+    const bounds = await mobileMenu.boundingBox();
+    assert.ok(
+      bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390,
+      'Export menu fits viewport',
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(
+      await page.locator('#projectExportMenuBtn').getAttribute('aria-expanded'),
+      'false',
+    );
+    assert.deepEqual((await snapshot()).model, before.model, 'Menu changes no physical geometry');
     assert.deepEqual(errors, []);
     console.log(
       `Report ZIP PASS: ${manifest.historyStepCount} steps, ${manifest.branches.length} variants, ${entries.size} files`,
