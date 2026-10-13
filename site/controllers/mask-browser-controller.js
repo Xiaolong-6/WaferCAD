@@ -185,6 +185,7 @@ export function createMaskBrowserController({
       label.className = 'cell-name';
       label.type = 'button';
       label.textContent = name;
+      label.dataset.help = 'mask.cell';
       label.onclick = () => setActiveCell(name);
 
       row.append(caret, label);
@@ -225,6 +226,7 @@ export function createMaskBrowserController({
     for (const item of layers) {
       const available = [...item.cells].some((cell) => scope.has(cell));
       const row = root.createElement('label');
+      row.dataset.help = 'mask.layer';
       row.className =
         'layer-row' +
         (selectedLayerKeys.has(item.key) ? ' selected' : '') +

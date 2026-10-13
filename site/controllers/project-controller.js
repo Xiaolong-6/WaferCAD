@@ -199,6 +199,7 @@ export function createProjectController({
         returnButton.textContent = 'Return to HEAD';
         returnButton.setAttribute('aria-label', 'Return to Variant HEAD');
       }
+      if (compactHistory) returnButton.dataset.help = 'history.head';
       returnButton.title = historyEdit
         ? 'Cancel historical Step editing'
         : historyInsert
@@ -244,7 +245,8 @@ export function createProjectController({
       summary.className = 'snapshot-more-trigger';
       summary.textContent = '⋯';
       summary.setAttribute('aria-label', label);
-      summary.title = label;
+      if (!compactHistory) summary.title = label;
+      else summary.dataset.help = 'history.more';
 
       const closeOtherMenus = () => {
         for (const other of root.querySelectorAll('.snapshot-more-menu[open]')) {
@@ -276,7 +278,15 @@ export function createProjectController({
         button.textContent = item.label;
         if (item.danger) button.dataset.danger = 'true';
         if (item.disabled) button.disabled = true;
-        if (item.title) button.title = item.title;
+        const helpKey = ({
+          'Continue from here…': 'history.continue',
+          'New Variant from here': 'history.variant',
+          'Delete last Step': 'history.delete.step',
+          'Delete bookmark': 'history.delete.bookmark',
+          'Add bookmark': 'history.bookmark',
+        })[item.label];
+        if (compactHistory && helpKey) button.dataset.help = helpKey;
+        else if (item.title) button.title = item.title;
         button.onclick = async (event) => {
           event.stopPropagation();
           if (button.disabled) return;
@@ -640,7 +650,8 @@ export function createProjectController({
         row.tabIndex = 0;
         row.setAttribute('role', 'button');
         row.setAttribute('aria-label', `Restore Step ${label.textContent}`);
-        row.title = 'Restore this Step';
+        if (compactHistory) row.dataset.help = 'history.restore';
+        else row.title = 'Restore this Step';
         row.onclick = () => void restoreStep(node);
         row.onkeydown = (event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;

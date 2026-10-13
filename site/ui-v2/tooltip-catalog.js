@@ -109,6 +109,7 @@
     'history.delete.bookmark': ['Delete bookmark', 'Remove the bookmark label. The underlying Step remains restorable.'],
     'history.bookmark': ['Bookmark', 'Save a named reference to the current model state.'],
     'history.more': ['History actions', 'Open actions available for this Step, Variant or bookmark.'],
+    'history.branch.switch': ['Switch Variant', 'Restore the latest saved Step on the selected Variant.'],
     'recovery.restore': ['Restore recovery', 'Load the selected saved recovery checkpoint into the current workspace.'],
     'recovery.clear': ['Clear Recovery', 'Delete available recovery checkpoints. This does not delete exported project files.'],
     'recovery.takeover': ['Take over storage', 'Claim workspace persistence ownership from another browser tab.'],
