@@ -45,12 +45,23 @@ try {
   );
   const originalModel = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model);
   await page.locator('#saveProjectBtn').click();
-  await page.waitForFunction(
-    () =>
-      /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
-    null,
-    { timeout: 120000 },
-  );
+  try {
+    await page.waitForFunction(
+      () =>
+        /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
+      null,
+      { timeout: 45000 },
+    );
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      status: document.querySelector('[data-slot="status.message"]')?.textContent,
+      workspace: document.querySelector('.workspace')?.dataset,
+      boot: document.querySelector('.p-workbench')?.dataset.boot,
+      startup: window.WaferCadV2Workstation?.startup?.(),
+    }));
+    console.error('P1_HISTORY_SAVE_DIAGNOSTIC', JSON.stringify({ diagnostic, errors }));
+    throw error;
+  }
   await page.goto(`${base}/app.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
     timeout: 120000,
