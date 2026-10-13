@@ -145,9 +145,13 @@ export function createWorkstationThreeView({ store, workstation }) {
       attributes: true,
       attributeFilter: ['data-renderer-frame-serial', 'data-render-state'],
     });
-    host.addEventListener('pointerdown', () => {
-      pointerActive = true;
-    }, true);
+    host.addEventListener(
+      'pointerdown',
+      () => {
+        pointerActive = true;
+      },
+      true,
+    );
     window.addEventListener('pointerup', () => {
       pointerActive = false;
     });
