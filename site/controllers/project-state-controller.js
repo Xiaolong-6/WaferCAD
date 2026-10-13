@@ -40,7 +40,6 @@ export function createProjectStateController({
   readValidatedFile = readProjectFile,
 }) {
   let importedStates = new WeakMap();
-  let validatedStateCopies = new WeakMap();
 
   function cacheImportedSnapshotStates(project) {
     importedStates = new WeakMap();
@@ -268,8 +267,6 @@ export function createProjectStateController({
   }
 
   function isValidSnapshotStates(states) {
-    // Only copies from this exact synchronous validation may be adopted.
-    validatedStateCopies = new WeakMap();
     try {
       const uniqueStates = [...new Set(states)];
       const copies = uniqueStates.map((state) => {
@@ -280,28 +277,15 @@ export function createProjectStateController({
       const matches = equalStatePairs(uniqueStates.map((state, index) => [state, copies[index]]));
       const remaining = uniqueStates.filter((state, index) => !copies[index] || !matches[index]);
       validateProjectFiles(remaining);
-      if (!states.every((state) => state.snapshots == null)) return false;
-      for (let index = 0; index < uniqueStates.length; index++) {
-        if (copies[index] && matches[index]) {
-          validatedStateCopies.set(uniqueStates[index], copies[index]);
-        }
-      }
-      return true;
+      return states.every((state) => state.snapshots == null);
     } catch {
       return false;
     }
   }
 
-  function takeValidatedSnapshotCopy(state) {
-    const copy = validatedStateCopies.get(state) || null;
-    if (copy) validatedStateCopies.delete(state);
-    return copy;
-  }
-
   return {
     readProjectSnapshot,
     readWorkerValidatedProjectSnapshot,
-    takeValidatedSnapshotCopy,
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,

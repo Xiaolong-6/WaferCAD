@@ -184,7 +184,6 @@ export function createSnapshotManager({
   restore,
   validateState = () => true,
   validateStates = null,
-  takeValidatedStateCopy = () => null,
   now = () => new Date(),
   idFactory = () => `snapshot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   branchIdFactory = () =>
@@ -1515,12 +1514,6 @@ export function createSnapshotManager({
     const validStates =
       typeof validateStates === 'function' && validateStates(states) ? new WeakSet(states) : null;
     const isValid = (state) => (validStates ? validStates.has(state) : validateState(state));
-    // Reuse detached copies already checked against Worker-validated source.
-    // The fallback still copies every non-attested or changed snapshot.
-    const cloneImportedState = (state) => {
-      const copy = validStates?.has(state) ? takeValidatedStateCopy(state) : null;
-      return copy || cloneState(state);
-    };
 
     const seen = new Set();
     const next = [];
@@ -1549,7 +1542,7 @@ export function createSnapshotManager({
         parentId: typeof raw.parentId === 'string' && raw.parentId ? raw.parentId : null,
         historyNodeId:
           typeof raw.historyNodeId === 'string' && raw.historyNodeId ? raw.historyNodeId : null,
-        state: cloneImportedState(raw.state),
+        state: cloneState(raw.state),
       });
       seen.add(raw.id);
     }
@@ -1581,7 +1574,7 @@ export function createSnapshotManager({
           createdAt,
           processRevision: Number.isInteger(raw.processRevision) ? raw.processRevision : 0,
           operation: raw.operation && typeof raw.operation === 'object' ? clone(raw.operation) : {},
-          state: raw.state && isValid(raw.state) ? cloneImportedState(raw.state) : null,
+          state: raw.state && isValid(raw.state) ? cloneState(raw.state) : null,
         });
         nodeIds.add(raw.id);
       }
@@ -1612,7 +1605,7 @@ export function createSnapshotManager({
           ? new Date(raw.createdAt).toISOString()
           : new Date(0).toISOString();
         const headState =
-          raw.headState && isValid(raw.headState) ? cloneImportedState(raw.headState) : null;
+          raw.headState && isValid(raw.headState) ? cloneState(raw.headState) : null;
         importedBranches.push({
           id: raw.id,
           name: cleanName(raw.name) || (raw.id === MAIN_SNAPSHOT_BRANCH_ID ? 'Main' : raw.id),
