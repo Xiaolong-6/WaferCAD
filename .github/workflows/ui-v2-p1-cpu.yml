@@ -6,6 +6,7 @@ on:
       - feat/ui-v2-progressive-startup-20261013
     paths:
       - 'scripts/v2/profile-startup-ci.mjs'
+      - 'scripts/persistence-regression.mjs'
       - 'scripts/v2/check-progressive-quality.mjs'
       - 'site/renderer-instancing.js'
       - 'site/controllers/project-state-controller.js'
