@@ -92,8 +92,8 @@ export function createWorkstationRuntime(project) {
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
     getSnapshotRecords: () => history?.exportRecords() || [],
-    getSnapshotBranchState: () => {
-      history?.syncActiveHeadState();
+    getSnapshotBranchState: ({ skipSync = false } = {}) => {
+      if (!skipSync) history?.syncActiveHeadState();
       return history?.exportBranchState() || null;
     },
     setSectionEditEnabled: (value) => {
