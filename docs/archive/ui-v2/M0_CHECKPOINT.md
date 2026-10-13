@@ -35,7 +35,7 @@ Windows / PowerShell，Node `v26.7.0`，npm `11.19.0`；锁定 Playwright `1.55.
 
 ```powershell
 $env:WAFERCAD_URL = 'http://127.0.0.1:4174'
-$env:WAFERCAD_CHROMIUM = 'C:\Users\liux16\AppData\Local\Google\Chrome\Application\chrome.exe'
+$env:WAFERCAD_CHROMIUM = 'C:\Users\<USERNAME>\AppData\Local\Google\Chrome\Application\chrome.exe'
 $env:WAFERCAD_THREE_DIR = Join-Path (Get-Location) 'node_modules/three'
 npm run test:ui:fast
 node scripts/ui-contract-verify.mjs
