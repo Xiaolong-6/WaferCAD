@@ -96,7 +96,10 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
     return JSON.parse(archive.content(name));
   }).flat();
   assert.equal(all.length, 1000);
-  assert.deepEqual(all.map((step) => step.number), Array.from({ length: 1000 }, (_, i) => i + 1));
+  assert.deepEqual(
+    all.map((step) => step.number),
+    Array.from({ length: 1000 }, (_, i) => i + 1),
+  );
   assert.equal(all[999].parentId, 'step-999');
   assert.equal(all[0].operation.replay.params.thickness, 0.00035);
   assert.equal(all[2].label, '<script>alert(1)</script> | Step');
