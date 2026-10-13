@@ -55,7 +55,9 @@ try {
       await processNav.click();
       assert.equal(await page.locator('#operationTools').isVisible(), true);
       await page.evaluate(() => {
-        window.__mobileNavIdentity = document.querySelector('.p-nav [data-action="domain:process"]');
+        window.__mobileNavIdentity = document.querySelector(
+          '.p-nav [data-action="domain:process"]',
+        );
       });
 
       const dimensions = await page.evaluate(() => {
@@ -101,16 +103,14 @@ try {
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
       assert.equal(
-        await page.evaluate(() => window.__mobileCanvasIdentity === document.querySelector('#mainCanvas')),
+        await page.evaluate(() => window.__mobileCanvasIdentity?.isConnected),
         true,
         'Canvas host retains identity between panes',
       );
       await page.locator('[data-action="show-editor"]').click();
       assert.equal(await label.inputValue(), 'Mobile draft remains');
       assert.equal(
-        await page.evaluate(
-          () => window.__mobileNavIdentity === document.querySelector('.p-nav [data-action="domain:process"]'),
-        ),
+        await page.evaluate(() => window.__mobileNavIdentity?.isConnected),
         true,
         'Navigation control retains identity after shell renders',
       );
@@ -121,9 +121,7 @@ try {
       assert.equal(await root.getAttribute('data-mobile'), 'edit');
       assert.equal(await label.inputValue(), 'Mobile draft remains');
       assert.equal(
-        await page.evaluate(
-          () => window.__mobileNavIdentity === document.querySelector('.p-nav [data-action="domain:process"]'),
-        ),
+        await page.evaluate(() => window.__mobileNavIdentity?.isConnected),
         true,
       );
       await page.setViewportSize({ width, height });
