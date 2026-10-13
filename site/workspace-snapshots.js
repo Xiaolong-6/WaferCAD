@@ -1791,6 +1791,7 @@ export function createSnapshotManager({
     hasHistoricalWorkingEdits,
     syncActiveHeadState,
     syncActiveHeadStateAsync,
+    validateHeadState: validateState,
     rebuildMainBase,
     clear,
     exportRecords,
