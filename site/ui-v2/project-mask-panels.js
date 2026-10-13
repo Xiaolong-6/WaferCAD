@@ -3,7 +3,7 @@ import { createBaseControlsController } from '../controllers/base-controls-contr
 import { createMaskBrowserController } from '../controllers/mask-browser-controller.js';
 import { createMaskImportController } from '../controllers/mask-import-controller.js';
 import { MAX_PROJECT_FILE_BYTES } from '../project-io.js';
-import { buildProcessReportData, buildProcessReportArchive } from '../process-report.js';
+import { buildProcessReportData } from '../process-report.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
 
@@ -387,56 +387,75 @@ export function createProjectMaskPanels({
     }
     reportButton.disabled = true;
     try {
-      const project = projectState.buildProjectSnapshot(false);
-      project.name = normalizedProjectName();
-      const data = buildProcessReportData({
-        project,
-        history: history.listHistory(),
-        branches: history.listBranches(),
-        bookmarks: history.list(),
-        position: history.currentPosition(),
-      });
-      const revision = state.model.revision;
-      const captures = [];
-      const warnings = [];
-      for (const [view, selector] of [
-        ['main', '#mainCanvas'],
-        ['mask', '#maskCanvas'],
-        ['section', '#sectionCanvas'],
-        ['three', '#threeHost canvas'],
-      ]) {
-        const canvas = document.querySelector(selector);
-        if (!canvas || !canvas.width || !canvas.height || !canvas.checkVisibility()) {
-          warnings.push(`${view}: canvas not visible at export time.`);
-          continue;
-        }
-        try {
-          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-          if (!blob || blob.type !== 'image/png') throw new Error('PNG capture unavailable');
-          if (blob.size > 16 * 1024 * 1024) {
-            warnings.push(`${view}: capture exceeds 16 MB; omitted.`);
-            continue;
+      const result = await task.runTask(
+        async ({ signal, updateStage, runWorker }) => {
+          const project = projectState.buildProjectSnapshot(false);
+          project.name = normalizedProjectName();
+          const data = buildProcessReportData({
+            project,
+            history: history.listHistory(),
+            branches: history.listBranches(),
+            bookmarks: history.list(),
+            position: history.currentPosition(),
+          });
+          const revision = state.model.revision;
+          const captures = [];
+          const warnings = [];
+          updateStage('Capturing visible inspection views…');
+          for (const [view, selector] of [
+            ['main', '#mainCanvas'],
+            ['mask', '#maskCanvas'],
+            ['section', '#sectionCanvas'],
+            ['three', '#threeHost canvas'],
+          ]) {
+            if (signal.aborted) return { aborted: true };
+            const canvas = document.querySelector(selector);
+            if (!canvas || !canvas.width || !canvas.height || !canvas.checkVisibility()) {
+              warnings.push(`${view}: canvas not visible at export time.`);
+              continue;
+            }
+            try {
+              const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+              if (!blob || blob.type !== 'image/png') throw new Error('PNG capture unavailable');
+              if (blob.size > 16 * 1024 * 1024) {
+                warnings.push(`${view}: capture exceeds 16 MB; omitted.`);
+                continue;
+              }
+              captures.push({ view, bytes: new Uint8Array(await blob.arrayBuffer()) });
+            } catch (error) {
+              warnings.push(`${view}: ${error.message}.`);
+            }
           }
-          captures.push({ view, bytes: new Uint8Array(await blob.arrayBuffer()) });
-        } catch (error) {
-          warnings.push(`${view}: ${error.message}.`);
-        }
-      }
-      if (state.model.revision !== revision) {
-        captures.length = 0;
-        warnings.push('Model changed while capturing; view images omitted.');
-      }
-      const report = buildProcessReportArchive(data, { captures, warnings });
-      const url = URL.createObjectURL(report.blob);
+          if (signal.aborted) return { aborted: true };
+          if (state.model.revision !== revision) {
+            captures.length = 0;
+            warnings.push('Model changed while capturing; view images omitted.');
+          }
+          updateStage('Building offline report…');
+          return runWorker(
+            '../process-report-worker.js',
+            { data, captures, warnings },
+            { transfer: captures.map((capture) => capture.bytes.buffer) },
+          );
+        },
+        {
+          label: 'Exporting Process Report…',
+          abortMessage: 'Report export aborted. No file was downloaded.',
+          failurePrefix: 'Report export failed',
+        },
+      );
+      if (!result || result.aborted || result.error || !result.arrayBuffer) return;
+      const blob = new Blob([result.arrayBuffer], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
       try {
-        const link = el('a', { href: url, download: report.filename });
+        const link = el('a', { href: url, download: result.filename });
         document.body.append(link);
         link.click();
         link.remove();
       } finally {
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
-      workstation.status(`Report requested: ${report.stepCount} steps, ${report.imageCount} views.`);
+      workstation.status(`Report requested: ${result.stepCount} steps, ${result.imageCount} views.`);
     } catch (error) {
       console.error(error);
       workstation.status(`Report export failed: ${error.message}`, 'error');
