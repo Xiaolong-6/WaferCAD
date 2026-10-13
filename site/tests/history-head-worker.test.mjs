@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 import { validateHistoryHeadOffThread } from '../history-head-validation.js';
 
-test('head validation worker transfers a detached candidate and terminates on success/failure', async () => {
+test('History worker validates a detached head and terminates on failures', async () => {
   const previousWorker = globalThis.Worker;
   let worker;
   globalThis.Worker = class {
@@ -55,7 +55,7 @@ test('head validation worker transfers a detached candidate and terminates on su
   }
 });
 
-test('asynchronous History commit refuses invalid and edited candidates, then atomically syncs a valid head', async () => {
+test('async History head rejects invalid and edited candidates atomically', async () => {
   let live = { model: { revision: 1, processRevision: 0 }, display: { xyUnit: 'um' } };
   const manager = createSnapshotManager({
     capture: () => live,
@@ -67,9 +67,10 @@ test('asynchronous History commit refuses invalid and edited candidates, then at
 
   let finish;
   const pending = manager.syncActiveHeadStateAsync(
-    () => new Promise((resolve) => {
-      finish = resolve;
-    }),
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
   );
   live = { model: { revision: 2, processRevision: 0 }, display: { xyUnit: 'um' } };
   finish(true);
