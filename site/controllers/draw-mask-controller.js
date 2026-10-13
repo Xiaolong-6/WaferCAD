@@ -228,9 +228,70 @@ export function createDrawMaskController({
     return points.length >= 3 ? points : null;
   }
 
+  // An open editor displays quantized values while geometry can retain the
+  // original sub-grid coordinates from canvas input or imported data. Reapplying
+  // unchanged displayed fields must not silently snap physical geometry.
+  function shapeEditorHasChanges(shape) {
+    const lengthChanged = (id, physical) => {
+      const value = $(id)?.value;
+      return (
+        value == null ||
+        String(value).trim() === '' ||
+        !Number.isFinite(Number(value)) ||
+        Number(value) !== Number(formatLengthField(physical))
+      );
+    };
+    if (shape.type === 'rect') {
+      return (
+        lengthChanged('drawShapeCx', (shape.a[0] + shape.b[0]) / 2) ||
+        lengthChanged('drawShapeCy', (shape.a[1] + shape.b[1]) / 2) ||
+        lengthChanged('drawShapeWidth', shape.b[0] - shape.a[0]) ||
+        lengthChanged('drawShapeHeight', shape.b[1] - shape.a[1])
+      );
+    }
+    if (shape.type === 'polygon') {
+      const rows = String($('drawShapePoints')?.value ?? '')
+        .split(/\\r?\\n/)
+        .map((row) => row.trim())
+        .filter(Boolean);
+      return (
+        rows.length !== shape.points.length ||
+        rows.some((row, index) => {
+          const values = row.split(/[\\s,]+/).filter(Boolean);
+          return (
+            values.length !== 2 ||
+            values.some(
+              (value, axis) =>
+                !Number.isFinite(Number(value)) ||
+                Number(value) !== Number(formatLengthField(shape.points[index][axis])),
+            )
+          );
+        })
+      );
+    }
+    const centerChanged =
+      lengthChanged('drawShapeCx', shape.c[0]) ||
+      lengthChanged('drawShapeCy', shape.c[1]);
+    if (shape.type === 'circle')
+      return centerChanged || lengthChanged('drawShapeRadius', shape.r);
+    const radialChanged =
+      centerChanged ||
+      lengthChanged('drawShapeInnerRadius', shape.innerR) ||
+      lengthChanged('drawShapeOuterRadius', shape.outerR);
+    return shape.type === 'ring-sector'
+      ? radialChanged ||
+          Number($('drawShapeStartDeg')?.value) !== shape.startDeg ||
+          Number($('drawShapeEndDeg')?.value) !== shape.endDeg
+      : radialChanged;
+  }
+
   function applyEditor() {
     const shape = selectedShape();
     if (!shape) return closeEditor();
+    if (!shapeEditorHasChanges(shape)) {
+      status('Shape parameters unchanged.', 'success');
+      return;
+    }
 
     let next = null;
     if (shape.type === 'rect') {

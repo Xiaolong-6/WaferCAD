@@ -7,6 +7,7 @@ const { createDrawMaskController } = await import('../controllers/draw-mask-cont
 const { createMaskRoiController } = await import('../controllers/mask-roi-controller.js');
 
 test('Mask public ports use optional v2 callbacks without constructing controller UI', () => {
+  let changed = 0;
   let mask = {
       nextShapeId: 3,
       shapes: [
@@ -19,7 +20,7 @@ test('Mask public ports use optional v2 callbacks without constructing controlle
   const events = [],
     sync = [],
     fields = new Map([
-      ['drawShapeCx', { value: '2.0001' }],
+      ['drawShapeCx', { value: '2' }],
       ['drawShapeCy', { value: '1' }],
       ['drawShapeWidth', { value: '4' }],
       ['drawShapeHeight', { value: '2' }],
@@ -42,6 +43,7 @@ test('Mask public ports use optional v2 callbacks without constructing controlle
     manualMicron: Number,
     renderMask: () => {},
     status: () => {},
+    onMaskChanged: () => { changed += 1; },
     onUiSync: (value) => sync.push(value),
     onEditorSync: (kind, shape) => events.push({ kind, shape }),
     syncSourceSummary: () => {
@@ -51,9 +53,15 @@ test('Mask public ports use optional v2 callbacks without constructing controlle
   controller.openEditor(mask.shapes[0]);
   assert.equal(controller.getSelectedId(), 'shape-1');
   assert.equal(events[0].kind, 'open');
+  const original = structuredClone(mask);
+  controller.applyEditor();
+  assert.deepEqual(mask, original, 'an unchanged edit preserves exact sub-grid geometry');
+  assert.equal(changed, 0, 'an unchanged edit does not dirty a Mask project');
+  fields.get('drawShapeCx').value = '2.0001';
   controller.applyEditor();
   assert.equal(mask.shapes[0].id, 'shape-1');
   assert.ok(Math.abs(mask.shapes[0].a[0] - 0.0001) < 1e-12);
+  assert.equal(changed, 1);
   controller.removeSelected();
   assert.deepEqual(
     mask.shapes.map((shape) => shape.id),

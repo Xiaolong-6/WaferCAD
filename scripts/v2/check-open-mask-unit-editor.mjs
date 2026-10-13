@@ -64,8 +64,18 @@ try {
     await page.locator('[data-action="draw-apply"]').click();
     const committed = await snapshot();
     assert.equal(committed.drawMask.shapes.at(-1).id, shape.id);
-    assert.deepEqual(committed.drawMask.shapes, beforeShapes);
+    assert.deepEqual(
+      committed.drawMask.shapes,
+      beforeShapes,
+      'Applying unchanged display values preserves exact canonical Mask coordinates',
+    );
     assert.deepEqual(committed.model, baseModel);
+    await page.locator('[data-action="draw-apply"]').click();
+    assert.deepEqual(
+      (await snapshot()).drawMask.shapes,
+      beforeShapes,
+      'repeated Apply without edits does not accumulate rounding error',
+    );
     assert.deepEqual(errors, []);
     report.cases.push({ width: 1440, kind: 'rect', units: ['nm', 'mm', 'um'] });
     report.result = 'pass';
