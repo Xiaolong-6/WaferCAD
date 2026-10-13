@@ -80,8 +80,7 @@ try {
       if (await clearHistory.isVisible()) await clearHistory.click();
       try {
         await page.waitForFunction(
-          (width) =>
-            Math.abs(window.WaferCadV2Workstation.snapshot().model.width - width) < 1e-11,
+          (width) => Math.abs(window.WaferCadV2Workstation.snapshot().model.width - width) < 1e-11,
           baseDimensions.width,
           { timeout: 30000 },
         );
