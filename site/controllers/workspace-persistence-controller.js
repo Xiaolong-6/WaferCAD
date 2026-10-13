@@ -98,6 +98,7 @@ export function createWorkspacePersistenceController({
   status,
   buildProjectSnapshot,
   progressiveHistoryValidation = false,
+  progressiveWorkspaceRestore = false,
   loadProjectSnapshot,
   // Only projects returned from strict persistent-storage validation reach
   // this hook. Snapshot mutation checks still compare detached copies.
@@ -954,7 +955,7 @@ export function createWorkspacePersistenceController({
     const flushed = await requestOwnerFlush(),
       marker = readMarker(),
       savedChanged = Boolean(marker?.saveId && marker.saveId !== baseSaveId),
-      latestSaved = savedChanged || !flushed ? await loadWorkspaceState().catch(() => null) : null;
+      latestSaved = savedChanged || !flushed ? await loadWorkspaceState({ background: progressiveWorkspaceRestore }).catch(() => null) : null;
 
     let choice = 'use-current';
     if (savedChanged) {
@@ -1051,7 +1052,7 @@ export function createWorkspacePersistenceController({
 
     try {
       if (hasExplicitStart) {
-        const saved = await loadWorkspaceState();
+        const saved = await loadWorkspaceState({ background: progressiveWorkspaceRestore });
         if (saved) applyStoredViewState(saved);
         if (saved && hasWriteAccess()) {
           try {
@@ -1090,7 +1091,7 @@ export function createWorkspacePersistenceController({
           );
         }
       } else {
-        const saved = await loadWorkspaceState();
+        const saved = await loadWorkspaceState({ background: progressiveWorkspaceRestore });
         if (saved) {
           const hasCamera = adoptLoadedCurrentProject(saved);
           syncBaseControls();
