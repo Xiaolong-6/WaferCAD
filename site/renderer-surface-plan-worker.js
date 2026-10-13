@@ -6,7 +6,9 @@ self.importScripts(`./vendor/polygon-clipping.umd.js${versionQuery}`);
 const moduleUrl = new URL('./renderer-geometry.js', self.location.href);
 moduleUrl.search = versionQuery;
 const geometryModule = import(moduleUrl.href);
-const transportModule = import(new URL('./renderer-surface-plan-stream.js' + versionQuery, self.location.href));
+const transportModule = import(
+  new URL('./renderer-surface-plan-stream.js' + versionQuery, self.location.href)
+);
 
 self.onmessage = async ({ data }) => {
   if (data?.id !== 1 || data.action !== 'surface-plan') return;
