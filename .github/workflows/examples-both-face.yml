@@ -15,6 +15,9 @@ on:
       - site/controllers/process-panel-controller.js
       - site/controllers/process-recipe-controller.js
       - site/tests/examples-both-face-migration.test.mjs
+      - site/tests/example-regression.test.mjs
+      - site/tests/welcome-example.test.mjs
+      - docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md
   pull_request:
     branches:
       - main
@@ -26,6 +29,9 @@ on:
       - site/controllers/process-panel-controller.js
       - site/controllers/process-recipe-controller.js
       - site/tests/examples-both-face-migration.test.mjs
+      - site/tests/example-regression.test.mjs
+      - site/tests/welcome-example.test.mjs
+      - docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md
   workflow_dispatch:
 
 permissions:
@@ -60,7 +66,7 @@ jobs:
           node scripts/maintenance/sync-example-recipe-previews.mjs --write
       - name: Format changed code
         run: |
-          npx prettier --write scripts/maintenance/rebuild-photodetectors.mjs scripts/maintenance/consolidate-perc-both-face.mjs scripts/maintenance/consolidate-tandem-texture-both.mjs scripts/maintenance/backfill-example-recipes.mjs site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs
+          npx prettier --write scripts/maintenance/rebuild-photodetectors.mjs scripts/maintenance/consolidate-perc-both-face.mjs scripts/maintenance/consolidate-tandem-texture-both.mjs scripts/maintenance/backfill-example-recipes.mjs site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs site/tests/example-regression.test.mjs site/tests/welcome-example.test.mjs docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md docs/PROCESS_BOTH_FACE_2026-10-11.md docs/wiki/Examples-and-Modeling-Limits.md
       - name: Targeted scientific and persistence validation
         run: |
           node --test site/tests/examples-both-face-migration.test.mjs site/tests/example-recipe-audit.test.mjs site/tests/example-structure.test.mjs site/tests/process-both-face.test.mjs
@@ -74,7 +80,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/maintenance site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs site/examples tests/fixtures/project-io/example-thumbnails.json
+          git add scripts/maintenance site/process-face-execution.js site/process-recipe.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js site/tests/examples-both-face-migration.test.mjs site/tests/example-regression.test.mjs site/tests/welcome-example.test.mjs site/examples docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md docs/PROCESS_BOTH_FACE_2026-10-11.md docs/wiki/Examples-and-Modeling-Limits.md tests/fixtures/project-io/example-thumbnails.json
           if ! git diff --cached --quiet; then
             git commit -m "chore(examples): regenerate accepted Both-face projects, previews and recipe checksums"
             git push origin HEAD:feat/examples-both-face-consolidation-20261013
