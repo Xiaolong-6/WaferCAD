@@ -50,12 +50,20 @@ try {
       waitUntil: 'domcontentloaded',
       timeout: 120000,
     });
-    await Promise.race([
-      requested,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('The M3D project request was not intercepted')), 30000),
-      ),
-    ]);
+    let requestTimeout;
+    try {
+      await Promise.race([
+        requested,
+        new Promise((_, reject) => {
+          requestTimeout = setTimeout(
+            () => reject(new Error('The M3D project request was not intercepted')),
+            30000,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(requestTimeout);
+    }
     await page.waitForSelector('.p-workbench[data-boot="loading"]');
     assert.equal(await page.locator('body').getAttribute('data-ready'), 'false');
     assert.equal(
@@ -89,7 +97,9 @@ try {
     assert.ok(Math.abs(after.stageWidth - before.stageWidth) < 2);
     assert.deepEqual(after.views, ['main', 'mask', 'three', 'section']);
     assert.equal(after.horizontalOverflow, 0);
-    assert.ok((await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model.layers.length)) > 1);
+    assert.ok(
+      (await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model.layers.length)) > 1,
+    );
   } finally {
     releaseAsset();
     await context.close();
