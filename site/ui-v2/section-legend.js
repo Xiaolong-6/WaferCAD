@@ -152,7 +152,7 @@
       },
       el(
         'span',
-        { class: 'v2-legend-name', title: item.name },
+        { class: 'v2-legend-name' },
         item.name,
         annotation
           ? el(
@@ -173,7 +173,7 @@
             'data-action': `legend-palette:${key}`,
             'aria-label': `Choose color for ${item.name}`,
             'aria-expanded': String(paletteOpen === key),
-            title: `Choose color · ${item.name}`,
+            'data-help': 'section.color',
           },
           swatch,
         ),
@@ -190,7 +190,7 @@
                     'data-action': `legend-set:${key}`,
                     'data-color': option,
                     'aria-label': option,
-                    title: option,
+                    'data-help': 'section.color.option',
                     role: 'menuitem',
                   },
                   el('span', { class: 'v2-legend-swatch', style: `background-color:${option}` }),
@@ -239,6 +239,7 @@
             class: 'v2-legend-palette-select',
             'data-key': 'legendPalette',
             'aria-label': 'Structure color palette',
+            'data-help': 'section.legend.palette',
           },
           paletteName === 'random'
             ? el('option', { value: 'randomized', selected: true, disabled: true }, 'Randomized')

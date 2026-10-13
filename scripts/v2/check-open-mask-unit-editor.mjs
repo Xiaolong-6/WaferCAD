@@ -76,6 +76,17 @@ try {
       beforeShapes,
       'repeated Apply without edits does not accumulate rounding error',
     );
+    const beforeCenter = (shape.a[0] + shape.b[0]) / 2;
+    await page.locator('#drawShapeCx').fill(String(Number(await page.locator('#drawShapeCx').inputValue()) + 0.01));
+    await page.locator('[data-action="draw-apply"]').click();
+    const afterEdit = await snapshot();
+    const moved = afterEdit.drawMask.shapes.find((entry) => entry.id === shape.id);
+    assert.ok(moved, 'intentional edit retains its stable shape ID');
+    assert.ok(
+      Math.abs((moved.a[0] + moved.b[0]) / 2 - beforeCenter - 0.01) <= 0.0001,
+      'deliberate 10 nm edit commits within the 0.1 nm input grid',
+    );
+    assert.deepEqual(afterEdit.model, baseModel);
     assert.deepEqual(errors, []);
     report.cases.push({ width: 1440, kind: 'rect', units: ['nm', 'mm', 'um'] });
     report.result = 'pass';

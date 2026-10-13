@@ -17,7 +17,7 @@ A canvas-drawn shape can hold sub-0.1-nm coordinates. The inspector shows values
 
 ## Browser ownership
 
-The dedicated `scripts/v2/check-open-mask-unit-editor.mjs` gate exercises the production `app.html` entry: create a real Rect Mask Draw shape, keep its editor open, drive the Project unit selector through its existing `change` handler, apply the shape, and compare canonical Draw geometry/model and IDs. This is one focused smoke path, not a complete shape-family matrix.
+The dedicated `scripts/v2/check-open-mask-unit-editor.mjs` gate exercises the production `app.html` entry: create a real Rect Mask Draw shape, keep its editor open, drive the Project unit selector through its existing `change` handler, apply the shape, and compare canonical Draw geometry/model and IDs. The gate runs before the lengthy visual acceptance owner, asserts that no-edit Apply is bit-for-bit idempotent, and verifies an intentional 10 nm edit at the established input grid. This is one focused smoke path, not a complete shape-family matrix.
 
 ## Explicit outstanding browser matrix
 

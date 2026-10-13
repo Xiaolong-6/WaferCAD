@@ -3,6 +3,7 @@ import { createBaseControlsController } from '../controllers/base-controls-contr
 import { createMaskBrowserController } from '../controllers/mask-browser-controller.js';
 import { createMaskImportController } from '../controllers/mask-import-controller.js';
 import { MAX_PROJECT_FILE_BYTES } from '../project-io.js';
+import { buildProcessReportData } from '../process-report.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
 
@@ -36,7 +37,10 @@ export function createProjectMaskPanels({
     'openProjectInput',
     el('input', { type: 'file', accept: '.wafercad,.json', hidden: true }),
   );
-  hook('saveProjectBtn', button('Save', null, 'save', { 'data-variant': 'ghost' }));
+  hook(
+    'saveProjectBtn',
+    button('Save', null, 'save', { 'data-variant': 'ghost', 'data-help': 'project.save' }),
+  );
   projectHost.append(
     el(
       'div',
@@ -49,7 +53,13 @@ export function createProjectMaskPanels({
         'Open',
         open,
       ),
-      hook('exportProjectBtn', button('Export', null, 'export', { 'data-variant': 'ghost' })),
+      hook(
+        'exportProjectBtn',
+        button('Export', null, 'export', {
+          'data-variant': 'ghost',
+          'data-help': 'project.export',
+        }),
+      ),
     ),
     input('Project name', 'projectNameInput', state.projectName, { maxlength: 256 }),
     choice(
@@ -63,7 +73,17 @@ export function createProjectMaskPanels({
       units.key(),
     ),
     projectSummary,
+    el(
+      'div',
+      { class: 'p-actions' },
+      hook(
+        'exportReportBtn',
+        button('Export report (ZIP)', null, 'export', { 'data-variant': 'ghost' }),
+      ),
+    ),
+    el('p', { class: 'p-aux' }, 'Offline HTML, Markdown and full Process History data.'),
   );
+  root.getElementById('xyUnitSelect').dataset.help = 'project.units';
   root.getElementById('xyUnitSelect').onchange = (event) => {
     state.xyDisplayUnit = event.target.value;
     syncDisplayUnitFields(document, units.key());
@@ -108,8 +128,20 @@ export function createProjectMaskPanels({
     el(
       'div',
       { class: 'p-actions' },
-      hook('applyBaseBtn', button('Rebuild Base', null, 'history', { primary: true })),
-      hook('revertBaseBtn', button('Revert changes', null, 'undo', { disabled: true })),
+      hook(
+        'applyBaseBtn',
+        button('Rebuild Base', null, 'history', {
+          primary: true,
+          'data-help': 'project.base.rebuild',
+        }),
+      ),
+      hook(
+        'revertBaseBtn',
+        button('Revert changes', null, 'undo', {
+          disabled: true,
+          'data-help': 'project.base.revert',
+        }),
+      ),
     ),
   );
   const baseHost = host('panel.base');
@@ -182,11 +214,12 @@ export function createProjectMaskPanels({
         ['draw', 'Draw', 'palette'],
       ].map(([key, label, icon]) =>
         button(label, `mask-source:${key}`, icon, {
+          'data-help': 'mask.source',
           'aria-pressed': String(state.maskSourceMode === key),
         }),
       ),
     ),
-    el('label', { class: 'wc-button' }, 'Import GDS / OAS', layoutFile),
+    el('label', { class: 'wc-button', 'data-help': 'mask.import' }, 'Import GDS / OAS', layoutFile),
     hook('maskCellLabel', el('p', { class: 'p-aux' })),
     el('details', { open: true }, el('summary', {}, 'Cell'), tree),
     el('details', { open: true }, el('summary', {}, 'Layers'), list),
@@ -371,6 +404,92 @@ export function createProjectMaskPanels({
     clearRoiDrawingMode: () => store.views.get('main')?.runtime.roi.clearDrawingMode(),
     clearMaskRoiDrawingMode: () => store.views.get('mask')?.runtime.roi.clearDrawingMode(),
     buildProjectSnapshot: projectState.buildProjectSnapshot,
+  };
+  const reportButton = root.getElementById('exportReportBtn');
+  reportButton.onclick = async () => {
+    if (task.isBusy()) {
+      workstation.status('Finish or abort the current task before exporting a report.');
+      return;
+    }
+    reportButton.disabled = true;
+    try {
+      const result = await task.runTask(
+        async ({ signal, updateStage, runWorker }) => {
+          const project = projectState.buildProjectSnapshot(false);
+          project.name = normalizedProjectName();
+          const data = buildProcessReportData({
+            project,
+            history: history.listHistory(),
+            branches: history.listBranches(),
+            bookmarks: history.list(),
+            position: history.currentPosition(),
+          });
+          const revision = state.model.revision;
+          const captures = [];
+          const warnings = [];
+          updateStage('Capturing visible inspection views…');
+          for (const [view, selector] of [
+            ['main', '#mainCanvas'],
+            ['mask', '#maskCanvas'],
+            ['section', '#sectionCanvas'],
+            ['three', '#threeHost canvas'],
+          ]) {
+            if (signal.aborted) return { aborted: true };
+            const canvas = document.querySelector(selector);
+            if (!canvas || !canvas.width || !canvas.height || !canvas.checkVisibility()) {
+              warnings.push(`${view}: canvas not visible at export time.`);
+              continue;
+            }
+            try {
+              const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+              if (!blob || blob.type !== 'image/png') throw new Error('PNG capture unavailable');
+              if (blob.size > 16 * 1024 * 1024) {
+                warnings.push(`${view}: capture exceeds 16 MB; omitted.`);
+                continue;
+              }
+              captures.push({ view, bytes: new Uint8Array(await blob.arrayBuffer()) });
+            } catch (error) {
+              warnings.push(`${view}: ${error.message}.`);
+            }
+          }
+          if (signal.aborted) return { aborted: true };
+          if (state.model.revision !== revision) {
+            captures.length = 0;
+            warnings.push('Model changed while capturing; view images omitted.');
+          }
+          updateStage('Building offline report…');
+          return runWorker(
+            '../process-report-worker.js',
+            { data, captures, warnings },
+            { transfer: captures.map((capture) => capture.bytes.buffer) },
+          );
+        },
+        {
+          label: 'Exporting Process Report…',
+          abortMessage: 'Report export aborted. No file was downloaded.',
+          failurePrefix: 'Report export failed',
+        },
+      );
+      if (!result || result.aborted || result.error || !result.arrayBuffer) return;
+      const blob = new Blob([result.arrayBuffer], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = el('a', { href: url, download: result.filename });
+        document.body.append(link);
+        link.click();
+        link.remove();
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      }
+      workstation.status(
+        `Report requested: ${result.stepCount} steps, ${result.imageCount} views.`,
+      );
+    } catch (error) {
+      console.error(error);
+      workstation.status(`Report export failed: ${error.message}`, 'error');
+    } finally {
+      reportButton.disabled = false;
+    }
   };
   let projectShown = false;
   for (const id of ['panel.project', 'panel.mask'])
