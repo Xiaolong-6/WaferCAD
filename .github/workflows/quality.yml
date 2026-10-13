@@ -30,5 +30,7 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: P1 formatter delta (temporary)
+        run: npx prettier scripts/v2/check-progressive-quality.mjs | diff -u scripts/v2/check-progressive-quality.mjs - || true
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
