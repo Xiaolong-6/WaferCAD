@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preserveRendererHardwareEvidence } from './test-helpers/renderer-hardware-evidence.mjs';
+import { checkRendererHardwareEvidenceInventory } from './test-helpers/renderer-hardware-inventory.mjs';
 import { startRendererHardwareSite } from './test-helpers/renderer-hardware-site.mjs';
 import { writeRendererHardwareZip } from './test-helpers/renderer-hardware-zip.mjs';
 import {
@@ -265,9 +266,14 @@ async function runHardware() {
         target,
       );
       for (const warning of warnings) console.log(step.id + ': ' + warning);
-      const status = stepError
-        ? 'error'
-        : classifyRendererHardwareStep({ ...step, exitCode: execution.exitCode }, report);
+      const inventory = await checkRendererHardwareEvidenceInventory(step.id, target, report);
+      if (!inventory.valid) {
+        console.error(step.id + ': missing/incomplete evidence: ' + inventory.missing.join(', '));
+      }
+      const status =
+        stepError || !inventory.valid
+          ? 'error'
+          : classifyRendererHardwareStep({ ...step, exitCode: execution.exitCode }, report);
       completed.push({
         id: step.id,
         branch: step.branch,
@@ -291,6 +297,7 @@ async function runHardware() {
           ...new Set((report?.trials || []).map((trial) => trial.backend?.adapter).filter(Boolean)),
         ],
         failureReasons: report?.failureReasons || [],
+        missingEvidence: inventory.missing,
         error: stepError || report?.failure || report?.error || execution.error || null,
       });
       console.log(step.id + ': ' + status);
