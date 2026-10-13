@@ -877,9 +877,16 @@ const copiedId = await copiedTab.evaluate(() =>
 );
 assert.notEqual(copiedId, ownerId);
 assert.equal(await copiedTab.locator('#workspaceConflictDialog').isVisible(), true);
+const ownerSaveCount = Number(
+  await safetySecond.locator('.workspace').getAttribute('data-full-autosave-count'),
+);
 await safetySecond.locator('#projectNameInput').fill('Opener owner saved workspace');
-await safetySecond.waitForFunction(() =>
-  /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+await safetySecond.waitForFunction(
+  (previous) =>
+    Number(document.querySelector('.workspace')?.dataset.fullAutosaveCount) > previous &&
+    /Saved locally/.test(document.getElementById('workspaceSaveStatus')?.textContent || ''),
+  ownerSaveCount,
+  { timeout: 30000 },
 );
 await copiedTab.locator('#projectNameInput').fill('Copied tab unsaved edits');
 assert.match(await copiedTab.locator('#workspaceSaveStatus').textContent(), /autosave paused/i);
