@@ -837,7 +837,10 @@ export function createThreeView({
   }
 
   async function yieldSceneAssembly() {
-    scheduleFrame();
+    // Yield to Main/Mask/Section painting and input without submitting an
+    // incomplete 3D scene to WebGL. A redraw per assembly slice can dominate
+    // software-GPU startup; the last completed canvas remains visible.
+    // Final scene commit, camera interaction and resize still schedule frames.
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
