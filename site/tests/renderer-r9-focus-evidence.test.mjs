@@ -14,7 +14,10 @@ test('every draw from 129 to 154 must carry a bounded input fingerprint', () => 
   assert.equal(rows[0].draw, R9_FOCUS_START);
   assert.equal(rows.at(-1).draw, R9_FOCUS_END);
   assert.deepEqual(checkRendererR9FocusEvidence(rows), { valid: true, reason: null });
-  assert.equal(rows.every((draw) => draw.textureContentVerified === false), true);
+  assert.equal(
+    rows.every((draw) => draw.textureContentVerified === false),
+    true,
+  );
 });
 
 test('an absent, reordered or interrupted draw fails closed', () => {
@@ -35,13 +38,28 @@ test('invalid shader, uniform or bounded GPU buffer evidence is rejected', () =>
     modify(rows[3]);
     assert.equal(checkRendererR9FocusEvidence(rows).valid, false);
   };
-  broken((draw) => { draw.shaderHashes.pop(); });
-  broken((draw) => { draw.uniforms[0].value = null; });
-  broken((draw) => { draw.rasterState.samples = null; });
-  broken((draw) => { draw.uninspectedAttributesEnabled = true; });
-  broken((draw) => { draw.buffers.attributes[0].hash = ''; });
-  broken((draw) => { draw.buffers.attributes[0].sampledBytes = 99999; });
-  broken((draw) => { draw.buffers.indices = { status: 'missing-buffer' }; draw.method = 'drawElements'; });
+  broken((draw) => {
+    draw.shaderHashes.pop();
+  });
+  broken((draw) => {
+    draw.uniforms[0].value = null;
+  });
+  broken((draw) => {
+    draw.rasterState.samples = null;
+  });
+  broken((draw) => {
+    draw.uninspectedAttributesEnabled = true;
+  });
+  broken((draw) => {
+    draw.buffers.attributes[0].hash = '';
+  });
+  broken((draw) => {
+    draw.buffers.attributes[0].sampledBytes = 99999;
+  });
+  broken((draw) => {
+    draw.buffers.indices = { status: 'missing-buffer' };
+    draw.method = 'drawElements';
+  });
 });
 
 test('texture binding observations must explicitly admit missing texture contents', () => {
