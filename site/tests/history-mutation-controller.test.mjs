@@ -506,3 +506,80 @@ test('thrown downstream replay restores the pre-edit graph and releases interact
   ]);
   assert.match(events.at(-1), /worker context terminated/);
 });
+
+
+// Preserve the complete insertion fault fixture in readable chronological order.
+// prettier-ignore
+test('thrown insertion replay restores the complete pre-insert Variant state', async () => {
+  let graph = {
+    modelRevision: 5,
+    heads: { main: 'node-d', control: 'node-b' },
+    layers: [{ id: 'layer-front', material: 'SiO2' }],
+  };
+  const initial = structuredClone(graph);
+  const events = [];
+  const snapshotManager = {
+    insertBeforeContext: () => ({
+      editable: true,
+      nodeId: 'node-b',
+      branchId: 'main',
+      branchName: 'Main',
+      parentNodeId: 'node-a',
+      laterStepCount: 1,
+      replayableTail: true,
+      replaySteps: [{
+        id: 'node-c',
+        operation: { kind: 'record', replay: { version: 1, kind: 'record' } },
+        state: {},
+      }],
+      canReplaceCurrentVariant: true,
+      dependentVariants: [],
+    }),
+    restoreStepInput: () => true,
+    canCreateVariant: () => true,
+    canRecordOperation: () => true,
+    continuationContext: () => ({ branchId: 'main', cursorNodeId: 'node-a' }),
+    activeBranch: () => ({ id: 'main', name: 'Main' }),
+  };
+  const controller = createHistoryMutationController({
+    snapshotManager,
+    getProcessPanelController: () => ({
+      canReplayOperation: () => true,
+      replayOperations: async () => {
+        graph.modelRevision = 6;
+        graph.heads.main = 'partial-step';
+        graph.layers.push({ id: 'partial', material: 'Al2O3' });
+        throw new Error('Process worker terminated');
+      },
+    }),
+    confirmationDialog: {
+      ask: async () => 'current-replay',
+      confirm: async () => true,
+    },
+    checkpointWorkspace: async () => true,
+    captureReplayTransaction: () => structuredClone(graph),
+    restoreReplayTransaction: (value) => {
+      events.push('rollback');
+      graph = structuredClone(value);
+      return true;
+    },
+    beginReplayInteraction: () => events.push('begin'),
+    endReplayInteraction: () => events.push('end'),
+    status: (message) => events.push(message),
+  });
+  const node = {
+    id: 'node-b',
+    replayable: true,
+    displayLabel: 'Oxide deposition',
+    operation: { kind: 'add', replay: { version: 1, params: {} } },
+  };
+  assert.equal(await controller.beginInsert(node), true);
+  const gate = await controller.beforeApply();
+  assert.equal(gate.mode, 'current-replay');
+  assert.equal(await controller.afterApply({ applyGate: gate }), true);
+  assert.deepEqual(graph, initial, 'insertion rejection restores both heads and all Layers');
+  assert.deepEqual(events.filter((e) => ['begin', 'rollback', 'end'].includes(e)), [
+    'begin', 'rollback', 'end',
+  ]);
+  assert.match(events.at(-1), /Process worker terminated/);
+});
