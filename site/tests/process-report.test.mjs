@@ -90,6 +90,14 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   assert.equal(archive.map.size, 45);
   assert.ok(archive.map.has('history/steps-0001.html'));
   assert.ok(archive.map.has('history/steps-0951.html'));
+  const index = archive.content('index.html');
+  assert.match(index, /id="stepSearch"/);
+  assert.match(index, /id="stepVariant"/);
+  assert.match(index, /history\/steps-0051\.html#step-51/);
+  assert.match(index, /history\/steps-0951\.html#step-1000/);
+  assert.match(index, /Before release/);
+  assert.match(index, /history\/steps-0001\.html#step-50/);
+  assert.match(index, /history\/steps-0451\.html#step-500/);
   assert.match(archive.content('history/steps-0001.html'), /href="steps-0051.html"/);
   assert.match(archive.content('history/steps-0051.html'), /href="steps-0001.html"/);
   assert.match(archive.content('history/steps-0051.html'), /href="steps-0101.html"/);
@@ -109,6 +117,8 @@ test('1000-step report preserves every descriptor and paginates offline HTML', a
   assert.equal(all[2].label, '<script>alert(1)</script> | Step');
   assert.ok(!archive.content('history/steps-0001.html').includes('<script>alert(1)</script>'));
   assert.ok(archive.content('history/steps-0001.html').includes('&lt;script&gt;'));
+  assert.ok(archive.content('index.html').includes('&lt;script&gt;'));
+  assert.ok(!archive.content('index.html').includes('<script>alert(1)</script>'));
   const manifest = JSON.parse(archive.content('manifest.json'));
   assert.equal(manifest.historyStepCount, 1000);
   assert.equal(manifest.branches.length, 2);
