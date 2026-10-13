@@ -32,3 +32,9 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      - name: Temporary report format diagnostics
+        if: failure()
+        run: |
+          npx prettier --write site/process-report.js
+          git diff -- site/process-report.js
