@@ -1,0 +1,48 @@
+name: Renderer R9 bounded raster diagnostic
+
+on:
+  push:
+    branches:
+      - perf/renderer-v4-adaptive-tiles-20261010
+    paths:
+      - scripts/renderer-unified-hardware.mjs
+      - scripts/renderer-electrical-fresh-context-ab.mjs
+      - scripts/test-helpers/renderer-unified-hardware-plan.mjs
+      - scripts/test-helpers/renderer-v3-phase-window.mjs
+      - scripts/tests/renderer-unified-hardware.test.mjs
+      - site/tests/renderer-r9-phase-window.test.mjs
+      - .github/workflows/renderer-r9-phase-window.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-r9-phase-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install pinned tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate read-only native phase-window plan
+        run: |
+          node --test scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs
+          node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-phase-window
+      - name: Check focused formatting
+        run: |
+          npx prettier --check scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs
+      - name: Show actual formatter differences on failure
+        if: failure()
+        run: |
+          for file in scripts/renderer-unified-hardware.mjs scripts/renderer-electrical-fresh-context-ab.mjs scripts/test-helpers/renderer-unified-hardware-plan.mjs scripts/tests/renderer-unified-hardware.test.mjs site/tests/renderer-r9-phase-window.test.mjs; do
+            npx prettier "$file" | diff -u "$file" - || true
+          done
