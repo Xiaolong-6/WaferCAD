@@ -18,6 +18,8 @@ on:
       - 'site/workspace-restore-worker.js'
       - 'site/tests/workspace-restore-worker.test.mjs'
       - 'site/tests/renderer-surface-plan-worker.test.mjs'
+      - 'site/controllers/workspace-persistence-controller.js'
+      - 'site/ui-v2/workstation-workflow.js'
       - 'site/three-view.js'
       - '.github/workflows/ui-v2-p1-cpu.yml'
   workflow_dispatch:
