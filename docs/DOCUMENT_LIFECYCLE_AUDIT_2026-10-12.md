@@ -1,5 +1,7 @@
 # Documentation Lifecycle Audit — 2026-10-12
 
+> Historical inventory as of 2026-10-12. The [2026-10-13 handoff/documentation closeout](HANDOFF_STATUS_2026-10-13.md) moved seven further Markdown records and 24 handoff artifacts into the archive. The classifications below describe their original 2026-10-12 disposition, not their current directory ownership.
+
 ## Scope and decision criteria
 
 Inspected the complete tracked text-document inventory (Markdown, Markdown-adjacent, RST and TXT), across root, `docs/`, UI v2, Wiki, examples, tests and vendored attribution. The pre-migration inventory contained **141 text documents**, including the original `docs/archive/README.md`. Documentation content and purpose were compared to the merged v2 default-entry release (PR #177), current Wiki/Recipe ownership, generated artifacts, scientific source provenance and still-relevant development references.
@@ -13,7 +15,7 @@ The [archive index](archive/README.md) lists **every relocated full document** a
 - [Documentation map](README.md): authoritative navigation, product and developer entry points.
 - [Documentation architecture](DOCUMENTATION.md): ownership rules, generated Wiki assets, revision-specific evidence and English-first maintenance.
 - [Released UI v2 handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md): v2 default entry, Legacy fallback and remaining user-experience work.
-- [M4 acceptance](ui-v2/M4_ACCEPTANCE_2026-10-11.md): owned test matrix; dated evidence must not be generalized to later revisions.
+- [M4 acceptance](archive/ui-v2/M4_ACCEPTANCE_2026-10-11.md): owned test matrix; dated evidence must not be generalized to later revisions.
 - [Wiki source and image audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md): relevant first-party images and clear schematic/real-output captions.
 
 The following retained documents remain in their existing locations. **Classification is an ownership/retention decision, not a newly executed acceptance or scientific correctness certificate.** Source-derived inventories should be regenerated when the source evolves; scientific reconstruction reports have validity at their specific revision, paper and assumptions.
@@ -30,7 +32,7 @@ The following retained documents remain in their existing locations. **Classific
 - [`docs/LIFTOFF_V1_2026-10-09.md`](LIFTOFF_V1_2026-10-09.md) — Scientific/technical reference or supporting fixture
 - [`docs/MASK_DRAW.md`](MASK_DRAW.md) — Scientific/technical reference or supporting fixture
 - [`docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — Scientific/technical reference or supporting fixture
-- [`docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md`](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — Scientific/technical reference or supporting fixture
+- [`docs/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md`](archive/PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md) — Scientific/technical reference or supporting fixture
 - [`docs/PROCESS_BENCHMARKS.md`](PROCESS_BENCHMARKS.md) — Scientific/technical reference or supporting fixture
 - [`docs/PROCESS_BOTH_FACE_2026-10-11.md`](PROCESS_BOTH_FACE_2026-10-11.md) — Scientific/technical reference or supporting fixture
 - [`docs/PROCESS_GEOMETRY_KERNEL_V2.md`](PROCESS_GEOMETRY_KERNEL_V2.md) — Scientific/technical reference or supporting fixture
@@ -47,15 +49,15 @@ The following retained documents remain in their existing locations. **Classific
 ### UI v2 source-derived references and released gate ownership (10)
 
 - [`docs/ui-v2/CONTRACT.md`](ui-v2/CONTRACT.md) — UI reference / review against released UI
-- [`docs/ui-v2/FEATURE_INVENTORY.md`](ui-v2/FEATURE_INVENTORY.md) — UI reference / review against released UI
-- [`docs/ui-v2/IMPLICIT_DEPS.md`](ui-v2/IMPLICIT_DEPS.md) — UI reference / review against released UI
-- [`docs/ui-v2/ISSUES.md`](ui-v2/ISSUES.md) — UI reference / review against released UI
-- [`docs/ui-v2/M4_ACCEPTANCE_2026-10-11.md`](ui-v2/M4_ACCEPTANCE_2026-10-11.md) — UI reference / review against released UI
+- [`docs/ui-v2/FEATURE_INVENTORY.md`](archive/ui-v2/FEATURE_INVENTORY.md) — UI reference / review against released UI
+- [`docs/ui-v2/IMPLICIT_DEPS.md`](archive/ui-v2/IMPLICIT_DEPS.md) — UI reference / review against released UI
+- [`docs/ui-v2/ISSUES.md`](archive/ui-v2/ISSUES.md) — UI reference / review against released UI
+- [`docs/ui-v2/M4_ACCEPTANCE_2026-10-11.md`](archive/ui-v2/M4_ACCEPTANCE_2026-10-11.md) — UI reference / review against released UI
 - [`docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md`](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — UI reference / review against released UI
 - [`docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`](ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md) — UI reference / review against released UI
-- [`docs/ui-v2/PLACEMENT_MAP.md`](ui-v2/PLACEMENT_MAP.md) — UI reference / review against released UI
+- [`docs/ui-v2/PLACEMENT_MAP.md`](archive/ui-v2/PLACEMENT_MAP.md) — UI reference / review against released UI
 - [`docs/ui-v2/SYNC_TABLE_2026-10-11.md`](ui-v2/SYNC_TABLE_2026-10-11.md) — UI reference / review against released UI
-- [`docs/ui-v2/handoff/mask-browser-failure.txt`](ui-v2/handoff/mask-browser-failure.txt) — UI reference / review against released UI
+- [`docs/ui-v2/handoff/mask-browser-failure.txt`](archive/ui-v2/handoff/mask-browser-failure.txt) — UI reference / review against released UI
 
 ### User-facing Wiki pages (15)
 
