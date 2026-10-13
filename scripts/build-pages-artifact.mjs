@@ -11,6 +11,7 @@ const excludedFiles = new Set([
   'app-v2-real.html',
   'ui-v2/app.html',
   'ui-v2/gallery.html',
+  'ui-v2/history-tree.js',
   'ui-v2/mock-data.js',
   'ui-v2/mock-domain-panels.js',
   'ui-v2/mock-views.js',

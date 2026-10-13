@@ -42,6 +42,31 @@ It does not establish an equivalent reduction in page startup downloads.
   A passing PR CI is required before merge; do not treat audit calculations as
   execution evidence.
 
+## Developer asset ownership (follow-up to PR #197)
+
+The reachability report classifies 11 JS/CSS modules as developer-only.
+All are retained in Git for repository-level acceptance:
+
+- **M2 design and parity baseline** (`site/app-v2.html`,
+  `check-m2-live-parity.mjs`): `ui-v2/history-tree.js`,
+  `ui-v2/live-preview.js`, `ui-v2/mock-data.js`,
+  `ui-v2/mock-domain-panels.js`, `ui-v2/mock-views.js`,
+  `ui-v2/mock-workspace.js`, and `ui-v2/shell-preview.js`.
+  Keep until M2 parity acceptance is retired.
+- **M2.5 shell regression** (`site/ui-v2/app.html`,
+  `check-m2-shell.mjs`): `ui-v2/production-workspace.js`.
+  Keep until the shell contract is retired.
+- **D1 experimental view gates** (`site/app-v2-real.html`,
+  `ui-v2-d1.yml`): `ui-v2/real-section-controls.js`,
+  `ui-v2/real-view-bridge.js`, and `ui-v2/real-view-bridge.css`.
+  Keep while D1 acceptance exercises the original scientific hosts.
+
+The Pages follow-up also excludes `ui-v2/history-tree.js`, which was
+omitted from the first denylist. CI now compares the developer-only
+reachability report against the Pages publishing policy to catch
+similar omissions. Static file reachability cannot prove per-symbol
+liveness and does not authorize deleting developer test assets.
+
 ## Deferred work
 
 Do not delete Legacy by file-name inference. Welcome still embeds its preview
