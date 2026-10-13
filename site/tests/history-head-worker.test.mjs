@@ -49,7 +49,10 @@ test('History worker validates a detached head and terminates on failures', asyn
     globalThis.Worker.prototype.postMessage = () => {
       throw new Error('DataCloneError');
     };
-    await assert.rejects(validateHistoryHeadOffThread(state, () => true), /DataCloneError/);
+    await assert.rejects(
+      validateHistoryHeadOffThread(state, () => true),
+      /DataCloneError/,
+    );
   } finally {
     globalThis.Worker = previousWorker;
   }
