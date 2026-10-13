@@ -29,7 +29,8 @@ const planOnly = options.includes('--plan-only');
 const r9Campaign = options.includes('--campaign=r9');
 const r9V4NoMsaaCampaign = options.includes('--campaign=r9-v4-msaa');
 const unknownCampaign = options.filter(
-  (arg) => arg.startsWith('--campaign=') && !['--campaign=r9', '--campaign=r9-v4-msaa'].includes(arg),
+  (arg) =>
+    arg.startsWith('--campaign=') && !['--campaign=r9', '--campaign=r9-v4-msaa'].includes(arg),
 );
 if (unknownCampaign.length || options.filter((arg) => arg.startsWith('--campaign=')).length > 1) {
   throw new Error('Select one known hardware campaign.');
@@ -43,10 +44,12 @@ const phaseWindowDiagnostic = phaseWindowOptions.length === 1;
 const phaseWindowValue = phaseWindowDiagnostic
   ? (phaseWindowOptions[0].split('--diagnose-v3-phase-window=')[1] ?? '')
   : null;
-const diagnostic = ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || r9V4NoMsaaCampaign;
+const diagnostic =
+  ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || r9V4NoMsaaCampaign;
 if (
   (diagnostic && modesArg) ||
-  ((r9Campaign || r9V4NoMsaaCampaign) && (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
+  ((r9Campaign || r9V4NoMsaaCampaign) &&
+    (ditherDiagnostic || msaaDiagnostic || phaseWindowDiagnostic || modesArg)) ||
   [ditherDiagnostic, msaaDiagnostic, phaseWindowDiagnostic].filter(Boolean).length > 1
 ) {
   throw new Error('Select only one V3 diagnostic or V4 --modes');
@@ -58,13 +61,13 @@ const plan = r9Campaign
   ? buildRendererR9HardwareCampaignPlan()
   : r9V4NoMsaaCampaign
     ? buildRendererR9V4NoMsaaDiagnosticPlan()
-  : ditherDiagnostic
-    ? buildRendererV3DitherDiagnosticPlan()
-    : msaaDiagnostic
-      ? buildRendererV3MsaaDiagnosticPlan()
-      : phaseWindowDiagnostic
-        ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
-        : buildRendererHardwarePlan(modes);
+    : ditherDiagnostic
+      ? buildRendererV3DitherDiagnosticPlan()
+      : msaaDiagnostic
+        ? buildRendererV3MsaaDiagnosticPlan()
+        : phaseWindowDiagnostic
+          ? buildRendererV3PhaseWindowDiagnosticPlan(phaseWindowValue)
+          : buildRendererHardwarePlan(modes);
 // Retain the original Windows/RTX 3060 switch for historical, pinned runs.
 if (hardwareRtx3060 && !options.includes('--hardware-gpu')) {
   for (const step of plan) {
@@ -288,13 +291,13 @@ async function runHardware() {
           completed.length === plan.length &&
           completed.every((step) => step.status === 'diagnostic-complete')) ||
         (r9Campaign &&
-        !fatalError &&
-        completed.length === plan.length &&
-        completed.every((step) =>
-          step.id === 'v3-msaa-off'
-            ? step.status === 'diagnostic-complete'
-            : ['passed', 'blocked'].includes(step.status),
-        )),
+          !fatalError &&
+          completed.length === plan.length &&
+          completed.every((step) =>
+            step.id === 'v3-msaa-off'
+              ? step.status === 'diagnostic-complete'
+              : ['passed', 'blocked'].includes(step.status),
+          )),
       diagnosticComplete:
         diagnostic &&
         !fatalError &&

@@ -143,12 +143,17 @@ export function classifyRendererHardwareStep(step, report) {
       report.trials?.length !== 4 ||
       report.comparisons?.length !== 6 ||
       !report.parity
-    ) return 'error';
-    if (report.trials.some((trial) =>
-      trial.rasterIsolation?.contextAntialias !== false ||
-      trial.rasterIsolation?.defaultFramebufferSamples !== 0 ||
-      trial.rasterIsolation?.defaultFramebuffer !== true
-    )) return 'error';
+    )
+      return 'error';
+    if (
+      report.trials.some(
+        (trial) =>
+          trial.rasterIsolation?.contextAntialias !== false ||
+          trial.rasterIsolation?.defaultFramebufferSamples !== 0 ||
+          trial.rasterIsolation?.defaultFramebuffer !== true,
+      )
+    )
+      return 'error';
     if (report.trials.some((trial) => !trial.backend?.hardwareVerified)) return 'error';
     if (report.trials.some((trial) => trial.candidateActivation?.candidateExercised !== true)) {
       return 'candidate-not-exercised';
