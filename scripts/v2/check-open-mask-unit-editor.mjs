@@ -131,13 +131,9 @@ try {
       assert.ok(Number.isFinite(firstNumber), spec.type + ' editable coordinate');
       const startingShapes = (await snapshot()).drawMask.shapes;
       const startAngle =
-        spec.type === 'ring-sector'
-          ? await page.locator('#drawShapeStartDeg').inputValue()
-          : null;
+        spec.type === 'ring-sector' ? await page.locator('#drawShapeStartDeg').inputValue() : null;
       const endAngle =
-        spec.type === 'ring-sector'
-          ? await page.locator('#drawShapeEndDeg').inputValue()
-          : null;
+        spec.type === 'ring-sector' ? await page.locator('#drawShapeEndDeg').inputValue() : null;
       for (const [unit, multiplier] of [
         ['nm', 1000],
         ['mm', 0.001],
