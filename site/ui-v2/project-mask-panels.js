@@ -7,6 +7,7 @@ import { buildProcessReportData } from '../process-report.js';
 import { captureHistorySections } from '../report-history-captures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
+import { mountProjectExportMenu } from './view-kit/project-export-menu.js';
 
 export function createProjectMaskPanels({
   store,
@@ -34,6 +35,29 @@ export function createProjectMaskPanels({
   const fit3d = () => store.views.get('three')?.renderer.fit();
   const projectHost = host('panel.project');
   const projectSummary = el('p', { class: 'p-aux' });
+  const exportMenuTrigger = hook(
+    'projectExportMenuBtn',
+    button('Export', null, 'export', {
+      'data-variant': 'ghost',
+      'data-help': 'project.export',
+      'aria-haspopup': 'menu',
+      'aria-expanded': 'false',
+    }),
+  );
+  const projectExportItem = hook(
+    'exportProjectBtn',
+    button('Project file · .wafercad', null, 'export', {
+      'data-help': 'project.export.file',
+      role: 'menuitem',
+    }),
+  );
+  const reportExportItem = hook(
+    'exportReportBtn',
+    button('Process report · .zip', null, 'export', {
+      'data-help': 'project.export.report',
+      role: 'menuitem',
+    }),
+  );
   const open = hook(
     'openProjectInput',
     el('input', { type: 'file', accept: '.wafercad,.json', hidden: true }),
@@ -54,13 +78,7 @@ export function createProjectMaskPanels({
         'Open',
         open,
       ),
-      hook(
-        'exportProjectBtn',
-        button('Export', null, 'export', {
-          'data-variant': 'ghost',
-          'data-help': 'project.export',
-        }),
-      ),
+      exportMenuTrigger,
     ),
     input('Project name', 'projectNameInput', state.projectName, { maxlength: 256 }),
     choice(
@@ -74,16 +92,14 @@ export function createProjectMaskPanels({
       units.key(),
     ),
     projectSummary,
-    el(
-      'div',
-      { class: 'p-actions' },
-      hook(
-        'exportReportBtn',
-        button('Export report (ZIP)', null, 'export', { 'data-variant': 'ghost' }),
-      ),
-    ),
-    el('p', { class: 'p-aux' }, 'Offline HTML, Markdown and full Process History data.'),
   );
+  mountProjectExportMenu({
+    overlays: workstation.shell.overlays,
+    trigger: exportMenuTrigger,
+    projectItem: projectExportItem,
+    reportItem: reportExportItem,
+    el,
+  });
   root.getElementById('xyUnitSelect').dataset.help = 'project.units';
   root.getElementById('xyUnitSelect').onchange = (event) => {
     state.xyDisplayUnit = event.target.value;
