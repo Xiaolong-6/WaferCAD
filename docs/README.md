@@ -61,6 +61,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [R9 4×MSAA framebuffer preservation diagnostic](RENDERER_R9_MSAA_PRESERVATION_2026-10-13.md) — default-framebuffer lifecycle hypothesis, true four-sample measurement and strict diagnostic-only boundaries.
 - [R9 Intel Iris Xe hardware acceptance](RENDERER_R9_INTEL_IRIS_XE_HARDWARE_2026-10-12.md) — verified native Intel raster parity, isolated CPU memory savings and platform boundaries.
 - [R9 RTX 3060 hardware diagnosis](RENDERER_R9_RTX3060_HARDWARE_2026-10-12.md) — MSAA-dependent fresh-context drift, strict parity blockers and candidate timing limits.
+- [Renderer PR #174 final closeout](RENDERER_174_CLOSEOUT_2026-10-13.md) — GPU evidence, fixed artifact packaging, Keep/Drop/Experimental decisions and the no-merge disposition.
 - [Renderer V4 adaptive tiles R1](RENDERER_V4_ADAPTIVE_TILES_2026-10-10.md) — stacked experimental branch, observability-only camera tile tiers, test plan and staged promotion gates.
 - [Renderer V3/V4 main alignment (2026-10-12)](RENDERER_MAIN_ALIGNMENT_2026-10-12.md) — reviewed PR #177 merge conflict resolutions, base/stack ancestry, and acceptance limits.
 - [Renderer V3/V4 unified RTX 3060 diagnostics](RENDERER_V3_V4_UNIFIED_HARDWARE.md) — one command for exact-SHA worktrees, bounded GPU evidence and the single combined upload.
