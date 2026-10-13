@@ -1945,6 +1945,10 @@ export function createThreeView({
       host.dataset.rendererAnnotationsMs = '0';
       host.dataset.rendererAssemblyMs = '0';
     }
+    // The active cached variant can still be "opaque" when a small or rough
+    // scene updates its material directly to transparent. Track the actual
+    // applied scientific presentation for exact export eligibility.
+    host.dataset.rendererPresentedVariant = presentationMode(inspection);
     if (settle) {
       host.dataset.renderPhase = 'complete';
       host.dataset.renderState = 'ready';
@@ -5156,7 +5160,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         physicalSceneSignature ===
           sceneSignature(exportModel, getClipGeometry(), getInspection() || {}),
       ),
-      variantMatches: activeSceneVariant === presentationMode(),
+      variantMatches:
+        !presentationObjects.size ||
+        host.dataset.rendererPresentedVariant === presentationMode(),
     });
     const rect = host.getBoundingClientRect(),
       multiplier = Math.max(1, Math.min(4, Number(scale) || 3)),

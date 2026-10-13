@@ -119,3 +119,23 @@ test('P2.7 exact export accepts only the current committed presentation', async 
   }
   assert.throws(() => assertRendererExactCaptureReady(), /ready WebGL renderer/);
 });
+
+test('P2.7 actual material-presentation commit is the export variant authority', async () => {
+  const { assertRendererExactCaptureReady } = await import('../renderer-responsive-staging.js');
+  const valid = {
+    rendererReady: true,
+    contextStatus: 'ready',
+    hasCommittedGroup: true,
+    modelMatches: true,
+    signatureMatches: true,
+    variantMatches: true,
+  };
+  // A small, noncached scene can apply transparent presentation without
+  // promoting the cached scene variant. The caller must pass the actual
+  // applied presentation state, not the cached scene key.
+  assert.doesNotThrow(() => assertRendererExactCaptureReady(valid));
+  assert.throws(
+    () => assertRendererExactCaptureReady({ ...valid, variantMatches: false }),
+    /outdated/,
+  );
+});
