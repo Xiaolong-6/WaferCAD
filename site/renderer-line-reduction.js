@@ -212,24 +212,6 @@ export function simplifyDisplayPolygons(polys, tolerance) {
   });
 }
 
-function compatibleWall(a, b) {
-  return (
-    a &&
-    b &&
-    !a.lowerSurface?.appearance &&
-    !a.upperSurface?.appearance &&
-    !b.lowerSurface?.appearance &&
-    !b.upperSurface?.appearance &&
-    a.z0 === b.z0 &&
-    a.z1 === b.z1 &&
-    a.lowerDepth === b.lowerDepth &&
-    a.upperDepth === b.upperDepth &&
-    a.lowerSurface === b.lowerSurface &&
-    a.upperSurface === b.upperSurface &&
-    samePoint(a.q, b.p)
-  );
-}
-
 // Array owner groups collect sidewall edges by material, but the edges are
 // not guaranteed to be in contour order. Reconstruct only unambiguous directed
 // chains with matching Z/depth/surface ownership; never stitch T-junctions.
