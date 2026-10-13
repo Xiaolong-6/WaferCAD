@@ -111,3 +111,40 @@ Both same-policy pairs retained identical camera, layout, draw order, material s
 The prior independent non-preserved 4x-MSAA run differed in 49 OFF/OFF and 85 ON/ON pixels. A smaller count in this run does not prove a stable improvement. Preserving the drawing buffer failed to eliminate strict production 4x-MSAA pixel drift. Earlier zero-MSAA experiments also cannot authorize changes to the production baseline.
 
 This preservation hypothesis is closed as insufficient. Do not repeat this hardware campaign or the already completed Index, Caps and Combined no-MSAA campaigns. Keep PR #174 Draft, all experimental flags default-off, the original 4x-MSAA setting and a strict zero-pixel gate. Any subsequent exterior-material MSAA/resolve investigation should first validate its read-only instrumentation in CI and request hardware only for one bounded, decision-relevant experiment.
+
+## R9 follow-up: V4 production-MSAA bounded draw-window preparation
+
+The archived preserved-buffer trial found first observed OFF/OFF divergence
+between draws 128 and 256, and ON/ON divergence between draws 256 and 384.
+These intervals overlap the exterior-material stage. Captured evidence
+does not identify the first causal draw.
+
+The current V4 branch now includes a diagnostic-only
+`--campaign=r9-phase-window` plan. It targets one combined draw window
+`128:384` using eleven intermediate framebuffer checkpoints plus one
+final framebuffer, within the existing twelve-readback limit per arm.
+It runs the same OFF/OFF/ON/ON four-context experiment on a single
+verified hardware adapter. The source revision is the fetched V4 head;
+the retired V3 remote branch is not used.
+
+The classifier requires native four-sample MSAA, normal
+`preserveDrawingBuffer=false`, unchanged default framebuffer binding,
+four completed hardware contexts, exact comparison identities and
+complete GL/raster-state checkpoint coverage. It rejects missing or
+altered evidence. The full-wafer mesh and all renderer optimization flags
+remain untouched and disabled by default.
+
+The planning and fail-closed classifier can be tested without hardware:
+
+```powershell
+node scripts/renderer-unified-hardware.mjs --plan-only --campaign=r9-phase-window
+node --test scripts/tests/renderer-unified-hardware.test.mjs
+```
+
+A future hardware acquisition, if justified by completed CI, uses
+`--hardware-gpu --campaign=r9-phase-window` once, and yields separate
+evidence rather than rerunning the old broad R9 or preservation experiment.
+No new hardware result is asserted here. All results from this campaign
+are diagnostic-only: `acceptanceEligible=false`, `passed=false`
+regardless of any observed pixels. The original strict zero-pixel
+production baseline remains the acceptance gate for PR #174.
