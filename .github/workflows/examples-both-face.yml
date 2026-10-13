@@ -20,7 +20,6 @@ on:
       - site/examples/photodetector-literature-examples.wafercad
       - site/examples/perc-solar-cells-point-contacts.wafercad
       - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
-      - docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md
   pull_request:
     branches:
       - main
@@ -37,7 +36,6 @@ on:
       - site/examples/photodetector-literature-examples.wafercad
       - site/examples/perc-solar-cells-point-contacts.wafercad
       - site/examples/fully-textured-perovskite-silicon-tandem.wafercad
-      - docs/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md
   workflow_dispatch:
 
 permissions:

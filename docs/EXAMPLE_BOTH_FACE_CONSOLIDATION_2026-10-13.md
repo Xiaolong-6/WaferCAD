@@ -71,8 +71,8 @@ The migration scripts are designed to run only on the eligible legacy stage shap
 - `site/tests/examples-both-face-migration.test.mjs`: paired independent IDs, backside strip order, PERC mask ownership, both pyramid seeds, complete History/Variant/bookmark ancestry.
 - `site/tests/example-recipe-audit.test.mjs` and `site/tests/example-structure.test.mjs`: executable Recipe/Mask/Base and morphology contracts.
 - `site/tests/process-both-face.test.mjs`: atomic Kernel and paired material contract.
-- All Node tests, lint and Prettier; browser `Rebuild Base → Run All` in three independently run Chromium jobs.
+- Global Quality enforces all Node tests, lint and Prettier; the dedicated scientific gate runs six independent Chromium `Rebuild Base → Run All` scenarios across Black-Si FINAL/QA, PERC source-order/GDS, and Tandem ITO/nc-Si:H.
 - Preview regeneration and `tests/fixtures/project-io/example-thumbnails.json` source checksums.
 - Original baselines must not be blindly replaced; inspect any changed Section/3D output.
 
-The dedicated workflow is `.github/workflows/examples-both-face.yml`. It regenerates production assets, tests them **before committing**, and then runs browser replay for the Black-Si FINAL, PERC source-order, and Tandem ITO-control branches. The PR remains Draft until all gates pass. Previous green tests for old assets are not evidence for these changed fixtures.
+The reusable, read-only CI workflow is `.github/workflows/examples-both-face.yml`. It regenerates assets in an ephemeral checkout, verifies they are **byte-for-byte identical to the committed files**, runs focused science/persistence checks, and then replays six Chromium Variant scenarios in parallel. It never auto-commits or pushes. Global Quality provides the full repository-wide Node/lint/format gates. Previous green tests for old assets do not qualify the new fixtures.
