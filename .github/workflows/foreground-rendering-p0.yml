@@ -1,0 +1,60 @@
+name: Foreground scene continuity P0
+
+on:
+  push:
+    branches:
+      - perf/foreground-responsive-rendering-20261012
+    paths:
+      - site/three-view.js
+      - site/tests/issue-11-3d-controls.test.mjs
+      - scripts/foreground-rendering-p0-browser.mjs
+      - .github/workflows/foreground-rendering-p0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foreground-p0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scene-continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Focused source checks
+        run: |
+          node --test site/tests/issue-11-3d-controls.test.mjs
+          npx eslint site/three-view.js scripts/foreground-rendering-p0-browser.mjs
+          npx prettier --check site/three-view.js site/tests/issue-11-3d-controls.test.mjs scripts/foreground-rendering-p0-browser.mjs docs/FOREGROUND_RENDERING_P0_2026-10-12.md
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Serve WaferCAD
+        run: |
+          python3 -m http.server 4173 --directory site > /tmp/wafercad-foreground.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/app-legacy.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wafercad-foreground.log
+          exit 1
+      - name: 625-site scene continuity and supersession
+        run: node scripts/foreground-rendering-p0-browser.mjs
+      - name: Preserve acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: foreground-rendering-p0
+          path: test-results/foreground-rendering-p0/
+          if-no-files-found: warn
+          retention-days: 14

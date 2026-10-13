@@ -984,6 +984,9 @@ export function createThreeView({
     // The incoming group remains hidden until its presentation is ready.
     cacheActiveSceneVariant();
     const previousGroup = group;
+    host.dataset.rendererRetainedCompleteVisible = String(
+      Boolean(previousGroup?.visible && previousGroup.parent === scene),
+    );
     group = new THREE.Group();
     group.visible = false;
     scene.add(group);
@@ -2575,6 +2578,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       targetVariant = presentationMode(inspection);
     let variantBuild = false;
     let previousVariantGroup = null;
+    let rebuildAborted = false;
     let buildStageStartedAt = 0;
     const recordVariantStage = (name) => {
       if (!variantBuild) return;
@@ -3409,6 +3413,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Keep the retired group cached but detached for fast future switches.
       if (previousVariantGroup && previousVariantGroup !== group) {
         scene.remove(previousVariantGroup);
+        host.dataset.rendererRetainedCompleteVisible = 'false';
+        host.dataset.rendererCommittedVariantSwaps = String(
+          Number(host.dataset.rendererCommittedVariantSwaps || 0) + 1,
+        );
       }
       recordVariantStage('presentation-complete');
       cacheActiveSceneVariant();
@@ -3418,6 +3426,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = hasMaterial(model) ? (clip ? 'ROI' : 'full model') : 'no material';
       }
     } catch (error) {
+      rebuildAborted = true;
       const superseded = error?.name === 'SceneVariantSuperseded';
       if (previousVariantGroup) {
         // Never strand the viewport with a partially constructed, hidden group.
@@ -3433,6 +3442,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           if (group.parent !== scene) scene.add(group);
         }
         host.dataset.renderState = 'ready';
+        host.dataset.rendererRetainedCompleteVisible = 'false';
+        host.dataset.rendererVariantRollbacks = String(
+          Number(host.dataset.rendererVariantRollbacks || 0) + 1,
+        );
       }
       if (superseded) {
         host.dataset.rendererSupersededBuilds = String(
@@ -3463,7 +3476,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return;
     }
 
-    if (host.dataset.renderState !== 'error' && roughTasks.length) {
+    // Failed or superseded candidates must never trigger a fresh rough task
+    // against the previous committed scene before the latest request settles.
+    if (!rebuildAborted && host.dataset.renderState !== 'error' && roughTasks.length) {
       host.dataset.renderPhase = 'rough-preview';
       host.dataset.renderState = 'refining';
       void requestRoughGeometry('interactive', { refineAfter: true });
