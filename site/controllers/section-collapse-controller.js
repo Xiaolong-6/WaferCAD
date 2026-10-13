@@ -5,7 +5,6 @@ import {
   normalizeSectionZScales,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
-  translateSectionCollapse,
 } from '../section-z-collapse.js';
 
 export function createSectionCollapseController({
