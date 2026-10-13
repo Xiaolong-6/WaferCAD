@@ -12,9 +12,10 @@ export function createFloatingStrip({
   const { el, button } = components;
   const tools = new Map();
   const availability = new Map();
-  const glyphButton = ({ label: hint, action, glyph, path, key, enabled }) => {
+  const glyphButton = ({ label: hint, action, glyph, path, key, enabled, helpKey }) => {
     const node = button('', action, glyph, {
       title: hint,
+      'data-help': helpKey,
       'aria-label': hint,
       'aria-pressed': 'false',
     });

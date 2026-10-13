@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-main-view check-mask-view check-section-view; do
+          for script in check-tooltips check-main-view check-mask-view check-section-view; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::View gate failed: ${script}"
@@ -78,6 +78,7 @@ jobs:
             test-results/ui-v2-main-review/
             test-results/ui-v2-mask-review/
             test-results/ui-v2-section-review/
+            test-results/ui-v2-tooltip-review/
             serve.log
           retention-days: 14
           if-no-files-found: warn
