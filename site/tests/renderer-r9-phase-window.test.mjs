@@ -8,6 +8,7 @@ import {
 } from '../../scripts/test-helpers/renderer-unified-hardware-plan.mjs';
 import { rendererPhaseMilestones } from '../../scripts/test-helpers/renderer-v3-phase-window.mjs';
 import { RENDERER_RASTER_STATE_FIELDS } from '../../scripts/test-helpers/renderer-v3-raster-state.mjs';
+import { mockR9FocusEvidence } from '../../scripts/tests/renderer-r9-focus-fixture.mjs';
 
 const raster = () => {
   const arrays = {
@@ -56,6 +57,7 @@ const evidence = () => {
       contextPreserveDrawingBuffer: false,
       defaultFramebufferSamples: 4,
       glState: { framebuffer: 'default' },
+      focusDraws: mockR9FocusEvidence(),
       calls: 1408,
       framebuffer: { status: 'valid', width: 531, height: 275 },
     },
@@ -83,6 +85,7 @@ const evidence = () => {
       second,
       samePolicy,
       framebufferIdentical: false,
+      focusedDrawInputsIdentical: true,
       pixelDifference: { pixelIdentical: false },
     })),
   };
