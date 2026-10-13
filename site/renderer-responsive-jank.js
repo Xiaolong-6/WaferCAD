@@ -1,8 +1,12 @@
 // Long-task telemetry complements input-to-WebGL-submit timing. It does not
 // measure GPU completion or presentation latency.
 export function createRendererLongTaskSampler({ capacity = 256, thresholdMs = 50 } = {}) {
-  if (!Number.isSafeInteger(capacity) || capacity < 1 ||
-      !Number.isFinite(thresholdMs) || thresholdMs <= 0) {
+  if (
+    !Number.isSafeInteger(capacity) ||
+    capacity < 1 ||
+    !Number.isFinite(thresholdMs) ||
+    thresholdMs <= 0
+  ) {
     throw new RangeError('Invalid long-task telemetry bounds');
   }
   const durations = [];
