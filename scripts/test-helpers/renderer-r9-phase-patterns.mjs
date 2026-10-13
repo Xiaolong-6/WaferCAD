@@ -23,17 +23,28 @@ export function summarizeRendererR9PhasePatterns(trials) {
     throw new Error('R9 pattern analysis requires bounded native checkpoints');
   }
   const rows = [];
+  let terminal = null;
   for (let i = 0; i < reference.length; i++) {
     const entries = trials.map((trial) => trial.phaseCheckpoints?.[i]);
     const draw = entries[0]?.afterDraw;
+    const last = i === reference.length - 1;
+    const aligned = last
+      ? entries[0]?.afterDraw === entries[1]?.afterDraw &&
+        entries[2]?.afterDraw === entries[3]?.afterDraw
+      : entries.every((entry) => entry?.afterDraw === draw);
     if (
       !Number.isSafeInteger(draw) ||
-      draw <= (i ? reference[i - 1].afterDraw : 0) ||
+      !aligned ||
       entries.some(
-        (entry) =>
-          entry?.afterDraw !== draw ||
+        (entry, arm) =>
+          !Number.isSafeInteger(entry?.afterDraw) ||
+          entry.afterDraw <= trials[arm].phaseCheckpoints[i - 1]?.afterDraw ||
           entry.status !== 'valid' ||
           !/^[a-f0-9]{64}$/.test(entry.hash || '') ||
+          !Number.isInteger(entry.width) ||
+          entry.width <= 0 ||
+          !Number.isInteger(entry.height) ||
+          entry.height <= 0 ||
           entry.width !== entries[0].width ||
           entry.height !== entries[0].height,
       )
@@ -46,12 +57,20 @@ export function summarizeRendererR9PhasePatterns(trials) {
       groupsByHash.get(entry.hash).push(ARM_LABELS[arm]);
     });
     const groups = [...groupsByHash.values()];
-    rows.push({
-      afterDraw: draw,
-      kind: entries[0].kind,
-      pattern: classifyGroups(groups),
-      groups,
-    });
+    if (last) {
+      terminal = {
+        drawsByPolicy: { off: entries[0].afterDraw, on: entries[2].afterDraw },
+        pattern: classifyGroups(groups),
+        groups,
+      };
+    } else {
+      rows.push({
+        afterDraw: draw,
+        kind: entries[0].kind,
+        pattern: classifyGroups(groups),
+        groups,
+      });
+    }
   }
   const first = (pattern) => rows.find((row) => row.pattern === pattern)?.afterDraw ?? null;
   const firstSamePolicyDrift = rows.find(
@@ -66,6 +85,7 @@ export function summarizeRendererR9PhasePatterns(trials) {
     firstReplicateIndexGroupingDraw: first('replicate-index-grouped'),
     firstAllDistinctDraw: first('all-distinct'),
     checkpoints: rows,
+    terminal,
     interpretation: 'observed partitions do not establish hardware or software causality',
   };
 }
