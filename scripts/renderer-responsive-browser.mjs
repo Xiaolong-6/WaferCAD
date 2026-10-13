@@ -134,8 +134,9 @@ try {
     await page.waitForFunction(
       (serial) => {
         const d = document.getElementById('threeHost')?.dataset;
-        return Number(d?.rendererInputSamples || 0) >= 1 &&
-          Number(d?.rendererFrameSerial || 0) > serial;
+        return (
+          Number(d?.rendererInputSamples || 0) >= 1 && Number(d?.rendererFrameSerial || 0) > serial
+        );
       },
       previousSerial,
       { timeout: 90000 },

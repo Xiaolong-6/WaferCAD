@@ -1049,24 +1049,13 @@ export function createThreeView({
       const submitDurationMs = frameCompletedAt - frameStartedAt;
       host.dataset.rendererFrameMs = String(submitDurationMs);
       if (responsiveInputMetrics) {
-        const inputToSubmitMs = responsiveLatency.completeFrame(
-          frameCompletedAt,
-          submitDurationMs,
-        );
+        const inputToSubmitMs = responsiveLatency.completeFrame(frameCompletedAt, submitDurationMs);
         const measures = responsiveLatency.snapshot();
         host.dataset.rendererInputSamples = String(measures.inputSamples);
-        host.dataset.rendererInputToSubmitP95Ms = String(
-          measures.inputToSubmitP95Ms ?? '',
-        );
-        host.dataset.rendererInputToSubmitMaxMs = String(
-          measures.inputToSubmitMaxMs ?? '',
-        );
-        host.dataset.rendererFrameSubmitP95Ms = String(
-          measures.frameSubmitP95Ms ?? '',
-        );
-        host.dataset.rendererFrameSubmitMaxMs = String(
-          measures.frameSubmitMaxMs ?? '',
-        );
+        host.dataset.rendererInputToSubmitP95Ms = String(measures.inputToSubmitP95Ms ?? '');
+        host.dataset.rendererInputToSubmitMaxMs = String(measures.inputToSubmitMaxMs ?? '');
+        host.dataset.rendererFrameSubmitP95Ms = String(measures.frameSubmitP95Ms ?? '');
+        host.dataset.rendererFrameSubmitMaxMs = String(measures.frameSubmitMaxMs ?? '');
         if (inputToSubmitMs !== null)
           host.dataset.rendererInputToSubmitLastMs = String(inputToSubmitMs);
       }
@@ -2512,75 +2501,75 @@ diffuseColor.a *= waferCadAlphaScale;`,
   // optional cooperative path. Hidden staged objects become visible atomically
   // only when applyPresentationState runs after the final geometry unit.
   function appendRoughMeshResult(result, context, mode, { hidden = false } = {}) {
-      const task = roughTasks[result.taskId];
-      if (!task || !result.data) return;
-      const cap = task.cap,
-        meshData = task.implant
-          ? {
-              ...result.data,
-              positions: result.data.positions.slice(),
-              normals: result.data.normals.slice(),
-            }
-          : result.data;
-      let geometry = geometryFromRoughMeshData(THREE, meshData);
-      if (task.implant) {
-        setAnnotationDepthAttribute(
-          geometry,
-          task.implant,
-          annotationDepthFraction(task.implant, cap.z),
-        );
-        geometry = shearImplantGeometry(geometry, task.implant);
-      }
-
-      const material = task.implant
-        ? createAnnotationGradientMaterial(task.implant, task.state, {
-            roughness: cap.appearance ? 0.84 : 0.72,
-          })
-        : createSurfaceMaterial(task.layer, task.state, cap.appearance);
-      if (geometry.userData.roughGpuDisplacement && !task.implant) {
-        decorateGpuRoughMaterial(material, cap.appearance, {
-          profileNormal: cap.profileNormal ?? cap.normal,
-          normalStrength: mode === 'interactive' ? 0.82 : 1,
-        });
-      }
-      if (task.polygonOffset) {
-        material.polygonOffset = true;
-        material.polygonOffsetFactor = -1;
-        material.polygonOffsetUnits = -1;
-      }
-      const mesh = addSurfaceMesh(
+    const task = roughTasks[result.taskId];
+    if (!task || !result.data) return;
+    const cap = task.cap,
+      meshData = task.implant
+        ? {
+            ...result.data,
+            positions: result.data.positions.slice(),
+            normals: result.data.normals.slice(),
+          }
+        : result.data;
+    let geometry = geometryFromRoughMeshData(THREE, meshData);
+    if (task.implant) {
+      setAnnotationDepthAttribute(
         geometry,
-        material,
-        task.state,
-        cap.appearance,
-        task.sortBias ?? (cap.buried ? 12 : 0),
-        true,
-        cap.instanceTranslations || task.implant?.instanceTranslations,
-        task.presentation,
+        task.implant,
+        annotationDepthFraction(task.implant, cap.z),
       );
-      if (mesh) {
-        roughOwnedObjects.add(mesh);
-        if (task.name) mesh.name = task.name;
-        if (hidden) mesh.visible = false;
-      }
-
-      if (
-        task.includeBorders !== false &&
-        !cap.buried &&
-        geometry.userData.roughBorderPositions?.length
-      ) {
-        const border = addBorderPositions(
-          instanceBorderPositions(geometry.userData.roughBorderPositions, cap.instanceTranslations),
-          {
-            order: 100010 + (cap.solidIndex || 0),
-            opacity: context.opacity,
-            adaptiveRough: true,
-            presentation: { kind: 'border' },
-          },
-        );
-        if (hidden && border) border.visible = false;
-      }
+      geometry = shearImplantGeometry(geometry, task.implant);
     }
+
+    const material = task.implant
+      ? createAnnotationGradientMaterial(task.implant, task.state, {
+          roughness: cap.appearance ? 0.84 : 0.72,
+        })
+      : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+    if (geometry.userData.roughGpuDisplacement && !task.implant) {
+      decorateGpuRoughMaterial(material, cap.appearance, {
+        profileNormal: cap.profileNormal ?? cap.normal,
+        normalStrength: mode === 'interactive' ? 0.82 : 1,
+      });
+    }
+    if (task.polygonOffset) {
+      material.polygonOffset = true;
+      material.polygonOffsetFactor = -1;
+      material.polygonOffsetUnits = -1;
+    }
+    const mesh = addSurfaceMesh(
+      geometry,
+      material,
+      task.state,
+      cap.appearance,
+      task.sortBias ?? (cap.buried ? 12 : 0),
+      true,
+      cap.instanceTranslations || task.implant?.instanceTranslations,
+      task.presentation,
+    );
+    if (mesh) {
+      roughOwnedObjects.add(mesh);
+      if (task.name) mesh.name = task.name;
+      if (hidden) mesh.visible = false;
+    }
+
+    if (
+      task.includeBorders !== false &&
+      !cap.buried &&
+      geometry.userData.roughBorderPositions?.length
+    ) {
+      const border = addBorderPositions(
+        instanceBorderPositions(geometry.userData.roughBorderPositions, cap.instanceTranslations),
+        {
+          order: 100010 + (cap.solidIndex || 0),
+          opacity: context.opacity,
+          adaptiveRough: true,
+          presentation: { kind: 'border' },
+        },
+      );
+      if (hidden && border) border.visible = false;
+    }
+  }
 
   function applyRoughMeshResults(
     results,
@@ -2601,7 +2590,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
     clearAdaptiveRoughObjects();
 
     for (const result of results || []) appendRoughMeshResult(result, context, mode);
-
 
     return finalizeRoughMeshResults(diagnostics, mode, signature, context);
   }
@@ -3113,7 +3101,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
             scheduleFrame();
           });
           controls.addEventListener('change', () => {
-            if (responsiveInputMetrics && interacting) responsiveLatency.markInput(performance.now());
+            if (responsiveInputMetrics && interacting)
+              responsiveLatency.markInput(performance.now());
             if (!interacting) scheduleDetailedRoughBuild();
             scheduleFrame();
           });

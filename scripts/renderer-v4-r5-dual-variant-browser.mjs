@@ -195,7 +195,9 @@ try {
     }));
     assert.ok(inputTelemetry.samples > 0, 'pointer gesture must reach render-submit telemetry');
     assert.ok(Number.isFinite(inputTelemetry.p95Ms) && inputTelemetry.p95Ms >= 0);
-    assert.ok(Number.isFinite(inputTelemetry.frameSubmitP95Ms) && inputTelemetry.frameSubmitP95Ms >= 0);
+    assert.ok(
+      Number.isFinite(inputTelemetry.frameSubmitP95Ms) && inputTelemetry.frameSubmitP95Ms >= 0,
+    );
     console.log('RENDERER_RESPONSIVE_INPUT_METRICS', JSON.stringify(inputTelemetry));
     const restoredTriangles = Number(
       await page.locator('#threeHost').evaluate((node) => node.dataset.rendererDrawTriangles),
