@@ -501,6 +501,7 @@ export function createSectionView({ store, main, workstation }) {
           smooth ? 'depthSmooth' : 'depthFollow',
         );
         profile.dataset.help = 'section.profile';
+        profile.removeAttribute('title');
         profile.setAttribute('aria-pressed', String(smooth));
         profile.onclick = () => {
           const setProfile =

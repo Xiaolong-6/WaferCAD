@@ -261,7 +261,7 @@ export function createMaskBrowserController({
       count.className = 'layer-count';
       count.textContent = item.count;
 
-      row.title = available
+      row.dataset.helpDetail = available
         ? `Layer ${item.layer}/${item.datatype} in selected cell hierarchy`
         : `Layer ${item.layer}/${item.datatype} is not present in ${getActiveCell() || 'this cell'}`;
       row.append(checkbox, swatch, name, count);

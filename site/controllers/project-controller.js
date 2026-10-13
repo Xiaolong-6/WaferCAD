@@ -183,7 +183,6 @@ export function createProjectController({
         banner.dataset.tone = 'warning';
         banner.setAttribute('role', 'status');
         if (!historyMutation) hint.textContent = 'Applying from this step creates a new Variant.';
-        banner.title = `${title.textContent}\n${context.textContent}`;
         copy.append(hint);
       } else copy.append(title, context, hint);
 
@@ -286,8 +285,10 @@ export function createProjectController({
           'Delete bookmark': 'history.delete.bookmark',
           'Add bookmark': 'history.bookmark',
         }[item.label];
-        if (compactHistory && helpKey) button.dataset.help = helpKey;
-        else if (item.title) button.title = item.title;
+        if (compactHistory && helpKey) {
+          button.dataset.help = helpKey;
+          if (item.title) button.dataset.helpDetail = item.title;
+        } else if (item.title) button.title = item.title;
         button.onclick = async (event) => {
           event.stopPropagation();
           if (button.disabled) return;

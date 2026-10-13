@@ -27,7 +27,7 @@
     };
     const removeDescription = () => {
       if (!target) return;
-      const values = (target.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+      const values = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
       const other = values.filter((value) => value !== node.id);
       if (other.length) target.setAttribute('aria-describedby', other.join(' '));
       else target.removeAttribute('aria-describedby');
@@ -53,7 +53,7 @@
       if (target && target !== anchor) removeDescription();
       target = anchor;
       heading.textContent = copy[0];
-      detail.textContent = copy[1];
+      detail.textContent = anchor.dataset.helpDetail || copy[1];
       node.hidden = false;
       const rect = anchor.getBoundingClientRect();
       const width = node.offsetWidth,
@@ -64,7 +64,7 @@
       const below = rect.bottom + gap;
       node.style.top = `${below + height <= innerHeight - edge ? below : Math.max(edge, rect.top - height - gap)}px`;
       const descriptions = (anchor.getAttribute('aria-describedby') || '')
-        .split(/\\s+/)
+        .split(/\s+/)
         .filter(Boolean);
       if (!descriptions.includes(node.id))
         anchor.setAttribute('aria-describedby', [...descriptions, node.id].join(' '));
