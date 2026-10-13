@@ -108,8 +108,7 @@ try {
       await page.locator('[data-action="domain:history"]').click();
       await page.locator('#undoBtn').click();
       await page.waitForFunction(
-        (expected) =>
-          window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
+        (expected) => window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
         based.model.layers.length,
       );
       assert.deepEqual(
@@ -119,8 +118,7 @@ try {
       );
       await page.locator('#redoBtn').click();
       await page.waitForFunction(
-        (expected) =>
-          window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
+        (expected) => window.WaferCadV2Workstation.snapshot().model.layers.length === expected,
         afterManual.model.layers.length,
       );
       assert.deepEqual(
