@@ -67,7 +67,12 @@ function sample(count = 1) {
     history: steps,
     branches: [
       { id: 'main', name: 'Main', processStepCount: 500, headNodeId: 'step-500' },
-      { id: 'branch-a', name: 'Branch A', processStepCount: count - 500, headNodeId: `step-${count}` },
+      {
+        id: 'branch-a',
+        name: 'Branch A',
+        processStepCount: count - 500,
+        headNodeId: `step-${count}`,
+      },
     ],
     bookmarks: [{ id: 'book-1', name: 'Before release', historyNodeId: 'step-50' }],
     position: { branchId: 'main', nodeId: 'step-500', atHead: true },
