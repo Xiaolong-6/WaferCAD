@@ -42,8 +42,8 @@ export function createRendererGpuTimer(
   }
   const supported = Boolean(
     extension &&
-      Number.isFinite(extension.TIME_ELAPSED_EXT) &&
-      Number.isFinite(extension.GPU_DISJOINT_EXT),
+    Number.isFinite(extension.TIME_ELAPSED_EXT) &&
+    Number.isFinite(extension.GPU_DISJOINT_EXT),
   );
   const pending = [];
   const samples = [];
@@ -105,7 +105,7 @@ export function createRendererGpuTimer(
         dropped += pending.length;
         clearPending();
       } else {
-        for (let i = 0; i < pending.length; ) {
+        for (let i = 0; i < pending.length;) {
           const query = pending[i];
           if (!gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) {
             i++;

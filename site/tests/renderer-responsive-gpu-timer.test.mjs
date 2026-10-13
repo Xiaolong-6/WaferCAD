@@ -39,7 +39,14 @@ function fakeGpu({ supported = true } = {}) {
       deleted.push(q);
     },
   };
-  return { gl, queries, deleted, setDisjoint(value) { disjoint = value; } };
+  return {
+    gl,
+    queries,
+    deleted,
+    setDisjoint(value) {
+      disjoint = value;
+    },
+  };
 }
 
 test('GPU timer never synchronously waits for GPU; polls available results', () => {
@@ -48,7 +55,10 @@ test('GPU timer never synchronously waits for GPU; polls available results', () 
   const ticks = [];
   const timer = createRendererGpuTimer(g.gl, {
     now: () => clock,
-    schedule: (fn) => { ticks.push(fn); return ticks.length; },
+    schedule: (fn) => {
+      ticks.push(fn);
+      return ticks.length;
+    },
     cancel: () => {},
     sampleIntervalMs: 100,
   });
@@ -63,8 +73,13 @@ test('GPU timer never synchronously waits for GPU; polls available results', () 
   g.queries[0].available = true;
   ticks.shift()();
   assert.deepEqual(timer.snapshot(), {
-    supported: true, samples: 1, pending: 1, p95Ms: 24.5,
-    maxMs: 24.5, dropped: 0, disjointCount: 0,
+    supported: true,
+    samples: 1,
+    pending: 1,
+    p95Ms: 24.5,
+    maxMs: 24.5,
+    dropped: 0,
+    disjointCount: 0,
   });
   g.queries[1].ns = 2_000_000;
   g.queries[1].available = true;
@@ -80,7 +95,10 @@ test('disjoint GPU results are discarded; unsupported WebGL is a no-op', () => {
   const ticks = [];
   const timer = createRendererGpuTimer(g.gl, {
     now: () => 1000,
-    schedule: (fn) => { ticks.push(fn); return ticks.length; },
+    schedule: (fn) => {
+      ticks.push(fn);
+      return ticks.length;
+    },
     cancel: () => {},
   });
   timer.beginFrame();
