@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { displayLengthDraftChanged } from '../controllers/draw-mask-controller.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { fromMicron, toMicron } from '../units.js';
+
+await loadGeometryKernel();
+const { displayLengthDraftChanged } = await import('../controllers/draw-mask-controller.js');
 
 const format = (physical, unit) => {
   const digits = unit === 'nm' ? 1 : unit === 'mm' ? 7 : 4;
