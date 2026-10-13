@@ -127,10 +127,7 @@ test('R9 V4 diagnostic requires 4 production-MSAA GPU arms and complete checkpoi
     classifyRendererHardwareStep({ ...focused, exitCode: 0 }, focusEvidence),
     'diagnostic-complete',
   );
-  assert.equal(
-    classifyRendererHardwareStep({ ...focused, exitCode: 0 }, complete),
-    'error',
-  );
+  assert.equal(classifyRendererHardwareStep({ ...focused, exitCode: 0 }, complete), 'error');
 
   const altered = (change) => {
     const report = structuredClone(complete);
