@@ -4,6 +4,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { createProjectStateController } = await import('../controllers/project-state-controller.js');
+const { createSnapshotManager } = await import('../workspace-snapshots.js');
 
 function controller(readValidatedFile) {
   return createProjectStateController({
@@ -49,4 +50,45 @@ test('worker-import snapshot cache continues to reject modified invalid history 
   state.readWorkerValidatedProjectSnapshot(project);
   project.snapshots[0].state.snapshots = [{ state: {} }];
   assert.equal(state.isValidSnapshotStates([project.snapshots[0].state]), false);
+});
+
+
+test('History consumes a validated detached copy without changing the import source', () => {
+  const state = controller(async () => null);
+  const imported = {
+    snapshots: [{
+      id: 's-1',
+      name: 'Validated milestone',
+      createdAt: '2026-10-13T00:00:00.000Z',
+      state: { model: { revision: 4, regions: [{ id: 'r-1' }] } },
+    }],
+  };
+  state.readWorkerValidatedProjectSnapshot(imported);
+  let adopted = 0;
+  const manager = createSnapshotManager({
+    capture: () => ({ model: { revision: 4 } }),
+    restore() {},
+    validateState: () => true,
+    validateStates: state.isValidSnapshotStates,
+    takeValidatedStateCopy: (source) => {
+      const copy = state.takeValidatedSnapshotCopy(source);
+      if (copy) adopted += 1;
+      return copy;
+    },
+  });
+  assert.equal(manager.importRecords(imported.snapshots), 1);
+  assert.equal(adopted, 1, 'History reuses the strictly compared independent copy');
+  imported.snapshots[0].state.model.regions[0].id = 'tampered';
+  assert.equal(manager.exportRecords()[0].state.model.regions[0].id, 'r-1');
+  assert.equal(state.takeValidatedSnapshotCopy(imported.snapshots[0].state), null);
+});
+
+test('a later failed snapshot validation invalidates all earlier adoptable copies', () => {
+  const state = controller(async () => null);
+  const imported = { snapshots: [{ state: { id: 'safe' } }] };
+  state.readWorkerValidatedProjectSnapshot(imported);
+  assert.equal(state.isValidSnapshotStates([imported.snapshots[0].state]), true);
+  imported.snapshots[0].state.snapshots = [{ state: {} }];
+  assert.equal(state.isValidSnapshotStates([imported.snapshots[0].state]), false);
+  assert.equal(state.takeValidatedSnapshotCopy(imported.snapshots[0].state), null);
 });
