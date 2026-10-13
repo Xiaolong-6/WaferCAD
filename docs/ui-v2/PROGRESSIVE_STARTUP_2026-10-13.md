@@ -79,12 +79,12 @@ Two byte-preserving mitigations landed on the P1 branch:
 
 Software-CI A/B timing (Chromium, **not physical RTX**):
 
-| Metric | Before | After |
-| --- | ---: | ---: |
-| M3D Project Ready | 30.41 s | 14.84 s |
-| M3D first scientific frame | 31.37 s | 16.09 s |
-| M3D worst Long Task | 16.01 s | 12.60 s |
-| Restored Quality Project Ready | 27.38 s | 28.30 s |
+| Metric                           |  Before |   After |
+| -------------------------------- | ------: | ------: |
+| M3D Project Ready                | 30.41 s | 14.84 s |
+| M3D first scientific frame       | 31.37 s | 16.09 s |
+| M3D worst Long Task              | 16.01 s | 12.60 s |
+| Restored Quality Project Ready   | 27.38 s | 28.30 s |
 | Restored Quality worst Long Task | 26.99 s | 27.95 s |
 
 Focused renderer parity, snapshot integrity and profiling CI checks passed.
