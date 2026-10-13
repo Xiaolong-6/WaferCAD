@@ -74,11 +74,33 @@ try {
         await page.locator('#' + id).fill(String(value * factor));
       }
       await page.locator('#applyBaseBtn').click();
-      await page.waitForFunction(
-        (width) => window.WaferCadV2Workstation.snapshot().model.width === width,
-        baseDimensions.width,
-        { timeout: 120000 },
-      );
+      // Rebuilding Base can require an explicit history decision. Resolve the
+      // real UI dialog rather than waiting forever for an unchanged model.
+      const clearHistory = page.getByRole('button', { name: 'Clear history', exact: true });
+      if (await clearHistory.isVisible()) await clearHistory.click();
+      try {
+        await page.waitForFunction(
+          (width) =>
+            Math.abs(window.WaferCadV2Workstation.snapshot().model.width - width) < 1e-11,
+          baseDimensions.width,
+          { timeout: 30000 },
+        );
+      } catch (error) {
+        const evidence = await page.evaluate(() => ({
+          model: window.WaferCadV2Workstation.snapshot().model,
+          status: document.querySelector('[data-slot="status.message"]')?.textContent,
+          modal: document.querySelector('[role="dialog"]')?.textContent,
+          baseFields: Object.fromEntries(
+            ['v2BaseShape', 'baseWidth', 'baseHeight', 'baseThickness'].map((id) => [
+              id,
+              document.getElementById(id)?.value,
+            ]),
+          ),
+        }));
+        throw new Error(displayUnit + ' Base rebuild failed: ' + JSON.stringify(evidence), {
+          cause: error,
+        });
+      }
       const based = await snapshot();
       for (const [key, value] of Object.entries(baseDimensions))
         near(based.model[key], value, displayUnit + ' Base ' + key);
