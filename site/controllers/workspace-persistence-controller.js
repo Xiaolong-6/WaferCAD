@@ -478,7 +478,11 @@ export function createWorkspacePersistenceController({
               .querySelector('.workspace')
               ?.setAttribute(
                 'data-autosave-retry-reason',
-                !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
+                !hasWriteAccess()
+                  ? 'lease'
+                  : result === 'stale'
+                    ? 'history-stale'
+                    : 'edit-version',
               );
             saving = false;
             dirty = true;
@@ -955,7 +959,10 @@ export function createWorkspacePersistenceController({
     const flushed = await requestOwnerFlush(),
       marker = readMarker(),
       savedChanged = Boolean(marker?.saveId && marker.saveId !== baseSaveId),
-      latestSaved = savedChanged || !flushed ? await loadWorkspaceState({ background: progressiveWorkspaceRestore }).catch(() => null) : null;
+      latestSaved =
+        savedChanged || !flushed
+          ? await loadWorkspaceState({ background: progressiveWorkspaceRestore }).catch(() => null)
+          : null;
 
     let choice = 'use-current';
     if (savedChanged) {
