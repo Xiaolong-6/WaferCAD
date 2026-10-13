@@ -16,6 +16,8 @@ function markdownEscape(value) {
   return String(value ?? '')
     .replaceAll('\\', '\\\\')
     .replaceAll('|', '\\|')
+    .replaceAll('[', '\\[')
+    .replaceAll(']', '\\]')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('\n', ' ');
@@ -133,7 +135,7 @@ function documentShell(title, body, root = '') {
 }
 
 function stepPage(steps, number, pages, title) {
-  const path = (index) => `steps-${String(index + 1).padStart(4, '0')}.html`;
+  const path = (index) => `steps-${String(index * PAGE_SIZE + 1).padStart(4, '0')}.html`;
   const rows = steps
     .map(
       (step) => `<details id="step-${step.number}"><summary>#${step.number} ${htmlEscape(
