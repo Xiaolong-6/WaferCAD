@@ -44,6 +44,13 @@ test('Section color swatches use the same contextual catalog, retaining the chos
   assert.match(description[1], /#A1B2C3/);
 });
 
+test('Project exports describe editable backup and read-only report separately', () => {
+  const project = catalog.resolve('project.export.file', {});
+  const report = catalog.resolve('project.export.report', {});
+  assert.match(project[1], /reopened and edited/);
+  assert.match(report[1], /cannot restore an editable project/);
+});
+
 test('Both-face help respects two independent deposited layers', () => {
   const node = { value: 'both' };
   assert.match(catalog.resolve('process.face', node)[1], /front, then the back/);

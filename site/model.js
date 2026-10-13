@@ -166,8 +166,7 @@ export function exposedLayerIds(model, area = model?.boundary, face = 'front') {
         !area?.arrayMaskQuery &&
         (area === model.boundary || JSON.stringify(area) === JSON.stringify(model.boundary)),
       seen = new Set(),
-      queries = new Map(),
-      maskBoundsCache = new WeakMap();
+      queries = new Map();
     for (const part of arrayParts(model, full ? null : arrayBounds(area))) {
       if (full && seen.has(part.model)) continue;
       seen.add(part.model);
@@ -1019,10 +1018,6 @@ function healNumericalCoverageCracks(model) {
     }
   }
   return changed;
-}
-
-function uncoveredGeometry(model) {
-  return uncoveredGeometryRaw(model);
 }
 
 function addVoidConformalSidewall(model, geom, layerId, face, source) {

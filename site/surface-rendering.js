@@ -243,23 +243,6 @@ export function roughNoise1D(distance, appearance) {
   return a + (b - a) * eased;
 }
 
-function roughNoise2D(x, y, featureSize, seed) {
-  const feature = Math.max(1e-9, Number(featureSize) || 1),
-    gx = Number(x) / feature,
-    gy = Number(y) / feature,
-    ix = Math.floor(gx),
-    iy = Math.floor(gy),
-    tx = gx - ix,
-    ty = gy - iy,
-    sx = tx * tx * (3 - 2 * tx),
-    sy = ty * ty * (3 - 2 * ty),
-    sample = (dx, dy) =>
-      hashUnit((Number(seed) >>> 0) ^ Math.imul((iy + dy) | 0, 0x85ebca6b), (ix + dx) | 0) * 2 - 1,
-    a = sample(0, 0) + (sample(1, 0) - sample(0, 0)) * sx,
-    b = sample(0, 1) + (sample(1, 1) - sample(0, 1)) * sx;
-  return a + (b - a) * sy;
-}
-
 function pyramidProfileOffsetAtPoint(x, y, appearance) {
   const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
     depth = roughMaxRelief(appearance),

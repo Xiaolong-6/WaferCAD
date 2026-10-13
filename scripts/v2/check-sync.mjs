@@ -388,6 +388,7 @@ try {
       if (width === 1440) {
         await panel('project');
         const downloadPromise = page.waitForEvent('download');
+        await page.locator('#projectExportMenuBtn').click();
         await page.locator('#exportProjectBtn').click();
         const download = await downloadPromise;
         const path = resolve(output, 'sync.wafercad');

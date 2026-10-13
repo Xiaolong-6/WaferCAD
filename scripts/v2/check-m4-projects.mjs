@@ -170,6 +170,7 @@ try {
       // Large projects may pack History for over 30 seconds on software-WebGL
       // runners. Do not wait for click-triggered navigation: the authoritative
       // completion signal is a real download, checked and round-tripped below.
+      await page.locator('#projectExportMenuBtn').click();
       const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 120000 }),
         page.locator('#exportProjectBtn').click({ timeout: 120000, noWaitAfter: true }),

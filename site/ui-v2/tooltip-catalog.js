@@ -260,8 +260,16 @@
     ],
     'project.save': ['Save project', 'Save the editable WaferCAD workspace as a project file.'],
     'project.export': [
-      'Export project',
-      'Download a portable project or supported geometry export.',
+      'Export',
+      'Choose an editable WaferCAD project file or a read-only Process report.',
+    ],
+    'project.export.file': [
+      'Editable project',
+      'Download a .wafercad file that can be reopened and edited, including saved project History.',
+    ],
+    'project.export.report': [
+      'Offline Process report',
+      'Download a ZIP with offline HTML, Markdown, full Process History and available saved Section figures. It cannot restore an editable project.',
     ],
     'project.units': [
       'XYZ display units',
