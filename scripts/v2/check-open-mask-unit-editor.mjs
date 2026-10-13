@@ -12,9 +12,7 @@ const browser = await launchBrowser();
 const report = { result: 'running', cases: [] };
 
 try {
-  const { page, context } = await newUiPage(browser, {
-    viewport: { width: 1440, height: 960 },
-  });
+  const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 960 } });
   try {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -30,10 +28,7 @@ try {
     const canvas = page.locator('#maskCanvas');
     const bounds = await canvas.boundingBox();
     assert.ok(bounds?.width > 50 && bounds?.height > 50);
-    const point = (fx, fy) => [
-      bounds.x + bounds.width * fx,
-      bounds.y + bounds.height * fy,
-    ];
+    const point = (fx, fy) => [bounds.x + bounds.width * fx, bounds.y + bounds.height * fy];
     await page.mouse.move(...point(0.45, 0.45));
     await page.mouse.down();
     await page.mouse.move(...point(0.55, 0.55), { steps: 8 });
