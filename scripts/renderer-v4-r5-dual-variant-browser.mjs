@@ -99,7 +99,7 @@ try {
     const errors = observePageErrors(page);
     await page.goto(
       rendererWorkstationUrl +
-        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1',
+        '?rendererV4GpuCensus=1&rendererV4SharedFlatCaps=1&rendererV4HeavyCameraNoDamping=1&rendererResponsiveInteraction=1&rendererResponsiveSmoothWorker=1&rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1&rendererResponsiveGpuPrewarm=1&rendererResponsiveForeground=1',
     );
     await waitForAppReady(page);
     await page
@@ -129,6 +129,16 @@ try {
     assert.equal(first.groups, 1, 'first variant should not retain old model allocations');
     const second = await setOpacity(page, '0.5', 'transparent', 'warm-transparent');
     assert.equal(second.groups, 2, 'full 625-site model must retain both distinct scene variants');
+    const prewarm = await page.locator('#threeHost').evaluate((node) => ({
+      status: node.dataset.rendererGpuPrewarmStatus,
+      batches: Number(node.dataset.rendererGpuPrewarmBatches || 0),
+      units: Number(node.dataset.rendererGpuPrewarmUnits || 0),
+      foreground: node.dataset.rendererForegroundRetained,
+    }));
+    assert.equal(prewarm.status, 'ready', 'real 625-site offscreen prewarm must complete');
+    assert.ok(prewarm.units > 0 && prewarm.batches > 0);
+    assert.equal(prewarm.foreground, 'true', 'last full scene redraws during replacement');
+    console.log('RENDERER_P26_REAL_FULL_WAFER', JSON.stringify(prewarm));
     const firstTransition = await page.locator('#threeHost').evaluate((node) => ({
       retained: Number(node.dataset.rendererRetainedVariantBuilds || 0),
       committed: Number(node.dataset.rendererCommittedVariantSwaps || 0),

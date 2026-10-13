@@ -26,7 +26,10 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(180000);
     const errors = observePageErrors(page);
-    await page.goto(url + '?rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1');
+    await page.goto(
+      url +
+        '?rendererResponsiveRoughBudget=1&rendererResponsiveMetrics=1&rendererResponsiveGpuPrewarm=1',
+    );
     await waitForAppReady(page);
     result.stage = 'open-rough-tandem';
     await page
@@ -78,6 +81,10 @@ try {
       'new exact rough objects were staged before commit',
     );
     assert.equal(data.rendererRoughAssemblyCancelled, 'false');
+    assert.equal(data.rendererGpuPrewarmStatus, 'ready', 'offscreen prewarm must complete');
+    assert.ok(Number(data.rendererGpuPrewarmUnits || 0) >= 8);
+    assert.ok(Number(data.rendererGpuPrewarmBatches || 0) >= 2);
+    assert.ok(Number(data.rendererGpuPrewarmYields || 0) >= 1);
     assert.ok(Number.isFinite(Number(data.rendererRoughAssemblyMaxUnitMs)));
     assert.ok(Number(data.rendererFrameSerial || 0) > 0);
     assert.deepEqual(errors, [], 'no unexpected browser errors');

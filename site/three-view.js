@@ -3865,10 +3865,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Retained committed groups can be redrawn while a hidden replacement
       // is prepared. Only opt in when an actual complete foreground group is
       // available; otherwise preserve the existing final-only frame policy.
+      const committedForeground =
+        stagedPreviousScene?.snapshot.group || sceneVariantCache.get(previousVariant)?.group;
       const retainedForeground =
         responsiveForegroundFrames &&
-        (Boolean(stagedPreviousScene) || variantBuild) &&
-        [...scene.children].some((object) => object !== group && object.visible);
+        Boolean(committedForeground?.visible && committedForeground?.parent === scene);
       suppressAssemblyFrames =
         !retainedForeground &&
         (Boolean(stagedPreviousScene) ||

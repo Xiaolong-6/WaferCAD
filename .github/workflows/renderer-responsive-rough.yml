@@ -7,6 +7,8 @@ on:
     paths:
       - site/three-view.js
       - site/renderer-responsive-budget.js
+      - site/renderer-responsive-gpu-prewarm.js
+      - site/tests/renderer-responsive-gpu-prewarm.test.mjs
       - site/renderer-responsive-latency.js
       - scripts/renderer-responsive-rough-browser.mjs
       - .github/workflows/renderer-responsive-rough.yml
@@ -33,8 +35,11 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Check single regression file
-        run: npx eslint scripts/renderer-responsive-rough-browser.mjs && npx prettier --check scripts/renderer-responsive-rough-browser.mjs
+      - name: Check GPU prewarm scheduler and rough browser script
+        run: |
+          node --test site/tests/renderer-responsive-gpu-prewarm.test.mjs
+          npx eslint scripts/renderer-responsive-rough-browser.mjs site/renderer-responsive-gpu-prewarm.js site/tests/renderer-responsive-gpu-prewarm.test.mjs
+          npx prettier --check scripts/renderer-responsive-rough-browser.mjs site/renderer-responsive-gpu-prewarm.js site/tests/renderer-responsive-gpu-prewarm.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Serve WaferCAD
