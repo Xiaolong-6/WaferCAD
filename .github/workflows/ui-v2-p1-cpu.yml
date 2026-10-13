@@ -32,7 +32,7 @@ concurrency:
 jobs:
   cpu-hotspots:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
@@ -42,6 +42,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Quality gate for async scientific topology and Recovery changes
+        run: npm run check
       - name: Targeted renderer parity and History integrity tests
         run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs
       - run: npx playwright install --with-deps chromium
@@ -57,6 +59,12 @@ jobs:
           done
           cat serve-v2.log
           exit 1
+      - name: Real UI progressive boot, Quality restore, cross-view Recovery
+        timeout-minutes: 12
+        run: |
+          node scripts/v2/check-startup-shell.mjs
+          node scripts/v2/check-progressive-quality.mjs
+          node scripts/v2/check-cross-ui-recovery.mjs
       - name: CPU sample M3D and restored Quality
         timeout-minutes: 20
         run: node scripts/v2/profile-startup-ci.mjs
