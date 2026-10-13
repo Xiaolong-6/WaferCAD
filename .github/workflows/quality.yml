@@ -30,5 +30,10 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Diagnose legacy binding cleanup formatting (temporary)
+        run: |
+          npx prettier site/app.js > /tmp/app-formatted.js
+          diff -u site/app.js /tmp/app-formatted.js || true
+
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
