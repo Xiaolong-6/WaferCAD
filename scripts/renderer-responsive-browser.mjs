@@ -114,6 +114,18 @@ try {
         }),
     );
     assert.deepEqual(smoothWorkerSmoke, { positions: 18, normals: 18 });
+    const jank = await host.evaluate((node) => ({
+      supported: node.dataset.rendererLongTaskSupported,
+      count: Number(node.dataset.rendererLongTaskCount || 0),
+      p95Ms: Number(node.dataset.rendererLongTaskP95Ms || 0),
+      blockingMs: Number(node.dataset.rendererMainThreadBlockingMs || 0),
+    }));
+    assert.match(jank.supported, /^(true|false)$/, 'long-task capability is explicit');
+    assert.ok(Number.isFinite(jank.count) && jank.count >= 0);
+    assert.ok(Number.isFinite(jank.p95Ms) && jank.p95Ms >= 0);
+    assert.ok(Number.isFinite(jank.blockingMs) && jank.blockingMs >= 0);
+    report.mainThreadJank = jank;
+
     report.smoothSidewallWorker = {
       ...smoothWorkerSmoke,
       sceneJobs: Number(after.rendererSmoothWorkerJobs || 0),

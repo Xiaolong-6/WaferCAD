@@ -40,6 +40,7 @@ import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-i
 import { canPrepareSmoothSidewallsInWorker } from './renderer-v4-smooth-sidewall-data.js';
 import { runRendererUnitsInSlices } from './renderer-responsive-budget.js';
 import { createRendererLatencyTracker } from './renderer-responsive-latency.js';
+import { createRendererLongTaskSampler } from './renderer-responsive-jank.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -136,6 +137,30 @@ export function createThreeView({
   const responsiveRoughBudget = rendererParams.get('rendererResponsiveRoughBudget') === '1';
   const responsiveInputMetrics = rendererParams.get('rendererResponsiveMetrics') === '1';
   const responsiveLatency = createRendererLatencyTracker();
+  const responsiveLongTasks = createRendererLongTaskSampler();
+  // LongTask entries represent event-loop blocking, not GPU/compositor work.
+  // Only observe when profiling was explicitly requested.
+  if (responsiveInputMetrics) {
+    const Observer = host.ownerDocument?.defaultView?.PerformanceObserver;
+    const supported = Boolean(Observer?.supportedEntryTypes?.includes('longtask'));
+    host.dataset.rendererLongTaskSupported = String(supported);
+    if (supported) {
+      try {
+        const observer = new Observer((list) => {
+          for (const entry of list.getEntries()) responsiveLongTasks.record(entry.duration);
+          const summary = responsiveLongTasks.snapshot();
+          host.dataset.rendererLongTaskCount = String(summary.count);
+          host.dataset.rendererLongTaskP95Ms = String(summary.p95Ms ?? '');
+          host.dataset.rendererLongTaskMaxMs = String(summary.maxMs ?? '');
+          host.dataset.rendererMainThreadBlockingMs = String(summary.blockingMs);
+        });
+        observer.observe({ type: 'longtask' });
+      } catch (error) {
+        host.dataset.rendererLongTaskSupported = 'false';
+        console.info('Renderer long-task observer unavailable:', error);
+      }
+    }
+  }
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
