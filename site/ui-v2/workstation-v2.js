@@ -119,6 +119,15 @@
     root.replaceChildren(workbench);
     mounted = workbench;
 
+    // Share one measured default between initial ARIA state, drag/keyboard
+    // resizing and subsequent Shell renders.
+    function panelWidth() {
+      if (state.panelSize) return state.panelSize;
+      const measured = inspector.getBoundingClientRect().width;
+      if (measured) return Math.round(measured);
+      return Math.round(Math.min(460, Math.max(320, window.innerWidth * 0.27)));
+    }
+
     function bindDividers() {
       const horizontal = state.layout === 'c';
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
@@ -128,16 +137,10 @@
       );
       separator.setAttribute(
         'aria-valuenow',
-        String(
-          horizontal
-            ? state.bottomSize || 250
-            : state.panelSize || Math.max(240, window.innerWidth / 3),
-        ),
+        String(horizontal ? state.bottomSize || 250 : panelWidth()),
       );
       const update = (delta) => {
-        const current = horizontal
-          ? state.bottomSize || 250
-          : state.panelSize || Math.max(240, window.innerWidth / 3);
+        const current = horizontal ? state.bottomSize || 250 : panelWidth();
         const next = Math.round(
           Math.max(
             horizontal ? 180 : 240,
@@ -174,6 +177,9 @@
       });
     }
     bindDividers();
+    // Primary navigation does not depend on view or project adapters. Display
+    // it immediately, including during async example and Recovery loading.
+    renderNav({ selectedNavigation: state.domain || registry.primaryNav[0]?.key });
 
     function renderNav(info) {
       navHost.replaceChildren(
@@ -397,11 +403,7 @@
       );
       separator.setAttribute(
         'aria-valuenow',
-        String(
-          horizontalDivider
-            ? state.bottomSize || 250
-            : state.panelSize || Math.max(240, window.innerWidth / 3),
-        ),
+        String(horizontalDivider ? state.bottomSize || 250 : panelWidth()),
       );
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
