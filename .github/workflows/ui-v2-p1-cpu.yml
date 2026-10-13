@@ -11,6 +11,14 @@ on:
       - 'site/ui-v2/project-mask-panels.js'
       - 'site/tests/worker-validated-project-import.test.mjs'
       - 'site/tests/renderer-instancing.test.mjs'
+      - 'site/renderer-surface-plan-async.js'
+      - 'site/renderer-surface-plan-worker.js'
+      - 'site/renderer-geometry.js'
+      - 'site/workspace-persistence.js'
+      - 'site/workspace-restore-worker.js'
+      - 'site/tests/workspace-restore-worker.test.mjs'
+      - 'site/tests/renderer-surface-plan-worker.test.mjs'
+      - 'site/three-view.js'
       - '.github/workflows/ui-v2-p1-cpu.yml'
   workflow_dispatch:
 
@@ -35,7 +43,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Targeted renderer parity and History integrity tests
-        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
