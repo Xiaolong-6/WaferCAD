@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadWorkspaceState } from '../workspace-persistence.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { loadWorkspaceState } = await import('../workspace-persistence.js');
 
 test('workspace restore sends only a load request and adopts the validated worker result', async () => {
   const OriginalWorker = globalThis.Worker;
