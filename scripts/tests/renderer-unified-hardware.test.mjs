@@ -387,8 +387,7 @@ test('R9 V4 phase-window classification requires real production 4x-MSAA evidenc
   assert.equal(focus.artifact.endsWith('focused-129-154'), true);
   const focusEvidence = structuredClone(valid);
   focusEvidence.focusWindowDiagnostic = true;
-  const focusedStatus = (report) =>
-    classifyRendererHardwareStep({ ...focus, exitCode: 0 }, report);
+  const focusedStatus = (report) => classifyRendererHardwareStep({ ...focus, exitCode: 0 }, report);
   assert.equal(focusedStatus(focusEvidence), 'diagnostic-complete');
   assert.equal(focusedStatus(valid), 'error');
   const missingFocusedDraw = structuredClone(focusEvidence);
