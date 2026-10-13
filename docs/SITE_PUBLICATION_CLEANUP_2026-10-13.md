@@ -22,12 +22,9 @@
 
 ## Publication inventory
 
-A Git-tree inclusion audit of the first implementation revision found:
-
-| Metric | Before | Staged |
-| --- | ---: | ---: |
-| Files | 347 | 205 |
-| Bytes | 48,311,837 | 27,183,349 |
+A Git-tree inclusion audit of the first implementation revision found
+347 tracked files (48,311,837 bytes) in `site/` before filtering and
+205 files (27,183,349 bytes) in the staged production tree.
 
 This represents 21,128,488 bytes (43.73%) fewer files in the public artifact.
 It does not establish an equivalent reduction in page startup downloads.
