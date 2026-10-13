@@ -8,6 +8,28 @@ root = pathlib.Path(sys.argv[1])
 expected_layers = {(1, 0), (7, 3), (4, 2)}
 results = []
 
+
+def assert_exact_rectangle(layout, top, layer, corners_um, filename):
+    layer_index = layout.find_layer(*layer)
+    if layer_index is None or layer_index < 0:
+        raise AssertionError(f"{filename}: missing rectangle layer {layer}")
+    dbu = layout.dbu
+    x0, y0, x1, y1 = (round(value / dbu) for value in corners_um)
+    expected = kdb.Region(kdb.Box(x0, y0, x1, y1))
+    actual = kdb.Region(top.begin_shapes_rec(layer_index))
+    if not (actual ^ expected).is_empty():
+        raise AssertionError(
+            f"{filename}: layer {layer} differs from the exact physical polygon "
+            f"{corners_um} um; expected area {expected.area() * dbu * dbu}, "
+            f"actual area {actual.area() * dbu * dbu}"
+        )
+    return {
+        "layer": list(layer),
+        "corners_um": list(corners_um),
+        "area_um2": actual.area() * dbu * dbu,
+    }
+
+
 for name in ("wafercad-export.gds", "wafercad-export.oas"):
     path = root / name
     layout = kdb.Layout()
@@ -34,8 +56,13 @@ for name in ("wafercad-export.gds", "wafercad-export.oas"):
         raise SystemExit(
             f"{name}: unexpected bbox {width_um:.6f} x {height_um:.6f} um"
         )
+    exact_polygons = [
+        assert_exact_rectangle(layout, top, (1, 0), (-5, -4, 7, 6), name),
+        assert_exact_rectangle(layout, top, (7, 3), (10, 2, 14, 8), name),
+    ]
     results.append(
         {
+            "exact_polygons": exact_polygons,
             "file": name,
             "top_cell": top.name,
             "layers": sorted([list(item) for item in present_layers]),
@@ -58,8 +85,12 @@ if (40000, 17) not in large_layers:
     raise SystemExit(
         f"{large_path.name}: expected OASIS layer/datatype 40000/17, got {sorted(large_layers)}"
     )
+large_exact_polygon = assert_exact_rectangle(
+    large_layout, large_top, (40000, 17), (0, 0, 6, 4), large_path.name
+)
 results.append(
     {
+        "exact_polygons": [large_exact_polygon],
         "file": large_path.name,
         "top_cell": large_top.name,
         "layers": sorted([list(item) for item in large_layers]),

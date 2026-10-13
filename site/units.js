@@ -47,3 +47,14 @@ export function formatLengthInput(valueMicron, unit = 'um') {
     .replace(/\.0+$/, '')
     .replace(/(\.\d*?)0+$/, '$1');
 }
+
+// Compare editor values at their displayed precision. Allow only binary
+// conversion noise, never a deliberate physical-grid edit.
+export function displayLengthDraftChanged(value, formattedPhysicalValue) {
+  const draft = String(value ?? '').trim();
+  const parsed = Number(draft);
+  const expected = Number(formattedPhysicalValue);
+  if (!draft || !Number.isFinite(parsed) || !Number.isFinite(expected)) return true;
+  const ulpWindow = 8 * Number.EPSILON * Math.max(1, Math.abs(parsed), Math.abs(expected));
+  return Math.abs(parsed - expected) > ulpWindow;
+}
