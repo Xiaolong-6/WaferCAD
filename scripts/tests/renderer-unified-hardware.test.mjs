@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { preserveRendererHardwareEvidence } from '../test-helpers/renderer-hardware-evidence.mjs';
 import { rendererPhaseMilestones } from '../test-helpers/renderer-v3-phase-window.mjs';
 import { RENDERER_RASTER_STATE_FIELDS } from '../test-helpers/renderer-v3-raster-state.mjs';
+import { mockR9FocusEvidence } from './renderer-r9-focus-fixture.mjs';
 import {
   RENDERER_HARDWARE_BRANCHES,
   RENDERER_HARDWARE_V3_PINNED_SHA,
@@ -359,6 +360,7 @@ test('R9 V4 phase-window classification requires real production 4x-MSAA evidenc
       ...comparison,
       pixelDifference: { pixelIdentical: false },
       framebufferIdentical: false,
+      focusedDrawInputsIdentical: true,
     })),
     trials: labels.map((label) => ({
       ...structuredClone(checkpoint),
@@ -370,6 +372,7 @@ test('R9 V4 phase-window classification requires real production 4x-MSAA evidenc
         contextPreserveDrawingBuffer: false,
         defaultFramebufferSamples: 4,
         glState: { framebuffer: 'default' },
+        focusDraws: mockR9FocusEvidence(),
       },
     })),
   };
