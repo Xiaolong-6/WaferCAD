@@ -47,9 +47,7 @@ try {
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
     () =>
-      /Saved .* locally/.test(
-        document.querySelector('[data-slot="status.message"]')?.textContent,
-      ),
+      /Saved .* locally/.test(document.querySelector('[data-slot="status.message"]')?.textContent),
     null,
     { timeout: 120000 },
   );
