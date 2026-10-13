@@ -23,11 +23,19 @@ import {
 test('R9 preserved-MSAA native evidence includes the WebGL drawing-buffer attribute', async () => {
   // The probe emitted this attribute before, but the report projection omitted
   // it and every native run stopped at 1-OFF with actual=undefined.
-  const source = await readFile(new URL('../renderer-electrical-fresh-context-ab.mjs', import.meta.url), 'utf8');
-  const projection = source.match(/native:\s*\{([\s\S]*?)\n\s*\},\n\s*cameraWorld: trace\.cameraWorld/);
+  const source = await readFile(
+    new URL('../renderer-electrical-fresh-context-ab.mjs', import.meta.url),
+    'utf8',
+  );
+  const projection = source.match(
+    /native:\s*\{([\s\S]*?)\n\s*\},\n\s*cameraWorld: trace\.cameraWorld/,
+  );
   assert.ok(projection, 'native WebGL evidence projection must exist');
   assert.match(projection[1], /contextAntialias:\s*frame\.contextAntialias/);
-  assert.match(projection[1], /contextPreserveDrawingBuffer:\s*frame\.contextPreserveDrawingBuffer/);
+  assert.match(
+    projection[1],
+    /contextPreserveDrawingBuffer:\s*frame\.contextPreserveDrawingBuffer/,
+  );
   assert.match(projection[1], /defaultFramebufferSamples:\s*frame\.defaultFramebufferSamples/);
 });
 
@@ -357,7 +365,10 @@ test('preserved 4x-MSAA experiment is V4-only and cannot pass product acceptance
   );
   const missingPreservation = structuredClone(valid);
   delete missingPreservation.trials[0].native.contextPreserveDrawingBuffer;
-  assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, missingPreservation), 'error');
+  assert.equal(
+    classifyRendererHardwareStep({ ...step, exitCode: 0 }, missingPreservation),
+    'error',
+  );
   const invalid = structuredClone(valid);
   invalid.trials[2].native.defaultFramebufferSamples = 0;
   assert.equal(classifyRendererHardwareStep({ ...step, exitCode: 0 }, invalid), 'error');
