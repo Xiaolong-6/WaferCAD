@@ -181,9 +181,8 @@ export function buildRenderSurfacePlan(model, clip = null) {
     return ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip);
   }
 
-  const key = surfacePlanCacheKey(model, clip),
-    cached = surfacePlanCache.get(model);
-  if (cached?.key === key) return cached.plan;
+  const cached = cachedRenderSurfacePlan(model, clip);
+  if (cached) return cached;
 
   const plan = isArrayModel(model)
       ? buildArrayRenderPlan(visibleMaterialModel(model), clip, buildRenderSurfacePlan)
@@ -195,6 +194,12 @@ export function buildRenderSurfacePlan(model, clip = null) {
     };
   rememberRenderSurfacePlan(model, clip, result);
   return result;
+}
+
+export function cachedRenderSurfacePlan(model, clip = null) {
+  if (!model || typeof model !== 'object') return null;
+  const cached = surfacePlanCache.get(model);
+  return cached?.key === surfacePlanCacheKey(model, clip) ? cached.plan : null;
 }
 
 // A background worker returns the very same deterministic physical plan.
