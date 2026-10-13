@@ -23,7 +23,8 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
   }
   const cached = cachedRenderSurfacePlan(model, clip);
   if (cached) return cached;
-  if (signal?.aborted) throw Object.assign(new Error('Surface build superseded'), { name: 'AbortError' });
+  if (signal?.aborted)
+    throw Object.assign(new Error('Surface build superseded'), { name: 'AbortError' });
   return new Promise((resolve, reject) => {
     let worker;
     let settled = false;
