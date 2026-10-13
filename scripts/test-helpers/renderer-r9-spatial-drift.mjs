@@ -74,7 +74,7 @@ export function summarizeRendererR9SpatialDrift(reference, candidate) {
     changedWithNoNeighborVariation,
     highestLocalRgbVariation,
     changedPixelsWithLocalRgbVariationAbove: thresholds,
-    gradientDefinition: 'maximum absolute 8-bit RGB difference to 4-connected neighbors in the reference PNG',
-    interpretation: 'observational-locality-only-not-proof-of-MSAA-or-edge-causation',
+    gradientDefinition: 'max RGB delta to neighboring reference pixels',
+    interpretation: 'observational-only; no MSAA causality inferred',
   };
 }
