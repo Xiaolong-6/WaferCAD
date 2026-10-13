@@ -1045,7 +1045,31 @@ export function createThreeView({
         stats.textContent = '3D restored';
       }
       host.dataset.rendererFrameSerial = String(completedFrameSerial);
-      host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
+      const frameCompletedAt = performance.now();
+      const submitDurationMs = frameCompletedAt - frameStartedAt;
+      host.dataset.rendererFrameMs = String(submitDurationMs);
+      if (responsiveInputMetrics) {
+        const inputToSubmitMs = responsiveLatency.completeFrame(
+          frameCompletedAt,
+          submitDurationMs,
+        );
+        const measures = responsiveLatency.snapshot();
+        host.dataset.rendererInputSamples = String(measures.inputSamples);
+        host.dataset.rendererInputToSubmitP95Ms = String(
+          measures.inputToSubmitP95Ms ?? '',
+        );
+        host.dataset.rendererInputToSubmitMaxMs = String(
+          measures.inputToSubmitMaxMs ?? '',
+        );
+        host.dataset.rendererFrameSubmitP95Ms = String(
+          measures.frameSubmitP95Ms ?? '',
+        );
+        host.dataset.rendererFrameSubmitMaxMs = String(
+          measures.frameSubmitMaxMs ?? '',
+        );
+        if (inputToSubmitMs !== null)
+          host.dataset.rendererInputToSubmitLastMs = String(inputToSubmitMs);
+      }
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
       if (interacting || changed) scheduleFrame();
@@ -3056,6 +3080,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           controls.target.set(0, 0, 0);
           controls.enableDamping = true;
           controls.addEventListener('start', () => {
+            if (responsiveInputMetrics) responsiveLatency.markInput(performance.now());
             interacting = true;
             cameraDampingPending = true;
             clearRoughRefineTimer();
@@ -3088,10 +3113,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             scheduleFrame();
           });
           controls.addEventListener('change', () => {
+            if (responsiveInputMetrics && interacting) responsiveLatency.markInput(performance.now());
             if (!interacting) scheduleDetailedRoughBuild();
             scheduleFrame();
           });
           controls.addEventListener('end', () => {
+            if (responsiveInputMetrics) responsiveLatency.markInput(performance.now());
             interacting = false;
             host.dataset.interactionPixelRatio = String(renderer.getPixelRatio());
             pendingViewState = getViewState();
