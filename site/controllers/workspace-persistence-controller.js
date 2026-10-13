@@ -478,11 +478,7 @@ export function createWorkspacePersistenceController({
               .querySelector('.workspace')
               ?.setAttribute(
                 'data-autosave-retry-reason',
-                !hasWriteAccess()
-                  ? 'lease'
-                  : result === 'stale'
-                    ? 'history-stale'
-                    : 'edit-version',
+                !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
               );
             saving = false;
             dirty = true;
