@@ -21,6 +21,7 @@ import {
   SupersededRendererBuild,
   isRendererBuildSuperseded,
   shouldStageRendererScene,
+  shouldHideRendererPreviewMesh,
 } from './renderer-responsive-staging.js';
 import { surveyV4FeatureFootprints } from './renderer-v4-feature-footprints.js';
 import { censusV4SceneResources } from './renderer-v4-resource-census.js';
@@ -126,6 +127,8 @@ export function createThreeView({
   // Experimental P0: retain the last committed scene during a new model/ROI build.
   // No default change until full-wafer, rejection, and revision-supersession gates pass.
   const responsiveModelStaging = rendererParams.get('rendererResponsiveModelStage') === '1';
+  const responsiveInteractionPreview =
+    rendererParams.get('rendererResponsiveInteraction') === '1';
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
@@ -208,6 +211,8 @@ export function createThreeView({
   let physicalSurfacePlan = null;
   let activeSceneVariant = null;
   let sceneVariantCache = new Map();
+  let previewRestoreTimer = null;
+  const previewHiddenMeshes = new Map();
 
   function renderPolicy(interactive = interacting) {
     return threeRenderPolicy({ fast: getInspection()?.fast !== false, interactive });
@@ -1104,6 +1109,10 @@ export function createThreeView({
 
   function disposeGroup() {
     if (!group) return;
+    if (previewRestoreTimer != null) clearTimeout(previewRestoreTimer);
+    previewRestoreTimer = null;
+    previewHiddenMeshes.clear();
+    delete host.dataset.rendererInteractionPreview;
     clearRoughRefineTimer();
     terminateRoughWorker({ invalidate: true });
     roughInteractionCache = null;
@@ -1539,6 +1548,73 @@ export function createThreeView({
           : (object.userData?.waferCadBorderOrder ?? object.renderOrder);
     } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
+  }
+
+  // For an actively manipulated heavy transparent wafer, draw exposed geometry
+  // first and defer costly *internal display-only* surfaces until pointer-up.
+  // The authoritative model and every mesh stay allocated and unchanged.
+  function enterInteractionPreview() {
+    if (previewRestoreTimer != null) clearTimeout(previewRestoreTimer);
+    previewRestoreTimer = null;
+    if (previewHiddenMeshes.size) return true;
+    if (!responsiveInteractionPreview || !presentationObjects.size) return false;
+    const hasRoi = Boolean(getClipGeometry());
+    for (const object of presentationObjects) {
+      if (shouldHideRendererPreviewMesh({
+        enabled: responsiveInteractionPreview,
+        sceneVariant: activeSceneVariant,
+        arrayInstances: host.dataset.arrayInstances,
+        kind: object.userData?.waferCadPresentation?.kind,
+        visible: object.visible === true,
+        hasRoi,
+      })) {
+        previewHiddenMeshes.set(object, true);
+        object.visible = false;
+      }
+    }
+    if (!previewHiddenMeshes.size) return false;
+    host.dataset.rendererInteractionPreview = 'active';
+    host.dataset.rendererPreviewHiddenMeshes = String(previewHiddenMeshes.size);
+    host.dataset.renderPhase = 'interactive-preview';
+    stats.textContent = '3D interactive preview · internal details deferred';
+    refreshTransparentRegistry();
+    return true;
+  }
+
+  function leaveInteractionPreview() {
+    if (previewRestoreTimer != null) clearTimeout(previewRestoreTimer);
+    previewRestoreTimer = null;
+    if (!previewHiddenMeshes.size) return false;
+    for (const [object, priorVisibility] of previewHiddenMeshes) object.visible = priorVisibility;
+    previewHiddenMeshes.clear();
+    delete host.dataset.rendererInteractionPreview;
+    host.dataset.rendererPreviewHiddenMeshes = '0';
+    refreshTransparentRegistry();
+    return true;
+  }
+
+  function scheduleInteractionDetail() {
+    if (!previewHiddenMeshes.size) return false;
+    if (previewRestoreTimer != null) clearTimeout(previewRestoreTimer);
+    previewRestoreTimer = setTimeout(() => {
+      previewRestoreTimer = null;
+      if (interacting || rendering) {
+        scheduleInteractionDetail();
+        return;
+      }
+      if (!leaveInteractionPreview()) return;
+      syncRenderPolicy();
+      transparencyOrderDirty = true;
+      updateTransparentOrder();
+      scheduleDetailedRoughBuild();
+      refreshCameraArrayLod();
+      host.dataset.renderPhase = 'complete';
+      stats.textContent = hasMaterial(getModel())
+        ? getClipGeometry() ? 'ROI' : 'full model'
+        : 'no material';
+      scheduleFrame();
+    }, 180);
+    return true;
   }
 
   function refreshTransparentRegistry() {
@@ -2898,6 +2974,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               resize();
             }
             host.dataset.interactionPixelRatio = String(interactionPixelRatio);
+            enterInteractionPreview();
             if (
               roughInteractionCache &&
               roughInteractionCache.sceneGeneration === sceneGeneration
@@ -2920,14 +2997,20 @@ diffuseColor.a *= waferCadAlphaScale;`,
           });
           controls.addEventListener('end', () => {
             interacting = false;
+            host.dataset.interactionPixelRatio = String(renderer.getPixelRatio());
+            pendingViewState = getViewState();
+            onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
+            if (scheduleInteractionDetail()) {
+              // Keep the lightweight preview for a short quiet period; restore
+              // exact transparency and full DPR before any final inspection.
+              scheduleFrame();
+              return;
+            }
             syncRenderPolicy();
             transparencyOrderDirty = true;
             updateTransparentOrder();
-            host.dataset.interactionPixelRatio = String(renderer.getPixelRatio());
             scheduleDetailedRoughBuild();
             refreshCameraArrayLod();
-            pendingViewState = getViewState();
-            onViewChanged(pendingViewState ? structuredClone(pendingViewState) : null);
             scheduleFrame();
           });
 
@@ -2987,6 +3070,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
       pendingRender = true;
       return;
     }
+    // Never cache a display-only interaction preview as a committed scientific
+    // scene when Process, ROI, opacity or Quality changes during a gesture.
+    if (previewHiddenMeshes.size) leaveInteractionPreview();
     clearRendererBuildFailure(host);
     const model = getModel();
     if (!model) return;
