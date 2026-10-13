@@ -38,6 +38,8 @@ import {
 } from './renderer-v4-tile-plan.js';
 import { canIndexSmoothWalls, pushIndexedSmoothWall } from './renderer-quality-index-experiment.js';
 import { canPrepareSmoothSidewallsInWorker } from './renderer-v4-smooth-sidewall-data.js';
+import { runRendererUnitsInSlices } from './renderer-responsive-budget.js';
+import { createRendererLatencyTracker } from './renderer-responsive-latency.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -131,6 +133,9 @@ export function createThreeView({
   const responsiveInteractionPreview = rendererParams.get('rendererResponsiveInteraction') === '1';
   const responsiveSmoothSidewallWorker =
     rendererParams.get('rendererResponsiveSmoothWorker') === '1';
+  const responsiveRoughBudget = rendererParams.get('rendererResponsiveRoughBudget') === '1';
+  const responsiveInputMetrics = rendererParams.get('rendererResponsiveMetrics') === '1';
+  const responsiveLatency = createRendererLatencyTracker();
   const v4TileCacheEnabled = rendererParams.get('rendererV4TileCache') === '1';
   const v4FeatureSurveyEnabled = rendererParams.get('rendererV4FeatureSurvey') === '1';
   const v4FastSmoothIndex = rendererParams.get('rendererV4FastSmoothIndex') === '1';
@@ -2479,27 +2484,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
     };
   }
 
-  function applyRoughMeshResults(
-    results,
-    diagnostics,
-    mode,
-    signature = null,
-    sceneToken = roughRenderContext?.sceneGeneration ?? null,
-  ) {
-    const context = roughRenderContext;
-    if (
-      !context ||
-      sceneToken == null ||
-      context.sceneGeneration !== sceneToken ||
-      sceneGeneration !== sceneToken
-    ) {
-      return false;
-    }
-    clearAdaptiveRoughObjects();
-
-    for (const result of results || []) {
+  // Share exact mesh creation between the existing synchronous commit and an
+  // optional cooperative path. Hidden staged objects become visible atomically
+  // only when applyPresentationState runs after the final geometry unit.
+  function appendRoughMeshResult(result, context, mode, { hidden = false } = {}) {
       const task = roughTasks[result.taskId];
-      if (!task || !result.data) continue;
+      if (!task || !result.data) return;
       const cap = task.cap,
         meshData = task.implant
           ? {
@@ -2547,6 +2537,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       if (mesh) {
         roughOwnedObjects.add(mesh);
         if (task.name) mesh.name = task.name;
+        if (hidden) mesh.visible = false;
       }
 
       if (
@@ -2554,7 +2545,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         !cap.buried &&
         geometry.userData.roughBorderPositions?.length
       ) {
-        addBorderPositions(
+        const border = addBorderPositions(
           instanceBorderPositions(geometry.userData.roughBorderPositions, cap.instanceTranslations),
           {
             order: 100010 + (cap.solidIndex || 0),
@@ -2563,9 +2554,35 @@ diffuseColor.a *= waferCadAlphaScale;`,
             presentation: { kind: 'border' },
           },
         );
+        if (hidden && border) border.visible = false;
       }
     }
 
+  function applyRoughMeshResults(
+    results,
+    diagnostics,
+    mode,
+    signature = null,
+    sceneToken = roughRenderContext?.sceneGeneration ?? null,
+  ) {
+    const context = roughRenderContext;
+    if (
+      !context ||
+      sceneToken == null ||
+      context.sceneGeneration !== sceneToken ||
+      sceneGeneration !== sceneToken
+    ) {
+      return false;
+    }
+    clearAdaptiveRoughObjects();
+
+    for (const result of results || []) appendRoughMeshResult(result, context, mode);
+
+
+    return finalizeRoughMeshResults(diagnostics, mode, signature, context);
+  }
+
+  function finalizeRoughMeshResults(diagnostics, mode, signature, context) {
     roughRebuildCount++;
     currentRoughMode = mode;
     const data = renderer?.domElement?.dataset;
@@ -2595,6 +2612,57 @@ diffuseColor.a *= waferCadAlphaScale;`,
       : 'no material';
     scheduleFrame();
     return true;
+  }
+
+  // P2.2 opt-in: assemble each Worker result in small main-thread slices.
+  // Each geometry/mesh is individually atomic; WebGL draw/upload is NOT
+  // preemptible. Foreground pointer activity takes precedence between units.
+  async function applyRoughMeshResultsBudgeted(
+    results,
+    diagnostics,
+    mode,
+    signature,
+    sceneToken,
+    generation,
+  ) {
+    const context = roughRenderContext;
+    const current = () =>
+      roughRenderContext === context &&
+      context?.sceneGeneration === sceneToken &&
+      sceneGeneration === sceneToken &&
+      generation === roughWorkerGeneration;
+    if (!current()) return false;
+    clearAdaptiveRoughObjects();
+    host.dataset.renderState = 'refining';
+    host.dataset.renderPhase = 'assembling-rough';
+    const started = performance.now();
+    const applied = await runRendererUnitsInSlices(
+      results || [],
+      (result) => appendRoughMeshResult(result, context, mode, { hidden: true }),
+      {
+        now: () => performance.now(),
+        yieldControl: () =>
+          yieldRendererAssembly({
+            requestFrame: requestAnimationFrame,
+            postTask: (resume) => setTimeout(resume, 0),
+          }),
+        isCurrent: current,
+        foregroundBusy: () => interacting || rendering,
+        budgetMs: INTERACTIVE_ASSEMBLY_SLICE_MS,
+        maxUnitsPerSlice: 8,
+      },
+    );
+    host.dataset.rendererRoughAssemblyYields = String(applied.yields);
+    host.dataset.rendererRoughAssemblyUnits = String(applied.processed);
+    host.dataset.rendererRoughAssemblyWallMs = String(performance.now() - started);
+    host.dataset.rendererRoughAssemblyMaxUnitMs = String(applied.maxUnitMs);
+    if (!applied.completed || !current()) {
+      if (current()) clearAdaptiveRoughObjects();
+      host.dataset.rendererRoughAssemblyCancelled = 'true';
+      return false;
+    }
+    host.dataset.rendererRoughAssemblyCancelled = 'false';
+    return finalizeRoughMeshResults(diagnostics, mode, signature, context);
   }
 
   function roughWorkerPayload(prepared) {
@@ -2671,7 +2739,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         worker.terminate();
       };
 
-      worker.onmessage = (event) => {
+      worker.onmessage = async (event) => {
         const message = event.data || {};
         if (message.id !== id || message.generation !== generation) return;
         if (generation !== roughWorkerGeneration) {
@@ -2700,13 +2768,35 @@ diffuseColor.a *= waferCadAlphaScale;`,
             sceneGeneration: sceneToken,
           };
         }
-        const applied = applyRoughMeshResults(
-          message.results,
-          diagnostics,
-          mode,
-          interactive ? null : signature,
-          sceneToken,
-        );
+        let applied = false;
+        try {
+          applied =
+            responsiveRoughBudget && !interactive && message.results.length >= 8
+              ? await applyRoughMeshResultsBudgeted(
+                  message.results,
+                  diagnostics,
+                  mode,
+                  signature,
+                  sceneToken,
+                  generation,
+                )
+              : applyRoughMeshResults(
+                  message.results,
+                  diagnostics,
+                  mode,
+                  interactive ? null : signature,
+                  sceneToken,
+                );
+        } catch (error) {
+          console.warn('Budgeted rough scene application failed.', error);
+          // Do not misrepresent partially staged geometry as a final scene.
+          if (generation === roughWorkerGeneration && sceneGeneration === sceneToken) {
+            clearAdaptiveRoughObjects();
+            host.dataset.renderState = 'error';
+            host.dataset.renderPhase = 'failed';
+            stats.textContent = '3D rough geometry failed';
+          }
+        }
         if (host?.dataset) {
           host.dataset.rendererRoughMs = String(performance.now() - rendererRoughStart);
           const profileStart = roughRenderContext?.profileStart;
