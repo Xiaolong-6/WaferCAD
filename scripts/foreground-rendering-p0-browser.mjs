@@ -26,11 +26,16 @@ try {
     const snapshot = () => host.evaluate((element) => ({ ...element.dataset }));
     await page.goto(baseUrl + '/app-legacy.html');
     await waitForAppReady(page);
-    await page.locator('#openProjectInput').setInputFiles(
-      fileURLToPath(
-        new URL('../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad', import.meta.url),
-      ),
-    );
+    await page
+      .locator('#openProjectInput')
+      .setInputFiles(
+        fileURLToPath(
+          new URL(
+            '../site/examples/three-tier-silicon-jlfets-full-wafer.wafercad',
+            import.meta.url,
+          ),
+        ),
+      );
     await chooseConfirmation(page);
     await page.waitForFunction(
       () => document.getElementById('statusText')?.textContent?.startsWith('Opened '),
@@ -52,34 +57,52 @@ try {
     const slider = page.locator('#threeOpacityRange');
     result.stage = 'supersede-cold-transparent';
     await slider.fill('0.5');
-    await page.waitForFunction(() => {
-      const d = document.getElementById('threeHost')?.dataset;
-      return d?.rendererUpdateKind === 'variant-build' &&
-        d?.renderState === 'building' &&
-        d?.rendererRetainedCompleteVisible === 'true';
-    }, null, { timeout: 180000 });
+    await page.waitForFunction(
+      () => {
+        const d = document.getElementById('threeHost')?.dataset;
+        return (
+          d?.rendererUpdateKind === 'variant-build' &&
+          d?.renderState === 'building' &&
+          d?.rendererRetainedCompleteVisible === 'true'
+        );
+      },
+      null,
+      { timeout: 180000 },
+    );
     const during = await snapshot();
     assert.equal(during.rendererRetainedCompleteVisible, 'true');
     // A real UI opacity request supersedes the in-flight hidden candidate.
     await slider.fill('1');
-    await page.waitForFunction(() => {
-      const d = document.getElementById('threeHost')?.dataset;
-      return Number(d?.rendererSupersededBuilds || 0) >= 1 &&
-        d?.renderState === 'ready' &&
-        d?.sceneVariant === 'opaque';
-    }, null, { timeout: 180000 });
+    await page.waitForFunction(
+      () => {
+        const d = document.getElementById('threeHost')?.dataset;
+        return (
+          Number(d?.rendererSupersededBuilds || 0) >= 1 &&
+          d?.renderState === 'ready' &&
+          d?.sceneVariant === 'opaque'
+        );
+      },
+      null,
+      { timeout: 180000 },
+    );
     const restored = await snapshot();
     assert.ok(Number(restored.rendererVariantRollbacks || 0) >= 1);
     assert.equal(restored.rendererRetainedCompleteVisible, 'false');
     assert.equal(restored.rendererBuildFailure, undefined);
     result.stage = 'commit-next-transparent';
     await slider.fill('0.5');
-    await page.waitForFunction(() => {
-      const d = document.getElementById('threeHost')?.dataset;
-      return d?.renderState === 'ready' &&
-        d?.sceneVariant === 'transparent' &&
-        Number(d?.rendererCommittedVariantSwaps || 0) >= 1;
-    }, null, { timeout: 180000 });
+    await page.waitForFunction(
+      () => {
+        const d = document.getElementById('threeHost')?.dataset;
+        return (
+          d?.renderState === 'ready' &&
+          d?.sceneVariant === 'transparent' &&
+          Number(d?.rendererCommittedVariantSwaps || 0) >= 1
+        );
+      },
+      null,
+      { timeout: 180000 },
+    );
     const committed = await snapshot();
     assert.equal(committed.rendererRetainedCompleteVisible, 'false');
     assert.equal(committed.rendererBuildFailure, undefined);

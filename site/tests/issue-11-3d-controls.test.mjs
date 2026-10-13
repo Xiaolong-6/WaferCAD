@@ -201,12 +201,13 @@ test('3D variant builds retain the completed presentation until commit or rollba
   const commit = threeView.slice(commitStart, commitEnd);
   assert.ok(commitStart >= 0 && commitEnd > commitStart);
   assert.ok(
-    commit.indexOf('applyPresentationState(') < commit.indexOf('scene.remove(previousVariantGroup)'),
+    commit.indexOf('applyPresentationState(') <
+      commit.indexOf('scene.remove(previousVariantGroup)'),
   );
   assert.match(commit, /previousVariantGroup && previousVariantGroup !== group/);
 
   const rollback = threeView.slice(
-    threeView.indexOf("} catch (error) {", commitEnd),
+    threeView.indexOf('} catch (error) {', commitEnd),
     threeView.indexOf('} finally {', commitEnd),
   );
   assert.match(rollback, /scene\.remove\(failedGroup\)/);
