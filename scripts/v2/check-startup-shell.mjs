@@ -66,7 +66,7 @@ try {
     } finally {
       clearTimeout(requestTimeout);
     }
-    await page.waitForSelector('.p-workbench[data-boot="loading"]');
+    await page.waitForSelector('.p-workbench[data-boot="project"]');
     assert.equal(await page.locator('body').getAttribute('data-ready'), 'false');
     assert.equal(
       await page.locator('.p-nav [data-action^="domain:"]').count(),
@@ -80,9 +80,11 @@ try {
     );
     assert.equal(
       await page.locator('.p-canvases').evaluate((node) => getComputedStyle(node).visibility),
-      'hidden',
-      'Default wafer and unordered Section/3D canvases must never flash',
+      'visible',
+      'The stable four-view grid remains visible during project import',
     );
+    assert.equal(await page.locator('.p-view[data-view-load="pending"]').count(), 4);
+    assert.equal(await page.locator('.p-workbench').getAttribute('data-project-ready'), 'false');
     const before = await dimensions(page);
     assert.ok(
       Math.abs(before.editorWidth - expectedPanelWidth(1700)) < 2,
@@ -93,6 +95,14 @@ try {
       timeout: 120000,
     });
     assert.equal(await page.locator('.p-workbench').getAttribute('data-boot'), 'ready');
+    await page.waitForFunction(
+      () => ['main', 'mask', 'section'].every(
+        (key) => window.WaferCadV2Workstation.startup().views[key] === 'ready',
+      ),
+      null,
+      { timeout: 120000 },
+    );
+    assert.equal(await page.locator('.p-workbench').getAttribute('data-first-frame-ready'), 'true');
     const after = await dimensions(page);
     assert.ok(Math.abs(after.editorWidth - before.editorWidth) < 2);
     assert.ok(Math.abs(after.stageX - before.stageX) < 2);
