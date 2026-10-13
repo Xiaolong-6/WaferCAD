@@ -902,6 +902,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     status,
     buildProjectSnapshot: projectState.buildProjectSnapshot,
     loadProjectSnapshot: domain.load,
+    cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshot,
     snapshotManager: history,
     syncBaseControls: domain.syncBaseControls,
     syncTransformInputs: domain.importer.syncTransformInputs,
