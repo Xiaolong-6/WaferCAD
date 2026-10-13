@@ -9,7 +9,8 @@ const vendor = readFileSync(new URL('../vendor/polygon-clipping.umd.js', import.
 const cjs = { exports: {} };
 new Function('module', 'exports', vendor)(cjs, cjs.exports);
 globalThis.polygonClipping = cjs.exports;
-const { createSectionCollapseController } = await import('../controllers/section-collapse-controller.js');
+const { createSectionCollapseController } =
+  await import('../controllers/section-collapse-controller.js');
 
 test('Z Break editor keeps geometry and tooltip ownership in existing controllers', async () => {
   const source = await readFile('site/ui-v2/z-break-editor.js', 'utf8');
