@@ -12,7 +12,7 @@ The compact pane is owned by `uiState.mobile` (`view | edit`). `presentation.edi
 
 ## Layout and scroll contract
 
-`mobile-workstation.css` (loaded only by the two production Workstation entries) bounds the mobile Workstation to `100dvh` minus its shell margins, with the topbar, navigation and status as non-scrolling chrome.
+`mobile-workstation.css` (loaded by the canonical production `site/app.html` entry) bounds the mobile Workstation to `100dvh` minus its shell margins, with the topbar, navigation and status as non-scrolling chrome.
 
 Only one primary region scrolls at a time:
 
