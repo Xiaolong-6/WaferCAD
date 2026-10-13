@@ -4,6 +4,7 @@ import { createMaskBrowserController } from '../controllers/mask-browser-control
 import { createMaskImportController } from '../controllers/mask-import-controller.js';
 import { MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { buildProcessReportData } from '../process-report.js';
+import { captureHistorySections } from '../report-history-captures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
 
@@ -457,10 +458,43 @@ export function createProjectMaskPanels({
             captures.length = 0;
             warnings.push('Model changed while capturing; view images omitted.');
           }
+          updateStage('Rendering selected saved Sections…');
+          const sections = await captureHistorySections({
+            data,
+            readNodeState: (nodeId) => history.readProcessNodeState(nodeId),
+            render: ({ state: savedState, nodeId }) =>
+              runWorker('../report-history-section-worker.js', {
+                state: savedState,
+                nodeId,
+              }),
+            signal,
+            onProgress: (index, count) => updateStage(`Historical Section ${index} of ${count}…`),
+          });
+          if (sections.aborted || signal.aborted) return { aborted: true };
+          // Report data and saved-node captures must refer to one immutable
+          // ledger. Never silently include mixed before/after workspace states.
+          const latestHistory = history.listHistory();
+          if (
+            state.model.revision !== revision ||
+            latestHistory.length !== data.steps.length ||
+            latestHistory.some(
+              (step, index) =>
+                step.id !== data.steps[index].id ||
+                step.processRevision !== data.steps[index].processRevision,
+            )
+          ) {
+            throw new Error('Workspace or Process History changed during report export.');
+          }
           updateStage('Building offline report…');
           return runWorker(
             '../process-report-worker.js',
-            { data, captures, warnings },
+            {
+              data,
+              captures,
+              warnings,
+              historicalSections: sections.figures,
+              historicalFailures: sections.failures,
+            },
             { transfer: captures.map((capture) => capture.bytes.buffer) },
           );
         },
@@ -482,7 +516,7 @@ export function createProjectMaskPanels({
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
       workstation.status(
-        `Report requested: ${result.stepCount} steps, ${result.imageCount} views.`,
+        `Report requested: ${result.stepCount} steps, ${result.imageCount} current views, ${result.historicalImageCount} saved Sections.`,
       );
     } catch (error) {
       console.error(error);

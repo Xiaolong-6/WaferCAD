@@ -1,6 +1,5 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
-import { migrateProjectFile, validateProjectFile } from '../project-schema.js';
 import { bundledExampleById } from '../bundled-examples.js';
 import { upgradeBundledExampleHistory } from '../bundled-example-history.js';
 import { bufferBackedProjectFile, versionedExampleAssetPath } from '../example-asset.js';

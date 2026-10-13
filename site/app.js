@@ -3,8 +3,7 @@ import { isArrayModel } from './model-array.js';
 import { prepareMaskInstanceIndex } from './mask-instance-index.js';
 import { parseLayoutFile } from './layout-io.js';
 import { MAX_PROJECT_FILE_BYTES, readProjectFile } from './project-io.js';
-import { cloneModel, createModel, hasMaterial, surfaceSegment, surfaceZ } from './model.js';
-import { transformMulti } from './vector-geometry.js';
+import { cloneModel, createModel, hasMaterial } from './model.js';
 import { createThreeView } from './three-view.js';
 import {
   normalizeSectionViewport,
@@ -174,10 +173,6 @@ function markViewDirty() {
   workspacePersistenceController?.scheduleView();
 }
 
-function refreshRecoveryOptions() {
-  return workspacePersistenceController?.refreshRecoveryOptions() ?? Promise.resolve();
-}
-
 function checkpointWorkspace(reason) {
   return workspacePersistenceController?.checkpointCurrent(reason) ?? Promise.resolve(false);
 }
@@ -293,14 +288,6 @@ function formatNumericField(value, digits = 6) {
   const rounded = Number(number.toFixed(digits));
   return Object.is(rounded, -0) ? '0' : String(rounded);
 }
-function invMaskPoint([x, y]) {
-  const a = (-maskTransform.rotation * Math.PI) / 180,
-    c = Math.cos(a),
-    s = Math.sin(a),
-    dx = x - maskTransform.x,
-    dy = y - maskTransform.y;
-  return [(dx * c - dy * s) / maskTransform.scale, (dx * s + dy * c) / maskTransform.scale];
-}
 function maskPoint([x, y]) {
   const a = (maskTransform.rotation * Math.PI) / 180,
     c = Math.cos(a),
@@ -372,11 +359,9 @@ const maskBrowser = createMaskBrowserController({
 const {
   hierarchyFromParsed,
   ensureHierarchy,
-  activeScopeCells,
   selectedElement,
   globalLayers,
   syncMaskCellLabel,
-  setActiveCell,
   renderCellTree,
   renderMaskList,
 } = maskBrowser;

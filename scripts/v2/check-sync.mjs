@@ -212,7 +212,7 @@ try {
       assert.ok((await snap()).sectionDetailRoi);
       await command('section', 'zbreak-settings');
       await page.locator('#section-collapse-enabled').uncheck();
-      await page.getByRole('button', { name: 'Close Z Break · physical µm', exact: true }).click();
+      await page.getByRole('button', { name: 'Close Z Break', exact: true }).click();
       await ready3d();
       assert.equal(
         await page.locator('#threeHost').getAttribute('data-z-collapse-enabled'),

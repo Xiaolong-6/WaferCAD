@@ -5,7 +5,6 @@ import {
   normalizeSectionZScales,
   resolveSectionCollapse,
   sectionCollapseSnapValues,
-  translateSectionCollapse,
 } from '../section-z-collapse.js';
 
 export function createSectionCollapseController({
@@ -66,6 +65,16 @@ export function createSectionCollapseController({
       value.backScale = clamped;
     }
     setCurrent(value, { settled: true });
+  }
+
+  // Reuse canonical normalization as a pure acceptance check: a typed boundary
+  // must never silently move either edge or the other boundary.
+  function acceptsBoundary(which, requested) {
+    if ((which !== 'top' && which !== 'bottom') || !Number.isFinite(requested)) return false;
+    const before = current();
+    const candidate = { ...before, [which]: requested };
+    const normalized = normalizeSectionCollapse(candidate, bounds());
+    return normalized.top === candidate.top && normalized.bottom === candidate.bottom;
   }
 
   function toggleEnabled() {
@@ -361,7 +370,9 @@ export function createSectionCollapseController({
     bind,
     sync,
     close,
+    bounds,
     current,
+    acceptsBoundary,
     setCurrent,
     toggleEnabled,
     setSurfaceScale,

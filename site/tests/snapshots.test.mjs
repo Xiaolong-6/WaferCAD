@@ -2267,3 +2267,81 @@ test('read-only History navigation does not treat persisted project title as a p
     'Genuine mask edits must remain protected',
   );
 });
+
+test('historical report reader yields isolated state without restoring or editing workspace', () => {
+  let live = {
+    model: {
+      revision: 1,
+      processRevision: 1,
+      layers: [{ id: 'base', name: 'Si' }],
+      regions: [
+        {
+          geom: [
+            [
+              [0, 0],
+              [1, 0],
+              [1, 1],
+            ],
+          ],
+        },
+      ],
+    },
+    processRecipe: { steps: ['step-1'] },
+  };
+  let restoreCalls = 0;
+  let next = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      restoreCalls++;
+      live = state;
+    },
+    validateState: () => true,
+    nodeIdFactory: () => `process-${++next}`,
+  });
+  const one = manager.recordOperation({
+    kind: 'add',
+    maskContext: {
+      sourceMode: 'file',
+      cell: 'DIE',
+      layerKeys: ['2|0'],
+      roi: { type: 'rect', a: [0, 0], b: [1, 1] },
+    },
+  });
+  live = {
+    ...live,
+    model: {
+      ...live.model,
+      revision: 2,
+      processRevision: 2,
+      layers: [...live.model.layers, { id: 'oxide', name: 'SiO2' }],
+    },
+  };
+  const two = manager.recordOperation({ kind: 'add' });
+  const cursor = manager.currentPosition();
+  const first = manager.readProcessNodeState(one.id);
+  const second = manager.readProcessNodeState(two.id);
+  assert.equal(first.model.layers.length, 1);
+  assert.equal(first.activeCell, 'DIE');
+  assert.deepEqual(first.selectedLayerKeys, ['2|0']);
+  assert.deepEqual(first.maskRoi, { type: 'rect', a: [0, 0], b: [1, 1] });
+  assert.equal(second.model.layers.length, 2);
+  assert.deepEqual(first.processRecipe.steps, ['step-1']);
+  first.model.layers[0].name = 'Changed only the report copy';
+  first.model.regions[0].geom[0][0][0] = 9;
+  first.processRecipe.steps.push('injected');
+  first.selectedLayerKeys.push('9|9');
+  first.maskRoi.a[0] = 99;
+  const sameNodeAgain = manager.readProcessNodeState(one.id);
+  assert.equal(sameNodeAgain.model.layers[0].name, 'Si');
+  assert.equal(sameNodeAgain.model.regions[0].geom[0][0][0], 0);
+  assert.deepEqual(sameNodeAgain.processRecipe.steps, ['step-1']);
+  assert.deepEqual(sameNodeAgain.selectedLayerKeys, ['2|0']);
+  assert.equal(sameNodeAgain.maskRoi.a[0], 0);
+  assert.equal(manager.readProcessNodeState('absent'), null);
+  assert.equal(manager.readProcessNodeState(null), null);
+  assert.equal(restoreCalls, 0, 'Reading for reports must not call restore()');
+  assert.equal(live.model.processRevision, 2);
+  assert.deepEqual(manager.currentPosition(), cursor);
+  assert.equal(manager.listHistory().length, 2);
+});

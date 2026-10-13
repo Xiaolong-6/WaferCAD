@@ -378,6 +378,19 @@ export function createSnapshotManager({
     return branches.map((branch) => branchView(branch, activeBranchId, records, historyNodes));
   }
 
+  // Nonmutating, one-node-at-a-time historical state reader. Returns an isolated
+  // clone, never an internal checkpoint reference or a current live view.
+  function readProcessNodeState(nodeId) {
+    if (typeof nodeId !== 'string' || !nodeId) return null;
+    const node = nodeById(nodeId);
+    const saved = stateForProcessNode(node);
+    if (!saved) return null;
+    // A history image must use the mask/cell/ROI that the process actually
+    // used, not the inspector's currently selected mask. Double-isolate so
+    // state-cloner asset caches are never exposed outside Snapshot Manager.
+    return clone(stateWithOperationMaskContext(saved, node.operation));
+  }
+
   function activeBranch() {
     const branch = branchById(activeBranchId) || branches[0] || defaultMainBranch();
     return branchView(branch, activeBranchId, records, historyNodes);
@@ -1759,6 +1772,7 @@ export function createSnapshotManager({
     list,
     listHistory,
     listBranches,
+    readProcessNodeState,
     activeBranch,
     create,
     bookmarkStep,

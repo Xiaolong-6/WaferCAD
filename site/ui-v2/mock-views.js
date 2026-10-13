@@ -1,6 +1,6 @@
 // Source-fixture illustrations only; no scientific renderer imported.
 (() => {
-  const { el, button, field, select, toolbar } = window.WaferCadV2Components;
+  const { el, button, toolbar } = window.WaferCadV2Components;
   window.createWaferCadV2MockViews = ({
     state,
     data,
