@@ -30,6 +30,7 @@ import {
 } from './test-helpers/renderer-v3-phase-window.mjs';
 import { compareScreenshotPngPixels, decodeScreenshotPng } from './test-helpers/png-pixel-diff.mjs';
 import { checkRendererR9FocusEvidence } from './test-helpers/renderer-r9-focus-evidence.mjs';
+import { rendererFreshContextEvidencePath } from './test-helpers/renderer-hardware-output-path.mjs';
 
 const reportOnly = process.argv.includes('--report-only');
 const hardwareRtx3060 = process.argv.includes('--hardware-rtx3060');
@@ -88,15 +89,15 @@ assert.ok(
 );
 const output = new URL(
   hardwareGpu
-    ? diagnosticNoDither
-      ? '../test-results/renderer-hardware-fresh-context-ab-no-dither/'
-      : diagnosticNoMsaa
-        ? '../test-results/renderer-hardware-fresh-context-ab-no-msaa/'
-        : diagnosticPreservedMsaa
-          ? '../test-results/renderer-hardware-fresh-context-ab-preserved-msaa/'
-          : phaseWindowDiagnostic
-            ? `../test-results/renderer-hardware-fresh-context-ab-phase-window-${phaseWindow.low}-${phaseWindow.high}/`
-            : '../test-results/renderer-hardware-fresh-context-ab/'
+    ? '../' +
+        rendererFreshContextEvidencePath({
+          diagnosticNoDither,
+          diagnosticNoMsaa,
+          diagnosticPreservedMsaa,
+          phaseWindow,
+          focusWindowDiagnostic,
+        }) +
+        '/'
     : '../test-results/product-review/electrical-fresh-context/',
   import.meta.url,
 );
