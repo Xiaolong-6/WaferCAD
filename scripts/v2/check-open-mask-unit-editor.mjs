@@ -127,7 +127,7 @@ try {
       const editorField = spec.type === 'polygon' ? '#drawShapePoints' : '#drawShapeCx';
       await page.locator(editorField).waitFor({ state: 'visible' });
       const originalValue = await page.locator(editorField).inputValue();
-      const firstNumber = Number(originalValue.split(/[,\\s]/)[0]);
+      const firstNumber = Number(originalValue.split(/[,\s]/)[0]);
       assert.ok(Number.isFinite(firstNumber), spec.type + ' editable coordinate');
       const startingShapes = (await snapshot()).drawMask.shapes;
       const startAngle =
@@ -149,7 +149,7 @@ try {
         }, unit);
         await waitForPaint(page);
         const text = await page.locator(editorField).inputValue();
-        const coordinate = Number(text.split(/[,\\s]/)[0]);
+        const coordinate = Number(text.split(/[,\s]/)[0]);
         assert.ok(
           Math.abs(coordinate - firstNumber * multiplier) <
             Math.max(1e-9, Math.abs(firstNumber * multiplier) * 1e-11),
