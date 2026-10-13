@@ -11,6 +11,8 @@ import { chromium } from 'playwright';
 const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
 const base = `http://127.0.0.1:${port}`;
 const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
+const profiling = process.argv.includes('--profile');
+const RESPONSIVENESS_LONG_TASK_LIMIT_MS = 500;
 const output = join('test-results', 'p1-hardware');
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const report = {
@@ -22,6 +24,8 @@ const report = {
   viewport: { width: 1600, height: 950 },
   cases: {},
   errors: [],
+  cpuProfileCollected: false,
+  profiling,
 };
 await mkdir(output, { recursive: true });
 try {
@@ -29,7 +33,7 @@ try {
     encoding: 'utf8',
   }).trim();
 } catch {}
-let server, browser, context, page;
+let server, browser, context, page, profiler;
 const save = () => writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
 const checkServer = async () => {
   try {
@@ -95,6 +99,45 @@ async function photograph(name) {
   const bytes = await element.screenshot({ animations: 'disabled', timeout: 60000 });
   await writeFile(join(output, name), bytes);
   return sha256(bytes);
+}
+function responsiveness(vitals) {
+  const tasks = vitals?.longTasksMs || [];
+  const worst = Math.max(0, ...tasks);
+  return {
+    longestLongTaskMs: Math.round(worst),
+    longTasksOver500ms: tasks.filter((duration) => duration > 500).length,
+    longTasksOver1000ms: tasks.filter((duration) => duration > 1000).length,
+    firstFrameReadyMs: Math.round(vitals?.marks?.firstFrameReady ?? -1),
+    projectReadyMs: Math.round(vitals?.marks?.projectReady ?? -1),
+    responsive: worst <= RESPONSIVENESS_LONG_TASK_LIMIT_MS,
+  };
+}
+async function beginCpuProfile() {
+  if (!profiling) return;
+  profiler = await context.newCDPSession(page);
+  await profiler.send('Profiler.enable');
+  await profiler.send('Profiler.setSamplingInterval', { interval: 1000 });
+  await profiler.send('Profiler.start');
+}
+async function endCpuProfile() {
+  if (!profiler) return;
+  const { profile } = await profiler.send('Profiler.stop');
+  await writeFile(join(output, 'cpu-m3d-startup.cpuprofile'), JSON.stringify(profile));
+  const counts = new Map();
+  for (const sample of profile.samples || []) counts.set(sample, (counts.get(sample) || 0) + 1);
+  report.cpuHotspots = (profile.nodes || [])
+    .map((node) => ({
+      samples: counts.get(node.id) || 0,
+      function: node.callFrame?.functionName || '(anonymous)',
+      url: node.callFrame?.url || '',
+      line: (node.callFrame?.lineNumber ?? -1) + 1,
+    }))
+    .filter((node) => node.samples > 0)
+    .sort((a, b) => b.samples - a.samples)
+    .slice(0, 25);
+  report.cpuProfileCollected = true;
+  await profiler.detach();
+  profiler = null;
 }
 async function waitReady(stage = 'ready') {
   await page.waitForFunction(
@@ -197,9 +240,12 @@ try {
   });
 
   console.log('P1 hardware: loading M3D example…');
+  await beginCpuProfile();
   await open('/app.html?start=example&example=m3d');
   await waitReady();
+  await endCpuProfile();
   report.cases.initialM3D = await hostMetrics();
+  report.cases.initialM3D.responsiveness = responsiveness(report.cases.initialM3D.vitals);
   report.cases.initialM3D.screenshotSha256 = await photograph('01-m3d-first-ready.png');
   const glText = [
     report.cases.initialM3D.gl?.unmaskedVendor,
@@ -235,6 +281,7 @@ try {
   await open('/app.html');
   await waitReady();
   report.cases.qualityReload = await hostMetrics();
+  report.cases.qualityReload.responsiveness = responsiveness(report.cases.qualityReload.vitals);
   report.cases.qualityReload.screenshotSha256 = await photograph('02-quality-final.png');
   await sleep(400);
   report.cases.qualityReload.repeatSha256 = await photograph('03-quality-repeat.png');
@@ -252,6 +299,8 @@ try {
     report.cases.qualityReload.fastSetting === false &&
     report.cases.qualityReload.stageSequencePassed &&
     report.cases.qualityReload.modelUnchanged &&
+    report.cases.initialM3D.responsiveness.responsive &&
+    report.cases.qualityReload.responsiveness.responsive &&
     report.errors.length === 0;
 } catch (error) {
   report.errors.push(String(error?.stack || error));
@@ -272,6 +321,9 @@ try {
 } finally {
   report.finishedAt = new Date().toISOString();
   await save();
+  if (profiler) await endCpuProfile().catch((error) => {
+    report.errors.push('CPU profiler cleanup: ' + error.message);
+  });
   if (context) await context.close().catch(() => {});
   if (browser) await browser.close().catch(() => {});
   if (server) server.kill();
@@ -279,6 +331,9 @@ try {
     'P1_HARDWARE_RESULT',
     JSON.stringify({
       passed: report.passed,
+      worstInitialLongTaskMs: report.cases.initialM3D?.responsiveness?.longestLongTaskMs ?? null,
+      worstReloadLongTaskMs: report.cases.qualityReload?.responsiveness?.longestLongTaskMs ?? null,
+      cpuProfileCollected: report.cpuProfileCollected,
       revision: report.revision,
       gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
       modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
