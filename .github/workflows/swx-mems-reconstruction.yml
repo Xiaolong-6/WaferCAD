@@ -55,13 +55,6 @@ jobs:
           exit 1
       - name: Real v2 project import and Mask GDS export
         run: node scripts/swx-mems-browser-acceptance.mjs
-      - name: Emit pinned Prettier browser test for finalization
-        if: always()
-        run: |
-          npx prettier --write scripts/swx-mems-browser-acceptance.mjs
-          echo "SWX_FMT_BEGIN:scripts/swx-mems-browser-acceptance.mjs"
-          base64 scripts/swx-mems-browser-acceptance.mjs
-          echo "SWX_FMT_END:scripts/swx-mems-browser-acceptance.mjs"
       - name: Archive reconstructed projects and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
