@@ -302,13 +302,9 @@ export async function buildTcmosInverter() {
       params.thicknessUm = params.thickness;
       delete params.thickness;
     } else if (command === 'etch') {
-      if (args.profile === 'planarize') {
-        params.targetZUm = args.targetZ;
-        delete params.targetZ;
-      } else {
-        params.depthUm = params.depth;
-        delete params.depth;
-      }
+      params.thicknessUm = args.profile === 'planarize' ? args.targetZ : args.depth;
+      delete params.depth;
+      delete params.targetZ;
     } else if (command === 'implant' || command === 'electrical') {
       params.depthUm = params.depth;
       delete params.depth;
