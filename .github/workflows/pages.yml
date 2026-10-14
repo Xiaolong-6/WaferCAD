@@ -218,3 +218,27 @@ jobs:
       - name: Deploy the already-tested artifact
         id: deployment
         uses: actions/deploy-pages@v4
+
+  release-verdict:
+    name: Verify Pages deployment actually happened
+    needs: [stage-pages, deploy]
+    # Even when GitHub Actions reports a green workflow, an implicitly skipped
+    # deployment must be treated as a release failure.
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful staging and publishing
+        shell: bash
+        env:
+          STAGE_RESULT: ${{ needs.stage-pages.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          for gate in STAGE DEPLOY; do
+            result_var="${gate}_RESULT"
+            result="${!result_var}"
+            if [[ "$result" != success ]]; then
+              echo "::error::Pages $gate is $result; release is incomplete."
+              exit 1
+            fi
+          done
