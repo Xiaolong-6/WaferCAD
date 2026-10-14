@@ -67,6 +67,9 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
+      - name: Show exact Prettier output on quality failure
+        if: failure()
+        run: npx prettier site/tests/union-fast-path.test.mjs
       - name: Targeted renderer parity and History integrity tests
         run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/union-fast-path.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
       - run: npx playwright install --with-deps chromium
