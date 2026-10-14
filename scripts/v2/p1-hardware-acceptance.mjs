@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { classifyHardwareWebGL } from './p1-gpu-identity.mjs';
+import { summarizeHardwareInput, threeCameraGestureChanged } from './p1-input-latency.mjs';
 
 const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
 const base = `http://127.0.0.1:${port}`;
@@ -15,10 +16,10 @@ const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
 const profiling = process.argv.includes('--profile');
 const RESPONSIVENESS_LONG_TASK_LIMIT_MS = 500;
 const output = join('test-results', 'p1-hardware');
-const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v3';
+const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v4';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const report = {
-  schema: 'wafercad-p1-hardware-v2',
+  schema: 'wafercad-p1-hardware-v3',
   harnessVersion: HARNESS_VERSION,
   cwd: process.cwd(),
   startedAt: new Date().toISOString(),
@@ -164,9 +165,72 @@ async function waitReady(stage = 'ready') {
     { timeout },
   );
 }
-async function open(url) {
+// CDP delivers trusted pointer events from outside the renderer main thread.
+// The recorder runs in page.addInitScript so the events are observed even
+// during the initial model/3D build, before the canvas becomes ready.
+async function openAndSampleInput(url) {
   await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout });
-  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
+  const session = await context.newCDPSession(page);
+  let pending = null;
+  let count = 0;
+  let rejected = 0;
+  let point = { x: report.viewport.width * 0.72, y: report.viewport.height * 0.68 };
+  void page
+    .locator('#threeHost canvas')
+    .boundingBox()
+    .then((box) => {
+      if (box) point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    })
+    .catch(() => {});
+  const timer = setInterval(() => {
+    if (pending) return;
+    count++;
+    const request = session.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: point.x + (count % 3),
+      y: point.y,
+    });
+    pending = request;
+    void request
+      .catch(() => {
+        rejected++;
+      })
+      .finally(() => {
+        if (pending === request) pending = null;
+      });
+  }, 350);
+  try {
+    await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
+    await waitReady();
+  } finally {
+    clearInterval(timer);
+    await pending?.catch(() => {});
+    await session.detach();
+  }
+  return { dispatched: count, rejected };
+}
+
+async function verifyThreeGestures() {
+  const canvas = page.locator('#threeHost canvas').first();
+  const box = await canvas.boundingBox();
+  if (!box) return { passed: false, reason: '3D canvas is not visible' };
+  const camera = () => page.evaluate(() => window.WaferCadV2Workstation?.snapshot?.().threeCamera);
+  const before = await camera();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 25, y + 18, { steps: 6 });
+  await page.mouse.up();
+  await page.mouse.wheel(0, -250);
+  await sleep(400);
+  const after = await camera();
+  return {
+    passed: threeCameraGestureChanged(before, after),
+    pointerAndWheelEvents: true,
+    cameraBefore: before,
+    cameraAfter: after,
+  };
 }
 try {
   if (report.revision === 'unknown')
@@ -216,8 +280,24 @@ try {
       viewTransitions: [],
       eventLoopLagMs: [],
       longTasksMs: [],
+      inputEvents: [],
     };
     window.__waferHardwareVitals = vitals;
+    const recordInput = (event) => {
+      if (!event.isTrusted || vitals.inputEvents.length >= 4096) return;
+      const queueMs = performance.now() - event.timeStamp;
+      if (!Number.isFinite(queueMs) || queueMs < 0) return;
+      const view = document.getElementById('threePanel')?.dataset.viewLoad;
+      vitals.inputEvents.push({
+        trusted: true,
+        kind: event.type,
+        phase: ['coarse', 'refining', 'ready'].includes(view) ? view : 'loading',
+        threeCanvas: Boolean(event.target?.matches?.('#threeHost canvas')),
+        queueMs,
+      });
+    };
+    document.addEventListener('pointermove', recordInput, { capture: true, passive: true });
+    document.addEventListener('wheel', recordInput, { capture: true, passive: true });
     let previous = performance.now();
     window.setInterval(() => {
       const now = performance.now();
@@ -261,11 +341,13 @@ try {
 
   console.log('P1 hardware: loading M3D example…');
   await beginCpuProfile('m3d-startup');
-  await open('/app.html?start=example&example=m3d');
-  await waitReady();
+  report.inputProbeInitial = await openAndSampleInput('/app.html?start=example&example=m3d');
   await endCpuProfile();
   report.cases.initialM3D = await hostMetrics();
   report.cases.initialM3D.responsiveness = responsiveness(report.cases.initialM3D.vitals);
+  report.cases.initialM3D.input = summarizeHardwareInput(
+    report.cases.initialM3D.vitals?.inputEvents,
+  );
   report.cases.initialM3D.screenshotSha256 = await photograph('01-m3d-first-ready.png');
   report.hardware = classifyHardwareWebGL(report.cases.initialM3D.gl);
   report.hardwareVerified = report.hardware.verified;
@@ -296,11 +378,13 @@ try {
   );
   console.log('P1 hardware: reloading saved M3D project with Quality…');
   await beginCpuProfile('quality-reload');
-  await open('/app.html');
-  await waitReady();
+  report.inputProbeReload = await openAndSampleInput('/app.html');
   await endCpuProfile();
   report.cases.qualityReload = await hostMetrics();
   report.cases.qualityReload.responsiveness = responsiveness(report.cases.qualityReload.vitals);
+  report.cases.qualityReload.input = summarizeHardwareInput(
+    report.cases.qualityReload.vitals?.inputEvents,
+  );
   report.cases.qualityReload.screenshotSha256 = await photograph('02-quality-final.png');
   await sleep(400);
   report.cases.qualityReload.repeatSha256 = await photograph('03-quality-repeat.png');
@@ -316,6 +400,19 @@ try {
   if (!report.cases.qualityReload.sameFramePixels) {
     report.validationFailures.push('Quality repeat screenshots have different pixels.');
   }
+  // Run gesture checks after the pixel-stability capture; the gestures may
+  // change the inspection camera but never the scientific model.
+  report.threeGestures = await verifyThreeGestures();
+  if (!report.threeGestures.passed) {
+    report.validationFailures.push('3D pointer/wheel gesture did not change the camera.');
+  }
+  for (const [label, sample] of Object.entries(report.cases)) {
+    if (sample.input && !sample.input.responsive) {
+      report.validationFailures.push(
+        `${label}: input queue samples missing or over 500 ms (${sample.input.worstQueueMs}ms)`,
+      );
+    }
+  }
   for (const [label, sample] of Object.entries(report.cases)) {
     if (sample.responsiveness && !sample.responsiveness.responsive) {
       report.validationFailures.push(
@@ -329,6 +426,9 @@ try {
     report.cases.qualityReload.stageSequencePassed &&
     report.cases.qualityReload.modelUnchanged &&
     report.cases.qualityReload.sameFramePixels &&
+    report.cases.initialM3D.input.responsive &&
+    report.cases.qualityReload.input.responsive &&
+    report.threeGestures.passed &&
     report.cases.initialM3D.responsiveness.responsive &&
     report.cases.qualityReload.responsiveness.responsive &&
     report.errors.length === 0;
@@ -387,6 +487,9 @@ try {
       revision: report.revision,
       gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
       gpuManufacturer: report.hardware?.manufacturer || null,
+      inputInitial: report.cases.initialM3D?.input || null,
+      inputReload: report.cases.qualityReload?.input || null,
+      threeGesturesPassed: report.threeGestures?.passed ?? null,
       hardwareVerified: report.hardwareVerified || false,
       modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
       stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
