@@ -58,7 +58,7 @@ export async function runTandemVisualAcceptance(
         '.welcome-example-card[data-example-id="fully-textured-perovskite-silicon-tandem"] iframe',
       )?.contentDocument;
       return (
-        doc?.documentElement.dataset.previewView === view &&
+        doc?.defaultView.WaferCadV2Workstation?.snapshot().ui.view === view &&
         (view !== 'three' ||
           doc.querySelector('#threeHost canvas')?.dataset.roughMeshMode === 'detailed')
       );
