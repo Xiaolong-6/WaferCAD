@@ -9,30 +9,40 @@ Status: **candidate generator, not yet a shipped Welcome Example**.
 
 ## Intended reconstruction and provenance
 
-Reconstruct a representative 130 nm T-CMOS inverter on silicon, with ACTIVE/STI, NWELL/PWELL, HVTP/HVTN, POLY, source/drain annotations, CNT and METAL1. Retain an exportable 11-layer File Mask, complete Recipe, History nodes, stage bookmarks and a final geometry model.
+Reconstruct a representative 130 nm T-CMOS inverter on silicon, with ACTIVE/STI, NWELL/PWELL, HVTP/HVTN, POLY, source/drain annotations, CNT and METAL1. Retain an exportable 13-layer File Mask (including two reference-only LVT windows), complete Recipe, History nodes, stage bookmarks and a final geometry model.
 
 The key published mechanism is the **highly doped body-to-drain tunnel junction**, obtained using a modified HVT body-implant mask. The Methods specify BF2+ for the nMOS device and As+ for the pMOS device, plus RTA; calibrated depth, energy, dose, mask coordinates and full GDS are unavailable.
 
 | Feature      | Source-supported information                  | Geometric reconstruction choice                                                                       |
 | ------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Inverter     | Fig. 1a/b complementary CMOS topology         | Illustrative 14 x 8 µm local field with POLY VIN and METAL1 VDD/VOUT/GND                              |
+| Inverter     | Fig. 1a/b complementary CMOS topology         | Illustrative 14 x 8 µm local field with separate POLY gates and four isolated METAL1 nets VDD/VOUT/GND/VIN                              |
 | Process      | Commercial 130 nm and 90 nm CMOS foundries    | Candidate chooses 130 nm and gate L=0.13 µm                                                           |
 | ACTIVE/STI   | Si(100) and shallow trench isolation          | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP                                   |
-| HVTP/HVTN    | BF2+/As+ high-energy, high-dose body implants | Illustrative buried start=80 nm, end=240 nm; **not measured dopant concentration or projected range** |
+| HVTN/HVTP    | As+ pMOS / BF2+ nMOS body implants (paper Fig. 1b uses HVTN on left and HVTP on right) | Illustrative 80–240 nm buried marker; not a concentration profile |
 | Gate         | SiO2 in 130 nm flow; patterned POLY           | 5 nm SiO2; 200 nm Poly                                                                                |
 | Source/drain | LDD/HDD, silicide and self-aligned processing | 80/180 nm Implant markers, 25 nm silicide geometry; spacers/RTA recorded only                         |
-| Contacts     | CNT and METAL1 standard foundry layers        | Five W plugs including POLY VIN; 450 nm ILD and 200 nm patterned Al geometry                          |
+| Contacts     | CNT and METAL1 standard foundry layers        | Two U-shaped well-tie contact arrays, independent gate contacts and four isolated METAL1 nets; 450 nm ILD/200 nm Al surrogates |
 
-**Scientific limitation:** The current The optional Implant startDepth defines a geometrically buried interval while retaining a reference to the original exposed surface. The illustrative 80–240 nm HVT intervals are explicitly inferred and **not** concentration distributions or tunnel-junction thicknesses. No calibrated BTBT or dopant physics is computed. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
+**Scientific limitation:** The optional Implant startDepth defines a geometrically buried interval while retaining a reference to the original exposed surface. The illustrative 80–240 nm HVT intervals are explicitly inferred and **not** concentration distributions or tunnel-junction thicknesses. No calibrated BTBT or dopant physics is computed. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
+
+## Figure 1b topology review (2026-10-14)
+
+The paper's **left** device is pMOS in n-well, framed by the **LVTN/HVTN** optional masks; the **right** device is nMOS in p-well, framed by **LVTP/HVTP**. The earlier candidate accidentally swapped HVTN and HVTP. The masks now use the source's actual names while retaining the correct **As+ pMOS** and **BF2+ nMOS** species from Methods.
+
+Both cells have compact horizontal ACTIVE diffusion bars crossed by a vertical 130 nm POLY gate, and surrounding contact-dense U-shaped well/body ties. This local layout approximates Fig. 1b's *topology and silhouette*; it does not digitize a released foundry GDS. Because the paper does not specify exact cell, mask, contact pitch, gate oxide or implant-depth dimensions, all non-node sizes remain **illustrative**. LVTN/LVTP shapes are retained for visual comparison only and are **not executed as LVT doping steps** in the T-CMOS Recipe. The equivalent binary CMOS recipe still needs a fully replayable Variant before release.
+
+**Tilt clarification:** Neither Methods nor Supplementary Fig. 1 specifies a beam incidence angle. The arrows in Supplementary Fig. 1 indicate the implantation direction, not a measurable off-normal tilt. All paper-labelled Implant operations explicitly use **0° tilt**, with no invented angular process condition. WaferCAD supports a separate nonzero tilt control, but a genuine directional process comparison should be labelled an *illustrative variant*, never as the published recipe. At 130 nm feature scale a small true tilt-induced lateral displacement may be invisible at full 14 µm field-of-view; zoom and quantitative model checks are needed.
+
+**Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and connected Metal1 are geometrical reconstructions inferred to represent electrical well ties. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are *not simulated*.
 
 ## Geometry build order
 
 1. Create the Si(100) Base. Etch Si in the inverse of ACTIVE, exposing a real trench.
 2. Deposit the illustrative STI oxide fill and planarize to original Si top Z. Assert that Si survives in ACTIVE and oxide occupies STI.
 3. Place NWELL/PWELL electrical annotations and buried HVT Implant interval markers; record foundry well/activation as non-geometric steps.
-4. Deposit the gate dielectric and define 130 nm POLY gates, joined by a VIN conductor.
+4. Deposit the gate dielectric and define two separate 130 nm POLY gates; connect VIN via their contact holes and an overhead METAL1 bridge.
 5. Open simplified source/drain Si windows; annotate LDD/HDD; record spacer and RTA operations.
-6. Pattern silicide surrogate, deposit ILD, etch CNT openings, fill with W, pattern four separate METAL1 nets (VDD, VOUT, GND, VIN).
+6. Pattern silicide surrogate, deposit ILD, etch CNT openings including U-shaped well-body tie arrays, fill with W, pattern four separate METAL1 nets (VDD, VOUT, GND, VIN).
 
 Each patterned Recipe step captures its File Mask and layer/datatype; the STI step retains explicit inverse-mask semantics.
 
@@ -54,4 +64,4 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage: generator + focused tests, pending runtime acceptance and production fixture generation. Do not infer a generated fixture, successful CI or deployed example from the presence of this document.
+Current stage: Fig. 1b topology correction under review. A generated fixture and browser CI must be regenerated and audited at the latest branch revision before declaring it accepted or published.
