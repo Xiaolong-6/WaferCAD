@@ -13,11 +13,11 @@ Its core question is practical: **given this mask and this sequence of process s
 
 The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The optional Legacy URL remains available for compatibility, but is not linked from the Workstation. Save or export your project before opening it directly.
 
-The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
+The Welcome page also offers **nine shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 
 ## Your first five steps
 
-1. On the Welcome page, choose **Start empty** or open one of the [eight examples](docs/wiki/Examples-and-Modeling-Limits.md).
+1. On the Welcome page, choose **Start empty** or open one of the [nine examples](docs/wiki/Examples-and-Modeling-Limits.md).
 2. In **Project → Base**, choose the substrate shape and dimensions, then **Rebuild Base**. Rebuilding an existing processed project has History implications; follow the confirmation.
 3. In **Mask**, import a GDSII/OASIS file or switch the source to **Draw**. Inspect Cell, Layer/Datatype and Mask ROI before patterned processing.
 4. In **Process → Manual**, choose Surface, Operation, Area and thickness/depth, then **Apply**. Use **Process → Recipe** for an ordered flow or **Process → Code** for supported declarative Recipe syntax.
@@ -114,7 +114,7 @@ Rebuilding Base after Process edits requires an explicit History decision: keep 
 
 ## Repository layout
 
-- `site/` — browser application source, including `app.html` (default UI v2), `app-legacy.html` (Welcome preview and compatibility), eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`, omitting developer-only UI previews and tests.
+- `site/` — browser application source, including `app.html` (default UI v2), `app-legacy.html` (Welcome preview and compatibility), nine Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`, omitting developer-only UI previews and tests.
 - `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
 - `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
 - `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts
