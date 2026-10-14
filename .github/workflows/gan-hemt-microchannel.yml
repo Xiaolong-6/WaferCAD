@@ -62,10 +62,6 @@ jobs:
         run: npm ci
       - name: Focused lint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
-      - name: Temporary formatting diff probe for source documentation
-        run: |
-          npx prettier --write docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-          git diff -- docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Focused formatting
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Kernel reconstruction and physics-invariant unit tests

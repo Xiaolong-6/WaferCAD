@@ -98,30 +98,30 @@ The candidate has passed the following **geometry-surrogate** acceptance checks 
 
 - [x] Full Kernel build and model-schema validation without process errors.
 - [x] Project Save/Reload and Recipe Run All from Base; identical final material
-  occupancy for 11 materials and 12 Z slabs (maximum mismatched XY area: 0 µm²).
+      occupancy for 11 materials and 12 Z slabs (maximum mismatched XY area: 0 µm²).
 - [x] Canonical four-level empty cavities, four unfilled TSV bores, backside port
-  openings and exposed SiC backside checked against solid/void occupancy invariants.
+      openings and exposed SiC backside checked against solid/void occupancy invariants.
 - [x] Editable Mask and History preserved; GDSII/OASIS export and source/inferred
-  dimensions checked in dedicated tests.
+      dimensions checked in dedicated tests.
 - [x] Real Chromium Main, Mask, 3D and Section screenshots, visual readout and
-  thumbnail/Preview integrity checked in a **read-only** CI pipeline.
+      thumbnail/Preview integrity checked in a **read-only** CI pipeline.
 - [x] Welcome registration and Pages source-to-staged asset inclusion verified by
-  the published staging rules and browser/catalog checks.
+      the published staging rules and browser/catalog checks.
 - [x] Source metadata and assumed geometry separated in the project and docs;
-  experimental thermal/flow measurements are never claimed as WaferCAD predictions.
+      experimental thermal/flow measurements are never claimed as WaferCAD predictions.
 
 ### Explicitly out of scope or unverified
 
 - [ ] **Original hydraulic diversion fan-outs:** the bottom chamber and two
-  approximate back ports are open geometric voids, but the inlet/outlet diversion
-  manifolds and uniformity of parallel-channel flow are **not reconstructed**.
+      approximate back ports are open geometric voids, but the inlet/outlet diversion
+      manifolds and uniformity of parallel-channel flow are **not reconstructed**.
 - [ ] **Native wafer assembly:** two independently etched 400 µm Si wafers cannot
-  yet be aligned and directly bonded as a single Kernel process step.
+      yet be aligned and directly bonded as a single Kernel process step.
 - [ ] **Electrical, thermal and packaging validation:** plated conductive TSVs,
-  full Au wire bonds, hermetic seals, CFD, heat-transfer and HEMT IV performance
-  are outside this example's scope.
+      full Au wire bonds, hermetic seals, CFD, heat-transfer and HEMT IV performance
+      are outside this example's scope.
 - [ ] **Author layout parity:** original GDS and several exact intermediate
-  channel masks are unavailable. Do not label inferred patterns as originals.
+      channel masks are unavailable. Do not label inferred patterns as originals.
 
 ### Figure review
 
