@@ -6,6 +6,7 @@ on:
       - scripts/build-m3d-lime-example.mjs
       - site/tests/m3d-lime-builder.test.mjs
       - scripts/v2/check-m3d-lime-project.mjs
+      - scripts/klayout-m3d-lime-verify.py
       - site/examples/m3d-lime-rram-cntfet.wafercad
       - docs/M3D_LIME_2023_RECONSTRUCTION.md
       - .github/workflows/m3d-lime-reconstruction.yml
@@ -52,6 +53,10 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-m3d-lime-project.mjs
+      - name: KLayout external validation of actual v2 mask exports
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
+          python3 scripts/klayout-m3d-lime-verify.py test-results/m3d-lime/browser
       - name: Upload generated model and evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,5 +66,6 @@ jobs:
           path: |
             site/examples/m3d-lime-rram-cntfet.wafercad
             test-results/m3d-lime/validation.json
+            test-results/m3d-lime/klayout-m3d-lime.json
             test-results/m3d-lime/browser/
           retention-days: 14
