@@ -283,6 +283,11 @@ export function createProjectMaskPanels({
     state.hoveredLayerKey = null;
     browser.invalidateScope();
     state.selectedLayerKeys = new Set(browser.globalLayers().map((item) => item.key));
+    // A worker can finish while the Mask domain remains selected. An ordinary
+    // view refresh does not necessarily re-run the editor adapter's onShow.
+    // Reconcile its cell/layer controls immediately with the imported layout.
+    browser.renderCellTree();
+    browser.renderMaskList();
     state.maskSourceMode = 'file';
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     state.planViews.mask = { zoom: 1, panX: 0, panY: 0 };

@@ -76,6 +76,22 @@ unchanged. Regenerate the repository thumbnail only with the explicit
 than a branch-specific workflow with permission to push generated files.
 Scientific geometry and Recipe replay remain governed by separate tests.
 
+### KLayout v2 Mask-to-Process bridge
+
+`scripts/v2/check-klayout-mask-process.mjs` imports the pinned GDS hierarchy
+and OASIS rectangles sample in the real production v2 Workstation. It
+checks nonempty rendered Mask, selected imported layers, unchanged Base model
+before fabrication, then runs a masked Deposit through the real Process
+Worker, verifies the new physical layer and History Step, and retains the
+layout geometry. This browser gate is included in
+`.github/workflows/klayout-compat.yml` and saves evidence in
+`test-results/klayout-v2/`.
+
+The external KLayout parser/export corpus and the full historical Legacy
+UI corpus remain active as separate owners. This focused v2 bridge is a
+progressive ownership transfer and does not yet authorize removing
+`scripts/klayout-ui-compat.mjs` or the Legacy scientific DOM.
+
 ### Legacy project compatibility before UI retirement
 
 The old UI must not be deleted until the v2 Workstation can independently
