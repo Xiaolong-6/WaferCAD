@@ -68,6 +68,7 @@ jobs:
           WAFERCAD_V2_BASE: http://127.0.0.1:4173
         run: |
           node scripts/build-tcmos-inverter-example.mjs
+          node scripts/build-tcmos-inverter-example.mjs --tilt-demo
           python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-browser.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" || true' EXIT
