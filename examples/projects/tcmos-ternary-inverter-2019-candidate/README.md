@@ -19,7 +19,7 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 | Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | Candidate chooses 130 nm and gate L=0.13 µm                                                                                    |
 | ACTIVE/STI   | Si(100) and shallow trench isolation                                                   | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP                                                            |
 | HVTN/HVTP    | As+ pMOS / BF2+ nMOS body implants (paper Fig. 1b uses HVTN on left and HVTP on right) | Illustrative 80–240 nm buried marker; not a concentration profile                                                              |
-| Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2 selectively depicted under POLY; 200 nm Poly                                                                                                         |
+| Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2 selectively depicted under POLY; 200 nm Poly                                                                         |
 | Source/drain | LDD/HDD, silicide and self-aligned processing                                          | 80/180 nm Implant markers, 25 nm silicide geometry; spacers/RTA recorded only                                                  |
 | Contacts     | CNT and METAL1 standard foundry layers                                                 | Two U-shaped well-tie contact arrays, independent gate contacts and four isolated METAL1 nets; 450 nm ILD/200 nm Al surrogates |
 
