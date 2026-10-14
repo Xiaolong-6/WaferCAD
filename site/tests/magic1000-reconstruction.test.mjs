@@ -70,7 +70,15 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
       text: async () => bytes.toString('utf8'),
     });
     validateProjectFile(packed);
-    assert.deepEqual(packed.model, project.model);
+    // Older bundled fixtures predate the optional qualitative Dopant Region
+    // collection. Absence and an empty array are semantically identical;
+    // every other model field must still match exactly.
+    const withoutEmptyDopants = (model) => {
+      const copy = structuredClone(model);
+      if (!copy.dopantRegions?.length) delete copy.dopantRegions;
+      return copy;
+    };
+    assert.deepEqual(withoutEmptyDopants(packed.model), withoutEmptyDopants(project.model));
     assert.equal(packed.processRecipe.steps.length, project.processRecipe.steps.length);
   }
 });
