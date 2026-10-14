@@ -122,6 +122,7 @@ try {
       await page.locator('[data-action="view:main"]').click();
       await waitForPaint(page);
       const beforeExport = await snapshot();
+      await page.locator('[data-action="domain:project"]').click();
       await page.locator('#projectExportMenuBtn').click();
       const savedFile = page.waitForEvent('download', { timeout: 120000 });
       await page.locator('#exportProjectBtn').click();
