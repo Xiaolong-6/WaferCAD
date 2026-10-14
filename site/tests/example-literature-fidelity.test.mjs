@@ -53,7 +53,7 @@ function thickness(stack, name) {
   return entry.z1 - entry.z0;
 }
 
-test('Basiri-Esfahani microdisk retains the paper process sequence and actual air gap', async () => {
+test('Basiri-Esfahani microdisk preserves process chronology and a real void', async () => {
   const project = await example('suspended-silica-microdisks');
   const steps = project.processRecipe.steps;
   assert.deepEqual(
@@ -90,7 +90,7 @@ test('Basiri-Esfahani microdisk retains the paper process sequence and actual ai
   assert.equal(outside.some((entry) => entry.name.includes('SiO₂')), false);
 });
 
-test('Blakers PERC rear point contacts expose Si while the adjacent area stays passivated', async () => {
+test('PERC point contacts expose silicon but nearby rear regions remain insulated', async () => {
   const project = await example('perc-solar-cells-point-contacts');
   assert.equal(project.layout.combos.find((combo) => combo.layer === 5)?.count, 100);
   const steps = project.processRecipe.steps;
@@ -131,15 +131,13 @@ test('Sahli tandem retains a nanometre top-cell stack with a localized Ag stripe
   assert.ok(Math.abs(thickness(finger, 'Ag grid') - 0.12) < 1e-9);
   assert.equal(active.some((entry) => entry.name.includes('Ag grid')), false);
   assert.ok(Math.abs(thickness(finger, 'MgF2') - 0.1) < 1e-9);
-  assert.ok(
-    project.model.regions.every((region) =>
-      region.stack.every((s) => s.z1 > s.z0),
-    ),
-    'Saved material intervals must have positive physical thickness',
+  const validIntervals = project.model.regions.every((region) =>
+    region.stack.every((s) => s.z1 > s.z0),
   );
+  assert.ok(validIntervals, 'Saved material intervals must have positive physical thickness');
 });
 
-test('Black-Si and Ge variants keep distinct Implant and Electrical Region semantics', async () => {
+test('Photodetector variants distinguish Implant from Electrical Region', async () => {
   const project = await example('photodetector-literature-examples');
   const branches = new Map(project.snapshotBranches.branches.map((b) => [b.id, b]));
   const black = branches.get('black-si-fig1a-final').headState.processRecipe.steps;
