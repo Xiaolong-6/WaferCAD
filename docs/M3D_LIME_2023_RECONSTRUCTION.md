@@ -75,6 +75,15 @@ The dedicated [M3D-LIME CI run](https://github.com/Xiaolong-6/WaferCAD/actions/r
 
 Distinct GDS/OAS DBUs are valid; directly XORing database-grid polygons across different DBUs is not a valid geometry test. The verifier compares physical-coordinate polygons instead. This is an **external format interoperation** check for WaferCAD's inferred layout, **not** independent confirmation of the authors' unpublished original GDS or mask placement.
 
+## Direct screenshot / ALD fidelity audit (October 14, 2026)
+
+- The supplied four-view screenshot shows a substrate-dominated 3D slab and a block-like Section; **it does not meet TEM morphology acceptance**.
+- In the latest [automated browser evidence](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38569363465), one half-cell is framed using an inspection-only 10 × 24 µm ROI and a closer camera. This improves framing, but the 2 µm **illustrative CMOS body** still dominates 3D and the image is not a credible match to a 200 nm-scale TEM cut.
+- The real Kernel generates **136 conformal-sidewall region segments**: 15 for 10 nm HfO₂ gate oxide, 68 for 35 nm Al₂O₃ passivation, and 53 for 10 nm HfO₂ passivation. The saved example has 30 material layers and 167 XY regions.
+- The paper's **45 nm Al₂O₃ top RRAM passivation is ALD**. Full conformal replay failed safely due to a **2.43 × 10⁻⁷ µm² XY-owner overlap** (approximately 0.243 nm²) on the complex patterned surface. The current example uses an explicitly disclosed **directional geometry surrogate** for this material. The error must not be suppressed by simply raising the topology overlap tolerance.
+- Gate contact etching and CMOS-to-top-tier ILVs are **process records without complete 3D geometry**. The paper does not disclose their full local mask coordinates; do not represent the entire three-tier circuit as electrically continuous.
+- Morphology comparison to Fig. 2c–d and Supplementary Fig. 6a remains a **separate blocking visual/scientific gate**, beyond successful Recipe replay, mask interoperability and geometry schema tests.
+
 ## Working branch and status
 
 - Branch: `feat/m3d-rram-cntfet-lime-20261014`.
