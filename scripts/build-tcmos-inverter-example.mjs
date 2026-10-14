@@ -361,6 +361,14 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
         ...(args.startDepth > 0 ? { depthStart: args.startDepth } : {}),
         tilt: args.tilt || 0,
         color: args.color || '#e05d75',
+        ...(args.dopantPolarity
+          ? {
+              dopantPolarity: args.dopantPolarity,
+              dopantRole: args.dopantRole,
+              dopantHostLayerId: args.dopantHostLayerId,
+              dopantProvenance: args.dopantProvenance,
+            }
+          : {}),
       });
     } else if (command === 'electrical') {
       Object.assign(p, {
@@ -455,8 +463,33 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     apply(label, 'deposit', { material, thickness, coverage }, maskId);
   const etch = (label, target, depth, maskId, mode = 'mask') =>
     apply(label, 'etch', { target, depth, profile: 'directional' }, maskId, mode);
-  const implant = (label, name, depth, maskId, color, startDepth = 0, tilt = 0) =>
-    apply(label, 'implant', { name, depth, tilt, color, startDepth }, maskId);
+  const implant = (
+    label,
+    name,
+    depth,
+    maskId,
+    color,
+    startDepth = 0,
+    tilt = 0,
+    polarity = null,
+    role = 'source-drain',
+  ) =>
+    apply(
+      label,
+      'implant',
+      {
+        name, depth, tilt, color, startDepth,
+        ...(polarity
+          ? {
+              dopantPolarity: polarity,
+              dopantRole: role,
+              dopantHostLayerId: 'base',
+              dopantProvenance: 'illustrative; no concentration or electrical activation',
+            }
+          : {}),
+      },
+      maskId,
+    );
   const electrical = (label, name, regionType, depth, maskId, color) =>
     apply(label, 'electrical', { name, regionType, depth, source: 'doped', color }, maskId);
 
@@ -492,6 +525,8 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     '#d9668a',
     0.08,
     illustrativeTiltDeg,
+    'donor',
+    'body',
   );
   implant(
     'HVTP BF2 body implant',
@@ -501,6 +536,8 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     '#5d8ce0',
     0.08,
     illustrativeTiltDeg,
+    'acceptor',
+    'body',
   );
   record(
     'Body implant rapid thermal anneal',
@@ -525,15 +562,15 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     'custom',
     'Gate oxide is represented only beneath POLY footprints; exposed source/drain silicon requires no second geometric oxide etch. This abstracts foundry oxide patterning.',
   );
-  implant('pMOS LDD structural marker', 'pMOS LDD anticipated profile', 0.08, 7, '#cf6785');
-  implant('nMOS LDD structural marker', 'nMOS LDD anticipated profile', 0.08, 8, '#4c93c6');
+  implant('pMOS LDD structural marker', 'pMOS LDD anticipated profile', 0.08, 7, '#cf6785', 0, 0, 'acceptor');
+  implant('nMOS LDD structural marker', 'nMOS LDD anticipated profile', 0.08, 8, '#4c93c6', 0, 0, 'donor');
   record(
     'Spacer formation',
     'custom',
     'Self-aligned dielectric spacers recorded only: dimensions and etch recipe unreported.',
   );
-  implant('pMOS HDD structural marker', 'p+ HDD anticipated profile', 0.18, 7, '#bd4d68');
-  implant('nMOS HDD structural marker', 'n+ HDD anticipated profile', 0.18, 8, '#3978b3');
+  implant('pMOS HDD structural marker', 'p+ HDD anticipated profile', 0.18, 7, '#bd4d68', 0, 0, 'acceptor');
+  implant('nMOS HDD structural marker', 'n+ HDD anticipated profile', 0.18, 8, '#3978b3', 0, 0, 'donor');
   record(
     'Dopant activation / RTA',
     'anneal',
@@ -615,6 +652,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     recipeSteps: steps.length,
     bookmarks: bookmarks.length,
     implantMarkers: model.implants.length,
+    dopantRegionIntents: model.dopantRegions.length,
     electricalMarkers: model.electricalRegions.length,
     finalRegions: model.regions.length,
     finalMaterialLayers: model.layers.length,
