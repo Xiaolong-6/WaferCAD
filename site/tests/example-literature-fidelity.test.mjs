@@ -93,6 +93,10 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
 test('PERC point contacts expose silicon but nearby rear regions remain insulated', async () => {
   const project = await example('perc-solar-cells-point-contacts');
   assert.equal(project.layout.combos.find((combo) => combo.layer === 5)?.count, 100);
+  const rearOpenings = project.layout.elements.filter(
+    (element) => element.layer === 5 && element.datatype === 0,
+  );
+  assert.equal(rearOpenings.length, 100);
   const steps = project.processRecipe.steps;
   assert.equal(steps.length, 17);
   const backWindow = steps.find(
@@ -106,6 +110,18 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
   assert.ok(steps.some((step) => step.command === 'implant' && /250 Ω/.test(step.params.name)));
   assert.ok(steps.some((step) => step.command === 'implant' && /25 Ω/.test(step.params.name)));
 
+  for (const [index, opening] of rearOpenings.entries()) {
+    const center = [
+      opening.points.reduce((sum, point) => sum + point[0], 0) / opening.points.length,
+      opening.points.reduce((sum, point) => sum + point[1], 0) / opening.points.length,
+    ];
+    const stack = materialAt(project, center);
+    assert.ok(
+      Math.abs(segment(stack, 'Al rear').z1 - segment(stack, 'Base').z0) < 1e-9,
+      `Rear contact ${index + 1} must reach silicon`,
+    );
+    assert.equal(stack.some((entry) => entry.name.includes('passivation')), false);
+  }
   const contact = materialAt(project, [-9000, -9000]);
   const insulated = materialAt(project, [-8500, -8500]);
   const frontStripe = materialAt(project, [0, -7500]);
