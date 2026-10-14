@@ -1646,7 +1646,7 @@ export function createSnapshotManager({
       }
     }
 
-    for (const node of importedNodes {
+    for (const node of importedNodes) {
       if (node.parentId && !nodeIds.has(node.parentId)) node.parentId = null;
     }
     for (const record of next) {
