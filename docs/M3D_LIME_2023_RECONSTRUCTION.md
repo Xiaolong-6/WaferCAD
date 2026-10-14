@@ -61,7 +61,7 @@ The builder enforces 2 µm source/drain gap and complete active gate coverage fo
 
 Supplementary Fig. 6a shows the Ta₂O₅ RRAM pillar **laterally separated** from the CNTFET active channel, with an intervening Pd electrode/landing path. The original local mask polygons and exact lateral clearance are not disclosed. Earlier local reconstructions let the digital RRAM overlap 0.2 µm of the drawn CNT island in X; the updated representative layout moves it beyond the active CNT island and extends the inferred Pd drain/bottom-electrode landing to support the new footprint. The **0.45 µm lateral clearance** is an illustrative hypothesis, **not** a TEM-derived measurement. The lithographic masks and real Process Kernel must independently verify that TaOₓ/Ta₂O₅/Pt grows on Pd and cannot overlap the CNT island, without inserting a disconnected digital RRAM stack. Orientation in XY is not asserted to match the microscope image.
 
-The physical structure is still a source-constrained local *illustration*, not an atomically or lithographically accurate reconstruction. The unresolved gate-contact openings, 1 nm CNT geometric surrogate, Y₂O₃ oxidation expansion, inter-tier ILVs, original CMOS foundry FEOL and full-chip routing remain outside its demonstrated fidelity.
+The physical structure is still a source-constrained local _illustration_, not an atomically or lithographically accurate reconstruction. The unresolved gate-contact openings, 1 nm CNT geometric surrogate, Y₂O₃ oxidation expansion, inter-tier ILVs, original CMOS foundry FEOL and full-chip routing remain outside its demonstrated fidelity.
 
 ## Independent KLayout export check (October 14, 2026)
 
