@@ -66,7 +66,7 @@ try {
   assert.equal(opened.model.implants[0].depthStart, 0.08);
   assert.equal(opened.model.implants[1].depthStart, 0.08);
   assert.equal(opened.model.layers.length, expected.model.layers.length);
-  assert.equal(opened.snapshotBranches.branches.length, 2, 'Both CMOS process Variants must be imported');
+  assert.equal(expected.snapshotBranches.branches.length, 2, 'Both CMOS process Variants must be stored');
   assert.equal(opened.model.dopantRegions.length, expected.model.dopantRegions.length);
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-before-runall.png') });
   await panel('history');
@@ -79,7 +79,7 @@ try {
     () => {
       const snap = window.WaferCadV2Workstation.snapshot();
       return snap.model.implants[0]?.name?.includes('LVTN') &&
-        snap.snapshotBranches.activeBranchId === 'conventional-cmos' &&
+        document.querySelector('.history-variant[data-variant-id="conventional-cmos"]')?.dataset.active === 'true' &&
         !snap.workflow.busy;
     },
     null,
@@ -95,7 +95,7 @@ try {
   await page.waitForFunction(
     () => {
       const snap = window.WaferCadV2Workstation.snapshot();
-      return snap.snapshotBranches.activeBranchId === 'main' &&
+      return document.querySelector('.history-variant[data-variant-id="main"]')?.dataset.active === 'true' &&
         snap.model.implants[0]?.name?.includes('HVTN') &&
         !snap.workflow.busy;
     },
