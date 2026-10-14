@@ -350,9 +350,8 @@ test('OFF and ON folded MEMS springs have continuous, mitered bends', async () =
     const g = createSwxGeometry(state);
     assert.equal(g.physicalGroups.foldedSprings.length, 2);
     for (const [i, sign] of [-1, 1].entries()) {
-      const footprint = v.unionGeometries([
-        [[...g.physicalGroups.foldedSprings[i], g.physicalGroups.foldedSprings[i][0]]],
-      ]);
+      const ring = g.physicalGroups.foldedSprings[i];
+      const footprint = [[[...ring, ring[0]]]];
       const gradedDisplacement = (index) => g.travelUm * index / 7;
       const bends = [
         [0, sign * 10 + gradedDisplacement(1)],
@@ -364,7 +363,7 @@ test('OFF and ON folded MEMS springs have continuous, mitered bends', async () =
       ];
       for (const point of bends) {
         assert.ok(
-          footprint.some((poly) => v.pointInMulti(point, [poly])),
+          v.pointInMulti(point, footprint),
           state + ' spring lost connected silicon at miter ' + point.join(','),
         );
       }
