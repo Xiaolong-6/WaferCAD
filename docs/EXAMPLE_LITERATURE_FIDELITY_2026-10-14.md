@@ -56,6 +56,27 @@ branch-specific Implant/Electrical operation semantics.
    remain labeled **assumed** or **illustrative**. A valid exportable GDS
    is not evidence of the authors' GDS.
 
+## Quantitative saved-geometry follow-up
+
+- Black-Si source-order metal before strip: approximately
+  `8.813 × 10^6 µm³` front Al. FINAL retains approximately
+  `1.054 × 10^6 µm³` (12% of the original) while preserving the
+  same `2.277 × 10^6 µm³` ALD Al2O3 volume. The intentionally
+  destructive QA branch leaves approximately `1.295 × 10^6 µm³`
+  ALD Al2O3, 57% of the protected baseline, and removes some Si.
+  These results are calculated from serialized XY polygon footprints
+  and actual Z intervals; the resulting scientific regression is
+  `site/tests/example-literature-fidelity.test.mjs`.
+- PERC: all 100 rear Mask `5/0` opening centroids in the saved
+  canonical model have a direct Si–Al interface. The physical probe
+  distinguishes front-side passivation from interposed back oxide;
+  checking whether any oxide exists in the entire two-face stack
+  would be an incorrect rejection.
+
+These results establish consistency of **saved** models. Browser
+`Rebuild Base → Run All` parity and original manuscript cross-section
+correspondence are still separate required gates.
+
 ## Changes and reproducibility
 
 The Microdisk M07 Record now names the protective recoat, dicing and
