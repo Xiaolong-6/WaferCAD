@@ -542,6 +542,25 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   etch('CNT contact openings through ILD', 'Interlayer SiO2', 0.45, 10);
   deposit('Pattern W contact plugs (illustrative)', 'W contacts', 0.47, 10);
   deposit('Pattern METAL1 interconnects', 'METAL1 Al', 0.2, 11);
+
+  // The interlayer dielectric remains fully present and exportable in the
+  // physical process model. Hide it only in the *final inspection state* so
+  // that the default Main/Section/3D displays reveal the transistor stack.
+  // Earlier History stages retain their normal visible process layers.
+  const ild = model.layers.find((layer) => layer.name === 'Interlayer SiO2');
+  assert.ok(ild, 'The dielectric must exist before applying the view preset.');
+  assert.equal(modelApi.setLayerVisible(model, ild.id, false), true);
+  project.display.threeOpacity = 0.75;
+  project.display.threeCamera = {
+    position: [10.3, -11.1, 8.1],
+    target: [0, -0.2, 0.95],
+    fov: 34,
+  };
+  // Preserve consistency between the final History head and the saved
+  // project without creating a fictional additional fabrication step.
+  const head = nodes.at(-1);
+  head.state = capture();
+  branch.headState = copy(head.state);
   bookmark('S05 - inverter / METAL1 final');
 
   Object.assign(project, capture());
@@ -595,6 +614,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     electricalMarkers: model.electricalRegions.length,
     finalRegions: model.regions.length,
     finalMaterialLayers: model.layers.length,
+    inspectionPreset: { hiddenMaterial: 'Interlayer SiO2', camera: copy(project.display.threeCamera) },
     checkpoints,
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
