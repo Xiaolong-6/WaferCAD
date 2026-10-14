@@ -54,6 +54,12 @@ To verify that the Kernel and Section viewer can represent a nonzero Implant til
 
 This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only the two HVT body annotation operations acquire an _assumed_ 18° angle, and the Section path is shortened to 1.5 µm over the pMOS gate. The vertical 80–240 nm interval then projects approximately 52 nm of lateral shift across the displayed band (`tan(18°) × 160 nm`). This auxiliary diagnostic is intentionally marked **NOT REPORTED IN PAPER** and must never be registered as a published literature reconstruction. The default generated project and committed fixture use tilt = 0°.
 
+## Default inspection state
+
+The final candidate stores `Interlayer SiO2.visible = false` as **display-only** metadata while retaining the complete dielectric volume in every physical process region. This removes the opaque blanket from Main/3D/Section without deleting oxide or altering process thickness. The original ILD can be restored with the material legend checkbox. Intermediate History steps preserve visible dielectric to show deposition/fill during process review; the last History head and final bookmark reflect the unobscured inspection preset.
+
+A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B remains the cross-device cut at y=0, tracing both MOSFET gate/channel stacks. For an individual 130 nm gate, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is *qualitative*.
+
 ## Run and acceptance
 
 - Generate and validate candidate: node scripts/build-tcmos-inverter-example.mjs
