@@ -162,8 +162,7 @@ function deriveAnnotationVolumeFragments(items, model, kind) {
           const currentSurfaceSegment =
               item.face === 'front' ? region.stack.at(-1) : region.stack[0],
             currentSurfaceZ = item.face === 'front' ? currentHigh : currentLow,
-            sourceSurfaceZ =
-              Number(patch.z) + (item.face === 'front' ? -startDepth : startDepth),
+            sourceSurfaceZ = Number(patch.z) + (item.face === 'front' ? -startDepth : startDepth),
             currentCutsAnnotation =
               item.face === 'front'
                 ? currentSurfaceZ < sourceSurfaceZ - 1e-9
