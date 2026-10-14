@@ -418,6 +418,27 @@ export async function buildSwxMems(state = 'off') {
 // exactly the same in both Variants. Only the released Si footprint changes.
 // This currently approximates flexure through the explicit pose polygons;
 // no voltage/displacement or mechanical stress is solved.
+// Boolean intersections around 100nm flexures can carry roundoff rings
+// whose signed area collapses to zero. A zero-area ring is not material.
+// Remove only these exact numerical artifacts from an illustrative pose;
+// do not alter the production Kernel or relax the project validator.
+function pruneZeroAreaPoseRings(multi) {
+  const ringArea = (ring) => {
+    let sum = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      sum += a[0] * b[1] - b[0] * a[1];
+    }
+    return Math.abs(sum / 2);
+  };
+  const minimumAreaUm2 = 1e-14;
+  return (multi || []).flatMap((poly) => {
+    if (!poly.length || ringArea(poly[0]) <= minimumAreaUm2) return [];
+    return [[poly[0], ...poly.slice(1).filter((hole) =>
+      ringArea(hole) > minimumAreaUm2)]];
+  });
+}
+
 export async function makeSwxActuatedModel(released, pose = createSwxGeometry('on')) {
   await loadGeometryKernel();
   const modelApi = await import('../site/model.js');
@@ -443,7 +464,7 @@ export async function makeSwxActuatedModel(released, pose = createSwxGeometry('o
       [shallow, planarZ],
       [v.difference(out.boundary, silicon), null],
     ]) {
-      const clipped = v.intersection(region.geom, scope);
+      const clipped = pruneZeroAreaPoseRings(v.intersection(region.geom, scope));
       if (!clipped.length) continue;
       const segments =
         high == null
