@@ -65,7 +65,14 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   // AuSn and SiC bridge over the fluid gap; no material fills the coolant volume.
   assert.equal(solidAt(project.model, [30, 0], 580), false);
   assert.equal(solidAt(project.model, [30, 0], 650), true);
-  assert.equal(solidAt(project.model, [2000, 0], 500), true);
+  assert.equal(solidAt(project.model, [2000, 0], 550), true);
+  // The two backside fluid ports open into the central bottom chamber.
+  for (const y of [-415, 415]) {
+    assert.equal(solidAt(project.model, [0, y], -100), false);
+    assert.equal(solidAt(project.model, [0, y], 100), false);
+  }
+  assert.equal(solidAt(project.model, [0, 0], -100), true);
+  assert.equal(solidAt(project.model, [0, 0], 100), false);
   // TSV bores pass completely through the interposer, outside the central chip.
   assert.equal(stackAt(project.model, [-1450, -950]).length, 0);
   assert.equal(stackAt(project.model, [1450, 950]).length, 0);
