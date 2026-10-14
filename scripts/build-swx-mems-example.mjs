@@ -388,7 +388,6 @@ export async function buildSwxMems(state = 'off') {
   return { project, json, validation };
 }
 
-
 // Pose deformation is an inspection-state geometric surrogate, NOT a new
 // fabrication operation. Keep the manufactured OFF Mask and released BOX
 // exactly the same in both Variants. Only the released Si footprint changes.
@@ -450,9 +449,15 @@ export async function buildSwxMemsUnified() {
   const boxId = project.model.layers.find((layer) => layer.name === BOX).id;
   const onBeam = readPoint(onModel, v, onPose.releasedBeamTestPoint);
   const onAnchor = readPoint(onModel, v, onPose.anchorTestPoint);
-  assert.ok(onBeam?.stack.some((s) => s.layerId === deviceId), 'ON device silicon missing');
+  assert.ok(
+    onBeam?.stack.some((s) => s.layerId === deviceId),
+    'ON device silicon missing',
+  );
   assert.ok(!onBeam?.stack.some((s) => s.layerId === boxId), 'ON beam is not released');
-  assert.ok(onAnchor?.stack.some((s) => s.layerId === boxId), 'ON pose moved BOX anchor');
+  assert.ok(
+    onAnchor?.stack.some((s) => s.layerId === boxId),
+    'ON pose moved BOX anchor',
+  );
 
   const common = project.snapshotBranches.nodes.at(-1);
   assert.equal(common.branchId, 'main');
@@ -522,7 +527,10 @@ export async function buildSwxMemsUnified() {
   validateProjectFile(restored);
   assert.equal(restored.snapshotBranches.branches.length, 2);
   assert.deepEqual(restored.snapshotBranches.branches[1].headState.layout, restored.layout);
-  assert.deepEqual(restored.snapshotBranches.branches[1].headState.processRecipe, restored.processRecipe);
+  assert.deepEqual(
+    restored.snapshotBranches.branches[1].headState.processRecipe,
+    restored.processRecipe,
+  );
   const onGap = onPose.gapUm;
   assert.ok(Math.abs(onGap - SWX_REPORTED.onGapUm) < 1e-10);
   const validation = {
@@ -556,14 +564,20 @@ async function main() {
   const reportPath = join(repo, 'test-results/swx-mems');
   await mkdir(reportPath, { recursive: true });
   await writeFile(join(reportPath, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
-  console.log(JSON.stringify({
-    pass: true,
-    outputDirectory: target,
-    project: 'swx-photonic-mems.wafercad',
-    variants: validation.branches,
-    historyNodes: validation.historyNodes,
-    outputBytes: validation.projectBytes,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        pass: true,
+        outputDirectory: target,
+        project: 'swx-photonic-mems.wafercad',
+        variants: validation.branches,
+        historyNodes: validation.historyNodes,
+        outputBytes: validation.projectBytes,
+      },
+      null,
+      2,
+    ),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
