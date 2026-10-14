@@ -6,7 +6,7 @@
     "test": "node --test site/tests/*.test.mjs",
     "lint": "eslint \"site/**/*.{js,mjs}\" \"scripts/**/*.mjs\"",
     "format": "prettier --write \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"*.md\" \"*.json\" \"eslint.config.js\"",
-    "format:check": "prettier --write site/tests/example-literature-fidelity.test.mjs docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md && git diff -- site/tests/example-literature-fidelity.test.mjs docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md && prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
+    "format:check": "prettier --write site/tests/example-literature-fidelity.test.mjs docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md && git diff -- site/tests/example-literature-fidelity.test.mjs docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md && exit 1 && prettier --check \"site/**/*.{js,mjs,css,html}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"README.md\" \"THIRD_PARTY_NOTICES.md\" \"eslint.config.js\" \"package.json\" \".prettierrc.json\"",
     "check": "npm run lint && npm run format:check && npm run docs:check && npm test",
     "check:ci": "npm run lint && npm run docs:check && npm test",
     "precommit": "npm run format && npm run lint && npm test",
