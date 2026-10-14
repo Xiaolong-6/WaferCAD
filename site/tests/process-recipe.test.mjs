@@ -167,8 +167,8 @@ test('unit-bearing Recipe lengths reject numeric and conversion overflow', () =>
 test('Recipe preserves sub-0.01 nm material lengths rather than rounding to an arbitrary physics floor', () => {
   const recipe = parseProcessRecipeSource(
     'deposit({ material: "SiO2", thickness: "0.005 nm" });\n' +
-    'extend({ material: "SiO2", thickness: "0.005 nm" });\n' +
-    'etch({ depth: "0.005 nm", profile: "directional" });',
+      'extend({ material: "SiO2", thickness: "0.005 nm" });\n' +
+      'etch({ depth: "0.005 nm", profile: "directional" });',
   );
   for (const step of recipe.steps) assert.equal(step.params.thicknessUm, 5e-6);
   const replay = parseProcessRecipeSource(serializeProcessRecipe(recipe));
