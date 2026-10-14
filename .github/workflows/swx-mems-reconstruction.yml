@@ -55,15 +55,6 @@ jobs:
           exit 1
       - name: Real v2 project import and Mask GDS export
         run: node scripts/swx-mems-browser-acceptance.mjs
-      - name: Capture exact formatting for SWX follow-up
-        if: always()
-        run: |
-          for file in scripts/swx-mems-geometry.mjs scripts/build-swx-mems-example.mjs site/tests/swx-mems-geometry.test.mjs; do
-            npx prettier --write "$file"
-            echo "SWX_FORMAT_BEGIN:$file"
-            base64 "$file"
-            echo "SWX_FORMAT_END:$file"
-          done
       - name: Archive reconstructed projects and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
