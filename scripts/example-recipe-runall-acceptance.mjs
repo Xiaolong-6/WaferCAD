@@ -311,11 +311,11 @@ try {
           `${example.id}: rebuilt wafer array site count differs`,
         );
       }
-      // MAGIC-1000 requires stricter scientific acceptance than matching
-      // material labels/counts. Compare 2.5D physical material occupancy:
-      // exact XY polygons, per material, for every distinct Z slab.
+      // MAGIC-1000 and GaN cooling both require physical-geometry acceptance
+      // beyond matching material labels/counts: every distinct material/Z
+      // slab is checked for missing or additional XY occupied volume.
       const geometryComparison =
-        example.id === 'magic-1000-mos2-beol'
+        ['magic-1000-mos2-beol', 'gan-hemt-microchannel-2022'].includes(example.id)
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
           : example.id === 'tio2-metalens-four-unit'
             ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
