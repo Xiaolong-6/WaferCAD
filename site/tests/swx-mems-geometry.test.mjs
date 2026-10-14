@@ -219,7 +219,7 @@ test('hard stop engagement limits both optical poses without filling the SWT gap
 test('representative grating couplers keep full physical polygon bounds and port routes', () => {
   const model = createSwxGeometry('off');
   const shapes = model.physicalGroups.gratingCouplers;
-  assert.ok(shapes.length >= 18, 'two fiber couplers require teeth and waveguide routes');
+  assert.equal(shapes.length, 16, 'two stationary grating bodies require sector and shallow grooves');
   for (const poly of shapes) {
     assert.ok(poly.length >= 4);
     for (const [x, y] of poly) {
@@ -375,6 +375,30 @@ test('fixed and movable silicon never overlap by positive area in either pose', 
       state + ' fixed and moving Si geometries overlap by ' +
         overlapAreaUm2 + ' µm². Largest pairs: ' + JSON.stringify(worstPairs),
     );
+  }
+});
+
+test('moving lower optical input remains coupled to a stationary grating in both poses', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const toMulti = (polygons) =>
+    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  const off = createSwxGeometry('off');
+  const on = createSwxGeometry('on');
+  assert.notDeepEqual(off.physicalGroups.gratingFeeds, on.physicalGroups.gratingFeeds);
+  for (const pose of [off, on]) {
+    const feed = toMulti(pose.physicalGroups.gratingFeeds);
+    assert.equal(feed.length, 1, pose.state + ' moving optical input feed has a break');
+    for (const point of [
+      [-53, -13 + pose.travelUm],
+      [-45, -25],
+    ]) {
+      assert.ok(
+        v.pointInMulti(point, feed),
+        pose.state + ' compliant grating feed is disconnected at ' + point.join(','),
+      );
+    }
   }
 });
 
