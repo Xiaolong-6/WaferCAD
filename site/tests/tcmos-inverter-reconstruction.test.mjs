@@ -87,7 +87,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(ild.visible, false, 'Final inspection hides only the dielectric');
   assert.equal(project.display.threeOpacity, 0.75);
   assert.deepEqual(project.display.threeCamera, {
-    position: [10.3, -11.1, 8.1],
+    position: [13.3, -14.3, 10.2],
     target: [0, -0.2, 0.95],
     fov: 34,
   });
@@ -112,6 +112,16 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     model.regions.find((r) => v.pointInMulti([x, y], r.geom))?.stack?.at(-1)?.layerId;
   assert.ok(at(-4, 0));
   assert.ok(at(0, 0));
+  const gateOxide = model.layers.find((layer) => layer.name === 'Gate SiO2 (5nm surrogate)');
+  assert.ok(gateOxide);
+  const materialAt = (x, y, layerId) =>
+    model.regions
+      .find((region) => v.pointInMulti([x, y], region.geom))
+      ?.stack.some((segment) => segment.layerId === layerId);
+  assert.equal(materialAt(-3, 0, gateOxide.id), true, 'Gate dielectric sits beneath pMOS POLY');
+  assert.equal(materialAt(3, 0, gateOxide.id), true, 'Gate dielectric sits beneath nMOS POLY');
+  assert.equal(materialAt(0, 3, gateOxide.id), false, 'No blanket dielectric outside ACTIVE');
+  assert.equal(materialAt(-4, 0, gateOxide.id), false, 'Source remains exposed silicon');
   const branch = project.snapshotBranches.branches[0];
   assert.equal(branch.headNodeId, project.snapshotBranches.cursorNodeId);
   assert.equal(project.processRecipe.base.thickness, 2);
