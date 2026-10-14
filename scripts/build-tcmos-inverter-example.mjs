@@ -222,7 +222,9 @@ export async function buildTcmosInverter({
     throw new Error('The conventional CMOS Variant uses only 0° implantation.');
   }
   if (![0, 18].includes(illustrativeTiltDeg)) {
-    throw new Error('Only the assumed 0° baseline and 18° illustrative tilt diagnostic are supported; the paper does not report an angle.');
+    throw new Error(
+      'Only the assumed 0° baseline and 18° illustrative tilt diagnostic are supported; the paper does not report an angle.',
+    );
   }
   await loadGeometryKernel();
   const modelApi = await import('../site/model.js');
