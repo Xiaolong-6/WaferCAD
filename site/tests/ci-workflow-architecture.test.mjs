@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 function workflow(name) {
@@ -11,12 +11,18 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  release-quality:\n/);
   assert.match(pages, /  release-browser:\n/);
   assert.match(pages, /  release-ui-v2:\n/);
+  assert.match(pages, /  stage-pages:\n/);
   assert.match(pages, /needs: \[release-quality, release-browser, release-ui-v2\]/);
+  assert.match(pages, /needs: \[stage-pages\]/);
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
+  assert.match(pages, /run: node scripts\/smoke-pages-artifact\.mjs/);
+  assert.match(pages, /uses: actions\/upload-pages-artifact@v4/);
+  assert.equal((pages.match(/pages: write/g) || []).length, 1, 'Only deploy has Pages write');
+  assert.equal((pages.match(/id-token: write/g) || []).length, 1, 'Only deploy has OIDC write');
   assert.match(pages, /node scripts\/build-pages-artifact\.mjs/);
   assert.match(pages, /node scripts\/stamp-pages-assets\.mjs .*build\/pages/);
   assert.match(pages, /path: build\/pages/);
@@ -34,18 +40,16 @@ test('browser and v2 owners are reusable without racing main-push jobs', () => {
   assert.match(browser, /^  workflow_call:/m);
   assert.match(ui, /^  workflow_call:/m);
   assert.doesNotMatch(browser, /^  push:/m);
-  assert.match(ui, /branches: \[codex\/ui-v2-main-wip\]/);
+  assert.doesNotMatch(ui, /codex\/ui-v2-main-wip/);
   assert.doesNotMatch(ui, /branches: \[codex\/ui-v2-main-wip, main\]/);
   assert.match(browser, /!inputs\.skip_node_gate/);
 });
 
-test('preview publishes from the last successful production Pages run', () => {
-  const preview = workflow('ui-v2-preview');
-  assert.match(preview, /actions\/workflows\/pages\.yml\/runs\?branch=main/);
-  assert.match(preview, /ref: \$\{\{ steps\.verified-main\.outputs\.sha \}\}/);
-  assert.match(preview, /node scripts\/build-pages-artifact\.mjs/);
-  assert.match(preview, /cp -a base\/build\/pages\/\. _site\//);
-  assert.doesNotMatch(preview, /^          ref: main$/m);
+test('retired preview cannot publish from the obsolete branch', () => {
+  assert.equal(
+    existsSync(new URL('../../.github/workflows/ui-v2-preview.yml', import.meta.url)),
+    false,
+  );
 });
 
 test('Quality covers docs-only PRs and enforces pinned formatter', () => {
