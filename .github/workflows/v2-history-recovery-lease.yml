@@ -25,6 +25,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Show exact pinned Prettier delta
+        run: npx prettier scripts/v2/check-history-recovery-lease.mjs | diff -u scripts/v2/check-history-recovery-lease.mjs - || true
       - run: npx playwright install --with-deps chromium
       - name: Start workstation
         shell: bash
