@@ -148,65 +148,90 @@ function makeOptics(moveY) {
 
 function makeMeanders(moveY) {
   const paths = [];
-  // Two 180-degree bends per spring waveguide are the paper-reported topology.
+  // Geometric flexure: the fixed optical end is stationary; displacement is
+  // gradually introduced along the two-bend meander towards the shuttle.
   for (const side of [-1, 1]) {
     const y = side * 16;
     const x = -15;
-    const points = [
-      [x - 1, y + moveY],
-      [x + 1, y + moveY],
-      ...traceArc(x + 1, y + 3 + moveY, 3, -Math.PI / 2, Math.PI / 2),
-      [x + 1, y + 6 + moveY],
-      ...traceArc(x + 1, y + 11 + moveY, 5, -Math.PI / 2, Math.PI / 2),
-      [x + 16, y + 16 + moveY],
+    const original = [
+      [x - 1, y],
+      [x + 1, y],
+      ...traceArc(x + 1, y + side * 3, 3, -Math.PI / 2, Math.PI / 2),
+      [x + 1, y + side * 6],
+      ...traceArc(x + 1, y + side * 11, 5, -Math.PI / 2, Math.PI / 2),
+      [x + 16, y + side * 16],
     ];
+    const points = original.map(([px, py], i) => [
+      px,
+      py + (moveY * i) / (original.length - 1),
+    ]);
     paths.push(...polyline(points, SWX_REPORTED.waveguideCoreUm));
   }
   return paths;
 }
 
 function makeFoldedSprings(moveY) {
-  const items = [];
-  for (const side of [-1, 1]) {
-    const y = side * 32;
-    // Reconstructed placements; paper reports 30/22 um beams and 200 nm width.
-    const xs = [-3, -1.5, 0, 1.5];
-    const high = y + side * 8;
-    const low = y - side * 8 + moveY;
-    const zigzag = [
-      [xs[0], high],
-      [xs[0], low],
-      [xs[1], low],
-      [xs[1], high],
-      [xs[2], high],
-      [xs[2], low],
-      [xs[3], low],
-      [xs[3], high],
+  const parts = [];
+  // Four narrow folded beams per side, connecting a stationary anchor at
+  // y=+/-40um to the moving horizontal shuttle. The drawn shape is a
+  // continuous cantilever path, not a set of unconnected spring marks.
+  for (const sign of [-1, 1]) {
+    const y = (distance) => sign * distance;
+    const path = [
+      [0, y(38)], [0, y(12)],
+      [1.5, y(12)], [1.5, y(34)],
+      [3, y(34)], [3, y(11)],
+      [5, y(11)], [5, 0],
     ];
-    items.push(...polyline(zigzag, SWX_REPORTED.foldedSpringWidthUm));
-    items.push(rect(0, high, 11, 7));
+    const deform = path.map(([x, py], i) => [
+      x,
+      py + (moveY * i) / (path.length - 1),
+    ]);
+    parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
   }
-  return items;
+  return parts;
+}
+
+function makeShuttle(moveY) {
+  const left = -23, right = 44, halfHeight = 1.8;
+  const top = halfHeight + moveY;
+  const bottom = -halfHeight + moveY;
+  const beams = [
+    strip([left, top], [right, top], 0.55),
+    strip([left, bottom], [right, bottom], 0.55),
+    // Rigid moving SWX half attaches to the central triangular truss.
+    strip([-28, -1.6 + moveY], [left + 0.2, bottom], 0.7),
+  ];
+  const pitch = 5;
+  for (let x = left; x + pitch <= right; x += pitch) {
+    beams.push(strip([x, top], [x + pitch * 0.5, bottom], 0.4));
+    beams.push(strip([x + pitch * 0.5, bottom], [x + pitch, top], 0.4));
+  }
+  return beams;
 }
 
 function makeCombs(moveY) {
-  const fixed = [rect(25, 9, 39, SWX_REPORTED.fixedCombHandleUm)];
-  const moving = [rect(25, -1 + moveY, 39, SWX_REPORTED.movableCombHandleUm)];
-  // There are 40 reported comb unit cells. This reconstructed arrangement
-  // uses two mirrored banks of 20 opposing finger pairs.
+  const fixed = [
+    rect(25, 9, 39, SWX_REPORTED.fixedCombHandleUm),
+    rect(25, -21, 39, SWX_REPORTED.fixedCombHandleUm),
+  ];
+  const moving = [
+    rect(25, moveY, 39, SWX_REPORTED.movableCombHandleUm),
+    rect(25, -11 + moveY, 39, SWX_REPORTED.movableCombHandleUm),
+    strip([42, -11 + moveY], [42, moveY], 0.9),
+  ];
+  // Adjacent comb fingers have 500nm width, 300nm lateral clearance and
+  // a real 2D interdigitation overlap; each bank has 20 finger pairs.
   for (let i = 0; i < 20; i++) {
     const x = 8.8 + i * 1.65;
-    fixed.push(rect(x, 5.7, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(
-      rect(x + 0.8, 2.3 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
-    );
-    fixed.push(rect(x, -17.7, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(
-      rect(x + 0.8, -14.3 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
-    );
+    fixed.push(rect(x, 4.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+    moving.push(rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm,
+      SWX_REPORTED.combFingerLengthUm));
+    fixed.push(rect(x, -16.5, SWX_REPORTED.combFingerWidthUm,
+      SWX_REPORTED.combFingerLengthUm));
+    moving.push(rect(x + 0.8, -13.9 + moveY, SWX_REPORTED.combFingerWidthUm,
+      SWX_REPORTED.combFingerLengthUm));
   }
-  fixed.push(rect(25, -21, 39, SWX_REPORTED.fixedCombHandleUm));
-  moving.push(rect(25, -11 + moveY, 39, SWX_REPORTED.movableCombHandleUm));
   return { fixed, moving };
 }
 
@@ -224,39 +249,20 @@ export function createSwxGeometry(state = 'off') {
   const anchors = [
     rect(-49, 34, 9, 9),
     rect(-49, -34, 9, 9),
-    rect(25, 43, 12, 10),
-    rect(25, -43, 12, 10),
+    rect(2, 40, 10, 10),
+    rect(2, -40, 10, 10),
     rect(46, 9, 9, 9),
     rect(46, -21, 9, 9),
   ];
-  const bridge = [
-    ...polyline(
-      [
-        [-9, -10 + travel],
-        [-7, -10 + travel],
-        [-7, 22 + travel],
-      ],
-      SWX_REPORTED.movableCombHandleUm,
-    ),
-    ...polyline(
-      [
-        [-7, 0 + travel],
-        [6, 0 + travel],
-        [6, -11 + travel],
-      ],
-      1,
-    ),
+  const shuttle = makeShuttle(travel);
+  const flexure = [...makeFoldedSprings(travel), ...makeMeanders(travel)];
+  const aligner = [
+    strip([-25, 3.4], [-19, 3.4], 0.3),
+    strip([-25, -3.4 + travel], [-19, -3.4 + travel], 0.3),
   ];
-  const silicon = [
-    ...optics.fixed,
-    ...optics.moving,
-    ...makeMeanders(travel),
-    ...makeFoldedSprings(travel),
-    ...combs.fixed,
-    ...combs.moving,
-    ...anchors,
-    ...bridge,
-  ];
+  const fixed = [...optics.fixed, ...combs.fixed, ...anchors, aligner[0]];
+  const movable = [...optics.moving, ...combs.moving, ...shuttle, aligner[1]];
+  const silicon = [...fixed, ...movable, ...flexure];
   // Ridge mask: representative narrow routing transitions (not full
   // 64x64 array routing). Ridge 150nm etch leaves 70nm silicon slab.
   const ridge = [
@@ -316,6 +322,7 @@ export function createSwxGeometry(state = 'off') {
     layout,
     maskPolygons: polys,
     maskNames: MASK_INFO.map(([layer, name]) => ({ layer, name })),
+    physicalGroups: { fixed, movable, flexure },
     anchorTestPoint: [25, 43],
     releasedBeamTestPoint: [-31, -1.7 + travel],
   };
