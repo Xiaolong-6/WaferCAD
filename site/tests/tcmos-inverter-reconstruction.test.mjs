@@ -48,6 +48,23 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(model.implants.length, 6);
   assert.match(model.implants[0].name, /HVTP As\+ pMOS/);
   assert.match(model.implants[1].name, /HVTN BF2\+ nMOS/);
+  for (const body of model.implants.slice(0, 2)) {
+    assert.equal(body.depthStart, 0.08, 'HVT marker must leave the top 80nm unannotated');
+    assert.equal(body.thickness, 0.24, 'HVT marker ends 240nm from the original surface');
+  }
+  const { implantSectionBands } = await import('../model-view-geometry.js');
+  const bodyIds = new Set(model.implants.slice(0, 2).map((item) => item.id));
+  const bodyBands = implantSectionBands(model, [-5.5, 0], [5.5, 0]).filter((b) =>
+    bodyIds.has(b.implantId),
+  );
+  assert.ok(bodyBands.length >= 2, 'Both HVT buried regions intersect A-B');
+  for (const band of bodyBands) {
+    assert.ok(Math.abs(band.outerZ - 0.92) < 1e-8, 'Buried zone must not touch the top Si surface');
+    assert.ok(Math.abs(band.innerZ - 0.76) < 1e-8, 'Buried interval must end at the recorded depth');
+  }
+  assert.equal(project.processRecipe.steps.filter((step) =>
+    step.command === 'implant' && step.params.startDepthUm === 0.08,
+  ).length, 2);
   assert.equal(model.electricalRegions.length, 2);
   assert.ok(model.layers.some((l) => l.name === 'STI SiO2 fill'));
   assert.ok(model.layers.some((l) => l.name === 'POLY gate'));
@@ -65,8 +82,29 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   );
   assert.equal(project.processRecipe.steps.filter((s) => s.command === 'implant').length, 6);
   assert.equal(project.processRecipe.steps.at(-1).command, 'deposit');
+  const metals = TCMOS_MASKS.find((mask) => mask.id === 11).rectangles;
+  const contains = (r, x, y) =>
+    x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
+  const nets = [
+    { name: 'VDD', point: [-4.34, 0] },
+    { name: 'VOUT p-drain', point: [-1.66, 0] },
+    { name: 'VOUT n-drain', point: [1.66, 0] },
+    { name: 'GND', point: [4.34, 0] },
+    { name: 'VIN gate', point: [0, 1.29] },
+  ];
+  for (const { name, point: [x, y] } of nets) {
+    assert.ok(metals.some((r) => contains(r, x, y)), name + ' must overlap Metal1');
+    const region = model.regions.find((r) => v.pointInMulti([x, y], r.geom));
+    const present = new Set(region?.stack.map((segment) =>
+      model.layers.find((layer) => layer.id === segment.layerId)?.name,
+    ));
+    assert.ok(present.has('W contacts'), name + ' must have a W contact');
+    assert.ok(present.has('METAL1 Al'), name + ' must touch real Metal1');
+    if (name === 'VIN gate') assert.ok(present.has('POLY gate'), 'VIN contact must sit on POLY');
+  }
+  assert.equal(metals.length, 4, 'four independently routed Metal1 nets');
   assert.ok(
-    validation.keyAssumptions.some((a) => /retrograde buried/i.test(a)),
+    validation.keyAssumptions.some((a) => /retrograde concentration/i.test(a)),
     'Source-vs-model disclosure must not be lost',
   );
 });
