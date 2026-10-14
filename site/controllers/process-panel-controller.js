@@ -1017,7 +1017,10 @@ export function createProcessPanelController({
       if (canonicalImplantStartDepthUm != null) {
         const startDepth = Number(canonicalImplantStartDepthUm);
         if (!Number.isFinite(startDepth) || startDepth < 0 || startDepth >= thickness) {
-          return status('Implant Start depth must be nonnegative and less than total Depth.', 'error');
+          return status(
+            'Implant Start depth must be nonnegative and less than total Depth.',
+            'error',
+          );
         }
         if (startDepth > 0) params.depthStart = startDepth;
       }
