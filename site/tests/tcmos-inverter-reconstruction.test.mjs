@@ -160,18 +160,30 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
 test('source-correct 0° HVT and explicitly non-paper 18° tilt diagnostic remain isolated', async () => {
   const paper = await buildTcmosInverter();
   const demo = await buildTcmosInverter({ illustrativeTiltDeg: 18 });
-  assert.deepEqual(paper.project.model.implants.map((item) => item.tilt), [0, 0, 0, 0, 0, 0]);
-  assert.deepEqual(demo.project.model.implants.map((item) => item.tilt), [18, 18, 0, 0, 0, 0]);
-  assert.deepEqual(demo.project.model.regions, paper.project.model.regions,
-    'Changing display-only Implant angle must not affect simulated solid materials');
+  assert.deepEqual(
+    paper.project.model.implants.map((item) => item.tilt),
+    [0, 0, 0, 0, 0, 0],
+  );
+  assert.deepEqual(
+    demo.project.model.implants.map((item) => item.tilt),
+    [18, 18, 0, 0, 0, 0],
+  );
+  assert.deepEqual(
+    demo.project.model.regions,
+    paper.project.model.regions,
+    'Changing display-only Implant angle must not affect simulated solid materials',
+  );
   assert.equal(paper.validation.tiltSourceReported, false);
   assert.equal(demo.validation.tiltSourceReported, false);
   assert.equal(demo.validation.tiltDegrees, 18);
   assert.match(demo.project.name, /NOT REPORTED IN PAPER/);
   assert.deepEqual(demo.project.section, { a: [-3.75, 0], b: [-2.25, 0] });
-  assert.equal(demo.project.processRecipe.steps.filter((step) =>
-    step.command === 'implant' && step.params.tilt === 18,
-  ).length, 2);
-  const lateralWithinBuriedBand = Math.tan(18 * Math.PI / 180) * (0.24 - 0.08);
+  assert.equal(
+    demo.project.processRecipe.steps.filter(
+      (step) => step.command === 'implant' && step.params.tilt === 18,
+    ).length,
+    2,
+  );
+  const lateralWithinBuriedBand = Math.tan((18 * Math.PI) / 180) * (0.24 - 0.08);
   assert.ok(lateralWithinBuriedBand > 0.05 && lateralWithinBuriedBand < 0.055);
 });
