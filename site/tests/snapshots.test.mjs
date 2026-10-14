@@ -310,6 +310,40 @@ test('snapshot branch state round-trips and legacy snapshots become a linear Mai
   assert.equal(legacy.activeBranch().headSnapshotId, 'new');
 });
 
+test('milestone legacy classification refreshes after History import and does not cache names', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    idFactory: () => `milestone-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'deposited' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit' });
+  const milestone = manager.create('Original');
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
+  assert.equal(manager.rename(milestone.id, 'Renamed'), true);
+  assert.equal(manager.list()[0].name, 'Renamed');
+
+  const originalRecords = manager.exportRecords();
+  const history = manager.exportBranchState();
+  const legacyRecords = structuredClone(originalRecords);
+  legacyRecords[0].state.value = 'different';
+  manager.importRecords(legacyRecords, history);
+  assert.equal(manager.list()[0].legacyCheckpoint, true);
+  assert.equal(manager.list()[0].legacyCheckpoint, true);
+
+  manager.importRecords(originalRecords, history);
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
+});
+
 test('branch origin milestones are protected and deleting a leaf variant keeps its origin', () => {
   let live = { value: 1 };
   let snapshotId = 0;

@@ -216,6 +216,9 @@ export function createSnapshotManager({
   let indexedHistoryNodes = null;
   let indexedNodeCount = -1;
   let historyNodesById = new Map();
+  // Internally owned checkpoints are immutable. Cache the expensive geometric
+  // equivalence for an unchanged milestone/node pair, but not mutable labels.
+  const legacyStatusByRecord = new WeakMap();
 
   function branchById(id) {
     return branches.find((branch) => branch.id === id) || null;
@@ -268,10 +271,24 @@ export function createSnapshotManager({
   }
 
   function list() {
-    const pairs = records.map((record) => {
-      const state = nodeById(record.historyNodeId)?.state;
-      return state && record.state ? [record.state, state] : [null, null];
-    });
+    const pairs = [];
+    const pending = [];
+    const legacy = new Array(records.length);
+    for (const [index, record] of records.entries()) {
+      const nodeState = nodeById(record.historyNodeId)?.state || null;
+      const cached = legacyStatusByRecord.get(record);
+      if (
+        cached &&
+        cached.historyNodeId === record.historyNodeId &&
+        cached.recordState === record.state &&
+        cached.nodeState === nodeState
+      ) {
+        legacy[index] = cached.value;
+        continue;
+      }
+      pairs.push(nodeState && record.state ? [record.state, nodeState] : [null, null]);
+      pending.push({ index, record, nodeState });
+    }
     let matches;
     try {
       matches = equalStatePairs(pairs);
@@ -284,6 +301,17 @@ export function createSnapshotManager({
         }
       });
     }
+    for (let index = 0; index < pending.length; index++) {
+      const { index: recordIndex, record, nodeState } = pending[index];
+      const value = !matches[index];
+      legacy[recordIndex] = value;
+      legacyStatusByRecord.set(record, {
+        historyNodeId: record.historyNodeId,
+        recordState: record.state,
+        nodeState,
+        value,
+      });
+    }
     return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId }, index) => {
       return {
         id,
@@ -292,7 +320,7 @@ export function createSnapshotManager({
         branchId,
         parentId,
         historyNodeId,
-        legacyCheckpoint: !matches[index],
+        legacyCheckpoint: legacy[index],
       };
     });
   }
