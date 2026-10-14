@@ -69,9 +69,7 @@ try {
       assert.equal(await root.getAttribute('data-mobile'), 'view');
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
-      const viewDefaults = await page.evaluate(
-        () => window.WaferCadV2Workstation.snapshot().local,
-      );
+      const viewDefaults = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().local);
       for (const name of ['main', 'mask', 'section']) {
         assert.equal(viewDefaults[name].panEnabled, true, `${name}: default Pan`);
         assert.equal(viewDefaults[name].zoomEnabled, true, `${name}: default Zoom`);
@@ -214,9 +212,7 @@ try {
       await page.locator('[data-action="process-mode:recipe"]').evaluate((node) => node.click());
       await waitForPaint(page);
       assert.equal(
-        await page
-          .locator('#recipeStepsPane')
-          .evaluate((node) => getComputedStyle(node).overflowY),
+        await page.locator('#recipeStepsPane').evaluate((node) => getComputedStyle(node).overflowY),
         'visible',
         'Recipe steps scroll with the document',
       );
