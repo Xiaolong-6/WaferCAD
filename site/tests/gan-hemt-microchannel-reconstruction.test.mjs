@@ -68,6 +68,31 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.ok(validation.processNodes >= 20);
   assert.ok(validation.bookmarks >= 5);
   assert.equal(validation.recipeSteps, project.processRecipe.steps.length);
+  const manifoldReview = project.snapshots.find((snapshot) =>
+    snapshot.name.startsWith('01 Four-level open microchannels'),
+  );
+  assert.ok(manifoldReview, 'No pre-assembly manifold inspection bookmark');
+  assert.deepEqual(manifoldReview.state.roi, {
+    type: 'rect',
+    a: [-500, -520],
+    b: [500, 520],
+  });
+  assert.deepEqual(manifoldReview.state.section, { a: [0, -500], b: [0, 500] });
+  assert.deepEqual(manifoldReview.state.display.threeCamera, {
+    position: [650, -740, 1530],
+    target: [0, 0, 440],
+    fov: 36,
+  });
+  assert.ok(
+    !manifoldReview.state.model.layers.some((layer) =>
+      layer.name.startsWith('GaN HEMT SiC substrate'),
+    ),
+    'Pre-assembly manifold view must not be obscured by the attached HEMT',
+  );
+  assert.ok(
+    project.model.layers.some((layer) => layer.name.startsWith('GaN HEMT SiC substrate')),
+    'Final integrated project must still contain the HEMT',
+  );
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   validateProcessModel(project.model);
   validateProjectFile(project);
