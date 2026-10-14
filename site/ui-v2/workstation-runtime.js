@@ -30,7 +30,11 @@ export async function loadWorkstationProject() {
   };
 }
 
-export async function loadBundledProject(id, readProject = readProjectFile, { preview = false } = {}) {
+export async function loadBundledProject(
+  id,
+  readProject = readProjectFile,
+  { preview = false } = {},
+) {
   const aliases = {
     m3d: 'm3d-selfpowered-heterogeneous-ic',
     photodetector: 'photodetector-literature',
