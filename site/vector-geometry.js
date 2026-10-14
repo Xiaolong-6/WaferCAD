@@ -1,3 +1,4 @@
+import { connectedBoundingBoxGroups } from './polygon-bounds-groups.js';
 import {
   BOOLEAN_RETRY_GRID_UM,
   EPS,
@@ -67,17 +68,6 @@ function polygonBounds(poly) {
   return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
 }
 
-function boundsMayTouch(a, b, tolerance = EPS) {
-  return Boolean(
-    a &&
-    b &&
-    a.maxX >= b.minX - tolerance &&
-    b.maxX >= a.minX - tolerance &&
-    a.maxY >= b.minY - tolerance &&
-    b.maxY >= a.minY - tolerance,
-  );
-}
-
 function unionPolygonComponents(geometries) {
   const entries = [];
   for (const geom of geometries || []) {
@@ -97,51 +87,10 @@ function unionPolygonComponents(geometries) {
   // output-ring failures. A sweep over bounding boxes first partitions the input
   // into overlap-connected components; singleton components are already exact
   // union results and never enter polygon-clipping.
-  const parent = entries.map((_, index) => index),
-    rank = entries.map(() => 0),
-    find = (index) => {
-      let root = index;
-      while (parent[root] !== root) root = parent[root];
-      while (parent[index] !== index) {
-        const next = parent[index];
-        parent[index] = root;
-        index = next;
-      }
-      return root;
-    },
-    join = (left, right) => {
-      let a = find(left),
-        b = find(right);
-      if (a === b) return;
-      if (rank[a] < rank[b]) [a, b] = [b, a];
-      parent[b] = a;
-      if (rank[a] === rank[b]) rank[a]++;
-    },
-    order = entries
-      .map((_, index) => index)
-      .sort((a, b) => entries[a].bounds.minX - entries[b].bounds.minX),
-    active = [];
-
-  for (const index of order) {
-    const current = entries[index],
-      minX = current.bounds.minX - EPS;
-    let write = 0;
-    for (const otherIndex of active) {
-      const other = entries[otherIndex];
-      if (other.bounds.maxX < minX) continue;
-      active[write++] = otherIndex;
-      if (boundsMayTouch(current.bounds, other.bounds)) join(index, otherIndex);
-    }
-    active.length = write;
-    active.push(index);
-  }
-
-  const components = new Map();
-  for (let index = 0; index < entries.length; index++) {
-    const root = find(index);
-    if (!components.has(root)) components.set(root, []);
-    components.get(root).push(entries[index].geom);
-  }
+  const components = connectedBoundingBoxGroups(
+    entries.map((entry) => entry.bounds),
+    EPS,
+  ).map((indices) => indices.map((index) => entries[index].geom));
 
   const out = [];
   let mergedComponents = false;
