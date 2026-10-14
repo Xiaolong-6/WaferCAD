@@ -21,6 +21,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -548,7 +549,16 @@ function partitionProcessRegions(
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
       if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
-        throw new Error(`${operation} produced overlapping regions (${overlapArea} µm²).`);
+        const witness = {
+          box: multiBounds(overlap),
+          owners: [previous, region].map(({ id, stack }) => ({
+            id,
+            layerIds: stack.map((segment) => segment.layerId),
+          })),
+        };
+        throw new Error(
+          `${operation} produced overlapping regions (${overlapArea} µm²); witness=${JSON.stringify(witness)}`,
+        );
       }
       geom = sanitizeProcessGeometry(difference(geom, previous.geom));
       if (isEmpty(geom)) break;
