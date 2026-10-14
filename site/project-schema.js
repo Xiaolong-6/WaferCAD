@@ -508,6 +508,12 @@ function validateModel(model, budget, geometryCache) {
         fail(`${path}.face`, 'must be front or back.');
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      if (implant.depthStart != null) {
+        assertFinite(implant.depthStart, `${path}.depthStart`, { min: 0 });
+        if (!(implant.depthStart < implant.thickness)) {
+          fail(`${path}.depthStart`, 'must be less than implant thickness (total depth).');
+        }
+      }
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
       if (implant.depthProfile != null && !['follow', 'smooth'].includes(implant.depthProfile)) {
         fail(`${path}.depthProfile`, 'must be follow or smooth.');
