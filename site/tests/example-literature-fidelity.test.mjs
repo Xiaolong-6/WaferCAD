@@ -5,9 +5,7 @@ import test from 'node:test';
 // Paper-to-geometry probes. These inspect canonical Z intervals and Mask geometry,
 // not the 3D shader, roughness appearance or a screenshot of a saved stage.
 async function example(id) {
-  return JSON.parse(
-    await readFile(new URL(`../examples/${id}.wafercad`, import.meta.url), 'utf8'),
-  );
+  return JSON.parse(await readFile(new URL(`../examples/${id}.wafercad`, import.meta.url), 'utf8'));
 }
 
 function pointInRing([x, y], ring) {
@@ -15,7 +13,7 @@ function pointInRing([x, y], ring) {
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
       inside = !inside;
     }
   }
@@ -25,8 +23,7 @@ function pointInRing([x, y], ring) {
 function pointInMulti(point, multi) {
   return multi.some(
     (polygon) =>
-      pointInRing(point, polygon[0]) &&
-      !polygon.slice(1).some((hole) => pointInRing(point, hole)),
+      pointInRing(point, polygon[0]) && !polygon.slice(1).some((hole) => pointInRing(point, hole)),
   );
 }
 
@@ -67,8 +64,7 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
   assert.ok(
     project.snapshots.some(
       (snapshot) =>
-        snapshot.historyNodeId === 'process-microdisk-07' &&
-        snapshot.name === prep.params.label,
+        snapshot.historyNodeId === 'process-microdisk-07' && snapshot.name === prep.params.label,
     ),
   );
   assert.equal(steps[3].params.area, 'invert');
@@ -87,7 +83,10 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
     segment(released, 'Thermal').z0 - segment(released, 'Silicon').z1 >= 35.9,
     'A canonical released void must separate silica from silicon',
   );
-  assert.equal(outside.some((entry) => entry.name.includes('SiO₂')), false);
+  assert.equal(
+    outside.some((entry) => entry.name.includes('SiO₂')),
+    false,
+  );
 });
 
 test('PERC point contacts expose silicon but nearby rear regions remain insulated', async () => {
@@ -99,9 +98,7 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
   assert.equal(rearOpenings.length, 100);
   const steps = project.processRecipe.steps;
   assert.equal(steps.length, 17);
-  const backWindow = steps.find(
-    (step) => step.command === 'etch' && step.params.face === 'back',
-  );
+  const backWindow = steps.find((step) => step.command === 'etch' && step.params.face === 'back');
   assert.deepEqual(backWindow.params.mask.layerKeys, ['5|0']);
   const passivation = steps.find(
     (step) => step.command === 'deposit' && step.params.face === 'both',
@@ -120,7 +117,10 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
       Math.abs(segment(stack, 'Al rear').z1 - segment(stack, 'Base').z0) < 1e-9,
       `Rear contact ${index + 1} must reach silicon`,
     );
-    assert.equal(stack.some((entry) => entry.name.includes('passivation')), false);
+    assert.equal(
+      stack.some((entry) => entry.name.includes('passivation')),
+      false,
+    );
   }
   const contact = materialAt(project, [-9000, -9000]);
   const insulated = materialAt(project, [-8500, -8500]);
@@ -145,7 +145,10 @@ test('Sahli tandem retains a nanometre top-cell stack with a localized Ag stripe
   assert.ok(Math.abs(thickness(active, 'LiF') - 0.001) < 1e-9);
   assert.ok(Math.abs(thickness(active, 'IZO active') - 0.11) < 1e-9);
   assert.ok(Math.abs(thickness(finger, 'Ag grid') - 0.12) < 1e-9);
-  assert.equal(active.some((entry) => entry.name.includes('Ag grid')), false);
+  assert.equal(
+    active.some((entry) => entry.name.includes('Ag grid')),
+    false,
+  );
   assert.ok(Math.abs(thickness(finger, 'MgF2') - 0.1) < 1e-9);
   const validIntervals = project.model.regions.every((region) =>
     region.stack.every((s) => s.z1 > s.z0),
