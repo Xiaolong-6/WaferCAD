@@ -33,14 +33,14 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Isolated 45nm ALD geometry and rollback regression
+        run: node --test site/tests/m3d-lime-ald45-regression.test.mjs
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Check committed project matches source recipe
         run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
       - name: Source-derived structural regression
         run: node --test site/tests/m3d-lime-builder.test.mjs
-      - name: Isolated 45nm ALD geometry and rollback regression
-        run: node --test site/tests/m3d-lime-ald45-regression.test.mjs
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
