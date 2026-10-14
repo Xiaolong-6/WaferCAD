@@ -22,8 +22,11 @@ const AU = 'Au electrode';
 const clone = (value) => structuredClone(value);
 function mask(layer) {
   return {
-    sourceMode: 'file', cell: CELL, layerKeys: [layer + '|0'],
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 }, roi: null,
+    sourceMode: 'file',
+    cell: CELL,
+    layerKeys: [layer + '|0'],
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    roi: null,
   };
 }
 
@@ -44,11 +47,17 @@ export async function buildSwxMems(state = 'off') {
   const source = createSwxGeometry(state);
   const [width, height] = SWX_ASSUMPTIONS.fieldUm;
   const BASE = {
-    shape: 'rect', width, height, thickness: SWX_ASSUMPTIONS.handleSiUm,
+    shape: 'rect',
+    width,
+    height,
+    thickness: SWX_ASSUMPTIONS.handleSiUm,
     material: HANDLE,
   };
   const model = modelApi.createModel({
-    shape: 'rect', width, height, thickness: SWX_ASSUMPTIONS.handleSiUm,
+    shape: 'rect',
+    width,
+    height,
+    thickness: SWX_ASSUMPTIONS.handleSiUm,
   });
   model.layers[0].name = HANDLE;
   const project = projectForBenchmark({
@@ -65,15 +74,23 @@ export async function buildSwxMems(state = 'off') {
   project.display.threeOpacity = 0.7;
   project.display.threeShowBorders = true;
 
-  const steps = [], nodes = [], bookmarks = [], checkpoints = [];
-  const layerIds = new Map([ [HANDLE, 'base'] ]);
+  const steps = [],
+    nodes = [],
+    bookmarks = [],
+    checkpoints = [];
+  const layerIds = new Map([[HANDLE, 'base']]);
   const areas = new Map();
   let parentId = null;
   const branch = {
-    id: 'main', name: 'SWX single switch · ' + state.toUpperCase(),
-    parentBranchId: null, rootNodeId: null, headNodeId: null,
-    rootSnapshotId: null, headSnapshotId: null,
-    createdAt: DATE, headState: null,
+    id: 'main',
+    name: 'SWX single switch · ' + state.toUpperCase(),
+    parentBranchId: null,
+    rootNodeId: null,
+    headNodeId: null,
+    rootSnapshotId: null,
+    headSnapshotId: null,
+    createdAt: DATE,
+    headState: null,
   };
   function date(i) {
     return new Date(Date.parse(DATE) + i * 1000).toISOString();
@@ -85,9 +102,7 @@ export async function buildSwxMems(state = 'off') {
       const shapes = polygons.map((points) => [[[...points, points[0]]]]);
       areas.set(layer, vectorApi.unionGeometries(shapes));
     }
-    return invert
-      ? vectorApi.difference(model.boundary, areas.get(layer))
-      : areas.get(layer);
+    return invert ? vectorApi.difference(model.boundary, areas.get(layer)) : areas.get(layer);
   }
   function capture() {
     const value = clone(project);
@@ -96,15 +111,21 @@ export async function buildSwxMems(state = 'off') {
     value.model = clone(model);
     value.processRecipe = normalizeProcessRecipe({
       name: 'Paper-constrained SWX SOI EBL / metallization / HF release',
-      base: BASE, steps,
+      base: BASE,
+      steps,
     });
     return value;
   }
   function append(operation) {
     const id = 'swx-' + state + '-' + String(nodes.length).padStart(2, '0');
     const node = {
-      id, branchId: 'main', parentId, createdAt: date(nodes.length),
-      processRevision: model.processRevision, operation, state: capture(),
+      id,
+      branchId: 'main',
+      parentId,
+      createdAt: date(nodes.length),
+      processRevision: model.processRevision,
+      operation,
+      state: capture(),
     };
     nodes.push(node);
     parentId = id;
@@ -116,8 +137,11 @@ export async function buildSwxMems(state = 'off') {
     const node = nodes.at(-1);
     const snapshot = {
       id: 'swx-' + state + '-bookmark-' + (bookmarks.length + 1),
-      name, createdAt: date(300 + bookmarks.length), branchId: 'main',
-      parentId: branch.headSnapshotId, historyNodeId: node.id,
+      name,
+      createdAt: date(300 + bookmarks.length),
+      branchId: 'main',
+      parentId: branch.headSnapshotId,
+      historyNodeId: node.id,
       state: clone(node.state),
     };
     bookmarks.unshift(snapshot);
@@ -127,47 +151,70 @@ export async function buildSwxMems(state = 'off') {
   function validate(label) {
     validateProcessModel(model);
     checkpoints.push({
-      stage: label, processRevision: model.processRevision,
-      regions: model.regions.length, layers: model.layers.length,
+      stage: label,
+      processRevision: model.processRevision,
+      regions: model.regions.length,
+      layers: model.layers.length,
     });
   }
   function execute(label, command, params, layer = null, invert = false) {
-    const areaMode = layer == null ? 'full' : (invert ? 'invert' : 'mask');
+    const areaMode = layer == null ? 'full' : invert ? 'invert' : 'mask';
     const raw = {
-      ...params, face: 'front', area: areaMode,
+      ...params,
+      face: 'front',
+      area: areaMode,
       ...(layer == null ? {} : { mask: mask(layer) }),
     };
-    const op = command === 'deposit'
-      ? {
-          type: 'add', name: params.material, thickness: params.thicknessUm,
-          growth: 'direct', face: 'front',
-        }
-      : {
-          type: 'etch', thickness: params.thicknessUm,
-          etchProfile: params.profile, face: 'front',
-          etchTargetLayerIds: [layerIds.get(params.target)],
-        };
+    const op =
+      command === 'deposit'
+        ? {
+            type: 'add',
+            name: params.material,
+            thickness: params.thicknessUm,
+            growth: 'direct',
+            face: 'front',
+          }
+        : {
+            type: 'etch',
+            thickness: params.thicknessUm,
+            etchProfile: params.profile,
+            face: 'front',
+            etchTargetLayerIds: [layerIds.get(params.target)],
+          };
     if (command === 'etch') assert.ok(op.etchTargetLayerIds[0], label + ': unknown etch target');
     const area = layer == null ? model.boundary : getArea(layer, invert);
-    const result = applyAdvancedProcessOperation(model, op, area, modelApi, vectorApi)
-      || modelApi.applyOperation(model, { ...op, area });
-    assert.equal(result?.changed, true, label + ': ' + (result?.error || 'did not change geometry'));
+    const result =
+      applyAdvancedProcessOperation(model, op, area, modelApi, vectorApi) ||
+      modelApi.applyOperation(model, { ...op, area });
+    assert.equal(
+      result?.changed,
+      true,
+      label + ': ' + (result?.error || 'did not change geometry'),
+    );
     if (command === 'deposit') layerIds.set(params.material, result.layerId);
     steps.push({ command, params: raw });
     const replay = {
-      version: 1, params: clone(op), areaMode,
+      version: 1,
+      params: clone(op),
+      areaMode,
       maskContext: layer == null ? null : mask(layer),
     };
     append({
       kind: command === 'deposit' ? 'add' : 'etch',
-      label, geometryChanged: true, face: 'front', areaMode,
+      label,
+      geometryChanged: true,
+      face: 'front',
+      areaMode,
       ...(command === 'deposit'
         ? {
-            name: op.name, thickness: op.thickness, growth: 'direct',
+            name: op.name,
+            thickness: op.thickness,
+            growth: 'direct',
             resultLayerId: result.layerId,
           }
         : {
-            thickness: op.thickness, targetLayerIds: op.etchTargetLayerIds,
+            thickness: op.thickness,
+            targetLayerIds: op.etchTargetLayerIds,
             etchProfile: op.etchProfile,
           }),
       replay,
@@ -176,12 +223,10 @@ export async function buildSwxMems(state = 'off') {
     return result;
   }
   function deposit(label, material, thicknessUm, layer = null) {
-    return execute(label, 'deposit',
-      { material, thicknessUm, coverage: 'directional' }, layer);
+    return execute(label, 'deposit', { material, thicknessUm, coverage: 'directional' }, layer);
   }
   function etch(label, target, thicknessUm, profile, layer, invert = false) {
-    return execute(label, 'etch',
-      { target, thicknessUm, profile }, layer, invert);
+    return execute(label, 'etch', { target, thicknessUm, profile }, layer, invert);
   }
   function record(label, note) {
     model.revision++;
@@ -189,15 +234,21 @@ export async function buildSwxMems(state = 'off') {
     const params = { label, process: 'custom', note };
     steps.push({ command: 'record', params });
     append({
-      kind: 'record', label, processType: 'custom', note,
-      geometryChanged: false, replay: { version: 1, kind: 'record' },
+      kind: 'record',
+      label,
+      processType: 'custom',
+      note,
+      geometryChanged: false,
+      replay: { version: 1, kind: 'record' },
     });
     validate(label);
   }
 
   append({
-    kind: 'base', label: 'Si handle / thickness illustrative',
-    geometryChanged: true, replay: { kind: 'base' },
+    kind: 'base',
+    label: 'Si handle / thickness illustrative',
+    geometryChanged: true,
+    replay: { kind: 'base' },
   });
   validate('Si handle');
   bookmark('00 SOI handle surrogate');
@@ -206,21 +257,35 @@ export async function buildSwxMems(state = 'off') {
   deposit('SOI device silicon 220nm', DEVICE, SWX_REPORTED.siliconUm);
   bookmark('01 SOI substrate / 220nm device layer');
 
-  record('EBL ridge mask / proximity correction',
-    'Paper reports EBL + proximity effect correction; original mask polygons unavailable.');
+  record(
+    'EBL ridge mask / proximity correction',
+    'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
+  );
   etch('150nm ridge-waveguide etch', DEVICE, SWX_REPORTED.ridgeEtchUm, 'directional', 2);
-  record('EBL full-depth strip, MEMS, and SWT pattern',
-    'Mask 1 reconstructs full-height silicon and mechanical features. SWT pitch/depth are reported; coordinates are inferred.');
-  etch('220nm full-height Si etch outside devices',
-    DEVICE, SWX_REPORTED.fullEtchUm, 'directional', 1, true);
+  record(
+    'EBL full-depth strip, MEMS, and SWT pattern',
+    'Mask 1 reconstructs full-height silicon and mechanical features. SWT pitch/depth are reported; coordinates are inferred.',
+  );
+  etch(
+    '220nm full-height Si etch outside devices',
+    DEVICE,
+    SWX_REPORTED.fullEtchUm,
+    'directional',
+    1,
+    true,
+  );
   bookmark('02 Patterned optical and mechanical silicon');
 
-  record('Photolithography / patterned electrodes',
-    'Cr/Au lithography followed by evaporation and lift-off. Direct masked film placement is a geometric equivalent, not resist-flow simulation.');
+  record(
+    'Photolithography / patterned electrodes',
+    'Cr/Au lithography followed by evaporation and lift-off. Direct masked film placement is a geometric equivalent, not resist-flow simulation.',
+  );
   deposit('E-beam evaporated Cr 50nm', CR, SWX_REPORTED.crUm, 3);
   deposit('E-beam evaporated Au 300nm', AU, SWX_REPORTED.auUm, 3);
-  record('Cr/Au lift-off',
-    'The physical metal removal outside electrode openings is represented by masked deposition.');
+  record(
+    'Cr/Au lift-off',
+    'The physical metal removal outside electrode openings is represented by masked deposition.',
+  );
   bookmark('03 Metal contacts before release');
 
   const beamBefore = readPoint(model, vectorApi, source.releasedBeamTestPoint);
@@ -228,43 +293,66 @@ export async function buildSwxMems(state = 'off') {
     beamBefore?.stack.some((item) => item.layerId === layerIds.get(BOX)),
     'A suspended beam requires pre-release BOX beneath it',
   );
-  etch('HF vapor BOX undercut release, illustrative 2um lateral front',
-    BOX, SWX_ASSUMPTIONS.releaseUndercutUm, 'undercut', 1, true);
-  record('Dry released MEMS inspection / illustrative ' + state.toUpperCase() + ' geometry',
-    'Release is canonical geometric BOX removal. ON pose is an alternative mask geometry; no dynamic actuation, optical FEM/FDTD or stiction model.');
+  etch(
+    'HF vapor BOX undercut release, illustrative 2um lateral front',
+    BOX,
+    SWX_ASSUMPTIONS.releaseUndercutUm,
+    'undercut',
+    1,
+    true,
+  );
+  record(
+    'Dry released MEMS inspection / illustrative ' + state.toUpperCase() + ' geometry',
+    'Release is canonical geometric BOX removal. ON pose is an alternative mask geometry; no dynamic actuation, optical FEM/FDTD or stiction model.',
+  );
   bookmark('04 Released SWX / ' + state.toUpperCase());
 
   const beam = readPoint(model, vectorApi, source.releasedBeamTestPoint);
   const anchor = readPoint(model, vectorApi, source.anchorTestPoint);
   const gapPoint = [-31, SWX_REPORTED.offGapUm / 2 - source.gapUm / 2];
   const gap = readPoint(model, vectorApi, gapPoint);
-  assert.ok(beam?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
-    'Released beam lost its Si device layer');
-  assert.ok(!beam?.stack.some((item) => item.layerId === layerIds.get(BOX)),
-    'Suspended beam must have a real BOX void');
-  assert.ok(anchor?.stack.some((item) => item.layerId === layerIds.get(BOX)),
-    'Stationary anchor lost its BOX support');
-  assert.ok(!gap?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
-    'Central SWX air gap was filled with Si');
+  assert.ok(
+    beam?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
+    'Released beam lost its Si device layer',
+  );
+  assert.ok(
+    !beam?.stack.some((item) => item.layerId === layerIds.get(BOX)),
+    'Suspended beam must have a real BOX void',
+  );
+  assert.ok(
+    anchor?.stack.some((item) => item.layerId === layerIds.get(BOX)),
+    'Stationary anchor lost its BOX support',
+  );
+  assert.ok(
+    !gap?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
+    'Central SWX air gap was filled with Si',
+  );
 
   Object.assign(project, capture());
   project.name = 'SWX MEMS · ' + state.toUpperCase() + ' · paper-constrained reconstruction';
   project.snapshotBranches = {
-    version: 3, activeBranchId: 'main', cursorNodeId: branch.headNodeId,
-    cursorSnapshotId: branch.headSnapshotId, nodes, branches: [branch],
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: branch.headNodeId,
+    cursorSnapshotId: branch.headSnapshotId,
+    nodes,
+    branches: [branch],
   };
   project.snapshots = bookmarks;
   validateProjectFile(project);
   const preflight = validateRecipeExecution(project.processRecipe.steps, {
-    model, maskState: { layout: project.layout },
-    base: project.processRecipe.base, startMode: 'new-base',
+    model,
+    maskState: { layout: project.layout },
+    base: project.processRecipe.base,
+    startMode: 'new-base',
   });
   assert.deepEqual(preflight.errors, [], 'Recipe preflight failed');
 
   const stored = prepareProjectForWorkspaceStorage(project);
   const json = JSON.stringify(stored);
   const restored = await readProjectFile({
-    size: Buffer.byteLength(json), text: async () => json,
+    size: Buffer.byteLength(json),
+    text: async () => json,
   });
   validateProjectFile(restored);
   assert.deepEqual(restored.model, project.model, 'Model changed across project serialization');
@@ -315,13 +403,22 @@ async function main() {
   const reportPath = join(repo, 'test-results/swx-mems');
   await mkdir(reportPath, { recursive: true });
   await writeFile(join(reportPath, 'validation.json'), JSON.stringify(reports, null, 2) + '\n');
-  console.log(JSON.stringify({
-    pass: true, outputDirectory: target,
-    variants: reports.map((item) => ({
-      state: item.state, regions: item.finalRegions, operations: item.operations,
-      outputBytes: item.outputBytes,
-    })),
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        pass: true,
+        outputDirectory: target,
+        variants: reports.map((item) => ({
+          state: item.state,
+          regions: item.finalRegions,
+          operations: item.operations,
+          outputBytes: item.outputBytes,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
