@@ -299,13 +299,14 @@ function renderExampleCards() {
       const chips = remaining.map((tag) => {
         const chip = document.createElement('span');
         chip.textContent = tag;
-        chip.hidden = true;
-        tags.append(chip);
         return chip;
       });
       const toggle = () => {
         const expanded = more.getAttribute('aria-expanded') !== 'true';
-        for (const chip of chips) chip.hidden = !expanded;
+        for (const chip of chips) {
+          if (expanded) tags.insertBefore(chip, more);
+          else chip.remove();
+        }
         more.textContent = expanded ? 'Less' : `+${remaining.length}`;
         more.setAttribute('aria-expanded', String(expanded));
         more.setAttribute(
