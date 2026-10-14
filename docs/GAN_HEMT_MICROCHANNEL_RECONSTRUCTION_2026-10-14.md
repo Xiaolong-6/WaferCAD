@@ -73,7 +73,7 @@ Every inferred element must remain labeled as an assumption; do not promote it t
 ## Section Z display contract
 
 The initial screenshot audit exposed a presentation hazard: the Workstation's
-default automatic Z-break hides the *middle* of a device, which for this article
+default automatic Z-break hides the _middle_ of a device, which for this article
 contains the four distinct cooling-channel tiers. This example therefore saves
 `sectionCollapse: { top: 0, bottom: -150, enabled: false }`, so the complete
 Z stack is visible by default. The user can enable a manual Z-break for the
