@@ -190,8 +190,7 @@ try {
       return (
         current.projectName === name &&
         !current.workflow.busy &&
-        current.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible ===
-          false
+        current.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible === false
       );
     },
     expected.name,
