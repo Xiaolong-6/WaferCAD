@@ -63,7 +63,7 @@ test('Each pose yields named, bounded and exportable polygon mask layers', () =>
     });
     assert.deepEqual([...generated.maskPolygons.keys()], [1, 2, 3]);
     assert.ok(generated.maskPolygons.get(1).length > 100);
-    assert.equal(generated.maskPolygons.get(2).length, 4);
+    assert.equal(generated.maskPolygons.get(2).length, 16);
     assert.equal(generated.maskPolygons.get(3).length, 4);
     assert.equal(generated.layout.combos.length, 3);
     assert.equal(
@@ -270,6 +270,27 @@ test('both optical meanders connect SWX port and supported anchor without free e
       assert.ok(
         silicon.some((poly) => [port, anchor].every((point) => v.pointInMulti(point, [poly]))),
         'Disconnected optical meander at ' + state + ' side ' + side,
+      );
+    }
+  }
+});
+
+test('both grating couplers have a continuous silicon slab with shallow-etched teeth', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxGeometry(state);
+    assert.equal(geometry.physicalGroups.gratingGrooves.length, 12);
+    const slab = v.unionGeometries(
+      geometry.physicalGroups.gratingSlabs.map((points) => [[[...points, points[0]]]]),
+    );
+    for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
+      const inner = [cx + SWX_ASSUMPTIONS.gratingRadiiUm[0], cy];
+      const outer = [cx + SWX_ASSUMPTIONS.gratingRadiiUm.at(-1), cy];
+      assert.ok(
+        slab.some((poly) => [inner, outer].every((p) => v.pointInMulti(p, [poly]))),
+        'Grating bars were not supported by continuous Si in ' + state,
       );
     }
   }
