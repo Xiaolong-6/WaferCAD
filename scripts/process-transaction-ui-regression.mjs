@@ -53,7 +53,7 @@ export async function runTransactionAcceptance(
             const sent = post(request, ...rest);
             // Abort after request dispatch but before a late worker result can
             // be handed to the live model or History controller.
-            queueMicrotask(() => document.querySelector('#processTaskAbortBtn')?.click());
+            window.queueMicrotask(() => document.querySelector('#processTaskAbortBtn')?.click());
             return sent;
           }
           return post(request, ...rest);
