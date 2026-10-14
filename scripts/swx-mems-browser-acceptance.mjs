@@ -27,6 +27,8 @@ try {
     });
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    page.on('crash', () => errors.push('Chromium page crashed'));
+    page.on('close', () => errors.push('Chromium page closed'));
     try {
       await page.goto(base + '/app.html?start=empty', {
         waitUntil: 'domcontentloaded',
@@ -71,9 +73,10 @@ try {
         }
         await maskMenu.click();
         const exportAction = page.locator('[data-action="mask-export:' + format + '"]');
-        const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
-        await exportAction.click();
-        const download = await downloadPromise;
+        const [download] = await Promise.all([
+          page.waitForEvent('download', { timeout: 120000 }),
+          exportAction.click({ timeout: 120000, noWaitAfter: true }),
+        ]);
         const layoutPath = resolve(out, 'swx-' + state + '.' + format);
         await download.saveAs(layoutPath);
         const bytes = await readFile(layoutPath);
