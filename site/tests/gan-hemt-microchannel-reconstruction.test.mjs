@@ -153,6 +153,24 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     'Bundled 3D camera is stale');
   assert.equal(asset.snapshotBranches.nodes.length, project.snapshotBranches.nodes.length);
   assert.equal(asset.snapshots.length, project.snapshots.length);
+
+  // Small preview stores the exact same canonical root material geometry,
+  // with all intermediate models stripped and one saved inspection step.
+  const previewBytes = await readFile(
+    new URL('../examples/previews/gan-hemt-microchannel-2022.wafercad', import.meta.url),
+  );
+  const preview = await readProjectFile({
+    size: previewBytes.byteLength,
+    text: async () => previewBytes.toString('utf8'),
+  });
+  validateProjectFile(preview);
+  assert.deepEqual(preview.model, asset.model, 'Preview changed the final physical structure');
+  assert.deepEqual(preview.layout, asset.layout, 'Preview lost the editable mask');
+  assert.equal(preview.snapshotBranches.nodes.length, 1);
+  assert.equal(preview.snapshotBranches.branches.length, 1);
+  assert.equal(preview.snapshots.length, 0);
+  assert.deepEqual(preview.roi, asset.roi);
+  assert.deepEqual(preview.display.threeCamera, asset.display.threeCamera);
 });
 
 test('Lian 2022 inferred mask layout exports as both GDSII and OASIS', async () => {
