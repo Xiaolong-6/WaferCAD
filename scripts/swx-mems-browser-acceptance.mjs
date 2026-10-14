@@ -5,6 +5,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
+import { parseGDS, flattenGDS } from '../site/gds.js';
+import { parseOAS } from '../site/oasis.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
@@ -63,18 +65,34 @@ try {
       assert.ok((await snapshot()).layout.elements.length > 100);
 
       const maskMenu = page.locator('[data-action="mask-export-menu"]');
-      if (!(await maskMenu.isVisible())) {
-        await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+      for (const format of ['gds', 'oas']) {
+        if (!(await maskMenu.isVisible())) {
+          await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+        }
+        await maskMenu.click();
+        const exportAction = page.locator('[data-action="mask-export:' + format + '"]');
+        const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+        await exportAction.click();
+        const download = await downloadPromise;
+        const layoutPath = resolve(out, 'swx-' + state + '.' + format);
+        await download.saveAs(layoutPath);
+        const bytes = await readFile(layoutPath);
+        assert.ok(bytes.byteLength > 100, 'Empty ' + format + ' export');
+        const buffer = Uint8Array.from(bytes).buffer;
+        const parsed = format === 'gds' ? parseGDS(buffer) : await parseOAS(buffer);
+        assert.ok(
+          flattenGDS(parsed, parsed.root).elements.length > 100,
+          'Exported ' + format.toUpperCase() + ' lacks physical SWX polygons',
+        );
       }
-      await maskMenu.click();
-      const gdsExport = page.locator('[data-action="mask-export:gds"]');
-      const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
-      await gdsExport.click();
-      const download = await downloadPromise;
-      const gdsPath = resolve(out, 'swx-' + state + '.gds');
-      await download.saveAs(gdsPath);
-      assert.ok((await readFile(gdsPath)).byteLength > 100, 'Empty GDS export');
 
+      await page.locator('[data-action="view:three"]').click();
+      await page.waitForFunction(
+        () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+        null,
+        { timeout: 120000 },
+      );
+      await waitForPaint(page);
       await page.locator('[data-action="view:main"]').click();
       await waitForPaint(page);
       const beforeExport = await snapshot();
@@ -105,9 +123,10 @@ try {
         masks: beforeExport.layout.elements.length,
         projectRoundTrip: true,
         gdsExport: true,
-        views: ['mask', 'main'],
+        oasExport: true,
+        views: ['mask', 'three', 'main'],
       });
-      console.log('SWX browser ' + state.toUpperCase() + ': project import/export and GDS PASS');
+      console.log('SWX browser ' + state.toUpperCase() + ': project import/export, 3D and GDS/OAS PASS');
     } catch (error) {
       await page.screenshot({ path: resolve(out, 'swx-' + state + '-failure.png') });
       throw error;
