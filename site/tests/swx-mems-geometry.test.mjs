@@ -97,7 +97,6 @@ test('OFF/ON physical groups keep stationary anchors and move only the articulat
 
 test('one WaferCAD project restores OFF and ON from shared released manufacturing History', async () => {
   const { buildSwxMemsUnified } = await import('../../scripts/build-swx-mems-example.mjs');
-
   const { project } = await buildSwxMemsUnified();
   const ids = project.snapshotBranches.branches.map((b) => b.id);
   assert.deepEqual(ids, ['main', 'on']);
