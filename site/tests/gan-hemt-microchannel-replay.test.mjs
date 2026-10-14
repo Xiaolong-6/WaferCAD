@@ -23,9 +23,7 @@ function selectedArea(model, params) {
   const rectangles = masks.get(number)?.rectangles;
   assert.ok(rectangles, 'Recipe refers to unknown mask ' + key);
   return vectorApi.unionGeometries(
-    rectangles.map((r) =>
-      vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2),
-    ),
+    rectangles.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
   );
 }
 
