@@ -151,6 +151,10 @@ try {
       // Exercise the persistent mobile chrome control explicitly.
       // Trigger the remote topbar without Playwright auto-scrolling it into view:
       // a real switch must preserve the offscreen document position.
+      const offsetAtSwitch = await page.evaluate(() => window.scrollY);
+      console.log(
+        `Mobile scroll diagnostics ${width}x${height}: requested=${documentOffset}, beforeView=${offsetAtSwitch}`,
+      );
       await page
         .locator('.p-mobile-return [data-action="return-results"]')
         .evaluate((node) => node.click());
@@ -171,6 +175,9 @@ try {
       await page.locator('[data-action="show-editor"]').evaluate((node) => node.click());
       await waitForPaint(page);
       const restoredOffset = await page.evaluate(() => window.scrollY);
+      console.log(
+        `Mobile scroll diagnostics ${width}x${height}: beforeView=${offsetAtSwitch}, afterEdit=${restoredOffset}`,
+      );
       assert.ok(
         Math.abs(restoredOffset - documentOffset) <= 3,
         `Edit returns to the previous document position (wanted ${documentOffset}, got ${restoredOffset})`,
