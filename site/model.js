@@ -532,6 +532,24 @@ function processGeometryArea(geom) {
   return Math.max(0, total);
 }
 
+// Separate sub-grid corner slivers must not be summed into a fictitious
+// wafer-scale material intersection. This is deliberately narrower than
+// raising the global overlap tolerance: only independent grid-sized corner
+// components from Conformal postcoat normalization qualify. Their XY owner
+// is assigned by the existing deterministic region partition.
+export function isConformalGridFragmentOverlap(overlap, limit, operation) {
+  const grid = PROCESS_GEOMETRY_GRID_UM;
+  if (operation !== 'Conformal postcoat normalization' || overlap.length < 2) return false;
+  return overlap.every((polygon) => {
+    const box = multiBounds([polygon]);
+    return (
+      processGeometryArea([polygon]) <= limit + grid * grid * 1e-5 &&
+      Math.min(box.width, box.height) <= grid * (1 + 1e-6) &&
+      Math.max(box.width, box.height) <= grid * 8
+    );
+  });
+}
+
 function partitionProcessRegions(
   regions,
   rejectOverlapAbove = null,
@@ -555,7 +573,8 @@ function partitionProcessRegions(
       if (
         rejectOverlapAbove != null &&
         overlapArea > rejectOverlapAbove &&
-        stackKey(previous.stack) !== stackKey(region.stack)
+        stackKey(previous.stack) !== stackKey(region.stack) &&
+        !isConformalGridFragmentOverlap(overlap, rejectOverlapAbove, operation)
       ) {
         const witness = {
           box: multiBounds(overlap),
