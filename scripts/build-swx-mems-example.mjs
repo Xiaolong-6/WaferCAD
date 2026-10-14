@@ -154,7 +154,11 @@ export async function buildSwxMems(state = 'off') {
     branch.headSnapshotId = snapshot.id;
   }
   function validate(label) {
-    validateProcessModel(model);
+    try {
+      validateProcessModel(model);
+    } catch (error) {
+      throw new Error('SWX ' + label + ': ' + error.message, { cause: error });
+    }
     checkpoints.push({
       stage: label,
       processRevision: model.processRevision,
