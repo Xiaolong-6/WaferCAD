@@ -20,8 +20,10 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   assert.equal(project.layout.combos.length, 11, 'inferred masks must remain exportable');
   assert.equal(project.snapshotBranches.branches.length, 1);
   assert.equal(project.snapshotBranches.branches[0].headNodeId, nodes.at(-1).id);
-  assert.equal(project.snapshotBranches.branches[0].headState.model.processRevision,
-    project.model.processRevision);
+  assert.equal(
+    project.snapshotBranches.branches[0].headState.model.processRevision,
+    project.model.processRevision,
+  );
 
   const names = project.model.layers.map((l) => l.name);
   for (const item of [
@@ -48,7 +50,12 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   assert.match(stepsText, /130nm Si CMOS/);
   assert.match(stepsText, /Y2O3/);
   assert.ok(nodes.some((node) => /Open top Pt/i.test(node.operation?.label || '')));
-  assert.ok(steps.some((s) => s.command === 'record'), 'non-geometric paper steps must be recorded');
-  assert.ok(steps.every((s) => s.command !== 'implant'),
-    'CNT conduction and resistive switching are not silicon implantation');
+  assert.ok(
+    steps.some((s) => s.command === 'record'),
+    'non-geometric paper steps must be recorded',
+  );
+  assert.ok(
+    steps.every((s) => s.command !== 'implant'),
+    'CNT conduction and resistive switching are not silicon implantation',
+  );
 });
