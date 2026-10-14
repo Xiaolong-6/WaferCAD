@@ -55,15 +55,6 @@ jobs:
           exit 1
       - name: Real v2 project import and Mask GDS export
         run: node scripts/swx-mems-browser-acceptance.mjs
-      - name: Record formatting of SWX corner review
-        if: always()
-        run: |
-          for path in scripts/swx-mems-geometry.mjs site/tests/swx-mems-geometry.test.mjs; do
-            npx prettier --write "$path"
-            echo "SWX_FMT_BEGIN:$path"
-            base64 "$path"
-            echo "SWX_FMT_END:$path"
-          done
       - name: Archive reconstructed projects and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
