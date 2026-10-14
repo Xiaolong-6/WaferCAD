@@ -1,3 +1,9 @@
+[36;1mecho TCMOS_BROWSER_SOURCE_START[0m
+[36;1mnpx prettier scripts/tcmos-browser-acceptance.mjs[0m
+[36;1mecho TCMOS_BROWSER_SOURCE_END[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+TCMOS_BROWSER_SOURCE_START
 // Browser acceptance of a generated, unbundled T-CMOS candidate in the real v2 Workstation.
 // Generates evidence without silently publishing the candidate as a Welcome Example.
 import assert from 'node:assert/strict';
@@ -66,7 +72,11 @@ try {
   assert.equal(opened.model.implants[0].depthStart, 0.08);
   assert.equal(opened.model.implants[1].depthStart, 0.08);
   assert.equal(opened.model.layers.length, expected.model.layers.length);
-  assert.equal(expected.snapshotBranches.branches.length, 2, 'Both CMOS process Variants must be stored');
+  assert.equal(
+    expected.snapshotBranches.branches.length,
+    2,
+    'Both CMOS process Variants must be stored',
+  );
   assert.equal(opened.model.dopantRegions.length, expected.model.dopantRegions.length);
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-before-runall.png') });
   await panel('history');
@@ -78,15 +88,21 @@ try {
   await page.waitForFunction(
     () => {
       const snap = window.WaferCadV2Workstation.snapshot();
-      return snap.model.implants[0]?.name?.includes('LVTN') &&
-        document.querySelector('.history-variant[data-variant-id="conventional-cmos"]')?.dataset.active === 'true' &&
-        !snap.workflow.busy;
+      return (
+        snap.model.implants[0]?.name?.includes('LVTN') &&
+        document.querySelector('.history-variant[data-variant-id="conventional-cmos"]')?.dataset
+          .active === 'true' &&
+        !snap.workflow.busy
+      );
     },
     null,
     { timeout: 120000 },
   );
   const referenceState = await snap();
-  assert.equal(referenceState.model.dopantRegions.some((d) => d.role === 'body'), false);
+  assert.equal(
+    referenceState.model.dopantRegions.some((d) => d.role === 'body'),
+    false,
+  );
   assert.equal(
     expected.snapshotBranches.branches.find((variant) => variant.id === 'conventional-cmos')
       .headState.processRecipe.steps.length,
@@ -94,15 +110,20 @@ try {
     'The conventional Variant stores a complete replayable Recipe',
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-conventional-cmos-variant.png') });
-  await page.locator(
-    '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
-  ).click();
+  await page
+    .locator(
+      '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
+    )
+    .click();
   await page.waitForFunction(
     () => {
       const snap = window.WaferCadV2Workstation.snapshot();
-      return document.querySelector('.history-variant[data-variant-id="main"]')?.dataset.active === 'true' &&
+      return (
+        document.querySelector('.history-variant[data-variant-id="main"]')?.dataset.active ===
+          'true' &&
         snap.model.implants[0]?.name?.includes('HVTN') &&
-        !snap.workflow.busy;
+        !snap.workflow.busy
+      );
     },
     null,
     { timeout: 120000 },
@@ -183,14 +204,16 @@ try {
   );
   assert.equal(exported.model.implants.length, expected.model.implants.length);
   const dopingSignature = (model) =>
-    model.dopantRegions.map((region) => [
-      region.polarity,
-      region.role,
-      region.hostLayerId,
-      region.depthStartUm,
-      region.depthEndUm,
-      region.sourceImplantId,
-    ]).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+    model.dopantRegions
+      .map((region) => [
+        region.polarity,
+        region.role,
+        region.hostLayerId,
+        region.depthStartUm,
+        region.depthEndUm,
+        region.sourceImplantId,
+      ])
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
   assert.deepEqual(
     dopingSignature(exported.model),
     dopingSignature(expected.model),
