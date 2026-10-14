@@ -270,6 +270,12 @@ try {
       }
       await page.locator('[data-action="mode:single"]').click();
       await page.locator('[data-action="view:three"]').click();
+      // Single view can still reserve half the workspace for Section dock.
+      // Close that dock for a full-size 3D view before inspecting 200nm ribs.
+      const sectionDock = page.locator('[data-action="section"]');
+      if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
+        await sectionDock.click();
+      }
       await page.waitForFunction(
         (expected) => {
           const host = document.getElementById('threeHost');
@@ -285,7 +291,7 @@ try {
       const cornerBounds = await cornerView.boundingBox();
       assert.ok(
         cornerBounds?.width > 700 && cornerBounds.height > 400,
-        '3D corner review was not shown in an inspectable single-view panel',
+        '3D corner review requires a large canvas: ' + JSON.stringify(cornerBounds),
       );
       await cornerView.screenshot({ path: resolve(out, 'swx-' + state + '-3d-miter-corner.png') });
       assert.deepEqual(errors, [], 'Corner review triggered WebGL errors');
