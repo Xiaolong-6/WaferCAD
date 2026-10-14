@@ -53,7 +53,9 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
   const undo = [],
     redo = [];
   const status = workstation.status;
-  const dirty = () => { if (!readOnly) persistence?.scheduleStructural(); };
+  const dirty = () => {
+    if (!readOnly) persistence?.scheduleStructural();
+  };
   const refresh = () => {
     syncDisplayUnitFields(document, units.key());
     process?.updateUi();
