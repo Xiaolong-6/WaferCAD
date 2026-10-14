@@ -237,25 +237,50 @@ function makeMeanders(moveY) {
 
 function makeFoldedSprings(moveY) {
   const parts = [];
-  // Four narrow folded beams per side, connecting a stationary anchor at
-  // y=+/-40um to the moving horizontal shuttle. The drawn shape is a
-  // continuous cantilever path, not a set of unconnected spring marks.
+  // Paper Fig S7: 30um/22um beams, 200nm width and 1.5um clear gap.
+  // The loop path joins a stationary pad at +/-40um to a moving
+  // triangular shuttle rail, with displacements graded along the beam.
   for (const sign of [-1, 1]) {
     const y = (distance) => sign * distance;
+    const pitch = SWX_REPORTED.foldedSpringClearanceUm +
+      SWX_REPORTED.foldedSpringWidthUm;
+    const long = SWX_REPORTED.foldedSpringLongBeamUm;
+    const short = SWX_REPORTED.foldedSpringShortBeamUm;
     const path = [
-      [0, y(38)],
-      [0, y(12)],
-      [1.5, y(12)],
-      [1.5, y(34)],
-      [3, y(34)],
-      [3, y(11)],
-      [5, y(11)],
-      [5, 0],
+      [0, y(40)], [0, y(40 - long)],
+      [pitch, y(40 - long)], [pitch, y(40 - long + short)],
+      [2 * pitch, y(40 - long + short)], [2 * pitch, y(40 - long)],
+      [3 * pitch, y(40 - long)], [3 * pitch, 0],
     ];
-    const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
+    const deform = path.map(([x, py], i) => [
+      x, py + moveY * i / (path.length - 1),
+    ]);
     parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
   }
   return parts;
+}
+
+// Paper Fig S7: guided 7um beam, 100nm flexural width, 1um truss.
+// The GDS does not specify exact anchor placement, which remains inferred.
+function makeStructuralAligners(moveY) {
+  const fixed = [], flexure = [];
+  for (const sign of [-1, 1]) {
+    const anchor = [-18, sign * 9.5];
+    fixed.push(rect(anchor[0], anchor[1], 6, 6));
+    const first = [
+      anchor[0] - SWX_REPORTED.structuralAlignerLengthUm,
+      anchor[1],
+    ];
+    const corner = [first[0], sign * 5.7];
+    const elbow = [-22, sign * 5.7 + moveY * 0.4];
+    const attach = [-22, sign * 1.8 + moveY];
+    flexure.push(...polyline([anchor, first, corner, elbow, attach],
+      SWX_REPORTED.structuralAlignerBeamUm));
+    flexure.push(strip([corner[0] - 0.4, corner[1]],
+      [corner[0] + 0.6, corner[1]],
+      SWX_REPORTED.structuralAlignerBeamUm));
+  }
+  return { fixed, flexure };
 }
 
 function makeShuttle(moveY) {
@@ -331,15 +356,13 @@ export function createSwxGeometry(state = 'off') {
     rect(46, -21, 9, 9),
   ];
   const shuttle = makeShuttle(travel);
-  const flexure = [...makeFoldedSprings(travel), ...makeMeanders(travel)];
-  const aligner = [
-    strip([-25, 3.4], [-19, 3.4], 0.3),
-    strip([-25, -3.4 + travel], [-19, -3.4 + travel], 0.3),
-  ];
+  const aligners = makeStructuralAligners(travel);
+  const flexure = [...makeFoldedSprings(travel),
+    ...makeMeanders(travel), ...aligners.flexure];
   const fixed = [...optics.fixed, ...combs.fixed, ...anchors,
-    ...stoppers.fixed, ...gratings, aligner[0]];
+    ...stoppers.fixed, ...gratings, ...aligners.fixed];
   const movable = [...optics.moving, ...combs.moving, ...shuttle,
-    ...stoppers.movable, aligner[1]];
+    ...stoppers.movable];
   const silicon = [...fixed, ...movable, ...flexure];
   // Ridge mask: representative narrow routing transitions (not full
   // 64x64 array routing). Ridge 150nm etch leaves 70nm silicon slab.
@@ -404,7 +427,8 @@ export function createSwxGeometry(state = 'off') {
     maskPolygons: polys,
     maskNames: MASK_INFO.map(([layer, name]) => ({ layer, name })),
     physicalGroups: { fixed, movable, flexure,
-      stopperFixed: stoppers.fixed, stopperMovable: stoppers.movable, gratings },
+      stopperFixed: stoppers.fixed, stopperMovable: stoppers.movable,
+      gratingCouplers: gratings, structuralAligners: aligners },
     stopperClearanceUm: stoppers.clearanceUm,
     anchorTestPoint: [2, 40],
     releasedBeamTestPoint: [-31, -1.7 + travel],
