@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { classifyHardwareWebGL } from './p1-gpu-identity.mjs';
 
 const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
 const base = `http://127.0.0.1:${port}`;
@@ -14,7 +15,7 @@ const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
 const profiling = process.argv.includes('--profile');
 const RESPONSIVENESS_LONG_TASK_LIMIT_MS = 500;
 const output = join('test-results', 'p1-hardware');
-const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v2';
+const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v3';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const report = {
   schema: 'wafercad-p1-hardware-v2',
@@ -266,17 +267,16 @@ try {
   report.cases.initialM3D = await hostMetrics();
   report.cases.initialM3D.responsiveness = responsiveness(report.cases.initialM3D.vitals);
   report.cases.initialM3D.screenshotSha256 = await photograph('01-m3d-first-ready.png');
-  const glText = [
-    report.cases.initialM3D.gl?.unmaskedVendor,
-    report.cases.initialM3D.gl?.unmaskedRenderer,
-  ].join(' ');
-  report.hardwareVerified =
-    /nvidia|geforce|rtx 3060/i.test(glText) &&
-    !/swiftshader|llvmpipe|software|warp|basic render driver/i.test(glText);
-  console.log('P1 hardware GPU:', glText || '(unmasked adapter not available)');
+  report.hardware = classifyHardwareWebGL(report.cases.initialM3D.gl);
+  report.hardwareVerified = report.hardware.verified;
+  console.log(
+    'P1 hardware GPU:',
+    report.hardware.adapter || '(unmasked adapter not available)',
+    report.hardware.manufacturer || 'unknown',
+  );
   if (!report.hardwareVerified) {
     report.errors.push(
-      'GPU identity is not verified as NVIDIA hardware; do not treat results as RTX acceptance.',
+      'Physical GPU identity could not be verified: ' + report.hardware.reason,
     );
   }
 
@@ -388,6 +388,8 @@ try {
       cpuProfileBytes: report.cpuProfileBytes ?? null,
       revision: report.revision,
       gpu: report.cases.initialM3D?.gl?.unmaskedRenderer || null,
+      gpuManufacturer: report.hardware?.manufacturer || null,
+      hardwareVerified: report.hardwareVerified || false,
       modelUnchanged: report.cases.qualityReload?.modelUnchanged ?? null,
       stages: report.cases.qualityReload?.vitals?.viewTransitions?.map((x) => x.state) || [],
       folder: output,
