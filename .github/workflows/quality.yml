@@ -30,8 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Show exact KLayout candidate formatter delta
-        run: |
-          npx prettier scripts/v2/check-klayout-mask-process.mjs | diff -u scripts/v2/check-klayout-mask-process.mjs - || true
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check

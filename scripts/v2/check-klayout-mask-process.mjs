@@ -35,7 +35,9 @@ try {
       ['gds-basic-instances', 'gds-basic-instances.gds'],
       ['oas-rectangles', 'oas-rectangles.oas'],
     ]) {
-      const filename = fileURLToPath(new URL('../../site/samples/klayout/' + relative, import.meta.url));
+      const filename = fileURLToPath(
+        new URL('../../site/samples/klayout/' + relative, import.meta.url),
+      );
       await page.locator('#gdsInput').setInputFiles(filename);
       await page.waitForFunction(
         (expected) => {
