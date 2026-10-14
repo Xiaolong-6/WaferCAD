@@ -499,7 +499,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       maskRoiDraft: null,
       drawOpen: false,
       panEnabled: true,
-      zoomEnabled: false,
+      zoomEnabled: true,
       planViews: { mask: { zoom: 1, panX: 0, panY: 0 } },
     };
     modelBefore = JSON.stringify(state.model);
