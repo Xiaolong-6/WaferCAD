@@ -287,11 +287,20 @@ export async function buildGanMicrochannel() {
   bookmark('01 Four-level open microchannels / 800 um Si');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
-  for (const p of [[0, 0], [0, 180], [0, 420]]) {
-    const r = owner(p);
-    assert.ok(r.stack.length > 0, 'No support substrate near channel ' + p);
-    assert.ok(r.stack.at(-1).z1 <= 600, 'Channel footprint unexpectedly sealed at ' + p);
+  for (const [point, expectedTop] of [
+    [[30, 0], 0], [[200, 0], 0], [[280, 0], 0], [[340, 0], 0],
+  ]) {
+    const r = owner(point);
+    assert.ok(r.stack.length > 0, 'No remaining lower Si below ' + point);
+    // Each of these points is under an opened cap with a cavity above the base.
+    assert.equal(r.stack.at(0).z1, expectedTop, 'Lower cavity not preserved at ' + point);
+    assert.ok(
+      r.stack.some((segment, i) => i === 0 || segment.z0 > r.stack[i - 1].z1),
+      'Stepped vertical void missing at ' + point,
+    );
   }
+  const fingerCenter = owner([30, 0]);
+  assert.equal(fingerCenter.stack.at(-1).z1, 0, 'Top straight channel must remain open');
   // The published TSVs connect both sides electrically. Geometry is a real
   // through-bore; conformal Cu plating / NiPaAu barriers remain recorded,
   // rather than claiming a fully modeled metal-filled conductive via.
