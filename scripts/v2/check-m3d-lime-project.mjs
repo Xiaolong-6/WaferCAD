@@ -105,6 +105,34 @@ try {
   assert.ok(initial.model.layers.some((layer) => layer.name === 'Digital Ta2O5 RSL 10nm'));
   assert.deepEqual(initial.roi, { type: 'rect', a: [-45, -35], b: [-35, -11] });
   assert.deepEqual(initial.section, { a: [-44, -24], b: [-35, -24] });
+  // Save the actual paper-local Section, not just a 3D camera screenshot.
+  // Its displayed Z:X scale is evidence, never a physical thickness claim.
+  const sectionPanel = page.locator('#sectionPanel');
+  if (!(await sectionPanel.isVisible())) await page.locator('[data-action="section"]').click();
+  await waitForPaint(page);
+  const sectionView = await page.locator('#sectionCanvas').evaluate((canvas) => ({
+    width: canvas.width,
+    height: canvas.height,
+    xPxPerUm: Number(canvas.dataset.xPxPerUm),
+    zPxPerUm: Number(canvas.dataset.zPxPerUm),
+  }));
+  assert.ok(
+    sectionView.width > 100 &&
+      sectionView.height > 100 &&
+      sectionView.xPxPerUm > 0 &&
+      sectionView.zPxPerUm > 0,
+    'Real Section must have physical X/Z scale before morphology inspection',
+  );
+  const sectionPng = await sectionPanel.screenshot({
+    path: resolve(output, 'section-local-before-runall.png'),
+    animations: 'disabled',
+  });
+  assert.ok(sectionPng.length > 8000, 'Local Section capture is unexpectedly small');
+  report.sectionEvidence = {
+    ...sectionView,
+    displayZToXRatio: sectionView.zPxPerUm / sectionView.xPxPerUm,
+    screenshotBytes: sectionPng.length,
+  };
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
     await waitForPaint(page);
