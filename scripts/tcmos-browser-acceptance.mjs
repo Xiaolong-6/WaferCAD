@@ -123,6 +123,18 @@ try {
     { timeout: 120000 },
   );
 
+  // The first-open overlay intentionally selects eight visually useful layers.
+  // For manufacturing-layout interchange, explicitly select the complete 13-layer
+  // File Mask and prove no hidden NWELL/PWELL/S-D/silicide layers are omitted.
+  await panel('mask');
+  const maskLayerBoxes = page.locator('#maskLayerList input[type="checkbox"]');
+  assert.equal(await maskLayerBoxes.count(), expected.layout.combos.length);
+  for (let index = 0; index < expected.layout.combos.length; index++) {
+    const unchecked = page.locator('#maskLayerList input[type="checkbox"]:not(:checked)');
+    if (!(await unchecked.count())) break;
+    await unchecked.first().check();
+  }
+  assert.equal((await snap()).selectedLayerKeys.length, expected.layout.combos.length);
   // Inspect the actual exported binary Mask, not just the layout metadata.
   const { parseGDS, flattenGDS } = await import('../site/gds.js');
   const { parseOAS } = await import('../site/oasis.js');
@@ -145,8 +157,28 @@ try {
         ? parseGDS(Uint8Array.from(bytes).buffer)
         : await parseOAS(Uint8Array.from(bytes).buffer);
     const elements = flattenGDS(parsed, parsed.root).elements;
-    assert.ok(elements.length > 0, 'Exported ' + type + ' mask is empty');
-    maskExports.push({ type, bytes: bytes.byteLength, elements: elements.length });
+    const expectedCounts = Object.fromEntries(
+      expected.layout.combos.map((combo) => {
+        const [, layer, datatype] = combo.key.split('|');
+        return [layer + '/' + datatype, combo.count];
+      }),
+    );
+    const actualCounts = {};
+    for (const element of elements) {
+      const key = element.layer + '/' + element.datatype;
+      actualCounts[key] = (actualCounts[key] || 0) + 1;
+    }
+    assert.deepEqual(
+      actualCounts,
+      expectedCounts,
+      'Exported ' + type + ' must retain every original File Mask layer and polygon',
+    );
+    maskExports.push({
+      type,
+      bytes: bytes.byteLength,
+      layers: Object.keys(actualCounts).length,
+      elements: elements.length,
+    });
   }
   await page.keyboard.press('Escape');
   assert.deepEqual((await snap()).model, opened.model, 'Mask export mutated canonical geometry');
