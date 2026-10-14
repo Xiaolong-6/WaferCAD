@@ -116,7 +116,22 @@ function polyline(points, width) {
     (point, i) =>
       i === 0 || Math.hypot(point[0] - points[i - 1][0], point[1] - points[i - 1][1]) > 1e-12,
   );
-  return compact.slice(1).map((next, i) => strip(compact[i], next, width));
+  // Butt-joined rectangles have only shared boundary edges. Polygon union
+  // may preserve them as disconnected islands, especially at sharp turns.
+  // A square-cap overlap of half the linewidth creates a finite silicon
+  // bridge without increasing the actual nominal centerline length.
+  return compact.slice(1).map((next, i) => {
+    const a = compact[i];
+    const length = Math.hypot(next[0] - a[0], next[1] - a[1]);
+    const ux = (next[0] - a[0]) / length;
+    const uy = (next[1] - a[1]) / length;
+    const cap = Math.min(width / 2, length / 4);
+    return strip(
+      [a[0] - cap * ux, a[1] - cap * uy],
+      [next[0] + cap * ux, next[1] + cap * uy],
+      width,
+    );
+  });
 }
 
 function traceArc(cx, cy, r, a0, a1, steps = 16) {
