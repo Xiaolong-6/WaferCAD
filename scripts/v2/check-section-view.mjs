@@ -174,7 +174,9 @@ try {
       await page.locator('#sectionCollapseFrontScale').press('Tab');
       assert.equal((await snapshot()).sectionCollapse.frontScale, 2);
       await page.locator('#sectionZSettings [aria-label="Close Z Break"]').click();
-      await command('tool:zoom:section');
+      assert.equal((await snapshot()).local.section.zoomEnabled, true, 'Default Section Zoom');
+      assert.equal((await snapshot()).local.section.panEnabled, true, 'Default Section Pan');
+      await command('tool:pan:section');
       let box = await sectionCanvas.boundingBox();
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
       await page.mouse.wheel(0, -160);
