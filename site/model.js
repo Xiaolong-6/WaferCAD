@@ -1288,7 +1288,10 @@ function applyOperationImpl(
       !['well', 'body', 'source-drain', 'channel', 'contact'].includes(dopantRole) ||
       !model.layers.some((layer) => layer.id === dopantHostLayerId)
     ) {
-      return { changed: false, error: 'Invalid qualitative dopant polarity, role or host material.' };
+      return {
+        changed: false,
+        error: 'Invalid qualitative dopant polarity, role or host material.',
+      };
     }
   }
   // The normalization of physical material stacks removes sub-resolution Z
@@ -1426,7 +1429,8 @@ function applyOperationImpl(
         if (!dopants.length) {
           return {
             changed: false,
-            error: 'No semiconductor host material overlaps the specified qualitative dopant region.',
+            error:
+              'No semiconductor host material overlaps the specified qualitative dopant region.',
           };
         }
       }
