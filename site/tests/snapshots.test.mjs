@@ -2351,7 +2351,9 @@ test('History ID index survives append, clear and imported lineage replacement',
   let sequence = 0;
   const manager = createSnapshotManager({
     capture: () => live,
-    restore: (state) => { live = state; },
+    restore: (state) => {
+      live = state;
+    },
     validateState: () => true,
     nodeIdFactory: () => `indexed-node-${++sequence}`,
   });
@@ -2371,28 +2373,35 @@ test('History ID index survives append, clear and imported lineage replacement',
   manager.clear();
   assert.deepEqual(manager.listHistory(), []);
   const importedState = { model: { processRevision: 3, revision: 4, layers: [] } };
-  assert.equal(manager.importRecords([], {
-    version: 3,
-    activeBranchId: 'main',
-    cursorNodeId: 'imported-node',
-    cursorSnapshotId: null,
-    nodes: [{
-      id: 'imported-node',
-      branchId: 'main',
-      parentId: null,
-      createdAt: '2026-10-13T00:00:00.000Z',
-      processRevision: 3,
-      operation: { kind: 'record' },
-      state: importedState,
-    }],
-    branches: [{
-      id: 'main',
-      name: 'Main',
-      headNodeId: 'imported-node',
-      headState: importedState,
-      createdAt: '1970-01-01T00:00:00.000Z',
-    }],
-  }), 0);
+  assert.equal(
+    manager.importRecords([], {
+      version: 3,
+      activeBranchId: 'main',
+      cursorNodeId: 'imported-node',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'imported-node',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-13T00:00:00.000Z',
+          processRevision: 3,
+          operation: { kind: 'record' },
+          state: importedState,
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          headNodeId: 'imported-node',
+          headState: importedState,
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    }),
+    0,
+  );
   assert.deepEqual(manager.listHistory().map((item) => item.id), ['imported-node']);
   assert.equal(manager.restoreProcessNode('indexed-node-256'), false);
   assert.equal(manager.restoreProcessNode('imported-node'), true);
