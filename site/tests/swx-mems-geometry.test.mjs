@@ -103,10 +103,17 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
   const onBranch = project.snapshotBranches.branches[1];
   assert.equal(onBranch.parentBranchId, 'main');
   assert.equal(onBranch.rootNodeId, project.snapshotBranches.nodes.at(-2).id);
-  assert.deepEqual(onBranch.headState.layout, project.layout, 'both pose variants share lithography');
+  assert.deepEqual(
+    onBranch.headState.layout,
+    project.layout,
+    'both pose variants share lithography',
+  );
   assert.deepEqual(onBranch.headState.processRecipe, project.processRecipe);
-  assert.equal(onBranch.headState.model.processRevision, project.model.processRevision,
-    'Actuation is not a manufacturing process step');
+  assert.equal(
+    onBranch.headState.model.processRevision,
+    project.model.processRevision,
+    'Actuation is not a manufacturing process step',
+  );
   assert.notDeepEqual(onBranch.headState.model.regions, project.model.regions);
 
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
@@ -118,7 +125,7 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
   // The 15nm switched gap lies between y=.435um and y=.450um at the
   // nominal reflector plane; no silicon may fill it.
   assert.equal(materialAt(onBranch.headState.model, [-31, 0.4425]), false);
-  assert.equal(materialAt(onBranch.headState.model, [-31, 0.40]), true);
+  assert.equal(materialAt(onBranch.headState.model, [-31, 0.4]), true);
 
   let live = structuredClone(project);
   const capture = () => {
