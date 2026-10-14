@@ -53,7 +53,9 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   assert.equal(project.snapshots.length, 8);
   assert.equal(project.snapshotBranches.branches.length, 2);
-  const conventional = project.snapshotBranches.branches.find((item) => item.id === 'conventional-cmos');
+  const conventional = project.snapshotBranches.branches.find(
+    (item) => item.id === 'conventional-cmos',
+  );
   assert.ok(conventional, 'Conventional CMOS must coexist in the same project');
   assert.equal(conventional.parentBranchId, 'main');
   const fork = project.snapshotBranches.nodes.find((item) => item.id === conventional.rootNodeId);
@@ -69,7 +71,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     'The conventional LVT Variant must not retain the buried HVT body intent',
   );
   assert.equal(model.implants.length, 6);
-  assert.ok(model.dopantRegions.length >= 6, 'Each process Implant defines a separate qualitative region');
+  assert.ok(
+    model.dopantRegions.length >= 6,
+    'Each process Implant defines a separate qualitative region',
+  );
   for (const implant of model.implants) {
     assert.ok(
       model.dopantRegions.some((region) => region.sourceImplantId === implant.id),
