@@ -93,3 +93,65 @@ expensive synchronous processing. A future change must move verified heavy
 restore/geometry work off the foreground thread, preserving Recovery
 transactions, physical geometry, ownership, GL state and visual baselines.
 Do **not** close the P1 hardware responsiveness gate or merge on this evidence.
+
+
+## P1-A / P1-C follow-up — 14 October 2026
+
+The earlier 13 October hardware and CPU results above remain historical evidence.
+Later commits reduced several previously identified main-thread import and
+History bottlenecks, but the **500 ms maximum Long Task acceptance gate
+remains open**.
+
+The [three-run software Chromium campaign](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38531160978)
+on HEAD `53c227f` sampled each scenario in a separate browser context
+within the same browser process. The data are diagnostic and do not imply
+cold-process or physical-GPU parity.
+
+| Metric | M3D first load | Restored Quality |
+| --- | ---: | ---: |
+| Longest Long Task, median | 1,110 ms | 1,248 ms |
+| Longest Long Task, minimum–maximum | 1,110–1,162 ms | 1,050–1,268 ms |
+| First scientific frame, median | 15.64 s | 15.72 s |
+| 3D Ready, median | 34.21 s | 33.57 s |
+
+For 64 imported historical states, the new browser performance marks
+recorded an independent snapshot-attestation clone of 144–175 ms,
+History batch validation of 60–108 ms, and staged History import
+active time of 492–548 ms. Import staging yielded to the main event
+loop 18 times. The larger isolated Long Tasks still chiefly involve
+polygon clipping/bounds, surface-plan Worker message reception and
+native WebGL program submission.
+
+The [exact-head P1-C run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532723065)
+on `f5ba2f1` passed Quality Gate, targeted History/renderer tests,
+legacy persistence, real progressive startup and cross-view Recovery,
+and software CPU sampling. Its single-run maximum Long Tasks were
+1,165 ms (M3D) and 1,045 ms (restored Quality); this is **not** a
+three-run trend estimate.
+
+History import now stages copies cooperatively and commits the live
+project with History in the same final synchronous phase. New import,
+synchronous replacement and Clear invalidate an earlier in-flight
+cooperative import; a superseded request throws `AbortError` before
+publishing stale History. The regression suite covers these races,
+explicit abort and isolation from incomplete History.
+
+Ordinary branch push CI collects a single CPU diagnostic sample and
+retains the complete correctness/browser gates; explicit workflow
+dispatch selects the three-run campaign. Attach the exact-head CPU
+artifacts when making performance comparisons.
+
+### Remaining blockers and ownership
+
+- P1 History integrity and reproducible diagnostics are covered by the
+  above test results. Maintain failure-atomicity tests for any further
+  persistence or Recovery changes.
+- Geometry topology, surface-plan message transfer/assembly and WebGL
+  compilation/submission still require coordinated Renderer work;
+  do not introduce a second renderer or weaken scientific geometry.
+- Physical-device acceptance should include integrated GPUs where
+  available, not only NVIDIA RTX 3060. Test final Quality fidelity and
+  responsiveness in addition to coarse first-frame readiness.
+- PR #188 remains Draft. The feature branch has diverged from `main`;
+  reconcile overlapping UI v2 entry/runtime/workflow and CI changes
+  before merge review. Green CI alone is insufficient for this PR.
