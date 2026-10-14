@@ -45,14 +45,23 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   const outerCurve = ganManifoldCenterline(150, 1);
   const middleCurve = ganManifoldCenterline(90, 1);
   const innerCurve = ganManifoldCenterline(30, 1);
-  assert.ok(Math.max(...outerCurve.map((point) => point[1])) > 470,
-    'Outermost branch must wrap around the throat as in Fig. 2h');
-  assert.ok(Math.max(...middleCurve.map((point) => point[1])) > 435,
-    'Middle branch must form an intermediate nested return bend');
-  assert.ok(Math.max(...innerCurve.map((point) => point[1])) < 435,
-    'Innermost branch should approach the collecting throat directly');
-  assert.deepEqual(ganManifoldCenterline(150, -1).map(([x, y]) => [x, -y]), outerCurve,
-    'Entry and exit diversion loops must be symmetric');
+  assert.ok(
+    Math.max(...outerCurve.map((point) => point[1])) > 470,
+    'Outermost branch must wrap around the throat as in Fig. 2h',
+  );
+  assert.ok(
+    Math.max(...middleCurve.map((point) => point[1])) > 435,
+    'Middle branch must form an intermediate nested return bend',
+  );
+  assert.ok(
+    Math.max(...innerCurve.map((point) => point[1])) < 435,
+    'Innermost branch should approach the collecting throat directly',
+  );
+  assert.deepEqual(
+    ganManifoldCenterline(150, -1).map(([x, y]) => [x, -y]),
+    outerCurve,
+    'Entry and exit diversion loops must be symmetric',
+  );
   assert.equal(masks.get(18).rectangles.length, 10);
   assert.ok(masks.get(18).rectangles.every((r) => r.w === 0.5 && r.h === 300));
   assert.equal(masks.get(16).rectangles[0].w, 878.5);
