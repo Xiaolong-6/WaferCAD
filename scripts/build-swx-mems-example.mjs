@@ -444,6 +444,16 @@ export async function makeSwxActuatedModel(released, pose = createSwxGeometry('o
 
 export async function buildSwxMemsUnified() {
   const { project, validation: offValidation } = await buildSwxMems('off');
+  // Project identity belongs to the shared device. All restorable History
+  // states must retain it; otherwise switching ON restores an obsolete
+  // OFF-only project title even while the two physical Variants are correct.
+  const projectName = 'SWX photonic MEMS · one device, OFF/ON Variants';
+  project.name = projectName;
+  for (const node of project.snapshotBranches.nodes) node.state.name = projectName;
+  for (const bookmark of project.snapshots) bookmark.state.name = projectName;
+  for (const variant of project.snapshotBranches.branches) {
+    if (variant.headState) variant.headState.name = projectName;
+  }
   const onPose = createSwxGeometry('on');
   const onModel = await makeSwxActuatedModel(project.model, onPose);
   const v = await import('../site/vector-geometry.js');
@@ -521,7 +531,7 @@ export async function buildSwxMemsUnified() {
     createdAt: dateAt(520),
   });
   project.snapshotBranches.activeBranchId = 'main';
-  project.name = 'SWX photonic MEMS · one device, OFF/ON Variants';
+  project.name = projectName;
   validateProjectFile(project);
   const stored = prepareProjectForWorkspaceStorage(project);
   const json = JSON.stringify(stored);
