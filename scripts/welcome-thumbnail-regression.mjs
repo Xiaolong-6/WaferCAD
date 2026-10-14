@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
-import { gotoWelcome, newLegacyUiContext, observePageErrors } from './test-helpers/ui.mjs';
+import { gotoWelcome, newUiContext, observePageErrors } from './test-helpers/ui.mjs';
 const output = process.argv[2] || 'test-results/welcome-thumbnails.json';
 const repeat = Number(process.argv[3] || 3);
 const interaction = process.argv.includes('--check-interaction');
@@ -16,7 +16,7 @@ await mkdir('test-results/product-review', { recursive: true });
 const runs = [];
 try {
   for (let index = 0; index < repeat; index++) {
-    const context = await newLegacyUiContext(browser, { viewport: { width: 1440, height: 960 } });
+    const context = await newUiContext(browser, { viewport: { width: 1440, height: 960 } });
     await context.addInitScript(() => {
       window.__previewImports = [];
       const NativeWorker = window.Worker;
@@ -95,9 +95,10 @@ try {
         await page.keyboard.press('Enter');
         await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
         const frame = await (await card.locator('iframe').elementHandle()).contentFrame();
-        assert.deepEqual(await frame.evaluate(() => window.__previewImports), [
-          { steps: 1, bookmarks: 0 },
-        ]);
+        const previewState = await frame.evaluate(() => window.WaferCadV2Workstation.snapshot());
+        assert.equal(previewState.workflow.steps.length, 1);
+        assert.equal(previewState.workflow.bookmarks.length, 0);
+        assert.equal(previewState.workflow.writable, false);
         await frame.waitForFunction(
           () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
           null,
@@ -106,7 +107,7 @@ try {
         for (const view of ['mask', 'section', 'main', 'three']) {
           await card.locator(`[data-preview-view="${view}"]`).click();
           await frame.waitForFunction(
-            (view) => document.documentElement.dataset.previewView === view,
+            (view) => window.WaferCadV2Workstation?.snapshot().ui.view === view,
             view,
             { timeout: 30000 },
           );
@@ -124,7 +125,7 @@ try {
       await idle.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 60000 });
       const frame = await (await idle.locator('iframe').elementHandle()).contentFrame();
       await frame.waitForFunction(
-        () => document.documentElement.dataset.previewView === 'mask',
+        () => window.WaferCadV2Workstation?.snapshot().ui.view === 'mask',
         null,
         { timeout: 30000 },
       );
@@ -171,14 +172,15 @@ try {
       await native.locator('.welcome-example-summary-link').click();
       await page.waitForFunction(
         () =>
-          document.getElementById('statusText')?.textContent ===
-          'Opened three-tier-silicon-jlfets.wafercad.',
+          window.WaferCadV2Workstation?.snapshot().source.endsWith(
+            '/three-tier-silicon-jlfets-full-wafer.wafercad',
+          ),
         null,
         { timeout: 120000 },
       );
-      assert.deepEqual(await page.evaluate(() => window.__previewImports), [
-        { steps: 40, bookmarks: 5 },
-      ]);
+      const opened = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.equal(opened.workflow.steps.length, 40);
+      assert.equal(opened.workflow.bookmarks.length, 5);
       assert.ok(requests.includes('/examples/three-tier-silicon-jlfets.wafercad'));
     }
     assert.deepEqual(errors, []);

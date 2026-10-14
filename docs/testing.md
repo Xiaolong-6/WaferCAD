@@ -16,6 +16,15 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | Bundled examples            | `npm run test:ui:examples`    | Literature/example structural contracts and restore behavior                                                             | Example-specific geometry/render invariants                      |
 | Product/visual review       | `npm run test:ui:product`     | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots                                    | Multiple viewports; deterministic renderer inputs in CI          |
 
+The resilience owner `scripts/resilience-regression.mjs` now starts the production
+**v2** Workstation. It independently simulates a missing Three.js CDN and a
+WebGL context allocation failure, requires a visible 3D unavailability
+diagnostic, then proves that Main, Mask, Section and a real Process Worker
+operation still function. It does not route through the Legacy test adapter,
+and replaces the equivalent old-UI degraded renderer scenarios.
+
+The focused real-worker fault acceptance in `scripts/process-transaction-ui-regression.mjs` checks rejection and Abort against actual Model/History exports; it is invoked from Recipe safety CI. Node controller fault injection additionally checks worker cancellation/late results and failed History rollback without pretending to be real IndexedDB or browser reload.
+
 The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
 
 ### Common local groups
@@ -31,9 +40,54 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### Published Legacy URL policy
+
+`app-legacy.html` remains available in the Git source tree for legacy-only
+scientific regression tests. In the staged Pages artifact its public URL
+serves only a same-origin redirect to the v2 `app.html`, preserving query
+and fragment. `app.js` and `workstation.css` are not published.
+`site/tests/pages-artifact.test.mjs` and
+`scripts/smoke-pages-artifact.mjs` enforce the production artifact
+boundary and verify that the deployed Worker-backed app still boots.
+This does **not** remove the old editor's test source or change historical
+project-format and Recovery compatibility.
+
+### M3D Welcome and 3D Border v2 ownership
+
+`scripts/m3d-welcome-regression.mjs` runs against the production v2
+Workstation, verifies the Welcome thumbnail and full project handoff,
+36 real History Steps, 27 stage bookmarks, an initialized 3D view and
+reversible Border selection without model mutation. The targeted
+`m3d-example-integration.yml` gate runs on relevant `main` PR changes.
+The full legacy M3D process/geometry/export acceptance remains available
+through manual workflow dispatch until those separate scientific contracts
+are migrated. This is an incremental test-owner transfer, not a reason
+to delete `site/app-legacy.html` from the test source tree.
+
+### Legacy project compatibility before UI retirement
+
+The old UI must not be deleted until the v2 Workstation can independently
+read and recover historical project files. The targeted
+[Legacy project compatibility workflow](../.github/workflows/legacy-project-compat.yml)
+runs `node scripts/v2/check-legacy-project-recovery.mjs` when its owned
+startup, persistence, or Legacy entry files change. This exercises the real
+2026-10-06 `shared-assets-v1` project fixture (SHA-256 verified, with the
+original 41 process Steps) through the **v2** staged Project worker, autosave,
+reload, and a replacement-created Recovery point. It does not launch the old UI.
+The large historical fixture makes this an independent path-gated browser
+acceptance rather than an unconditional Node test. This check does not by itself
+approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
+preview is now v2-only, but former Legacy-only scientific owners must still be
+migrated without losing scenario ownership.
+
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
+`scripts/v2/check-welcome-preview-isolation.mjs` verifies that Welcome's
+on-demand four-view preview renders the small final-stage project through v2,
+never acquires the writer lease, and does not change the saved-workspace marker.
+It has no `start` intent, autosave or Recovery side effects. Full examples
+continue to open through the ordinary v2 Project route.
 `scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
 opening the optional Legacy URL, exact cross-interface recovery, and concurrent
 Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
@@ -56,6 +110,7 @@ Stage C now uses one genuine M2-derived four-view workstation with a shared mode
 ```bash
 node scripts/v2/check-sync.mjs
 node scripts/v2/check-startup-shell.mjs
+node scripts/v2/check-welcome-preview-isolation.mjs
 node scripts/v2/check-startup.mjs
 node scripts/v2/check-cross-ui-recovery.mjs
 node scripts/v2/check-review-interactions.mjs

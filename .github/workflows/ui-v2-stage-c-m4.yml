@@ -2,21 +2,6 @@ name: UI v2 Stage C and M4 acceptance
 
 on:
   workflow_call:
-  push:
-    branches: [codex/ui-v2-main-wip]
-    paths:
-      - 'site/ui-v2/**'
-      - 'site/app.html'
-      - 'site/app-legacy.html'
-      - 'site/index.html'
-      - 'site/welcome.js'
-      - 'site/controllers/workspace-session-controller.js'
-      - 'site/controllers/**'
-      - 'site/process-*.js'
-      - 'site/project-*.js'
-      - 'site/model*.js'
-      - 'scripts/v2/**'
-      - '.github/workflows/ui-v2-stage-c-m4.yml'
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
@@ -68,7 +53,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-startup-shell check-progressive-quality check-startup check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
+          for script in check-physical-process-units check-startup-shell check-progressive-quality check-startup check-welcome-preview-isolation check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"
@@ -86,7 +71,9 @@ jobs:
           path: |
             test-results/ui-v2-sync/
             test-results/ui-v2-manual-both/
+            test-results/ui-v2-physical-process/
             test-results/ui-v2-startup/
+            test-results/ui-v2-welcome-preview/
             test-results/ui-v2-cross-ui-recovery/
             test-results/ui-v2-review-interactions/
             test-results/ui-v2-m4-projects/

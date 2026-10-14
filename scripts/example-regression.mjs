@@ -287,13 +287,13 @@ for (const example of [
     await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
     const frameElement = await card.locator('iframe').elementHandle();
     const frame = await frameElement.contentFrame();
-    await frame.waitForFunction(() => document.documentElement.dataset.appReady === 'true', null, {
+    await frame.waitForFunction(() => document.body.dataset.ready === 'true', null, {
       timeout: 120000,
     });
     for (const view of ['main', 'mask', 'three', 'section']) {
       await card.locator(`[data-preview-view="${view}"]`).click();
       await frame.waitForFunction(
-        (view) => document.documentElement.dataset.previewView === view,
+        (view) => window.WaferCadV2Workstation?.snapshot().ui.view === view,
         view,
       );
       if (view === 'three')

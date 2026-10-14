@@ -1,4 +1,8 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import {
+  MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
+  validateMaterialThicknessUm,
+} from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
@@ -451,7 +455,7 @@ export function surfaceZ(stack, face = 'front') {
 }
 export function normalizeStack(stack) {
   const sorted = (stack || [])
-    .filter((seg) => seg.z1 > seg.z0 + 1e-9)
+    .filter((seg) => seg.z1 > seg.z0 + MIN_RESOLVABLE_MATERIAL_SEGMENT_UM)
     .map((seg) => ({ ...seg }))
     .sort((a, b) => a.z0 - b.z0);
   const out = [];
@@ -1250,7 +1254,9 @@ function applyOperationImpl(
     electricalRegionSource = 'custom',
   },
 ) {
-  const amount = Math.max(1e-5, Number(thickness) || 0);
+  // Use the actual requested physical value. Previously this clamped every
+  // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
+  const amount = Number(thickness);
   if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
     return { changed: false, error: 'Unsupported Etch profile.' };
   }
@@ -1259,6 +1265,14 @@ function applyOperationImpl(
     (!Number.isFinite(Number(thickness)) || Number(thickness) <= 0)
   ) {
     return { changed: false, error: 'Process thickness must be finite and greater than zero.' };
+  }
+  // The normalization of physical material stacks removes sub-resolution Z
+  // segments. Fail before any mutation rather than reporting a successful
+  // operation with a different (or vanished) physical thickness. Implant and
+  // Electrical depths are annotation semantics, not material-film segments.
+  if (type === 'add' || type === 'grow' || (type === 'etch' && etchProfile !== 'planarize')) {
+    const error = validateMaterialThicknessUm(amount, 'Material thickness');
+    if (error) return { changed: false, error };
   }
   if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
     return {

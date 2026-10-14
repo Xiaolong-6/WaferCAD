@@ -4,18 +4,21 @@
 
 The active product is entirely under `site/`.
 
-`app.html` opens the v2 Workstation. `app-legacy.html` retains the previous
-workspace and the embedded Welcome preview protocol. Both use the same
-workspace storage and writer lease. The v2 footer shows the short SHA from
-the deployment's `build-info.json` as a clickable GitHub commit link (or
-non-clickable `commit local` without deployment metadata). The Workstation no longer offers a Legacy switch; if the optional
-Legacy URL is used directly, save or export pending changes before navigation.
-If `localStorage` is
-unreadable or unwritable, both interfaces remain editable in memory, but
-persistent autosave is disabled rather than risking cross-tab overwrite. Export
-a `.wafercad` project while storage coordination is unavailable; after restoring
-storage access, use the explicit takeover/reconciliation flow. A missing or
-expired write lease cannot authorize an IndexedDB commit.
+`app.html` opens the production v2 Workstation. The Welcome page's four-view
+interactive preview uses a read-only v2 renderer; it never acquires the writer
+lease or saves a preview into the local Workspace. The historical
+`app-legacy.html` editor, `app.js`, and `workstation.css` remain in Git for
+scientific browser regressions pending migration. Published Pages ships only a
+same-origin redirect from `app-legacy.html` to `app.html` (preserving query and
+fragment), and excludes the old editor's executable resources.
+
+The v2 footer links the deployed short commit SHA to its full GitHub commit
+(`commit local` for unstamped development). If browser `localStorage` is
+unreadable or unwritable, v2 remains editable in memory, but persistent
+autosave is disabled rather than risking cross-tab overwrite. Export a
+`.wafercad` project while storage coordination is unavailable; after
+restoring access use the explicit takeover/reconciliation flow. A missing
+or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
@@ -31,7 +34,7 @@ Open `http://localhost:8000`.
 
 `site/controllers/process-recipe-controller.js` owns the guided Recipe editor and runs existing Process operations; `site/process-recipe.js` is the restricted parser/normalizer and must never execute arbitrary JavaScript. **Continue current model** is additive and requires confirmation when a process revision exists. **Rebuild Base first (new Main)** reuses the Base controller's Keep/Clear/Cancel transaction and begins a fresh Main lineage. The Base History contract lives in `workspace-snapshots.js`: when archiving from a detached historical cursor, preserve the source Variant's **original HEAD**, not the currently inspected Step. New features must cover this with unit and browser tests, including Save/Open and Undo/Redo branch graphs.
 
-Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs.
+Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs. Material process lengths follow the [numerical/physical interpretation contract](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md); the continuum Z representation threshold is not a universal atomic-film lower bound.
 
 Recipe validation drafts are keyed by stable Step ID. Deleting a Step or changing its operation invalidates stale field errors, and Undo/Redo restores the persisted valid Recipe without unapplied field drafts. Run to Step validates only the requested prefix, and displayed error numbers follow current Step order. The Process material menu caches derived exposure only across identical model/revision, active face and Mask selection (Cell, Layers, transform, ROI, Draw source, layout elements); Geometry Kernel and Process worker validation remain authoritative. See [the Recipe field/cache integration note](archive/RECIPE_LOCAL_REPAIR_2026-10-08.md) for the original patch provenance and acceptance boundaries.
 
@@ -78,7 +81,7 @@ The historical [2026-10-07 pre-main audit](archive/PRE_MAIN_AUDIT_2026-10-07.md)
 
 ## Deployment
 
-`.github/workflows/pages.yml` deploys a filtered copy of `site/` from `main` only after the **same revision** passes Release Quality (including formatting), targeted Browser regression and the real UI v2 Stage C/M4 integration checks. Release jobs reuse the existing Browser/UI workflow owners, which no longer trigger independent duplicate `main` push runs. Weekly/manual full browser checks remain separate; KLayout compatibility stays path-scoped and manually runnable for broader corpus checks.
+`.github/workflows/pages.yml` deploys a filtered copy of `site/` from `main` only after the **same revision** passes Release Quality (including formatting), targeted Browser regression, the real UI v2 Stage C/M4 integration checks, and the impact-selected Main/Mask, KLayout and Recipe scientific release aggregate. Release jobs reuse the existing Browser/UI workflow owners, which no longer trigger independent duplicate `main` push runs. Weekly/manual full browser checks remain separate; KLayout compatibility stays path-scoped and manually runnable for broader corpus checks.
 
 There is no application bundling step. `node scripts/build-pages-artifact.mjs` stages the public runtime in `build/pages/`, excluding historical UI prototypes, mocks, review pages and Node tests. The release stamps only staged JavaScript and writes `build-info.json` there; source fixtures remain available in Git and local tests.
 

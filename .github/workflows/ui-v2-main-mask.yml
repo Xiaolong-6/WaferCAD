@@ -1,6 +1,7 @@
 name: UI v2 Main, Mask and Mobile acceptance
 
 on:
+  workflow_call:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]

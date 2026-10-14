@@ -1,5 +1,6 @@
 name: Process Recipe safety
 on:
+  workflow_call:
   push:
     branches:
       - fix/process-recipe-safety-r1-r7
@@ -8,10 +9,17 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "site/process-recipe.js"
+      - "site/model.js"
+      - "site/process-numerical-contract.js"
+      - "site/process-face-execution.js"
+      - "site/process-worker.js"
+      - "site/controllers/process-task-controller.js"
+      - "site/controllers/process-panel-controller.js"
       - "site/process-recipe-preflight.js"
       - "site/controllers/process-recipe-controller.js"
       - "site/tests/process-recipe-preflight.test.mjs"
       - "scripts/process-recipe-safety-regression.mjs"
+      - "scripts/process-transaction-ui-regression.mjs"
       - ".github/workflows/process-recipe-safety.yml"
 
 permissions:
@@ -46,11 +54,17 @@ jobs:
       # them again sequentially here consumed the CI time budget and could
       # stall independent Recipe interaction acceptance. Keep this job focused
       # on Recipe security, preflight, undo/restore and Stop behavior.
+      - name: Abort/rejected-worker History integrity in a real browser
+        env:
+          WAFERCAD_URL: http://127.0.0.1:4173
+        run: node scripts/process-transaction-ui-regression.mjs
       - name: Upload browser replay diagnostics
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: example-recipe-runall-diagnostics
-          path: test-results/example-recipe-runall/
+          path: |
+            test-results/example-recipe-runall/
+            test-results/ui-acceptance/transaction/
           if-no-files-found: ignore
           retention-days: 14

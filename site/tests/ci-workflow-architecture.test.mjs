@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 function workflow(name) {
@@ -11,12 +11,21 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  release-quality:\n/);
   assert.match(pages, /  release-browser:\n/);
   assert.match(pages, /  release-ui-v2:\n/);
-  assert.match(pages, /needs: \[release-quality, release-browser, release-ui-v2\]/);
+  assert.match(pages, /  stage-pages:\n/);
+  assert.match(
+    pages,
+    /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/,
+  );
+  assert.match(pages, /needs: \[stage-pages\]/);
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
   assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
+  assert.match(pages, /run: node scripts\/smoke-pages-artifact\.mjs/);
+  assert.match(pages, /uses: actions\/upload-pages-artifact@v4/);
+  assert.equal((pages.match(/pages: write/g) || []).length, 1, 'Only deploy has Pages write');
+  assert.equal((pages.match(/id-token: write/g) || []).length, 1, 'Only deploy has OIDC write');
   assert.match(pages, /node scripts\/build-pages-artifact\.mjs/);
   assert.match(pages, /node scripts\/stamp-pages-assets\.mjs .*build\/pages/);
   assert.match(pages, /path: build\/pages/);
@@ -28,24 +37,47 @@ test('production Pages requires quality, browser and UI acceptance before publis
   );
 });
 
+test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
+  const pages = workflow('pages');
+  assert.match(pages, /  release-impact:\n/);
+  assert.match(pages, /  release-main-mask:\n/);
+  assert.match(pages, /  release-klayout:\n/);
+  assert.match(pages, /  release-recipe:\n/);
+  assert.match(pages, /  release-science:\n/);
+  assert.match(
+    pages,
+    /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/,
+  );
+  assert.match(pages, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(pages, /test "\$result" = success/);
+  assert.match(pages, /test "\$result" = skipped/);
+  for (const [job, path] of [
+    ['release-main-mask', 'ui-v2-main-mask.yml'],
+    ['release-klayout', 'klayout-compat.yml'],
+    ['release-recipe', 'process-recipe-safety.yml'],
+  ]) {
+    assert.ok(pages.includes(`  ${job}:`));
+    assert.ok(pages.includes(`uses: ./.github/workflows/${path}`));
+    assert.match(workflow(path.replace(/\.yml$/, '')), /^  workflow_call:/m);
+  }
+});
+
 test('browser and v2 owners are reusable without racing main-push jobs', () => {
   const browser = workflow('browser-regression');
   const ui = workflow('ui-v2-stage-c-m4');
   assert.match(browser, /^  workflow_call:/m);
   assert.match(ui, /^  workflow_call:/m);
   assert.doesNotMatch(browser, /^  push:/m);
-  assert.match(ui, /branches: \[codex\/ui-v2-main-wip\]/);
+  assert.doesNotMatch(ui, /codex\/ui-v2-main-wip/);
   assert.doesNotMatch(ui, /branches: \[codex\/ui-v2-main-wip, main\]/);
   assert.match(browser, /!inputs\.skip_node_gate/);
 });
 
-test('preview publishes from the last successful production Pages run', () => {
-  const preview = workflow('ui-v2-preview');
-  assert.match(preview, /actions\/workflows\/pages\.yml\/runs\?branch=main/);
-  assert.match(preview, /ref: \$\{\{ steps\.verified-main\.outputs\.sha \}\}/);
-  assert.match(preview, /node scripts\/build-pages-artifact\.mjs/);
-  assert.match(preview, /cp -a base\/build\/pages\/\. _site\//);
-  assert.doesNotMatch(preview, /^          ref: main$/m);
+test('retired preview cannot publish from the obsolete branch', () => {
+  assert.equal(
+    existsSync(new URL('../../.github/workflows/ui-v2-preview.yml', import.meta.url)),
+    false,
+  );
 });
 
 test('Quality covers docs-only PRs and enforces pinned formatter', () => {

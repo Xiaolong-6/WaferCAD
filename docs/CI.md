@@ -22,7 +22,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs and on the active v2 feature branch. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
+The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
@@ -45,7 +45,41 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
-[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression and UI v2 Stage C/M4 acceptance. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The `deploy` job runs only for `refs/heads/main`; no failed or skipped upstream job qualifies.
+[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires same-SHA Release Quality (`npm run check`), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
+
+## Retired public Legacy editor
+
+Production Pages staging now replaces the old `app-legacy.html` source with
+a small same-origin, query-preserving redirect to `app.html`. The old editor
+bootstrap `app.js` and `workstation.css` are excluded from the deploy
+artifact; they stay in Git because historical DOM-based scientific browser
+tests still own those implementations. PRs touching the artifact builder run
+the staged Pages browser smoke, which verifies the legacy bookmark redirect,
+absence of old JS/CSS, and real production Workers under `/WaferCAD/`.
+The redirect performs no Project/Recovery storage migration or mutation.
+Removing the retained Legacy source and test adapters is a separate step,
+requiring replacement scientific test ownership.
+
+## Welcome four-view preview isolation
+
+The production v2 Stage C/M4 owner also exercises
+`scripts/v2/check-welcome-preview-isolation.mjs`: the Welcome iframe opens a
+reduced final-stage real project in read-only v2 Main, Mask, 3D and Section,
+without `start` intent, writer-lease acquisition or autosave marker mutation.
+The ordinary M5 startup owner verifies the same preview routing before loading
+the full example into the editor. This gate does not cover physical hardware
+GPU parity.
+
+## Historical Project compatibility
+
+The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
+is a path-gated PR workflow, independent from the ordinary Pages release. It imports the
+SHA-256-verified historical `shared-assets-v1` project in the real v2 Workstation
+and verifies autosave, reload, and Recovery preservation. It must pass before
+the retained `app-legacy.html` interface and Legacy-only test adapters are
+deleted. This gate supplements current project-format and controller tests;
+it does not authorize skipping migration of Legacy-only scientific browser
+scenarios.
 
 ## Heavy Process Geometry job
 
@@ -75,7 +109,8 @@ This keeps PR and main validation change-aware while leaving the expensive uncon
 - Renderer stress cases and the full Process Geometry permutation set are retained for weekly/manual full runs; PRs and targeted main pushes use semantic/core subsets.
 - Process Geometry is split only when selected because its real worker/process path remains materially heavier than ordinary UI checks.
 - Node-test-only changes under `site/tests/` do not trigger Browser regression by themselves.
-- KLayout parser/browser compatibility remains path-filtered in its dedicated workflow.
+- KLayout parser/browser compatibility stays path-filtered on PRs and is reused as a required same-SHA release gate on layout/interop changes.
+- Main/Mask and Recipe browser acceptances are similarly reusable release gates. They do not run unconditionally for documentation-only changes.
 
 ## Local equivalents
 
@@ -93,4 +128,4 @@ The planner changes CI scheduling only. It does not remove or weaken any underly
 
 GitHub branch protection/rulesets are repository settings, **not** workflow YAML. A contributor with administration permission must enable protection of `main` and require the stable `Quality / quality` check, with pull requests and stale-review protection as appropriate. The specialized path-selected and Draft-deferred checks cannot safely be made individually required without a stable aggregator: a workflow omitted by a path filter has no successful check to report. Before merging a science, browser, or UI change, inspect the applicable targeted jobs and uploaded evidence; `Quality` success alone is not sufficient for scientific or human acceptance.
 
-The full release DAG prevents ordinary `main` Pages publication until the post-merge checks finish. UI v2 Preview reads the most recent successful production Pages workflow SHA rather than current, possibly unverified, `main`. Preview itself remains an isolated path and still needs separate acceptance; repository-specific administrative rules also require review, and this workflow does not turn software WebGL into physical-GPU evidence. See [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) for the remaining controls.
+The full release DAG prevents ordinary `main` Pages publication until post-merge scientific checks and staged-artifact smoke finish. The obsolete `ui-v2-preview.yml` publisher is retired, and production Pages is the only source-configured publisher. Repository/environment permissions and main protection require separate administration review; software WebGL does not constitute physical-GPU evidence. See [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) for the remaining controls.

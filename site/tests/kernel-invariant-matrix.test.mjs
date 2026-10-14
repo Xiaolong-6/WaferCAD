@@ -87,6 +87,70 @@ test('invalid zero, negative and nonfinite process thickness fails closed on bot
   }
 });
 
+test('5 pm requested numerical material thickness is never silently clamped to 10 pm', () => {
+  const thickness = 0.005e-3; // µm; numerical geometry probe, not an atomistic film claim
+  for (const face of ['front', 'back', 'both']) {
+    const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    const result = modelApi.applyOperation(model, {
+      type: 'add',
+      name: 'Equivalent continuum thickness',
+      face,
+      thickness,
+      area: model.boundary,
+    });
+    assert.equal(result.changed, true, result.error);
+    const stack = stackAt(model);
+    const deposited = stack.filter((segment) => segment.layerId !== 'base');
+    assert.equal(deposited.length, face === 'both' ? 2 : 1);
+    for (const segment of deposited) {
+      const actual = segment.z1 - segment.z0;
+      assert.ok(
+        Math.abs(actual - thickness) <= 16 * Number.EPSILON * Math.max(1, Math.abs(segment.z1)),
+      );
+      assert.ok(Math.abs(actual - 1e-5) > 1e-6, 'must not substitute old 10 pm clamp');
+    }
+    checkStacks(model);
+  }
+});
+
+test('sub-resolution physical material inputs fail without mutation on Front/Back/Both', () => {
+  for (const face of ['front', 'back', 'both']) {
+    for (const type of ['add', 'grow', 'etch']) {
+      const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+      const before = structuredClone(model);
+      const result = modelApi.applyOperation(model, {
+        type,
+        face,
+        name: 'Resolution limit',
+        thickness: 1e-10,
+        area: model.boundary,
+      });
+      assert.equal(result.changed, false, result.error);
+      assert.match(result.error, /cannot be represented as a nonzero material Z segment/i);
+      assert.deepEqual(model, before);
+    }
+  }
+});
+
+test('Implant and Electrical depth semantics do not inherit material stack resolution', () => {
+  for (const type of ['implant', 'electrical']) {
+    const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+    const result = modelApi.applyOperation(model, {
+      type,
+      name: 'Numerical annotation',
+      thickness: 1e-10,
+      face: 'front',
+      area: model.boundary,
+    });
+    assert.equal(result.changed, true, result.error);
+    const value =
+      type === 'implant'
+        ? model.implants.at(-1).thickness
+        : model.electricalRegions.at(-1).thickness;
+    assert.equal(value, 1e-10);
+  }
+});
+
 for (const seed of [3, 11, 29, 47]) {
   test(`seed=${seed}: Deposit both → selective Front/Back Etch preserves stack invariants`, () => {
     const width = 15 + seed / 10;

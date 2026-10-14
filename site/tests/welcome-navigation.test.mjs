@@ -40,3 +40,11 @@ test('welcome staging enforces the same layout and project file-size limits befo
   assert.match(welcomeJs, /MAX_PROJECT_FILE_BYTES/);
   assert.match(welcomeJs, /file\.size > maxBytes/);
 });
+
+test('Welcome interactive preview uses v2 without a project-start intent', () => {
+  assert.match(welcomeJs, /return `\.\/app\.html\?\$\{params\.toString\(\)\}`/);
+  assert.doesNotMatch(welcomeJs, /app-legacy\.html/);
+  assert.match(welcomeJs, /preview: '1'/);
+  assert.doesNotMatch(welcomeJs, /start: 'example'/);
+  assert.match(appHtml, /ui-v2\/workstation-preview\.css/);
+});

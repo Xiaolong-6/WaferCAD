@@ -1,5 +1,36 @@
 # Documentation and handoff closeout — 2026-10-13
 
+## 2026-10-14 P2 release and Legacy follow-up
+
+Main `65ec07ea` merged [PR #220](https://github.com/Xiaolong-6/WaferCAD/pull/220):
+retired the obsolete branch Preview publisher and added a staged-artifact
+browser/Worker gate with a single verified artifact promoted to deployment.
+The [first revised production Pages run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521305117)
+**succeeded**, including release Quality, targeted browser and Stage C/M4 checks.
+
+[PR #221](https://github.com/Xiaolong-6/WaferCAD/pull/221) merged to
+`main@6c0da347`; its SHA-256-verified historical `shared-assets-v1` fixture
+successfully passed [real v2 Project import/autosave/reload/Recovery](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521706241).
+That is a Legacy data-compatibility gate, not removal of the old UI.
+
+[PR #223](https://github.com/Xiaolong-6/WaferCAD/pull/223) moves the Welcome
+interactive preview iframe to a **read-only v2** final-stage project and keeps
+Main/Mask/3D/Section views. It adds writer-lease and autosave isolation checks.
+It merged at `main@a54dd4b` after all relevant PR checks passed.
+The retained Legacy DOM-based scientific tests and test adapters still need
+migration before the old source implementation can be deleted. No scientific
+kernel/schema or Recovery storage deletion is authorized by this P2 follow-up.
+
+The next public-artifact retirement change keeps an `app-legacy.html`
+bookmark redirect in the published tree but excludes the old `app.js`
+and `workstation.css` editor resources. It is a separate PR candidate
+until its staged Pages and CI gates pass. Retained scientific test sources
+are intentionally untouched and should not be declared fully retired.
+
+The workflows constrain Pages write/OIDC permissions in source control;
+repository/environment administrator settings remain a separate verification
+boundary.
+
 ## Scope and evidence
 
 Audited public `main` at `1e34da5d23f8fd9db8db13b249a7e4816cdb7ced`, then opened branch `docs/main-privacy-lifecycle-handoff-20261013`. This is a documentation-only cleanup. Historical test results, branch names and unverified claims have not been recast as passes. The original pre-release records now reside in the [archive](archive/README.md). This register was subsequently reconciled against `main@036117f9` on 2026-10-13; that follow-up is a status/documentation check, not a new end-to-end test.

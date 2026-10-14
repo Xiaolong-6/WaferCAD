@@ -1,4 +1,5 @@
 import { normalizeRecipeLayerKey } from './process-recipe-preflight.js';
+import { validateMaterialThicknessUm } from './process-numerical-contract.js';
 
 const COMMANDS = new Set([
   'deposit',
@@ -175,6 +176,8 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.thicknessUm)
       : recipeLengthUm(params.thickness, 'deposit.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('deposit.thickness must be greater than zero.');
+    const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
+    if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
     params.placement =
       params.coverage === 'transfer'
@@ -193,6 +196,8 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.thicknessUm)
       : recipeLengthUm(params.thickness, 'extend.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('extend.thickness must be greater than zero.');
+    const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'extend.thickness');
+    if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode);
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
@@ -209,8 +214,11 @@ function normalizeStep(command, input, index = 0) {
     params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
       ? Number(params.thicknessUm)
       : recipeLengthUm(sourceLength, `etch.${lengthKey}`);
-    if (params.profile !== 'planarize' && !(params.thicknessUm > 0)) {
-      throw new Error(`etch.${lengthKey} must be greater than zero.`);
+    if (params.profile !== 'planarize') {
+      if (!(params.thicknessUm > 0))
+        throw new Error(`etch.${lengthKey} must be greater than zero.`);
+      const thicknessError = validateMaterialThicknessUm(params.thicknessUm, `etch.${lengthKey}`);
+      if (thicknessError) throw new Error(thicknessError);
     }
     params.target = cleanText(params.target);
     if (['isotropic', 'undercut'].includes(params.profile) && !params.target) {
@@ -595,10 +603,19 @@ function serializeMask(mask, indent = '  ') {
 
 function displayLength(um) {
   const value = Number(um);
-  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3)
-    return `${Number((value * 1000).toPrecision(8))} nm`;
-  if (Math.abs(value) >= 1000) return `${Number((value / 1000).toPrecision(8))} mm`;
-  return `${Number(value.toPrecision(8))} µm`;
+  // Readable units are optional; preserving the canonical numeric value is not.
+  // Avoid the old eight-significant-digit shortening when it changes Recipe
+  // replay after serialization, especially for very small process lengths.
+  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3) {
+    const nm = Number((value * 1000).toPrecision(8));
+    if (nm * 1e-3 === value) return `${nm} nm`;
+  }
+  if (Math.abs(value) >= 1000) {
+    const mm = Number((value / 1000).toPrecision(8));
+    if (mm * 1000 === value) return `${mm} mm`;
+  }
+  const short = Number(value.toPrecision(8));
+  return `${short === value ? short : value} µm`;
 }
 
 export function serializeProcessRecipe(recipeValue) {

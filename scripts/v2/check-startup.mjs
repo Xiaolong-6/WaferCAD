@@ -33,9 +33,17 @@ try {
   await exampleCard.locator('[data-preview-view="main"]').click();
   await exampleCard.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 120000 });
   const preview = await (await exampleCard.locator('iframe').elementHandle()).contentFrame();
-  assert.match(preview.url(), /\/app-legacy\.html\?/);
+  assert.match(preview.url(), /\/app\.html\?preview=1/);
+  await preview.waitForFunction(
+    () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
+  );
+  assert.equal(
+    await preview.evaluate(() => window.WaferCadV2Workstation.snapshot().workflow.writable),
+    false,
+    'Welcome read-only preview does not become the workspace writer',
+  );
   await exampleCard.locator('[data-preview-view="mask"]').click();
-  await preview.waitForFunction(() => document.documentElement.dataset.previewView === 'mask');
+  await preview.waitForFunction(() => window.WaferCadV2Workstation?.snapshot().ui.view === 'mask');
   await exampleCard.locator('.welcome-example-title-link').click();
   await page.waitForURL('**/app.html*');
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {

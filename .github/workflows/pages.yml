@@ -1,7 +1,7 @@
 name: Deploy WaferCAD to Pages
 
-# Every production publication waits for quality, targeted browser checks and
-# the real UI v2 integration suite at the same main revision.
+# Production publication validates the exact staged artifact, at the same main
+# revision as the Quality, targeted Browser and UI v2 acceptance gates.
 on:
   push:
     branches: [main]
@@ -16,14 +16,15 @@ on:
       - '.github/workflows/browser-regression.yml'
       - '.github/workflows/ui-v2-stage-c-m4.yml'
       - '.github/workflows/quality.yml'
+      - '.github/workflows/ui-v2-main-mask.yml'
+      - '.github/workflows/klayout-compat.yml'
+      - '.github/workflows/process-recipe-safety.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Never abort a production release that has already passed some expensive
-# gates. New main pushes replace the queued run, then the newest pending
-# release publishes. Repeated merges must not starve GitHub Pages forever.
+# A publishing run is never cancelled after it passes its expensive gates.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -56,9 +57,131 @@ jobs:
     permissions:
       contents: read
 
+  release-impact:
+    name: Select scientific release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      main_mask: ${{ steps.plan.outputs.main_mask }}
+      klayout: ${{ steps.plan.outputs.klayout }}
+      recipe: ${{ steps.plan.outputs.recipe }}
+    steps:
+      - name: Checkout history for changed-path selection
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Classify same-revision changes
+        id: plan
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            before="${{ github.event.before }}"
+            if [[ -z "$before" || "$before" =~ ^0+$ ]] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+              node scripts/ci-test-plan.mjs --full
+            else
+              git diff --name-only "$before" "$GITHUB_SHA" | node scripts/ci-test-plan.mjs --stdin
+            fi
+          else
+            # A manual publication cannot safely infer what was previously tested.
+            node scripts/ci-test-plan.mjs --full
+          fi
+
+  release-main-mask:
+    name: Real Main/Mask/Section acceptance
+    needs: release-impact
+    if: ${{ needs.release-impact.outputs.main_mask == 'true' }}
+    uses: ./.github/workflows/ui-v2-main-mask.yml
+    permissions:
+      contents: read
+
+  release-klayout:
+    name: KLayout interchange compatibility
+    needs: release-impact
+    if: ${{ needs.release-impact.outputs.klayout == 'true' }}
+    uses: ./.github/workflows/klayout-compat.yml
+    with:
+      scope: all
+    permissions:
+      contents: read
+
+  release-recipe:
+    name: Recipe safety acceptance
+    needs: release-impact
+    if: ${{ needs.release-impact.outputs.recipe == 'true' }}
+    uses: ./.github/workflows/process-recipe-safety.yml
+    permissions:
+      contents: read
+
+  release-science:
+    name: Scientific release aggregate
+    if: ${{ always() }}
+    needs: [release-impact, release-main-mask, release-klayout, release-recipe]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require planned suites to pass and unplanned suites to skip
+        shell: bash
+        env:
+          PLAN_RESULT: ${{ needs.release-impact.result }}
+          MAIN_MASK_REQUIRED: ${{ needs.release-impact.outputs.main_mask }}
+          MAIN_MASK_RESULT: ${{ needs.release-main-mask.result }}
+          KLAYOUT_REQUIRED: ${{ needs.release-impact.outputs.klayout }}
+          KLAYOUT_RESULT: ${{ needs.release-klayout.result }}
+          RECIPE_REQUIRED: ${{ needs.release-impact.outputs.recipe }}
+          RECIPE_RESULT: ${{ needs.release-recipe.result }}
+        run: |
+          test "$PLAN_RESULT" = success
+          for gate in MAIN_MASK KLAYOUT RECIPE; do
+            required_var="${gate}_REQUIRED"
+            result_var="${gate}_RESULT"
+            required="${!required_var}"
+            result="${!result_var}"
+            if [[ "$required" == "true" ]]; then
+              test "$result" = success || { echo "::error::$gate required but $result"; exit 1; }
+            elif [[ "$required" == "false" ]]; then
+              test "$result" = skipped || { echo "::error::$gate not selected but $result"; exit 1; }
+            else
+              echo "::error::$gate routing output missing or invalid"
+              exit 1
+            fi
+          done
+
+  stage-pages:
+    name: Build and smoke production Pages artifact
+    needs: [release-quality, release-browser, release-ui-v2, release-science]
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout verified revision
+        uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Stage and stamp production files
+        run: |
+          node scripts/build-pages-artifact.mjs
+          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json
+          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA" build/pages
+      - name: Smoke the exact staged artifact at /WaferCAD/
+        run: node scripts/smoke-pages-artifact.mjs
+      - name: Upload exactly the tested Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/pages
+
   deploy:
     name: Publish verified main
-    needs: [release-quality, release-browser, release-ui-v2]
+    needs: [stage-pages]
     if: ${{ github.ref == 'refs/heads/main' }}
     permissions:
       contents: read
@@ -70,24 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout verified revision
-        uses: actions/checkout@v6
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Install locked development dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Stage production assets and stamp the validated revision
-        run: |
-          node scripts/build-pages-artifact.mjs
-          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json
-          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA" build/pages
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: build/pages
-      - name: Deploy verified main
+      - name: Deploy the already-tested artifact
         id: deployment
         uses: actions/deploy-pages@v4
