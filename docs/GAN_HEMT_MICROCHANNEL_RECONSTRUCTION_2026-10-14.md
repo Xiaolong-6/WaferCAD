@@ -72,9 +72,9 @@ Every inferred element must remain labeled as an assumption; do not promote it t
 
 ## Diversion manifold topology verification
 
-The manifold was reconstructed from the *layout topology* shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **22 Recipe operations**, **23 History nodes** and **13 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
+The manifold was reconstructed from the _layout topology_ shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **22 Recipe operations**, **23 History nodes** and **13 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
 
-A structural connectivity invariant interpolates points along real 3D *empty space*: it follows each of the two Back DRIE ports through the stepped lower chambers into its top-cap throat, then follows all six curved arms into the corresponding straight channel. All 12 side-to-channel paths must be free of material, and neighboring Si ribs must remain solid. This is stronger than testing that the inlet/outlet bores or masks merely overlap in 2D.
+A structural connectivity invariant interpolates points along real 3D _empty space_: it follows each of the two Back DRIE ports through the stepped lower chambers into its top-cap throat, then follows all six curved arms into the corresponding straight channel. All 12 side-to-channel paths must be free of material, and neighboring Si ribs must remain solid. This is stronger than testing that the inlet/outlet bores or masks merely overlap in 2D.
 
 **Limit:** No Navier–Stokes, pressure-drop, velocity-field, laminar-flow distribution, etch tolerance, or wafer-bond seal is simulated. Correct geometrical connectivity does not establish equal per-channel flow. The exact number, curvature and width of the real paper's internal diversion tracks are uncertain and must be revisited if original author GDS becomes available.
 
@@ -135,7 +135,7 @@ The candidate has passed the following **geometry-surrogate** acceptance checks 
 The real Section captures a four-level stepped opening under the SiC HEMT, consistent
 with the principal **topological layout** in article Fig. 1a / Fig. 2g. The real
 3D half-cutaway reveals the central channels. The reconstructed curved end
-diversions follow the *topological pattern* in Fig. 1(c) and Fig. 2(h) but
+diversions follow the _topological pattern_ in Fig. 1(c) and Fig. 2(h) but
 are not digitized exact original masks. Both views are structural checks,
 not dimensional image-matching or a proof of complete flow equivalence.
 

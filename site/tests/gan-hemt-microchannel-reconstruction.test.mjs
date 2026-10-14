@@ -57,10 +57,14 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.recipeSteps, 22);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
-  assert.ok(project.processRecipe.steps.some((step) =>
-    step.command === 'etch' && step.params.mask?.layerKeys?.includes('22|0') &&
-    step.params.target === 'Si geometric bridge tier 4'
-  ));
+  assert.ok(
+    project.processRecipe.steps.some(
+      (step) =>
+        step.command === 'etch' &&
+        step.params.mask?.layerKeys?.includes('22|0') &&
+        step.params.target === 'Si geometric bridge tier 4',
+    ),
+  );
   assert.ok(validation.processNodes >= 20);
   assert.ok(validation.bookmarks >= 5);
   assert.equal(validation.recipeSteps, project.processRecipe.steps.length);
@@ -234,8 +238,11 @@ test('Lian 2022 inferred mask layout exports as both GDSII and OASIS', async () 
     selectedLayerKeys: new Set(GAN_MICROCHANNEL_MASKS.map((mask) => mask.id + '|0')),
   }).elements;
   assert.ok(elements.length >= 45);
-  assert.equal(elements.filter((element) => element.layer === 22).length, 14,
-    'GDS/OAS layout must include all twelve arms and two polygon throats');
+  assert.equal(
+    elements.filter((element) => element.layer === 22).length,
+    14,
+    'GDS/OAS layout must include all twelve arms and two polygon throats',
+  );
   const gds = parseGDS(serializeGDS(elements).buffer);
   const oas = await parseOAS(serializeOASIS(elements).buffer);
   assert.equal(flattenGDS(gds, gds.root).elements.length, elements.length);

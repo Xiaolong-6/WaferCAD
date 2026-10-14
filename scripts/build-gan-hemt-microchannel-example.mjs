@@ -50,13 +50,20 @@ function stripeAroundPolyline(points, halfWidth = GAN_MANIFOLD_PARAMETERS.branch
   const normals = points.map((p, index) => {
     const before = points[Math.max(0, index - 1)];
     const after = points[Math.min(points.length - 1, index + 1)];
-    const dx = after[0] - before[0], dy = after[1] - before[1];
+    const dx = after[0] - before[0],
+      dy = after[1] - before[1];
     const length = Math.hypot(dx, dy);
     assert.ok(length > 0, 'Manifold branch contains a zero-length segment');
     return [-dy / length, dx / length];
   });
-  const left = points.map(([x, y], i) => [x + normals[i][0] * halfWidth, y + normals[i][1] * halfWidth]);
-  const right = points.map(([x, y], i) => [x - normals[i][0] * halfWidth, y - normals[i][1] * halfWidth]);
+  const left = points.map(([x, y], i) => [
+    x + normals[i][0] * halfWidth,
+    y + normals[i][1] * halfWidth,
+  ]);
+  const right = points.map(([x, y], i) => [
+    x - normals[i][0] * halfWidth,
+    y - normals[i][1] * halfWidth,
+  ]);
   return [...left, ...right.reverse()];
 }
 export function ganManifoldCenterline(centerX, side) {
@@ -91,10 +98,7 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   {
     id: 22,
     name: 'Inlet/outlet rounded diversion branches (inferred from Fig. 2h)',
-    rectangles: [
-      centered(110, 50, 0, -425),
-      centered(110, 50, 0, 425),
-    ],
+    rectangles: [centered(110, 50, 0, -425), centered(110, 50, 0, 425)],
     polygons: manifoldBranches,
   },
   {
@@ -309,7 +313,7 @@ export async function buildGanMicrochannel() {
     assert.ok(mask, 'Unknown mask ' + id);
     return vectorApi.unionGeometries([
       ...mask.rectangles.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
-      ...(mask.polygons || []).map((points) => [[ [...points, points[0]] ]]),
+      ...(mask.polygons || []).map((points) => [[[...points, points[0]]]]),
     ]);
   }
   function owner(point) {
@@ -411,7 +415,12 @@ export async function buildGanMicrochannel() {
     });
   }
   function etch(label, id, depth, targetId = null, face = 'front', target = null) {
-    return process(label, 'etch', { depth, face, ...(targetId ? { targetId } : {}), ...(target ? { target } : {}) }, id);
+    return process(
+      label,
+      'etch',
+      { depth, face, ...(targetId ? { targetId } : {}), ...(target ? { target } : {}) },
+      id,
+    );
   }
   function deposit(label, material, thickness, id = null, coverage = 'direct') {
     return process(label, 'deposit', { material, thickness, coverage }, id);
@@ -563,7 +572,8 @@ export async function buildGanMicrochannel() {
   // the six top channels. Interpolate each 3D segment at <=5 um intervals.
   function assertFluidPath(points, name) {
     for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1], b = points[i];
+      const a = points[i - 1],
+        b = points[i];
       const n = Math.max(1, Math.ceil(Math.hypot(...a.map((v, k) => b[k] - v)) / 5));
       for (let j = 0; j <= n; j++) {
         const t = j / n;
@@ -588,11 +598,7 @@ export async function buildGanMicrochannel() {
     for (const channelX of CHANNEL_CENTERS) {
       const centerline = ganManifoldCenterline(channelX, side).map(([x, y]) => [x, y, 550]);
       assertFluidPath(
-        [
-          [channelX, side * 300, 550],
-          ...centerline,
-          [0, side * 425, 550],
-        ],
+        [[channelX, side * 300, 550], ...centerline, [0, side * 425, 550]],
         'fanout ' + side + ' / channel ' + channelX,
       );
     }
