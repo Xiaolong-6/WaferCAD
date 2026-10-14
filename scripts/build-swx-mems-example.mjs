@@ -270,7 +270,13 @@ export async function buildSwxMems(state = 'off') {
     'EBL ridge mask / proximity correction',
     'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
   );
-  etch('150nm ridge-waveguide and grating-groove etch', DEVICE, SWX_REPORTED.ridgeEtchUm, 'directional', 2);
+  etch(
+    '150nm ridge-waveguide and grating-groove etch',
+    DEVICE,
+    SWX_REPORTED.ridgeEtchUm,
+    'directional',
+    2,
+  );
   record(
     'EBL full-depth strip, MEMS, and SWT pattern',
     'Mask 1 reconstructs full-height silicon and mechanical features. SWT pitch/depth are reported; coordinates are inferred.',
@@ -286,15 +292,19 @@ export async function buildSwxMems(state = 'off') {
   // Ridge and coupler-groove etches are vertical: grooves preserve a
   // 70nm Si slab, while unetched ribs retain the full 220nm device film.
   const siliconId = layerIds.get(DEVICE);
-  const siHeightAt = (point) => readPoint(model, vectorApi, point)?.stack
-    .filter((seg) => seg.layerId === siliconId)
-    .reduce((sum, seg) => sum + (seg.z1 - seg.z0), 0);
+  const siHeightAt = (point) =>
+    readPoint(model, vectorApi, point)
+      ?.stack.filter((seg) => seg.layerId === siliconId)
+      .reduce((sum, seg) => sum + (seg.z1 - seg.z0), 0);
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
-    const groovePoint = [cx + SWX_ASSUMPTIONS.gratingRadiiUm[0] +
-      SWX_ASSUMPTIONS.gratingToothWidthUm / 2, cy];
+    const groovePoint = [
+      cx + SWX_ASSUMPTIONS.gratingRadiiUm[0] + SWX_ASSUMPTIONS.gratingToothWidthUm / 2,
+      cy,
+    ];
     const ridgePoint = [cx + 2.1, cy];
     assert.ok(
-      Math.abs(siHeightAt(groovePoint) - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) < 1e-4,
+      Math.abs(siHeightAt(groovePoint) - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) <
+        1e-4,
       'Shallow optical grating groove lacks the 70nm silicon floor',
     );
     assert.ok(
