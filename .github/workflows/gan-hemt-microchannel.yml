@@ -6,14 +6,14 @@ on:
       - feat/example-gan-hemt-microchannel-20261014
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
-      - site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+      - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
-      - site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+      - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
@@ -37,7 +37,7 @@ jobs:
       - name: Focused lint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: Focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: Generate reopenable project and validation evidence
