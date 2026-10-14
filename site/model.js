@@ -81,6 +81,7 @@ export function createModel({
     ],
     implants: [],
     electricalRegions: [],
+    dopantRegions: [],
     nextImplantId: 1,
     nextElectricalRegionId: 1,
     nextLayerId: 1,
