@@ -226,28 +226,36 @@ function gratingArcBand(cx, cy, inner, outer, sign) {
 }
 
 function makeIllustrativeGratingCouplers() {
-  const polys = [];
+  const silicon = [], shallowEtch = [], groups = [];
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
     const sign = Math.sign(cy);
     const sourceY = sign * 13;
-    polys.push(
-      ...polyline(
-        [
-          [-53, sourceY],
-          [-50.7, sign * 18],
-          [cx, cy],
-        ],
-        0.4,
-      ),
-    );
-    polys.push(taperedStrip([cx, cy], [cx + 2.3, cy], 0.4, 1.1));
+    const feed = polyline([[-53, sourceY], [-50.7, sign * 18], [cx, cy]], 0.4);
+    const taper = taperedStrip([cx, cy], [cx + 2.3, cy], 0.4, 1.1);
+    const outerRadius = Math.max(...SWX_ASSUMPTIONS.gratingRadiiUm) +
+      SWX_ASSUMPTIONS.gratingToothWidthUm + 0.18;
+    const halfAngle = Math.PI / 3.5;
+    const slab = [
+      [cx, cy],
+      ...Array.from({ length: 17 }, (_, i) => {
+        const angle = -halfAngle + (2 * halfAngle * i) / 16;
+        return [cx + outerRadius * Math.cos(angle),
+          cy + sign * outerRadius * Math.sin(angle)];
+      }),
+    ];
+    // Grating teeth are shallow-etched grooves in one continuous silicon
+    // sector. Standalone full-etched arcs would be disconnected silicon
+    // islands with no realistic optical substrate beneath them.
+    silicon.push(...feed, taper, slab);
+    groups.push(...feed, taper, slab);
     for (const radius of SWX_ASSUMPTIONS.gratingRadiiUm) {
-      polys.push(
-        gratingArcBand(cx, cy, radius, radius + SWX_ASSUMPTIONS.gratingToothWidthUm, sign),
-      );
+      const groove = gratingArcBand(cx, cy, radius,
+        radius + SWX_ASSUMPTIONS.gratingToothWidthUm, sign);
+      shallowEtch.push(groove);
+      groups.push(groove);
     }
   }
-  return polys;
+  return { silicon, shallowEtch, groups };
 }
 
 function makeMeanders(moveY) {
@@ -410,7 +418,7 @@ export function createSwxGeometry(state = 'off') {
     ...combs.fixed,
     ...anchors,
     ...stoppers.fixed,
-    ...gratings,
+    ...gratings.silicon,
     ...aligners.fixed,
   ];
   const movable = [...optics.moving, ...combs.moving, ...shuttle, ...stoppers.movable];
@@ -422,6 +430,7 @@ export function createSwxGeometry(state = 'off') {
     rect(-50, -13 + travel, 3, 1.4),
     rect(-12, 13, 3, 1.4),
     rect(-12, -13 + travel, 3, 1.4),
+    ...gratings.shallowEtch,
   ];
   // Every electrode must meet a mechanically supported silicon contact pad.
   // The previous upper/lower contacts at x=25um sat directly on exposed BOX,
@@ -483,7 +492,9 @@ export function createSwxGeometry(state = 'off') {
       flexure,
       stopperFixed: stoppers.fixed,
       stopperMovable: stoppers.movable,
-      gratingCouplers: gratings,
+      gratingCouplers: gratings.groups,
+      gratingSlabs: gratings.silicon,
+      gratingGrooves: gratings.shallowEtch,
       structuralAligners: aligners,
       shuttle,
     },
