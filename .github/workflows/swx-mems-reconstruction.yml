@@ -32,7 +32,7 @@ jobs:
         run: npm ci
       - name: Geometry and pose tests
         run: node --test site/tests/swx-mems-geometry.test.mjs
-      - name: Compile canonical OFF and ON projects
+      - name: Compile shared fabrication and OFF/ON Variants
         run: node scripts/build-swx-mems-example.mjs
       - name: Install browser runtime
         uses: actions/cache@v4
