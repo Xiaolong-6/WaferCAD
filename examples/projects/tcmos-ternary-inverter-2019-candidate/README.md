@@ -52,7 +52,7 @@ To verify that the Kernel and Section viewer can represent a nonzero Implant til
 
 `node scripts/build-tcmos-inverter-example.mjs --tilt-demo`
 
-This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only the two HVT body annotation operations acquire an *assumed* 18° angle, and the Section path is shortened to 1.5 µm over the pMOS gate. The vertical 80–240 nm interval then projects approximately 52 nm of lateral shift across the displayed band (`tan(18°) × 160 nm`). This auxiliary diagnostic is intentionally marked **NOT REPORTED IN PAPER** and must never be registered as a published literature reconstruction. The default generated project and committed fixture use tilt = 0°.
+This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only the two HVT body annotation operations acquire an _assumed_ 18° angle, and the Section path is shortened to 1.5 µm over the pMOS gate. The vertical 80–240 nm interval then projects approximately 52 nm of lateral shift across the displayed band (`tan(18°) × 160 nm`). This auxiliary diagnostic is intentionally marked **NOT REPORTED IN PAPER** and must never be registered as a published literature reconstruction. The default generated project and committed fixture use tilt = 0°.
 
 ## Run and acceptance
 
