@@ -120,6 +120,9 @@ try {
       const before = await page.evaluate(() => window.WaferCadV2Main.snapshot());
       const panButton = page.locator('[data-action="tool:pan:main"]');
       const zoomButton = page.locator('[data-action="tool:zoom:main"]');
+      assert.equal(await zoomButton.getAttribute('aria-pressed'), 'true', 'Default 2D Zoom');
+      await zoomButton.click();
+      assert.equal(await zoomButton.getAttribute('aria-pressed'), 'false');
       const dragPan = () =>
         drag(
           box.x + box.width * 0.2,
