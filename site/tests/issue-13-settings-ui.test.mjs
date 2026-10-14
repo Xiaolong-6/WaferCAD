@@ -70,7 +70,10 @@ test('workspace state is restored locally after app reload', () => {
   assert.match(persistence, /META_STORE_NAME = 'workspace-metadata'/);
   assert.match(persistence, /createWorkspaceRecoveryCheckpoint/);
   assert.match(persistence, /pre-migration-v/);
-  assert.match(persistence, /const project = structuredClone\(record\.project\)/);
+  // IndexedDB.get already returns an isolated structured-cloned value. Both
+  // workspace and Recovery loaders adopt that value without a second clone.
+  assert.equal(persistence.match(/const project = record\.project;/g)?.length, 2);
+  assert.doesNotMatch(persistence, /const project = structuredClone\(record\.project\)/);
   assert.match(persistence, /validateProjectFile\(migrateProjectFile\(project\)\)/);
   assert.match(persistence, /prepareProjectForWorkspaceStorage\(project\)/);
   assert.match(persistence, /expandProjectStorage\(project\)/);
