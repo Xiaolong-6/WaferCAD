@@ -16,6 +16,8 @@ on:
       - 'site/tests/renderer-instancing.test.mjs'
       - 'site/renderer-surface-plan-async.js'
       - 'site/renderer-surface-plan-worker.js'
+      - 'site/renderer-surface-plan-stream.js'
+      - 'site/tests/renderer-surface-plan-stream.test.mjs'
       - 'site/renderer-geometry.js'
       - 'site/workspace-persistence.js'
       - 'site/workspace-restore-worker.js'
@@ -64,7 +66,7 @@ jobs:
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
-        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
