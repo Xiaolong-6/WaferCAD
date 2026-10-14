@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
+import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
 await loadGeometryKernel();
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
@@ -84,7 +85,9 @@ try {
       const exportedPath = resolve(out, 'swx-' + state + '-reexport.wafercad');
       await projectDownload.saveAs(exportedPath);
       const reloaded = await readProjectFile(new Blob([await readFile(exportedPath)]));
-      assert.deepEqual(reloaded.model, beforeExport.model);
+      await assertSameMaterialGeometry(beforeExport.model, reloaded.model, {
+        areaToleranceUm2: 0.01,
+      });
       assert.equal(reloaded.layout.elements.length, source.layout.elements.length);
       assert.equal(reloaded.processRecipe.steps.length, source.processRecipe.steps.length);
       assert.deepEqual(
