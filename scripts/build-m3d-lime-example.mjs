@@ -21,34 +21,64 @@ const RECEIVER_THICKNESS_UM = 2; // visual surrogate for 130nm Si CMOS wafer
 const copy = (obj) => structuredClone(obj);
 const rect = (x, y, w, h) => ({ x, y, w, h });
 function rectPoints(r) {
-  return [[r.x,r.y], [r.x+r.w,r.y], [r.x+r.w,r.y+r.h], [r.x,r.y+r.h]];
+  return [
+    [r.x, r.y],
+    [r.x + r.w, r.y],
+    [r.x + r.w, r.y + r.h],
+    [r.x, r.y + r.h],
+  ];
 }
 // One physically replayable local layout, intentionally NOT the authors' GDS.
 // A 20um-wide by 2um-long CNT channel matches the Methods/Supplementary width/length.
 // Source/drain overlaps are reconstructed; the original contact polygons are absent.
-const cimSites = Array.from({length:8}, (_, i) => rect(-108 + 10*i, -28, 5, 5));
-const tcamChannels = Array.from({length:5}, (_, i) =>
-  [rect(-4 + 19*i, -32, 2, 20), rect(-4 + 19*i, 8, 2, 20)]
-).flat();
-const bufferChannels = Array.from({length:4}, (_, i) => rect(-105 + i*19, 8, 2, 20));
+const cimSites = Array.from({ length: 8 }, (_, i) => rect(-108 + 10 * i, -28, 5, 5));
+const tcamChannels = Array.from({ length: 5 }, (_, i) => [
+  rect(-4 + 19 * i, -32, 2, 20),
+  rect(-4 + 19 * i, 8, 2, 20),
+]).flat();
+const bufferChannels = Array.from({ length: 4 }, (_, i) => rect(-105 + i * 19, 8, 2, 20));
 const channels = [...bufferChannels, ...tcamChannels];
-const drainContacts = channels.map(c => rect(c.x + 1.45, c.y, 1.2, c.h));
-const sourceContacts = channels.map(c => rect(c.x - 0.65, c.y, 1.2, c.h));
-const rramSites = drainContacts.map(c => rect(c.x+0.1,c.y+5,0.9,10));
+const drainContacts = channels.map((c) => rect(c.x + 1.45, c.y, 1.2, c.h));
+const sourceContacts = channels.map((c) => rect(c.x - 0.65, c.y, 1.2, c.h));
+const rramSites = drainContacts.map((c) => rect(c.x + 0.1, c.y + 5, 0.9, 10));
 const MASKS = Object.freeze([
-  {id:11,name:'CMOS M4 landing pads / W vias (inferred)',rectangles:cimSites.map(c=>rect(c.x+1,c.y+1,3,3))},
-  {id:12,name:'CIM 8 representative analog 1T1R sites',rectangles:cimSites},
-  {id:13,name:'CIM top electrode contact holes / W vias',rectangles:cimSites.map(c=>rect(c.x+1.5,c.y+1.5,2,2))},
-  {id:14,name:'CIM aluminium bit-line sample segments',rectangles:cimSites.map(c=>rect(c.x+1.5,-34,2,17))},
-  {id:15,name:'BEOL CNTFET bottom gate 10 TCAM + 4 buffer',rectangles:channels.map(c=>rect(c.x-0.25,c.y,2.5,c.h))},
-  {id:16,name:'Wet-transferred CNT channel / 20x2um',rectangles:channels},
-  {id:17,name:'CNTFET Ti/Pd source',rectangles:sourceContacts},
-  {id:18,name:'CNTFET Ti/Pd drain',rectangles:drainContacts},
-  {id:19,name:'Binary RRAM Pd/TaOx/Ta2O5/Pt on drain',rectangles:rramSites},
-  {id:20,name:'RRAM top contact passivation opening',rectangles:rramSites.map(c=>rect(c.x+0.1,c.y+1,0.7,8))},
-  {id:21,name:'Top Ti/Pd local interconnects',rectangles:rramSites.map(c=>rect(c.x+0.1,c.y+1,0.7,8))},
+  {
+    id: 11,
+    name: 'CMOS M4 landing pads / W vias (inferred)',
+    rectangles: cimSites.map((c) => rect(c.x + 1, c.y + 1, 3, 3)),
+  },
+  { id: 12, name: 'CIM 8 representative analog 1T1R sites', rectangles: cimSites },
+  {
+    id: 13,
+    name: 'CIM top electrode contact holes / W vias',
+    rectangles: cimSites.map((c) => rect(c.x + 1.5, c.y + 1.5, 2, 2)),
+  },
+  {
+    id: 14,
+    name: 'CIM aluminium bit-line sample segments',
+    rectangles: cimSites.map((c) => rect(c.x + 1.5, -34, 2, 17)),
+  },
+  {
+    id: 15,
+    name: 'BEOL CNTFET bottom gate 10 TCAM + 4 buffer',
+    rectangles: channels.map((c) => rect(c.x - 0.25, c.y, 2.5, c.h)),
+  },
+  { id: 16, name: 'Wet-transferred CNT channel / 20x2um', rectangles: channels },
+  { id: 17, name: 'CNTFET Ti/Pd source', rectangles: sourceContacts },
+  { id: 18, name: 'CNTFET Ti/Pd drain', rectangles: drainContacts },
+  { id: 19, name: 'Binary RRAM Pd/TaOx/Ta2O5/Pt on drain', rectangles: rramSites },
+  {
+    id: 20,
+    name: 'RRAM top contact passivation opening',
+    rectangles: rramSites.map((c) => rect(c.x + 0.1, c.y + 1, 0.7, 8)),
+  },
+  {
+    id: 21,
+    name: 'Top Ti/Pd local interconnects',
+    rectangles: rramSites.map((c) => rect(c.x + 0.1, c.y + 1, 0.7, 8)),
+  },
 ]);
-const MASK_BY_ID = new Map(MASKS.map(m => [m.id, m]));
+const MASK_BY_ID = new Map(MASKS.map((m) => [m.id, m]));
 function makeLayout() {
   const elements = MASKS.flatMap((mask) =>
     mask.rectangles.map((r) => ({
@@ -366,91 +396,142 @@ export async function buildM3DLime() {
     return execute(label, 'etch', { target: '', targetZ, profile: 'planarize' });
   }
 
-
   append({
     kind: 'base',
     label: '130nm foundry CMOS substrate / exposed M4 W via landing (schematic)',
     geometryChanged: true,
     replay: { kind: 'base' },
   });
-  record('130nm Si CMOS foundry processing through M4','custom',
-    'Foundry logic, word-line decoder and Si access transistors are represented by the Si receiver and patterned landing pads; transistor FEOL dimensions and original GDS were not published.');
-  deposit('Exposed W M4 landing structures / local geometry surrogate','CMOS M4 W contacts (surrogate)',0.10,11);
-  deposit('BEOL isolation SiO2 400nm (reconstructed)','First level SiO2 400nm',0.40);
-  cmp('Planarize to M4 + 150nm clearance (inferred)',1.25);
-  selectiveEtch('Open CMOS via to M4 W','First level SiO2 400nm',0.15,11);
-  assert.equal(exposed([-106,-26]).layerId, layerIds.get('CMOS M4 W contacts (surrogate)'), 'M4 contact etch must stop on tungsten');
-  deposit('Fill W landing vias (inferred)','M4 W via fill',0.20,11);
-  cmp('CMP W via plugs to reconstructed Z 1.25um',1.25);
-  assert.equal(exposed([-106,-26]).layerId,layerIds.get('M4 W via fill'),'M4 via metal must remain exposed');
+  record(
+    '130nm Si CMOS foundry processing through M4',
+    'custom',
+    'Foundry logic, word-line decoder and Si access transistors are represented by the Si receiver and patterned landing pads; transistor FEOL dimensions and original GDS were not published.',
+  );
+  deposit(
+    'Exposed W M4 landing structures / local geometry surrogate',
+    'CMOS M4 W contacts (surrogate)',
+    0.1,
+    11,
+  );
+  deposit('BEOL isolation SiO2 400nm (reconstructed)', 'First level SiO2 400nm', 0.4);
+  cmp('Planarize to M4 + 150nm clearance (inferred)', 1.25);
+  selectiveEtch('Open CMOS via to M4 W', 'First level SiO2 400nm', 0.15, 11);
+  assert.equal(
+    exposed([-106, -26]).layerId,
+    layerIds.get('CMOS M4 W contacts (surrogate)'),
+    'M4 contact etch must stop on tungsten',
+  );
+  deposit('Fill W landing vias (inferred)', 'M4 W via fill', 0.2, 11);
+  cmp('CMP W via plugs to reconstructed Z 1.25um', 1.25);
+  assert.equal(
+    exposed([-106, -26]).layerId,
+    layerIds.get('M4 W via fill'),
+    'M4 via metal must remain exposed',
+  );
   bookmark('00 Si CMOS / W contact landing');
 
   // Tier 2 analog device: published TiN 30 / HfAlOx 8 / TaOx 45 / TiN 30nm.
-  deposit('Sputter TiN bottom electrode 30nm','CIM TiN BE 30nm',0.030,12);
-  deposit('ALD HfAlOx analog switching layer 8nm at 300C','CIM HfAlOx RSL 8nm',0.008,12);
-  deposit('Sputter TaOx thermal enhanced layer 45nm','CIM TaOx TEL 45nm',0.045,12);
-  deposit('Sputter TiN top electrode 30nm','CIM TiN TE 30nm',0.030,12);
-  record('Pattern TiN/HfAlOx/TaOx/TiN using Cl RIE','custom',
-    'Local RRAM column polygons represent the surviving stack; source states lithography followed by Cl-based RIE.');
+  deposit('Sputter TiN bottom electrode 30nm', 'CIM TiN BE 30nm', 0.03, 12);
+  deposit('ALD HfAlOx analog switching layer 8nm at 300C', 'CIM HfAlOx RSL 8nm', 0.008, 12);
+  deposit('Sputter TaOx thermal enhanced layer 45nm', 'CIM TaOx TEL 45nm', 0.045, 12);
+  deposit('Sputter TiN top electrode 30nm', 'CIM TiN TE 30nm', 0.03, 12);
+  record(
+    'Pattern TiN/HfAlOx/TaOx/TiN using Cl RIE',
+    'custom',
+    'Local RRAM column polygons represent the surviving stack; source states lithography followed by Cl-based RIE.',
+  );
   bookmark('01 Analog CIM 1T1R RRAM stack');
-  deposit('PECVD SiO2 encapsulation 400nm at 300C','CIM SiO2 passivation 400nm',0.40);
-  cmp('CIM passivation CMP endpoint Z 1.43um (inferred)',1.43);
-  selectiveEtch('Open TiN top electrode contact through oxide','CIM SiO2 passivation 400nm',0.067,13);
-  assert.equal(exposed([-106,-26]).layerId,layerIds.get('CIM TiN TE 30nm'),'CIM via etch must stop on TiN electrode');
-  deposit('W plugs to CIM TiN TE (inferred)','CIM W top vias',0.083,13);
-  cmp('Planarize CIM W plugs Z 1.43um',1.43);
-  deposit('Sputter/pattern Al 500nm bit lines','CIM Al bit lines 500nm',0.500,14);
+  deposit('PECVD SiO2 encapsulation 400nm at 300C', 'CIM SiO2 passivation 400nm', 0.4);
+  cmp('CIM passivation CMP endpoint Z 1.43um (inferred)', 1.43);
+  selectiveEtch(
+    'Open TiN top electrode contact through oxide',
+    'CIM SiO2 passivation 400nm',
+    0.067,
+    13,
+  );
+  assert.equal(
+    exposed([-106, -26]).layerId,
+    layerIds.get('CIM TiN TE 30nm'),
+    'CIM via etch must stop on TiN electrode',
+  );
+  deposit('W plugs to CIM TiN TE (inferred)', 'CIM W top vias', 0.083, 13);
+  cmp('Planarize CIM W plugs Z 1.43um', 1.43);
+  deposit('Sputter/pattern Al 500nm bit lines', 'CIM Al bit lines 500nm', 0.5, 14);
   bookmark('02 CIM passivation / W vias / Al bit lines');
 
   // The source deposits 100nm SiO2 + 900nm Si3N4 and planarizes before TCAM.
-  deposit('PECVD SiO2 interlayer dielectric 100nm','CIM-to-TCAM SiO2 ILD 100nm',0.100);
-  deposit('PECVD Si3N4 interlayer dielectric 900nm','CIM-to-TCAM Si3N4 ILD 900nm',0.900);
-  cmp('ILD CMP endpoint Z 2.20um (inferred)',2.20);
-  record('Open inter-layer contact holes to TCAM','custom',
-    'The paper does not publish complete ILV GDS: connections to the upper memory tier are a process record, not fabricated surrogate tunnels.');
+  deposit('PECVD SiO2 interlayer dielectric 100nm', 'CIM-to-TCAM SiO2 ILD 100nm', 0.1);
+  deposit('PECVD Si3N4 interlayer dielectric 900nm', 'CIM-to-TCAM Si3N4 ILD 900nm', 0.9);
+  cmp('ILD CMP endpoint Z 2.20um (inferred)', 2.2);
+  record(
+    'Open inter-layer contact holes to TCAM',
+    'custom',
+    'The paper does not publish complete ILV GDS: connections to the upper memory tier are a process record, not fabricated surrogate tunnels.',
+  );
   bookmark('03 Inter-layer dielectric / planarization');
 
   // Tier 3 back-gated CNTFET: the metal and dielectric thicknesses are sourced.
-  deposit('Pattern Ti gate adhesion 10nm','CNT gate Ti bottom 10nm',0.010,15);
-  deposit('Pattern Pd gate metal 15nm','CNT gate Pd 15nm',0.015,15);
-  deposit('Pattern Ti gate cap 1nm','CNT gate Ti cap 1nm',0.001,15);
-  deposit('ALD HfO2 gate dielectric 10nm at 250C','CNT gate HfO2 10nm',0.010);
-  record('Lithography/Cl RIE HfO2 gate access (off representative slice)','custom',
-    'Gate via locations are not disclosed; the reconstructed active gate dielectric is retained intact.');
-  deposit('Wet transfer / clean CNT network (1nm visual surrogate)','CNT channel 1nm SURROGATE',0.001,16,'transfer');
-  record('PCz removal, solvent wash and CNT channel O2 plasma pattern','clean',
-    'Wet transfer and oxygen-plasma channel isolation; individual nanotubes and PCz are not resolved in this geometric model.');
+  deposit('Pattern Ti gate adhesion 10nm', 'CNT gate Ti bottom 10nm', 0.01, 15);
+  deposit('Pattern Pd gate metal 15nm', 'CNT gate Pd 15nm', 0.015, 15);
+  deposit('Pattern Ti gate cap 1nm', 'CNT gate Ti cap 1nm', 0.001, 15);
+  deposit('ALD HfO2 gate dielectric 10nm at 250C', 'CNT gate HfO2 10nm', 0.01);
+  record(
+    'Lithography/Cl RIE HfO2 gate access (off representative slice)',
+    'custom',
+    'Gate via locations are not disclosed; the reconstructed active gate dielectric is retained intact.',
+  );
+  deposit(
+    'Wet transfer / clean CNT network (1nm visual surrogate)',
+    'CNT channel 1nm SURROGATE',
+    0.001,
+    16,
+    'transfer',
+  );
+  record(
+    'PCz removal, solvent wash and CNT channel O2 plasma pattern',
+    'clean',
+    'Wet transfer and oxygen-plasma channel isolation; individual nanotubes and PCz are not resolved in this geometric model.',
+  );
   bookmark('04 CNT channels over back gates');
-  deposit('Evaporate Ti source adhesion 1nm','CNT source Ti 1nm',0.001,17);
-  deposit('Evaporate Pd source 45nm','CNT source Pd 45nm',0.045,17);
-  deposit('Evaporate Ti drain adhesion 1nm','CNT drain Ti 1nm',0.001,18);
-  deposit('Evaporate Pd drain 45nm','CNT drain Pd 45nm',0.045,18);
+  deposit('Evaporate Ti source adhesion 1nm', 'CNT source Ti 1nm', 0.001, 17);
+  deposit('Evaporate Pd source 45nm', 'CNT source Pd 45nm', 0.045, 17);
+  deposit('Evaporate Ti drain adhesion 1nm', 'CNT drain Ti 1nm', 0.001, 18);
+  deposit('Evaporate Pd drain 45nm', 'CNT drain Pd 45nm', 0.045, 18);
   bookmark('05 CNTFET source/drain metallization');
 
   // Y 10nm converts in air to Y2O3; an explicit geometry surrogate, no oxidation solver.
-  record('Evaporate 10nm Y / oxidize in air at 250C','oxidation',
-    'Y2O3 layer geometry uses a 10nm thickness surrogate; post-oxidation thickness was not reported.');
-  deposit('Y2O3 interface layer 10nm geometric surrogate','Y2O3 interface SURROGATE 10nm',0.010);
-  deposit('ALD Al2O3 passivation 35nm at 250C','CNT Al2O3 passivation 35nm',0.035);
-  deposit('ALD HfO2 passivation 10nm at 250C','CNT HfO2 passivation 10nm',0.010);
-  selectiveEtch('Open HfO2 above digital RRAM landing','CNT HfO2 passivation 10nm',0.010,19);
-  selectiveEtch('Open Al2O3 above digital RRAM landing','CNT Al2O3 passivation 35nm',0.035,19);
-  selectiveEtch('Wet open Y2O3 above Pd drain','Y2O3 interface SURROGATE 10nm',0.010,19);
+  record(
+    'Evaporate 10nm Y / oxidize in air at 250C',
+    'oxidation',
+    'Y2O3 layer geometry uses a 10nm thickness surrogate; post-oxidation thickness was not reported.',
+  );
+  deposit('Y2O3 interface layer 10nm geometric surrogate', 'Y2O3 interface SURROGATE 10nm', 0.01);
+  deposit('ALD Al2O3 passivation 35nm at 250C', 'CNT Al2O3 passivation 35nm', 0.035);
+  deposit('ALD HfO2 passivation 10nm at 250C', 'CNT HfO2 passivation 10nm', 0.01);
+  selectiveEtch('Open HfO2 above digital RRAM landing', 'CNT HfO2 passivation 10nm', 0.01, 19);
+  selectiveEtch('Open Al2O3 above digital RRAM landing', 'CNT Al2O3 passivation 35nm', 0.035, 19);
+  selectiveEtch('Wet open Y2O3 above Pd drain', 'Y2O3 interface SURROGATE 10nm', 0.01, 19);
   bookmark('06 CNTFET passivation / Pd drain access');
 
   // Tier 3 binary RRAM includes TCAM 2T2R and buffer 1T1R in the same tier.
-  deposit('Sputter TaOx oxygen reservoir 20nm','Digital TaOx ORL 20nm',0.020,19);
-  deposit('Sputter Ta2O5 switching layer 10nm','Digital Ta2O5 RSL 10nm',0.010,19);
-  deposit('Sputter Pt digital RRAM electrode 10nm','Digital Pt TE 10nm',0.010,19);
-  record('Pattern Pt/Ta2O5/TaOx with 60nm Pd hard mask and dry etch','custom',
-    'Pd hard-mask lithography and etch are recorded; stack footprints are already restricted to inferred sites.');
+  deposit('Sputter TaOx oxygen reservoir 20nm', 'Digital TaOx ORL 20nm', 0.02, 19);
+  deposit('Sputter Ta2O5 switching layer 10nm', 'Digital Ta2O5 RSL 10nm', 0.01, 19);
+  deposit('Sputter Pt digital RRAM electrode 10nm', 'Digital Pt TE 10nm', 0.01, 19);
+  record(
+    'Pattern Pt/Ta2O5/TaOx with 60nm Pd hard mask and dry etch',
+    'custom',
+    'Pd hard-mask lithography and etch are recorded; stack footprints are already restricted to inferred sites.',
+  );
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
-  deposit('ALD Al2O3 RRAM protection 45nm at 150C','Digital Al2O3 passivation 45nm',0.045);
-  selectiveEtch('Open top Pt contact through Al2O3','Digital Al2O3 passivation 45nm',0.045,20);
-  deposit('Top Ti interconnect adhesion 20nm','Top Ti interconnect 20nm',0.020,21);
-  deposit('Top Pd interconnect 120nm','Top Pd interconnect 120nm',0.120,21);
-  record('Connect ML/SL/SEL externally for TCAM testing','custom',
-    'Only local connection stubs are modeled; continuous ML/SL/SEL routing and test pad coordinates are not supplied. Sense amplifiers and programming/ADC circuitry were off chip in the experimental demonstration.');
+  deposit('ALD Al2O3 RRAM protection 45nm at 150C', 'Digital Al2O3 passivation 45nm', 0.045);
+  selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
+  deposit('Top Ti interconnect adhesion 20nm', 'Top Ti interconnect 20nm', 0.02, 21);
+  deposit('Top Pd interconnect 120nm', 'Top Pd interconnect 120nm', 0.12, 21);
+  record(
+    'Connect ML/SL/SEL externally for TCAM testing',
+    'custom',
+    'Only local connection stubs are modeled; continuous ML/SL/SEL routing and test pad coordinates are not supplied. Sense amplifiers and programming/ADC circuitry were off chip in the experimental demonstration.',
+  );
   bookmark('08 3-tier M3D-LIME representative fabricated devices');
   Object.assign(root, capture());
   root.name = 'M3D-LIME · four-layer Al BEOL + MoS2 D/E transistor pair';
@@ -511,7 +592,7 @@ export async function buildM3DLime() {
     processNodes: nodes.length,
     processRecipeSteps: steps.length,
     bookmarks: bookmarks.length,
-    maskLayers: MASKS.map(m => ({ layer:m.id, name:m.name, rectangles:m.rectangles.length })),
+    maskLayers: MASKS.map((m) => ({ layer: m.id, name: m.name, rectangles: m.rectangles.length })),
     checkpoints,
     finalRegions: model.regions.length,
     finalLayers: model.layers.length,
