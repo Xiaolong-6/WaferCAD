@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/build-tcmos-inverter-example.mjs'
+      - 'scripts/tcmos-browser-acceptance.mjs'
       - 'site/tests/tcmos-inverter-reconstruction.test.mjs'
       - 'examples/projects/tcmos-ternary-inverter-2019-candidate/**'
       - '.github/workflows/tcmos-reconstruction.yml'
@@ -38,6 +39,41 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tcmos-ternary-inverter-130nm-candidate
+          path: test-results/tcmos/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  browser-replay:
+    name: T-CMOS v2 browser Run All
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Generate candidate and replay in v2 Workstation
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: |
+          node scripts/build-tcmos-inverter-example.mjs
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-browser.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/tcmos-browser-acceptance.mjs
+      - name: Upload v2 acceptance screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-v2-browser-acceptance
           path: test-results/tcmos/
           retention-days: 14
           if-no-files-found: ignore
