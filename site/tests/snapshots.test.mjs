@@ -122,18 +122,30 @@ test('cooperative History import yields without exposing partial lineage and rej
     ],
   };
 
+  let adopted = 0;
+  const adoptModel = () => {
+    adopted++;
+    live = structuredClone(nodes[47].state);
+  };
   const abort = new AbortController();
-  const stopped = manager.importRecordsAsync([], source, { signal: abort.signal });
+  const stopped = manager.importRecordsAsync([], source, {
+    signal: abort.signal,
+    beforeCommit: adoptModel,
+  });
   assert.equal(manager.list()[0].name, 'Before import');
   assert.equal(manager.listHistory().length, 0);
   abort.abort();
   await assert.rejects(stopped, { name: 'AbortError' });
   assert.equal(manager.list()[0].name, 'Before import');
   assert.equal(manager.listHistory().length, 0);
+  assert.equal(adopted, 0, 'Aborted import cannot adopt a new model.');
 
-  const pending = manager.importRecordsAsync([], source);
+  const pending = manager.importRecordsAsync([], source, { beforeCommit: adoptModel });
   assert.equal(manager.listHistory().length, 0, 'History cannot publish while cloning.');
+  assert.equal(live.model.processRevision, 0, 'Old model remains active until commit.');
   await pending;
+  assert.equal(adopted, 1);
+  assert.equal(manager.currentPosition().atHead, true);
   assert.equal(manager.list().length, 0);
   assert.equal(manager.listHistory().length, 48);
   assert.equal(manager.listHistory()[47].parentId, 'node-46');

@@ -296,14 +296,16 @@ export function createWorkspacePersistenceController({
 
   async function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
     if (restoreView) applyStoredViewState(project);
-    loadProjectSnapshot(project);
     // loadWorkspaceState / loadWorkspaceRecoveryPoint strictly validate the
     // complete file before returning it. Reuse that attestation for unchanged
     // imported snapshots instead of running huge geometry booleans twice.
     await cacheValidatedProjectSnapshots(project);
     if (progressiveHistoryValidation && snapshotManager.importRecordsAsync) {
-      await snapshotManager.importRecordsAsync(project.snapshots || [], project.snapshotBranches);
+      await snapshotManager.importRecordsAsync(project.snapshots || [], project.snapshotBranches, {
+        beforeCommit: () => loadProjectSnapshot(project),
+      });
     } else {
+      loadProjectSnapshot(project);
       snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
     }
     return Boolean(project?.display?.threeCamera);

@@ -969,10 +969,10 @@ export function createWorkstationWorkflow({ store, workstation }) {
             params.get('example') || 'photodetector-literature',
             domain.bindings.readProjectFileTask,
           );
-          domain.load(bundled.data);
           await history.importRecordsAsync(
             bundled.data.snapshots || [],
             bundled.data.snapshotBranches,
+            { beforeCommit: () => domain.load(bundled.data) },
           );
           store.project.source = bundled.source;
           store.project.hash = bundled.hash;
@@ -993,8 +993,9 @@ export function createWorkstationWorkflow({ store, workstation }) {
           } else if (pending.kind === 'project') {
             const imported = await domain.bindings.readProjectFileTask(pending.file);
             if (!imported) throw Error('The staged project could not be read.');
-            domain.load(imported);
-            await history.importRecordsAsync(imported.snapshots || [], imported.snapshotBranches);
+            await history.importRecordsAsync(imported.snapshots || [], imported.snapshotBranches, {
+              beforeCommit: () => domain.load(imported),
+            });
           } else {
             throw Error('The staged file type is unsupported.');
           }

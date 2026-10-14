@@ -1562,7 +1562,7 @@ export function createSnapshotManager({
 
   // Keep staged History data private until all copies and lineage repairs finish.
   // Both synchronous callers and cooperative startup use this same importer.
-  function* stageImportedRecords(value, branchState = null) {
+  function* stageImportedRecords(value, branchState = null, beforeCommit = null) {
     if (!Array.isArray(value)) {
       clear();
       return 0;
@@ -1776,6 +1776,9 @@ export function createSnapshotManager({
       }
     }
 
+    // Adopt the matching model at the same synchronous publication boundary.
+    // Never expose a new live model with the old History while yielding.
+    if (beforeCommit) beforeCommit();
     records = next;
     historyNodes = importedNodes;
     branches = importedBranches.slice(0, maxBranches);
@@ -1846,8 +1849,8 @@ export function createSnapshotManager({
   // Large History imports can otherwise monopolize the UI thread for seconds.
   // Yield only during private staging. All shared History state is committed
   // synchronously after the final yield, preserving atomic visibility.
-  async function importRecordsAsync(value, branchState = null, { signal } = {}) {
-    const steps = stageImportedRecords(value, branchState);
+  async function importRecordsAsync(value, branchState = null, { signal, beforeCommit } = {}) {
+    const steps = stageImportedRecords(value, branchState, beforeCommit);
     let sliceStart = performance.now();
     let processed = 0;
     for (;;) {
