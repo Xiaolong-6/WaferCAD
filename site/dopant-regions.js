@@ -36,8 +36,15 @@ export function addQualitativeDopantRegion(model, spec, vectorApi) {
   ) {
     return { changed: false, error: 'Dopant depth must be finite with 0 <= start < end.' };
   }
-  if (!model.layers?.some((layer) => layer.id === hostLayerId) || !Array.isArray(area) || !area.length) {
-    return { changed: false, error: 'Dopant region requires a nonempty mask and valid host layer.' };
+  if (
+    !model.layers?.some((layer) => layer.id === hostLayerId) ||
+    !Array.isArray(area) ||
+    !area.length
+  ) {
+    return {
+      changed: false,
+      error: 'Dopant region requires a nonempty mask and valid host layer.',
+    };
   }
   const field = {
     id,
@@ -71,12 +78,10 @@ export function addQualitativeDopantRegion(model, spec, vectorApi) {
 export function resolveQualitativeDopantRegion(model, dopant, vectorApi) {
   if (!dopant || dopant.profile?.kind !== 'qualitative-interval') return [];
   const face = dopant.face === 'back' ? 'back' : 'front';
-  const z0 = face === 'front'
-    ? dopant.sourceZ - dopant.depthEndUm
-    : dopant.sourceZ + dopant.depthStartUm;
-  const z1 = face === 'front'
-    ? dopant.sourceZ - dopant.depthStartUm
-    : dopant.sourceZ + dopant.depthEndUm;
+  const z0 =
+    face === 'front' ? dopant.sourceZ - dopant.depthEndUm : dopant.sourceZ + dopant.depthStartUm;
+  const z1 =
+    face === 'front' ? dopant.sourceZ - dopant.depthStartUm : dopant.sourceZ + dopant.depthEndUm;
   const out = [];
   for (const region of model.regions || []) {
     const segments = (region.stack || []).filter(
@@ -121,9 +126,11 @@ export function findDopantPolarityOverlaps(model, vectorApi) {
   const overlaps = [];
   for (let i = 0; i < fragments.length; i++) {
     for (let j = i + 1; j < fragments.length; j++) {
-      const a = fragments[i], b = fragments[j];
+      const a = fragments[i],
+        b = fragments[j];
       if (a.polarity === b.polarity || a.hostLayerId !== b.hostLayerId) continue;
-      const lo = Math.max(a.z0, b.z0), hi = Math.min(a.z1, b.z1);
+      const lo = Math.max(a.z0, b.z0),
+        hi = Math.min(a.z1, b.z1);
       if (hi <= lo + 1e-12) continue;
       const xy = vectorApi.intersection(a.geom, b.geom);
       if (vectorApi.isEmpty(xy)) continue;
