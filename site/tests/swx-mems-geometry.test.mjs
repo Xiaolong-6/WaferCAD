@@ -120,6 +120,33 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
   const si = project.model.layers.find((layer) => layer.name === '220nm SOI device silicon').id;
+  const { geometryArea } = await import('../model.js');
+  // Pose activation may modify released device Si only. Handle, sacrificial
+  // BOX and both electrical films must retain identical physical XY coverage.
+  const areaForLayer = (model, layerId) =>
+    v.unionGeometries(
+      model.regions
+        .filter((region) => region.stack.some((seg) => seg.layerId === layerId))
+        .map((region) => region.geom),
+    );
+  for (const fixedName of [
+    'Si handle (5um viewing surrogate)',
+    'Buried SiO2 (BOX)',
+    'Cr electrode',
+    'Au electrode',
+  ]) {
+    const layerId = project.model.layers.find((layer) => layer.name === fixedName)?.id;
+    assert.ok(layerId, 'Missing fixed material ' + fixedName);
+    const offArea = areaForLayer(project.model, layerId);
+    const onArea = areaForLayer(onBranch.headState.model, layerId);
+    const materialChangedUm2 =
+      geometryArea(v.difference(offArea, onArea)) +
+      geometryArea(v.difference(onArea, offArea));
+    assert.ok(
+      materialChangedUm2 < 1e-6,
+      fixedName + ' changed under OFF/ON actuation by ' + materialChangedUm2 + ' um²',
+    );
+  }
   const materialAt = (model, point) =>
     model.regions.find((r) => v.pointInMulti(point, r.geom))?.stack.some((s) => s.layerId === si);
   // The 15nm switched gap lies between y=.435um and y=.450um at the
