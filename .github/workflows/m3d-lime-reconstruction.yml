@@ -1,0 +1,39 @@
+name: M3D-LIME kernel reconstruction
+
+on:
+  pull_request:
+    paths:
+      - scripts/build-m3d-lime-example.mjs
+      - site/tests/m3d-lime-builder.test.mjs
+      - docs/M3D_LIME_2023_RECONSTRUCTION.md
+      - .github/workflows/m3d-lime-reconstruction.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paper-derived-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Generate real Kernel example and validate project I/O
+        run: node scripts/build-m3d-lime-example.mjs --write-repo
+      - name: Source-derived structural regression
+        run: node --test site/tests/m3d-lime-builder.test.mjs
+      - name: Upload generated model and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3d-lime-kernel-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            site/examples/m3d-lime-rram-cntfet.wafercad
+            test-results/m3d-lime/validation.json
+          retention-days: 14
