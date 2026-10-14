@@ -81,8 +81,15 @@ try {
     await page.locator('[data-action="view:' + view + '"]').click();
     await waitForPaint(page);
   }
-  await page.waitForFunction(() => document.getElementById('threeHost')?.dataset.renderState === 'ready', null, { timeout: 120000 });
-  const visibility = await captureVisibleThree(page, resolve(output, 'three-tier-before-runall.png'));
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  const visibility = await captureVisibleThree(
+    page,
+    resolve(output, 'three-tier-before-runall.png'),
+  );
   report.coloredPixels = visibility.coloredPixels;
 
   await page.locator('[data-action="domain:process"]').click();
@@ -123,7 +130,8 @@ try {
   // Rebuild Base currently resets the Section UI to its general default.
   // The shipped project's paper-aligned Section is checked above at import;
   // this independent UI behavior is recorded for follow-up, not mistaken for geometry loss.
-  report.sectionResetByRebuildBase = JSON.stringify(rebuilt.section) !== JSON.stringify(initial.section);
+  report.sectionResetByRebuildBase =
+    JSON.stringify(rebuilt.section) !== JSON.stringify(initial.section);
   await page.locator('[data-action="domain:project"]').click();
   await page.locator('#projectExportMenuBtn').click();
   const [download] = await Promise.all([
