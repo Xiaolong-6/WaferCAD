@@ -23,6 +23,9 @@ This staged project models a **representative elementary 2×2 switch**, not the 
 | OFF / ON facet gap | 0.900 / 0.015 | Article Fig. 2, Supplement S2 |
 | Input waveguide core / MMI width | 0.400 / 2.680 | Supplement S1/S6 |
 | Folded spring beam width | 0.200 | Supplement S7 |
+| Folded spring long/short beams; inter-beam clearance | 30 / 22 / 1.5 | Supplement S7 |
+| Structural aligner beam length / beam width / truss | 7 / 0.1 / 1 | Supplement S7 |
+| Shuttle mechanical width | 6 | Supplement Section 3 |
 | Comb finger length / width / nominal gap | 3.200 / 0.500 / 0.300 | Supplement S9 |
 | Electrostatic comb unit cells | 40 | Supplement Section 4 |
 
@@ -35,8 +38,11 @@ The 15 nm figure is **lateral separation** and must not be reinterpreted as a ve
 - **One manufactured device** with two restorable History Variants: OFF = 900 nm gap and ON = 15 nm gap. The original lithographic Mask, Process Recipe, and released BOX geometry are shared by both states. The 885 nm actuation is a post-release Si geometry surrogate with stationary anchors and parameterized flexure, not an electrostatic FEM solver or physical process Step.
 - BOX release uses the existing kernel's material-selective **undercut** with an illustrative **2 µm lateral reach**. The paper reports HF-vapor removal, but not a calibrated lateral etch distance or rate.
 - Electrode evaporation + lift-off is represented by patterned Cr and Au geometries, with process Records documenting the resist/lift-off stages.
-- The mask named “150 nm ridge etch” contains representative transition areas; array-level interconnect and grating couplers are excluded from this single-unit model.
-- Known limitations: no optical FDTD or measured transmission calculation, no FEM deformation, no Si stiction/adhesion model, no released microstructure buckling, no original author GDS, no complete wafer packaging.
+- The mask named “150 nm ridge etch” contains representative transition areas; array-level interconnect is excluded from this single-unit model.
+- Two **illustrative grating couplers** and their waveguide feed lines are drawn to illustrate optical input coupling. Their positions, sector arc radii, pitch and routing are **not source-authenticated**; no full four-port fiber interface, optical coupling efficiency or array topology is claimed.
+- Two **mechanical stop pairs**, placed just outside the toothed reflector region, have their own fixed/movable silicon links. The 15 nm ON clearance and 900 nm OFF clearance are reported. Stop locations and pad dimensions are inferred, since no measured source layout is available.
+- Structural aligner links and folded springs now use the reported 7 µm/0.1 µm aligner beam and 30/22 µm, 0.2 µm folded beams with 1.5 µm edge clearance. Their routing is an engineering illustration; no elastic equilibrium is computed.
+- Known limitations: no exact 4-port optical routing/coupler mask, no optical FDTD or measured transmission calculation, no FEM deformation, no Si stiction/adhesion model, no released microstructure buckling, no original author GDS, no complete wafer packaging.
 
 ## Source-faithful process skeleton
 
