@@ -1,4 +1,5 @@
 import { isArrayModel } from './model-array.js';
+import { createSurfacePlanStreamReceiver } from './renderer-surface-plan-stream.js';
 import {
   buildRenderSurfacePlan,
   cachedRenderSurfacePlan,
@@ -28,6 +29,7 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
   return new Promise((resolve, reject) => {
     let worker;
     let settled = false;
+    const receiver = createSurfacePlanStreamReceiver();
     const onAbort = () =>
       finish(Object.assign(new Error('Surface build superseded'), { name: 'AbortError' }));
     const finish = (error, plan) => {
@@ -43,10 +45,18 @@ export async function buildRenderSurfacePlanAsync(model, clip = null, { signal }
       url.search = new URL(import.meta.url).search;
       worker = new globalThis.Worker(url);
       worker.onmessage = ({ data }) => {
-        if (data?.id !== 1) return;
-        if (data.type === 'done' && data.plan) finish(null, data.plan);
-        else if (data.type === 'error')
-          finish(new Error(data.message || 'Surface ownership worker failed.'));
+        if (settled || data?.id !== 1) return;
+        try {
+          if (data.type === 'done' && data.plan) finish(null, data.plan);
+          else if (data.type === 'error')
+            finish(new Error(data.message || 'Surface ownership worker failed.'));
+          else if (data.type?.startsWith('stream-')) {
+            const plan = receiver.accept(data);
+            if (plan) finish(null, plan);
+          } else finish(new Error('Unknown surface ownership Worker message.'));
+        } catch (error) {
+          finish(error);
+        }
       };
       worker.onerror = (event) =>
         finish(new Error(event.message || 'Surface ownership worker crashed.'));
