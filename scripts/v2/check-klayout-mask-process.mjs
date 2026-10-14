@@ -57,13 +57,13 @@ try {
       // after the worker import, not only after switching domains.
       try {
         await page.waitForFunction(
-          () => document.querySelector('#maskLayerList input:checked') !== null,
+          () => document.querySelector('#v2-maskLayerList input:checked') !== null,
           null,
           { timeout: 6000 },
         );
       } catch {
         const diagnostic = await page.evaluate(() => {
-          const list = document.getElementById('maskLayerList');
+          const list = document.getElementById('v2-maskLayerList');
           const snap = window.WaferCadV2Workstation.snapshot();
           return {
             selectedKeys: snap.selectedLayerKeys,
@@ -71,10 +71,10 @@ try {
             combos: snap.layout.combos?.length,
             activeCell: snap.activeCell,
             bodyDomain: document.body.dataset.domain,
-            listCount: document.querySelectorAll('#maskLayerList').length,
+            listCount: document.querySelectorAll('#v2-maskLayerList').length,
             listConnected: list?.isConnected,
             listHtml: list?.innerHTML.slice(0, 1500),
-            checkedCount: document.querySelectorAll('#maskLayerList input:checked').length,
+            checkedCount: document.querySelectorAll('#v2-maskLayerList input:checked').length,
           };
         });
         throw Error(
@@ -89,7 +89,7 @@ try {
       assert.ok(size.width > 100 && size.height > 100, 'Mask canvas is nonempty');
       assert.equal(snap.maskSourceMode, 'file');
       assert.ok(snap.selectedLayerKeys.length > 0, 'All imported layers are initially selectable');
-      assert.ok(await page.locator('#maskLayerList input:checked').count());
+      assert.ok(await page.locator('#v2-maskLayerList input:checked').count());
       assert.deepEqual(snap.model, baseModel, 'Layout import alone cannot edit the process model');
       report.imports.push({
         id,
