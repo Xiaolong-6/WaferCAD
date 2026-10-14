@@ -55,14 +55,16 @@ def aligned_contacts(polys, dbu, filename):
     channels, sources, drains, gates = (
         boxes(16), boxes(17), boxes(18), boxes(15)
     )
+    rrams = boxes(19, 28.99, 29.01)
     # Four buffer transistors share this Y interval, select leftmost.
     for label, rects in [('island', channels), ('source', sources),
-                         ('drain', drains), ('gate', gates)]:
+                         ('drain', drains), ('gate', gates), ('rram', rrams)]:
         assert len(rects) == 4, f"{filename}: {label} must include 4 buffer FETs"
     channel = min(channels, key=lambda b: b.left)
     source = min(sources, key=lambda b: b.left)
     drain = min(drains, key=lambda b: b.left)
     gate = min(gates, key=lambda b: b.left)
+    rram = min(rrams, key=lambda b: b.left)
     close = lambda actual, target: abs(actual - target) <= dbu + 1e-9
     assert close((channel.top - channel.bottom) * dbu, 20.0), (
         f"{filename}: CNTFET width is not 20um")
@@ -74,9 +76,14 @@ def aligned_contacts(polys, dbu, filename):
         f"{filename}: drain overlap not retained")
     assert gate.left <= source.right and gate.right >= drain.left, (
         f"{filename}: gate does not cover the active region")
+    assert close((rram.left - channel.right) * dbu, 0.45), (
+        f"{filename}: Ta2O5 RRAM must be laterally separated from active CNT")
+    assert drain.left <= rram.left and rram.right <= drain.right, (
+        f"{filename}: digital RRAM must physically land on Pd drain/BE")
     return {'channel_width_um': (channel.top - channel.bottom) * dbu,
             'active_length_um': (drain.left - source.right) * dbu,
-            'inferred_overlap_um': (source.right - channel.left) * dbu}
+            'inferred_overlap_um': (source.right - channel.left) * dbu,
+            'rram_lateral_clearance_um': (rram.left - channel.right) * dbu}
 
 
 gds, gds_layers = read_mask("full-inferred-mask.gds")
