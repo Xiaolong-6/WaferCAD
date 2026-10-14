@@ -104,7 +104,10 @@ test('5 pm requested numerical material thickness is never silently clamped to 1
     assert.equal(deposited.length, face === 'both' ? 2 : 1);
     for (const segment of deposited) {
       const actual = segment.z1 - segment.z0;
-      assert.ok(Math.abs(actual - thickness) <= 16 * Number.EPSILON * Math.max(1, Math.abs(segment.z1)));
+      assert.ok(
+        Math.abs(actual - thickness) <=
+          16 * Number.EPSILON * Math.max(1, Math.abs(segment.z1)),
+      );
       assert.ok(Math.abs(actual - 1e-5) > 1e-6, 'must not substitute old 10 pm clamp');
     }
     checkStacks(model);
@@ -117,8 +120,11 @@ test('sub-resolution physical material inputs fail without mutation on Front/Bac
       const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
       const before = structuredClone(model);
       const result = modelApi.applyOperation(model, {
-        type, face, name: 'Resolution limit',
-        thickness: 1e-10, area: model.boundary,
+        type,
+        face,
+        name: 'Resolution limit',
+        thickness: 1e-10,
+        area: model.boundary,
       });
       assert.equal(result.changed, false, result.error);
       assert.match(result.error, /cannot be represented as a nonzero material Z segment/i);
@@ -131,10 +137,15 @@ test('Implant and Electrical depth semantics do not inherit material stack resol
   for (const type of ['implant', 'electrical']) {
     const model = modelApi.createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
     const result = modelApi.applyOperation(model, {
-      type, name: 'Numerical annotation', thickness: 1e-10, face: 'front', area: model.boundary,
+      type,
+      name: 'Numerical annotation',
+      thickness: 1e-10,
+      face: 'front',
+      area: model.boundary,
     });
     assert.equal(result.changed, true, result.error);
-    const value = type === 'implant' ? model.implants.at(-1).thickness : model.electricalRegions.at(-1).thickness;
+    const value =
+      type === 'implant' ? model.implants.at(-1).thickness : model.electricalRegions.at(-1).thickness;
     assert.equal(value, 1e-10);
   }
 });
