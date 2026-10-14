@@ -82,6 +82,32 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.ok(model.layers.some((l) => l.name === 'POLY gate'));
   assert.ok(model.layers.some((l) => l.name === 'W contacts'));
   assert.ok(model.layers.some((l) => l.name === 'METAL1 Al'));
+  const ild = model.layers.find((l) => l.name === 'Interlayer SiO2');
+  assert.ok(ild, 'Physical ILD remains present in the process geometry');
+  assert.equal(ild.visible, false, 'Final inspection hides only the dielectric');
+  assert.equal(project.display.threeOpacity, 0.75);
+  assert.deepEqual(project.display.threeCamera, {
+    position: [10.3, -11.1, 8.1],
+    target: [0, -0.2, 0.95],
+    fov: 34,
+  });
+  const head = project.snapshotBranches.nodes.at(-1);
+  assert.equal(head.state.model.layers.find((l) => l.id === ild.id)?.visible, false);
+  assert.equal(
+    project.snapshotBranches.branches[0].headState.model.layers.find((l) => l.id === ild.id)
+      ?.visible,
+    false,
+  );
+  assert.equal(
+    project.snapshots[0].state.model.layers.find((l) => l.id === ild.id)?.visible,
+    false,
+  );
+  assert.ok(
+    project.snapshotBranches.nodes.slice(0, -1).some((node) =>
+      node.state.model.layers.some((l) => l.id === ild.id && l.visible !== false),
+    ),
+    'Earlier process History must retain visible ILD',
+  );
   const at = (x, y) =>
     model.regions.find((r) => v.pointInMulti([x, y], r.geom))?.stack?.at(-1)?.layerId;
   assert.ok(at(-4, 0));
