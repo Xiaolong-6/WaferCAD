@@ -2,7 +2,7 @@
 
 Status: **candidate generator, not yet a shipped Welcome Example**.
 
-- Source: J. W. Jeong et al., "Tunnelling-based ternary metal–oxide–semiconductor technology," *Nature Electronics* **2**, 307–312 (2019), DOI: https://doi.org/10.1038/s41928-019-0272-8.
+- Source: J. W. Jeong et al., "Tunnelling-based ternary metal–oxide–semiconductor technology," _Nature Electronics_ **2**, 307–312 (2019), DOI: https://doi.org/10.1038/s41928-019-0272-8.
 - Evidence: paper Fig. 1a–b, Methods (pp. 311–312); Supplementary Fig. 1 and physical model note.
 - Implementation: scripts/build-tcmos-inverter-example.mjs
 - Regression: site/tests/tcmos-inverter-reconstruction.test.mjs
@@ -13,15 +13,15 @@ Reconstruct a representative 130 nm T-CMOS inverter on silicon, with ACTIVE/STI,
 
 The key published mechanism is the **highly doped body-to-drain tunnel junction**, obtained using a modified HVT body-implant mask. The Methods specify BF2+ for the nMOS device and As+ for the pMOS device, plus RTA; calibrated depth, energy, dose, mask coordinates and full GDS are unavailable.
 
-| Feature | Source-supported information | Geometric reconstruction choice |
-| --- | --- | --- |
-| Inverter | Fig. 1a/b complementary CMOS topology | Illustrative 14 x 8 µm local field with POLY VIN and METAL1 VDD/VOUT/GND |
-| Process | Commercial 130 nm and 90 nm CMOS foundries | Candidate chooses 130 nm and gate L=0.13 µm |
-| ACTIVE/STI | Si(100) and shallow trench isolation | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP |
-| HVTP/HVTN | BF2+/As+ high-energy, high-dose body implants | 180 nm empirical Implant markers; **not actual buried dopant profiles** |
-| Gate | SiO2 in 130 nm flow; patterned POLY | 5 nm SiO2; 200 nm Poly |
+| Feature      | Source-supported information                  | Geometric reconstruction choice                                               |
+| ------------ | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| Inverter     | Fig. 1a/b complementary CMOS topology         | Illustrative 14 x 8 µm local field with POLY VIN and METAL1 VDD/VOUT/GND      |
+| Process      | Commercial 130 nm and 90 nm CMOS foundries    | Candidate chooses 130 nm and gate L=0.13 µm                                   |
+| ACTIVE/STI   | Si(100) and shallow trench isolation          | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP           |
+| HVTP/HVTN    | BF2+/As+ high-energy, high-dose body implants | 180 nm empirical Implant markers; **not actual buried dopant profiles**       |
+| Gate         | SiO2 in 130 nm flow; patterned POLY           | 5 nm SiO2; 200 nm Poly                                                        |
 | Source/drain | LDD/HDD, silicide and self-aligned processing | 80/180 nm Implant markers, 25 nm silicide geometry; spacers/RTA recorded only |
-| Contacts | CNT and METAL1 standard foundry layers | Four W plugs, 450 nm ILD and 200 nm patterned Al geometry |
+| Contacts     | CNT and METAL1 standard foundry layers        | Four W plugs, 450 nm ILD and 200 nm patterned Al geometry                     |
 
 **Scientific limitation:** The current WaferCAD Implant annotates from the exposed surface into the material. Retrograde body doping requires a buried peak. HVT markings therefore communicate mask coverage and a target zone only; do not interpret their color gradient as dopant concentration, buried depth, BTBT current or a calibrated junction. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
 
