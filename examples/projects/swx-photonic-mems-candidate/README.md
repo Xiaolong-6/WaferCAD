@@ -63,7 +63,11 @@ node scripts/build-swx-mems-example.mjs
 
 The builder emits a single draft `swx-photonic-mems.wafercad` project (with OFF and ON Variants) and a `validation.json` in `test-results/swx-mems/`. `--write-repo` is intentionally reserved for a later **reviewed** example promotion, after visual/browser science acceptance.
 
-Release gates for a production Welcome example are stricter than builder assertions: replay both projects through the real browser **Run All from new Base**, check the exact 15 nm gap after project persistence, use Section/3D to inspect BOX voids and anchors, export/import Mask GDS/OAS, verify History and Save/Reload, and run the example-open/performance owners. Do **not** register or deploy the candidate until these gates pass.
+The dedicated `SWX MEMS Reconstruction` CI workflow runs the parametric geometry/Variant tests, generates one unbundled project, imports it through UI v2, switches to the ON Variant, verifies canonical model/Mask equality, exports both GDS/OAS, exercises 3D, re-exports the entire project, and replays the **shared fabrication Recipe from new Base** on the relaxed OFF variant. CI also captures separate four-view screenshots of OFF and ON under `test-results/swx-mems/browser/`.
+
+**Important:** Run All reconstructs the as-fabricated OFF geometry; it does not reproduce electrostatic ON movement. The ON state is a non-replayable, explicitly tagged post-release geometric pose stored in a restorable Variant. This reflects the capabilities of the current Kernel and avoids mislabelling actuation as a Process operation.
+
+Still required before Welcome promotion: detailed visual comparison of both poses against article Figure 1 and Supplementary Figures S6–S9 (including connected shuttle/comb springs, mechanical stops, aligners and couplers); human inspection of the Section BOX undercut/anchors, and an external GDS/OAS interoperability review. The arrangement is illustrative wherever author coordinates are unavailable. **Do not merge, deploy, or register** this candidate automatically.
 
 ## Planned scale-up (separate gate)
 
