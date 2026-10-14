@@ -481,19 +481,15 @@ export async function buildGanMicrochannel() {
       }
     }
   }
-  const cooledSiC = model.layers.find((layer) =>
-    layer.name === 'GaN HEMT SiC substrate 99 um',
-  );
+  const cooledSiC = model.layers.find((layer) => layer.name === 'GaN HEMT SiC substrate 99 um');
   assert.ok(cooledSiC, 'SiC chip is missing');
-  const cooledSegments = owner([30, 0]).stack.filter((segment) =>
-    segment.layerId === cooledSiC.id,
-  );
+  const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
   assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
   assert.equal(materialAt([30, 0], 604.99), false, 'SiC backside is coolant-obstructed');
-  const siMaterials = model.layers.filter((layer) =>
-    layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
+  const siMaterials = model.layers.filter(
+    (layer) => layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
   );
   assert.equal(siMaterials.length, 5);
   assert.ok(siMaterials.every((layer) => layer.color === GAN_SILICON_COLOR));

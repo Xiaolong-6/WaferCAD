@@ -51,23 +51,33 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   validateProjectFile(project);
   assert.equal(project.planViews.main.zoom, 2.5);
   assert.equal(project.planViews.mask.zoom, 1);
-  assert.deepEqual(project.roi, {
-    type: 'rect',
-    a: [-800, -650],
-    b: [800, 650],
-  }, 'Saved ROI must be a local 3D inspection crop');
-  assert.deepEqual(project.display.threeCamera, {
-    position: [1400, -1550, 1350],
-    target: [0, 0, 420],
-    fov: 35,
-  }, 'Saved camera must focus on chip and microchannels');
-  const siLayers = project.model.layers.filter((layer) =>
-    layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
+  assert.deepEqual(
+    project.roi,
+    {
+      type: 'rect',
+      a: [-800, -650],
+      b: [800, 650],
+    },
+    'Saved ROI must be a local 3D inspection crop',
+  );
+  assert.deepEqual(
+    project.display.threeCamera,
+    {
+      position: [1400, -1550, 1350],
+      target: [0, 0, 420],
+      fov: 35,
+    },
+    'Saved camera must focus on chip and microchannels',
+  );
+  const siLayers = project.model.layers.filter(
+    (layer) => layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
   );
   assert.equal(siLayers.length, 5);
   assert.equal(new Set(siLayers.map((layer) => layer.id)).size, 5);
-  assert.ok(siLayers.every((layer) => layer.color === GAN_SILICON_COLOR),
-    'Physically identical Si layers must use one material color');
+  assert.ok(
+    siLayers.every((layer) => layer.color === GAN_SILICON_COLOR),
+    'Physically identical Si layers must use one material color',
+  );
   // X = 0 misses the top fingers; X = 30 intersects a published-width channel.
   // The cavity widens with depth: 380 -> 480 -> 600 -> 700 um.
   for (const [point, voidZ] of [
@@ -99,15 +109,24 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   for (const x of [-1450, 1450]) {
     for (const y of [-950, 950]) {
       for (const z of [-150, -50, 50, 150, 250, 350, 450, 550]) {
-        assert.equal(solidAt(project.model, [x, y], z), false,
-          'TSV became a solid pillar at ' + [x, y, z]);
-        assert.equal(solidAt(project.model, [x + 43, y], z), true,
-          'Silicon TSV sidewall is missing at ' + [x + 43, y, z]);
+        assert.equal(
+          solidAt(project.model, [x, y], z),
+          false,
+          'TSV became a solid pillar at ' + [x, y, z],
+        );
+        assert.equal(
+          solidAt(project.model, [x + 43, y], z),
+          true,
+          'Silicon TSV sidewall is missing at ' + [x + 43, y, z],
+        );
       }
       for (const dx of [-20, 0, 20]) {
         for (const dy of [-20, 0, 20]) {
-          assert.equal(stackAt(project.model, [x + dx, y + dy]).length, 0,
-            'TSV bore has a filled corner at ' + [x + dx, y + dy]);
+          assert.equal(
+            stackAt(project.model, [x + dx, y + dy]).length,
+            0,
+            'TSV bore has a filled corner at ' + [x + dx, y + dy],
+          );
         }
       }
     }
@@ -115,14 +134,18 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   // SiC backside at x=30 contacts the open cooling domain. No surrogate
   // bridge layer or hidden coolant film may occupy the fluid-to-SiC gap.
   const channel = stackAt(project.model, [30, 0]);
-  const sicId = project.model.layers.find((layer) =>
-    layer.name === 'GaN HEMT SiC substrate 99 um').id;
+  const sicId = project.model.layers.find(
+    (layer) => layer.name === 'GaN HEMT SiC substrate 99 um',
+  ).id;
   const sic = channel.find((segment) => segment.layerId === sicId);
   assert.ok(sic, 'GaN-on-SiC chip is not positioned over channel');
   assert.equal(sic.z0, 605, 'AuSn bond stand-off must set the SiC backside at z=605');
   assert.equal(sic.z1 - sic.z0, 99);
-  assert.equal(solidAt(project.model, [30, 0], 604.99), false,
-    'Cooling liquid must contact exposed SiC bottom face');
+  assert.equal(
+    solidAt(project.model, [30, 0], 604.99),
+    false,
+    'Cooling liquid must contact exposed SiC bottom face',
+  );
   const layers = project.model.layers.map((layer) => layer.name);
   assert.ok(layers.includes('GaN HEMT SiC substrate 99 um'));
   assert.ok(layers.includes('GaN buffer 1 um'));
@@ -149,8 +172,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.deepEqual(asset.model, project.model, 'Bundled physical model is stale');
   assert.deepEqual(asset.roi, project.roi, 'Bundled local inspection ROI is stale');
   assert.deepEqual(asset.planViews, project.planViews, 'Bundled Main zoom is stale');
-  assert.deepEqual(asset.display.threeCamera, project.display.threeCamera,
-    'Bundled 3D camera is stale');
+  assert.deepEqual(
+    asset.display.threeCamera,
+    project.display.threeCamera,
+    'Bundled 3D camera is stale',
+  );
   assert.equal(asset.snapshotBranches.nodes.length, project.snapshotBranches.nodes.length);
   assert.equal(asset.snapshots.length, project.snapshots.length);
 

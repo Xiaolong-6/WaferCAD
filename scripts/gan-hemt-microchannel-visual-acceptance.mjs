@@ -17,9 +17,7 @@ const directory = new URL('../test-results/gan-microchannel/visual/', import.met
 await mkdir(directory, { recursive: true });
 const browser = await chromium.launch({
   headless: true,
-  ...(process.env.WAFERCAD_CHROMIUM
-    ? { executablePath: process.env.WAFERCAD_CHROMIUM }
-    : {}),
+  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
   args: ['--enable-unsafe-swiftshader'],
 });
 const report = { example: id, views: {}, source: 'Real WaferCAD browser rendering' };
@@ -72,16 +70,20 @@ try {
       viewport: [1000, 640],
       bytes: screenshot.length,
       canvasInkFraction: inkFraction,
-      renderState: view === 'three'
-        ? await page.locator('#threeHost').getAttribute('data-render-state')
-        : 'canvas-paint',
+      renderState:
+        view === 'three'
+          ? await page.locator('#threeHost').getAttribute('data-render-state')
+          : 'canvas-paint',
     };
     await context.close();
   }
   report.pass = true;
   report.note =
     'Screenshots are automated visual evidence. Exact comparison to the source figures needs a separate visual audit.';
-  await writeFile(new URL('visual-acceptance.json', directory), JSON.stringify(report, null, 2) + '\n');
+  await writeFile(
+    new URL('visual-acceptance.json', directory),
+    JSON.stringify(report, null, 2) + '\n',
+  );
   console.log(JSON.stringify(report));
 } finally {
   await browser.close();

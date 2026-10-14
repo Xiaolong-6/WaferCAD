@@ -31,7 +31,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 1. Interposer XY 6000 × 5000 µm is a representative viewing field inferred from the published photographs and scale markers, not a separately reported precision dimension.
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
-4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable. The publication also shows *inlet/outlet diversion structures* feeding the parallel channels (Fig. 1c and 2h). Their geometries are unpublished; the current example does not reconstruct these manifold fan-outs. The rectangular bottom cavity and inferred backside bores do not constitute a hydraulically validated fan-out.
+4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable. The publication also shows _inlet/outlet diversion structures_ feeding the parallel channels (Fig. 1c and 2h). Their geometries are unpublished; the current example does not reconstruct these manifold fan-outs. The rectangular bottom cavity and inferred backside bores do not constitute a hydraulically validated fan-out.
 5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±415 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Real TSVs have stepped diameters and Cu/NiPaAu metallization; plating remains source metadata, not an electrically validated conductive structure.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
@@ -47,15 +47,15 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   bridge tiers retain **five distinct Layer IDs** for History/Recipe inspection,
   but all five share the same material color. Colored slices formerly implied
   multiple chemical materials where the construction assumes only Si.
-- **TSV interpretation:** the four straight vertical features are *open
-  through-bores with exposed internal Si walls*, not metal-filled TSV posts.
+- **TSV interpretation:** the four straight vertical features are _open
+  through-bores with exposed internal Si walls_, not metal-filled TSV posts.
   We test each bore at multiple XY locations and Z depths, plus solid Si
   immediately outside its footprint. The model contains no filled TSV conductor.
 - **SiC/water boundary:** water is not modeled as a material. In the
   representative channel center, the SiC bottom is at Z = 605 µm, above a
   5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
   an empty volume immediately beneath that SiC bottom surface. The fluid is
-  exposed to the *SiC substrate backside*, not directly to the GaN epitaxy.
+  exposed to the _SiC substrate backside_, not directly to the GaN epitaxy.
 - **Inspection only:** the saved 3D ROI is X = ±800 µm, Y = ±650 µm and the
   saved oblique camera centers on the interposer/chip interface. This visual
   clipping omits distant TSV sites from the initial local 3D inspection but

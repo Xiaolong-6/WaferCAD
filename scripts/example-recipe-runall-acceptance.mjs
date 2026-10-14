@@ -314,12 +314,13 @@ try {
       // MAGIC-1000 and GaN cooling both require physical-geometry acceptance
       // beyond matching material labels/counts: every distinct material/Z
       // slab is checked for missing or additional XY occupied volume.
-      const geometryComparison =
-        ['magic-1000-mos2-beol', 'gan-hemt-microchannel-2022'].includes(example.id)
-          ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-          : example.id === 'tio2-metalens-four-unit'
-            ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-            : null;
+      const geometryComparison = ['magic-1000-mos2-beol', 'gan-hemt-microchannel-2022'].includes(
+        example.id,
+      )
+        ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
+        : example.id === 'tio2-metalens-four-unit'
+          ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+          : null;
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
