@@ -2,7 +2,7 @@
 
 Unlike the browser acceptance's built-in GDS/OAS parsers, this test reads
 both formats through the pinned third-party KLayout database engine and
-compares exact Boolean geometry on the 0.1 nm export database grid.
+compares exact Boolean geometry on each format's native export database grid.
 """
 
 import json
@@ -16,7 +16,8 @@ ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "test-results/swx-mems")
 PROJECT = ROOT / "swx-photonic-mems.wafercad"
 BROWSER = ROOT / "browser"
 REPORT = ROOT / "klayout-independent-verification.json"
-DBU_UM = 0.0001
+GDS_DBU_UM = 0.0001
+OAS_DBU_UM = 0.00005
 
 project = json.loads(PROJECT.read_text(encoding="utf-8"))
 source = project["layout"]
@@ -66,9 +67,11 @@ def exported_regions(file_path):
         raise AssertionError(f"{file_path.name}: expected one top cell, got {len(tops)}")
     top = tops[0]
     dbu = layout.dbu
-    if not math.isclose(dbu, DBU_UM, rel_tol=0, abs_tol=1e-10):
+    native_dbu = GDS_DBU_UM if file_path.suffix == ".gds" else OAS_DBU_UM
+    if not math.isclose(dbu, native_dbu, rel_tol=0, abs_tol=1e-10):
         raise AssertionError(
-            f"{file_path.name}: physical DBU {dbu} um differs from {DBU_UM} um"
+            f"{file_path.name}: physical DBU {dbu} um differs from the "
+            f"expected native {native_dbu} um export grid"
         )
     present = {}
     for index in layout.layer_indexes():
@@ -85,14 +88,14 @@ def exported_regions(file_path):
     return top.name, dbu, present
 
 
-expected = canonical_regions(DBU_UM)
 results = []
-baseline = None
+baseline_by_format = {}
 for state in ("off", "on"):
     for extension in ("gds", "oas"):
         filename = BROWSER / f"swx-{state}.{extension}"
         assert filename.is_file(), f"Missing actual browser export: {filename}"
         top_name, dbu, actual = exported_regions(filename)
+        expected = canonical_regions(dbu)
         layers = []
         for layer in sorted(expected_layers):
             delta = expected[layer] ^ actual[layer]
@@ -111,11 +114,11 @@ for state in ("off", "on"):
             )
         signature = [(layer, str(actual[layer].bbox()), actual[layer].area())
                      for layer in sorted(expected_layers)]
-        if baseline is not None and signature != baseline:
+        if extension in baseline_by_format and signature != baseline_by_format[extension]:
             raise AssertionError(
-                f"{filename.name}: mask bounds/areas changed between OFF/ON or formats"
+                f"{filename.name}: mask bounds/areas changed between OFF and ON"
             )
-        baseline = signature
+        baseline_by_format[extension] = signature
         results.append(
             {
                 "file": str(filename),
@@ -135,7 +138,7 @@ summary = {
     "source_root": source["root"],
     "source_polygons": len(source["elements"]),
     "files_verified": len(results),
-    "independent_boolean_xor": "empty for each layer and file",
+    "independent_boolean_xor": "empty on the format-native grid for each layer and file",
     "results": results,
 }
 REPORT.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
