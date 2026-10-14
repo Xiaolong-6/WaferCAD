@@ -257,14 +257,20 @@ export async function buildM3DLime() {
   function assertPhysicalContact(point, lowerName, upperName) {
     const region = regionAt(point);
     assert.ok(region, 'No device geometry at ' + point);
-    const lowerId = layerIds.get(lowerName), upperId = layerIds.get(upperName);
+    const lowerId = layerIds.get(lowerName),
+      upperId = layerIds.get(upperName);
     assert.ok(lowerId && upperId, 'Contact layers not constructed');
     const lower = region.stack.findIndex((part) => part.layerId === lowerId);
     assert.ok(lower >= 0, 'Missing contact lower film: ' + lowerName);
-    assert.equal(region.stack[lower + 1]?.layerId, upperId,
-      'Intervening material or cavity between ' + lowerName + ' and ' + upperName);
-    assert.ok(Math.abs(region.stack[lower].z1 - region.stack[lower + 1].z0) < 1e-9,
-      'Vertical gap between ' + lowerName + ' and ' + upperName);
+    assert.equal(
+      region.stack[lower + 1]?.layerId,
+      upperId,
+      'Intervening material or cavity between ' + lowerName + ' and ' + upperName,
+    );
+    assert.ok(
+      Math.abs(region.stack[lower].z1 - region.stack[lower + 1].z0) < 1e-9,
+      'Vertical gap between ' + lowerName + ' and ' + upperName,
+    );
   }
   const analogViaProbe = [-40.5, -23.5];
   const firstTcamRram = rramSites[bufferChannels.length];
@@ -544,8 +550,11 @@ export async function buildM3DLime() {
   selectiveEtch('Open HfO2 above digital RRAM landing', 'CNT HfO2 passivation 10nm', 0.01, 19);
   selectiveEtch('Open Al2O3 above digital RRAM landing', 'CNT Al2O3 passivation 35nm', 0.035, 19);
   selectiveEtch('Wet open Y2O3 above Pd drain', 'Y2O3 interface SURROGATE 10nm', 0.01, 19);
-  assert.equal(exposed(digitalRramProbe).layerId, layerIds.get('CNT drain Pd 45nm'),
-    'Digital RRAM via must open all three passivation films to Pd drain');
+  assert.equal(
+    exposed(digitalRramProbe).layerId,
+    layerIds.get('CNT drain Pd 45nm'),
+    'Digital RRAM via must open all three passivation films to Pd drain',
+  );
   bookmark('06 CNTFET passivation / Pd drain access');
 
   // Tier 3 binary RRAM includes TCAM 2T2R and buffer 1T1R in the same tier.
@@ -563,8 +572,11 @@ export async function buildM3DLime() {
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
   deposit('ALD Al2O3 RRAM protection 45nm at 150C', 'Digital Al2O3 passivation 45nm', 0.045);
   selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
-  assert.equal(exposed(digitalRramProbe).layerId, layerIds.get('Digital Pt TE 10nm'),
-    'Top passivation must open onto Pt electrode without gouging the 10nm Pt layer');
+  assert.equal(
+    exposed(digitalRramProbe).layerId,
+    layerIds.get('Digital Pt TE 10nm'),
+    'Top passivation must open onto Pt electrode without gouging the 10nm Pt layer',
+  );
   deposit('Top Ti interconnect adhesion 20nm', 'Top Ti interconnect 20nm', 0.02, 21);
   assertPhysicalContact(digitalRramProbe, 'Digital Pt TE 10nm', 'Top Ti interconnect 20nm');
   deposit('Top Pd interconnect 120nm', 'Top Pd interconnect 120nm', 0.12, 21);
