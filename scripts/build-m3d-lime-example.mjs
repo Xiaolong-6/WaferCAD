@@ -166,8 +166,8 @@ export async function buildM3DLime() {
   // Low-oblique view exposes stacked BEOL sidewalls while retaining the top FET pair.
   // Camera affects presentation only; XY and Z process geometry remain untouched.
   root.display.threeCamera = {
-    position: [30, -80, 35],
-    target: [-40, -5, 1.5],
+    position: [-7, -45, 20],
+    target: [-40, -6, 1.5],
     fov: 34,
   };
   root.layout = makeLayout();
