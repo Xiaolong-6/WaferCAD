@@ -1271,7 +1271,10 @@ function applyOperationImpl(
     type === 'implant' &&
     (!Number.isFinite(depthStart) || depthStart < 0 || depthStart >= amount)
   ) {
-    return { changed: false, error: 'Implant start depth must be finite, nonnegative and less than total depth.' };
+    return {
+      changed: false,
+      error: 'Implant start depth must be finite, nonnegative and less than total depth.',
+    };
   }
   // The normalization of physical material stacks removes sub-resolution Z
   // segments. Fail before any mutation rather than reporting a successful
