@@ -41,25 +41,12 @@ test('M3D-LIME 45nm top ALD: reproduce physical Kernel result and protect rollba
   });
 
   if (!result.changed) {
-    assert.match(
-      result.error || '',
-      /^Conformal geometry failed safely: .*overlapping regions \([\d.eE+-]+ µm²\)/,
-      'Unexpected reason for the known top-ALD rejection',
-    );
     assert.deepEqual(
       candidate,
       before,
       'Failed Conformal must roll back all geometry and counters',
     );
-    console.log(
-      JSON.stringify({
-        test: 'm3d-lime-top-ald45',
-        status: 'blocked-safely',
-        originalRegions: before.regions.length,
-        error: result.error,
-      }),
-    );
-    return;
+    assert.fail('45nm top ALD is still blocked after rollback: ' + result.error);
   }
 
   validateProcessModel(candidate);
