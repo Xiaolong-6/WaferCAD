@@ -474,7 +474,8 @@ export function createSwxGeometry(state = 'off') {
   ];
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
-  const flexure = [...makeFoldedSprings(travel), ...makeMeanders(travel), ...aligners.flexure];
+  const foldedSprings = makeFoldedSprings(travel);
+  const flexure = [...foldedSprings, ...makeMeanders(travel), ...aligners.flexure];
   const fixed = [
     ...optics.fixed,
     ...combs.fixed,
@@ -558,6 +559,7 @@ export function createSwxGeometry(state = 'off') {
       gratingSlabs: gratings.silicon,
       gratingGrooves: gratings.shallowEtch,
       structuralAligners: aligners,
+      foldedSprings,
       shuttle,
     },
     stopperClearanceUm: stoppers.clearanceUm,
