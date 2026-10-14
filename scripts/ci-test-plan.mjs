@@ -73,6 +73,7 @@ const INTERACTION_PATHS = [
 ];
 
 const PROCESS_PATHS = [
+  /^site\/process-(?:recipe|recipe-preflight|numerical-contract|face-execution)\.js$/,
   /^site\/(?:model-array|mask-instance-index)/,
   /^site\/process-(?:boundary-index|topology)\.js$/,
   /^site\/controllers\/process-task-controller\.js$/,
@@ -194,7 +195,7 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
 
   if (paths.some((path) => DEPENDENCY_FILES.has(path) || matchesAny(path, COMMON_TEST_INFRA))) {
     enableAll(plan);
-    return { full: true, paths, suites: plan };
+    return { full: true, paths, suites: plan, release: buildReleaseGates(paths, true) };
   }
 
   for (const path of paths) {
