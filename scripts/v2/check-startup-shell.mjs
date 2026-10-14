@@ -32,6 +32,33 @@ try {
   const context = await browser.newContext({ viewport: { width: 1700, height: 960 } });
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
+  // Capture the real paint ordering, not just the two readiness flags.
+  await page.addInitScript(() => {
+    const order = [];
+    window.__firstStartupPaintOrder = order;
+    let planarSeen = false;
+    let threeSeen = false;
+    new MutationObserver(() => {
+      if (
+        !planarSeen &&
+        ['main', 'mask', 'section'].some(
+          (key) => document.querySelector(`.p-view[data-view="${key}"]`)?.dataset.viewLoad === 'ready',
+        )
+      ) {
+        planarSeen = true;
+        order.push('planar');
+      }
+      if (!threeSeen && Number(document.getElementById('threeHost')?.dataset.rendererFrameSerial || 0) > 0) {
+        threeSeen = true;
+        order.push('three');
+      }
+    }).observe(document, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ['data-view-load', 'data-renderer-frame-serial'],
+    });
+  });
   let releaseAsset;
   let markRequested;
   const requested = new Promise((resolve) => {
@@ -104,6 +131,11 @@ try {
       { timeout: 120000 },
     );
     assert.equal(await page.locator('.p-workbench').getAttribute('data-first-frame-ready'), 'true');
+    assert.equal(
+      (await page.evaluate(() => window.__firstStartupPaintOrder))[0],
+      'planar',
+      'An overview must paint a visible planar view before the first 3D WebGL frame',
+    );
     const after = await dimensions(page);
     assert.ok(Math.abs(after.editorWidth - before.editorWidth) < 2);
     assert.ok(Math.abs(after.stageX - before.stageX) < 2);
