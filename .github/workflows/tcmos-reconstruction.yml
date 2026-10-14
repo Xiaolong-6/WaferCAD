@@ -8,6 +8,14 @@ on:
       - 'scripts/tcmos-browser-acceptance.mjs'
       - 'site/tests/tcmos-inverter-reconstruction.test.mjs'
       - 'site/tests/implant-buried-interval.test.mjs'
+      - 'site/tests/dopant-regions.test.mjs'
+      - 'site/dopant-regions.js'
+      - 'site/model.js'
+      - 'site/process-recipe.js'
+      - 'site/project-schema.js'
+      - 'site/project-io.js'
+      - 'site/controllers/process-panel-controller.js'
+      - 'site/controllers/process-recipe-controller.js'
       - 'examples/projects/tcmos-ternary-inverter-2019-candidate/**'
       - '.github/workflows/tcmos-reconstruction.yml'
   workflow_dispatch:
@@ -30,13 +38,13 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check focused regressions and generate project
         run: |
-          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs
+          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs
           node scripts/build-tcmos-inverter-example.mjs
           node scripts/build-tcmos-inverter-example.mjs --tilt-demo
           cmp examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad
       - name: Check source formatting
         if: always()
-        run: npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+        run: npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/process-recipe.js site/project-schema.js site/project-io.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
