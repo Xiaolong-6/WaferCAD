@@ -5,6 +5,8 @@ on:
     paths:
       - scripts/build-m3d-lime-example.mjs
       - site/tests/m3d-lime-builder.test.mjs
+      - scripts/v2/check-m3d-lime-project.mjs
+      - site/examples/m3d-lime-rram-cntfet.wafercad
       - docs/M3D_LIME_2023_RECONSTRUCTION.md
       - .github/workflows/m3d-lime-reconstruction.yml
   workflow_dispatch:
