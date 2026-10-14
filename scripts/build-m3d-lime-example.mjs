@@ -252,6 +252,24 @@ export async function buildM3DLime() {
     assert.ok(region, 'No model region at ' + point);
     return region.stack.at(-1);
   }
+  // Exact vertical adjacency at one XY point is stronger than a layer-name
+  // inventory: a dielectric film or a gap between these metals fails.
+  function assertPhysicalContact(point, lowerName, upperName) {
+    const region = regionAt(point);
+    assert.ok(region, 'No device geometry at ' + point);
+    const lowerId = layerIds.get(lowerName), upperId = layerIds.get(upperName);
+    assert.ok(lowerId && upperId, 'Contact layers not constructed');
+    const lower = region.stack.findIndex((part) => part.layerId === lowerId);
+    assert.ok(lower >= 0, 'Missing contact lower film: ' + lowerName);
+    assert.equal(region.stack[lower + 1]?.layerId, upperId,
+      'Intervening material or cavity between ' + lowerName + ' and ' + upperName);
+    assert.ok(Math.abs(region.stack[lower].z1 - region.stack[lower + 1].z0) < 1e-9,
+      'Vertical gap between ' + lowerName + ' and ' + upperName);
+  }
+  const analogViaProbe = [-40.5, -23.5];
+  const firstTcamRram = rramSites[bufferChannels.length];
+  const digitalRramProbe = [firstTcamRram.x + 0.45, firstTcamRram.y + 5];
+
   function areaOf(id) {
     if (id == null) return model.boundary;
     return vectorApi.unionGeometries(
@@ -444,6 +462,7 @@ export async function buildM3DLime() {
 
   // Tier 2 analog device: published TiN 30 / HfAlOx 8 / TaOx 45 / TiN 30nm.
   deposit('Sputter TiN bottom electrode 30nm', 'CIM TiN BE 30nm', 0.03, 12);
+  assertPhysicalContact(analogViaProbe, 'M4 W via fill', 'CIM TiN BE 30nm');
   deposit('ALD HfAlOx analog switching layer 8nm at 300C', 'CIM HfAlOx RSL 8nm', 0.008, 12);
   deposit('Sputter TaOx thermal enhanced layer 45nm', 'CIM TaOx TEL 45nm', 0.045, 12);
   deposit('Sputter TiN top electrode 30nm', 'CIM TiN TE 30nm', 0.03, 12);
@@ -469,6 +488,8 @@ export async function buildM3DLime() {
   deposit('W plugs to CIM TiN TE (inferred)', 'CIM W top vias', 0.083, 13);
   cmp('Planarize CIM W plugs Z 1.43um', 1.43);
   deposit('Sputter/pattern Al 500nm bit lines', 'CIM Al bit lines 500nm', 0.5, 14);
+  assertPhysicalContact(analogViaProbe, 'CIM TiN TE 30nm', 'CIM W top vias');
+  assertPhysicalContact(analogViaProbe, 'CIM W top vias', 'CIM Al bit lines 500nm');
   bookmark('02 CIM passivation / W vias / Al bit lines');
 
   // The source deposits 100nm SiO2 + 900nm Si3N4 and planarizes before TCAM.
@@ -523,12 +544,17 @@ export async function buildM3DLime() {
   selectiveEtch('Open HfO2 above digital RRAM landing', 'CNT HfO2 passivation 10nm', 0.01, 19);
   selectiveEtch('Open Al2O3 above digital RRAM landing', 'CNT Al2O3 passivation 35nm', 0.035, 19);
   selectiveEtch('Wet open Y2O3 above Pd drain', 'Y2O3 interface SURROGATE 10nm', 0.01, 19);
+  assert.equal(exposed(digitalRramProbe).layerId, layerIds.get('CNT drain Pd 45nm'),
+    'Digital RRAM via must open all three passivation films to Pd drain');
   bookmark('06 CNTFET passivation / Pd drain access');
 
   // Tier 3 binary RRAM includes TCAM 2T2R and buffer 1T1R in the same tier.
   deposit('Sputter TaOx oxygen reservoir 20nm', 'Digital TaOx ORL 20nm', 0.02, 19);
+  assertPhysicalContact(digitalRramProbe, 'CNT drain Pd 45nm', 'Digital TaOx ORL 20nm');
   deposit('Sputter Ta2O5 switching layer 10nm', 'Digital Ta2O5 RSL 10nm', 0.01, 19);
+  assertPhysicalContact(digitalRramProbe, 'Digital TaOx ORL 20nm', 'Digital Ta2O5 RSL 10nm');
   deposit('Sputter Pt digital RRAM electrode 10nm', 'Digital Pt TE 10nm', 0.01, 19);
+  assertPhysicalContact(digitalRramProbe, 'Digital Ta2O5 RSL 10nm', 'Digital Pt TE 10nm');
   record(
     'Pattern Pt/Ta2O5/TaOx with 60nm Pd hard mask and dry etch',
     'custom',
