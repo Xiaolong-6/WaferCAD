@@ -48,7 +48,7 @@ test('dopant intents are host-material clipped and updated after etch without a 
   assert.ok(resolved.length);
   assert.equal(resolved[0].z0, 0.76);
   assert.equal(resolved[0].z1, 0.92);
-  const actualFootprint = v.geometryArea(resolved[0].geom);
+  const actualFootprint = modelApi.geometryArea(resolved[0].geom);
   assert.ok(Math.abs(actualFootprint - 3) < 1e-8);
   assert.equal(model.regions.length, 1, 'Dopant record never becomes material layer');
 
@@ -63,8 +63,8 @@ test('dopant intents are host-material clipped and updated after etch without a 
   assert.equal(removed.changed, true);
   const after = resolveQualitativeDopantRegion(model, model.dopantRegions[0], v);
   const footprint = v.unionGeometries(after.map((fragment) => fragment.geom));
-  assert.ok(v.geometryArea(footprint) < actualFootprint - 1);
-  assert.ok(v.geometryArea(footprint) > 1.4);
+  assert.ok(modelApi.geometryArea(footprint) < actualFootprint - 1);
+  assert.ok(modelApi.geometryArea(footprint) > 1.4);
   validateProcessModel(model);
 });
 
@@ -100,7 +100,7 @@ test('overlaps report qualitative opposite polarity without claiming a working j
   assert.equal(overlaps.length, 1);
   assert.equal(overlaps[0].z0, 0.7);
   assert.equal(overlaps[0].z1, 0.9);
-  assert.ok(v.geometryArea(overlaps[0].geom) > 3.9);
+  assert.ok(modelApi.geometryArea(overlaps[0].geom) > 3.9);
   validateProcessModel(model);
   assert.throws(() => {
     const invalid = structuredClone(model);
