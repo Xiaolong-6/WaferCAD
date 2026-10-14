@@ -226,21 +226,29 @@ function gratingArcBand(cx, cy, inner, outer, sign) {
 }
 
 function makeIllustrativeGratingCouplers() {
-  const silicon = [], shallowEtch = [], groups = [];
+  const silicon = [],
+    shallowEtch = [],
+    groups = [];
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
     const sign = Math.sign(cy);
     const sourceY = sign * 13;
-    const feed = polyline([[-53, sourceY], [-50.7, sign * 18], [cx, cy]], 0.4);
+    const feed = polyline(
+      [
+        [-53, sourceY],
+        [-50.7, sign * 18],
+        [cx, cy],
+      ],
+      0.4,
+    );
     const taper = taperedStrip([cx, cy], [cx + 2.3, cy], 0.4, 1.1);
-    const outerRadius = Math.max(...SWX_ASSUMPTIONS.gratingRadiiUm) +
-      SWX_ASSUMPTIONS.gratingToothWidthUm + 0.18;
+    const outerRadius =
+      Math.max(...SWX_ASSUMPTIONS.gratingRadiiUm) + SWX_ASSUMPTIONS.gratingToothWidthUm + 0.18;
     const halfAngle = Math.PI / 3.5;
     const slab = [
       [cx, cy],
       ...Array.from({ length: 17 }, (_, i) => {
         const angle = -halfAngle + (2 * halfAngle * i) / 16;
-        return [cx + outerRadius * Math.cos(angle),
-          cy + sign * outerRadius * Math.sin(angle)];
+        return [cx + outerRadius * Math.cos(angle), cy + sign * outerRadius * Math.sin(angle)];
       }),
     ];
     // Grating teeth are shallow-etched grooves in one continuous silicon
@@ -249,8 +257,13 @@ function makeIllustrativeGratingCouplers() {
     silicon.push(...feed, taper, slab);
     groups.push(...feed, taper, slab);
     for (const radius of SWX_ASSUMPTIONS.gratingRadiiUm) {
-      const groove = gratingArcBand(cx, cy, radius,
-        radius + SWX_ASSUMPTIONS.gratingToothWidthUm, sign);
+      const groove = gratingArcBand(
+        cx,
+        cy,
+        radius,
+        radius + SWX_ASSUMPTIONS.gratingToothWidthUm,
+        sign,
+      );
       shallowEtch.push(groove);
       groups.push(groove);
     }
