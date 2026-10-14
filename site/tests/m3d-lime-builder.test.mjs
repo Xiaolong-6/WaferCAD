@@ -47,7 +47,7 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   const stepsText = steps.map((s) => s.params.label || s.params.material || '').join(' ');
   assert.match(stepsText, /130nm Si CMOS/);
   assert.match(stepsText, /Y2O3/);
-  assert.match(stepsText, /top Pt/i);
+  assert.ok(nodes.some((node) => /Open top Pt/i.test(node.operation?.label || '')));
   assert.ok(steps.some((s) => s.command === 'record'), 'non-geometric paper steps must be recorded');
   assert.ok(steps.every((s) => s.command !== 'implant'),
     'CNT conduction and resistive switching are not silicon implantation');
