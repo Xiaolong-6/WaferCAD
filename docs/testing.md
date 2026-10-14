@@ -33,6 +33,18 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### Published Legacy URL policy
+
+`app-legacy.html` remains available in the Git source tree for legacy-only
+scientific regression tests. In the staged Pages artifact its public URL
+serves only a same-origin redirect to the v2 `app.html`, preserving query
+and fragment. `app.js` and `workstation.css` are not published.
+`site/tests/pages-artifact.test.mjs` and
+`scripts/smoke-pages-artifact.mjs` enforce the production artifact
+boundary and verify that the deployed Worker-backed app still boots.
+This does **not** remove the old editor's test source or change historical
+project-format and Recovery compatibility.
+
 ### Legacy project compatibility before UI retirement
 
 The old UI must not be deleted until the v2 Workstation can independently

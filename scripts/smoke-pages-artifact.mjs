@@ -68,6 +68,24 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.welcomeReady === 'true');
   assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 
+  // Old bookmarked URLs must reach v2 while the retired editor scripts remain
+  // absent from the production artifact (legacy tests still run from Git).
+  const retired = await readFile(resolve(root, 'app-legacy.html'), 'utf8');
+  assert.ok(retired.includes("location.replace('./app.html'"));
+  assert.doesNotMatch(retired, /workstation-boot|app\.js|workstation\.css/);
+  assert.equal((await page.request.get(base + '/app.js')).status(), 404);
+  assert.equal((await page.request.get(base + '/workstation.css')).status(), 404);
+  await open('/app-legacy.html?legacy_redirect_probe=1');
+  await page.waitForURL(
+    (url) =>
+      url.pathname.endsWith('/WaferCAD/app.html') &&
+      url.searchParams.get('legacy_redirect_probe') === '1',
+  );
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
+  assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+
   await open('/app.html?start=empty');
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
     timeout: 120000,
