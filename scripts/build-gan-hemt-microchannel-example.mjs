@@ -463,6 +463,41 @@ export async function buildGanMicrochannel() {
   );
   bookmark('06 Integrated GaN HEMT / final');
 
+  // Production builder invariants: verify actual material occupancy, never
+  // mistake the translucent internal walls of a TSV for a filled metal post.
+  // Separate unit tests repeat these checks on the persisted project.
+  function materialAt(point, z) {
+    return model.regions.some(
+      (region) =>
+        vectorApi.pointInMulti(point, region.geom) &&
+        region.stack.some((segment) => segment.z0 < z && segment.z1 > z),
+    );
+  }
+  for (const x of [-1450, 1450]) {
+    for (const y of [-950, 950]) {
+      for (const z of [-150, 50, 250, 450, 550]) {
+        assert.equal(materialAt([x, y], z), false, 'TSV void filled at ' + [x, y, z]);
+        assert.equal(materialAt([x + 43, y], z), true, 'Missing TSV sidewall at ' + [x, y, z]);
+      }
+    }
+  }
+  const cooledSiC = model.layers.find((layer) =>
+    layer.name === 'GaN HEMT SiC substrate 99 um',
+  );
+  assert.ok(cooledSiC, 'SiC chip is missing');
+  const cooledSegments = owner([30, 0]).stack.filter((segment) =>
+    segment.layerId === cooledSiC.id,
+  );
+  assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
+  assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
+  assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
+  assert.equal(materialAt([30, 0], 604.99), false, 'SiC backside is coolant-obstructed');
+  const siMaterials = model.layers.filter((layer) =>
+    layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
+  );
+  assert.equal(siMaterials.length, 5);
+  assert.ok(siMaterials.every((layer) => layer.color === GAN_SILICON_COLOR));
+
   Object.assign(root, snapshot());
   root.name = 'GaN HEMT / 2.5D four-layer microchannels (paper-derived surrogate)';
   root.snapshotBranches = {
@@ -503,6 +538,11 @@ export async function buildGanMicrochannel() {
     outputBytes: Buffer.byteLength(json),
     layers: model.layers.length,
     regions: model.regions.length,
+    checks: {
+      fourTSVsAreTrueVoidColumns: true,
+      SiCBacksideContactsCoolantVoid: true,
+      fiveDistinctSiliconLayerIdsShareMaterialColor: true,
+    },
     checkpoints,
   };
   return { project: root, json, validation };
