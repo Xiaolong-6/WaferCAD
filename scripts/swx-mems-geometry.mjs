@@ -259,6 +259,7 @@ function makeFoldedSprings(moveY) {
   // Paper Fig S7: 30um/22um beams, 200nm width and 1.5um clear gap.
   // The loop path joins a stationary pad at +/-40um to a moving
   // triangular shuttle rail, with displacements graded along the beam.
+  const halfShuttle = SWX_REPORTED.shuttleWidthUm / 2;
   for (const sign of [-1, 1]) {
     const y = (distance) => sign * distance;
     const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
@@ -272,7 +273,7 @@ function makeFoldedSprings(moveY) {
       [2 * pitch, y(40 - long + short)],
       [2 * pitch, y(40 - long)],
       [3 * pitch, y(40 - long)],
-      [3 * pitch, sign * SWX_REPORTED.shuttleWidthUm / 2],
+      [3 * pitch, sign * halfShuttle],
     ];
     const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
     parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
@@ -285,13 +286,14 @@ function makeFoldedSprings(moveY) {
 function makeStructuralAligners(moveY) {
   const fixed = [],
     flexure = [];
+  const halfShuttle = SWX_REPORTED.shuttleWidthUm / 2;
   for (const sign of [-1, 1]) {
     const anchor = [-18, sign * 9.5];
     fixed.push(rect(anchor[0], anchor[1], 6, 6));
     const first = [anchor[0] - SWX_REPORTED.structuralAlignerLengthUm, anchor[1]];
     const corner = [first[0], sign * 5.7];
     const elbow = [-22, sign * 5.7 + moveY * 0.4];
-    const attach = [-22, sign * SWX_REPORTED.shuttleWidthUm / 2 + moveY];
+    const attach = [-22, sign * halfShuttle + moveY];
     flexure.push(
       ...polyline([anchor, first, corner, elbow, attach], SWX_REPORTED.structuralAlignerBeamUm),
     );
