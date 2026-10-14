@@ -50,10 +50,9 @@
     }
   }
   function compact(win) {
-    return (
-      Number(win.innerWidth) <= 820 ||
-      (win.matchMedia('(pointer: coarse)').matches && Number(win.screen.width) <= 820)
-    );
+    // Match the CSS layout breakpoint. Pointer type controls hit targets and
+    // canvas gestures, never the chosen document-scrolling layout.
+    return Number(win.innerWidth) <= 820;
   }
   function viewportWidth(win) {
     return compact(win) ? Math.min(Number(win.innerWidth), 820) : Number(win.innerWidth);

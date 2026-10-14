@@ -86,10 +86,10 @@ export function createWorkstationRuntime(project) {
     drawOpen: false,
   };
   const local = {
-    main: { panEnabled: true, zoomEnabled: false, tool: 'none', sectionEditEnabled: false },
-    mask: { panEnabled: true, zoomEnabled: false },
-    section: { panEnabled: false, zoomEnabled: false },
-    three: { mode: 'rotate', zoomEnabled: false },
+    main: { panEnabled: true, zoomEnabled: true, tool: 'none', sectionEditEnabled: false },
+    mask: { panEnabled: true, zoomEnabled: true },
+    section: { panEnabled: true, zoomEnabled: true },
+    three: { mode: 'rotate', zoomEnabled: true },
   };
   let history = null;
   let restoreListener = () => {};

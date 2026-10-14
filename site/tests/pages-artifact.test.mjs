@@ -11,7 +11,6 @@ test('Pages includes product assets but excludes previews and developer-only fix
   for (const path of [
     'index.html',
     'app.html',
-    'app-legacy.html',
     'guide/index.html',
     'ui-v2/workstation-entry.js',
     'ui-v2/workstation-preview.css',
@@ -26,6 +25,9 @@ test('Pages includes product assets but excludes previews and developer-only fix
   }
 
   for (const path of [
+    'app-legacy.html',
+    'app.js',
+    'workstation.css',
     'app-v2.html',
     'app-v2-main.html',
     'app-v2-mask.html',
@@ -72,6 +74,8 @@ test('staging copies production files without altering source or shipping tests'
   await mkdir(join(source, 'examples'), { recursive: true });
   await mkdir(join(source, 'tests'), { recursive: true });
   await writeFile(join(source, 'app.html'), 'production');
+  await writeFile(join(source, 'app-legacy.html'), 'Legacy source must never deploy');
+  await writeFile(join(source, 'app.js'), 'Legacy script must never deploy');
   await writeFile(join(source, 'ui-v2', 'mock-data.js'), 'fixture');
   await writeFile(join(source, 'ui-v2', 'prototypes', 'index.html'), 'prototype');
   await writeFile(join(source, 'tests', 'example.test.mjs'), 'test');
@@ -79,6 +83,10 @@ test('staging copies production files without altering source or shipping tests'
 
   await stagePagesAssets({ source, destination });
   assert.equal(await readFile(join(destination, 'app.html'), 'utf8'), 'production');
+  const redirect = await readFile(join(destination, 'app-legacy.html'), 'utf8');
+  assert.match(redirect, /location\.replace\('\.\/app\.html'/);
+  assert.doesNotMatch(redirect, /Legacy source must never deploy/);
+  await assert.rejects(access(join(destination, 'app.js')));
   assert.equal(await readFile(join(destination, 'examples', 'live.wafercad'), 'utf8'), 'project');
   await assert.rejects(access(join(destination, 'ui-v2', 'mock-data.js')));
   await assert.rejects(access(join(destination, 'ui-v2', 'prototypes', 'index.html')));
@@ -94,6 +102,11 @@ test('real Pages staging preserves each entrypoint local stylesheet and script',
   const destination = join(root, 'pages');
   await stagePagesAssets({ source, destination });
 
+  const redirect = await readFile(join(destination, 'app-legacy.html'), 'utf8');
+  assert.ok(redirect.includes("location.replace('./app.html' + location.search + location.hash)"));
+  assert.doesNotMatch(redirect, /app\.js|workstation\.css|workstation-boot/i);
+  await assert.rejects(access(join(destination, 'app.js')));
+  await assert.rejects(access(join(destination, 'workstation.css')));
   for (const page of ['index.html', 'app.html', 'app-legacy.html']) {
     const html = await readFile(join(destination, page), 'utf8');
     const resourceTags = html.match(/<(?:script|link)\b[^>]*>/g) || [];

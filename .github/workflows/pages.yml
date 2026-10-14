@@ -149,12 +149,30 @@ jobs:
   stage-pages:
     name: Build and smoke production Pages artifact
     needs: [release-quality, release-browser, release-ui-v2, release-science]
-    if: ${{ github.ref == 'refs/heads/main' }}
+    # Without an explicit status function, any intentionally skipped upstream
+    # job can silently skip both staging and deployment while leaving CI green.
+    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
+      - name: Require successful same-revision release gates
+        shell: bash
+        env:
+          QUALITY_RESULT: ${{ needs.release-quality.result }}
+          BROWSER_RESULT: ${{ needs.release-browser.result }}
+          UI_V2_RESULT: ${{ needs.release-ui-v2.result }}
+          SCIENCE_RESULT: ${{ needs.release-science.result }}
+        run: |
+          for gate in QUALITY BROWSER UI_V2 SCIENCE; do
+            result_var="${gate}_RESULT"
+            result="${!result_var}"
+            if [[ "$result" != success ]]; then
+              echo "::error::Release $gate gate is $result (expected success); refusing to publish."
+              exit 1
+            fi
+          done
       - name: Checkout verified revision
         uses: actions/checkout@v6
       - uses: actions/setup-node@v6

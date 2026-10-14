@@ -1,10 +1,14 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Developer fixtures are versioned in Git but are not part of the public application.
 const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/'];
 const excludedFiles = new Set([
+  // Retired editor source stays in Git solely for historical browser regressions.
+  'app-legacy.html',
+  'app.js',
+  'workstation.css',
   'app-v2.html',
   'app-v2-main.html',
   'app-v2-mask.html',
@@ -51,6 +55,23 @@ export async function stagePagesAssets({
     recursive: true,
     filter: (path) => shouldPublishSitePath(relative(sourceRoot, path)),
   });
+  // Keep historical bookmarks working without shipping an executable Legacy UI.
+  // Preserve the same-origin query string for old Example/Open links, but never
+  // instantiate the old editor or touch saved Workspace/Recovery data here.
+  await writeFile(
+    join(destinationRoot, 'app-legacy.html'),
+    `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WaferCAD — Workspace moved</title>
+  <script>location.replace('./app.html' + location.search + location.hash);</script>
+</head>
+<body><p>WaferCAD has moved to the <a href="./app.html">current workstation</a>.</p></body>
+</html>
+`,
+  );
   return destinationRoot;
 }
 

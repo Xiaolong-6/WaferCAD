@@ -11,7 +11,7 @@ Its core question is practical: **given this mask and this sequence of process s
 - [Open the default Workstation (UI v2)](https://xiaolong-6.github.io/WaferCAD/app.html) — the released four-view workspace.
 - [Start with a blank project](https://xiaolong-6.github.io/WaferCAD/app.html?start=empty) — intentionally create a new Base; ordinary opening of the Workstation may instead restore existing browser state.
 
-The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The optional Legacy URL remains available for compatibility, but is not linked from the Workstation. Save or export your project before opening it directly.
+The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The historical `app-legacy.html` URL redirects to the current v2 Workstation in published Pages; no separate Legacy editor is shipped. Existing `.wafercad` project files and browser Recovery remain supported.
 
 The Welcome page also offers **nine shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 
@@ -114,7 +114,7 @@ Rebuilding Base after Process edits requires an explicit History decision: keep 
 
 ## Repository layout
 
-- `site/` — browser application source, including `app.html` (default UI v2), `app-legacy.html` (Welcome preview and compatibility), nine Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`, omitting developer-only UI previews and tests.
+- `site/` — browser application source, including `app.html` (default UI v2), the retained Legacy test entry `app-legacy.html`, nine Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`: the published Legacy URL is only a redirect; old editor JS/CSS, developer prototypes, and tests are excluded. Welcome previews run on read-only v2.
 - `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
 - `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
 - `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts

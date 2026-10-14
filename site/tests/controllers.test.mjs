@@ -477,3 +477,43 @@ test('plan view controller preserves coordinate round-trips and resets in place'
   assert.equal(maskRenders, 1);
   assert.equal(mainRenders, 0);
 });
+
+test('Mask preview fits content without cropping scientific editor substrate bounds', () => {
+  const model = { width: 20000, height: 20000, revision: 1, regions: [] };
+  const layout = {
+    elements: [{ layer: 1, datatype: 0 }],
+    linework: [],
+    bounds: { minX: 4000, minY: -25, maxX: 4100, maxY: 25 },
+  };
+  const make = (preview, mask) =>
+    createPlanViewController({
+      windowRef: { devicePixelRatio: 1 },
+      getModel: () => model,
+      getLayout: () => mask,
+      getMaskSourceMode: () => 'file',
+      getMaskTransform: () => ({ scale: 1 }),
+      getPlanViews: () => ({
+        mask: { zoom: 1, panX: 0, panY: 0 },
+        main: { zoom: 1, panX: 0, panY: 0 },
+      }),
+      maskPoint: (point) => point,
+      fitMaskToContent: preview,
+      getViewportMargin: () => 24,
+      renderMask: () => {},
+      renderMain: () => {},
+    });
+  const editor = make(false, layout).viewport(400, 300, 'mask');
+  const preview = make(true, layout);
+  const fitted = preview.viewport(400, 300, 'mask');
+  assert.ok(fitted.s > editor.s * 50, 'localized contacts should be legible in preview');
+  const center = preview.worldToCanvas([4050, 0], fitted);
+  assert.ok(Math.abs(center[0] - 200) < 1e-8, 'fit uses actual mask X center');
+  assert.ok(Math.abs(center[1] - 150) < 1e-8, 'fit uses actual mask Y center');
+  const noContent = make(true, { ...layout, elements: [], linework: [] }).viewport(
+    400,
+    300,
+    'mask',
+  );
+  assert.ok(Number.isFinite(noContent.s) && noContent.s > 0, 'empty mask fits substrate');
+  assert.equal(preview.viewport(400, 300, 'main').s, editor.s);
+});

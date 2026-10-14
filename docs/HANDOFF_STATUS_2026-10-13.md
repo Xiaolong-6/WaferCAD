@@ -16,10 +16,16 @@ That is a Legacy data-compatibility gate, not removal of the old UI.
 [PR #223](https://github.com/Xiaolong-6/WaferCAD/pull/223) moves the Welcome
 interactive preview iframe to a **read-only v2** final-stage project and keeps
 Main/Mask/3D/Section views. It adds writer-lease and autosave isolation checks.
-This is a draft candidate until the latest Quality/browser acceptance passes;
-it is not yet deployed. The retained `app-legacy.html`, old DOM-based science
-tests, and test adapters must be migrated before Legacy removal. No scientific
+It merged at `main@a54dd4b` after all relevant PR checks passed.
+The retained Legacy DOM-based scientific tests and test adapters still need
+migration before the old source implementation can be deleted. No scientific
 kernel/schema or Recovery storage deletion is authorized by this P2 follow-up.
+
+The next public-artifact retirement change keeps an `app-legacy.html`
+bookmark redirect in the published tree but excludes the old `app.js`
+and `workstation.css` editor resources. It is a separate PR candidate
+until its staged Pages and CI gates pass. Retained scientific test sources
+are intentionally untouched and should not be declared fully retired.
 
 The workflows constrain Pages write/OIDC permissions in source control;
 repository/environment administrator settings remain a separate verification

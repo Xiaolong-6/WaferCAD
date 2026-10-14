@@ -47,6 +47,19 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires same-SHA Release Quality (`npm run check`), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
 
+## Retired public Legacy editor
+
+Production Pages staging now replaces the old `app-legacy.html` source with
+a small same-origin, query-preserving redirect to `app.html`. The old editor
+bootstrap `app.js` and `workstation.css` are excluded from the deploy
+artifact; they stay in Git because historical DOM-based scientific browser
+tests still own those implementations. PRs touching the artifact builder run
+the staged Pages browser smoke, which verifies the legacy bookmark redirect,
+absence of old JS/CSS, and real production Workers under `/WaferCAD/`.
+The redirect performs no Project/Recovery storage migration or mutation.
+Removing the retained Legacy source and test adapters is a separate step,
+requiring replacement scientific test ownership.
+
 ## Welcome four-view preview isolation
 
 The production v2 Stage C/M4 owner also exercises

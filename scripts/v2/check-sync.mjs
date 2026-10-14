@@ -119,10 +119,27 @@ try {
         client: node.clientHeight,
         scroll: node.scrollHeight,
       }));
-      assert.ok(historyBounds.client > 0 && historyBounds.scroll > historyBounds.client);
-      await historyScroll.hover();
-      await page.mouse.wheel(0, 500);
-      await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      assert.ok(historyBounds.client > 0);
+      if (width <= 820) {
+        const documentRange = await page.evaluate(
+          () => document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight,
+        );
+        assert.ok(documentRange > 0, 'Mobile History expands the document scroll');
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await historyScroll.hover();
+        await page.mouse.wheel(0, 500);
+        await page.waitForFunction(() => document.scrollingElement.scrollTop > 0);
+        assert.equal(
+          await historyScroll.evaluate((node) => getComputedStyle(node).overflowY),
+          'visible',
+          'History must not own a second mobile vertical scroller',
+        );
+      } else {
+        assert.ok(historyBounds.scroll > historyBounds.client);
+        await historyScroll.hover();
+        await page.mouse.wheel(0, 500);
+        await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      }
       await page.setViewportSize({ width, height: 960 });
       await panel('process');
       await page.locator('[data-action="process-mode:code"]').click();
