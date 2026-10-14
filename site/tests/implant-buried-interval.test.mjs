@@ -25,7 +25,11 @@ test('buried Implant depths are physically clipped without changing substrate ma
       area: model.boundary,
     });
     assert.equal(invalid.changed, false, 'Out-of-range interval must fail');
-    assert.deepEqual(model, before, 'Invalid Implant must leave material/History inputs untouched');
+    assert.deepEqual(
+      model,
+      before,
+      'Invalid Implant must leave material/History inputs untouched',
+    );
   }
   const valid = modelApi.applyOperation(model, {
     type: 'implant',
