@@ -319,7 +319,7 @@ export async function buildSwxMems(state = 'off') {
     'A suspended beam requires pre-release BOX beneath it',
   );
   etch(
-    'HF vapor BOX undercut release, illustrative 2um lateral front',
+    'HF vapor BOX undercut release, illustrative 4um lateral front',
     BOX,
     SWX_ASSUMPTIONS.releaseUndercutUm,
     'undercut',
@@ -348,6 +348,33 @@ export async function buildSwxMems(state = 'off') {
     anchor?.stack.some((item) => item.layerId === layerIds.get(BOX)),
     'Stationary anchor lost its BOX support',
   );
+  // The MEMS comb buses are suspended. A BOX slab remaining underneath the
+  // 6um-wide long rails, as in the initial browser screenshots, is a real
+  // release failure even when one narrow beam has been freed.
+  const siId = layerIds.get(DEVICE);
+  const boxId = layerIds.get(BOX);
+  for (const point of [
+    [25, 9], [25, -21], [25, 0], [25, -11.2],
+  ]) {
+    const column = readPoint(model, vectorApi, point);
+    assert.ok(
+      column?.stack.some((segment) => segment.layerId === siId),
+      'Comb body has no silicon at ' + point.join(','),
+    );
+    assert.ok(
+      !column?.stack.some((segment) => segment.layerId === boxId),
+      'Comb body is still supported by unreleased BOX at ' + point.join(','),
+    );
+  }
+  for (const point of [
+    [2, 40], [2, -40], [46, 9], [46, -21],
+  ]) {
+    const column = readPoint(model, vectorApi, point);
+    assert.ok(
+      column?.stack.some((segment) => segment.layerId === boxId),
+      'Supported contact anchor lost BOX at ' + point.join(','),
+    );
+  }
   assert.ok(
     !gap?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
     'Central SWX air gap was filled with Si',
