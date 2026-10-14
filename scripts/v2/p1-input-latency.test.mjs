@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  summarizeHardwareInput,
-  threeCameraGestureChanged,
-} from './p1-input-latency.mjs';
+import { summarizeHardwareInput, threeCameraGestureChanged } from './p1-input-latency.mjs';
 
 const event = (phase, queueMs, extra = {}) => ({
   trusted: true,
@@ -17,8 +14,7 @@ test('a responsive hardware sample requires actual trusted loading-phase input',
   assert.equal(summarizeHardwareInput([]).responsive, false);
   assert.equal(summarizeHardwareInput([event('ready', 2)]).responsive, false);
   assert.equal(
-    summarizeHardwareInput([event('loading', 5, { trusted: false }), event('ready', 3)])
-      .responsive,
+    summarizeHardwareInput([event('loading', 5, { trusted: false }), event('ready', 3)]).responsive,
     false,
   );
   const result = summarizeHardwareInput([
@@ -52,17 +48,8 @@ test('500 ms input threshold fails closed with no samples or delayed input', () 
 test('real Orbit/Pan/Zoom camera evidence needs finite three-vector change', () => {
   const before = { position: [115, -125, 95], target: [0, 0, 0] };
   assert.equal(threeCameraGestureChanged(before, structuredClone(before)), false);
-  assert.equal(
-    threeCameraGestureChanged(before, { ...before, position: [115, -125, 94] }),
-    true,
-  );
-  assert.equal(
-    threeCameraGestureChanged(before, { ...before, target: [1, 0, 0] }),
-    true,
-  );
+  assert.equal(threeCameraGestureChanged(before, { ...before, position: [115, -125, 94] }), true);
+  assert.equal(threeCameraGestureChanged(before, { ...before, target: [1, 0, 0] }), true);
   assert.equal(threeCameraGestureChanged(before, { position: [1, 2] }), false);
-  assert.equal(
-    threeCameraGestureChanged(before, { ...before, position: [NaN, 2, 3] }),
-    false,
-  );
+  assert.equal(threeCameraGestureChanged(before, { ...before, position: [NaN, 2, 3] }), false);
 });
