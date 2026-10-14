@@ -216,6 +216,9 @@ async function verifyThreeGestures() {
   if (!box) return { passed: false, reason: '3D canvas is not visible' };
   const camera = () => page.evaluate(() => window.WaferCadV2Workstation?.snapshot?.().threeCamera);
   const before = await camera();
+  const eventStart = await page.evaluate(
+    () => window.__waferHardwareVitals?.inputEvents.length || 0,
+  );
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y);
@@ -225,9 +228,20 @@ async function verifyThreeGestures() {
   await page.mouse.wheel(0, -250);
   await sleep(400);
   const after = await camera();
+  const delivered = await page.evaluate(
+    (start) => (window.__waferHardwareVitals?.inputEvents || []).slice(start),
+    eventStart,
+  );
+  const pointerObserved = delivered.some(
+    (event) => event.threeCanvas && event.kind === 'pointermove',
+  );
+  const wheelObserved = delivered.some(
+    (event) => event.threeCanvas && event.kind === 'wheel',
+  );
   return {
-    passed: threeCameraGestureChanged(before, after),
-    pointerAndWheelEvents: true,
+    passed: threeCameraGestureChanged(before, after) && pointerObserved && wheelObserved,
+    pointerObserved,
+    wheelObserved,
     cameraBefore: before,
     cameraAfter: after,
   };
@@ -403,8 +417,13 @@ try {
   // Run gesture checks after the pixel-stability capture; the gestures may
   // change the inspection camera but never the scientific model.
   report.threeGestures = await verifyThreeGestures();
+  report.threeGestures.modelUnchanged =
+    (await hostMetrics()).modelHash === report.cases.qualityReload.modelHash;
   if (!report.threeGestures.passed) {
-    report.validationFailures.push('3D pointer/wheel gesture did not change the camera.');
+    report.validationFailures.push('3D canvas gesture delivery or camera change failed.');
+  }
+  if (!report.threeGestures.modelUnchanged) {
+    report.validationFailures.push('3D gestures unexpectedly changed scientific model.');
   }
   for (const [label, sample] of Object.entries(report.cases)) {
     if (sample.input && !sample.input.responsive) {
@@ -429,6 +448,7 @@ try {
     report.cases.initialM3D.input.responsive &&
     report.cases.qualityReload.input.responsive &&
     report.threeGestures.passed &&
+    report.threeGestures.modelUnchanged &&
     report.cases.initialM3D.responsiveness.responsive &&
     report.cases.qualityReload.responsiveness.responsive &&
     report.errors.length === 0;
