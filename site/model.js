@@ -548,7 +548,15 @@ function partitionProcessRegions(
       const overlap = intersection(left, right);
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
-      if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
+      // A fallback union may leave the same complete physical stack in two
+      // overlapping computational regions. Assigning that duplicate overlap
+      // to one owner preserves material/Z exactly; a different stack must
+      // still fail the strict persistence-grid geometry threshold.
+      if (
+        rejectOverlapAbove != null &&
+        overlapArea > rejectOverlapAbove &&
+        stackKey(previous.stack) !== stackKey(region.stack)
+      ) {
         const witness = {
           box: multiBounds(overlap),
           owners: [previous, region].map(({ id, stack }) => ({
@@ -910,17 +918,14 @@ function applyConformalMaterialWalls(
       continue;
     }
 
-    // Derive both halves from one Boolean complement: an independent
-    // intersection(region, band) and difference(region, band) can round their
-    // shared edge differently and leave two owners at a physical wall.
-    const rest = difference(region.geom, band),
-      wall = difference(region.geom, rest);
+    // Derive both halves from the same band. Subtracting the already clipped
+    // target can retry on a different grid and leave two owners at one wall.
+    const rest = difference(region.geom, band);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
     if (!isEmpty(target.geom)) {
-      if (isEmpty(wall)) throw new Error('Conformal lost a material-wall partition.');
       next.push({
         id: `region-${model.nextRegionId++}`,
-        geom: wall,
+        geom: target.geom,
         stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
       });
     }
