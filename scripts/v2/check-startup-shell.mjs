@@ -38,17 +38,21 @@ try {
     window.__firstStartupPaintOrder = order;
     let planarSeen = false;
     let threeSeen = false;
-    new MutationObserver(() => {
+    new window.MutationObserver(() => {
       if (
         !planarSeen &&
         ['main', 'mask', 'section'].some(
-          (key) => document.querySelector(`.p-view[data-view="${key}"]`)?.dataset.viewLoad === 'ready',
+          (key) =>
+            document.querySelector(`.p-view[data-view="${key}"]`)?.dataset.viewLoad === 'ready',
         )
       ) {
         planarSeen = true;
         order.push('planar');
       }
-      if (!threeSeen && Number(document.getElementById('threeHost')?.dataset.rendererFrameSerial || 0) > 0) {
+      if (
+        !threeSeen &&
+        Number(document.getElementById('threeHost')?.dataset.rendererFrameSerial || 0) > 0
+      ) {
         threeSeen = true;
         order.push('three');
       }
