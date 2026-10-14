@@ -9,8 +9,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { createModel } = await import('../model.js');
-const { buildRenderSurfacePlan, cachedRenderSurfacePlan } =
-  await import('../renderer-geometry.js');
+const { buildRenderSurfacePlan, cachedRenderSurfacePlan } = await import('../renderer-geometry.js');
 const { buildRenderSurfacePlanAsync } = await import('../renderer-surface-plan-async.js');
 
 function largeSurfacePlan() {
