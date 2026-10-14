@@ -188,7 +188,7 @@ test('lattice shuttle physically connects the upper and lower moving comb buses'
     );
     const travel = g.travelUm;
     const points = [
-      [-20, 1.8 + travel],
+      [-20, SWX_REPORTED.shuttleWidthUm / 2 + travel],
       [25, travel],
       [25, -11.2 + travel],
       [42, -6 + travel],
