@@ -31,7 +31,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 1. Interposer XY 6000 × 5000 µm is a representative viewing field inferred from the published photographs and scale markers, not a separately reported precision dimension.
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
-4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable. The publication also shows _inlet/outlet diversion structures_ feeding the parallel channels (Fig. 1c and 2h). Their geometries are unpublished; the current example does not reconstruct these manifold fan-outs. The rectangular bottom cavity and inferred backside bores do not constitute a hydraulically validated fan-out.
+4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable. **Fig. 1(c) / Fig. 2(h) show symmetric curved inlet/outlet diversion structures**, and the Example now includes a separate top-cap DRIE step using Mask 22: twelve rounded diversion branches (six on each end), plus two central 110 × 50 µm collection throats at Y = ±425 µm. Each branch is a 24 µm-wide piecewise curve with bends between Y = ±355 and ±430 µm, merging with its corresponding 30 µm-wide straight channel. The coordinates and curve geometry are explicitly **inferred**, not the authors' GDS. The published figure has its inlet/outlet horizontally; the Example is rotated 90° in XY so flow is along Y.
 5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±415 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Real TSVs have stepped diameters and Cu/NiPaAu metallization; plating remains source metadata, not an electrically validated conductive structure.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
@@ -69,6 +69,14 @@ manufacturable sidewall profiles, bonded-wafer hermeticity, hydraulic flow
 through the assembled package, or electrical continuity.
 
 Every inferred element must remain labeled as an assumption; do not promote it to source-derived geometry.
+
+## Diversion manifold topology verification
+
+The manifold was reconstructed from the *layout topology* shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **22 Recipe operations**, **23 History nodes** and **13 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
+
+A structural connectivity invariant interpolates points along real 3D *empty space*: it follows each of the two Back DRIE ports through the stepped lower chambers into its top-cap throat, then follows all six curved arms into the corresponding straight channel. All 12 side-to-channel paths must be free of material, and neighboring Si ribs must remain solid. This is stronger than testing that the inlet/outlet bores or masks merely overlap in 2D.
+
+**Limit:** No Navier–Stokes, pressure-drop, velocity-field, laminar-flow distribution, etch tolerance, or wafer-bond seal is simulated. Correct geometrical connectivity does not establish equal per-channel flow. The exact number, curvature and width of the real paper's internal diversion tracks are uncertain and must be revisited if original author GDS becomes available.
 
 ## Section Z display contract
 
@@ -112,9 +120,8 @@ The candidate has passed the following **geometry-surrogate** acceptance checks 
 
 ### Explicitly out of scope or unverified
 
-- [ ] **Original hydraulic diversion fan-outs:** the bottom chamber and two
-      approximate back ports are open geometric voids, but the inlet/outlet diversion
-      manifolds and uniformity of parallel-channel flow are **not reconstructed**.
+- [x] **Inferred structural fan-outs:** a two-ended curved diversion network with 12 branches, two throats and all six channel connections is modeled. No original GDS is available.
+- [ ] **Original hydraulic mask and uniformity:** precise author diversion contours, pressure drop, turbulence/laminar regime and uniformity of parallel-channel flow remain **unverified**.
 - [ ] **Native wafer assembly:** two independently etched 400 µm Si wafers cannot
       yet be aligned and directly bonded as a single Kernel process step.
 - [ ] **Electrical, thermal and packaging validation:** plated conductive TSVs,
@@ -127,9 +134,10 @@ The candidate has passed the following **geometry-surrogate** acceptance checks 
 
 The real Section captures a four-level stepped opening under the SiC HEMT, consistent
 with the principal **topological layout** in article Fig. 1a / Fig. 2g. The real
-3D half-cutaway reveals the central channels but does not reproduce the actual
-Fig. 1c / Fig. 2h diversion routing. Both views are structural checks, not
-dimensional image-matching or a proof of complete process/flow equivalence.
+3D half-cutaway reveals the central channels. The reconstructed curved end
+diversions follow the *topological pattern* in Fig. 1(c) and Fig. 2(h) but
+are not digitized exact original masks. Both views are structural checks,
+not dimensional image-matching or a proof of complete flow equivalence.
 
 A reusable `Bond / Attach Structure` Kernel operator would be required for
 genuine two-wafer process reconstruction. This candidate is suitable for
