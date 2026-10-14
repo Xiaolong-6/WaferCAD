@@ -569,7 +569,10 @@ function validateModel(model, budget, geometryCache) {
       }
       assertObject(dopant.profile, `${path}.profile`);
       if (dopant.profile.kind !== 'qualitative-interval') {
-        fail(`${path}.profile.kind`, 'must be qualitative-interval; concentrations are not supported.');
+        fail(
+          `${path}.profile.kind`,
+          'must be qualitative-interval; concentrations are not supported.',
+        );
       }
       if (dopant.sourceImplantId != null) {
         assertString(dopant.sourceImplantId, `${path}.sourceImplantId`, { max: 128 });
