@@ -11,7 +11,7 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  release-quality:\n/);
   assert.match(pages, /  release-browser:\n/);
   assert.match(pages, /  release-ui-v2:\n/);
-  assert.match(pages, /needs: \[release-quality, release-browser, release-ui-v2\]/);
+  assert.match(pages, /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/);
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
@@ -26,6 +26,28 @@ test('production Pages requires quality, browser and UI acceptance before publis
     commitLine?.trim(),
     String.raw`printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json`,
   );
+});
+
+test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
+  const pages = workflow('pages');
+  assert.match(pages, /  release-impact:\\n/);
+  assert.match(pages, /  release-main-mask:\\n/);
+  assert.match(pages, /  release-klayout:\\n/);
+  assert.match(pages, /  release-recipe:\\n/);
+  assert.match(pages, /  release-science:\\n/);
+  assert.match(pages, /needs: \\[release-impact, release-main-mask, release-klayout, release-recipe\\]/);
+  assert.match(pages, /if: \\$\\{\\{ always\\(\\) \\}\\}/);
+  assert.match(pages, /test "\\$result" = success/);
+  assert.match(pages, /test "\\$result" = skipped/);
+  for (const [job, path] of [
+    ['release-main-mask', 'ui-v2-main-mask.yml'],
+    ['release-klayout', 'klayout-compat.yml'],
+    ['release-recipe', 'process-recipe-safety.yml'],
+  ]) {
+    assert.ok(pages.includes(`  ${job}:`));
+    assert.ok(pages.includes(`uses: ./.github/workflows/${path}`));
+    assert.match(workflow(path), /^  workflow_call:/m);
+  }
 });
 
 test('browser and v2 owners are reusable without racing main-push jobs', () => {
