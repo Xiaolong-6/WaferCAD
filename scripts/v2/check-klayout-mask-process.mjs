@@ -55,11 +55,30 @@ try {
       );
       // The persisted selection and visible checkbox state must converge
       // after the worker import, not only after switching domains.
-      await page.waitForFunction(
-        () => document.querySelector('#maskLayerList input:checked') !== null,
-        null,
-        { timeout: 30000 },
-      );
+      try {
+        await page.waitForFunction(
+          () => document.querySelector('#maskLayerList input:checked') !== null,
+          null,
+          { timeout: 6000 },
+        );
+      } catch {
+        const diagnostic = await page.evaluate(() => {
+          const list = document.getElementById('maskLayerList');
+          const snap = window.WaferCadV2Workstation.snapshot();
+          return {
+            selectedKeys: snap.selectedLayerKeys,
+            root: snap.layout.root,
+            combos: snap.layout.combos?.length,
+            activeCell: snap.activeCell,
+            bodyDomain: document.body.dataset.domain,
+            listCount: document.querySelectorAll('#maskLayerList').length,
+            listConnected: list?.isConnected,
+            listHtml: list?.innerHTML.slice(0, 1500),
+            checkedCount: document.querySelectorAll('#maskLayerList input:checked').length,
+          };
+        });
+        throw Error('Mask browser layer checkboxes did not synchronize: ' + JSON.stringify(diagnostic));
+      }
       await waitForPaint(page);
       const snap = await snapshot();
       const canvas = page.locator('#maskCanvas');
