@@ -1,3 +1,9 @@
+[36;1mecho TCMOS_BROWSER_FMT_START[0m
+[36;1mnpx prettier scripts/tcmos-browser-acceptance.mjs[0m
+[36;1mecho TCMOS_BROWSER_FMT_END[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+TCMOS_BROWSER_FMT_START
 // Browser acceptance of a generated, unbundled T-CMOS candidate in the real v2 Workstation.
 // Generates evidence without silently publishing the candidate as a Welcome Example.
 import assert from 'node:assert/strict';
@@ -191,7 +197,10 @@ try {
     { timeout: 120000 },
   );
   const tiltState = await snap();
-  assert.deepEqual(tiltState.model.implants.slice(0, 2).map((item) => item.tilt), [18, 18]);
+  assert.deepEqual(
+    tiltState.model.implants.slice(0, 2).map((item) => item.tilt),
+    [18, 18],
+  );
   assert.deepEqual(tiltState.section, { a: [-4.45, 0], b: [-2.95, 0] });
   await page.locator('[data-action="maximize:section"]').first().click();
   await waitForPaint(page);
