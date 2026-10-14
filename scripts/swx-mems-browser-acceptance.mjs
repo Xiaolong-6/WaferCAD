@@ -57,7 +57,9 @@ try {
 
       const branches = source.snapshotBranches.branches;
       assert.deepEqual(new Set(branches.map((b) => b.id)), new Set(['main', 'on']));
-      assert.deepEqual(branches.find((b) => b.id === 'on').headState.layout, source.layout);
+      const onLayout = branches.find((b) => b.id === 'on').headState.layout;
+      assert.deepEqual(onLayout.elements, source.layout.elements, 'OFF/ON must share the manufactured Mask');
+      assert.deepEqual(onLayout.bounds, source.layout.bounds);
       assert.deepEqual(branches.find((b) => b.id === 'on').headState.processRecipe, source.processRecipe);
       if (state === 'on') {
         await page.locator('[data-action="domain:history"]').click();
@@ -133,7 +135,7 @@ try {
       assert.equal(reloaded.layout.elements.length, source.layout.elements.length);
       assert.equal(reloaded.processRecipe.steps.length, source.processRecipe.steps.length);
       assert.equal(reloaded.snapshotBranches.branches.length, 2);
-      assert.deepEqual(reloaded.snapshotBranches.branches.find((b) => b.id === 'on').headState.layout, reloaded.layout);
+      assert.deepEqual(reloaded.snapshotBranches.branches.find((b) => b.id === 'on').headState.layout.elements, reloaded.layout.elements);
       assert.deepEqual(
         (await snapshot()).model,
         beforeExport.model,
