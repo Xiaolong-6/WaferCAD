@@ -221,8 +221,7 @@ export function createSurfacePlanStreamReceiver() {
         ) {
           throw new Error('Invalid large polygon point batch');
         }
-        const ring =
-          plan.caps[bigPolygon.capIndex].polys[bigPolygon.polyIndex][packet.ringIndex];
+        const ring = plan.caps[bigPolygon.capIndex].polys[bigPolygon.polyIndex][packet.ringIndex];
         if (
           packet.startIndex !== ring.length ||
           ring.length + packet.points.length > bigPolygon.expectedPoints
