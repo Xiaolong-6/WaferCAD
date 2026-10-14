@@ -41,9 +41,9 @@ jobs:
         if: always()
         run: |
           for file in scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs scripts/tcmos-browser-acceptance.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md; do
-            printf 'TCMOS_FORMAT_BEGIN:%s\\n' "$file"
+            echo "TCMOS_FORMAT_BEGIN:$file"
             npx prettier "$file"
-            printf 'TCMOS_FORMAT_END:%s\\n' "$file"
+            echo "TCMOS_FORMAT_END:$file"
           done
           node -e 'const fs=require("node:fs"); const f="test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad"; if(fs.existsSync(f)){const b=fs.readFileSync(f).toString("base64"); for(let i=0;i<b.length;i+=4000) console.log("TCMOS_FIXTURE_B64:"+b.slice(i,i+4000));}'
       - name: Share candidate project and verification evidence
