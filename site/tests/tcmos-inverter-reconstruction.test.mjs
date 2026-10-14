@@ -103,9 +103,9 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     false,
   );
   assert.ok(
-    project.snapshotBranches.nodes.slice(0, -1).some((node) =>
-      node.state.model.layers.some((l) => l.id === ild.id && l.visible !== false),
-    ),
+    project.snapshotBranches.nodes
+      .slice(0, -1)
+      .some((node) => node.state.model.layers.some((l) => l.id === ild.id && l.visible !== false)),
     'Earlier process History must retain visible ILD',
   );
   const at = (x, y) =>
