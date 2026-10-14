@@ -122,6 +122,10 @@ try {
         );
       }
 
+      // Export is a persistent nonmodal floating editor: it does not
+      // disappear after saving. Dismiss it explicitly before visual evidence.
+      await page.getByRole('button', { name: 'Close Export Mask' }).click();
+      await page.locator('#maskExportSettings').waitFor({ state: 'hidden' });
       await page.locator('[data-action="view:three"]').click();
       await page.waitForFunction(
         () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
@@ -129,9 +133,25 @@ try {
         { timeout: 120000 },
       );
       await waitForPaint(page);
-      await page.locator('[data-action="view:main"]').click();
+      await page.locator('[data-action="domain:history"]').click();
+      await page.locator('[data-action="mode:overview"]').click();
+      await page.waitForFunction(
+        () => {
+          const stage = document.querySelector('[data-view-mode="overview"]');
+          if (!stage) return false;
+          return ['mainCanvas', 'maskCanvas', 'threeHost', 'sectionCanvas'].every((id) => {
+            const node = document.getElementById(id);
+            if (!node || node.closest('[hidden]')) return false;
+            const rect = node.getBoundingClientRect();
+            return rect.width > 100 && rect.height > 100;
+          });
+        },
+        null,
+        { timeout: 120000 },
+      );
       await waitForPaint(page);
       const beforeExport = await snapshot();
+      assert.equal(beforeExport.projectName, source.name, 'Variant switch changed project identity');
       await page.screenshot({ path: resolve(out, 'swx-' + state + '-four-views.png') });
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#projectExportMenuBtn').click();
