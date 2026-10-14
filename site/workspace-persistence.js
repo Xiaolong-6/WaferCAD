@@ -218,7 +218,9 @@ export async function loadWorkspaceRecoveryPoint(key) {
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
     await done;
     if (!record?.project) return null;
-    const project = structuredClone(record.project);
+    // IndexedDB.get() already returns a detached structured clone. Do not
+    // duplicate the whole geometry/History graph before in-memory migration.
+    const project = record.project;
     expandProjectStorage(project);
     return validateProjectFile(migrateProjectFile(project));
   } finally {
@@ -266,7 +268,9 @@ export async function loadWorkspaceStateDirect() {
   }
 
   if (!record?.project) return null;
-  const project = structuredClone(record.project);
+  // IndexedDB.get() already returns a detached structured clone. Do not
+  // duplicate the whole geometry/History graph before in-memory migration.
+  const project = record.project;
   expandProjectStorage(project);
   const rawVersion = Number(project.version) || 1,
     migrated = validateProjectFile(migrateProjectFile(project));
