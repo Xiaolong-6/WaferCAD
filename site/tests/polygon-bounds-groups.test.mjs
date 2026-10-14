@@ -48,7 +48,10 @@ test('empty, isolated, touching and transitive multi-component bounds', () => {
   ];
   const unchangedBounds = structuredClone(bounds);
   assert.deepEqual(connectedBoundingBoxGroups(bounds), [[0, 1, 2], [3], [4]]);
-  assert.deepEqual(connectedBoundingBoxGroups(bounds, 0.02), [[0, 1, 2], [3, 4]]);
+  assert.deepEqual(connectedBoundingBoxGroups(bounds, 0.02), [
+    [0, 1, 2],
+    [3, 4],
+  ]);
   assert.deepEqual(bounds, unchangedBounds, 'indexing cannot mutate canonical input bounds');
 });
 
