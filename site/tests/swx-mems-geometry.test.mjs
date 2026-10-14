@@ -8,8 +8,10 @@ import {
 } from '../../scripts/swx-mems-geometry.mjs';
 
 const approx = (actual, expected, tolerance = 1e-10) => {
-  assert.ok(Math.abs(actual - expected) <= tolerance,
-    'Expected ' + actual + ' to be within ' + tolerance + ' of ' + expected);
+  assert.ok(
+    Math.abs(actual - expected) <= tolerance,
+    'Expected ' + actual + ' to be within ' + tolerance + ' of ' + expected,
+  );
 };
 
 test('SWX source parameters preserve reported SOI, SWT and MEMS dimensions', () => {
@@ -45,23 +47,33 @@ test('Each pose yields named, bounded and exportable polygon mask layers', () =>
   for (const pose of ['off', 'on']) {
     const generated = createSwxGeometry(pose);
     const [w, h] = SWX_ASSUMPTIONS.fieldUm;
-    assert.deepEqual(generated.layout.bounds,
-      { minX: -w / 2, minY: -h / 2, maxX: w / 2, maxY: h / 2, width: w, height: h });
+    assert.deepEqual(generated.layout.bounds, {
+      minX: -w / 2,
+      minY: -h / 2,
+      maxX: w / 2,
+      maxY: h / 2,
+      width: w,
+      height: h,
+    });
     assert.deepEqual([...generated.maskPolygons.keys()], [1, 2, 3]);
     assert.ok(generated.maskPolygons.get(1).length > 100);
     assert.equal(generated.maskPolygons.get(2).length, 4);
     assert.equal(generated.maskPolygons.get(3).length, 4);
     assert.equal(generated.layout.combos.length, 3);
-    assert.equal(generated.layout.elements.length,
-      [...generated.maskPolygons.values()].reduce((total, array) => total + array.length, 0));
+    assert.equal(
+      generated.layout.elements.length,
+      [...generated.maskPolygons.values()].reduce((total, array) => total + array.length, 0),
+    );
     for (const element of generated.layout.elements) {
       assert.equal(element.kind, 'polygon');
       assert.equal(element.sourceCell, generated.layout.root);
       assert.ok(element.points.length >= 4, 'Polygon has insufficient points');
       for (const [x, y] of element.points) {
         assert.ok(Number.isFinite(x) && Number.isFinite(y), 'Nonfinite coordinates');
-        assert.ok(Math.abs(x) < w / 2 && Math.abs(y) < h / 2,
-          'Mask geometry lies outside illustrative field');
+        assert.ok(
+          Math.abs(x) < w / 2 && Math.abs(y) < h / 2,
+          'Mask geometry lies outside illustrative field',
+        );
       }
     }
   }
