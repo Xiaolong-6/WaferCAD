@@ -697,6 +697,13 @@ export async function buildTcmosInverter({
         ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
         : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
   if (illustrativeTiltDeg) project.section = { a: [-4.45, 0], b: [-2.95, 0] };
+  // A Variant switch restores the stored Head state, not the root project.
+  // Final inspection name/section changes must therefore be reflected in the
+  // head and final bookmark; otherwise Save/Recovery restores a stale name.
+  const canonicalFinalState = capture();
+  nodes.at(-1).state = copy(canonicalFinalState);
+  branch.headState = copy(canonicalFinalState);
+  bookmarks[0].state = copy(canonicalFinalState);
   project.layout = tcmosLayout();
   project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
   project.snapshotBranches = {
