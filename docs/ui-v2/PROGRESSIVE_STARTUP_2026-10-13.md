@@ -219,3 +219,25 @@ Further work must target measured Polygon Boolean ownership and
 WebGL submission bottlenecks, with controlled multi-run A/B evidence
 and physical GPU/iGPU validation. Avoid repeating broad History
 refactors when they do not address the dominant sampled blocks.
+
+## P1-G exact broad-phase connectivity and cross-GPU acceptance — 14 October 2026
+
+The non-array Polygon union now indexes active bounding boxes by Y while
+sweeping in X. This avoids examining every same-X polygon when their Y
+intervals are disjoint. Each potentially touching pair still belongs to
+the original exact Boolean operation; the original EPS comparisons,
+component source ordering, geometry normalization and caller isolation
+are retained. Exhaustive-reference tests cover random overlap graphs,
+subnanometer seams, transitive connectivity and 1,800 vertically
+separated boxes. The existing scientific union tests remain required.
+
+The physical hardware acceptance harness now classifies unmasked NVIDIA,
+Intel and AMD WebGL adapters, while rejecting unknown/software drivers
+(including SwiftShader, WARP and llvmpipe). This prevents an integrated
+GPU from being rejected merely because it is not NVIDIA. This identifies
+reported GPU hardware; a real-device performance profile is still required.
+
+**Status at implementation:** code and tests are pushed for CI review;
+no speedup, 500 ms pass or physical-GPU acceptance is claimed without
+new controlled measurements. Keep PR #188 Draft, preserve all final
+Quality and scientific parity gates, and do not deploy yet.
