@@ -389,7 +389,7 @@ export async function buildM3DLime() {
   deposit('ALD HfAlOx analog switching layer 8nm at 300C','CIM HfAlOx RSL 8nm',0.008,12);
   deposit('Sputter TaOx thermal enhanced layer 45nm','CIM TaOx TEL 45nm',0.045,12);
   deposit('Sputter TiN top electrode 30nm','CIM TiN TE 30nm',0.030,12);
-  record('Pattern TiN/HfAlOx/TaOx/TiN using Cl RIE','etch',
+  record('Pattern TiN/HfAlOx/TaOx/TiN using Cl RIE','custom',
     'Local RRAM column polygons represent the surviving stack; source states lithography followed by Cl-based RIE.');
   bookmark('01 Analog CIM 1T1R RRAM stack');
   deposit('PECVD SiO2 encapsulation 400nm at 300C','CIM SiO2 passivation 400nm',0.40);
@@ -404,7 +404,7 @@ export async function buildM3DLime() {
   deposit('PECVD SiO2 interlayer dielectric 100nm','CIM-to-TCAM SiO2 ILD 100nm',0.100);
   deposit('PECVD Si3N4 interlayer dielectric 900nm','CIM-to-TCAM Si3N4 ILD 900nm',0.900);
   cmp('ILD CMP endpoint Z 2.20um (inferred)',2.20);
-  record('Open inter-layer contact holes to TCAM','etch',
+  record('Open inter-layer contact holes to TCAM','custom',
     'The paper does not publish complete ILV GDS: connections to the upper memory tier are a process record, not fabricated surrogate tunnels.');
   bookmark('03 Inter-layer dielectric / planarization');
 
@@ -413,7 +413,7 @@ export async function buildM3DLime() {
   deposit('Pattern Pd gate metal 15nm','CNT gate Pd 15nm',0.015,15);
   deposit('Pattern Ti gate cap 1nm','CNT gate Ti cap 1nm',0.001,15);
   deposit('ALD HfO2 gate dielectric 10nm at 250C','CNT gate HfO2 10nm',0.010);
-  record('Lithography/Cl RIE HfO2 gate access (off representative slice)','etch',
+  record('Lithography/Cl RIE HfO2 gate access (off representative slice)','custom',
     'Gate via locations are not disclosed; the reconstructed active gate dielectric is retained intact.');
   deposit('Wet transfer / clean CNT network (1nm visual surrogate)','CNT channel 1nm SURROGATE',0.001,16,'transfer');
   record('PCz removal, solvent wash and CNT channel O2 plasma pattern','clean',
@@ -440,7 +440,7 @@ export async function buildM3DLime() {
   deposit('Sputter TaOx oxygen reservoir 20nm','Digital TaOx ORL 20nm',0.020,19);
   deposit('Sputter Ta2O5 switching layer 10nm','Digital Ta2O5 RSL 10nm',0.010,19);
   deposit('Sputter Pt digital RRAM electrode 10nm','Digital Pt TE 10nm',0.010,19);
-  record('Pattern Pt/Ta2O5/TaOx with 60nm Pd hard mask and dry etch','etch',
+  record('Pattern Pt/Ta2O5/TaOx with 60nm Pd hard mask and dry etch','custom',
     'Pd hard-mask lithography and etch are recorded; stack footprints are already restricted to inferred sites.');
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
   deposit('ALD Al2O3 RRAM protection 45nm at 150C','Digital Al2O3 passivation 45nm',0.045);
