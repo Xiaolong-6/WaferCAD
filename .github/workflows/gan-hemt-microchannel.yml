@@ -49,11 +49,10 @@ permissions:
   contents: read
 
 jobs:
-  refresh-manifold-asset-once:
-    name: One-time manifold project and thumbnail bootstrap
+  format-manifold-sources-once:
+    name: One-time source canonical formatting
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -65,29 +64,16 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Regenerate project from Kernel and final-state preview
+      - name: Format only source and documentation changed for this manifold
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
-      - name: Install Chromium and run static WaferCAD host
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md docs/wiki/Examples-and-Modeling-Limits.md site/bundled-examples.js
+      - name: Commit canonical formatting to isolated branch
         run: |
-          npx playwright install --with-deps chromium
-          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-gan.log 2>&1 &
-          for i in {1..30}; do
-            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && break
-            sleep 1
-          done
-      - name: Re-render committed WebP and update source checksum manifest
-        env:
-          WAFERCAD_THREE_DIR: ./node_modules/three
-        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
-      - name: Commit only four versioned Example artifacts
-        run: |
-          git add site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md docs/wiki/Examples-and-Modeling-Limits.md site/bundled-examples.js
           if ! git diff --cached --quiet; then
-            git commit -m "build(example): publish Fig. 2h manifold candidate artifacts"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "style(example): canonically format inferred manifold masks and validation"
             git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
           fi
 
