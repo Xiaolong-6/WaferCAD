@@ -53,6 +53,21 @@ body[data-workstation][data-preview-mode='true'] .p-view {
   border-radius: 0;
 }
 
+/* A preview is an inspection surface; never expose edit handles over the
+   physical views even when the underlying controller mounts them. */
+body[data-workstation][data-preview-mode='true'] #sectionEndpointHandles,
+body[data-workstation][data-preview-mode='true'] #sectionCoordsPanel,
+body[data-workstation][data-preview-mode='true'] #focusEditor,
+body[data-workstation][data-preview-mode='true'] #roiEditor,
+body[data-workstation][data-preview-mode='true'] #maskRoiEditor,
+body[data-workstation][data-preview-mode='true'] #drawMaskToolbar,
+body[data-workstation][data-preview-mode='true'] #drawShapeEditor,
+body[data-workstation][data-preview-mode='true'] #sectionDetailRoiOverlay,
+body[data-workstation][data-preview-mode='true'] #sectionDetailInset,
+body[data-workstation][data-preview-mode='true'] #sectionCollapseOverlay {
+  display: none;
+}
+
 body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   height: auto;
   min-height: 24px;
