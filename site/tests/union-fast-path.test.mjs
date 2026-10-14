@@ -42,7 +42,14 @@ test('overlapping and isolated components preserve Boolean ownership', () => {
 
 test('invalid polygons are ignored before the disjoint fast path', () => {
   const valid = rectMulti(1, 1);
-  const invalid = [[[[NaN, 0], [Infinity, 2]]]];
+  const invalid = [
+    [
+      [
+        [NaN, 0],
+        [Infinity, 2],
+      ],
+    ],
+  ];
   const input = [valid, invalid, [], null];
   const expected = normalizeMulti(input.flatMap((geom) => geom || []));
   assert.deepEqual(unionGeometries(input), expected);
