@@ -77,35 +77,18 @@ try {
   // a duplicated ON/OFF caption. Toggling must not edit the physical model.
   assert.equal(await border.locator('.three-border-status').count(), 0);
   const starting = await visualState();
-  const initialDisplay = (await snapshot()).threeDisplay;
-  await page.evaluate(() => {
-    window.__borderDispatches = 0;
-    document.addEventListener(
-      'click',
-      (event) => {
-        if (event.target.closest('[data-action="borders:three"]')) window.__borderDispatches++;
-      },
-      { capture: true },
-    );
-  });
+  assert.equal(
+    starting.pressed,
+    String((await snapshot()).threeDisplay.borders),
+    'Restored M3D Border toolbar reflects saved display state before interaction',
+  );
   await border.click();
   const toggled = await visualState();
-  const updatedDisplay = (await snapshot()).threeDisplay;
-  const path = await border.evaluate((node) => ({
-    connected: node.isConnected,
-    inThreePanel: Boolean(node.closest('#threePanel')),
-    inOverflowMenu: Boolean(node.closest('.p-overflow')),
-    dispatches: window.__borderDispatches,
-  }));
-  assert.notEqual(
+  assert.notEqual(toggled.pressed, starting.pressed, 'Border toggle changes pressed state');
+  assert.equal(
     toggled.pressed,
-    starting.pressed,
-    [
-      'Border toggle changes pressed state',
-      `before=${JSON.stringify(initialDisplay)}`,
-      `after=${JSON.stringify(updatedDisplay)}`,
-      `path=${JSON.stringify(path)}`,
-    ].join(' | '),
+    String((await snapshot()).threeDisplay.borders),
+    'Toolbar stays in sync with the physical renderer display state',
   );
   assert.ok(
     toggled.fill !== starting.fill ||
