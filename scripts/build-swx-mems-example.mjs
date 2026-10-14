@@ -287,6 +287,22 @@ export async function buildSwxMems(state = 'off') {
   );
   deposit('E-beam evaporated Cr 50nm', CR, SWX_REPORTED.crUm, 3);
   deposit('E-beam evaporated Au 300nm', AU, SWX_REPORTED.auUm, 3);
+  // The electrical terminals must not float on BOX disconnected from the
+  // patterned silicon. Verify all four supported contact areas before HF.
+  for (const point of [
+    [2, 40],
+    [2, -40],
+    [46, 9],
+    [46, -21],
+  ]) {
+    const region = readPoint(model, vectorApi, point);
+    for (const material of [DEVICE, CR, AU]) {
+      assert.ok(
+        region?.stack.some((segment) => segment.layerId === layerIds.get(material)),
+        'Electrical pad at ' + point.join(',') + ' lacks ' + material,
+      );
+    }
+  }
   record(
     'Cr/Au lift-off',
     'The physical metal removal outside electrode openings is represented by masked deposition.',
