@@ -35,7 +35,6 @@ function assertModelPersistence(actual, expected, path = 'model') {
   assert.deepEqual(actual, expected, `${path}: canonical value`);
 }
 
-
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/m3d-lime/browser');
 await mkdir(output, { recursive: true });
