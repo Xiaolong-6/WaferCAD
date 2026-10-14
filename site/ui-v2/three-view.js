@@ -81,6 +81,9 @@ export function createWorkstationThreeView({ store, workstation }) {
   let initializing = null;
   const render = async () => {
     if (!host.checkVisibility()) return;
+    // A staged Example/Recovery load can replace display settings after this
+    // toolbar is constructed. Keep selected controls in sync with real state.
+    sync();
     if (!renderer.ready) {
       initializing ||= renderer.init();
       if (!(await initializing)) return;

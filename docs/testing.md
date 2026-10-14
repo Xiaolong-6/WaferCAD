@@ -52,6 +52,18 @@ boundary and verify that the deployed Worker-backed app still boots.
 This does **not** remove the old editor's test source or change historical
 project-format and Recovery compatibility.
 
+### M3D Welcome and 3D Border v2 ownership
+
+`scripts/m3d-welcome-regression.mjs` runs against the production v2
+Workstation, verifies the Welcome thumbnail and full project handoff,
+36 real History Steps, 27 stage bookmarks, an initialized 3D view and
+reversible Border selection without model mutation. The targeted
+`m3d-example-integration.yml` gate runs on relevant `main` PR changes.
+The full legacy M3D process/geometry/export acceptance remains available
+through manual workflow dispatch until those separate scientific contracts
+are migrated. This is an incremental test-owner transfer, not a reason
+to delete `site/app-legacy.html` from the test source tree.
+
 ### Legacy project compatibility before UI retirement
 
 The old UI must not be deleted until the v2 Workstation can independently
