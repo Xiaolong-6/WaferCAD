@@ -4,10 +4,37 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
-import { readProjectFile } from '../../site/project-io.js';
+import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 
 await loadGeometryKernel();
+
+function assertModelPersistence(actual, expected, path = 'model') {
+  if (typeof expected === 'number') {
+    assert.equal(typeof actual, 'number', `${path}: type`);
+    assert.ok(
+      Math.abs(actual - expected) <= PROJECT_LENGTH_QUANTUM_UM + 1e-8,
+      `${path}: numeric persistence drift ${actual} vs ${expected}`,
+    );
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.ok(Array.isArray(actual), `${path}: array type`);
+    assert.equal(actual.length, expected.length, `${path}: topology length`);
+    for (let index = 0; index < expected.length; index++)
+      assertModelPersistence(actual[index], expected[index], `${path}[${index}]`);
+    return;
+  }
+  if (expected !== null && typeof expected === 'object') {
+    assert.ok(actual !== null && typeof actual === 'object', `${path}: object type`);
+    assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), `${path}: keys`);
+    for (const key of Object.keys(expected))
+      assertModelPersistence(actual[key], expected[key], `${path}.${key}`);
+    return;
+  }
+  assert.deepEqual(actual, expected, `${path}: canonical value`);
+}
+
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/m3d-lime/browser');
@@ -97,7 +124,7 @@ try {
   const exportedPath = resolve(output, 'runall-roundtrip.wafercad');
   await download.saveAs(exportedPath);
   const reopened = await readProjectFile(new Blob([await readFile(exportedPath)]));
-  assert.deepEqual(reopened.model, rebuilt.model, 'v2 export/reopen changed canonical geometry');
+  assertModelPersistence(reopened.model, rebuilt.model);
   assert.deepEqual(errors, [], 'Browser JavaScript errors');
   report.pass = true;
   report.steps = count;
