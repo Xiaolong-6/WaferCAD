@@ -48,6 +48,14 @@ export async function runTransactionAcceptance(
             request.model.regions.push(duplicate);
             window.__transactionAcceptance.injected++;
           }
+          if (window.__abortNextProcess) {
+            window.__abortNextProcess = false;
+            const sent = post(request, ...rest);
+            // Abort after request dispatch but before a late worker result can
+            // be handed to the live model or History controller.
+            queueMicrotask(() => document.querySelector('#processTaskAbortBtn')?.click());
+            return sent;
+          }
           return post(request, ...rest);
         };
       }
@@ -109,6 +117,17 @@ export async function runTransactionAcceptance(
   assert.equal(probe.injected, 1);
   assert.ok(probe.messages.some((message) => message.stage === 'Validating process geometry…'));
   assert.ok(probe.messages.some((message) => message.rejected === true));
+  await prepare('Aborted candidate');
+  await page.evaluate(() => { window.__abortNextProcess = true; });
+  await page.locator('#applyOperationBtn').click();
+  await chooseConfirmation(page);
+  await waitForStatus(page, /Operation aborted/);
+  await page.waitForFunction(() => document.querySelector('#processTaskDialog')?.hidden === true);
+  const afterAbort = await exportCurrentProject(page);
+  assert.deepEqual(afterAbort.model, before.model, 'Abort must preserve canonical geometry');
+  assert.deepEqual(afterAbort.snapshotBranches, before.snapshotBranches);
+  assert.deepEqual(afterAbort.snapshots, before.snapshots);
+
   await openFunctionPanel(page, 'snapshots');
   assert.equal(
     await page.locator('.history-variant').count(),
@@ -140,6 +159,7 @@ export async function runTransactionAcceptance(
     injectedOnlyWorkerRequest: true,
     strictWorkerValidationObserved: true,
     modelPreserved: true,
+    abortPreservedModelAndHistory: true,
     historyPreserved: true,
     bookmarksPreserved: true,
     noEmptyVariant: true,
