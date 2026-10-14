@@ -67,12 +67,18 @@ try {
       assert.ok((await snapshot()).layout.elements.length > 100);
 
       const maskMenu = page.locator('[data-action="mask-export-menu"]');
+      if (!(await maskMenu.isVisible())) {
+        await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+      }
+      await maskMenu.click();
       for (const format of ['gds', 'oas']) {
-        if (!(await maskMenu.isVisible())) {
-          await page.locator('#maskPanel button[aria-label$="more tools"]').click();
-        }
-        await maskMenu.click();
         const exportAction = page.locator('[data-action="mask-export:' + format + '"]');
+        if (!(await exportAction.isVisible())) {
+          if (!(await maskMenu.isVisible())) {
+            await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+          }
+          await maskMenu.click();
+        }
         const [download] = await Promise.all([
           page.waitForEvent('download', { timeout: 120000 }),
           exportAction.click({ timeout: 120000, noWaitAfter: true }),
