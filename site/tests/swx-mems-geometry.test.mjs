@@ -324,6 +324,26 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
   }
 });
 
+test('fixed and movable silicon never overlap by positive area in either pose', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const { geometryArea } = await import('../model.js');
+  const toGeometry = (polygons) =>
+    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  for (const state of ['off', 'on']) {
+    const pose = createSwxGeometry(state);
+    const fixed = toGeometry(pose.physicalGroups.fixed);
+    const movable = toGeometry(pose.physicalGroups.movable);
+    const overlap = v.intersection(fixed, movable);
+    const overlapAreaUm2 = geometryArea(overlap);
+    assert.ok(
+      overlapAreaUm2 < 1e-8,
+      state + ' fixed and moving Si geometries overlap by ' + overlapAreaUm2 + ' µm²',
+    );
+  }
+});
+
 test('mitered 90-degree flexure corners are one solid ring without square-cap lips', () => {
   const [contour] = miteredPolyline(
     [
