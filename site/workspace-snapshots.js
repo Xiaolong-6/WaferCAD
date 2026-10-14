@@ -206,6 +206,9 @@ export function createSnapshotManager({
   let cursorBaselineState = null;
   let cursorDetachedFromHead = false;
   const cloneState = createStateCloner();
+  let indexedHistoryNodes = null;
+  let indexedNodeCount = -1;
+  let historyNodesById = new Map();
 
   function branchById(id) {
     return branches.find((branch) => branch.id === id) || null;
@@ -216,7 +219,20 @@ export function createSnapshotManager({
   }
 
   function nodeById(id) {
-    return historyNodes.find((node) => node.id === id) || null;
+    if (!id) return null;
+    // History IDs do not change in place. Nodes are only appended, or the
+    // array is replaced during truncation, deletion, clear and import.
+    // Rebuild on either change so ordinary History rendering and ancestor
+    // traversal are linear overall rather than repeated array scans.
+    if (indexedHistoryNodes !== historyNodes || indexedNodeCount !== historyNodes.length) {
+      historyNodesById = new Map();
+      for (const node of historyNodes) {
+        if (!historyNodesById.has(node.id)) historyNodesById.set(node.id, node);
+      }
+      indexedHistoryNodes = historyNodes;
+      indexedNodeCount = historyNodes.length;
+    }
+    return historyNodesById.get(id) || null;
   }
 
   function stateWithOperationMaskContext(state, operation) {
