@@ -410,6 +410,17 @@ export async function buildSwxMems(state = 'off') {
       'Supported contact anchor lost BOX at ' + point.join(','),
     );
   }
+  for (const y of [-27, 27]) {
+    const support = readPoint(model, vectorApi, [-2, y]);
+    assert.ok(
+      support?.stack.some((item) => item.layerId === siId),
+      'Guided aligner pad lost its device silicon at y=' + y,
+    );
+    assert.ok(
+      support?.stack.some((item) => item.layerId === boxId),
+      'Guided aligner pad is mechanically floating without BOX at y=' + y,
+    );
+  }
   assert.ok(
     !gap?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
     'Central SWX air gap was filled with Si',
