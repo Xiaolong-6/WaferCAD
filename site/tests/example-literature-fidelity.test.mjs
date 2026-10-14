@@ -122,9 +122,7 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
     assert.equal(
       stack.some(
         (entry) =>
-          entry.name.includes('passivation') &&
-          entry.z0 < silicon.z0 &&
-          entry.z1 > rearMetal.z0,
+          entry.name.includes('passivation') && entry.z0 < silicon.z0 && entry.z1 > rearMetal.z0,
       ),
       false,
       `Rear contact ${index + 1} must have no interposed backside oxide`,
