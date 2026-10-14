@@ -385,7 +385,7 @@ function makeStructuralAligners(moveY) {
     // optical taper (the former -18um x -9.5um pad intersected it by
     // 8.72um²). A 10um pad also retains BOX under a 4um HF lateral release.
     // The precise anchor location is inferred, not copied from author GDS.
-    const anchor = [2, sign * 27];
+    const anchor = [-2, sign * 27];
     fixed.push(rect(anchor[0], anchor[1], 10, 10));
     const first = [anchor[0] - SWX_REPORTED.structuralAlignerLengthUm, anchor[1]];
     const corner = [first[0], sign * 5.7];
