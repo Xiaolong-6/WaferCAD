@@ -2,8 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildM3DLime } from '../../scripts/build-m3d-lime-example.mjs';
 
+// All tests inspect the same deterministic, immutable-by-convention Kernel result.
+// Replaying the entire 47-step process for every assertion adds minutes to CI.
+let resultPromise;
+function verifiedFixture() {
+  return (resultPromise ??= buildM3DLime());
+}
+
 test('M3D-LIME source-derived 3-tier process is materialized by the real kernel', async () => {
-  const { project, validation } = await buildM3DLime();
+  const { project, validation } = await verifiedFixture();
 
   assert.equal(validation.doi, '10.1038/s41467-023-42981-1');
   assert.deepEqual(validation.demonstratedArraySizes, { cim: 1024, buffer: 512, tcamCells: 5 });
@@ -24,6 +31,17 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
     project.snapshotBranches.branches[0].headState.model.processRevision,
     project.model.processRevision,
   );
+
+  const conformalIds = new Set(project.model.layers
+    .filter((layer) => ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm',
+      'CNT HfO2 passivation 10nm'].includes(layer.name))
+    .map((layer) => layer.id));
+  const physicalSidewalls = project.model.regions
+    .flatMap((region) => region.stack)
+    .filter((segment) => segment.role === 'conformal-sidewall' &&
+      conformalIds.has(segment.layerId));
+  assert.ok(physicalSidewalls.length > 0,
+    'Kernel must create actual ALD-coated sidewalls, not merely conformal Recipe labels');
 
   const names = project.model.layers.map((l) => l.name);
   for (const item of [
@@ -61,7 +79,7 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
 });
 
 test('ALD passivations retain supported conformal coverage with explicit 45nm limits', async () => {
-  const { project, validation } = await buildM3DLime();
+  const { project, validation } = await verifiedFixture();
   const steps = project.processRecipe.steps;
   for (const name of [
     'CNT gate HfO2 10nm',
@@ -88,7 +106,7 @@ test('ALD passivations retain supported conformal coverage with explicit 45nm li
 });
 
 test('foundry M4 state precedes analog RRAM without a second invented 400nm oxide', async () => {
-  const { project } = await buildM3DLime();
+  const { project } = await verifiedFixture();
   const steps = project.processRecipe.steps;
   const labels = steps.map((step) => String(step.params.material || step.params.label || ''));
   const index = (pattern) => labels.findIndex((label) => pattern.test(label));
@@ -125,7 +143,7 @@ test('foundry M4 state precedes analog RRAM without a second invented 400nm oxid
 });
 
 test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal active gap', async () => {
-  const { project } = await buildM3DLime();
+  const { project } = await verifiedFixture();
   const byMask = (id) =>
     project.layout.elements
       .filter((element) => element.layer === id)
@@ -175,7 +193,7 @@ test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal a
 });
 
 test('sampled 3-tier cut is physically ordered through both analog CIM and digital RRAM', async () => {
-  const { project, validation } = await buildM3DLime();
+  const { project, validation } = await verifiedFixture();
   const { pointInMulti } = await import('../vector-geometry.js');
   const layerNames = new Map(project.model.layers.map((l) => [l.id, l.name]));
   const regionAt = (point) => {
