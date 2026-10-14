@@ -23,6 +23,34 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Temporary exact-format source for browser test
+        run: |
+          npx prettier --write scripts/build-m3d-lime-example.mjs scripts/v2/check-m3d-lime-project.mjs
+          echo M3DLIME_BROWSER_BEGIN
+          base64 -w0 scripts/v2/check-m3d-lime-project.mjs
+          echo
+          echo M3DLIME_BROWSER_END
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-\u0024{{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start v2 server
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for attempt in \u0024(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Browser project load and Run All
+        env:
+          WAFERCAD_THREE_DIR: \u0024{{ github.workspace }}/node_modules/three
+        run: node scripts/v2/check-m3d-lime-project.mjs
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Source-derived structural regression
@@ -36,4 +64,5 @@ jobs:
           path: |
             site/examples/m3d-lime-rram-cntfet.wafercad
             test-results/m3d-lime/validation.json
+            test-results/m3d-lime/browser/
           retention-days: 14
