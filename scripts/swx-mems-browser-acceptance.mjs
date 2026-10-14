@@ -225,8 +225,10 @@ try {
       // in both Variants. Keep this camera change in the TEST copy only;
       // the user-facing project retains its own default overview camera.
       const cornerCamera = {
-        position: [10.5, 15.5, 13.0],
-        target: [2.6, 31.0, 4.65],
+        // Focus exactly on the 200nm folded-spring miter at x≈2.1, y≈32.
+        // A near-top-down oblique view keeps the y=40 BOX support offscreen.
+        position: [8.1, 31.9, 17.5],
+        target: [2.1, 31.9, 4.65],
         fov: 34,
       };
       const inspectProject = structuredClone(source);
