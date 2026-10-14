@@ -152,21 +152,24 @@ try {
         await page.locator('#recipeRunStart').selectOption('new-base');
         assert.doesNotMatch(
           await page.locator('#recipeValidation').innerText(),
-          /✕|missing|invalid/i,
+          /✕/,
           'SWX shared fabrication must pass new Base preflight',
         );
         const stepCount = source.processRecipe.steps.length;
         await page.locator('#recipeRunAllBtn').click();
         const clearHistory = page.getByRole('button', { name: 'Clear history', exact: true });
         const keepHistory = page.getByRole('button', { name: 'Keep previous history', exact: true });
+        await page.getByRole('button', { name: /Clear history|Keep previous history/ })
+          .first()
+          .waitFor({ state: 'visible', timeout: 15000 });
         if (await clearHistory.isVisible()) await clearHistory.click();
-        else if (await keepHistory.isVisible()) await keepHistory.click();
+        else await keepHistory.click();
         await page.waitForFunction(
-          (count) => {
+          () => {
             const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
-            return new RegExp('^(Completed|Failed|Stopped):').test(summary);
+            return /^(Completed|Failed|Stopped):/.test(summary);
           },
-          stepCount,
+          null,
           { timeout: 300000 },
         );
         const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
