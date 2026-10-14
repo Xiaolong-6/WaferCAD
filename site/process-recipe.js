@@ -215,7 +215,8 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.thicknessUm)
       : recipeLengthUm(sourceLength, `etch.${lengthKey}`);
     if (params.profile !== 'planarize') {
-      if (!(params.thicknessUm > 0)) throw new Error(`etch.${lengthKey} must be greater than zero.`);
+      if (!(params.thicknessUm > 0))
+        throw new Error(`etch.${lengthKey} must be greater than zero.`);
       const thicknessError = validateMaterialThicknessUm(params.thicknessUm, `etch.${lengthKey}`);
       if (thicknessError) throw new Error(thicknessError);
     }
