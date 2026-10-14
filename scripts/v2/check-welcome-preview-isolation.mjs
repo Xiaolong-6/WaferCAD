@@ -84,8 +84,9 @@ try {
     const before = readZoom(await snapshot());
     await preview.locator(`#${canvasId}`).evaluate((canvas) => {
       const rect = canvas.getBoundingClientRect();
+      const WheelEvent = canvas.ownerDocument.defaultView.WheelEvent;
       canvas.dispatchEvent(
-        new canvas.ownerDocument.defaultView.WheelEvent('wheel', {
+        new WheelEvent('wheel', {
           bubbles: true,
           cancelable: true,
           deltaY: -200,
