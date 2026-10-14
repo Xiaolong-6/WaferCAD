@@ -37,6 +37,26 @@ test('production Pages requires quality, browser and UI acceptance before publis
   );
 });
 
+test('Pages cannot silently skip publishing after an upstream optional suite skips', () => {
+  const pages = workflow('pages');
+  const stage = pages.split('  stage-pages:\n')[1]?.split('  deploy:\n')[0];
+  assert.ok(stage, 'production stage job must exist');
+  assert.match(
+    stage,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/,
+  );
+  for (const gate of ['QUALITY', 'BROWSER', 'UI_V2', 'SCIENCE']) {
+    assert.match(stage, new RegExp(`\\b${gate}_RESULT:\\s*\\$\\{\\{ needs\\.`));
+  }
+  assert.match(stage, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(stage, /exit 1/);
+  assert.ok(
+    stage.indexOf('Require successful same-revision release gates') <
+      stage.indexOf('Checkout verified revision'),
+    'fail-closed release gate must precede artifact construction',
+  );
+});
+
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
   const pages = workflow('pages');
   assert.match(pages, /  release-impact:\n/);
