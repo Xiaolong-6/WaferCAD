@@ -49,34 +49,6 @@ permissions:
   contents: read
 
 jobs:
-  format-manifold-sources-once:
-    name: One-time source canonical formatting
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feat/example-gan-hemt-microchannel-20261014
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - name: Format only source and documentation changed for this manifold
-        run: |
-          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md docs/wiki/Examples-and-Modeling-Limits.md site/bundled-examples.js
-      - name: Commit canonical formatting to isolated branch
-        run: |
-          git add scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md docs/wiki/Examples-and-Modeling-Limits.md site/bundled-examples.js
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "style(example): canonically format inferred manifold masks and validation"
-            git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
-          fi
-
   reconstruction:
     runs-on: ubuntu-latest
     timeout-minutes: 20
