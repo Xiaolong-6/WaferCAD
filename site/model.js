@@ -1071,7 +1071,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
     }).cracks.length
   ) {
-    model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+    model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal precoat normalization');
   }
 
   // Capture the source topography before the horizontal coating is clipped to
@@ -1523,7 +1523,7 @@ function applyOperationImpl(
       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
     });
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
-      model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+      model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal postcoat normalization');
     }
     healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
