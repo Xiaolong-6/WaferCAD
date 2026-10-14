@@ -78,6 +78,10 @@ A structural connectivity invariant interpolates points along real 3D _empty spa
 
 **Limit:** No Navier–Stokes, pressure-drop, velocity-field, laminar-flow distribution, etch tolerance, or wafer-bond seal is simulated. Correct geometrical connectivity does not establish equal per-channel flow. The exact number, curvature and width of the real paper's internal diversion tracks are uncertain and must be revisited if original author GDS becomes available.
 
+### Inspecting both manifolds without chip occlusion
+
+The first History bookmark, **01 Four-level open microchannels / 800 um Si with diversion**, represents the fluid network before AuSn supports and the HEMT are attached. It saves a dedicated full-channel 3D crop (X ±500 µm, Y ±520 µm), an elevated oblique camera, and a longitudinal Section along X = 0. This permits inspection of both inlet/outlet ends while leaving the final integrated project's default XY cross-section and chip-present 3D cutaway unchanged. Restoring the first bookmark is an inspection step, not a new wafer process.
+
 ## Section Z display contract
 
 The initial screenshot audit exposed a presentation hazard: the Workstation's
