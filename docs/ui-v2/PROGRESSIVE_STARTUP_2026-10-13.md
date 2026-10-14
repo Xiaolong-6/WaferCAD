@@ -183,10 +183,10 @@ Remaining hotspots are polygon bounds/boolean geometry, snapshot
 copying/GC and native WebGL program/buffer submission. The 500 ms
 responsiveness threshold and physical-GPU acceptance remain open.
 
-Transport limitation: batching bounds whole polygons, while a single
-pathologically large polygon can still exceed the target message size.
-Keep the physical topology and fidelity requirements unchanged if
-further transfer subdivision is needed.
+Historical P1-E limitation: batching originally bounded whole polygons,
+so one very large polygon could exceed the message budget. P1-H below
+addresses that case with bounded exact point chunks while preserving
+physical topology and fidelity.
 
 ## P1-F disjoint Polygon union cloning — 14 October 2026
 
