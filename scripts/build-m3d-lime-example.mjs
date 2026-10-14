@@ -153,7 +153,6 @@ export async function buildM3DLime() {
     headState: null,
   };
   const baseBottomZ = -RECEIVER_THICKNESS_UM / 2;
-  let planarTop = RECEIVER_THICKNESS_UM / 2;
 
   function dateAt(index) {
     return new Date(Date.parse(FIXED_DATE) + index * 1000).toISOString();
@@ -380,8 +379,10 @@ export async function buildM3DLime() {
   deposit('BEOL isolation SiO2 400nm (reconstructed)','First level SiO2 400nm',0.40);
   cmp('Planarize to M4 + 150nm clearance (inferred)',1.25);
   selectiveEtch('Open CMOS via to M4 W','First level SiO2 400nm',0.15,11);
+  assert.equal(exposed([-106,-26]).layerId, layerIds.get('CMOS M4 W contacts (surrogate)'), 'M4 contact etch must stop on tungsten');
   deposit('Fill W landing vias (inferred)','M4 W via fill',0.20,11);
   cmp('CMP W via plugs to reconstructed Z 1.25um',1.25);
+  assert.equal(exposed([-106,-26]).layerId,layerIds.get('M4 W via fill'),'M4 via metal must remain exposed');
   bookmark('00 Si CMOS / W contact landing');
 
   // Tier 2 analog device: published TiN 30 / HfAlOx 8 / TaOx 45 / TiN 30nm.
@@ -395,6 +396,7 @@ export async function buildM3DLime() {
   deposit('PECVD SiO2 encapsulation 400nm at 300C','CIM SiO2 passivation 400nm',0.40);
   cmp('CIM passivation CMP endpoint Z 1.43um (inferred)',1.43);
   selectiveEtch('Open TiN top electrode contact through oxide','CIM SiO2 passivation 400nm',0.067,13);
+  assert.equal(exposed([-106,-26]).layerId,layerIds.get('CIM TiN TE 30nm'),'CIM via etch must stop on TiN electrode');
   deposit('W plugs to CIM TiN TE (inferred)','CIM W top vias',0.083,13);
   cmp('Planarize CIM W plugs Z 1.43um',1.43);
   deposit('Sputter/pattern Al 500nm bit lines','CIM Al bit lines 500nm',0.500,14);
