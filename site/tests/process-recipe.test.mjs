@@ -164,6 +164,42 @@ test('unit-bearing Recipe lengths reject numeric and conversion overflow', () =>
   );
 });
 
+test('Recipe preserves sub-0.01 nm material lengths rather than rounding to an arbitrary physics floor', () => {
+  const recipe = parseProcessRecipeSource(
+    'deposit({ material: "SiO2", thickness: "0.005 nm" });\\n' +
+    'extend({ material: "SiO2", thickness: "0.005 nm" });\\n' +
+    'etch({ depth: "0.005 nm", profile: "directional" });',
+  );
+  for (const step of recipe.steps) assert.equal(step.params.thicknessUm, 5e-6);
+  const replay = parseProcessRecipeSource(serializeProcessRecipe(recipe));
+  assert.deepEqual(replay.steps, recipe.steps);
+});
+
+test('Recipe rejects unrepresentable material segments without constraining annotation depths', () => {
+  for (const operation of [
+    'deposit({ material: "SiO2", thickness: "0.0000001 nm" });',
+    'extend({ material: "SiO2", thickness: "0.0000001 nm" });',
+    'etch({ depth: "0.0000001 nm" });',
+  ]) {
+    assert.throws(() => parseProcessRecipeSource(operation), /cannot be represented/i);
+  }
+  const annotation = parseProcessRecipeSource(
+    'implant({ depth: "0.0000001 nm" });\\n' +
+    'electrical({ depth: "0.0000001 nm" });',
+  );
+  for (const step of annotation.steps) assert.equal(step.params.depthUm, 1e-10);
+});
+
+test('Recipe serialization preserves more than eight significant digits when necessary', () => {
+  const requested = 0.00000512345678901234;
+  const recipe = normalizeProcessRecipe({
+    name: 'Precision',
+    steps: [{ command: 'deposit', params: { material: 'SiO2', thicknessUm: requested } }],
+  });
+  const roundTrip = parseProcessRecipeSource(serializeProcessRecipe(recipe));
+  assert.equal(roundTrip.steps[0].params.thicknessUm, requested);
+});
+
 test('Lift-off recipe round-trips without synthetic thickness and validates required material', () => {
   const source =
     'deposit({ material: "PMMA", thickness: "200 nm" });\n' +
