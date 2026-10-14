@@ -325,17 +325,35 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
 });
 
 test('mitered 90-degree flexure corners are one solid ring without square-cap lips', () => {
-  const [contour] = miteredPolyline([[0, 0], [2, 0], [2, 2]], 0.2);
+  const [contour] = miteredPolyline(
+    [
+      [0, 0],
+      [2, 0],
+      [2, 2],
+    ],
+    0.2,
+  );
   assert.equal(contour.length, 6, 'two elbows should not be tiled segment rectangles');
   approx(contour[1][0], 1.9);
   approx(contour[1][1], 0.1);
   approx(contour[4][0], 2.1);
   approx(contour[4][1], -0.1);
   // End caps are allowed on terminal attachments, never at an inner corner.
-  assert.ok(contour.every(([x, y]) => x >= -0.1 - 1e-10 &&
-    x <= 2.1 + 1e-10 && y >= -0.1 - 1e-10 && y <= 2.1 + 1e-10));
+  assert.ok(
+    contour.every(
+      ([x, y]) => x >= -0.1 - 1e-10 && x <= 2.1 + 1e-10 && y >= -0.1 - 1e-10 && y <= 2.1 + 1e-10,
+    ),
+  );
   assert.throws(
-    () => miteredPolyline([[0, 0], [2, 0], [0, 0]], 0.2),
+    () =>
+      miteredPolyline(
+        [
+          [0, 0],
+          [2, 0],
+          [0, 0],
+        ],
+        0.2,
+      ),
     /near-reversal/,
   );
 });
@@ -344,15 +362,14 @@ test('OFF and ON folded MEMS springs have continuous, mitered bends', async () =
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
-  const pitch = SWX_REPORTED.foldedSpringWidthUm +
-    SWX_REPORTED.foldedSpringClearanceUm;
+  const pitch = SWX_REPORTED.foldedSpringWidthUm + SWX_REPORTED.foldedSpringClearanceUm;
   for (const state of ['off', 'on']) {
     const g = createSwxGeometry(state);
     assert.equal(g.physicalGroups.foldedSprings.length, 2);
     for (const [i, sign] of [-1, 1].entries()) {
       const ring = g.physicalGroups.foldedSprings[i];
       const footprint = [[[...ring, ring[0]]]];
-      const gradedDisplacement = (index) => g.travelUm * index / 7;
+      const gradedDisplacement = (index) => (g.travelUm * index) / 7;
       const bends = [
         [0, sign * 10 + gradedDisplacement(1)],
         [pitch, sign * 10 + gradedDisplacement(2)],
