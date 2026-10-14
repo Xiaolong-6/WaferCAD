@@ -544,8 +544,8 @@ export function isConformalGridFragmentOverlap(overlap, limit, operation) {
     const box = multiBounds([polygon]);
     return (
       processGeometryArea([polygon]) <= limit + grid * grid * 1e-5 &&
-      Math.min(box.width, box.height) <= grid * 2 &&
-      Math.max(box.width, box.height) <= grid * 10
+      Math.min(box.width, box.height) <= grid * 2 * (1 + 1e-6) &&
+      Math.max(box.width, box.height) <= grid * 10 * (1 + 1e-6)
     );
   });
 }
@@ -594,8 +594,8 @@ function partitionProcessRegions(
             .filter(
               ({ area, box }) =>
                 area > rejectOverlapAbove + PROCESS_GEOMETRY_GRID_UM ** 2 * 1e-5 ||
-                Math.min(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 2 ||
-                Math.max(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 10,
+                Math.min(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 2 * (1 + 1e-6) ||
+                Math.max(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 10 * (1 + 1e-6),
             )
             .slice(0, 5),
           owners: [previous, region].map(({ id, stack }) => ({
