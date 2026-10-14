@@ -203,6 +203,26 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     assert.ok(present.has('METAL1 Al'), name + ' must touch real Metal1');
     if (name.includes('VIN'))
       assert.ok(present.has('POLY gate'), 'VIN gate contact must sit on POLY');
+    const slab = (material) =>
+      region?.stack.find(
+        (segment) => model.layers.find((layer) => layer.id === segment.layerId)?.name === material,
+      );
+    const tungsten = slab('W contacts');
+    const metal = slab('METAL1 Al');
+    assert.ok(
+      tungsten && metal && metal.z0 <= tungsten.z1 + 1e-9 &&
+        tungsten.z0 <= metal.z1 + 1e-9,
+      name + ' must have a genuine W/Metal1 vertical interface',
+    );
+    const bottom = name.includes('VIN')
+      ? slab('POLY gate')
+      : name.includes('body tie')
+        ? slab('Si (100) substrate; 2 µm display thickness')
+        : slab('S/D silicide surrogate');
+    assert.ok(
+      bottom && Math.abs(bottom.z1 - tungsten.z0) <= 1e-9,
+      name + ' must have a real lower-contact interface rather than floating W',
+    );
   }
   assert.equal(TCMOS_METAL_NETS.length, 4, 'four independently routed Metal1 nets');
   assert.equal(
