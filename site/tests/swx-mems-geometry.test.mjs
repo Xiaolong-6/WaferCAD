@@ -219,7 +219,11 @@ test('hard stop engagement limits both optical poses without filling the SWT gap
 test('representative grating couplers keep full physical polygon bounds and port routes', () => {
   const model = createSwxGeometry('off');
   const shapes = model.physicalGroups.gratingCouplers;
-  assert.equal(shapes.length, 16, 'two stationary grating bodies require sector and shallow grooves');
+  assert.equal(
+    shapes.length,
+    16,
+    'two stationary grating bodies require sector and shallow grooves',
+  );
   for (const poly of shapes) {
     assert.ok(poly.length >= 4);
     for (const [x, y] of poly) {
@@ -349,22 +353,22 @@ test('fixed and movable silicon never overlap by positive area in either pose', 
         const ba = bounds(a);
         for (const [mi, b] of pose.physicalGroups.movable.entries()) {
           const bb = bounds(b);
-          if (
-            ba.maxX <= bb.minX || bb.maxX <= ba.minX ||
-            ba.maxY <= bb.minY || bb.maxY <= ba.minY
-          ) continue;
-          const patch = v.intersection(
-            [[[...a, a[0]]]],
-            [[[...b, b[0]]]],
-          );
+          if (ba.maxX <= bb.minX || bb.maxX <= ba.minX || ba.maxY <= bb.minY || bb.maxY <= ba.minY)
+            continue;
+          const patch = v.intersection([[[...a, a[0]]]], [[[...b, b[0]]]]);
           const area = geometryArea(patch);
           if (area > 1e-9) {
-            worstPairs.push({ fi, mi, area, bounds: {
-              minX: Math.max(ba.minX, bb.minX),
-              maxX: Math.min(ba.maxX, bb.maxX),
-              minY: Math.max(ba.minY, bb.minY),
-              maxY: Math.min(ba.maxY, bb.maxY),
-            } });
+            worstPairs.push({
+              fi,
+              mi,
+              area,
+              bounds: {
+                minX: Math.max(ba.minX, bb.minX),
+                maxX: Math.min(ba.maxX, bb.maxX),
+                minY: Math.max(ba.minY, bb.minY),
+                maxY: Math.min(ba.maxY, bb.maxY),
+              },
+            });
           }
         }
       }
@@ -372,8 +376,11 @@ test('fixed and movable silicon never overlap by positive area in either pose', 
     }
     assert.ok(
       overlapAreaUm2 < 1e-8,
-      state + ' fixed and moving Si geometries overlap by ' +
-        overlapAreaUm2 + ' µm². Largest pairs: ' + JSON.stringify(worstPairs),
+      state +
+        ' fixed and moving Si geometries overlap by ' +
+        overlapAreaUm2 +
+        ' µm². Largest pairs: ' +
+        JSON.stringify(worstPairs),
     );
   }
 });
@@ -382,8 +389,7 @@ test('moving lower optical input remains coupled to a stationary grating in both
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
-  const toMulti = (polygons) =>
-    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  const toMulti = (polygons) => v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
   const off = createSwxGeometry('off');
   const on = createSwxGeometry('on');
   assert.notDeepEqual(off.physicalGroups.gratingFeeds, on.physicalGroups.gratingFeeds);
