@@ -139,7 +139,7 @@ export const RELEASE_GATES = Object.freeze(['main_mask', 'klayout', 'recipe']);
 const MAIN_MASK_RELEASE_PATHS = [
   /^site\/(?:model|model-view-geometry|plan-renderers|selection-geometry|mask-|roi-|draw-mask)/,
   /^site\/(?:layout-|gds|oasis|vector-geometry|process-worker|process-face-execution)/,
-  /^site\/controllers\/(?:mask-|main-canvas|draw-mask|roi|section-|process-panel)-controller\.js$/,
+  /^site\/controllers\/(?:mask-[\w-]+|main-canvas|draw-mask|roi|section-[\w-]+|process-panel)-controller\.js$/,
   /^site\/ui-v2\//,
   /^scripts\/v2\//,
   /^\.github\/workflows\/ui-v2-main-mask\.yml$/,
