@@ -16,7 +16,7 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 
 const PAPER = '10.1038/s41467-023-42981-1';
 const FIXED_DATE = '2026-10-14T09:00:00.000Z';
-const MODEL_SIZE = [240, 100];
+const MODEL_SIZE = [104, 100];
 const RECEIVER_THICKNESS_UM = 2; // visual surrogate for 130nm Si CMOS wafer
 const copy = (obj) => structuredClone(obj);
 const rect = (x, y, w, h) => ({ x, y, w, h });
@@ -29,17 +29,26 @@ function rectPoints(r) {
   ];
 }
 // One physically replayable local layout, intentionally NOT the authors' GDS.
-// A 20um-wide by 2um-long CNT channel matches the Methods/Supplementary width/length.
-// Source/drain overlaps are reconstructed; the original contact polygons are absent.
-const cimSites = Array.from({ length: 8 }, (_, i) => rect(-108 + 10 * i, -28, 5, 5));
+// Source specifies 20um W x 2um L CNTFET. The drawn CNT island includes
+// inferred 0.3um S/D overlap per side (2.6um island; 2um exposed gap).
+// Electrode pad widths/overlap are illustrative, not original author GDS.
+const REPORTED_CNT_L_UM = 2;
+const REPORTED_CNT_W_UM = 20;
+const INFERRED_CONTACT_OVERLAP_UM = 0.3;
+const CNT_ISLAND_L_UM = REPORTED_CNT_L_UM + 2 * INFERRED_CONTACT_OVERLAP_UM;
+const cimSites = Array.from({ length: 8 }, (_, i) => rect(-43 + 12 * i, -26, 5, 5));
 const tcamChannels = Array.from({ length: 5 }, (_, i) => [
-  rect(-4 + 19 * i, -32, 2, 20),
-  rect(-4 + 19 * i, 8, 2, 20),
+  rect(-42 + 19 * i, -33, CNT_ISLAND_L_UM, REPORTED_CNT_W_UM),
+  rect(-42 + 19 * i, 1, CNT_ISLAND_L_UM, REPORTED_CNT_W_UM),
 ]).flat();
-const bufferChannels = Array.from({ length: 4 }, (_, i) => rect(-105 + i * 19, 8, 2, 20));
+const bufferChannels = Array.from({ length: 4 }, (_, i) =>
+  rect(-42 + i * 19, 24, CNT_ISLAND_L_UM, REPORTED_CNT_W_UM),
+);
 const channels = [...bufferChannels, ...tcamChannels];
-const drainContacts = channels.map((c) => rect(c.x + 1.45, c.y, 1.2, c.h));
-const sourceContacts = channels.map((c) => rect(c.x - 0.65, c.y, 1.2, c.h));
+const sourceContacts = channels.map((c) => rect(c.x - 0.9, c.y, 1.2, c.h));
+const drainContacts = channels.map((c) =>
+  rect(c.x + INFERRED_CONTACT_OVERLAP_UM + REPORTED_CNT_L_UM, c.y, 1.2, c.h),
+);
 const rramSites = drainContacts.map((c) => rect(c.x + 0.1, c.y + 5, 0.9, 10));
 const MASKS = Object.freeze([
   {
@@ -63,7 +72,7 @@ const MASKS = Object.freeze([
     name: 'BEOL CNTFET bottom gate 10 TCAM + 4 buffer',
     rectangles: channels.map((c) => rect(c.x - 0.25, c.y, 2.5, c.h)),
   },
-  { id: 16, name: 'Wet-transferred CNT channel / 20x2um', rectangles: channels },
+  { id: 16, name: 'CNT island: 20um W, 2um active L + 0.3um contacts', rectangles: channels },
   { id: 17, name: 'CNTFET Ti/Pd source', rectangles: sourceContacts },
   { id: 18, name: 'CNTFET Ti/Pd drain', rectangles: drainContacts },
   { id: 19, name: 'Binary RRAM Pd/TaOx/Ta2O5/Pt on drain', rectangles: rramSites },
@@ -102,7 +111,7 @@ function makeLayout() {
       datatype: 0,
       count: m.rectangles.length,
     })),
-    bounds: { minX: -120, minY: -50, maxX: 120, maxY: 50, width: 240, height: 100 },
+    bounds: { minX: -52, minY: -50, maxX: 52, maxY: 50, width: 104, height: 100 },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
   };
 }
@@ -145,17 +154,20 @@ export async function buildM3DLime() {
   };
   const root = projectForBenchmark({
     model,
-    section: { a: [-110, -23], b: [100, -23] },
+    section: { a: [-44, -24], b: [-35, -24] },
   });
   root.name = 'M3D-LIME · CMOS / analog CIM / CNTFET digital memory';
   // Transparent inspection is essential: an opaque blanket dielectric would hide
   // buried CMOS/CIM interfaces and W vias in the 3D inspection view.
-  root.display.threeOpacity = 0.28;
+  root.display.threeOpacity = 0.34;
+  // Inspection-only ROI: one vertically aligned analog/CNTFET RRAM unit.
+  // Full model and Mask retain all representative units.
+  root.roi = { type: 'rect', a: [-49, -38], b: [-31, 27] };
   // Low-oblique view exposes stacked BEOL sidewalls while retaining the top FET pair.
   // Camera affects presentation only; XY and Z process geometry remain untouched.
   root.display.threeCamera = {
-    position: [340, -245, 95],
-    target: [0, 0, 2.3],
+    position: [30, -80, 35],
+    target: [-40, -5, 1.5],
     fov: 34,
   };
   root.layout = makeLayout();
@@ -417,14 +429,14 @@ export async function buildM3DLime() {
   cmp('Planarize to M4 + 150nm clearance (inferred)', 1.25);
   selectiveEtch('Open CMOS via to M4 W', 'First level SiO2 400nm', 0.15, 11);
   assert.equal(
-    exposed([-106, -26]).layerId,
+    exposed([-40.5, -23.5]).layerId,
     layerIds.get('CMOS M4 W contacts (surrogate)'),
     'M4 contact etch must stop on tungsten',
   );
   deposit('Fill W landing vias (inferred)', 'M4 W via fill', 0.2, 11);
   cmp('CMP W via plugs to reconstructed Z 1.25um', 1.25);
   assert.equal(
-    exposed([-106, -26]).layerId,
+    exposed([-40.5, -23.5]).layerId,
     layerIds.get('M4 W via fill'),
     'M4 via metal must remain exposed',
   );
@@ -450,7 +462,7 @@ export async function buildM3DLime() {
     13,
   );
   assert.equal(
-    exposed([-106, -26]).layerId,
+    exposed([-40.5, -23.5]).layerId,
     layerIds.get('CIM TiN TE 30nm'),
     'CIM via etch must stop on TiN electrode',
   );
@@ -577,11 +589,15 @@ export async function buildM3DLime() {
     siliconHandleSurrogateUm: RECEIVER_THICKNESS_UM,
     demonstratedArraySizes: { cim: 1024, buffer: 512, tcamCells: 5 },
     representedCellCounts: { cim: cimSites.length, buffer: bufferChannels.length, tcamCells: 5 },
-    transistorChannelWUm: 20,
-    transistorChannelLUm: 2,
+    transistorChannelWUm: REPORTED_CNT_W_UM,
+    transistorChannelLUm: REPORTED_CNT_L_UM,
+    cntIslandLengthUm: CNT_ISLAND_L_UM,
+    inferredContactOverlapUm: INFERRED_CONTACT_OVERLAP_UM,
     declaredAssumptions: [
       'Silicon handle thickness, CMOS FEOL devices, M4 routes and W landing footprints inferred.',
       'All local array pitches, analogue RRAM footprints, top interconnects and test routing inferred.',
+      '2.6um CNT island includes an exact 2um active contact gap and inferred 0.3um overlaps.',
+      'Model field and inspection-only ROI focus on an overlapped analog and TCAM cell.',
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
       'All three CMP endpoints were inferred to enable geometric contact openings.',
       'CNT network rendered as 1nm surrogate rather than physical tube-level geometry.',
