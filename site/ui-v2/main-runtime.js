@@ -132,7 +132,10 @@ export function createMainRuntime({
     },
     getActiveFace,
     isInteractionBlocked: () =>
-      readOnly || state.panEnabled || !['select', 'roi'].includes(state.tool) || state.sectionEditEnabled,
+      readOnly ||
+      state.panEnabled ||
+      !['select', 'roi'].includes(state.tool) ||
+      state.sectionEditEnabled,
     ...plan,
     ...lengths,
     closeSliceControls: () => slice.setCreateMode(false),
