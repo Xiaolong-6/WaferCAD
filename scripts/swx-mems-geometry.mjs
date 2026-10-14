@@ -78,20 +78,22 @@ function strip(a, b, width) {
 function taperedStrip(a, b, wa, wb) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (!(len > 0)) throw new Error('Zero-length taper');
-  const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len;
+  const nx = -(b[1] - a[1]) / len,
+    ny = (b[0] - a[0]) / len;
   return [
-    [a[0] + nx * wa / 2, a[1] + ny * wa / 2],
-    [b[0] + nx * wb / 2, b[1] + ny * wb / 2],
-    [b[0] - nx * wb / 2, b[1] - ny * wb / 2],
-    [a[0] - nx * wa / 2, a[1] - ny * wa / 2],
+    [a[0] + (nx * wa) / 2, a[1] + (ny * wa) / 2],
+    [b[0] + (nx * wb) / 2, b[1] + (ny * wb) / 2],
+    [b[0] - (nx * wb) / 2, b[1] - (ny * wb) / 2],
+    [a[0] - (nx * wa) / 2, a[1] - (ny * wa) / 2],
   ];
 }
 
 function polyline(points, width) {
   // Joined straight/arc segments may share an exact endpoint. Remove the
   // repeated point rather than allowing an invalid zero-length polygon.
-  const compact = points.filter((point, i) =>
-    i === 0 || Math.hypot(point[0] - points[i - 1][0], point[1] - points[i - 1][1]) > 1e-12,
+  const compact = points.filter(
+    (point, i) =>
+      i === 0 || Math.hypot(point[0] - points[i - 1][0], point[1] - points[i - 1][1]) > 1e-12,
   );
   return compact.slice(1).map((next, i) => strip(compact[i], next, width));
 }
@@ -116,21 +118,23 @@ function toothFacet(x0, edgeY, direction) {
   }
   edge.push([x1, edgeY]);
   const backY = edgeY + direction * w;
-  return direction > 0
-    ? [...edge, [x1, backY], [x0, backY]]
-    : [...edge, [x1, backY], [x0, backY]];
+  return direction > 0 ? [...edge, [x1, backY], [x0, backY]] : [...edge, [x1, backY], [x0, backY]];
 }
 
 function makeOptics(moveY) {
-  const x0 = SWX_ASSUMPTIONS.facetCenterXUm -
-    SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm / 2;
+  const x0 =
+    SWX_ASSUMPTIONS.facetCenterXUm - (SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm) / 2;
   const x1 = x0 + SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm;
   const fixedEdge = SWX_REPORTED.offGapUm / 2;
   const movingEdge = -SWX_REPORTED.offGapUm / 2 + moveY;
   const fixed = [toothFacet(x0, fixedEdge, +1)];
   const moving = [toothFacet(x0, movingEdge, -1)];
-  const wa = SWX_REPORTED.waveguideCoreUm, wb = SWX_REPORTED.mmiWidthUm;
-  for (const [target, offset, sign] of [[fixed, 0, 1], [moving, moveY, -1]]) {
+  const wa = SWX_REPORTED.waveguideCoreUm,
+    wb = SWX_REPORTED.mmiWidthUm;
+  for (const [target, offset, sign] of [
+    [fixed, 0, 1],
+    [moving, moveY, -1],
+  ]) {
     const y = sign * 13 + offset;
     target.push(
       taperedStrip([-50, y], [x0 + 0.9, sign * 2.1 + offset], wa, wb),
@@ -167,13 +171,17 @@ function makeFoldedSprings(moveY) {
     const y = side * 32;
     // Reconstructed placements; paper reports 30/22 um beams and 200 nm width.
     const xs = [-3, -1.5, 0, 1.5];
-    const high = y + (side * 8);
-    const low = y - (side * 8) + moveY;
+    const high = y + side * 8;
+    const low = y - side * 8 + moveY;
     const zigzag = [
-      [xs[0], high], [xs[0], low],
-      [xs[1], low], [xs[1], high],
-      [xs[2], high], [xs[2], low],
-      [xs[3], low], [xs[3], high],
+      [xs[0], high],
+      [xs[0], low],
+      [xs[1], low],
+      [xs[1], high],
+      [xs[2], high],
+      [xs[2], low],
+      [xs[3], low],
+      [xs[3], high],
     ];
     items.push(...polyline(zigzag, SWX_REPORTED.foldedSpringWidthUm));
     items.push(rect(0, high, 11, 7));
@@ -189,11 +197,13 @@ function makeCombs(moveY) {
   for (let i = 0; i < 20; i++) {
     const x = 8.8 + i * 1.65;
     fixed.push(rect(x, 5.7, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(rect(x + 0.8, 2.3 + moveY, SWX_REPORTED.combFingerWidthUm,
-      SWX_REPORTED.combFingerLengthUm));
+    moving.push(
+      rect(x + 0.8, 2.3 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+    );
     fixed.push(rect(x, -17.7, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(rect(x + 0.8, -14.3 + moveY, SWX_REPORTED.combFingerWidthUm,
-      SWX_REPORTED.combFingerLengthUm));
+    moving.push(
+      rect(x + 0.8, -14.3 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+    );
   }
   fixed.push(rect(25, -21, 39, SWX_REPORTED.fixedCombHandleUm));
   moving.push(rect(25, -11 + moveY, 39, SWX_REPORTED.movableCombHandleUm));
@@ -220,49 +230,91 @@ export function createSwxGeometry(state = 'off') {
     rect(46, -21, 9, 9),
   ];
   const bridge = [
-    ...polyline([[-9, -10 + travel], [-7, -10 + travel], [-7, 22 + travel]],
-      SWX_REPORTED.movableCombHandleUm),
-    ...polyline([[-7, 0 + travel], [6, 0 + travel], [6, -11 + travel]], 1),
+    ...polyline(
+      [
+        [-9, -10 + travel],
+        [-7, -10 + travel],
+        [-7, 22 + travel],
+      ],
+      SWX_REPORTED.movableCombHandleUm,
+    ),
+    ...polyline(
+      [
+        [-7, 0 + travel],
+        [6, 0 + travel],
+        [6, -11 + travel],
+      ],
+      1,
+    ),
   ];
   const silicon = [
-    ...optics.fixed, ...optics.moving,
-    ...makeMeanders(travel), ...makeFoldedSprings(travel),
-    ...combs.fixed, ...combs.moving, ...anchors, ...bridge,
+    ...optics.fixed,
+    ...optics.moving,
+    ...makeMeanders(travel),
+    ...makeFoldedSprings(travel),
+    ...combs.fixed,
+    ...combs.moving,
+    ...anchors,
+    ...bridge,
   ];
   // Ridge mask: representative narrow routing transitions (not full
   // 64x64 array routing). Ridge 150nm etch leaves 70nm silicon slab.
   const ridge = [
-    rect(-50, 13, 3, 1.4), rect(-50, -13 + travel, 3, 1.4),
-    rect(-12, 13, 3, 1.4), rect(-12, -13 + travel, 3, 1.4),
+    rect(-50, 13, 3, 1.4),
+    rect(-50, -13 + travel, 3, 1.4),
+    rect(-12, 13, 3, 1.4),
+    rect(-12, -13 + travel, 3, 1.4),
   ];
   const electrodes = [
-    rect(25, 43, 5.5, 5.5), rect(25, -43, 5.5, 5.5),
-    rect(46, 9, 5, 5), rect(46, -21, 5, 5),
+    rect(25, 43, 5.5, 5.5),
+    rect(25, -43, 5.5, 5.5),
+    rect(46, 9, 5, 5),
+    rect(46, -21, 5, 5),
   ];
-  const polys = new Map([[1, silicon], [2, ridge], [3, electrodes]]);
+  const polys = new Map([
+    [1, silicon],
+    [2, ridge],
+    [3, electrodes],
+  ]);
   const elements = [...polys].flatMap(([layer, polygons]) =>
     polygons.map((points) => ({
-      kind: 'polygon', sourceCell: 'SWX_MEMS_UNIT', layer, datatype: 0, points,
+      kind: 'polygon',
+      sourceCell: 'SWX_MEMS_UNIT',
+      layer,
+      datatype: 0,
+      points,
     })),
   );
   const [width, height] = SWX_ASSUMPTIONS.fieldUm;
   const layout = {
     name: 'Hu 2025 SWX MEMS ' + state.toUpperCase() + ' · reconstructed, not authors GDS',
     root: 'SWX_MEMS_UNIT',
-    elements, linework: [], hierarchy: {},
+    elements,
+    linework: [],
+    hierarchy: {},
     combos: MASK_INFO.map(([layer]) => ({
-      key: 'SWX_MEMS_UNIT|' + layer + '|0', cell: 'SWX_MEMS_UNIT',
-      layer, datatype: 0, count: polys.get(layer).length,
+      key: 'SWX_MEMS_UNIT|' + layer + '|0',
+      cell: 'SWX_MEMS_UNIT',
+      layer,
+      datatype: 0,
+      count: polys.get(layer).length,
     })),
     bounds: {
-      minX: -width / 2, minY: -height / 2,
-      maxX: width / 2, maxY: height / 2, width, height,
+      minX: -width / 2,
+      minY: -height / 2,
+      maxX: width / 2,
+      maxY: height / 2,
+      width,
+      height,
     },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
   };
   return {
-    state, travelUm: travel, gapUm: optics.fixedEdge - optics.movingEdge,
-    layout, maskPolygons: polys,
+    state,
+    travelUm: travel,
+    gapUm: optics.fixedEdge - optics.movingEdge,
+    layout,
+    maskPolygons: polys,
     maskNames: MASK_INFO.map(([layer, name]) => ({ layer, name })),
     anchorTestPoint: [25, 43],
     releasedBeamTestPoint: [-31, -1.7 + travel],
