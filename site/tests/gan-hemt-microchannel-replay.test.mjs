@@ -20,11 +20,12 @@ function selectedArea(model, params) {
   const key = params.mask?.layerKeys?.[0];
   assert.ok(key, 'Recipe mask selector is missing');
   const number = Number(key.split('|')[0]);
-  const rectangles = masks.get(number)?.rectangles;
-  assert.ok(rectangles, 'Recipe refers to unknown mask ' + key);
-  return vectorApi.unionGeometries(
-    rectangles.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
-  );
+  const mask = masks.get(number);
+  assert.ok(mask, 'Recipe refers to unknown mask ' + key);
+  return vectorApi.unionGeometries([
+    ...mask.rectangles.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
+    ...(mask.polygons || []).map((points) => [[ [...points, points[0]] ]]),
+  ]);
 }
 
 test('GaN microchannel Recipe runs fresh from Base to identical physical material slabs', async () => {
@@ -57,7 +58,13 @@ test('GaN microchannel Recipe runs fresh from Base to identical physical materia
         face: params.face,
         thickness: params.thicknessUm,
         etchProfile: params.profile,
+        ...(params.target ? {
+          etchTargetLayerIds: model.layers.filter((layer) =>
+            layer.name === params.target
+          ).map((layer) => layer.id),
+        } : {}),
       };
+      if (params.target) assert.equal(op.etchTargetLayerIds.length, 1, 'Missing etch target');
     } else {
       assert.fail('Unrecognized Recipe operation ' + step.command);
     }
