@@ -851,6 +851,7 @@ export function createProcessPanelController({
 
   async function applyOperation({
     canonicalLengthUm = null,
+    canonicalImplantStartDepthUm = null,
     canonicalSurface = null,
     canonicalFaceSurfaces = null,
     canonicalFace = null,
@@ -1013,6 +1014,13 @@ export function createProcessPanelController({
         return status('Implant Tilt X must be between -80° and 80°.', 'error');
       }
       params.tilt = tilt;
+      if (canonicalImplantStartDepthUm != null) {
+        const startDepth = Number(canonicalImplantStartDepthUm);
+        if (!Number.isFinite(startDepth) || startDepth < 0 || startDepth >= thickness) {
+          return status('Implant Start depth must be nonnegative and less than total Depth.', 'error');
+        }
+        if (startDepth > 0) params.depthStart = startDepth;
+      }
     } else if (type === 'electrical') {
       params.electricalRegionType = $('electricalRegionType').value;
       params.electricalRegionSource = $('electricalRegionSource').value;
