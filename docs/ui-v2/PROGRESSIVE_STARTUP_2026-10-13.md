@@ -204,16 +204,14 @@ No new geometry tolerance, snapping or approximation was introduced.
 [Exact-head P1 CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38561846383)
 at `fb645bf` passed Quality, targeted scientific tests, Legacy
 persistence, real Progressive Startup, Quality Restore and Recovery.
-A single software Chromium profile measured:
-
-| Scenario | First scientific frame | 3D Ready | Largest Long Task |
-| --- | ---: | ---: | ---: |
-| M3D | 16.21 s | 37.06 s | 1,306 ms |
-| Restored Quality | 16.39 s | 38.48 s | 1,426 ms |
+A single software Chromium profile measured M3D first frame
+at 16.21 s, 3D Ready at 37.06 s and the largest Long Task at
+**1,306 ms**. Restored Quality measured first frame at 16.39 s,
+3D Ready at 38.48 s and largest Long Task at **1,426 ms**.
 
 The preceding software sample at `16e8890` measured maxima of
-1,076 ms / 1,347 ms, respectively. Different CI conditions and only
-one sample per configuration prohibit a causal performance claim.
+1,076 ms / 1,347 ms, respectively. Different CI conditions and
+only one sample per configuration prohibit a causal performance claim.
 A substantial Boolean/GC long task is still present; the complete
 startup responsiveness requirement is **not satisfied**.
 
