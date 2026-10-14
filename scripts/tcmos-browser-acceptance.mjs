@@ -63,6 +63,33 @@ try {
   assert.equal(opened.model.layers.length, expected.model.layers.length);
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-before-runall.png') });
 
+  // Inspect the actual exported binary Mask, not just the layout metadata.
+  const { parseGDS, flattenGDS } = await import('../site/gds.js');
+  const { parseOAS } = await import('../site/oasis.js');
+  const menu = page.locator('[data-action="mask-export-menu"]');
+  if (!(await menu.isVisible())) {
+    await page.getByRole('button', { name: 'Mask more tools' }).click();
+  }
+  await menu.click();
+  const maskExports = [];
+  for (const type of ['gds', 'oas']) {
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 120000 }),
+      page.locator(`[data-action="mask-export:${type}"]`).click({ timeout: 120000 }),
+    ]);
+    const path = resolve(dir, `tcmos-v2-mask.${type}`);
+    await download.saveAs(path);
+    const bytes = await readFile(path);
+    const parsed = type === 'gds'
+      ? parseGDS(Uint8Array.from(bytes).buffer)
+      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const elements = flattenGDS(parsed, parsed.root).elements;
+    assert.ok(elements.length > 0, 'Exported ' + type + ' mask is empty');
+    maskExports.push({ type, bytes: bytes.byteLength, elements: elements.length });
+  }
+  await page.keyboard.press('Escape');
+  assert.deepEqual((await snap()).model, opened.model, 'Mask export mutated canonical geometry');
+
   await panel('process');
   await page.locator('[data-action="process-mode:recipe"]').click();
   const count = await page.locator('.recipe-step-row').count();
@@ -112,6 +139,7 @@ try {
     result: 'pass',
     steps: count,
     geometry,
+    maskExports,
     layers: exported.model.layers.length,
     regions: exported.model.regions.length,
     implants: exported.model.implants.length,
