@@ -145,13 +145,15 @@ await previewFrame.waitFor({ state: 'visible', timeout: 30000 });
 const preview = page.frameLocator(
   '.welcome-example-card[data-example-id="photodetector-literature"] .welcome-example-project-frame',
 );
-await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
+const previewContentFrame = await (await previewFrame.elementHandle()).contentFrame();
+await preview.locator('body[data-preview-mode="true"][data-ready="true"]').waitFor({
   state: 'attached',
   timeout: 30000,
 });
-await preview
-  .locator('html.welcome-project-preview[data-preview-plan-framing="fit"]')
-  .waitFor({ state: 'attached', timeout: 30000 });
+await preview.locator('.p-canvases[data-mode="single"]').waitFor({
+  state: 'attached',
+  timeout: 30000,
+});
 
 for (const [view, panelId] of [
   ['main', 'mainPanel'],
@@ -160,10 +162,11 @@ for (const [view, panelId] of [
   ['section', 'sectionPanel'],
 ]) {
   await photodetectorCard.locator(`.welcome-example-view-tab[data-preview-view="${view}"]`).click();
-  await preview.locator(`html.welcome-project-preview[data-preview-view="${view}"]`).waitFor({
-    state: 'attached',
-    timeout: 10000,
-  });
+  await previewContentFrame.waitForFunction(
+    (name) => window.WaferCadV2Workstation?.snapshot().ui.view === name,
+    view,
+    { timeout: 10000 },
+  );
   await preview.locator(`#${panelId}`).waitFor({ state: 'visible', timeout: 10000 });
   const box = await preview.locator(`#${panelId}`).boundingBox();
   assert.ok(box?.width > 20 && box?.height > 20, `${view} preview must have visible area`);
@@ -194,10 +197,11 @@ for (const [view, panelId] of [
 }
 
 await photodetectorCard.locator('.welcome-example-view-tab[data-preview-view="main"]').click();
-await preview.locator('html.welcome-project-preview[data-preview-view="main"]').waitFor({
-  state: 'attached',
-  timeout: 10000,
-});
+await previewContentFrame.waitForFunction(
+  () => window.WaferCadV2Workstation?.snapshot().ui.view === 'main',
+  null,
+  { timeout: 10000 },
+);
 
 for (const selector of [
   '.view-head',
@@ -258,12 +262,12 @@ const percCard = page.locator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"]',
 );
 await percCard.locator('.welcome-example-view-tab[data-preview-view="three"]').click();
-assert.match(await previewFrames.nth(1).getAttribute('src'), /app-legacy\.html\?/);
+assert.match(await previewFrames.nth(1).getAttribute('src'), /app\.html\?preview=1/);
 assert.equal(await previewFrames.nth(2).getAttribute('src'), null);
 const percPreview = page.frameLocator(
   '.welcome-example-card[data-example-id="perc-point-contact-solar-cell"] .welcome-example-project-frame',
 );
-await percPreview.locator('html.welcome-project-preview[data-preview-view="three"]').waitFor({
+await percPreview.locator('body[data-preview-mode="true"][data-ready="true"]').waitFor({
   state: 'attached',
   timeout: 30000,
 });
