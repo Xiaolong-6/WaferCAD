@@ -267,8 +267,10 @@ function gratingArcBand(cx, cy, inner, outer, sign) {
   return [...outerPoints, ...innerPoints.reverse()];
 }
 
-function makeIllustrativeGratingCouplers() {
+function makeIllustrativeGratingCouplers(moveY) {
   const silicon = [],
+    fixedSilicon = [],
+    flexibleSilicon = [],
     shallowEtch = [],
     groups = [];
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
@@ -276,7 +278,7 @@ function makeIllustrativeGratingCouplers() {
     const sourceY = sign * 13;
     const feed = polyline(
       [
-        [-53, sourceY],
+        [-53, sourceY + (sign < 0 ? moveY : 0)],
         [-50.7, sign * 18],
         [cx, cy],
       ],
@@ -297,7 +299,13 @@ function makeIllustrativeGratingCouplers() {
     // sector. Standalone full-etched arcs would be disconnected silicon
     // islands with no realistic optical substrate beneath them.
     silicon.push(...feed, taper, slab);
-    groups.push(...feed, taper, slab);
+    fixedSilicon.push(taper, slab);
+    // The lower grating is stationary but the SWX lower optical port moves
+    // by 885nm. Its routed waveguide must flex rather than remain welded
+    // in the OFF position (or be misclassified as a rigid fixed component).
+    if (sign < 0) flexibleSilicon.push(...feed);
+    else fixedSilicon.push(...feed);
+    groups.push(taper, slab);
     for (const radius of SWX_ASSUMPTIONS.gratingRadiiUm) {
       const groove = gratingArcBand(
         cx,
@@ -310,7 +318,7 @@ function makeIllustrativeGratingCouplers() {
       groups.push(groove);
     }
   }
-  return { silicon, shallowEtch, groups };
+  return { silicon, fixedSilicon, flexibleSilicon, shallowEtch, groups };
 }
 
 function makeMeanders(moveY) {
@@ -373,8 +381,12 @@ function makeStructuralAligners(moveY) {
     flexure = [];
   const halfShuttle = SWX_REPORTED.shuttleWidthUm / 2;
   for (const sign of [-1, 1]) {
-    const anchor = [-18, sign * 9.5];
-    fixed.push(rect(anchor[0], anchor[1], 6, 6));
+    // Keep the structural-aligner anchor away from the lower movable
+    // optical taper (the former -18um x -9.5um pad intersected it by
+    // 8.72um²). A 10um pad also retains BOX under a 4um HF lateral release.
+    // The precise anchor location is inferred, not copied from author GDS.
+    const anchor = [2, sign * 27];
+    fixed.push(rect(anchor[0], anchor[1], 10, 10));
     const first = [anchor[0] - SWX_REPORTED.structuralAlignerLengthUm, anchor[1]];
     const corner = [first[0], sign * 5.7];
     const elbow = [-22, sign * 5.7 + moveY * 0.4];
@@ -462,7 +474,7 @@ export function createSwxGeometry(state = 'off') {
   const optics = makeOptics(travel);
   const combs = makeCombs(travel);
   const stoppers = makeMechanicalStoppers(travel);
-  const gratings = makeIllustrativeGratingCouplers();
+  const gratings = makeIllustrativeGratingCouplers(travel);
   const anchors = [
     // The former (-49,+/-34) boxes were unsupported free-standing islands
     // with no connection to the waveguide or mechanical network.
@@ -474,13 +486,18 @@ export function createSwxGeometry(state = 'off') {
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
   const foldedSprings = makeFoldedSprings(travel);
-  const flexure = [...foldedSprings, ...makeMeanders(travel), ...aligners.flexure];
+  const flexure = [
+    ...foldedSprings,
+    ...makeMeanders(travel),
+    ...aligners.flexure,
+    ...gratings.flexibleSilicon,
+  ];
   const fixed = [
     ...optics.fixed,
     ...combs.fixed,
     ...anchors,
     ...stoppers.fixed,
-    ...gratings.silicon,
+    ...gratings.fixedSilicon,
     ...aligners.fixed,
   ];
   const movable = [...optics.moving, ...combs.moving, ...shuttle, ...stoppers.movable];
