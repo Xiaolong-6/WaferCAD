@@ -1,4 +1,8 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import {
+  MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
+  validateMaterialThicknessUm,
+} from './process-numerical-contract.js';
 import { applyProcessFaces } from './process-face-execution.js';
 import { localGeometry } from './model-array-context.js';
 import { applyArrayOperation } from './model-array-process.js';
@@ -449,10 +453,6 @@ function withSurfaceAppearance(stack, face, appearance) {
 export function surfaceZ(stack, face = 'front') {
   return stackSurfaceZ(stack, face);
 }
-// Numerical Z-segment normalization threshold, not a physical film/atomic-layer limit.
-// It must never be used to silently replace an operation's requested thickness.
-export const MIN_RESOLVABLE_MATERIAL_SEGMENT_UM = 1e-9;
-
 export function normalizeStack(stack) {
   const sorted = (stack || [])
     .filter((seg) => seg.z1 > seg.z0 + MIN_RESOLVABLE_MATERIAL_SEGMENT_UM)
@@ -1270,14 +1270,9 @@ function applyOperationImpl(
   // segments. Fail before any mutation rather than reporting a successful
   // operation with a different (or vanished) physical thickness. Implant and
   // Electrical depths are annotation semantics, not material-film segments.
-  if (
-    (type === 'add' || type === 'grow' || (type === 'etch' && etchProfile !== 'planarize')) &&
-    amount <= MIN_RESOLVABLE_MATERIAL_SEGMENT_UM
-  ) {
-    return {
-      changed: false,
-      error: 'Material geometry cannot resolve the requested thickness without losing a Z segment.',
-    };
+  if (type === 'add' || type === 'grow' || (type === 'etch' && etchProfile !== 'planarize')) {
+    const error = validateMaterialThicknessUm(amount, 'Material thickness');
+    if (error) return { changed: false, error };
   }
   if (type === 'etch' && etchProfile === 'isotropic' && surface?.kind === 'rough') {
     return {
