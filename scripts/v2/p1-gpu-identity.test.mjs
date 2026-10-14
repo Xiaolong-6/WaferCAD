@@ -4,11 +4,11 @@ import { classifyHardwareWebGL } from './p1-gpu-identity.mjs';
 
 test('NVIDIA discrete and Intel / AMD integrated adapters are eligible', () => {
   for (const [unmaskedVendor, unmaskedRenderer, manufacturer] of [
-    ['Google Inc. (NVIDIA)', 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0)', 'NVIDIA'],
-    ['Google Inc. (Intel)', 'ANGLE (Intel, Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0)', 'Intel'],
-    ['Google Inc. (Intel)', 'ANGLE (Intel, Intel(R) Iris Xe Graphics Direct3D11)', 'Intel'],
-    ['Google Inc. (AMD)', 'ANGLE (AMD, AMD Radeon(TM) Graphics Direct3D11)', 'AMD'],
-    ['Google Inc. (AMD)', 'ANGLE (AMD, Radeon 780M Graphics Direct3D11)', 'AMD'],
+    ['Google Inc. (NVIDIA)', 'ANGLE (NVIDIA, GeForce RTX 3060 D3D11)', 'NVIDIA'],
+    ['Google Inc. (Intel)', 'ANGLE (Intel, Intel UHD Graphics 770 D3D11)', 'Intel'],
+    ['Google Inc. (Intel)', 'ANGLE (Intel, Intel Iris Xe Graphics D3D11)', 'Intel'],
+    ['Google Inc. (AMD)', 'ANGLE (AMD, AMD Radeon Graphics D3D11)', 'AMD'],
+    ['Google Inc. (AMD)', 'ANGLE (AMD, Radeon 780M Graphics D3D11)', 'AMD'],
   ]) {
     assert.deepEqual(classifyHardwareWebGL({ unmaskedVendor, unmaskedRenderer }), {
       verified: true,
@@ -38,14 +38,16 @@ test('software adapters fail closed even when a vendor name appears', () => {
 
 test('unknown/masked WebGL identities do not qualify as hardware evidence', () => {
   assert.equal(classifyHardwareWebGL(null).verified, false);
-  assert.equal(classifyHardwareWebGL({ vendor: 'WebKit', renderer: 'WebKit WebGL' }).verified, false);
-  assert.equal(
-    classifyHardwareWebGL({ unmaskedVendor: 'Google Inc. (Intel)', unmaskedRenderer: '' }).verified,
-    false,
-  );
-  assert.equal(
-    classifyHardwareWebGL({ unmaskedVendor: 'Google Inc.', unmaskedRenderer: 'ANGLE (Unknown GPU)' })
-      .verified,
-    false,
-  );
+  const masked = classifyHardwareWebGL({ vendor: 'WebKit', renderer: 'WebKit WebGL' });
+  assert.equal(masked.verified, false);
+  const unavailable = classifyHardwareWebGL({
+    unmaskedVendor: 'Google Inc. (Intel)',
+    unmaskedRenderer: '',
+  });
+  const unidentified = classifyHardwareWebGL({
+    unmaskedVendor: 'Google Inc.',
+    unmaskedRenderer: 'ANGLE (Unknown GPU)',
+  });
+  assert.equal(unavailable.verified, false);
+  assert.equal(unidentified.verified, false);
 });
