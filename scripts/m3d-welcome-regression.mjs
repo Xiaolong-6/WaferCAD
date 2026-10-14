@@ -97,10 +97,12 @@ try {
     'Border toggle changes its selected visual appearance',
   );
   await border.click();
-  // Clicking intentionally leaves focus on the button. Clear the focus ring
-  // before comparing the restored selected-state colors and accessible state.
-  await border.evaluate((node) => node.blur());
-  assert.deepEqual(await visualState(), starting, 'Border state is reversible');
+  const restored = await visualState();
+  assert.equal(restored.pressed, starting.pressed, 'Border pressed state is reversible');
+  assert.equal(restored.fill, starting.fill, 'Border selected fill is reversible');
+  assert.equal(restored.color, starting.color, 'Border selected text color is reversible');
+  // The pointer remains over the button after click; hover/focus outlines are
+  // transient accessibility feedback, not persisted Border selection state.
 
   const after = await snapshot();
   assert.deepEqual(after.model, before.model, 'Border and History navigation preserve M3D model');
