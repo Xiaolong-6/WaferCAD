@@ -85,7 +85,7 @@ try {
     await preview.locator(`#${canvasId}`).evaluate((canvas) => {
       const rect = canvas.getBoundingClientRect();
       canvas.dispatchEvent(
-        new WheelEvent('wheel', {
+        new canvas.ownerDocument.defaultView.WheelEvent('wheel', {
           bubbles: true,
           cancelable: true,
           deltaY: -200,
