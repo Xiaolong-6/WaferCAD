@@ -571,6 +571,7 @@ export async function createMainView({ project, sharedState, workstation, render
       state,
       renderModel,
       root,
+      readOnly: Boolean(workstation?.readOnlyPreview),
       onChange: sync,
       status: (value) => {
         message = value;
