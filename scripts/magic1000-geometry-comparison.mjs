@@ -14,14 +14,16 @@ function sortedCuts(cuts) {
   }
   return result;
 }
-function occupancy(model) {
+function occupancy(model, options = {}) {
   const result = new Map();
   const byId = new Map((model.layers || []).map((l) => [l.id, l.name]));
-  assert.equal(
-    new Set(byId.values()).size,
-    byId.size,
-    'Duplicate layer names make geometry comparison ambiguous',
-  );
+  if (!options.allowRepeatedNames) {
+    assert.equal(
+      new Set(byId.values()).size,
+      byId.size,
+      'Duplicate layer names make geometry comparison ambiguous',
+    );
+  }
   for (const region of model.regions || []) {
     for (const segment of region.stack || []) {
       const name = byId.get(segment.layerId);
@@ -43,6 +45,20 @@ function footprint(slabs, mid, vectorApi) {
  * Unlike layer names, total volume or region count checks, this detects
  * misplaced vias, buried seams, lost nanometre films and missing metal.
  */
+function footprintPerimeter(geometry) {
+  let perimeter = 0;
+  for (const polygon of geometry) {
+    for (const ring of polygon) {
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i];
+        const b = ring[(i + 1) % ring.length];
+        perimeter += Math.hypot(a[0] - b[0], a[1] - b[1]);
+      }
+    }
+  }
+  return perimeter;
+}
+
 export async function assertSameMaterialGeometry(expected, actual, options = {}) {
   await loadGeometryKernel();
   const vectorApi = await import('../site/vector-geometry.js');
@@ -52,8 +68,8 @@ export async function assertSameMaterialGeometry(expected, actual, options = {})
     [expected.shape, expected.width, expected.height, expected.thickness],
     'Base geometry changed during Run All',
   );
-  const e = occupancy(expected),
-    a = occupancy(actual);
+  const e = occupancy(expected, options),
+    a = occupancy(actual, options);
   assert.deepEqual([...a.keys()].sort(), [...e.keys()].sort(), 'Material names differ');
   let slabsChecked = 0,
     maxMismatchAreaUm2 = 0;
@@ -72,7 +88,20 @@ export async function assertSameMaterialGeometry(expected, actual, options = {})
       const extra = geometryArea(vectorApi.difference(ag, eg));
       const eArea = geometryArea(eg),
         aArea = geometryArea(ag);
-      const tolerance = Math.max(areaAbsTolerance, 1e-9 * Math.max(eArea, aArea));
+      // Rebuilt and saved masks may differ by one 0.1 nm persistence quantum
+      // on a physical boundary. Bound that area from the actual footprint
+      // perimeter; a material's presence and every Z slab remain mandatory.
+      const gridTolerance = options.xyQuantumUm
+        ? Math.min(
+            options.maxQuantizedAreaUm2 ?? 25,
+            1.1 * options.xyQuantumUm * Math.max(footprintPerimeter(eg), footprintPerimeter(ag)),
+          )
+        : 0;
+      const tolerance = Math.max(
+        areaAbsTolerance,
+        1e-9 * Math.max(eArea, aArea),
+        gridTolerance,
+      );
       const mismatch = missing + extra;
       maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, mismatch);
       assert.ok(
