@@ -17,6 +17,7 @@ export function createPlanViewController({
   renderMask,
   renderMain,
   getViewportMargin = () => 34,
+  fitMaskToContent = false,
   getCompactAxes = () => false,
   onChanged = () => {},
 }) {
@@ -49,10 +50,17 @@ export function createPlanViewController({
         maxY: model.height / 2,
       };
 
-    let minX = base.minX,
-      maxX = base.maxX,
-      minY = base.minY,
-      maxY = base.maxY;
+    // Inspection previews fit actual mask geometry when the substrate is far
+    // larger than a localized contact pattern. Editors still fit the full base.
+    const hasContent =
+      getMaskSourceMode() === 'draw'
+        ? Boolean(getDrawMask()?.shapes?.length)
+        : Boolean(layout?.elements?.length || layout?.linework?.length);
+    const contentOnly = fitMaskToContent && hasContent;
+    let minX = contentOnly ? Infinity : base.minX,
+      maxX = contentOnly ? -Infinity : base.maxX,
+      minY = contentOnly ? Infinity : base.minY,
+      maxY = contentOnly ? -Infinity : base.maxY;
 
     if (getMaskSourceMode() === 'draw') {
       for (const shape of getDrawMask()?.shapes || []) {
@@ -109,6 +117,9 @@ export function createPlanViewController({
       }
     }
 
+    if (![minX, maxX, minY, maxY].every(Number.isFinite)) {
+      ({ minX, maxX, minY, maxY } = base);
+    }
     return {
       minX,
       maxX,
@@ -121,7 +132,7 @@ export function createPlanViewController({
 
   function viewport(width, height, kind = 'mask') {
     const model = getModel(),
-      margin = Math.max(0, Number(getViewportMargin(kind)) || 0),
+      margin = Math.max(0, Number(getViewportMargin(kind, width, height)) || 0),
       view = getPlanViews()[kind],
       bounds =
         kind === 'mask'
