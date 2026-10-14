@@ -145,3 +145,26 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
   assert.equal(manager.switchBranch('main'), true);
   assert.deepEqual(live.model, project.model, 'OFF physical model failed to restore');
 });
+
+test('lattice shuttle physically connects the upper and lower moving comb buses', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  for (const pose of ['off', 'on']) {
+    const g = createSwxGeometry(pose);
+    const footprint = v.unionGeometries(
+      g.physicalGroups.movable.map((points) => [[[...points, points[0]]]]),
+    );
+    const travel = g.travelUm;
+    const points = [
+      [-20, 1.8 + travel],
+      [25, travel],
+      [25, -11.2 + travel],
+      [42, -6 + travel],
+    ];
+    assert.ok(
+      footprint.some((polygon) => points.every((point) => v.pointInMulti(point, [polygon]))),
+      pose + ' geometry lost a mechanical link between shuttle and comb buses',
+    );
+  }
+});
