@@ -52,7 +52,13 @@ export function createProjectStateController({
     ].filter((state) => state && typeof state === 'object');
     // History still compares snapshots against independent copies before accepting
     // them; this protection applies equally to the Worker-validated import path.
+    const cloneStart = performance.now();
     const copies = structuredClone(states);
+    performance.measure('wafercad:history:attestation-clone', {
+      start: cloneStart,
+      end: performance.now(),
+      detail: { states: states.length },
+    });
     for (let index = 0; index < states.length; index++) {
       importedStates.set(states[index], copies[index]);
     }

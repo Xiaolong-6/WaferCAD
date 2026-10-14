@@ -1575,8 +1575,14 @@ export function createSnapshotManager({
         (branch) => branch?.headState,
       ),
     ].filter((state) => state && typeof state === 'object');
+    const validationStart = performance.now();
     const validStates =
       typeof validateStates === 'function' && validateStates(states) ? new WeakSet(states) : null;
+    performance.measure('wafercad:history:validation', {
+      start: validationStart,
+      end: performance.now(),
+      detail: { states: states.length },
+    });
     const isValid = (state) => (validStates ? validStates.has(state) : validateState(state));
 
     const seen = new Set();
@@ -1851,6 +1857,9 @@ export function createSnapshotManager({
   // synchronously after the final yield, preserving atomic visibility.
   async function importRecordsAsync(value, branchState = null, { signal, beforeCommit } = {}) {
     const steps = stageImportedRecords(value, branchState, beforeCommit);
+    const importStart = performance.now();
+    let activeMs = 0;
+    let yieldCount = 0;
     let sliceStart = performance.now();
     let processed = 0;
     for (;;) {
@@ -1858,10 +1867,25 @@ export function createSnapshotManager({
         steps.return();
         throw Object.assign(new Error('History import aborted.'), { name: 'AbortError' });
       }
+      const stepStart = performance.now();
       const result = steps.next();
-      if (result.done) return result.value;
+      activeMs += performance.now() - stepStart;
+      if (result.done) {
+        performance.measure('wafercad:history:import-active', {
+          start: importStart,
+          end: importStart + activeMs,
+          detail: { yields: yieldCount },
+        });
+        performance.measure('wafercad:history:import-wall', {
+          start: importStart,
+          end: performance.now(),
+          detail: { yields: yieldCount },
+        });
+        return result.value;
+      }
       processed++;
       if (processed >= 8 || performance.now() - sliceStart >= 12) {
+        yieldCount++;
         await new Promise((resolve) => setTimeout(resolve, 0));
         sliceStart = performance.now();
         processed = 0;
