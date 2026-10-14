@@ -910,14 +910,17 @@ function applyConformalMaterialWalls(
       continue;
     }
 
-    // Derive both halves from the same band. Subtracting the already clipped
-    // target can retry on a different grid and leave two owners at one wall.
-    const rest = difference(region.geom, band);
+    // Derive both halves from one Boolean complement: an independent
+    // intersection(region, band) and difference(region, band) can round their
+    // shared edge differently and leave two owners at a physical wall.
+    const rest = difference(region.geom, band),
+      wall = difference(region.geom, rest);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
     if (!isEmpty(target.geom)) {
+      if (isEmpty(wall)) throw new Error('Conformal lost a material-wall partition.');
       next.push({
         id: `region-${model.nextRegionId++}`,
-        geom: target.geom,
+        geom: wall,
         stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
       });
     }
