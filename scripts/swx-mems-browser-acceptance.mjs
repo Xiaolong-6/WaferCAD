@@ -224,9 +224,7 @@ try {
       // Review the actual 3D WebGL sidewalls at the same physical camera
       // in both Variants. Keep this camera change in the TEST copy only;
       // the user-facing project retains its own default overview camera.
-      const zScale = Number(
-        await page.locator('#threeHost').getAttribute('data-z-display-scale'),
-      );
+      const zScale = Number(await page.locator('#threeHost').getAttribute('data-z-display-scale'));
       assert.ok(Number.isFinite(zScale) && zScale > 0, 'Missing physical 3D Z display scale');
       const deviceLayerId = source.model.layers.find(
         (layer) => layer.name === '220nm SOI device silicon',
@@ -275,8 +273,10 @@ try {
         await page.locator('[data-action="domain:history"]').click();
         await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
         await page.waitForFunction(
-          () => window.WaferCadV2Workstation.snapshot().workflow.branches
-            .some((branch) => branch.id === 'on' && branch.active),
+          () =>
+            window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+              (branch) => branch.id === 'on' && branch.active,
+            ),
           null,
           { timeout: 120000 },
         );
@@ -293,8 +293,11 @@ try {
         (expected) => {
           const host = document.getElementById('threeHost');
           const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
-          return host?.dataset.renderState === 'ready' && camera &&
-            camera.target.every((value, i) => Math.abs(value - expected.target[i]) < 1e-4);
+          return (
+            host?.dataset.renderState === 'ready' &&
+            camera &&
+            camera.target.every((value, i) => Math.abs(value - expected.target[i]) < 1e-4)
+          );
         },
         cornerCamera,
         { timeout: 120000 },
