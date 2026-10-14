@@ -51,6 +51,11 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
       centered(70, 70, 1450, 950),
     ],
   },
+  {
+    id: 21,
+    name: 'Rear coolant inlet and outlet bores (inferred)',
+    rectangles: [centered(100, 60, 0, -415), centered(100, 60, 0, 415)],
+  },
   { id: 15, name: 'Peripheral AuSn solder supports (inferred)', rectangles: solder },
   { id: 16, name: 'GaN HEMT die 878.5 x 1120 um', rectangles: [chip] },
   { id: 17, name: 'HEMT active footprint 303 x 393 um', rectangles: [centered(303, 393)] },
@@ -235,7 +240,7 @@ export async function buildGanMicrochannel() {
     return matches[0];
   }
   function process(label, command, params, maskId = null) {
-    const kernel = { type: command === 'deposit' ? 'add' : 'etch', face: 'front' };
+    const kernel = { type: command === 'deposit' ? 'add' : 'etch', face: params.face || 'front' };
     if (command === 'deposit') {
       Object.assign(kernel, {
         name: params.material,
@@ -256,7 +261,7 @@ export async function buildGanMicrochannel() {
     assert.equal(result?.changed, true, label + ': ' + (result?.error || 'no geometry change'));
     const recipe = {
       ...params,
-      face: 'front',
+      face: kernel.face,
       area: maskId == null ? 'full' : 'mask',
       ...(maskId == null ? {} : { mask: maskContext(maskId) }),
     };
@@ -274,7 +279,7 @@ export async function buildGanMicrochannel() {
     append({
       kind: command === 'deposit' ? 'add' : 'etch',
       label,
-      face: 'front',
+      face: kernel.face,
       areaMode: recipe.area,
       geometryChanged: true,
       ...(command === 'deposit'
@@ -322,8 +327,8 @@ export async function buildGanMicrochannel() {
       replay: { version: 1, kind: 'record' },
     });
   }
-  function etch(label, id, depth, targetId = null) {
-    return process(label, 'etch', { depth, ...(targetId ? { targetId } : {}) }, id);
+  function etch(label, id, depth, targetId = null, face = 'front') {
+    return process(label, 'etch', { depth, face, ...(targetId ? { targetId } : {}) }, id);
   }
   function deposit(label, material, thickness, id = null, coverage = 'direct') {
     return process(label, 'deposit', { material, thickness, coverage }, id);
@@ -375,11 +380,25 @@ export async function buildGanMicrochannel() {
   }
   const fingerCenter = owner([30, 0]);
   assert.equal(fingerCenter.stack.at(-1).z1, 0, 'Top straight channel must remain open');
+  // Figure 2(i) depicts bottom-side fluid ports. Their aperture sizes and
+  // XY placement are inferred; etching from Back reaches the real cavity
+  // without placing solid "water" or drilling through the top HEMT.
+  etch('Rear inlet and outlet ports opened to the lower fluid cavity', 21, 200, null, 'back');
+  for (const y of [-415, 415]) {
+    assert.ok(
+      model.regions
+        .filter((region) => vectorApi.pointInMulti([0, y], region.geom))
+        .flatMap((region) => region.stack)
+        .every((segment) => !(segment.z0 < -100 && segment.z1 > -100)),
+      'Rear coolant port is not open at y=' + y,
+    );
+  }
+  bookmark('02 Rear coolant inlet / outlet');
   // The published TSVs connect both sides electrically. Geometry is a real
   // through-bore; conformal Cu plating / NiPaAu barriers remain recorded,
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
-  bookmark('02 TSV bores');
+  bookmark('03 TSV bores');
   record(
     'Thermal oxidation; double-side Ti/Cu 200/500 nm, Au plating and TSV Cu/NiPaAu',
     'Paper Fig. 2(c,d): continuous oxide, Ti/Cu (200/500 nm), Au; TSV electroplating Cu and NiPaAu coating. Metal/oxide placement inside bores is not modeled. No conductivity or metallurgical continuity is implied.',
@@ -391,7 +410,7 @@ export async function buildGanMicrochannel() {
     15,
   );
   assert.ok(solderResult.layerId);
-  bookmark('03 AuSn peripheral supports');
+  bookmark('04 AuSn peripheral supports');
   const sic = deposit(
     'Place thinned SiC chip as suspended flat bridge (99 um)',
     'GaN HEMT SiC substrate 99 um',
@@ -410,7 +429,7 @@ export async function buildGanMicrochannel() {
     0.2,
     19,
   );
-  bookmark('04 GaN-on-SiC HEMT with ten gate fingers');
+  bookmark('05 GaN-on-SiC HEMT with ten gate fingers');
   deposit('Illustrative GSG pads on interposer', 'GSG Au pads surrogate 0.5 um', 0.5, 20);
   record(
     'Au wire bonds to GSG and aluminum manifold assembly',
@@ -420,7 +439,7 @@ export async function buildGanMicrochannel() {
     'Experimental thermal operating point (metadata only)',
     'Paper: DI water 3 mL/min, Vds approximately 7.5 V, Ids approximately 0.8 A, measured Tmax 93.8 C. Geometry model does not compute CFD, thermal or electrical results.',
   );
-  bookmark('05 Integrated GaN HEMT / final');
+  bookmark('06 Integrated GaN HEMT / final');
 
   Object.assign(root, snapshot());
   root.name = 'GaN HEMT / 2.5D four-layer microchannels (paper-derived surrogate)';
