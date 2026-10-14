@@ -1451,6 +1451,15 @@ export function createProcessRecipeController({
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalImplantStartDepthUm: step.command === 'implant' ? (p.startDepthUm ?? 0) : null,
+      canonicalDopantInfo:
+        step.command === 'implant' && p.dopantPolarity
+          ? {
+              polarity: p.dopantPolarity,
+              role: p.dopantRole,
+              hostLayerId: p.dopantHostLayerId,
+              provenance: p.dopantProvenance,
+            }
+          : null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
       canonicalFaceSurfaces: p.faceSurfaces || null,
       canonicalFace: p.face || 'front',
