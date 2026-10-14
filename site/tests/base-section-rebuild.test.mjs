@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { sectionAfterBaseRebuild } from '../controllers/base-controls-controller.js';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { sectionAfterBaseRebuild } = await import('../controllers/base-controls-controller.js');
 
 const model = { width: 104, height: 100 };
 const authored = { a: [-44, -24], b: [-35, -24] };
