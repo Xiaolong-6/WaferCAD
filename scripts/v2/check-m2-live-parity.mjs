@@ -182,8 +182,7 @@ try {
         near(m2.thickness.input.width, real.thickness.input.width, 2, 'M2 stepper input width');
       } else {
         assert.ok(
-          real.thickness.input.width > 0 &&
-            real.thickness.input.width < real.inspector.width,
+          real.thickness.input.width > 0 && real.thickness.input.width < real.inspector.width,
           'Mobile stepper input fits document-width editor',
         );
       }
