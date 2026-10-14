@@ -107,9 +107,7 @@ try {
 
   // A switched-away camera should not be reset by the parent tab messages.
   await card.locator('[data-preview-view="mask"]').click();
-  await preview.waitForFunction(
-    () => window.WaferCadV2Workstation.snapshot().ui.view === 'mask',
-  );
+  await preview.waitForFunction(() => window.WaferCadV2Workstation.snapshot().ui.view === 'mask');
   assert.deepEqual((await snapshot()).planViews.mask, maskAfterZoom);
 
   for (const view of ['mask', 'section', 'three', 'main']) {
