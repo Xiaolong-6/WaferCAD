@@ -427,6 +427,7 @@ export async function buildGanMicrochannel() {
     'Paper Fig. 2(a-c): two 400 um double-side-polished wafers; DRIE to 200 um on each face, stepped TSVs; wafer alignment/direct bonding. Current geometry operations cannot bond two previously processed 3D models. The following bridge-and-open sequence is an explicit single-model surrogate.',
   );
   etch('Lower chamber: 700 x 900 um, 200 um DRIE', 10, 200);
+  let finalBridgeLayerId = null;
   for (const [index, maskId] of [10, 11, 12, 13].entries()) {
     const layer = deposit(
       'Flat-bridge 100 um Si cap ' + (index + 1) + ' (bonding surrogate)',
@@ -441,12 +442,14 @@ export async function buildGanMicrochannel() {
       DIMENSIONS.cap,
       layer.layerId,
     );
+    if (index === 3) finalBridgeLayerId = layer.layerId;
   }
+  assert.ok(finalBridgeLayerId, 'Missing top Si bridge for diversion DRIE');
   // Separate XY mask and History operation: the manifold fan-outs cross the
   // silicon ribs only at the ends of the six channels, where the curved
   // branches converge into a port-facing throat. The top cap is etched
   // through to the underlying chamber; no coolant solid is inserted.
-  etch('Open twin six-branch coolant diversion manifolds (Fig. 2h surrogate)', 22, 100);
+  etch('Open twin six-branch coolant diversion manifolds (Fig. 2h surrogate)', 22, 100, finalBridgeLayerId);
   bookmark('01 Four-level open microchannels / 800 um Si with diversion');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
