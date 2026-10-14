@@ -1,9 +1,3 @@
-echo TCMOS_BROWSER_FMT_START
-npx prettier scripts/tcmos-browser-acceptance.mjs
-echo TCMOS_BROWSER_FMT_END
-shell: /usr/bin/bash -e {0}
-##[endgroup]
-TCMOS_BROWSER_FMT_START
 // Browser acceptance of a generated, unbundled T-CMOS candidate in the real v2 Workstation.
 // Generates evidence without silently publishing the candidate as a Welcome Example.
 import assert from 'node:assert/strict';
