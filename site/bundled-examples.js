@@ -236,6 +236,37 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'Metalens', 'TiO₂', 'Lift-off', 'EBL / RIE', 'Illustrative XY'],
   },
+  {
+    id: 'gan-hemt-microchannel-2022',
+    title: 'GaN HEMT with integrated microchannel cooling',
+    figure: 'Lian et al. · four stepped Si microchannels / 2.5D package',
+    kind: 'project',
+    level: '2.5D heterogeneous integration literature',
+    variants: [],
+    path: './examples/gan-hemt-microchannel-2022.wafercad',
+    filename: 'gan-hemt-microchannel-2022.wafercad',
+    previewProject: {
+      path: './examples/previews/gan-hemt-microchannel-2022.wafercad',
+      filename: 'gan-hemt-microchannel-2022-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/gan-hemt-microchannel-2022-three.webp',
+      view: 'three',
+      alt: 'WaferCAD 3D geometry reconstruction of four stepped cooling channels under GaN-on-SiC HEMT',
+      label: 'Paper-derived geometric surrogate · not a thermal simulation',
+    },
+    summary:
+      'Paper-derived, kernel-replayable 2.5D GaN-on-SiC HEMT above an 800 µm Si interposer with four stepped cooling cavities and inferred rear inlet/outlet openings. The four-tier bridge process approximates direct wafer bonding; masks and solder supports are partly inferred, and no thermal or CFD predictions are made.',
+    sources: [
+      {
+        citation:
+          'T. Lian et al., “Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device,” Microsystems & Nanoengineering 8, 119 (2022).',
+        doi: '10.1038/s41378-022-00462-3',
+        href: 'https://doi.org/10.1038/s41378-022-00462-3',
+      },
+    ],
+    tags: ['Literature', 'GaN HEMT', 'Microfluidics', '2.5D', 'TSV', 'Geometry surrogate'],
+  },
 ]);
 
 export function bundledExampleById(id) {
