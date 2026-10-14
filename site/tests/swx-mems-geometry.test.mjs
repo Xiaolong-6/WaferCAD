@@ -235,6 +235,16 @@ test('representative grating couplers keep full physical polygon bounds and port
   );
 });
 
+test('shuttle truss uses the reported 6um outside rail separation', () => {
+  for (const state of ['off', 'on']) {
+    const g = createSwxGeometry(state);
+    const [top, bottom] = g.physicalGroups.shuttle;
+    const yTop = top[0][1];
+    const yBottom = bottom[0][1];
+    approx(yTop - yBottom, SWX_REPORTED.shuttleWidthUm);
+  }
+});
+
 test('folded spring and guided aligner dimensions are distinguished from illustration assumptions', () => {
   const g = createSwxGeometry('off');
   assert.equal(g.physicalGroups.structuralAligners.fixed.length, 2);
