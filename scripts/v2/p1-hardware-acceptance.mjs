@@ -182,7 +182,7 @@ async function openAndSampleInput(url) {
       if (box) point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     })
     .catch(() => {});
-  const timer = setInterval(() => {
+  const timer = globalThis.setInterval(() => {
     if (pending) return;
     count++;
     const request = session.send('Input.dispatchMouseEvent', {
@@ -203,7 +203,7 @@ async function openAndSampleInput(url) {
     await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
     await waitReady();
   } finally {
-    clearInterval(timer);
+    globalThis.clearInterval(timer);
     await pending?.catch(() => {});
     await session.detach();
   }
