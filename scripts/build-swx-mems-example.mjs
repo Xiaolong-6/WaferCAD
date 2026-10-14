@@ -35,6 +35,9 @@ function readPoint(model, v, point) {
 }
 
 export async function buildSwxMems(state = 'off') {
+  if (state !== 'off') {
+    throw new Error('Fabrication uses only the shared OFF mask; buildSwxMemsUnified() creates ON as a post-release Variant.');
+  }
   await loadGeometryKernel();
   const modelApi = await import('../site/model.js');
   const vectorApi = await import('../site/vector-geometry.js');
