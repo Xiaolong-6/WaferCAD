@@ -69,6 +69,13 @@ try {
       assert.equal(await root.getAttribute('data-mobile'), 'view');
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
+      const viewDefaults = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().local);
+      for (const name of ['main', 'mask', 'section']) {
+        assert.equal(viewDefaults[name].panEnabled, true, `${name}: default Pan`);
+        assert.equal(viewDefaults[name].zoomEnabled, true, `${name}: default Zoom`);
+      }
+      assert.equal(viewDefaults.three.mode, 'rotate', '3D defaults to orbit');
+      assert.equal(viewDefaults.three.zoomEnabled, true, '3D Zoom is available immediately');
 
       await page.locator('[data-action="show-editor"]').click();
       await waitForPaint(page);
