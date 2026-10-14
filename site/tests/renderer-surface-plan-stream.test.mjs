@@ -89,6 +89,96 @@ test('real Kernel surface plan survives transport with identical scientific topo
   assert.deepEqual(restored, plan);
 });
 
+function giantPolygonSurfacePlan() {
+  const plan = largeSurfacePlan();
+  const ring = (count, radius) => {
+    const points = Array.from({ length: count - 1 }, (_, index) => {
+      const angle = (index * Math.PI * 2) / (count - 1);
+      return [radius * Math.cos(angle) + 0.0000000004, radius * Math.sin(angle)];
+    });
+    return [...points, [...points[0]]];
+  };
+  plan.caps[0].polys = [[ring(9000, 20), ring(7000, 6)], plan.caps[0].polys[1]];
+  return plan;
+}
+
+test('one oversized polygon streams in bounded exact point batches with a hole', () => {
+  const plan = giantPolygonSurfacePlan();
+  const packets = [...surfacePlanStreamPackets(plan)];
+  assert.equal(shouldStreamSurfacePlan(plan), true);
+  assert.ok(packets.some((packet) => packet.type === 'stream-big-poly-start'));
+  assert.ok(packets.some((packet) => packet.type === 'stream-big-ring-points'));
+  for (const packet of packets) {
+    if (packet.type === 'stream-big-ring-points') {
+      assert.ok(packet.points.length > 0 && packet.points.length <= 4096);
+    }
+    if (packet.type === 'stream-cap-polys') {
+      const count = packet.polys.reduce(
+        (sum, poly) => sum + poly.reduce((n, r) => n + r.length, 0),
+        0,
+      );
+      assert.ok(count <= 4096, 'ordinary polygon packets stay under the same budget');
+    }
+  }
+  const receiver = createSurfacePlanStreamReceiver();
+  let result = null;
+  for (const packet of packets) {
+    const completed = receiver.accept(structuredClone(packet));
+    if (completed) result = completed;
+  }
+  assert.deepEqual(result, plan);
+  assert.equal(result.caps[0].polys[0][0].length, 9000);
+  assert.equal(result.caps[0].polys[0][1].length, 7000);
+  assert.equal(result.caps[0].polys[0][0][0][0], 20.0000000004);
+  result.caps[0].polys[0][0][0][0] = 88;
+  assert.equal(plan.caps[0].polys[0][0][0][0], 20.0000000004);
+});
+
+test('large polygon truncated, out-of-order or oversized packets fail closed', () => {
+  const packets = [...surfacePlanStreamPackets(giantPolygonSurfacePlan())];
+  const bigStartIndex = packets.findIndex((packet) => packet.type === 'stream-big-poly-start');
+  const firstPointsIndex = packets.findIndex((packet) => packet.type === 'stream-big-ring-points');
+  assert.ok(bigStartIndex > 0);
+  assert.ok(firstPointsIndex > bigStartIndex);
+
+  const fresh = () => {
+    const receiver = createSurfacePlanStreamReceiver();
+    for (const packet of packets.slice(0, firstPointsIndex)) {
+      assert.equal(receiver.accept(structuredClone(packet)), null);
+    }
+    return receiver;
+  };
+  assert.throws(
+    () => fresh().accept({ id: 1, type: 'stream-done' }),
+    /Incomplete/,
+  );
+  const firstPoints = packets[firstPointsIndex];
+  assert.throws(
+    () => fresh().accept({ ...structuredClone(firstPoints), startIndex: 5 }),
+    /Out-of-order/,
+  );
+  assert.throws(
+    () =>
+      fresh().accept({
+        ...structuredClone(firstPoints),
+        points: Array.from({ length: 4097 }, () => [0, 0]),
+      }),
+    /Invalid large polygon point batch/,
+  );
+  const premature = fresh();
+  premature.accept(structuredClone(firstPoints));
+  assert.throws(
+    () =>
+      premature.accept({
+        id: 1,
+        type: 'stream-big-poly-done',
+        capIndex: firstPoints.capIndex,
+        polyIndex: firstPoints.polyIndex,
+      }),
+    /Incomplete/,
+  );
+});
+
 test('worker chunks only publish to the cache at complete stream-done', async () => {
   const original = globalThis.Worker;
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 2 });
