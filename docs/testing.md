@@ -43,12 +43,18 @@ original 41 process Steps) through the **v2** staged Project worker, autosave,
 reload, and a replacement-created Recovery point. It does not launch the old UI.
 The large historical fixture makes this an independent path-gated browser
 acceptance rather than an unconditional Node test. This check does not by itself
-approve removal of Legacy-specific UI/DOM tests or Welcome's interactive
-preview; those consumers must be migrated without losing scenario ownership.
+approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
+preview is now v2-only, but former Legacy-only scientific owners must still be
+migrated without losing scenario ownership.
 
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
+`scripts/v2/check-welcome-preview-isolation.mjs` verifies that Welcome's
+on-demand four-view preview renders the small final-stage project through v2,
+never acquires the writer lease, and does not change the saved-workspace marker.
+It has no `start` intent, autosave or Recovery side effects. Full examples
+continue to open through the ordinary v2 Project route.
 `scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
 opening the optional Legacy URL, exact cross-interface recovery, and concurrent
 Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
@@ -71,6 +77,7 @@ Stage C now uses one genuine M2-derived four-view workstation with a shared mode
 ```bash
 node scripts/v2/check-sync.mjs
 node scripts/v2/check-startup-shell.mjs
+node scripts/v2/check-welcome-preview-isolation.mjs
 node scripts/v2/check-startup.mjs
 node scripts/v2/check-cross-ui-recovery.mjs
 node scripts/v2/check-review-interactions.mjs
