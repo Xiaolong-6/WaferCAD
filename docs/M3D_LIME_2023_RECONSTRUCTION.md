@@ -53,4 +53,5 @@ The builder enforces 2 µm source/drain gap and complete active gate coverage fo
 - Branch: `feat/m3d-rram-cntfet-lime-20261014`.
 - Committed deliverables: source ledger, real Kernel builder and regression, eleven inferred mask layers, editable 49-Step Recipe / 50 History nodes with nine bookmarks, and the generated representative `.wafercad` asset.
 - Dedicated Kernel and UI v2 Chromium acceptance passed for the local sample; the complete CI Quality gate and desktop/human visual acceptance are tracked separately on Draft PR [#226](https://github.com/Xiaolong-6/WaferCAD/pull/226).
+- Real Chromium reveals a separate UI lifecycle issue: **Rebuild Base → Run All** restores the generic centered Section A–B rather than the paper-aligned local slice embedded in the imported project; the canonical model, active ROI and material connections remain valid. This is tracked as a workstation follow-up and must not be confused with source-geometry parity.
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
