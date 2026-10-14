@@ -337,9 +337,43 @@ test('fixed and movable silicon never overlap by positive area in either pose', 
     const movable = toGeometry(pose.physicalGroups.movable);
     const overlap = v.intersection(fixed, movable);
     const overlapAreaUm2 = geometryArea(overlap);
+    let worstPairs = [];
+    if (overlapAreaUm2 >= 1e-8) {
+      const bounds = (ring) => ({
+        minX: Math.min(...ring.map((p) => p[0])),
+        maxX: Math.max(...ring.map((p) => p[0])),
+        minY: Math.min(...ring.map((p) => p[1])),
+        maxY: Math.max(...ring.map((p) => p[1])),
+      });
+      for (const [fi, a] of pose.physicalGroups.fixed.entries()) {
+        const ba = bounds(a);
+        for (const [mi, b] of pose.physicalGroups.movable.entries()) {
+          const bb = bounds(b);
+          if (
+            ba.maxX <= bb.minX || bb.maxX <= ba.minX ||
+            ba.maxY <= bb.minY || bb.maxY <= ba.minY
+          ) continue;
+          const patch = v.intersection(
+            [[[...a, a[0]]]],
+            [[[...b, b[0]]]],
+          );
+          const area = geometryArea(patch);
+          if (area > 1e-9) {
+            worstPairs.push({ fi, mi, area, bounds: {
+              minX: Math.max(ba.minX, bb.minX),
+              maxX: Math.min(ba.maxX, bb.maxX),
+              minY: Math.max(ba.minY, bb.minY),
+              maxY: Math.min(ba.maxY, bb.maxY),
+            } });
+          }
+        }
+      }
+      worstPairs = worstPairs.sort((a, b) => b.area - a.area).slice(0, 12);
+    }
     assert.ok(
       overlapAreaUm2 < 1e-8,
-      state + ' fixed and moving Si geometries overlap by ' + overlapAreaUm2 + ' µm²',
+      state + ' fixed and moving Si geometries overlap by ' +
+        overlapAreaUm2 + ' µm². Largest pairs: ' + JSON.stringify(worstPairs),
     );
   }
 });
