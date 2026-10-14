@@ -25,6 +25,13 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Emit pinned Prettier browser output for formatting sync
+        run: |
+          npx prettier --write scripts/v2/check-m3d-lime-project.mjs
+          echo M3DLIME_FORMAT_BEGIN
+          base64 -w0 scripts/v2/check-m3d-lime-project.mjs
+          echo
+          echo M3DLIME_FORMAT_END
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Source-derived structural regression
