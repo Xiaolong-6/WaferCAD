@@ -275,6 +275,16 @@ function normalizeStep(command, input, index = 0) {
     if (!Number.isFinite(params.tilt) || params.tilt < -80 || params.tilt > 80) {
       throw new Error('implant.tilt must be between -80 and 80 degrees.');
     }
+    if (params.dopantPolarity != null) {
+      if (!['donor', 'acceptor'].includes(params.dopantPolarity)) {
+        throw new Error('implant.dopantPolarity must be donor or acceptor.');
+      }
+      if (!['well', 'body', 'source-drain', 'channel', 'contact'].includes(params.dopantRole)) {
+        throw new Error('implant.dopantRole must identify a qualitative region.');
+      }
+      params.dopantHostLayerId = cleanText(params.dopantHostLayerId, 'base');
+      params.dopantProvenance = cleanText(params.dopantProvenance, 'illustrative');
+    }
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
     delete params.depth;
@@ -659,6 +669,12 @@ export function serializeProcessRecipe(recipeValue) {
         add('depth', displayLength(p.depthUm));
         if (p.startDepthUm > 0) add('startDepth', displayLength(p.startDepthUm));
         if (p.tilt) lines.push(`  tilt: ${p.tilt}`);
+        if (p.dopantPolarity) {
+          add('dopantPolarity', p.dopantPolarity);
+          add('dopantRole', p.dopantRole);
+          add('dopantHostLayerId', p.dopantHostLayerId);
+          add('dopantProvenance', p.dopantProvenance);
+        }
       } else if (step.command === 'electrical') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));
