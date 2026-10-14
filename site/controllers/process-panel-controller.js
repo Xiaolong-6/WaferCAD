@@ -852,6 +852,7 @@ export function createProcessPanelController({
   async function applyOperation({
     canonicalLengthUm = null,
     canonicalImplantStartDepthUm = null,
+    canonicalDopantInfo = null,
     canonicalSurface = null,
     canonicalFaceSurfaces = null,
     canonicalFace = null,
@@ -1023,6 +1024,12 @@ export function createProcessPanelController({
           );
         }
         if (startDepth > 0) params.depthStart = startDepth;
+      }
+      if (canonicalDopantInfo != null) {
+        params.dopantPolarity = canonicalDopantInfo.polarity;
+        params.dopantRole = canonicalDopantInfo.role;
+        params.dopantHostLayerId = canonicalDopantInfo.hostLayerId;
+        params.dopantProvenance = canonicalDopantInfo.provenance;
       }
     } else if (type === 'electrical') {
       params.electricalRegionType = $('electricalRegionType').value;
