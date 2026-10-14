@@ -161,14 +161,17 @@ export async function buildGanMicrochannel() {
   // Saved inspection ROI is display-only: it is NOT a Process / Mask limiter.
   // Open the full structure by clearing ROI. The default view focuses on
   // microfluidic contact rather than an opaque 6 x 5 mm silicon slab.
-  root.roi = { type: 'rect', a: [-800, -650], b: [800, 650] };
+  // Open the 3D view with a physically faithful *half-device cutaway*.
+  // The Y=0 ROI edge intersects the published A-B section and exposes the
+  // four-level void without editing any Process model solids.
+  root.roi = { type: 'rect', a: [-650, 0], b: [650, 650] };
   // Main should open with the package/chip visible at useful pixel size.
   // Mask intentionally retains the full 6 x 5 mm published-scale context.
   root.planViews.main.zoom = 2.5;
   root.display.threeCamera = {
-    position: [1400, -1550, 1350],
-    target: [0, 0, 420],
-    fov: 35,
+    position: [1050, -1650, 1120],
+    target: [0, 0, 370],
+    fov: 36,
   };
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
