@@ -410,8 +410,8 @@ export async function buildGanMicrochannel() {
       replay: { version: 1, kind: 'record' },
     });
   }
-  function etch(label, id, depth, targetId = null, face = 'front') {
-    return process(label, 'etch', { depth, face, ...(targetId ? { targetId } : {}) }, id);
+  function etch(label, id, depth, targetId = null, face = 'front', target = null) {
+    return process(label, 'etch', { depth, face, ...(targetId ? { targetId } : {}), ...(target ? { target } : {}) }, id);
   }
   function deposit(label, material, thickness, id = null, coverage = 'direct') {
     return process(label, 'deposit', { material, thickness, coverage }, id);
@@ -449,7 +449,14 @@ export async function buildGanMicrochannel() {
   // silicon ribs only at the ends of the six channels, where the curved
   // branches converge into a port-facing throat. The top cap is etched
   // through to the underlying chamber; no coolant solid is inserted.
-  etch('Open twin six-branch coolant diversion manifolds (Fig. 2h surrogate)', 22, 100, finalBridgeLayerId);
+  etch(
+    'Open twin six-branch coolant diversion manifolds (Fig. 2h surrogate)',
+    22,
+    100,
+    finalBridgeLayerId,
+    'front',
+    'Si geometric bridge tier 4',
+  );
   bookmark('01 Four-level open microchannels / 800 um Si with diversion');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
