@@ -27,7 +27,7 @@ try {
     );
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const start = await snapshot();
-    assert.equal(start.layout.name || '', '');
+    assert.equal(start.layout.name, 'No mask');
     const baseModel = start.model;
     await page.locator('[data-action="domain:mask"]').click();
 
