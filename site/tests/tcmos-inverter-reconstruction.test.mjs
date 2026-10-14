@@ -122,10 +122,14 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     );
     assert.ok(present.has('W contacts'), name + ' must have a W contact');
     assert.ok(present.has('METAL1 Al'), name + ' must touch real Metal1');
-    if (name.includes('VIN')) assert.ok(present.has('POLY gate'), 'VIN gate contact must sit on POLY');
+    if (name.includes('VIN'))
+      assert.ok(present.has('POLY gate'), 'VIN gate contact must sit on POLY');
   }
   assert.equal(TCMOS_METAL_NETS.length, 4, 'four independently routed Metal1 nets');
-  assert.equal(metals.length, TCMOS_METAL_NETS.reduce((sum, net) => sum + net.rectangles.length, 0));
+  assert.equal(
+    metals.length,
+    TCMOS_METAL_NETS.reduce((sum, net) => sum + net.rectangles.length, 0),
+  );
   // Electrical net safety: no physical XY overlap between different Metal1 nets.
   const overlapArea = (a, b) =>
     Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
@@ -134,14 +138,19 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     for (let j = i + 1; j < TCMOS_METAL_NETS.length; j++) {
       for (const first of TCMOS_METAL_NETS[i].rectangles) {
         for (const second of TCMOS_METAL_NETS[j].rectangles) {
-          assert.ok(overlapArea(first, second) < 1e-12,
-            `Metal1 short: ${TCMOS_METAL_NETS[i].name} / ${TCMOS_METAL_NETS[j].name}`);
+          assert.ok(
+            overlapArea(first, second) < 1e-12,
+            `Metal1 short: ${TCMOS_METAL_NETS[i].name} / ${TCMOS_METAL_NETS[j].name}`,
+          );
         }
       }
     }
   }
-  assert.equal(model.implants.every((implant) => implant.tilt === 0), true,
-    'Source does not report a nonzero beam incidence angle; no fabricated tilt allowed');
+  assert.equal(
+    model.implants.every((implant) => implant.tilt === 0),
+    true,
+    'Source does not report a nonzero beam incidence angle; no fabricated tilt allowed',
+  );
   assert.ok(
     validation.keyAssumptions.some((a) => /not calibrated concentration/i.test(a)),
     'Source-vs-model disclosure must not be lost',
