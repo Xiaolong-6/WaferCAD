@@ -602,10 +602,19 @@ function serializeMask(mask, indent = '  ') {
 
 function displayLength(um) {
   const value = Number(um);
-  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3)
-    return `${Number((value * 1000).toPrecision(8))} nm`;
-  if (Math.abs(value) >= 1000) return `${Number((value / 1000).toPrecision(8))} mm`;
-  return `${Number(value.toPrecision(8))} µm`;
+  // Readable units are optional; preserving the canonical numeric value is not.
+  // Avoid the old eight-significant-digit shortening when it changes Recipe
+  // replay after serialization, especially for very small process lengths.
+  if (Math.abs(value) < 1 && Math.abs(value) >= 1e-3) {
+    const nm = Number((value * 1000).toPrecision(8));
+    if (nm * 1e-3 === value) return `${nm} nm`;
+  }
+  if (Math.abs(value) >= 1000) {
+    const mm = Number((value / 1000).toPrecision(8));
+    if (mm * 1000 === value) return `${mm} mm`;
+  }
+  const short = Number(value.toPrecision(8));
+  return `${short === value ? short : value} µm`;
 }
 
 export function serializeProcessRecipe(recipeValue) {
