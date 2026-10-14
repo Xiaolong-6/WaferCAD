@@ -53,11 +53,11 @@ try {
     const page = await context.newPage(),
       errors = observePageErrors(page);
     await page.goto(
-      baseUrl + '/app-legacy.html?preview=1&start=example&example=' + example.id + '&view=three',
+      baseUrl + '/app.html?preview=1&example=' + example.id + '&view=three',
       { waitUntil: 'domcontentloaded' },
     );
     await page.waitForFunction(
-      () => document.getElementById('statusText')?.textContent.startsWith('Opened'),
+      () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
       null,
       { timeout: 120000 },
     );
