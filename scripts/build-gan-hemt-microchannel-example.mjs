@@ -30,7 +30,51 @@ const corners = ({ x, y, w, h }) => [
 ];
 const centered = (w, h, x = 0, y = 0) => rect(x - w / 2, y - h / 2, w, h);
 
-const fingers = Array.from({ length: 6 }, (_, i) => centered(30, 760, (i - 2.5) * 60));
+const CHANNEL_CENTERS = Object.freeze(Array.from({ length: 6 }, (_, i) => (i - 2.5) * 60));
+const fingers = CHANNEL_CENTERS.map((x) => centered(30, 760, x));
+
+// Fig. 1(c) and Fig. 2(h) show symmetric rounded inlet/outlet fan-outs,
+// connecting six straight lanes to a smaller central throat. The author GDS
+// is unavailable: these contours/positions are an explicit inferred model.
+// A circularly rounded polyline is approximated by deterministic short bends
+// so the same source polygons can drive Kernel, Recipe replay, GDS and OAS.
+export const GAN_MANIFOLD_PARAMETERS = Object.freeze({
+  throatWidth: 110,
+  throatLength: 50,
+  throatOffset: 425,
+  branchHalfWidth: 12,
+  startY: 355,
+  endY: 430,
+});
+function stripeAroundPolyline(points, halfWidth = GAN_MANIFOLD_PARAMETERS.branchHalfWidth) {
+  const normals = points.map((p, index) => {
+    const before = points[Math.max(0, index - 1)];
+    const after = points[Math.min(points.length - 1, index + 1)];
+    const dx = after[0] - before[0], dy = after[1] - before[1];
+    const length = Math.hypot(dx, dy);
+    assert.ok(length > 0, 'Manifold branch contains a zero-length segment');
+    return [-dy / length, dx / length];
+  });
+  const left = points.map(([x, y], i) => [x + normals[i][0] * halfWidth, y + normals[i][1] * halfWidth]);
+  const right = points.map(([x, y], i) => [x - normals[i][0] * halfWidth, y - normals[i][1] * halfWidth]);
+  return [...left, ...right.reverse()];
+}
+export function ganManifoldCenterline(centerX, side) {
+  assert.ok(CHANNEL_CENTERS.includes(centerX) && [-1, 1].includes(side));
+  return [
+    [centerX, side * 355],
+    [centerX, side * 370],
+    [centerX * 1.03, side * 382],
+    [centerX * 0.91, side * 395],
+    [centerX * 0.67, side * 407],
+    [centerX * 0.4, side * 419],
+    [centerX * 0.22, side * 430],
+  ];
+}
+const manifoldBranches = [-1, 1].flatMap((side) =>
+  CHANNEL_CENTERS.map((x) => stripeAroundPolyline(ganManifoldCenterline(x, side))),
+);
+
 const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
 const chip = centered(878.5, 1120);
 const solder = [
@@ -44,6 +88,15 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   { id: 11, name: 'Lower transition 600 x 860 um (inferred)', rectangles: [centered(600, 860)] },
   { id: 12, name: 'Upper transition 480 x 820 um (inferred)', rectangles: [centered(480, 820)] },
   { id: 13, name: 'Six 30 um parallel channels (count inferred)', rectangles: fingers },
+  {
+    id: 22,
+    name: 'Inlet/outlet rounded diversion branches (inferred from Fig. 2h)',
+    rectangles: [
+      centered(110, 50, 0, -425),
+      centered(110, 50, 0, 425),
+    ],
+    polygons: manifoldBranches,
+  },
   {
     id: 14,
     name: 'Four representative electrical TSV bores (inferred)',
@@ -82,12 +135,12 @@ function makeLayout() {
     name: 'Lian 2022 inferred geometrical masks - NOT original author GDS',
     root: cell,
     elements: GAN_MICROCHANNEL_MASKS.flatMap((mask) =>
-      mask.rectangles.map((r) => ({
+      [...mask.rectangles.map(corners), ...(mask.polygons || [])].map((points) => ({
         kind: 'polygon',
         sourceCell: cell,
         layer: mask.id,
         datatype: 0,
-        points: corners(r),
+        points,
       })),
     ),
     linework: [],
@@ -97,7 +150,7 @@ function makeLayout() {
       cell,
       layer: mask.id,
       datatype: 0,
-      count: mask.rectangles.length,
+      count: mask.rectangles.length + (mask.polygons?.length || 0),
     })),
     bounds: {
       minX: -DIMENSIONS.x / 2,
@@ -176,7 +229,7 @@ export async function buildGanMicrochannel() {
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
   root.activeCell = root.layout.root;
-  root.selectedLayerKeys = ['10|0', '11|0', '12|0', '13|0', '18|0'];
+  root.selectedLayerKeys = ['10|0', '11|0', '12|0', '13|0', '22|0', '18|0'];
   root.drawMask = { nextShapeId: 1, shapes: [] };
   root.maskRoi = null;
 
@@ -252,11 +305,12 @@ export async function buildGanMicrochannel() {
   }
   function area(id) {
     if (id == null) return model.boundary;
-    const shapes = byId.get(id)?.rectangles;
-    assert.ok(shapes, 'Unknown mask ' + id);
-    return vectorApi.unionGeometries(
-      shapes.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
-    );
+    const mask = byId.get(id);
+    assert.ok(mask, 'Unknown mask ' + id);
+    return vectorApi.unionGeometries([
+      ...mask.rectangles.map((r) => vectorApi.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
+      ...(mask.polygons || []).map((points) => [[ [...points, points[0]] ]]),
+    ]);
   }
   function owner(point) {
     const matches = model.regions.filter((r) => vectorApi.pointInMulti(point, r.geom));
@@ -388,7 +442,12 @@ export async function buildGanMicrochannel() {
       layer.layerId,
     );
   }
-  bookmark('01 Four-level open microchannels / 800 um Si');
+  // Separate XY mask and History operation: the manifold fan-outs cross the
+  // silicon ribs only at the ends of the six channels, where the curved
+  // branches converge into a port-facing throat. The top cap is etched
+  // through to the underlying chamber; no coolant solid is inserted.
+  etch('Open twin six-branch coolant diversion manifolds (Fig. 2h surrogate)', 22, 100);
+  bookmark('01 Four-level open microchannels / 800 um Si with diversion');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
   for (const [point, cavityZ] of [
