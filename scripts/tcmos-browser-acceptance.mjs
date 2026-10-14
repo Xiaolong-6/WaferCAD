@@ -135,6 +135,34 @@ try {
   );
   assert.equal(exported.processRecipe.steps.length, count);
   assert.ok(exported.snapshotBranches.nodes.length >= count);
+  // Verify that a real browser-local Recovery save and restore preserves the rebuilt model.
+  await panel('project');
+  await page.locator('#saveProjectBtn').click();
+  await page.waitForFunction(
+    () => /Saved .* locally/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || '',
+    ),
+    null,
+    { timeout: 120000 },
+  );
+  const recovery = await page.locator('#workspaceRecoverySelect').inputValue();
+  assert.ok(recovery, 'Save must write a Recovery checkpoint');
+  await page.locator('#projectNameInput').fill('Temporary modified T-CMOS name');
+  await page.locator('#projectNameInput').press('Tab');
+  await page.locator('#workspaceRecoverySelect').selectOption(recovery);
+  await page.locator('#workspaceRestoreBtn').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Restore', exact: true }).click();
+  await page.waitForFunction(
+    (name) => window.WaferCadV2Workstation.snapshot().projectName === name &&
+      !window.WaferCadV2Workstation.snapshot().workflow.busy,
+    expected.name,
+    { timeout: 120000 },
+  );
+  const restored = await snap();
+  assert.deepEqual(restored.model, (await snap()).model);
+  assert.equal(restored.model.implants[0].depthStart, 0.08);
+  assert.equal(restored.model.implants[1].depthStart, 0.08);
+  await assertSameMaterialGeometry(exported.model, restored.model, { areaToleranceUm2: 2e-6 });
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
@@ -142,6 +170,7 @@ try {
     steps: count,
     geometry,
     maskExports,
+    savedAndRestored: true,
     layers: exported.model.layers.length,
     regions: exported.model.regions.length,
     implants: exported.model.implants.length,
