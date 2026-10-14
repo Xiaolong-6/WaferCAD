@@ -32,6 +32,11 @@ try {
     store.local.section.zoomEnabled = true;
     store.local.three.mode = 'rotate';
     store.local.three.zoomEnabled = true;
+    // Reset view-only saved offsets so each example begins with a meaningful fit.
+    for (const view of ['main', 'mask']) {
+      store.state.planViews[view] = { zoom: 1, panX: 0, panY: 0 };
+    }
+    store.state.sectionViewport = { zoom: 1, panX: 0, panY: 0 };
   }
   const geometryBefore = store.geometrySnapshot();
   const uiState = {
