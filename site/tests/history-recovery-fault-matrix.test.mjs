@@ -5,7 +5,7 @@ import { createHistoryMutationController } from '../controllers/history-mutation
 
 // Faults are injected at the controller boundary: these cases verify the
 // mutation gate without pretending that a mocked store is IndexedDB itself.
-function fixture(kind, checkpointWorkspace, replayFailure = null) {
+function fixture(kind, checkpointWorkspace, replayFailure = null, restoreFailure = null) {
   let graph = {
     model: { revision: 8, layerIds: ['base', 'oxide-front', 'oxide-back'] },
     variants: [
@@ -80,6 +80,8 @@ function fixture(kind, checkpointWorkspace, replayFailure = null) {
     },
     restoreReplayTransaction: (transaction) => {
       events.push('rollback');
+      if (restoreFailure === 'throw') throw new Error('rollback unavailable');
+      if (restoreFailure === 'decline') return false;
       graph = structuredClone(transaction);
       return true;
     },
@@ -158,6 +160,29 @@ for (const kind of ['edit', 'insert']) {
       assert.equal(run.controller.currentInsert(), null);
       assert.match(run.events.at(-1).message, /Original Variant restored/i);
       assert.notEqual(run.events.at(-1).level, 'success');
+    });
+  }
+}
+
+for (const kind of ['edit', 'insert']) {
+  for (const failure of ['throw', 'decline']) {
+    test(`History ${kind} never claims success if in-memory rollback ${failure}s`, async () => {
+      const run = fixture(kind, () => true, 'throw', failure);
+      assert.equal(await (kind === 'edit'
+        ? run.controller.beginEdit(run.node)
+        : run.controller.beginInsert(run.node)), true);
+      const gate = await run.controller.beforeApply();
+      assert.equal(await run.controller.afterApply({ applyGate: gate }), true);
+      assert.notDeepEqual(run.graph, run.original, 'failed rollback may leave volatile state mutated');
+      assert.deepEqual(
+        run.events.filter((event) => event === 'begin-interaction' || event === 'end-interaction'),
+        ['begin-interaction', 'end-interaction'],
+      );
+      assert.equal(run.controller.currentEdit(), null);
+      assert.equal(run.controller.currentInsert(), null);
+      assert.equal(run.events.at(-1).level, 'error');
+      assert.match(run.events.at(-1).message, /Automatic rollback failed.*Recovery checkpoint/i);
+      assert.doesNotMatch(run.events.at(-1).message, /Original Variant restored/i);
     });
   }
 }
