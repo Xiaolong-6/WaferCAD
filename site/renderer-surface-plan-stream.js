@@ -49,8 +49,42 @@ export function* surfacePlanStreamPackets(plan) {
     if (!Array.isArray(polygons)) continue;
     let batch = [];
     let pointCount = 0;
-    for (const poly of polygons) {
+    for (let polyIndex = 0; polyIndex < polygons.length; polyIndex++) {
+      const poly = polygons[polyIndex];
       const polyPoints = (poly || []).reduce((sum, ring) => sum + (ring?.length || 0), 0);
+      if (polyPoints > POINT_BUDGET) {
+        // Never send an oversized polygon in one structured-clone message.
+        // A polygon may contain a single enormous ring or many hole rings;
+        // both must preserve original point order and exact numeric values.
+        if (batch.length) yield { id: 1, type: 'stream-cap-polys', capIndex, polys: batch };
+        batch = [];
+        pointCount = 0;
+        yield { id: 1, type: 'stream-big-poly-start', capIndex, polyIndex, ringCount: poly.length };
+        for (let ringIndex = 0; ringIndex < poly.length; ringIndex++) {
+          const ring = poly[ringIndex];
+          yield {
+            id: 1,
+            type: 'stream-big-ring-start',
+            capIndex,
+            polyIndex,
+            ringIndex,
+            pointCount: ring.length,
+          };
+          for (let startIndex = 0; startIndex < ring.length; startIndex += POINT_BUDGET) {
+            yield {
+              id: 1,
+              type: 'stream-big-ring-points',
+              capIndex,
+              polyIndex,
+              ringIndex,
+              startIndex,
+              points: ring.slice(startIndex, startIndex + POINT_BUDGET),
+            };
+          }
+        }
+        yield { id: 1, type: 'stream-big-poly-done', capIndex, polyIndex };
+        continue;
+      }
       if (
         batch.length &&
         (batch.length >= POLYGON_BATCH || pointCount + polyPoints > POINT_BUDGET)
@@ -86,6 +120,7 @@ export function* surfacePlanStreamPackets(plan) {
 // Reject malformed ordering/counts rather than accepting a truncated scene.
 export function createSurfacePlanStreamReceiver() {
   let state = null;
+  let bigPolygon = null;
   return {
     accept(packet) {
       if (packet?.type === 'stream-start') {
@@ -113,6 +148,7 @@ export function createSurfacePlanStreamReceiver() {
       const { counts, plan } = state;
       if (packet.type === 'stream-caps') {
         if (
+          bigPolygon ||
           packet.startIndex !== plan.caps.length ||
           !Array.isArray(packet.items) ||
           plan.caps.length + packet.items.length > counts.caps
@@ -123,6 +159,7 @@ export function createSurfacePlanStreamReceiver() {
       } else if (packet.type === 'stream-cap-polys') {
         const cap = plan.caps[packet.capIndex];
         if (
+          bigPolygon ||
           !cap ||
           !Array.isArray(cap.polys) ||
           !Array.isArray(packet.polys) ||
@@ -131,8 +168,89 @@ export function createSurfacePlanStreamReceiver() {
           throw new Error('Invalid surface-plan cap polygons');
         }
         cap.polys.push(...packet.polys);
+      } else if (packet.type === 'stream-big-poly-start') {
+        const cap = plan.caps[packet.capIndex];
+        if (
+          bigPolygon ||
+          !Array.isArray(cap?.polys) ||
+          !Number.isSafeInteger(packet.polyIndex) ||
+          packet.polyIndex !== cap.polys.length ||
+          cap.polys.length >= state.polygonCounts[packet.capIndex] ||
+          !Number.isSafeInteger(packet.ringCount) ||
+          packet.ringCount < 1
+        ) {
+          throw new Error('Invalid large polygon stream start');
+        }
+        cap.polys.push([]);
+        bigPolygon = {
+          capIndex: packet.capIndex,
+          polyIndex: packet.polyIndex,
+          ringCount: packet.ringCount,
+          ringsFinished: 0,
+          ringOpen: false,
+          expectedPoints: 0,
+        };
+      } else if (packet.type === 'stream-big-ring-start') {
+        if (
+          !bigPolygon ||
+          packet.capIndex !== bigPolygon.capIndex ||
+          packet.polyIndex !== bigPolygon.polyIndex ||
+          packet.ringIndex !== bigPolygon.ringsFinished ||
+          bigPolygon.ringOpen ||
+          packet.ringIndex >= bigPolygon.ringCount ||
+          !Number.isSafeInteger(packet.pointCount) ||
+          packet.pointCount < 0
+        ) {
+          throw new Error('Out-of-order large polygon ring start');
+        }
+        const poly = plan.caps[bigPolygon.capIndex].polys[bigPolygon.polyIndex];
+        poly.push([]);
+        bigPolygon.expectedPoints = packet.pointCount;
+        bigPolygon.ringOpen = packet.pointCount > 0;
+        if (!bigPolygon.ringOpen) bigPolygon.ringsFinished++;
+      } else if (packet.type === 'stream-big-ring-points') {
+        if (
+          !bigPolygon ||
+          !bigPolygon.ringOpen ||
+          packet.capIndex !== bigPolygon.capIndex ||
+          packet.polyIndex !== bigPolygon.polyIndex ||
+          packet.ringIndex !== bigPolygon.ringsFinished ||
+          !Array.isArray(packet.points) ||
+          !packet.points.length ||
+          packet.points.length > POINT_BUDGET
+        ) {
+          throw new Error('Invalid large polygon point batch');
+        }
+        const ring =
+          plan.caps[bigPolygon.capIndex].polys[bigPolygon.polyIndex][packet.ringIndex];
+        if (
+          packet.startIndex !== ring.length ||
+          ring.length + packet.points.length > bigPolygon.expectedPoints
+        ) {
+          throw new Error('Out-of-order large polygon points');
+        }
+        ring.push(...packet.points);
+        if (ring.length === bigPolygon.expectedPoints) {
+          bigPolygon.ringOpen = false;
+          bigPolygon.ringsFinished++;
+        }
+      } else if (packet.type === 'stream-big-poly-done') {
+        if (
+          !bigPolygon ||
+          packet.capIndex !== bigPolygon.capIndex ||
+          packet.polyIndex !== bigPolygon.polyIndex ||
+          bigPolygon.ringOpen ||
+          bigPolygon.ringsFinished !== bigPolygon.ringCount
+        ) {
+          throw new Error('Incomplete large polygon stream');
+        }
+        bigPolygon = null;
       } else if (packet.type === 'stream-items') {
-        if (!['sidewalls', 'borderLines'].includes(packet.key) || !Array.isArray(packet.items)) {
+        if (
+          bigPolygon ||
+          !['sidewalls', 'borderLines'].includes(packet.key) ||
+          !Array.isArray(packet.items)
+        ) {
           throw new Error('Invalid surface-plan item batch');
         }
         const target = plan[packet.key];
@@ -145,6 +263,7 @@ export function createSurfacePlanStreamReceiver() {
         target.push(...packet.items);
       } else if (packet.type === 'stream-done') {
         if (
+          bigPolygon ||
           ['caps', 'sidewalls', 'borderLines'].some((key) => plan[key].length !== counts[key]) ||
           plan.caps.some(
             (cap, index) =>
