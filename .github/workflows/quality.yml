@@ -30,11 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Temporary P1 exact input formatter diff
-        if: github.event.pull_request.number == 188
-        run: |
-          npx prettier --write scripts/v2/p1-input-latency.mjs scripts/v2/p1-input-latency.test.mjs
-          git diff -- scripts/v2/p1-input-latency.mjs scripts/v2/p1-input-latency.test.mjs
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
