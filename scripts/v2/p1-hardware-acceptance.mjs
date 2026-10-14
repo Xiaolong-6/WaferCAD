@@ -235,9 +235,7 @@ async function verifyThreeGestures() {
   const pointerObserved = delivered.some(
     (event) => event.threeCanvas && event.kind === 'pointermove',
   );
-  const wheelObserved = delivered.some(
-    (event) => event.threeCanvas && event.kind === 'wheel',
-  );
+  const wheelObserved = delivered.some((event) => event.threeCanvas && event.kind === 'wheel');
   return {
     passed: threeCameraGestureChanged(before, after) && pointerObserved && wheelObserved,
     pointerObserved,
