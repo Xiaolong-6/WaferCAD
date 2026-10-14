@@ -127,10 +127,10 @@ try {
   // For manufacturing-layout interchange, explicitly select the complete 13-layer
   // File Mask and prove no hidden NWELL/PWELL/S-D/silicide layers are omitted.
   await panel('mask');
-  const maskLayerBoxes = page.locator('#maskLayerList input[type="checkbox"]');
+  const maskLayerBoxes = page.locator('#v2-maskLayerList input[type="checkbox"]');
   assert.equal(await maskLayerBoxes.count(), expected.layout.combos.length);
   for (let index = 0; index < expected.layout.combos.length; index++) {
-    const unchecked = page.locator('#maskLayerList input[type="checkbox"]:not(:checked)');
+    const unchecked = page.locator('#v2-maskLayerList input[type="checkbox"]:not(:checked)');
     if (!(await unchecked.count())) break;
     await unchecked.first().check();
   }
