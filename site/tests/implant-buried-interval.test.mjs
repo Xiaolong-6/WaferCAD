@@ -6,11 +6,8 @@ await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const { implantSectionBands, implantSolids } = await import('../model-view-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
-const {
-  normalizeProcessRecipe,
-  parseProcessRecipeSource,
-  serializeProcessRecipe,
-} = await import('../process-recipe.js');
+const { normalizeProcessRecipe, parseProcessRecipeSource, serializeProcessRecipe } =
+  await import('../process-recipe.js');
 
 test('buried Implant depths are physically clipped without changing substrate material', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 3, height: 3, thickness: 2 });
@@ -25,11 +22,7 @@ test('buried Implant depths are physically clipped without changing substrate ma
       area: model.boundary,
     });
     assert.equal(invalid.changed, false, 'Out-of-range interval must fail');
-    assert.deepEqual(
-      model,
-      before,
-      'Invalid Implant must leave material/History inputs untouched',
-    );
+    assert.deepEqual(model, before, 'Invalid Implant must leave material/History inputs untouched');
   }
   const valid = modelApi.applyOperation(model, {
     type: 'implant',
