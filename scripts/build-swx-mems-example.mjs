@@ -82,7 +82,7 @@ export async function buildSwxMems(state = 'off') {
     if (!areas.has(layer)) {
       const polygons = source.maskPolygons.get(layer);
       assert.ok(polygons?.length, 'Missing mask layer ' + layer);
-      const shapes = polygons.map((points) => [[...points, points[0]]]);
+      const shapes = polygons.map((points) => [[[...points, points[0]]]]);
       areas.set(layer, vectorApi.unionGeometries(shapes));
     }
     return invert
