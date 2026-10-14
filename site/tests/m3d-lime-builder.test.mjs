@@ -71,20 +71,30 @@ test('foundry M4 state precedes analog RRAM without a second invented 400nm oxid
   const passivation = index(/CIM SiO2 passivation 400nm/);
   const topContact = index(/CIM W top vias/);
   const ilDielectric = index(/CIM-to-TCAM Si3N4 ILD 900nm/);
-  assert.ok(foundry >= 0 && foundry < m4 && m4 < analog &&
-    analog < passivation && passivation < topContact &&
-    topContact < ilDielectric,
-  'Li et al. Methods requires exposed CMOS M4, TiN/HfAlOx RRAM, then SiO2 passivation');
-  assert.ok(steps.slice(0, analog).every((step) =>
-    !/400nm|First level SiO2/i.test(JSON.stringify(step))),
-  'a 400nm oxide deposition before analog RRAM has no support in the paper');
-  assert.ok(steps.slice(0, analog).some((step) =>
-    /SURROGATE/i.test(JSON.stringify(step))),
-  'unpublished CMOS M4 backend construction must be flagged as a geometric surrogate');
+  assert.ok(
+    foundry >= 0 &&
+      foundry < m4 &&
+      m4 < analog &&
+      analog < passivation &&
+      passivation < topContact &&
+      topContact < ilDielectric,
+    'Li et al. Methods requires exposed CMOS M4, TiN/HfAlOx RRAM, then SiO2 passivation',
+  );
+  assert.ok(
+    steps.slice(0, analog).every((step) => !/400nm|First level SiO2/i.test(JSON.stringify(step))),
+    'a 400nm oxide deposition before analog RRAM has no support in the paper',
+  );
+  assert.ok(
+    steps.slice(0, analog).some((step) => /SURROGATE/i.test(JSON.stringify(step))),
+    'unpublished CMOS M4 backend construction must be flagged as a geometric surrogate',
+  );
   const names = project.model.layers.map((layer) => layer.name);
   assert.ok(!names.includes('First level SiO2 400nm'), 'remove fabricated pre-CIM oxide');
-  assert.equal(names.filter((name) => name === 'CIM SiO2 passivation 400nm').length, 1,
-    'the 400nm oxide in Methods is the post-RRAM passivation');
+  assert.equal(
+    names.filter((name) => name === 'CIM SiO2 passivation 400nm').length,
+    1,
+    'the 400nm oxide in Methods is the post-RRAM passivation',
+  );
 });
 
 test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal active gap', async () => {
