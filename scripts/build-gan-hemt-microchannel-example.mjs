@@ -287,16 +287,15 @@ export async function buildGanMicrochannel() {
   bookmark('01 Four-level open microchannels / 800 um Si');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
-  for (const [point, expectedTop] of [
-    [[30, 0], 0], [[200, 0], 0], [[280, 0], 0], [[340, 0], 0],
+  for (const [point, cavityZ] of [
+    [[30, 0], 550], [[200, 0], 450], [[280, 0], 350], [[340, 0], 250],
   ]) {
     const r = owner(point);
-    assert.ok(r.stack.length > 0, 'No remaining lower Si below ' + point);
-    // Each of these points is under an opened cap with a cavity above the base.
-    assert.equal(r.stack.at(0).z1, expectedTop, 'Lower cavity not preserved at ' + point);
+    assert.ok(r.stack.some((segment) => segment.layerId === 'base'),
+      'Lower Si supporting region missing at ' + point);
     assert.ok(
-      r.stack.some((segment, i) => i === 0 || segment.z0 > r.stack[i - 1].z1),
-      'Stepped vertical void missing at ' + point,
+      r.stack.every((segment) => !(segment.z0 < cavityZ && segment.z1 > cavityZ)),
+      'Expected real void at z=' + cavityZ + ' below step ' + point,
     );
   }
   const fingerCenter = owner([30, 0]);
