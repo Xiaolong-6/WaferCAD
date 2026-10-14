@@ -30,15 +30,15 @@ test('production Pages requires quality, browser and UI acceptance before publis
 
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
   const pages = workflow('pages');
-  assert.match(pages, /  release-impact:\\n/);
-  assert.match(pages, /  release-main-mask:\\n/);
-  assert.match(pages, /  release-klayout:\\n/);
-  assert.match(pages, /  release-recipe:\\n/);
-  assert.match(pages, /  release-science:\\n/);
-  assert.match(pages, /needs: \\[release-impact, release-main-mask, release-klayout, release-recipe\\]/);
-  assert.match(pages, /if: \\$\\{\\{ always\\(\\) \\}\\}/);
-  assert.match(pages, /test "\\$result" = success/);
-  assert.match(pages, /test "\\$result" = skipped/);
+  assert.match(pages, /  release-impact:\n/);
+  assert.match(pages, /  release-main-mask:\n/);
+  assert.match(pages, /  release-klayout:\n/);
+  assert.match(pages, /  release-recipe:\n/);
+  assert.match(pages, /  release-science:\n/);
+  assert.match(pages, /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/);
+  assert.match(pages, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(pages, /test "\$result" = success/);
+  assert.match(pages, /test "\$result" = skipped/);
   for (const [job, path] of [
     ['release-main-mask', 'ui-v2-main-mask.yml'],
     ['release-klayout', 'klayout-compat.yml'],
