@@ -21,32 +21,6 @@ permissions:
   contents: read
 
 jobs:
-  format-branch-sources:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feat/example-gan-hemt-microchannel-20261014
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - name: Format new reconstruction sources
-        run: npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-      - name: Commit formatter output to development branch
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-            git commit -m "style(example): format GaN microchannel reconstruction sources"
-            git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
-          fi
-
   reconstruction:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -73,3 +47,32 @@ jobs:
           name: gan-hemt-microchannel-reconstruction
           path: test-results/gan-microchannel/
           if-no-files-found: warn
+
+  publish-candidate:
+    name: Commit generated draft project
+    needs: reconstruction
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/example-gan-hemt-microchannel-20261014
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build exact candidate project using live Process Kernel
+        run: node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+      - name: Commit only generated WaferCAD project to isolated branch
+        run: |
+          git add site/examples/gan-hemt-microchannel-2022.wafercad
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "feat(example): check in validated GaN microchannel project asset"
+            git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
+          fi
