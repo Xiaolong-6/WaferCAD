@@ -88,7 +88,12 @@ function taperedStrip(a, b, wa, wb) {
 }
 
 function polyline(points, width) {
-  return points.slice(1).map((next, i) => strip(points[i], next, width));
+  // Joined straight/arc segments may share an exact endpoint. Remove the
+  // repeated point rather than allowing an invalid zero-length polygon.
+  const compact = points.filter((point, i) =>
+    i === 0 || Math.hypot(point[0] - points[i - 1][0], point[1] - points[i - 1][1]) > 1e-12,
+  );
+  return compact.slice(1).map((next, i) => strip(compact[i], next, width));
 }
 
 function traceArc(cx, cy, r, a0, a1, steps = 16) {
