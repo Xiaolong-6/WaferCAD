@@ -28,9 +28,7 @@ const corners = ({ x, y, w, h }) => [
 const centered = (w, h, x = 0, y = 0) => rect(x - w / 2, y - h / 2, w, h);
 
 const fingers = Array.from({ length: 6 }, (_, i) => centered(30, 760, (i - 2.5) * 60));
-const gateFingers = Array.from({ length: 10 }, (_, i) =>
-  centered(0.5, 300, (i - 4.5) * 30),
-);
+const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
 const chip = centered(878.5, 1120);
 const solder = [
   centered(30, 1120, -424.25),
@@ -47,8 +45,10 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     id: 14,
     name: 'Four representative electrical TSV bores (inferred)',
     rectangles: [
-      centered(70, 70, -1450, -950), centered(70, 70, 1450, -950),
-      centered(70, 70, -1450, 950), centered(70, 70, 1450, 950),
+      centered(70, 70, -1450, -950),
+      centered(70, 70, 1450, -950),
+      centered(70, 70, -1450, 950),
+      centered(70, 70, 1450, 950),
     ],
   },
   { id: 15, name: 'Peripheral AuSn solder supports (inferred)', rectangles: solder },
@@ -56,11 +56,13 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   { id: 17, name: 'HEMT active footprint 303 x 393 um', rectangles: [centered(303, 393)] },
   { id: 18, name: 'Ten 0.5 x 300 um gate fingers', rectangles: gateFingers },
   {
-    id: 19, name: 'Illustrative source and drain contact pads',
+    id: 19,
+    name: 'Illustrative source and drain contact pads',
     rectangles: [centered(60, 370, -225), centered(60, 370, 225)],
   },
   {
-    id: 20, name: 'Illustrative GSG chip pads',
+    id: 20,
+    name: 'Illustrative GSG chip pads',
     rectangles: [centered(220, 350, -1250), centered(220, 350, 1250)],
   },
 ]);
@@ -73,19 +75,29 @@ function makeLayout() {
     root: cell,
     elements: GAN_MICROCHANNEL_MASKS.flatMap((mask) =>
       mask.rectangles.map((r) => ({
-        kind: 'polygon', sourceCell: cell, layer: mask.id, datatype: 0, points: corners(r),
+        kind: 'polygon',
+        sourceCell: cell,
+        layer: mask.id,
+        datatype: 0,
+        points: corners(r),
       })),
     ),
     linework: [],
     hierarchy: {},
     combos: GAN_MICROCHANNEL_MASKS.map((mask) => ({
       key: cell + '|' + mask.id + '|0',
-      cell, layer: mask.id, datatype: 0, count: mask.rectangles.length,
+      cell,
+      layer: mask.id,
+      datatype: 0,
+      count: mask.rectangles.length,
     })),
     bounds: {
-      minX: -DIMENSIONS.x / 2, minY: -DIMENSIONS.y / 2,
-      maxX: DIMENSIONS.x / 2, maxY: DIMENSIONS.y / 2,
-      width: DIMENSIONS.x, height: DIMENSIONS.y,
+      minX: -DIMENSIONS.x / 2,
+      minY: -DIMENSIONS.y / 2,
+      maxX: DIMENSIONS.x / 2,
+      maxY: DIMENSIONS.y / 2,
+      width: DIMENSIONS.x,
+      height: DIMENSIONS.y,
     },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
   };
@@ -109,18 +121,26 @@ export async function buildGanMicrochannel() {
   const { normalizeProcessRecipe } = await import('../site/process-recipe.js');
   const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
   const { validateRecipeExecution } = await import('../site/process-recipe-preflight.js');
-  const { prepareProjectForWorkspaceStorage, readProjectFile } = await import('../site/project-io.js');
+  const { prepareProjectForWorkspaceStorage, readProjectFile } =
+    await import('../site/project-io.js');
 
   const model = modelApi.createModel({
-    shape: 'rect', width: DIMENSIONS.x, height: DIMENSIONS.y, thickness: DIMENSIONS.base,
+    shape: 'rect',
+    width: DIMENSIONS.x,
+    height: DIMENSIONS.y,
+    thickness: DIMENSIONS.base,
   });
   model.layers[0].name = 'High-resistivity Si lower wafer (400 um)';
   const base = {
-    shape: 'rect', width: DIMENSIONS.x, height: DIMENSIONS.y,
-    thickness: DIMENSIONS.base, material: model.layers[0].name,
+    shape: 'rect',
+    width: DIMENSIONS.x,
+    height: DIMENSIONS.y,
+    thickness: DIMENSIONS.base,
+    material: model.layers[0].name,
   };
   const root = projectForBenchmark({
-    model, section: { a: [-700, 0], b: [700, 0] },
+    model,
+    section: { a: [-700, 0], b: [700, 0] },
   });
   root.name = 'GaN HEMT / four-level Si microchannel (Lian 2022 surrogate)';
   root.display.threeOpacity = 0.52;
@@ -137,10 +157,15 @@ export async function buildGanMicrochannel() {
   const checkpoints = [];
   let parentId = null;
   const branch = {
-    id: 'main', name: 'Lian 2022 microchannel geometric surrogate',
-    parentBranchId: null, rootNodeId: null, headNodeId: null,
-    rootSnapshotId: null, headSnapshotId: null,
-    createdAt: DATE, headState: null,
+    id: 'main',
+    name: 'Lian 2022 microchannel geometric surrogate',
+    parentBranchId: null,
+    rootNodeId: null,
+    headNodeId: null,
+    rootSnapshotId: null,
+    headSnapshotId: null,
+    createdAt: DATE,
+    headState: null,
   };
   function snapshot() {
     const state = clone(root);
@@ -148,17 +173,22 @@ export async function buildGanMicrochannel() {
     delete state.snapshotBranches;
     state.model = clone(model);
     state.processRecipe = normalizeProcessRecipe({
-      name: 'GaN HEMT microchannel paper-derived geometry surrogate', base, steps,
+      name: 'GaN HEMT microchannel paper-derived geometry surrogate',
+      base,
+      steps,
     });
     return state;
   }
   function append(operation) {
     const id = 'gan-microchannel-step-' + String(nodes.length).padStart(2, '0');
     const node = {
-      id, branchId: 'main', parentId,
+      id,
+      branchId: 'main',
+      parentId,
       createdAt: new Date(Date.parse(DATE) + nodes.length * 1000).toISOString(),
       processRevision: model.processRevision,
-      operation, state: snapshot(),
+      operation,
+      state: snapshot(),
     };
     nodes.push(node);
     parentId = id;
@@ -167,8 +197,11 @@ export async function buildGanMicrochannel() {
     branch.headState = clone(node.state);
     validateProcessModel(model);
     checkpoints.push({
-      id, label: operation.label, regions: model.regions.length,
-      layers: model.layers.length, revision: model.processRevision,
+      id,
+      label: operation.label,
+      regions: model.regions.length,
+      layers: model.layers.length,
+      revision: model.processRevision,
     });
     return node;
   }
@@ -176,9 +209,13 @@ export async function buildGanMicrochannel() {
     const node = nodes.at(-1);
     const id = 'gan-microchannel-bookmark-' + (bookmarks.length + 1);
     const item = {
-      id, name, createdAt: new Date(Date.parse(DATE) + 200000 + bookmarks.length * 1000).toISOString(),
-      branchId: 'main', parentId: branch.headSnapshotId,
-      historyNodeId: node.id, state: clone(node.state),
+      id,
+      name,
+      createdAt: new Date(Date.parse(DATE) + 200000 + bookmarks.length * 1000).toISOString(),
+      branchId: 'main',
+      parentId: branch.headSnapshotId,
+      historyNodeId: node.id,
+      state: clone(node.state),
     };
     bookmarks.unshift(item);
     if (!branch.rootSnapshotId) branch.rootSnapshotId = id;
@@ -201,18 +238,21 @@ export async function buildGanMicrochannel() {
     const kernel = { type: command === 'deposit' ? 'add' : 'etch', face: 'front' };
     if (command === 'deposit') {
       Object.assign(kernel, {
-        name: params.material, thickness: params.thickness,
+        name: params.material,
+        thickness: params.thickness,
         growth: params.coverage === 'transfer' ? 'transfer' : 'direct',
         ...(params.coverage === 'transfer' ? { transferMode: 'flat' } : {}),
       });
     } else {
       Object.assign(kernel, {
-        thickness: params.depth, etchProfile: 'directional',
+        thickness: params.depth,
+        etchProfile: 'directional',
         ...(params.targetId ? { etchTargetLayerIds: [params.targetId] } : {}),
       });
     }
-    const result = applyAdvancedProcessOperation(model, kernel, area(maskId), modelApi, vectorApi)
-      || modelApi.applyOperation(model, { ...kernel, area: area(maskId) });
+    const result =
+      applyAdvancedProcessOperation(model, kernel, area(maskId), modelApi, vectorApi) ||
+      modelApi.applyOperation(model, { ...kernel, area: area(maskId) });
     assert.equal(result?.changed, true, label + ': ' + (result?.error || 'no geometry change'));
     const recipe = {
       ...params,
@@ -233,16 +273,27 @@ export async function buildGanMicrochannel() {
     steps.push({ command, params: recipe });
     append({
       kind: command === 'deposit' ? 'add' : 'etch',
-      label, face: 'front', areaMode: recipe.area, geometryChanged: true,
+      label,
+      face: 'front',
+      areaMode: recipe.area,
+      geometryChanged: true,
       ...(command === 'deposit'
         ? {
-            name: kernel.name, thickness: kernel.thickness, growth: kernel.growth,
+            name: kernel.name,
+            thickness: kernel.thickness,
+            growth: kernel.growth,
             resultLayerId: result.layerId,
             ...(kernel.growth === 'transfer' ? { transferMode: 'flat', transferGap: 0 } : {}),
           }
-        : { thickness: kernel.thickness, etchProfile: 'directional', targetLayerIds: kernel.etchTargetLayerIds || [] }),
+        : {
+            thickness: kernel.thickness,
+            etchProfile: 'directional',
+            targetLayerIds: kernel.etchTargetLayerIds || [],
+          }),
       replay: {
-        version: 1, params: clone(kernel), areaMode: recipe.area,
+        version: 1,
+        params: clone(kernel),
+        areaMode: recipe.area,
         maskContext: maskId == null ? null : maskContext(maskId),
       },
     });
@@ -251,12 +302,24 @@ export async function buildGanMicrochannel() {
   function record(label, note) {
     model.revision++;
     model.processRevision++;
-    steps.push({ command: 'record', params: {
-      label, process: 'custom', note, temperatureC: null, durationMin: null, ambient: null,
-    } });
+    steps.push({
+      command: 'record',
+      params: {
+        label,
+        process: 'custom',
+        note,
+        temperatureC: null,
+        durationMin: null,
+        ambient: null,
+      },
+    });
     append({
-      kind: 'record', label, processType: 'custom', note,
-      geometryChanged: false, replay: { version: 1, kind: 'record' },
+      kind: 'record',
+      label,
+      processType: 'custom',
+      note,
+      geometryChanged: false,
+      replay: { version: 1, kind: 'record' },
     });
   }
   function etch(label, id, depth, targetId = null) {
@@ -266,7 +329,9 @@ export async function buildGanMicrochannel() {
     return process(label, 'deposit', { material, thickness, coverage }, id);
   }
   append({
-    kind: 'base', label: 'HR Si 400 um lower wafer', geometryChanged: true,
+    kind: 'base',
+    label: 'HR Si 400 um lower wafer',
+    geometryChanged: true,
     replay: { kind: 'base' },
   });
   record(
@@ -277,22 +342,32 @@ export async function buildGanMicrochannel() {
   for (const [index, maskId] of [10, 11, 12, 13].entries()) {
     const layer = deposit(
       'Flat-bridge 100 um Si cap ' + (index + 1) + ' (bonding surrogate)',
-      'Si geometric bridge tier ' + (index + 1), DIMENSIONS.cap, null, 'transfer',
+      'Si geometric bridge tier ' + (index + 1),
+      DIMENSIONS.cap,
+      null,
+      'transfer',
     );
     etch(
       'Open bridge tier ' + (index + 1) + ' to underlying cavity',
-      maskId, DIMENSIONS.cap, layer.layerId,
+      maskId,
+      DIMENSIONS.cap,
+      layer.layerId,
     );
   }
   bookmark('01 Four-level open microchannels / 800 um Si');
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
   for (const [point, cavityZ] of [
-    [[30, 0], 550], [[200, 0], 450], [[280, 0], 350], [[340, 0], 250],
+    [[30, 0], 550],
+    [[200, 0], 450],
+    [[280, 0], 350],
+    [[340, 0], 250],
   ]) {
     const r = owner(point);
-    assert.ok(r.stack.some((segment) => segment.layerId === 'base'),
-      'Lower Si supporting region missing at ' + point);
+    assert.ok(
+      r.stack.some((segment) => segment.layerId === 'base'),
+      'Lower Si supporting region missing at ' + point,
+    );
     assert.ok(
       r.stack.every((segment) => !(segment.z0 < cavityZ && segment.z1 > cavityZ)),
       'Expected real void at z=' + cavityZ + ' below step ' + point,
@@ -311,20 +386,30 @@ export async function buildGanMicrochannel() {
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
-    'AuSn perimeter solder (5 um surrogate)', 5, 15,
+    'AuSn perimeter solder (5 um surrogate)',
+    5,
+    15,
   );
   assert.ok(solderResult.layerId);
   bookmark('03 AuSn peripheral supports');
   const sic = deposit(
     'Place thinned SiC chip as suspended flat bridge (99 um)',
-    'GaN HEMT SiC substrate 99 um', 99, 16, 'transfer',
+    'GaN HEMT SiC substrate 99 um',
+    99,
+    16,
+    'transfer',
   );
   assert.ok(sic.layerId);
   deposit('GaN buffer 1 um', 'GaN buffer 1 um', 1, 16);
   // AlGaN/SiN, exact passivation and contact thickness are unpublished;
   // the two metal examples below are illustrative visible pattern layers.
   deposit('Illustrative gate metal 0.2 um', 'Gate metal surrogate 0.2 um', 0.2, 18);
-  deposit('Illustrative source-drain contacts 0.2 um', 'Source/drain metal surrogate 0.2 um', 0.2, 19);
+  deposit(
+    'Illustrative source-drain contacts 0.2 um',
+    'Source/drain metal surrogate 0.2 um',
+    0.2,
+    19,
+  );
   bookmark('04 GaN-on-SiC HEMT with ten gate fingers');
   deposit('Illustrative GSG pads on interposer', 'GSG Au pads surrogate 0.5 um', 0.5, 20);
   record(
@@ -340,22 +425,28 @@ export async function buildGanMicrochannel() {
   Object.assign(root, snapshot());
   root.name = 'GaN HEMT / 2.5D four-layer microchannels (paper-derived surrogate)';
   root.snapshotBranches = {
-    version: 3, activeBranchId: 'main',
-    cursorNodeId: branch.headNodeId, cursorSnapshotId: branch.headSnapshotId,
-    nodes, branches: [branch],
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: branch.headNodeId,
+    cursorSnapshotId: branch.headSnapshotId,
+    nodes,
+    branches: [branch],
   };
   root.snapshots = bookmarks;
   validateProjectFile(root);
   const preflight = validateRecipeExecution(root.processRecipe.steps, {
-    model, maskState: { layout: root.layout },
-    base: root.processRecipe.base, startMode: 'new-base',
+    model,
+    maskState: { layout: root.layout },
+    base: root.processRecipe.base,
+    startMode: 'new-base',
   });
   assert.deepEqual(preflight.errors, [], 'Recipe preflight failed');
 
   const stored = prepareProjectForWorkspaceStorage(root);
   const json = JSON.stringify(stored);
   const reopened = await readProjectFile({
-    size: Buffer.byteLength(json), text: async () => json,
+    size: Buffer.byteLength(json),
+    text: async () => json,
   });
   validateProjectFile(reopened);
   assert.deepEqual(reopened.model, root.model, 'Canonical geometry changed after Save/Reload');
@@ -363,10 +454,15 @@ export async function buildGanMicrochannel() {
   const validation = {
     doi: GAN_MICROCHANNEL_DOI,
     mode: 'geometry-surrogate-not-wafer-bond-simulation',
-    pass: true, maskLayers: GAN_MICROCHANNEL_MASKS.length,
-    processNodes: nodes.length, recipeSteps: steps.length, bookmarks: bookmarks.length,
-    outputBytes: Buffer.byteLength(json), layers: model.layers.length,
-    regions: model.regions.length, checkpoints,
+    pass: true,
+    maskLayers: GAN_MICROCHANNEL_MASKS.length,
+    processNodes: nodes.length,
+    recipeSteps: steps.length,
+    bookmarks: bookmarks.length,
+    outputBytes: Buffer.byteLength(json),
+    layers: model.layers.length,
+    regions: model.regions.length,
+    checkpoints,
   };
   return { project: root, json, validation };
 }
@@ -382,11 +478,18 @@ async function main() {
   const reportDir = join(root, 'test-results/gan-microchannel');
   await mkdir(reportDir, { recursive: true });
   await writeFile(join(reportDir, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
-  console.log(JSON.stringify({
-    pass: validation.pass, nodes: validation.processNodes,
-    masks: validation.maskLayers, bytes: validation.outputBytes,
-  }));
+  console.log(
+    JSON.stringify({
+      pass: validation.pass,
+      nodes: validation.processNodes,
+      masks: validation.maskLayers,
+      bytes: validation.outputBytes,
+    }),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().catch((error) => { console.error(error); process.exitCode = 1; });
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }

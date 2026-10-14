@@ -2,7 +2,7 @@
 
 ## Scope and literature source
 
-- Paper: T. Lian et al., *Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device*, *Microsystems & Nanoengineering* **8**, 119 (2022).
+- Paper: T. Lian et al., _Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device_, _Microsystems & Nanoengineering_ **8**, 119 (2022).
 - DOI: https://doi.org/10.1038/s41378-022-00462-3
 - Main figures: article Fig. 1 (chip and interposer design) and Fig. 2(a–i) (DRIE, wafer bonding, oxidation, metallization and assembly).
 - Supplement: Fig. S-1 (HEMT gate/source/drain and backside grounds), Fig. S-5 (GSG pads and gold-wire bonding).
@@ -11,18 +11,18 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 
 ## Directly reported dimensions
 
-| Quantity | Publication | Usage |
-| --- | --- | --- |
-| Starting interposer wafers | Two 400 µm double-side-polished Si wafers | Source fabrication recorded; structural surrogate below |
-| Front/back DRIE | 200 µm each side | Lower cavity depth 200 µm |
-| Interposer final thickness | ~800 µm | 400 µm Base + four 100 µm bridge tiers |
-| Microchannel footprint bottom/top | 700 × 900 µm / 380 × 760 µm | Bottom opening; top channel envelope |
-| Straight top channel width / spacing | 30 / 30 µm (paper main text) | Six illustrative 30 µm channels, 30 µm apart |
-| HEMT chip dimensions | 1120 × 878.5 × 100 µm | XY chip footprint; SiC 99 µm + GaN 1 µm |
-| HEMT active region | 303 × 393 µm | Mask dimension |
-| Gate fingers | Ten, each 0.5 µm gate length and 300 µm gate width | Ten 0.5 × 300 µm mask rectangles |
-| Interposer Ti/Cu | 200 nm / 500 nm; followed by Au | Source Record step only |
-| Water and measured operating point | 3 mL/min; ~7.5 V, 0.8 A; 93.8 °C maximum | Metadata only, never predicted |
+| Quantity                             | Publication                                        | Usage                                                   |
+| ------------------------------------ | -------------------------------------------------- | ------------------------------------------------------- |
+| Starting interposer wafers           | Two 400 µm double-side-polished Si wafers          | Source fabrication recorded; structural surrogate below |
+| Front/back DRIE                      | 200 µm each side                                   | Lower cavity depth 200 µm                               |
+| Interposer final thickness           | ~800 µm                                            | 400 µm Base + four 100 µm bridge tiers                  |
+| Microchannel footprint bottom/top    | 700 × 900 µm / 380 × 760 µm                        | Bottom opening; top channel envelope                    |
+| Straight top channel width / spacing | 30 / 30 µm (paper main text)                       | Six illustrative 30 µm channels, 30 µm apart            |
+| HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm                 |
+| HEMT active region                   | 303 × 393 µm                                       | Mask dimension                                          |
+| Gate fingers                         | Ten, each 0.5 µm gate length and 300 µm gate width | Ten 0.5 × 300 µm mask rectangles                        |
+| Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Source Record step only                                 |
+| Water and measured operating point   | 3 mL/min; ~7.5 V, 0.8 A; 93.8 °C maximum           | Metadata only, never predicted                          |
 
 The abstract uses "pitch" for the 30 µm microchannel parameter while the main design text specifies width/spacing. We use separate 30 µm width and 30 µm spacing (60 µm centerline period) and disclose this interpretation.
 

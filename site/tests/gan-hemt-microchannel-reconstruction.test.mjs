@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  buildGanMicrochannel, GAN_MICROCHANNEL_DOI, GAN_MICROCHANNEL_MASKS,
+  buildGanMicrochannel,
+  GAN_MICROCHANNEL_DOI,
+  GAN_MICROCHANNEL_MASKS,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
@@ -9,7 +11,8 @@ await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
 const { readProjectFile } = await import('../project-io.js');
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
-const { collectMaskExportElements, serializeGDS, serializeOASIS } = await import('../layout-export.js');
+const { collectMaskExportElements, serializeGDS, serializeOASIS } =
+  await import('../layout-export.js');
 const { parseGDS, flattenGDS } = await import('../gds.js');
 const { parseOAS } = await import('../oasis.js');
 
@@ -53,8 +56,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     [[280, 0], 350],
     [[340, 0], 250],
   ]) {
-    assert.equal(solidAt(project.model, point, voidZ), false,
-      'Stepped cavity unexpectedly occupied at ' + point + ', z=' + voidZ);
+    assert.equal(
+      solidAt(project.model, point, voidZ),
+      false,
+      'Stepped cavity unexpectedly occupied at ' + point + ', z=' + voidZ,
+    );
   }
   // AuSn and SiC bridge over the fluid gap; no material fills the coolant volume.
   assert.equal(solidAt(project.model, [30, 0], 580), false);
@@ -68,7 +74,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.ok(layers.includes('GaN buffer 1 um'));
 
   const saved = await readProjectFile({
-    size: Buffer.byteLength(json), text: async () => json,
+    size: Buffer.byteLength(json),
+    text: async () => json,
   });
   validateProjectFile(saved);
   assert.deepEqual(saved.model, project.model);
@@ -80,8 +87,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
 test('Lian 2022 inferred mask layout exports as both GDSII and OASIS', async () => {
   const { project } = await buildGanMicrochannel();
   const elements = collectMaskExportElements({
-    layout: project.layout, maskSourceMode: 'file',
-    drawMask: project.drawMask, maskTransform: project.maskTransform,
+    layout: project.layout,
+    maskSourceMode: 'file',
+    drawMask: project.drawMask,
+    maskTransform: project.maskTransform,
     maskRoi: null,
     selectedCells: new Set([project.layout.root]),
     selectedLayerKeys: new Set(GAN_MICROCHANNEL_MASKS.map((mask) => mask.id + '|0')),
