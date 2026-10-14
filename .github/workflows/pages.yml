@@ -1,7 +1,7 @@
 name: Deploy WaferCAD to Pages
 
-# Every production publication waits for quality, targeted browser checks and
-# the real UI v2 integration suite at the same main revision.
+# Production publication validates the exact staged artifact, at the same main
+# revision as the Quality, targeted Browser and UI v2 acceptance gates.
 on:
   push:
     branches: [main]
@@ -24,9 +24,7 @@ on:
 permissions:
   contents: read
 
-# Never abort a production release that has already passed some expensive
-# gates. New main pushes replace the queued run, then the newest pending
-# release publishes. Repeated merges must not starve GitHub Pages forever.
+# A publishing run is never cancelled after it passes its expensive gates.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -148,9 +146,42 @@ jobs:
             fi
           done
 
+  stage-pages:
+    name: Build and smoke production Pages artifact
+    needs: [release-quality, release-browser, release-ui-v2, release-science]
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout verified revision
+        uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Stage and stamp production files
+        run: |
+          node scripts/build-pages-artifact.mjs
+          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json
+          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA" build/pages
+      - name: Smoke the exact staged artifact at /WaferCAD/
+        run: node scripts/smoke-pages-artifact.mjs
+      - name: Upload exactly the tested Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/pages
+
   deploy:
     name: Publish verified main
-    needs: [release-quality, release-browser, release-ui-v2, release-science]
+    needs: [stage-pages]
     if: ${{ github.ref == 'refs/heads/main' }}
     permissions:
       contents: read
@@ -162,24 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout verified revision
-        uses: actions/checkout@v6
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Install locked development dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Stage production assets and stamp the validated revision
-        run: |
-          node scripts/build-pages-artifact.mjs
-          printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json
-          node scripts/stamp-pages-assets.mjs "$GITHUB_SHA" build/pages
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: build/pages
-      - name: Deploy verified main
+      - name: Deploy the already-tested artifact
         id: deployment
         uses: actions/deploy-pages@v4
