@@ -68,14 +68,23 @@ function stripeAroundPolyline(points, halfWidth = GAN_MANIFOLD_PARAMETERS.branch
 }
 export function ganManifoldCenterline(centerX, side) {
   assert.ok(CHANNEL_CENTERS.includes(centerX) && [-1, 1].includes(side));
+  // Nested return loops are visible in Fig. 2h. Outer lanes must travel
+  // farther around the collection throat than the inner lanes do. These
+  // contours are still inferred, not digitized author GDS.
+  const distance = (Math.abs(centerX) - 30) / 120;
+  const bend = distance ** 1.3;
+  const outward = Math.sign(centerX);
   return [
     [centerX, side * 355],
-    [centerX, side * 370],
-    [centerX * 1.03, side * 382],
-    [centerX * 0.91, side * 395],
-    [centerX * 0.67, side * 407],
-    [centerX * 0.4, side * 419],
-    [centerX * 0.22, side * 430],
+    [centerX, side * 374],
+    [centerX + outward * 6 * distance, side * (386 + 12 * bend)],
+    [centerX + outward * 9 * distance, side * (394 + 37 * bend)],
+    [centerX + outward * 4 * distance, side * (403 + 61 * bend)],
+    [centerX * 0.88, side * (410 + 67 * bend)],
+    [centerX * 0.7, side * (414 + 63 * bend)],
+    [centerX * 0.43, side * (418 + 40 * bend)],
+    [centerX * 0.24, side * (422 + 14 * bend)],
+    [centerX * 0.22, side * 425],
   ];
 }
 const manifoldBranches = [-1, 1].flatMap((side) =>
