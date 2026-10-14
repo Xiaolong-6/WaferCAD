@@ -44,15 +44,10 @@ test('empty, isolated, touching and transitive multi-component bounds', () => {
     { minX: 8, maxX: 9, minY: 8, maxY: 9 },
     { minX: 9.01, maxX: 10, minY: 8, maxY: 9 },
   ];
+  const unchangedBounds = structuredClone(bounds);
   assert.deepEqual(connectedBoundingBoxGroups(bounds), [[0, 1, 2], [3], [4]]);
   assert.deepEqual(connectedBoundingBoxGroups(bounds, 0.02), [[0, 1, 2], [3, 4]]);
-  assert.deepEqual(bounds, [
-    { minX: 0, maxX: 1, minY: 0, maxY: 1 },
-    { minX: 1, maxX: 2, minY: 0, maxY: 1 },
-    { minX: 2, maxX: 3, minY: 0, maxY: 1 },
-    { minX: 8, maxX: 9, minY: 8, maxY: 9 },
-    { minX: 9.01, maxX: 10, minY: 8, maxY: 9 },
-  ], 'indexing cannot mutate canonical input bounds');
+  assert.deepEqual(bounds, unchangedBounds, 'indexing cannot mutate canonical input bounds');
 });
 
 test('dense X-overlap but independent Y-rows exactly matches quadratic reference', () => {
