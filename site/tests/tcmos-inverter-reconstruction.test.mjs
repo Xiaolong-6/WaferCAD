@@ -6,6 +6,7 @@ import {
   GATE_LENGTH_UM,
   TCMOS_DOI,
   TCMOS_MASKS,
+  TCMOS_METAL_NETS,
   tcmosLayout,
 } from '../../scripts/build-tcmos-inverter-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -19,7 +20,7 @@ test('TCMOS mask geometry is self-contained and resolves physical 130 nm POLY le
   assert.equal(GATE_LENGTH_UM, 0.13);
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
-  assert.equal(layout.combos.length, 11);
+  assert.equal(layout.combos.length, 13);
   assert.equal(
     layout.elements.length,
     TCMOS_MASKS.reduce((n, m) => n + m.rectangles.length, 0),
@@ -34,6 +35,11 @@ test('TCMOS mask geometry is self-contained and resolves physical 130 nm POLY le
   assert.equal(gates[0].w, GATE_LENGTH_UM);
   assert.equal(gates[1].w, GATE_LENGTH_UM);
   assert.equal(gates[0].h, gates[1].h);
+  assert.equal(gates.length, 2, 'Fig.1b has two separate POLY gates connected at METAL1');
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 1).rectangles.length, 8);
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 10).rectangles.length, 38);
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 12).rectangles.length, 1);
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 13).rectangles.length, 1);
   assert.equal(TCMOS_DOI, '10.1038/s41928-019-0272-8');
 });
 
@@ -46,8 +52,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   assert.equal(project.snapshots.length, 5);
   assert.equal(model.implants.length, 6);
-  assert.match(model.implants[0].name, /HVTP As\+ pMOS/);
-  assert.match(model.implants[1].name, /HVTN BF2\+ nMOS/);
+  assert.match(model.implants[0].name, /HVTN As\+ pMOS/);
+  assert.match(model.implants[1].name, /HVTP BF2\+ nMOS/);
   for (const body of model.implants.slice(0, 2)) {
     assert.equal(body.depthStart, 0.08, 'HVT marker must leave the top 80nm unannotated');
     assert.equal(body.thickness, 0.24, 'HVT marker ends 240nm from the original surface');
@@ -95,7 +101,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     { name: 'VOUT p-drain', point: [-1.66, 0] },
     { name: 'VOUT n-drain', point: [1.66, 0] },
     { name: 'GND', point: [4.34, 0] },
-    { name: 'VIN gate', point: [0, 1.29] },
+    { name: 'VIN pMOS gate', point: [-3, 1.15] },
+    { name: 'VIN nMOS gate', point: [3, 1.15] },
+    { name: 'VDD pMOS body tie', point: [-5.35, -0.85] },
+    { name: 'GND nMOS body tie', point: [5.35, -0.85] },
   ];
   for (const {
     name,
@@ -113,11 +122,28 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     );
     assert.ok(present.has('W contacts'), name + ' must have a W contact');
     assert.ok(present.has('METAL1 Al'), name + ' must touch real Metal1');
-    if (name === 'VIN gate') assert.ok(present.has('POLY gate'), 'VIN contact must sit on POLY');
+    if (name.includes('VIN')) assert.ok(present.has('POLY gate'), 'VIN gate contact must sit on POLY');
   }
-  assert.equal(metals.length, 4, 'four independently routed Metal1 nets');
+  assert.equal(TCMOS_METAL_NETS.length, 4, 'four independently routed Metal1 nets');
+  assert.equal(metals.length, TCMOS_METAL_NETS.reduce((sum, net) => sum + net.rectangles.length, 0));
+  // Electrical net safety: no physical XY overlap between different Metal1 nets.
+  const overlapArea = (a, b) =>
+    Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
+    Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  for (let i = 0; i < TCMOS_METAL_NETS.length; i++) {
+    for (let j = i + 1; j < TCMOS_METAL_NETS.length; j++) {
+      for (const first of TCMOS_METAL_NETS[i].rectangles) {
+        for (const second of TCMOS_METAL_NETS[j].rectangles) {
+          assert.ok(overlapArea(first, second) < 1e-12,
+            `Metal1 short: ${TCMOS_METAL_NETS[i].name} / ${TCMOS_METAL_NETS[j].name}`);
+        }
+      }
+    }
+  }
+  assert.equal(model.implants.every((implant) => implant.tilt === 0), true,
+    'Source does not report a nonzero beam incidence angle; no fabricated tilt allowed');
   assert.ok(
-    validation.keyAssumptions.some((a) => /retrograde concentration/i.test(a)),
+    validation.keyAssumptions.some((a) => /not calibrated concentration/i.test(a)),
     'Source-vs-model disclosure must not be lost',
   );
 });
