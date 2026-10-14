@@ -50,9 +50,9 @@ function assertMaskExportTopology(actualElements, sourceElements, format) {
         assert.ok(points.length >= 4, format + ': malformed polygon');
         const xs = points.map((point) => point[0]);
         const ys = points.map((point) => point[1]);
-        const bounds = [
-          Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys),
-        ].map((value) => Math.round(value * 1000));
+        const bounds = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(
+          (value) => Math.round(value * 1000),
+        );
         return [element.layer, element.datatype, ...bounds].join(':');
       })
       .sort();
@@ -149,13 +149,19 @@ try {
     const polygons = flattenGDS(parsed, parsed.root).elements;
     assertMaskExportTopology(polygons, expected.layout.elements, format.toUpperCase());
     const afterMask = await snapshot();
-    assert.deepEqual(afterMask.model, maskBefore.model, 'Mask export must not edit physical geometry');
+    assert.deepEqual(
+      afterMask.model,
+      maskBefore.model,
+      'Mask export must not edit physical geometry',
+    );
     assert.deepEqual(afterMask.maskRoi, maskBefore.maskRoi);
     assert.deepEqual(afterMask.maskTransform, maskBefore.maskTransform);
   }
-  report.maskInterchange = { formats: ['GDSII', 'OASIS'], layers: 11,
-    polygons: expected.layout.elements.length };
-
+  report.maskInterchange = {
+    formats: ['GDSII', 'OASIS'],
+    layers: 11,
+    polygons: expected.layout.elements.length,
+  };
 
   await page.locator('[data-action="domain:process"]').click();
   await page.locator('[data-action="process-mode:recipe"]').click();
