@@ -140,9 +140,18 @@ try {
       assert.equal(real.font, m2.font, 'M2 typography family');
       assert.equal(real.overflowX, 0, 'Real shell must fit the viewport');
       assert.ok(m2.root && real.root && m2.nav && real.nav && m2.inspector && real.inspector);
-      near(m2.root.width, real.root.width, 2, 'Workbench width');
-      near(m2.nav.width, real.nav.width, 2, 'Primary navigation width');
-      near(m2.inspector.width, real.inspector.width, 2, 'Manual inspector width');
+      if (width >= 821) {
+        near(m2.root.width, real.root.width, 2, 'Workbench width');
+        near(m2.nav.width, real.nav.width, 2, 'Primary navigation width');
+        near(m2.inspector.width, real.inspector.width, 2, 'Manual inspector width');
+      } else {
+        // The mobile Edit page deliberately diverges from the fixed-height M2
+        // prototype: keep structural and horizontal-fit checks, not stale
+        // exact pixel widths from the old viewport-bound workbench.
+        assert.ok(real.root.width > width - 24 && real.root.width <= width);
+        near(real.nav.width, real.root.width - 2, 2, 'Mobile nav fits Workbench');
+        near(real.inspector.width, real.root.width - 2, 2, 'Mobile editor fits Workbench');
+      }
       if (width >= 821 && m2.stage && real.stage)
         near(m2.stage.x - m2.root.x, real.stage.x - real.root.x, 2, 'Canvas column origin');
       const m2Labels = m2.labels.map(normalize);
@@ -169,7 +178,15 @@ try {
         );
       }
       near(m2.thickness.box.height, real.thickness.box.height, 2, 'M2 stepper total height');
-      near(m2.thickness.input.width, real.thickness.input.width, 2, 'M2 stepper input width');
+      if (width >= 821) {
+        near(m2.thickness.input.width, real.thickness.input.width, 2, 'M2 stepper input width');
+      } else {
+        assert.ok(
+          real.thickness.input.width > 0 &&
+            real.thickness.input.width < real.inspector.width,
+          'Mobile stepper input fits document-width editor',
+        );
+      }
       report.cases.push({ width, result: 'pass', m2, real });
       console.log(`M2 live parity ${width}px: chrome, Manual control order and layout PASS`);
     } catch (error) {
