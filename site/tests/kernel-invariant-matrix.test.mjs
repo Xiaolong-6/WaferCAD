@@ -145,7 +145,9 @@ test('Implant and Electrical depth semantics do not inherit material stack resol
     });
     assert.equal(result.changed, true, result.error);
     const value =
-      type === 'implant' ? model.implants.at(-1).thickness : model.electricalRegions.at(-1).thickness;
+      type === 'implant'
+        ? model.implants.at(-1).thickness
+        : model.electricalRegions.at(-1).thickness;
     assert.equal(value, 1e-10);
   }
 });
