@@ -134,14 +134,6 @@ try {
       const afterScroll = await nav.boundingBox();
       assert.ok(swipeOffset > 20, 'Touch swipe scrolls the document');
       assert.ok(afterScroll.y < beforeScroll.y - 20, 'Navigation follows document scroll');
-      // Stop any momentum from the emulated swipe before testing precise
-      // restoration across view changes. The swipe itself was validated above.
-      const documentOffset = await page.evaluate(() => {
-        window.scrollTo(0, Math.min(120, document.scrollingElement.scrollHeight - innerHeight - 2));
-        return document.scrollingElement.scrollTop;
-      });
-      await waitForPaint(page);
-
       const touch = await processNav.boundingBox();
       assert.ok(
         touch.width >= 44 && touch.height >= 44,
@@ -149,15 +141,14 @@ try {
       );
       // The Process pane also exposes a contextual View results action.
       // Exercise the persistent mobile chrome control explicitly.
-      // Trigger the remote topbar without Playwright auto-scrolling it into view:
-      // a real switch must preserve the offscreen document position.
-      const offsetAtSwitch = await page.evaluate(() => window.scrollY);
-      console.log(
-        `Mobile scroll diagnostics ${width}x${height}: requested=${documentOffset}, beforeView=${offsetAtSwitch}`,
-      );
-      await page
-        .locator('.p-mobile-return [data-action="return-results"]')
-        .evaluate((node) => node.click());
+      // Capture and activate in the same browser task. Touch inertia may
+      // advance between Playwright operations; the user's actual position at
+      // navigation, not an earlier scroll snapshot, must be restored exactly.
+      const documentOffset = await page.evaluate(() => {
+        const position = document.scrollingElement.scrollTop;
+        document.querySelector('.p-mobile-return [data-action="return-results"]').click();
+        return position;
+      });
       await waitForPaint(page);
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
@@ -175,9 +166,6 @@ try {
       await page.locator('[data-action="show-editor"]').evaluate((node) => node.click());
       await waitForPaint(page);
       const restoredOffset = await page.evaluate(() => window.scrollY);
-      console.log(
-        `Mobile scroll diagnostics ${width}x${height}: beforeView=${offsetAtSwitch}, afterEdit=${restoredOffset}`,
-      );
       assert.ok(
         Math.abs(restoredOffset - documentOffset) <= 3,
         `Edit returns to the previous document position (wanted ${documentOffset}, got ${restoredOffset})`,
@@ -207,7 +195,11 @@ try {
         true,
       );
       await page.setViewportSize({ width, height });
-      await page.locator('.p-nav [data-action="domain:history"]').evaluate((node) => node.click());
+      const processOffsetAtHistorySwitch = await page.evaluate(() => {
+        const position = document.scrollingElement.scrollTop;
+        document.querySelector('.p-nav [data-action="domain:history"]').click();
+        return position;
+      });
       await waitForPaint(page);
       assert.ok((await page.evaluate(() => window.scrollY)) <= 1, 'New domain begins at top');
       const historyScroll = page.locator('.p-history-scroll');
@@ -221,8 +213,8 @@ try {
       await page.locator('.p-nav [data-action="domain:process"]').evaluate((node) => node.click());
       await waitForPaint(page);
       assert.ok(
-        Math.abs((await page.evaluate(() => window.scrollY)) - documentOffset) <= 3,
-        'Returning to Process restores its own scroll position',
+        Math.abs((await page.evaluate(() => window.scrollY)) - processOffsetAtHistorySwitch) <= 3,
+        'Returning to Process restores its last click-time document offset',
       );
       await page.locator('[data-action="process-mode:recipe"]').evaluate((node) => node.click());
       await waitForPaint(page);
