@@ -130,9 +130,18 @@ try {
   const maskLayerBoxes = page.locator('#v2-maskLayerList input[type="checkbox"]');
   assert.equal(await maskLayerBoxes.count(), expected.layout.combos.length);
   for (let index = 0; index < expected.layout.combos.length; index++) {
-    const unchecked = page.locator('#v2-maskLayerList input[type="checkbox"]:not(:checked)');
-    if (!(await unchecked.count())) break;
-    await unchecked.first().check();
+    // The v2 Mask list rebuilds its checkbox nodes after each change.
+    // Trigger the real DOM click synchronously to avoid Playwright waiting
+    // for a detached element while its onchange handler re-renders the list.
+    const changed = await page.evaluate(() => {
+      const checkbox = document.querySelector(
+        '#v2-maskLayerList input[type="checkbox"]:not(:checked)',
+      );
+      if (!checkbox) return false;
+      checkbox.click();
+      return true;
+    });
+    if (!changed) break;
   }
   assert.equal((await snap()).selectedLayerKeys.length, expected.layout.combos.length);
   // Inspect the actual exported binary Mask, not just the layout metadata.
