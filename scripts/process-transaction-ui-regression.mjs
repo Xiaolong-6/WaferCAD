@@ -118,7 +118,9 @@ export async function runTransactionAcceptance(
   assert.ok(probe.messages.some((message) => message.stage === 'Validating process geometry…'));
   assert.ok(probe.messages.some((message) => message.rejected === true));
   await prepare('Aborted candidate');
-  await page.evaluate(() => { window.__abortNextProcess = true; });
+  await page.evaluate(() => {
+    window.__abortNextProcess = true;
+  });
   await page.locator('#applyOperationBtn').click();
   await chooseConfirmation(page);
   await waitForStatus(page, /Operation aborted/);
