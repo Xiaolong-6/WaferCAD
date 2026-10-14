@@ -188,20 +188,17 @@ async function runCampaign(iteration) {
   }
 
   try {
-    await profilePhase(
-      iteration === 1 ? 'm3d-first' : `m3d-first-r${iteration}`,
-      async () => {
-        await page.goto(`${base}/app.html?start=example&example=m3d`, {
-          waitUntil: 'commit',
-          timeout: limit,
-        });
-        await page.waitForFunction(
-          () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
-          null,
-          { timeout: limit },
-        );
-      },
-    );
+    await profilePhase(iteration === 1 ? 'm3d-first' : `m3d-first-r${iteration}`, async () => {
+      await page.goto(`${base}/app.html?start=example&example=m3d`, {
+        waitUntil: 'commit',
+        timeout: limit,
+      });
+      await page.waitForFunction(
+        () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
+        null,
+        { timeout: limit },
+      );
+    });
     if (process.exitCode) {
       console.log('P1 CPU profiling stopped: initial startup failed.');
     } else {
@@ -244,7 +241,10 @@ const aggregate = Object.fromEntries(
     const runs = campaignSamples.filter((sample) => sample.scenario === scenario);
     const summary = Object.fromEntries(
       metrics.map((key) => {
-        const sorted = runs.map((run) => run[key]).filter(Number.isFinite).sort((a, b) => a - b);
+        const sorted = runs
+          .map((run) => run[key])
+          .filter(Number.isFinite)
+          .sort((a, b) => a - b);
         return [
           key,
           {

@@ -55,8 +55,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Diagnostic formatting diff
-        run: npx prettier scripts/v2/profile-startup-ci.mjs | diff -u scripts/v2/profile-startup-ci.mjs - || true
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
