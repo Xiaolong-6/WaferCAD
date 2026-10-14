@@ -210,7 +210,10 @@ function maskContext(id) {
   };
 }
 
-export async function buildTcmosInverter() {
+export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
+  if (![0, 18].includes(illustrativeTiltDeg)) {
+    throw new Error('Only 0° source-faithful and 18° illustrative tilt diagnostic are supported.');
+  }
   await loadGeometryKernel();
   const modelApi = await import('../site/model.js');
   const v = await import('../site/vector-geometry.js');
@@ -239,12 +242,14 @@ export async function buildTcmosInverter() {
     model,
     section: { a: [-5.5, 0], b: [5.5, 0] },
   });
-  project.name = 'Tunnelling-based ternary CMOS inverter (130 nm)';
+  project.name = illustrativeTiltDeg
+    ? 'T-CMOS 130nm TILT DEMO — 18° assumed, NOT paper'
+    : 'Tunnelling-based ternary CMOS inverter (130 nm)';
   project.display.threeOpacity = 0.36;
   project.layout = tcmosLayout();
   project.maskSourceMode = 'file';
   project.activeCell = CELL;
-  project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0'];
+  project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
   project.drawMask = { nextShapeId: 1, shapes: [] };
   project.maskRoi = null;
 
@@ -450,8 +455,8 @@ export async function buildTcmosInverter() {
     apply(label, 'deposit', { material, thickness, coverage }, maskId);
   const etch = (label, target, depth, maskId, mode = 'mask') =>
     apply(label, 'etch', { target, depth, profile: 'directional' }, maskId, mode);
-  const implant = (label, name, depth, maskId, color, startDepth = 0) =>
-    apply(label, 'implant', { name, depth, tilt: 0, color, startDepth }, maskId);
+  const implant = (label, name, depth, maskId, color, startDepth = 0, tilt = 0) =>
+    apply(label, 'implant', { name, depth, tilt, color, startDepth }, maskId);
   const electrical = (label, name, regionType, depth, maskId, color) =>
     apply(label, 'electrical', { name, regionType, depth, source: 'doped', color }, maskId);
 
@@ -486,6 +491,7 @@ export async function buildTcmosInverter() {
     4,
     '#d9668a',
     0.08,
+    illustrativeTiltDeg,
   );
   implant(
     'HVTP BF2 body implant',
@@ -494,6 +500,7 @@ export async function buildTcmosInverter() {
     5,
     '#5d8ce0',
     0.08,
+    illustrativeTiltDeg,
   );
   record(
     'Body implant rapid thermal anneal',
@@ -538,9 +545,12 @@ export async function buildTcmosInverter() {
   bookmark('S05 - inverter / METAL1 final');
 
   Object.assign(project, capture());
-  project.name = 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
+  project.name = illustrativeTiltDeg
+    ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
+    : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
+  if (illustrativeTiltDeg) project.section = { a: [-3.75, 0], b: [-2.25, 0] };
   project.layout = tcmosLayout();
-  project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0'];
+  project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
   project.snapshotBranches = {
     version: 3,
     activeBranchId: branch.id,
@@ -575,6 +585,8 @@ export async function buildTcmosInverter() {
     note: '130nm local layout and masks inferred; not the foundry GDS or calibrated TCAD.',
     source: 'Jeong et al. 2019 Fig.1 + Supplementary Fig.1 + Methods',
     gatesUm: GATE_LENGTH_UM,
+    tiltDegrees: illustrativeTiltDeg,
+    tiltSourceReported: false,
     maskLayers: TCMOS_MASKS.length,
     processNodes: nodes.length,
     recipeSteps: steps.length,
@@ -591,23 +603,26 @@ export async function buildTcmosInverter() {
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
       'LVTN/LVTP mask windows are reference-only and NOT executed in the T-CMOS process; U-shaped body-tie diffusion, contact arrays and metal routing are traced visually from Fig. 1b, not measured dimensions.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
-      'Implant tilt is explicitly 0 degrees: the paper specifies higher energy and dose for HVT, but no nonzero beam angle. Visible red/blue bands indicate buried depth, not tilted doping.',
+      illustrativeTiltDeg
+        ? '18-degree tilted Implant is a DIAGNOSTIC ONLY, not the paper recipe. The paper reports no angle; 1.5um Section A-B is zoomed for geometric displacement.'
+        : 'Implant tilt is 0 degrees: the paper reports energy/dose but no beam angle. Buried annotations are not tilted doping.',
     ],
   };
   return { project, stored, json, validation };
 }
 
 async function main() {
-  const { json, validation } = await buildTcmosInverter();
+  const tiltDemo = process.argv.includes('--tilt-demo');
+  const { json, validation } = await buildTcmosInverter({ illustrativeTiltDeg: tiltDemo ? 18 : 0 });
   const repo = fileURLToPath(new URL('..', import.meta.url));
   const out = process.argv.includes('--write-repo')
     ? join(repo, 'site/examples')
     : join(repo, 'test-results/tcmos');
   await mkdir(out, { recursive: true });
-  await writeFile(join(out, 'tcmos-ternary-inverter-130nm.wafercad'), json);
+  await writeFile(join(out, tiltDemo ? 'tcmos-tilt-demo-18deg-NOT-PAPER.wafercad' : 'tcmos-ternary-inverter-130nm.wafercad'), json);
   const reports = join(repo, 'test-results/tcmos');
   await mkdir(reports, { recursive: true });
-  await writeFile(join(reports, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
+  await writeFile(join(reports, tiltDemo ? 'tilt-demo-validation.json' : 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
   console.log(
     JSON.stringify({
       pass: true,
