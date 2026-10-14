@@ -198,11 +198,9 @@ try {
   );
   assert.equal(rebuilt.layout.combos.length, 11, 'Run All lost GDS-exportable masks');
   assert.deepEqual(rebuilt.roi, initial.roi, 'Run All lost the sample inspection ROI');
-  // Rebuild Base currently resets the Section UI to its general default.
-  // The shipped project's paper-aligned Section is checked above at import;
-  // this independent UI behavior is recorded for follow-up, not mistaken for geometry loss.
-  report.sectionResetByRebuildBase =
-    JSON.stringify(rebuilt.section) !== JSON.stringify(initial.section);
+  assert.deepEqual(rebuilt.section, initial.section,
+    'Recipe Rebuild Base must preserve paper-aligned Section A-B');
+  report.sectionPreservedByRebuildBase = true;
   await page.locator('[data-action="domain:project"]').click();
   await page.locator('#projectExportMenuBtn').click();
   const [download] = await Promise.all([
