@@ -302,14 +302,14 @@ try {
       });
       await waitForPaint(page);
     };
-    await page.locator('[data-action="tool:pan:section"]').click();
+    assert.equal(initial.local.section.panEnabled, true, 'Touch Section defaults to Pan');
+    assert.equal(initial.local.section.zoomEnabled, true, 'Touch Section defaults to Zoom');
     await dispatch('touchStart', [[1, x, y]]);
     await dispatch('touchMove', [[1, x + 24, y + 16]]);
     await dispatch('touchEnd', []);
     assert.ok(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).sectionViewport.panX > 0,
     );
-    await page.locator('[data-action="tool:zoom:section"]').click();
     await dispatch('touchStart', [[1, x - 20, y]]);
     await dispatch('touchStart', [
       [1, x - 20, y],
