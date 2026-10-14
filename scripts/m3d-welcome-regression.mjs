@@ -97,6 +97,9 @@ try {
     'Border toggle changes its selected visual appearance',
   );
   await border.click();
+  // Clicking intentionally leaves focus on the button. Clear the focus ring
+  // before comparing the restored selected-state colors and accessible state.
+  await border.evaluate((node) => node.blur());
   assert.deepEqual(await visualState(), starting, 'Border state is reversible');
 
   const after = await snapshot();
