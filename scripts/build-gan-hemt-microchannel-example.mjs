@@ -466,7 +466,26 @@ export async function buildGanMicrochannel() {
     'front',
     'Si geometric bridge tier 4',
   );
+  // The complete-device default half-cut hides the *other* manifold behind
+  // the HEMT and the cut face. The earliest process-stage bookmark captures a
+  // fluid-only inspection view BEFORE the SiC/chip/solder are assembled.
+  // Changing view metadata here never modifies the canonical Process model.
+  const integratedView = {
+    roi: clone(root.roi),
+    section: clone(root.section),
+    threeCamera: clone(root.display.threeCamera),
+  };
+  root.roi = { type: 'rect', a: [-500, -520], b: [500, 520] };
+  root.section = { a: [0, -500], b: [0, 500] };
+  root.display.threeCamera = {
+    position: [650, -740, 1530],
+    target: [0, 0, 440],
+    fov: 36,
+  };
   bookmark('01 Four-level open microchannels / 800 um Si with diversion');
+  root.roi = integratedView.roi;
+  root.section = integratedView.section;
+  root.display.threeCamera = integratedView.threeCamera;
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
   for (const [point, cavityZ] of [
