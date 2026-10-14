@@ -513,7 +513,12 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   // illustrative 2.5D geometry. A blanket 5 nm oxide over STI and body ties
   // misrepresents Fig. 1a and obscures every device in Main/3D. Foundry
   // gate-oxide removal and self-aligned spacer lithography are not simulated.
-  deposit('Patterned gate dielectric SiO2 5nm (illustrative)', 'Gate SiO2 (5nm surrogate)', 0.005, 6);
+  deposit(
+    'Patterned gate dielectric SiO2 5nm (illustrative)',
+    'Gate SiO2 (5nm surrogate)',
+    0.005,
+    6,
+  );
   deposit('Pattern separate 130nm POLY gates (VIN via METAL1)', 'POLY gate', 0.2, 6);
   record(
     'Gate-oxide source/drain window surrogate',
