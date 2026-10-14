@@ -549,8 +549,20 @@ export async function buildM3DLime() {
     'Y2O3 layer geometry uses a 10nm thickness surrogate; post-oxidation thickness was not reported.',
   );
   deposit('Y2O3 interface layer 10nm geometric surrogate', 'Y2O3 interface SURROGATE 10nm', 0.01);
-  deposit('ALD Al2O3 passivation 35nm at 250C', 'CNT Al2O3 passivation 35nm', 0.035, null, 'conformal');
-  deposit('ALD HfO2 passivation 10nm at 250C', 'CNT HfO2 passivation 10nm', 0.01, null, 'conformal');
+  deposit(
+    'ALD Al2O3 passivation 35nm at 250C',
+    'CNT Al2O3 passivation 35nm',
+    0.035,
+    null,
+    'conformal',
+  );
+  deposit(
+    'ALD HfO2 passivation 10nm at 250C',
+    'CNT HfO2 passivation 10nm',
+    0.01,
+    null,
+    'conformal',
+  );
   selectiveEtch('Open HfO2 above digital RRAM landing', 'CNT HfO2 passivation 10nm', 0.01, 19);
   selectiveEtch('Open Al2O3 above digital RRAM landing', 'CNT Al2O3 passivation 35nm', 0.035, 19);
   selectiveEtch('Wet open Y2O3 above Pd drain', 'Y2O3 interface SURROGATE 10nm', 0.01, 19);
@@ -577,7 +589,11 @@ export async function buildM3DLime() {
   // The full 45nm conformal Kernel path currently fails closed on a 0.243nm²
   // XY overlap in this complex stack. Keep this as an explicitly labeled
   // directional *geometry surrogate* until that physical kernel case is fixed.
-  deposit('ALD Al2O3 RRAM protection 45nm at 150C (directional geometry surrogate)', 'Digital Al2O3 passivation 45nm', 0.045);
+  deposit(
+    'ALD Al2O3 RRAM protection 45nm at 150C (directional geometry surrogate)',
+    'Digital Al2O3 passivation 45nm',
+    0.045,
+  );
   selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
   assert.equal(
     exposed(digitalRramProbe).layerId,
