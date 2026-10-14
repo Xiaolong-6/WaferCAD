@@ -6,6 +6,8 @@ import {
   GAN_MICROCHANNEL_DOI,
   GAN_MICROCHANNEL_MASKS,
   GAN_SILICON_COLOR,
+  GAN_MANIFOLD_PARAMETERS,
+  ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
@@ -33,6 +35,13 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(masks.get(10).rectangles[0].h, 900);
   assert.equal(masks.get(13).rectangles.length, 6);
   assert.ok(masks.get(13).rectangles.every((r) => r.w === 30 && r.h === 760));
+  const manifold = masks.get(22);
+  assert.ok(manifold, 'Missing independent mask for Fig. 2h inlet/outlet diversion');
+  assert.equal(manifold.polygons.length, 12, 'Every straight channel needs two fanout arms');
+  assert.equal(manifold.rectangles.length, 2, 'Expected inlet and outlet throat openings');
+  assert.equal(GAN_MANIFOLD_PARAMETERS.throatWidth, 110);
+  assert.deepEqual(ganManifoldCenterline(150, 1)[0], [150, 355]);
+  assert.deepEqual(ganManifoldCenterline(150, 1).at(-1), [33, 430]);
   assert.equal(masks.get(18).rectangles.length, 10);
   assert.ok(masks.get(18).rectangles.every((r) => r.w === 0.5 && r.h === 300));
   assert.equal(masks.get(16).rectangles[0].w, 878.5);
@@ -43,6 +52,15 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
+  assert.equal(validation.maskLayers, 13);
+  assert.equal(validation.processNodes, 23);
+  assert.equal(validation.recipeSteps, 22);
+  assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
+  assert.equal(validation.checks.retainedInterChannelSiRibs, true);
+  assert.ok(project.processRecipe.steps.some((step) =>
+    step.command === 'etch' && step.params.mask?.layerKeys?.includes('22|0') &&
+    step.params.target === 'Si geometric bridge tier 4'
+  ));
   assert.ok(validation.processNodes >= 20);
   assert.ok(validation.bookmarks >= 5);
   assert.equal(validation.recipeSteps, project.processRecipe.steps.length);
@@ -215,7 +233,9 @@ test('Lian 2022 inferred mask layout exports as both GDSII and OASIS', async () 
     selectedCells: new Set([project.layout.root]),
     selectedLayerKeys: new Set(GAN_MICROCHANNEL_MASKS.map((mask) => mask.id + '|0')),
   }).elements;
-  assert.ok(elements.length >= 30);
+  assert.ok(elements.length >= 45);
+  assert.equal(elements.filter((element) => element.layer === 22).length, 14,
+    'GDS/OAS layout must include all twelve arms and two polygon throats');
   const gds = parseGDS(serializeGDS(elements).buffer);
   const oas = await parseOAS(serializeOASIS(elements).buffer);
   assert.equal(flattenGDS(gds, gds.root).elements.length, elements.length);
