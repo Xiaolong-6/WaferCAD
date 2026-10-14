@@ -185,14 +185,17 @@ try {
   const finalConfirm = page.getByRole('button', { name: 'Open project', exact: true });
   if (await finalConfirm.isVisible()) await finalConfirm.click();
   await page.waitForFunction(
-    (name) => window.WaferCadV2Workstation.snapshot().projectName === name,
+    (name) => {
+      const current = window.WaferCadV2Workstation.snapshot();
+      return (
+        current.projectName === name &&
+        !current.workflow.busy &&
+        current.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible ===
+          false
+      );
+    },
     expected.name,
     { timeout: 120000 },
-  );
-  assert.equal(
-    (await snap()).model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
-    false,
-    'Opening accepted example must restore the unobscured material view',
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
