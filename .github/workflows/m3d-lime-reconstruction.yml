@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   paper-derived-kernel:
@@ -18,20 +18,11 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Temporary exact-format source for browser test
-        run: |
-          npx prettier --write scripts/build-m3d-lime-example.mjs scripts/v2/check-m3d-lime-project.mjs
-          echo M3DLIME_BROWSER_BEGIN
-          base64 -w0 scripts/v2/check-m3d-lime-project.mjs
-          echo
-          echo M3DLIME_BROWSER_END
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Source-derived structural regression
@@ -68,12 +59,3 @@ jobs:
             test-results/m3d-lime/validation.json
             test-results/m3d-lime/browser/
           retention-days: 14
-      - name: Promote retested generated model on feature branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
-        run: |
-          test -s site/examples/m3d-lime-rram-cntfet.wafercad
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/examples/m3d-lime-rram-cntfet.wafercad
-          git diff --cached --quiet || git commit -m "fix(examples): refresh M3D-LIME final source labels and kernel geometry"
-          git push origin HEAD:refs/heads/feat/m3d-rram-cntfet-lime-20261014
