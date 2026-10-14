@@ -28,7 +28,10 @@ test('Recipe Rebuild Base rejects invalid or out-of-bounds former sections', () 
     { a: [0, 0], b: [0, 100] },
     { a: [1, 0], b: [1, Infinity] },
   ]) {
-    assert.deepEqual(sectionAfterBaseRebuild(section, model, { preserveSection: true }),
-      centered, 'malformed or oversized A-B must reset safely');
+    assert.deepEqual(
+      sectionAfterBaseRebuild(section, model, { preserveSection: true }),
+      centered,
+      'malformed or oversized A-B must reset safely',
+    );
   }
 });
