@@ -38,6 +38,35 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 8. Gate/source/drain metals (0.2 µm each), GSG pads and pad routing are schematic. AlGaN/SiN thicknesses are unreported and their layers are omitted from the solid model.
 9. Gold wire loops, polymer sealing, aluminum manifold, flow, heat transfer and device electrical performance are out of scope. **The coolant remains a true void, not a solid film**.
 
+## Screenshot audit: visual semantics versus physical topology
+
+The initial four-view review showed a dominant outer Si slab, colored staircase
+tiers, and vertical tubular shapes at four remote TSV sites.
+
+- **Si material identity:** the 400 µm substrate and four surrogate 100 µm Si
+  bridge tiers retain **five distinct Layer IDs** for History/Recipe inspection,
+  but all five share the same material color. Colored slices formerly implied
+  multiple chemical materials where the construction assumes only Si.
+- **TSV interpretation:** the four straight vertical features are *open
+  through-bores with exposed internal Si walls*, not metal-filled TSV posts.
+  We test each bore at multiple XY locations and Z depths, plus solid Si
+  immediately outside its footprint. The model contains no filled TSV conductor.
+- **SiC/water boundary:** water is not modeled as a material. In the
+  representative channel center, the SiC bottom is at Z = 605 µm, above a
+  5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
+  an empty volume immediately beneath that SiC bottom surface. The fluid is
+  exposed to the *SiC substrate backside*, not directly to the GaN epitaxy.
+- **Inspection only:** the saved 3D ROI is X = ±800 µm, Y = ±650 µm and the
+  saved oblique camera centers on the interposer/chip interface. This visual
+  clipping omits distant TSV sites from the initial local 3D inspection but
+  does **not** delete them from the model or mask, and does not constrain
+  Recipe operations. Clear the ROI for a full-interposer view. Main and Mask
+  retain the complete 6000 × 5000 µm field.
+
+These assertions establish solid/void occupancy only; they do not prove
+manufacturable sidewall profiles, bonded-wafer hermeticity, hydraulic flow
+through the assembled package, or electrical continuity.
+
 Every inferred element must remain labeled as an assumption; do not promote it to source-derived geometry.
 
 ## Build and validation commands
