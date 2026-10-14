@@ -99,6 +99,12 @@ function quantizeModel(model) {
   };
   for (const implant of model.implants || []) quantizeAnnotationVolume(implant);
   for (const electrical of model.electricalRegions || []) quantizeAnnotationVolume(electrical);
+  for (const dopant of model.dopantRegions || []) {
+    quantizeMultiPolygon(dopant.area);
+    dopant.sourceZ = quantizeLength(dopant.sourceZ);
+    dopant.depthStartUm = quantizeLength(dopant.depthStartUm);
+    dopant.depthEndUm = quantizeLength(dopant.depthEndUm);
+  }
   model.thickness = quantizeLength(model.thickness);
   const bounds = multiBounds(model.boundary);
   if (bounds) {
