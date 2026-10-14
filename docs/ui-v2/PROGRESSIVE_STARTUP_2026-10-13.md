@@ -152,3 +152,38 @@ artifacts when making performance comparisons.
 - PR #188 remains Draft. The feature branch has diverged from `main`;
   reconcile overlapping UI v2 entry/runtime/workflow and CI changes
   before merge review. Green CI alone is insufficient for this PR.
+
+## P1-E streamed Surface Plan transport — 14 October 2026
+
+Large non-array ownership plans now send caps, polygon batches, sidewalls
+and border lines through separate Worker messages. The renderer assembles
+these in private memory, validates expected collection sizes and publishes
+the plan once the final message arrives. Abort and malformed replies leave
+the previous geometry and ownership cache unchanged. Small plans retain
+the original single-message path.
+
+Scientific contract: no polygon resampling, coordinate rounding, material
+ownership changes or second geometry implementation. New tests verify
+precise multi-ring coordinates, real Kernel topology, ordering, incomplete
+streams, cancellation and cache atomicity.
+
+[Exact-head software Chromium CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38552055201)
+on `48c3f0a` passed Quality, targeted renderer/History parity, Legacy
+persistence, progressive boot and cross-view Recovery. The CPU profile
+no longer attributes any over-500 ms Long Task to
+`renderer-surface-plan-async.js::worker.onmessage`; earlier samples
+attributed approximately 500–950 ms tasks to receiving a full plan.
+This is evidence for reducing the individual receive-task cost, not a
+controlled end-to-end speedup.
+
+Single-sample results: M3D first scientific frame 15.68 s, 3D Ready
+35.18 s and largest Long Task **1,143 ms**; restored Quality first
+frame 16.02 s, 3D Ready 35.36 s and largest Long Task **1,103 ms**.
+Remaining hotspots are polygon bounds/boolean geometry, snapshot
+copying/GC and native WebGL program/buffer submission. The 500 ms
+responsiveness threshold and physical-GPU acceptance remain open.
+
+Transport limitation: batching bounds whole polygons, while a single
+pathologically large polygon can still exceed the target message size.
+Keep the physical topology and fidelity requirements unchanged if
+further transfer subdivision is needed.

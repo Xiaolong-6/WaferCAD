@@ -174,7 +174,9 @@ try {
       await page.locator('#sectionCollapseFrontScale').press('Tab');
       assert.equal((await snapshot()).sectionCollapse.frontScale, 2);
       await page.locator('#sectionZSettings [aria-label="Close Z Break"]').click();
-      await command('tool:zoom:section');
+      assert.equal((await snapshot()).local.section.zoomEnabled, true, 'Default Section Zoom');
+      assert.equal((await snapshot()).local.section.panEnabled, true, 'Default Section Pan');
+      await command('tool:pan:section');
       let box = await sectionCanvas.boundingBox();
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
       await page.mouse.wheel(0, -160);
@@ -300,14 +302,14 @@ try {
       });
       await waitForPaint(page);
     };
-    await page.locator('[data-action="tool:pan:section"]').click();
+    assert.equal(initial.local.section.panEnabled, true, 'Touch Section defaults to Pan');
+    assert.equal(initial.local.section.zoomEnabled, true, 'Touch Section defaults to Zoom');
     await dispatch('touchStart', [[1, x, y]]);
     await dispatch('touchMove', [[1, x + 24, y + 16]]);
     await dispatch('touchEnd', []);
     assert.ok(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).sectionViewport.panX > 0,
     );
-    await page.locator('[data-action="tool:zoom:section"]').click();
     await dispatch('touchStart', [[1, x - 20, y]]);
     await dispatch('touchStart', [
       [1, x - 20, y],

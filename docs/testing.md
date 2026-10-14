@@ -64,6 +64,18 @@ through manual workflow dispatch until those separate scientific contracts
 are migrated. This is an incremental test-owner transfer, not a reason
 to delete `site/app-legacy.html` from the test source tree.
 
+### MAGIC-1000 Section/3D preview
+
+`scripts/magic1000-visual-acceptance.mjs` now opens the production v2
+read-only Example preview and verifies Section raster content and initialized
+3D without workspace writer ownership. The default run saves WebP evidence
+and a JSON report to `test-results/magic1000/`, leaving committed thumbnails
+unchanged. Regenerate the repository thumbnail only with the explicit
+`--write-thumbnail` flag and visual review. The formerly obsolete
+`magic1000-candidate.yml` is now a read-only PR/manual browser gate rather
+than a branch-specific workflow with permission to push generated files.
+Scientific geometry and Recipe replay remain governed by separate tests.
+
 ### Legacy project compatibility before UI retirement
 
 The old UI must not be deleted until the v2 Workstation can independently
