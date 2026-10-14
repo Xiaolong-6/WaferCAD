@@ -22,6 +22,11 @@ try {
       ? await loadBundledProject(params.get('example'), undefined, { preview: true })
       : await loadWorkstationProject(),
     store = createWorkstationRuntime(project);
+  if (readOnlyPreview) {
+    // Preview keeps the old inspect-only wheel gesture without enabling editors.
+    store.local.main.zoomEnabled = true;
+    store.local.mask.zoomEnabled = true;
+  }
   const geometryBefore = store.geometrySnapshot();
   const uiState = {
     layout: 'a',
