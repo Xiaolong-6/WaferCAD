@@ -544,8 +544,8 @@ export function isConformalGridFragmentOverlap(overlap, limit, operation) {
     const box = multiBounds([polygon]);
     return (
       processGeometryArea([polygon]) <= limit + grid * grid * 1e-5 &&
-      Math.min(box.width, box.height) <= grid * (1 + 1e-6) &&
-      Math.max(box.width, box.height) <= grid * 8
+      Math.min(box.width, box.height) <= grid * 2 &&
+      Math.max(box.width, box.height) <= grid * 10
     );
   });
 }
