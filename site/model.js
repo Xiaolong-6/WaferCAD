@@ -1,5 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
-import { addQualitativeDopantRegion } from './dopant-regions.js';
+import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './dopant-regions.js';
 import {
   MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
   validateMaterialThicknessUm,
@@ -1381,6 +1381,31 @@ function applyOperationImpl(
     }
 
     if (type === 'implant') {
+      // Invalid host overlap is a transaction rejection. Check before
+      // allocating IDs or touching dopant/model state.
+      if (dopantPolarity != null) {
+        const eligible = patches.some((patch) =>
+          resolveQualitativeDopantRegion(
+            model,
+            {
+              face,
+              hostLayerId: dopantHostLayerId,
+              area: patch.geom,
+              sourceZ: patch.z,
+              depthStartUm: depthStart,
+              depthEndUm: amount,
+              profile: { kind: 'qualitative-interval' },
+            },
+            { intersection, isEmpty },
+          ).length > 0,
+        );
+        if (!eligible) {
+          return {
+            changed: false,
+            error: 'No semiconductor host material overlaps the specified qualitative dopant region.',
+          };
+        }
+      }
       if (!Array.isArray(model.implants)) model.implants = [];
       if (!Number.isInteger(model.nextImplantId) || model.nextImplantId < 1) {
         model.nextImplantId = model.implants.length + 1;
