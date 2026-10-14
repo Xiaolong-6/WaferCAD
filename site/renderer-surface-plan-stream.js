@@ -8,9 +8,8 @@ const BORDER_BATCH = 128;
 
 export function shouldStreamSurfacePlan(plan) {
   if (!plan || !Array.isArray(plan.caps) || !Array.isArray(plan.sidewalls)) return false;
-  if (
-    plan.caps.length + plan.sidewalls.length + (plan.borderLines?.length || 0) >= 128
-  ) return true;
+  const partCount = plan.caps.length + plan.sidewalls.length + (plan.borderLines?.length || 0);
+  if (partCount >= 128) return true;
   let points = 0;
   for (const cap of plan.caps) {
     for (const poly of cap.polys || []) {
@@ -52,7 +51,10 @@ export function* surfacePlanStreamPackets(plan) {
     let pointCount = 0;
     for (const poly of polygons) {
       const polyPoints = (poly || []).reduce((sum, ring) => sum + (ring?.length || 0), 0);
-      if (batch.length && (batch.length >= POLYGON_BATCH || pointCount + polyPoints > POINT_BUDGET)) {
+      if (
+        batch.length &&
+        (batch.length >= POLYGON_BATCH || pointCount + polyPoints > POINT_BUDGET)
+      ) {
         yield { id: 1, type: 'stream-cap-polys', capIndex, polys: batch };
         batch = [];
         pointCount = 0;
@@ -97,7 +99,9 @@ export function createSurfacePlanStreamReceiver() {
           !Array.isArray(packet.polygonCounts) ||
           packet.polygonCounts.length !== counts.caps ||
           !packet.polygonCounts.every((n) => Number.isSafeInteger(n) && n >= 0)
-        ) throw new Error('Invalid surface-plan stream header');
+        ) {
+          throw new Error('Invalid surface-plan stream header');
+        }
         state = {
           counts,
           polygonCounts: packet.polygonCounts,
@@ -108,31 +112,45 @@ export function createSurfacePlanStreamReceiver() {
       if (!state) throw new Error('Surface-plan packet without stream header');
       const { counts, plan } = state;
       if (packet.type === 'stream-caps') {
-        if (packet.startIndex !== plan.caps.length || !Array.isArray(packet.items) ||
-            plan.caps.length + packet.items.length > counts.caps) {
+        if (
+          packet.startIndex !== plan.caps.length ||
+          !Array.isArray(packet.items) ||
+          plan.caps.length + packet.items.length > counts.caps
+        ) {
           throw new Error('Out-of-order surface-plan caps');
         }
         plan.caps.push(...packet.items);
       } else if (packet.type === 'stream-cap-polys') {
         const cap = plan.caps[packet.capIndex];
-        if (!cap || !Array.isArray(cap.polys) || !Array.isArray(packet.polys) ||
-            cap.polys.length + packet.polys.length > state.polygonCounts[packet.capIndex]) {
+        if (
+          !cap ||
+          !Array.isArray(cap.polys) ||
+          !Array.isArray(packet.polys) ||
+          cap.polys.length + packet.polys.length > state.polygonCounts[packet.capIndex]
+        ) {
           throw new Error('Invalid surface-plan cap polygons');
         }
         cap.polys.push(...packet.polys);
       } else if (packet.type === 'stream-items') {
-        if (!['sidewalls', 'borderLines'].includes(packet.key) ||
-            !Array.isArray(packet.items)) throw new Error('Invalid surface-plan item batch');
+        if (!['sidewalls', 'borderLines'].includes(packet.key) || !Array.isArray(packet.items)) {
+          throw new Error('Invalid surface-plan item batch');
+        }
         const target = plan[packet.key];
-        if (packet.startIndex !== target.length ||
-            target.length + packet.items.length > counts[packet.key]) {
+        if (
+          packet.startIndex !== target.length ||
+          target.length + packet.items.length > counts[packet.key]
+        ) {
           throw new Error('Out-of-order surface-plan item batch');
         }
         target.push(...packet.items);
       } else if (packet.type === 'stream-done') {
-        if (['caps', 'sidewalls', 'borderLines'].some((key) => plan[key].length !== counts[key]) ||
-            plan.caps.some((cap, index) =>
-              (Array.isArray(cap.polys) ? cap.polys.length : 0) !== state.polygonCounts[index])) {
+        if (
+          ['caps', 'sidewalls', 'borderLines'].some((key) => plan[key].length !== counts[key]) ||
+          plan.caps.some(
+            (cap, index) =>
+              (Array.isArray(cap.polys) ? cap.polys.length : 0) !== state.polygonCounts[index],
+          )
+        ) {
           throw new Error('Incomplete surface-plan stream');
         }
         state = null;

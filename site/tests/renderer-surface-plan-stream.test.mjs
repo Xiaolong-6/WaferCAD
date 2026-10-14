@@ -73,7 +73,8 @@ test('incomplete/out-of-order packets cannot publish a surface plan', () => {
   assert.throws(() => second.accept(messages[1]), /without stream header/);
   second.accept(structuredClone(messages[0]));
   assert.throws(
-    () => second.accept({ id: 1, type: 'stream-items', key: 'sidewalls', startIndex: 2, items: [{}] }),
+    () =>
+      second.accept({ id: 1, type: 'stream-items', key: 'sidewalls', startIndex: 2, items: [{}] }),
     /Out-of-order/,
   );
 });
