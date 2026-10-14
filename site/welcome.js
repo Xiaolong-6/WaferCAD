@@ -83,11 +83,10 @@ function createImagePreview(example, { fallback = false } = {}) {
 function previewUrl(example, view = 'main') {
   const params = new URLSearchParams({
     preview: '1',
-    start: 'example',
     example: example.id,
     view,
   });
-  return `./app-legacy.html?${params.toString()}`;
+  return `./app.html?${params.toString()}`;
 }
 
 function createProjectPreview(example) {

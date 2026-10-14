@@ -16,7 +16,7 @@ import { modelInventoryCount } from './view-kit/model-inventory.js';
 import { loadBundledProject } from './workstation-runtime.js';
 import { readStartupFile, removeStartupFile } from '../startup-file.js';
 
-export function createWorkstationWorkflow({ store, workstation }) {
+export function createWorkstationWorkflow({ store, workstation, readOnly = false }) {
   const { el, button, field } = window.WaferCadV2Components;
   const { state, history, projectState } = store;
   const hooks = new Map();
@@ -53,14 +53,16 @@ export function createWorkstationWorkflow({ store, workstation }) {
   const undo = [],
     redo = [];
   const status = workstation.status;
-  const dirty = () => persistence?.scheduleStructural();
+  const dirty = () => {
+    if (!readOnly) persistence?.scheduleStructural();
+  };
   const refresh = () => {
     syncDisplayUnitFields(document, units.key());
     process?.updateUi();
     hooks.get('faceToggleBtn').value = processFace;
     hooks.get('undoBtn').disabled = !undo.length || task.isBusy();
     hooks.get('redoBtn').disabled = !redo.length || task.isBusy();
-    persistence?.schedule();
+    if (!readOnly) persistence?.schedule();
     workstation.render();
     // Shell adapter onShow can call process.updateUi() and reset the button contents.
     syncManualPresentation();
@@ -145,6 +147,8 @@ export function createWorkstationWorkflow({ store, workstation }) {
   });
   task.bind();
   const session = createWorkspaceSessionController({
+    // A preview never reads or acquires the saved workspace writer lease.
+    ...(readOnly ? { storage: null, tabId: 'welcome-preview' } : {}),
     onStateChange: (value) => persistence?.syncSessionState(value),
   });
   window.addEventListener('pagehide', () => {
@@ -942,6 +946,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     });
   persistence = createWorkspacePersistenceController({
     root,
+    ...(readOnly ? { storage: null, channelFactory: () => null } : {}),
     workspaceSession: session,
     status,
     buildProjectSnapshot: projectState.buildProjectSnapshot,
@@ -1090,6 +1095,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
     persistence,
     domain,
     async start() {
+      if (readOnly) return;
       session.start();
       await persistence.initializePersistedWorkspace();
     },

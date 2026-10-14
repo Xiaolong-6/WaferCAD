@@ -30,7 +30,11 @@ export async function loadWorkstationProject() {
   };
 }
 
-export async function loadBundledProject(id, readProject = readProjectFile) {
+export async function loadBundledProject(
+  id,
+  readProject = readProjectFile,
+  { preview = false } = {},
+) {
   const aliases = {
     m3d: 'm3d-selfpowered-heterogeneous-ic',
     photodetector: 'photodetector-literature',
@@ -40,7 +44,9 @@ export async function loadBundledProject(id, readProject = readProjectFile) {
   };
   const example = BUNDLED_EXAMPLES.find((entry) => entry.id === (aliases[id] || id));
   if (!example) throw Error(`Unknown example: ${id}`);
-  const path = example.path.replace(/^\.\//, '');
+  const asset = preview ? example.previewProject : example;
+  if (!asset?.path) throw Error(`Example preview unavailable: ${id}`);
+  const path = asset.path.replace(/^\.\//, '');
   let version = new URL(import.meta.url).searchParams.get('v') || 'local';
   if (version === 'local') {
     try {
@@ -48,7 +54,7 @@ export async function loadBundledProject(id, readProject = readProjectFile) {
       if (build.ok) version = String((await build.json()).commit || version);
     } catch {}
   }
-  const response = await fetch(versionedExampleAssetPath(example.path, version), {
+  const response = await fetch(versionedExampleAssetPath(asset.path, version), {
     cache: 'default',
   });
   if (!response.ok) throw Error(`Project: HTTP ${response.status}`);
@@ -56,7 +62,7 @@ export async function loadBundledProject(id, readProject = readProjectFile) {
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
-  const data = await readProject(bufferBackedProjectFile(bytes, example.filename));
+  const data = await readProject(bufferBackedProjectFile(bytes, asset.filename));
   if (!data) throw Error('The example project was not imported.');
   return { source: path, hash, data };
 }

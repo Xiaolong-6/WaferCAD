@@ -2,25 +2,28 @@
 
 ## 2026-10-14 P2 release and Legacy follow-up
 
-Baseline for the historical compatibility work was `fb3f410b` (PR #219).
-[PR #220](https://github.com/Xiaolong-6/WaferCAD/pull/220) merged to `main`
-as `65ec07ea` on 2026-10-14. It provides the Pages/Preview cleanup: it removes the obsolete WIP-branch Pages publisher,
-adds immutable staged-artifact deployment, and validates real published
-startup/Workers. Its first [staged artifact browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38519951771)
-passed on the PR branch; that run is **not** evidence of a completed
-production deployment. The first revised [production Pages workflow](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521305117)
-was queued at this checkpoint. The `main` release jobs and deployment must
-finish successfully before publication is recorded as accepted.
+Main `65ec07ea` merged [PR #220](https://github.com/Xiaolong-6/WaferCAD/pull/220):
+retired the obsolete branch Preview publisher and added a staged-artifact
+browser/Worker gate with a single verified artifact promoted to deployment.
+The [first revised production Pages run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521305117)
+**succeeded**, including release Quality, targeted browser and Stage C/M4 checks.
 
-[PR #221](https://github.com/Xiaolong-6/WaferCAD/pull/221) adds a path-gated
-historical-project import/autosave/reload/Recovery check in UI v2 using the
-original 2026-10-06 `shared-assets-v1` fixture. It is a migration prerequisite,
-not a completed Legacy UI retirement. The Welcome interactive preview still
-uses `app-legacy.html`; Legacy DOM-based scientific tests and the old UI
-assets remain until the startup/recovery owners are stable and their scenarios
-have been migrated. No UI removal, schema rewrite, or Recovery deletion is
-claimed here. The source-controlled workflow permissions do not establish
-repository-level branch protection.
+[PR #221](https://github.com/Xiaolong-6/WaferCAD/pull/221) merged to
+`main@6c0da347`; its SHA-256-verified historical `shared-assets-v1` fixture
+successfully passed [real v2 Project import/autosave/reload/Recovery](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521706241).
+That is a Legacy data-compatibility gate, not removal of the old UI.
+
+[PR #223](https://github.com/Xiaolong-6/WaferCAD/pull/223) moves the Welcome
+interactive preview iframe to a **read-only v2** final-stage project and keeps
+Main/Mask/3D/Section views. It adds writer-lease and autosave isolation checks.
+This is a draft candidate until the latest Quality/browser acceptance passes;
+it is not yet deployed. The retained `app-legacy.html`, old DOM-based science
+tests, and test adapters must be migrated before Legacy removal. No scientific
+kernel/schema or Recovery storage deletion is authorized by this P2 follow-up.
+
+The workflows constrain Pages write/OIDC permissions in source control;
+repository/environment administrator settings remain a separate verification
+boundary.
 
 ## Scope and evidence
 

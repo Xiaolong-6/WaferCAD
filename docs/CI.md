@@ -47,6 +47,16 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires same-SHA Release Quality (`npm run check`), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
 
+## Welcome four-view preview isolation
+
+The production v2 Stage C/M4 owner also exercises
+`scripts/v2/check-welcome-preview-isolation.mjs`: the Welcome iframe opens a
+reduced final-stage real project in read-only v2 Main, Mask, 3D and Section,
+without `start` intent, writer-lease acquisition or autosave marker mutation.
+The ordinary M5 startup owner verifies the same preview routing before loading
+the full example into the editor. This gate does not cover physical hardware
+GPU parity.
+
 ## Historical Project compatibility
 
 The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
