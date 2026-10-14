@@ -20,7 +20,10 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
-  assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
+  assert.match(
+    pages,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' && needs\.stage-pages\.result == 'success' \}\}/,
+  );
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
   assert.match(pages, /run: node scripts\/smoke-pages-artifact\.mjs/);
   assert.match(pages, /uses: actions\/upload-pages-artifact@v4/);
@@ -55,6 +58,30 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
       stage.indexOf('Checkout verified revision'),
     'fail-closed release gate must precede artifact construction',
   );
+});
+
+test('Pages requires a real deploy and rejects false-green skipped publish jobs', () => {
+  const pages = workflow('pages');
+  const deploy = pages.split('  deploy:\n')[1]?.split('  release-verdict:\n')[0];
+  const verdict = pages.split('  release-verdict:\n')[1];
+  assert.ok(deploy, 'deploy job must exist');
+  assert.ok(verdict, 'final release verdict job must exist');
+  assert.match(deploy, /needs: \[stage-pages\]/);
+  assert.ok(
+    deploy.includes(
+      "if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.stage-pages.result == 'success' }}",
+    ),
+    'explicit success status must allow a completed stage to run despite skipped optional upstream jobs',
+  );
+  assert.match(verdict, /needs: \[stage-pages, deploy\]/);
+  assert.ok(
+    verdict.includes("if: ${{ always() && github.ref == 'refs/heads/main' }}"),
+    'final verdict must be evaluated even if the deployment was skipped',
+  );
+  assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
+  assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
+  assert.match(verdict, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(verdict, /exit 1/);
 });
 
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
