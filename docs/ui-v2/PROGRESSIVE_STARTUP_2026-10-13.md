@@ -241,3 +241,41 @@ reported GPU hardware; a real-device performance profile is still required.
 no speedup, 500 ms pass or physical-GPU acceptance is claimed without
 new controlled measurements. Keep PR #188 Draft, preserve all final
 Quality and scientific parity gates, and do not deploy yet.
+
+## P1-H bounded giant-polygon transport and input acceptance — 14 October 2026
+
+The Surface Plan stream now bounds packets even if one polygon has more
+than 4,096 points. Oversized polygons are transported as ordered ring
+headers and exact point chunks, then reconstructed only in private
+receiver state. The published plan remains transactional. New tests
+cover a 9,000-point outer ring, a 7,000-point hole, subnanometer values,
+packet ordering, truncated chunks and independent returned memory.
+No physical topology or renderer shading policy was changed.
+
+The hardware acceptance harness now measures **two separate conditions**:
+
+1. Main-thread Long Tasks remain at or below 500 ms on physical GPU.
+2. Trusted browser input events are sampled across startup/refinement.
+   Their queue-delay estimate must remain at or below 500 ms, including
+   at least one loading-phase event. Once Quality is ready, pointer
+   dragging and wheel interaction on the real 3D canvas must be
+   delivered and must change the camera, without changing model hash.
+
+The input queue-delay estimate compares high-resolution event timestamps
+with delivery time. It is **not** a compositor-to-photon latency measure.
+The real gesture and final Quality pixel/hash requirements remain
+independent gates. Test the physical adapter identity, Fast-to-Quality
+sequence and repeated final screenshots as before.
+
+For a physical Windows Chrome run, check out the PR head and execute
+`node scripts/v2/p1-hardware-acceptance.mjs --profile`. Its report,
+CPU profiles and screenshots are produced in
+`test-results/p1-hardware/`. A new report overwrites prior local
+evidence in that directory, and the script opens an isolated Chrome
+context without using the regular browser profile.
+
+A passing Linux/software Chromium CI validates code, scientific parity
+and the acceptance harness; **it cannot certify real GPU performance**.
+Keep #188 Draft until a current-revision physical GPU/iGPU report meets
+all gates. Reconcile Main's Mask post-import Cell/Layer refresh with
+the branch's Worker-validated project import shortcut at final sync.
