@@ -70,7 +70,7 @@ const MASKS = Object.freeze([
   {
     id: 15,
     name: 'BEOL CNTFET bottom gate 10 TCAM + 4 buffer',
-    rectangles: channels.map((c) => rect(c.x - 0.25, c.y, 2.5, c.h)),
+    rectangles: channels.map((c) => rect(c.x - 0.25, c.y, c.w + 0.5, c.h)),
   },
   { id: 16, name: 'CNT island: 20um W, 2um active L + 0.3um contacts', rectangles: channels },
   { id: 17, name: 'CNTFET Ti/Pd source', rectangles: sourceContacts },
