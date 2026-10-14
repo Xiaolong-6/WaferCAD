@@ -517,7 +517,7 @@ export async function buildM3DLime() {
   deposit('Pattern Ti gate adhesion 10nm', 'CNT gate Ti bottom 10nm', 0.01, 15);
   deposit('Pattern Pd gate metal 15nm', 'CNT gate Pd 15nm', 0.015, 15);
   deposit('Pattern Ti gate cap 1nm', 'CNT gate Ti cap 1nm', 0.001, 15);
-  deposit('ALD HfO2 gate dielectric 10nm at 250C', 'CNT gate HfO2 10nm', 0.01);
+  deposit('ALD HfO2 gate dielectric 10nm at 250C', 'CNT gate HfO2 10nm', 0.01, null, 'conformal');
   record(
     'Lithography/Cl RIE HfO2 gate access (off representative slice)',
     'custom',
@@ -549,8 +549,8 @@ export async function buildM3DLime() {
     'Y2O3 layer geometry uses a 10nm thickness surrogate; post-oxidation thickness was not reported.',
   );
   deposit('Y2O3 interface layer 10nm geometric surrogate', 'Y2O3 interface SURROGATE 10nm', 0.01);
-  deposit('ALD Al2O3 passivation 35nm at 250C', 'CNT Al2O3 passivation 35nm', 0.035);
-  deposit('ALD HfO2 passivation 10nm at 250C', 'CNT HfO2 passivation 10nm', 0.01);
+  deposit('ALD Al2O3 passivation 35nm at 250C', 'CNT Al2O3 passivation 35nm', 0.035, null, 'conformal');
+  deposit('ALD HfO2 passivation 10nm at 250C', 'CNT HfO2 passivation 10nm', 0.01, null, 'conformal');
   selectiveEtch('Open HfO2 above digital RRAM landing', 'CNT HfO2 passivation 10nm', 0.01, 19);
   selectiveEtch('Open Al2O3 above digital RRAM landing', 'CNT Al2O3 passivation 35nm', 0.035, 19);
   selectiveEtch('Wet open Y2O3 above Pd drain', 'Y2O3 interface SURROGATE 10nm', 0.01, 19);
@@ -574,7 +574,7 @@ export async function buildM3DLime() {
     'Pd hard-mask lithography and etch are recorded; stack footprints are already restricted to inferred sites.',
   );
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
-  deposit('ALD Al2O3 RRAM protection 45nm at 150C', 'Digital Al2O3 passivation 45nm', 0.045);
+  deposit('ALD Al2O3 RRAM protection 45nm at 150C', 'Digital Al2O3 passivation 45nm', 0.045, null, 'conformal');
   selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
   assert.equal(
     exposed(digitalRramProbe).layerId,
