@@ -63,9 +63,9 @@ try {
     if (await branch.isVisible()) await branch.click();
     await page.waitForFunction(
       () =>
-        window.WaferCadV2Workstation
-          .snapshot()
-          .model.layers.some((layer) => layer.name === 'Scoped mask geometry film'),
+        window.WaferCadV2Workstation.snapshot().model.layers.some(
+          (layer) => layer.name === 'Scoped mask geometry film',
+        ),
       null,
       { timeout: 120000 },
     );
@@ -76,13 +76,15 @@ try {
     const coverage = await page.evaluate(async (id) => {
       const { geometryArea } = await import('./model.js');
       const { pointInMulti } = await import('./vector-geometry.js');
-      const regions = window.WaferCadV2Workstation
-        .snapshot()
-        .model.regions.filter((region) => region.stack.some((segment) => segment.layerId === id));
+      const regions = window.WaferCadV2Workstation.snapshot().model.regions.filter((region) =>
+        region.stack.some((segment) => segment.layerId === id),
+      );
       return {
         area: regions.reduce((sum, region) => sum + geometryArea(region.geom), 0),
         thicknesses: regions.flatMap((region) =>
-          region.stack.filter((segment) => segment.layerId === id).map((segment) => segment.z1 - segment.z0),
+          region.stack
+            .filter((segment) => segment.layerId === id)
+            .map((segment) => segment.z1 - segment.z0),
         ),
         inside: regions.some((region) => pointInMulti([0.4, 0], region.geom)),
         outside: regions.some((region) => pointInMulti([0.75, 0], region.geom)),
