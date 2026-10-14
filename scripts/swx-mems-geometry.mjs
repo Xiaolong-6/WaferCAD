@@ -44,7 +44,9 @@ export const SWX_REPORTED = Object.freeze({
 export const SWX_ASSUMPTIONS = Object.freeze({
   fieldUm: [112, 104],
   handleSiUm: 5,
-  releaseUndercutUm: 2,
+  // Illustrative lateral reach sufficient to clear 6um comb buses, while
+  // retaining support beneath the 9-10um anchor pads.
+  releaseUndercutUm: 4,
   facetCenterXUm: -31,
   facetPeriods: 24,
   // Paper supplies stopper function/ON gap, not its precise lateral placement.
