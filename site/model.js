@@ -559,6 +559,14 @@ function partitionProcessRegions(
       ) {
         const witness = {
           box: multiBounds(overlap),
+          componentCount: overlap.length,
+          largestComponents: overlap
+            .map((polygon) => ({
+              area: processGeometryArea([polygon]),
+              box: multiBounds([polygon]),
+            }))
+            .sort((a, b) => b.area - a.area)
+            .slice(0, 3),
           owners: [previous, region].map(({ id, stack }) => ({
             id,
             segments: stack.map(({ layerId, z0, z1, role }) => ({
