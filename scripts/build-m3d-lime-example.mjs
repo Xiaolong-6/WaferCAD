@@ -443,26 +443,21 @@ export async function buildM3DLime() {
     'custom',
     'Foundry logic, word-line decoder and Si access transistors are represented by the Si receiver and patterned landing pads; transistor FEOL dimensions and original GDS were not published.',
   );
+  // The source begins the BEOL replay with *already exposed* W M4 vias after
+  // foundry CMP. This 100nm planarized M4 landing dielectric is an explicitly
+  // inferred geometric replacement for unpublished CMOS backend internals,
+  // not a newly reported 400nm SiO2 deposition before analog RRAM.
   deposit(
-    'Exposed W M4 landing structures / local geometry surrogate',
-    'CMOS M4 W contacts (surrogate)',
+    'Reconstruct foundry-planarized M4 dielectric (100nm geometric surrogate)',
+    'CMOS M4 dielectric SURROGATE 100nm',
     0.1,
-    11,
   );
-  deposit('BEOL isolation SiO2 400nm (reconstructed)', 'First level SiO2 400nm', 0.4);
-  cmp('Planarize to M4 + 150nm clearance (inferred)', 1.25);
-  selectiveEtch('Open CMOS via to M4 W', 'First level SiO2 400nm', 0.15, 11);
-  assert.equal(
-    exposed([-40.5, -23.5]).layerId,
-    layerIds.get('CMOS M4 W contacts (surrogate)'),
-    'M4 contact etch must stop on tungsten',
-  );
-  deposit('Fill W landing vias (inferred)', 'M4 W via fill', 0.2, 11);
-  cmp('CMP W via plugs to reconstructed Z 1.25um', 1.25);
+  selectiveEtch('Represent existing exposed M4 via footprints', 'CMOS M4 dielectric SURROGATE 100nm', 0.1, 11);
+  deposit('Represent existing W M4 vias (foundry state)', 'M4 W via fill', 0.1, 11);
   assert.equal(
     exposed([-40.5, -23.5]).layerId,
     layerIds.get('M4 W via fill'),
-    'M4 via metal must remain exposed',
+    'Foundry M4 via must be exposed before TiN BE sputtering',
   );
   bookmark('00 Si CMOS / W contact landing');
 
@@ -479,7 +474,7 @@ export async function buildM3DLime() {
   );
   bookmark('01 Analog CIM 1T1R RRAM stack');
   deposit('PECVD SiO2 encapsulation 400nm at 300C', 'CIM SiO2 passivation 400nm', 0.4);
-  cmp('CIM passivation CMP endpoint Z 1.43um (inferred)', 1.43);
+  cmp('CIM passivation CMP endpoint Z 1.28um (inferred)', 1.28);
   selectiveEtch(
     'Open TiN top electrode contact through oxide',
     'CIM SiO2 passivation 400nm',
@@ -492,7 +487,7 @@ export async function buildM3DLime() {
     'CIM via etch must stop on TiN electrode',
   );
   deposit('W plugs to CIM TiN TE (inferred)', 'CIM W top vias', 0.083, 13);
-  cmp('Planarize CIM W plugs Z 1.43um', 1.43);
+  cmp('Planarize CIM W plugs Z 1.28um', 1.28);
   deposit('Sputter/pattern Al 500nm bit lines', 'CIM Al bit lines 500nm', 0.5, 14);
   assertPhysicalContact(analogViaProbe, 'CIM TiN TE 30nm', 'CIM W top vias');
   assertPhysicalContact(analogViaProbe, 'CIM W top vias', 'CIM Al bit lines 500nm');
@@ -501,7 +496,7 @@ export async function buildM3DLime() {
   // The source deposits 100nm SiO2 + 900nm Si3N4 and planarizes before TCAM.
   deposit('PECVD SiO2 interlayer dielectric 100nm', 'CIM-to-TCAM SiO2 ILD 100nm', 0.1);
   deposit('PECVD Si3N4 interlayer dielectric 900nm', 'CIM-to-TCAM Si3N4 ILD 900nm', 0.9);
-  cmp('ILD CMP endpoint Z 2.20um (inferred)', 2.2);
+  cmp('ILD CMP endpoint Z 2.05um (inferred)', 2.05);
   record(
     'Open inter-layer contact holes to TCAM',
     'custom',
@@ -641,7 +636,7 @@ export async function buildM3DLime() {
       '2.6um CNT island includes an exact 2um active contact gap and inferred 0.3um overlaps.',
       'Model field and inspection-only ROI focus on an overlapped analog and TCAM cell.',
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
-      'All three CMP endpoints were inferred to enable geometric contact openings.',
+      'Foundry M4 dielectric is a 100nm geometric surrogate for the already completed 130nm CMOS CMP; CIM and ILD CMP endpoint heights are inferred.',
       'CNT network rendered as 1nm surrogate rather than physical tube-level geometry.',
       'Y to Y2O3 thermal conversion is a process record with a 10nm display surrogate.',
       'Off-chip ADC, programming and TCAM sense amplifiers are intentionally absent.',
