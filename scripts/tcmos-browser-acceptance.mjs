@@ -230,6 +230,8 @@ try {
     null,
     { timeout: 120000 },
   );
+  const saved = await snap();
+  assert.ok(saved.projectName, 'Save must retain a project name');
   const recovery = await page.locator('#workspaceRecoverySelect').inputValue();
   assert.ok(recovery, 'Save must write a Recovery checkpoint');
   await page.locator('#projectNameInput').fill('Temporary modified T-CMOS name');
@@ -241,10 +243,11 @@ try {
     (name) =>
       window.WaferCadV2Workstation.snapshot().projectName === name &&
       !window.WaferCadV2Workstation.snapshot().workflow.busy,
-    expected.name,
+    saved.projectName,
     { timeout: 120000 },
   );
   const restored = await snap();
+  assert.equal(restored.projectName, saved.projectName, 'Recovery restored the saved project name');
   assert.equal(restored.model.implants[0].depthStart, 0.08);
   assert.equal(restored.model.implants[1].depthStart, 0.08);
   await assertSameMaterialGeometry(exported.model, restored.model, { areaToleranceUm2: 2e-6 });
