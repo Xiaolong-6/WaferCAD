@@ -548,7 +548,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   project.name = illustrativeTiltDeg
     ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
     : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
-  if (illustrativeTiltDeg) project.section = { a: [-3.75, 0], b: [-2.25, 0] };
+  if (illustrativeTiltDeg) project.section = { a: [-4.45, 0], b: [-2.95, 0] };
   project.layout = tcmosLayout();
   project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
   project.snapshotBranches = {
