@@ -16,6 +16,13 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | Bundled examples            | `npm run test:ui:examples`    | Literature/example structural contracts and restore behavior                                                             | Example-specific geometry/render invariants                      |
 | Product/visual review       | `npm run test:ui:product`     | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots                                    | Multiple viewports; deterministic renderer inputs in CI          |
 
+The resilience owner `scripts/resilience-regression.mjs` now starts the production
+**v2** Workstation. It independently simulates a missing Three.js CDN and a
+WebGL context allocation failure, requires a visible 3D unavailability
+diagnostic, then proves that Main, Mask, Section and a real Process Worker
+operation still function. It does not route through the Legacy test adapter,
+and replaces the equivalent old-UI degraded renderer scenarios.
+
 The focused real-worker fault acceptance in `scripts/process-transaction-ui-regression.mjs` checks rejection and Abort against actual Model/History exports; it is invoked from Recipe safety CI. Node controller fault injection additionally checks worker cancellation/late results and failed History rollback without pretending to be real IndexedDB or browser reload.
 
 The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
