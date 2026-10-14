@@ -134,6 +134,49 @@ function polyline(points, width) {
   });
 }
 
+// A single miter-joined contour for long, narrow MEMS flexures.
+// Segment rectangles with overlapping end caps are connectivity-safe but
+// create visible extrusion lips at elbows. Their separate faces can also
+// produce renderer seams. This produces ONE constant-width polygon instead.
+export function miteredPolyline(points, width) {
+  if (!(width > 0)) throw new Error('Mitered path width must be positive');
+  const compact = points.filter(
+    (p, i) =>
+      i === 0 || Math.hypot(p[0] - points[i - 1][0], p[1] - points[i - 1][1]) > 1e-12,
+  );
+  if (compact.length < 2) throw new Error('Mitered path requires two distinct vertices');
+
+  const tangents = compact.slice(1).map((p, i) => {
+    const a = compact[i];
+    const length = Math.hypot(p[0] - a[0], p[1] - a[1]);
+    return [(p[0] - a[0]) / length, (p[1] - a[1]) / length];
+  });
+  const half = width / 2;
+  const cap = (point, direction, tangent, side) => [
+    point[0] + side * -tangent[1] * half + direction * tangent[0] * half,
+    point[1] + side * tangent[0] * half + direction * tangent[1] * half,
+  ];
+  const edge = (side) => {
+    const chain = [cap(compact[0], -1, tangents[0], side)];
+    for (let i = 1; i < compact.length - 1; i++) {
+      const before = tangents[i - 1];
+      const after = tangents[i];
+      const cos = before[0] * after[0] + before[1] * after[1];
+      // Reversal and near-reversal corners cannot have a finite miter.
+      // Reject the invalid centerline rather than inventing a sharp spike.
+      if (cos < -0.95) throw new Error('Mitered path contains a near-reversal');
+      const factor = (side * half) / (1 + cos);
+      chain.push([
+        compact[i][0] + (-(before[1] + after[1])) * factor,
+        compact[i][1] + (before[0] + after[0]) * factor,
+      ]);
+    }
+    chain.push(cap(compact.at(-1), 1, tangents.at(-1), side));
+    return chain;
+  };
+  return [edge(1).concat(edge(-1).reverse())];
+}
+
 function traceArc(cx, cy, r, a0, a1, steps = 16) {
   return Array.from({ length: steps + 1 }, (_, i) => {
     const a = a0 + ((a1 - a0) * i) / steps;
@@ -319,7 +362,7 @@ function makeFoldedSprings(moveY) {
       [3 * pitch, sign * halfShuttle],
     ];
     const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
-    parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
+    parts.push(...miteredPolyline(deform, SWX_REPORTED.foldedSpringWidthUm));
   }
   return parts;
 }
@@ -338,7 +381,10 @@ function makeStructuralAligners(moveY) {
     const elbow = [-22, sign * 5.7 + moveY * 0.4];
     const attach = [-22, sign * halfShuttle + moveY];
     flexure.push(
-      ...polyline([anchor, first, corner, elbow, attach], SWX_REPORTED.structuralAlignerBeamUm),
+      ...miteredPolyline(
+        [anchor, first, corner, elbow, attach],
+        SWX_REPORTED.structuralAlignerBeamUm,
+      ),
     );
     flexure.push(
       strip(
