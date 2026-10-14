@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   buildGanMicrochannel,
@@ -48,6 +49,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   validateProcessModel(project.model);
   validateProjectFile(project);
+  assert.equal(project.planViews.main.zoom, 2.5);
+  assert.equal(project.planViews.mask.zoom, 1);
   assert.deepEqual(project.roi, {
     type: 'rect',
     a: [-800, -650],
@@ -133,6 +136,23 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(saved.snapshotBranches.nodes.length, project.snapshotBranches.nodes.length);
   assert.equal(saved.snapshots.length, project.snapshots.length);
   assert.deepEqual(saved.processRecipe, project.processRecipe);
+
+  // The committed Draft asset must reflect the current generator, including
+  // the source/assumption history, structural materials and saved view setup.
+  const assetUrl = new URL('../examples/gan-hemt-microchannel-2022.wafercad', import.meta.url);
+  const assetBytes = await readFile(assetUrl);
+  const asset = await readProjectFile({
+    size: assetBytes.byteLength,
+    text: async () => assetBytes.toString('utf8'),
+  });
+  validateProjectFile(asset);
+  assert.deepEqual(asset.model, project.model, 'Bundled physical model is stale');
+  assert.deepEqual(asset.roi, project.roi, 'Bundled local inspection ROI is stale');
+  assert.deepEqual(asset.planViews, project.planViews, 'Bundled Main zoom is stale');
+  assert.deepEqual(asset.display.threeCamera, project.display.threeCamera,
+    'Bundled 3D camera is stale');
+  assert.equal(asset.snapshotBranches.nodes.length, project.snapshotBranches.nodes.length);
+  assert.equal(asset.snapshots.length, project.snapshots.length);
 });
 
 test('Lian 2022 inferred mask layout exports as both GDSII and OASIS', async () => {
