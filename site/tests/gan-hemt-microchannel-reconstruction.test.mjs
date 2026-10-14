@@ -77,7 +77,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     a: [-500, -520],
     b: [500, 520],
   });
-  assert.deepEqual(manifoldReview.state.section, { a: [0, -500], b: [0, 500] });
+  assert.deepEqual(manifoldReview.state.section, { a: [30, -500], b: [30, 500] });
   assert.deepEqual(manifoldReview.state.display.threeCamera, {
     position: [650, -740, 1530],
     target: [0, 0, 440],

@@ -80,7 +80,7 @@ A structural connectivity invariant interpolates points along real 3D _empty spa
 
 ### Inspecting both manifolds without chip occlusion
 
-The first History bookmark, **01 Four-level open microchannels / 800 um Si with diversion**, represents the fluid network before AuSn supports and the HEMT are attached. It saves a dedicated full-channel 3D crop (X ±500 µm, Y ±520 µm), an elevated oblique camera, and a longitudinal Section along X = 0. This permits inspection of both inlet/outlet ends while leaving the final integrated project's default XY cross-section and chip-present 3D cutaway unchanged. Restoring the first bookmark is an inspection step, not a new wafer process.
+The first History bookmark, **01 Four-level open microchannels / 800 um Si with diversion**, represents the fluid network before AuSn supports and the HEMT are attached. It saves a dedicated full-channel 3D crop (X ±500 µm, Y ±520 µm), an elevated oblique camera, and a longitudinal Section along X = 30 µm (inside a central channel). This permits inspection of both inlet/outlet ends while leaving the final integrated project's default XY cross-section and chip-present 3D cutaway unchanged. Restoring the first bookmark is an inspection step, not a new wafer process.
 
 ## Section Z display contract
 

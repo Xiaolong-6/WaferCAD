@@ -476,7 +476,7 @@ export async function buildGanMicrochannel() {
     threeCamera: clone(root.display.threeCamera),
   };
   root.roi = { type: 'rect', a: [-500, -520], b: [500, 520] };
-  root.section = { a: [0, -500], b: [0, 500] };
+  root.section = { a: [30, -500], b: [30, 500] };
   root.display.threeCamera = {
     position: [650, -740, 1530],
     target: [0, 0, 440],
