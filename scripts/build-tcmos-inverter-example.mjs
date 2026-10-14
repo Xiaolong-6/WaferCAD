@@ -210,7 +210,17 @@ function maskContext(id) {
   };
 }
 
-export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
+export async function buildTcmosInverter({
+  illustrativeTiltDeg = 0,
+  mode = 'tcmos',
+  includeComparison = true,
+} = {}) {
+  if (!['tcmos', 'conventional-cmos'].includes(mode)) {
+    throw new Error('Unrecognized inverter process Variant.');
+  }
+  if (mode === 'conventional-cmos' && illustrativeTiltDeg !== 0) {
+    throw new Error('The conventional CMOS Variant uses only 0° implantation.');
+  }
   if (![0, 18].includes(illustrativeTiltDeg)) {
     throw new Error('Only 0° source-faithful and 18° illustrative tilt diagnostic are supported.');
   }
@@ -242,9 +252,11 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     model,
     section: { a: [-5.5, 0], b: [5.5, 0] },
   });
-  project.name = illustrativeTiltDeg
-    ? 'T-CMOS 130nm TILT DEMO — 18° assumed, NOT paper'
-    : 'Tunnelling-based ternary CMOS inverter (130 nm)';
+  project.name = mode === 'conventional-cmos'
+    ? 'Conventional CMOS 130nm illustrative comparison'
+    : illustrativeTiltDeg
+      ? 'T-CMOS 130nm TILT DEMO — 18° assumed, NOT paper'
+      : 'Tunnelling-based ternary CMOS inverter (130 nm)';
   project.display.threeOpacity = 0.36;
   project.layout = tcmosLayout();
   project.maskSourceMode = 'file';
@@ -517,34 +529,54 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   );
   bookmark('S02 - complementary well regions');
 
-  implant(
-    'HVTN As body implant',
-    'HVTN As+ pMOS / buried HVT body interval (illustrative)',
-    0.24,
-    4,
-    '#d9668a',
-    0.08,
-    illustrativeTiltDeg,
-    'donor',
-    'body',
-  );
-  implant(
-    'HVTP BF2 body implant',
-    'HVTP BF2+ nMOS / buried HVT body interval (illustrative)',
-    0.24,
-    5,
-    '#5d8ce0',
-    0.08,
-    illustrativeTiltDeg,
-    'acceptor',
-    'body',
-  );
-  record(
-    'Body implant rapid thermal anneal',
-    'anneal',
-    'Reported deeper HVT body implants have unspecified energy/dose. The illustrated 80–240 nm buried intervals are geometry markers, not dopant concentration predictions.',
-  );
-  bookmark('S03 - HVT body implant annotations');
+  if (mode === 'tcmos') {
+    implant(
+      'HVTN As body implant',
+      'HVTN As+ pMOS / buried HVT body interval (illustrative)',
+      0.24,
+      4,
+      '#d9668a',
+      0.08,
+      illustrativeTiltDeg,
+      'donor',
+      'body',
+    );
+    implant(
+      'HVTP BF2 body implant',
+      'HVTP BF2+ nMOS / buried HVT body interval (illustrative)',
+      0.24,
+      5,
+      '#5d8ce0',
+      0.08,
+      illustrativeTiltDeg,
+      'acceptor',
+      'body',
+    );
+    record(
+      'Body implant rapid thermal anneal',
+      'anneal',
+      'Reported deeper HVT body implants have unspecified energy/dose. The illustrated 80–240 nm buried intervals are geometry markers, not dopant concentration predictions.',
+    );
+  } else {
+    implant(
+      'LVTN As+ channel reference',
+      'LVTN As+ pMOS channel marker (depth illustrative)',
+      0.08, 12, '#d9668a', 0, 0, 'donor', 'channel',
+    );
+    implant(
+      'LVTP BF2+ channel reference',
+      'LVTP BF2+ nMOS channel marker (depth illustrative)',
+      0.08, 13, '#5d8ce0', 0, 0, 'acceptor', 'channel',
+    );
+    record(
+      'Conventional LVT channel activation (illustrative)',
+      'anneal',
+      'Conventional CMOS comparison follows Supplementary Fig. 1 qualitatively. Implant energy, dose and concentration are unspecified, and the 80nm depth is assumed.',
+    );
+  }
+  bookmark(mode === 'tcmos'
+    ? 'S03 - HVT buried body annotations'
+    : 'S03 - LVT surface channel comparison');
 
   // Gate oxidation is confined to the two POLY footprints in this
   // illustrative 2.5D geometry. A blanket 5 nm oxide over STI and body ties
@@ -605,9 +637,11 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   bookmark('S05 - inverter / METAL1 final');
 
   Object.assign(project, capture());
-  project.name = illustrativeTiltDeg
-    ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
-    : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
+  project.name = mode === 'conventional-cmos'
+    ? 'Conventional CMOS 130nm · LVT channel reference (illustrative)'
+    : illustrativeTiltDeg
+      ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
+      : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
   if (illustrativeTiltDeg) project.section = { a: [-4.45, 0], b: [-2.95, 0] };
   project.layout = tcmosLayout();
   project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
@@ -620,6 +654,74 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     branches: [branch],
   };
   project.snapshots = bookmarks;
+
+  if (includeComparison && mode === 'tcmos' && illustrativeTiltDeg === 0) {
+    // Build the reference branch with the same deterministic Base/STI/wells,
+    // but its own post-fork Implant recipe and replayable material states.
+    // The independent builder must not recursively create another Variant.
+    const reference = (await buildTcmosInverter({
+      mode: 'conventional-cmos',
+      includeComparison: false,
+    })).project;
+    const sharedWell = bookmarks.find((item) => item.name === 'S02 - complementary well regions');
+    assert.ok(sharedWell, 'Shared well-formation fork snapshot is required');
+    const forkNodeId = sharedWell.historyNodeId;
+    const refNodes = reference.snapshotBranches.nodes;
+    const forkIndex = nodes.findIndex((node) => node.id === forkNodeId);
+    assert.ok(forkIndex >= 0 && refNodes.length > forkIndex + 1);
+    for (let index = 0; index <= forkIndex; index++) {
+      assert.deepEqual(
+        refNodes[index].state.model,
+        nodes[index].state.model,
+        'Conventional CMOS must share identical physical Base/STI/well states',
+      );
+    }
+    const variantId = 'conventional-cmos';
+    const idMap = new Map();
+    let previousNodeId = forkNodeId;
+    for (let index = forkIndex + 1; index < refNodes.length; index++) {
+      const source = refNodes[index];
+      const id = `cmos-step-${String(index).padStart(2, '0')}`;
+      idMap.set(source.id, id);
+      const node = {
+        ...copy(source),
+        id,
+        parentId: previousNodeId,
+        branchId: variantId,
+      };
+      nodes.push(node);
+      previousNodeId = id;
+    }
+    const branchSnapshots = [];
+    let previousSnapshotId = sharedWell.id;
+    for (const source of [...reference.snapshots].reverse()) {
+      const mappedHistoryNode = idMap.get(source.historyNodeId);
+      if (!mappedHistoryNode) continue;
+      const id = `cmos-${source.id}`;
+      branchSnapshots.push({
+        ...copy(source),
+        id,
+        parentId: previousSnapshotId,
+        branchId: variantId,
+        historyNodeId: mappedHistoryNode,
+      });
+      previousSnapshotId = id;
+    }
+    assert.ok(branchSnapshots.length >= 2, 'Conventional CMOS needs restorable stage bookmarks');
+    project.snapshots.push(...branchSnapshots);
+    project.snapshotBranches.branches.push({
+      id: variantId,
+      name: 'Conventional CMOS · LVT channel reference (assumed dimensions)',
+      parentBranchId: branch.id,
+      rootNodeId: forkNodeId,
+      headNodeId: previousNodeId,
+      rootSnapshotId: sharedWell.id,
+      headSnapshotId: previousSnapshotId,
+      createdAt: stamp(600),
+      headState: copy(reference.snapshotBranches.branches[0].headState),
+    });
+  }
+
   validateProjectFile(project);
   const preflight = validateRecipeExecution(project.processRecipe.steps, {
     model,
@@ -638,6 +740,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   validateProjectFile(loaded);
   assert.deepEqual(loaded.model, project.model, 'T-CMOS model changed on storage round-trip');
   assert.equal(loaded.snapshotBranches.nodes.length, nodes.length);
+  assert.equal(loaded.snapshotBranches.branches.length, project.snapshotBranches.branches.length);
   assert.equal(loaded.processRecipe.steps.length, steps.length);
   const validation = {
     pass: true,
@@ -647,6 +750,8 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     gatesUm: GATE_LENGTH_UM,
     tiltDegrees: illustrativeTiltDeg,
     tiltSourceReported: false,
+    processVariant: mode,
+    availableVariants: project.snapshotBranches.branches.map((item) => item.id),
     maskLayers: TCMOS_MASKS.length,
     processNodes: nodes.length,
     recipeSteps: steps.length,
