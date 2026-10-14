@@ -87,7 +87,10 @@ function unionPolygonComponents(geometries) {
     }
   }
   if (!entries.length) return [];
-  if (entries.length === 1) return cloneGeom(entries[0].geom);
+  // normalizeMulti already copied every point and closed every ring. Returning
+  // the sole detached polygon avoids a redundant structuredClone over a large
+  // mask while keeping the caller's geometry independent.
+  if (entries.length === 1) return entries[0].geom;
 
   // Wafer arrays commonly contain thousands of identical, non-touching polygons.
   // Sending all of them through one Martinez sweep is both slow and a source of
@@ -141,15 +144,20 @@ function unionPolygonComponents(geometries) {
   }
 
   const out = [];
+  let mergedComponents = false;
   for (const component of components.values()) {
     if (component.length === 1) {
       out.push(...component[0]);
       continue;
     }
+    mergedComponents = true;
     const merged = booleanWithQuantizedRetry('union', component);
     out.push(...merged);
   }
-  return normalizeMulti(out);
+  // Singleton components are already independent, normalized geometry.
+  // Avoid cloning every coordinate a second time for disjoint wafer arrays.
+  // Preserve the original canonicalization when Boolean merging occurred.
+  return mergedComponents ? normalizeMulti(out) : out;
 }
 
 export function unionGeometries(geometries) {
