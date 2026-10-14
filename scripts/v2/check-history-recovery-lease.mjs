@@ -41,20 +41,32 @@ try {
       (length) => window.WaferCadV2Workstation.snapshot().model.layers.length === length,
       initial.model.layers.length,
     );
-    assert.deepEqual((await snap()).model, initial.model, 'Undo restores original physical geometry');
+    assert.deepEqual(
+      (await snap()).model,
+      initial.model,
+      'Undo restores original physical geometry',
+    );
     await page.locator('#redoBtn').click();
     await page.waitForFunction(
       (length) => window.WaferCadV2Workstation.snapshot().model.layers.length === length,
       committed.model.layers.length,
     );
-    assert.deepEqual((await snap()).model, committed.model, 'Redo replays exact same physical geometry');
+    assert.deepEqual(
+      (await snap()).model,
+      committed.model,
+      'Redo replays exact same physical geometry',
+    );
 
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#projectNameInput').fill('Recovery transaction owner');
     await page.locator('#saveProjectBtn').click();
-    await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty, null, {
-      timeout: 120000,
-    });
+    await page.waitForFunction(
+      () => !window.WaferCadV2Workstation.snapshot().workflow.dirty,
+      null,
+      {
+        timeout: 120000,
+      },
+    );
 
     const second = await context.newPage();
     second.on('pageerror', (error) => errors.push(error.message));
@@ -64,12 +76,14 @@ try {
         timeout: 120000,
       });
       const contender = await second.evaluate(() => window.WaferCadV2Workstation.snapshot());
-      assert.equal(contender.workflow.writable, false, 'Competing tab cannot silently steal writer');
+      assert.equal(
+        contender.workflow.writable,
+        false,
+        'Competing tab cannot silently steal writer',
+      );
       assert.deepEqual(contender.model, committed.model);
       // Non-owner attempts must never clobber the persisted authoritative geometry.
-      await page.waitForFunction(
-        () => !window.WaferCadV2Workstation.snapshot().workflow.dirty,
-      );
+      await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
       const stored = await second.evaluate(async () => {
         const { loadWorkspaceState } = await import('/workspace-persistence.js');
         const data = await loadWorkspaceState();
