@@ -63,8 +63,10 @@ try {
     () => {
       const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
       const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
-      return /Recipe completed:|Recipe failed|Recipe preflight failed/.test(status) ||
-        /^(Completed|Failed|Stopped):/.test(summary);
+      return (
+        /Recipe completed:|Recipe failed|Recipe preflight failed/.test(status) ||
+        /^(Completed|Failed|Stopped):/.test(summary)
+      );
     },
     null,
     { timeout: 360000 },
@@ -72,7 +74,8 @@ try {
   const status = await page.locator('[data-slot="status.message"]').innerText();
   const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
   assert.ok(
-    /Recipe completed:/.test(status) || new RegExp('^Completed: ' + count + '/' + count).test(summary),
+    /Recipe completed:/.test(status) ||
+      new RegExp('^Completed: ' + count + '/' + count).test(summary),
     'Real Run All was incomplete: ' + status + '; ' + summary,
   );
   const rebuilt = await snapshot();
