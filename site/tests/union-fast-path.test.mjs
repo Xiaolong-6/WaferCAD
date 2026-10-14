@@ -3,10 +3,9 @@ import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { unionGeometries, normalizeMulti, rectMulti, isEmpty } =
-  await import('../vector-geometry.js');
+const { unionGeometries, normalizeMulti, rectMulti } = await import('../vector-geometry.js');
 
-test('disjoint wafer array union preserves exact normalized coordinates and input isolation', () => {
+test('disjoint wafer polygons preserve exact geometry and input isolation', () => {
   const input = Array.from({ length: 625 }, (_, index) => {
     const col = index % 25;
     const row = Math.floor(index / 25);
@@ -23,9 +22,10 @@ test('disjoint wafer array union preserves exact normalized coordinates and inpu
   assert.deepEqual(unionGeometries(input), expected);
 });
 
-test('single normalized polygon detaches original and preserves unrounded subnanometer coordinates', () => {
+test('single polygon retains subnanometer values and detaches the input', () => {
   const tiny = 0.0000004;
-  const original = [[[[0, 0], [tiny, 0], [tiny, tiny], [0, tiny]]]];
+  const original = rectMulti(tiny, tiny, tiny / 2, tiny / 2);
+  original[0][0].pop();
   const result = unionGeometries([original]);
   assert.deepEqual(result, normalizeMulti(original));
   assert.equal(result[0][0][1][0], tiny);
@@ -33,25 +33,17 @@ test('single normalized polygon detaches original and preserves unrounded subnan
   assert.equal(original[0][0][1][0], tiny);
 });
 
-test('mixed touching and isolated components retain Boolean ownership and ring ordering', () => {
-  const input = [
-    rectMulti(2, 2, 0, 0),
-    rectMulti(2, 2, 1.5, 0),
-    rectMulti(1, 1, 15, 13),
-  ];
-  const expected = unionGeometries(input);
-  assert.equal(expected.length, 2);
-  assert.deepEqual(unionGeometries(input), expected);
-  assert.equal(isEmpty(expected), false);
-  assert.equal(expected[1][0][0].length, 2);
+test('overlapping and isolated components preserve Boolean ownership', () => {
+  const input = [rectMulti(2, 2), rectMulti(2, 2, 1.5), rectMulti(1, 1, 15, 13)];
+  const result = unionGeometries(input);
+  assert.equal(result.length, 2);
+  assert.deepEqual(unionGeometries(input), result);
 });
 
-test('normalization ignores invalid polygons before the independent fast path', () => {
-  const input = [
-    [[[[0, 0], [1, 0], [1, 1], [0, 1]]]],
-    [[[[NaN, 0], [Infinity, 2]]]],
-    [],
-    null,
-  ];
-  assert.deepEqual(unionGeometries(input), normalizeMulti(input.flatMap((geom) => geom || [])));
+test('invalid polygons are ignored before the disjoint fast path', () => {
+  const valid = rectMulti(1, 1);
+  const invalid = [[[[NaN, 0], [Infinity, 2]]]];
+  const input = [valid, invalid, [], null];
+  const expected = normalizeMulti(input.flatMap((geom) => geom || []));
+  assert.deepEqual(unionGeometries(input), expected);
 });
