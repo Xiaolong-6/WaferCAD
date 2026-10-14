@@ -73,6 +73,7 @@ const INTERACTION_PATHS = [
 ];
 
 const PROCESS_PATHS = [
+  /^site\/process-(?:recipe|recipe-preflight|numerical-contract|face-execution)\.js$/,
   /^site\/(?:model-array|mask-instance-index)/,
   /^site\/process-(?:boundary-index|topology)\.js$/,
   /^site\/controllers\/process-task-controller\.js$/,
@@ -131,6 +132,40 @@ const PRODUCT_LAYOUT_PATHS = [
   ...LAYOUT_PATHS,
 ];
 
+// Stable release gates supplement the browser suite planner. They are selected
+// by changed source ownership and are all enabled for manual/full releases.
+// A skipped gate can be treated as not applicable only if its plan says false.
+export const RELEASE_GATES = Object.freeze(['main_mask', 'klayout', 'recipe']);
+const MAIN_MASK_RELEASE_PATHS = [
+  /^site\/(?:model|model-view-geometry|plan-renderers|selection-geometry|mask-|roi-|draw-mask)/,
+  /^site\/(?:layout-|gds|oasis|vector-geometry|process-worker|process-face-execution)/,
+  /^site\/controllers\/(?:mask-[\w-]+|main-canvas|draw-mask|roi|section-[\w-]+|process-panel)-controller\.js$/,
+  /^site\/ui-v2\//,
+  /^scripts\/v2\//,
+  /^\.github\/workflows\/ui-v2-main-mask\.yml$/,
+];
+const KLAYOUT_RELEASE_PATHS = [
+  /^site\/(?:gds|oasis)\.js$/,
+  /^site\/(?:layout-|project-(?:schema|io|worker|geometry-storage))/,
+  /^site\/controllers\/(?:mask-import|export)-controller\.js$/,
+  /^scripts\/klayout-/,
+  /^\.github\/workflows\/klayout-compat\.yml$/,
+];
+const RECIPE_RELEASE_PATHS = [
+  /^site\/(?:model|process-(?:recipe|numerical|face-execution|worker|topology)|history-|workspace-snapshots)/,
+  /^site\/controllers\/(?:process-|history-mutation|workspace-persistence)-controller\.js$/,
+  /^scripts\/process-(?:recipe|transaction|geometry)-/,
+  /^\.github\/workflows\/process-recipe-safety\.yml$/,
+];
+
+function buildReleaseGates(paths, full = false) {
+  return {
+    main_mask: full || paths.some((path) => matchesAny(path, MAIN_MASK_RELEASE_PATHS)),
+    klayout: full || paths.some((path) => matchesAny(path, KLAYOUT_RELEASE_PATHS)),
+    recipe: full || paths.some((path) => matchesAny(path, RECIPE_RELEASE_PATHS)),
+  };
+}
+
 function matchesAny(path, patterns) {
   return patterns.some((pattern) => pattern.test(path));
 }
@@ -155,12 +190,12 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
 
   if (full) {
     enableAll(plan);
-    return { full: true, paths, suites: plan };
+    return { full: true, paths, suites: plan, release: buildReleaseGates(paths, true) };
   }
 
   if (paths.some((path) => DEPENDENCY_FILES.has(path) || matchesAny(path, COMMON_TEST_INFRA))) {
     enableAll(plan);
-    return { full: true, paths, suites: plan };
+    return { full: true, paths, suites: plan, release: buildReleaseGates(paths, true) };
   }
 
   for (const path of paths) {
@@ -182,7 +217,7 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
     if (matchesAny(path, LAYOUT_PATHS)) enable(plan, 'interaction', 'product_layout');
   }
 
-  return { full: false, paths, suites: plan };
+  return { full: false, paths, suites: plan, release: buildReleaseGates(paths) };
 }
 
 async function stdinText() {
@@ -196,6 +231,7 @@ async function writeGithubOutputs(plan) {
   const lines = [
     `full=${plan.full}`,
     ...BROWSER_SUITES.map((suite) => `${suite}=${plan.suites[suite]}`),
+    ...RELEASE_GATES.map((gate) => `${gate}=${plan.release[gate]}`),
   ];
   await appendFile(process.env.GITHUB_OUTPUT, `${lines.join('\n')}\n`);
 }

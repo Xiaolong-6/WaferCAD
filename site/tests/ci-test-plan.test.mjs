@@ -203,3 +203,32 @@ test('array runtime and renderer regressions select their owning browser suites'
     'renderer',
   ]);
 });
+
+test('release impact routes science owners without forcing unrelated suites', () => {
+  const cases = [
+    ['site/model.js', { main_mask: true, klayout: false, recipe: true }],
+    ['site/process-numerical-contract.js', { main_mask: false, klayout: false, recipe: true }],
+    ['site/process-recipe.js', { main_mask: false, klayout: false, recipe: true }],
+    ['site/layout-export.js', { main_mask: true, klayout: true, recipe: false }],
+    [
+      'site/controllers/mask-import-controller.js',
+      { main_mask: true, klayout: true, recipe: false },
+    ],
+    ['site/ui-v2/main-view.js', { main_mask: true, klayout: false, recipe: false }],
+    ['docs/CI.md', { main_mask: false, klayout: false, recipe: false }],
+  ];
+  for (const [path, expected] of cases) {
+    assert.deepEqual(buildCiTestPlan([path]).release, expected, path);
+  }
+});
+
+test('manual/full release selects all scientific gates and fails closed on unknown history', () => {
+  assert.deepEqual(buildCiTestPlan([], { full: true }).release, {
+    main_mask: true,
+    klayout: true,
+    recipe: true,
+  });
+  assert.deepEqual(buildCiTestPlan(['site/process-recipe.js']).suites.process, true);
+  assert.deepEqual(buildCiTestPlan(['site/process-face-execution.js']).suites.process, true);
+  assert.deepEqual(buildCiTestPlan(['site/process-numerical-contract.js']).suites.process, true);
+});
