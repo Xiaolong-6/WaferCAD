@@ -970,7 +970,10 @@ export function createWorkstationWorkflow({ store, workstation }) {
             domain.bindings.readProjectFileTask,
           );
           domain.load(bundled.data);
-          await history.importRecordsAsync(bundled.data.snapshots || [], bundled.data.snapshotBranches);
+          await history.importRecordsAsync(
+            bundled.data.snapshots || [],
+            bundled.data.snapshotBranches,
+          );
           store.project.source = bundled.source;
           store.project.hash = bundled.hash;
         } else if (intent === 'staged') {
