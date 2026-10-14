@@ -557,6 +557,50 @@ export async function buildGanMicrochannel() {
       }
     }
   }
+  // A structural fluid network requires continuous *void*, rather than two
+  // isolated ports or visually touching masks. Follow every buffered branch
+  // from the back-side entrance up through the stepped lower chamber and into
+  // the six top channels. Interpolate each 3D segment at <=5 um intervals.
+  function assertFluidPath(points, name) {
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      const n = Math.max(1, Math.ceil(Math.hypot(...a.map((v, k) => b[k] - v)) / 5));
+      for (let j = 0; j <= n; j++) {
+        const t = j / n;
+        const [x, y, z] = a.map((v, k) => v + (b[k] - v) * t);
+        assert.equal(
+          materialAt([x, y], z),
+          false,
+          'Coolant path disconnected (' + name + ') at ' + [x, y, z],
+        );
+      }
+    }
+  }
+  for (const side of [-1, 1]) {
+    const upstream = [
+      [0, side * 415, -150],
+      [0, side * 415, 350],
+      [30, side * 395, 350],
+      [30, side * 395, 550],
+      [0, side * 425, 550],
+    ];
+    assertFluidPath(upstream, 'rear port ' + side + ' to distribution throat');
+    for (const channelX of CHANNEL_CENTERS) {
+      const centerline = ganManifoldCenterline(channelX, side).map(([x, y]) => [x, y, 550]);
+      assertFluidPath(
+        [
+          [channelX, side * 300, 550],
+          ...centerline,
+          [0, side * 425, 550],
+        ],
+        'fanout ' + side + ' / channel ' + channelX,
+      );
+    }
+  }
+  // The manifold is a *local* diversion, not a blanket top DRIE removal.
+  assert.equal(materialAt([0, 0], 550), true, 'Inter-channel silicon ribs were erased');
+  assert.equal(materialAt([220, 400], 550), true, 'Manifold etched beyond its own footprint');
+
   const cooledSiC = model.layers.find((layer) => layer.name === 'GaN HEMT SiC substrate 99 um');
   assert.ok(cooledSiC, 'SiC chip is missing');
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
@@ -614,6 +658,8 @@ export async function buildGanMicrochannel() {
       fourTSVsAreTrueVoidColumns: true,
       SiCBacksideContactsCoolantVoid: true,
       fiveDistinctSiliconLayerIdsShareMaterialColor: true,
+      bothBacksidePortsConnectToAllSixTopChannels: true,
+      retainedInterChannelSiRibs: true,
     },
     checkpoints,
   };
