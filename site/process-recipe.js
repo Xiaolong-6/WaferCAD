@@ -264,6 +264,13 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.depthUm)
       : recipeLengthUm(params.depth ?? params.thickness, 'implant.depth');
     if (!(params.depthUm > 0)) throw new Error('implant.depth must be greater than zero.');
+    params.startDepthUm = recipeLengthUm(
+      params.startDepthUm ?? params.startDepth ?? 0,
+      'implant.startDepth',
+    );
+    if (!(params.startDepthUm >= 0 && params.startDepthUm < params.depthUm)) {
+      throw new Error('implant.startDepth must be nonnegative and less than total implant.depth.');
+    }
     params.tilt = Number(params.tilt ?? 0);
     if (!Number.isFinite(params.tilt) || params.tilt < -80 || params.tilt > 80) {
       throw new Error('implant.tilt must be between -80 and 80 degrees.');
@@ -272,6 +279,7 @@ function normalizeStep(command, input, index = 0) {
     params.face = normalizeProcessFace(params.face);
     delete params.depth;
     delete params.thickness;
+    delete params.startDepth;
   } else if (command === 'electrical') {
     params.name = cleanText(params.name, 'Electrical Region');
     params.depthUm = Number.isFinite(Number(params.depthUm))
@@ -649,6 +657,7 @@ export function serializeProcessRecipe(recipeValue) {
       } else if (step.command === 'implant') {
         add('name', p.name);
         add('depth', displayLength(p.depthUm));
+        if (p.startDepthUm > 0) add('startDepth', displayLength(p.startDepthUm));
         if (p.tilt) lines.push(`  tilt: ${p.tilt}`);
       } else if (step.command === 'electrical') {
         add('name', p.name);
