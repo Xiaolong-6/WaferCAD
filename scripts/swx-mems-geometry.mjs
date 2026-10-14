@@ -53,7 +53,10 @@ export const SWX_ASSUMPTIONS = Object.freeze({
   stopperPadHeightUm: 0.7,
   // Two representative fiber-facing couplers; source contains no mask/GDS
   // that would justify exact periods, tooth lengths or full optical routing.
-  gratingCentersUm: [[-45, 25], [-45, -25]],
+  gratingCentersUm: [
+    [-45, 25],
+    [-45, -25],
+  ],
   gratingRadiiUm: [1.7, 2.3, 2.9, 3.5, 4.1, 4.7],
   gratingToothWidthUm: 0.22,
   // Published diagrams and dimensions are insufficient to recover a true GDS.
@@ -163,13 +166,17 @@ function makeOptics(moveY) {
 }
 
 function makeMechanicalStoppers(moveY) {
-  const fixed = [], movable = [];
+  const fixed = [],
+    movable = [];
   const gapAtOff = SWX_REPORTED.offGapUm;
   const halfGap = gapAtOff / 2;
-  const { stopperCentersXUm: centers, stopperPadWidthUm: width,
-    stopperPadHeightUm: height } = SWX_ASSUMPTIONS;
-  const x0 = SWX_ASSUMPTIONS.facetCenterXUm -
-    (SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm) / 2;
+  const {
+    stopperCentersXUm: centers,
+    stopperPadWidthUm: width,
+    stopperPadHeightUm: height,
+  } = SWX_ASSUMPTIONS;
+  const x0 =
+    SWX_ASSUMPTIONS.facetCenterXUm - (SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm) / 2;
   const x1 = x0 + SWX_ASSUMPTIONS.facetPeriods * SWX_REPORTED.swtPeriodUm;
   for (const [i, x] of centers.entries()) {
     const attachX = i === 0 ? x0 + 0.25 : x1 - 0.25;
@@ -182,7 +189,8 @@ function makeMechanicalStoppers(moveY) {
     movable.push(strip([x, lower], [attachX, lower], 0.18));
   }
   return {
-    fixed, movable,
+    fixed,
+    movable,
     clearanceUm: gapAtOff - moveY,
   };
 }
@@ -190,9 +198,10 @@ function makeMechanicalStoppers(moveY) {
 function gratingArcBand(cx, cy, inner, outer, sign) {
   const steps = 12;
   const halfAngle = Math.PI / 3.5;
-  const outerPoints = [], innerPoints = [];
+  const outerPoints = [],
+    innerPoints = [];
   for (let i = 0; i <= steps; i++) {
-    const angle = -halfAngle + 2 * halfAngle * i / steps;
+    const angle = -halfAngle + (2 * halfAngle * i) / steps;
     outerPoints.push([cx + outer * Math.cos(angle), cy + sign * outer * Math.sin(angle)]);
     innerPoints.push([cx + inner * Math.cos(angle), cy + sign * inner * Math.sin(angle)]);
   }
@@ -204,11 +213,21 @@ function makeIllustrativeGratingCouplers() {
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
     const sign = Math.sign(cy);
     const sourceY = sign * 13;
-    polys.push(...polyline([[-53, sourceY], [-50.7, sign * 18], [cx, cy]], 0.4));
+    polys.push(
+      ...polyline(
+        [
+          [-53, sourceY],
+          [-50.7, sign * 18],
+          [cx, cy],
+        ],
+        0.4,
+      ),
+    );
     polys.push(taperedStrip([cx, cy], [cx + 2.3, cy], 0.4, 1.1));
     for (const radius of SWX_ASSUMPTIONS.gratingRadiiUm) {
-      polys.push(gratingArcBand(cx, cy, radius,
-        radius + SWX_ASSUMPTIONS.gratingToothWidthUm, sign));
+      polys.push(
+        gratingArcBand(cx, cy, radius, radius + SWX_ASSUMPTIONS.gratingToothWidthUm, sign),
+      );
     }
   }
   return polys;
@@ -242,19 +261,20 @@ function makeFoldedSprings(moveY) {
   // triangular shuttle rail, with displacements graded along the beam.
   for (const sign of [-1, 1]) {
     const y = (distance) => sign * distance;
-    const pitch = SWX_REPORTED.foldedSpringClearanceUm +
-      SWX_REPORTED.foldedSpringWidthUm;
+    const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
     const long = SWX_REPORTED.foldedSpringLongBeamUm;
     const short = SWX_REPORTED.foldedSpringShortBeamUm;
     const path = [
-      [0, y(40)], [0, y(40 - long)],
-      [pitch, y(40 - long)], [pitch, y(40 - long + short)],
-      [2 * pitch, y(40 - long + short)], [2 * pitch, y(40 - long)],
-      [3 * pitch, y(40 - long)], [3 * pitch, 0],
+      [0, y(40)],
+      [0, y(40 - long)],
+      [pitch, y(40 - long)],
+      [pitch, y(40 - long + short)],
+      [2 * pitch, y(40 - long + short)],
+      [2 * pitch, y(40 - long)],
+      [3 * pitch, y(40 - long)],
+      [3 * pitch, 0],
     ];
-    const deform = path.map(([x, py], i) => [
-      x, py + moveY * i / (path.length - 1),
-    ]);
+    const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
     parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
   }
   return parts;
@@ -263,22 +283,25 @@ function makeFoldedSprings(moveY) {
 // Paper Fig S7: guided 7um beam, 100nm flexural width, 1um truss.
 // The GDS does not specify exact anchor placement, which remains inferred.
 function makeStructuralAligners(moveY) {
-  const fixed = [], flexure = [];
+  const fixed = [],
+    flexure = [];
   for (const sign of [-1, 1]) {
     const anchor = [-18, sign * 9.5];
     fixed.push(rect(anchor[0], anchor[1], 6, 6));
-    const first = [
-      anchor[0] - SWX_REPORTED.structuralAlignerLengthUm,
-      anchor[1],
-    ];
+    const first = [anchor[0] - SWX_REPORTED.structuralAlignerLengthUm, anchor[1]];
     const corner = [first[0], sign * 5.7];
     const elbow = [-22, sign * 5.7 + moveY * 0.4];
     const attach = [-22, sign * 1.8 + moveY];
-    flexure.push(...polyline([anchor, first, corner, elbow, attach],
-      SWX_REPORTED.structuralAlignerBeamUm));
-    flexure.push(strip([corner[0] - 0.4, corner[1]],
-      [corner[0] + 0.6, corner[1]],
-      SWX_REPORTED.structuralAlignerBeamUm));
+    flexure.push(
+      ...polyline([anchor, first, corner, elbow, attach], SWX_REPORTED.structuralAlignerBeamUm),
+    );
+    flexure.push(
+      strip(
+        [corner[0] - 0.4, corner[1]],
+        [corner[0] + 0.6, corner[1]],
+        SWX_REPORTED.structuralAlignerBeamUm,
+      ),
+    );
   }
   return { fixed, flexure };
 }
@@ -357,12 +380,16 @@ export function createSwxGeometry(state = 'off') {
   ];
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
-  const flexure = [...makeFoldedSprings(travel),
-    ...makeMeanders(travel), ...aligners.flexure];
-  const fixed = [...optics.fixed, ...combs.fixed, ...anchors,
-    ...stoppers.fixed, ...gratings, ...aligners.fixed];
-  const movable = [...optics.moving, ...combs.moving, ...shuttle,
-    ...stoppers.movable];
+  const flexure = [...makeFoldedSprings(travel), ...makeMeanders(travel), ...aligners.flexure];
+  const fixed = [
+    ...optics.fixed,
+    ...combs.fixed,
+    ...anchors,
+    ...stoppers.fixed,
+    ...gratings,
+    ...aligners.fixed,
+  ];
+  const movable = [...optics.moving, ...combs.moving, ...shuttle, ...stoppers.movable];
   const silicon = [...fixed, ...movable, ...flexure];
   // Ridge mask: representative narrow routing transitions (not full
   // 64x64 array routing). Ridge 150nm etch leaves 70nm silicon slab.
@@ -426,9 +453,15 @@ export function createSwxGeometry(state = 'off') {
     layout,
     maskPolygons: polys,
     maskNames: MASK_INFO.map(([layer, name]) => ({ layer, name })),
-    physicalGroups: { fixed, movable, flexure,
-      stopperFixed: stoppers.fixed, stopperMovable: stoppers.movable,
-      gratingCouplers: gratings, structuralAligners: aligners },
+    physicalGroups: {
+      fixed,
+      movable,
+      flexure,
+      stopperFixed: stoppers.fixed,
+      stopperMovable: stoppers.movable,
+      gratingCouplers: gratings,
+      structuralAligners: aligners,
+    },
     stopperClearanceUm: stoppers.clearanceUm,
     anchorTestPoint: [2, 40],
     releasedBeamTestPoint: [-31, -1.7 + travel],
