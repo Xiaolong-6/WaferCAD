@@ -159,6 +159,66 @@ test('cooperative History import yields without exposing partial lineage and rej
   assert.deepEqual(exported, synchronous.exportBranchState());
 });
 
+test('later imports and Clear prevent stale cooperative History publication', async () => {
+  const live = { model: { revision: 1, processRevision: 0, layers: [] } };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+  });
+  const history = (prefix, count) => {
+    const nodes = Array.from({ length: count }, (_, index) => ({
+      id: `${prefix}-${index}`,
+      branchId: 'main',
+      parentId: index ? `${prefix}-${index - 1}` : null,
+      createdAt: '2026-10-14T00:00:00.000Z',
+      processRevision: index + 1,
+      operation: { kind: 'add' },
+      state: { model: { revision: index + 2, processRevision: index + 1, layers: [] } },
+    }));
+    return {
+      version: 3,
+      activeBranchId: 'main',
+      cursorNodeId: `${prefix}-${count - 1}`,
+      cursorSnapshotId: null,
+      nodes,
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          headNodeId: `${prefix}-${count - 1}`,
+          headState: nodes.at(-1).state,
+          createdAt: '2026-10-14T00:00:00.000Z',
+        },
+      ],
+    };
+  };
+
+  let firstCommitted = false;
+  const first = manager.importRecordsAsync([], history('stale', 48), {
+    beforeCommit: () => {
+      firstCommitted = true;
+    },
+  });
+  const latest = manager.importRecordsAsync([], history('latest', 24));
+  await assert.rejects(first, { name: 'AbortError' });
+  await latest;
+  assert.equal(firstCommitted, false);
+  assert.equal(manager.listHistory().length, 24);
+  assert.equal(manager.listHistory().at(-1).id, 'latest-23');
+
+  const supersededBySync = manager.importRecordsAsync([], history('async', 48));
+  manager.importRecords([], history('sync', 3));
+  await assert.rejects(supersededBySync, { name: 'AbortError' });
+  assert.equal(manager.listHistory().at(-1).id, 'sync-2');
+
+  const supersededByClear = manager.importRecordsAsync([], history('cleared', 48));
+  manager.clear();
+  await assert.rejects(supersededByClear, { name: 'AbortError' });
+  assert.equal(manager.listHistory().length, 0);
+  assert.equal(manager.list().length, 0);
+});
+
 test('snapshot import rejects invalid and duplicate records', () => {
   const manager = createSnapshotManager({
     capture: () => ({ value: 0 }),

@@ -212,6 +212,9 @@ export function createSnapshotManager({
   let cursorSnapshotId = null;
   let cursorBaselineState = null;
   let cursorDetachedFromHead = false;
+  // A later import/clear supersedes any previous cooperative importer whose
+  // private staging is still yielding to the event loop.
+  let importGeneration = 0;
   const cloneState = createStateCloner();
   let indexedHistoryNodes = null;
   let indexedNodeCount = -1;
@@ -1516,6 +1519,7 @@ export function createSnapshotManager({
   }
 
   function clear() {
+    importGeneration++;
     records = [];
     branches = [defaultMainBranch()];
     historyNodes = [];
@@ -1846,6 +1850,7 @@ export function createSnapshotManager({
 
   // Legacy callers retain the exact synchronous contract.
   function importRecords(value, branchState = null) {
+    importGeneration++;
     const steps = stageImportedRecords(value, branchState);
     for (let result = steps.next(); ; result = steps.next()) {
       if (result.done) return result.value;
@@ -1856,6 +1861,7 @@ export function createSnapshotManager({
   // Yield only during private staging. All shared History state is committed
   // synchronously after the final yield, preserving atomic visibility.
   async function importRecordsAsync(value, branchState = null, { signal, beforeCommit } = {}) {
+    const generation = ++importGeneration;
     const steps = stageImportedRecords(value, branchState, beforeCommit);
     const importStart = performance.now();
     let activeMs = 0;
@@ -1863,9 +1869,11 @@ export function createSnapshotManager({
     let sliceStart = performance.now();
     let processed = 0;
     for (;;) {
-      if (signal?.aborted) {
+      if (signal?.aborted || generation !== importGeneration) {
         steps.return();
-        throw Object.assign(new Error('History import aborted.'), { name: 'AbortError' });
+        throw Object.assign(new Error('History import aborted or superseded.'), {
+          name: 'AbortError',
+        });
       }
       const stepStart = performance.now();
       const result = steps.next();
