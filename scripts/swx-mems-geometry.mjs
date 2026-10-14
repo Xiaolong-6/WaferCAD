@@ -391,7 +391,7 @@ function makeCombs(moveY) {
 
 const MASK_INFO = Object.freeze([
   [1, 'Full-etched 220 nm silicon: SWX, springs, combs and anchors'],
-  [2, '150 nm ridge etch in photonic routing transitions'],
+  [2, '150 nm partial Si etch: ridge transitions and grating grooves'],
   [3, 'Patterned Cr/Au electrical electrodes'],
 ]);
 
