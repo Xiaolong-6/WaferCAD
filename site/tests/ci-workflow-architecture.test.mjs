@@ -35,7 +35,10 @@ test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcom
   assert.match(pages, /  release-klayout:\n/);
   assert.match(pages, /  release-recipe:\n/);
   assert.match(pages, /  release-science:\n/);
-  assert.match(pages, /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/);
+  assert.match(
+    pages,
+    /needs: \[release-impact, release-main-mask, release-klayout, release-recipe\]/,
+  );
   assert.match(pages, /if: \$\{\{ always\(\) \}\}/);
   assert.match(pages, /test "\$result" = success/);
   assert.match(pages, /test "\$result" = skipped/);
