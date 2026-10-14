@@ -1,6 +1,7 @@
 // The Welcome iframe is a real v2 renderer, with no ownership of user data.
 // It may switch/pan views, but must not acquire a writer lease or autosave.
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
@@ -9,6 +10,7 @@ const { context, page: workspace } = await newUiPage(browser, {
   viewport: { width: 1440, height: 900 },
 });
 const errors = [];
+const evidence = 'test-results/ui-v2-welcome-preview';
 workspace.on('pageerror', (error) => errors.push(error.message));
 
 const ownership = () =>
@@ -18,6 +20,7 @@ const ownership = () =>
   }));
 
 try {
+  await mkdir(evidence, { recursive: true });
   await workspace.goto(base + '/app.html?start=empty');
   await workspace.waitForFunction(
     () =>
@@ -82,6 +85,7 @@ try {
       { timeout: 30000 },
     );
     const before = readZoom(await snapshot());
+    await card.screenshot({ path: evidence + '/desktop-photodetector-' + view + '.png' });
     await preview.locator(`#${canvasId}`).evaluate((canvas) => {
       const rect = canvas.getBoundingClientRect();
       const WheelEvent = canvas.ownerDocument.defaultView.WheelEvent;
@@ -120,7 +124,39 @@ try {
     assert.equal((await snapshot()).workflow.writable, false, `${view}: no writer lease`);
     assert.equal(await preview.locator('.v2-floating-strip').count(), 0);
     assert.equal(await preview.locator('#maskDrawTools, #maskRoiTools').count(), 0);
+    if (view === 'three') {
+      await preview.waitForFunction(
+        () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+        null,
+        { timeout: 120000 },
+      );
+      await card.screenshot({ path: evidence + '/desktop-photodetector-three.png' });
+    }
   }
+
+  // Screenshot the gallery examples that exposed the original composition issues.
+  for (const [id, view] of [
+    ['perc-point-contact-solar-cell', 'mask'],
+    ['m3d-selfpowered-heterogeneous-ic', 'main'],
+    ['magic-1000-mos2-beol', 'mask'],
+  ]) {
+    const candidate = welcome.locator('[data-example-id="' + id + '"]');
+    await candidate.locator('[data-preview-view="' + view + '"]').click();
+    await candidate.locator('.welcome-example-project-preview.ready').waitFor({
+      timeout: 120000,
+    });
+    const child = await (await candidate.locator('iframe').elementHandle()).contentFrame();
+    await child.waitForFunction(
+      (name) => window.WaferCadV2Workstation?.snapshot().ui.view === name,
+      view,
+      { timeout: 30000 },
+    );
+    assert.equal(await child.locator('.v2-floating-strip').count(), 0);
+    await candidate.screenshot({ path: evidence + '/desktop-' + id + '-' + view + '.png' });
+  }
+  await welcome.setViewportSize({ width: 390, height: 844 });
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: evidence + '/portrait-photodetector-main.png' });
 
   // Do not rely on a rapidly changing lease expiration time. Only the owner
   // identity and last persisted state are stable across normal lease renewals.
