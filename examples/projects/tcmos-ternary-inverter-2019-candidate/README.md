@@ -19,7 +19,7 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 | Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | Candidate chooses 130 nm and gate L=0.13 µm                                                                                    |
 | ACTIVE/STI   | Si(100) and shallow trench isolation                                                   | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP                                                            |
 | HVTN/HVTP    | As+ pMOS / BF2+ nMOS body implants (paper Fig. 1b uses HVTN on left and HVTP on right) | Illustrative 80–240 nm buried marker; not a concentration profile                                                              |
-| Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2; 200 nm Poly                                                                                                         |
+| Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2 selectively depicted under POLY; 200 nm Poly                                                                                                         |
 | Source/drain | LDD/HDD, silicide and self-aligned processing                                          | 80/180 nm Implant markers, 25 nm silicide geometry; spacers/RTA recorded only                                                  |
 | Contacts     | CNT and METAL1 standard foundry layers                                                 | Two U-shaped well-tie contact arrays, independent gate contacts and four isolated METAL1 nets; 450 nm ILD/200 nm Al surrogates |
 
@@ -40,7 +40,7 @@ Both cells have compact horizontal ACTIVE diffusion bars crossed by a vertical 1
 1. Create the Si(100) Base. Etch Si in the inverse of ACTIVE, exposing a real trench.
 2. Deposit the illustrative STI oxide fill and planarize to original Si top Z. Assert that Si survives in ACTIVE and oxide occupies STI.
 3. Place NWELL/PWELL electrical annotations and buried HVT Implant interval markers; record foundry well/activation as non-geometric steps.
-4. Deposit the gate dielectric and define two separate 130 nm POLY gates; connect VIN via their contact holes and an overhead METAL1 bridge.
+4. Represent 5 nm gate oxide directly beneath the two POLY footprints (geometric surrogate; foundry blanket oxidation/strip sequence unavailable), then define separate 130 nm POLY gates. Connect VIN through gate contacts and overhead METAL1.
 5. Open simplified source/drain Si windows; annotate LDD/HDD; record spacer and RTA operations.
 6. Pattern silicide surrogate, deposit ILD, etch CNT openings including U-shaped well-body tie arrays, fill with W, pattern four separate METAL1 nets (VDD, VOUT, GND, VIN).
 
@@ -56,7 +56,7 @@ This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only 
 
 ## Default inspection state
 
-The final candidate stores `Interlayer SiO2.visible = false` as **display-only** metadata while retaining the complete dielectric volume in every physical process region. This removes the opaque blanket from Main/3D/Section without deleting oxide or altering process thickness. The original ILD can be restored with the material legend checkbox. Intermediate History steps preserve visible dielectric to show deposition/fill during process review; the last History head and final bookmark reflect the unobscured inspection preset.
+The final candidate stores `Interlayer SiO2.visible = false` as **display-only** metadata while retaining the complete dielectric volume in every physical process region. This removes the opaque blanket from Main/3D/Section without deleting oxide or altering process thickness. The originally blanket 5 nm gate dielectric has separately been corrected to the two POLY footprints, because the all-field oxide overlay was physically misleading and made the Main view appear uniformly colored. The original ILD can be restored with the material legend checkbox. Intermediate History steps preserve visible dielectric to show deposition/fill during process review; the last History head and final bookmark reflect the unobscured inspection preset.
 
 A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B remains the cross-device cut at y=0, tracing both MOSFET gate/channel stacks. For an individual 130 nm gate, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is _qualitative_.
 
