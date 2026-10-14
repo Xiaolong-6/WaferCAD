@@ -161,10 +161,7 @@ function makeMeanders(moveY) {
       ...traceArc(x + 1, y + side * 11, 5, -Math.PI / 2, Math.PI / 2),
       [x + 16, y + side * 16],
     ];
-    const points = original.map(([px, py], i) => [
-      px,
-      py + (moveY * i) / (original.length - 1),
-    ]);
+    const points = original.map(([px, py], i) => [px, py + (moveY * i) / (original.length - 1)]);
     paths.push(...polyline(points, SWX_REPORTED.waveguideCoreUm));
   }
   return paths;
@@ -178,22 +175,25 @@ function makeFoldedSprings(moveY) {
   for (const sign of [-1, 1]) {
     const y = (distance) => sign * distance;
     const path = [
-      [0, y(38)], [0, y(12)],
-      [1.5, y(12)], [1.5, y(34)],
-      [3, y(34)], [3, y(11)],
-      [5, y(11)], [5, 0],
+      [0, y(38)],
+      [0, y(12)],
+      [1.5, y(12)],
+      [1.5, y(34)],
+      [3, y(34)],
+      [3, y(11)],
+      [5, y(11)],
+      [5, 0],
     ];
-    const deform = path.map(([x, py], i) => [
-      x,
-      py + (moveY * i) / (path.length - 1),
-    ]);
+    const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
     parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
   }
   return parts;
 }
 
 function makeShuttle(moveY) {
-  const left = -23, right = 44, halfHeight = 1.8;
+  const left = -23,
+    right = 44,
+    halfHeight = 1.8;
   const top = halfHeight + moveY;
   const bottom = -halfHeight + moveY;
   const beams = [
@@ -225,12 +225,18 @@ function makeCombs(moveY) {
   for (let i = 0; i < 20; i++) {
     const x = 8.8 + i * 1.65;
     fixed.push(rect(x, 4.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm,
-      SWX_REPORTED.combFingerLengthUm));
-    fixed.push(rect(x, -16.4, SWX_REPORTED.combFingerWidthUm,
-      SWX_REPORTED.combFingerLengthUm));
-    moving.push(rect(x + 0.8, -14.15 + moveY, SWX_REPORTED.combFingerWidthUm,
-      SWX_REPORTED.combFingerLengthUm));
+    moving.push(
+      rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+    );
+    fixed.push(rect(x, -16.4, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+    moving.push(
+      rect(
+        x + 0.8,
+        -14.15 + moveY,
+        SWX_REPORTED.combFingerWidthUm,
+        SWX_REPORTED.combFingerLengthUm,
+      ),
+    );
   }
   return { fixed, moving };
 }
