@@ -103,7 +103,7 @@ try {
   assert.deepEqual(initial.model, expected.model, 'v2 project import changed canonical geometry');
   assert.equal(initial.layout.combos.length, 11, 'v2 lost inferred Mask layers');
   assert.ok(initial.model.layers.some((layer) => layer.name === 'Digital Ta2O5 RSL 10nm'));
-  assert.deepEqual(initial.roi, { type: 'rect', a: [-49, -38], b: [-31, 27] });
+  assert.deepEqual(initial.roi, { type: 'rect', a: [-45, -35], b: [-35, -11] });
   assert.deepEqual(initial.section, { a: [-44, -24], b: [-35, -24] });
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
