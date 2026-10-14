@@ -29,11 +29,23 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 
 The paper's **left** device is pMOS in n-well, framed by the **LVTN/HVTN** optional masks; the **right** device is nMOS in p-well, framed by **LVTP/HVTP**. The earlier candidate accidentally swapped HVTN and HVTP. The masks now use the source's actual names while retaining the correct **As+ pMOS** and **BF2+ nMOS** species from Methods.
 
-Both cells have compact horizontal ACTIVE diffusion bars crossed by a vertical 130 nm POLY gate, and surrounding contact-dense U-shaped well/body ties. This local layout approximates Fig. 1b's _topology and silhouette_; it does not digitize a released foundry GDS. Because the paper does not specify exact cell, mask, contact pitch, gate oxide or implant-depth dimensions, all non-node sizes remain **illustrative**. LVTN/LVTP shapes are retained for visual comparison only and are **not executed as LVT doping steps** in the T-CMOS Recipe. The equivalent binary CMOS recipe still needs a fully replayable Variant before release.
+Both cells have compact horizontal ACTIVE diffusion bars crossed by a vertical 130 nm POLY gate, and surrounding contact-dense U-shaped well/body ties. This local layout approximates Fig. 1b's _topology and silhouette_; it does not digitize a released foundry GDS. Because the paper does not specify exact cell, mask, contact pitch, gate oxide or implant-depth dimensions, all non-node sizes remain **illustrative**. LVTN/LVTP shapes are retained for visual comparison only and are **not executed as LVT doping steps** in the T-CMOS Recipe. The same project now carries a second **Conventional CMOS / LVT channel** Variant, forked from the common well-formation Step. Each branch stores an independent full Recipe and restorable post-fork History. The 80 nm comparison implant depth is explicitly assumed.
 
 **Tilt clarification:** Neither Methods nor Supplementary Fig. 1 specifies a beam incidence angle. The arrows in Supplementary Fig. 1 indicate the implantation direction, not a measurable off-normal tilt. All paper-labelled Implant operations explicitly use **0° tilt**, with no invented angular process condition. WaferCAD supports a separate nonzero tilt control, but a genuine directional process comparison should be labelled an _illustrative variant_, never as the published recipe. At 130 nm feature scale a small true tilt-induced lateral displacement may be invisible at full 14 µm field-of-view; zoom and quantitative model checks are needed.
 
 **Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and connected Metal1 are geometrical reconstructions inferred to represent electrical well ties. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
+
+## Shared Base and two process Variants
+
+- **Main / T-CMOS:** 0° As+ donor HVTN marker for pMOS and BF2+ acceptor HVTP marker for nMOS, illustrated as a buried 80–240 nm interval.
+- **Conventional CMOS:** reference-only LVTN/LVTP channel masks (80 nm display interval), branched after identical Si Base, STI, complementary wells and Well formation/drive-in. The comparison has no T-CMOS HVT body region.
+- Both Variant heads contain a full Recipe from Base and independently restorable History nodes; no second Welcome Example or invented electrical curve is required. Source does not provide numerical energy/dose or calibrated junction profiles.
+
+## Qualitative Dopant Region Kernel contract
+
+Implant operations may now optionally create a separate `model.dopantRegions` record, with `polarity=donor|acceptor`, `role=body|channel|source-drain`, host material ID, original XY process mask, depth interval and provenance. The default historical Implant remains a visual annotation without dopant semantics. `resolveQualitativeDopantRegion` clips each intent against surviving semiconductor material on demand, including later etch voids, and a polarity-overlap diagnostic can identify **candidate regions for further junction examination**. It does not solve a concentration distribution, junction depletion width, activation, lateral straggle, tilt-implant transport or BTBT current. The display and the physical material Kernel remain unchanged.
+
+The T-CMOS HVT, p/n LDD and p/n HDD Implant steps now write these qualitative records; the Conventional CMOS LVT branch writes channel records instead. Both are tested through Recipe, Project schema and persistence. Precise bulk N-well and P-well concentration fields are not available: their existing Electrical Region annotations remain schematic.
 
 ## Geometry build order
 
