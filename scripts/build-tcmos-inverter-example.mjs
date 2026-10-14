@@ -252,11 +252,12 @@ export async function buildTcmosInverter({
     model,
     section: { a: [-5.5, 0], b: [5.5, 0] },
   });
-  project.name = mode === 'conventional-cmos'
-    ? 'Conventional CMOS 130nm illustrative comparison'
-    : illustrativeTiltDeg
-      ? 'T-CMOS 130nm TILT DEMO — 18° assumed, NOT paper'
-      : 'Tunnelling-based ternary CMOS inverter (130 nm)';
+  project.name =
+    mode === 'conventional-cmos'
+      ? 'Conventional CMOS 130nm illustrative comparison'
+      : illustrativeTiltDeg
+        ? 'T-CMOS 130nm TILT DEMO — 18° assumed, NOT paper'
+        : 'Tunnelling-based ternary CMOS inverter (130 nm)';
   project.display.threeOpacity = 0.36;
   project.layout = tcmosLayout();
   project.maskSourceMode = 'file';
@@ -490,7 +491,11 @@ export async function buildTcmosInverter({
       label,
       'implant',
       {
-        name, depth, tilt, color, startDepth,
+        name,
+        depth,
+        tilt,
+        color,
+        startDepth,
         ...(polarity
           ? {
               dopantPolarity: polarity,
@@ -561,12 +566,24 @@ export async function buildTcmosInverter({
     implant(
       'LVTN As+ channel reference',
       'LVTN As+ pMOS channel marker (depth illustrative)',
-      0.08, 12, '#d9668a', 0, 0, 'donor', 'channel',
+      0.08,
+      12,
+      '#d9668a',
+      0,
+      0,
+      'donor',
+      'channel',
     );
     implant(
       'LVTP BF2+ channel reference',
       'LVTP BF2+ nMOS channel marker (depth illustrative)',
-      0.08, 13, '#5d8ce0', 0, 0, 'acceptor', 'channel',
+      0.08,
+      13,
+      '#5d8ce0',
+      0,
+      0,
+      'acceptor',
+      'channel',
     );
     record(
       'Conventional LVT channel activation (illustrative)',
@@ -574,9 +591,9 @@ export async function buildTcmosInverter({
       'Conventional CMOS comparison follows Supplementary Fig. 1 qualitatively. Implant energy, dose and concentration are unspecified, and the 80nm depth is assumed.',
     );
   }
-  bookmark(mode === 'tcmos'
-    ? 'S03 - HVT buried body annotations'
-    : 'S03 - LVT surface channel comparison');
+  bookmark(
+    mode === 'tcmos' ? 'S03 - HVT buried body annotations' : 'S03 - LVT surface channel comparison',
+  );
 
   // Gate oxidation is confined to the two POLY footprints in this
   // illustrative 2.5D geometry. A blanket 5 nm oxide over STI and body ties
@@ -594,15 +611,51 @@ export async function buildTcmosInverter({
     'custom',
     'Gate oxide is represented only beneath POLY footprints; exposed source/drain silicon requires no second geometric oxide etch. This abstracts foundry oxide patterning.',
   );
-  implant('pMOS LDD structural marker', 'pMOS LDD anticipated profile', 0.08, 7, '#cf6785', 0, 0, 'acceptor');
-  implant('nMOS LDD structural marker', 'nMOS LDD anticipated profile', 0.08, 8, '#4c93c6', 0, 0, 'donor');
+  implant(
+    'pMOS LDD structural marker',
+    'pMOS LDD anticipated profile',
+    0.08,
+    7,
+    '#cf6785',
+    0,
+    0,
+    'acceptor',
+  );
+  implant(
+    'nMOS LDD structural marker',
+    'nMOS LDD anticipated profile',
+    0.08,
+    8,
+    '#4c93c6',
+    0,
+    0,
+    'donor',
+  );
   record(
     'Spacer formation',
     'custom',
     'Self-aligned dielectric spacers recorded only: dimensions and etch recipe unreported.',
   );
-  implant('pMOS HDD structural marker', 'p+ HDD anticipated profile', 0.18, 7, '#bd4d68', 0, 0, 'acceptor');
-  implant('nMOS HDD structural marker', 'n+ HDD anticipated profile', 0.18, 8, '#3978b3', 0, 0, 'donor');
+  implant(
+    'pMOS HDD structural marker',
+    'p+ HDD anticipated profile',
+    0.18,
+    7,
+    '#bd4d68',
+    0,
+    0,
+    'acceptor',
+  );
+  implant(
+    'nMOS HDD structural marker',
+    'n+ HDD anticipated profile',
+    0.18,
+    8,
+    '#3978b3',
+    0,
+    0,
+    'donor',
+  );
   record(
     'Dopant activation / RTA',
     'anneal',
@@ -637,11 +690,12 @@ export async function buildTcmosInverter({
   bookmark('S05 - inverter / METAL1 final');
 
   Object.assign(project, capture());
-  project.name = mode === 'conventional-cmos'
-    ? 'Conventional CMOS 130nm · LVT channel reference (illustrative)'
-    : illustrativeTiltDeg
-      ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
-      : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
+  project.name =
+    mode === 'conventional-cmos'
+      ? 'Conventional CMOS 130nm · LVT channel reference (illustrative)'
+      : illustrativeTiltDeg
+        ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
+        : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
   if (illustrativeTiltDeg) project.section = { a: [-4.45, 0], b: [-2.95, 0] };
   project.layout = tcmosLayout();
   project.selectedLayerKeys = ['1|0', '4|0', '5|0', '6|0', '10|0', '11|0', '12|0', '13|0'];
@@ -659,10 +713,12 @@ export async function buildTcmosInverter({
     // Build the reference branch with the same deterministic Base/STI/wells,
     // but its own post-fork Implant recipe and replayable material states.
     // The independent builder must not recursively create another Variant.
-    const reference = (await buildTcmosInverter({
-      mode: 'conventional-cmos',
-      includeComparison: false,
-    })).project;
+    const reference = (
+      await buildTcmosInverter({
+        mode: 'conventional-cmos',
+        includeComparison: false,
+      })
+    ).project;
     const sharedWell = bookmarks.find((item) => item.name === 'S02 - complementary well regions');
     assert.ok(sharedWell, 'Shared well-formation fork snapshot is required');
     const forkNodeId = sharedWell.historyNodeId;
