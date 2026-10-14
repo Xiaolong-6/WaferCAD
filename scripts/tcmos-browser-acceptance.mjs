@@ -1,6 +1,6 @@
-[36;1mecho TCMOS_BROWSER_FMT_START[0m
-[36;1mnpx prettier scripts/tcmos-browser-acceptance.mjs[0m
-[36;1mecho TCMOS_BROWSER_FMT_END[0m
+echo TCMOS_BROWSER_FMT_START
+npx prettier scripts/tcmos-browser-acceptance.mjs
+echo TCMOS_BROWSER_FMT_END
 shell: /usr/bin/bash -e {0}
 ##[endgroup]
 TCMOS_BROWSER_FMT_START
