@@ -200,7 +200,10 @@ jobs:
   deploy:
     name: Publish verified main
     needs: [stage-pages]
-    if: ${{ github.ref == 'refs/heads/main' }}
+    # A skipped optional scientific gate can propagate through staging and
+    # silently skip deploy unless this job explicitly overrides implicit
+    # success(). Always evaluate on main, then fail closed on stage status.
+    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' }}
     permissions:
       contents: read
       pages: write
@@ -211,6 +214,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Require successful staged artifact before publishing
+        shell: bash
+        env:
+          STAGE_RESULT: ${{ needs.stage-pages.result }}
+        run: |
+          if [[ "$STAGE_RESULT" != "success" ]]; then
+            echo "::error::Pages stage is $STAGE_RESULT; refusing to publish."
+            exit 1
+          fi
       - uses: actions/configure-pages@v5
       - name: Deploy the already-tested artifact
         id: deployment
