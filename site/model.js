@@ -586,6 +586,18 @@ function partitionProcessRegions(
             }))
             .sort((a, b) => b.area - a.area)
             .slice(0, 3),
+          rejectedComponents: overlap
+            .map((polygon) => ({
+              area: processGeometryArea([polygon]),
+              box: multiBounds([polygon]),
+            }))
+            .filter(
+              ({ area, box }) =>
+                area > rejectOverlapAbove + PROCESS_GEOMETRY_GRID_UM ** 2 * 1e-5 ||
+                Math.min(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 2 ||
+                Math.max(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 10,
+            )
+            .slice(0, 5),
           owners: [previous, region].map(({ id, stack }) => ({
             id,
             segments: stack.map(({ layerId, z0, z1, role }) => ({
