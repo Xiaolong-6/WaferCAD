@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 import {
   createSwxGeometry,
+  miteredPolyline,
   SWX_ASSUMPTIONS,
   SWX_DOI,
   SWX_REPORTED,
@@ -248,7 +249,13 @@ test('shuttle truss uses the reported 6um outside rail separation', () => {
 test('folded spring and guided aligner dimensions are distinguished from illustration assumptions', () => {
   const g = createSwxGeometry('off');
   assert.equal(g.physicalGroups.structuralAligners.fixed.length, 2);
-  assert.ok(g.physicalGroups.structuralAligners.flexure.length >= 10);
+  assert.equal(
+    g.physicalGroups.structuralAligners.flexure.length,
+    4,
+    'each aligner must be one continuous Si beam and one brace',
+  );
+  assert.equal(g.physicalGroups.foldedSprings.length, 2);
+  assert.ok(g.physicalGroups.foldedSprings.every((ring) => ring.length === 16));
   const foldedPitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
   approx(foldedPitch, 1.7);
   assert.ok(g.physicalGroups.flexure.length > 40);
@@ -314,5 +321,53 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
     assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(upperFixed, lowerFixed, 'Opposing stationary combs are electrically shorted');
+  }
+});
+
+test('mitered 90-degree flexure corners are one solid ring without square-cap lips', () => {
+  const [contour] = miteredPolyline([[0, 0], [2, 0], [2, 2]], 0.2);
+  assert.equal(contour.length, 6, 'two elbows should not be tiled segment rectangles');
+  approx(contour[1][0], 1.9);
+  approx(contour[1][1], 0.1);
+  approx(contour[4][0], 2.1);
+  approx(contour[4][1], -0.1);
+  // End caps are allowed on terminal attachments, never at an inner corner.
+  assert.ok(contour.every(([x, y]) => x >= -0.1 - 1e-10 &&
+    x <= 2.1 + 1e-10 && y >= -0.1 - 1e-10 && y <= 2.1 + 1e-10));
+  assert.throws(
+    () => miteredPolyline([[0, 0], [2, 0], [0, 0]], 0.2),
+    /near-reversal/,
+  );
+});
+
+test('OFF and ON folded MEMS springs have continuous, mitered bends', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const pitch = SWX_REPORTED.foldedSpringWidthUm +
+    SWX_REPORTED.foldedSpringClearanceUm;
+  for (const state of ['off', 'on']) {
+    const g = createSwxGeometry(state);
+    assert.equal(g.physicalGroups.foldedSprings.length, 2);
+    for (const [i, sign] of [-1, 1].entries()) {
+      const footprint = v.unionGeometries([
+        [[...g.physicalGroups.foldedSprings[i], g.physicalGroups.foldedSprings[i][0]]],
+      ]);
+      const gradedDisplacement = (index) => g.travelUm * index / 7;
+      const bends = [
+        [0, sign * 10 + gradedDisplacement(1)],
+        [pitch, sign * 10 + gradedDisplacement(2)],
+        [pitch, sign * 32 + gradedDisplacement(3)],
+        [2 * pitch, sign * 32 + gradedDisplacement(4)],
+        [2 * pitch, sign * 10 + gradedDisplacement(5)],
+        [3 * pitch, sign * 10 + gradedDisplacement(6)],
+      ];
+      for (const point of bends) {
+        assert.ok(
+          footprint.some((poly) => v.pointInMulti(point, [poly])),
+          state + ' spring lost connected silicon at miter ' + point.join(','),
+        );
+      }
+    }
   }
 });
