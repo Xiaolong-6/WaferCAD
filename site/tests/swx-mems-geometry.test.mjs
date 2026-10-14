@@ -25,6 +25,11 @@ test('SWX source parameters preserve reported SOI, SWT and MEMS dimensions', () 
   assert.equal(SWX_REPORTED.swtPeriodUm, 0.29);
   assert.equal(SWX_REPORTED.swtDepthUm, 0.3);
   assert.equal(SWX_REPORTED.combFingerUnits, 40);
+  assert.equal(SWX_REPORTED.foldedSpringLongBeamUm, 30);
+  assert.equal(SWX_REPORTED.foldedSpringShortBeamUm, 22);
+  assert.equal(SWX_REPORTED.foldedSpringClearanceUm, 1.5);
+  assert.equal(SWX_REPORTED.structuralAlignerBeamUm, 0.1);
+  assert.equal(SWX_REPORTED.structuralAlignerLengthUm, 7);
   assert.equal(SWX_ASSUMPTIONS.releaseUndercutUm, 2);
   assert.match(SWX_ASSUMPTIONS.maskSource, /not measured\/author layout/);
 });
@@ -194,4 +199,44 @@ test('lattice shuttle physically connects the upper and lower moving comb buses'
       pose + ' geometry lost a mechanical link between shuttle and comb buses',
     );
   }
+});
+
+test('hard stop engagement limits both optical poses without filling the SWT gap', () => {
+  for (const name of ['off', 'on']) {
+    const generated = createSwxGeometry(name);
+    const fixed = generated.physicalGroups.stopperFixed;
+    const moving = generated.physicalGroups.stopperMovable;
+    assert.equal(fixed.length, 4, 'both stationary stops must include attachment bridges');
+    assert.equal(moving.length, 4, 'both moving stops must include attachment bridges');
+    const expected = name === 'off' ? SWX_REPORTED.offGapUm : SWX_REPORTED.onGapUm;
+    approx(generated.stopperClearanceUm, expected);
+    approx(fixed[0][0][1] - moving[0][2][1], expected);
+    approx(fixed[2][0][1] - moving[2][2][1], expected);
+    assert.ok(expected > 0, 'stops may not interpenetrate');
+  }
+});
+
+test('representative grating couplers keep full physical polygon bounds and port routes', () => {
+  const model = createSwxGeometry('off');
+  const shapes = model.physicalGroups.gratingCouplers;
+  assert.ok(shapes.length >= 18, 'two fiber couplers require teeth and waveguide routes');
+  for (const poly of shapes) {
+    assert.ok(poly.length >= 4);
+    for (const [x, y] of poly) {
+      assert.ok(x >= -56 && x <= 56 && y >= -52 && y <= 52,
+        'grating coupler lies outside computational die');
+    }
+  }
+  assert.deepEqual(shapes, createSwxGeometry('on').physicalGroups.gratingCouplers,
+    'fiber couplers may not move with the shuttle');
+});
+
+test('folded spring and guided aligner dimensions are distinguished from illustration assumptions', () => {
+  const g = createSwxGeometry('off');
+  assert.equal(g.physicalGroups.structuralAligners.fixed.length, 2);
+  assert.ok(g.physicalGroups.structuralAligners.flexure.length >= 10);
+  const foldedPitch =
+    SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
+  approx(foldedPitch, 1.7);
+  assert.ok(g.physicalGroups.flexure.length > 40);
 });
