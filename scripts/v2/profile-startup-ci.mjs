@@ -72,7 +72,7 @@ async function runCampaign(iteration) {
             detail: entry.detail || null,
           });
         }
-      }).observe({ entryTypes: ['measure',] });
+      }).observe({ entryTypes: ['measure'] });
     } catch {}
   });
 
@@ -188,17 +188,20 @@ async function runCampaign(iteration) {
   }
 
   try {
-    await profilePhase(iteration === 1 ? 'm3d-first' : `m3d-first-r${iteration}`, async () => {
-      await page.goto(`${base}/app.html?start=example&example=m3d`, {
-        waitUntil: 'commit',
-        timeout: limit,
-      });
-      await page.waitForFunction(
-        () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
-        null,
-        { timeout: limit },
-      );
-    });
+    await profilePhase(
+      iteration === 1 ? 'm3d-first' : `m3d-first-r${iteration}`,
+      async () => {
+        await page.goto(`${base}/app.html?start=example&example=m3d`, {
+          waitUntil: 'commit',
+          timeout: limit,
+        });
+        await page.waitForFunction(
+          () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
+          null,
+          { timeout: limit },
+        );
+      },
+    );
     if (process.exitCode) {
       console.log('P1 CPU profiling stopped: initial startup failed.');
     } else {
@@ -215,17 +218,21 @@ async function runCampaign(iteration) {
         null,
         { timeout: limit },
       );
-      await profilePhase(iteration === 1 ? 'quality-restore' : `quality-restore-r${iteration}`, async () => {
-        await page.goto(`${base}/app.html`, { waitUntil: 'commit', timeout: limit });
-        await page.waitForFunction(
-          () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
-          null,
-          { timeout: limit },
-        );
-      });
+      await profilePhase(
+        iteration === 1 ? 'quality-restore' : `quality-restore-r${iteration}`,
+        async () => {
+          await page.goto(`${base}/app.html`, { waitUntil: 'commit', timeout: limit });
+          await page.waitForFunction(
+            () => window.WaferCadV2Workstation?.startup?.().views.three === 'ready',
+            null,
+            { timeout: limit },
+          );
+        },
+      );
     }
   } finally {
     await context.close();
+  }
 }
 for (let iteration = 1; iteration <= repetitions && !process.exitCode; iteration++) {
   await runCampaign(iteration);
@@ -238,16 +245,22 @@ const aggregate = Object.fromEntries(
     const summary = Object.fromEntries(
       metrics.map((key) => {
         const sorted = runs.map((run) => run[key]).filter(Number.isFinite).sort((a, b) => a - b);
-        return [key, {
-          samples: sorted,
-          median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null,
-          min: sorted[0] ?? null,
-          max: sorted.at(-1) ?? null,
-        }];
+        return [
+          key,
+          {
+            samples: sorted,
+            median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null,
+            min: sorted[0] ?? null,
+            max: sorted.at(-1) ?? null,
+          },
+        ];
       }),
     );
     return [scenario, { repetitions: runs.length, ...summary }];
   }),
 );
-await writeFile(`${folder}/aggregate.json`, JSON.stringify({ campaignSamples, aggregate }, null, 2) + '\n');
+await writeFile(
+  `${folder}/aggregate.json`,
+  JSON.stringify({ campaignSamples, aggregate }, null, 2) + '\n',
+);
 console.log('P1_CPU_AGGREGATE', JSON.stringify(aggregate));
