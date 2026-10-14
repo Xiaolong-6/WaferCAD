@@ -573,6 +573,7 @@ export function createSwxGeometry(state = 'off') {
       stopperMovable: stoppers.movable,
       gratingCouplers: gratings.groups,
       gratingSlabs: gratings.silicon,
+      gratingFeeds: gratings.flexibleSilicon,
       gratingGrooves: gratings.shallowEtch,
       structuralAligners: aligners,
       foldedSprings,
