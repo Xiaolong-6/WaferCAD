@@ -37,6 +37,14 @@ jobs:
       - name: Check source formatting
         if: always()
         run: npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+      - name: Emit normalized topology / tilt sources for review
+        if: always()
+        run: |
+          for file in scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md; do
+            echo "TCMOS_FORMAT_BEGIN:$file"
+            npx prettier "$file"
+            echo "TCMOS_FORMAT_END:$file"
+          done
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
