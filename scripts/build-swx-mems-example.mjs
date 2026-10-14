@@ -1,6 +1,6 @@
 /**
- * Build source-constrained single-unit SWX photonic MEMS WaferCAD examples.
- * The two files are geometric OFF/ON poses, not mechanically simulated frames.
+ * Build one source-constrained SWX photonic MEMS project with two Variants.
+ * OFF and ON share one physical fabrication Mask, Recipe and released BOX.
  * Source: Hu et al., Nature Communications 16, 331 (2025).
  * DOI https://doi.org/10.1038/s41467-024-55528-9
  */
@@ -328,7 +328,7 @@ export async function buildSwxMems(state = 'off') {
   );
   record(
     'Dry released MEMS inspection / illustrative ' + state.toUpperCase() + ' geometry',
-    'Release is canonical geometric BOX removal. ON pose is an alternative mask geometry; no dynamic actuation, optical FEM/FDTD or stiction model.',
+    'Release is canonical BOX removal. ON is a separate post-release inspection Variant, not a fabrication step or FEM/FDTD/stiction simulation.',
   );
   bookmark('04 Released SWX / ' + state.toUpperCase());
 
