@@ -54,6 +54,14 @@ jobs:
             echo "TCMOS_FMT_END:$file"
           done
           node -e 'const fs=require("node:fs");const f="test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad";if(fs.existsSync(f)){const b=fs.readFileSync(f).toString("base64");for(let i=0;i<b.length;i+=4000)console.log("TCMOS_FIXTURE_B64:"+b.slice(i,i+4000));}'
+      - name: Display two normalized science tests for final formatting
+        if: always()
+        run: |
+          for file in site/model.js site/tests/tcmos-inverter-reconstruction.test.mjs; do
+            echo "TCMOS_SCIENCE_FMT_BEGIN:$file"
+            npx prettier "$file"
+            echo "TCMOS_SCIENCE_FMT_END:$file"
+          done
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
