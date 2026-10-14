@@ -26,7 +26,8 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     try {
       await page.goto(base + '/app.html?start=empty', {
-        waitUntil: 'domcontentloaded', timeout: 120000,
+        waitUntil: 'domcontentloaded',
+        timeout: 120000,
       });
       await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
         timeout: 120000,
@@ -36,7 +37,8 @@ try {
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#openProjectInput').setInputFiles(filename);
       const confirmation = page.getByRole('button', {
-        name: 'Open project', exact: true,
+        name: 'Open project',
+        exact: true,
       });
       if (await confirmation.isVisible()) await confirmation.click();
       await page.waitForFunction(
@@ -85,12 +87,16 @@ try {
       assert.deepEqual(reloaded.model, beforeExport.model);
       assert.equal(reloaded.layout.elements.length, source.layout.elements.length);
       assert.equal(reloaded.processRecipe.steps.length, source.processRecipe.steps.length);
-      assert.deepEqual((await snapshot()).model, beforeExport.model,
-        'Export must not mutate live physical geometry');
+      assert.deepEqual(
+        (await snapshot()).model,
+        beforeExport.model,
+        'Export must not mutate live physical geometry',
+      );
       assert.deepEqual(errors, [], 'Browser runtime errors');
 
       report.cases.push({
-        state, pass: true,
+        state,
+        pass: true,
         regions: beforeExport.model.regions.length,
         historyNodes: beforeExport.workflow.steps.length,
         masks: beforeExport.layout.elements.length,
