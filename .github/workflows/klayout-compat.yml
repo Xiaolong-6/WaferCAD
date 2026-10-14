@@ -1,6 +1,12 @@
 name: KLayout format compatibility
 
 on:
+  workflow_call:
+    inputs:
+      scope:
+        required: false
+        type: string
+        default: all
   workflow_dispatch:
     inputs:
       scope:
@@ -22,6 +28,10 @@ on:
       - "site/layout-worker.js"
       - "site/layout-export-worker.js"
       - "site/project-worker.js"
+      - "site/project-schema.js"
+      - "site/project-io.js"
+      - "site/controllers/mask-import-controller.js"
+      - "site/controllers/export-controller.js"
       - "scripts/klayout-compat.mjs"
       - "scripts/klayout-ui-compat.mjs"
       - "scripts/klayout-export-fixtures.mjs"
