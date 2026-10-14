@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
+import { captureVisibleThree } from './three-visibility.mjs';
 
 await loadGeometryKernel();
 
@@ -74,11 +75,15 @@ try {
   assert.deepEqual(initial.model, expected.model, 'v2 project import changed canonical geometry');
   assert.equal(initial.layout.combos.length, 11, 'v2 lost inferred Mask layers');
   assert.ok(initial.model.layers.some((layer) => layer.name === 'Digital Ta2O5 RSL 10nm'));
+  assert.deepEqual(initial.roi, { type: 'rect', a: [-49, -38], b: [-31, 27] });
+  assert.deepEqual(initial.section, { a: [-44, -24], b: [-35, -24] });
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
     await waitForPaint(page);
   }
-  await page.screenshot({ path: resolve(output, 'three-tier-before-runall.png') });
+  await page.waitForFunction(() => document.getElementById('threeHost')?.dataset.renderState === 'ready', null, { timeout: 120000 });
+  const visibility = await captureVisibleThree(page, resolve(output, 'three-tier-before-runall.png'));
+  report.coloredPixels = visibility.coloredPixels;
 
   await page.locator('[data-action="domain:process"]').click();
   await page.locator('[data-action="process-mode:recipe"]').click();
@@ -114,6 +119,8 @@ try {
     'Run All produced different material layer set',
   );
   assert.equal(rebuilt.layout.combos.length, 11, 'Run All lost GDS-exportable masks');
+  assert.deepEqual(rebuilt.roi, initial.roi, 'Run All lost the sample inspection ROI');
+  assert.deepEqual(rebuilt.section, initial.section, 'Run All moved physical A-B cross-section');
   await page.locator('[data-action="domain:project"]').click();
   await page.locator('#projectExportMenuBtn').click();
   const [download] = await Promise.all([
