@@ -65,7 +65,7 @@ jobs:
     needs: reconstruction
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -104,7 +104,7 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/example-recipe-runall-acceptance.mjs --id=gan-hemt-microchannel-2022
-
+      - name: Commit validated project, preview, sources and docs to feature branch
         run: |
           git add site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
           if ! git diff --cached --quiet; then
