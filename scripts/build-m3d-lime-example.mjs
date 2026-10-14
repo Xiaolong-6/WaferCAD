@@ -563,8 +563,12 @@ export async function buildM3DLime() {
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
   deposit('ALD Al2O3 RRAM protection 45nm at 150C', 'Digital Al2O3 passivation 45nm', 0.045);
   selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
+  assert.equal(exposed(digitalRramProbe).layerId, layerIds.get('Digital Pt TE 10nm'),
+    'Top passivation must open onto Pt electrode without gouging the 10nm Pt layer');
   deposit('Top Ti interconnect adhesion 20nm', 'Top Ti interconnect 20nm', 0.02, 21);
+  assertPhysicalContact(digitalRramProbe, 'Digital Pt TE 10nm', 'Top Ti interconnect 20nm');
   deposit('Top Pd interconnect 120nm', 'Top Pd interconnect 120nm', 0.12, 21);
+  assertPhysicalContact(digitalRramProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
   record(
     'Connect ML/SL/SEL externally for TCAM testing',
     'custom',
