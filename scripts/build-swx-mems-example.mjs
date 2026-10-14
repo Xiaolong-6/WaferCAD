@@ -426,7 +426,8 @@ function pruneZeroAreaPoseRings(multi) {
   const ringArea = (ring) => {
     let sum = 0;
     for (let i = 0; i < ring.length; i++) {
-      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const a = ring[i],
+        b = ring[(i + 1) % ring.length];
       sum += a[0] * b[1] - b[0] * a[1];
     }
     return Math.abs(sum / 2);
@@ -434,8 +435,7 @@ function pruneZeroAreaPoseRings(multi) {
   const minimumAreaUm2 = 1e-14;
   return (multi || []).flatMap((poly) => {
     if (!poly.length || ringArea(poly[0]) <= minimumAreaUm2) return [];
-    return [[poly[0], ...poly.slice(1).filter((hole) =>
-      ringArea(hole) > minimumAreaUm2)]];
+    return [[poly[0], ...poly.slice(1).filter((hole) => ringArea(hole) > minimumAreaUm2)]];
   });
 }
 
