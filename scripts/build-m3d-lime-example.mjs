@@ -452,7 +452,12 @@ export async function buildM3DLime() {
     'CMOS M4 dielectric SURROGATE 100nm',
     0.1,
   );
-  selectiveEtch('Represent existing exposed M4 via footprints', 'CMOS M4 dielectric SURROGATE 100nm', 0.1, 11);
+  selectiveEtch(
+    'Represent existing exposed M4 via footprints',
+    'CMOS M4 dielectric SURROGATE 100nm',
+    0.1,
+    11,
+  );
   deposit('Represent existing W M4 vias (foundry state)', 'M4 W via fill', 0.1, 11);
   assert.equal(
     exposed([-40.5, -23.5]).layerId,
