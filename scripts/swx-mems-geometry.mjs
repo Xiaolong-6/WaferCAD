@@ -141,8 +141,7 @@ function polyline(points, width) {
 export function miteredPolyline(points, width) {
   if (!(width > 0)) throw new Error('Mitered path width must be positive');
   const compact = points.filter(
-    (p, i) =>
-      i === 0 || Math.hypot(p[0] - points[i - 1][0], p[1] - points[i - 1][1]) > 1e-12,
+    (p, i) => i === 0 || Math.hypot(p[0] - points[i - 1][0], p[1] - points[i - 1][1]) > 1e-12,
   );
   if (compact.length < 2) throw new Error('Mitered path requires two distinct vertices');
 
@@ -167,7 +166,7 @@ export function miteredPolyline(points, width) {
       if (cos < -0.95) throw new Error('Mitered path contains a near-reversal');
       const factor = (side * half) / (1 + cos);
       chain.push([
-        compact[i][0] + (-(before[1] + after[1])) * factor,
+        compact[i][0] + -(before[1] + after[1]) * factor,
         compact[i][1] + (before[0] + after[0]) * factor,
       ]);
     }
