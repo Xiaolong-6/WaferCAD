@@ -23,21 +23,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Emit prettified source for exact source sync
-        run: |
-          npx prettier --write scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
-          echo M3DLIME_SCRIPT_BEGIN
-          base64 -w0 scripts/build-m3d-lime-example.mjs
-          echo
-          echo M3DLIME_SCRIPT_END
-          echo M3DLIME_TEST_BEGIN
-          base64 -w0 site/tests/m3d-lime-builder.test.mjs
-          echo
-          echo M3DLIME_TEST_END
-          echo M3DLIME_DOC_BEGIN
-          base64 -w0 docs/M3D_LIME_2023_RECONSTRUCTION.md
-          echo
-          echo M3DLIME_DOC_END
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Source-derived structural regression
