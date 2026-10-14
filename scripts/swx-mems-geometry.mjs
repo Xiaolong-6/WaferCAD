@@ -235,20 +235,25 @@ function makeIllustrativeGratingCouplers() {
 
 function makeMeanders(moveY) {
   const paths = [];
-  // Geometric flexure: the fixed optical end is stationary; displacement is
-  // gradually introduced along the two-bend meander towards the shuttle.
-  for (const side of [-1, 1]) {
-    const y = side * 16;
-    const x = -15;
-    const original = [
-      [x - 1, y],
-      [x + 1, y],
-      ...traceArc(x + 1, y + side * 3, 3, -Math.PI / 2, Math.PI / 2),
-      [x + 1, y + side * 6],
-      ...traceArc(x + 1, y + side * 11, 5, -Math.PI / 2, Math.PI / 2),
-      [x + 16, y + side * 16],
+  // A compliant optical link must have both ends attached. The original
+  // illustrative curves ended freely near (1,+/-32um), as seen in the
+  // visual acceptance screenshot. Build a 3um/5um double-bend centerline
+  // from the actual SWX output port to a BOX-supported fixed anchor.
+  for (const sign of [-1, 1]) {
+    const fixedPort = [
+      [-10, 13],
+      [-13, 13],
+      ...traceArc(-13, 16, SWX_REPORTED.meanderRadiiUm[1], -Math.PI / 2, Math.PI / 2),
+      [-18, 19],
+      ...traceArc(-18, 24, SWX_REPORTED.meanderRadiiUm[0], -Math.PI / 2, Math.PI / 2),
+      [-19, 30],
+      [-7, 36],
+      [2, 40],
     ];
-    const points = original.map(([px, py], i) => [px, py + (moveY * i) / (original.length - 1)]);
+    const points = fixedPort.map(([x, y], i) => {
+      const shift = sign < 0 ? moveY * (1 - i / (fixedPort.length - 1)) : 0;
+      return [x, sign * y + shift];
+    });
     paths.push(...polyline(points, SWX_REPORTED.waveguideCoreUm));
   }
   return paths;
@@ -373,8 +378,8 @@ export function createSwxGeometry(state = 'off') {
   const stoppers = makeMechanicalStoppers(travel);
   const gratings = makeIllustrativeGratingCouplers();
   const anchors = [
-    rect(-49, 34, 9, 9),
-    rect(-49, -34, 9, 9),
+    // The former (-49,+/-34) boxes were unsupported free-standing islands
+    // with no connection to the waveguide or mechanical network.
     rect(2, 40, 10, 10),
     rect(2, -40, 10, 10),
     rect(46, 9, 9, 9),
