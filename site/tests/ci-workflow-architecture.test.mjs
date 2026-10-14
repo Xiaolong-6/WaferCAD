@@ -139,11 +139,11 @@ test('manual reconstruction runs cannot mutate main', () => {
   assert.match(m3d, /  replay:\n    if: \$\{\{/);
   assert.ok(m3d.includes("github.ref_name == 'fix/m3d-conformal-microcracks-20261008'"));
   assert.ok(m3d.includes("github.ref_name == 'integrate/reviewed-branches-20261008'"));
-  assert.ok(
-    workflow('magic1000-candidate').includes(
-      "if: ${{ github.ref_name == 'feat/magic-1000-mos2-beol-reconstruction' }}",
-    ),
-  );
+  const magic = workflow('magic1000-candidate');
+  assert.match(magic, /  pull_request:\n    branches: \[main\]/);
+  assert.match(magic, /permissions:\n  contents: read/);
+  assert.doesNotMatch(magic, /contents: write|git push|feat\/magic-1000-mos2-beol-reconstruction/);
+  assert.match(magic, /node scripts\/magic1000-visual-acceptance\.mjs/);
   assert.ok(
     workflow('photodetector-reconstruction-v2').includes(
       "if: ${{ github.ref_name == 'fix/photodetector-reconstruction-v2' }}",

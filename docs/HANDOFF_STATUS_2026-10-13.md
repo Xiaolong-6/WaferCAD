@@ -21,11 +21,32 @@ The retained Legacy DOM-based scientific tests and test adapters still need
 migration before the old source implementation can be deleted. No scientific
 kernel/schema or Recovery storage deletion is authorized by this P2 follow-up.
 
-The next public-artifact retirement change keeps an `app-legacy.html`
-bookmark redirect in the published tree but excludes the old `app.js`
-and `workstation.css` editor resources. It is a separate PR candidate
-until its staged Pages and CI gates pass. Retained scientific test sources
-are intentionally untouched and should not be declared fully retired.
+[PR #224](https://github.com/Xiaolong-6/WaferCAD/pull/224) merged as
+`main@6a391a3` and its [production Pages workflow](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38530789607)
+succeeded. Public `app-legacy.html` is now a bookmark-preserving redirect
+to `app.html`; the old editor's `app.js` and `workstation.css` are excluded
+from the production artifact, but Legacy scientific test sources remain in Git.
+
+[PR #227](https://github.com/Xiaolong-6/WaferCAD/pull/227) merged as
+`main@4f5b273` and [deployed](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532663387).
+Its v2 browser acceptance covers missing Three.js CDN, failed WebGL initialization
+and continued Main/Mask/Section plus real Process Worker operation.
+
+[PR #231](https://github.com/Xiaolong-6/WaferCAD/pull/231) merged as
+`main@f8a6b8f`, after full Quality, M3D, Browser, 3D, D1, Main/Mask/Mobile and
+Stage C/M4 PR checks passed. It migrates M3D Welcome, 36 History Steps,
+27 bookmarks and Border toggle checks to v2, and fixes restored 3D toolbar
+selected-state synchronization. The post-merge Pages publication is a separate
+release check; the last observed run was still in progress.
+
+[PR #233](https://github.com/Xiaolong-6/WaferCAD/pull/233) is a separate
+draft migration of MAGIC-1000 visual evidence to the read-only v2 Section/3D
+preview. Its browser acceptance passed before branch alignment; final
+post-alignment checks and merge/deploy were not yet complete at this checkpoint.
+The obsolete MAGIC feature-branch workflow loses source write/push permissions.
+These changes transfer UI test ownership only; scientific model/Recipe
+reconstruction tests remain intact. The rest of Legacy source and its
+unmigrated scientific browser adapters must not be deleted yet.
 
 The workflows constrain Pages write/OIDC permissions in source control;
 repository/environment administrator settings remain a separate verification
@@ -39,7 +60,7 @@ Audited public `main` at `1e34da5d23f8fd9db8db13b249a7e4816cdb7ced`, then opened
 
 - **Mask wheel diagnostic:** The older [Mask handoff](archive/ui-v2/HANDOFF_2026-10-11.md) reports a first-width zoom assertion failure. Current `scripts/v2/check-mask-view.mjs` moves the pointer to the Mask canvas center before the wheel event. The later [Main/Mask acceptance](archive/ui-v2/MAIN_MASK_ACCEPTANCE_2026-10-11.md) supersedes the earlier paused checkpoint. No new browser execution is claimed here.
 - **UI v2 entry migration:** PR [#177](https://github.com/Xiaolong-6/WaferCAD/pull/177) was merged and deployed as recorded in [M5-Lite](ui-v2/M5_LITE_HANDOFF_2026-10-12.md). Historical M0–M4 Draft-PR and unmerged-route statements are archived, not current deployment instructions.
-- **Legacy footer action:** Removed in current v2; a linked commit is displayed instead. `site/app-legacy.html` is still present. Direct navigation must not be described as automatically saving a workspace.
+- **Legacy footer action:** Removed in current v2; a linked commit is displayed instead. `site/app-legacy.html` remains as source for historical tests, while the public Pages URL is a redirect. Direct navigation must not be described as automatically saving a workspace.
 
 ## Open: explicit implementation or acceptance work
 

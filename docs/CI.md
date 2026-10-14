@@ -70,6 +70,16 @@ The ordinary M5 startup owner verifies the same preview routing before loading
 the full example into the editor. This gate does not cover physical hardware
 GPU parity.
 
+## MAGIC-1000 v2 visualization owner
+
+`magic1000-candidate.yml` is a read-only, path-gated PR and manual acceptance
+for the current v2 Section/3D preview of MAGIC-1000. It replaces the obsolete
+self-pushing feature-branch workflow, drops repository write permission, and
+uploads screenshots/reports without rewriting the committed thumbnail.
+`scripts/magic1000-visual-acceptance.mjs --write-thumbnail` is reserved for
+intentional, locally reviewed image regeneration. Browser rendering does not
+prove agreement with the paper's device microscopy.
+
 ## Historical Project compatibility
 
 The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
