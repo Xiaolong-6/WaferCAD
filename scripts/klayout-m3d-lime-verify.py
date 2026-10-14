@@ -81,10 +81,20 @@ def aligned_contacts(polys, dbu, filename):
 
 gds, gds_layers = read_mask("full-inferred-mask.gds")
 oas, oas_layers = read_mask("full-inferred-mask.oas")
-assert abs(gds.dbu - oas.dbu) <= 1e-12, "GDS/OAS disagree on physical units"
+# GDSII and OASIS may store the same micrometre geometry in *different*
+# database units. Never XOR raw integer Regions across unequal DBU grids.
+def physical_rectangles_um_to_nm(boxes, dbu):
+    return sorted(tuple(round(coordinate * dbu * 1000)
+                        for coordinate in (box.left, box.bottom, box.right, box.top))
+                  for box in boxes)
+
+
 for layer in expected_counts:
-    diff = gds_layers[layer][0] ^ oas_layers[layer][0]
-    assert diff.is_empty(), f"KLayout found GDS/OAS polygon difference on {layer}/0"
+    gds_polygons = physical_rectangles_um_to_nm(gds_layers[layer][1], gds.dbu)
+    oas_polygons = physical_rectangles_um_to_nm(oas_layers[layer][1], oas.dbu)
+    assert gds_polygons == oas_polygons, (
+        f"KLayout found a 1nm physical-coordinate difference on {layer}/0; "
+        f"GDS DBU={gds.dbu}, OAS DBU={oas.dbu}")
 gds_geom = aligned_contacts(gds_layers, gds.dbu, "GDS")
 oas_geom = aligned_contacts(oas_layers, oas.dbu, "OAS")
 report = {
@@ -93,7 +103,8 @@ report = {
     'scope': 'inferred local masks, not original foundry GDS',
     'layers': len(expected_counts),
     'rectangles': sum(expected_counts.values()),
-    'dbu_um': gds.dbu,
+    'gds_dbu_um': gds.dbu,
+    'oas_dbu_um': oas.dbu,
     'gds': gds_geom,
     'oas': oas_geom,
 }
