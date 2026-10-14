@@ -23,9 +23,20 @@ try {
       : await loadWorkstationProject(),
     store = createWorkstationRuntime(project);
   if (readOnlyPreview) {
-    // Preview keeps the old inspect-only wheel gesture without enabling editors.
+    // Navigation is enabled from the first frame without activating editing tools.
+    store.local.main.panEnabled = true;
     store.local.main.zoomEnabled = true;
+    store.local.mask.panEnabled = true;
     store.local.mask.zoomEnabled = true;
+    store.local.section.panEnabled = true;
+    store.local.section.zoomEnabled = true;
+    store.local.three.mode = 'rotate';
+    store.local.three.zoomEnabled = true;
+    // Reset view-only saved offsets so each example begins with a meaningful fit.
+    for (const view of ['main', 'mask']) {
+      store.state.planViews[view] = { zoom: 1, panX: 0, panY: 0 };
+    }
+    store.state.sectionViewport = { zoom: 1, panX: 0, panY: 0 };
   }
   const geometryBefore = store.geometrySnapshot();
   const uiState = {
@@ -93,6 +104,7 @@ try {
     shell.getSlot('status.message').textContent = value;
   };
   const workstation = {
+    readOnlyPreview,
     adapters,
     shell,
     uiState,

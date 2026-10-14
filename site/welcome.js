@@ -254,6 +254,7 @@ function renderExampleCards() {
     summaryLink.className = 'welcome-example-summary-link';
     summaryLink.href = href;
     summaryLink.textContent = example.summary;
+    summaryLink.title = example.summary;
     summary.append(summaryLink);
     // Hover and keyboard focus express intent; scrolling the Welcome grid
     // alone must not fetch every complete project (previews stay on demand).
@@ -286,14 +287,39 @@ function renderExampleCards() {
       tags.append(chip);
     }
     if (exampleTags.length > visibleTags.length) {
+      const remaining = exampleTags.slice(visibleTags.length);
       const more = document.createElement('span');
       more.className = 'welcome-example-tag-more';
-      more.textContent = `+${exampleTags.length - visibleTags.length}`;
-      more.title = exampleTags.slice(visibleTags.length).join(', ');
-      more.setAttribute(
-        'aria-label',
-        `${exampleTags.length - visibleTags.length} more tags: ${more.title}`,
-      );
+      more.textContent = `+${remaining.length}`;
+      more.title = remaining.join(', ');
+      more.tabIndex = 0;
+      more.setAttribute('role', 'button');
+      more.setAttribute('aria-expanded', 'false');
+      more.setAttribute('aria-label', `Show more tags: ${remaining.join(', ')}`);
+      const chips = remaining.map((tag) => {
+        const chip = document.createElement('span');
+        chip.textContent = tag;
+        return chip;
+      });
+      const toggle = () => {
+        const expanded = more.getAttribute('aria-expanded') !== 'true';
+        for (const chip of chips) {
+          if (expanded) tags.insertBefore(chip, more);
+          else chip.remove();
+        }
+        more.textContent = expanded ? 'Less' : `+${remaining.length}`;
+        more.setAttribute('aria-expanded', String(expanded));
+        more.setAttribute(
+          'aria-label',
+          expanded ? 'Show fewer tags' : `Show more tags: ${remaining.join(', ')}`,
+        );
+      };
+      more.addEventListener('click', toggle);
+      more.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        toggle();
+      });
       tags.append(more);
     }
 
