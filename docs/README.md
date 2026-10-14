@@ -51,6 +51,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [UI v2 DOM contract](ui-v2/CONTRACT.md) — revision-specific generated inventory; do not mistake legacy selector evidence for current UI.
 - [UI v2 cross-view synchronization table](ui-v2/SYNC_TABLE_2026-10-11.md) — dated state ownership and dispatch audit, not browser pixel acceptance.
 
+- [P1 science, release and Recovery handoff — 2026-10-14](P1_SCIENCE_RELEASE_RECOVERY_HANDOFF_2026-10-14.md) — branch baseline, fault ownership, planned CI evidence and unresolved administration tasks.
 - [Process History transaction integrity — 2026-10-13](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — fault injection and atomicity boundaries for Recipe, edit and insertion.
 - [Material/target scientific semantics — design proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — review-only parameter matrix and open choices; no UI activation.
 - [Main protection runbook — 2026-10-13](MAIN_PROTECTION_RUNBOOK_2026-10-13.md) — GitHub Admin-only repository rules and fail-closed verification.
