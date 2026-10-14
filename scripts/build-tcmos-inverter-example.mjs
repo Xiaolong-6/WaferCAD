@@ -509,18 +509,17 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   );
   bookmark('S03 - HVT body implant annotations');
 
-  deposit('Gate dielectric SiO2 5nm (illustrative)', 'Gate SiO2 (5nm surrogate)', 0.005);
+  // Gate oxidation is confined to the two POLY footprints in this
+  // illustrative 2.5D geometry. A blanket 5 nm oxide over STI and body ties
+  // misrepresents Fig. 1a and obscures every device in Main/3D. Foundry
+  // gate-oxide removal and self-aligned spacer lithography are not simulated.
+  deposit('Patterned gate dielectric SiO2 5nm (illustrative)', 'Gate SiO2 (5nm surrogate)', 0.005, 6);
   deposit('Pattern separate 130nm POLY gates (VIN via METAL1)', 'POLY gate', 0.2, 6);
-  // Expose the source/drain Si before placing implant annotations. Actual foundry
-  // dielectric-window and spacer sequence is abstracted here; no implant physics.
-  for (const id of [7, 8]) {
-    etch(
-      'Expose Si in ' + (id === 7 ? 'pMOS' : 'nMOS') + ' S/D regions (surrogate)',
-      'Gate SiO2 (5nm surrogate)',
-      0.005,
-      id,
-    );
-  }
+  record(
+    'Gate-oxide source/drain window surrogate',
+    'custom',
+    'Gate oxide is represented only beneath POLY footprints; exposed source/drain silicon requires no second geometric oxide etch. This abstracts foundry oxide patterning.',
+  );
   implant('pMOS LDD structural marker', 'pMOS LDD anticipated profile', 0.08, 7, '#cf6785');
   implant('nMOS LDD structural marker', 'nMOS LDD anticipated profile', 0.08, 8, '#4c93c6');
   record(
@@ -552,7 +551,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
   assert.equal(modelApi.setLayerVisible(model, ild.id, false), true);
   project.display.threeOpacity = 0.75;
   project.display.threeCamera = {
-    position: [10.3, -11.1, 8.1],
+    position: [13.3, -14.3, 10.2],
     target: [0, -0.2, 0.95],
     fov: 34,
   };
@@ -621,6 +620,7 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     checkpoints,
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
+      'The 5 nm gate oxide is represented only under POLY footprints, avoiding an unphysical display blanket over STI and body-tie surfaces; foundry oxidation/strip steps remain abstracted.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
