@@ -79,12 +79,13 @@ export function connectedBoundingBoxGroups(bounds, tolerance = 0) {
       if (active[candidate]) setActive(candidate, false);
     }
 
-    const yLimit = current.maxY + tolerance;
+    // Match the original boundsMayTouch comparison order exactly:
+    // current.maxY >= other.minY - tolerance.
     let low = 0;
     let high = count;
     while (low < high) {
       const middle = (low + high) >> 1;
-      if (bounds[yOrder[middle]].minY <= yLimit) low = middle + 1;
+      if (current.maxY >= bounds[yOrder[middle]].minY - tolerance) low = middle + 1;
       else high = middle;
     }
     if (low) query(1, 0, size, low, current.minY - tolerance, index);
