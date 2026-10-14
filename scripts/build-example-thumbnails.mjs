@@ -52,10 +52,9 @@ try {
     await installPinnedThreeRoute(context);
     const page = await context.newPage(),
       errors = observePageErrors(page);
-    await page.goto(
-      baseUrl + '/app.html?preview=1&example=' + example.id + '&view=three',
-      { waitUntil: 'domcontentloaded' },
-    );
+    await page.goto(baseUrl + '/app.html?preview=1&example=' + example.id + '&view=three', {
+      waitUntil: 'domcontentloaded',
+    });
     await page.waitForFunction(
       () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
       null,
