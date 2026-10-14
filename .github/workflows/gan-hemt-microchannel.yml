@@ -10,6 +10,11 @@ on:
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
+      - site/bundled-examples.js
+      - site/tests/welcome-example.test.mjs
+      - docs/wiki/Examples-and-Modeling-Limits.md
+      - README.md
+      - docs/wiki/Getting-Started.md
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
@@ -17,6 +22,11 @@ on:
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
+      - site/bundled-examples.js
+      - site/tests/welcome-example.test.mjs
+      - docs/wiki/Examples-and-Modeling-Limits.md
+      - README.md
+      - docs/wiki/Getting-Started.md
   workflow_dispatch:
 
 permissions:
@@ -69,9 +79,34 @@ jobs:
       - run: npm ci
       - name: Build exact candidate project using live Process Kernel
         run: node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-      - name: Commit only generated WaferCAD project to isolated branch
+      - name: Format new Welcome catalog and source documentation
+        run: npx prettier --write site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
+      - name: Generate fast final-state project preview
+        run: node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+      - name: Install headless Chromium for real render acceptance
+        run: npx playwright install --with-deps chromium
+      - name: Launch static WaferCAD UI server
         run: |
-          git add site/examples/gan-hemt-microchannel-2022.wafercad
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-gan.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-gan.log
+          exit 1
+      - name: Capture actual 3D example preview
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Verify Welcome and Wiki catalog, history and previews
+        run: node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
+      - name: Run complete UI Recipe from fresh Base and validate output
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/example-recipe-runall-acceptance.mjs --id=gan-hemt-microchannel-2022
+
+        run: |
+          git add site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
