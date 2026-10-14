@@ -31,6 +31,7 @@ const LIMITS = {
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
+  dopantRegions: 10000,
   electricalRegions: 10000,
   electricalRegionPatches: 200000,
   recipeSteps: 1000,
@@ -538,6 +539,44 @@ function validateModel(model, budget, geometryCache) {
           validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
         }
       });
+    });
+  }
+
+  if (model.dopantRegions != null) {
+    const dopants = assertArray(model.dopantRegions, 'model.dopantRegions', LIMITS.dopantRegions);
+    const ids = new Set();
+    const polarities = new Set(['donor', 'acceptor']);
+    const roles = new Set(['well', 'body', 'source-drain', 'channel', 'contact']);
+    dopants.forEach((dopant, index) => {
+      const path = `model.dopantRegions[${index}]`;
+      assertObject(dopant, path);
+      const id = assertString(dopant.id, `${path}.id`, { max: 128 });
+      if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+      ids.add(id);
+      assertString(dopant.name, `${path}.name`, { max: 256 });
+      if (!polarities.has(dopant.polarity)) fail(`${path}.polarity`, 'is not supported.');
+      if (!roles.has(dopant.role)) fail(`${path}.role`, 'is not supported.');
+      if (!['front', 'back'].includes(dopant.face)) fail(`${path}.face`, 'must be front or back.');
+      const host = assertString(dopant.hostLayerId, `${path}.hostLayerId`, { max: 128 });
+      if (!layerIds.has(host)) fail(`${path}.hostLayerId`, 'references an unknown material.');
+      validateMultiPolygon(dopant.area, `${path}.area`, budget);
+      if (!dopant.area.length) fail(`${path}.area`, 'must not be empty.');
+      assertCoordinate(dopant.sourceZ, `${path}.sourceZ`);
+      assertFinite(dopant.depthStartUm, `${path}.depthStartUm`, { min: 0 });
+      assertLength(dopant.depthEndUm, `${path}.depthEndUm`, { min: 1e-12 });
+      if (!(dopant.depthStartUm < dopant.depthEndUm)) {
+        fail(path, 'requires depthStartUm < depthEndUm.');
+      }
+      assertObject(dopant.profile, `${path}.profile`);
+      if (dopant.profile.kind !== 'qualitative-interval') {
+        fail(`${path}.profile.kind`, 'must be qualitative-interval; concentrations are not supported.');
+      }
+      if (dopant.sourceImplantId != null) {
+        assertString(dopant.sourceImplantId, `${path}.sourceImplantId`, { max: 128 });
+      }
+      if (dopant.provenance != null) {
+        assertString(dopant.provenance, `${path}.provenance`, { max: 256 });
+      }
     });
   }
 
