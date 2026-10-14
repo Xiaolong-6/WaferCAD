@@ -20,7 +20,7 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
-  assert.match(pages, /if: \\$\\{\\{ always\\(\\) && !cancelled\\(\\) && github\\.ref == 'refs\\/heads\\/main' \\$\\}\\}/);
+  assert.match(pages, /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
   assert.match(pages, /run: node scripts\/smoke-pages-artifact\.mjs/);
   assert.match(pages, /uses: actions\/upload-pages-artifact@v4/);
@@ -59,15 +59,15 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
 
 test('Pages deploy job runs after a skipped optional dependency and refuses missing staging', () => {
   const pages = workflow('pages');
-  const deploy = pages.split('  deploy:\\n')[1];
+  const deploy = pages.split('  deploy:\n')[1];
   assert.ok(deploy, 'production deployment job must exist');
-  assert.match(deploy, /needs: \\[stage-pages\\]/);
+  assert.match(deploy, /needs: \[stage-pages\]/);
   assert.match(
     deploy,
-    /if: \\$\\{\\{ always\\(\\) && !cancelled\\(\\) && github\\.ref == 'refs\\/heads\\/main' \\$\\}\\}/,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/,
   );
-  assert.match(deploy, /STAGE_RESULT: \\$\\{\\{ needs\\.stage-pages\\.result \\$\\}\\}/);
-  assert.match(deploy, /if \\[\\[ "\\$STAGE_RESULT" != "success" \\]\\]; then/);
+  assert.match(deploy, /STAGE_RESULT: \$\{\{ needs\.stage-pages\.result \}\}/);
+  assert.match(deploy, /if \[\[ "\$STAGE_RESULT" != "success" \]\]; then/);
   assert.match(deploy, /exit 1/);
   assert.ok(
     deploy.indexOf('Require successful staged artifact before publishing') <
