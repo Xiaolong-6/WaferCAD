@@ -47,10 +47,27 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const { project, validation } = await buildTcmosInverter();
   const model = project.model;
   assert.equal(validation.pass, true);
+  assert.deepEqual(validation.availableVariants, ['main', 'conventional-cmos']);
   assert.equal(project.layout.elements.length > 0, true);
   assert.equal(project.processRecipe.steps.length, validation.recipeSteps);
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
-  assert.equal(project.snapshots.length, 5);
+  assert.equal(project.snapshots.length, 8);
+  assert.equal(project.snapshotBranches.branches.length, 2);
+  const conventional = project.snapshotBranches.branches.find((item) => item.id === 'conventional-cmos');
+  assert.ok(conventional, 'Conventional CMOS must coexist in the same project');
+  assert.equal(conventional.parentBranchId, 'main');
+  const fork = project.snapshotBranches.nodes.find((item) => item.id === conventional.rootNodeId);
+  assert.equal(fork?.operation.label, 'Well formation/drive in');
+  const comparisonImplants = conventional.headState.model.implants.slice(0, 2);
+  assert.match(comparisonImplants[0].name, /LVTN As\+/);
+  assert.match(comparisonImplants[1].name, /LVTP BF2\+/);
+  assert.equal(comparisonImplants[0].depthStart, undefined);
+  assert.equal(conventional.headState.processRecipe.steps.length, 23);
+  assert.equal(
+    conventional.headState.model.dopantRegions.some((region) => region.role === 'body'),
+    false,
+    'The conventional LVT Variant must not retain the buried HVT body intent',
+  );
   assert.equal(model.implants.length, 6);
   assert.ok(model.dopantRegions.length >= 6, 'Each process Implant defines a separate qualitative region');
   for (const implant of model.implants) {
