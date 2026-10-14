@@ -158,6 +158,9 @@ export async function buildGanMicrochannel() {
   // Open the full structure by clearing ROI. The default view focuses on
   // microfluidic contact rather than an opaque 6 x 5 mm silicon slab.
   root.roi = { type: 'rect', a: [-800, -650], b: [800, 650] };
+  // Main should open with the package/chip visible at useful pixel size.
+  // Mask intentionally retains the full 6 x 5 mm published-scale context.
+  root.planViews.main.zoom = 2.5;
   root.display.threeCamera = {
     position: [1400, -1550, 1350],
     target: [0, 0, 420],
