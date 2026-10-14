@@ -55,8 +55,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Show test Prettier diff for targeted diagnosis
-        run: npx prettier site/tests/snapshots.test.mjs | diff -u site/tests/snapshots.test.mjs - || true
       - name: Quality gate for async scientific topology and Recovery changes
         run: npm run check
       - name: Targeted renderer parity and History integrity tests
