@@ -58,6 +58,11 @@ try {
     { timeout: 120000 },
   );
   const opened = await snap();
+  assert.equal(
+    opened.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
+    false,
+    'The first-open preview must reveal the gate and contacts by hiding ILD',
+  );
   assert.equal(opened.model.implants[0].depthStart, 0.08);
   assert.equal(opened.model.implants[1].depthStart, 0.08);
   assert.equal(opened.model.layers.length, expected.model.layers.length);
@@ -123,6 +128,19 @@ try {
   assert.ok(
     summary.startsWith(`Completed: ${count}/${count}`) || /Recipe completed:/.test(status),
     'Run All did not complete: ' + summary + ' / ' + status,
+  );
+  // Recipe Run All recreates physical layers. Restore the source project's
+  // view-only inspection setting before comparing and exporting final evidence.
+  const ildVisibility = page.getByRole('checkbox', {
+    name: 'Toggle visibility for Interlayer SiO2',
+  });
+  await ildVisibility.waitFor({ state: 'visible', timeout: 30000 });
+  if (await ildVisibility.isChecked()) await ildVisibility.uncheck();
+  await page.waitForFunction(
+    () =>
+      window.WaferCadV2Workstation.snapshot().model.layers.find(
+        (layer) => layer.name === 'Interlayer SiO2',
+      )?.visible === false,
   );
   const exported = await exportProject();
   const geometry = await assertSameMaterialGeometry(expected.model, exported.model, {
