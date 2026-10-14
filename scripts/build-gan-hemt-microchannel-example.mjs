@@ -300,8 +300,16 @@ export async function buildGanMicrochannel() {
     });
     return node;
   }
-  function bookmark(name) {
+  function bookmark(name, inspectionView = null) {
     const node = nodes.at(-1);
+    const state = clone(node.state);
+    // History nodes represent physical process state; an inspection bookmark
+    // may deliberately use another camera/Section without mutating geometry.
+    if (inspectionView) {
+      state.roi = clone(inspectionView.roi);
+      state.section = clone(inspectionView.section);
+      state.display.threeCamera = clone(inspectionView.threeCamera);
+    }
     const id = 'gan-microchannel-bookmark-' + (bookmarks.length + 1);
     const item = {
       id,
@@ -310,7 +318,7 @@ export async function buildGanMicrochannel() {
       branchId: 'main',
       parentId: branch.headSnapshotId,
       historyNodeId: node.id,
-      state: clone(node.state),
+      state,
     };
     bookmarks.unshift(item);
     if (!branch.rootSnapshotId) branch.rootSnapshotId = id;
@@ -475,26 +483,18 @@ export async function buildGanMicrochannel() {
     'front',
     'Si geometric bridge tier 4',
   );
-  // The complete-device default half-cut hides the *other* manifold behind
-  // the HEMT and the cut face. The earliest process-stage bookmark captures a
-  // fluid-only inspection view BEFORE the SiC/chip/solder are assembled.
-  // Changing view metadata here never modifies the canonical Process model.
-  const integratedView = {
-    roi: clone(root.roi),
-    section: clone(root.section),
-    threeCamera: clone(root.display.threeCamera),
-  };
-  root.roi = { type: 'rect', a: [-500, -520], b: [500, 520] };
-  root.section = { a: [30, -500], b: [30, 500] };
-  root.display.threeCamera = {
-    position: [650, -740, 1530],
-    target: [0, 0, 440],
-    fov: 36,
-  };
-  bookmark('01 Four-level open microchannels / 800 um Si with diversion');
-  root.roi = integratedView.roi;
-  root.section = integratedView.section;
-  root.display.threeCamera = integratedView.threeCamera;
+  // The complete-device default half-cut hides the other manifold behind
+  // the chip. The earliest process-stage bookmark has its own fluid-only
+  // camera and longitudinal Section, without changing the History node.
+  bookmark('01 Four-level open microchannels / 800 um Si with diversion', {
+    roi: { type: 'rect', a: [-500, -520], b: [500, 520] },
+    section: { a: [30, -500], b: [30, 500] },
+    threeCamera: {
+      position: [650, -740, 1530],
+      target: [0, 0, 440],
+      fov: 36,
+    },
+  });
   // Do not draw a sealed, buried "coolant solid": the channel consists of
   // physically empty stack intervals. A fluid or CFD calculation is out of scope.
   for (const [point, cavityZ] of [
