@@ -210,8 +210,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const tungsten = slab('W contacts');
     const metal = slab('METAL1 Al');
     assert.ok(
-      tungsten && metal && metal.z0 <= tungsten.z1 + 1e-9 &&
-        tungsten.z0 <= metal.z1 + 1e-9,
+      tungsten && metal && metal.z0 <= tungsten.z1 + 1e-9 && tungsten.z0 <= metal.z1 + 1e-9,
       name + ' must have a genuine W/Metal1 vertical interface',
     );
     const bottom = name.includes('VIN')
