@@ -76,15 +76,17 @@ export const TCMOS_MASKS = Object.freeze([
       rect(-1.84, -0.18, 0.36, 0.36),
       rect(1.48, -0.18, 0.36, 0.36),
       rect(4.16, -0.18, 0.36, 0.36),
+      rect(-0.16, 1.23, 0.32, 0.12), // VIN contact on the common POLY gate bus
     ],
   },
   {
     id: 11,
-    name: 'METAL1 VDD / VOUT / GND',
+    name: 'METAL1 VDD / VOUT / GND / VIN',
     rectangles: [
-      rect(-4.52, -2.5, 0.36, 2.5),
-      rect(-1.84, -0.16, 3.68, 0.32),
-      rect(4.16, -2.5, 0.36, 2.5),
+      rect(-4.52, -2.5, 0.36, 2.7), // VDD to pMOS source
+      rect(-1.84, -0.16, 3.68, 0.32), // VOUT joins the two drains
+      rect(4.16, -2.5, 0.36, 2.7), // GND to nMOS source
+      rect(-0.16, 1.23, 0.32, 1.8), // VIN is separate from VOUT
     ],
   },
 ]);
@@ -165,7 +167,7 @@ export async function buildTcmosInverter() {
     section: { a: [-5.5, 0], b: [5.5, 0] },
   });
   project.name = 'Tunnelling-based ternary CMOS inverter (130 nm)';
-  project.display.threeOpacity = 0.52;
+  project.display.threeOpacity = 0.36;
   project.layout = tcmosLayout();
   project.maskSourceMode = 'file';
   project.activeCell = CELL;
@@ -278,6 +280,7 @@ export async function buildTcmosInverter() {
       Object.assign(p, {
         name: args.name,
         thickness: args.depth,
+        ...(args.startDepth > 0 ? { depthStart: args.startDepth } : {}),
         tilt: args.tilt || 0,
         color: args.color || '#e05d75',
       });
@@ -312,6 +315,10 @@ export async function buildTcmosInverter() {
     } else if (command === 'implant' || command === 'electrical') {
       params.depthUm = params.depth;
       delete params.depth;
+      if (command === 'implant' && args.startDepth > 0) {
+        params.startDepthUm = args.startDepth;
+        delete params.startDepth;
+      }
     }
     steps.push({ command, params });
     const operation = {
@@ -370,8 +377,8 @@ export async function buildTcmosInverter() {
     apply(label, 'deposit', { material, thickness, coverage }, maskId);
   const etch = (label, target, depth, maskId, mode = 'mask') =>
     apply(label, 'etch', { target, depth, profile: 'directional' }, maskId, mode);
-  const implant = (label, name, depth, maskId, color) =>
-    apply(label, 'implant', { name, depth, tilt: 0, color }, maskId);
+  const implant = (label, name, depth, maskId, color, startDepth = 0) =>
+    apply(label, 'implant', { name, depth, tilt: 0, color, startDepth }, maskId);
   const electrical = (label, name, regionType, depth, maskId, color) =>
     apply(label, 'electrical', { name, regionType, depth, source: 'doped', color }, maskId);
 
@@ -401,22 +408,24 @@ export async function buildTcmosInverter() {
 
   implant(
     'HVTP As body implant',
-    'HVTP As+ pMOS / retrograde target (schematic surface marker)',
-    0.18,
+    'HVTP As+ pMOS / buried HVT body interval (illustrative)',
+    0.24,
     4,
     '#d9668a',
+    0.08,
   );
   implant(
     'HVTN BF2 body implant',
-    'HVTN BF2+ nMOS / retrograde target (schematic surface marker)',
-    0.18,
+    'HVTN BF2+ nMOS / buried HVT body interval (illustrative)',
+    0.24,
     5,
     '#5d8ce0',
+    0.08,
   );
   record(
     'Body implant rapid thermal anneal',
     'anneal',
-    'Paper uses above-reference energy and dose, not disclosed as numerical settings. Implant overlays are not buried concentration profiles.',
+    'Reported deeper HVT body implants have unspecified energy/dose. The illustrated 80–240 nm buried intervals are geometry markers, not dopant concentration predictions.',
   );
   bookmark('S03 - HVT body implant annotations');
 
@@ -505,7 +514,7 @@ export async function buildTcmosInverter() {
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
-      'BF2+ nMOS / As+ pMOS HVT markers extend from the surface: true retrograde buried dopant maxima cannot be represented by the current Implant primitive.',
+      'HVTN BF2+ nMOS / HVTP As+ pMOS buried interval (80–240 nm) is illustrative; no calibrated retrograde concentration or tunnel-junction thickness is implied.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
     ],
