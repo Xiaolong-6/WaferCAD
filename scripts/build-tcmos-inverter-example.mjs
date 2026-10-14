@@ -259,7 +259,11 @@ export async function buildTcmosInverter() {
       face: 'front',
     };
     if (command === 'deposit') {
-      Object.assign(p, { name: args.material, thickness: args.thickness, growth: args.coverage || 'direct' });
+      Object.assign(p, {
+        name: args.material,
+        thickness: args.thickness,
+        growth: args.coverage || 'direct',
+      });
     } else if (command === 'etch') {
       Object.assign(p, {
         thickness: args.depth ?? args.targetZ,
@@ -319,8 +323,12 @@ export async function buildTcmosInverter() {
       ...(command === 'deposit'
         ? { name: p.name, thickness: p.thickness, growth: p.growth, resultLayerId: result.layerId }
         : command === 'etch'
-          ? { thickness: p.thickness, etchProfile: p.etchProfile,
-              etchTargetLayerIds: p.etchTargetLayerIds || [], ...(p.targetZ != null ? { targetZ: p.targetZ } : {}) }
+          ? {
+              thickness: p.thickness,
+              etchProfile: p.etchProfile,
+              etchTargetLayerIds: p.etchTargetLayerIds || [],
+              ...(p.targetZ != null ? { targetZ: p.targetZ } : {}),
+            }
           : { name: p.name, thickness: p.thickness }),
       replay: {
         version: 1,
@@ -331,7 +339,12 @@ export async function buildTcmosInverter() {
     };
     append(operation);
     validateProcessModel(model);
-    checkpoints.push({ label, command, regions: model.regions.length, layers: model.layers.length });
+    checkpoints.push({
+      label,
+      command,
+      regions: model.regions.length,
+      layers: model.layers.length,
+    });
     return result;
   }
   function record(label, process, note, temperatureC = null, durationMin = null) {
@@ -379,11 +392,27 @@ export async function buildTcmosInverter() {
 
   electrical('N-well marker', 'N-well pMOS (schematic)', 'n-type', 0.6, 2, '#71a3e7');
   electrical('P-well marker', 'P-well nMOS (schematic)', 'p-type', 0.6, 3, '#e6a07c');
-  record('Well formation/drive in', 'anneal', 'Foundry well implant and activation details not disclosed; no diffusion model.');
+  record(
+    'Well formation/drive in',
+    'anneal',
+    'Foundry well implant and activation details not disclosed; no diffusion model.',
+  );
   bookmark('S02 - complementary well regions');
 
-  implant('HVTP BF2 body implant', 'HVTP BF2+ pMOS / retrograde target (schematic surface marker)', 0.18, 4, '#d9668a');
-  implant('HVTN As body implant', 'HVTN As+ nMOS / retrograde target (schematic surface marker)', 0.18, 5, '#5d8ce0');
+  implant(
+    'HVTP BF2 body implant',
+    'HVTP BF2+ pMOS / retrograde target (schematic surface marker)',
+    0.18,
+    4,
+    '#d9668a',
+  );
+  implant(
+    'HVTN As body implant',
+    'HVTN As+ nMOS / retrograde target (schematic surface marker)',
+    0.18,
+    5,
+    '#5d8ce0',
+  );
   record(
     'Body implant rapid thermal anneal',
     'anneal',
@@ -396,15 +425,27 @@ export async function buildTcmosInverter() {
   // Expose the source/drain Si before placing implant annotations. Actual foundry
   // dielectric-window and spacer sequence is abstracted here; no implant physics.
   for (const id of [7, 8]) {
-    etch('Expose Si in ' + (id === 7 ? 'pMOS' : 'nMOS') + ' S/D regions (surrogate)',
-      'Gate SiO2 (5nm surrogate)', 0.005, id);
+    etch(
+      'Expose Si in ' + (id === 7 ? 'pMOS' : 'nMOS') + ' S/D regions (surrogate)',
+      'Gate SiO2 (5nm surrogate)',
+      0.005,
+      id,
+    );
   }
   implant('pMOS LDD structural marker', 'pMOS LDD anticipated profile', 0.08, 7, '#cf6785');
   implant('nMOS LDD structural marker', 'nMOS LDD anticipated profile', 0.08, 8, '#4c93c6');
-  record('Spacer formation', 'custom', 'Self-aligned dielectric spacers recorded only: dimensions and etch recipe unreported.');
+  record(
+    'Spacer formation',
+    'custom',
+    'Self-aligned dielectric spacers recorded only: dimensions and etch recipe unreported.',
+  );
   implant('pMOS HDD structural marker', 'p+ HDD anticipated profile', 0.18, 7, '#bd4d68');
   implant('nMOS HDD structural marker', 'n+ HDD anticipated profile', 0.18, 8, '#3978b3');
-  record('Dopant activation / RTA', 'anneal', 'Geometry does not model dopant redistribution or activation.');
+  record(
+    'Dopant activation / RTA',
+    'anneal',
+    'Geometry does not model dopant redistribution or activation.',
+  );
   bookmark('S04 - POLY / annotated source-drain');
 
   deposit('Silicide S/D contacts (reaction surrogate)', 'S/D silicide surrogate', 0.025, 9);
@@ -483,14 +524,16 @@ async function main() {
   const reports = join(repo, 'test-results/tcmos');
   await mkdir(reports, { recursive: true });
   await writeFile(join(reports, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
-  console.log(JSON.stringify({
-    pass: true,
-    processNodes: validation.processNodes,
-    recipeSteps: validation.recipeSteps,
-    maskLayers: validation.maskLayers,
-    outputBytes: Buffer.byteLength(json),
-    out,
-  }));
+  console.log(
+    JSON.stringify({
+      pass: true,
+      processNodes: validation.processNodes,
+      recipeSteps: validation.recipeSteps,
+      maskLayers: validation.maskLayers,
+      outputBytes: Buffer.byteLength(json),
+      out,
+    }),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
