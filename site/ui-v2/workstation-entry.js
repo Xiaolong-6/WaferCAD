@@ -246,6 +246,9 @@ try {
   workflow.refresh();
   store.start();
   if (!hasVisiblePlanarView()) firstThreeFrame.release();
+  // Fail open if a visible planar canvas cannot complete its first render.
+  // This fallback never changes Quality or geometry and has no effect after release.
+  setTimeout(() => firstThreeFrame.release(), 2500);
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
