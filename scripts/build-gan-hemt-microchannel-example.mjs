@@ -17,6 +17,9 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 export const GAN_MICROCHANNEL_DOI = '10.1038/s41378-022-00462-3';
 const DATE = '2026-10-14T08:00:00.000Z';
 const DIMENSIONS = Object.freeze({ x: 6000, y: 5000, base: 400, cap: 100 });
+// Distinct Si process Layers share one material color; identity belongs to
+// layer IDs, not an artificial multi-material rainbow in the Section.
+export const GAN_SILICON_COLOR = '#BFC9D2';
 const clone = structuredClone;
 const rect = (x, y, w, h) => ({ x, y, w, h });
 const corners = ({ x, y, w, h }) => [
@@ -136,6 +139,7 @@ export async function buildGanMicrochannel() {
     thickness: DIMENSIONS.base,
   });
   model.layers[0].name = 'High-resistivity Si lower wafer (400 um)';
+  model.layers[0].color = GAN_SILICON_COLOR;
   const base = {
     shape: 'rect',
     width: DIMENSIONS.x,
@@ -148,7 +152,17 @@ export async function buildGanMicrochannel() {
     section: { a: [-700, 0], b: [700, 0] },
   });
   root.name = 'GaN HEMT / four-level Si microchannel (Lian 2022 surrogate)';
-  root.display.threeOpacity = 0.52;
+  root.display.threeOpacity = 0.56;
+  root.display.threeShowBorders = false;
+  // Saved inspection ROI is display-only: it is NOT a Process / Mask limiter.
+  // Open the full structure by clearing ROI. The default view focuses on
+  // microfluidic contact rather than an opaque 6 x 5 mm silicon slab.
+  root.roi = { type: 'rect', a: [-800, -650], b: [800, 650] };
+  root.display.threeCamera = {
+    position: [1400, -1550, 1350],
+    target: [0, 0, 420],
+    fov: 35,
+  };
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
   root.activeCell = root.layout.root;
@@ -259,6 +273,11 @@ export async function buildGanMicrochannel() {
       applyAdvancedProcessOperation(model, kernel, area(maskId), modelApi, vectorApi) ||
       modelApi.applyOperation(model, { ...kernel, area: area(maskId) });
     assert.equal(result?.changed, true, label + ': ' + (result?.error || 'no geometry change'));
+    if (command === 'deposit' && params.material.startsWith('Si geometric bridge tier ')) {
+      const depositedSi = model.layers.find((layer) => layer.id === result.layerId);
+      assert.ok(depositedSi, 'New Si bridge layer is missing');
+      depositedSi.color = GAN_SILICON_COLOR;
+    }
     const recipe = {
       ...params,
       face: kernel.face,
