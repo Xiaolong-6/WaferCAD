@@ -311,15 +311,23 @@ try {
           `${example.id}: rebuilt wafer array site count differs`,
         );
       }
-      // MAGIC-1000 requires stricter scientific acceptance than matching
-      // material labels/counts. Compare 2.5D physical material occupancy:
-      // exact XY polygons, per material, for every distinct Z slab.
+      // Every scalar literature example must match the saved material's XY
+      // footprint on every Z slab; layer labels and History counts alone
+      // cannot detect lost contacts, nanometre films or release voids.
+      // Both-face creates distinct layer IDs sharing a material name. Their
+      // material-class occupancy is compared across both physical Z faces.
       const geometryComparison =
         example.id === 'magic-1000-mos2-beol'
           ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
           : example.id === 'tio2-metalens-four-unit'
             ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-            : null;
+            : sourceProject.model.array
+              ? null
+              : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
+                  allowRepeatedNames: true,
+                  xyQuantumUm: 1e-4,
+                  maxQuantizedAreaUm2: 25,
+                });
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
