@@ -62,7 +62,7 @@ export async function buildSwxMems(state = 'off') {
   model.layers[0].name = HANDLE;
   const project = projectForBenchmark({
     model,
-    section: { a: [-42, 0], b: [-20, 0] },
+    section: { a: [-31, -5], b: [-31, 5] },
   });
   project.name = 'Hu 2025 split-waveguide-crossing MEMS switch · ' + state.toUpperCase();
   project.layout = source.layout;
@@ -388,37 +388,182 @@ export async function buildSwxMems(state = 'off') {
   return { project, json, validation };
 }
 
+
+// Pose deformation is an inspection-state geometric surrogate, NOT a new
+// fabrication operation. Keep the manufactured OFF Mask and released BOX
+// exactly the same in both Variants. Only the released Si footprint changes.
+// This currently approximates flexure through the explicit pose polygons;
+// no voltage/displacement or mechanical stress is solved.
+export async function makeSwxActuatedModel(released, pose = createSwxGeometry('on')) {
+  await loadGeometryKernel();
+  const modelApi = await import('../site/model.js');
+  const v = await import('../site/vector-geometry.js');
+  const out = clone(released);
+  const layer = out.layers.find((item) => item.name === DEVICE);
+  assert.ok(layer, 'Missing shared-fabrication device silicon');
+  const toMulti = (polygons) =>
+    v.unionGeometries(polygons.map((points) => [[...points, points[0]]]));
+  const silicon = toMulti(pose.maskPolygons.get(1));
+  const ridge = toMulti(pose.maskPolygons.get(2));
+  const full = v.difference(silicon, ridge);
+  const shallow = v.intersection(silicon, ridge);
+  const bottom = SWX_ASSUMPTIONS.handleSiUm / 2 + SWX_REPORTED.boxUm;
+  const cap = bottom + SWX_REPORTED.siliconUm;
+  const planarZ = bottom + SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm;
+  const regions = [];
+  let next = out.nextRegionId;
+  for (const region of out.regions) {
+    const stack = region.stack.filter((segment) => segment.layerId !== layer.id);
+    for (const [scope, high] of [
+      [full, cap],
+      [shallow, planarZ],
+      [v.difference(out.boundary, silicon), null],
+    ]) {
+      const clipped = v.intersection(region.geom, scope);
+      if (!clipped.length) continue;
+      const segments =
+        high == null
+          ? stack
+          : modelApi.normalizeStack([...stack, { layerId: layer.id, z0: bottom, z1: high }]);
+      regions.push({ id: 'region-' + next++, geom: clipped, stack: clone(segments) });
+    }
+  }
+  out.regions = regions;
+  out.nextRegionId = next;
+  out.revision++;
+  // Deliberately retain processRevision. This is a post-fabrication pose,
+  // not a recipe step; branch restoration owns its persistence.
+  const { validateProcessModel } = await import('../site/project-schema.js');
+  validateProcessModel(out);
+  return out;
+}
+
+export async function buildSwxMemsUnified() {
+  const { project, validation: offValidation } = await buildSwxMems('off');
+  const onPose = createSwxGeometry('on');
+  const onModel = await makeSwxActuatedModel(project.model, onPose);
+  const v = await import('../site/vector-geometry.js');
+  const { validateProjectFile } = await import('../site/project-schema.js');
+  const { prepareProjectForWorkspaceStorage, readProjectFile } =
+    await import('../site/project-io.js');
+  const deviceId = project.model.layers.find((layer) => layer.name === DEVICE).id;
+  const boxId = project.model.layers.find((layer) => layer.name === BOX).id;
+  const onBeam = readPoint(onModel, v, onPose.releasedBeamTestPoint);
+  const onAnchor = readPoint(onModel, v, onPose.anchorTestPoint);
+  assert.ok(onBeam?.stack.some((s) => s.layerId === deviceId), 'ON device silicon missing');
+  assert.ok(!onBeam?.stack.some((s) => s.layerId === boxId), 'ON beam is not released');
+  assert.ok(onAnchor?.stack.some((s) => s.layerId === boxId), 'ON pose moved BOX anchor');
+
+  const common = project.snapshotBranches.nodes.at(-1);
+  assert.equal(common.branchId, 'main');
+  const onState = clone(project);
+  delete onState.snapshots;
+  delete onState.snapshotBranches;
+  onState.model = onModel;
+  // The manufactured lithographic layout remains identical. The moved silicon
+  // is saved only as a restorable model state.
+  assert.deepEqual(onState.layout, project.layout);
+  assert.deepEqual(onState.processRecipe, project.processRecipe);
+  const poseNode = {
+    id: 'swx-actuated-on',
+    branchId: 'on',
+    parentId: common.id,
+    processRevision: onModel.processRevision,
+    createdAt: dateAt(520),
+    operation: {
+      kind: 'record',
+      label: 'ON pose · 15nm optical gap (geometric approximation)',
+      note: 'Restorable non-fabrication state. Shares the OFF mask, process Recipe and released BOX. Mechanical strain and voltages are not solved.',
+      processType: 'custom',
+      geometryChanged: true,
+      pose: {
+        kind: 'actuation-state',
+        displacementUm: onPose.travelUm,
+        sourceGapUm: SWX_REPORTED.offGapUm,
+        targetGapUm: SWX_REPORTED.onGapUm,
+      },
+      // No replay metadata: a Record command would not reproduce deformation.
+    },
+    state: clone(onState),
+  };
+  const previousOffBookmark = project.snapshotBranches.branches[0].headSnapshotId;
+  const onBookmark = {
+    id: 'swx-on-bookmark',
+    name: '05 Actuated ON · 15nm gap',
+    branchId: 'on',
+    parentId: previousOffBookmark,
+    historyNodeId: poseNode.id,
+    createdAt: dateAt(521),
+    state: clone(onState),
+  };
+  project.snapshotBranches.nodes.push(poseNode);
+  project.snapshots.unshift(onBookmark);
+  project.snapshotBranches.branches[0].name = 'OFF · relaxed 900nm';
+  project.snapshotBranches.branches.push({
+    id: 'on',
+    name: 'ON · actuated 15nm',
+    parentBranchId: 'main',
+    rootNodeId: common.id,
+    headNodeId: poseNode.id,
+    headState: clone(onState),
+    rootSnapshotId: null,
+    headSnapshotId: onBookmark.id,
+    createdAt: dateAt(520),
+  });
+  project.snapshotBranches.activeBranchId = 'main';
+  project.name = 'SWX photonic MEMS · one device, OFF/ON Variants';
+  validateProjectFile(project);
+  const stored = prepareProjectForWorkspaceStorage(project);
+  const json = JSON.stringify(stored);
+  const restored = await readProjectFile({
+    size: Buffer.byteLength(json),
+    text: async () => json,
+  });
+  validateProjectFile(restored);
+  assert.equal(restored.snapshotBranches.branches.length, 2);
+  assert.deepEqual(restored.snapshotBranches.branches[1].headState.layout, restored.layout);
+  assert.deepEqual(restored.snapshotBranches.branches[1].headState.processRecipe, restored.processRecipe);
+  const onGap = onPose.gapUm;
+  assert.ok(Math.abs(onGap - SWX_REPORTED.onGapUm) < 1e-10);
+  const validation = {
+    ...offValidation,
+    unified: true,
+    sourceMaskSharedByBothVariants: true,
+    processRecipeSharedByBothVariants: true,
+    independentFEMModel: false,
+    branches: project.snapshotBranches.branches.map((b) => b.name),
+    onGapUm: onGap,
+    onPoseTravelUm: onPose.travelUm,
+    onPoseRegions: onModel.regions.length,
+    historyNodes: project.snapshotBranches.nodes.length,
+    projectBytes: Buffer.byteLength(json),
+  };
+  return { project, json, validation };
+}
+
+function dateAt(index) {
+  return new Date(Date.parse(DATE) + index * 1000).toISOString();
+}
+
 async function main() {
   const repo = fileURLToPath(new URL('..', import.meta.url));
   const target = process.argv.includes('--write-repo')
     ? join(repo, 'site/examples')
     : join(repo, 'test-results/swx-mems');
   await mkdir(target, { recursive: true });
-  const reports = [];
-  for (const state of ['off', 'on']) {
-    const { json, validation } = await buildSwxMems(state);
-    await writeFile(join(target, 'swx-photonic-mems-' + state + '.wafercad'), json);
-    reports.push(validation);
-  }
+  const { json, validation } = await buildSwxMemsUnified();
+  await writeFile(join(target, 'swx-photonic-mems.wafercad'), json);
   const reportPath = join(repo, 'test-results/swx-mems');
   await mkdir(reportPath, { recursive: true });
-  await writeFile(join(reportPath, 'validation.json'), JSON.stringify(reports, null, 2) + '\n');
-  console.log(
-    JSON.stringify(
-      {
-        pass: true,
-        outputDirectory: target,
-        variants: reports.map((item) => ({
-          state: item.state,
-          regions: item.finalRegions,
-          operations: item.operations,
-          outputBytes: item.outputBytes,
-        })),
-      },
-      null,
-      2,
-    ),
-  );
+  await writeFile(join(reportPath, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
+  console.log(JSON.stringify({
+    pass: true,
+    outputDirectory: target,
+    project: 'swx-photonic-mems.wafercad',
+    variants: validation.branches,
+    historyNodes: validation.historyNodes,
+    outputBytes: validation.projectBytes,
+  }, null, 2));
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
