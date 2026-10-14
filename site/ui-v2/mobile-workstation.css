@@ -7,6 +7,9 @@
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior-y: auto;
+    /* Keep browser scroll anchoring from overriding per-domain restoration
+       while a hidden View/Inspector subtree changes document height. */
+    overflow-anchor: none;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-workbench {
