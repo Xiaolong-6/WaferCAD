@@ -23,7 +23,9 @@ function referenceGroups(boxes, tolerance) {
         b.maxX >= a.minX - tolerance &&
         a.maxY >= b.minY - tolerance &&
         b.maxY >= a.minY - tolerance
-      ) join(i, j);
+      ) {
+        join(i, j);
+      }
     }
   }
   const groups = new Map();
