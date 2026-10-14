@@ -117,9 +117,17 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
       Math.abs(segment(stack, 'Al rear').z1 - segment(stack, 'Base').z0) < 1e-9,
       `Rear contact ${index + 1} must reach silicon`,
     );
+    const silicon = segment(stack, 'Base');
+    const rearMetal = segment(stack, 'Al rear');
     assert.equal(
-      stack.some((entry) => entry.name.includes('passivation')),
+      stack.some(
+        (entry) =>
+          entry.name.includes('passivation') &&
+          entry.z0 < silicon.z0 &&
+          entry.z1 > rearMetal.z0,
+      ),
       false,
+      `Rear contact ${index + 1} must have no interposed backside oxide`,
     );
   }
   const contact = materialAt(project, [-9000, -9000]);
