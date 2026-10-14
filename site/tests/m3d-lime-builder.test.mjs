@@ -60,8 +60,8 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   );
 });
 
-test('ALD passivations are truly conformal and local inspection follows the TEM device', async () => {
-  const { project } = await buildM3DLime();
+test('ALD passivations retain supported conformal coverage with explicit 45nm limits', async () => {
+  const { project, validation } = await buildM3DLime();
   const steps = project.processRecipe.steps;
   for (const name of [
     'CNT gate HfO2 10nm',
@@ -78,7 +78,6 @@ test('ALD passivations are truly conformal and local inspection follows the TEM 
   assert.ok(topAl2O3, 'source reports 45nm ALD protection');
   assert.equal(topAl2O3.params.coverage, 'direct',
     'do not silently re-enable Kernel conformal geometry with unresolved XY overlaps');
-  const { validation } = await buildM3DLime();
   assert.ok(validation.declaredAssumptions.some((item) =>
     item.includes('strict conformal ownership fails')),
   'the scientific ALD geometry limitation must survive in the evidence report');
