@@ -57,6 +57,18 @@ npm run check
 
 The builder enforces 2 µm source/drain gap and complete active gate coverage for **all 14 CNTFETs**. A paper-informed, locally framed 9 µm Section A–B now passes through one vertically aligned analog CIM cell and a CNTFET/digital RRAM. The 3D inspection ROI focuses that local cross-section (clear ROI to inspect the full 8-CIM/4-buffer/5-TCAM representative sample). The builder also verifies strict adjoining material interfaces across CMOS W→CIM TiN, CIM TiN→W→Al, and Pd drain→TaOₓ→Ta₂O₅→Pt→Ti→Pd. Their original routing polygons are still inferred. Browser project Open, actual Recipe `Run All`, and project Export/Reopen passed on the representative local device in the [M3D-LIME acceptance run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532631408). The 3-tier Section regression now checks the actual physical Z thicknesses, including the 8 nm HfAlOₓ RSL, 20 nm TaOₓ reservoir, 10 nm Ta₂O₅ RSL, 10 nm Pt electrode and 1 nm CNT display surrogate. The separate v2 browser acceptance exports **all 11 inferred Mask layers (130 polygons)** using the real GDSII and OASIS workers; each file is re-parsed and checked for preserved layer IDs, polygon counts and nanometre-grid XY boundaries. The full exports intentionally differ from the three initially highlighted inspection layers. These checks prove internal format interoperability only, not correspondence with any author-supplied GDS. Next, inspect TEM-to-Section correspondence and local wiring continuity, and consider canonical array translation to reconstruct the complete 1Kb CIM / 512-bit Buffer only after bounding the runtime. A previous full-wafer Section with 210 µm XY span displayed Z exaggeration ×64.4; the default local Section reduces this presentation distortion without changing physical Z. Dedicated Section/3D TEM-to-geometry visual acceptance, accurate inferred routing, full-array replay and a real preview/thumbnail remain **unpassed publication gates**.
 
+## Independent KLayout export check (October 14, 2026)
+
+The dedicated [M3D-LIME CI run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38552197672) imported browser-exported `full-inferred-mask.gds` and `full-inferred-mask.oas` using **KLayout Python 0.30.12**. The external reader verified all 11 inferred layers, all 130 original rectangles, layer/datatype identities, and the complete physical polygon bounds on a canonical 1 nm grid.
+
+- GDSII DBU: 0.0001 µm.
+- OASIS DBU: 0.00005 µm.
+- CNTFET channel width: 20 µm in both formats.
+- Source/drain active length: 2 µm in both formats.
+- Inferred source overlap: 0.3 µm in both formats.
+
+Distinct GDS/OAS DBUs are valid; directly XORing database-grid polygons across different DBUs is not a valid geometry test. The verifier compares physical-coordinate polygons instead. This is an **external format interoperation** check for WaferCAD's inferred layout, **not** independent confirmation of the authors' unpublished original GDS or mask placement.
+
 ## Working branch and status
 
 - Branch: `feat/m3d-rram-cntfet-lime-20261014`.
