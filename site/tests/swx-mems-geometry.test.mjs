@@ -145,8 +145,7 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
     const offArea = areaForLayer(project.model, layerId);
     const onArea = areaForLayer(onBranch.headState.model, layerId);
     const materialChangedUm2 =
-      geometryArea(v.difference(offArea, onArea)) +
-      geometryArea(v.difference(onArea, offArea));
+      geometryArea(v.difference(offArea, onArea)) + geometryArea(v.difference(onArea, offArea));
     assert.ok(
       materialChangedUm2 < 1e-6,
       fixedName + ' changed under OFF/ON actuation by ' + materialChangedUm2 + ' um²',
@@ -223,20 +222,24 @@ test('representative grating couplers keep full physical polygon bounds and port
   for (const poly of shapes) {
     assert.ok(poly.length >= 4);
     for (const [x, y] of poly) {
-      assert.ok(x >= -56 && x <= 56 && y >= -52 && y <= 52,
-        'grating coupler lies outside computational die');
+      assert.ok(
+        x >= -56 && x <= 56 && y >= -52 && y <= 52,
+        'grating coupler lies outside computational die',
+      );
     }
   }
-  assert.deepEqual(shapes, createSwxGeometry('on').physicalGroups.gratingCouplers,
-    'fiber couplers may not move with the shuttle');
+  assert.deepEqual(
+    shapes,
+    createSwxGeometry('on').physicalGroups.gratingCouplers,
+    'fiber couplers may not move with the shuttle',
+  );
 });
 
 test('folded spring and guided aligner dimensions are distinguished from illustration assumptions', () => {
   const g = createSwxGeometry('off');
   assert.equal(g.physicalGroups.structuralAligners.fixed.length, 2);
   assert.ok(g.physicalGroups.structuralAligners.flexure.length >= 10);
-  const foldedPitch =
-    SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
+  const foldedPitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
   approx(foldedPitch, 1.7);
   assert.ok(g.physicalGroups.flexure.length > 40);
 });
