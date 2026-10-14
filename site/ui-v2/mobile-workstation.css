@@ -65,7 +65,9 @@
     scroll-margin-top: 0;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] .p-panel-content {
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    .p-panel-content {
     flex: none;
     height: auto;
     min-height: 0;
@@ -75,7 +77,8 @@
 
   /* History/Recipe/Code previously built viewport-bounded subtrees.
      Flatten their sizing on mobile Edit, without changing desktop owners. */
-  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit']
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
     :is(
       .v2-panel-host,
       .v2-panel-subhost,
@@ -90,7 +93,8 @@
     overflow: visible;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit']
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
     :is(.p-history-scroll, #recipeStepsPane:not([hidden]), #recipeCodePane:not([hidden])) {
     flex: none;
     height: auto;
@@ -101,7 +105,8 @@
     scrollbar-gutter: auto;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit']
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
     :is(.p-code-editor, .recipe-code-editor) {
     flex: none;
     height: auto;
