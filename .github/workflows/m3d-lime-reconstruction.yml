@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   paper-derived-kernel:
@@ -18,8 +18,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -39,12 +37,3 @@ jobs:
             site/examples/m3d-lime-rram-cntfet.wafercad
             test-results/m3d-lime/validation.json
           retention-days: 14
-      - name: One-time promote validated fixture to feature branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
-        run: |
-          test -s site/examples/m3d-lime-rram-cntfet.wafercad
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/examples/m3d-lime-rram-cntfet.wafercad
-          git diff --cached --quiet || git commit -m "feat(examples): persist kernel-generated M3D-LIME process project"
-          git push origin HEAD:refs/heads/feat/m3d-rram-cntfet-lime-20261014
