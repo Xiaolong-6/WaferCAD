@@ -147,9 +147,9 @@ export async function buildM3DLime() {
     model,
     section: { a: [-110, -23], b: [100, -23] },
   });
-  root.name = 'M3D-LIME MoS2 / four-level BEOL · local reconstruction';
+  root.name = 'M3D-LIME · CMOS / analog CIM / CNTFET digital memory';
   // Transparent inspection is essential: an opaque blanket dielectric would hide
-  // every buried M1–M4 interconnect and W via in the Welcome 3D preview.
+  // buried CMOS/CIM interfaces and W vias in the 3D inspection view.
   root.display.threeOpacity = 0.28;
   // Low-oblique view exposes stacked BEOL sidewalls while retaining the top FET pair.
   // Camera affects presentation only; XY and Z process geometry remain untouched.
@@ -173,7 +173,7 @@ export async function buildM3DLime() {
   const layerIds = new Map();
   const branch = {
     id: 'main',
-    name: 'M3D-LIME representative BEOL / MoS2',
+    name: 'M3D-LIME local RRAM / CNTFET',
     parentBranchId: null,
     rootNodeId: null,
     headNodeId: null,
@@ -193,7 +193,7 @@ export async function buildM3DLime() {
     delete state.snapshotBranches;
     state.model = copy(model);
     state.processRecipe = normalizeProcessRecipe({
-      name: 'M3D-LIME BEOL / MoS2 manufacturing sequence',
+      name: 'M3D-LIME 3-tier RRAM/CNTFET fabrication',
       base: BASE,
       steps,
     });
@@ -534,7 +534,7 @@ export async function buildM3DLime() {
   );
   bookmark('08 3-tier M3D-LIME representative fabricated devices');
   Object.assign(root, capture());
-  root.name = 'M3D-LIME · four-layer Al BEOL + MoS2 D/E transistor pair';
+  root.name = 'M3D-LIME · 3-tier CMOS / RRAM / CNTFET prototype';
   root.layout = makeLayout();
   root.selectedLayerKeys = ['12|0', '15|0', '16|0', '19|0', '21|0'];
   root.snapshotBranches = {
