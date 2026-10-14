@@ -76,29 +76,27 @@ jobs:
           path: test-results/gan-microchannel/
           if-no-files-found: warn
 
-  publish-candidate:
-    name: Commit generated draft project
+  browser-acceptance:
+    name: Browser acceptance and immutable asset verification
     needs: reconstruction
-    if: (github.event_name == 'push' && github.ref_name == 'feat/example-gan-hemt-microchannel-20261014') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feat/example-gan-hemt-microchannel-20261014
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Build exact candidate project using live Process Kernel
-        run: node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-      - name: Format new Welcome catalog and source documentation
-        run: npx prettier --write site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
-      - name: Generate fast final-state project preview
-        run: node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+      - name: Validate committed project without rewriting tracked sources
+        run: |
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/welcome-example.test.mjs
+      - name: Check candidate text formatting
+        run: npx prettier --check site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
       - name: Install headless Chromium for real render acceptance
         run: npx playwright install --with-deps chromium
       - name: Launch static WaferCAD UI server
@@ -133,12 +131,22 @@ jobs:
             test-results/gan-microchannel/
             test-results/example-recipe-runall/
           if-no-files-found: warn
-      - name: Commit validated project, preview, sources and docs to feature branch
+      - name: Verify generation cannot silently edit scientific source assets
         run: |
-          git add site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "feat(example): check in validated GaN microchannel project asset"
-            git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
-          fi
+          git diff --exit-code -- \
+            site/examples/gan-hemt-microchannel-2022.wafercad \
+            site/examples/previews/gan-hemt-microchannel-2022.wafercad \
+            site/bundled-examples.js \
+            site/tests/welcome-example.test.mjs \
+            docs/wiki/Examples-and-Modeling-Limits.md \
+            README.md docs/wiki/Getting-Started.md
+      - name: Validate committed thumbnail integrity after browser comparison
+        run: |
+          # Headless raster output can vary between identical Browser/GPU contexts.
+          # The canonical committed thumbnail and its checksum stay immutable;
+          # the new screenshot is retained as a separate Actions artifact.
+          git restore -- \
+            site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp \
+            tests/fixtures/project-io/example-thumbnails.json
+          node --test site/tests/welcome-example.test.mjs
+          git diff --exit-code
