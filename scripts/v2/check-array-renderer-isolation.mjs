@@ -56,9 +56,7 @@ try {
     await page.waitForFunction(
       (initialDistance) => {
         const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
-        const now = Math.hypot(
-          ...camera.position.map((value, i) => value - camera.target[i]),
-        );
+        const now = Math.hypot(...camera.position.map((value, i) => value - camera.target[i]));
         return Math.abs(now - initialDistance) > 1e-6;
       },
       distance(first.threeCamera),
