@@ -59,6 +59,16 @@ try {
       );
     }
     await waitForPaint(page);
+    // An implicit Section Z-break can hide almost the entire stepped coolant
+    // geometry while still producing a nonblank canvas. This is a hard view
+    // contract for this microchannel example, independent of palette.
+    if (view === 'section') {
+      assert.equal(
+        await page.locator('#sectionCanvas').getAttribute('data-section-collapse-enabled'),
+        'false',
+        'Default Section hid the four-level cooling channel inside a Z-break',
+      );
+    }
     const inkFraction = view === 'three' ? null : await canvasInkFraction(page, selector);
     if (inkFraction != null) {
       assert.ok(inkFraction > 0.003, view + ' rendered a near-empty canvas');
