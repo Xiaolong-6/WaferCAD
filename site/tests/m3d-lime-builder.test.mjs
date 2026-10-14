@@ -103,11 +103,12 @@ test('sampled 3-tier cut is physically ordered through both analog CIM and digit
   const { project, validation } = await buildM3DLime();
   const { pointInMulti } = await import('../vector-geometry.js');
   const layerNames = new Map(project.model.layers.map((l) => [l.id, l.name]));
-  const stackAt = (point) => {
+  const regionAt = (point) => {
     const region = project.model.regions.find((r) => pointInMulti(point, r.geom));
     assert.ok(region, 'no geometry region at ' + point);
-    return region.stack.map((s) => layerNames.get(s.layerId));
+    return region;
   };
+  const stackAt = (point) => regionAt(point).stack.map((s) => layerNames.get(s.layerId));
   const channelPoint = [-40.7, -23];
   const digitalPoint = [-39.15, -23];
   const channel = stackAt(channelPoint),
@@ -143,6 +144,37 @@ test('sampled 3-tier cut is physically ordered through both analog CIM and digit
     'Top Ti interconnect 20nm',
     'Top Pd interconnect 120nm',
   ]);
+  // Actual physical Z, rather than a material-name inventory or displayed
+  // vertical exaggeration. Values originate in the Methods film-thickness ledger.
+  const assertFilm = (point, name, thicknessNm) => {
+    const segments = regionAt(point).stack.filter((s) => layerNames.get(s.layerId) === name);
+    assert.equal(segments.length, 1, name + ': missing or duplicated at ' + point);
+    assert.ok(
+      Math.abs((segments[0].z1 - segments[0].z0) * 1000 - thicknessNm) < 1e-4,
+      name + ': fabricated film thickness changed at ' + point,
+    );
+  };
+  for (const [name, nm] of [
+    ['CNT gate Ti bottom 10nm', 10],
+    ['CNT gate Pd 15nm', 15],
+    ['CNT gate Ti cap 1nm', 1],
+    ['CNT gate HfO2 10nm', 10],
+    ['CNT channel 1nm SURROGATE', 1],
+  ])
+    assertFilm(channelPoint, name, nm);
+  for (const [name, nm] of [
+    ['CIM TiN BE 30nm', 30],
+    ['CIM HfAlOx RSL 8nm', 8],
+    ['CIM TaOx TEL 45nm', 45],
+    ['CIM TiN TE 30nm', 30],
+    ['CNT drain Pd 45nm', 45],
+    ['Digital TaOx ORL 20nm', 20],
+    ['Digital Ta2O5 RSL 10nm', 10],
+    ['Digital Pt TE 10nm', 10],
+    ['Top Ti interconnect 20nm', 20],
+    ['Top Pd interconnect 120nm', 120],
+  ])
+    assertFilm(digitalPoint, name, nm);
   const heights = project.model.regions.map((region) => region.stack.at(-1).z1);
   const physicalReliefUm = Math.max(...heights) - Math.min(...heights);
   assert.ok(
