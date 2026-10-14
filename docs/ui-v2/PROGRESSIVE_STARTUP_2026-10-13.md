@@ -94,7 +94,6 @@ restore/geometry work off the foreground thread, preserving Recovery
 transactions, physical geometry, ownership, GL state and visual baselines.
 Do **not** close the P1 hardware responsiveness gate or merge on this evidence.
 
-
 ## P1-A / P1-C follow-up — 14 October 2026
 
 The earlier 13 October hardware and CPU results above remain historical evidence.
@@ -107,12 +106,10 @@ on HEAD `53c227f` sampled each scenario in a separate browser context
 within the same browser process. The data are diagnostic and do not imply
 cold-process or physical-GPU parity.
 
-| Metric | M3D first load | Restored Quality |
-| --- | ---: | ---: |
-| Longest Long Task, median | 1,110 ms | 1,248 ms |
-| Longest Long Task, minimum–maximum | 1,110–1,162 ms | 1,050–1,268 ms |
-| First scientific frame, median | 15.64 s | 15.72 s |
-| 3D Ready, median | 34.21 s | 33.57 s |
+- M3D first load: longest Long Task median **1,110 ms** (range **1,110–1,162 ms**);
+  first scientific frame median **15.64 s**, 3D Ready median **34.21 s**.
+- Restored Quality: longest Long Task median **1,248 ms** (range **1,050–1,268 ms**);
+  first scientific frame median **15.72 s**, 3D Ready median **33.57 s**.
 
 For 64 imported historical states, the new browser performance marks
 recorded an independent snapshot-attestation clone of 144–175 ms,
