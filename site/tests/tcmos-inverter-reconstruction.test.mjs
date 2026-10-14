@@ -134,7 +134,16 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     target: [0, -0.2, 0.95],
     fov: 34,
   });
-  const head = project.snapshotBranches.nodes.at(-1);
+  assert.equal(project.snapshotBranches.branches[0].headState.name, project.name);
+  assert.equal(project.snapshotBranches.branches[0].headState.section.a[0], project.section.a[0]);
+  assert.equal(project.snapshots[0].state.name, project.name);
+  assert.equal(
+    project.snapshotBranches.branches.find((b) => b.id === 'conventional-cmos').headState.name,
+    'Conventional CMOS 130nm · LVT channel reference (illustrative)',
+  );
+  const head = project.snapshotBranches.nodes.find(
+    (node) => node.id === project.snapshotBranches.branches[0].headNodeId,
+  );
   assert.equal(head.state.model.layers.find((l) => l.id === ild.id)?.visible, false);
   assert.equal(
     project.snapshotBranches.branches[0].headState.model.layers.find((l) => l.id === ild.id)
