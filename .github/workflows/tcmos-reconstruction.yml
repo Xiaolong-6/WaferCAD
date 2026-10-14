@@ -54,12 +54,6 @@ jobs:
             echo "TCMOS_FMT_END:$file"
           done
           node -e 'const fs=require("node:fs");const f="test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad";if(fs.existsSync(f)){const b=fs.readFileSync(f).toString("base64");for(let i=0;i<b.length;i+=4000)console.log("TCMOS_FIXTURE_B64:"+b.slice(i,i+4000));}'
-      - name: Print normalized browser Variant test for formatting review
-        if: always()
-        run: |
-          echo TCMOS_BROWSER_SOURCE_START
-          npx prettier scripts/tcmos-browser-acceptance.mjs
-          echo TCMOS_BROWSER_SOURCE_END
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
