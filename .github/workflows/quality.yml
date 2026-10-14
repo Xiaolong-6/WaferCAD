@@ -32,3 +32,9 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      - name: Show exact Prettier diff after failed Quality
+        if: failure()
+        run: |
+          npx prettier --write site/tests/process-recipe.test.mjs
+          git diff -- site/tests/process-recipe.test.mjs
