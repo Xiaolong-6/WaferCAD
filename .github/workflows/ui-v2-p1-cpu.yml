@@ -48,6 +48,8 @@ jobs:
     timeout-minutes: 35
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      # Push runs use a single CPU smoke sample; explicit dispatch collects a three-run baseline.
+      WAFERCAD_CPU_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && '3' || '1' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
