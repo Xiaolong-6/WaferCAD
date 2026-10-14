@@ -52,6 +52,27 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   assert.equal(project.snapshots.length, 5);
   assert.equal(model.implants.length, 6);
+  assert.ok(model.dopantRegions.length >= 6, 'Each process Implant defines a separate qualitative region');
+  for (const implant of model.implants) {
+    assert.ok(
+      model.dopantRegions.some((region) => region.sourceImplantId === implant.id),
+      'Each labelled Implant must map to a separate dopant-region intent',
+    );
+  }
+  assert.equal(
+    model.dopantRegions.every((region) => region.profile.kind === 'qualitative-interval'),
+    true,
+  );
+  const { findDopantPolarityOverlaps } = await import('../dopant-regions.js');
+  const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
+  assert.ok(
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([-1.66, 0], overlap.geom)),
+    'pMOS body and drain doping masks must qualitatively overlap',
+  );
+  assert.ok(
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([1.66, 0], overlap.geom)),
+    'nMOS body and drain doping masks must qualitatively overlap',
+  );
   assert.match(model.implants[0].name, /HVTN As\+ pMOS/);
   assert.match(model.implants[1].name, /HVTP BF2\+ nMOS/);
   for (const body of model.implants.slice(0, 2)) {
