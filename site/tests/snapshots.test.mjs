@@ -2402,7 +2402,10 @@ test('History ID index survives append, clear and imported lineage replacement',
     }),
     0,
   );
-  assert.deepEqual(manager.listHistory().map((item) => item.id), ['imported-node']);
+  assert.deepEqual(
+    manager.listHistory().map((item) => item.id),
+    ['imported-node'],
+  );
   assert.equal(manager.restoreProcessNode('indexed-node-256'), false);
   assert.equal(manager.restoreProcessNode('imported-node'), true);
 });
