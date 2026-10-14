@@ -1250,6 +1250,7 @@ function applyOperationImpl(
     surface,
     color,
     tilt = 0,
+    depthStart = 0,
     electricalRegionType = 'custom',
     electricalRegionSource = 'custom',
   },
@@ -1265,6 +1266,12 @@ function applyOperationImpl(
     (!Number.isFinite(Number(thickness)) || Number(thickness) <= 0)
   ) {
     return { changed: false, error: 'Process thickness must be finite and greater than zero.' };
+  }
+  if (
+    type === 'implant' &&
+    (!Number.isFinite(depthStart) || depthStart < 0 || depthStart >= amount)
+  ) {
+    return { changed: false, error: 'Implant start depth must be finite, nonnegative and less than total depth.' };
   }
   // The normalization of physical material stacks removes sub-resolution Z
   // segments. Fail before any mutation rather than reporting a successful
@@ -1364,6 +1371,7 @@ function applyOperationImpl(
           color: /^#[0-9a-f]{6}$/i.test(String(color || '')) ? color : '#D65A6F',
           face,
           thickness: amount,
+          ...(depthStart > 0 ? { depthStart } : {}),
           tilt: Math.max(-80, Math.min(80, Number(tilt) || 0)),
           depthProfile: 'follow',
           visible: true,
