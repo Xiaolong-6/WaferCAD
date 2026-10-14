@@ -26,12 +26,13 @@ jobs:
           cache: npm
       - name: Install pinned project dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Check source formatting and focused regressions
+      - name: Check focused regressions and generate project
         run: |
-          npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
           node --test site/tests/tcmos-inverter-reconstruction.test.mjs
-      - name: Generate candidate project and validation report
-        run: node scripts/build-tcmos-inverter-example.mjs
+          node scripts/build-tcmos-inverter-example.mjs
+      - name: Check source formatting
+        if: always()
+        run: npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
