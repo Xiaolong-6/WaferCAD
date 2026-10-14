@@ -46,10 +46,14 @@ const bufferChannels = Array.from({ length: 4 }, (_, i) =>
 );
 const channels = [...bufferChannels, ...tcamChannels];
 const sourceContacts = channels.map((c) => rect(c.x - 0.9, c.y, 1.2, c.h));
+// Supplementary Fig. 6a shows a laterally separated RRAM pillar and CNTFET,
+// joined via the Pd drain/BE landing. The inferred contact pad extends 0.6um
+// beyond the original contact footprint to place the RRAM outside the active
+// CNT island. The pad and 0.45um active-to-RRAM gap are NOT author GDS.
 const drainContacts = channels.map((c) =>
-  rect(c.x + INFERRED_CONTACT_OVERLAP_UM + REPORTED_CNT_L_UM, c.y, 1.2, c.h),
+  rect(c.x + INFERRED_CONTACT_OVERLAP_UM + REPORTED_CNT_L_UM, c.y, 1.8, c.h),
 );
-const rramSites = drainContacts.map((c) => rect(c.x + 0.1, c.y + 5, 0.9, 10));
+const rramSites = drainContacts.map((c) => rect(c.x + 0.75, c.y + 5, 0.9, 10));
 const MASKS = Object.freeze([
   {
     id: 11,
@@ -638,6 +642,7 @@ export async function buildM3DLime() {
     declaredAssumptions: [
       'Silicon handle thickness, CMOS FEOL devices, M4 routes and W landing footprints inferred.',
       'All local array pitches, analogue RRAM footprints, top interconnects and test routing inferred.',
+      'Fig. S6-inspired lateral RRAM is 0.45um beyond the CNT island with a widened inferred Pd landing pad; absolute placement is unreported.',
       '2.6um CNT island includes an exact 2um active contact gap and inferred 0.3um overlaps.',
       'Model field and inspection-only ROI focus on an overlapped analog and TCAM cell.',
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
