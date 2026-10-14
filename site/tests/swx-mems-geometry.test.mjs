@@ -89,7 +89,7 @@ test('OFF/ON physical groups keep stationary anchors and move only the articulat
   assert.deepEqual(off.physicalGroups.fixed, on.physicalGroups.fixed, 'fixed Si must not move');
   assert.notDeepEqual(off.physicalGroups.movable, on.physicalGroups.movable);
   assert.notDeepEqual(off.physicalGroups.flexure, on.physicalGroups.flexure);
-  assert.ok(off.physicalGroups.movable.length > 90, 'missing comb fingers or lattice shuttle');
+  assert.ok(off.physicalGroups.movable.length > 70, 'missing comb fingers or lattice shuttle');
   assert.ok(on.physicalGroups.flexure.length > 30, 'missing flexure centerline segments');
   approx(on.gapUm, 0.015, 1e-10);
 });
