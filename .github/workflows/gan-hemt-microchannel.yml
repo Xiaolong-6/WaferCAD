@@ -23,6 +23,31 @@ permissions:
   contents: read
 
 jobs:
+  format-replay-source:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/example-gan-hemt-microchannel-20261014
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write site/tests/gan-hemt-microchannel-replay.test.mjs
+      - name: Commit canonical Prettier formatting
+        run: |
+          git add site/tests/gan-hemt-microchannel-replay.test.mjs
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "style(example): format independent Recipe replay test"
+            git push origin HEAD:feat/example-gan-hemt-microchannel-20261014
+          fi
+
   reconstruction:
     runs-on: ubuntu-latest
     timeout-minutes: 20
