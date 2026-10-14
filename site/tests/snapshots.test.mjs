@@ -84,6 +84,69 @@ test('snapshot clone preserves scalar semantics, isolates objects and rejects un
   assert.throws(() => manager.create('reject unsupported'), /could not be cloned/);
 });
 
+test('cooperative History import yields without exposing partial lineage and rejects abort', async () => {
+  let live = { model: { revision: 1, processRevision: 0, layers: [] } };
+  let nextId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    idFactory: () => `before-${++nextId}`,
+  });
+  manager.create('Before import');
+  const nodes = Array.from({ length: 48 }, (_, index) => ({
+    id: `node-${index}`,
+    branchId: 'main',
+    parentId: index ? `node-${index - 1}` : null,
+    createdAt: '2026-10-14T00:00:00.000Z',
+    processRevision: index + 1,
+    operation: { kind: 'add' },
+    state: { model: { revision: index + 2, processRevision: index + 1, layers: [] } },
+  }));
+  const source = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'node-47',
+    cursorSnapshotId: null,
+    nodes,
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        headNodeId: 'node-47',
+        headState: nodes[47].state,
+        createdAt: '2026-10-14T00:00:00.000Z',
+      },
+    ],
+  };
+
+  const abort = new AbortController();
+  const stopped = manager.importRecordsAsync([], source, { signal: abort.signal });
+  assert.equal(manager.list()[0].name, 'Before import');
+  assert.equal(manager.listHistory().length, 0);
+  abort.abort();
+  await assert.rejects(stopped, { name: 'AbortError' });
+  assert.equal(manager.list()[0].name, 'Before import');
+  assert.equal(manager.listHistory().length, 0);
+
+  const pending = manager.importRecordsAsync([], source);
+  assert.equal(manager.listHistory().length, 0, 'History cannot publish while cloning.');
+  await pending;
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().length, 48);
+  assert.equal(manager.listHistory()[47].parentId, 'node-46');
+  const exported = manager.exportBranchState();
+  const synchronous = createSnapshotManager({
+    capture: () => live,
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+  });
+  synchronous.importRecords([], source);
+  assert.deepEqual(exported, synchronous.exportBranchState());
+});
+
 test('snapshot import rejects invalid and duplicate records', () => {
   const manager = createSnapshotManager({
     capture: () => ({ value: 0 }),

@@ -294,19 +294,23 @@ export function createWorkspacePersistenceController({
     return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
   }
 
-  function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
+  async function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
     if (restoreView) applyStoredViewState(project);
     loadProjectSnapshot(project);
     // loadWorkspaceState / loadWorkspaceRecoveryPoint strictly validate the
     // complete file before returning it. Reuse that attestation for unchanged
     // imported snapshots instead of running huge geometry booleans twice.
-    cacheValidatedProjectSnapshots(project);
-    snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+    await cacheValidatedProjectSnapshots(project);
+    if (progressiveHistoryValidation && snapshotManager.importRecordsAsync) {
+      await snapshotManager.importRecordsAsync(project.snapshots || [], project.snapshotBranches);
+    } else {
+      snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+    }
     return Boolean(project?.display?.threeCamera);
   }
 
-  function adoptLoadedCurrentProject(project) {
-    const hasCamera = loadProjectWithSnapshotHistory(project, { restoreView: true });
+  async function adoptLoadedCurrentProject(project) {
+    const hasCamera = await loadProjectWithSnapshotHistory(project, { restoreView: true });
     clearTimer();
     dirty = false;
     viewDirty = false;
@@ -762,7 +766,7 @@ export function createWorkspacePersistenceController({
         updateStage('Loading Recovery checkpoint…');
         const recovered = await loadWorkspaceRecoveryPoint(key);
         if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-        const hasCamera = loadProjectWithSnapshotHistory(recovered);
+        const hasCamera = await loadProjectWithSnapshotHistory(recovered);
         syncBaseControls();
         syncTransformInputs();
         renderAll();
@@ -1014,7 +1018,7 @@ export function createWorkspacePersistenceController({
       }
       baseSaveId = marker?.saveId || baseSaveId;
       remoteSaveId = marker?.saveId || remoteSaveId;
-      const hasCamera = adoptLoadedCurrentProject(latestSaved);
+      const hasCamera = await adoptLoadedCurrentProject(latestSaved);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
@@ -1072,7 +1076,7 @@ export function createWorkspacePersistenceController({
             });
           } catch (error) {
             console.error(error);
-            const hasCamera = adoptLoadedCurrentProject(saved);
+            const hasCamera = await adoptLoadedCurrentProject(saved);
             syncBaseControls();
             syncTransformInputs();
             renderAll();
@@ -1088,7 +1092,7 @@ export function createWorkspacePersistenceController({
         }
         const started = await initializeWorkspaceStart();
         if (!started && saved) {
-          const hasCamera = adoptLoadedCurrentProject(saved);
+          const hasCamera = await adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
@@ -1103,7 +1107,7 @@ export function createWorkspacePersistenceController({
       } else {
         const saved = await loadWorkspaceState({ background: progressiveWorkspaceRestore });
         if (saved) {
-          const hasCamera = adoptLoadedCurrentProject(saved);
+          const hasCamera = await adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();

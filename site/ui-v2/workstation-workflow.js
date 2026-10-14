@@ -970,7 +970,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
             domain.bindings.readProjectFileTask,
           );
           domain.load(bundled.data);
-          history.importRecords(bundled.data.snapshots || [], bundled.data.snapshotBranches);
+          await history.importRecordsAsync(bundled.data.snapshots || [], bundled.data.snapshotBranches);
           store.project.source = bundled.source;
           store.project.hash = bundled.hash;
         } else if (intent === 'staged') {
@@ -991,7 +991,7 @@ export function createWorkstationWorkflow({ store, workstation }) {
             const imported = await domain.bindings.readProjectFileTask(pending.file);
             if (!imported) throw Error('The staged project could not be read.');
             domain.load(imported);
-            history.importRecords(imported.snapshots || [], imported.snapshotBranches);
+            await history.importRecordsAsync(imported.snapshots || [], imported.snapshotBranches);
           } else {
             throw Error('The staged file type is unsupported.');
           }

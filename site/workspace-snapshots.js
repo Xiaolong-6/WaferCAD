@@ -1560,7 +1560,9 @@ export function createSnapshotManager({
     return clone(exportForWorkerStorage().snapshotBranches);
   }
 
-  function importRecords(value, branchState = null) {
+  // Keep staged History data private until all copies and lineage repairs finish.
+  // Both synchronous callers and cooperative startup use this same importer.
+  function* stageImportedRecords(value, branchState = null) {
     if (!Array.isArray(value)) {
       clear();
       return 0;
@@ -1607,6 +1609,7 @@ export function createSnapshotManager({
         state: cloneState(raw.state),
       });
       seen.add(raw.id);
+      yield;
     }
 
     const importedNodes = [];
@@ -1639,10 +1642,11 @@ export function createSnapshotManager({
           state: raw.state && isValid(raw.state) ? cloneState(raw.state) : null,
         });
         nodeIds.add(raw.id);
+        yield;
       }
     }
 
-    for (const node of importedNodes) {
+    for (const node of importedNodes {
       if (node.parentId && !nodeIds.has(node.parentId)) node.parentId = null;
     }
     for (const record of next) {
@@ -1696,6 +1700,7 @@ export function createSnapshotManager({
           createdAt,
         });
         branchIds.add(raw.id);
+        yield;
       }
     }
 
@@ -1830,6 +1835,37 @@ export function createSnapshotManager({
     return records.length;
   }
 
+  // Legacy callers retain the exact synchronous contract.
+  function importRecords(value, branchState = null) {
+    const steps = stageImportedRecords(value, branchState);
+    for (let result = steps.next(); ; result = steps.next()) {
+      if (result.done) return result.value;
+    }
+  }
+
+  // Large History imports can otherwise monopolize the UI thread for seconds.
+  // Yield only during private staging. All shared History state is committed
+  // synchronously after the final yield, preserving atomic visibility.
+  async function importRecordsAsync(value, branchState = null, { signal } = {}) {
+    const steps = stageImportedRecords(value, branchState);
+    let sliceStart = performance.now();
+    let processed = 0;
+    for (;;) {
+      if (signal?.aborted) {
+        steps.return();
+        throw Object.assign(new Error('History import aborted.'), { name: 'AbortError' });
+      }
+      const result = steps.next();
+      if (result.done) return result.value;
+      processed++;
+      if (processed >= 8 || performance.now() - sliceStart >= 12) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        sliceStart = performance.now();
+        processed = 0;
+      }
+    }
+  }
+
   return {
     list,
     listHistory,
@@ -1874,5 +1910,6 @@ export function createSnapshotManager({
     exportBranchState,
     exportForWorkerStorage,
     importRecords,
+    importRecordsAsync,
   };
 }
