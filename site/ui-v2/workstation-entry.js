@@ -167,7 +167,11 @@ try {
     const serial = ++mobileTransitionSerial;
     requestAnimationFrame(() => {
       if (serial !== mobileTransitionSerial) return;
-      window.scrollTo(0, destination);
+      // Reapply after the new pane's adapters complete layout. One frame can
+      // clamp the offset against the previous (shorter) View document.
+      requestAnimationFrame(() => {
+        if (serial === mobileTransitionSerial) window.scrollTo(0, destination);
+      });
     });
   };
   document.addEventListener('click', (event) => {
