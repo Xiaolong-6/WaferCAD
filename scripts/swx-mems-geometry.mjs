@@ -381,11 +381,14 @@ function makeCombs(moveY) {
     rect(25, -11.2 + moveY, 39, SWX_REPORTED.movableCombHandleUm),
     strip([42, -11.2 + moveY], [42, moveY], 0.9),
   ];
+  // The upper fixed finger starts at y=4.3um, above the ON-state
+  // shuttle rail maximum y=4.16um. Its 300nm lateral clearance from
+  // movable fingers is preserved during the 885nm vertical stroke.
   // Adjacent comb fingers have 500nm width, 300nm lateral clearance and
   // a real 2D interdigitation overlap; each bank has 20 finger pairs.
   for (let i = 0; i < 20; i++) {
     const x = 8.8 + i * 1.65;
-    fixed.push(rect(x, 4.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+    fixed.push(rect(x, 5.9, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
     moving.push(
       rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
     );
