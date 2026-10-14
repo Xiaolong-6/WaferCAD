@@ -206,3 +206,57 @@ test('Photodetector variants distinguish Implant from Electrical Region', async 
     assert.ok(step.params.mask.drawMask.shapes.length > 0);
   }
 });
+
+function ringArea(ring) {
+  let twiceArea = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    twiceArea += a[0] * b[1] - b[0] * a[1];
+  }
+  return Math.abs(twiceArea / 2);
+}
+
+function materialVolume(project, model, material) {
+  const ids = new Set(
+    model.layers.filter((layer) => layer.name.includes(material)).map((layer) => layer.id),
+  );
+  assert.ok(ids.size > 0, `Missing material ${material}`);
+  let volume = 0;
+  for (const region of model.regions) {
+    const geometry = project.sharedGeometries[region.geomRef];
+    assert.ok(geometry, `Unknown shared geometry ${region.geomRef}`);
+    const area = geometry.reduce(
+      (sum, polygon) =>
+        sum +
+        ringArea(polygon[0]) -
+        polygon.slice(1).reduce((holeSum, ring) => holeSum + ringArea(ring), 0),
+      0,
+    );
+    for (const interval of region.stack) {
+      if (ids.has(interval.layerId)) volume += area * (interval.z1 - interval.z0);
+    }
+  }
+  return volume;
+}
+
+test('Black-Si metal removal keeps ALD; destructive QA removes part of ALD and Si', async () => {
+  const project = await example('photodetector-literature-examples');
+  const branches = new Map(project.snapshotBranches.branches.map((branch) => [branch.id, branch]));
+  function savedModel(id) {
+    const ref = branches.get(id).headState.modelRef;
+    return ref === 'project' ? project.model : project.sharedModels[ref];
+  }
+  const source = savedModel('black-si-fig1a');
+  const final = savedModel('black-si-fig1a-final');
+  const qa = savedModel('black-si-fig1a-qa');
+  const volume = (model, material) => materialVolume(project, model, material);
+  const initialAl = volume(source, 'Front sputtered Al');
+  const protectedAl = volume(final, 'Front sputtered Al');
+  const ald = volume(source, 'ALD Al2O3');
+  assert.ok(protectedAl < initialAl * 0.2, 'Final strip must remove most blanket metal');
+  assert.ok(Math.abs(volume(final, 'ALD Al2O3') - ald) < 1e-5);
+  assert.ok(Math.abs(volume(final, 'n- Si (111)') - volume(source, 'n- Si (111)')) < 1e-5);
+  assert.ok(volume(qa, 'ALD Al2O3') < ald * 0.6);
+  assert.ok(volume(qa, 'n- Si (111)') < volume(final, 'n- Si (111)'));
+});
