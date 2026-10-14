@@ -52,6 +52,64 @@ try {
   assert.equal(start.workflow.writable, false, 'Read-only iframe does not own autosave');
   assert.equal(start.workflow.dirty, false);
   assert.equal(await preview.locator('.p-inspector').isVisible(), false);
+  assert.deepEqual(
+    {
+      main: [start.local.main.panEnabled, start.local.main.zoomEnabled],
+      mask: [start.local.mask.panEnabled, start.local.mask.zoomEnabled],
+      section: [start.local.section.panEnabled, start.local.section.zoomEnabled],
+      three: [start.local.three.mode, start.local.three.zoomEnabled],
+    },
+    {
+      main: [true, true],
+      mask: [true, true],
+      section: [true, true],
+      three: ['rotate', true],
+    },
+    'Every preview view must allow navigation without activating a tool',
+  );
+  assert.deepEqual(start.planViews, {
+    main: { zoom: 1, panX: 0, panY: 0 },
+    mask: { zoom: 1, panX: 0, panY: 0 },
+  });
+  assert.equal(await preview.locator('.v2-floating-strip').count(), 0);
+  assert.equal(await preview.locator('#maskDrawTools, #maskRoiTools').count(), 0);
+
+  const zoomOnCanvas = async (view, canvasId, readZoom) => {
+    await card.locator(`[data-preview-view="${view}"]`).click();
+    await preview.waitForFunction(
+      (name) => window.WaferCadV2Workstation.snapshot().ui.view === name,
+      view,
+      { timeout: 30000 },
+    );
+    const before = readZoom(await snapshot());
+    await preview.locator(`#${canvasId}`).evaluate((canvas) => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          deltaY: -200,
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2,
+        }),
+      );
+    });
+    const after = readZoom(await snapshot());
+    assert.ok(after > before, `${view}: first wheel must zoom without a toolbar click`);
+  };
+
+  await zoomOnCanvas('main', 'mainCanvas', (state) => state.planViews.main.zoom);
+  await zoomOnCanvas('mask', 'maskCanvas', (state) => state.planViews.mask.zoom);
+  const maskAfterZoom = (await snapshot()).planViews.mask;
+  await zoomOnCanvas('section', 'sectionCanvas', (state) => state.sectionViewport.zoom);
+  assert.equal(await preview.locator('.v2-legend-name').count(), 0);
+
+  // A switched-away camera should not be reset by the parent tab messages.
+  await card.locator('[data-preview-view="mask"]').click();
+  await preview.waitForFunction(
+    () => window.WaferCadV2Workstation.snapshot().ui.view === 'mask',
+  );
+  assert.deepEqual((await snapshot()).planViews.mask, maskAfterZoom);
 
   for (const view of ['mask', 'section', 'three', 'main']) {
     await card.locator(`[data-preview-view="${view}"]`).click();
@@ -61,10 +119,14 @@ try {
       { timeout: 30000 },
     );
     assert.equal((await snapshot()).workflow.writable, false, `${view}: no writer lease`);
+    assert.equal(await preview.locator('.v2-floating-strip').count(), 0);
+    assert.equal(await preview.locator('#maskDrawTools, #maskRoiTools').count(), 0);
   }
 
   // Do not rely on a rapidly changing lease expiration time. Only the owner
   // identity and last persisted state are stable across normal lease renewals.
+  assert.deepEqual((await snapshot()).model, start.model, 'Pan/Zoom cannot mutate geometry');
+  assert.equal((await snapshot()).scientificUnchanged, true);
   await welcome.waitForTimeout(2600);
   const after = await ownership();
   assert.equal(after.writer, before.writer, 'Welcome iframe cannot steal writer ownership');
