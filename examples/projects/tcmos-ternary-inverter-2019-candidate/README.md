@@ -58,7 +58,7 @@ This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only 
 
 The final candidate stores `Interlayer SiO2.visible = false` as **display-only** metadata while retaining the complete dielectric volume in every physical process region. This removes the opaque blanket from Main/3D/Section without deleting oxide or altering process thickness. The original ILD can be restored with the material legend checkbox. Intermediate History steps preserve visible dielectric to show deposition/fill during process review; the last History head and final bookmark reflect the unobscured inspection preset.
 
-A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B remains the cross-device cut at y=0, tracing both MOSFET gate/channel stacks. For an individual 130 nm gate, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is *qualitative*.
+A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B remains the cross-device cut at y=0, tracing both MOSFET gate/channel stacks. For an individual 130 nm gate, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is _qualitative_.
 
 ## Run and acceptance
 
