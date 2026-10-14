@@ -83,8 +83,7 @@ try {
     document.addEventListener(
       'click',
       (event) => {
-        if (event.target.closest('[data-action="borders:three"]'))
-          window.__borderDispatches++;
+        if (event.target.closest('[data-action="borders:three"]')) window.__borderDispatches++;
       },
       { capture: true },
     );
@@ -101,7 +100,12 @@ try {
   assert.notEqual(
     toggled.pressed,
     starting.pressed,
-    `Border toggle changes pressed state; before=${JSON.stringify(initialDisplay)} after=${JSON.stringify(updatedDisplay)} path=${JSON.stringify(path)}`,
+    [
+      'Border toggle changes pressed state',
+      `before=${JSON.stringify(initialDisplay)}`,
+      `after=${JSON.stringify(updatedDisplay)}`,
+      `path=${JSON.stringify(path)}`,
+    ].join(' | '),
   );
   assert.ok(
     toggled.fill !== starting.fill ||
