@@ -97,11 +97,7 @@ export async function assertSameMaterialGeometry(expected, actual, options = {})
             1.1 * options.xyQuantumUm * Math.max(footprintPerimeter(eg), footprintPerimeter(ag)),
           )
         : 0;
-      const tolerance = Math.max(
-        areaAbsTolerance,
-        1e-9 * Math.max(eArea, aArea),
-        gridTolerance,
-      );
+      const tolerance = Math.max(areaAbsTolerance, 1e-9 * Math.max(eArea, aArea), gridTolerance);
       const mismatch = missing + extra;
       maxMismatchAreaUm2 = Math.max(maxMismatchAreaUm2, mismatch);
       assert.ok(
