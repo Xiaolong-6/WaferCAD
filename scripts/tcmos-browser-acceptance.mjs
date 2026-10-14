@@ -129,23 +129,18 @@ try {
     summary.startsWith(`Completed: ${count}/${count}`) || /Recipe completed:/.test(status),
     'Run All did not complete: ' + summary + ' / ' + status,
   );
-  // Recipe Run All recreates physical layers. Restore the source project's
-  // view-only inspection setting before comparing and exporting final evidence.
-  const ildVisibility = page.getByRole('checkbox', {
-    name: 'Toggle visibility for Interlayer SiO2',
+  // Visibility is an inspection preference: compare complete *physical*
+  // geometry with all layers temporarily treated as visible in memory.
+  const physicalModel = (model) => ({
+    ...model,
+    layers: model.layers.map((layer) => ({ ...layer, visible: true })),
   });
-  await ildVisibility.waitFor({ state: 'visible', timeout: 30000 });
-  if (await ildVisibility.isChecked()) await ildVisibility.uncheck();
-  await page.waitForFunction(
-    () =>
-      window.WaferCadV2Workstation.snapshot().model.layers.find(
-        (layer) => layer.name === 'Interlayer SiO2',
-      )?.visible === false,
-  );
   const exported = await exportProject();
-  const geometry = await assertSameMaterialGeometry(expected.model, exported.model, {
-    areaToleranceUm2: 2e-6,
-  });
+  const geometry = await assertSameMaterialGeometry(
+    physicalModel(expected.model),
+    physicalModel(exported.model),
+    { areaToleranceUm2: 2e-6 },
+  );
   assert.equal(exported.model.implants.length, expected.model.implants.length);
   assert.deepEqual(
     exported.model.implants.slice(0, 2).map((item) => item.depthStart),
@@ -182,6 +177,23 @@ try {
   assert.equal(restored.model.implants[0].depthStart, 0.08);
   assert.equal(restored.model.implants[1].depthStart, 0.08);
   await assertSameMaterialGeometry(exported.model, restored.model, { areaToleranceUm2: 2e-6 });
+  await page.screenshot({ path: resolve(dir, 'tcmos-v2-replayed-raw.png') });
+  // Re-open the accepted candidate for the actual user-facing first-open
+  // screenshot. Recipe execution validates physics separately from view state.
+  await panel('project');
+  await page.locator('#openProjectInput').setInputFiles(candidate);
+  const finalConfirm = page.getByRole('button', { name: 'Open project', exact: true });
+  if (await finalConfirm.isVisible()) await finalConfirm.click();
+  await page.waitForFunction(
+    (name) => window.WaferCadV2Workstation.snapshot().projectName === name,
+    expected.name,
+    { timeout: 120000 },
+  );
+  assert.equal(
+    (await snap()).model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
+    false,
+    'Opening accepted example must restore the unobscured material view',
+  );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
