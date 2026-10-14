@@ -33,11 +33,16 @@ async function checkTwoDimensionalEditing(page) {
   for (const [view, panel] of [
     ['main', '#mainPanel'],
     ['mask', '#maskPanel'],
-    ['section', '#sectionPanel'],
   ]) {
     await page.locator(`[data-action="view:${view}"]`).first().click();
     await page.locator(panel).waitFor({ state: 'visible', timeout: 30000 });
   }
+  // Desktop Section is a dock controlled independently from the three
+  // primary view buttons; mobile uses the separate mobile-section action.
+  await page.locator('[data-action="view:main"]').first().click();
+  const section = page.locator('#sectionPanel');
+  if (!(await section.isVisible())) await page.locator('[data-action="section"]').click();
+  await section.waitFor({ state: 'visible', timeout: 30000 });
   await page.locator('[data-action="domain:process"]').click();
   await page.locator('#operationType').selectOption('add');
   await page.locator('#operationArea').selectOption('full');
