@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   paper-derived-kernel:
@@ -26,28 +26,15 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Temporary exact Prettier evidence for scientific source
-        run: |
-          npx prettier --write scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs
-          for item in scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs; do
-            case "$item" in
-              scripts/build*) key=LIME_ALD_BUILDER ;;
-              site/tests*) key=LIME_ALD_TEST ;;
-            esac
-            echo "${key}_BEGIN"
-            base64 -w0 "$item"
-            echo
-            echo "${key}_END"
-          done
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
+      - name: Check committed project matches source recipe
+        run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
       - name: Source-derived structural regression
         run: node --test site/tests/m3d-lime-builder.test.mjs
       - uses: actions/cache@v4
@@ -87,12 +74,3 @@ jobs:
             test-results/m3d-lime/klayout-m3d-lime.json
             test-results/m3d-lime/browser/
           retention-days: 14
-      - name: One-time publish validated conformal/ROI example to draft PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
-        run: |
-          test -s site/examples/m3d-lime-rram-cntfet.wafercad
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/examples/m3d-lime-rram-cntfet.wafercad
-          git diff --cached --quiet || git commit -m "fix(examples): persist ALD and device-framed M3D-LIME structure"
-          git push origin HEAD:refs/heads/feat/m3d-rram-cntfet-lime-20261014
