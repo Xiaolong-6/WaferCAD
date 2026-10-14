@@ -151,7 +151,11 @@ try {
       );
       await waitForPaint(page);
       const beforeExport = await snapshot();
-      assert.equal(beforeExport.projectName, source.name, 'Variant switch changed project identity');
+      assert.equal(
+        beforeExport.projectName,
+        source.name,
+        'Variant switch changed project identity',
+      );
       await page.screenshot({ path: resolve(out, 'swx-' + state + '-four-views.png') });
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#projectExportMenuBtn').click();
