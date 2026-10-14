@@ -75,7 +75,9 @@ The dedicated `SWX MEMS Reconstruction` CI workflow runs the parametric geometry
 
 **Important:** Run All reconstructs the as-fabricated OFF geometry; it does not reproduce electrostatic ON movement. The ON state is a non-replayable, explicitly tagged post-release geometric pose stored in a restorable Variant. This reflects the capabilities of the current Kernel and avoids mislabelling actuation as a Process operation.
 
-Still required before Welcome promotion: detailed visual comparison of both poses against article Figure 1 and Supplementary Figures S6–S9 (including connected shuttle/comb springs, mechanical stops, aligners and couplers); human inspection of the Section BOX undercut/anchors, and an external GDS/OAS interoperability review. The arrangement is illustrative wherever author coordinates are unavailable. **Do not merge, deploy, or register** this candidate automatically.
+The dedicated CI additionally installs **pinned KLayout 0.30.12** and independently opens the four files exported by the real UI (OFF/ON × GDS/OAS). Its strict gate checks a single top cell, source Mask layers and datatypes, the 0.1 nm DBU, and exact Boolean-XOR equality of each exported layer against the canonical project Mask after database-grid quantization. The output report is `test-results/swx-mems/klayout-independent-verification.json`. This tests actual exported data rather than only WaferCAD's own parsers. Any unsupported GDS/OAS geometry difference blocks the PR.
+
+Still required before Welcome promotion: detailed visual comparison of both poses against article Figure 1 and Supplementary Figures S6–S9 (including connected shuttle/comb springs, mechanical stops, aligners and couplers); human inspection of the Section BOX undercut/anchors, and scientific confirmation of inferred anchor/coupler locations. The arrangement is illustrative wherever author coordinates are unavailable. **Do not merge, deploy, or register** this candidate automatically.
 
 ## Planned scale-up (separate gate)
 
