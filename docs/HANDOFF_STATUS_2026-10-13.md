@@ -1,5 +1,27 @@
 # Documentation and handoff closeout — 2026-10-13
 
+## 2026-10-14 P2 release and Legacy follow-up
+
+Baseline for the historical compatibility work was `fb3f410b` (PR #219).
+[PR #220](https://github.com/Xiaolong-6/WaferCAD/pull/220) merged to `main`
+as `65ec07ea` on 2026-10-14. It provides the Pages/Preview cleanup: it removes the obsolete WIP-branch Pages publisher,
+adds immutable staged-artifact deployment, and validates real published
+startup/Workers. Its first [staged artifact browser run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38519951771)
+passed on the PR branch; that run is **not** evidence of a completed
+production deployment. The first revised [production Pages workflow](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38521305117)
+was queued at this checkpoint. The `main` release jobs and deployment must
+finish successfully before publication is recorded as accepted.
+
+[PR #221](https://github.com/Xiaolong-6/WaferCAD/pull/221) adds a path-gated
+historical-project import/autosave/reload/Recovery check in UI v2 using the
+original 2026-10-06 `shared-assets-v1` fixture. It is a migration prerequisite,
+not a completed Legacy UI retirement. The Welcome interactive preview still
+uses `app-legacy.html`; Legacy DOM-based scientific tests and the old UI
+assets remain until the startup/recovery owners are stable and their scenarios
+have been migrated. No UI removal, schema rewrite, or Recovery deletion is
+claimed here. The source-controlled workflow permissions do not establish
+repository-level branch protection.
+
 ## Scope and evidence
 
 Audited public `main` at `1e34da5d23f8fd9db8db13b249a7e4816cdb7ced`, then opened branch `docs/main-privacy-lifecycle-handoff-20261013`. This is a documentation-only cleanup. Historical test results, branch names and unverified claims have not been recast as passes. The original pre-release records now reside in the [archive](archive/README.md). This register was subsequently reconciled against `main@036117f9` on 2026-10-13; that follow-up is a status/documentation check, not a new end-to-end test.

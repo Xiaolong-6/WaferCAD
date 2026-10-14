@@ -31,6 +31,21 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### Legacy project compatibility before UI retirement
+
+The old UI must not be deleted until the v2 Workstation can independently
+read and recover historical project files. The targeted
+[Legacy project compatibility workflow](../.github/workflows/legacy-project-compat.yml)
+runs `node scripts/v2/check-legacy-project-recovery.mjs` when its owned
+startup, persistence, or Legacy entry files change. This exercises the real
+2026-10-06 `shared-assets-v1` project fixture (SHA-256 verified, with the
+original 41 process Steps) through the **v2** staged Project worker, autosave,
+reload, and a replacement-created Recovery point. It does not launch the old UI.
+The large historical fixture makes this an independent path-gated browser
+acceptance rather than an unconditional Node test. This check does not by itself
+approve removal of Legacy-specific UI/DOM tests or Welcome's interactive
+preview; those consumers must be migrated without losing scenario ownership.
+
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
