@@ -18,21 +18,21 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 | Inverter     | Fig. 1a/b complementary CMOS topology         | Illustrative 14 x 8 µm local field with POLY VIN and METAL1 VDD/VOUT/GND      |
 | Process      | Commercial 130 nm and 90 nm CMOS foundries    | Candidate chooses 130 nm and gate L=0.13 µm                                   |
 | ACTIVE/STI   | Si(100) and shallow trench isolation          | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP           |
-| HVTP/HVTN    | BF2+/As+ high-energy, high-dose body implants | 180 nm empirical Implant markers; **not actual buried dopant profiles**       |
+| HVTP/HVTN    | BF2+/As+ high-energy, high-dose body implants | Illustrative buried start=80 nm, end=240 nm; **not measured dopant concentration or projected range**       |
 | Gate         | SiO2 in 130 nm flow; patterned POLY           | 5 nm SiO2; 200 nm Poly                                                        |
 | Source/drain | LDD/HDD, silicide and self-aligned processing | 80/180 nm Implant markers, 25 nm silicide geometry; spacers/RTA recorded only |
-| Contacts     | CNT and METAL1 standard foundry layers        | Four W plugs, 450 nm ILD and 200 nm patterned Al geometry                     |
+| Contacts     | CNT and METAL1 standard foundry layers        | Five W plugs including POLY VIN; 450 nm ILD and 200 nm patterned Al geometry                     |
 
-**Scientific limitation:** The current WaferCAD Implant annotates from the exposed surface into the material. Retrograde body doping requires a buried peak. HVT markings therefore communicate mask coverage and a target zone only; do not interpret their color gradient as dopant concentration, buried depth, BTBT current or a calibrated junction. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
+**Scientific limitation:** The current The optional Implant startDepth defines a geometrically buried interval while retaining a reference to the original exposed surface. The illustrative 80–240 nm HVT intervals are explicitly inferred and **not** concentration distributions or tunnel-junction thicknesses. No calibrated BTBT or dopant physics is computed. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
 
 ## Geometry build order
 
 1. Create the Si(100) Base. Etch Si in the inverse of ACTIVE, exposing a real trench.
 2. Deposit the illustrative STI oxide fill and planarize to original Si top Z. Assert that Si survives in ACTIVE and oxide occupies STI.
-3. Place NWELL/PWELL electrical annotations and HVT body Implant markers; record foundry well/activation as non-geometric steps.
+3. Place NWELL/PWELL electrical annotations and buried HVT Implant interval markers; record foundry well/activation as non-geometric steps.
 4. Deposit the gate dielectric and define 130 nm POLY gates, joined by a VIN conductor.
 5. Open simplified source/drain Si windows; annotate LDD/HDD; record spacer and RTA operations.
-6. Pattern silicide surrogate, deposit ILD, etch CNT openings, fill with W, pattern METAL1.
+6. Pattern silicide surrogate, deposit ILD, etch CNT openings, fill with W, pattern four separate METAL1 nets (VDD, VOUT, GND, VIN).
 
 Each patterned Recipe step captures its File Mask and layer/datatype; the STI step retains explicit inverse-mask semantics.
 
@@ -47,7 +47,7 @@ The generator includes per-step kernel/schema checks, Recipe preflight and a pro
 
 ## Follow-up model boundary
 
-Do not silently change existing Implant semantics. A buried-depth start/end annotation could be implemented in a separately tested model/schema/render/persistence contract after this candidate demonstrates correct baseline geometry.
+Do not silently change existing Implant semantics. The buried-start Implant annotation is implemented through an opt-in startDepth parameter with the existing total depth as end. Older Implant records retain startDepth=0 semantics. Kernel, schema, Section/3D, Recipe, worker and project storage behavior need ongoing compatibility coverage.
 
 ## Handoff
 
