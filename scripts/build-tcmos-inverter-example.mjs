@@ -66,10 +66,7 @@ function bodyTapMetal(cx) {
 export const TCMOS_METAL_NETS = Object.freeze([
   {
     name: 'VDD',
-    rectangles: [
-      rect(-4.52, -2.16, 0.36, 2.36),
-      ...bodyTapMetal(-3),
-    ],
+    rectangles: [rect(-4.52, -2.16, 0.36, 2.36), ...bodyTapMetal(-3)],
   },
   {
     name: 'VOUT',
@@ -77,16 +74,13 @@ export const TCMOS_METAL_NETS = Object.freeze([
   },
   {
     name: 'GND',
-    rectangles: [
-      rect(4.16, -2.16, 0.36, 2.36),
-      ...bodyTapMetal(3),
-    ],
+    rectangles: [rect(4.16, -2.16, 0.36, 2.36), ...bodyTapMetal(3)],
   },
   {
     name: 'VIN',
     rectangles: [
-      rect(-3.18, 1.00, 0.36, 1.65),
-      rect(2.82, 1.00, 0.36, 1.65),
+      rect(-3.18, 1.0, 0.36, 1.65),
+      rect(2.82, 1.0, 0.36, 1.65),
       rect(-3.18, 2.41, 6.36, 0.24),
     ],
   },
@@ -110,7 +104,7 @@ export const TCMOS_MASKS = Object.freeze([
   {
     id: 5,
     name: 'HVTP BF2+ nMOS buried body implant window',
-    rectangles: [rect(1.60, -0.92, 2.48, 1.85)],
+    rectangles: [rect(1.6, -0.92, 2.48, 1.85)],
   },
   {
     id: 6,
@@ -161,12 +155,12 @@ export const TCMOS_MASKS = Object.freeze([
   {
     id: 12,
     name: 'LVTN reference CMOS channel implant window (not applied to T-CMOS)',
-    rectangles: [rect(-5.70, -2.72, 5.4, 3.65)],
+    rectangles: [rect(-5.7, -2.72, 5.4, 3.65)],
   },
   {
     id: 13,
     name: 'LVTP reference CMOS channel implant window (not applied to T-CMOS)',
-    rectangles: [rect(0.30, -2.72, 5.4, 3.65)],
+    rectangles: [rect(0.3, -2.72, 5.4, 3.65)],
   },
 ]);
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
