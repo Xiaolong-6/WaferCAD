@@ -272,7 +272,7 @@ function makeFoldedSprings(moveY) {
       [2 * pitch, y(40 - long + short)],
       [2 * pitch, y(40 - long)],
       [3 * pitch, y(40 - long)],
-      [3 * pitch, 0],
+      [3 * pitch, sign * SWX_REPORTED.shuttleWidthUm / 2],
     ];
     const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
     parts.push(...polyline(deform, SWX_REPORTED.foldedSpringWidthUm));
@@ -291,7 +291,7 @@ function makeStructuralAligners(moveY) {
     const first = [anchor[0] - SWX_REPORTED.structuralAlignerLengthUm, anchor[1]];
     const corner = [first[0], sign * 5.7];
     const elbow = [-22, sign * 5.7 + moveY * 0.4];
-    const attach = [-22, sign * 1.8 + moveY];
+    const attach = [-22, sign * SWX_REPORTED.shuttleWidthUm / 2 + moveY];
     flexure.push(
       ...polyline([anchor, first, corner, elbow, attach], SWX_REPORTED.structuralAlignerBeamUm),
     );
@@ -309,7 +309,7 @@ function makeStructuralAligners(moveY) {
 function makeShuttle(moveY) {
   const left = -23,
     right = 44,
-    halfHeight = 1.8;
+    halfHeight = SWX_REPORTED.shuttleWidthUm / 2;
   const top = halfHeight + moveY;
   const bottom = -halfHeight + moveY;
   const beams = [
