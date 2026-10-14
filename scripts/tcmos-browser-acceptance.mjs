@@ -80,9 +80,10 @@ try {
     const path = resolve(dir, `tcmos-v2-mask.${type}`);
     await download.saveAs(path);
     const bytes = await readFile(path);
-    const parsed = type === 'gds'
-      ? parseGDS(Uint8Array.from(bytes).buffer)
-      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const parsed =
+      type === 'gds'
+        ? parseGDS(Uint8Array.from(bytes).buffer)
+        : await parseOAS(Uint8Array.from(bytes).buffer);
     const elements = flattenGDS(parsed, parsed.root).elements;
     assert.ok(elements.length > 0, 'Exported ' + type + ' mask is empty');
     maskExports.push({ type, bytes: bytes.byteLength, elements: elements.length });
@@ -109,8 +110,10 @@ try {
     () => {
       const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
       const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
-      return /^(Completed|Failed|Stopped):/.test(summary) ||
-        /Recipe (completed|failed)|Recipe failed at Step/i.test(status);
+      return (
+        /^(Completed|Failed|Stopped):/.test(summary) ||
+        /Recipe (completed|failed)|Recipe failed at Step/i.test(status)
+      );
     },
     null,
     { timeout: 180000 },
@@ -118,8 +121,7 @@ try {
   const summary = await page.locator('#recipeRunSummary').innerText();
   const status = await page.locator('[data-slot="status.message"]').innerText();
   assert.ok(
-    summary.startsWith(`Completed: ${count}/${count}`) ||
-      /Recipe completed:/.test(status),
+    summary.startsWith(`Completed: ${count}/${count}`) || /Recipe completed:/.test(status),
     'Run All did not complete: ' + summary + ' / ' + status,
   );
   const exported = await exportProject();
