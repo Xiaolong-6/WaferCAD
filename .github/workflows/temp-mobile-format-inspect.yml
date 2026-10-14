@@ -1,0 +1,18 @@
+name: Temporary Mobile Formatting Inspection
+on:
+  push:
+    branches:
+      - feat/ui-v2-mobile-document-scroll-20261014
+jobs:
+  formatted-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Show exact Prettier changes (read-only CI checkout)
+        run: |
+          npx prettier --write site/ui-v2/mobile-workstation.css scripts/v2/check-mobile-workstation.mjs
+          git diff -- site/ui-v2/mobile-workstation.css scripts/v2/check-mobile-workstation.mjs
