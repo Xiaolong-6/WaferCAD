@@ -43,12 +43,13 @@ node scripts/build-m3d-lime-example.mjs --write-repo
 npm run check
 ```
 
-`--write-repo` generates `site/examples/m3d-lime-rram-cntfet.wafercad`. The generator validates every material stage with the real Process Kernel, recipe preflight, project schema and a storage round-trip before writing. The file should be **committed only after these checks pass**. Until a real exported project exists and runtime inspection is complete, **do not add this family to** `site/bundled-examples.js` or claim it is deployed.
+`--write-repo` deterministically generates the committed `site/examples/m3d-lime-rram-cntfet.wafercad`. The generator validates each material stage with the real Process Kernel, recipe preflight, project schema and a storage round-trip before writing. The dedicated CI workflow also loads the file into the real UI v2 Chromium Workstation, runs the full 49-Step Recipe from a fresh Base and exports and reopens the resulting project. This is a representative geometry acceptance, **not** full-array or exact-layout verification. Do not add this family to `site/bundled-examples.js` or claim it is deployed before the remaining source/visual/release gates are satisfied.
 
-The next engineering increment is to verify Sections through analogue RRAM and digital 2T2R, verify that all local RRAM top-electrode contacts remain metallic after selective etch/CMP, and add an array-translation demonstration only after proving logical site counts and runtime cost. Browser `Run All`, Save/Reload, GDS/OAS export, Section/3D and real thumbnail generation remain publication gates.
+The builder now asserts that inferred M4 W and CIM TiN contacts remain exposed after selective etch and CMP. Browser project Open, actual Recipe `Run All`, and project Export/Reopen passed on the representative local device in the [M3D-LIME acceptance run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532631408). Next, inspect physical Sections through both analogue and digital cells, verify GDS/OAS mask export and local wiring continuity, and consider canonical array translation to reconstruct the complete 1Kb CIM / 512-bit Buffer only after bounding the runtime. Dedicated Section/3D visual acceptance, accurate inferred routing, full-array replay and a real preview/thumbnail remain **unpassed publication gates**.
 
 ## Working branch and status
 
 - Branch: `feat/m3d-rram-cntfet-lime-20261014`.
-- First-pass source ledger and generator committed; CI and desktop runtime validation **pending**.
+- Committed deliverables: source ledger, real Kernel builder and regression, eleven inferred mask layers, editable 49-Step Recipe / 50 History nodes with nine bookmarks, and the generated representative `.wafercad` asset.
+- Dedicated Kernel and UI v2 Chromium acceptance passed for the local sample; the complete CI Quality gate and desktop/human visual acceptance are tracked separately on Draft PR [#226](https://github.com/Xiaolong-6/WaferCAD/pull/226).
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
