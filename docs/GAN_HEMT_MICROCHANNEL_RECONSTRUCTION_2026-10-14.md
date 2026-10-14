@@ -91,14 +91,47 @@ The default build writes the candidate project under test-results/gan-microchann
 
 The dedicated test checks real four-level cavity Z gaps, two rear coolant connections, source-reported gate/chip masks, open TSV bores, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
 
-## Acceptance criteria (pending)
+## Verification and release boundary
 
-- [ ] CI builds the generated WaferCAD project without Kernel errors.
-- [ ] Final geometry survives Save/Reload and a fresh Recipe Run All from Base.
-- [ ] Channel and inlet/outlet connectivity is demonstrated; remaining simplified ports are identified.
-- [ ] Main, Mask, 3D and Section visual checks establish topology and usable rendering performance.
-- [ ] Source/inference assumptions and History bookmarks are visible in project metadata.
-- [ ] A generated .wafercad file and actual WaferCAD 3D preview are committed before a Welcome catalog entry.
-- [ ] Independent review confirms there is no suggestion that thermal/flow measurements were simulated.
+The candidate has passed the following **geometry-surrogate** acceptance checks on
+`4345ef3` (GitHub Actions):
 
-A full two-wafer Bond / Attach Structure Kernel operation would be reusable for MEMS and 2.5D packaging but should not be added as an isolated one-off for this example. The branch stays Draft until the model and product acceptance criteria are met.
+- [x] Full Kernel build and model-schema validation without process errors.
+- [x] Project Save/Reload and Recipe Run All from Base; identical final material
+  occupancy for 11 materials and 12 Z slabs (maximum mismatched XY area: 0 µm²).
+- [x] Canonical four-level empty cavities, four unfilled TSV bores, backside port
+  openings and exposed SiC backside checked against solid/void occupancy invariants.
+- [x] Editable Mask and History preserved; GDSII/OASIS export and source/inferred
+  dimensions checked in dedicated tests.
+- [x] Real Chromium Main, Mask, 3D and Section screenshots, visual readout and
+  thumbnail/Preview integrity checked in a **read-only** CI pipeline.
+- [x] Welcome registration and Pages source-to-staged asset inclusion verified by
+  the published staging rules and browser/catalog checks.
+- [x] Source metadata and assumed geometry separated in the project and docs;
+  experimental thermal/flow measurements are never claimed as WaferCAD predictions.
+
+### Explicitly out of scope or unverified
+
+- [ ] **Original hydraulic diversion fan-outs:** the bottom chamber and two
+  approximate back ports are open geometric voids, but the inlet/outlet diversion
+  manifolds and uniformity of parallel-channel flow are **not reconstructed**.
+- [ ] **Native wafer assembly:** two independently etched 400 µm Si wafers cannot
+  yet be aligned and directly bonded as a single Kernel process step.
+- [ ] **Electrical, thermal and packaging validation:** plated conductive TSVs,
+  full Au wire bonds, hermetic seals, CFD, heat-transfer and HEMT IV performance
+  are outside this example's scope.
+- [ ] **Author layout parity:** original GDS and several exact intermediate
+  channel masks are unavailable. Do not label inferred patterns as originals.
+
+### Figure review
+
+The real Section captures a four-level stepped opening under the SiC HEMT, consistent
+with the principal **topological layout** in article Fig. 1a / Fig. 2g. The real
+3D half-cutaway reveals the central channels but does not reproduce the actual
+Fig. 1c / Fig. 2h diversion routing. Both views are structural checks, not
+dimensional image-matching or a proof of complete process/flow equivalence.
+
+A reusable `Bond / Attach Structure` Kernel operator would be required for
+genuine two-wafer process reconstruction. This candidate is suitable for
+review **as a labeled geometric surrogate only**. No thermal or fluid-transport
+simulation is implied.
