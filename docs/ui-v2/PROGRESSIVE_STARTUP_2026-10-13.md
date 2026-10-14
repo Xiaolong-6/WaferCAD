@@ -187,3 +187,37 @@ Transport limitation: batching bounds whole polygons, while a single
 pathologically large polygon can still exceed the target message size.
 Keep the physical topology and fidelity requirements unchanged if
 further transfer subdivision is needed.
+
+## P1-F disjoint Polygon union cloning — 14 October 2026
+
+The exact Boolean union path still runs for touching or overlapping
+polygons. For a single already-normalized component, avoid cloning
+the normalized geometry a second time. For fully disjoint components,
+avoid a second full `normalizeMulti` pass after the broad-phase test.
+The original inputs remain deeply detached from returned geometry.
+
+New parity tests cover 625 separated wafer polygons, exact coordinate
+values including subnanometer positions, caller mutation isolation,
+mixed overlapping and isolated components, and malformed polygons.
+No new geometry tolerance, snapping or approximation was introduced.
+
+[Exact-head P1 CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38561846383)
+at `fb645bf` passed Quality, targeted scientific tests, Legacy
+persistence, real Progressive Startup, Quality Restore and Recovery.
+A single software Chromium profile measured:
+
+| Scenario | First scientific frame | 3D Ready | Largest Long Task |
+| --- | ---: | ---: | ---: |
+| M3D | 16.21 s | 37.06 s | 1,306 ms |
+| Restored Quality | 16.39 s | 38.48 s | 1,426 ms |
+
+The preceding software sample at `16e8890` measured maxima of
+1,076 ms / 1,347 ms, respectively. Different CI conditions and only
+one sample per configuration prohibit a causal performance claim.
+A substantial Boolean/GC long task is still present; the complete
+startup responsiveness requirement is **not satisfied**.
+
+Further work must target measured Polygon Boolean ownership and
+WebGL submission bottlenecks, with controlled multi-run A/B evidence
+and physical GPU/iGPU validation. Avoid repeating broad History
+refactors when they do not address the dominant sampled blocks.
