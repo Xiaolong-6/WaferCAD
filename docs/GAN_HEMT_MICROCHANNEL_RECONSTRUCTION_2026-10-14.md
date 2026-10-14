@@ -56,8 +56,9 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
   an empty volume immediately beneath that SiC bottom surface. The fluid is
   exposed to the _SiC substrate backside_, not directly to the GaN epitaxy.
-- **Inspection only:** the saved 3D ROI is X = ±800 µm, Y = ±650 µm and the
-  saved oblique camera centers on the interposer/chip interface. This visual
+- **Inspection only:** the saved 3D cutaway ROI is X = −650…650 µm and Y = 0…650 µm,
+  so its Y=0 boundary exposes the stepped voids under the HEMT. The
+  saved oblique camera looks into this cut face. This visual
   clipping omits distant TSV sites from the initial local 3D inspection but
   does **not** delete them from the model or mask, and does not constrain
   Recipe operations. Clear the ROI for a full-interposer view. Main and Mask
@@ -68,6 +69,17 @@ manufacturable sidewall profiles, bonded-wafer hermeticity, hydraulic flow
 through the assembled package, or electrical continuity.
 
 Every inferred element must remain labeled as an assumption; do not promote it to source-derived geometry.
+
+## Section Z display contract
+
+The initial screenshot audit exposed a presentation hazard: the Workstation's
+default automatic Z-break hides the *middle* of a device, which for this article
+contains the four distinct cooling-channel tiers. This example therefore saves
+`sectionCollapse: { top: 0, bottom: -150, enabled: false }`, so the complete
+Z stack is visible by default. The user can enable a manual Z-break for the
+bulk Si afterward. The real Chromium visual acceptance asserts that Section
+collapse is initially disabled; simply checking a nonblank canvas is
+insufficient for a scientific reconstruction.
 
 ## Build and validation commands
 
