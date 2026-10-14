@@ -400,15 +400,15 @@ export async function buildTcmosInverter() {
   bookmark('S02 - complementary well regions');
 
   implant(
-    'HVTP BF2 body implant',
-    'HVTP BF2+ pMOS / retrograde target (schematic surface marker)',
+    'HVTP As body implant',
+    'HVTP As+ pMOS / retrograde target (schematic surface marker)',
     0.18,
     4,
     '#d9668a',
   );
   implant(
-    'HVTN As body implant',
-    'HVTN As+ nMOS / retrograde target (schematic surface marker)',
+    'HVTN BF2 body implant',
+    'HVTN BF2+ nMOS / retrograde target (schematic surface marker)',
     0.18,
     5,
     '#5d8ce0',
@@ -505,7 +505,7 @@ export async function buildTcmosInverter() {
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
-      'BF2+/As+ HVT markers extend from the surface: true retrograde buried dopant maxima cannot be represented by the current Implant primitive.',
+      'BF2+ nMOS / As+ pMOS HVT markers extend from the surface: true retrograde buried dopant maxima cannot be represented by the current Implant primitive.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
     ],
