@@ -20,9 +20,15 @@ test('TCMOS mask geometry is self-contained and resolves physical 130 nm POLY le
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
   assert.equal(layout.combos.length, 11);
-  assert.equal(layout.elements.length, TCMOS_MASKS.reduce((n, m) => n + m.rectangles.length, 0));
+  assert.equal(
+    layout.elements.length,
+    TCMOS_MASKS.reduce((n, m) => n + m.rectangles.length, 0),
+  );
   for (const layer of TCMOS_MASKS) {
-    assert.equal(layout.elements.filter((e) => e.layer === layer.id).length, layer.rectangles.length);
+    assert.equal(
+      layout.elements.filter((e) => e.layer === layer.id).length,
+      layer.rectangles.length,
+    );
   }
   const gates = TCMOS_MASKS.find((m) => m.id === 6).rectangles;
   assert.equal(gates[0].w, GATE_LENGTH_UM);
@@ -52,7 +58,9 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const branch = project.snapshotBranches.branches[0];
   assert.equal(branch.headNodeId, project.snapshotBranches.cursorNodeId);
   assert.equal(project.processRecipe.base.thickness, 2);
-  assert.ok(project.processRecipe.steps.some((s) => s.command === 'etch' && s.params.area === 'invert'));
+  assert.ok(
+    project.processRecipe.steps.some((s) => s.command === 'etch' && s.params.area === 'invert'),
+  );
   assert.equal(project.processRecipe.steps.filter((s) => s.command === 'implant').length, 6);
   assert.equal(project.processRecipe.steps.at(-1).command, 'deposit');
   assert.ok(
