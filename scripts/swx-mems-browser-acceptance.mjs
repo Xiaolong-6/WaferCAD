@@ -1,4 +1,4 @@
-// Browser acceptance of the staged, independently generated SWX OFF/ON projects.
+// Browser acceptance for one shared-fabrication SWX project with OFF/ON Variants.
 // This exercises the real v2 Project worker, shared renderer state and exports.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -19,7 +19,7 @@ const report = { browser: browser.version(), cases: [] };
 
 try {
   for (const state of ['off', 'on']) {
-    const filename = resolve('test-results/swx-mems/swx-photonic-mems-' + state + '.wafercad');
+    const filename = resolve('test-results/swx-mems/swx-photonic-mems.wafercad');
     const source = await readProjectFile(new Blob([await readFile(filename)]));
     const { page, context } = await newUiPage(browser, {
       viewport: { width: 1440, height: 960 },
@@ -55,10 +55,25 @@ try {
         { timeout: 120000 },
       );
 
+      const branches = source.snapshotBranches.branches;
+      assert.deepEqual(new Set(branches.map((b) => b.id)), new Set(['main', 'on']));
+      assert.deepEqual(branches.find((b) => b.id === 'on').headState.layout, source.layout);
+      assert.deepEqual(branches.find((b) => b.id === 'on').headState.processRecipe, source.processRecipe);
+      if (state === 'on') {
+        await page.locator('[data-action="domain:history"]').click();
+        await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+        await page.waitForFunction(
+          () => window.WaferCadV2Workstation.snapshot().workflow.branches
+            .some((b) => b.id === 'on' && b.active),
+          null,
+          { timeout: 120000 },
+        );
+      }
       const imported = await snapshot();
       assert.equal(imported.sharedIdentity, true);
       assert.equal(imported.model.layers.length, source.model.layers.length);
-      assert.equal(imported.model.regions.length, source.model.regions.length);
+      const expectedModel = state === 'off' ? source.model : branches.find((b) => b.id === 'on').headState.model;
+      await assertSameMaterialGeometry(expectedModel, imported.model, { areaToleranceUm2: 0.01 });
       assert.equal(imported.layout.elements.length, source.layout.elements.length);
       assert.ok(imported.workflow.steps.length >= 8, 'History did not import');
       assert.ok(imported.model.layers.some((layer) => layer.name === 'Au electrode'));
@@ -117,6 +132,8 @@ try {
       });
       assert.equal(reloaded.layout.elements.length, source.layout.elements.length);
       assert.equal(reloaded.processRecipe.steps.length, source.processRecipe.steps.length);
+      assert.equal(reloaded.snapshotBranches.branches.length, 2);
+      assert.deepEqual(reloaded.snapshotBranches.branches.find((b) => b.id === 'on').headState.layout, reloaded.layout);
       assert.deepEqual(
         (await snapshot()).model,
         beforeExport.model,
@@ -131,6 +148,8 @@ try {
         historyNodes: beforeExport.workflow.steps.length,
         masks: beforeExport.layout.elements.length,
         projectRoundTrip: true,
+        unifiedProject: true,
+        correctBranchSelection: true,
         gdsExport: true,
         oasExport: true,
         views: ['mask', 'three', 'main'],
