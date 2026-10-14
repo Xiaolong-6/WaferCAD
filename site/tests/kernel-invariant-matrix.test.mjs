@@ -105,8 +105,7 @@ test('5 pm requested numerical material thickness is never silently clamped to 1
     for (const segment of deposited) {
       const actual = segment.z1 - segment.z0;
       assert.ok(
-        Math.abs(actual - thickness) <=
-          16 * Number.EPSILON * Math.max(1, Math.abs(segment.z1)),
+        Math.abs(actual - thickness) <= 16 * Number.EPSILON * Math.max(1, Math.abs(segment.z1)),
       );
       assert.ok(Math.abs(actual - 1e-5) > 1e-6, 'must not substitute old 10 pm clamp');
     }
