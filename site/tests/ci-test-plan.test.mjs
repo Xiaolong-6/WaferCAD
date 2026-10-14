@@ -210,7 +210,10 @@ test('release impact routes science owners without forcing unrelated suites', ()
     ['site/process-numerical-contract.js', { main_mask: false, klayout: false, recipe: true }],
     ['site/process-recipe.js', { main_mask: false, klayout: false, recipe: true }],
     ['site/layout-export.js', { main_mask: true, klayout: true, recipe: false }],
-    ['site/controllers/mask-import-controller.js', { main_mask: true, klayout: true, recipe: false }],
+    [
+      'site/controllers/mask-import-controller.js',
+      { main_mask: true, klayout: true, recipe: false },
+    ],
     ['site/ui-v2/main-view.js', { main_mask: true, klayout: false, recipe: false }],
     ['docs/CI.md', { main_mask: false, klayout: false, recipe: false }],
   ];
