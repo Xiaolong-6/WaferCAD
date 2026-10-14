@@ -77,7 +77,9 @@ try {
             checkedCount: document.querySelectorAll('#maskLayerList input:checked').length,
           };
         });
-        throw Error('Mask browser layer checkboxes did not synchronize: ' + JSON.stringify(diagnostic));
+        throw Error(
+          'Mask browser layer checkboxes did not synchronize: ' + JSON.stringify(diagnostic),
+        );
       }
       await waitForPaint(page);
       const snap = await snapshot();
