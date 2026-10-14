@@ -11,7 +11,10 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /  release-quality:\n/);
   assert.match(pages, /  release-browser:\n/);
   assert.match(pages, /  release-ui-v2:\n/);
-  assert.match(pages, /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/);
+  assert.match(
+    pages,
+    /needs: \[release-quality, release-browser, release-ui-v2, release-science\]/,
+  );
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
