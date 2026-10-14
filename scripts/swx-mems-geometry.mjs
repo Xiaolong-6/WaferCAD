@@ -217,8 +217,8 @@ function makeCombs(moveY) {
   ];
   const moving = [
     rect(25, moveY, 39, SWX_REPORTED.movableCombHandleUm),
-    rect(25, -11 + moveY, 39, SWX_REPORTED.movableCombHandleUm),
-    strip([42, -11 + moveY], [42, moveY], 0.9),
+    rect(25, -11.2 + moveY, 39, SWX_REPORTED.movableCombHandleUm),
+    strip([42, -11.2 + moveY], [42, moveY], 0.9),
   ];
   // Adjacent comb fingers have 500nm width, 300nm lateral clearance and
   // a real 2D interdigitation overlap; each bank has 20 finger pairs.
@@ -227,9 +227,9 @@ function makeCombs(moveY) {
     fixed.push(rect(x, 4.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
     moving.push(rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm,
       SWX_REPORTED.combFingerLengthUm));
-    fixed.push(rect(x, -16.5, SWX_REPORTED.combFingerWidthUm,
+    fixed.push(rect(x, -16.4, SWX_REPORTED.combFingerWidthUm,
       SWX_REPORTED.combFingerLengthUm));
-    moving.push(rect(x + 0.8, -13.9 + moveY, SWX_REPORTED.combFingerWidthUm,
+    moving.push(rect(x + 0.8, -14.15 + moveY, SWX_REPORTED.combFingerWidthUm,
       SWX_REPORTED.combFingerLengthUm));
   }
   return { fixed, moving };
@@ -323,7 +323,7 @@ export function createSwxGeometry(state = 'off') {
     maskPolygons: polys,
     maskNames: MASK_INFO.map(([layer, name]) => ({ layer, name })),
     physicalGroups: { fixed, movable, flexure },
-    anchorTestPoint: [25, 43],
+    anchorTestPoint: [2, 40],
     releasedBeamTestPoint: [-31, -1.7 + travel],
   };
 }
