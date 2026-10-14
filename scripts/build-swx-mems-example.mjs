@@ -354,7 +354,10 @@ export async function buildSwxMems(state = 'off') {
   const siId = layerIds.get(DEVICE);
   const boxId = layerIds.get(BOX);
   for (const point of [
-    [25, 9], [25, -21], [25, 0], [25, -11.2],
+    [25, 9],
+    [25, -21],
+    [25, 0],
+    [25, -11.2],
   ]) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
@@ -367,7 +370,10 @@ export async function buildSwxMems(state = 'off') {
     );
   }
   for (const point of [
-    [2, 40], [2, -40], [46, 9], [46, -21],
+    [2, 40],
+    [2, -40],
+    [46, 9],
+    [46, -21],
   ]) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
