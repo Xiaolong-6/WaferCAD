@@ -264,7 +264,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   );
 });
 
-test('source-correct 0° HVT and explicitly non-paper 18° tilt diagnostic remain isolated', async () => {
+test('assumed 0° HVT baseline and explicitly non-paper 18° tilt diagnostic remain isolated', async () => {
   const paper = await buildTcmosInverter();
   const demo = await buildTcmosInverter({ illustrativeTiltDeg: 18 });
   assert.deepEqual(
