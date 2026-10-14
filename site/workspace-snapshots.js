@@ -2,6 +2,13 @@ import { historyOperationAreaLabel, historyOperationLabel } from './history-oper
 import { equalStatePairs, stateValuesEqual } from './state-equality.js';
 
 function clone(value) {
+  // Importing a long History clones many state fields. Immutable scalars do
+  // not need structuredClone; objects still require independent deep copies.
+  // Unsupported values (functions, symbols) must keep throwing DataCloneError.
+  if (value === null) return value;
+  const kind = typeof value;
+  if (kind === 'number' || kind === 'string' || kind === 'boolean') return value;
+  if (kind === 'undefined' || kind === 'bigint') return value;
   return structuredClone(value);
 }
 

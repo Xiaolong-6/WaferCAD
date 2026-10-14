@@ -49,6 +49,41 @@ test('snapshot records are immutable checkpoints and can be renamed/restored/del
   assert.equal(manager.list().length, 0);
 });
 
+test('snapshot clone preserves scalar semantics, isolates objects and rejects unsupported values', () => {
+  let source = {
+    negativeZero: -0,
+    notANumber: NaN,
+    infinity: Infinity,
+    optional: undefined,
+    count: 20n,
+    nested: { values: [1, 2] },
+  };
+  let restored = null;
+  let id = 0;
+  const manager = createSnapshotManager({
+    capture: () => source,
+    restore: (state) => {
+      restored = state;
+    },
+    validateState: () => true,
+    idFactory: () => `scalar-${++id}`,
+  });
+
+  const saved = manager.create();
+  source.nested.values.push(3);
+  assert.equal(manager.restore(saved.id), true);
+  assert.equal(Object.is(restored.negativeZero, -0), true);
+  assert.equal(Number.isNaN(restored.notANumber), true);
+  assert.equal(restored.infinity, Infinity);
+  assert.equal(Object.hasOwn(restored, 'optional'), true);
+  assert.equal(restored.optional, undefined);
+  assert.equal(restored.count, 20n);
+  assert.deepEqual(restored.nested.values, [1, 2]);
+
+  source = { ...source, unsupported: Symbol('no-clone') };
+  assert.throws(() => manager.create('reject unsupported'), /could not be cloned/);
+});
+
 test('snapshot import rejects invalid and duplicate records', () => {
   const manager = createSnapshotManager({
     capture: () => ({ value: 0 }),
