@@ -22,7 +22,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs and on the active v2 feature branch. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
+The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs, manual dispatch, and production release calls. The historical `codex/ui-v2-main-wip` push trigger has been retired. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
@@ -46,6 +46,17 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
 [Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression and UI v2 Stage C/M4 acceptance. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The read-only `stage-pages` job runs after the three release gates, builds and stamps `build/pages/`, serves that exact directory under `/WaferCAD/`, and exercises Welcome, v2 startup, Project/Layout Workers, and a real Process Worker operation in Chromium. Only after the staged smoke passes does it upload the Pages artifact. The `deploy` job consumes that exact uploaded artifact without rebuilding it and is the sole job with `pages: write` and `id-token: write`; both jobs require `refs/heads/main`. No failed or skipped upstream job qualifies.
+
+## Historical Project compatibility
+
+The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
+is a path-gated PR workflow, independent from the ordinary Pages release. It imports the
+SHA-256-verified historical `shared-assets-v1` project in the real v2 Workstation
+and verifies autosave, reload, and Recovery preservation. It must pass before
+the retained `app-legacy.html` interface and Legacy-only test adapters are
+deleted. This gate supplements current project-format and controller tests;
+it does not authorize skipping migration of Legacy-only scientific browser
+scenarios.
 
 ## Heavy Process Geometry job
 
