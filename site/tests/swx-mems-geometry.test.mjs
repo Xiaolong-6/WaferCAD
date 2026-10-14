@@ -311,18 +311,8 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
     const upperFixed = connectedPart([25, 9]);
     const lowerFixed = connectedPart([25, -21]);
     assert.ok(movable >= 0 && upperFixed >= 0 && lowerFixed >= 0);
-    assert.notEqual(
-      movable, upperFixed,
-      'Upper fixed comb touches moving Si shuttle in ' + state,
-    );
-    assert.notEqual(
-      movable, lowerFixed,
-      'Lower fixed comb touches moving Si shuttle in ' + state,
-    );
-    assert.notEqual(
-      upperFixed,
-      lowerFixed,
-      'Opposing stationary combs are electrically shorted',
-    );
+    assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
+    assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
+    assert.notEqual(upperFixed, lowerFixed, 'Opposing stationary combs are electrically shorted');
   }
 });
