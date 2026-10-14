@@ -31,7 +31,8 @@ import {
 export function createSectionView({ store, main, workstation }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
   const state = store.state,
-    local = store.local.section;
+    local = store.local.section,
+    preview = workstation.readOnlyPreview === true;
   const hooks = new Map();
   const hook = (id, node) => {
     node.id = id;
@@ -120,11 +121,15 @@ export function createSectionView({ store, main, workstation }) {
       legendResizer,
     ),
   );
-  let legendOpen = state.sectionLayersVisible !== false,
+  let legendOpen = !preview && state.sectionLayersVisible !== false,
     editingName = false,
     legendPalette = 'balanced',
     paletteOpen = null,
     legend;
+  if (preview) {
+    body.dataset.legendOpen = 'false';
+    legendResizer.hidden = true;
+  }
   const legendWidthKey = 'wafercad.v2.section-legend-width.v1';
   try {
     const savedWidth = Number(sessionStorage.getItem(legendWidthKey));
@@ -289,7 +294,7 @@ export function createSectionView({ store, main, workstation }) {
     local.zoomEnabled = false;
     sync();
   });
-  detail.bind();
+  if (!preview) detail.bind();
   // UI-v2-only presentation; retain the shared controller's physical semantics.
   const zEditor = createZBreakEditor({ el, button, fields, hook, units, collapse });
   const zForm = zEditor.form;
@@ -315,6 +320,7 @@ export function createSectionView({ store, main, workstation }) {
       hooks.get('sectionMeta').textContent;
   }
   function renderLegend() {
+    if (preview) return;
     const annotations = [
       ...(state.model.implants || []).map((item) => ({ ...item, kind: 'Implant' })),
       ...(state.model.electricalRegions || []).map((item) => ({ ...item, kind: 'Electrical' })),
@@ -448,6 +454,7 @@ export function createSectionView({ store, main, workstation }) {
     }
   });
   document.addEventListener('click', (event) => {
+    if (preview) return;
     if (paletteOpen && !event.target.closest('.v2-legend-palette-anchor')) {
       paletteOpen = null;
       if (editingName) panel.querySelector('.v2-legend-palette')?.remove();
