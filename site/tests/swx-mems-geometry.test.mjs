@@ -319,6 +319,10 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
       movable, lowerFixed,
       'Lower fixed comb touches moving Si shuttle in ' + state,
     );
-    assert.notEqual(upperFixed, lowerFixed, 'Opposing stationary combs are electrically shorted');
+    assert.notEqual(
+      upperFixed,
+      lowerFixed,
+      'Opposing stationary combs are electrically shorted',
+    );
   }
 });
