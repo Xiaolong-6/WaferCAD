@@ -561,7 +561,12 @@ function partitionProcessRegions(
           box: multiBounds(overlap),
           owners: [previous, region].map(({ id, stack }) => ({
             id,
-            layerIds: stack.map((segment) => segment.layerId),
+            segments: stack.map(({ layerId, z0, z1, role }) => ({
+              layerId,
+              z0,
+              z1,
+              ...(role ? { role } : {}),
+            })),
           })),
         };
         throw new Error(
