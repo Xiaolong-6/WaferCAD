@@ -60,6 +60,26 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   );
 });
 
+test('ALD passivations are truly conformal and local inspection follows the TEM device', async () => {
+  const { project } = await buildM3DLime();
+  const steps = project.processRecipe.steps;
+  for (const name of [
+    'CNT gate HfO2 10nm',
+    'CNT Al2O3 passivation 35nm',
+    'CNT HfO2 passivation 10nm',
+    'Digital Al2O3 passivation 45nm',
+  ]) {
+    const operation = steps.find((step) => step.params?.material === name);
+    assert.ok(operation, name + ' is absent from source Recipe');
+    assert.equal(operation.params.coverage, 'conformal',
+      name + ' ALD is erroneously rendered as vertical-only deposition');
+  }
+  assert.deepEqual(project.roi, { type: 'rect', a: [-45, -35], b: [-35, -11] },
+    '3D inspection must frame one local CNTFET-RRAM half-cell, not an entire array');
+  assert.deepEqual(project.section, { a: [-44, -24], b: [-35, -24] },
+    'published device cross-section must be preserved');
+});
+
 test('foundry M4 state precedes analog RRAM without a second invented 400nm oxide', async () => {
   const { project } = await buildM3DLime();
   const steps = project.processRecipe.steps;
