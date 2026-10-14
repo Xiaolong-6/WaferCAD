@@ -66,7 +66,42 @@ try {
   assert.equal(opened.model.implants[0].depthStart, 0.08);
   assert.equal(opened.model.implants[1].depthStart, 0.08);
   assert.equal(opened.model.layers.length, expected.model.layers.length);
+  assert.equal(opened.snapshotBranches.branches.length, 2, 'Both CMOS process Variants must be imported');
+  assert.equal(opened.model.dopantRegions.length, expected.model.dopantRegions.length);
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-before-runall.png') });
+  await panel('history');
+  const referenceVariant = page.locator(
+    '.history-variant[data-variant-id="conventional-cmos"] > .history-variant-head .history-variant-name',
+  );
+  await referenceVariant.waitFor({ state: 'visible', timeout: 30000 });
+  await referenceVariant.click();
+  await page.waitForFunction(
+    () => {
+      const snap = window.WaferCadV2Workstation.snapshot();
+      return snap.model.implants[0]?.name?.includes('LVTN') &&
+        snap.snapshotBranches.activeBranchId === 'conventional-cmos' &&
+        !snap.workflow.busy;
+    },
+    null,
+    { timeout: 120000 },
+  );
+  const referenceState = await snap();
+  assert.equal(referenceState.model.dopantRegions.some((d) => d.role === 'body'), false);
+  assert.equal(referenceState.processRecipe.steps.length, expected.processRecipe.steps.length);
+  await page.screenshot({ path: resolve(dir, 'tcmos-conventional-cmos-variant.png') });
+  await page.locator(
+    '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
+  ).click();
+  await page.waitForFunction(
+    () => {
+      const snap = window.WaferCadV2Workstation.snapshot();
+      return snap.snapshotBranches.activeBranchId === 'main' &&
+        snap.model.implants[0]?.name?.includes('HVTN') &&
+        !snap.workflow.busy;
+    },
+    null,
+    { timeout: 120000 },
+  );
 
   // Inspect the actual exported binary Mask, not just the layout metadata.
   const { parseGDS, flattenGDS } = await import('../site/gds.js');
@@ -142,6 +177,20 @@ try {
     { areaToleranceUm2: 2e-6 },
   );
   assert.equal(exported.model.implants.length, expected.model.implants.length);
+  const dopingSignature = (model) =>
+    model.dopantRegions.map((region) => [
+      region.polarity,
+      region.role,
+      region.hostLayerId,
+      region.depthStartUm,
+      region.depthEndUm,
+      region.sourceImplantId,
+    ]).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  assert.deepEqual(
+    dopingSignature(exported.model),
+    dopingSignature(expected.model),
+    'Run All must regenerate the same qualitative doping profile semantics',
+  );
   assert.deepEqual(
     exported.model.implants.slice(0, 2).map((item) => item.depthStart),
     [0.08, 0.08],
