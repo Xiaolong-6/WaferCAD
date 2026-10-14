@@ -26,6 +26,20 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Temporary formatter evidence for Section preservation
+        run: |
+          npx prettier --write site/controllers/base-controls-controller.js site/tests/base-section-rebuild.test.mjs scripts/v2/check-m3d-lime-project.mjs
+          for item in site/controllers/base-controls-controller.js site/tests/base-section-rebuild.test.mjs scripts/v2/check-m3d-lime-project.mjs; do
+            case "$item" in
+              site/controllers*) key=LIME_SECTION_CTRL ;;
+              site/tests*) key=LIME_SECTION_TEST ;;
+              scripts/v2*) key=LIME_SECTION_BROWSER ;;
+            esac
+            echo "${key}_BEGIN"
+            base64 -w0 "$item"
+            echo
+            echo "${key}_END"
+          done
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Check committed project matches source recipe
