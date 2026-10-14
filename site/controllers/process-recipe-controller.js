@@ -995,6 +995,7 @@ export function createProcessRecipeController({
       } else if (step.command === 'implant') {
         bindText('Name', 'name');
         bindLength('Depth', 'depthUm', p.depthUm);
+        bindLength('Start depth', 'startDepthUm', p.startDepthUm ?? 0);
         bindText('Tilt X °', 'tilt', p.tilt ?? 0, {
           type: 'number',
           min: '-80',
@@ -1449,6 +1450,7 @@ export function createProcessRecipeController({
     const before = Number(getModel()?.processRevision || 0);
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
+      canonicalImplantStartDepthUm: step.command === 'implant' ? p.startDepthUm ?? 0 : null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
       canonicalFaceSurfaces: p.faceSurfaces || null,
       canonicalFace: p.face || 'front',
@@ -1699,6 +1701,7 @@ export function createProcessRecipeController({
         params: {
           name: p.name || operation.name,
           depth: Number(p.thickness),
+          ...(p.depthStart > 0 ? { startDepth: p.depthStart } : {}),
           tilt: Number(p.tilt || 0),
           ...common,
         },
