@@ -60,6 +60,30 @@ test('Pages cannot silently skip publishing after an upstream optional suite ski
   );
 });
 
+test('Pages requires a real deploy and rejects false-green skipped publish jobs', () => {
+  const pages = workflow('pages');
+  const deploy = pages.split('  deploy:\n')[1]?.split('  release-verdict:\n')[0];
+  const verdict = pages.split('  release-verdict:\n')[1];
+  assert.ok(deploy, 'deploy job must exist');
+  assert.ok(verdict, 'final release verdict job must exist');
+  assert.match(deploy, /needs: \[stage-pages\]/);
+  assert.ok(
+    deploy.includes(
+      "if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.stage-pages.result == 'success' }}",
+    ),
+    'explicit success status must allow a completed stage to run despite skipped optional upstream jobs',
+  );
+  assert.match(verdict, /needs: \[stage-pages, deploy\]/);
+  assert.ok(
+    verdict.includes("if: ${{ always() && github.ref == 'refs/heads/main' }}"),
+    'final verdict must be evaluated even if the deployment was skipped',
+  );
+  assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
+  assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
+  assert.match(verdict, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(verdict, /exit 1/);
+});
+
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
   const pages = workflow('pages');
   assert.match(pages, /  release-impact:\n/);
