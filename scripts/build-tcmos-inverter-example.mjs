@@ -614,7 +614,10 @@ export async function buildTcmosInverter({ illustrativeTiltDeg = 0 } = {}) {
     electricalMarkers: model.electricalRegions.length,
     finalRegions: model.regions.length,
     finalMaterialLayers: model.layers.length,
-    inspectionPreset: { hiddenMaterial: 'Interlayer SiO2', camera: copy(project.display.threeCamera) },
+    inspectionPreset: {
+      hiddenMaterial: 'Interlayer SiO2',
+      camera: copy(project.display.threeCamera),
+    },
     checkpoints,
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
