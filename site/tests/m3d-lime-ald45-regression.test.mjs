@@ -11,7 +11,9 @@ const { validateProcessModel } = await import('../project-schema.js');
 // Replay exactly the published sample's complex topography at the final ALD
 // stage. The committed History state avoids rebuilding 47 preceding processes.
 test('M3D-LIME 45nm top ALD: reproduce physical Kernel result and protect rollback', async () => {
-  const bytes = await readFile(new URL('../examples/m3d-lime-rram-cntfet.wafercad', import.meta.url));
+  const bytes = await readFile(
+    new URL('../examples/m3d-lime-rram-cntfet.wafercad', import.meta.url),
+  );
   const project = await readProjectFile(new Blob([bytes]));
   const nodes = project.snapshotBranches.nodes;
   const aldStep = nodes.find((node) =>
@@ -44,7 +46,11 @@ test('M3D-LIME 45nm top ALD: reproduce physical Kernel result and protect rollba
       /^Conformal geometry failed safely: .*overlapping regions \([\d.eE+-]+ µm²\)/,
       'Unexpected reason for the known top-ALD rejection',
     );
-    assert.deepEqual(candidate, before, 'Failed Conformal must roll back all geometry and counters');
+    assert.deepEqual(
+      candidate,
+      before,
+      'Failed Conformal must roll back all geometry and counters',
+    );
     console.log(
       JSON.stringify({
         test: 'm3d-lime-top-ald45',
