@@ -52,6 +52,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(project.planViews.main.zoom, 2.5);
   assert.equal(project.planViews.mask.zoom, 1);
   assert.deepEqual(
+    project.display.sectionCollapse,
+    { top: 0, bottom: -150, enabled: false },
+    'Section default must show all four microchannel tiers without hidden Z interval',
+  );
+  assert.deepEqual(
     project.roi,
     {
       type: 'rect',
