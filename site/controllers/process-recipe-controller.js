@@ -1450,7 +1450,7 @@ export function createProcessRecipeController({
     const before = Number(getModel()?.processRevision || 0);
     await processPanelController.applyOperation({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
-      canonicalImplantStartDepthUm: step.command === 'implant' ? p.startDepthUm ?? 0 : null,
+      canonicalImplantStartDepthUm: step.command === 'implant' ? (p.startDepthUm ?? 0) : null,
       canonicalSurface: typeof p.surface === 'object' ? p.surface : null,
       canonicalFaceSurfaces: p.faceSurfaces || null,
       canonicalFace: p.face || 'front',
