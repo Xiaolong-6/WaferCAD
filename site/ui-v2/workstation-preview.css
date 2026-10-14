@@ -1,0 +1,59 @@
+/* Read-only Welcome example preview. It reuses the production v2 view
+   controllers without exposing editor controls or the workspace writer lease. */
+body[data-workstation][data-preview-mode='true'] {
+  overflow: hidden;
+}
+
+body[data-workstation][data-preview-mode='true'] .p-workbench {
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+body[data-workstation][data-preview-mode='true'] .p-topbar,
+body[data-workstation][data-preview-mode='true'] .p-nav,
+body[data-workstation][data-preview-mode='true'] .p-inspector,
+body[data-workstation][data-preview-mode='true'] .p-divider,
+body[data-workstation][data-preview-mode='true'] .p-empty-strip,
+body[data-workstation][data-preview-mode='true'] .p-viewbar,
+body[data-workstation][data-preview-mode='true'] .p-status,
+body[data-workstation][data-preview-mode='true'] .p-view > header {
+  display: none;
+}
+
+body[data-workstation][data-preview-mode='true'] .p-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+body[data-workstation][data-preview-mode='true'] .p-stage {
+  grid-column: 1;
+  grid-row: 1;
+  order: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+body[data-workstation][data-preview-mode='true'] .p-canvases {
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 0;
+  gap: 0;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+body[data-workstation][data-preview-mode='true'] .p-view {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
+  height: auto;
+  min-height: 24px;
+}
