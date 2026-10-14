@@ -87,6 +87,24 @@ try {
       assert.deepEqual(values.duplicateIds, []);
       assert.equal(values.legacyPanels, 0);
       assert.equal(values.canvasCount, 1);
+      if (values.overflow > 0) {
+        const offenders = await page.evaluate(() =>
+          [...document.querySelectorAll('body *')]
+            .filter((node) => {
+              const box = node.getBoundingClientRect();
+              return box.width > 0 && box.right > innerWidth + 2;
+            })
+            .slice(0, 12)
+            .map((node) => ({
+              tag: node.tagName,
+              id: node.id,
+              className: String(node.className).slice(0, 90),
+              right: Math.round(node.getBoundingClientRect().right),
+              width: Math.round(node.getBoundingClientRect().width),
+            })),
+        );
+        console.error(`Main ${width}px horizontal overflow diagnostic`, offenders);
+      }
       assert.equal(values.overflow, 0);
       assert.equal(values.headerOverflow, 0);
       assert.deepEqual(values.labels, ['', '', '', '']);
