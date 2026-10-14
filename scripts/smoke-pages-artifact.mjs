@@ -139,7 +139,11 @@ try {
   );
   const applied = await snapshot();
   assert.ok(applied.model.layers.some((layer) => layer.name === 'Pages smoke film'));
-  assert.deepEqual(errors, [], 'Staged Pages boot and worker execution have no resource/page errors');
+  assert.deepEqual(
+    errors,
+    [],
+    'Staged Pages boot and worker execution have no resource/page errors',
+  );
   console.log(
     `Pages staged artifact PASS: ${info.commit.slice(0, 12)}; Welcome/v2/Project/Layout/Process Workers`,
   );
