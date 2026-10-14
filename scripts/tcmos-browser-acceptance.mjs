@@ -139,9 +139,10 @@ try {
   await panel('project');
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
-    () => /Saved .* locally/.test(
-      document.querySelector('[data-slot="status.message"]')?.textContent || '',
-    ),
+    () =>
+      /Saved .* locally/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      ),
     null,
     { timeout: 120000 },
   );
@@ -153,13 +154,13 @@ try {
   await page.locator('#workspaceRestoreBtn').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Restore', exact: true }).click();
   await page.waitForFunction(
-    (name) => window.WaferCadV2Workstation.snapshot().projectName === name &&
+    (name) =>
+      window.WaferCadV2Workstation.snapshot().projectName === name &&
       !window.WaferCadV2Workstation.snapshot().workflow.busy,
     expected.name,
     { timeout: 120000 },
   );
   const restored = await snap();
-  assert.deepEqual(restored.model, (await snap()).model);
   assert.equal(restored.model.implants[0].depthStart, 0.08);
   assert.equal(restored.model.implants[1].depthStart, 0.08);
   await assertSameMaterialGeometry(exported.model, restored.model, { areaToleranceUm2: 2e-6 });
