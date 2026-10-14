@@ -132,10 +132,14 @@ test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal a
     close(channel.right - drain.left, 0.3, 'drain overlap');
     close(drain.left - source.right, 2, 'reported active channel L');
     close(drain.right - drain.left, 1.8, 'inferred common Pd landing');
-    assert.ok(rram.left - channel.right >= 0.45 - 1e-9,
-      'Supplementary Fig. 6 requires a laterally distinct digital RRAM outside the CNT island');
-    assert.ok(rram.left >= drain.left && rram.right <= drain.right,
-      'digital RRAM must land entirely on common Pd drain/BE');
+    assert.ok(
+      rram.left - channel.right >= 0.45 - 1e-9,
+      'Supplementary Fig. 6 requires a laterally distinct digital RRAM outside the CNT island',
+    );
+    assert.ok(
+      rram.left >= drain.left && rram.right <= drain.right,
+      'digital RRAM must land entirely on common Pd drain/BE',
+    );
     assert.ok(
       gate.left <= source.right && gate.right >= drain.left,
       'gate must cover entire active length',
