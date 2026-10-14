@@ -148,10 +148,7 @@ test('large polygon truncated, out-of-order or oversized packets fail closed', (
     }
     return receiver;
   };
-  assert.throws(
-    () => fresh().accept({ id: 1, type: 'stream-done' }),
-    /Incomplete/,
-  );
+  assert.throws(() => fresh().accept({ id: 1, type: 'stream-done' }), /Incomplete/);
   const firstPoints = packets[firstPointsIndex];
   assert.throws(
     () => fresh().accept({ ...structuredClone(firstPoints), startIndex: 5 }),
