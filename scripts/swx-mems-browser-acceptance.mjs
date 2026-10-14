@@ -122,6 +122,7 @@ try {
       await page.locator('[data-action="view:main"]').click();
       await waitForPaint(page);
       const beforeExport = await snapshot();
+      await page.screenshot({ path: resolve(out, 'swx-' + state + '-four-views.png') });
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#projectExportMenuBtn').click();
       const savedFile = page.waitForEvent('download', { timeout: 120000 });
@@ -143,6 +144,38 @@ try {
         'Export must not mutate live physical geometry',
       );
       assert.deepEqual(errors, [], 'Browser runtime errors');
+
+      if (state === 'off') {
+        await page.locator('[data-action="domain:process"]').click();
+        const recipeTab = page.locator('[data-action="process-mode:recipe"]');
+        if (await recipeTab.isVisible()) await recipeTab.click();
+        await page.locator('#recipeRunStart').selectOption('new-base');
+        assert.doesNotMatch(
+          await page.locator('#recipeValidation').innerText(),
+          /✕|missing|invalid/i,
+          'SWX shared fabrication must pass new Base preflight',
+        );
+        const stepCount = source.processRecipe.steps.length;
+        await page.locator('#recipeRunAllBtn').click();
+        const clearHistory = page.getByRole('button', { name: 'Clear history', exact: true });
+        const keepHistory = page.getByRole('button', { name: 'Keep previous history', exact: true });
+        if (await clearHistory.isVisible()) await clearHistory.click();
+        else if (await keepHistory.isVisible()) await keepHistory.click();
+        await page.waitForFunction(
+          (count) => {
+            const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
+            return new RegExp('^(Completed|Failed|Stopped):').test(summary);
+          },
+          stepCount,
+          { timeout: 300000 },
+        );
+        const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
+        assert.match(summary, new RegExp('^Completed: ' + stepCount + '/' + stepCount));
+        const rebuilt = await snapshot();
+        await assertSameMaterialGeometry(source.model, rebuilt.model, {
+          areaToleranceUm2: 0.01,
+        });
+      }
 
       report.cases.push({
         state,
