@@ -221,6 +221,69 @@ try {
         });
       }
 
+      // Review the actual 3D WebGL sidewalls at the same physical camera
+      // in both Variants. Keep this camera change in the TEST copy only;
+      // the user-facing project retains its own default overview camera.
+      const cornerCamera = {
+        position: [10.5, 15.5, 13.0],
+        target: [2.6, 31.0, 4.65],
+        fov: 34,
+      };
+      const inspectProject = structuredClone(source);
+      inspectProject.display.threeCamera = cornerCamera;
+      for (const branch of inspectProject.snapshotBranches.branches) {
+        if (branch.headState?.display) branch.headState.display.threeCamera = cornerCamera;
+      }
+      await page.locator('[data-action="domain:project"]').click();
+      await page.locator('#openProjectInput').setInputFiles({
+        name: 'swx-corner-review.wafercad',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(inspectProject)),
+      });
+      const cornerOpen = page.getByRole('button', {
+        name: 'Open project',
+        exact: true,
+      });
+      if (await cornerOpen.isVisible()) await cornerOpen.click();
+      await page.waitForFunction(
+        (expected) =>
+          window.WaferCadV2Workstation.snapshot().projectName === expected &&
+          !window.WaferCadV2Workstation.snapshot().workflow.busy,
+        source.name,
+        { timeout: 120000 },
+      );
+      if (state === 'on') {
+        await page.locator('[data-action="domain:history"]').click();
+        await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+        await page.waitForFunction(
+          () => window.WaferCadV2Workstation.snapshot().workflow.branches
+            .some((branch) => branch.id === 'on' && branch.active),
+          null,
+          { timeout: 120000 },
+        );
+      }
+      await page.locator('[data-action="mode:single"]').click();
+      await page.locator('[data-action="view:three"]').click();
+      await page.waitForFunction(
+        (expected) => {
+          const host = document.getElementById('threeHost');
+          const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
+          return host?.dataset.renderState === 'ready' && camera &&
+            camera.target.every((value, i) => Math.abs(value - expected.target[i]) < 1e-4);
+        },
+        cornerCamera,
+        { timeout: 120000 },
+      );
+      await waitForPaint(page);
+      const cornerView = page.locator('#threePanel');
+      const cornerBounds = await cornerView.boundingBox();
+      assert.ok(
+        cornerBounds?.width > 700 && cornerBounds.height > 400,
+        '3D corner review was not shown in an inspectable single-view panel',
+      );
+      await cornerView.screenshot({ path: resolve(out, 'swx-' + state + '-3d-miter-corner.png') });
+      assert.deepEqual(errors, [], 'Corner review triggered WebGL errors');
+
       report.cases.push({
         state,
         pass: true,
