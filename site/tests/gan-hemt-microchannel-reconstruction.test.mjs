@@ -60,17 +60,17 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     project.roi,
     {
       type: 'rect',
-      a: [-800, -650],
-      b: [800, 650],
+      a: [-650, 0],
+      b: [650, 650],
     },
     'Saved ROI must be a local 3D inspection crop',
   );
   assert.deepEqual(
     project.display.threeCamera,
     {
-      position: [1400, -1550, 1350],
-      target: [0, 0, 420],
-      fov: 35,
+      position: [1050, -1650, 1120],
+      target: [0, 0, 370],
+      fov: 36,
     },
     'Saved camera must focus on chip and microchannels',
   );
