@@ -32,16 +32,24 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
     project.model.processRevision,
   );
 
-  const conformalIds = new Set(project.model.layers
-    .filter((layer) => ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm',
-      'CNT HfO2 passivation 10nm'].includes(layer.name))
-    .map((layer) => layer.id));
+  const conformalIds = new Set(
+    project.model.layers
+      .filter((layer) =>
+        ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm', 'CNT HfO2 passivation 10nm'].includes(
+          layer.name,
+        ),
+      )
+      .map((layer) => layer.id),
+  );
   const physicalSidewalls = project.model.regions
     .flatMap((region) => region.stack)
-    .filter((segment) => segment.role === 'conformal-sidewall' &&
-      conformalIds.has(segment.layerId));
-  assert.ok(physicalSidewalls.length > 0,
-    'Kernel must create actual ALD-coated sidewalls, not merely conformal Recipe labels');
+    .filter(
+      (segment) => segment.role === 'conformal-sidewall' && conformalIds.has(segment.layerId),
+    );
+  assert.ok(
+    physicalSidewalls.length > 0,
+    'Kernel must create actual ALD-coated sidewalls, not merely conformal Recipe labels',
+  );
 
   const names = project.model.layers.map((l) => l.name);
   for (const item of [
@@ -88,21 +96,35 @@ test('ALD passivations retain supported conformal coverage with explicit 45nm li
   ]) {
     const operation = steps.find((step) => step.params?.material === name);
     assert.ok(operation, name + ' is absent from source Recipe');
-    assert.equal(operation.params.coverage, 'conformal',
-      name + ' ALD is erroneously rendered as vertical-only deposition');
+    assert.equal(
+      operation.params.coverage,
+      'conformal',
+      name + ' ALD is erroneously rendered as vertical-only deposition',
+    );
   }
-  const topAl2O3 = steps.find((step) =>
-    step.params?.material === 'Digital Al2O3 passivation 45nm');
+  const topAl2O3 = steps.find((step) => step.params?.material === 'Digital Al2O3 passivation 45nm');
   assert.ok(topAl2O3, 'source reports 45nm ALD protection');
-  assert.equal(topAl2O3.params.coverage, 'direct',
-    'do not silently re-enable Kernel conformal geometry with unresolved XY overlaps');
-  assert.ok(validation.declaredAssumptions.some((item) =>
-    item.includes('strict conformal ownership fails')),
-  'the scientific ALD geometry limitation must survive in the evidence report');
-  assert.deepEqual(project.roi, { type: 'rect', a: [-45, -35], b: [-35, -11] },
-    '3D inspection must frame one local CNTFET-RRAM half-cell, not an entire array');
-  assert.deepEqual(project.section, { a: [-44, -24], b: [-35, -24] },
-    'published device cross-section must be preserved');
+  assert.equal(
+    topAl2O3.params.coverage,
+    'direct',
+    'do not silently re-enable Kernel conformal geometry with unresolved XY overlaps',
+  );
+  assert.ok(
+    validation.declaredAssumptions.some((item) =>
+      item.includes('strict conformal ownership fails'),
+    ),
+    'the scientific ALD geometry limitation must survive in the evidence report',
+  );
+  assert.deepEqual(
+    project.roi,
+    { type: 'rect', a: [-45, -35], b: [-35, -11] },
+    '3D inspection must frame one local CNTFET-RRAM half-cell, not an entire array',
+  );
+  assert.deepEqual(
+    project.section,
+    { a: [-44, -24], b: [-35, -24] },
+    'published device cross-section must be preserved',
+  );
 });
 
 test('foundry M4 state precedes analog RRAM without a second invented 400nm oxide', async () => {
