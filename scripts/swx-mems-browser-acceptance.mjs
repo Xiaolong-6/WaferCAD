@@ -224,11 +224,22 @@ try {
       // Review the actual 3D WebGL sidewalls at the same physical camera
       // in both Variants. Keep this camera change in the TEST copy only;
       // the user-facing project retains its own default overview camera.
+      const zScale = Number(
+        await page.locator('#threeHost').getAttribute('data-z-display-scale'),
+      );
+      assert.ok(Number.isFinite(zScale) && zScale > 0, 'Missing physical 3D Z display scale');
+      const deviceLayerId = source.model.layers.find(
+        (layer) => layer.name === '220nm SOI device silicon',
+      ).id;
+      const siliconZ = source.model.regions.flatMap((region) =>
+        region.stack.filter((segment) => segment.layerId === deviceLayerId),
+      );
+      const visualSiliconZ = (Math.max(...siliconZ.map((segment) => segment.z1)) - 0.05) * zScale;
       const cornerCamera = {
-        // Focus exactly on the 200nm folded-spring miter at x≈2.1, y≈32.
-        // A near-top-down oblique view keeps the y=40 BOX support offscreen.
-        position: [8.1, 31.9, 17.5],
-        target: [2.1, 31.9, 4.65],
+        // WebGL scales physical Z to fit the XY span. Camera coordinates must
+        // use that displayed Z or the true miter is pushed above the frame.
+        position: [8.1, 31.9, visualSiliconZ + 12.85],
+        target: [2.1, 31.9, visualSiliconZ],
         fov: 34,
       };
       const inspectProject = structuredClone(source);
