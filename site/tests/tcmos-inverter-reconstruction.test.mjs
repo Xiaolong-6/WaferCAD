@@ -46,6 +46,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   assert.equal(project.snapshots.length, 5);
   assert.equal(model.implants.length, 6);
+  assert.match(model.implants[0].name, /HVTP As\+ pMOS/);
+  assert.match(model.implants[1].name, /HVTN BF2\+ nMOS/);
   assert.equal(model.electricalRegions.length, 2);
   assert.ok(model.layers.some((l) => l.name === 'STI SiO2 fill'));
   assert.ok(model.layers.some((l) => l.name === 'POLY gate'));
