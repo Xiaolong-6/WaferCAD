@@ -197,6 +197,20 @@ try {
     { timeout: 120000 },
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
+  // Figure 1a has device-scale details that cannot be judged in the four-view
+  // thumbnail. Capture native maximized Section and 3D views for inspection.
+  const maximizeSection = page.locator('[data-action="maximize:section"]').first();
+  await maximizeSection.click();
+  await waitForPaint(page);
+  await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-section-expanded.png') });
+  await maximizeSection.click();
+  await waitForPaint(page);
+  const maximizeThree = page.locator('[data-action="maximize:three"]').first();
+  await maximizeThree.click();
+  await waitForPaint(page);
+  await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
+  await maximizeThree.click();
+  await waitForPaint(page);
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
     result: 'pass',
