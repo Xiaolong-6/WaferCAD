@@ -27,25 +27,97 @@ const rectanglePolygon = (r) => [
   [r.x + r.w, r.y + r.h],
   [r.x, r.y + r.h],
 ];
+// Fig. 1b is a schematic, NOT a released foundry layout. Use its mask topology:
+// two horizontal ACTIVE bars, complementary enclosing LVT/HVT windows, nested
+// U-shaped body-tap contact arrays and four separate METAL1 electrical nets.
 const P_ACTIVE = rect(-5, -0.65, 4, 1.3);
 const N_ACTIVE = rect(1, -0.65, 4, 1.3);
 const gateLeft = -3;
 const gateRight = 3;
 const sd = (minX, maxX) => rect(minX, -0.65, maxX - minX, 1.3);
+const U_CENTERS = [-3, 3];
+function bodyTapActive(cx) {
+  // U-shaped diffusion / substrate-well tie, isolated from the channel ACTIVE.
+  return [
+    rect(cx - 2.55, -2.3, 5.1, 0.4),
+    rect(cx - 2.55, -2.3, 0.4, 1.6),
+    rect(cx + 2.15, -2.3, 0.4, 1.6),
+  ];
+}
+function bodyTapContacts(cx) {
+  const contacts = [];
+  for (let i = 0; i < 10; i++) {
+    contacts.push(rect(cx - 2.25 + i * 0.5 - 0.09, -2.19, 0.18, 0.18));
+  }
+  for (const x of [cx - 2.35, cx + 2.35]) {
+    for (const y of [-1.65, -1.2, -0.85]) {
+      contacts.push(rect(x - 0.09, y - 0.09, 0.18, 0.18));
+    }
+  }
+  return contacts;
+}
+function bodyTapMetal(cx) {
+  return [
+    rect(cx - 2.55, -2.3, 5.1, 0.4),
+    rect(cx - 2.55, -2.3, 0.4, 1.6),
+    rect(cx + 2.15, -2.3, 0.4, 1.6),
+  ];
+}
+export const TCMOS_METAL_NETS = Object.freeze([
+  {
+    name: 'VDD',
+    rectangles: [
+      rect(-4.52, -2.16, 0.36, 2.36),
+      ...bodyTapMetal(-3),
+    ],
+  },
+  {
+    name: 'VOUT',
+    rectangles: [rect(-1.84, -0.16, 3.68, 0.32)],
+  },
+  {
+    name: 'GND',
+    rectangles: [
+      rect(4.16, -2.16, 0.36, 2.36),
+      ...bodyTapMetal(3),
+    ],
+  },
+  {
+    name: 'VIN',
+    rectangles: [
+      rect(-3.18, 1.00, 0.36, 1.65),
+      rect(2.82, 1.00, 0.36, 1.65),
+      rect(-3.18, 2.41, 6.36, 0.24),
+    ],
+  },
+]);
 
 export const TCMOS_MASKS = Object.freeze([
-  { id: 1, name: 'ACTIVE / STI complement', rectangles: [P_ACTIVE, N_ACTIVE] },
-  { id: 2, name: 'NWELL (pMOS)', rectangles: [P_ACTIVE] },
-  { id: 3, name: 'PWELL (nMOS)', rectangles: [N_ACTIVE] },
-  { id: 4, name: 'HVTP body implant (pMOS)', rectangles: [P_ACTIVE] },
-  { id: 5, name: 'HVTN body implant (nMOS)', rectangles: [N_ACTIVE] },
+  {
+    id: 1,
+    name: 'ACTIVE / STI complement, transistor plus isolated U-shaped body ties',
+    rectangles: [P_ACTIVE, N_ACTIVE, ...U_CENTERS.flatMap(bodyTapActive)],
+  },
+  { id: 2, name: 'NWELL (pMOS + body tie)', rectangles: [P_ACTIVE, ...bodyTapActive(-3)] },
+  { id: 3, name: 'PWELL (nMOS + body tie)', rectangles: [N_ACTIVE, ...bodyTapActive(3)] },
+  // Fig. 1b explicitly labels left pMOS as HVTN, right nMOS as HVTP.
+  // HVTN corresponds to As+ n-type doping in n-well / pMOS.
+  {
+    id: 4,
+    name: 'HVTN As+ pMOS buried body implant window',
+    rectangles: [rect(-4.08, -0.92, 2.48, 1.85)],
+  },
+  {
+    id: 5,
+    name: 'HVTP BF2+ nMOS buried body implant window',
+    rectangles: [rect(1.60, -0.92, 2.48, 1.85)],
+  },
   {
     id: 6,
-    name: 'POLY gates / shared VIN',
+    name: 'POLY 130nm separate gates (VIN joined via METAL1)',
     rectangles: [
       rect(gateLeft - GATE_LENGTH_UM / 2, -0.83, GATE_LENGTH_UM, 2.2),
       rect(gateRight - GATE_LENGTH_UM / 2, -0.83, GATE_LENGTH_UM, 2.2),
-      rect(gateLeft - GATE_LENGTH_UM / 2, 1.21, gateRight - gateLeft + GATE_LENGTH_UM, 0.16),
     ],
   },
   {
@@ -70,24 +142,31 @@ export const TCMOS_MASKS = Object.freeze([
   },
   {
     id: 10,
-    name: 'CNT contacts',
+    name: 'CNT transistor / POLY contacts and U-shaped body tie arrays',
     rectangles: [
       rect(-4.52, -0.18, 0.36, 0.36),
       rect(-1.84, -0.18, 0.36, 0.36),
       rect(1.48, -0.18, 0.36, 0.36),
       rect(4.16, -0.18, 0.36, 0.36),
-      rect(-0.16, 1.23, 0.32, 0.12), // VIN contact on the common POLY gate bus
+      rect(-3.13, 1.02, 0.26, 0.26),
+      rect(2.87, 1.02, 0.26, 0.26),
+      ...U_CENTERS.flatMap(bodyTapContacts),
     ],
   },
   {
     id: 11,
-    name: 'METAL1 VDD / VOUT / GND / VIN',
-    rectangles: [
-      rect(-4.52, -2.5, 0.36, 2.7), // VDD to pMOS source
-      rect(-1.84, -0.16, 3.68, 0.32), // VOUT joins the two drains
-      rect(4.16, -2.5, 0.36, 2.7), // GND to nMOS source
-      rect(-0.16, 1.23, 0.32, 1.8), // VIN is separate from VOUT
-    ],
+    name: 'METAL1 VDD / VOUT / GND / VIN (isolated nets)',
+    rectangles: TCMOS_METAL_NETS.flatMap((net) => net.rectangles),
+  },
+  {
+    id: 12,
+    name: 'LVTN reference CMOS channel implant window (not applied to T-CMOS)',
+    rectangles: [rect(-5.70, -2.72, 5.4, 3.65)],
+  },
+  {
+    id: 13,
+    name: 'LVTP reference CMOS channel implant window (not applied to T-CMOS)',
+    rectangles: [rect(0.30, -2.72, 5.4, 3.65)],
   },
 ]);
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
@@ -407,16 +486,16 @@ export async function buildTcmosInverter() {
   bookmark('S02 - complementary well regions');
 
   implant(
-    'HVTP As body implant',
-    'HVTP As+ pMOS / buried HVT body interval (illustrative)',
+    'HVTN As body implant',
+    'HVTN As+ pMOS / buried HVT body interval (illustrative)',
     0.24,
     4,
     '#d9668a',
     0.08,
   );
   implant(
-    'HVTN BF2 body implant',
-    'HVTN BF2+ nMOS / buried HVT body interval (illustrative)',
+    'HVTP BF2 body implant',
+    'HVTP BF2+ nMOS / buried HVT body interval (illustrative)',
     0.24,
     5,
     '#5d8ce0',
@@ -430,7 +509,7 @@ export async function buildTcmosInverter() {
   bookmark('S03 - HVT body implant annotations');
 
   deposit('Gate dielectric SiO2 5nm (illustrative)', 'Gate SiO2 (5nm surrogate)', 0.005);
-  deposit('Pattern 130nm POLY gates / VIN', 'POLY gate', 0.2, 6);
+  deposit('Pattern separate 130nm POLY gates (VIN via METAL1)', 'POLY gate', 0.2, 6);
   // Expose the source/drain Si before placing implant annotations. Actual foundry
   // dielectric-window and spacer sequence is abstracted here; no implant physics.
   for (const id of [7, 8]) {
@@ -514,9 +593,11 @@ export async function buildTcmosInverter() {
     keyAssumptions: [
       'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
-      'HVTN BF2+ nMOS / HVTP As+ pMOS buried interval (80–240 nm) is illustrative; no calibrated retrograde concentration or tunnel-junction thickness is implied.',
+      'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
+      'LVTN/LVTP mask windows are reference-only and NOT executed in the T-CMOS process; U-shaped body-tie diffusion, contact arrays and metal routing are traced visually from Fig. 1b, not measured dimensions.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
+      'Implant tilt is explicitly 0 degrees: the paper specifies higher energy and dose for HVT, but no nonzero beam angle. Visible red/blue bands indicate buried depth, not tilted doping.',
     ],
   };
   return { project, stored, json, validation };
