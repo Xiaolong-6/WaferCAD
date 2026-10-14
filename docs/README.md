@@ -31,6 +31,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 ## Scientific and interchange contracts
 
 - [Process benchmarks](PROCESS_BENCHMARKS.md) — analytic geometry acceptance and approximation limits.
+- [Process numerical and physical interpretation contract](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md) — numerical Z resolution, sub-0.01 nm preservation and continuum-film limitations.
 - [Both-face Process Kernel](PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Both-face bundled-example consolidation](EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.
 - [Photodetector reconstruction (2026-10-08)](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
