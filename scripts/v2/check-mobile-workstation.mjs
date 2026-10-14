@@ -69,7 +69,9 @@ try {
       assert.equal(await root.getAttribute('data-mobile'), 'view');
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
-      const viewDefaults = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().local);
+      const viewDefaults = await page.evaluate(
+        () => window.WaferCadV2Workstation.snapshot().local,
+      );
       for (const name of ['main', 'mask', 'section']) {
         assert.equal(viewDefaults[name].panEnabled, true, `${name}: default Pan`);
         assert.equal(viewDefaults[name].zoomEnabled, true, `${name}: default Zoom`);
@@ -144,7 +146,9 @@ try {
       // Exercise the persistent mobile chrome control explicitly.
       // Trigger the remote topbar without Playwright auto-scrolling it into view:
       // a real switch must preserve the offscreen document position.
-      await page.locator('.p-mobile-return [data-action="return-results"]').evaluate((node) => node.click());
+      await page
+        .locator('.p-mobile-return [data-action="return-results"]')
+        .evaluate((node) => node.click());
       await waitForPaint(page);
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
@@ -210,7 +214,9 @@ try {
       await page.locator('[data-action="process-mode:recipe"]').evaluate((node) => node.click());
       await waitForPaint(page);
       assert.equal(
-        await page.locator('#recipeStepsPane').evaluate((node) => getComputedStyle(node).overflowY),
+        await page
+          .locator('#recipeStepsPane')
+          .evaluate((node) => getComputedStyle(node).overflowY),
         'visible',
         'Recipe steps scroll with the document',
       );
