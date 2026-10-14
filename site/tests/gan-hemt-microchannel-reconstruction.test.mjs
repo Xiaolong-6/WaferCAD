@@ -231,6 +231,24 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   );
   assert.equal(asset.snapshotBranches.nodes.length, project.snapshotBranches.nodes.length);
   assert.equal(asset.snapshots.length, project.snapshots.length);
+  const committedManifoldBookmark = asset.snapshots.find((snapshot) =>
+    snapshot.name.startsWith('01 Four-level open microchannels'),
+  );
+  assert.deepEqual(
+    committedManifoldBookmark?.state.roi,
+    manifoldReview.state.roi,
+    'Committed manifold inspection crop is stale',
+  );
+  assert.deepEqual(
+    committedManifoldBookmark?.state.section,
+    manifoldReview.state.section,
+    'Committed manifold inspection section is stale',
+  );
+  assert.deepEqual(
+    committedManifoldBookmark?.state.display.threeCamera,
+    manifoldReview.state.display.threeCamera,
+    'Committed manifold inspection 3D camera is stale',
+  );
 
   // Small preview stores the exact same canonical root material geometry,
   // with all intermediate models stripped and one saved inspection step.
