@@ -185,7 +185,7 @@ test('Recipe rejects unrepresentable material segments without constraining anno
   }
   const annotation = parseProcessRecipeSource(
     'implant({ depth: "0.0000001 nm" });\n' +
-    'electrical({ depth: "0.0000001 nm" });',
+      'electrical({ depth: "0.0000001 nm" });',
   );
   for (const step of annotation.steps) assert.equal(step.params.depthUm, 1e-10);
 });
