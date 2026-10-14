@@ -31,7 +31,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 1. Interposer XY 6000 × 5000 µm is a representative viewing field inferred from the published photographs and scale markers, not a separately reported precision dimension.
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
-4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable.
+4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Original GDS and the exact channel count are unavailable. The publication also shows *inlet/outlet diversion structures* feeding the parallel channels (Fig. 1c and 2h). Their geometries are unpublished; the current example does not reconstruct these manifold fan-outs. The rectangular bottom cavity and inferred backside bores do not constitute a hydraulically validated fan-out.
 5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±415 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Real TSVs have stepped diameters and Cu/NiPaAu metallization; plating remains source metadata, not an electrically validated conductive structure.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
@@ -61,7 +61,7 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   clipping omits distant TSV sites from the initial local 3D inspection but
   does **not** delete them from the model or mask, and does not constrain
   Recipe operations. Clear the ROI for a full-interposer view. Main and Mask
-  retain the complete 6000 × 5000 µm field.
+  preserve the full 6000 × 5000 µm geometry. Main starts at 2.5× zoom, while Mask keeps its whole-field overview.
 
 These assertions establish solid/void occupancy only; they do not prove
 manufacturable sidewall profiles, bonded-wafer hermeticity, hydraulic flow
