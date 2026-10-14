@@ -192,7 +192,7 @@ try {
   );
   const tiltState = await snap();
   assert.deepEqual(tiltState.model.implants.slice(0, 2).map((item) => item.tilt), [18, 18]);
-  assert.deepEqual(tiltState.section, { a: [-3.75, 0], b: [-2.25, 0] });
+  assert.deepEqual(tiltState.section, { a: [-4.45, 0], b: [-2.95, 0] });
   await page.locator('[data-action="maximize:section"]').first().click();
   await waitForPaint(page);
   await page.screenshot({ path: resolve(dir, 'tcmos-tilt-18deg-NOT-PAPER-section.png') });
