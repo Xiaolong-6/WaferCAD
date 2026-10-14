@@ -58,7 +58,7 @@ test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcom
   ]) {
     assert.ok(pages.includes(`  ${job}:`));
     assert.ok(pages.includes(`uses: ./.github/workflows/${path}`));
-    assert.match(workflow(path), /^  workflow_call:/m);
+    assert.match(workflow(path.replace(/\.yml$/, '')), /^  workflow_call:/m);
   }
 });
 
