@@ -6,6 +6,7 @@ on:
       - feat/example-gan-hemt-microchannel-20261014
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
+      - scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
@@ -18,6 +19,7 @@ on:
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
+      - scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
@@ -45,9 +47,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Focused lint
-        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - name: Focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: Generate reopenable project and validation evidence
@@ -98,12 +100,25 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Capture all four real browser views for screenshot audit
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - name: Verify Welcome and Wiki catalog, history and previews
         run: node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
       - name: Run complete UI Recipe from fresh Base and validate output
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/example-recipe-runall-acceptance.mjs --id=gan-hemt-microchannel-2022
+      - name: Upload browser and Native Kernel evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gan-hemt-visual-browser-evidence
+          path: |
+            test-results/gan-microchannel/
+            test-results/example-recipe-runall/
+          if-no-files-found: warn
       - name: Commit validated project, preview, sources and docs to feature branch
         run: |
           git add site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
