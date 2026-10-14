@@ -7,13 +7,18 @@ on:
       - site/tests/m3d-lime-builder.test.mjs
       - scripts/v2/check-m3d-lime-project.mjs
       - scripts/klayout-m3d-lime-verify.py
+      - site/controllers/base-controls-controller.js
+      - site/ui-v2/project-mask-panels.js
+      - site/ui-v2/workstation-workflow.js
+      - site/app.js
+      - site/tests/base-section-rebuild.test.mjs
       - site/examples/m3d-lime-rram-cntfet.wafercad
       - docs/M3D_LIME_2023_RECONSTRUCTION.md
       - .github/workflows/m3d-lime-reconstruction.yml
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   paper-derived-kernel:
@@ -21,29 +26,15 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Temporary geometry source formatting
-        run: |
-          npx prettier --write scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
-          for item in scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md; do
-            case "$item" in
-              scripts/build*) key=LIME_LATERAL_BUILDER ;;
-              site/tests*) key=LIME_LATERAL_TEST ;;
-              docs/*) key=LIME_LATERAL_DOC ;;
-            esac
-            echo "${key}_BEGIN"
-            base64 -w0 "$item"
-            echo
-            echo "${key}_END"
-          done
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
+      - name: Check committed project matches source recipe
+        run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
       - name: Source-derived structural regression
         run: node --test site/tests/m3d-lime-builder.test.mjs
       - uses: actions/cache@v4
@@ -83,12 +74,3 @@ jobs:
             test-results/m3d-lime/klayout-m3d-lime.json
             test-results/m3d-lime/browser/
           retention-days: 14
-      - name: One-time commit verified Fig6 model to feature branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
-        run: |
-          test -s site/examples/m3d-lime-rram-cntfet.wafercad
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/examples/m3d-lime-rram-cntfet.wafercad
-          git diff --cached --quiet || git commit -m "fix(examples): persist Fig6-aligned lateral Pd/RRAM geometry"
-          git push origin HEAD:refs/heads/feat/m3d-rram-cntfet-lime-20261014
