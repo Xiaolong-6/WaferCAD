@@ -177,6 +177,27 @@ try {
     implants: exported.model.implants.length,
     history: exported.snapshotBranches.nodes.length,
   });
+  // Independent visual demonstration: 18-degree tilt is deliberately not from the paper.
+  // Keep the accepted source project screenshot and evidence untouched.
+  const tiltFile = resolve(dir, 'tcmos-tilt-demo-18deg-NOT-PAPER.wafercad');
+  const tiltProject = await readProjectFile(new Blob([await readFile(tiltFile)]));
+  await panel('project');
+  await page.locator('#openProjectInput').setInputFiles(tiltFile);
+  const tiltConfirm = page.getByRole('button', { name: 'Open project', exact: true });
+  if (await tiltConfirm.isVisible()) await tiltConfirm.click();
+  await page.waitForFunction(
+    (name) => window.WaferCadV2Workstation.snapshot().projectName === name,
+    tiltProject.name,
+    { timeout: 120000 },
+  );
+  const tiltState = await snap();
+  assert.deepEqual(tiltState.model.implants.slice(0, 2).map((item) => item.tilt), [18, 18]);
+  assert.deepEqual(tiltState.section, { a: [-3.75, 0], b: [-2.25, 0] });
+  await page.locator('[data-action="maximize:section"]').first().click();
+  await waitForPaint(page);
+  await page.screenshot({ path: resolve(dir, 'tcmos-tilt-18deg-NOT-PAPER-section.png') });
+  report.tiltDiagnostic = { sourceSupported: false, tiltDegrees: 18, sectionSpanUm: 1.5 };
+  assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors after tilt diagnostic');
   console.log('T-CMOS v2 browser Run All and strict material geometry parity PASS');
 } catch (error) {
   Object.assign(report, { result: 'fail', error: error.stack || error.message, pageErrors });
