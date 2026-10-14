@@ -35,9 +35,7 @@ try {
       ['gds-basic-instances', 'gds-basic-instances.gds'],
       ['oas-rectangles', 'oas-rectangles.oas'],
     ]) {
-      const filename = fileURLToPath(
-        new URL('../../site/samples/klayout/' + relative, import.meta.url),
-      );
+      const filename = fileURLToPath(new URL('../../site/samples/klayout/' + relative, import.meta.url));
       await page.locator('#gdsInput').setInputFiles(filename);
       await page.waitForFunction(
         (expected) => {
@@ -53,6 +51,13 @@ try {
         relative,
         { timeout: 120000 },
       );
+      // The persisted selection and visible checkbox state must converge
+      // after the worker import, not only after switching domains.
+      await page.waitForFunction(
+        () => document.querySelector('#maskLayerList input:checked') !== null,
+        null,
+        { timeout: 30000 },
+      );
       await waitForPaint(page);
       const snap = await snapshot();
       const canvas = page.locator('#maskCanvas');
@@ -61,7 +66,7 @@ try {
       assert.ok(size.width > 100 && size.height > 100, 'Mask canvas is nonempty');
       assert.equal(snap.maskSourceMode, 'file');
       assert.ok(snap.selectedLayerKeys.length > 0, 'All imported layers are initially selectable');
-      assert.equal(await page.locator('#maskLayerList input:checked').count() > 0, true);
+      assert.ok(await page.locator('#maskLayerList input:checked').count());
       assert.deepEqual(snap.model, baseModel, 'Layout import alone cannot edit the process model');
       report.imports.push({
         id,
