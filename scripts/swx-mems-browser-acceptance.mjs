@@ -234,6 +234,12 @@ try {
       for (const branch of inspectProject.snapshotBranches.branches) {
         if (branch.headState?.display) branch.headState.display.threeCamera = cornerCamera;
       }
+      for (const node of inspectProject.snapshotBranches.nodes) {
+        if (node.state?.display) node.state.display.threeCamera = cornerCamera;
+      }
+      for (const bookmark of inspectProject.snapshots) {
+        if (bookmark.state?.display) bookmark.state.display.threeCamera = cornerCamera;
+      }
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#openProjectInput').setInputFiles({
         name: 'swx-corner-review.wafercad',
