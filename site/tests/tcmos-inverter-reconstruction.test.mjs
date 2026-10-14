@@ -177,7 +177,7 @@ test('source-correct 0° HVT and explicitly non-paper 18° tilt diagnostic remai
   assert.equal(demo.validation.tiltSourceReported, false);
   assert.equal(demo.validation.tiltDegrees, 18);
   assert.match(demo.project.name, /NOT REPORTED IN PAPER/);
-  assert.deepEqual(demo.project.section, { a: [-3.75, 0], b: [-2.25, 0] });
+  assert.deepEqual(demo.project.section, { a: [-4.45, 0], b: [-2.95, 0] });
   assert.equal(
     demo.project.processRecipe.steps.filter(
       (step) => step.command === 'implant' && step.params.tilt === 18,
