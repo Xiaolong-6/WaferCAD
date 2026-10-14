@@ -130,10 +130,17 @@ try {
       const beforeScroll = await nav.boundingBox();
       await page.evaluate(() => window.scrollTo(0, 0));
       await swipeDocumentUp(page, width, height);
-      const documentOffset = await page.evaluate(() => document.scrollingElement.scrollTop);
+      const swipeOffset = await page.evaluate(() => document.scrollingElement.scrollTop);
       const afterScroll = await nav.boundingBox();
-      assert.ok(documentOffset > 20, 'Touch swipe scrolls the document');
+      assert.ok(swipeOffset > 20, 'Touch swipe scrolls the document');
       assert.ok(afterScroll.y < beforeScroll.y - 20, 'Navigation follows document scroll');
+      // Stop any momentum from the emulated swipe before testing precise
+      // restoration across view changes. The swipe itself was validated above.
+      const documentOffset = await page.evaluate(() => {
+        window.scrollTo(0, Math.min(120, document.scrollingElement.scrollHeight - innerHeight - 2));
+        return document.scrollingElement.scrollTop;
+      });
+      await waitForPaint(page);
 
       const touch = await processNav.boundingBox();
       assert.ok(
@@ -163,9 +170,10 @@ try {
       );
       await page.locator('[data-action="show-editor"]').evaluate((node) => node.click());
       await waitForPaint(page);
+      const restoredOffset = await page.evaluate(() => window.scrollY);
       assert.ok(
-        Math.abs((await page.evaluate(() => window.scrollY)) - documentOffset) <= 3,
-        'Edit returns to the previous document position',
+        Math.abs(restoredOffset - documentOffset) <= 3,
+        `Edit returns to the previous document position (wanted ${documentOffset}, got ${restoredOffset})`,
       );
       assert.equal(await label.inputValue(), 'Mobile draft remains');
       assert.equal(
