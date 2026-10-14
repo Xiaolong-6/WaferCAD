@@ -45,7 +45,7 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
-[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression and UI v2 Stage C/M4 acceptance. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The `deploy` job runs only for `refs/heads/main`; no failed or skipped upstream job qualifies.
+[Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression, UI v2 Stage C/M4 acceptance, and the scientific release aggregate. The aggregate invokes Main/Mask/Section, KLayout format interoperability and Recipe safety only when the changed-file planner selects them; manual releases conservatively select all three. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The `deploy` job runs only for `refs/heads/main`; all required upstream gates, including the scientific aggregate, must succeed. A specialized job may be skipped only when the release planner explicitly marks it not applicable. A required skipped, cancelled, failed, or missing gate blocks publication.
 
 ## Heavy Process Geometry job
 
@@ -75,7 +75,8 @@ This keeps PR and main validation change-aware while leaving the expensive uncon
 - Renderer stress cases and the full Process Geometry permutation set are retained for weekly/manual full runs; PRs and targeted main pushes use semantic/core subsets.
 - Process Geometry is split only when selected because its real worker/process path remains materially heavier than ordinary UI checks.
 - Node-test-only changes under `site/tests/` do not trigger Browser regression by themselves.
-- KLayout parser/browser compatibility remains path-filtered in its dedicated workflow.
+- KLayout parser/browser compatibility stays path-filtered on PRs and is reused as a required same-SHA release gate on layout/interop changes.
+- Main/Mask and Recipe browser acceptances are similarly reusable release gates. They do not run unconditionally for documentation-only changes.
 
 ## Local equivalents
 
