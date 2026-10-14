@@ -256,7 +256,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Paper-derived geometric surrogate · not a thermal simulation',
     },
     summary:
-      'Paper-derived, kernel-replayable 2.5D GaN-on-SiC HEMT above an 800 µm Si interposer with four stepped cooling cavities and inferred rear inlet/outlet openings. The four-tier bridge process approximates direct wafer bonding; masks and solder supports are partly inferred, and no thermal or CFD predictions are made.',
+      'Paper-derived, kernel-replayable 2.5D GaN-on-SiC HEMT above an 800 µm Si interposer with four stepped cooling cavities, six top channels and symmetric curved distribution manifolds connected to two rear ports. The manifold geometry and bonding process are explicitly inferred surrogates; no thermal or CFD predictions are made.',
     sources: [
       {
         citation:
