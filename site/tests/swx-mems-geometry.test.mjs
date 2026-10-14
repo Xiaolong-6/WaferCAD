@@ -82,3 +82,59 @@ test('Each pose yields named, bounded and exportable polygon mask layers', () =>
 test('Invalid poses fail explicitly rather than producing an implied device state', () => {
   assert.throws(() => createSwxGeometry('actuated'), /off or on/);
 });
+
+test('OFF/ON physical groups keep stationary anchors and move only the articulated layout', () => {
+  const off = createSwxGeometry('off');
+  const on = createSwxGeometry('on');
+  assert.deepEqual(off.physicalGroups.fixed, on.physicalGroups.fixed, 'fixed Si must not move');
+  assert.notDeepEqual(off.physicalGroups.movable, on.physicalGroups.movable);
+  assert.notDeepEqual(off.physicalGroups.flexure, on.physicalGroups.flexure);
+  assert.ok(off.physicalGroups.movable.length > 90, 'missing comb fingers or lattice shuttle');
+  assert.ok(on.physicalGroups.flexure.length > 30, 'missing flexure centerline segments');
+  approx(on.gapUm, 0.015, 1e-10);
+});
+
+test('one WaferCAD project restores OFF and ON from shared released manufacturing History', async () => {
+  const { buildSwxMemsUnified } = await import('../../scripts/build-swx-mems-example.mjs');
+  const { createSnapshotManager } = await import('../workspace-snapshots.js');
+  const { project } = await buildSwxMemsUnified();
+  const ids = project.snapshotBranches.branches.map((b) => b.id);
+  assert.deepEqual(ids, ['main', 'on']);
+  const onBranch = project.snapshotBranches.branches[1];
+  assert.equal(onBranch.parentBranchId, 'main');
+  assert.equal(onBranch.rootNodeId, project.snapshotBranches.nodes.at(-2).id);
+  assert.deepEqual(onBranch.headState.layout, project.layout, 'both pose variants share lithography');
+  assert.deepEqual(onBranch.headState.processRecipe, project.processRecipe);
+  assert.equal(onBranch.headState.model.processRevision, project.model.processRevision,
+    'Actuation is not a manufacturing process step');
+  assert.notDeepEqual(onBranch.headState.model.regions, project.model.regions);
+
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const si = project.model.layers.find((layer) => layer.name === '220nm SOI device silicon').id;
+  const materialAt = (model, point) =>
+    model.regions.find((r) => v.pointInMulti(point, r.geom))?.stack.some((s) => s.layerId === si);
+  // The 15nm switched gap lies between y=.435um and y=.450um at the
+  // nominal reflector plane; no silicon may fill it.
+  assert.equal(materialAt(onBranch.headState.model, [-31, 0.4425]), false);
+  assert.equal(materialAt(onBranch.headState.model, [-31, 0.40]), true);
+
+  let live = structuredClone(project);
+  const capture = () => {
+    const state = structuredClone(live);
+    delete state.snapshots;
+    delete state.snapshotBranches;
+    return state;
+  };
+  const restore = (state) => {
+    live = structuredClone(state);
+  };
+  const manager = createSnapshotManager({ capture, restore, validateState: () => true });
+  manager.importRecords(project.snapshots, project.snapshotBranches);
+  assert.equal(manager.switchBranch('on'), true);
+  assert.deepEqual(live.model, onBranch.headState.model);
+  assert.deepEqual(live.layout, project.layout);
+  assert.equal(manager.switchBranch('main'), true);
+  assert.deepEqual(live.model, project.model, 'OFF physical model failed to restore');
+});
