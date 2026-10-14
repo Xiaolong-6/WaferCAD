@@ -1,0 +1,65 @@
+name: Legacy project compatibility on UI v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/app-legacy.html'
+      - 'site/welcome.js'
+      - 'site/project-*.js'
+      - 'site/workspace-persistence*.js'
+      - 'site/controllers/workspace-persistence-controller.js'
+      - 'site/controllers/workspace-session-controller.js'
+      - 'site/startup-file.js'
+      - 'site/project-io.js'
+      - 'site/project-schema.js'
+      - 'site/ui-v2/project-mask-panels.js'
+      - 'scripts/test-helpers/ui.mjs'
+      - 'site/ui-v2/workstation-*.js'
+      - 'scripts/v2/check-legacy-project-recovery.mjs'
+      - '.github/workflows/legacy-project-compat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    name: Legacy file import, reload and Recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start v2 browser integration server
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Test historical shared-assets-v1 project through real v2 startup
+        run: node scripts/v2/check-legacy-project-recovery.mjs
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: legacy-v2-failure-${{ github.sha }}
+          path: serve-v2.log
+          retention-days: 7

@@ -47,6 +47,17 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, it requires same-SHA Release Quality (`npm run check`), impact-selected Browser regression, real UI v2 Stage C/M4, and a fail-closed scientific release aggregate. The scientific impact planner selects real Main/Mask/Section, KLayout format compatibility, and Recipe safety acceptances when their source owners change; manual releases select all three. Required failed, cancelled, skipped or missing scientific jobs block the aggregate. Only explicitly unselected scientific jobs may skip. The read-only `stage-pages` job waits for all four release gates, builds and stamps the exact `build/pages/` artifact, then runs the Chromium staged-artifact smoke at `/WaferCAD/`, exercising Welcome, startup, Project/Layout Workers and the real Process Worker. The `deploy` job consumes that previously tested artifact without rebuilding it, and alone holds `pages: write` and `id-token: write`. Both staging and deployment require `refs/heads/main`; ordinary PRs cannot publish.
 
+## Historical Project compatibility
+
+The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
+is a path-gated PR workflow, independent from the ordinary Pages release. It imports the
+SHA-256-verified historical `shared-assets-v1` project in the real v2 Workstation
+and verifies autosave, reload, and Recovery preservation. It must pass before
+the retained `app-legacy.html` interface and Legacy-only test adapters are
+deleted. This gate supplements current project-format and controller tests;
+it does not authorize skipping migration of Legacy-only scientific browser
+scenarios.
+
 ## Heavy Process Geometry job
 
 `npm run test:ui:process` is isolated in its own conditional GitHub Actions job. It no longer adds several minutes to unrelated pull requests.
