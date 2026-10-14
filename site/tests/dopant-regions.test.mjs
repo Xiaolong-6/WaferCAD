@@ -6,11 +6,8 @@ await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const v = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
-const {
-  addQualitativeDopantRegion,
-  resolveQualitativeDopantRegion,
-  findDopantPolarityOverlaps,
-} = await import('../dopant-regions.js');
+const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps } =
+  await import('../dopant-regions.js');
 
 test('dopant intents are host-material clipped and updated after etch without a dopant diffusion solver', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 2, thickness: 2 });
@@ -81,11 +78,8 @@ test('overlaps report qualitative opposite polarity without claiming a working j
     provenance: 'illustrative',
   };
   assert.equal(
-    addQualitativeDopantRegion(
-      model,
-      { ...common, id: 'a', role: 'body', polarity: 'acceptor' },
-      v,
-    ).changed,
+    addQualitativeDopantRegion(model, { ...common, id: 'a', role: 'body', polarity: 'acceptor' }, v)
+      .changed,
     true,
   );
   assert.equal(
