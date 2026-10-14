@@ -619,10 +619,21 @@ async function main() {
     ? join(repo, 'site/examples')
     : join(repo, 'test-results/tcmos');
   await mkdir(out, { recursive: true });
-  await writeFile(join(out, tiltDemo ? 'tcmos-tilt-demo-18deg-NOT-PAPER.wafercad' : 'tcmos-ternary-inverter-130nm.wafercad'), json);
+  await writeFile(
+    join(
+      out,
+      tiltDemo
+        ? 'tcmos-tilt-demo-18deg-NOT-PAPER.wafercad'
+        : 'tcmos-ternary-inverter-130nm.wafercad',
+    ),
+    json,
+  );
   const reports = join(repo, 'test-results/tcmos');
   await mkdir(reports, { recursive: true });
-  await writeFile(join(reports, tiltDemo ? 'tilt-demo-validation.json' : 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
+  await writeFile(
+    join(reports, tiltDemo ? 'tilt-demo-validation.json' : 'validation.json'),
+    JSON.stringify(validation, null, 2) + '\n',
+  );
   console.log(
     JSON.stringify({
       pass: true,
