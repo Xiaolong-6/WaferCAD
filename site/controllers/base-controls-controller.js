@@ -13,13 +13,19 @@ export function sectionAfterBaseRebuild(previousSection, model, { preserveSectio
   if (!preserveSection) return fallback;
   const a = previousSection?.a,
     b = previousSection?.b;
-  if (![a, b].every((p) => Array.isArray(p) && p.length === 2 &&
-    p.every((coordinate) => Number.isFinite(coordinate))))
+  if (
+    ![a, b].every(
+      (p) =>
+        Array.isArray(p) && p.length === 2 && p.every((coordinate) => Number.isFinite(coordinate)),
+    )
+  )
     return fallback;
   if (a[0] === b[0] && a[1] === b[1]) return fallback;
-  if (![a, b].every(([x, y]) =>
-    x >= -width / 2 && x <= width / 2 &&
-    y >= -height / 2 && y <= height / 2))
+  if (
+    ![a, b].every(
+      ([x, y]) => x >= -width / 2 && x <= width / 2 && y >= -height / 2 && y <= height / 2,
+    )
+  )
     return fallback;
   return { a: [...a], b: [...b] };
 }
