@@ -523,7 +523,7 @@ export async function createMainView({ project, sharedState, workstation, render
       sectionEditEnabled: false,
       tool: 'none',
       panEnabled: true,
-      zoomEnabled: false,
+      zoomEnabled: true,
       planViews: { main: { zoom: 1, panX: 0, panY: 0 } },
     };
     modelBefore = JSON.stringify(state.model);
