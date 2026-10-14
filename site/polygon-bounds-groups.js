@@ -29,15 +29,9 @@ export function connectedBoundingBoxGroups(bounds, tolerance = 0) {
   };
 
   const indices = Array.from({ length: count }, (_, index) => index);
-  const xOrder = [...indices].sort(
-    (a, b) => bounds[a].minX - bounds[b].minX || a - b,
-  );
-  const yOrder = [...indices].sort(
-    (a, b) => bounds[a].minY - bounds[b].minY || a - b,
-  );
-  const expiration = [...indices].sort(
-    (a, b) => bounds[a].maxX - bounds[b].maxX || a - b,
-  );
+  const xOrder = [...indices].sort((a, b) => bounds[a].minX - bounds[b].minX || a - b);
+  const yOrder = [...indices].sort((a, b) => bounds[a].minY - bounds[b].minY || a - b);
+  const expiration = [...indices].sort((a, b) => bounds[a].maxX - bounds[b].maxX || a - b);
   const yPosition = new Uint32Array(count);
   yOrder.forEach((index, position) => {
     yPosition[index] = position;
