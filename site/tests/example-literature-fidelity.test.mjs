@@ -137,6 +137,15 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
 test('Sahli tandem retains a nanometre top-cell stack with a localized Ag stripe', async () => {
   const project = await example('fully-textured-perovskite-silicon-tandem');
   const steps = project.processRecipe.steps;
+  const izo = steps.find((step) => step.params.material?.startsWith('IZO active'));
+  const ag = steps.find((step) => step.params.material?.startsWith('Ag grid'));
+  assert.equal(izo.params.mask.cell, 'M01_IZO_ACTIVE');
+  assert.equal(ag.params.mask.cell, 'M02_AG_GRID_SURROGATE');
+  assert.notEqual(izo.params.mask.cell, ag.params.mask.cell);
+  assert.equal(
+    project.layout.elements.filter((element) => element.sourceCell === ag.params.mask.cell).length,
+    6,
+  );
   assert.equal(steps.find((step) => step.command === 'etch').params.face, 'both');
   assert.ok(steps.some((step) => step.command === 'deposit' && step.params.thicknessUm === 0.001));
   const active = materialAt(project, [0, 0]);
@@ -154,6 +163,20 @@ test('Sahli tandem retains a nanometre top-cell stack with a localized Ag stripe
     region.stack.every((s) => s.z1 > s.z0),
   );
   assert.ok(validIntervals, 'Saved material intervals must have positive physical thickness');
+  const nominalZ = new Map([
+    ['layer-15', 0.12],
+    ['layer-16', 0.1],
+  ]);
+  // A thicker Z interval in a narrow edge band is a *sidewall* geometric
+  // surrogate spanning a step, not a horizontally deposited over-thick film.
+  for (const region of project.model.regions) {
+    for (const entry of region.stack) {
+      const nominal = nominalZ.get(entry.layerId);
+      if (nominal !== undefined && entry.z1 - entry.z0 > nominal + 1e-8) {
+        assert.equal(entry.role, 'conformal-sidewall');
+      }
+    }
+  }
 });
 
 test('Photodetector variants distinguish Implant from Electrical Region', async () => {
