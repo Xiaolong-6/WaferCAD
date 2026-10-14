@@ -47,6 +47,16 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 [Pages deployment](../.github/workflows/pages.yml) runs on relevant `main` changes and manual dispatch. Before deployment, the workflow **must** pass the same-SHA release Quality (`npm run check`), impact-selected Browser regression and UI v2 Stage C/M4 acceptance. The last two are reused from their existing owners: independent Browser/UI main-push triggers are removed to avoid duplicated post-merge suites. Browser Node tests are suppressed only inside this release call because Release Quality already runs them. Documentation-only changes do not trigger Pages. The read-only `stage-pages` job runs after the three release gates, builds and stamps `build/pages/`, serves that exact directory under `/WaferCAD/`, and exercises Welcome, v2 startup, Project/Layout Workers, and a real Process Worker operation in Chromium. Only after the staged smoke passes does it upload the Pages artifact. The `deploy` job consumes that exact uploaded artifact without rebuilding it and is the sole job with `pages: write` and `id-token: write`; both jobs require `refs/heads/main`. No failed or skipped upstream job qualifies.
 
+## Welcome four-view preview isolation
+
+The production v2 Stage C/M4 owner also exercises
+`scripts/v2/check-welcome-preview-isolation.mjs`: the Welcome iframe opens a
+reduced final-stage real project in read-only v2 Main, Mask, 3D and Section,
+without `start` intent, writer-lease acquisition or autosave marker mutation.
+The ordinary M5 startup owner verifies the same preview routing before loading
+the full example into the editor. This gate does not cover physical hardware
+GPU parity.
+
 ## Historical Project compatibility
 
 The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)

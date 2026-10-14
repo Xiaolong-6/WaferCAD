@@ -26,7 +26,12 @@ try {
       await context.route('**/bundled-examples.js', (route) =>
         route.fulfill({
           contentType: 'text/javascript',
-          body: `export const BUNDLED_EXAMPLES = ${JSON.stringify(BUNDLED_EXAMPLES.map(({ previewProject, ...example }) => example))}; export function bundledExampleById(id) { return BUNDLED_EXAMPLES.find(example => example.id === id) || null; }`,
+          body: `export const BUNDLED_EXAMPLES = ${JSON.stringify(
+            BUNDLED_EXAMPLES.map((example) => ({
+              ...example,
+              previewProject: { path: example.path, filename: example.filename },
+            })),
+          )}; export function bundledExampleById(id) { return BUNDLED_EXAMPLES.find(example => example.id === id) || null; }`,
         }),
       );
     if (process.env.WAFERCAD_BASELINE_VIEW) {
@@ -35,24 +40,6 @@ try {
         route.fulfill({ contentType: 'text/javascript', body }),
       );
     }
-    await context.addInitScript(() => {
-      window.__previewImports = [];
-      const NativeWorker = window.Worker;
-      window.Worker = class extends NativeWorker {
-        constructor(url, options) {
-          super(url, options);
-          if (!String(url).includes('project-worker.js')) return;
-          this.addEventListener('message', ({ data }) => {
-            if (data.type === 'done' && data.project)
-              window.__previewImports.push({
-                steps: data.project.snapshotBranches.nodes.length,
-                bookmarks: data.project.snapshots.length,
-                revision: data.project.model.revision,
-              });
-          });
-        }
-      };
-    });
     const page = await context.newPage();
     page.setDefaultTimeout(30000);
     const errors = observePageErrors(page),
@@ -74,10 +61,18 @@ try {
       const activated = performance.now();
       await card.locator('.welcome-example-project-preview.ready').waitFor({ timeout: 180000 });
       const frame = await frameElement.contentFrame();
-      const imports = await frame.evaluate(() => window.__previewImports);
-      assert.equal(imports.length, 1);
+      const imported = await frame.evaluate(() => {
+        const snapshot = window.WaferCadV2Workstation.snapshot();
+        return {
+          steps: snapshot.workflow.steps.length,
+          bookmarks: snapshot.workflow.bookmarks.length,
+          revision: snapshot.model.revision,
+          writable: snapshot.workflow.writable,
+        };
+      });
+      assert.equal(imported.writable, false, 'Preview must not own workspace storage');
       assert.equal(
-        imports[0].steps,
+        imported.steps,
         originals
           ? JSON.parse(
               await readFile(
@@ -86,12 +81,12 @@ try {
             ).snapshotBranches.nodes.length
           : 1,
       );
-      if (!originals) assert.equal(imports[0].bookmarks, 0);
+      if (!originals) assert.equal(imported.bookmarks, 0);
       cards.push({
         id: example.id,
         mainReadyMs: performance.now() - activated,
         fromNavigationMs: performance.now() - started,
-        ...imports[0],
+        ...imported,
       });
       frames.push({ example, card, frame });
     }
@@ -114,7 +109,7 @@ try {
           );
           await card.locator(`[data-preview-view="${view}"]`).click();
           await frame.waitForFunction(
-            (view) => document.documentElement.dataset.previewView === view,
+            (view) => window.WaferCadV2Workstation?.snapshot().ui.view === view,
             view,
             { timeout: 30000 },
           );

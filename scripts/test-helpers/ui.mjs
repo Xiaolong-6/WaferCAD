@@ -55,7 +55,11 @@ export async function newLegacyUiContext(browser, options = {}) {
   await context.route('**/app.html*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    if (!request.isNavigationRequest() || !url.pathname.endsWith('/app.html'))
+    if (
+      !request.isNavigationRequest() ||
+      !url.pathname.endsWith('/app.html') ||
+      url.searchParams.get('preview') === '1'
+    )
       return route.continue();
     url.pathname = url.pathname.replace(/app\.html$/, 'app-legacy.html');
     await route.fulfill({ status: 307, headers: { location: url.href }, body: '' });

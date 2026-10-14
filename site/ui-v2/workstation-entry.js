@@ -1,4 +1,8 @@
-import { loadWorkstationProject, createWorkstationRuntime } from './workstation-runtime.js';
+import {
+  loadBundledProject,
+  loadWorkstationProject,
+  createWorkstationRuntime,
+} from './workstation-runtime.js';
 import { createMainView } from './main-view.js';
 import { createMaskView } from './mask-view.js';
 import { createSectionView } from './section-view.js';
@@ -9,20 +13,34 @@ import { createWorkstationWorkflow } from './workstation-workflow.js';
 const { el } = window.WaferCadV2Components;
 try {
   window.WaferCadV2Icons.installSprite();
-  const project = await loadWorkstationProject(),
+  const params = new URLSearchParams(window.location.search);
+  const readOnlyPreview = params.get('preview') === '1';
+  const allowedViews = ['main', 'mask', 'three', 'section'];
+  const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
+  if (readOnlyPreview) document.body.dataset.previewMode = 'true';
+  const project = readOnlyPreview
+      ? await loadBundledProject(params.get('example'), undefined, { preview: true })
+      : await loadWorkstationProject(),
     store = createWorkstationRuntime(project);
+  if (readOnlyPreview) {
+    // Preview keeps the old inspect-only wheel gesture without enabling editors.
+    store.local.main.zoomEnabled = true;
+    store.local.mask.zoomEnabled = true;
+  }
   const geometryBefore = store.geometrySnapshot();
   const uiState = {
     layout: 'a',
     font: 'inter',
     domain: 'project',
-    mode:
-      window.WaferCadV2ViewState.preferredMode(window.WaferCadV2ViewState.viewportWidth(window)) ===
-      'overview'
+    mode: readOnlyPreview
+      ? 'single'
+      : window.WaferCadV2ViewState.preferredMode(
+            window.WaferCadV2ViewState.viewportWidth(window),
+          ) === 'overview'
         ? 'overview'
         : 'single',
-    view: 'main',
-    section: true,
+    view: readOnlyPreview ? initialView : 'main',
+    section: !readOnlyPreview,
     maximize: null,
     mobile: 'view',
     splitViews: ['main', 'mask'],
@@ -84,11 +102,11 @@ try {
     selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
   };
-  const workflow = createWorkstationWorkflow({ store, workstation });
+  const workflow = createWorkstationWorkflow({ store, workstation, readOnly: readOnlyPreview });
   workstation.task = workflow.task;
   workstation.changed = (key) => {
     store.changed(key);
-    workflow.persistence.schedule();
+    if (!readOnlyPreview) workflow.persistence.schedule();
   };
   const scope = (key) => ({
     ...workstation,
@@ -247,10 +265,28 @@ try {
   };
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
+  if (readOnlyPreview && window.parent !== window) {
+    window.addEventListener('message', (event) => {
+      if (event.source !== window.parent || event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'wafercad-preview-view') return;
+      if (!allowedViews.includes(event.data.view)) return;
+      uiState.view = event.data.view;
+      uiState.mode = 'single';
+      uiState.section = false;
+      uiState.maximize = null;
+      render();
+    });
+    window.parent.postMessage({ type: 'wafercad-preview-ready' }, window.location.origin);
+  }
 } catch (error) {
   document.body.dataset.ready = 'error';
   document
     .getElementById('app-root')
     .replaceChildren(el('p', { role: 'alert' }, `Workstation unavailable: ${error.message}`));
   console.error(error);
+  if (document.body.dataset.previewMode === 'true' && window.parent !== window)
+    window.parent.postMessage(
+      { type: 'wafercad-preview-error', message: error.message },
+      window.location.origin,
+    );
 }
