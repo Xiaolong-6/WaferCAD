@@ -30,11 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Temporary P1 exact format diff
-        if: github.event.pull_request.number == 188
-        run: |
-          npx prettier --write site/renderer-surface-plan-stream.js site/tests/renderer-surface-plan-stream.test.mjs
-          git diff -- site/renderer-surface-plan-stream.js site/tests/renderer-surface-plan-stream.test.mjs
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
