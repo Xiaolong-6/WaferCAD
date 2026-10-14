@@ -166,12 +166,12 @@ export async function buildM3DLime() {
   root.display.threeOpacity = 0.34;
   // Inspection-only ROI: one vertically aligned analog/CNTFET RRAM unit.
   // Full model and Mask retain all representative units.
-  root.roi = { type: 'rect', a: [-49, -38], b: [-31, 27] };
+  root.roi = { type: 'rect', a: [-45, -35], b: [-35, -11] };
   // Low-oblique view exposes stacked BEOL sidewalls while retaining the top FET pair.
   // Camera affects presentation only; XY and Z process geometry remain untouched.
   root.display.threeCamera = {
-    position: [-7, -45, 20],
-    target: [-40, -6, 1.5],
+    position: [-19, -49, 42],
+    target: [-39, -23, 2.05],
     fov: 34,
   };
   root.layout = makeLayout();
