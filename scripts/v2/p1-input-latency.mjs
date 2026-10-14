@@ -42,7 +42,6 @@ export function threeCameraGestureChanged(before, after) {
   }
   const distance = (a, b) => Math.hypot(...a.map((value, index) => value - b[index]));
   return (
-    distance(before.position, after.position) > 1e-6 ||
-    distance(before.target, after.target) > 1e-6
+    distance(before.position, after.position) > 1e-6 || distance(before.target, after.target) > 1e-6
   );
 }
