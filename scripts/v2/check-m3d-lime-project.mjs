@@ -5,6 +5,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { readProjectFile } from '../../site/project-io.js';
+import { loadGeometryKernel } from '../process-benchmarks.mjs';
+
+await loadGeometryKernel();
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/m3d-lime/browser');
