@@ -30,7 +30,7 @@ test('SWX source parameters preserve reported SOI, SWT and MEMS dimensions', () 
   assert.equal(SWX_REPORTED.foldedSpringClearanceUm, 1.5);
   assert.equal(SWX_REPORTED.structuralAlignerBeamUm, 0.1);
   assert.equal(SWX_REPORTED.structuralAlignerLengthUm, 7);
-  assert.equal(SWX_ASSUMPTIONS.releaseUndercutUm, 2);
+  assert.equal(SWX_ASSUMPTIONS.releaseUndercutUm, 4);
   assert.match(SWX_ASSUMPTIONS.maskSource, /not measured\/author layout/);
 });
 
@@ -252,4 +252,27 @@ test('folded spring and guided aligner dimensions are distinguished from illustr
   const foldedPitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
   approx(foldedPitch, 1.7);
   assert.ok(g.physicalGroups.flexure.length > 40);
+});
+
+test('both optical meanders connect SWX port and supported anchor without free ends', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxGeometry(state);
+    const silicon = v.unionGeometries(
+      geometry.maskPolygons.get(1).map((points) => [[[...points, points[0]]]]),
+    );
+    const movingOffset = geometry.travelUm;
+    for (const side of [-1, 1]) {
+      const port = [-10, side * 13 + (side < 0 ? movingOffset : 0)];
+      const anchor = [2, side * 40];
+      assert.ok(
+        silicon.some((poly) =>
+          [port, anchor].every((point) => v.pointInMulti(point, [poly])),
+        ),
+        'Disconnected optical meander at ' + state + ' side ' + side,
+      );
+    }
+  }
 });
