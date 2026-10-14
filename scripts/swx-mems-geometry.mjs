@@ -461,6 +461,7 @@ export function createSwxGeometry(state = 'off') {
       stopperMovable: stoppers.movable,
       gratingCouplers: gratings,
       structuralAligners: aligners,
+      shuttle,
     },
     stopperClearanceUm: stoppers.clearanceUm,
     anchorTestPoint: [2, 40],
