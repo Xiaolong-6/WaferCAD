@@ -268,9 +268,7 @@ test('both optical meanders connect SWX port and supported anchor without free e
       const port = [-10, side * 13 + (side < 0 ? movingOffset : 0)];
       const anchor = [2, side * 40];
       assert.ok(
-        silicon.some((poly) =>
-          [port, anchor].every((point) => v.pointInMulti(point, [poly])),
-        ),
+        silicon.some((poly) => [port, anchor].every((point) => v.pointInMulti(point, [poly]))),
         'Disconnected optical meander at ' + state + ' side ' + side,
       );
     }
