@@ -73,7 +73,10 @@ try {
     before.persisted,
     'Welcome preview must not modify the saved project marker',
   );
-  assert.equal((await workspace.evaluate(() => window.WaferCadV2Workstation.snapshot())).model.layers.length, 1);
+  assert.equal(
+    (await workspace.evaluate(() => window.WaferCadV2Workstation.snapshot())).model.layers.length,
+    1,
+  );
   assert.deepEqual(errors, [], 'Preview loading and view switching must not throw');
   console.log('Welcome v2 four-view preview / read-only autosave and lease isolation PASS');
 } finally {
