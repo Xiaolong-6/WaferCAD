@@ -135,7 +135,9 @@ try {
         oasExport: true,
         views: ['mask', 'three', 'main'],
       });
-      console.log('SWX browser ' + state.toUpperCase() + ': project import/export, 3D and GDS/OAS PASS');
+      console.log(
+        'SWX browser ' + state.toUpperCase() + ': project import/export, 3D and GDS/OAS PASS',
+      );
     } catch (error) {
       await page.screenshot({ path: resolve(out, 'swx-' + state + '-failure.png') });
       throw error;
