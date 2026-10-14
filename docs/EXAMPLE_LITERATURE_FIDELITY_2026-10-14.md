@@ -104,6 +104,45 @@ with every Variant and save exported projects, plus Section/3D images at
 paper-aligned cuts. Treat a CI-green result as a software gate, not scientific
 agreement with the original SEM.
 
+## Full Recipe replay scientific gate extension
+
+The browser `scripts/example-recipe-runall-acceptance.mjs` now invokes
+`assertSameMaterialGeometry` for every scalar production literature
+example, instead of only checking material names/counts outside the
+MAGIC-1000 special case. Every material's actual unioned XY occupancy
+is compared for each physical Z interval. Repeated layer names produced
+by independent Front/Back deposits are grouped by material class
+without requiring identical layer IDs. The same gate explicitly bounds
+possible 0.1 nm XY storage quantization area from the source/rebuilt
+footprint perimeter (maximum `25 µm²` per slab). This is a quantitative
+tolerance, not an exemption for a missing material or Z interval.
+
+Native arrays remain subject to their separate array-oriented site/
+template contracts. A passed stored-model regression or a browser
+completion report without `geometryComparison.verified` is not
+sufficient evidence of **strict** scalar 2.5D replay fidelity.
+
+Primary Sahli 2018 supplementary figure correspondence:
+
+- **Fig. S2d–i:** conformal precursor and fully converted
+  perovskite on Si pyramids; compare the film sequence at a ridge
+  and valley, acknowledging that current canonical XY/Z geometry
+  does not explicitly facet its silicon base.
+- **Fig. S3a–c:** Section between top Ag fingers; target the saved
+  active center `(0,0)`.
+- **Fig. S3d–e:** Section at a grid finger; compare the saved
+  `(0,2000)` probe with the Ag/MgF2/IZO sequence.
+  The EDX Mg/F signal is seen in the grid-finger cross section:
+  MgF2 over the Ag is therefore not, on its own, a demonstrated
+  mismatch.
+- **Fig. S5:** evaporated 400 nm PbI2 corresponds to roughly
+  235 nm on pyramids after the morphology factor ~1.7 and
+  approximately 440 nm of final perovskite. The recorded
+  235 nm Deposit plus 205 nm Extend reaches 440 nm.
+
+Source: [Sahli 2018 supporting information](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41563-018-0115-4/MediaObjects/41563_2018_115_MOESM1_ESM.pdf).
+These are paper-panel targets, not completed screenshot overlays.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
