@@ -6,6 +6,7 @@ import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
 import { createProgressiveStartup } from './progressive-startup.js';
+import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -125,6 +126,16 @@ try {
   store.views.set('section', section);
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
+  // In overview, let a visible 2D scientific canvas present before expensive
+  // WebGL initialization/scene work. All 3D requests, including onShow, pass
+  // through the same one-time gate. 3D-only layouts release it immediately.
+  const firstThreeFrame = createFirstFrameThreeGate(three.runtime.render);
+  three.runtime.render = () => firstThreeFrame.request();
+  const hasVisiblePlanarView = () =>
+    ['main', 'mask', 'section'].some((key) => {
+      const panel = store.views.get(key)?.panel;
+      return panel && !panel.hidden && panel.getClientRects().length > 0;
+    });
   // Non-WebGL canvases can become visible after their own completed paint.
   // Hidden Single-mode panels remain pending until their first visible render.
   for (const key of ['main', 'mask', 'section']) {
@@ -136,6 +147,7 @@ try {
         requestAnimationFrame(() => {
           if (!view.panel.hidden && view.panel.getClientRects().length) {
             progressive.viewFrame(key);
+            firstThreeFrame.release();
           }
         });
       }
@@ -149,7 +161,10 @@ try {
       return three.panel;
     },
     onShow: () => {
-      if (!starting) three.runtime.render();
+      if (!starting) {
+        if (!hasVisiblePlanarView()) firstThreeFrame.release();
+        three.runtime.render();
+      }
     },
     onHide() {},
     destroy() {},
@@ -230,6 +245,7 @@ try {
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
+  if (!hasVisiblePlanarView()) firstThreeFrame.release();
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
