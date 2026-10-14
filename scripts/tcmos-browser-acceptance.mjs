@@ -87,7 +87,12 @@ try {
   );
   const referenceState = await snap();
   assert.equal(referenceState.model.dopantRegions.some((d) => d.role === 'body'), false);
-  assert.equal(referenceState.processRecipe.steps.length, expected.processRecipe.steps.length);
+  assert.equal(
+    expected.snapshotBranches.branches.find((variant) => variant.id === 'conventional-cmos')
+      .headState.processRecipe.steps.length,
+    expected.processRecipe.steps.length,
+    'The conventional Variant stores a complete replayable Recipe',
+  );
   await page.screenshot({ path: resolve(dir, 'tcmos-conventional-cmos-variant.png') });
   await page.locator(
     '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
