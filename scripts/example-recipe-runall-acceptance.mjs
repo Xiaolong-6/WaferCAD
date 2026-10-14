@@ -316,18 +316,41 @@ try {
       // cannot detect lost contacts, nanometre films or release voids.
       // Both-face creates distinct layer IDs sharing a material name. Their
       // material-class occupancy is compared across both physical Z faces.
-      const geometryComparison =
-        example.id === 'magic-1000-mos2-beol'
-          ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-          : example.id === 'tio2-metalens-four-unit'
-            ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-            : sourceProject.model.array
-              ? null
-              : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
-                  allowRepeatedNames: true,
-                  xyQuantumUm: 1e-4,
-                  maxQuantizedAreaUm2: 25,
-                });
+      let geometryComparison;
+      try {
+        geometryComparison =
+          example.id === 'magic-1000-mos2-beol'
+            ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
+            : example.id === 'tio2-metalens-four-unit'
+              ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+              : sourceProject.model.array
+                ? null
+                : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
+                    allowRepeatedNames: true,
+                    xyQuantumUm: 1e-4,
+                    maxQuantizedAreaUm2: 25,
+                  });
+      } catch (error) {
+        // A completed Recipe with different XY/Z occupancy is a scientific
+        // mismatch. Preserve both physical models for diagnosis; never
+        // silence the failure or silently replace the paper-derived asset.
+        if (!sourceProject.model.array && !exported.model.array) {
+          await mkdir('test-results/example-recipe-runall', { recursive: true });
+          await writeFile(
+            `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-geometry-mismatch.json`,
+            JSON.stringify(
+              {
+                message: String(error.message),
+                source: sourceProject.model,
+                rebuilt: exported.model,
+              },
+              null,
+              2,
+            ) + '\n',
+          );
+        }
+        throw error;
+      }
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
