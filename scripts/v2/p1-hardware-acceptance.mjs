@@ -275,9 +275,7 @@ try {
     report.hardware.manufacturer || 'unknown',
   );
   if (!report.hardwareVerified) {
-    report.errors.push(
-      'Physical GPU identity could not be verified: ' + report.hardware.reason,
-    );
+    report.errors.push('Physical GPU identity could not be verified: ' + report.hardware.reason);
   }
 
   console.log('P1 hardware: storing Quality preference for M3D…');
