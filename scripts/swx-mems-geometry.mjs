@@ -277,9 +277,12 @@ export function createSwxGeometry(state = 'off') {
     rect(-12, 13, 3, 1.4),
     rect(-12, -13 + travel, 3, 1.4),
   ];
+  // Every electrode must meet a mechanically supported silicon contact pad.
+  // The previous upper/lower contacts at x=25um sat directly on exposed BOX,
+  // isolated from the anchored spring electrical terminals at x=2um.
   const electrodes = [
-    rect(25, 43, 5.5, 5.5),
-    rect(25, -43, 5.5, 5.5),
+    rect(2, 40, 5.5, 5.5),
+    rect(2, -40, 5.5, 5.5),
     rect(46, 9, 5, 5),
     rect(46, -21, 5, 5),
   ];
