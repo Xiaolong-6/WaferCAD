@@ -198,8 +198,11 @@ try {
   );
   assert.equal(rebuilt.layout.combos.length, 11, 'Run All lost GDS-exportable masks');
   assert.deepEqual(rebuilt.roi, initial.roi, 'Run All lost the sample inspection ROI');
-  assert.deepEqual(rebuilt.section, initial.section,
-    'Recipe Rebuild Base must preserve paper-aligned Section A-B');
+  assert.deepEqual(
+    rebuilt.section,
+    initial.section,
+    'Recipe Rebuild Base must preserve paper-aligned Section A-B',
+  );
   report.sectionPreservedByRebuildBase = true;
   await page.locator('[data-action="domain:project"]').click();
   await page.locator('#projectExportMenuBtn').click();
