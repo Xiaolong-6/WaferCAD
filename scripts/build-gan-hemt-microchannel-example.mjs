@@ -152,6 +152,10 @@ export async function buildGanMicrochannel() {
     section: { a: [-700, 0], b: [700, 0] },
   });
   root.name = 'GaN HEMT / four-level Si microchannel (Lian 2022 surrogate)';
+  // Default auto Z-break hides the scientific core of this 800 um device.
+  // Keep 1:1 actual Z material geometry and make all four channel tiers visible.
+  // Users can explicitly enable Z-break later to collapse only lower bulk Si.
+  root.display.sectionCollapse = { top: 0, bottom: -150, enabled: false };
   root.display.threeOpacity = 0.56;
   root.display.threeShowBorders = false;
   // Saved inspection ROI is display-only: it is NOT a Process / Mask limiter.
