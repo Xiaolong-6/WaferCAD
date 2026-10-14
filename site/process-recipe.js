@@ -1,4 +1,5 @@
 import { normalizeRecipeLayerKey } from './process-recipe-preflight.js';
+import { validateMaterialThicknessUm } from './process-numerical-contract.js';
 
 const COMMANDS = new Set([
   'deposit',
@@ -175,6 +176,8 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.thicknessUm)
       : recipeLengthUm(params.thickness, 'deposit.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('deposit.thickness must be greater than zero.');
+    const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
+    if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
     params.placement =
       params.coverage === 'transfer'
@@ -193,6 +196,8 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.thicknessUm)
       : recipeLengthUm(params.thickness, 'extend.thickness');
     if (!(params.thicknessUm > 0)) throw new Error('extend.thickness must be greater than zero.');
+    const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'extend.thickness');
+    if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode);
     params.area = normalizeArea(params.area);
     params.face = normalizeProcessFace(params.face);
@@ -209,8 +214,10 @@ function normalizeStep(command, input, index = 0) {
     params.thicknessUm = Number.isFinite(Number(params.thicknessUm))
       ? Number(params.thicknessUm)
       : recipeLengthUm(sourceLength, `etch.${lengthKey}`);
-    if (params.profile !== 'planarize' && !(params.thicknessUm > 0)) {
-      throw new Error(`etch.${lengthKey} must be greater than zero.`);
+    if (params.profile !== 'planarize') {
+      if (!(params.thicknessUm > 0)) throw new Error(`etch.${lengthKey} must be greater than zero.`);
+      const thicknessError = validateMaterialThicknessUm(params.thicknessUm, `etch.${lengthKey}`);
+      if (thicknessError) throw new Error(thicknessError);
     }
     params.target = cleanText(params.target);
     if (['isotropic', 'undercut'].includes(params.profile) && !params.target) {
