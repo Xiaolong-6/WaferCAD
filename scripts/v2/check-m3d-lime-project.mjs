@@ -7,6 +7,8 @@ import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
+import { parseGDS, flattenGDS } from '../../site/gds.js';
+import { parseOAS } from '../../site/oasis.js';
 
 await loadGeometryKernel();
 
@@ -34,6 +36,32 @@ function assertModelPersistence(actual, expected, path = 'model') {
     return;
   }
   assert.deepEqual(actual, expected, `${path}: canonical value`);
+}
+
+// Mask export must preserve all lithography polygons and their physical
+// coordinates, not simply produce a parseable nonempty file. Rectangles may
+// reverse winding or repeat closure points, so compare layer-scoped XY bounds.
+function assertMaskExportTopology(actualElements, sourceElements, format) {
+  function fingerprint(elements) {
+    return elements
+      .filter((element) => element.kind === 'polygon')
+      .map((element) => {
+        const points = element.points;
+        assert.ok(points.length >= 4, format + ': malformed polygon');
+        const xs = points.map((point) => point[0]);
+        const ys = points.map((point) => point[1]);
+        const bounds = [
+          Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys),
+        ].map((value) => Math.round(value * 1000));
+        return [element.layer, element.datatype, ...bounds].join(':');
+      })
+      .sort();
+  }
+  assert.deepEqual(
+    fingerprint(actualElements),
+    fingerprint(sourceElements),
+    format + ': mask changed layer IDs, polygon counts, or nanometre-grid dimensions',
+  );
 }
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
@@ -91,6 +119,43 @@ try {
     resolve(output, 'three-tier-before-runall.png'),
   );
   report.coloredPixels = visibility.coloredPixels;
+  // Real Mask-toolbar download, through the production export Worker. Select
+  // all eleven author-unavailable *inferred* layers rather than the three
+  // initially highlighted inspection layers.
+  await page.locator('[data-action="view:mask"]').click();
+  await waitForPaint(page);
+  const maskBefore = await snapshot();
+  const exportMenu = page.locator('[data-action="mask-export-menu"]');
+  if (!(await exportMenu.isVisible()))
+    await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+  await exportMenu.click();
+  const maskLayers = expected.layout.combos.map((combo) => combo.layer + '|' + combo.datatype);
+  for (const format of ['gds', 'oas']) {
+    const action = page.locator('[data-action="mask-export:' + format + '"]');
+    if (!(await action.isVisible())) {
+      if (!(await exportMenu.isVisible()))
+        await page.locator('#maskPanel button[aria-label$="more tools"]').click();
+      await exportMenu.click();
+    }
+    await page.locator('#maskExportLayers').selectOption(maskLayers);
+    const pendingDownload = page.waitForEvent('download', { timeout: 120000 });
+    await action.click();
+    const maskDownload = await pendingDownload;
+    assert.equal(maskDownload.suggestedFilename(), 'wafercad-mask.' + format);
+    const maskFile = resolve(output, 'full-inferred-mask.' + format);
+    await maskDownload.saveAs(maskFile);
+    const raw = Uint8Array.from(await readFile(maskFile)).buffer;
+    const parsed = format === 'gds' ? parseGDS(raw) : await parseOAS(raw);
+    const polygons = flattenGDS(parsed, parsed.root).elements;
+    assertMaskExportTopology(polygons, expected.layout.elements, format.toUpperCase());
+    const afterMask = await snapshot();
+    assert.deepEqual(afterMask.model, maskBefore.model, 'Mask export must not edit physical geometry');
+    assert.deepEqual(afterMask.maskRoi, maskBefore.maskRoi);
+    assert.deepEqual(afterMask.maskTransform, maskBefore.maskTransform);
+  }
+  report.maskInterchange = { formats: ['GDSII', 'OASIS'], layers: 11,
+    polygons: expected.layout.elements.length };
+
 
   await page.locator('[data-action="domain:process"]').click();
   await page.locator('[data-action="process-mode:recipe"]').click();
