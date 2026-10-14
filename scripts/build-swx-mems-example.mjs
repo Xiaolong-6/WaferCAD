@@ -402,7 +402,7 @@ export async function makeSwxActuatedModel(released, pose = createSwxGeometry('o
   const layer = out.layers.find((item) => item.name === DEVICE);
   assert.ok(layer, 'Missing shared-fabrication device silicon');
   const toMulti = (polygons) =>
-    v.unionGeometries(polygons.map((points) => [[...points, points[0]]]));
+    v.unionGeometries(polygons.map((points) => [[[...points, points[0]]]]));
   const silicon = toMulti(pose.maskPolygons.get(1));
   const ridge = toMulti(pose.maskPolygons.get(2));
   const full = v.difference(silicon, ridge);
