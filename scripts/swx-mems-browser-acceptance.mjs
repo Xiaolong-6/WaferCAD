@@ -58,15 +58,24 @@ try {
       const branches = source.snapshotBranches.branches;
       assert.deepEqual(new Set(branches.map((b) => b.id)), new Set(['main', 'on']));
       const onLayout = branches.find((b) => b.id === 'on').headState.layout;
-      assert.deepEqual(onLayout.elements, source.layout.elements, 'OFF/ON must share the manufactured Mask');
+      assert.deepEqual(
+        onLayout.elements,
+        source.layout.elements,
+        'OFF/ON must share the manufactured Mask',
+      );
       assert.deepEqual(onLayout.bounds, source.layout.bounds);
-      assert.deepEqual(branches.find((b) => b.id === 'on').headState.processRecipe, source.processRecipe);
+      assert.deepEqual(
+        branches.find((b) => b.id === 'on').headState.processRecipe,
+        source.processRecipe,
+      );
       if (state === 'on') {
         await page.locator('[data-action="domain:history"]').click();
         await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
         await page.waitForFunction(
-          () => window.WaferCadV2Workstation.snapshot().workflow.branches
-            .some((b) => b.id === 'on' && b.active),
+          () =>
+            window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+              (b) => b.id === 'on' && b.active,
+            ),
           null,
           { timeout: 120000 },
         );
@@ -74,7 +83,8 @@ try {
       const imported = await snapshot();
       assert.equal(imported.sharedIdentity, true);
       assert.equal(imported.model.layers.length, source.model.layers.length);
-      const expectedModel = state === 'off' ? source.model : branches.find((b) => b.id === 'on').headState.model;
+      const expectedModel =
+        state === 'off' ? source.model : branches.find((b) => b.id === 'on').headState.model;
       await assertSameMaterialGeometry(expectedModel, imported.model, { areaToleranceUm2: 0.01 });
       assert.equal(imported.layout.elements.length, source.layout.elements.length);
       assert.ok(imported.workflow.steps.length >= 8, 'History did not import');
@@ -137,7 +147,10 @@ try {
       assert.equal(reloaded.layout.elements.length, source.layout.elements.length);
       assert.equal(reloaded.processRecipe.steps.length, source.processRecipe.steps.length);
       assert.equal(reloaded.snapshotBranches.branches.length, 2);
-      assert.deepEqual(reloaded.snapshotBranches.branches.find((b) => b.id === 'on').headState.layout.elements, reloaded.layout.elements);
+      assert.deepEqual(
+        reloaded.snapshotBranches.branches.find((b) => b.id === 'on').headState.layout.elements,
+        reloaded.layout.elements,
+      );
       assert.deepEqual(
         (await snapshot()).model,
         beforeExport.model,
@@ -158,8 +171,12 @@ try {
         const stepCount = source.processRecipe.steps.length;
         await page.locator('#recipeRunAllBtn').click();
         const clearHistory = page.getByRole('button', { name: 'Clear history', exact: true });
-        const keepHistory = page.getByRole('button', { name: 'Keep previous history', exact: true });
-        await page.getByRole('button', { name: /Clear history|Keep previous history/ })
+        const keepHistory = page.getByRole('button', {
+          name: 'Keep previous history',
+          exact: true,
+        });
+        await page
+          .getByRole('button', { name: /Clear history|Keep previous history/ })
           .first()
           .waitFor({ state: 'visible', timeout: 15000 });
         if (await clearHistory.isVisible()) await clearHistory.click();
