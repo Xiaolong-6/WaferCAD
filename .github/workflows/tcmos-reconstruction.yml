@@ -35,14 +35,6 @@ jobs:
       - name: Check source formatting
         if: always()
         run: npx prettier --check scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
-      - name: Display two formatter inputs
-        if: always()
-        run: |
-          for file in site/tests/implant-buried-interval.test.mjs scripts/tcmos-browser-acceptance.mjs; do
-            echo "TCMOS_FMT_START:$file"
-            npx prettier "$file"
-            echo "TCMOS_FMT_END:$file"
-          done
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
