@@ -77,7 +77,22 @@ try {
       };
     });
 
+    const applyLabel = await page.locator('#applyOperationBtn').innerText();
+    assert.match(applyLabel, /Save edited Step/, 'Native v2 must remain in historical edit mode');
     await page.locator('#applyOperationBtn').click();
+    const preflight = await page.evaluate(() => ({
+      status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      editBanner: document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+      visibleActions: [...document.querySelectorAll('button')]
+        .filter((item) => item.getClientRects().length > 0)
+        .map((item) => item.textContent?.trim())
+        .filter((label) => /Replay|Replace|Cancel|Variant/.test(label || '')),
+    }));
+    console.log('V2_HISTORY_EDIT_PREFLIGHT', JSON.stringify(preflight));
+    assert.ok(
+      preflight.visibleActions.some((label) => /Replace & replay later Steps/.test(label)),
+      'Expected real History edit replay confirmation; inspect preflight evidence',
+    );
     await page.getByRole('button', { name: 'Replace & replay later Steps', exact: true }).click();
     await page.waitForFunction(
       () =>
