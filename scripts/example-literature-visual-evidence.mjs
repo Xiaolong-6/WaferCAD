@@ -62,6 +62,10 @@ const CASES = [
         a: [0, 1870],
         b: [0, 1930],
         zFocus: { top: 125.46, bottom: -125.65 },
+        detailRois: [
+          { id: 'ridge', x: 0.46, y: 0.07, width: 0.08, height: 0.23 },
+          { id: 'valley', x: 0.46, y: 0.34, width: 0.08, height: 0.23 },
+        ],
         probes: [
           { id: 'outside-grid', xy: [0, 1899], agGrid: false },
           { id: 'inside-grid', xy: [0, 1901], agGrid: true },
@@ -72,6 +76,10 @@ const CASES = [
         a: [0, 1970],
         b: [0, 2030],
         zFocus: { top: 125.46, bottom: -125.65 },
+        detailRois: [
+          { id: 'ridge', x: 0.46, y: 0.07, width: 0.08, height: 0.23 },
+          { id: 'valley', x: 0.46, y: 0.34, width: 0.08, height: 0.23 },
+        ],
         probes: [{ id: 'inside-grid', xy: [0, 2000], agGrid: true }],
       },
       {
@@ -232,6 +240,30 @@ try {
             timeout: 120000,
           });
         }
+        const detailEvidence = [];
+        for (const roi of cut.detailRois || []) {
+          // Production Section Detail renderer redraws the source model into
+          // its own canvas, rather than scaling an already-rasterized screenshot.
+          await loadProject(
+            page,
+            {
+              ...project,
+              display: { ...project.display, sectionDetailRoi: roi },
+            },
+            prefix + '-' + roi.id + '-detail',
+          );
+          const inset = page.locator('#sectionDetailInsetCanvas');
+          await inset.waitFor({ state: 'visible' });
+          await waitForPaint(page);
+          const ink = await canvasInkFraction(page, '#sectionDetailInsetCanvas');
+          assert.ok(ink > 0.008, prefix + '-' + roi.id + ': detail inset is blank');
+          await inset.screenshot({
+            path: join(output, prefix + '-' + roi.id + '-detail.png'),
+            animations: 'disabled',
+            timeout: 120000,
+          });
+          detailEvidence.push({ id: roi.id, roi, ink });
+        }
         examples.push({
           id: cut.id,
           a: cut.a,
@@ -239,6 +271,7 @@ try {
           sectionInk,
           zFocus: cut.zFocus || null,
           physicalProbes: probes,
+          detailEvidence,
           figureComparison: 'PENDING_REVIEW',
         });
       }
