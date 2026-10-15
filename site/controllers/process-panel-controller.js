@@ -232,10 +232,7 @@ export function createProcessPanelController({
       t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
     );
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
-    $('pvdStepFractionRow')?.classList.toggle(
-      'hidden',
-      t !== 'add' || growthMode !== 'pvd-step',
-    );
+    $('pvdStepFractionRow')?.classList.toggle('hidden', t !== 'add' || growthMode !== 'pvd-step');
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
     $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);

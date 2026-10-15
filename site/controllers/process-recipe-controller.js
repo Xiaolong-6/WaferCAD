@@ -1661,9 +1661,7 @@ export function createProcessRecipeController({
           material: p.name || operation.name,
           thickness: Number(p.thickness),
           coverage: p.growth || 'direct',
-          ...(p.growth === 'pvd-step'
-            ? { stepCoverageFraction: p.stepCoverageFraction }
-            : {}),
+          ...(p.growth === 'pvd-step' ? { stepCoverageFraction: p.stepCoverageFraction } : {}),
           placement: p.transferMode || operation.transferMode || 'follow',
           ...common,
         },

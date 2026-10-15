@@ -90,7 +90,7 @@ The final Recipe represents Pd drain **evaporation**, not Pd ALD. The source doe
 report a deposition angle or sidewall coverage fraction at the 26 nm Ti/Pd/Ti
 back-gate step. The earlier ideal-directional Kernel model left a 10 nm-wide
 HfO₂ wall column uncoated by the Pd, making all 14 CNTFET-to-digital-RRAM Pd
-connections *electrically discontinuous* even though their mask footprints
+connections _electrically discontinuous_ even though their mask footprints
 overlapped and the RRAM vertical stack was correct.
 
 The opt-in `pvd-step` coverage mode is an explicitly **inferred

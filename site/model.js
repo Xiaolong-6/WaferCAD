@@ -1328,12 +1328,7 @@ function applyOperationImpl(
   // only a declared fraction, with a grid-resolved width bound.
   if (growth === 'pvd-step') {
     const fraction = Number(stepCoverageFraction);
-    if (
-      type !== 'add' ||
-      !Number.isFinite(fraction) ||
-      fraction <= 0 ||
-      fraction > 1
-    ) {
+    if (type !== 'add' || !Number.isFinite(fraction) || fraction <= 0 || fraction > 1) {
       return {
         changed: false,
         error: 'PVD step coverage requires a finite fraction in (0, 1] on Deposit.',

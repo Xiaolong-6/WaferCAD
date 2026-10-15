@@ -258,10 +258,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
           ['pvd-step', 'PVD step (idealized)'],
         ]),
       ),
-      row(
-        'pvdStepFractionRow',
-        fields.input('PVD sidewall fraction', 'pvdStepFraction', 0.25),
-      ),
+      row('pvdStepFractionRow', fields.input('PVD sidewall fraction', 'pvdStepFraction', 0.25)),
       row(
         'transferModeRow',
         choice('Placement', 'transferMode', [

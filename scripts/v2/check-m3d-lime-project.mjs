@@ -473,11 +473,9 @@ try {
     'Mid-scale CNTFET / RRAM bridge must lie inside the physical Section',
   );
   const midPanButton = page.locator('#sectionPanel [data-action="tool:pan:section"]');
-  if ((await midPanButton.getAttribute('aria-pressed')) !== 'true')
-    await midPanButton.click();
+  if ((await midPanButton.getAttribute('aria-pressed')) !== 'true') await midPanButton.click();
   const midZoomButton = page.locator('#sectionPanel [data-action="tool:zoom:section"]');
-  if ((await midZoomButton.getAttribute('aria-pressed')) !== 'true')
-    await midZoomButton.click();
+  if ((await midZoomButton.getAttribute('aria-pressed')) !== 'true') await midZoomButton.click();
   await page.mouse.move(midBounds.x + midInitial.x, midBounds.y + midInitial.y);
   await page.mouse.wheel(0, -150);
   await waitForPaint(page);
@@ -522,8 +520,7 @@ try {
     'CNTFET-to-RRAM inferred gap not resolved in mid-scale image',
   );
   assert.ok(
-    (rramMask.right - channelMask.left) * midEvidence.xPxPerUm <
-      midEvidence.width - 80,
+    (rramMask.right - channelMask.left) * midEvidence.xPxPerUm < midEvidence.width - 80,
     'CNTFET channel and RRAM do not both fit in mid-scale screenshot',
   );
   assert.ok(
