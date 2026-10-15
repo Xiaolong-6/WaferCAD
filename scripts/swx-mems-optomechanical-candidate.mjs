@@ -74,10 +74,10 @@ function makeOpticalRouting(travel) {
   // Fixed optical terminal pads represent supported endpoints; grating
   // tooth/groove masks and HF undercut boundaries are deliberately absent.
   const supportedPads = [
-    pad(-62, -26, 4),
-    pad(-62, -45, 4),
-    pad(-55, -95, 4),
-    pad(55, -95, 4),
+    pad(-62, -26, 8),
+    pad(-62, -45, 8),
+    pad(-55, -95, 8),
+    pad(55, -95, 8),
   ];
   return { fixed, movingSpringWaveguides, supportedPads };
 }
