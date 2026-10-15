@@ -5,6 +5,7 @@ import {
   SWX_INTERFACE_ASSUMPTIONS,
 } from '../../scripts/swx-mems-optomechanical-candidate.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
+import { filletPolyline } from '../../scripts/swx-mems-compact-bends.mjs';
 
 const approx = (a, b, tolerance = 1e-10) =>
   assert.ok(Math.abs(a - b) < tolerance, a + ' differs from ' + b);
@@ -156,4 +157,37 @@ test('each optical port terminates at the correct fixed/moving node', async () =
       );
     }
   }
+});
+
+test('moving optical paths use genuine 5um/3um tangent arcs in OFF and ON', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxOptomechanicalCandidate(state);
+    const centerlines = pose.opticalRouting.movingCenterlines;
+    assert.equal(centerlines.length, 2);
+    assert.deepEqual(centerlines.map(({ radiusUm }) => radiusUm), SWX_REPORTED.meanderRadiiUm);
+    for (const [leg, path] of centerlines.entries()) {
+      assert.equal(path.arcs.length, 3, 'Both moving optical legs need three curvature-controlled turns');
+      for (const arc of path.arcs) {
+        assert.equal(arc.radiusUm, SWX_REPORTED.meanderRadiiUm[leg]);
+        for (let index = arc.firstArcIndex; index <= arc.lastArcIndex; index++) {
+          const [x, y] = path.points[index];
+          const actualRadius = Math.hypot(x - arc.center[0], y - arc.center[1]);
+          assert.ok(
+            Math.abs(actualRadius - arc.radiusUm) < 1e-9,
+            state + ' leg ' + leg + ' violates centerline bend radius',
+          );
+        }
+      }
+      const start = path.points[0];
+      const end = path.points.at(-1);
+      const travel = pose.travelUm;
+      approx(start[1], -61 + travel);
+      approx(end[1], -95);
+    }
+  }
+  assert.throws(
+    () => filletPolyline([[0, 0], [1, 0], [1, 1]], 5),
+    /does not fit available centerline segment/,
+    'Unfabricable tight waveguide bends must be rejected instead of shrinking the radius',
+  );
 });
