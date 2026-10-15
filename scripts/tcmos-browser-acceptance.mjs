@@ -420,11 +420,13 @@ try {
     // interval (0.76–0.92 µm absolute Z) remains fully above the break.
     const roiPolygon = [
       [
-        [roi.a[0], roi.a[1]],
-        [roi.b[0], roi.a[1]],
-        [roi.b[0], roi.b[1]],
-        [roi.a[0], roi.b[1]],
-        [roi.a[0], roi.a[1]],
+        [
+          [roi.a[0], roi.a[1]],
+          [roi.b[0], roi.a[1]],
+          [roi.b[0], roi.b[1]],
+          [roi.a[0], roi.b[1]],
+          [roi.a[0], roi.a[1]],
+        ],
       ],
     ];
     const roiCut = implantSolids(inspection.model, roiPolygon).filter(
