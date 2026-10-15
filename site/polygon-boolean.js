@@ -285,12 +285,12 @@ export function robustIntersection(a, b) {
   }
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
-  return aa.length && bb.length ? booleanWithQuantizedRetry('intersection', [aa, bb]) : [];
+  return aa.length && bb.length ? booleanWithNormalizedRetry('intersection', [aa, bb]) : [];
 }
 
 export function robustDifference(a, b) {
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
   if (!aa.length) return [];
-  return bb.length ? booleanWithQuantizedRetry('difference', [aa, bb]) : structuredClone(aa);
+  return bb.length ? booleanWithNormalizedRetry('difference', [aa, bb]) : structuredClone(aa);
 }

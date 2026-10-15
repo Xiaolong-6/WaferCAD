@@ -10,7 +10,10 @@ test('root native program samples stay unattributed instead of being mislabeled 
     { id: 4, callFrame: { functionName: 'WebGLRenderer.render' }, children: [5] },
     { id: 5, callFrame: { functionName: 'bufferData' } },
   ];
-  const result = classifyLongTaskCpuStacks(nodes, new Map([[2, 90], [5, 10]]));
+  const counts = new Map();
+  counts.set(2, 90);
+  counts.set(5, 10);
+  const result = classifyLongTaskCpuStacks(nodes, counts);
   assert.deepEqual(result, {
     totalSamples: 100,
     rootProgramSamples: 90,
@@ -21,9 +24,13 @@ test('root native program samples stay unattributed instead of being mislabeled 
 });
 
 test('missing parents, invalid counts and empty profiles fail conservative attribution', () => {
+  const counts = new Map();
+  counts.set(3, 4);
+  counts.set(99, -2);
+  counts.set(5, NaN);
   const result = classifyLongTaskCpuStacks(
     [{ id: 3, callFrame: { functionName: '(program)' } }],
-    new Map([[3, 4], [99, -2], [5, NaN]]),
+    counts,
   );
   assert.equal(result.rootProgramSamples, 0);
   assert.equal(result.webglCallStackSamples, 0);

@@ -67,3 +67,59 @@ test('detached normalized fast path matches historical API across randomized waf
     assert.deepEqual(actual, expected, `random union ${i}`);
   }
 });
+
+const { robustDifference, robustIntersection } = await import('../polygon-boolean.js');
+
+test('robust Boolean operands remain byte-equivalent after removing duplicate normalization', () => {
+  const hole = [
+    [
+      [
+        [0, 0],
+        [12, 0],
+        [12, 12],
+        [0, 12],
+        [0, 0],
+      ],
+      [
+        [4, 4],
+        [4, 8],
+        [8, 8],
+        [8, 4],
+        [4, 4],
+      ],
+    ],
+  ];
+  const shapes = [
+    rectMulti(2, 2, 0, 0),
+    rectMulti(2, 2, 2, 0),
+    rectMulti(2.3, 1.8, 0.5, 0.25),
+    rectMulti(0.0000004, 0.0000008, 0.0000012, 0.0000013),
+    hole,
+    null,
+  ];
+  const unchanged = structuredClone(shapes);
+  for (const left of shapes) {
+    for (const right of shapes) {
+      const a = normalizeMulti(left);
+      const b = normalizeMulti(right);
+      const expectedIntersection =
+        a.length && b.length ? booleanWithQuantizedRetry('intersection', [a, b]) : [];
+      const expectedDifference = !a.length
+        ? []
+        : b.length
+          ? booleanWithQuantizedRetry('difference', [a, b])
+          : structuredClone(a);
+      assert.deepEqual(
+        robustIntersection(left, right),
+        expectedIntersection,
+        'intersection exact geometry',
+      );
+      assert.deepEqual(
+        robustDifference(left, right),
+        expectedDifference,
+        'difference exact geometry',
+      );
+    }
+  }
+  assert.deepEqual(shapes, unchanged, 'inputs must remain unchanged after all operations');
+});
