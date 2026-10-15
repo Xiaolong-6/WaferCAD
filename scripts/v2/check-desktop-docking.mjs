@@ -98,6 +98,23 @@ try {
       assert.deepEqual(controls, ['dock:overview', ...views.map((view) => 'dock:view:' + view)]);
       assert.equal(await page.locator('.p-section-dock-actions:visible').count(), 0);
       await assertGrid(page, 4);
+      // Four window titlebar glyphs must match the canonical viewbar sprite.
+      const titleIcons = await page.evaluate(() => {
+        const expected = { main: 'main', mask: 'mask', three: 'cube', section: 'section' };
+        return Object.entries(expected).map(([view, icon]) => {
+          const panel = document.querySelector('#' + view + 'Panel');
+          return {
+            view,
+            actual: panel.querySelector('.v2-dock-title-icon use')?.getAttribute('href'),
+            expected: '#p-icon-' + icon,
+            closeAtRight: panel.querySelector('.v2-dock-close')?.nextElementSibling == null,
+          };
+        });
+      });
+      for (const { view, actual, expected, closeAtRight } of titleIcons) {
+        assert.equal(actual, expected, 'Titlebar uses matching ' + view + ' icon');
+        assert.equal(closeAtRight, true, 'X is rightmost for ' + view);
+      }
       await page.evaluate(() => {
         window.__dockOriginalMain = document.querySelector('#mainCanvas');
         window.__dockOriginalMask = document.querySelector('#maskCanvas');
@@ -114,7 +131,14 @@ try {
         await page.locator('[data-action="dock:view:mask"]').getAttribute('aria-pressed'),
         'false',
       );
-      await page.locator('[data-action="dock:view:mask"]').click();
+      // Workflow Mask must reopen a previously closed view and maximize it.
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      await assertGrid(page, 1);
+      assert.equal((await layoutState(page)).maximized, 'mask');
+      assert.equal((await layoutState(page)).visible.includes('mask'), true);
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      assert.equal((await layoutState(page)).maximized, 'mask', 'Repeated Mask navigation does not restore');
+      await page.locator('#maskPanel [data-action="maximize:mask"]').click();
       await assertGrid(page, 4);
       await verifyIdentity(page);
       await page.locator('#threePanel [data-action="maximize:three"]').click();
@@ -192,6 +216,22 @@ try {
         }
         const ratiosBefore = (await layoutState(page)).tracks['four-grid'];
         const divider = page.locator('.v2-dock-divider-columns').first();
+        const dividerAppearance = await divider.evaluate((node) => {
+          const oldHandle = document.querySelector('.p-divider');
+          const current = getComputedStyle(node, '::after');
+          const baseline = getComputedStyle(oldHandle, '::after');
+          return {
+            currentWidth: current.width,
+            currentHeight: current.height,
+            baselineWidth: baseline.width,
+            baselineHeight: baseline.height,
+            background: current.backgroundColor,
+            baselineBackground: baseline.backgroundColor,
+          };
+        });
+        assert.equal(dividerAppearance.currentWidth, dividerAppearance.baselineWidth);
+        assert.equal(dividerAppearance.currentHeight, dividerAppearance.baselineHeight);
+        assert.equal(dividerAppearance.background, dividerAppearance.baselineBackground);
         await divider.waitFor({ state: 'visible' });
         const rect = await divider.boundingBox();
         await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
@@ -206,11 +246,18 @@ try {
         assert.notDeepEqual((await layoutState(page)).tracks['four-grid'], ratiosBefore);
         await verifyIdentity(page);
 
-        // Real pointer drag from titlebar onto another panel swaps slots.
+        // Real pointer drag from the EMPTY header area must swap slots without
+        // squeezing the tool buttons toward the title on wide desktops.
         const beforeSwap = (await layoutState(page)).order;
-        const source = await page.locator('#mainPanel .v2-view-title').boundingBox();
+        const headerGap = await page.locator('#mainPanel').evaluate((panel) => {
+          const title = panel.querySelector('.v2-view-title').getBoundingClientRect();
+          const controls = panel.querySelector('.v2-view-actions .p-toolbar').getBoundingClientRect();
+          const header = panel.querySelector('.p-view-head').getBoundingClientRect();
+          return { left: title.right, right: controls.left, y: header.y + header.height / 2 };
+        });
+        assert.ok(headerGap.right - headerGap.left > 12, 'Window titlebar has an empty drag area');
         const target = await page.locator('#maskPanel').boundingBox();
-        await page.mouse.move(source.x + 18, source.y + source.height / 2);
+        await page.mouse.move((headerGap.left + headerGap.right) / 2, headerGap.y);
         await page.mouse.down();
         // Drop near the lower Mask canvas, clear of the top Snap palette.
         await page.mouse.move(target.x + target.width - 50, target.y + target.height - 45, {
