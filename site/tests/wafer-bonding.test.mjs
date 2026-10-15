@@ -255,3 +255,48 @@ test('line contact, duplicate provenance and nested donor are rejected without m
   assert.throws(() => bondWaferModels(receiver, broken), /overlap/i);
   assert.deepEqual(broken, brokenBefore);
 });
+
+test('all four receiver/donor face pairings place adjacent wafers without material overlap', () => {
+  const combinations = [
+    ['front', 'front', true, -200, 600],
+    ['front', 'back', false, -200, 600],
+    ['back', 'front', false, -600, 200],
+    ['back', 'back', true, -600, 200],
+  ];
+  for (const [receiverFace, donorFace, flipped, expectedLow, expectedHigh] of combinations) {
+    const { model, interface: bond } = bondWaferModels(wafer(), wafer(), {
+      receiverFace,
+      donorFace,
+    });
+    const bounds = modelApi.modelBoundsZ(model);
+    near(bounds[0], expectedLow);
+    near(bounds[1], expectedHigh);
+    assert.equal(bond.flipped, flipped);
+    near(bond.z, receiverFace === 'front' ? 200 : -200);
+    assert.equal(stackAt(model, [0, 0]).length, 2);
+    near(bond.contactAreaUm2, 8000);
+    validateProcessModel(model);
+  }
+});
+
+test('nonrectangular through-hole remains empty and is absent from true contact geometry', () => {
+  const receiver = wafer();
+  const voidMask = vectorApi.circleMulti(20, 20, 72);
+  const etch = modelApi.applyOperation(receiver, {
+    type: 'etch',
+    face: 'front',
+    thickness: 400,
+    area: voidMask,
+  });
+  assert.equal(etch.changed, true, etch.error);
+  const { model, interface: bond } = bondWaferModels(receiver, wafer(), {
+    receiverFace: 'front',
+    donorFace: 'back',
+  });
+  assert.equal(layerAt(model, [0, 0], 0), null, 'through-hole is not filled by Bond');
+  assert.notEqual(layerAt(model, [0, 0], 300), null, 'donor caps the hole');
+  assert.equal(vectorApi.pointInMulti([0, 0], bond.contactGeometry), false);
+  assert.equal(vectorApi.pointInMulti([30, 0], bond.contactGeometry), true);
+  assert.ok(Math.abs(bond.contactAreaUm2 - (8000 - Math.PI * 100)) < 2);
+  validateProcessModel(model);
+});
