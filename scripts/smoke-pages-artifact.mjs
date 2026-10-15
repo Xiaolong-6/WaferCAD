@@ -105,7 +105,9 @@ try {
     'Retired empty bookmark must resolve to the current v2 model',
   );
 
-  await open('/app-legacy.html?start=example&example=photodetector-literature&view=mask#old-example-bookmark');
+  await open(
+    '/app-legacy.html?start=example&example=photodetector-literature&view=mask#old-example-bookmark',
+  );
   await page.waitForURL(
     (url) =>
       url.pathname.endsWith('/WaferCAD/app.html') &&
@@ -125,7 +127,9 @@ try {
 
   // A legacy preview bookmark routes into the v2 read-only rendering mode:
   // it may display material geometry but cannot obtain the writer lease.
-  await open('/app-legacy.html?preview=1&example=photodetector-literature&view=section#old-preview-bookmark');
+  await open(
+    '/app-legacy.html?preview=1&example=photodetector-literature&view=section#old-preview-bookmark',
+  );
   await page.waitForURL(
     (url) =>
       url.pathname.endsWith('/WaferCAD/app.html') &&
