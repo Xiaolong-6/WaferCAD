@@ -67,7 +67,7 @@ function contactFootprint(model, face, plane) {
   return unionGeometries(touching);
 }
 
-function positivePolygonArea(geometry) {
+function polygonArea(geometry) {
   let area = 0;
   for (const polygon of geometry) {
     for (let i = 0; i < polygon.length; i++) {
@@ -79,7 +79,8 @@ function positivePolygonArea(geometry) {
       area += (i === 0 ? 1 : -1) * Math.abs(doubled / 2);
     }
   }
-  return area > 0 && Number.isFinite(area);
+  if (!Number.isFinite(area)) throw new Error('Bond contact geometry has an invalid area.');
+  return area;
 }
 
 function mergeStacks(left, right) {
@@ -195,6 +196,15 @@ export function bondWaferModels(receiver, donor, request = {}) {
   }
   assertSupported(receiver, 'receiver');
   assertSupported(donor, 'donor');
+  // A donor is currently one independently processed wafer. If a previously
+  // assembled structure were imported here its earlier source IDs would be
+  // overwritten. Reject that case until nested Assembly lineage is supported.
+  if (donor.layers.some((layer) => layer.sourceWaferId != null)) {
+    throw new Error('Bond donor is already assembled; nested donor lineage is unsupported.');
+  }
+  if (receiver.layers.some((layer) => layer.sourceWaferId === options.donorId)) {
+    throw new Error('Bond donorId already exists in the receiver Assembly.');
+  }
 
   const receiverPlane = materialExtremum(receiver, options.receiverFace);
   const donorPlane = materialExtremum(donor, options.donorFace);
@@ -214,7 +224,8 @@ export function bondWaferModels(receiver, donor, request = {}) {
       .map((region) => region.geom),
   );
   const contact = intersection(receiverContact, donorContact);
-  if (isEmpty(contact) || !positivePolygonArea(contact)) {
+  const contactAreaUm2 = polygonArea(contact);
+  if (isEmpty(contact) || !(contactAreaUm2 > 0)) {
     throw new Error(
       'Bond rejected: no finite-area physical contact exists at the selected interface.',
     );
@@ -277,6 +288,12 @@ export function bondWaferModels(receiver, donor, request = {}) {
       rotationDeg: options.rotationDeg,
       z: receiverPlane,
       contactGeometry: contact,
+      contactAreaUm2,
+      receiverExposedAreaUm2: polygonArea(receiverContact),
+      donorExposedAreaUm2: polygonArea(donorContact),
+      contactFractionReceiver: contactAreaUm2 / polygonArea(receiverContact),
+      contactFractionDonor: contactAreaUm2 / polygonArea(donorContact),
+      contactIslands: contact.length,
     },
     donorLayerIds: Object.fromEntries(transformed.layerIds),
   };
