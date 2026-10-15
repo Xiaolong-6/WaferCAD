@@ -219,6 +219,10 @@ try {
         assert.notEqual(await host.getAttribute('data-scene-generation'), generation);
         // Section Z Break follows its original controller; Detail stays independent of 3D clip.
         const collapseEnabled = await host.getAttribute('data-z-collapse-enabled');
+        // Z Break belongs to Section. Restore the four-view dock before using
+        // its actual toolbar, while keeping the 3D renderer and camera alive.
+        await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
+        await waitForPaint(page);
         await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
         await page.locator('#section-collapse-enabled').setChecked(collapseEnabled !== 'true');
         await ready();
