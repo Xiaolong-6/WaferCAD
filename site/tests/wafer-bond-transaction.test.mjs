@@ -53,7 +53,7 @@ function hostFor(project) {
   };
 }
 
-test('prepare Bond preserves each source and receiver view without product pre-bond History', () => {
+test('prepare preserves source History and receiver view without product History', () => {
   const receiver = wafer('receiver');
   const donor = wafer('donor');
   receiver.drawMask = { nextShapeId: 1, shapes: [] };
@@ -82,12 +82,10 @@ test('prepare Bond preserves each source and receiver view without product pre-b
   assert.deepEqual(donor, beforeDonor);
 });
 
-test('second Bond prepares a third source without inventing receiver Recipe or changing prior layers', () => {
+test('third Bond preserves all sources and does not mutate prior assembly', () => {
   const first = prepareWaferBondTransaction(wafer('A'), wafer('B'), { donorId: 'B' });
   const prior = structuredClone(first.project);
-  const second = prepareWaferBondTransaction(first.project, wafer('C'), {
-    donorId: 'C',
-  });
+  const second = prepareWaferBondTransaction(first.project, wafer('C'), { donorId: 'C' });
   assert.equal(second.project.waferAssembly.sources.length, 3);
   assert.equal(second.project.waferAssembly.bonds.length, 2);
   assert.deepEqual(first.project, prior);
