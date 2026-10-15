@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/swx-mems-geometry.mjs'
       - 'scripts/swx-mems-actuator-candidate.mjs'
+      - 'scripts/swx-mems-optomechanical-candidate.mjs'
+      - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
       - 'site/tests/swx-mems-actuator-candidate.test.mjs'
       - 'scripts/swx-mems-figure-audit.mjs'
       - 'scripts/build-swx-mems-example.mjs'
@@ -36,6 +38,8 @@ jobs:
         run: npm ci
       - name: Compact actuator targeted scientific contracts
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
+      - name: Compact optical/mechanical interface scientific contracts
+        run: node --test site/tests/swx-mems-optomechanical-candidate.test.mjs
       - name: Geometry and pose tests
         run: node --test site/tests/swx-mems-geometry.test.mjs
       - name: Quantify published figure layout discrepancies (advisory)
