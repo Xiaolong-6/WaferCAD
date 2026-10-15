@@ -110,7 +110,12 @@ const CASES = [
         b: [-2100, 0],
         zFocus: { top: 174.0, bottom: -174.7 },
         probes: [
-          { id: 'active-passivated', xy: [0, 0], present: ['ALD Al2O3'], absent: ['Front sputtered Al'] },
+          {
+            id: 'active-passivated',
+            xy: [0, 0],
+            present: ['ALD Al2O3'],
+            absent: ['Front sputtered Al'],
+          },
           { id: 'outer-passivated', xy: [-3200, 0], present: ['ALD Al2O3', 'Thermal SiO2 650 nm'] },
         ],
       },
@@ -131,7 +136,11 @@ const CASES = [
         zFocus: { top: 174.0, bottom: -174.7 },
         probes: [
           { id: 'active-overetched', xy: [0, 0], absent: ['ALD Al2O3', 'Front sputtered Al'] },
-          { id: 'outer-still-passivated', xy: [-3200, 0], present: ['ALD Al2O3', 'Thermal SiO2 650 nm'] },
+          {
+            id: 'outer-still-passivated',
+            xy: [-3200, 0],
+            present: ['ALD Al2O3', 'Thermal SiO2 650 nm'],
+          },
         ],
       },
       { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
@@ -141,7 +150,7 @@ const CASES = [
     id: 'photodetector-ge-a',
     file: 'photodetector-literature-examples',
     variant: 'ge-fig15-a',
-    source: 'Liu et al. 2025, Ge Fig. 15a; active Al2O3 interface',
+    source: 'Hanchen Liu 2026 doctoral thesis Fig. 15a; full-area Al2O3 inversion interface',
     expected: { substrate: 'n-Ge Sb', implants: 2, electrical: 1 },
     cuts: [
       {
@@ -150,8 +159,18 @@ const CASES = [
         b: [-2600, 0],
         zFocus: { top: 150.15, bottom: -150.8 },
         probes: [
-          { id: 'ge-a-outside', xy: [-3200, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
-          { id: 'ge-a-center', xy: [0, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
+          {
+            id: 'ge-a-outside',
+            xy: [-3200, 0],
+            present: ['Passivation ALD Al2O3'],
+            absent: ['SiO2 inactive'],
+          },
+          {
+            id: 'ge-a-center',
+            xy: [0, 0],
+            present: ['Passivation ALD Al2O3'],
+            absent: ['SiO2 inactive'],
+          },
         ],
       },
       { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
@@ -161,7 +180,7 @@ const CASES = [
     id: 'photodetector-ge-b',
     file: 'photodetector-literature-examples',
     variant: 'ge-fig15-b',
-    source: 'Liu et al. 2025, Ge Fig. 15b; SiO2/Al2O3 inactive interface',
+    source: 'Hanchen Liu 2026 doctoral thesis Fig. 15b; inactive SiO2/Al2O3 isolation',
     expected: { substrate: 'n-Ge Sb', implants: 2, electrical: 2 },
     cuts: [
       {
@@ -170,8 +189,17 @@ const CASES = [
         b: [-2600, 0],
         zFocus: { top: 150.15, bottom: -150.8 },
         probes: [
-          { id: 'ge-b-outside', xy: [-3200, 0], present: ['SiO2 inactive', 'Passivation ALD Al2O3'] },
-          { id: 'ge-b-active', xy: [0, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
+          {
+            id: 'ge-b-outside',
+            xy: [-3200, 0],
+            present: ['SiO2 inactive', 'Passivation ALD Al2O3'],
+          },
+          {
+            id: 'ge-b-active',
+            xy: [0, 0],
+            present: ['Passivation ALD Al2O3'],
+            absent: ['SiO2 inactive'],
+          },
         ],
       },
       { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
@@ -421,7 +449,12 @@ try {
         });
       }
       assert.deepEqual(errors, [], item.id + ': browser errors');
-      report.push({ example: item.id, variant: item.variant || null, source: item.source, cuts: examples });
+      report.push({
+        example: item.id,
+        variant: item.variant || null,
+        source: item.source,
+        cuts: examples,
+      });
     } finally {
       await context.close();
     }

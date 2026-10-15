@@ -180,6 +180,24 @@ precursor's composition. Keep the original precursor processing sequence in
 Record notes. Do not claim precursor-composition or semiconductor device-physics
 fidelity, and do not equate software replay success with paper Figure/SEM acceptance.
 
+## 2026-10-15 photodetector figure attribution and branch evidence
+
+Black-Si device geometry is compared with Setälä et al. (2023), Fig. 1a. The Ge
+A/B labels `Fig. 15a/b` refer to **Hanchen Liu's 2026 Aalto doctoral thesis**,
+[Figure 15 and section 4.5.1](https://urn.fi/URN:ISBN:978-952-64-2900-7),
+rather than a figure numbered 15 in the 2025 journal article. Figure 15a
+uses an Al2O3-induced p-type surface over the inactive area, whereas Fig. 15b
+uses SiO2/Al2O3-induced n-type isolation outside the active area. Both models
+remain geometry/electrical-region proxies; no dark-current or induced-field
+transport simulation has been verified. The modeled 45 nm inactive SiO2 is
+explicitly an engineering assumption.
+
+The real browser evidence runner now selects each saved History Variant,
+exports the active state, and captures separate Mask, Main, Section and 3D
+images for Black-Si FINAL and destructive QA, plus Ge Fig. 15a and 15b.
+Physical XY/Z owner probes compare retained versus removed ALD and inactive
+SiO2 without changing source geometry or widening numerical tolerances.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
