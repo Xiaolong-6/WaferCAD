@@ -445,7 +445,18 @@ try {
     const previous = pdPathIntervals.at(-1);
     if (previous) {
       const commonZ = Math.min(pdPart.z1, previous.z1) - Math.max(pdPart.z0, previous.z0);
-      assert.ok(commonZ > 0.025, 'Pd landing loses vertical overlap along lateral bridge');
+      // The back gate is 26 nm tall and the nominal Pd is 45 nm: even two
+      // perfect horizontal films have at most 19 nm of shared Z. Enforce a
+      // physically achievable 10 nm conductive bridge (PVD 25% = 11.25 nm),
+      // rather than the former impossible 25 nm assertion.
+      assert.ok(
+        commonZ > 0.01,
+        'Pd landing needs >10nm contiguous Z overlap at X=' +
+          x.toFixed(4) +
+          ', observed ' +
+          (commonZ * 1000).toFixed(3) +
+          'nm',
+      );
     }
     pdPathIntervals.push({ z0: pdPart.z0, z1: pdPart.z1 });
   }
