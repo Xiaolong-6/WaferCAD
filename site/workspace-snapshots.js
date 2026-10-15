@@ -1,6 +1,9 @@
 import { historyOperationAreaLabel, historyOperationLabel } from './history-operation-label.js';
 import { equalStatePairs, stateValuesEqual } from './state-equality.js';
 
+// A validation batch must yield to the browser independently of clone-slice budgeting.
+const VALIDATION_BATCH_YIELD = Symbol('history-validation-batch');
+
 function clone(value) {
   // Importing a long History clones many state fields. Immutable scalars do
   // not need structuredClone; objects still require independent deep copies.
@@ -1621,7 +1624,7 @@ export function createSnapshotManager({
           // The legacy full-array validator likewise checked every state
           // before falling back to strict individual project validation.
           if (!batchIsValid) valid = false;
-          yield;
+          yield VALIDATION_BATCH_YIELD;
         }
       } else {
         const began = performance.now();
@@ -1943,7 +1946,11 @@ export function createSnapshotManager({
         return result.value;
       }
       processed++;
-      if (processed >= 8 || performance.now() - sliceStart >= 12) {
+      if (
+        result.value === VALIDATION_BATCH_YIELD ||
+        processed >= 8 ||
+        performance.now() - sliceStart >= 12
+      ) {
         yieldCount++;
         await new Promise((resolve) => setTimeout(resolve, 0));
         sliceStart = performance.now();

@@ -253,12 +253,10 @@ test('a failed cooperative validation batch still consumes remaining attestation
   });
   syncManager.importRecords(records);
   assert.deepEqual(asyncManager.exportRecords(), syncManager.exportRecords());
-  assert.deepEqual(asyncManager.list().map((record) => record.id), [
-    'candidate-0',
-    'candidate-1',
-    'candidate-3',
-    'candidate-4',
-  ]);
+  assert.deepEqual(
+    asyncManager.list().map((record) => record.id),
+    ['candidate-0', 'candidate-1', 'candidate-3', 'candidate-4'],
+  );
 });
 
 test('abort during cooperative validation keeps previous History and skips publication', async () => {
