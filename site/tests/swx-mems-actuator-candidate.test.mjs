@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCompactSwxActuator } from '../../scripts/swx-mems-actuator-candidate.mjs';
+import {
+  createCompactSwxActuator,
+  SWX_COMPACT_ASSUMPTIONS,
+} from '../../scripts/swx-mems-actuator-candidate.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
 
 const closeTo = (a, b) => assert.ok(Math.abs(a - b) < 1e-10, a + ' != ' + b);
@@ -83,6 +86,18 @@ test('compact candidate has no fixed/moving positive-area silicon overlap', asyn
     const pose = createCompactSwxActuator(state);
     const overlapUm2 = geometryArea(v.intersection(union(pose.fixed), union(pose.movable)));
     assert.ok(overlapUm2 < 1e-8, state + ' stationary/movable silicon short ' + overlapUm2);
+    // The only physical flexure/shuttle intersection is at the moving
+    // spring tip: upstream intersections would incorrectly stiffen the
+    // 30/22um folded spring even if fixed/movable conductors stayed apart.
+    const contact = v.intersection(union(pose.springContours), union(pose.shuttle));
+    const maxAllowedY =
+      SWX_COMPACT_ASSUMPTIONS.springTipYUm + pose.travelUm + 0.35;
+    const unexpected = contact.flatMap((multi) => multi).flat().filter((point) => point[1] > maxAllowedY);
+    assert.equal(
+      unexpected.length,
+      0,
+      state + ' spring free span inadvertently contacts perforated shuttle',
+    );
     const pieces = union(pose.movable);
     const component = (point) => pieces.findIndex((poly) => v.pointInMulti(point, [poly]));
     const sample = [
