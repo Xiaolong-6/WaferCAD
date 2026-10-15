@@ -1393,7 +1393,7 @@ function validateWaferAssembly(value, shared) {
     for (const key of ['dx', 'dy', 'rotationDeg']) {
       assertCoordinate(spec[key], `${path}.spec.${key}`);
     }
-    assertFinite(bond.contactAreaUm2, `${path}.contactAreaUm2`, { min: 1e-18 });
+    assertFinite(bond.contactAreaUm2, `${path}.contactAreaUm2`, { min: Number.MIN_VALUE });
     const mapping = assertObject(bond.donorLayerIds, `${path}.donorLayerIds`);
     if (Object.keys(mapping).length > LIMITS.layers) {
       fail(`${path}.donorLayerIds`, 'exceeds the layer budget.');
