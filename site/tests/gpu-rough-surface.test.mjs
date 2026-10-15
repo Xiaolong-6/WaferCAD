@@ -7,6 +7,7 @@ import {
   decorateGpuRoughMaterial,
   decorateGpuRoughLineMaterial,
   gpuRoughAppearanceUniforms,
+  supportsPreciseGpuRoughDisplacement,
 } from '../gpu-rough-surface.js';
 
 const appearance = {
@@ -47,6 +48,20 @@ test('GPU rough preview rejects non-rough or degenerate appearances', () => {
     canUseGpuRoughPreview({ ...appearance, etchDepth: 0, meanHeight: 0, amplitude: 0 }),
     false,
   );
+});
+
+test('software WebGL is excluded from the precision-sensitive shader displacement path', () => {
+  const renderer = (name) => ({
+    getContext: () => ({
+      getExtension: () => ({ UNMASKED_RENDERER_WEBGL: 77 }),
+      getParameter: () => name,
+      RENDERER: 11,
+    }),
+  });
+  assert.equal(supportsPreciseGpuRoughDisplacement(renderer('Google SwiftShader')), false);
+  assert.equal(supportsPreciseGpuRoughDisplacement(renderer('Mesa llvmpipe')), false);
+  assert.equal(supportsPreciseGpuRoughDisplacement(renderer('D3D11 Intel Iris Xe')), true);
+  assert.equal(supportsPreciseGpuRoughDisplacement(renderer('NVIDIA GeForce RTX 3060')), true);
 });
 
 test('GPU rough task eligibility falls back for buried, implant, and scaled-Z paths', () => {
