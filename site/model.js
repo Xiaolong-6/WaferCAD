@@ -82,7 +82,8 @@ export function createModel({
     ],
     implants: [],
     electricalRegions: [],
-    dopantRegions: [],
+    // Qualitative dopants are opt-in. Legacy models must not acquire an empty
+    // field when regenerated, otherwise existing scientific fixtures drift.
     nextImplantId: 1,
     nextElectricalRegionId: 1,
     nextLayerId: 1,
