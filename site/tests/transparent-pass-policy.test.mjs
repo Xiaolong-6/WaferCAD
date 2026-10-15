@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canRenderPlanarCapInSinglePass } from '../transparent-pass-policy.js';
+import {
+  canRenderPlanarCapInSinglePass,
+  canRenderRoughCapInSinglePass,
+} from '../transparent-pass-policy.js';
 
 const materialState = { transparent: true, opacity: 0.5 };
 const canUseSinglePass = (options) =>
@@ -68,4 +71,48 @@ test('opaque scenes, sides, rough surfaces and annotations retain the two-pass p
   );
   assert.equal(canUseSinglePass({ materialState }), false);
   assert.equal(canRenderPlanarCapInSinglePass(), false);
+});
+
+test('transparent rough heightfield is a single skin, and opaque/other faces remain unchanged', () => {
+  assert.equal(
+    canRenderRoughCapInSinglePass({
+      transparentScene: true,
+      materialState,
+      appearance: { kind: 'rough', featureSize: 0.3 },
+    }),
+    true,
+  );
+  assert.equal(
+    canRenderRoughCapInSinglePass({
+      transparentScene: false,
+      materialState,
+      appearance: { kind: 'rough' },
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderRoughCapInSinglePass({
+      transparentScene: true,
+      materialState: { transparent: false },
+      appearance: { kind: 'rough' },
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderRoughCapInSinglePass({
+      transparentScene: true,
+      materialState,
+      appearance: null,
+    }),
+    false,
+  );
+  assert.equal(
+    canRenderRoughCapInSinglePass({
+      transparentScene: true,
+      materialState,
+      appearance: { kind: 'smooth' },
+    }),
+    false,
+  );
+  assert.equal(canRenderRoughCapInSinglePass(), false);
 });
