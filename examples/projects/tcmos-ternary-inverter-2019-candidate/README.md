@@ -49,6 +49,19 @@ Implant operations may now optionally create a separate `model.dopantRegions` re
 
 The T-CMOS HVT, p/n LDD and p/n HDD Implant steps now write these qualitative records; the Conventional CMOS LVT branch writes channel records instead. Both are tested through Recipe, Project schema and persistence. Precise bulk N-well and P-well concentration fields are not available: their existing Electrical Region annotations remain schematic.
 
+## Body–source/drain scientific junction audit (2026-10-15)
+
+The existing `findDopantPolarityOverlaps` detects **co-occupancy of opposite-polarity qualitative annotations**, not a physical PN junction surface. The source and drain share the same LDD/HDD mask/record; labels below are derived from the reconstructed POLY gate and METAL1 VDD/VOUT/GND contact placement. The new terminal-qualified diagnostic partitions that overlap into the inferred Source and Drain footprints **without assigning carrier concentration, diffusion, activation, net polarity, a depletion boundary or BTBT current**.
+
+For this *illustrative* reconstruction, HVT and HDD intersect over **0.82–0.92 µm Z** (100 nm):
+
+| Device | Body vs Source XY overlap | Body vs Drain XY overlap |
+| --- | ---: | ---: |
+| pMOS (HVTN As+ donor / p+ HDD) | 1.287 µm² | 1.703 µm² |
+| nMOS (HVTP BF₂+ acceptor / n+ HDD) | 1.287 µm² | 1.703 µm² |
+
+Both source and drain overlaps are nonzero. A nonzero overlap **must not** be interpreted as a physically resolved body–drain interface or tunnelling hot spot. The schematic n-/p-wells are `electricalRegions`, with no corresponding calibrated `dopantRegions` well concentrations. Until dopant net-concentration/activation, P/N boundary extraction and semiconductor transport exist, paper Fig. 1a junction-level scientific acceptance remains **open**. The per-device terminal measurements are reproduced by focused scientific tests and the generator's independent `validation.json` report; the generated project's material/Recipe geometry is unchanged.
+
 ## Geometry build order
 
 1. Create the Si(100) Base. Etch Si in the inverse of ACTIVE, exposing a real trench.

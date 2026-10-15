@@ -85,7 +85,9 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     model.dopantRegions.every((region) => region.profile.kind === 'qualitative-interval'),
     true,
   );
-  const { findDopantPolarityOverlaps } = await import('../dopant-regions.js');
+  const { findDopantPolarityOverlaps, findTerminalQualifiedDopantOverlaps } =
+    await import('../dopant-regions.js');
+  const { geometryArea } = await import('../model.js');
   const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
   assert.ok(
     qualitativeOverlaps.some((overlap) => v.pointInMulti([-1.66, 0], overlap.geom)),
@@ -95,6 +97,53 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     qualitativeOverlaps.some((overlap) => v.pointInMulti([1.66, 0], overlap.geom)),
     'nMOS body and drain doping masks must qualitatively overlap',
   );
+  // The input source/drain masks are shared. Identifying the VOUT-side drain
+  // requires the reconstructed transistor gate and METAL1 contact routing.
+  const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
+  const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
+  const terminals = [
+    { id: 'pMOS-source', kind: 'source', rect: pm[0] },
+    { id: 'pMOS-drain', kind: 'drain', rect: pm[1] },
+    { id: 'nMOS-drain', kind: 'drain', rect: nm[0] },
+    { id: 'nMOS-source', kind: 'source', rect: nm[1] },
+  ].map(({ rect: r, ...terminal }) => ({
+    ...terminal,
+    geom: v.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2),
+  }));
+  const qualified = findTerminalQualifiedDopantOverlaps(model, terminals, v);
+  for (const terminal of terminals) {
+    const overlaps = qualified.filter((overlap) => overlap.terminalId === terminal.id);
+    assert.ok(overlaps.length, `${terminal.id} must intersect opposite-polarity body/HDD intents`);
+    const union = v.unionGeometries(overlaps.map((overlap) => overlap.geom));
+    const expectedArea = terminal.kind === 'source' ? 1.287 : 1.703;
+    assert.ok(
+      Math.abs(geometryArea(union) - expectedArea) < 1e-6,
+      `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
+    );
+    assert.ok(
+      overlaps.every((overlap) => Math.abs(overlap.z0 - 0.82) < 1e-9 &&
+        Math.abs(overlap.z1 - 0.92) < 1e-9),
+      'HVT 80–240 nm / HDD 0–180 nm intervals overlap for 100 nm, not a measured junction',
+    );
+  }
+  assert.equal(
+    model.dopantRegions.some((region) => region.role === 'well'),
+    false,
+    'Schematic electrical n-/p-well regions do not constitute calibrated well doping',
+  );
+  assert.deepEqual(validation.qualitativeJunctionEvidence.overlapAreaUm2,
+    Object.fromEntries(
+      terminals.map(({ id }) => [
+        id,
+        geometryArea(v.unionGeometries(
+          qualified.filter((overlap) => overlap.terminalId === id)
+            .map((overlap) => overlap.geom),
+        )),
+      ]),
+    ),
+  );
+  assert.equal(validation.qualitativeJunctionEvidence.physicalJunctionResolved, false);
+  assert.equal(validation.qualitativeJunctionEvidence.btbtCurrentComputed, false);
   assert.match(model.implants[0].name, /HVTN As\+ pMOS/);
   assert.match(model.implants[1].name, /HVTP BF2\+ nMOS/);
   for (const body of model.implants.slice(0, 2)) {

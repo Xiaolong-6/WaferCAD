@@ -811,6 +811,30 @@ export async function buildTcmosInverter({
   assert.equal(loaded.snapshotBranches.nodes.length, nodes.length);
   assert.equal(loaded.snapshotBranches.branches.length, project.snapshotBranches.branches.length);
   assert.equal(loaded.processRecipe.steps.length, steps.length);
+  // Drain vs source is inferred from terminal contact connectivity in the
+  // reconstructed Fig. 1b layout. Shared source/drain implant masks alone
+  // cannot identify a junction or a conducting BTBT path.
+  const { findTerminalQualifiedDopantOverlaps } = await import('../site/dopant-regions.js');
+  const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
+  const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
+  const terminals = [
+    { id: 'pMOS-source', kind: 'source', rect: pm[0] },
+    { id: 'pMOS-drain', kind: 'drain', rect: pm[1] },
+    { id: 'nMOS-drain', kind: 'drain', rect: nm[0] },
+    { id: 'nMOS-source', kind: 'source', rect: nm[1] },
+  ].map(({ rect: r, ...terminal }) => ({
+    ...terminal,
+    geom: v.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2),
+  }));
+  const terminalOverlaps = findTerminalQualifiedDopantOverlaps(model, terminals, v);
+  const overlapAreas = Object.fromEntries(
+    terminals.map(({ id }) => {
+      const geom = v.unionGeometries(
+        terminalOverlaps.filter((overlap) => overlap.terminalId === id).map((overlap) => overlap.geom),
+      );
+      return [id, modelApi.geometryArea(geom)];
+    }),
+  );
   const validation = {
     pass: true,
     doi: TCMOS_DOI,
@@ -827,6 +851,14 @@ export async function buildTcmosInverter({
     bookmarks: bookmarks.length,
     implantMarkers: model.implants.length,
     dopantRegionIntents: model.dopantRegions.length,
+    qualitativeJunctionEvidence: {
+      kind: 'terminal-clipped-opposite-polarity-cooccupancy',
+      sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
+      overlapAreaUm2: overlapAreas,
+      quantifiedWellDoping: model.dopantRegions.some((region) => region.role === 'well'),
+      physicalJunctionResolved: false,
+      btbtCurrentComputed: false,
+    },
     electricalMarkers: model.electricalRegions.length,
     finalRegions: model.regions.length,
     finalMaterialLayers: model.layers.length,
@@ -841,6 +873,7 @@ export async function buildTcmosInverter({
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
+      'HVT body intent intersects both source and drain HDD intent in the assumed geometry. Opposite-polarity volumetric overlaps are not electrically resolved PN boundaries or BTBT junctions.',
       'LVTN/LVTP mask windows are reference-only and NOT executed in the T-CMOS process; U-shaped body-tie diffusion, contact arrays and metal routing are traced visually from Fig. 1b, not measured dimensions.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
       illustrativeTiltDeg

@@ -144,3 +144,42 @@ export function findDopantPolarityOverlaps(model, vectorApi) {
   }
   return overlaps;
 }
+
+/**
+ * Attribute *qualitative* opposite-polarity body/source-drain co-occupancy
+ * to caller-supplied terminal footprints. A foundry terminal cannot be
+ * identified from shared S/D doping alone: callers must provide its geometry.
+ * The result is not a PN interface, activation profile, depletion region,
+ * or BTBT conduction path.
+ */
+export function findTerminalQualifiedDopantOverlaps(model, terminals, vectorApi) {
+  const byId = new Map((model.dopantRegions || []).map((region) => [region.id, region]));
+  const bodySourceDrain = findDopantPolarityOverlaps(model, vectorApi).filter((overlap) => {
+    const roles = overlap.ids.map((id) => byId.get(id)?.role);
+    return roles.includes('body') && roles.includes('source-drain');
+  });
+  const qualified = [];
+  for (const terminal of terminals || []) {
+    if (
+      !terminal ||
+      !['source', 'drain'].includes(terminal.kind) ||
+      !Array.isArray(terminal.geom) ||
+      vectorApi.isEmpty(terminal.geom)
+    ) {
+      continue;
+    }
+    for (const overlap of bodySourceDrain) {
+      const geom = vectorApi.intersection(overlap.geom, terminal.geom);
+      if (vectorApi.isEmpty(geom)) continue;
+      qualified.push({
+        terminalId: String(terminal.id),
+        kind: terminal.kind,
+        ids: overlap.ids,
+        z0: overlap.z0,
+        z1: overlap.z1,
+        geom,
+      });
+    }
+  }
+  return qualified;
+}
