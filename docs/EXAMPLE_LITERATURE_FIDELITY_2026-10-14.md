@@ -163,3 +163,19 @@ These are paper-panel targets, not completed screenshot overlays.
    phase/dispersion design.
 
 No original article figures are copied into the repository by this change.
+
+## 2026-10-15 reproducibility gate — exact PR head 87fd3543
+
+The eight workflows recorded for commit `87fd3543c6b7e4d9625c96d63e17187381077dd4` **all completed successfully**: Quality (38699594881), Browser regression (38699594883), Example Recipe Reconstruction (38699594873), Both-face examples integration (38699594855), Native Fig3 full replay (38699594856), UI v2 D1 (38699594853), UI v2 Stage C/M4 (38699594854), and UI v2 Main/Mask/Mobile (38699594864).
+
+The Both-face browser matrix individually passed PERC `gds-contacts` and `source-order`, Tandem `ito-control` and `ncsi`, and Photodetector `final` and `qa-overetch`, as well as fixture reproducibility. Recipe Reconstruction separately passed scalar Kernel Run All for Microdisk, PERC, Tandem, Photodetector/Ge A/Ge B, M3D, and three-tier JLFET. These are **software/geometry reconstruction** results, not independent matches to the publications.
+
+Remaining evidence before scientific acceptance:
+
+1. For each paper figure, record figure/panel, device coordinate, Section cut endpoints, expected material sequence, observed material sequence and deviation with explicit source-versus-assumption flags. Do not infer physical dimensional accuracy from an attractive 3D preview.
+2. For PERC, match the entire rear aperture grid's pitch, contact-window mask and source illustration; distinguish source-provided values from the 100-site engineering reconstruction. For Tandem, verify ridge/valley and Ag-grid cross sections against Sahli supplement S2/S3/S5, with the planar 2.5D/facet approximation clearly labeled.
+3. For Black-Si/Ge, review front/rear oxide, protected ALD and selective Al strip at intermediate as well as final states, and confirm original masks/Ge A/B attribution. For Microdisk, check the resist recoat/dice/strip chronology and release profile against paper figures; the resist transient remains record-only.
+4. For M3D, MAGIC-1000 and three-tier JLFET, review local contacts, buried via ownership and CMP height at multiple real Section cuts; the simulator's subset is not the published full chip. For TiO2, explicitly retain the illustrative-grid and absent-optical-validation disclaimer.
+5. Compare **intermediate** saved History and Variant nodes to stepwise Recipe replay at each physical operation, not merely final geometry; preserve pre-existing node IDs/revisions and shared ancestry. Capture independent Section/3D visual evidence for mismatches.
+
+**Merge policy:** Do not merge on CI-green alone. Preserve this PR head for independent scientific/visual acceptance; request owner approval before merge.
