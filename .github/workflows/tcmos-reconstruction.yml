@@ -45,12 +45,6 @@ jobs:
       - name: Check source formatting
         if: always()
         run: npx prettier --check site/three-view.js site/tests/issue-11-3d-controls.test.mjs scripts/tcmos-browser-acceptance.mjs scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/process-recipe.js site/project-schema.js site/project-io.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
-      - name: Explain formatting deltas in current cutaway work
-        if: failure()
-        run: |
-          for file in site/three-view.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md; do
-            npx prettier "$file" | diff -u "$file" - || true
-          done
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6

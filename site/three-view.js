@@ -1112,9 +1112,7 @@ export function createThreeView({
         return {
           visible: true,
           materialState: alwaysTransparent(
-            roiCutaway
-              ? 0.94
-              : opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
+            roiCutaway ? 0.94 : opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
           ),
           transparentSort: true,
         };
@@ -1509,8 +1507,7 @@ export function createThreeView({
     const positions = [];
     const shear = Math.tan(((Number(annotation.tilt) || 0) * Math.PI) / 180);
     const atZ = (xy, z) => {
-      const depth =
-        annotation.face === 'front' ? annotation.sourceZ - z : z - annotation.sourceZ;
+      const depth = annotation.face === 'front' ? annotation.sourceZ - z : z - annotation.sourceZ;
       return [xy[0] + shear * Math.max(0, depth), xy[1], z];
     };
     const edge = (a, b) => positions.push(...a, ...b);
