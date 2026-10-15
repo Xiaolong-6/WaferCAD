@@ -1,6 +1,7 @@
 // Native-v2 replacement candidate for Legacy Recipe prefix and Stop contracts.
 // Keep the older browser owner until this and the preflight/fault suites reach parity.
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
@@ -101,6 +102,12 @@ try {
     await page.locator('#recipeCodeEditor').fill(code);
     await page.locator('#recipeApplyCodeBtn').click();
     await page.locator('#recipeRunAllBtn').click();
+    await page.locator('#processTaskAbortBtn').waitFor({ state: 'visible' });
+    await mkdir('test-results/v2-recipe-prefix-stop', { recursive: true });
+    await page.screenshot({
+      path: 'test-results/v2-recipe-prefix-stop/inflight-task-abort.png',
+      animations: 'disabled',
+    });
     await page.locator('#processTaskAbortBtn').click({ timeout: 5000 });
     await page.waitForFunction(
       () => {
