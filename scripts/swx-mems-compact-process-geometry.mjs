@@ -38,7 +38,10 @@ export function createSwxCompactProcessGeometry(state = 'off') {
   const { offsetXUm: dx, offsetYUm: dy } = SWX_INTERFACE_ASSUMPTIONS;
   // Four partial-etch trial transitions are the only ridge polygons.
   // Grating groove arcs are NOT synthesized until source-level redesign.
-  const ridge = traditional.maskPolygons.get(2).slice(0, 4).map((p) => shift(p, dx, dy));
+  const ridge = traditional.maskPolygons
+    .get(2)
+    .slice(0, 4)
+    .map((p) => shift(p, dx, dy));
   const electrodes = ELECTRICAL.map(([x, y]) => rect(x, y, 3.5, 3.5));
   const maskPolygons = new Map([
     [1, silicon],
@@ -110,7 +113,8 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
   fieldUm: FIELD,
   section: { a: [25, -36], b: [25, -10] },
   projectName: 'SWX compact optomechanical process candidate · OFF/ON',
-  ridgeNote: 'Trial 150nm ridge trims on 4 SWT ports; source grating grooves are not yet reconstructed.',
+  ridgeNote:
+    'Trial 150nm ridge trims on 4 SWT ports; source grating grooves are not yet reconstructed.',
   shallowEtchLabel: '150nm trial ridge-waveguide trim (grating verification remains BLOCKED)',
   shallowEtchProbes: [
     { groovePoint: [-19, -35], ridgePoint: [-21, -35] },
