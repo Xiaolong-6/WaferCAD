@@ -488,6 +488,44 @@ try {
     horizontalViewFraction,
     note: 'Oblique inspection-only orbit and layer visibility: not a fabricated cross-section',
   };
+  // A second, inspection-only image isolates the electrically relevant local
+  // CNTFET / Pd landing / digital RRAM stack. Broad masks and unrelated CIM
+  // films obscure the device even when the camera is correctly oblique.
+  // Visibility changes are reversed before export and the Run All replay.
+  const activeStackLayerIds = [
+    'layer-13',
+    'layer-16',
+    'layer-17',
+    'layer-18',
+    'layer-19',
+    'layer-20',
+    'layer-24',
+    'layer-25',
+    'layer-26',
+    'layer-28',
+    'layer-29',
+  ];
+  const activeStackLayerIdSet = new Set(activeStackLayerIds);
+  const activeStackHiddenLayerIds = beforeCutaway.model.layers
+    .map((layer) => layer.id)
+    .filter((id) => !cutawayLayerIds.includes(id) && !activeStackLayerIdSet.has(id));
+  for (const id of activeStackHiddenLayerIds) await checkboxFor(id).uncheck();
+  await waitForPaint(page);
+  const activeStack = await captureVisibleThree(
+    page,
+    resolve(output, 'three-device-active-stack-inspection.png'),
+  );
+  report.threeActiveStackEvidence = {
+    visibleLayers: activeStackLayerIds,
+    hiddenLayers: [...cutawayLayerIds, ...activeStackHiddenLayerIds],
+    coloredPixels: activeStack.coloredPixels,
+    canvas: activeStack.canvas,
+    camera: (await snapshot()).threeCamera,
+    horizontalViewFraction,
+    note: 'Inspection-only CNTFET / Pd / digital RRAM layer isolation, not source mask fidelity',
+  };
+  for (const id of activeStackHiddenLayerIds) await checkboxFor(id).check();
+  await waitForPaint(page);
   if (!zoomWasActive) await zoomControl3d.click();
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
