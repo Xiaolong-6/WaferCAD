@@ -73,6 +73,9 @@ try {
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
       });
+      await page.waitForFunction(() => document.querySelector('#threeHost')?.dataset.renderState === 'ready', null, {
+        timeout: 60000,
+      });
       await waitForPaint(page);
       const controls = await page.locator('.p-desktop-dock-actions [data-action]').evaluateAll(
         (nodes) => nodes.map((node) => node.dataset.action),
@@ -105,7 +108,7 @@ try {
       const unchanged = await page.evaluate(() =>
         JSON.stringify(window.WaferCadV2Workstation.snapshot().model) === window.__dockOriginalModel);
       assert.equal(unchanged, true, 'Docking must not mutate the physical model');
-      await page.locator('[data-action="dock:overview"]').click();
+      await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
       await assertGrid(page, 4);
 
       // Presets and drag/keyboard acceptance run once at comfortable desktop width.
@@ -136,10 +139,11 @@ try {
         // Real pointer drag from titlebar onto another panel swaps slots.
         const beforeSwap = (await layoutState(page)).order;
         const source = await page.locator('#mainPanel .v2-view-title').boundingBox();
-        const target = await page.locator('#maskPanel .v2-view-title').boundingBox();
+        const target = await page.locator('#maskPanel').boundingBox();
         await page.mouse.move(source.x + 18, source.y + source.height / 2);
         await page.mouse.down();
-        await page.mouse.move(target.x + 18, target.y + target.height / 2, { steps: 12 });
+        // Drop near the lower Mask canvas, clear of the top Snap palette.
+        await page.mouse.move(target.x + target.width - 50, target.y + target.height - 45, { steps: 12 });
         await page.mouse.up();
         await waitForPaint(page);
         assert.notDeepEqual((await layoutState(page)).order, beforeSwap);
@@ -154,7 +158,7 @@ try {
           await assertGrid(page, 3);
           await page.screenshot({ path: resolve(output, id + '.png') });
         }
-        await page.locator('[data-action="dock:overview"]').click();
+        await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
       }
       assert.deepEqual(errors, [], 'No browser page errors during docking');
     } finally {
