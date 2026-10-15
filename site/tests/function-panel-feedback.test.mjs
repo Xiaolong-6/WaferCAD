@@ -254,7 +254,10 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
   assert.match(threeView, /edges\.renderOrder = order/);
   assert.match(threeView, /function renderInspectionFrame\(/);
   assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
-  assert.match(threeView, /depthTest: true,[\s\S]*?depthFunc: THREE\.LessEqualDepth/);
+  assert.match(
+    threeView,
+    /depthTest: true,[\s\S]*?depthFunc: dashed \? THREE\.GreaterDepth : THREE\.LessEqualDepth/,
+  );
   assert.match(threeView, /presentation: \{ kind: 'border' \}/);
   assert.match(threeView, /visible: Boolean\(inspection\.borders\)/);
   assert.match(
