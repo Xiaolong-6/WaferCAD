@@ -953,7 +953,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     progressiveHistoryValidation: true,
     progressiveWorkspaceRestore: true,
     loadProjectSnapshot: domain.load,
-    cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshot,
+    cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshotAsync,
     snapshotManager: history,
     syncBaseControls: domain.syncBaseControls,
     syncTransformInputs: domain.importer.syncTransformInputs,
