@@ -178,11 +178,57 @@ try {
     savedRoiAndSectionRestored: true,
     attachedSiCPresent: false,
   };
+  // The source Fig. 1(a) upper HEMT is a distinct inspection problem from
+  // the fluid network: use the saved device Bookmark and verify real layers.
+  const hemtStep = page.locator('#snapshotList .history-step-wrap').filter({
+    has: page.locator('.history-bookmark-row', {
+      hasText: '05 HEMT active AlGaN/SiN',
+    }),
+  });
+  await hemtStep.first().waitFor({ state: 'attached', timeout: 120000 });
+  assert.equal(await hemtStep.count(), 1, 'HEMT device inspection Bookmark missing');
+  const hemtGroup = hemtStep.locator('.history-bookmarks-group');
+  await hemtGroup.locator('.history-bookmarks-summary').click();
+  const hemtBookmark = hemtGroup.locator('.history-bookmark-row', {
+    hasText: '05 HEMT active AlGaN/SiN',
+  });
+  await hemtBookmark.locator('.snapshot-more-trigger').click();
+  await hemtBookmark
+    .locator('.snapshot-more-popover button', { hasText: 'Restore bookmark' })
+    .click();
+  await page.waitForFunction(
+    () => {
+      const s = window.WaferCadV2Workstation?.snapshot();
+      return (
+        s?.section?.a?.[0] === -440 &&
+        s?.section?.b?.[0] === 440 &&
+        s?.model?.layers?.some((layer) => layer.name.startsWith('AlGaN barrier surrogate')) &&
+        s?.model?.layers?.some((layer) => layer.name.startsWith('SiN isolation/passivation'))
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const hemtShot = await page.screenshot({ type: 'png' });
+  await writeFile(new URL('hemt-active.png', directory), hemtShot);
+  report.views.hemtActive = {
+    viewport: [1000, 640],
+    bytes: hemtShot.length,
+    savedActiveSectionRestored: true,
+    physicalAlGaNAndSiNPresent: true,
+  };
+  assert.deepEqual(historyErrors, [], 'HEMT Bookmark inspection emitted browser errors');
   await context.close();
 
   report.pass = true;
   report.note =
-    'Four final views and the first History Bookmark have real-browser captures. Source contour parity still needs a separate visual audit.';
+    'Four final views, fluid-network Bookmark and HEMT device Bookmark have real-browser captures. Scientific image parity still needs visual review.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',

@@ -97,6 +97,34 @@ const manifoldBranches = [-1, 1].flatMap((side) =>
   CHANNEL_CENTERS.map((x) => stripeAroundPolyline(ganManifoldCenterline(x, side))),
 );
 
+// Electrical heterointerface thicknesses were not reported by the article.
+// Use inspectable physical-scale surrogates; 2DEG is not a solid wafer layer.
+export const GAN_HEMT_STACK = Object.freeze({
+  barrierUm: 0.025,
+  isolationSiNUm: 0.15,
+});
+const chipWidth = 878.5;
+const chipHeight = 1120;
+const activeWidth = 303;
+const activeHeight = 393;
+const isolationFrame = [
+  ...[-1, 1].map((side) =>
+    centered(
+      (chipWidth - activeWidth) / 2,
+      chipHeight,
+      side * (chipWidth + activeWidth) / 4,
+      0,
+    ),
+  ),
+  ...[-1, 1].map((side) =>
+    centered(
+      activeWidth,
+      (chipHeight - activeHeight) / 2,
+      0,
+      side * (chipHeight + activeHeight) / 4,
+    ),
+  ),
+];
 const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
 const chip = centered(878.5, 1120);
 const solder = [
@@ -146,6 +174,11 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   { id: 15, name: 'Peripheral AuSn solder supports (inferred)', rectangles: solder },
   { id: 16, name: 'GaN HEMT die 878.5 x 1120 um', rectangles: [chip] },
   { id: 17, name: 'HEMT active footprint 303 x 393 um', rectangles: [centered(303, 393)] },
+  {
+    id: 24,
+    name: 'Inferred peripheral SiN isolation/passivation frame',
+    rectangles: isolationFrame,
+  },
   { id: 18, name: 'Ten 0.5 x 300 um gate fingers', rectangles: gateFingers },
   {
     id: 19,
@@ -583,8 +616,26 @@ export async function buildGanMicrochannel() {
   );
   assert.ok(sic.layerId);
   deposit('GaN buffer 1 um', 'GaN buffer 1 um', 1, 16);
-  // AlGaN/SiN, exact passivation and contact thickness are unpublished;
-  // the two metal examples below are illustrative visible pattern layers.
+  deposit(
+    'Inferred AlGaN HEMT barrier (25 nm)',
+    'AlGaN barrier surrogate 0.025 um',
+    GAN_HEMT_STACK.barrierUm,
+    16,
+  );
+  // A 2DEG is an electron gas confined by heterostructure band bending.
+  // Do not insert a fictitious standalone 2DEG solid into the material stack.
+  record(
+    'AlGaN/GaN heterointerface with 2DEG (electronic metadata)',
+    'Fig. 1(a) labels the AlGaN/GaN 2DEG. The interface is explicit in geometry, but its carrier concentration, confinement and transport are not simulated.',
+  );
+  deposit(
+    'Inferred peripheral SiN isolation/passivation (150 nm)',
+    'SiN isolation/passivation surrogate 0.15 um',
+    GAN_HEMT_STACK.isolationSiNUm,
+    24,
+  );
+  // Source/drain pads outside the active window are schematic top contacts;
+  // no ohmic vias or verified electrical continuity are represented.
   deposit('Illustrative gate metal 0.2 um', 'Gate metal surrogate 0.2 um', 0.2, 18);
   deposit(
     'Illustrative source-drain contacts 0.2 um',
@@ -592,7 +643,15 @@ export async function buildGanMicrochannel() {
     0.2,
     19,
   );
-  bookmark('05 GaN-on-SiC HEMT with ten gate fingers');
+  bookmark('05 HEMT active AlGaN/SiN and ten gate fingers', {
+    roi: { type: 'rect', a: [-470, -580], b: [470, 580] },
+    section: { a: [-440, 0], b: [440, 0] },
+    threeCamera: {
+      position: [650, -900, 1050],
+      target: [0, 0, 690],
+      fov: 32,
+    },
+  });
   deposit('Illustrative GSG pads on interposer', 'GSG Au pads surrogate 0.5 um', 0.5, 20);
   record(
     'Au wire bonds to GSG and aluminum manifold assembly',
@@ -672,6 +731,32 @@ export async function buildGanMicrochannel() {
 
   const cooledSiC = model.layers.find((layer) => layer.name === 'GaN HEMT SiC substrate 99 um');
   assert.ok(cooledSiC, 'SiC chip is missing');
+  const algan = model.layers.find((layer) => layer.name === 'AlGaN barrier surrogate 0.025 um');
+  const sin = model.layers.find(
+    (layer) => layer.name === 'SiN isolation/passivation surrogate 0.15 um',
+  );
+  assert.ok(algan && sin, 'Missing physical HEMT AlGaN/SiN layers');
+  const activeBarrier = owner([0, 0]).stack.filter((s) => s.layerId === algan.id);
+  const frameSiN = owner([350, 0]).stack.filter((s) => s.layerId === sin.id);
+  assert.equal(activeBarrier.length, 1, 'Active heterointerface lacks an AlGaN barrier');
+  assert.ok(
+    Math.abs(activeBarrier[0].z1 - activeBarrier[0].z0 - GAN_HEMT_STACK.barrierUm) < 1e-8,
+    'AlGaN barrier thickness changed during Kernel execution',
+  );
+  assert.equal(frameSiN.length, 1, 'Passive HEMT periphery lacks SiN isolation');
+  assert.ok(
+    Math.abs(frameSiN[0].z1 - frameSiN[0].z0 - GAN_HEMT_STACK.isolationSiNUm) < 1e-8,
+    'SiN passivation thickness changed during Kernel execution',
+  );
+  assert.equal(
+    owner([0, 0]).stack.some((s) => s.layerId === sin.id),
+    false,
+    'Peripheral isolation wrongly covers the central active HEMT window',
+  );
+  assert.ok(
+    !model.layers.some((layer) => /(^|\\b)2DEG(\\b|$)/i.test(layer.name)),
+    '2DEG electronic interface must not be modeled as a physical deposited solid',
+  );
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
   assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
@@ -730,6 +815,7 @@ export async function buildGanMicrochannel() {
       bothBacksidePortsConnectToAllSixTopChannels: true,
       retainedInterChannelSiRibs: true,
       longSupplyReturnRoutesReachBothRemotePorts: true,
+      physicalAlGaNAndSiNWith2DEGOnlyAsMetadata: true,
     },
     checkpoints,
   };

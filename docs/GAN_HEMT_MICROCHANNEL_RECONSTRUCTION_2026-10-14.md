@@ -18,7 +18,7 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 | Interposer final thickness           | ~800 µm                                            | 400 µm Base + four 100 µm bridge tiers                  |
 | Microchannel footprint bottom/top    | 700 × 900 µm / 380 × 760 µm                        | Bottom opening; top channel envelope                    |
 | Straight top channel width / spacing | 30 / 30 µm (paper main text)                       | Six illustrative 30 µm channels, 30 µm apart            |
-| HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm                 |
+| HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm as structural surrogate |
 | HEMT active region                   | 303 × 393 µm                                       | Mask dimension                                          |
 | Gate fingers                         | Ten, each 0.5 µm gate length and 300 µm gate width | Ten 0.5 × 300 µm mask rectangles                        |
 | Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Source Record step only                                 |
@@ -37,7 +37,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±1450 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. Two inferred 110 × 1100 µm bottom feeder trenches (Mask 23) connect these remote ports at Y = ±1450 µm to the reported-size central bottom cavity by **edge contact at Y = ±450 µm** (no overlapping second etch into the lower Si); the corridor coordinates are engineering assumptions, not paper dimensions. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Real TSVs have stepped diameters and Cu/NiPaAu metallization; plating remains source metadata, not an electrically validated conductive structure.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
-8. Gate/source/drain metals (0.2 µm each), GSG pads and pad routing are schematic. AlGaN/SiN thicknesses are unreported and their layers are omitted from the solid model.
+8. The Fig. 1(a) upper device now includes a **25 nm AlGaN barrier** above the inferred 1 µm GaN buffer and a **150 nm SiN isolation/passivation frame** outside the 303 × 393 µm active window (Mask 24). **Neither AlGaN nor SiN thickness is given in the source**, so both are physically scaled illustrative assumptions, not measured reconstruction. The 2DEG is recorded as an *electronic interface*, not invented as a separate solid material. Gate/source/drain metals (0.2 µm), GSG pads and routes remain schematic, without ohmic contact or device transport simulation.
 9. Gold wire loops, polymer sealing, aluminum manifold, flow, heat transfer and device electrical performance are out of scope. **The coolant remains a true void, not a solid film**.
 
 ## Screenshot audit: visual semantics versus physical topology
@@ -84,6 +84,12 @@ A structural connectivity invariant interpolates points along real 3D _empty spa
 ### Inspecting both manifolds without chip occlusion
 
 The first History bookmark, **01 Four-level open microchannels / 800 um Si with diversion**, represents the fluid network before AuSn supports and the HEMT are attached. It saves a dedicated full-channel 3D crop (X ±500 µm, Y ±520 µm), an elevated oblique camera, and a longitudinal Section along X = 30 µm (inside a central channel). This permits inspection of both inlet/outlet ends while leaving the final integrated project's default XY cross-section and chip-present 3D cutaway unchanged. To inspect it in the Workstation, open **History**, find the top-cap manifold etch Step (History labels it by the Si target and 100 µm etch depth), expand its Bookmark group, and use the existing **More actions → Restore bookmark** menu on **01 Four-level open microchannels**. Then inspect **3D** and **Section**. The restored view uses its saved ROI, camera, and Section without editing the physical Recipe. The dedicated browser test now captures this pre-assembly 3D view separately from the final device view.
+
+### Inspecting the upper HEMT instead of mistaking the full-scale Section for a device cross-section
+
+The **05 HEMT active AlGaN/SiN and ten gate fingers** Bookmark restores a local chip ROI, an X-directed Section crossing the gate/source/drain region and a camera focused on the HEMT. The saved default Section still runs along the *coolant flow* to show the lower inlet and outlet. These are intentionally separate inspection planes.
+
+The actual 25 nm AlGaN and 150 nm SiN films occupy physically small Z intervals compared with the 800 µm interposer and 100 µm die. At device-wide scale they can remain subpixel: a bright outline or artificially thick stripe must not be advertised as their true material thickness. SiN is an inferred peripheral frame, not a full process-calibrated isolation recipe; 2DEG density and electrostatics remain outside the model.
 
 ## Section Z display contract
 

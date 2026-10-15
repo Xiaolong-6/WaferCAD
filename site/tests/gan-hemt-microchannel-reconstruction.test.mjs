@@ -8,6 +8,7 @@ import {
   GAN_SILICON_COLOR,
   GAN_MANIFOLD_PARAMETERS,
   GAN_LOWER_FEED,
+  GAN_HEMT_STACK,
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -77,6 +78,13 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
     outerCurve,
     'Entry and exit diversion loops must be symmetric',
   );
+  assert.equal(GAN_HEMT_STACK.barrierUm, 0.025);
+  assert.equal(GAN_HEMT_STACK.isolationSiNUm, 0.15);
+  assert.equal(masks.get(24).rectangles.length, 4, 'Isolation requires an open active window');
+  assert.ok(
+    masks.get(24).rectangles.every((r) => r.w > 0 && r.h > 0),
+    'SiN frame contains a degenerate shape',
+  );
   assert.equal(masks.get(18).rectangles.length, 10);
   assert.ok(masks.get(18).rectangles.every((r) => r.w === 0.5 && r.h === 300));
   assert.equal(masks.get(16).rectangles[0].w, 878.5);
@@ -87,12 +95,19 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 14);
-  assert.equal(validation.processNodes, 24);
-  assert.equal(validation.recipeSteps, 23);
+  assert.equal(validation.maskLayers, 15);
+  assert.equal(validation.processNodes, 27);
+  assert.equal(validation.recipeSteps, 26);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
+  assert.equal(validation.checks.physicalAlGaNAndSiNWith2DEGOnlyAsMetadata, true);
+  assert.ok(
+    project.processRecipe.steps.some((step) =>
+      step.command === 'record' && step.params.label.includes('2DEG'),
+    ),
+    '2DEG interface must be explicitly recorded as non-geometric metadata',
+  );
   assert.ok(
     project.processRecipe.steps.some(
       (step) =>
@@ -168,6 +183,26 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.ok(
     project.model.layers.some((layer) => layer.name.startsWith('GaN HEMT SiC substrate')),
     'Final integrated project must still contain the HEMT',
+  );
+  const hemtReview = project.snapshots.find((s) => s.name.startsWith('05 HEMT active'));
+  assert.ok(hemtReview, 'Missing HEMT active structure inspection Bookmark');
+  assert.deepEqual(hemtReview.state.section, { a: [-440, 0], b: [440, 0] });
+  assert.deepEqual(hemtReview.state.roi, {
+    type: 'rect',
+    a: [-470, -580],
+    b: [470, 580],
+  });
+  const alganLayer = project.model.layers.find((layer) =>
+    layer.name.startsWith('AlGaN barrier surrogate'),
+  );
+  const sinLayer = project.model.layers.find((layer) =>
+    layer.name.startsWith('SiN isolation/passivation surrogate'),
+  );
+  assert.ok(alganLayer && sinLayer);
+  assert.equal(
+    project.model.layers.some((layer) => /2DEG/i.test(layer.name)),
+    false,
+    '2DEG is an electronic state rather than a physically deposited solid',
   );
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
