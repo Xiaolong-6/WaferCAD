@@ -14,7 +14,7 @@ The [archive index](archive/README.md) lists **every relocated full document** a
 
 - [Documentation map](README.md): authoritative navigation, product and developer entry points.
 - [Documentation architecture](DOCUMENTATION.md): ownership rules, generated Wiki assets, revision-specific evidence and English-first maintenance.
-- [Released UI v2 handoff](archive/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md): v2 default entry, Legacy fallback and remaining user-experience work.
+- [Released UI v2 handoff](archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md): v2 default entry, Legacy fallback and remaining user-experience work.
 - [M4 acceptance](archive/ui-v2/M4_ACCEPTANCE_2026-10-11.md): owned test matrix; dated evidence must not be generalized to later revisions.
 - [Wiki source and image audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md): relevant first-party images and clear schematic/real-output captions.
 
