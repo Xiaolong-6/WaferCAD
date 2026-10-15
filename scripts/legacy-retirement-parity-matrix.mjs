@@ -30,10 +30,11 @@ export const CRITICAL_LEGACY_CONTRACTS = [
     native: [
       'scripts/v2/check-cross-ui-recovery.mjs',
       'scripts/v2/check-history-variant-parity.mjs',
+      'scripts/v2/check-history-replay-rollback.mjs',
     ],
     gaps: [
-      'bookmark editing and historical Step editing/insertion',
-      'History export and fault-recovery replay matrix',
+      'bookmark editing and complete historical Step edit/insert action matrix',
+      'History export and aborted replay/Recovery restore cross-session matrix',
     ],
   },
   {
