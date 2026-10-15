@@ -452,6 +452,7 @@ export async function createMainView({ project, sharedState, workstation, render
     for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
       hooks.get(id).onchange = () => runtime.slice.updateFromInputs();
     document.addEventListener('click', async (event) => {
+      if (workstation?.readOnlyPreview) return;
       const trigger = event.target.closest('button[data-action]');
       if (!trigger || trigger.disabled) return;
       if (workstation && !trigger.closest('#mainPanel, .v2-main-floating')) return;
@@ -528,7 +529,7 @@ export async function createMainView({ project, sharedState, workstation, render
       sectionEditEnabled: false,
       tool: 'none',
       panEnabled: true,
-      zoomEnabled: false,
+      zoomEnabled: true,
       planViews: { main: { zoom: 1, panX: 0, panY: 0 } },
     };
     modelBefore = JSON.stringify(state.model);
@@ -576,6 +577,7 @@ export async function createMainView({ project, sharedState, workstation, render
       state,
       renderModel,
       root,
+      readOnly: Boolean(workstation?.readOnlyPreview),
       onChange: sync,
       status: (value) => {
         message = value;
