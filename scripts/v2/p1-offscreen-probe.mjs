@@ -70,9 +70,11 @@ try {
       });
       const firstCorrect = JSON.stringify(result.firstPixel) === '[255,0,0,255]';
       const resizedCorrect = JSON.stringify(result.resizedPixel) === '[0,255,0,255]';
+      const pixelReadbackPassed = firstCorrect && resizedCorrect;
+      const failureReason = result.error || (pixelReadbackPassed ? null : 'Pixel readback mismatch');
       return {
-        supported: firstCorrect && resizedCorrect && !result.error,
-        reason: result.error || (!firstCorrect || !resizedCorrect ? 'Pixel readback mismatch' : null),
+        supported: pixelReadbackPassed && !result.error,
+        reason: failureReason,
         firstPixel: result.firstPixel || null,
         resizedPixel: result.resizedPixel || null,
         renderer: result.renderer || null,
