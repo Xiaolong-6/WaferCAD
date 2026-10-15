@@ -159,6 +159,71 @@ test('cooperative History import yields without exposing partial lineage and rej
   assert.deepEqual(exported, synchronous.exportBranchState());
 });
 
+test('one wide imported History state yields before publication and preserves exact copies', async () => {
+  const sourceState = {
+    model: { revision: 1, processRevision: 0, regions: [{ geometry: [[0.0000004, 8]] }] },
+    layout: {
+      name: 'mask',
+      root: 'TOP',
+      elements: [{ points: [[0, 0], [0.5, 0.5]] }],
+      linework: [],
+      combos: [],
+      hierarchy: {},
+      units: { xy: 'µm' },
+    },
+  };
+  for (let index = 0; index < 36; index++) {
+    sourceState[`view${index}`] = { zoom: index, pan: [-index, index + 0.0000002] };
+  }
+  const saved = {
+    id: 'wide-state',
+    name: 'After long process',
+    createdAt: '2026-10-15T00:00:00.000Z',
+    branchId: 'main',
+    state: sourceState,
+  };
+  let adopted = 0;
+  const manager = createSnapshotManager({
+    capture: () => ({ model: { revision: 0, processRevision: 0 } }),
+    restore: () => {},
+    validateState: () => true,
+  });
+  const abort = new AbortController();
+  const interrupted = manager.importRecordsAsync([saved], null, {
+    signal: abort.signal,
+    beforeCommit: () => {
+      adopted++;
+    },
+  });
+  assert.equal(manager.list().length, 0, 'No partial wide state is published during cloning');
+  abort.abort();
+  await assert.rejects(interrupted, { name: 'AbortError' });
+  assert.equal(manager.list().length, 0);
+  assert.equal(adopted, 0);
+
+  const completed = manager.importRecordsAsync([saved], null, {
+    beforeCommit: () => {
+      adopted++;
+    },
+  });
+  assert.equal(manager.list().length, 0, 'Pending cooperative import remains private');
+  await completed;
+  assert.equal(adopted, 1);
+  const synchronous = createSnapshotManager({
+    capture: () => ({ model: { revision: 0, processRevision: 0 } }),
+    restore: () => {},
+    validateState: () => true,
+  });
+  synchronous.importRecords([saved]);
+  assert.deepEqual(manager.exportRecords(), synchronous.exportRecords());
+  assert.deepEqual(manager.exportRecords()[0].state, sourceState);
+
+  sourceState.view0.pan[0] = 999;
+  sourceState.model.regions[0].geometry[0][0] = 999;
+  assert.equal(manager.exportRecords()[0].state.view0.pan[0], 0);
+  assert.equal(manager.exportRecords()[0].state.model.regions[0].geometry[0][0], 0.0000004);
+});
+
 test('later imports and Clear prevent stale cooperative History publication', async () => {
   const live = { model: { revision: 1, processRevision: 0, layers: [] } };
   const manager = createSnapshotManager({
