@@ -39,7 +39,7 @@ branch-specific Implant/Electrical operation semantics.
 | Blakers PERC              | Source-order branch: 17 actions, 100 rear contact mask apertures; at a representative aperture, rear Al touches Si. Adjacent oxide separates Si from rear Al; front stripe has Ti-Pd and Ag | Compare Fig. 1 pitch and contact pattern; assumed oxide/contact thickness and `0.5 µm` implant depth are geometry proxies, not source diffusion models                                                                                                                                                                                                                                                                                                                                            |
 | Sahli tandem              | 440 nm perovskite, 1 nm LiF, 110 nm IZO in active center; 120 nm Ag over IZO along a saved stripe; 100 nm MgF2 at that stripe. Front/back texture is deterministic appearance metadata      | **Resolved static questions:** IZO and Ag use different selected Mask Cells (`M01_IZO_ACTIVE` versus `M02_AG_GRID_SURROGATE`) despite matching layer-key lists. The narrow 230 nm Ag and 220/330 nm MgF2 Z intervals are explicitly tagged `conformal-sidewall`, spanning physical steps, and are not planar deposition-thickness errors. **Still P1:** fresh complete Run All material occupancy parity and independent source-figure mask/Section overlay, plus true-facet geometry limitations |
 | Basiri-Esfahani microdisk | Real silica disk 1.8 µm thick, central Si pedestal and 36 µm released void at sampled annulus point, with Mask 1/0 and inverted BHF/XeF2 removal                                            | The paper's **protective resist recoat → mechanical separation → protective resist removal** is now explicit in M07, a single three-substep Record in History and Recipe; its temporary resist is not modeled. The 36 µm etch radius and reconstruction hub/spokes are not author-measured process parameters                                                                                                                                                                                     |
-| Ghosh M3D                 | Builder covers Si PV, WSe2/MoS2 logic, graphene sensing, selective vias, conformal oxides and transfers                                                                                     | Full 3D/Section source panel comparison, buried via continuity, and no unphysical film inside void; routing masks inferred                                                                                                                                                                                                                                                                                                                                                                        |
+| Ghosh M3D                 | Builder covers Si PV, WSe2/MoS2 logic, graphene sensing, selective vias, conformal oxides and transfers                                                                                     | Full 3D/Section source panel comparison, further unpublished interconnect provenance and no unphysical films inside void; routing masks inferred                                                                                                                                                                                                                                                                                                                                                  |
 | Fan MAGIC-1000            | Builder includes M4→M1 Al, tungsten vias, W gate/HfO2, MoS2/Sb-Au pair and AlOx D-mode surrogate                                                                                            | Only a local 40×24 µm device, not 1,433-transistor GDS; figure-aligned contact/via cross-section and CMP geometry review                                                                                                                                                                                                                                                                                                                                                                          |
 | Lam three-tier JLFET      | Existing 40-step local/625-site template checks address three Si/HfO2 gate tiers, selective contact windows and two CMP stages                                                              | Validate original paper Fig. 3 separately from assumed 90 nm inter-tier spacing drawn from a different figure; transfer chemistry not modeled                                                                                                                                                                                                                                                                                                                                                     |
 | Wang TiO2 metalens        | Published surrogate has 4,725 active sites, 9-step TiO2/ITO/PMMA/Cr/RIE flow, full-array reconstruction CI evidence at prior revision                                                       | 80×80 grid and nanopillar dimensions are illustrative; not the unpublished optimized optical GDS or a validated achromatic optical response                                                                                                                                                                                                                                                                                                                                                       |
@@ -218,6 +218,36 @@ input. A separate MAGIC-1000 contract measures the four saved 250 nm Al
 conductor levels, 400 nm W gate, 10 nm HfO2 and illustrative 0.7 nm MoS2
 transistor film within the explicitly **40 × 24 µm local reconstruction**.
 Neither fixture is a reproduction of an unprovided original IC GDS.
+
+## 2026-10-15 M3D tier-to-tier power-via connectivity repair
+
+Independent inspection of the old published model at HEAD `7c51978`
+identified **10 nm HfO2 separating two nominally conductive power vias**
+at XY `(16, -5.3)` and `(16, 5.3)` µm. Their saved Z stacks put the lower
+Ti power via at **1.14–1.26 µm**, the unwanted dielectric at
+**1.26–1.27 µm** and upper Ti/Ni/Au via at **1.27–1.33 µm**. The central
+data via `(16, 0)` µm was already metal-contiguous. Previously green
+Recipe/History replay did not detect this real scientific defect.
+
+Two new **4.5 × 4.5 µm inferred HfO2 contact openings** in M07 are enclosed
+by the 5 × 5 µm tier-1 power-via Mask, with 0.25 µm margins. The unchanged
+Kernel rebuilt the complete project via its executable process operations.
+Evidence: [one-shot 36-node Kernel and Chromium workflow](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38737582501),
+followed by an independent review of the exact new published `.wafercad`
+blob at `c529a16`. Both power via points now have **0 nm geometric
+metal-to-metal gap**. The data via remains continuous and the three
+Ti/Ni/Au layers retain exact 2/28/30 nm thicknesses. Eleven sampled
+non-contact locations retain identical old and new material stacks.
+All **36 History nodes, 27 bookmarks, and 35 executable Recipe steps** remain
+present. The new Welcome preview, Chromium 3D thumbnail and checksum were
+regenerated from the corrected project; no author GDS is claimed.
+
+The source project continues to pass **lossless** save/reopen exactly.
+The older compact 0.0001 µm-grid writer still **correctly rejects**
+overlapping XY geometries; the baseline and rebuilt validation reports
+both contain the same safe-rejection error for regions 60/58. It is
+not classified as a new defect, nor as a passing compact export.
+No contact resistance, circuit logic or source-SEM fidelity was modeled.
 
 ## Remaining implementation gates
 
