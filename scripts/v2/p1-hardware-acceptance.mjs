@@ -8,7 +8,11 @@ import { createHash } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { classifyHardwareWebGL } from './p1-gpu-identity.mjs';
-import { summarizeHardwareInput, threeCameraGestureChanged } from './p1-input-latency.mjs';
+import {
+  summarizeHardwareInput,
+  threeCameraGestureChanged,
+  threeCameraZoomChanged,
+} from './p1-input-latency.mjs';
 
 const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
 const base = `http://127.0.0.1:${port}`;
@@ -232,9 +236,11 @@ async function verifyThreeGestures() {
   await page.mouse.down();
   await page.mouse.move(x + 25, y + 18, { steps: 6 });
   await page.mouse.up();
+  await sleep(200);
+  const afterDrag = await camera();
   await page.mouse.wheel(0, -250);
   await sleep(400);
-  const after = await camera();
+  const afterWheel = await camera();
   const delivered = await page.evaluate(
     (start) => (window.__waferHardwareVitals?.inputEvents || []).slice(start),
     eventStart,
@@ -243,12 +249,17 @@ async function verifyThreeGestures() {
     (event) => event.threeCanvas && event.kind === 'pointermove',
   );
   const wheelObserved = delivered.some((event) => event.threeCanvas && event.kind === 'wheel');
+  const orbitChanged = threeCameraGestureChanged(before, afterDrag);
+  const zoomChanged = threeCameraZoomChanged(afterDrag, afterWheel);
   return {
-    passed: threeCameraGestureChanged(before, after) && pointerObserved && wheelObserved,
+    passed: orbitChanged && zoomChanged && pointerObserved && wheelObserved,
+    orbitChanged,
+    zoomChanged,
     pointerObserved,
     wheelObserved,
     cameraBefore: before,
-    cameraAfter: after,
+    cameraAfterDrag: afterDrag,
+    cameraAfterWheel: afterWheel,
   };
 }
 try {
@@ -425,7 +436,9 @@ try {
   report.threeGestures.modelUnchanged =
     (await hostMetrics()).modelHash === report.cases.qualityReload.modelHash;
   if (!report.threeGestures.passed) {
-    report.validationFailures.push('3D canvas gesture delivery or camera change failed.');
+    report.validationFailures.push(
+      '3D canvas Orbit/Zoom must independently change camera with trusted pointer/wheel delivery.',
+    );
   }
   if (!report.threeGestures.modelUnchanged) {
     report.validationFailures.push('3D gestures unexpectedly changed scientific model.');
