@@ -1,7 +1,7 @@
 // Float target readback executes the production GLSL, rather than a JS port.
 export async function gpuHeightOracle() {
   const THREE = await import('three');
-  const { decorateGpuRoughMaterial } = await import('/site/gpu-rough-surface.js');
+  const { decorateGpuRoughMaterial, supportsPreciseGpuRoughDisplacement } = await import('/site/gpu-rough-surface.js');
   const { roughProfileOffsetAtPoint } = await import('/site/surface-rendering.js');
   const renderer = new THREE.WebGLRenderer();
   if (!renderer.extensions.has('EXT_color_buffer_float'))
@@ -15,6 +15,9 @@ export async function gpuHeightOracle() {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   camera.position.z = 2;
+  const productionBackend = supportsPreciseGpuRoughDisplacement(renderer)
+    ? 'gpu-vertex'
+    : 'cpu-software-parity';
   const results = [];
   for (const morphology of ['stochastic', 'pyramid']) {
     for (const polarity of ['normal', 'inverted']) {
@@ -71,6 +74,7 @@ export async function gpuHeightOracle() {
       results.push({
         morphology,
         polarity,
+        productionBackend,
         samples: 1024,
         maximumErrorUm,
         rmsErrorUm: Math.sqrt(sumSquared / 1024),
