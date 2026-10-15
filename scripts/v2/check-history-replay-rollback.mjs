@@ -43,14 +43,14 @@ try {
     assert.equal(baseline.workflow.branches.length, 1);
 
     await page.locator('[data-action="domain:history"]').click();
-    const first = page.locator('.history-step-wrap', { hasText: names[0] }).first();
+    const first = page.locator('.history-step-wrap', { hasText: names[1] }).first();
     await first.locator('.snapshot-more-trigger').click();
     await page
       .locator('.snapshot-more-popover button', { hasText: 'Edit Step' })
       .first()
       .click();
     await page.waitForFunction(
-      () => document.querySelector('#layerName')?.value === 'Rollback A',
+      () => document.querySelector('#layerName')?.value === 'Rollback B',
       null,
       { timeout: 30000 },
     );
@@ -63,7 +63,7 @@ try {
       null,
       { timeout: 30000 },
     );
-    await page.locator('#layerName').fill('Rollback A edited');
+    await page.locator('#layerName').fill('Rollback B edited');
 
     await page.evaluate(() => {
       const nativePost = Worker.prototype.postMessage;
@@ -84,7 +84,7 @@ try {
     await page.getByRole('button', { name: 'Replace & replay later Steps', exact: true }).click();
     await page.waitForFunction(
       () =>
-        /Replay stopped after 1\/3 later Steps/.test(
+        /Replay stopped after 1\/2 later Steps/.test(
           document.querySelector('[data-slot="status.message"]')?.textContent || '',
         ),
       null,
@@ -114,12 +114,12 @@ try {
       'Every original material layer survives rollback',
     );
     assert.equal(
-      rolledBack.model.layers.some((layer) => layer.name === 'Rollback A edited'),
+      rolledBack.model.layers.some((layer) => layer.name === 'Rollback B edited'),
       false,
       'No orphan edited layer survives rollback',
     );
     assert.deepEqual(errors, [], 'No uncaught page errors during failed v2 replay');
-    console.log('V2_HISTORY_REPLAY_ROLLBACK: fault after 1/3 downstream commits, exact rollback PASS');
+    console.log('V2_HISTORY_REPLAY_ROLLBACK: fault after 1/2 downstream commits, exact rollback PASS');
   } finally {
     await context.close();
   }
