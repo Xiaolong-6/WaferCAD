@@ -200,6 +200,42 @@ test('opt-in History state validation yields in independent batches and stays at
   assert.equal(manager.exportRecords()[0].state.view.zoom, 0.0000004);
 });
 
+test('a failed cooperative validation batch still consumes remaining attestation groups', async () => {
+  const visited = [];
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    id: `candidate-${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: index } },
+  }));
+  const validateState = (state) => state?.model?.processRevision !== 2;
+  const validateStates = (states) => {
+    visited.push(states.map((state) => state.model.processRevision));
+    return states.every(validateState);
+  };
+  const opts = {
+    capture: () => ({}),
+    restore: () => {},
+    validateState,
+    validateStates,
+    cooperativeValidateStates: true,
+  };
+  const asyncManager = createSnapshotManager(opts);
+  await asyncManager.importRecordsAsync(records);
+  assert.deepEqual(visited, [[0, 1], [2, 3], [4]]);
+  const syncManager = createSnapshotManager({
+    ...opts,
+    validateStates: (states) => states.every(validateState),
+  });
+  syncManager.importRecords(records);
+  assert.deepEqual(asyncManager.exportRecords(), syncManager.exportRecords());
+  assert.deepEqual(asyncManager.list().map((record) => record.id), [
+    'candidate-0',
+    'candidate-1',
+    'candidate-3',
+    'candidate-4',
+  ]);
+});
+
 test('abort during cooperative validation keeps previous History and skips publication', async () => {
   const before = {
     id: 'previous',
