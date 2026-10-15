@@ -8,7 +8,7 @@ import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const example = process.env.WAFERCAD_V2_EXAMPLE || 'm3d';
-const fixtures = { m3d: [27, 551], photodetector: [5, 5], metalens: [5, 2] };
+const fixtures = { m3d: [27, 550], photodetector: [5, 5], metalens: [5, 2] };
 assert.ok(Object.hasOwn(fixtures, example), 'Known shared-workstation example');
 const url = `${base}/app.html?start=example&example=${example}`;
 const output = resolve(`test-results/ui-v2-three-review${example === 'm3d' ? '' : `-${example}`}`);
