@@ -4,9 +4,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const { normalizeMulti, rectMulti } = await import('../vector-geometry.js');
-const { booleanWithNormalizedRetry, booleanWithQuantizedRetry } = await import(
-  '../polygon-boolean.js'
-);
+const { booleanWithNormalizedRetry, booleanWithQuantizedRetry } =
+  await import('../polygon-boolean.js');
 
 test('normalized Boolean parity for contact, overlap, holes and precision', () => {
   const holes = [
