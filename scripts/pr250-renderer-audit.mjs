@@ -280,6 +280,14 @@ try {
               zBreak: true,
             },
             {
+              name: 'surface-cut-zbreak-transparent-no-borders-detail',
+              opacity: 0.5,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+            },
+            {
               name: 'surface-cut-zbreak-transparent-detail',
               opacity: 0.5,
               borders: true,

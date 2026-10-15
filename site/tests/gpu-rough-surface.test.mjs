@@ -39,11 +39,8 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(uniforms.waferCadRoughNormalStrength.value, 0.75);
   assert.equal(uniforms.waferCadRoughVisualBlend.value, 1);
-  assert.equal(
-    gpuRoughAppearanceUniforms({ ...appearance, displayRoughBlend: 0.12 })
-      .waferCadRoughVisualBlend.value,
-    0.12,
-  );
+  const filtered = gpuRoughAppearanceUniforms({ ...appearance, displayRoughBlend: 0.12 });
+  assert.equal(filtered.waferCadRoughVisualBlend.value, 0.12);
 });
 
 test('GPU rough preview rejects non-rough or degenerate appearances', () => {

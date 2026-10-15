@@ -33,14 +33,3 @@ jobs:
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
 
-
-      - name: Print exact stochastic display-LOD formatting diff
-        if: failure()
-        run: |
-          for path in site/surface-rendering.js site/rough-mesh-geometry.js site/gpu-rough-surface.js site/three-view.js site/tests/rough-display-lod.test.mjs site/tests/rough-mesh-geometry.test.mjs scripts/pr250-renderer-audit.mjs; do
-            cp "$path" /tmp/pr250-original.js
-            npx prettier --write "$path"
-            echo "LOD_FORMAT_BEGIN:$path"
-            diff -u /tmp/pr250-original.js "$path" || true
-            echo "LOD_FORMAT_END:$path"
-          done

@@ -85,13 +85,15 @@ test('coarse display filtering keeps CPU/GPU rough boundaries and sidewall owner
     profileNormal: 1,
     appearance,
     closeToIdeal: true,
-    lodZones: [{
-      baseTriangles: squareTriangles,
-      edges: roughBoundaryEdgesFromTriangles(squareTriangles),
-      maxEdge: Math.SQRT2,
-      triangleBudget: 256,
-      lodContext: { distance: 2, viewportWidth: 1100, viewportHeight: 800, maxDepth: 3 },
-    }],
+    lodZones: [
+      {
+        baseTriangles: squareTriangles,
+        edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+        maxEdge: Math.SQRT2,
+        triangleBudget: 256,
+        lodContext: { distance: 2, viewportWidth: 1100, viewportHeight: 800, maxDepth: 3 },
+      },
+    ],
   };
   const cpu = roughMeshDataFromPreparedCap({
     ...task,

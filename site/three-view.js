@@ -2169,13 +2169,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     tasks.forEach((task, index) => {
       const appearance = task.cap.appearance,
         blend =
-          appearance?.kind === 'rough' &&
-          appearance.morphology === 'stochastic' &&
-          !task.implant
+          appearance?.kind === 'rough' && appearance.morphology === 'stochastic' && !task.implant
             ? roughDisplayHeightBlend(appearance.featureSize, pitch)
             : 1;
-      task.visualAppearance =
-        blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
+      task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
       roughTasks[index].visualAppearance = task.visualAppearance;
     });
     host.dataset.roughDisplaySamplePitchUm = String(pitch);

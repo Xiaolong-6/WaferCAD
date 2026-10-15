@@ -95,7 +95,11 @@ function roughPoint(point, z, profileNormal, appearance) {
     Math.fround(
       z +
         profileNormal *
-          roughDisplayProfileOffsetAtPoint(Math.fround(point[0]), Math.fround(point[1]), appearance),
+          roughDisplayProfileOffsetAtPoint(
+            Math.fround(point[0]),
+            Math.fround(point[1]),
+            appearance,
+          ),
     ),
   ];
 }
