@@ -467,3 +467,50 @@ test('Every recorded no-geometry step preserves its actual material geometry', a
     }
   }
 });
+
+test('Reconciled Tandem History explicitly uses a geometric precursor surrogate', async () => {
+  const project = await example('fully-textured-perovskite-silicon-tandem');
+  const nodes = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
+  const modelAtStep = (stepIndex) => {
+    const step = project.processRecipe.steps[stepIndex - 1];
+    const node = nodes.get(step.id.slice(7));
+    assert.ok(node, 'Missing scientific History step ' + stepIndex);
+    const ref = node.state.modelRef;
+    return ref === 'project' ? project.model : project.sharedModels[ref];
+  };
+  const baseName = project.processRecipe.base.material;
+  assert.equal(modelAtStep(1).layers[0].name, baseName);
+  assert.equal(modelAtStep(2).layers[0].name, baseName);
+
+  for (const stepIndex of [12, 13, 14]) {
+    const model = modelAtStep(stepIndex);
+    const materials = model.layers.map((layer) => layer.name);
+    assert.ok(
+      materials.includes('Perovskite [paper final ~440 nm; converted]'),
+      'Step ' + stepIndex + ' no longer matches the simulated geometric material',
+    );
+    assert.ok(
+      !materials.some((name) => name.includes('porous PbI2/CsBr precursor')),
+      'Step ' + stepIndex + ' falsely implies an explicit precursor conversion model',
+    );
+  }
+
+  const beforeExtend = modelAtStep(14);
+  const afterExtend = modelAtStep(15);
+  const perovskiteHeight = (model) => {
+    const layer = model.layers.find((item) => item.name.startsWith('Perovskite ['));
+    assert.ok(layer);
+    const segments = model.regions.flatMap((region) =>
+      region.stack.filter((segment) => segment.layerId === layer.id),
+    );
+    assert.ok(segments.length > 0);
+    return Math.max(...segments.map((segment) => segment.z1 - segment.z0));
+  };
+  assert.ok(Math.abs(perovskiteHeight(beforeExtend) - 0.235) < 1e-9);
+  assert.ok(Math.abs(perovskiteHeight(afterExtend) - 0.44) < 1e-9);
+
+  for (const stepIndex of [19, 20]) {
+    const model = modelAtStep(stepIndex);
+    assert.ok(model.regions.length > 1, 'Lost patterned contact geometry in Step ' + stepIndex);
+  }
+});
