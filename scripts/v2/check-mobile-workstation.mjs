@@ -177,7 +177,7 @@ try {
       );
       await page.screenshot({
         path: resolve(output, `mobile-${width}x${height}-project-welcome.png`),
-      );
+      });
 
       const dock = await page.evaluate(() => {
         const nav = document.querySelector('.p-nav');
