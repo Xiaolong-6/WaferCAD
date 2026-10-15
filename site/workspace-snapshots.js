@@ -207,6 +207,7 @@ export function createSnapshotManager({
   restore,
   validateState = () => true,
   validateStates = null,
+  cooperativeValidateStates = false,
   now = () => new Date(),
   idFactory = () => `snapshot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   branchIdFactory = () =>
@@ -1582,7 +1583,7 @@ export function createSnapshotManager({
 
   // Keep staged History data private until all copies and lineage repairs finish.
   // Both synchronous callers and cooperative startup use this same importer.
-  function* stageImportedRecords(value, branchState = null, beforeCommit = null) {
+  function* stageImportedRecords(value, branchState = null, beforeCommit = null, cooperative = false) {
     if (!Array.isArray(value)) {
       clear();
       return 0;
@@ -1596,12 +1597,38 @@ export function createSnapshotManager({
       ),
     ].filter((state) => state && typeof state === 'object');
     const validationStart = performance.now();
-    const validStates =
-      typeof validateStates === 'function' && validateStates(states) ? new WeakSet(states) : null;
+    let validStates = null;
+    let validationBatchCount = 0;
+    let validationActiveMs = 0;
+    if (typeof validateStates === 'function') {
+      let valid = true;
+      // Only the opt-in progressive importer may split the independent
+      // snapshot validations. The public synchronous contract is unchanged.
+      if (cooperative && cooperativeValidateStates) {
+        const validationBatchSize = 2;
+        for (let start = 0; start < states.length; start += validationBatchSize) {
+          const began = performance.now();
+          const batchIsValid = validateStates(states.slice(start, start + validationBatchSize));
+          validationActiveMs += performance.now() - began;
+          validationBatchCount++;
+          if (!batchIsValid) {
+            valid = false;
+            break;
+          }
+          yield;
+        }
+      } else {
+        const began = performance.now();
+        valid = validateStates(states);
+        validationActiveMs += performance.now() - began;
+        validationBatchCount = 1;
+      }
+      if (valid) validStates = new WeakSet(states);
+    }
     performance.measure('wafercad:history:validation', {
       start: validationStart,
       end: performance.now(),
-      detail: { states: states.length },
+      detail: { states: states.length, batches: validationBatchCount, activeMs: validationActiveMs },
     });
     const isValid = (state) => (validStates ? validStates.has(state) : validateState(state));
 
@@ -1880,7 +1907,7 @@ export function createSnapshotManager({
   // synchronously after the final yield, preserving atomic visibility.
   async function importRecordsAsync(value, branchState = null, { signal, beforeCommit } = {}) {
     const generation = ++importGeneration;
-    const steps = stageImportedRecords(value, branchState, beforeCommit);
+    const steps = stageImportedRecords(value, branchState, beforeCommit, true);
     const importStart = performance.now();
     let activeMs = 0;
     let yieldCount = 0;
