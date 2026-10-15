@@ -47,7 +47,12 @@
       const titleSlot = slots.get(`view.${key}.header`);
       const actionSlot = slots.get(`view.${key}.actions`);
       const readoutSlot = slots.get(`view.${key}.readout`);
-      if (headerTitle) titleSlot.replaceChildren(headerTitle);
+      if (headerTitle) {
+        // Scientific View adapters may update their headers independently of
+        // Shell layout renders. Keep the desktop icon with the stable title slot.
+        const dockIcon = titleSlot.querySelector('.v2-dock-title-icon');
+        titleSlot.replaceChildren(...(dockIcon ? [dockIcon] : []), headerTitle);
+      }
       if (headerTools) {
         actionSlot.querySelector('.p-toolbar')?.dispatchEvent(new Event('dispose-toolbar'));
         actionSlot.replaceChildren(headerTools);
@@ -65,10 +70,20 @@
   };
   // The desktop workstation owns layout decisions; shared Panel Chrome owns
   // how its titlebar represents them. Standalone and compact shells opt out.
-  function prepareDesktopChrome(panel, { key, label, maximized = false, draggable = false }) {
+  function prepareDesktopChrome(panel, { key, label, icon, maximized = false, draggable = false }) {
     const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
     const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
     if (!title || !actions) return;
+    const glyphName = icon || null;
+    const existingIcon = title.querySelector('.v2-dock-title-icon');
+    if (glyphName && existingIcon?.dataset.glyph !== glyphName) existingIcon.remove();
+    if (glyphName && !title.querySelector('.v2-dock-title-icon')) {
+      const glyph = window.WaferCadV2Icons.icon(glyphName);
+      glyph.classList.add('v2-dock-title-icon');
+      glyph.dataset.glyph = glyphName;
+      title.prepend(glyph);
+    }
+    panel.dataset.dockDraggable = String(draggable);
     title.tabIndex = draggable ? 0 : -1;
     title.setAttribute('aria-label', label + ' layout titlebar; Alt+Enter to choose Snap Layout');
     const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
@@ -94,6 +109,8 @@
     const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
     title?.removeAttribute('tabindex');
     title?.removeAttribute('aria-label');
+    title?.querySelector('.v2-dock-title-icon')?.remove();
+    delete panel.dataset.dockDraggable;
     const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
     const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
     const toolbar = actions?.querySelector('.p-toolbar');
