@@ -169,26 +169,23 @@ async function waitReady(stage = 'ready') {
 // The recorder runs in page.addInitScript so the events are observed even
 // during the initial model/3D build, before the canvas becomes ready.
 async function openAndSampleInput(url) {
-  await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout });
+  // Send input before navigation: expensive document startup and the first
+  // scientific frame can occur before DOMContentLoaded. Supplying the CDP
+  // input's original wall-clock timestamp avoids treating renderer delivery
+  // time as the moment the user started the interaction.
   const session = await context.newCDPSession(page);
   let pending = null;
   let count = 0;
   let rejected = 0;
   let point = { x: report.viewport.width * 0.72, y: report.viewport.height * 0.68 };
-  void page
-    .locator('#threeHost canvas')
-    .boundingBox()
-    .then((box) => {
-      if (box) point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    })
-    .catch(() => {});
-  const timer = globalThis.setInterval(() => {
+  const dispatch = () => {
     if (pending) return;
     count++;
     const request = session.send('Input.dispatchMouseEvent', {
       type: 'mouseMoved',
       x: point.x + (count % 3),
       y: point.y,
+      timestamp: Date.now() / 1000,
     });
     pending = request;
     void request
@@ -198,8 +195,18 @@ async function openAndSampleInput(url) {
       .finally(() => {
         if (pending === request) pending = null;
       });
-  }, 350);
+  };
+  const timer = globalThis.setInterval(dispatch, 350);
   try {
+    dispatch();
+    await page.goto(base + url, { waitUntil: 'domcontentloaded', timeout });
+    void page
+      .locator('#threeHost canvas')
+      .boundingBox()
+      .then((box) => {
+        if (box) point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      })
+      .catch(() => {});
     await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout });
     await waitReady();
   } finally {
