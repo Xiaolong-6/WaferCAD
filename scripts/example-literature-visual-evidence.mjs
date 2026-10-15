@@ -74,7 +74,12 @@ try {
       for (const cut of item.cuts) {
         const project = { ...source, section: { a: cut.a, b: cut.b } };
         await loadProject(page, project, item.id + '-' + cut.id);
-        await ensurePrimaryViewVisible(page, 'section');
+        // Section is a separate dock, not a primary view tab (Main/Mask/3D).
+        const sectionPanel = page.locator('#sectionPanel');
+        await sectionPanel.waitFor({ state: 'visible' });
+        if (await sectionPanel.locator('.section-body').isHidden()) {
+          await sectionPanel.locator('.workstation-section-collapse').click();
+        }
         await waitForCanvasSizeSync(page, '#sectionCanvas');
         await waitForPaint(page);
         const sectionInk = await canvasInkFraction(page, '#sectionCanvas');
