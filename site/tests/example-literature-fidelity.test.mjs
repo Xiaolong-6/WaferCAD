@@ -73,6 +73,19 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
   assert.equal(steps[6].params.profile, 'isotropic');
   assert.equal(steps[6].params.thicknessUm, 36);
   assert.equal(project.layout.elements.length, 7);
+  // Basiri-Esfahani et al., Nature Communications 10, 132 (2019),
+  // Results / Fig. 2a: 148 µm outer radius and 82 µm inner radius.
+  for (const [index, sector] of project.layout.elements.slice(0, 4).entries()) {
+    const radii = sector.points.map(([x, y]) => Math.hypot(x, y));
+    assert.ok(
+      Math.abs(Math.max(...radii) - 148) < 1e-5,
+      `Source outer 148 µm radius lost at mask sector ${index + 1}`,
+    );
+    assert.ok(
+      Math.abs(Math.min(...radii) - 82) < 1e-5,
+      `Source inner 82 µm radius lost at mask sector ${index + 1}`,
+    );
+  }
 
   const center = materialAt(project, [0, 0]);
   const inner = materialAt(project, [100, 0]);
