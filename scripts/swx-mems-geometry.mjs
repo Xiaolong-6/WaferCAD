@@ -458,9 +458,12 @@ function makeShuttle(moveY) {
 function makeCombs(moveY) {
   const lowerFixedY = SWX_ASSUMPTIONS.lowerStationaryCombYUm;
   const lowerMovingY = SWX_ASSUMPTIONS.lowerMovableCombYUm;
+  // Keep the fixed handle edge at x=7.25um, clear of the four folded
+  // spring terminals ending at x=+/-7.1um. This preserves both the
+  // 6um anchored handle width and 300nm comb lateral clearance.
   const fixed = [
-    rect(25, 9, 39, SWX_REPORTED.fixedCombHandleUm),
-    rect(25, lowerFixedY, 39, SWX_REPORTED.fixedCombHandleUm),
+    rect(26, 9, 37.5, SWX_REPORTED.fixedCombHandleUm),
+    rect(26, lowerFixedY, 37.5, SWX_REPORTED.fixedCombHandleUm),
   ];
   const moving = [
     rect(25, moveY, 39, SWX_REPORTED.movableCombHandleUm),
