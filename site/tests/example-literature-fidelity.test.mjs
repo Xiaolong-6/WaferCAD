@@ -515,7 +515,7 @@ test('Reconciled Tandem History explicitly uses a geometric precursor surrogate'
   }
 });
 
-test('Reconciled Microdisk intermediate mask cut remains physical through Record steps', async () => {
+test('Microdisk History records preserve etched oxide geometry', async () => {
   const project = await example('suspended-silica-microdisks');
   const nodes = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
   const modelAt = (stepNumber) => {
