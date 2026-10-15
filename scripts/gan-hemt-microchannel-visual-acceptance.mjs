@@ -113,10 +113,16 @@ try {
     { timeout: 120000 },
   );
   await page.locator('[data-action="domain:history"]').click();
-  const step = page.locator('#snapshotList .history-step-wrap', {
-    hasText: 'Open twin six-branch coolant diversion manifolds',
+  // The History UI synthesizes an etch label from material and depth,
+  // so the Recipe's verbose operation label is not visible on the row.
+  // Identify this Step through its unique persisted inspection Bookmark.
+  const step = page.locator('#snapshotList .history-step-wrap').filter({
+    has: page.locator('.history-bookmark-row', {
+      hasText: '01 Four-level open microchannels',
+    }),
   });
-  assert.equal(await step.count(), 1, 'Manifold Step is missing from the real History');
+  await step.first().waitFor({ state: 'attached', timeout: 120000 });
+  assert.equal(await step.count(), 1, 'Manifold Bookmark is missing from the real History');
   const group = step.locator('.history-bookmarks-group');
   await group.locator('summary').click();
   const bookmark = group.locator('.history-bookmark-row', {
