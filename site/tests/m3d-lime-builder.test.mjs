@@ -35,7 +35,7 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   const conformalIds = new Set(
     project.model.layers
       .filter((layer) =>
-        ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm', 'CNT HfO2 passivation 10nm'].includes(
+        ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm', 'CNT HfO2 passivation 10nm', 'Digital Al2O3 passivation 45nm'].includes(
           layer.name,
         ),
       )
@@ -93,6 +93,7 @@ test('ALD passivations retain supported conformal coverage with explicit 45nm li
     'CNT gate HfO2 10nm',
     'CNT Al2O3 passivation 35nm',
     'CNT HfO2 passivation 10nm',
+    'Digital Al2O3 passivation 45nm',
   ]) {
     const operation = steps.find((step) => step.params?.material === name);
     assert.ok(operation, name + ' is absent from source Recipe');
@@ -106,14 +107,23 @@ test('ALD passivations retain supported conformal coverage with explicit 45nm li
   assert.ok(topAl2O3, 'source reports 45nm ALD protection');
   assert.equal(
     topAl2O3.params.coverage,
-    'direct',
-    'do not silently re-enable Kernel conformal geometry with unresolved XY overlaps',
+    'conformal',
+    'the source requires real sidewall coating at the 45nm top ALD stage',
+  );
+  const coating = project.model.layers.find(
+    (layer) => layer.name === 'Digital Al2O3 passivation 45nm',
   );
   assert.ok(
-    validation.declaredAssumptions.some((item) =>
-      item.includes('strict conformal ownership fails'),
+    project.model.regions.some((region) =>
+      region.stack.some(
+        (part) => part.layerId === coating.id && part.role === 'conformal-sidewall',
+      ),
     ),
-    'the scientific ALD geometry limitation must survive in the evidence report',
+    'final project must retain native 45nm ALD sidewall material',
+  );
+  assert.ok(
+    validation.declaredAssumptions.some((item) => item.includes('persistence grid')),
+    'scientific geometry precision limitation must remain disclosed',
   );
   assert.deepEqual(
     project.roi,
