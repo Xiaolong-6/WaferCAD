@@ -63,4 +63,45 @@
       entries: () => new Map(slots),
     });
   };
+  // The desktop workstation owns layout decisions; shared Panel Chrome owns
+  // how its titlebar represents them. Standalone and compact shells opt out.
+  function prepareDesktopChrome(panel, { key, label, maximized = false, draggable = false }) {
+    const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
+    const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
+    if (!title || !actions) return;
+    title.tabIndex = draggable ? 0 : -1;
+    title.setAttribute('aria-label', label + ' layout titlebar; Alt+Enter to choose Snap Layout');
+    const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
+    if (maximize) {
+      maximize.setAttribute('aria-label', label + (maximized ? ' restore' : ' maximize'));
+      maximize.querySelector('use')?.setAttribute(
+        'href', '#p-icon-' + (maximized ? 'restore' : 'maximize'),
+      );
+      maximize.classList.add('v2-dock-maximize');
+    }
+    let close = actions.querySelector('[data-action="dock:close:' + key + '"]');
+    if (!close) {
+      close = window.WaferCadV2Components.button('', 'dock:close:' + key, 'close', {
+        'aria-label': 'Close ' + label + ' view',
+        title: 'Close ' + label + ' view',
+      });
+      close.classList.add('v2-dock-close');
+      actions.append(close);
+    }
+    if (maximize) close.before(maximize);
+  }
+  function restoreDesktopChrome(panel, key) {
+    const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
+    title?.removeAttribute('tabindex');
+    title?.removeAttribute('aria-label');
+    const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
+    const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
+    const toolbar = actions?.querySelector('.p-toolbar');
+    if (maximize && toolbar && maximize.parentNode !== toolbar) toolbar.append(maximize);
+    maximize?.classList.remove('v2-dock-maximize');
+  }
+  window.WaferCadV2PanelChrome = Object.freeze({
+    prepareDesktop: prepareDesktopChrome,
+    restoreDesktop: restoreDesktopChrome,
+  });
 })();
