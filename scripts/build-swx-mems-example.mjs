@@ -268,7 +268,8 @@ export async function buildSwxMems(state = 'off', profile = null) {
 
   record(
     'EBL ridge mask / proximity correction',
-    profile?.ridgeNote ?? 'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
+    profile?.ridgeNote ??
+      'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
   );
   etch(
     profile?.shallowEtchLabel ?? '150nm ridge-waveguide and grating-groove etch',
@@ -326,13 +327,12 @@ export async function buildSwxMems(state = 'off', profile = null) {
   deposit('E-beam evaporated Au 300nm', AU, SWX_REPORTED.auUm, 3);
   // The electrical terminals must not float on BOX disconnected from the
   // patterned silicon. Verify all four supported contact areas before HF.
-  const electricalContactPoints =
-    profile?.electricalContactPoints ?? [
-      [2, 40],
-      [2, -40],
-      [46, 9],
-      [-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
-    ];
+  const electricalContactPoints = profile?.electricalContactPoints ?? [
+    [2, 40],
+    [2, -40],
+    [46, 9],
+    [-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
+  ];
   for (const point of electricalContactPoints) {
     const region = readPoint(model, vectorApi, point);
     for (const material of [DEVICE, CR, AU]) {
@@ -369,7 +369,10 @@ export async function buildSwxMems(state = 'off', profile = null) {
 
   const beam = readPoint(model, vectorApi, source.releasedBeamTestPoint);
   const anchor = readPoint(model, vectorApi, source.anchorTestPoint);
-  const gapPoint = profile?.gapPoint?.(source) ?? [-31, SWX_REPORTED.offGapUm / 2 - source.gapUm / 2];
+  const gapPoint = profile?.gapPoint?.(source) ?? [
+    -31,
+    SWX_REPORTED.offGapUm / 2 - source.gapUm / 2,
+  ];
   const gap = readPoint(model, vectorApi, gapPoint);
   assert.ok(
     beam?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
@@ -389,13 +392,12 @@ export async function buildSwxMems(state = 'off', profile = null) {
   // electrodes is a physical modeling error even if the view looks cleaner.
   const siId = layerIds.get(DEVICE);
   const boxId = layerIds.get(BOX);
-  const combSupportProbes =
-    profile?.combSupportProbes ?? [
-      { point: [25, 9], shouldRetainBOX: true },
-      { point: [-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
-      { point: [25, 0], shouldRetainBOX: false },
-      { point: [-31, SWX_ASSUMPTIONS.lowerMovableCombYUm], shouldRetainBOX: false },
-    ];
+  const combSupportProbes = profile?.combSupportProbes ?? [
+    { point: [25, 9], shouldRetainBOX: true },
+    { point: [-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
+    { point: [25, 0], shouldRetainBOX: false },
+    { point: [-31, SWX_ASSUMPTIONS.lowerMovableCombYUm], shouldRetainBOX: false },
+  ];
   for (const { point, shouldRetainBOX } of combSupportProbes) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
@@ -416,7 +418,10 @@ export async function buildSwxMems(state = 'off', profile = null) {
       'Supported contact anchor lost BOX at ' + point.join(','),
     );
   }
-  for (const point of profile?.guidedSupportPoints ?? [[-2, -27], [-2, 27]]) {
+  for (const point of profile?.guidedSupportPoints ?? [
+    [-2, -27],
+    [-2, 27],
+  ]) {
     const support = readPoint(model, vectorApi, point);
     assert.ok(
       support?.stack.some((item) => item.layerId === siId),
