@@ -189,12 +189,20 @@ try {
     }
     console.log(`Depth oracle: ${JSON.stringify(report.hiddenLineOracle)}`);
     report.gpuHeightOracle = await page.evaluate(gpuHeightOracle);
-    for (const result of report.gpuHeightOracle)
+    for (const result of report.gpuHeightOracle) {
+      if (result.productionBackend === 'cpu-software-parity') {
+        // Keep recording the failing SwiftShader GLSL numerical experiment,
+        // but never use that shader for production displacement on software.
+        // The runtime assertion below requires the selected CPU mesh.
+        report.softwareShaderParityUnverified = true;
+        continue;
+      }
       assert.ok(
         result.maximumErrorUm < 0.00002,
         `CPU/GPU height mismatch: ${JSON.stringify(result)}`,
       );
-    console.log(`GPU height oracle: ${JSON.stringify(report.gpuHeightOracle)}`);
+    }
+    console.log(`GPU height oracle (unselected software shader is diagnostic only): ${JSON.stringify(report.gpuHeightOracle)}`);
   }
   for (const fixture of fixtures) {
     if (
@@ -301,6 +309,15 @@ try {
       );
       delete diagnostics.canonicalModel;
       assert.equal(diagnostics.host.renderState, 'ready');
+      if (diagnostics.host.roughDisplacementBackend === 'cpu-software-parity' &&
+          !fixture.name.includes('smooth')) {
+        assert.equal(diagnostics.canvas.roughMeshBackend, 'cpu-mesh');
+        assert.equal(
+          Number(diagnostics.canvas.roughGpuTaskCount || 0),
+          0,
+          'Software WebGL may not use a shader that fails the height tolerance',
+        );
+      }
       if (!fixture.name.includes('smooth'))
         assert.equal(
           diagnostics.canvas.roughMeshWorker,
