@@ -57,6 +57,17 @@
         actionSlot.querySelector('.p-toolbar')?.dispatchEvent(new Event('dispose-toolbar'));
         actionSlot.replaceChildren(headerTools);
       }
+      // Scientific toolbar updates are independent of Docking layout updates.
+      // Reconcile window controls in the same transaction so no close or
+      // maximize button is lost between two Shell renders.
+      if (panel.dataset.dockChromeActive === 'true')
+        prepareDesktopChrome(panel, {
+          key,
+          label: panel.dataset.dockLabel || key,
+          icon: panel.dataset.dockIcon || null,
+          maximized: panel.dataset.dockMaximized === 'true',
+          draggable: panel.dataset.dockDraggable === 'true',
+        });
       readoutSlot.textContent = incomingReadout?.textContent || '';
       return panel;
     }
@@ -83,7 +94,11 @@
       glyph.dataset.glyph = glyphName;
       title.prepend(glyph);
     }
+    panel.dataset.dockChromeActive = 'true';
     panel.dataset.dockDraggable = String(draggable);
+    panel.dataset.dockMaximized = String(maximized);
+    panel.dataset.dockLabel = label;
+    if (glyphName) panel.dataset.dockIcon = glyphName;
     title.tabIndex = draggable ? 0 : -1;
     title.setAttribute('aria-label', label + ' layout titlebar; Alt+Enter to choose Snap Layout');
     const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
@@ -111,6 +126,10 @@
     title?.removeAttribute('aria-label');
     title?.querySelector('.v2-dock-title-icon')?.remove();
     delete panel.dataset.dockDraggable;
+    delete panel.dataset.dockChromeActive;
+    delete panel.dataset.dockMaximized;
+    delete panel.dataset.dockLabel;
+    delete panel.dataset.dockIcon;
     const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
     const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
     const toolbar = actions?.querySelector('.p-toolbar');
