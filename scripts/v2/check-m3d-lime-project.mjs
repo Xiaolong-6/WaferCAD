@@ -451,7 +451,9 @@ try {
   const originalCamera = (await snapshot()).threeCamera;
   await page.mouse.move(centerX, centerY);
   await page.mouse.down();
-  await page.mouse.move(centerX + 145, centerY + 115, { steps: 12 });
+  // Preserve a visibly oblique view: the previous +115px vertical drag
+  // clamped polar angle to top-down and hid the very sidewalls under review.
+  await page.mouse.move(centerX + 145, centerY + 45, { steps: 12 });
   await page.mouse.up();
   await waitForPaint(page);
   const orbitedCamera = (await snapshot()).threeCamera;
@@ -466,6 +468,16 @@ try {
   const cameraDistance = (value) =>
     Math.hypot(...value.position.map((coordinate, index) => coordinate - value.target[index]));
   assert.ok(cameraDistance(localCamera) < cameraDistance(orbitedCamera));
+  const viewOffset = localCamera.position.map(
+    (coordinate, index) => coordinate - localCamera.target[index],
+  );
+  const horizontalViewFraction = Math.hypot(viewOffset[0], viewOffset[1]) /
+    Math.hypot(...viewOffset);
+  assert.ok(
+    horizontalViewFraction > 0.35 && horizontalViewFraction < 0.96,
+    '3D inspection camera must be oblique, not top-down or edge-on: ' +
+      horizontalViewFraction.toFixed(4),
+  );
   const cutawayPath = resolve(output, 'three-device-cutaway-inspection.png');
   const cutaway = await captureVisibleThree(page, cutawayPath);
   report.threeCutawayEvidence = {
@@ -473,7 +485,8 @@ try {
     coloredPixels: cutaway.coloredPixels,
     canvas: cutaway.canvas,
     camera: localCamera,
-    note: 'Inspection-only layer visibility and orbit: not a fabricated cross-section',
+    horizontalViewFraction,
+    note: 'Oblique inspection-only orbit and layer visibility: not a fabricated cross-section',
   };
   if (!zoomWasActive) await zoomControl3d.click();
   await page.locator('#threePanel [data-action="maximize:three"]').click();
