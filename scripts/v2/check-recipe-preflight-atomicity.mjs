@@ -28,8 +28,7 @@ try {
       () =>
         window.WaferCadV2Workstation.snapshot().model.layers.some(
           (layer) => layer.name === 'Safety film',
-        ) &&
-        !window.WaferCadV2Workstation.snapshot().workflow.busy,
+        ) && !window.WaferCadV2Workstation.snapshot().workflow.busy,
       null,
       { timeout: 120000 },
     );
