@@ -95,6 +95,41 @@ try {
     'V2 reload preserves History, IDs and physical state at the documented 0.1 nm grid',
   );
 
+  // Retired UI is unnecessary for the writer-lease parity invariant: a
+  // second v2 tab must never take over the archived project's current owner.
+  const original = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  const competing = await context.newPage();
+  competing.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await competing.goto(base + '/app.html', { waitUntil: 'domcontentloaded' });
+    await competing.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 180000,
+    });
+    const second = await competing.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(second.workflow.writable, false, 'Second v2 tab cannot steal saved writer lease');
+    assert.deepEqual(second.model, original.model, 'Non-owner reads intact archived geometry');
+    assert.deepEqual(
+      second.workflow.branches,
+      original.workflow.branches,
+      'Non-owner sees archived Variants unchanged',
+    );
+    assert.equal(second.workflow.steps.length, imported.steps);
+    const persisted = await competing.evaluate(async () => {
+      const { loadWorkspaceState } = await import('/workspace-persistence.js');
+      const saved = await loadWorkspaceState();
+      return {
+        model: saved.model,
+        nodes: saved.snapshotBranches?.nodes?.length || saved.snapshots?.length || 0,
+        branches: saved.snapshotBranches?.branches?.length || 0,
+      };
+    });
+    assert.deepEqual(persisted.model, original.model, 'Contending tab did not rewrite geometry');
+    assert.equal(persisted.nodes, imported.steps);
+    assert.equal(persisted.branches, imported.branches);
+  } finally {
+    await competing.close();
+  }
+
   await open('/app.html?start=empty');
   const recovery = await page.evaluate(async () => {
     const storage = await import('/workspace-persistence.js');
@@ -105,6 +140,7 @@ try {
         return {
           layers: saved.model.layers.length,
           steps: saved.snapshotBranches?.nodes?.length || saved.snapshots?.length || 0,
+          branches: saved.snapshotBranches?.branches?.length || 0,
         };
       }
     }
@@ -113,6 +149,7 @@ try {
   assert.ok(recovery, 'Replacing an old imported project must create Recovery');
   assert.equal(recovery.layers, imported.layers);
   assert.ok(recovery.steps >= metadata.steps);
+  assert.equal(recovery.branches, imported.branches, 'Recovery retains all archived Variants');
   assert.deepEqual(errors, [], 'No uncaught errors during Legacy file import and Recovery');
   console.log('Legacy project v2 import / autosave / reload / Recovery PASS');
 } finally {
