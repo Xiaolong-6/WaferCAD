@@ -32,8 +32,7 @@ export function clipBorderPositions(positions, state) {
       if (
         state.enabled !== false &&
         Number.isFinite(middleZ) &&
-        middleZ < state.top &&
-        middleZ > state.bottom
+        !(middleZ >= state.top || middleZ <= state.bottom)
       ) {
         continue;
       }
