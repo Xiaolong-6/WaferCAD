@@ -80,7 +80,7 @@ try {
       });
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
       for (const view of ['main', 'mask', 'three', 'section']) {
-        await page.evaluate((name) => {
+        await page.evaluate(({ name, width }) => {
           // Section has its own dock: maximize on desktop, use the mobile
           // Section action in portrait. An Overview screenshot is not proof
           // that the dedicated Section view can be selected.
@@ -95,7 +95,7 @@ try {
             .find(Boolean);
           if (!button) throw new Error('View selector is missing: ' + name);
           button.click();
-        }, view);
+        }, { name: view, width });
         await waitForPaint(page);
         const sectionState =
           view === 'section'
