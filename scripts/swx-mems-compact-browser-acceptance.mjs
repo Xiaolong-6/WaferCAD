@@ -31,10 +31,13 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('crash', () => errors.push('Chromium page crashed'));
     try {
-      await page.goto((process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182') + '/app.html?start=empty', {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      });
+      await page.goto(
+        (process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182') + '/app.html?start=empty',
+        {
+          waitUntil: 'domcontentloaded',
+          timeout: 120000,
+        },
+      );
       await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
         timeout: 120000,
       });
@@ -58,13 +61,12 @@ try {
       assert.deepEqual(onBranch.headState.processRecipe, source.processRecipe);
       if (state === 'on') {
         await page.locator('[data-action="domain:history"]').click();
-        await page
-          .locator('.history-variant[data-variant-id="on"] .history-variant-name')
-          .click();
+        await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
         await page.waitForFunction(
-          () => window.WaferCadV2Workstation.snapshot().workflow.branches.some(
-            (branch) => branch.id === 'on' && branch.active,
-          ),
+          () =>
+            window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+              (branch) => branch.id === 'on' && branch.active,
+            ),
           null,
           { timeout: 120000 },
         );
@@ -107,9 +109,10 @@ try {
         const path = resolve(directory, 'compact-' + state + '.' + format);
         await download.saveAs(path);
         const bytes = await readFile(path);
-        const parsed = format === 'gds'
-          ? parseGDS(Uint8Array.from(bytes).buffer)
-          : await parseOAS(Uint8Array.from(bytes).buffer);
+        const parsed =
+          format === 'gds'
+            ? parseGDS(Uint8Array.from(bytes).buffer)
+            : await parseOAS(Uint8Array.from(bytes).buffer);
         assert.equal(
           flattenGDS(parsed, parsed.root).elements.length,
           source.layout.elements.length,
@@ -137,9 +140,14 @@ try {
       const deviceLayer = source.model.layers.find(
         (layer) => layer.name === '220nm SOI device silicon',
       ).id;
-      const topZ = Math.max(...source.model.regions.flatMap((region) =>
-        region.stack.filter((segment) => segment.layerId === deviceLayer).map((segment) => segment.z1),
-      )) * zScale;
+      const topZ =
+        Math.max(
+          ...source.model.regions.flatMap((region) =>
+            region.stack
+              .filter((segment) => segment.layerId === deviceLayer)
+              .map((segment) => segment.z1),
+          ),
+        ) * zScale;
       const closeups = [
         { name: 'comb', position: [27, -6, topZ + 33], target: [0, -22, topZ], fov: 35 },
         { name: 'swt', position: [13, -39, topZ + 23], target: [0, -48, topZ], fov: 31 },
@@ -179,9 +187,10 @@ try {
             .locator('.history-variant[data-variant-id="on"] .history-variant-name')
             .click();
           await page.waitForFunction(
-            () => window.WaferCadV2Workstation.snapshot().workflow.branches.some(
-              (branch) => branch.id === 'on' && branch.active,
-            ),
+            () =>
+              window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+                (branch) => branch.id === 'on' && branch.active,
+              ),
             null,
             { timeout: 120000 },
           );
@@ -193,10 +202,12 @@ try {
         await page.waitForFunction(
           (expected) => {
             const snapshot = window.WaferCadV2Workstation.snapshot();
-            return document.getElementById('threeHost')?.dataset.renderState === 'ready' &&
+            return (
+              document.getElementById('threeHost')?.dataset.renderState === 'ready' &&
               snapshot.threeCamera?.target?.every(
                 (coordinate, i) => Math.abs(coordinate - expected.target[i]) < 1e-4,
-              );
+              )
+            );
           },
           camera,
           { timeout: 120000 },
