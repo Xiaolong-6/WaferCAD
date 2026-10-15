@@ -53,6 +53,7 @@ test('audit source-tree Legacy browser-test entrypoint separately from Pages', a
   const report = await auditSiteReachability(root);
   assert.equal(report.surface, 'source');
   assert.deepEqual(report.compatibilityRoots, []);
+  assert.deepEqual(report.compatibilityOnly, []);
   assert.ok(report.productionRoots.includes('app.html'));
   assert.ok(
     report.productionRoots.includes('app-legacy.html'),
