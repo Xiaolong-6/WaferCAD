@@ -257,9 +257,11 @@ The hardware acceptance harness now measures **two separate conditions**:
 1. Main-thread Long Tasks remain at or below 500 ms on physical GPU.
 2. Trusted browser input events are sampled across startup/refinement.
    Their queue-delay estimate must remain at or below 500 ms, including
-   at least one loading-phase event. Once Quality is ready, pointer
-   dragging and wheel interaction on the real 3D canvas must be
-   delivered and must change the camera, without changing model hash.
+   at least one loading-phase event. Input injection begins before
+   DOMContentLoaded and records the original CDP event timestamp.
+   Once Quality is ready, real-canvas pointer dragging must change
+   Orbit state and wheel input must independently change camera radius,
+   without changing model hash.
 
 The input queue-delay estimate compares high-resolution event timestamps
 with delivery time. It is **not** a compositor-to-photon latency measure.
