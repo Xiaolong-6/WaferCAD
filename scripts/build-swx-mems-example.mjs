@@ -326,7 +326,7 @@ export async function buildSwxMems(state = 'off') {
     [2, 40],
     [2, -40],
     [46, 9],
-    [46, -21],
+    [46, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
   ]) {
     const region = readPoint(model, vectorApi, point);
     for (const material of [DEVICE, CR, AU]) {
@@ -385,7 +385,7 @@ export async function buildSwxMems(state = 'off') {
   const boxId = layerIds.get(BOX);
   for (const { point, shouldRetainBOX } of [
     { point: [25, 9], shouldRetainBOX: true },
-    { point: [25, -21], shouldRetainBOX: true },
+    { point: [25, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
     { point: [25, 0], shouldRetainBOX: false },
     { point: [25, -11.2], shouldRetainBOX: false },
   ]) {
@@ -405,7 +405,7 @@ export async function buildSwxMems(state = 'off') {
     [2, 40],
     [2, -40],
     [46, 9],
-    [46, -21],
+    [46, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
   ]) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
