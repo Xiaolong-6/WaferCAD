@@ -185,6 +185,15 @@ jobs:
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
 
+      - name: Check explicit no-Worker rough fallback readiness
+        if: needs.plan.outputs.renderer == 'true'
+        env:
+          WAFERCAD_AUDIT_FILTER: rect-stochastic-exposed
+          WAFERCAD_AUDIT_NO_WORKER: '1'
+          WAFERCAD_AUDIT_TIMEOUT: '30000'
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-no-worker
+        run: node scripts/pr250-renderer-audit.mjs
+
       - name: Check rough boundary and depth visibility evidence
         if: needs.plan.outputs.renderer == 'true'
         env:
