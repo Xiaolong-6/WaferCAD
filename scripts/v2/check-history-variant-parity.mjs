@@ -114,7 +114,7 @@ try {
     assert.ok(variant, 'History mutation creates a new Variant');
 
     await openHistory();
-    await page.locator('.history-variant[data-variant-id="main"] .history-variant-name').click();
+    await page.locator('.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name').click();
     await page.waitForFunction(
       () =>
         window.WaferCadV2Workstation.snapshot().model.layers.some(
@@ -128,7 +128,7 @@ try {
     );
 
     await page
-      .locator('.history-variant[data-variant-id="' + variant.id + '"] .history-variant-name')
+      .locator('.history-variant[data-variant-id="' + variant.id + '"] > .history-variant-head .history-variant-name')
       .click();
     await page.waitForFunction(
       () =>
