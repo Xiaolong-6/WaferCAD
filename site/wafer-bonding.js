@@ -297,8 +297,14 @@ export function bondWaferModels(receiver, donor, request = {}) {
   // A bonded Assembly has a composite physical Z extent. Preserve each source
   // wafer's original substrate thickness in its immutable Assembly source
   // record, but do not report the receiver's 400 µm as the product's 800 µm.
-  const zMin = Math.min(...parts.flatMap((part) => part.stack.map((segment) => segment.z0)));
-  const zMax = Math.max(...parts.flatMap((part) => part.stack.map((segment) => segment.z1)));
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (const part of parts) {
+    for (const segment of part.stack) {
+      zMin = Math.min(zMin, segment.z0);
+      zMax = Math.max(zMax, segment.z1);
+    }
+  }
   candidate.thickness = zMax - zMin;
   candidate.shape = 'rect';
   candidate.revision = (receiver.revision || 0) + 1;
