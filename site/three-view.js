@@ -8,6 +8,7 @@ import {
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
+import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -30,8 +31,7 @@ import {
 import {
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
-  decorateGpuRoughLineMaterial,
-} from './gpu-rough-surface.js';
+} from './gpu-rough-surface.js?v=rough-line-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -40,6 +40,7 @@ import {
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
+import { boundaryProfileFromPositions, sidewallBoundarySamples } from './rough-boundary-profile.js';
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
@@ -810,6 +811,22 @@ export function createThreeView({
   }
 
   let completedFrameSerial = 0;
+  function renderInspectionFrame(targetRenderer = renderer) {
+    const occluders = [],
+      outlines = [];
+    scene.traverseVisible((object) => {
+      if (object.userData?.waferCadOutlineRole) outlines.push(object);
+      else if (object.isMesh && object.userData?.waferCadPresentation?.kind === 'material-exterior')
+        occluders.push(object);
+    });
+    const classified = renderDepthAwareOutlines(targetRenderer, scene, camera, {
+      occluders,
+      outlines,
+    });
+    host.dataset.outlineVisibility = classified ? 'structural-depth' : 'off';
+    host.dataset.outlineDepthMeshCount = String(classified ? occluders.length : 0);
+  }
+
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -829,7 +846,7 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
-      renderer.render(scene, camera);
+      renderInspectionFrame();
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
@@ -1117,10 +1134,9 @@ export function createThreeView({
         return {
           visible: transparent && Boolean(inspection.borders),
           materialState: {
-            // Draw behind translucent surfaces, not on top of their colors.
             opacity: Math.min(0.34, 0.14 + (1 - opacity) * 0.24),
             transparent: true,
-            depthTest: false,
+            depthTest: true,
             depthWrite: false,
           },
           transparentSort: false,
@@ -1201,10 +1217,7 @@ export function createThreeView({
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
     if (object.isLineSegments && descriptor.kind === 'border') {
-      object.renderOrder =
-        Number(getInspection()?.opacity ?? 1) < 0.999
-          ? 80
-          : (object.userData?.waferCadBorderOrder ?? object.renderOrder);
+      object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
     } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
   }
@@ -1352,12 +1365,7 @@ export function createThreeView({
       object.visible = Boolean(state.visible);
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
       if (object.isLineSegments && descriptor.kind === 'border') {
-        // Draw before transparent layer meshes (100+), so intervening colored
-        // surfaces attenuate hidden edges rather than leaving a black forest.
-        object.renderOrder =
-          Number(inspection.opacity ?? 1) < 0.999
-            ? 80
-            : (object.userData?.waferCadBorderOrder ?? object.renderOrder);
+        object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
       } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     }
     if (roughRenderContext) {
@@ -1555,7 +1563,7 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0) {
+  function geometryFromSidewallParts(parts, displayTolerance = 0, boundaryProfiles = null) {
     const positions = [],
       normals = [],
       annotationDepths = [];
@@ -1611,15 +1619,30 @@ export function createThreeView({
         lowerDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.lowerDepth))) : null,
         upperDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.upperDepth))) : null;
 
-      for (let segment = 0; segment < segments; segment++) {
-        const t0 = segment / segments,
-          t1 = (segment + 1) / segments,
-          p0 = pointAt(t0),
-          p1 = pointAt(t1),
-          lower0 = [...p0, displacedZ(p0, part.z0, part.lowerSurface)],
-          lower1 = [...p1, displacedZ(p1, part.z0, part.lowerSurface)],
-          upper1 = [...p1, displacedZ(p1, part.z1, part.upperSurface)],
-          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
+      const lowerProfile = boundaryProfiles?.get(part.lowerSurface?.capIndex),
+        upperProfile = boundaryProfiles?.get(part.upperSurface?.capIndex),
+        samples =
+          lowerProfile || upperProfile
+            ? sidewallBoundarySamples(part, {
+                lowerProfile,
+                upperProfile,
+                fallbackSegments: segments,
+              })
+            : Array.from({ length: segments + 1 }, (_, index) => {
+                const point = pointAt(index / segments);
+                return {
+                  point,
+                  lowerZ: displacedZ(point, part.z0, part.lowerSurface),
+                  upperZ: displacedZ(point, part.z1, part.upperSurface),
+                };
+              });
+      for (let segment = 0; segment + 1 < samples.length; segment++) {
+        const a = samples[segment],
+          b = samples[segment + 1],
+          lower0 = [...a.point, a.lowerZ],
+          lower1 = [...b.point, b.lowerZ],
+          upper1 = [...b.point, b.upperZ],
+          upper0 = [...a.point, a.upperZ],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
         triangle(lower0, lower1, upper1, firstDepths);
@@ -1630,6 +1653,14 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (
+      parts.some(
+        (part) => part.lowerSurface?.capIndex != null || part.upperSurface?.capIndex != null,
+      )
+    ) {
+      geometry.userData.waferCadSidewallParts = parts;
+      geometry.userData.waferCadSidewallTolerance = displayTolerance;
+    }
     if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
       geometry.setAttribute(
         'annotationDepth',
@@ -1912,26 +1943,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
       order = 100000,
       opacity = 1,
       adaptiveRough = false,
+      planContours = false,
       dashed = false,
       dashSize = 1,
-      roughGpuAppearance = null,
-      roughProfileNormal = 1,
-      roughBaseZ = 0,
       presentation = { kind: 'border' },
     } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
-    const edgePositions = roughGpuAppearance
-      ? positions.map((coordinate, index) => (index % 3 === 2 ? roughBaseZ : coordinate))
-      : positions;
-    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3));
+    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     const materialOptions = {
       color: dashed ? 0x263d57 : 0x111820,
       transparent: dashed || opacity < 0.999,
       opacity: dashed ? 0.25 : opacity < 0.999 ? 0.85 : 1,
-      depthTest: !dashed,
-      depthFunc: THREE.LessEqualDepth,
+      depthTest: true,
+      depthFunc: dashed ? THREE.GreaterDepth : THREE.LessEqualDepth,
       depthWrite: false,
     };
     const edgeMaterial = dashed
@@ -1942,19 +1968,82 @@ diffuseColor.a *= waferCadAlphaScale;`,
           })
         : new THREE.LineBasicMaterial(materialOptions),
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-    if (roughGpuAppearance) {
-      decorateGpuRoughLineMaterial(edgeMaterial, roughGpuAppearance, {
-        profileNormal: roughProfileNormal,
-      });
-    }
     if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
+    edges.userData.waferCadOutlineRole = dashed ? 'hidden' : 'visible';
+    edges.userData.waferCadPlanContours = planContours;
     group.add(edges);
     trackZDisplayObject(edges);
     registerPresentationObject(edges, presentation);
     if (adaptiveRough) roughOwnedObjects.add(edges);
+    if (!dashed) {
+      addBorderPositions(positions, {
+        order: order - 1,
+        opacity,
+        adaptiveRough,
+        planContours,
+        dashed: true,
+        dashSize,
+        presentation: { kind: 'hidden-border' },
+      });
+    }
     return edges;
+  }
+
+  function rebuildInspectionContours(boundaryProfiles = null) {
+    if (!physicalSurfacePlan) return;
+    for (const object of [...presentationObjects]) {
+      if (!object.userData?.waferCadPlanContours) continue;
+      presentationObjects.delete(object);
+      zDisplayObjects.delete(object);
+      object.parent?.remove(object);
+      disposeObjectResources(object);
+    }
+    const plan = physicalSurfacePlan,
+      clip = getClipGeometry(),
+      contours = transparentInspectionContours(plan, { boundaryProfiles }),
+      sectionLines = sectionCutContours(plan.sidewalls, clip, { boundaryProfiles }),
+      extraLines = [...contours.buried, ...sectionLines],
+      model = getModel();
+    host.dataset.hiddenBorderSegmentCount = String(contours.exposed.length + extraLines.length);
+    host.dataset.buriedContourSegmentCount = String(contours.buried.length);
+    host.dataset.sectionContourSegmentCount = String(sectionLines.length);
+    addBorderPositions(displayBorderPositions(contoursToPositions(extraLines)), {
+      order: 100005,
+      opacity: Number(getInspection()?.opacity ?? 1),
+      dashSize: Math.max(
+        1e-5,
+        Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+      ),
+      planContours: true,
+      presentation: { kind: 'border' },
+    });
+  }
+
+  function installRoughBoundaryProfiles(boundaryProfiles) {
+    let rebuilt = 0;
+    for (const object of presentationObjects) {
+      const previous = object.geometry,
+        parts = previous?.userData?.waferCadSidewallParts;
+      if (!parts) continue;
+      object.geometry = geometryFromSidewallParts(
+        parts,
+        previous.userData.waferCadSidewallTolerance || 0,
+        boundaryProfiles,
+      );
+      previous.dispose();
+      object.position.z = 0;
+      trackZDisplayObject(object);
+      if (object.isInstancedMesh) {
+        object.computeBoundingBox?.();
+        object.computeBoundingSphere?.();
+      }
+      rebuilt++;
+    }
+    host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
+    host.dataset.roughBoundarySidewallObjects = String(rebuilt);
+    rebuildInspectionContours(boundaryProfiles);
   }
 
   function roughSceneRoiFraction(model, clip) {
@@ -2082,7 +2171,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return false;
     }
     clearAdaptiveRoughObjects();
-
+    const boundaryProfiles = new Map();
     for (const result of results || []) {
       const task = roughTasks[result.taskId];
       if (!task || !result.data) continue;
@@ -2095,6 +2184,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
             }
           : result.data;
       let geometry = geometryFromRoughMeshData(THREE, meshData);
+      const capIndex = physicalSurfacePlan?.caps?.indexOf(cap) ?? -1;
+      if (capIndex >= 0 && geometry.userData.roughBoundaryPositions?.length) {
+        boundaryProfiles.set(
+          capIndex,
+          boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+        );
+      }
       if (task.implant) {
         setAnnotationDepthAttribute(
           geometry,
@@ -2146,18 +2242,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             order: 100010 + (cap.solidIndex || 0),
             opacity: context.opacity,
             adaptiveRough: true,
-            roughGpuAppearance:
-              geometry.userData.roughGpuDisplacement && !cap.instanceTranslations
-                ? cap.appearance
-                : null,
-            roughProfileNormal: cap.profileNormal ?? cap.normal,
-            roughBaseZ: cap.z,
             presentation: { kind: 'border' },
           },
         );
       }
     }
-
+    installRoughBoundaryProfiles(boundaryProfiles);
     roughRebuildCount++;
     currentRoughMode = mode;
     const data = renderer?.domElement?.dataset;
@@ -2362,7 +2452,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const wasRendering = rendering;
     rendering = true;
     try {
-      const prepared = prepareAdaptiveRoughTasks({ interactive });
+      const prepared = prepareAdaptiveRoughTasks({ interactive }),
+        boundaryProfiles = new Map();
       for (const task of prepared.tasks) {
         const cap = task.cap;
         let geometry = geometryFromRoughCap(THREE, {
@@ -2378,6 +2469,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           analyticNormals: task.gpuDisplacement ? false : prepared.policy.analyticNormals,
           gpuDisplacement: Boolean(task.gpuDisplacement),
         });
+        const capIndex = physicalSurfacePlan?.caps?.indexOf(cap) ?? -1;
+        if (capIndex >= 0 && geometry.userData.roughBoundaryPositions?.length) {
+          boundaryProfiles.set(
+            capIndex,
+            boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+          );
+        }
         if (task.implant) {
           setAnnotationDepthAttribute(
             geometry,
@@ -2432,18 +2530,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
               order: 100010 + (cap.solidIndex || 0),
               opacity: context.opacity,
               adaptiveRough: true,
-              roughGpuAppearance:
-                geometry.userData.roughGpuDisplacement && !cap.instanceTranslations
-                  ? cap.appearance
-                  : null,
-              roughProfileNormal: cap.profileNormal ?? cap.normal,
-              roughBaseZ: cap.z,
               presentation: { kind: 'border' },
             },
           );
         }
       }
 
+      installRoughBoundaryProfiles(boundaryProfiles);
       roughRebuildCount++;
       currentRoughMode = interactive ? 'interactive' : 'detailed';
       const data = renderer?.domElement?.dataset;
@@ -3122,26 +3215,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         Number(plan.arrayInstances || 0) < 64 ||
         roughTasks.length > 0;
       if (needsHiddenContourSuperset) {
-        // Physically owned contours only. The subdued dashed reference goes
-        // behind transparent faces (renderOrder 100+) so their colors attenuate
-        // rear/interior edges, rather than outlining every LOD triangle.
-        const contours = transparentInspectionContours(plan);
-        const sectionLines = sectionCutContours(plan.sidewalls, clip);
-        const hiddenLines = [...contours.exposed, ...contours.buried, ...sectionLines];
-        host.dataset.hiddenBorderSegmentCount = String(hiddenLines.length);
-        host.dataset.buriedContourSegmentCount = String(contours.buried.length);
-        host.dataset.sectionContourSegmentCount = String(sectionLines.length);
-        const outlineScale = Math.max(
-          1e-5,
-          Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
-        );
-        addBorderPositions(displayBorderPositions(contoursToPositions(hiddenLines)), {
-          order: 75,
-          opacity,
-          dashed: true,
-          dashSize: outlineScale,
-          presentation: { kind: 'hidden-border' },
-        });
+        rebuildInspectionContours();
       }
 
       // Implant and Electrical Region annotations are built as a persistent
@@ -3748,6 +3822,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           geometry?.dispose?.();
           return null;
         }
+        geometry.userData = {};
         const layer = layerById(model, layerId),
           material = exportMaterial(layer),
           mesh = translations
@@ -3775,7 +3850,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       await yieldToUi();
       reportProgress(0.08, 'Allocating morphology mesh');
       const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
-        capCount = Math.max(1, surfacePlan.caps.length);
+        capCount = Math.max(1, surfacePlan.caps.length),
+        exportBoundaryProfiles = new Map();
       let roughMeshDataByCap = null;
       try {
         roughMeshDataByCap = await buildExportRoughMeshData(roughTasks);
@@ -3810,6 +3886,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 });
             const roughBorderVertexCount = Math.floor(
               (geometry.userData?.roughBorderPositions?.length || 0) / 3,
+            );
+            exportBoundaryProfiles.set(
+              capIndex,
+              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
             );
             // Renderer-only LOD/debug metadata can include large typed arrays.
             // Keep GLB extras compact and publish only the stable export contract
@@ -3863,7 +3943,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall]),
+            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
@@ -3878,7 +3958,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
-        addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
+        addExportMesh(
+          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles),
+          layerId,
+          ' · sidewalls',
+        );
         sidewallIndex++;
         reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
         if (sidewallIndex % 2 === 0) await yieldToUi();
@@ -3932,7 +4016,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       },
       prepareScene: () => requestRoughGeometry('detailed', { force: true }),
       capture: (captureRenderer) => {
-        captureRenderer.render(scene, camera);
+        renderInspectionFrame(captureRenderer);
         return new Promise((resolve, reject) =>
           captureRenderer.domElement.toBlob(
             (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),

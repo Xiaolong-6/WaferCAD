@@ -95,12 +95,15 @@ const PROCESS_PATHS = [
 const RENDERER_PATHS = [
   /^scripts\/array-renderer-regression\.mjs$/,
   /^scripts\/renderer-pipeline-benchmark\.mjs$/,
+  /^scripts\/pr250-(?:renderer-audit|audit-fixtures|audit-compare)\.mjs$/,
+  /^scripts\/rough-boundary-audit\.mjs$/,
+  /^scripts\/test-helpers\/pr250-/,
   /^site\/(?:model-array|mask-instance-index)/,
   /^scripts\/array-runtime-regression\.mjs$/,
   /^site\/model-view-geometry\.js$/,
   /^site\/polygon-triangulation\.js$/,
   /^site\/(?:three|section|render|glb)/,
-  /^site\/(?:annotation-rendering|plan-renderers|rough-mesh(?:-geometry|-worker)?|surface-rendering)\.js$/,
+  /^site\/(?:annotation-rendering|plan-renderers|rough-boundary-profile|rough-mesh(?:-geometry|-worker)?|surface-rendering)\.js$/,
   /^scripts\/renderer-product-regression\.mjs$/,
   /^scripts\/renderer-product-cases\.mjs$/,
 ];

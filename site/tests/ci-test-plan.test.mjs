@@ -7,6 +7,21 @@ function enabled(plan) {
   return BROWSER_SUITES.filter((suite) => plan.suites[suite]);
 }
 
+test('rough boundary and depth audit changes select renderer acceptance', () => {
+  for (const path of [
+    'site/rough-boundary-profile.js',
+    'site/three-outline-pass.js',
+    'scripts/pr250-renderer-audit.mjs',
+    'scripts/pr250-audit-fixtures.mjs',
+    'scripts/pr250-audit-compare.mjs',
+    'scripts/rough-boundary-audit.mjs',
+    'scripts/test-helpers/pr250-hidden-line-oracle.mjs',
+    'scripts/test-helpers/pr250-gpu-height-oracle.mjs',
+  ]) {
+    assert.equal(buildCiTestPlan([path]).suites.renderer, true, path);
+  }
+});
+
 test('shared state comparison changes run History and persistence coverage', () => {
   const plan = buildCiTestPlan(['site/state-equality.js']);
   assert.equal(plan.full, false);

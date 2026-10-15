@@ -27,6 +27,10 @@ on:
       - "scripts/array-runtime-regression.mjs"
       - "scripts/array-renderer-regression.mjs"
       - "scripts/renderer-pipeline-benchmark.mjs"
+      - "scripts/pr250-renderer-audit.mjs"
+      - "scripts/pr250-audit-fixtures.mjs"
+      - "scripts/pr250-audit-compare.mjs"
+      - "scripts/rough-boundary-audit.mjs"
       - "scripts/interaction-regression.mjs"
       - "scripts/resilience-regression.mjs"
       - "scripts/test-helpers/**"
@@ -180,6 +184,13 @@ jobs:
         # The 625-site software-WebGL stress run is isolated below so the
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
+
+      - name: Check rough boundary and depth visibility evidence
+        if: needs.plan.outputs.renderer == 'true'
+        env:
+          WAFERCAD_AUDIT_ORACLE: '1'
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-audit
+        run: node scripts/pr250-renderer-audit.mjs
 
       - name: Package tested preview
         if: always()
