@@ -143,6 +143,43 @@ Primary Sahli 2018 supplementary figure correspondence:
 Source: [Sahli 2018 supporting information](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41563-018-0115-4/MediaObjects/41563_2018_115_MOESM1_ESM.pdf).
 These are paper-panel targets, not completed screenshot overlays.
 
+## Basiri-Esfahani 2019 Fig. 2a — paper-to-mask quantitative check
+
+The [published Results and device micrograph](https://www.nature.com/articles/s41467-018-08038-4)
+explicitly specify a spoked silica microdisk with an **outer radius of
+148 µm**, **inner radius of 82 µm**, and **device thickness approximately
+1.8 µm**. The saved `MICRODISK_RELEASE_MASK` sectors' actual XY vertices
+reach **148.0000005 µm** and **81.9999996 µm** in radial distance;
+the saved vertical oxide interval is **1.8 µm**. The regression checks
+both radii across all four sectors, not merely the existence of a layer.
+
+Paper Methods also prescribe thermally oxidized Si, photoresist,
+UV lithography, buffered HF oxide patterning, first resist removal,
+protective resist recoat for chip dicing, second resist removal,
+and XeF2 gas Si undercut in precisely that order. These operations
+are now represented by the saved Recipe and M07 narrative record.
+
+**Limits:** the 36 µm XeF2 numerical release setting, the nominal
+55 µm central mask hub, and the eight radial depth slices are engineering
+reconstruction parameters. The source paragraph does not determine
+these numerically. Fig. 2a is an SEM of a *similar* device, so matching
+148/82 µm photomask design values must not be reported as full pixel-level
+SEM overlay acceptance. A source-aligned cut and real browser screenshot
+remain pending.
+
+## Intermediate saved History vs independent Kernel replay
+
+The Recipe browser acceptance now has an opt-in `--history-parity`
+gate for the Microdisk, PERC source-order and Sahli Tandem. Following
+a clean Base → Run All, it compares *each saved History step's*
+model with the corresponding independently regenerated History step:
+all material names, per-material XY unions and physical Z slabs, plus
+Electrical Region metadata. Failure produces a per-step report under
+`test-results/example-recipe-runall/*-history-parity.json` identifying
+the first mismatched physical interval, without increasing tolerances
+or overwriting the paper-derived asset. This is more stringent than
+the existing final-state parity gate.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
