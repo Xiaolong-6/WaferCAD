@@ -814,7 +814,8 @@ export async function buildTcmosInverter({
   // Drain vs source is inferred from terminal contact connectivity in the
   // reconstructed Fig. 1b layout. Shared source/drain implant masks alone
   // cannot identify a junction or a conducting BTBT path.
-  const { findTerminalQualifiedDopantOverlaps } = await import('../site/dopant-regions.js');
+  const { findTerminalQualifiedDopantOverlaps, auditSchematicWellBodyCoverage } =
+    await import('../site/dopant-regions.js');
   const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
   const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
   const terminals = [
@@ -835,6 +836,24 @@ export async function buildTcmosInverter({
           .map((overlap) => overlap.geom),
       );
       return [id, modelApi.geometryArea(geom)];
+    }),
+  );
+  const wellBody = auditSchematicWellBodyCoverage(model, v, modelApi.geometryArea);
+  const wellBodySummary = Object.fromEntries(
+    ['donor', 'acceptor'].map((polarity) => {
+      const fragments = wellBody.filter((item) => item.polarity === polarity);
+      const summary = {
+        schematicWellPresent: fragments.every((item) => item.hasMatchingSchematicWell),
+        matchingWellVolumeUm3: 0,
+        outsideMatchingWellVolumeUm3: 0,
+        oppositeWellVolumeUm3: 0,
+      };
+      for (const item of fragments) {
+        summary.matchingWellVolumeUm3 += item.matchingWellVolumeUm3;
+        summary.outsideMatchingWellVolumeUm3 += item.outsideMatchingWellVolumeUm3;
+        summary.oppositeWellVolumeUm3 += item.oppositeWellVolumeUm3;
+      }
+      return [polarity, summary];
     }),
   );
   const validation = {
@@ -858,6 +877,8 @@ export async function buildTcmosInverter({
       sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
       overlapAreaUm2: overlapAreas,
       quantifiedWellDoping: model.dopantRegions.some((region) => region.role === 'well'),
+      schematicWellBodyCoverage: wellBodySummary,
+      oxideStoppingPowerKnown: false,
       physicalJunctionResolved: false,
       btbtCurrentComputed: false,
     },
@@ -876,6 +897,7 @@ export async function buildTcmosInverter({
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
       'HVT body intent intersects both source and drain HDD intent in the assumed geometry. Opposite-polarity volumetric overlaps are not electrically resolved PN boundaries or BTBT junctions.',
+      'HVT mask extends beyond ACTIVE and the schematic Well under STI: a small qualitative body volume survives beneath STI in silicon; actual ion stopping/penetration is not modeled.',
       'LVTN/LVTP mask windows are reference-only and NOT executed in the T-CMOS process; U-shaped body-tie diffusion, contact arrays and metal routing are traced visually from Fig. 1b, not measured dimensions.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
       illustrativeTiltDeg

@@ -85,8 +85,11 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     model.dopantRegions.every((region) => region.profile.kind === 'qualitative-interval'),
     true,
   );
-  const { findDopantPolarityOverlaps, findTerminalQualifiedDopantOverlaps } =
-    await import('../dopant-regions.js');
+  const {
+    findDopantPolarityOverlaps,
+    findTerminalQualifiedDopantOverlaps,
+    auditSchematicWellBodyCoverage,
+  } = await import('../dopant-regions.js');
   const { geometryArea } = await import('../model.js');
   const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
   assert.ok(
@@ -137,6 +140,24 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   );
   assert.equal(validation.qualitativeJunctionEvidence.physicalJunctionResolved, false);
   assert.equal(validation.qualitativeJunctionEvidence.btbtCurrentComputed, false);
+  const wellCoverage = auditSchematicWellBodyCoverage(model, v, geometryArea);
+  assert.equal(wellCoverage.length, 4, 'Well audit must inspect all HVT body intent fragments');
+  for (const polarity of ['donor', 'acceptor']) {
+    const audit = wellCoverage.filter((item) => item.polarity === polarity);
+    assert.equal(audit.length, 2);
+    assert.ok(audit.every((item) => item.hasMatchingSchematicWell));
+    const matching = audit.reduce((sum, item) => sum + item.matchingWellVolumeUm3, 0);
+    const outside = audit.reduce((sum, item) => sum + item.outsideMatchingWellVolumeUm3, 0);
+    const opposite = audit.reduce((sum, item) => sum + item.oppositeWellVolumeUm3, 0);
+    assert.ok(Math.abs(matching - 0.51584) < 1e-9);
+    assert.ok(Math.abs(outside - 0.01364) < 1e-9);
+    assert.ok(Math.abs(opposite) < 1e-12);
+    const reported = validation.qualitativeJunctionEvidence.schematicWellBodyCoverage[polarity];
+    assert.equal(reported.schematicWellPresent, true);
+    assert.ok(Math.abs(reported.matchingWellVolumeUm3 - matching) < 1e-12);
+    assert.ok(Math.abs(reported.outsideMatchingWellVolumeUm3 - outside) < 1e-12);
+  }
+  assert.equal(validation.qualitativeJunctionEvidence.oxideStoppingPowerKnown, false);
   assert.match(model.implants[0].name, /HVTN As\+ pMOS/);
   assert.match(model.implants[1].name, /HVTP BF2\+ nMOS/);
   for (const body of model.implants.slice(0, 2)) {

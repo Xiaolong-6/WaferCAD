@@ -8,7 +8,8 @@ const v = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
 const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps } =
   await import('../dopant-regions.js');
-const { findTerminalQualifiedDopantOverlaps } = await import('../dopant-regions.js');
+const { findTerminalQualifiedDopantOverlaps, auditSchematicWellBodyCoverage } =
+  await import('../dopant-regions.js');
 
 test('legacy models retain their original storage shape until qualitative doping is requested', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
@@ -128,6 +129,23 @@ test('overlaps report qualitative opposite polarity without claiming a working j
     invalid.dopantRegions[0].depthEndUm = -1;
     validateProcessModel(invalid);
   }, /depthEndUm/);
+  const well = modelApi.applyOperation(model, {
+    type: 'electrical',
+    face: 'front',
+    name: 'Schematic P-well',
+    electricalRegionType: 'p-type',
+    electricalRegionSource: 'doped',
+    thickness: 0.25,
+    area: v.rectMulti(1, 2, -0.5, 0),
+  });
+  assert.equal(well.changed, true);
+  const audit = auditSchematicWellBodyCoverage(model, v, modelApi.geometryArea);
+  assert.equal(audit.length, 1);
+  assert.equal(audit[0].hasMatchingSchematicWell, true);
+  assert.ok(Math.abs(audit[0].bodyVolumeUm3 - 0.8) < 1e-9);
+  assert.ok(Math.abs(audit[0].matchingWellVolumeUm3 - 0.3) < 1e-9);
+  assert.ok(Math.abs(audit[0].outsideMatchingWellVolumeUm3 - 0.5) < 1e-9);
+  assert.equal(audit[0].oppositeWellVolumeUm3, 0);
   const legacy = structuredClone(model);
   delete legacy.dopantRegions;
   validateProcessModel(legacy);
