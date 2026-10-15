@@ -494,7 +494,9 @@ try {
     assert.equal(framing.sectionCollapse.top, 0.68);
     assert.equal(framing.sectionCollapse.bottom, -0.8);
     await page.waitForFunction(
-      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      () =>
+        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
+        Number(document.querySelector('#threeHost')?.dataset.implantOutlineBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );
@@ -546,6 +548,9 @@ try {
       threeCutaway: true,
       physicalZExaggeration: false,
       buriedImplantCutFragments: roiCut.length,
+      annotationOutlineMeshes: Number(
+        await page.locator('#threeHost').getAttribute('data-implant-outline-built-count'),
+      ),
       rendererImplantCutMeshes: Number(
         await page.locator('#threeHost').getAttribute('data-implant-cut-built-count'),
       ),
@@ -596,7 +601,9 @@ try {
     await expandThree.click();
     await waitForPaint(page);
     await page.waitForFunction(
-      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      () =>
+        Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
+        Number(document.querySelector('#threeHost')?.dataset.implantOutlineBuiltCount) > 0,
       null,
       { timeout: 45000 },
     );

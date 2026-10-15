@@ -76,7 +76,7 @@ A saved project-specific 3D camera targets the transistor pair from an oblique, 
 
 ## Display-only local 3D cutaway evidence
 
-The opt-in 3D **Cutaway** mode requires a Main ROI. It increases the displayed Z aspect ratio and contrast of the ROI boundary's surviving buried Implant annotation; it intentionally flattens the *display alpha gradient* of the cut face, without changing the qualitative annotation interval, stored materials or Recipe. The underlying scientific profile is **not** calibrated, and the displayed band must not be interpreted as a measured tunnel junction thickness. The full-marker and HVT-only captures are retained for comparison; inspection derivatives are not published as device files.
+The opt-in 3D **Cutaway** mode requires a Main ROI. It increases the displayed Z aspect ratio and contrast of the ROI boundary's surviving buried Implant annotation; it intentionally flattens the _display alpha gradient_ of the cut face, without changing the qualitative annotation interval, stored materials or Recipe. Dark cut-face lines delineate that illustrative interval; they are not measured junction boundaries. The underlying scientific profile is **not** calibrated, and the displayed band must not be interpreted as a measured tunnel junction thickness. The full-marker and HVT-only captures are retained for comparison; inspection derivatives are not published as device files.
 
 ## Run and acceptance
 

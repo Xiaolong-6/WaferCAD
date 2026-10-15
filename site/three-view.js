@@ -1118,6 +1118,17 @@ export function createThreeView({
           ),
           transparentSort: true,
         };
+      case 'implant-outline':
+        return {
+          visible: roiCutaway,
+          materialState: {
+            opacity: 1,
+            transparent: false,
+            depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
+        };
       case 'implant-internal':
         return {
           visible: transparent,
@@ -1329,6 +1340,8 @@ export function createThreeView({
     if (!group || !presentationObjects.size) return false;
     const started = performance.now(),
       inspection = getInspection() || {};
+    // Axes are navigation aids, not scientific geometry. Keep the cut face clear.
+    if (axesHelper) axesHelper.visible = !Boolean(getClipGeometry() && inspection.cutaway);
     for (const object of presentationObjects) {
       const descriptor = object.userData?.waferCadPresentation;
       if (!descriptor) continue;
@@ -1487,6 +1500,44 @@ export function createThreeView({
     }
     geometry.setAttribute('annotationDepth', new THREE.Float32BufferAttribute(values, 1));
     return geometry;
+  }
+
+  // Exact outlines of the illustrative ROI-cut annotation interval. These are
+  // physical annotation bounds only; never interpret them as a solved junction.
+  function addAnnotationCutOutline(annotation, segments) {
+    if (!segments?.length) return null;
+    const positions = [];
+    const shear = Math.tan(((Number(annotation.tilt) || 0) * Math.PI) / 180);
+    const atZ = (xy, z) => {
+      const depth =
+        annotation.face === 'front' ? annotation.sourceZ - z : z - annotation.sourceZ;
+      return [xy[0] + shear * Math.max(0, depth), xy[1], z];
+    };
+    const edge = (a, b) => positions.push(...a, ...b);
+    for (const { p, q } of segments) {
+      const p0 = atZ(p, annotation.z0);
+      const q0 = atZ(q, annotation.z0);
+      const p1 = atZ(p, annotation.z1);
+      const q1 = atZ(q, annotation.z1);
+      edge(p0, q0);
+      edge(q0, q1);
+      edge(q1, p1);
+      edge(p1, p0);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const material = new THREE.LineBasicMaterial({
+      color: new THREE.Color(annotation.color || '#D65A6F').multiplyScalar(0.5),
+      depthTest: true,
+      depthWrite: false,
+    });
+    const outline = new THREE.LineSegments(geometry, material);
+    outline.name = 'Illustrative Implant interval ROI cut outline';
+    outline.renderOrder = 100100;
+    group.add(outline);
+    trackZDisplayObject(outline);
+    registerPresentationObject(outline, { kind: 'implant-outline' });
+    return outline;
   }
 
   function annotationSidewallParts(annotation, inspectionClip = null) {
@@ -3064,6 +3115,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       let implantInternalCount = 0,
         implantSurfaceCount = 0,
         implantCutCount = 0,
+        implantOutlineCount = 0,
         implantGradientMeshCount = 0;
       const annotationModel =
           isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model,
@@ -3099,6 +3151,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
             );
 
         if (inspectionSegments.length) {
+          if (clip && inspection.cutaway && addAnnotationCutOutline(implant, inspectionSegments)) {
+            implantOutlineCount++;
+          }
           const presentation = { kind: 'implant-cut', sortBias: 46 },
             cutState = presentationState(presentation, inspection).materialState,
             cutGeometry = sidewallGeometry(clip),
@@ -3257,6 +3312,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.implantInternalBuiltCount = String(implantInternalCount);
       host.dataset.implantSurfaceBuiltCount = String(implantSurfaceCount);
       host.dataset.implantCutBuiltCount = String(implantCutCount);
+      host.dataset.implantOutlineBuiltCount = String(implantOutlineCount);
       host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
       host.dataset.implantGradient = 'section-depth';
 
