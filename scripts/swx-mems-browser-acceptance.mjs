@@ -233,84 +233,118 @@ try {
         region.stack.filter((segment) => segment.layerId === deviceLayerId),
       );
       const visualSiliconZ = (Math.max(...siliconZ.map((segment) => segment.z1)) - 0.05) * zScale;
-      const cornerCamera = {
-        // WebGL scales physical Z to fit the XY span. Camera coordinates must
-        // use that displayed Z or the true miter is pushed above the frame.
-        position: [8.1, 31.9, visualSiliconZ + 12.85],
-        target: [2.1, 31.9, visualSiliconZ],
-        fov: 34,
-      };
-      const inspectProject = structuredClone(source);
-      inspectProject.display.threeCamera = cornerCamera;
-      for (const branch of inspectProject.snapshotBranches.branches) {
-        if (branch.headState?.display) branch.headState.display.threeCamera = cornerCamera;
-      }
-      for (const node of inspectProject.snapshotBranches.nodes) {
-        if (node.state?.display) node.state.display.threeCamera = cornerCamera;
-      }
-      for (const bookmark of inspectProject.snapshots) {
-        if (bookmark.state?.display) bookmark.state.display.threeCamera = cornerCamera;
-      }
-      await page.locator('[data-action="domain:project"]').click();
-      await page.locator('#openProjectInput').setInputFiles({
-        name: 'swx-corner-review.wafercad',
-        mimeType: 'application/json',
-        buffer: Buffer.from(JSON.stringify(inspectProject)),
-      });
-      const cornerOpen = page.getByRole('button', {
-        name: 'Open project',
-        exact: true,
-      });
-      if (await cornerOpen.isVisible()) await cornerOpen.click();
-      await page.waitForFunction(
-        (expected) =>
-          window.WaferCadV2Workstation.snapshot().projectName === expected &&
-          !window.WaferCadV2Workstation.snapshot().workflow.busy,
-        source.name,
-        { timeout: 120000 },
-      );
-      if (state === 'on') {
-        await page.locator('[data-action="domain:history"]').click();
-        await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+      // Camera-specific evidence is deliberately generated from the real UI,
+      // not from a second diagram renderer or a modified fabrication state.
+      // Earlier 'miter-corner' images were aimed at a contact pad and did not
+      // provide meaningful evidence of the SWX teeth or folded springs.
+      const closeups = [
+        {
+          name: 'swt-stoppers',
+          position: [-26, -12, visualSiliconZ + 13],
+          target: [-31, 0, visualSiliconZ],
+          fov: 31,
+        },
+        {
+          name: 'comb-banks',
+          position: [33, 23, visualSiliconZ + 21],
+          target: [24, 1, visualSiliconZ],
+          fov: 37,
+        },
+        {
+          name: 'folded-springs',
+          position: [13, 38, visualSiliconZ + 18],
+          target: [0, 25, visualSiliconZ],
+          fov: 36,
+        },
+      ];
+      for (const review of closeups) {
+        const reviewCamera = {
+          position: review.position,
+          target: review.target,
+          fov: review.fov,
+        };
+        const inspectProject = structuredClone(source);
+        inspectProject.display.threeCamera = reviewCamera;
+        // A separately focused cross-section along both comb handle classes:
+        // fixed cores must retain BOX and moving cores must be released.
+        inspectProject.section = { a: [25, -20], b: [25, 15] };
+        for (const branch of inspectProject.snapshotBranches.branches) {
+          if (branch.headState?.display) branch.headState.display.threeCamera = reviewCamera;
+          if (branch.headState) branch.headState.section = structuredClone(inspectProject.section);
+        }
+        for (const node of inspectProject.snapshotBranches.nodes) {
+          if (node.state?.display) node.state.display.threeCamera = reviewCamera;
+          if (node.state) node.state.section = structuredClone(inspectProject.section);
+        }
+        for (const bookmark of inspectProject.snapshots) {
+          if (bookmark.state?.display) bookmark.state.display.threeCamera = reviewCamera;
+          if (bookmark.state) bookmark.state.section = structuredClone(inspectProject.section);
+        }
+        await page.locator('[data-action="domain:project"]').click();
+        await page.locator('#openProjectInput').setInputFiles({
+          name: 'swx-science-review.wafercad',
+          mimeType: 'application/json',
+          buffer: Buffer.from(JSON.stringify(inspectProject)),
+        });
+        const confirm = page.getByRole('button', { name: 'Open project', exact: true });
+        if (await confirm.isVisible()) await confirm.click();
         await page.waitForFunction(
-          () =>
-            window.WaferCadV2Workstation.snapshot().workflow.branches.some(
-              (branch) => branch.id === 'on' && branch.active,
-            ),
-          null,
+          (expected) =>
+            window.WaferCadV2Workstation.snapshot().projectName === expected &&
+            !window.WaferCadV2Workstation.snapshot().workflow.busy,
+          source.name,
           { timeout: 120000 },
         );
-      }
-      await page.locator('[data-action="mode:single"]').click();
-      await page.locator('[data-action="view:three"]').click();
-      // Single view can still reserve half the workspace for Section dock.
-      // Close that dock for a full-size 3D view before inspecting 200nm ribs.
-      const sectionDock = page.locator('[data-action="section"]');
-      if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
-        await sectionDock.click();
-      }
-      await page.waitForFunction(
-        (expected) => {
-          const host = document.getElementById('threeHost');
-          const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
-          return (
-            host?.dataset.renderState === 'ready' &&
-            camera &&
-            camera.target.every((value, i) => Math.abs(value - expected.target[i]) < 1e-4)
+        if (state === 'on') {
+          await page.locator('[data-action="domain:history"]').click();
+          await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+          await page.waitForFunction(
+            () =>
+              window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+                (branch) => branch.id === 'on' && branch.active,
+              ),
+            null,
+            { timeout: 120000 },
           );
-        },
-        cornerCamera,
-        { timeout: 120000 },
-      );
+        }
+        await page.locator('[data-action="mode:single"]').click();
+        await page.locator('[data-action="view:three"]').click();
+        const sectionDock = page.locator('[data-action="section"]');
+        if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
+          await sectionDock.click();
+        }
+        await page.waitForFunction(
+          (expected) => {
+            const host = document.getElementById('threeHost');
+            const camera = window.WaferCadV2Workstation.snapshot().threeCamera;
+            return (
+              host?.dataset.renderState === 'ready' &&
+              camera &&
+              camera.target.every((value, i) => Math.abs(value - expected.target[i]) < 1e-4)
+            );
+          },
+          reviewCamera,
+          { timeout: 120000 },
+        );
+        await waitForPaint(page);
+        const reviewView = page.locator('#threePanel');
+        const bounds = await reviewView.boundingBox();
+        assert.ok(
+          bounds?.width > 700 && bounds.height > 400,
+          '3D science review needs a large canvas: ' + JSON.stringify(bounds),
+        );
+        await reviewView.screenshot({
+          path: resolve(out, 'swx-' + state + '-3d-' + review.name + '.png'),
+        });
+      }
+      await page.locator('[data-action="view:section"]').click();
       await waitForPaint(page);
-      const cornerView = page.locator('#threePanel');
-      const cornerBounds = await cornerView.boundingBox();
-      assert.ok(
-        cornerBounds?.width > 700 && cornerBounds.height > 400,
-        '3D corner review requires a large canvas: ' + JSON.stringify(cornerBounds),
-      );
-      await cornerView.screenshot({ path: resolve(out, 'swx-' + state + '-3d-miter-corner.png') });
-      assert.deepEqual(errors, [], 'Corner review triggered WebGL errors');
+      const sectionReview = page.locator('#sectionPanel');
+      assert.ok(await sectionReview.isVisible(), 'Comb BOX section must be visible');
+      await sectionReview.screenshot({
+        path: resolve(out, 'swx-' + state + '-section-comb-box.png'),
+      });
+      assert.deepEqual(errors, [], 'Science closeups triggered browser errors');
 
       report.cases.push({
         state,
