@@ -1597,8 +1597,24 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        appendSidewallTriangle(positions, normals, annotationDepths, lower0, lower1, upper1, firstDepths);
-        appendSidewallTriangle(positions, normals, annotationDepths, lower0, upper1, upper0, secondDepths);
+        appendSidewallTriangle(
+          positions,
+          normals,
+          annotationDepths,
+          lower0,
+          lower1,
+          upper1,
+          firstDepths,
+        );
+        appendSidewallTriangle(
+          positions,
+          normals,
+          annotationDepths,
+          lower0,
+          upper1,
+          upper0,
+          secondDepths,
+        );
       }
     }
 
