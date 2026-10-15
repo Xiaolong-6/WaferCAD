@@ -155,6 +155,31 @@ Paper Methods also prescribe thermally oxidized Si, photoresist, UV lithography,
 
 The Recipe browser acceptance now has an opt-in `--history-parity` gate for the Microdisk, PERC source-order and Sahli Tandem. Following a clean Base → Run All, it compares _each saved History step's_ model with the corresponding independently regenerated History step: all material names, per-material XY unions and physical Z slabs, plus Electrical Region metadata. Failure produces a per-step report under `test-results/example-recipe-runall/*-history-parity.json` identifying the first mismatched physical interval, without increasing tolerances or overwriting the paper-derived asset. This is more stringent than the existing final-state parity gate.
 
+## 2026-10-15 intermediate red-light reconciliation
+
+A new independent saved-History-vs-Kernel `--history-parity` check initially found 3/8
+Microdisk and 7/22 Tandem intermediate states inconsistent with their current Recipes;
+PERC passed 17/17. Microdisk Step 4's oxide XY discrepancy was 25.939 µm² missing
+and 5.943 µm² extra, above the 0.212 µm² numeric tolerance. Tandem's mismatches
+were Steps 1–2 (substrate label), 12–14 (precursor-class versus simulated
+perovskite-class label), and 19–20 (old IZO/Ag-finger occupancy).
+
+The one-shot guarded Chromium replay re-established only those ten stored models,
+relinked their saved bookmarks and preserved all original History node IDs, Variant
+IDs, Recipe chronology and final canonical material geometry. Targeted History /
+source fixture tests passed in the one-shot run. Permanent release acceptance still
+requires green strict Recipe browser parity on the resulting PR head; the temporary
+write-enabled workflow and fixture-mutating code were then deleted.
+
+**Scientific limitation:** The publication deposits a porous PbI2/CsBr precursor
+before conversion. The current Kernel Recipe represents its first 235 nm with
+the eventual perovskite material class and subsequently extends it by 205 nm;
+it has no physical chemical-conversion operation. The reconciled History now
+faithfully records what this *geometric surrogate* computes, not the actual
+precursor's composition. Keep the original precursor processing sequence in
+Record notes. Do not claim precursor-composition or semiconductor device-physics
+fidelity, and do not equate software replay success with paper Figure/SEM acceptance.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
