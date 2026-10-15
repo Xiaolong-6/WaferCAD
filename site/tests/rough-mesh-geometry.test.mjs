@@ -9,6 +9,7 @@ const {
   geometryFromRoughCap,
   geometryFromRoughMeshData,
   roughBoundaryEdgesFromTriangles,
+  roughEdgeSamplesInInterval,
   roughMeshDataFromPreparedCap,
   subdivideRoughBaseTriangles,
 } = await import('../rough-mesh-geometry.js');
@@ -62,6 +63,47 @@ test('software CPU rough mesh preserves physical height at Float32 vertices with
     maxError = Math.max(maxError, Math.abs(z - roughProfileOffsetAtPoint(x, y, appearance)));
   }
   assert.ok(maxError < 2e-5, `Float32 CPU displacement parity exceeded: ${maxError} um`);
+});
+
+test('sorted rough-edge interval lookup exactly preserves inclusive and strict LOD sampling', () => {
+  const samples = Array.from({ length: 65 }, (_, i) => [
+    (i - 32) / 16,
+    ['point', i],
+  ]);
+  samples.splice(33, 0, [1 / 16, ['duplicate', 33]]);
+  const queryValues = [
+    -3,
+    -2,
+    -1,
+    -0.5,
+    -1e-10,
+    0,
+    1e-10,
+    1 / 16,
+    0.5,
+    1.375,
+    2,
+    3,
+  ];
+  for (const t0 of queryValues) {
+    for (const t1 of queryValues) {
+      for (const interior of [false, true]) {
+        const epsilon = 1e-10;
+        const expected = samples.filter(([t]) =>
+          interior
+            ? t > Math.min(t0, t1) + epsilon && t < Math.max(t0, t1) - epsilon
+            : t >= Math.min(t0, t1) - epsilon && t <= Math.max(t0, t1) + epsilon,
+        );
+        assert.deepEqual(
+          roughEdgeSamplesInInterval(samples, t0, t1, { interior }),
+          expected,
+          `different LOD boundary samples for ${t0}..${t1}, interior=${interior}`,
+        );
+      }
+    }
+  }
+  assert.deepEqual(roughEdgeSamplesInInterval([], 0, 1), []);
+  assert.deepEqual(roughEdgeSamplesInInterval(undefined, 0, 1), []);
 });
 
 test('triangle-derived rough boundaries remove internal triangulation edges', () => {
