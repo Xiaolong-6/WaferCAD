@@ -27,14 +27,23 @@ async function main() {
   await mkdir(directory, { recursive: true });
   const { json, validation } = await buildSwxCompactCandidate();
   await writeFile(resolve(directory, 'swx-compact-candidate.wafercad'), json);
-  await writeFile(resolve(directory, 'validation.json'), JSON.stringify(validation, null, 2) + '\n');
-  console.log(JSON.stringify({
-    project: 'swx-compact-candidate.wafercad',
-    states: validation.branches,
-    historyNodes: validation.historyNodes,
-    projectBytes: validation.projectBytes,
-    scienceSignoff: 'blocked',
-  }, null, 2));
+  await writeFile(
+    resolve(directory, 'validation.json'),
+    JSON.stringify(validation, null, 2) + '\n',
+  );
+  console.log(
+    JSON.stringify(
+      {
+        project: 'swx-compact-candidate.wafercad',
+        states: validation.branches,
+        historyNodes: validation.historyNodes,
+        projectBytes: validation.projectBytes,
+        scienceSignoff: 'blocked',
+      },
+      null,
+      2,
+    ),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
