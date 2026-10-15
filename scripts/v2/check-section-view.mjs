@@ -60,8 +60,8 @@ try {
             : action.includes('main') || action === 'slice-coordinates'
               ? 'main'
               : 'section';
-          const moreSelector =
-            `#${panel}Panel button[aria-label="${{ main: 'Main', mask: 'Mask', section: 'Section' }[panel]} more tools"]`;
+          const label = { main: 'Main', mask: 'Mask', section: 'Section' }[panel];
+          const moreSelector = `#${panel}Panel button[aria-label="${label} more tools"]`;
           // View changes reparent the original controls after the next paint.
           // Wait for either an inline control or its actually enabled More menu;
           // clicking a disabled/empty More must never silently pass.
