@@ -22,6 +22,48 @@ const squareTriangles = [
   [a, c, d],
 ];
 
+test('software CPU rough mesh preserves physical height at Float32 vertices within 2e-5 um', async () => {
+  const { roughProfileOffsetAtPoint } = await import('../surface-rendering.js');
+  const appearance = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
+    featureSize: 0.7,
+    meanHeight: 0.35,
+    etchDepth: 0.9,
+    featureCv: 0.25,
+    heightCv: 0.3,
+    seed: 20261015,
+    sampleOrigin: [0.37, -0.19],
+  };
+  const mesh = roughMeshDataFromPreparedCap({
+    z: 0,
+    normal: 1,
+    appearance,
+    gpuDisplacement: false,
+    closeToIdeal: false,
+    lodZones: [
+      {
+        baseTriangles: squareTriangles,
+        maxEdge: Math.SQRT2,
+        edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+        triangleBudget: 256,
+        lodContext: { distance: 2, viewportWidth: 1100, viewportHeight: 800, maxDepth: 3 },
+      },
+    ],
+  });
+  assert.ok(mesh.positions.length > 0);
+  assert.equal(mesh.gpuDisplace.length, 0);
+  let maxError = 0;
+  for (let i = 0; i < mesh.positions.length; i += 3) {
+    const x = mesh.positions[i],
+      y = mesh.positions[i + 1],
+      z = mesh.positions[i + 2];
+    maxError = Math.max(maxError, Math.abs(z - roughProfileOffsetAtPoint(x, y, appearance)));
+  }
+  assert.ok(maxError < 2e-5, `Float32 CPU displacement parity exceeded: ${maxError} um`);
+});
+
 test('triangle-derived rough boundaries remove internal triangulation edges', () => {
   const edges = roughBoundaryEdgesFromTriangles(squareTriangles);
   assert.equal(edges.length, 4);
