@@ -147,13 +147,36 @@ try {
       assert.equal(await stage.isVisible(), false);
       assert.equal(await nav.isVisible(), true);
       assert.equal(await welcome.isVisible(), true, 'Project shows Welcome above its tools');
-      const welcomeBounds = await welcome.boundingBox();
-      const actionsBounds = await page.locator('#projectExportMenuBtn').boundingBox();
-      assert.ok(welcomeBounds && actionsBounds, 'Welcome and Project actions are measurable');
-      assert.ok(welcomeBounds.height >= 44, 'Welcome provides a 44px minimum touch target');
+      const welcomeLayout = await welcome.evaluate((link) => {
+        const content = link.parentElement;
+        const actions = link.nextElementSibling;
+        return {
+          isFirstItem: content.firstElementChild === link,
+          actionsAreNext: actions?.classList.contains('p-actions'),
+          containsExport: actions?.contains(content.querySelector('#projectExportMenuBtn')),
+          display: getComputedStyle(content).display,
+          direction: getComputedStyle(content).flexDirection,
+          positioning: getComputedStyle(link).position,
+        };
+      });
+      assert.deepEqual(
+        welcomeLayout,
+        {
+          isFirstItem: true,
+          actionsAreNext: true,
+          containsExport: true,
+          display: 'flex',
+          direction: 'column',
+          positioning: 'static',
+        },
+        'Welcome occupies the first in-flow Project row before New/Open/Export',
+      );
       assert.ok(
-        welcomeBounds.bottom <= actionsBounds.top,
-        'Welcome appears before New/Open/Export actions',
+        (await welcome.boundingBox()).height >= 44,
+        'Welcome provides a 44px minimum touch target',
+      );
+      await page.screenshot({
+        path: resolve(output, `mobile-${width}x${height}-project-welcome.png`),
       );
 
       const dock = await page.evaluate(() => {
