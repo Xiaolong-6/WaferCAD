@@ -134,8 +134,11 @@ test('ROI material section contours include rough and smooth cut levels only', (
   assert.ok(lines.every(([a, b]) => a[1] === 0 && b[1] === 0));
   const first = lines.find(([a, b]) => a[0] === 0 && b[0] === 0 && a[2] !== b[2]);
   assert.ok(first, 'cut edge has a material-height vertical border');
-  assert.ok(Math.abs(Math.max(first[0][2], first[1][2]) -
-    (2 - roughProfileOffsetAtPoint(0, 0, appearance))) < 1e-9);
+  assert.ok(
+    Math.abs(
+      Math.max(first[0][2], first[1][2]) - (2 - roughProfileOffsetAtPoint(0, 0, appearance)),
+    ) < 1e-9,
+  );
   assert.deepEqual(sectionCutContours([inside], clip), []);
   assert.deepEqual(sectionCutContours([wall], null), []);
 });
