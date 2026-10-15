@@ -55,8 +55,7 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
   const { geometryArea } = await import('../model.js');
-  const union = (polygons) =>
-    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  const union = (polygons) => v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
   for (const state of ['off', 'on']) {
     const pose = createSwxOptomechanicalCandidate(state);
     const fixed = union(pose.fixed);
@@ -79,9 +78,7 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
     );
     for (let index = 0; index < flexible.length; index++) {
       const target = anchoredPads[index + 2];
-      const attached = geometryArea(
-        v.intersection(union([flexible[index]]), union([target])),
-      );
+      const attached = geometryArea(v.intersection(union([flexible[index]]), union([target])));
       assert.ok(
         attached > 1e-6,
         state + ' compliant waveguide ' + index + ' misses its stationary terminal',
@@ -102,12 +99,10 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
       state + ' stationary optical routes intersect the moving actuator',
     );
     assert.ok(
-      geometryArea(v.intersection(union(flexible.slice(0, 1)), union(flexible.slice(1)))) <
-        1e-8,
+      geometryArea(v.intersection(union(flexible.slice(0, 1)), union(flexible.slice(1)))) < 1e-8,
       state + ' moving optical waveguides short each other',
     );
-    const connectedRegion = (point) =>
-      moving.findIndex((poly) => v.pointInMulti(point, [poly]));
+    const connectedRegion = (point) => moving.findIndex((poly) => v.pointInMulti(point, [poly]));
     const samplePoints = [
       [-25, -27.4 + pose.travelUm],
       [25, -27.4 + pose.travelUm],
@@ -131,8 +126,7 @@ test('each optical port terminates at the correct fixed/moving node', async () =
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
-  const union = (polygons) =>
-    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  const union = (polygons) => v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
   for (const state of ['off', 'on']) {
     const pose = createSwxOptomechanicalCandidate(state);
     const route = pose.opticalRouting;
@@ -141,7 +135,10 @@ test('each optical port terminates at the correct fixed/moving node', async () =
       ...pose.optics.movableFacetsAndPorts,
       ...route.movingSpringWaveguides,
     ]);
-    const fixedPorts = [[-22, -35], [21, -35]];
+    const fixedPorts = [
+      [-22, -35],
+      [21, -35],
+    ];
     const movingPorts = [
       [-22, -61 + pose.travelUm],
       [21, -61 + pose.travelUm],
@@ -160,4 +157,3 @@ test('each optical port terminates at the correct fixed/moving node', async () =
     }
   }
 });
-
