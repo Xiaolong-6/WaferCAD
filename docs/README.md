@@ -1,5 +1,7 @@
 # Documentation map
 
+- [PR 250 renderer audit (2026-10-15)](PR250_RENDERER_AUDIT_2026-10-15.md) — rough boundary closure, ROI ownership, depth visibility, runtime evidence and remaining acceptance gates.
+
 Use this page to find the document that owns a question. Current contracts describe the product; dated audits describe evidence at an exact revision. The [documentation architecture](DOCUMENTATION.md) explains authority, generated content and publishing.
 
 ## Product users
