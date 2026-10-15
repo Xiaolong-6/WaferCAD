@@ -45,7 +45,9 @@ function capPerimeter(cap) {
           by = Number(b[1]);
         const length = Math.hypot(bx - ax, by - ay);
         const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1);
-        const subdivisions = appearance ? Math.min(48, Math.max(1, Math.ceil((length * 3) / feature))) : 1;
+        const subdivisions = appearance
+          ? Math.min(48, Math.max(1, Math.ceil((length * 3) / feature)))
+          : 1;
         let previous = [ax, ay, heightAt(ax, ay)];
         for (let step = 1; step <= subdivisions; step++) {
           const t = step / subdivisions;
