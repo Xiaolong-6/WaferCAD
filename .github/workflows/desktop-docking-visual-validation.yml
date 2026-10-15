@@ -1,0 +1,51 @@
+name: Desktop Docking Visual Validation
+
+on:
+  push:
+    branches: [feat/desktop-view-docking-20261015]
+    paths:
+      - '.github/workflows/desktop-docking-visual-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  docking-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Validate pure layout state
+        run: node --test site/tests/view-layout.test.mjs
+      - name: Start native v2 server
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html && exit 0
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Render and verify production Docking in Chromium
+        env:
+          WAFERCAD_V2_BASE: http://127.0.0.1:4182
+        run: node scripts/v2/check-desktop-docking.mjs
+      - name: Preserve screenshot and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: desktop-docking-targeted-evidence
+          path: |
+            test-results/ui-v2-desktop-docking/
+            serve-v2.log
+          if-no-files-found: ignore
+          retention-days: 14
