@@ -581,6 +581,7 @@ export function createSwxGeometry(state = 'off') {
       fixed,
       movable,
       flexure,
+      combBanks: combs,
       stopperFixed: stoppers.fixed,
       stopperMovable: stoppers.movable,
       gratingCouplers: gratings.groups,
