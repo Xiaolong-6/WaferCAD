@@ -149,11 +149,11 @@ The [published Results and device micrograph](https://www.nature.com/articles/s4
 
 Paper Methods also prescribe thermally oxidized Si, photoresist, UV lithography, buffered HF oxide patterning, first resist removal, protective resist recoat for chip dicing, second resist removal, and XeF2 gas Si undercut in precisely that order. These operations are now represented by the saved Recipe and M07 narrative record.
 
-**Limits:** the 36 µm XeF2 numerical release setting, the nominal 55 µm central mask hub, and the eight radial depth slices are engineering reconstruction parameters. The source paragraph does not determine these numerically. Fig. 2a is an SEM of a *similar* device, so matching 148/82 µm photomask design values must not be reported as full pixel-level SEM overlay acceptance. A source-aligned cut and real browser screenshot remain pending.
+**Limits:** the 36 µm XeF2 numerical release setting, the nominal 55 µm central mask hub, and the eight radial depth slices are engineering reconstruction parameters. The source paragraph does not determine these numerically. Fig. 2a is an SEM of a _similar_ device, so matching 148/82 µm photomask design values must not be reported as full pixel-level SEM overlay acceptance. A source-aligned cut and real browser screenshot remain pending.
 
 ## Intermediate saved History vs independent Kernel replay
 
-The Recipe browser acceptance now has an opt-in `--history-parity` gate for the Microdisk, PERC source-order and Sahli Tandem. Following a clean Base → Run All, it compares *each saved History step's* model with the corresponding independently regenerated History step: all material names, per-material XY unions and physical Z slabs, plus Electrical Region metadata. Failure produces a per-step report under `test-results/example-recipe-runall/*-history-parity.json` identifying the first mismatched physical interval, without increasing tolerances or overwriting the paper-derived asset. This is more stringent than the existing final-state parity gate.
+The Recipe browser acceptance now has an opt-in `--history-parity` gate for the Microdisk, PERC source-order and Sahli Tandem. Following a clean Base → Run All, it compares _each saved History step's_ model with the corresponding independently regenerated History step: all material names, per-material XY unions and physical Z slabs, plus Electrical Region metadata. Failure produces a per-step report under `test-results/example-recipe-runall/*-history-parity.json` identifying the first mismatched physical interval, without increasing tolerances or overwriting the paper-derived asset. This is more stringent than the existing final-state parity gate.
 
 ## Remaining implementation gates
 
