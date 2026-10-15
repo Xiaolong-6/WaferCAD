@@ -28,7 +28,9 @@ export async function runRendererProductCases({ page, capture }) {
       () => {
         const host = document.getElementById('threeHost');
         const canvas = host?.querySelector('canvas');
-        return host?.dataset.renderState === 'ready' && canvas?.dataset.roughMeshMode === 'detailed';
+        return (
+          host?.dataset.renderState === 'ready' && canvas?.dataset.roughMeshMode === 'detailed'
+        );
       },
       null,
       { timeout: 120000 },
