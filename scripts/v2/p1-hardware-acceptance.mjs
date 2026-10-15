@@ -9,6 +9,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { classifyHardwareWebGL } from './p1-gpu-identity.mjs';
 import {
+  hasVerifiedScientificModel,
+  sameVerifiedScientificModel,
+} from './p1-scientific-model-evidence.mjs';
+import {
   summarizeHardwareInput,
   threeCameraGestureChanged,
   threeCameraZoomChanged,
@@ -378,6 +382,9 @@ try {
   report.inputProbeInitial = await openAndSampleInput('/app.html?start=example&example=m3d');
   await endCpuProfile();
   report.cases.initialM3D = await hostMetrics();
+  report.cases.initialM3D.modelEvidenceValid = hasVerifiedScientificModel(
+    report.cases.initialM3D,
+  );
   report.cases.initialM3D.responsiveness = responsiveness(report.cases.initialM3D.vitals);
   report.cases.initialM3D.input = summarizeHardwareInput(
     report.cases.initialM3D.vitals?.inputEvents,
@@ -415,6 +422,9 @@ try {
   report.inputProbeReload = await openAndSampleInput('/app.html');
   await endCpuProfile();
   report.cases.qualityReload = await hostMetrics();
+  report.cases.qualityReload.modelEvidenceValid = hasVerifiedScientificModel(
+    report.cases.qualityReload,
+  );
   report.cases.qualityReload.responsiveness = responsiveness(report.cases.qualityReload.vitals);
   report.cases.qualityReload.input = summarizeHardwareInput(
     report.cases.qualityReload.vitals?.inputEvents,
@@ -424,8 +434,16 @@ try {
   report.cases.qualityReload.repeatSha256 = await photograph('03-quality-repeat.png');
   report.cases.qualityReload.sameFramePixels =
     report.cases.qualityReload.screenshotSha256 === report.cases.qualityReload.repeatSha256;
-  report.cases.qualityReload.modelUnchanged =
-    report.cases.initialM3D.modelHash === report.cases.qualityReload.modelHash;
+  report.cases.qualityReload.modelUnchanged = sameVerifiedScientificModel(
+    report.cases.initialM3D,
+    report.cases.qualityReload,
+  );
+  if (
+    !report.cases.initialM3D.modelEvidenceValid ||
+    !report.cases.qualityReload.modelEvidenceValid
+  ) {
+    report.validationFailures.push('Scientific model evidence missing or invalid.');
+  }
   const stages = report.cases.qualityReload.vitals?.viewTransitions?.map((x) => x.state) || [];
   report.cases.qualityReload.stageSequencePassed =
     stages.indexOf('coarse') >= 0 &&
@@ -437,8 +455,10 @@ try {
   // Run gesture checks after the pixel-stability capture; the gestures may
   // change the inspection camera but never the scientific model.
   report.threeGestures = await verifyThreeGestures();
-  report.threeGestures.modelUnchanged =
-    (await hostMetrics()).modelHash === report.cases.qualityReload.modelHash;
+  report.threeGestures.modelUnchanged = sameVerifiedScientificModel(
+    report.cases.qualityReload,
+    await hostMetrics(),
+  );
   if (!report.threeGestures.passed) {
     report.validationFailures.push(
       '3D canvas Orbit/Zoom must independently change camera with trusted pointer/wheel delivery.',
@@ -465,6 +485,8 @@ try {
     report.hardwareVerified &&
     report.cases.qualityReload.fastSetting === false &&
     report.cases.qualityReload.stageSequencePassed &&
+    report.cases.initialM3D.modelEvidenceValid &&
+    report.cases.qualityReload.modelEvidenceValid &&
     report.cases.qualityReload.modelUnchanged &&
     report.cases.qualityReload.sameFramePixels &&
     report.cases.initialM3D.input.responsive &&
@@ -473,7 +495,8 @@ try {
     report.threeGestures.modelUnchanged &&
     report.cases.initialM3D.responsiveness.responsive &&
     report.cases.qualityReload.responsiveness.responsive &&
-    report.errors.length === 0;
+    report.errors.length === 0 &&
+    report.validationFailures.length === 0;
 } catch (error) {
   report.errors.push(String(error?.stack || error));
   report.passed = false;
