@@ -1680,7 +1680,7 @@ export function applyOperation(model, params) {
   }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
-      params?.growth === 'conformal' ||
+      ['conformal', 'pvd-step'].includes(params?.growth) ||
       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
     rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
@@ -1692,7 +1692,9 @@ export function applyOperation(model, params) {
     const prefix =
       params?.growth === 'conformal'
         ? 'Conformal geometry failed safely'
-        : 'Isotropic etch geometry failed safely';
+        : params?.growth === 'pvd-step'
+          ? 'PVD step geometry failed safely'
+          : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
       error: `${prefix}: ${error?.message || 'unknown geometry error'}`,
