@@ -30,7 +30,12 @@ const corners = ({ x, y, w, h }) => [
 ];
 const centered = (w, h, x = 0, y = 0) => rect(x - w / 2, y - h / 2, w, h);
 
-export const GAN_LOWER_FEED = Object.freeze({ portOffsetY: 1450, routeCenterY: 950, routeLength: 1150, routeWidth: 110 });
+export const GAN_LOWER_FEED = Object.freeze({
+  portOffsetY: 1450,
+  routeCenterY: 1000,
+  routeLength: 1100,
+  routeWidth: 110,
+});
 const CHANNEL_CENTERS = Object.freeze(Array.from({ length: 6 }, (_, i) => (i - 2.5) * 60));
 const fingers = CHANNEL_CENTERS.map((x) => centered(30, 760, x));
 
@@ -105,10 +110,14 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   {
     id: 23,
     name: 'Two inferred lower supply/return trenches (Fig. 1a surrogate)',
-    rectangles: [-1, 1].map((side) => centered(
-      GAN_LOWER_FEED.routeWidth, GAN_LOWER_FEED.routeLength,
-      0, side * GAN_LOWER_FEED.routeCenterY,
-    )),
+    rectangles: [-1, 1].map((side) =>
+      centered(
+        GAN_LOWER_FEED.routeWidth,
+        GAN_LOWER_FEED.routeLength,
+        0,
+        side * GAN_LOWER_FEED.routeCenterY,
+      ),
+    ),
   },
   { id: 11, name: 'Lower transition 600 x 860 um (inferred)', rectangles: [centered(600, 860)] },
   { id: 12, name: 'Upper transition 480 x 820 um (inferred)', rectangles: [centered(480, 820)] },

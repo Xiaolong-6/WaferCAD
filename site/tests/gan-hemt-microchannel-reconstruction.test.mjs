@@ -38,7 +38,7 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(masks.get(10).rectangles[0].h, 900);
   assert.equal(masks.get(23).rectangles.length, 2);
   assert.equal(GAN_LOWER_FEED.portOffsetY, 1450);
-  assert.ok(masks.get(23).rectangles.every((r) => r.w === 110 && r.h === 1150));
+  assert.ok(masks.get(23).rectangles.every((r) => r.w === 110 && r.h === 1100));
   assert.equal(masks.get(13).rectangles.length, 6);
   assert.ok(masks.get(13).rectangles.every((r) => r.w === 30 && r.h === 760));
   const topStripes = masks.get(13).rectangles;
