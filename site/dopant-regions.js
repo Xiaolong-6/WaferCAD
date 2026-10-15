@@ -185,87 +185,87 @@ export function findTerminalQualifiedDopantOverlaps(model, terminals, vectorApi)
 }
 
 /**
- * Audit whether a qualitative body-implant interval lies inside a matching
- * *schematic* n-/p-well annotation. This is a geometric consistency check,
- * not ion stopping, net doping, or a solved electrical junction.
+ * Audit whether qualitative body intervals lie inside the corresponding
+ * *schematic* n-/p-well annotations. This does not model ion stopping,
+ * net doping, depletion, activation or a physical junction.
  *
- * Both bodies and well markers are clipped in Z; slices are split at every
- * well boundary so partially covered intervals are measured correctly.
- * The caller supplies the existing model geometry-area function to avoid
- * duplicating the scientific polygon area kernel.
+ * Slice every body interval at the well Z boundaries. The caller supplies
+ * the model's exact geometry-area function; this audit never approximates
+ * a polygon or changes the stored Implant, Recipe or physical material.
  */
 export function auditSchematicWellBodyCoverage(model, vectorApi, geometryArea) {
   if (typeof geometryArea !== 'function') {
     throw new TypeError('Schematic well audit requires a geometry-area function.');
   }
   const wellPolarity = { 'n-type': 'donor', 'p-type': 'acceptor' };
-  const wells = (model.electricalRegions || []).flatMap((region) => {
+  const wells = [];
+  for (const region of model.electricalRegions || []) {
     const polarity = wellPolarity[region.regionType];
-    if (!polarity || !String(region.name).toLowerCase().includes('well')) return [];
-    return (region.patches || [])
-      .filter((patch) => Array.isArray(patch.geom))
-      .map((patch) => ({
+    if (!polarity || !String(region.name).toLowerCase().includes('well')) continue;
+    for (const patch of region.patches || []) {
+      if (!Array.isArray(patch.geom)) continue;
+      wells.push({
         polarity,
         hostLayerId: patch.layerId,
         geom: patch.geom,
         z0: region.face === 'back' ? patch.z : patch.z - region.thickness,
         z1: region.face === 'back' ? patch.z + region.thickness : patch.z,
-      }));
-  });
-  return (model.dopantRegions || [])
-    .filter((record) => record.role === 'body')
-    .map((record) => {
-      const matches = wells.filter(
-        (well) => well.hostLayerId === record.hostLayerId && well.polarity === record.polarity,
-      );
-      const compatible = wells.filter((well) => well.hostLayerId === record.hostLayerId);
-      const measure = { total: 0, withinWell: 0, outsideWell: 0, oppositeWell: 0 };
-      for (const fragment of resolveQualitativeDopantRegion(model, record, vectorApi)) {
-        const cuts = [fragment.z0, fragment.z1];
-        for (const well of compatible) {
-          if (well.z0 > fragment.z0 && well.z0 < fragment.z1) cuts.push(well.z0);
-          if (well.z1 > fragment.z0 && well.z1 < fragment.z1) cuts.push(well.z1);
-        }
-        cuts.sort((a, b) => a - b);
-        for (let index = 1; index < cuts.length; index++) {
-          const z0 = cuts[index - 1];
-          const z1 = cuts[index];
-          if (z1 <= z0) continue;
-          const mid = (z0 + z1) / 2;
-          const active = compatible.filter((well) => well.z0 < mid && mid < well.z1);
-          const same = active.filter((well) => well.polarity === record.polarity);
-          const opposite = active.filter((well) => well.polarity !== record.polarity);
-          const volume = geometryArea(fragment.geom) * (z1 - z0);
-          const withWell = same.length
-            ? geometryArea(
-                vectorApi.intersection(
-                  fragment.geom,
-                  vectorApi.unionGeometries(same.map((well) => well.geom)),
-                ),
-              ) * (z1 - z0)
-            : 0;
-          const withOpposite = opposite.length
-            ? geometryArea(
-                vectorApi.intersection(
-                  fragment.geom,
-                  vectorApi.unionGeometries(opposite.map((well) => well.geom)),
-                ),
-              ) * (z1 - z0)
-            : 0;
-          measure.total += volume;
-          measure.withinWell += withWell;
-          measure.outsideWell += Math.max(0, volume - withWell);
-          measure.oppositeWell += withOpposite;
-        }
+      });
+    }
+  }
+
+  const audits = [];
+  for (const record of model.dopantRegions || []) {
+    if (record.role !== 'body') continue;
+    const compatible = wells.filter((well) => well.hostLayerId === record.hostLayerId);
+    const hasMatchingSchematicWell = compatible.some((well) => well.polarity === record.polarity);
+    const measure = { total: 0, withinWell: 0, outsideWell: 0, oppositeWell: 0 };
+
+    for (const fragment of resolveQualitativeDopantRegion(model, record, vectorApi)) {
+      const cuts = [fragment.z0, fragment.z1];
+      for (const well of compatible) {
+        if (well.z0 > fragment.z0 && well.z0 < fragment.z1) cuts.push(well.z0);
+        if (well.z1 > fragment.z0 && well.z1 < fragment.z1) cuts.push(well.z1);
       }
-      return {
-        dopantRegionId: record.id,
-        polarity: record.polarity,
-        hasMatchingSchematicWell: matches.length > 0,
-        bodyVolumeUm3: measure.total,
-        matchingWellVolumeUm3: measure.withinWell,
-        outsideMatchingWellVolumeUm3: measure.outsideWell,
-        oppositeWellVolumeUm3: measure.oppositeWell,
-      };
+      cuts.sort((a, b) => a - b);
+      for (let index = 1; index < cuts.length; index++) {
+        const z0 = cuts[index - 1];
+        const z1 = cuts[index];
+        if (z1 <= z0) continue;
+        const mid = (z0 + z1) / 2;
+        const active = compatible.filter((well) => well.z0 < mid && mid < well.z1);
+        const matching = active.filter((well) => well.polarity === record.polarity);
+        const opposite = active.filter((well) => well.polarity !== record.polarity);
+        const thickness = z1 - z0;
+        const volume = geometryArea(fragment.geom) * thickness;
+
+        let withinWell = 0;
+        if (matching.length) {
+          const mask = vectorApi.unionGeometries(matching.map((well) => well.geom));
+          withinWell = geometryArea(vectorApi.intersection(fragment.geom, mask)) * thickness;
+        }
+        let insideOppositeWell = 0;
+        if (opposite.length) {
+          const mask = vectorApi.unionGeometries(opposite.map((well) => well.geom));
+          insideOppositeWell =
+            geometryArea(vectorApi.intersection(fragment.geom, mask)) * thickness;
+        }
+        measure.total += volume;
+        measure.withinWell += withinWell;
+        measure.outsideWell += Math.max(0, volume - withinWell);
+        measure.oppositeWell += insideOppositeWell;
+      }
+    }
+
+    audits.push({
+      dopantRegionId: record.id,
+      polarity: record.polarity,
+      hasMatchingSchematicWell,
+      bodyVolumeUm3: measure.total,
+      matchingWellVolumeUm3: measure.withinWell,
+      outsideMatchingWellVolumeUm3: measure.outsideWell,
+      oppositeWellVolumeUm3: measure.oppositeWell,
     });
+  }
+  return audits;
 }
