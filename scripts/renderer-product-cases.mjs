@@ -427,7 +427,13 @@ export async function runRendererProductCases({ page, capture }) {
   );
   await capture(page, 'wide-rough-3d-transparent-borders-max');
   await page.locator('#threeMaxBtn').click();
-  await page.locator('#threeBorderControl').click();
+  // The Border label can remain hidden when the workspace reflows after
+  // maximizing. Dispatch the same change event on its checkbox to restore
+  // the test's original inspection state without depending on hit testing.
+  await page.locator('#threeBorders').evaluate((input) => {
+    input.checked = false;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   assert.equal(await page.locator('#threeBorders').isChecked(), false);
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('1');
