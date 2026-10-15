@@ -81,9 +81,15 @@ try {
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
       for (const view of ['main', 'mask', 'three', 'section']) {
         await page.evaluate((name) => {
-          // Desktop Section is shown in Overview; portrait has its own dock action.
+          // Section has its own dock: maximize on desktop, use the mobile
+          // Section action in portrait. An Overview screenshot is not proof
+          // that the dedicated Section view can be selected.
           const actions =
-            name === 'section' ? ['mobile-section', 'mode:overview', 'section'] : ['view:' + name];
+            name === 'section'
+              ? width <= 820
+                ? ['mobile-section']
+                : ['maximize:section']
+              : ['view:' + name];
           const button = actions
             .map((action) => document.querySelector('button[data-action="' + action + '"]'))
             .find(Boolean);
@@ -91,6 +97,17 @@ try {
           button.click();
         }, view);
         await waitForPaint(page);
+        const sectionState =
+          view === 'section'
+            ? await page.evaluate(() => {
+                const ui = window.WaferCadV2Workstation.snapshot().ui;
+                return { view: ui.view, maximize: ui.maximize };
+              })
+            : null;
+        if (sectionState) {
+          if (width <= 820) assert.equal(sectionState.view, 'section', 'Portrait Section tab');
+          else assert.equal(sectionState.maximize, 'section', 'Desktop Section maximized');
+        }
         if (view === 'three') {
           try {
             await page.waitForFunction(
@@ -108,11 +125,8 @@ try {
         const filename = view + '-' + width + '.png';
         await page.screenshot({ path: resolve(output, filename) });
         const panel = page.locator('#' + view + 'Panel');
-        if (await panel.isVisible()) {
-          await panel.screenshot({ path: resolve(output, view + '-' + width + '-panel.png') });
-        } else {
-          report.warnings.push('View panel not visible: ' + view + '/' + width);
-        }
+        assert.ok(await panel.isVisible(), 'Selected view must be visible: ' + view + '/' + width);
+        await panel.screenshot({ path: resolve(output, view + '-' + width + '-panel.png') });
         report.captures.push({
           width,
           height,

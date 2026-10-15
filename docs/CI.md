@@ -42,7 +42,7 @@ deployment verdict remain mandatory. A Draft skipped check means
 
 ## Pull-request gates
 
-`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes. It runs pinned ESLint, Prettier format verification, generated-document consistency and the complete Node test suite (`npm run check`). It is a stable required-check candidate; repository ruleset configuration is a separate GitHub administration action.
+`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains a stable check name. Draft runs pinned ESLint, Prettier, documentation consistency and focused CI configuration tests. **Ready for Review and manual execution run the complete Node suite** (`npm run check`). A Draft Quality pass does not certify the Node suite. Repository ruleset configuration is a separate GitHub administration action.
 
 `Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 
