@@ -152,6 +152,21 @@ try {
         { name: 'comb', position: [39, -10, topZ + 52], target: [0, -22, topZ], fov: 46 },
         { name: 'swt', position: [19, -71, topZ + 38], target: [0, -48, topZ], fov: 43 },
         { name: 'springs', position: [12, 62, topZ + 53], target: [0, 25, topZ], fov: 47 },
+        // Nearly normal-incidence cameras show XY topology without
+        // perspective clipping; Z targets account for the displayed
+        // physical height rather than assuming an unscaled Z origin.
+        {
+          name: 'swt-plan',
+          position: [4, -55, topZ + 58],
+          target: [0, -48, topZ * 0.45],
+          fov: 25,
+        },
+        {
+          name: 'actuator-plan',
+          position: [4, -8, topZ + 115],
+          target: [0, 0, topZ * 0.45],
+          fov: 44,
+        },
       ];
       for (const view of closeups) {
         const camera = { position: view.position, target: view.target, fov: view.fov };
