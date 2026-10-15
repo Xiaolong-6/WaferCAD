@@ -112,11 +112,10 @@ try {
         '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
       )
       .click();
-    await page.waitForFunction(
-      () =>
-        window.WaferCadV2Workstation.snapshot().model.layers.some(
-          (layer) => layer.name === 'Native history B',
-        ),
+    await page.waitForFunction(() =>
+      window.WaferCadV2Workstation.snapshot().model.layers.some(
+        (layer) => layer.name === 'Native history B',
+      ),
     );
     assert.deepEqual(
       (await snapshot()).model,
