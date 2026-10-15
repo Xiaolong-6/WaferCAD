@@ -104,8 +104,15 @@ ALD, or a predicted TEM morphology. In particular, the narrow cap is a
 2.5D occupancy approximation rather than a resolved deposition-angle solver.
 
 The local reconstruction must validate an unbroken overlapping Pd Z interval
-through every CNTFET's gate-edge crossing, in addition to the existing mask,
-nano-film, native 45 nm Al₂O₃ ALD and recipe/history contracts. A green CI
+through every CNTFET's gate-edge crossing, with **more than 10 nm of common
+metal Z height** at each sampled lateral transition, in addition to the
+existing mask, nano-film, native 45 nm Al₂O₃ ALD and recipe/history contracts.
+This is an explicit ideal-contact acceptance requirement for the surrogate:
+a 45 nm Pd layer stepping down across a 26 nm gate has at most 19 nm Z
+overlap between the two full horizontal films. The earlier browser demand
+for more than 25 nm was therefore geometrically impossible, even with
+perfect sidewall coverage; the new 10 nm minimum remains below the modeled
+11.25 nm wall bridge and is checked without skipping any sample. A green CI
 proves internal model consistency under this documented hypothesis; it does
 not prove the authors' unpublished contact-pad layout, original GDS, or
 measured device connectivity.
