@@ -16,7 +16,7 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 | Starting interposer wafers           | Two 400 µm double-side-polished Si wafers          | Source fabrication recorded; structural surrogate below |
 | Front/back DRIE                      | 200 µm each side                                   | Lower cavity depth 200 µm                               |
 | Interposer final thickness           | ~800 µm                                            | 400 µm Base + four 100 µm bridge tiers                  |
-| Microchannel footprint bottom/top    | 700 × 900 µm / 380 × 760 µm                        | Bottom opening; *nominal* top region, not the union of etched top stripes |
+| Microchannel footprint bottom/top    | 700 × 900 µm / 380 × 760 µm                        | Bottom opening; top channel envelope                    |
 | Straight top channel width / spacing | 30 / 30 µm (paper main text)                       | Six illustrative 30 µm channels, 30 µm apart            |
 | HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm                 |
 | HEMT active region                   | 303 × 393 µm                                       | Mask dimension                                          |
