@@ -21,6 +21,9 @@ concurrency:
 jobs:
   shared-workstation:
     name: Stage C shared runtime and M4 real projects
+    # The same workflow_call is a mandatory, unchanged production release gate.
+    # In Draft, visual-first capture plus focused science contracts run instead.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:

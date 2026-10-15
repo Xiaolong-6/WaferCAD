@@ -1,6 +1,6 @@
 # M5-Lite default entry handoff — 2026-10-12
 
-> **Post-release correction, 2026-10-13:** The current v2 footer shows a linked deployed commit SHA, not the former “Use legacy interface” action. The legacy URL still exists for compatibility, but direct navigation is not an automatic save. Save or export the project before leaving v2. Historical tests below describe the earlier release revision. See [current handoff status](../HANDOFF_STATUS_2026-10-13.md).
+> **Post-release correction, 2026-10-13:** The current v2 footer shows a linked deployed commit SHA, not the former “Use legacy interface” action. The legacy URL still exists for compatibility, but direct navigation is not an automatic save. Save or export the project before leaving v2. Historical tests below describe the earlier release revision. See [current handoff status](../../HANDOFF_STATUS_2026-10-13.md).
 
 ## 上线交接摘要
 

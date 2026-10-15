@@ -23,6 +23,8 @@ concurrency:
 jobs:
   three:
     name: Small-model 3D gestures and full-model GLB Abort
+    # Full 3D gestures/export matrix waits for final review; Draft gets real frames.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
