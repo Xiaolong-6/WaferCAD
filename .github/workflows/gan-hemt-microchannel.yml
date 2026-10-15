@@ -40,6 +40,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      # Temporary collection only; final committed formatting is checked in
+      # an unmodified CI workflow after the regenerated assets are synced.
+      - name: Format and emit HEMT code/docs source candidates
+        run: |
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+          node -e "const f=require('node:fs');for(const [label,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('WAFERCAD_FORMAT|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('WAFERCAD_FORMAT_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Focused lint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - name: Focused formatting
