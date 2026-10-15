@@ -259,7 +259,7 @@ test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps'
       if (previous) {
         const connectedZ = Math.min(previous.z1, segment.z1) - Math.max(previous.z0, segment.z0);
         assert.ok(
-          connectedZ > 0.001,
+          connectedZ > 0.01,
           'Pd has no 3D-overlapping conductive bridge at CNTFET cell ' + cell + ', X=' + x,
         );
       }
