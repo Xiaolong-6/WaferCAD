@@ -62,7 +62,22 @@ test('legacy Implant and optional buried Recipe survive normalization and code r
   const legacy = normalizeProcessRecipe({
     steps: [{ command: 'implant', params: { name: 'Historical', depth: '200 nm' } }],
   });
-  assert.equal(legacy.steps[0].params.startDepthUm, 0);
+  assert.equal(
+    Object.hasOwn(legacy.steps[0].params, 'startDepthUm'),
+    false,
+    'Legacy surface-start Implant must not gain new storage keys',
+  );
+  assert.equal(legacy.steps[0].params.startDepthUm ?? 0, 0);
+  const explicitZero = normalizeProcessRecipe({
+    steps: [
+      { command: 'implant', params: { name: 'Zero', depth: '200 nm', startDepth: '0 nm' } },
+    ],
+  });
+  assert.equal(
+    Object.hasOwn(explicitZero.steps[0].params, 'startDepthUm'),
+    false,
+    'Explicit zero should normalize to the same canonical legacy form',
+  );
   const model = modelApi.createModel({ shape: 'rect', width: 3, height: 3, thickness: 2 });
   const applied = modelApi.applyOperation(model, {
     type: 'implant',
