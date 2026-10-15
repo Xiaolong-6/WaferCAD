@@ -27,8 +27,14 @@ export const CRITICAL_LEGACY_CONTRACTS = [
   {
     path: 'scripts/history-regression.mjs',
     domain: 'History replay and branching',
-    native: ['scripts/v2/check-cross-ui-recovery.mjs'],
-    gaps: ['bookmark editing and historical Step replay', 'full History export'],
+    native: [
+      'scripts/v2/check-cross-ui-recovery.mjs',
+      'scripts/v2/check-history-variant-parity.mjs',
+    ],
+    gaps: [
+      'bookmark editing and historical Step editing/insertion',
+      'History export and fault-recovery replay matrix',
+    ],
   },
   {
     path: 'scripts/persistence-regression.mjs',
