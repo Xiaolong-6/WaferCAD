@@ -94,9 +94,7 @@ function clipBoundaryEdges(clip) {
     for (const ring of polygon || []) {
       if (!Array.isArray(ring) || ring.length < 2) continue;
       const last =
-        ring.length > 2 &&
-        ring[0][0] === ring.at(-1)[0] &&
-        ring[0][1] === ring.at(-1)[1]
+        ring.length > 2 && ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1]
           ? ring.length - 1
           : ring.length;
       for (let i = 0; i < last; i++) {
@@ -153,8 +151,7 @@ export function sectionCutContours(sidewalls = [], clip = null) {
     const tolerance = Math.max(1e-8, length * 1e-7);
     if (
       !edges.some(
-        ([a, b]) =>
-          pointNearSegment(p, a, b, tolerance) && pointNearSegment(q, a, b, tolerance),
+        ([a, b]) => pointNearSegment(p, a, b, tolerance) && pointNearSegment(q, a, b, tolerance),
       )
     )
       continue;
@@ -170,23 +167,11 @@ export function sectionCutContours(sidewalls = [], clip = null) {
     for (let i = 0; i < sections; i++) {
       const t0 = i / sections,
         t1 = (i + 1) / sections;
-      result.push([
-        sample(t0, wall.z0, wall.lowerSurface),
-        sample(t1, wall.z0, wall.lowerSurface),
-      ]);
-      result.push([
-        sample(t0, wall.z1, wall.upperSurface),
-        sample(t1, wall.z1, wall.upperSurface),
-      ]);
+      result.push([sample(t0, wall.z0, wall.lowerSurface), sample(t1, wall.z0, wall.lowerSurface)]);
+      result.push([sample(t0, wall.z1, wall.upperSurface), sample(t1, wall.z1, wall.upperSurface)]);
     }
-    result.push([
-      sample(0, wall.z0, wall.lowerSurface),
-      sample(0, wall.z1, wall.upperSurface),
-    ]);
-    result.push([
-      sample(1, wall.z0, wall.lowerSurface),
-      sample(1, wall.z1, wall.upperSurface),
-    ]);
+    result.push([sample(0, wall.z0, wall.lowerSurface), sample(0, wall.z1, wall.upperSurface)]);
+    result.push([sample(1, wall.z0, wall.lowerSurface), sample(1, wall.z1, wall.upperSurface)]);
   }
   return ownedContourSegments(result);
 }
