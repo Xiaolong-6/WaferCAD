@@ -39,19 +39,27 @@ export function createProjectStateController({
   // This reader must validate the entire migrated project before returning it.
   // The app supplies the strict import worker; non-worker callers use project IO.
   readValidatedFile = readProjectFile,
+  yieldHistoryAttestation = () => new Promise((resolve) => globalThis.setTimeout(resolve, 0)),
 }) {
   let importedStates = new WeakMap();
+  let attestationGeneration = 0;
 
-  function cacheImportedSnapshotStates(project) {
-    importedStates = new WeakMap();
-    if (!project) return project;
-    const states = [
+  function importedSnapshotStateRefs(project) {
+    if (!project) return [];
+    return [
       ...(project.snapshots || []).map((record) => record.state),
       ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
       ...(project.snapshotBranches?.branches || []).map((branch) => branch.headState),
     ].filter((state) => state && typeof state === 'object');
-    // History still compares snapshots against independent copies before accepting
-    // them; this protection applies equally to the Worker-validated import path.
+  }
+
+  function cacheImportedSnapshotStates(project) {
+    attestationGeneration++;
+    importedStates = new WeakMap();
+    if (!project) return project;
+    const states = importedSnapshotStateRefs(project);
+    // The synchronous API preserves its old single graph clone, including
+    // sharing between states. Async startup imports use the bounded path below.
     const cloneStart = performance.now();
     const copies = structuredClone(states);
     performance.measure('wafercad:history:attestation-clone', {
@@ -65,14 +73,58 @@ export function createProjectStateController({
     return project;
   }
 
+  async function cacheImportedSnapshotStatesAsync(project) {
+    const generation = ++attestationGeneration;
+    const staged = new WeakMap();
+    if (!project) {
+      importedStates = staged;
+      return project;
+    }
+    const states = importedSnapshotStateRefs(project);
+    const started = performance.now();
+    let activeCloneMs = 0;
+    // Clone adjacent states as one graph to preserve aliasing within a batch
+    // and avoid copying shared model/layout references once per record.
+    // No staged attestation becomes visible until every batch succeeds.
+    const batchSize = 4;
+    for (let start = 0; start < states.length; start += batchSize) {
+      if (generation !== attestationGeneration) {
+        throw new DOMException('Superseded History attestation', 'AbortError');
+      }
+      const began = performance.now();
+      const batch = structuredClone(states.slice(start, start + batchSize));
+      activeCloneMs += performance.now() - began;
+      for (let index = 0; index < batch.length; index++) {
+        staged.set(states[start + index], batch[index]);
+      }
+      if (start + batchSize < states.length) await yieldHistoryAttestation();
+    }
+    if (generation !== attestationGeneration) {
+      throw new DOMException('Superseded History attestation', 'AbortError');
+    }
+    performance.measure('wafercad:history:attestation-clone', {
+      start: started,
+      end: performance.now(),
+      detail: { states: states.length, batches: Math.ceil(states.length / batchSize), activeCloneMs },
+    });
+    importedStates = staged;
+    return project;
+  }
+
   async function readProjectSnapshot(file) {
-    return cacheImportedSnapshotStates(await readValidatedFile(file));
+    return cacheImportedSnapshotStatesAsync(await readValidatedFile(file));
   }
 
   // Only call with project-worker.js output: that Worker already expanded,
   // migrated and strictly validated the project before posting its result.
   function readWorkerValidatedProjectSnapshot(project) {
     return cacheImportedSnapshotStates(project);
+  }
+
+  // Preferred in progressive startup: yield between private attestation
+  // batches while retaining strict before/after snapshot equality checks.
+  function readWorkerValidatedProjectSnapshotAsync(project) {
+    return cacheImportedSnapshotStatesAsync(project);
   }
 
   function buildProjectSnapshot(
@@ -308,6 +360,7 @@ export function createProjectStateController({
   return {
     readProjectSnapshot,
     readWorkerValidatedProjectSnapshot,
+    readWorkerValidatedProjectSnapshotAsync,
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,
