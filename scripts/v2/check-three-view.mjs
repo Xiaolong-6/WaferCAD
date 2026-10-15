@@ -237,7 +237,10 @@ try {
         assert.equal(await host.getAttribute('data-z-collapse-enabled'), collapseEnabled);
         await page.getByRole('button', { name: 'Close Z Break', exact: true }).click();
         const clippedGeneration = await host.getAttribute('data-scene-generation');
-        await page.locator('#sectionDetailRoiBtn').click();
+        const sectionDetail = page.locator('#sectionDetailRoiBtn');
+        if (!(await sectionDetail.isVisible()))
+          await page.getByRole('button', { name: 'Section more tools', exact: true }).click();
+        await sectionDetail.click();
         const sectionBox = await page.locator('#sectionCanvas').boundingBox();
         await page.mouse.move(
           sectionBox.x + sectionBox.width * 0.25,
