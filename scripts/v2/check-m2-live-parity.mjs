@@ -122,8 +122,11 @@ try {
         await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
           timeout: 120000,
         });
-        if (role === 'real' && !(await page.locator('.p-nav').isVisible()))
-          await page.locator('[data-action="show-editor"]').click();
+        if (
+          role === 'real' &&
+          !(await page.locator('.p-nav [data-action="domain:process"]').isVisible())
+        )
+          await page.locator('.p-nav [data-action="show-editor"]').click();
         const process = page.locator('.p-nav [data-action="domain:process"]');
         await process.click();
         await waitForPaint(page);
