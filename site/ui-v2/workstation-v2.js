@@ -25,11 +25,6 @@
       { class: 'p-topbar' },
       el('a', { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' }, 'WaferCAD'),
       slot('topbar.project', 'p-project-title', 'span'),
-      el(
-        'div',
-        { class: 'p-actions p-mobile-return' },
-        button('Back to results', 'return-results', 'back'),
-      ),
       el('span', { class: 'p-review-badge' }),
     );
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
@@ -45,14 +40,37 @@
         }),
       ]),
     );
-    navHost.append(
-      el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
-      ...navButtons.values(),
-      button('', 'hide-editor', 'close', {
-        'aria-label': 'Hide navigation and workflow editor',
-        'data-help': 'shell.navigation',
-      }),
+    const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
+    const hideEditor = button('', 'hide-editor', 'close', {
+      'aria-label': 'Hide navigation and workflow editor',
+      'data-help': 'shell.navigation',
+    });
+    navHost.append(navLabel, ...navButtons.values(), hideEditor);
+    // Mobile uses this exact navigation host as a fixed bottom dock. Reparent
+    // stable buttons instead of creating duplicate actions or domain adapters.
+    const mobileEdit = button('Edit', 'show-editor', 'process', {
+      'aria-label': 'Edit workspace',
+      'data-help': 'shell.navigation',
+    });
+    const mobileView = button('View', 'return-results', 'back', {
+      'aria-label': 'View results',
+      'data-help': 'shell.navigation',
+    });
+    const viewButtons = new Map(
+      registry.views
+        .filter(({ key }) => key !== 'section')
+        .map(({ key, label, icon }) => [
+          key,
+          button(label, `view:${key}`, icon, {
+            'aria-pressed': 'false',
+            'data-help': `shell.view.${key}`,
+          }),
+        ]),
     );
+    const mobileSection = button('Section', 'mobile-section', 'section', {
+      'aria-pressed': 'false',
+      'data-help': 'shell.section',
+    });
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
     const editorContent = el('div', { class: 'p-panel-content' });
     inspector.append(editorContent);
@@ -205,6 +223,23 @@
     function renderNav(info) {
       for (const [key, control] of navButtons)
         control.setAttribute('aria-pressed', String(info.selectedNavigation === key));
+      for (const [key, control] of viewButtons)
+        control.setAttribute('aria-pressed', String(state.view === key));
+      mobileSection.setAttribute('aria-pressed', String(state.view === 'section'));
+    }
+    function renderMobileNav() {
+      if (narrow()) {
+        navHost.setAttribute('aria-label', state.mobile === 'edit' ? 'Edit workspaces' : 'Views');
+        navHost.replaceChildren(
+          state.mobile === 'edit' ? mobileView : mobileEdit,
+          ...(state.mobile === 'edit'
+            ? [...navButtons.values()]
+            : [...viewButtons.values(), mobileSection]),
+        );
+      } else {
+        navHost.setAttribute('aria-label', 'Workspaces');
+        navHost.replaceChildren(navLabel, ...navButtons.values(), hideEditor);
+      }
     }
     function selectedViews(info) {
       const mode = narrow() ? 'single' : state.mode;
@@ -246,14 +281,7 @@
           modeButton('overview'),
           viewDivider(),
           modeButton('single'),
-          registry.views
-            .filter(({ key }) => key !== 'section')
-            .map(({ key, label, icon }) =>
-              button(label, `view:${key}`, icon, {
-                'aria-pressed': String(mode === 'single' && state.view === key),
-                'data-help': `shell.view.${key}`,
-              }),
-            ),
+          narrow() ? [] : [...viewButtons.values()],
           viewDivider(),
           modeButton('split'),
         ),
@@ -261,10 +289,7 @@
           'div',
           { class: 'p-actions p-section-dock-actions' },
           narrow()
-            ? button('Section', 'mobile-section', 'section', {
-                'aria-pressed': String(state.view === 'section'),
-                'data-help': 'shell.section',
-              })
+            ? null
             : button('Section dock', 'section', 'section', {
                 'aria-pressed': String(state.section),
                 'data-help': 'shell.section',
@@ -333,7 +358,7 @@
       const name = info.selectedPanel || registry.primaryNav[0]?.panel;
       const mode = info.selectedSubpanel || registry.processModes[0];
       const editorHidden = Boolean(info.editorHidden);
-      navHost.hidden = editorHidden;
+      navHost.hidden = !narrow() && editorHidden;
       inspector.hidden = editorHidden || Boolean(info.emptyInspector);
       separator.hidden = inspector.hidden;
       emptyStrip.hidden = !info.emptyInspector || editorHidden;
@@ -426,20 +451,10 @@
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';
-      const mobile = topbar.querySelector('.p-mobile-return');
-      if (mobile.dataset.pane !== state.mobile) {
-        mobile.replaceChildren(
-          button(
-            state.mobile === 'edit' ? 'View results' : 'Edit workspace',
-            state.mobile === 'edit' ? 'return-results' : 'show-editor',
-            state.mobile === 'edit' ? 'back' : 'process',
-          ),
-        );
-        mobile.dataset.pane = state.mobile;
-      }
       renderNav(info);
       renderPanel(info);
       renderStage(info);
+      renderMobileNav();
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
       renderVersion(info);
