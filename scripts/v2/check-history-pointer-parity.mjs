@@ -47,12 +47,24 @@ try {
     await page.evaluate(() => {
       const button = document.getElementById('applyOperationBtn');
       const scroller = button.closest('.p-panel-content');
+      const form = button.closest('.p-form');
+      const actions = button.closest('.p-apply-actions');
+      const dimensions = (node) => ({
+        top: Math.round(node?.getBoundingClientRect().top || 0),
+        height: Math.round(node?.getBoundingClientRect().height || 0),
+      });
       const geometry = () => ({
         buttonTop: Math.round(button.getBoundingClientRect().top),
         guideTop: Math.round(document.querySelector('.p-process-guide')?.getBoundingClientRect().top || 0),
         scrollTop: scroller?.scrollTop ?? 0,
         scrollHeight: scroller?.scrollHeight ?? 0,
         clientHeight: scroller?.clientHeight ?? 0,
+        actions: dimensions(actions),
+        form: dimensions(form),
+        formChildren: [...(form?.children || [])].map((node) => ({
+          tag: node.id || node.className || node.tagName,
+          ...dimensions(node),
+        })),
       });
       const trace = {
         buttonClick: 0,
