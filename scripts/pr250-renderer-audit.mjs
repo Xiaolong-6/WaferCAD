@@ -349,8 +349,7 @@ try {
           const upperSurfaceZ = 174.325;
           const c = window.zCollapse;
           const focusedZ = c
-            ? ((c.top + c.bottom) / 2 + (upperSurfaceZ - c.top) * c.frontScale) *
-              displayScale
+            ? ((c.top + c.bottom) / 2 + (upperSurfaceZ - c.top) * c.frontScale) * displayScale
             : fit.target[2];
           const target = config.zBreak
             ? [config.micro ? 2495 : 2400, 0, focusedZ]

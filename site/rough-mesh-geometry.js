@@ -131,8 +131,7 @@ export function roughEdgeSamplesInInterval(samples, t0, t1, { interior = false }
 // producing dark false cracks. This modifies normal buffers only, not vertices.
 function smoothCapNormals(positions, normals, triangleKinds) {
   const sums = new Map();
-  const key = (offset) =>
-    `${positions[offset]},${positions[offset + 1]},${positions[offset + 2]}`;
+  const key = (offset) => `${positions[offset]},${positions[offset + 1]},${positions[offset + 2]}`;
   for (let i = 0; i + 8 < positions.length; i += 9) {
     if (triangleKinds[i / 3] !== 0) continue;
     const ux = positions[i + 3] - positions[i],
