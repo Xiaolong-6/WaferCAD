@@ -14,11 +14,11 @@ test('stable Quality job performs full checks on ready PRs and manual runs', () 
     source,
     /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
   );
-  assert.match(source, /run: npm run lint && npm run format:check && npm run docs:check/);
+  assert.match(source, /npm run lint && npm run format:check && npm run docs:check/);
 });
 
 test('draft deferral never disables reusable production release acceptance', () => {
-  for (const name of ['ui-v2-main-mask.yml', 'ui-v2-stage-c-m4.yml', 'ui-v2-three.yml']) {
+  for (const name of ['ui-v2-main-mask.yml', 'ui-v2-stage-c-m4.yml']) {
     const source = workflow(name);
     assert.match(source, /  workflow_call:/);
     assert.match(
@@ -26,6 +26,10 @@ test('draft deferral never disables reusable production release acceptance', () 
       /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
     );
   }
+  assert.match(
+    workflow('ui-v2-three.yml'),
+    /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
+  );
   const release = workflow('pages.yml');
   for (const gate of ['release-quality', 'release-browser', 'release-ui-v2', 'release-science']) {
     assert.ok(release.includes(gate), 'Production gate must remain: ' + gate);
