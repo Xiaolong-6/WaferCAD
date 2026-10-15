@@ -116,6 +116,32 @@ function roughPointNormal(point, normal, profileNormal, appearance) {
   return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
 }
 
+// Edge samples are already sorted by the canonical line parameter. A given
+// spatial edge can be queried by many LOD subsegments: bound the search to the
+// requested interval instead of repeatedly scanning the entire shared edge.
+export function roughEdgeSamplesInInterval(samples, t0, t1, { interior = false } = {}) {
+  if (!samples?.length) return [];
+  const epsilon = 1e-10,
+    lower = Math.min(t0, t1) + (interior ? epsilon : -epsilon),
+    upper = Math.max(t0, t1) + (interior ? -epsilon : epsilon);
+  if (lower > upper) return [];
+  // Interior queries are strict; boundary queries are inclusive.
+  const bound = (threshold, strict) => {
+    let low = 0,
+      high = samples.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (strict ? samples[middle][0] <= threshold : samples[middle][0] < threshold)
+        low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  };
+  const start = bound(lower, interior),
+    end = bound(upper, !interior);
+  return samples.slice(start, end);
+}
+
 export function roughMeshDataFromPreparedCap({
   z,
   normal,
@@ -306,9 +332,9 @@ export function roughMeshDataFromPreparedCap({
           b = pointAlongEdge(edge.p, edge.q, (step + 1) / segments),
           t0 = globalTAtLocal(edge.line, step / segments),
           t1 = globalTAtLocal(edge.line, (step + 1) / segments),
-          samples = (orderedSamples.get(edge.key) || []).filter(
-            ([t]) => t > Math.min(t0, t1) + 1e-10 && t < Math.max(t0, t1) - 1e-10,
-          );
+          samples = roughEdgeSamplesInInterval(orderedSamples.get(edge.key), t0, t1, {
+            interior: true,
+          });
         if (!samples.length) continue;
         if (!edge.line.forward) samples.reverse();
         const aKey = keyForPoint(a),
@@ -356,8 +382,10 @@ export function roughMeshDataFromPreparedCap({
       }
     }
     for (const edge of zone.edges) {
-      const samples = (orderedSamples.get(edge.key) || []).filter(
-        ([t]) => t >= edge.line.t0 - 1e-10 && t <= edge.line.t1 + 1e-10,
+      const samples = roughEdgeSamplesInInterval(
+        orderedSamples.get(edge.key),
+        edge.line.t0,
+        edge.line.t1,
       );
       if (!edge.line.forward) samples.reverse();
       for (let index = 0; index < samples.length - 1; index++) {
