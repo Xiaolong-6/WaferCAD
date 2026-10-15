@@ -18,6 +18,8 @@ on:
       - "site/**"
       - "!site/tests/**"
       - "examples/**"
+      - "!examples/**/README.md"
+      - "!examples/**/PROVENANCE.md"
       - "scripts/ui-smoke.mjs"
       - "scripts/workstation-regression.mjs"
       - "scripts/history-regression.mjs"
@@ -79,7 +81,9 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" \
-              | node scripts/ci-test-plan.mjs --stdin
+              | node scripts/ci-test-plan.mjs --stdin \
+                  --base=${{ github.event.pull_request.base.sha }} \
+                  --head=${{ github.event.pull_request.head.sha }}
           elif [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             node scripts/ci-test-plan.mjs --full
           elif [[ "${{ github.event_name }}" == "push" ]]; then

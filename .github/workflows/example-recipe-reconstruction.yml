@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'site/**'
+      - '!site/tests/**'
       - 'scripts/maintenance/**'
       - 'scripts/example-recipe-runall-acceptance.mjs'
       - '.github/workflows/example-recipe-reconstruction.yml'

@@ -40,6 +40,22 @@ real v2 Stage C/M4, selected scientific checks, staged Pages artifact and
 deployment verdict remain mandatory. A Draft skipped check means
 **unverified**, not passed; no one may merge on the basis of Draft green alone.
 
+## Narrow PR path routing
+
+Only production/source owners trigger heavyweight PR UI acceptance. A change to
+`site/tests/**` or the standalone screenshot collector does not start Stage C,
+Main/Mask, D1, Phase B or Example replay. The tests themselves still run under
+Quality. Stage C listens to `scripts/v2/**` and browser helpers, rather than
+all maintenance scripts. Example README/provenance edits do not select browser
+replay, while project files and fixtures still do.
+
+The Browser planner compares base/head `package.json` for PRs. It de-scopes
+**only** the addition of the exact `preview:visual` command. Dependency changes,
+lockfile changes, existing test command changes, missing history and all other
+npm script changes fail closed to the full browser suite. Reusable release gates,
+manual runs and required scientific ownership are unchanged. New configuration
+tests explicitly guard these assumptions.
+
 ## Pull-request gates
 
 `Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains a stable check name. Draft runs pinned ESLint, Prettier, documentation consistency and focused CI configuration tests. **Ready for Review and manual execution run the complete Node suite** (`npm run check`). A Draft Quality pass does not certify the Node suite. Repository ruleset configuration is a separate GitHub administration action.

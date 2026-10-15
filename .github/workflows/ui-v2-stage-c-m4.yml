@@ -7,7 +7,10 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'site/**'
-      - 'scripts/**'
+      - '!site/tests/**'
+      - 'scripts/v2/**'
+      - 'scripts/test-helpers/**'
+      - '!scripts/v2/capture-visual-first.mjs'
       - '.github/workflows/ui-v2-stage-c-m4.yml'
   workflow_dispatch:
 
