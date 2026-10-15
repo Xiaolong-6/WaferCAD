@@ -212,12 +212,16 @@ try {
       label: 'analog-rram',
       material: 'CIM HfAlOx RSL 8nm',
       physicalXUm: -40.7,
+      inspectionMaskLayer: 13,
+      inspectionEdge: 'right',
       thicknessUm: 0.008,
     },
     {
       label: 'digital-rram',
       material: 'Digital Ta2O5 RSL 10nm',
       physicalXUm: -38.5,
+      inspectionMaskLayer: 19,
+      inspectionEdge: 'left',
       thicknessUm: 0.01,
     },
   ]) {
@@ -234,6 +238,38 @@ try {
       target.material + ': source film thickness changed',
     );
     const physicalZUm = (film.z0 + film.z1) / 2;
+    // A film-center crop yields only uniform horizontal stripes. Anchor the
+    // physical 1:1 close-up to its inferred lithographic edge instead.
+    const sectionYUm = expected.section.a[1];
+    const sourceMask = expected.layout.elements.find((element) => {
+      if (element.kind !== 'polygon' || element.layer !== target.inspectionMaskLayer)
+        return false;
+      const xs = element.points.map((point) => point[0]);
+      const ys = element.points.map((point) => point[1]);
+      return (
+        Math.min(...xs) < target.physicalXUm &&
+        target.physicalXUm < Math.max(...xs) &&
+        Math.min(...ys) < sectionYUm &&
+        sectionYUm < Math.max(...ys)
+      );
+    });
+    assert.ok(sourceMask, target.material + ': inferred inspection mask is missing');
+    const maskXs = sourceMask.points.map((point) => point[0]);
+    const inspectionXUm =
+      target.inspectionEdge === 'left' ? Math.min(...maskXs) : Math.max(...maskXs);
+    // Confirm a real lateral structure change on the model, rather than
+    // treating a Mask edge or a successful screenshot as morphology evidence.
+    const stacksAt = (x) =>
+      expected.model.regions
+        .filter((item) => pointInMulti([x, sectionYUm], item.geom))
+        .map((item) =>
+          item.stack.map((part) => [part.layerId, part.z0, part.z1, part.role || '']),
+        );
+    assert.notDeepEqual(
+      stacksAt(inspectionXUm - 0.06),
+      stacksAt(inspectionXUm + 0.06),
+      target.material + ': no physical lateral transition at the inferred mask edge',
+    );
     await page.locator('#sectionPanel [data-action="fit:section"]').click();
     await waitForPaint(page);
     const initialPosition = await sectionCanvas.evaluate(
@@ -254,7 +290,7 @@ try {
         }
       },
       {
-        x: target.physicalXUm,
+        x: inspectionXUm,
         z: physicalZUm,
         startX: expected.section.a[0],
         spanX: expected.section.b[0] - expected.section.a[0],
@@ -303,7 +339,7 @@ try {
           height: canvas.getBoundingClientRect().height,
         };
       },
-      { x: target.physicalXUm, z: physicalZUm, startX: expected.section.a[0] },
+      { x: inspectionXUm, z: physicalZUm, startX: expected.section.a[0] },
     );
     assert.ok(evidence.viewportZoom >= 16, 'Nanoscale Section zoom is insufficient');
     assert.ok(
@@ -327,6 +363,8 @@ try {
     report.nanoSectionEvidence.push({
       material: target.material,
       physicalXUm: target.physicalXUm,
+      inspectionXUm,
+      inspectionMaskLayer: target.inspectionMaskLayer,
       physicalZUm,
       filmThicknessNm: actualThicknessUm * 1000,
       projectedFilmPixels: evidence.zPxPerUm * actualThicknessUm,
