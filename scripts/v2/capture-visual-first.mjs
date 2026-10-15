@@ -83,9 +83,7 @@ try {
         await page.evaluate((name) => {
           // Desktop Section is shown in Overview; portrait has its own dock action.
           const actions =
-            name === 'section'
-              ? ['mobile-section', 'mode:overview', 'section']
-              : ['view:' + name];
+            name === 'section' ? ['mobile-section', 'mode:overview', 'section'] : ['view:' + name];
           const button = actions
             .map((action) => document.querySelector('button[data-action="' + action + '"]'))
             .find(Boolean);
