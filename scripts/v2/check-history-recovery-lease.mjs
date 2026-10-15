@@ -150,11 +150,7 @@ try {
         const { loadWorkspaceState } = await import('/workspace-persistence.js');
         return (await loadWorkspaceState())?.name;
       });
-      assert.equal(
-        afterStaleSave,
-        'Takeover winner',
-        'Stale writer cannot overwrite takeover',
-      );
+      assert.equal(afterStaleSave, 'Takeover winner', 'Stale writer cannot overwrite takeover');
     } finally {
       await second.close();
     }
@@ -168,9 +164,7 @@ try {
     assert.equal(recovered.workflow.steps.length, 1, 'Reload restores logical History');
     assert.equal(recovered.projectName, 'Takeover winner');
     assert.deepEqual(errors, []);
-    console.log(
-      'v2 History/Recovery: Undo, Redo, lease takeover, stale writer and reload PASS',
-    );
+    console.log('v2 History/Recovery: Undo, Redo, lease takeover, stale writer and reload PASS');
   } finally {
     await context.close();
   }
