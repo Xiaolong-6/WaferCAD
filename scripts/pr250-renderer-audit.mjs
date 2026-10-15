@@ -261,6 +261,13 @@ try {
       { name: 'transparent', opacity: 0.5, borders: true, fast: true },
       { name: 'transparent-back', opacity: 0.15, borders: true, fast: true, back: true },
       { name: 'quality-zoom', opacity: 0.5, borders: true, fast: false, zoom: 0.7 },
+      ...(fixture.name.startsWith('photodetector-')
+        ? [
+            { name: 'surface-cut-opaque-detail', opacity: 1, borders: false, fast: false, detail: true },
+            { name: 'surface-cut-opaque-borders-detail', opacity: 1, borders: true, fast: false, detail: true },
+            { name: 'surface-cut-transparent-detail', opacity: 0.5, borders: true, fast: false, detail: true },
+          ]
+        : []),
       ...(fixture.name.includes('-back-') || fixture.name.includes('-both-')
         ? [{ name: 'underneath', opacity: 0.5, borders: true, fast: true, underneath: true }]
         : []),
@@ -270,15 +277,22 @@ try {
         async ({ config, fit }) => {
           Object.assign(window.inspection, config);
           await window.view.render();
-          const target = fit.target;
-          const position = fit.position.map(
-            (value, index) =>
-              target[index] +
-              (value - target[index]) *
-                (config.zoom || 1) *
-                ((config.back && index < 2) || (config.underneath && index === 2) ? -1 : 1),
-          );
-          window.view.setViewState({ ...fit, position });
+          // A full 350 um substrate cannot resolve the 0.3 um roughness or
+          // 50 nm conformal film. Inspect the real Black-Si ROI cut near its
+          // patterned rim at a camera scale where both are pixel-resolved.
+          const target = config.detail ? [2495, -140, 174.325] : fit.target;
+          const delta = fit.position.map((value, index) => value - fit.target[index]);
+          const length = Math.hypot(...delta) || 1;
+          const position = config.detail
+            ? target.map((value, index) => value + (delta[index] / length) * 40)
+            : fit.position.map(
+                (value, index) =>
+                  target[index] +
+                  (value - target[index]) *
+                    (config.zoom || 1) *
+                    ((config.back && index < 2) || (config.underneath && index === 2) ? -1 : 1),
+              );
+          window.view.setViewState({ ...fit, target, position });
         },
         { config, fit },
       );
