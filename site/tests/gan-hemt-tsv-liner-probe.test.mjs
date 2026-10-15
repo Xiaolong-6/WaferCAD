@@ -55,15 +55,28 @@ test('TSV-focused conformal Ti/Cu probe preserves the coolant and open via cores
       seen[[x, y, z].join(',')] = [...observed].filter(Boolean).length;
     }
   }
+  // A fluid point is a 3D position, not an XY position: the lower feeder
+  // has silicon beneath the 200 um trench while the rear bore is through-open.
+  // Compare the exact material occupancy before and after plating and assert
+  // known fluid-path points remain empty.
   for (const side of [-1, 1]) {
-    for (const y of [side * 1450, side * 1200, side * 420]) {
-      for (const z of [-150, 100]) {
-        assert.equal(
-          layerAt(model, [0, y], z),
-          null,
-          'Conformal plating encroached on coolant at ' + [0, y, z],
-        );
-      }
+    const coolantPath = [
+      [0, side * 1450, -150],
+      [0, side * 1450, 100],
+      [0, side * 1200, 100],
+      [0, side * 420, 100],
+      [30, side * 395, 350],
+      [30, side * 395, 550],
+      [0, side * 425, 550],
+    ];
+    for (const [x, y, z] of coolantPath) {
+      const original = layerAt(project.model, [x, y], z);
+      assert.equal(original, null, 'Fluid-path baseline is not actually void at ' + [x, y, z]);
+      assert.equal(
+        layerAt(model, [x, y], z),
+        original,
+        'TSV metal altered fluid-path material at ' + [x, y, z],
+      );
     }
   }
   console.log('TSV conformal film probe passed:', JSON.stringify({ heightChecks: heights, sample: seen }));

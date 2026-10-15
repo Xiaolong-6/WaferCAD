@@ -6,6 +6,7 @@ on:
       - feat/example-gan-hemt-microchannel-20261014
     paths:
       - .github/workflows/gan-tsv-conformal-science-probe.yml
+      - site/tests/gan-hemt-tsv-liner-probe.test.mjs
   workflow_dispatch:
 
 permissions:
