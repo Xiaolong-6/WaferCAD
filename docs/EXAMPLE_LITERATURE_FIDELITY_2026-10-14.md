@@ -146,9 +146,8 @@ These are paper-panel targets, not completed screenshot overlays.
 ## Basiri-Esfahani 2019 Fig. 2a — paper-to-mask quantitative check
 
 The [published Results and device micrograph](https://www.nature.com/articles/s41467-018-08038-4)
-explicitly specify a spoked silica microdisk with an **outer radius of
-148 µm**, **inner radius of 82 µm**, and **device thickness approximately
-1.8 µm**. The saved `MICRODISK_RELEASE_MASK` sectors' actual XY vertices
+explicitly specify a spoked silica microdisk with an **outer radius of 148 µm**,
+**inner radius of 82 µm**, and **device thickness approximately 1.8 µm**. The saved `MICRODISK_RELEASE_MASK` sectors' actual XY vertices
 reach **148.0000005 µm** and **81.9999996 µm** in radial distance;
 the saved vertical oxide interval is **1.8 µm**. The regression checks
 both radii across all four sectors, not merely the existence of a layer.
