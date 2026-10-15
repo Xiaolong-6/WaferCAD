@@ -242,8 +242,8 @@ try {
     // physical 1:1 close-up to its inferred lithographic edge instead.
     const sectionYUm = expected.section.a[1];
     const sourceMask = expected.layout.elements.find((element) => {
-      if (element.kind !== 'polygon' || element.layer !== target.inspectionMaskLayer)
-        return false;
+      if (element.kind !== 'polygon') return false;
+      if (element.layer !== target.inspectionMaskLayer) return false;
       const xs = element.points.map((point) => point[0]);
       const ys = element.points.map((point) => point[1]);
       return (
