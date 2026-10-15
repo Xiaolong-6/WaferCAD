@@ -84,6 +84,32 @@ Distinct GDS/OAS DBUs are valid; directly XORing database-grid polygons across d
 - Gate contact etching and CMOS-to-top-tier ILVs are **process records without complete 3D geometry**. The paper does not disclose their full local mask coordinates; do not represent the entire three-tier circuit as electrically continuous.
 - Morphology comparison to Fig. 2c–d and Supplementary Fig. 6a remains a **separate blocking visual/scientific gate**, beyond successful Recipe replay, mask interoperability and geometry schema tests.
 
+## Inferred PVD drain step coverage (October 15, 2026)
+
+The final Recipe represents Pd drain **evaporation**, not Pd ALD. The source does not
+report a deposition angle or sidewall coverage fraction at the 26 nm Ti/Pd/Ti
+back-gate step. The earlier ideal-directional Kernel model left a 10 nm-wide
+HfO₂ wall column uncoated by the Pd, making all 14 CNTFET-to-digital-RRAM Pd
+connections *electrically discontinuous* even though their mask footprints
+overlapped and the RRAM vertical stack was correct.
+
+The opt-in `pvd-step` coverage mode is an explicitly **inferred
+finite-angular-spread approximation**: normal horizontal surfaces receive the
+source-reported 45 nm nominal Pd film, while eligible narrow HfO₂ wall
+columns receive a sidewall-cap bridge equal to **25% of the nominal deposited
+thickness (11.25 nm)**. Only wall columns no wider than the specified
+fractional thickness are eligible. This is a geometric connectivity surrogate,
+**not** a measurement of evaporated Pd step coverage, a claim that Pd grows by
+ALD, or a predicted TEM morphology. In particular, the narrow cap is a
+2.5D occupancy approximation rather than a resolved deposition-angle solver.
+
+The local reconstruction must validate an unbroken overlapping Pd Z interval
+through every CNTFET's gate-edge crossing, in addition to the existing mask,
+nano-film, native 45 nm Al₂O₃ ALD and recipe/history contracts. A green CI
+proves internal model consistency under this documented hypothesis; it does
+not prove the authors' unpublished contact-pad layout, original GDS, or
+measured device connectivity.
+
 ## Native 45 nm ALD closure (October 15, 2026)
 
 - The canonical `site/examples/m3d-lime-rram-cntfet.wafercad` was regenerated and committed from the real Kernel, rather than hand-modified. It contains **46 editable Recipe steps**, **47 process nodes**, **30 material layers** and **233 XY process regions**, with the eleven explicitly inferred Mask layers. The file's actual `recipe-step-42` deposits **45 nm Digital Al₂O₃ passivation with `coverage: conformal`**, followed by a selective **45 nm Pt-opening etch** at `recipe-step-43`. The old directional surrogate is no longer the current representation.
