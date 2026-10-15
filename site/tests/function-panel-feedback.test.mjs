@@ -254,7 +254,7 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
   assert.match(threeView, /edges\.renderOrder = order/);
   assert.match(
     threeView,
-    /opacity: opacity < 0\.999 \? 0\.46 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
+    /opacity: dashed \? 0\.25 : opacity < 0\.999 \? 0\.85 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
   );
   assert.match(threeView, /presentation: \{ kind: 'border' \}/);
   assert.match(threeView, /visible: Boolean\(inspection\.borders\)/);
