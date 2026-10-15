@@ -244,11 +244,7 @@ export function roughMeshDataFromPreparedCap({
         return;
       }
       positions.push(...a, ...b, ...c);
-      normals.push(
-        ...roughNormal(a),
-        ...roughNormal(b),
-        ...roughNormal(c),
-      );
+      normals.push(...roughNormal(a), ...roughNormal(b), ...roughNormal(c));
       gpuDisplace.push(0, 0, 0);
     },
     pushGpuRoughTriangle = (a, b, c) => {
@@ -400,12 +396,7 @@ export function roughMeshDataFromPreparedCap({
       conformingExtraTriangles += triangles.length - 1;
       for (const [a, b, c] of triangles) {
         if (gpuDisplacement) pushGpuRoughTriangle(a, b, c);
-        else
-          pushRoughTriangle(
-            roughSample(a),
-            roughSample(b),
-            roughSample(c),
-          );
+        else pushRoughTriangle(roughSample(a), roughSample(b), roughSample(c));
       }
     }
     for (const edge of zone.edges) {
