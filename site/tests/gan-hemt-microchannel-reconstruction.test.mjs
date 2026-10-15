@@ -240,7 +240,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.ok(
     project.model.layers.some((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um'),
   );
-  const fillLayer = project.model.layers.find((l) => l.name === 'TSV Cu electrofill surrogate 35 um');
+  const fillLayer = project.model.layers.find(
+    (l) => l.name === 'TSV Cu electrofill surrogate 35 um',
+  );
   assert.ok(fillLayer, 'Model is missing full-depth Cu TSV fill layer');
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);

@@ -77,9 +77,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 3910,
-      "sourceSha256": "a0e57594a26142cc9422703fc8d082959034b86d22faab79e6e71388d4e0eedf",
-      "sha256": "5d30030e5a14fe5011891aad0fcf7a7a2f2f27e8727d43a5526724a2a865d9c1"
+      "bytes": 3904,
+      "sourceSha256": "925c9081cf11c56e3087dbb9eb1e2bfd86fda8e12bdf935197d6e06f180ab537",
+      "sha256": "9c37d0b30ab0d38e0b2fa6bb6c52b4a5d13f7b30dd761b6ab88f596810cc5e33"
     }
   ]
 }

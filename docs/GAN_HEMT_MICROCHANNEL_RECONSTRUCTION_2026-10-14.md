@@ -50,7 +50,7 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   but all five share the same material color. Colored slices formerly implied
   multiple chemical materials where the construction assumes only Si.
 - **TSV interpretation:** each of the four through-bores now has a physical,
-  *idealized Cu-filled core*, native Ti/Cu conformal seed sidewalls and
+  _idealized Cu-filled core_, native Ti/Cu conformal seed sidewalls and
   surrounding Si. Multiple XY and Z measurements confirm the metal occupies
   the entire intended via column. This is geometry-level continuity only.
   Real stepped TSV dimensions, copper electroplating, electrical contacts,

@@ -26,20 +26,17 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Normalize focused candidate source for deterministic PR synchronization
-        run: |
-          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-          node -e "const f=require('node:fs');for(const [label,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('TSV_FILL_FORMAT|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('TSV_FILL_FORMAT_END|'+label+'|'+Math.ceil(s.length/1500));}"
+      - name: Verify focused formatting
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Targeted ESLint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Scientific wall and full native Recipe replay
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
-      - name: Rebuild candidate project and Preview for asset synchronization
+      - name: Validate immutable generated scientific project and Preview
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
           node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
-          node -e "const f=require('node:fs');for(const [label,path] of [['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('TSV_FILL_ASSET|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('TSV_FILL_ASSET_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Install Chromium for physical three-view audit
         run: npx playwright install --with-deps chromium
       - name: Launch local Workstation
@@ -59,9 +56,11 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
-      - name: Emit refreshed Welcome thumbnail and checksum manifest for synchronization
+      - name: Check shipped thumbnail and project remain immutable
         run: |
-          node -e "const f=require('node:fs');for(const [name,path] of [['webp','site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp'],['manifest','tests/fixtures/project-io/example-thumbnails.json']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('GAN_TSV_IMAGE|'+name+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('GAN_TSV_IMAGE_END|'+name+'|'+Math.ceil(s.length/1500));}"
+          git restore -- site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json
+          node --test site/tests/welcome-example.test.mjs
+          git diff --exit-code -- scripts/build-gan-hemt-microchannel-example.mjs site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json
       - name: Upload actual rendered acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -732,9 +732,7 @@ export async function buildGanMicrochannel() {
   const tsvCu = model.layers.find(
     (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
   );
-  const tsvFill = model.layers.find(
-    (layer) => layer.name === 'TSV Cu electrofill surrogate 35 um',
-  );
+  const tsvFill = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
   assert.ok(tsvTi && tsvCu && tsvFill, 'Missing physical TSV Ti/Cu seed or Cu fill');
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550]) {
@@ -742,8 +740,7 @@ export async function buildGanMicrochannel() {
         (region) =>
           vectorApi.pointInMulti([x, y], region.geom) &&
           region.stack.some(
-            (segment) =>
-              segment.layerId === tsvFill.id && segment.z0 < z && segment.z1 > z,
+            (segment) => segment.layerId === tsvFill.id && segment.z0 < z && segment.z1 > z,
           ),
       );
       assert.equal(centerCu, true, 'Cu electrofill is absent at ' + [x, y, z]);
