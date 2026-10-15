@@ -394,7 +394,7 @@ export function createProjectMaskPanels({
       );
       if (result?.error) throw Error(result.error);
       if (!result?.project) return null;
-      return projectState.readWorkerValidatedProjectSnapshot(result.project);
+      return projectState.readWorkerValidatedProjectSnapshotAsync(result.project);
     },
     exportProjectFileTask: async (project, filename) => {
       const result = await task.runWorker(
