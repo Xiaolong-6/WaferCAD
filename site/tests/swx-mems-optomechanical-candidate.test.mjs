@@ -25,7 +25,16 @@ test('compact optical-to-actuator candidate keeps canonical SWT gaps and correct
   assert.notDeepEqual(off.optics.movableFacetsAndPorts, on.optics.movableFacetsAndPorts);
   assert.equal(off.actuator.banks.length, 2);
   assert.equal(off.actuator.springContours.length, 4);
-  assert.equal(off.integrationStatus, 'facet-and-shuttle-interface-only-no-wafercad-project');
+  assert.equal(off.integrationStatus, 'optical-four-port-routing-candidate-no-wafercad-project');
+  assert.equal(off.opticalRouting.fixed.length, 2);
+  assert.equal(off.opticalRouting.movingSpringWaveguides.length, 2);
+  assert.equal(off.opticalRouting.supportedPads.length, 4);
+  assert.deepEqual(off.opticalRouting.fixed, on.opticalRouting.fixed);
+  assert.deepEqual(off.opticalRouting.supportedPads, on.opticalRouting.supportedPads);
+  assert.notDeepEqual(
+    off.opticalRouting.movingSpringWaveguides,
+    on.opticalRouting.movingSpringWaveguides,
+  );
 });
 
 test('translated SWT and mechanical connector have coherent physical envelope', () => {
@@ -57,6 +66,21 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
       overlap < 1e-8,
       state + ' moving SWT/shuttle overlaps fixed silicon by ' + overlap + ' µm²',
     );
+    const flexible = pose.opticalRouting.movingSpringWaveguides;
+    const fixedRoutes = pose.opticalRouting.fixed;
+    assert.ok(
+      geometryArea(v.intersection(union(flexible), fixed)) < 1e-8,
+      state + ' compliant optical routes intersect rigid fixed silicon',
+    );
+    assert.ok(
+      geometryArea(v.intersection(union(fixedRoutes), moving)) < 1e-8,
+      state + ' stationary optical routes intersect the moving actuator',
+    );
+    assert.ok(
+      geometryArea(v.intersection(union(flexible.slice(0, 1)), union(flexible.slice(1)))) <
+        1e-8,
+      state + ' moving optical waveguides short each other',
+    );
     const connectedRegion = (point) =>
       moving.findIndex((poly) => v.pointInMulti(point, [poly]));
     const samplePoints = [
@@ -77,3 +101,38 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
     );
   }
 });
+
+test('each optical port terminates at the correct fixed/moving node', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const union = (polygons) =>
+    v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  for (const state of ['off', 'on']) {
+    const pose = createSwxOptomechanicalCandidate(state);
+    const route = pose.opticalRouting;
+    const fixedNets = union([...pose.optics.fixedFacetsAndPorts, ...route.fixed]);
+    const movingNets = union([
+      ...pose.optics.movableFacetsAndPorts,
+      ...route.movingSpringWaveguides,
+    ]);
+    const fixedPorts = [[-22, -35], [21, -35]];
+    const movingPorts = [
+      [-22, -61 + pose.travelUm],
+      [21, -61 + pose.travelUm],
+    ];
+    for (const point of fixedPorts) {
+      assert.ok(
+        fixedNets.some((poly) => v.pointInMulti(point, [poly])),
+        state + ' fixed optical port disconnected at ' + point.join(','),
+      );
+    }
+    for (const point of movingPorts) {
+      assert.ok(
+        movingNets.some((poly) => v.pointInMulti(point, [poly])),
+        state + ' moving optical port disconnected at ' + point.join(','),
+      );
+    }
+  }
+});
+
