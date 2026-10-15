@@ -382,9 +382,7 @@ try {
   report.inputProbeInitial = await openAndSampleInput('/app.html?start=example&example=m3d');
   await endCpuProfile();
   report.cases.initialM3D = await hostMetrics();
-  report.cases.initialM3D.modelEvidenceValid = hasVerifiedScientificModel(
-    report.cases.initialM3D,
-  );
+  report.cases.initialM3D.modelEvidenceValid = hasVerifiedScientificModel(report.cases.initialM3D);
   report.cases.initialM3D.responsiveness = responsiveness(report.cases.initialM3D.vitals);
   report.cases.initialM3D.input = summarizeHardwareInput(
     report.cases.initialM3D.vitals?.inputEvents,
