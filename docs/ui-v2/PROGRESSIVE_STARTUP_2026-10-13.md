@@ -311,3 +311,26 @@ The P1 PR remains Draft until an exact-head CPU comparison, current strict
 Quality/browser/scientific CI, and real GPU/iGPU acceptance satisfy their
 respective requirements. Do not infer hardware responsiveness from the
 Linux software-renderer sample.
+
+## P1-J border-clipping allocations — 15 October 2026
+
+Software Chromium CPU sampling after the corrected Boolean test import
+([P1 run 38705639053](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38705639053))
+reported maximum Long Tasks of 1,149 ms for M3D first load and 1,354 ms
+for restored Quality (one sample). Shader and buffer submissions, GC,
+History clone and polygon clipping remain major bottlenecks. Neither case
+passes the 500 ms target.
+
+The 3D renderer's `displayBorderPositions` hot path previously allocated
+two endpoint arrays and two interpolated point arrays per displayed segment.
+The new `renderer-border-position-clip.js` appends exact interpolated
+coordinates directly to the final buffer, retaining Z Break cut ordering,
+visibility decisions and numeric interpolation order. An independent test
+retains the historical implementation and compares randomized segments,
+disabled Z Break, precise/degenerate coordinates and Float32 output.
+No 3D material, topology, physical extent or face border semantics change.
+
+This is a candidate reduction in JavaScript allocation overhead, **not a
+verified end-to-end performance improvement** until a current-revision
+P1 CPU comparison and physical GPU/iGPU acceptance are available.
+Keep PR #188 Draft, do not merge or deploy on CI green alone.
