@@ -104,8 +104,7 @@ test('Fan MAGIC local via ladders connect M4 through M1 and their transistor gat
     assert.equal(owners.length, 1, 'MAGIC point must have one physical owner: ' + point);
     return owners[0].stack;
   };
-  const layerAt = (stack, name) =>
-    stack.find((segment) => names.get(segment.layerId) === name);
+  const layerAt = (stack, name) => stack.find((segment) => names.get(segment.layerId) === name);
 
   for (const point of [
     [-7, -4],
