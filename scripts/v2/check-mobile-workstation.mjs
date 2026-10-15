@@ -399,7 +399,7 @@ try {
       };
       page.on('dialog', confirmDeparture);
       try {
-      await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
+        await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
       } finally {
         page.off('dialog', confirmDeparture);
       }
