@@ -29,8 +29,8 @@ const CASES = [
     file: 'perc-solar-cells-point-contacts',
     source: 'Blakers et al. 1989, front and rear contact schematic',
     cuts: [
-      { id: 'rear-point-contact', a: [-9100, -9000], b: [-8900, -9000] },
-      { id: 'front-plated-stripe', a: [-500, -7500], b: [500, -7500] },
+      { id: 'rear-point-contact', a: [-9300, -9000], b: [-8700, -9000] },
+      { id: 'front-plated-stripe', a: [0, -7580], b: [0, -7420] },
     ],
   },
   {
@@ -39,7 +39,7 @@ const CASES = [
     source: 'Sahli et al. 2018 Supplementary Fig. S3a–e',
     cuts: [
       { id: 'active-between-grid', a: [-16, 0], b: [16, 0] },
-      { id: 'at-ag-grid-finger', a: [-16, 2000], b: [16, 2000] },
+      { id: 'across-ag-grid-finger', a: [0, 1700], b: [0, 2300] },
     ],
   },
 ];
