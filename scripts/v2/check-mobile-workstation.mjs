@@ -147,13 +147,12 @@ try {
       assert.equal(await stage.isVisible(), false);
       assert.equal(await nav.isVisible(), true);
       assert.equal(await welcome.isVisible(), true, 'Project shows Welcome above its tools');
+      const welcomeBounds = await welcome.boundingBox();
+      const actionsBounds = await page.locator('#projectExportMenuBtn').boundingBox();
+      assert.ok(welcomeBounds && actionsBounds, 'Welcome and Project actions are measurable');
+      assert.ok(welcomeBounds.height >= 44, 'Welcome provides a 44px minimum touch target');
       assert.ok(
-        (await welcome.boundingBox()).height >= 44,
-        'Welcome link provides a 44px minimum touch target',
-      );
-      assert.ok(
-        (await welcome.boundingBox()).bottom <=
-          (await page.locator('#projectExportMenuBtn').boundingBox()).top,
+        welcomeBounds.bottom <= actionsBounds.top,
         'Welcome appears before New/Open/Export actions',
       );
 
@@ -366,10 +365,7 @@ try {
       assert.equal(await welcome.isVisible(), false, 'History does not display Welcome');
       await page.locator('.p-nav [data-action="domain:project"]').click();
       await welcome.waitFor({ state: 'visible' });
-      await Promise.all([
-        page.waitForURL(/\/index\.html(?:[?#]|$)/),
-        welcome.click(),
-      ]);
+      await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
       assert.equal(
         await page.locator('#welcomeScreen').isVisible(),
         true,
