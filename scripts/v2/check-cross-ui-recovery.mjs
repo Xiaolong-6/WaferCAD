@@ -140,6 +140,22 @@ try {
   assert.equal(reloaded.projectName, exitTitle);
   assert.deepEqual(reloaded.model, fromExample.model);
   assert.equal(reloaded.workflow.steps.length, 47);
+  assert.deepEqual(reloaded.workflow.steps, example.workflow.steps, 'Reload preserves exact Steps');
+  assert.deepEqual(
+    reloaded.workflow.branches,
+    example.workflow.branches,
+    'Reload preserves exact Variants',
+  );
+  const savedGraph = await page.evaluate(async () => {
+    const { loadWorkspaceState } = await import('/workspace-persistence.js');
+    const project = await loadWorkspaceState();
+    return {
+      nodes: project.snapshotBranches?.nodes,
+      branches: project.snapshotBranches?.branches,
+    };
+  });
+  assert.equal(savedGraph.nodes.length, 47);
+  assert.equal(savedGraph.branches.length, 7);
   // Replacing the active workspace must checkpoint the last committed
   // model and its complete 47-Step / seven-Variant graph for Recovery.
   await open('/app.html?start=empty');
@@ -150,8 +166,8 @@ try {
       if (saved?.name === name) {
         return {
           model: saved.model,
-          steps: saved.snapshotBranches?.nodes?.length || 0,
-          branches: saved.snapshotBranches?.branches?.length || 0,
+          nodes: saved.snapshotBranches?.nodes,
+          branches: saved.snapshotBranches?.branches,
         };
       }
     }
@@ -159,8 +175,8 @@ try {
   }, exitTitle);
   assert.ok(recovery, 'Replacing the v2 project creates a Recovery checkpoint');
   assert.deepEqual(recovery.model, fromExample.model);
-  assert.equal(recovery.steps, 47);
-  assert.equal(recovery.branches, 7);
+  assert.deepEqual(recovery.nodes, savedGraph.nodes, 'Recovery retains the exact 47-Step graph');
+  assert.deepEqual(recovery.branches, savedGraph.branches, 'Recovery retains exact Variants');
   assert.deepEqual(errors, [], 'v2 session and lease scenarios produce no page errors');
   console.log('M5 v2 session: 47 Steps, seven Variants, stale writer and Recovery PASS');
 } finally {
