@@ -16,11 +16,7 @@ const rootSources = [
   'site/welcome.js',
   'site/index.html',
 ];
-const legacyEditorFiles = new Set([
-  'site/app-legacy.html',
-  'site/app.js',
-  'site/workstation.css',
-]);
+const legacyEditorFiles = new Set(['site/app-legacy.html', 'site/app.js', 'site/workstation.css']);
 const legacyHelper = /\bnewLegacyUi(?:Context|Page)\b/;
 const legacyEditor = /(?:app-legacy\.html|\bworkstation\.css\b)/;
 const oldD1Bridge = /(?:real-view-bridge\.(?:js|css)|app-v2-real\.html)/;
