@@ -99,14 +99,14 @@ insufficient for a scientific reconstruction.
     node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
     node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
 
-The default build writes the candidate project under test-results/gan-microchannel, together with a validation report. The --write-repo switch writes the generated project to site/examples but does not register an untested Welcome card.
+The default build writes the candidate project under test-results/gan-microchannel, together with a validation report. The --write-repo switch updates site/examples; the candidate is already registered in the feature-branch Welcome catalog. Registration does not imply scientific approval or production deployment.
 
 The dedicated test checks real four-level cavity Z gaps, two rear coolant connections, source-reported gate/chip masks, open TSV bores, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
 
 ## Verification and release boundary
 
 The candidate has passed the following **geometry-surrogate** acceptance checks on
-`4345ef3` (GitHub Actions):
+`86dd56d` (GitHub Actions run 38580570948):
 
 - [x] Full Kernel build and model-schema validation without process errors.
 - [x] Project Save/Reload and Recipe Run All from Base; identical final material
