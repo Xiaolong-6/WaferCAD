@@ -81,23 +81,28 @@ export function createProjectStateController({
       return project;
     }
     const states = importedSnapshotStateRefs(project);
+    // A snapshot can also be the HEAD of one or more branches or a process
+    // node. Attesting it repeatedly wastes deep clones and GC, especially
+    // when an identity recurs on opposite sides of a batch boundary.
+    // Deduplicate by object identity only; distinct but equal states remain
+    // independently copied and checked for later mutation.
+    const uniqueStates = [...new Set(states)];
     const started = performance.now();
     let activeCloneMs = 0;
-    // Clone adjacent states as one graph to preserve aliasing within a batch
-    // and avoid copying shared model/layout references once per record.
-    // No staged attestation becomes visible until every batch succeeds.
+    // Clone adjacent unique states as one graph to preserve aliasing within
+    // each batch. No staged attestation is published until every batch succeeds.
     const batchSize = 4;
-    for (let start = 0; start < states.length; start += batchSize) {
+    for (let start = 0; start < uniqueStates.length; start += batchSize) {
       if (generation !== attestationGeneration) {
         throw new DOMException('Superseded History attestation', 'AbortError');
       }
       const began = performance.now();
-      const batch = structuredClone(states.slice(start, start + batchSize));
+      const batch = structuredClone(uniqueStates.slice(start, start + batchSize));
       activeCloneMs += performance.now() - began;
       for (let index = 0; index < batch.length; index++) {
-        staged.set(states[start + index], batch[index]);
+        staged.set(uniqueStates[start + index], batch[index]);
       }
-      if (start + batchSize < states.length) await yieldHistoryAttestation();
+      if (start + batchSize < uniqueStates.length) await yieldHistoryAttestation();
     }
     if (generation !== attestationGeneration) {
       throw new DOMException('Superseded History attestation', 'AbortError');
@@ -107,7 +112,9 @@ export function createProjectStateController({
       end: performance.now(),
       detail: {
         states: states.length,
-        batches: Math.ceil(states.length / batchSize),
+        uniqueStates: uniqueStates.length,
+        reusedReferences: states.length - uniqueStates.length,
+        batches: Math.ceil(uniqueStates.length / batchSize),
         activeCloneMs,
       },
     });

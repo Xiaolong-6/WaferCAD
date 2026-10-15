@@ -85,6 +85,41 @@ test('async worker attestation yields between batches but commits the whole priv
   );
 });
 
+test('reused History references attest once across snapshots, process nodes and branch heads', async () => {
+  let yields = 0;
+  const shared = { id: 'shared-head', model: { regions: [{ xy: [0.0000004, 7] }] } };
+  const independent = { id: 'independent', model: { regions: [{ xy: [1, 2] }] } };
+  const project = {
+    snapshots: Array.from({ length: 7 }, () => ({ state: shared })),
+    snapshotBranches: {
+      nodes: [{ state: independent }, { state: shared }],
+      branches: [{ headState: shared }, { headState: independent }],
+    },
+  };
+  const manager = controller(
+    async () => project,
+    async () => {
+      yields++;
+    },
+  );
+  const before = performance.getEntriesByName('wafercad:history:attestation-clone').length;
+  assert.equal(await manager.readWorkerValidatedProjectSnapshotAsync(project), project);
+  assert.equal(yields, 0, 'two unique identities fit one bounded cloning batch');
+  const entries = performance.getEntriesByName('wafercad:history:attestation-clone');
+  const entry = entries[before];
+  assert.ok(entry, 'attestation diagnostics should report unique-state work');
+  assert.equal(entry.detail.states, 11);
+  assert.equal(entry.detail.uniqueStates, 2);
+  assert.equal(entry.detail.reusedReferences, 9);
+  assert.equal(entry.detail.batches, 1);
+  assert.equal(manager.isValidSnapshotStates([shared, independent, shared]), true);
+  // Ref reuse must not turn the attestation cache into a blanket trust flag.
+  await manager.readWorkerValidatedProjectSnapshotAsync(project);
+  shared.model.regions[0].xy[0] = 0.5;
+  assert.equal(manager.isValidSnapshotStates([shared]), false);
+  assert.equal(manager.isValidSnapshotStates([independent]), true);
+});
+
 test('later sync import wins over a suspended async attestation without partial publication', async () => {
   let resume;
   const state = controller(
