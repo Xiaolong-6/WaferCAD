@@ -1,6 +1,6 @@
 # Desktop View Docking reconstruction — implementation contract (2026-10-15)
 
-**Base**: `integrate/legacy-retirement-20261015` at `45bc459c207fd551a7664ff40f8e86b6d8bc0e0c`. **Delivery**: separate Draft PR targeting that integration branch; no Main merge without explicit approval.
+**Initial base:** `integrate/legacy-retirement-20261015` at `45bc459c`. Once #256 merged and the integration branch was deleted, GitHub automatically closed #261. Its unchanged feature branch continues in Draft **PR #267 targeting Main**, synchronized with post-integration Main; no Merge without explicit maintainer approval.
 
 ## Approved UX
 - Production **desktop only**, viewport width > 820px: `Overview | Main | Mask | 3D | Section`. Overview resets to four-view 2×2; four view buttons are independent visibility toggles and accurately reflect displayed views.

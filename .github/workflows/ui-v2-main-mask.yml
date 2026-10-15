@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-mobile-workstation check-open-mask-unit-editor check-unit-roi-alignment-lifecycle check-tooltips check-main-view check-mask-view check-section-view; do
+          for script in check-mobile-workstation check-open-mask-unit-editor check-unit-roi-alignment-lifecycle check-tooltips check-main-view check-mask-view check-section-view check-desktop-docking; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::View gate failed: ${script}"
@@ -85,6 +85,7 @@ jobs:
             test-results/ui-v2-section-review/
             test-results/ui-v2-tooltip-review/
             test-results/ui-v2-mobile/
+            test-results/ui-v2-desktop-docking/
             serve.log
           retention-days: 14
           if-no-files-found: warn

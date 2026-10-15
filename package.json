@@ -26,6 +26,7 @@
     "test:ui:visual": "node scripts/visual-baseline-regression.mjs",
     "preview:visual": "node scripts/v2/capture-visual-first.mjs",
     "test:ui:mobile": "node scripts/v2/check-mobile-workstation.mjs",
+    "test:ui:docking": "node scripts/v2/check-desktop-docking.mjs",
     "update:ui:visual": "node scripts/visual-baseline-regression.mjs --update",
     "test:ui:fast": "npm run test:ui:smoke && npm run test:ui:workstation && npm run test:ui:resilience",
     "test:ui:state": "npm run test:ui:history && npm run test:ui:persistence",

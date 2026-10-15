@@ -118,6 +118,21 @@ approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
 preview is now v2-only, but former Legacy-only scientific owners must still be
 migrated without losing scenario ownership.
 
+### Production desktop docking ownership
+
+The production Workstation's desktop-only (821px and wider) view layout is owned by
+`site/ui-v2/view-layout-model.js` and `view-layout-templates.js`.
+`site/tests/view-layout.test.mjs` covers pure visibility, ordered slots,
+maximize/restore, Snap and preference invariants. After starting the v2
+browser server, `npm run test:ui:docking` checks real Chromium 1440/1024/821px
+Grid geometry, all four-/three-view presets, titlebar Snap exchange,
+split-resize handles, Panel/Canvas identity, scientific-model invariance,
+and the unchanged 390px compact navigation. It writes unapproved screenshot
+evidence to `test-results/ui-v2-desktop-docking/`. The final
+Main/Mask/Mobile targeted CI owner invokes it; Draft visual iterations should
+prefer the direct command rather than the full browser matrix.
+No temporary standalone workflow is required after the initial screenshot acceptance.
+
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
