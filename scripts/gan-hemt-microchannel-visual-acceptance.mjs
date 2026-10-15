@@ -124,13 +124,30 @@ try {
   await step.first().waitFor({ state: 'attached', timeout: 120000 });
   assert.equal(await step.count(), 1, 'Manifold Bookmark is missing from the real History');
   const group = step.locator('.history-bookmarks-group');
-  await group.locator('summary').click();
+  await group.locator('.history-bookmarks-summary').click();
   const bookmark = group.locator('.history-bookmark-row', {
     hasText: '01 Four-level open microchannels',
   });
   assert.equal(await bookmark.count(), 1, 'Pre-assembly inspection Bookmark is not listed');
   await bookmark.locator('.snapshot-more-trigger').click();
   await bookmark.locator('.snapshot-more-popover button', { hasText: 'Restore bookmark' }).click();
+  // The restore callback refreshes the model and inspection view asynchronously.
+  // Wait for the *physical* Bookmark state rather than merely for a ready 3D host
+  // that could still describe the final assembled device.
+  await page.waitForFunction(
+    () => {
+      const state = window.WaferCadV2Workstation?.snapshot();
+      return (
+        state?.roi?.a?.[0] === -500 &&
+        state?.roi?.a?.[1] === -520 &&
+        state?.roi?.b?.[0] === 500 &&
+        state?.roi?.b?.[1] === 520 &&
+        !state.model.layers.some((layer) => layer.name.startsWith('GaN HEMT SiC substrate'))
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
   await page.locator('[data-action="view:three"]').click();
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
