@@ -586,13 +586,14 @@ export async function buildM3DLime() {
     'Pd hard-mask lithography and etch are recorded; stack footprints are already restricted to inferred sites.',
   );
   bookmark('07 CNTFET + Ta2O5 RRAM / buffer + 2T2R TCAM');
-  // The full 45nm conformal Kernel path currently fails closed on a 0.243nm²
-  // XY overlap in this complex stack. Keep this as an explicitly labeled
-  // directional *geometry surrogate* until that physical kernel case is fixed.
+  // The source specifies ALD: coat the physical topography, including native
+  // vertical walls. A grid-fragment ownership regression guards this case.
   deposit(
-    'ALD Al2O3 RRAM protection 45nm at 150C (directional geometry surrogate)',
+    'ALD Al2O3 RRAM protection 45nm at 150C',
     'Digital Al2O3 passivation 45nm',
     0.045,
+    null,
+    'conformal',
   );
   selectiveEtch('Open top Pt contact through Al2O3', 'Digital Al2O3 passivation 45nm', 0.045, 20);
   assert.equal(
@@ -667,7 +668,7 @@ export async function buildM3DLime() {
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
       'Foundry M4 dielectric is a 100nm geometric surrogate for the already completed 130nm CMOS CMP; CIM and ILD CMP endpoint heights are inferred.',
       'CNT network rendered as 1nm surrogate rather than physical tube-level geometry.',
-      '45nm top ALD Al2O3 is represented as directional geometry because strict conformal ownership fails on this complex patterned stack; no sidewall coverage is claimed.',
+      '45nm top ALD Al2O3 has native conformal sidewall geometry; exact corner shape is limited by the 0.1nm persistence grid.',
       'Y to Y2O3 thermal conversion is a process record with a 10nm display surrogate.',
       'Off-chip ADC, programming and TCAM sense amplifiers are intentionally absent.',
       'Inter-layer vias between CIM and buffer are recorded but not claimed physically connected.',
