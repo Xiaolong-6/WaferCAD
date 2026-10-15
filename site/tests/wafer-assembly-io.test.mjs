@@ -157,10 +157,7 @@ test('bonded product rejects forged History or Recipe before export and after im
 
   const withHistory = structuredClone(original);
   withHistory.snapshots = structuredClone(receiverSource.snapshots);
-  assert.throws(
-    () => serializeProject(withHistory),
-    /cannot coexist with product History/,
-  );
+  assert.throws(() => serializeProject(withHistory), /cannot coexist with product History/);
   const withBranches = structuredClone(original);
   withBranches.snapshotBranches = {
     version: 3,
@@ -168,17 +165,11 @@ test('bonded product rejects forged History or Recipe before export and after im
     branches: [],
     nodes: [],
   };
-  assert.throws(
-    () => validateProjectFile(withBranches),
-    /cannot coexist with product History/,
-  );
+  assert.throws(() => validateProjectFile(withBranches), /cannot coexist with product History/);
 
   const withRecipe = structuredClone(original);
   withRecipe.processRecipe = structuredClone(receiverSource.processRecipe);
-  assert.throws(
-    () => serializeProject(withRecipe),
-    /cannot coexist with product Recipe/,
-  );
+  assert.throws(() => serializeProject(withRecipe), /cannot coexist with product Recipe/);
 
   const stored = JSON.parse(serializeProject(original));
   stored.processRecipe = structuredClone(receiverSource.processRecipe);

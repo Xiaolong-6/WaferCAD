@@ -47,17 +47,3 @@ jobs:
         run: |
           npx eslint site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs
           npx prettier --check site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
-      - name: Temporary formatting evidence
-        if: failure()
-        run: |
-          npx prettier --write site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/tests/wafer-assembly-io.test.mjs
-          git fetch origin "${{ github.event.pull_request.head.sha }}" --depth=1
-          git rev-parse "FETCH_HEAD^{tree}" | sed 's/^/BOND_FMT_TREE:/'
-          node --input-type=module -e '
-            import fs from "node:fs";
-            for (const path of ["site/wafer-bond-transaction.js","site/tests/wafer-bond-transaction.test.mjs","site/tests/wafer-assembly-io.test.mjs"]) {
-              console.log("BOND_FMT_START:" + path);
-              console.log(fs.readFileSync(path).toString("base64"));
-              console.log("BOND_FMT_END:" + path);
-            }
-          '

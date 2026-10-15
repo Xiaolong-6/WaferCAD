@@ -6,10 +6,8 @@ await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const { replayWaferAssembly } = await import('../wafer-assembly.js');
-const {
-  prepareWaferBondTransaction,
-  commitWaferBondTransaction,
-} = await import('../wafer-bond-transaction.js');
+const { prepareWaferBondTransaction, commitWaferBondTransaction } =
+  await import('../wafer-bond-transaction.js');
 
 function wafer(name) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
@@ -191,8 +189,7 @@ test('unconfirmed rollback fails loudly and requires durable Recovery', async ()
 });
 
 test('Bonded baseline rejects fake product History until the History state owner exists', () => {
-  const assembled = prepareWaferBondTransaction(wafer('A'), wafer('B'), { donorId: 'B' })
-    .project;
+  const assembled = prepareWaferBondTransaction(wafer('A'), wafer('B'), { donorId: 'B' }).project;
   const fake = structuredClone(assembled);
   fake.processRecipe = { version: 1, name: 'Illegal product recipe', steps: [] };
   assert.throws(

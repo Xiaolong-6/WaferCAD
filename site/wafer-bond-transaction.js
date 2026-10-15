@@ -58,11 +58,11 @@ export function prepareWaferBondTransaction(receiverProject, donorProject, reque
   const initial = alreadyBonded
     ? receiver.waferAssembly
     : createWaferAssembly(receiver, request.receiverId ?? 'receiver');
-  const { assembly, model, interface: bondInterface } = appendWaferToAssembly(
-    initial,
-    donor,
-    request,
-  );
+  const {
+    assembly,
+    model,
+    interface: bondInterface,
+  } = appendWaferToAssembly(initial, donor, request);
   const project = createBondedAssemblyProject(assembly);
 
   // Preserve the inspected receiver workspace while keeping pre-bond History
@@ -169,5 +169,8 @@ export async function commitWaferBondTransaction(prepared, host) {
     }
     throw error;
   }
-  return { project: structuredClone(prepared.project), operation: structuredClone(prepared.operation) };
+  return {
+    project: structuredClone(prepared.project),
+    operation: structuredClone(prepared.operation),
+  };
 }
