@@ -75,7 +75,7 @@ test('archived documents have canonical links and no obsolete originals', async 
   const archiveRoot = new URL('../../docs/archive/', import.meta.url);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');
   const archived = (await readdir(archiveRoot, { recursive: true }))
-    .map((entry) => String(entry).replaceAll('\\\\', '/'))
+    .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
 
   assert.equal(archived.length, 75, 'archive inventory must be reviewed deliberately');
