@@ -93,11 +93,21 @@ try {
     .setInputFiles('site/examples/m3d-lime-rram-cntfet.wafercad');
   const openConfirmation = page.getByRole('button', { name: 'Open project', exact: true });
   if (await openConfirmation.isVisible()) await openConfirmation.click();
+  // Poll the lightweight completion status, not a multi-megabyte Workstation
+  // snapshot on every animation frame while import and renderer startup run.
   await page.waitForFunction(
-    () => window.WaferCadV2Workstation.snapshot().projectName?.includes('M3D-LIME'),
+    () => {
+      const message =
+        document.querySelector('[data-slot="status.message"]')?.textContent?.trim() || '';
+      return /^Opened m3d-lime-rram-cntfet\\.wafercad\\./.test(message) || /^Open failed:/.test(message);
+    },
     null,
-    { timeout: 120000 },
+    { timeout: 120000, polling: 500 },
   );
+  const importStatus = (
+    await page.locator('[data-slot="status.message"]').textContent()
+  ).trim();
+  assert.match(importStatus, /^Opened m3d-lime-rram-cntfet\\.wafercad\\./, importStatus);
   const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   const initial = await snapshot();
   assert.deepEqual(initial.model, expected.model, 'v2 project import changed canonical geometry');
@@ -251,8 +261,22 @@ try {
 } catch (error) {
   report.error = error.stack || error.message;
   report.pageErrors = errors;
+  report.browserState = await page
+    .evaluate(() => ({
+      ready: document.body?.dataset.ready,
+      status: document.querySelector('[data-slot="status.message"]')?.textContent?.trim(),
+      projectNameInput: document.querySelector('#projectNameInput')?.value,
+      taskText: document.querySelector('[data-slot="task.label"]')?.textContent?.trim(),
+      visibleDialogs: [...document.querySelectorAll('[role="dialog"]')]
+        .filter((element) => element.getClientRects().length)
+        .map((element) => element.innerText.slice(0, 500)),
+      recentBodyText: document.body?.innerText?.slice(-1500),
+    }))
+    .catch((diagnosticError) => ({ error: diagnosticError.message }));
   await page.screenshot({ path: resolve(output, 'failure.png') }).catch(() => {});
   console.error(report.error);
+  console.error('M3D-LIME browser failure state:', JSON.stringify(report.browserState));
+  console.error('M3D-LIME page errors:', JSON.stringify(errors));
   process.exitCode = 1;
 } finally {
   await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
