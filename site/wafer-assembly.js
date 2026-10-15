@@ -1,6 +1,10 @@
 // Standalone Assembly lineage / replay contract.
 // Not yet a live .wafercad schema field or a user-visible Process operation.
-import { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } from './project-schema.js';
+import {
+  CURRENT_PROJECT_VERSION,
+  migrateProjectFile,
+  validateProjectFile,
+} from './project-schema.js';
 import { bondWaferModels } from './wafer-bonding.js';
 
 export const WAFER_ASSEMBLY_VERSION = 1;
@@ -221,7 +225,9 @@ export function validateBondedAssemblyProject(project) {
   validateProjectFile(project);
   const replay = replayWaferAssembly(project.waferAssembly);
   if (!sameCanonicalModel(replay, project.model)) {
-    throw new Error('Bonded Assembly material differs from source-project replay; export/import refused.');
+    throw new Error(
+      'Bonded Assembly material differs from source-project replay; export/import refused.',
+    );
   }
   return project;
 }

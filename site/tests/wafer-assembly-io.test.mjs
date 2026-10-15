@@ -31,7 +31,12 @@ function sourceProject(name) {
   source.processRecipe = recipeTemplate('blank');
   const state = structuredClone(source);
   source.snapshots = [
-    { id: 'source-checkpoint', name: 'Source checkpoint', createdAt: '2026-10-15T10:00:00.000Z', state },
+    {
+      id: 'source-checkpoint',
+      name: 'Source checkpoint',
+      createdAt: '2026-10-15T10:00:00.000Z',
+      state,
+    },
   ];
   validateProjectFile(source);
   return source;
@@ -49,8 +54,16 @@ test('v15 .wafercad carries independent donor masks, recipe and source history, 
   const original = createBondedAssemblyProject(result.assembly);
   assert.equal(original.version, CURRENT_PROJECT_VERSION);
   assert.equal(original.waferAssembly.sources.length, 2);
-  assert.equal(original.snapshots, undefined, 'receiver History must not masquerade as product History');
-  assert.equal(original.processRecipe, undefined, 'pre-bond Recipe must not replay as post-bond Recipe');
+  assert.equal(
+    original.snapshots,
+    undefined,
+    'receiver History must not masquerade as product History',
+  );
+  assert.equal(
+    original.processRecipe,
+    undefined,
+    'pre-bond Recipe must not replay as post-bond Recipe',
+  );
   assert.equal(original.waferAssembly.sources[0].project.snapshots.length, 1);
   assert.equal(original.waferAssembly.sources[1].project.snapshots.length, 1);
   assert.ok(original.waferAssembly.sources[1].project.processRecipe);
@@ -90,7 +103,10 @@ test('v15 import rejects corrupted source, altered bond, and fake post-bond mate
 
   const validEncoded = JSON.parse(serializeProject(original));
   validEncoded.waferAssembly.bonds[0].contactAreaUm2 = 1;
-  await assert.rejects(() => readProjectFile(fileLike(JSON.stringify(validEncoded))), /replay differs/);
+  await assert.rejects(
+    () => readProjectFile(fileLike(JSON.stringify(validEncoded))),
+    /replay differs/,
+  );
 });
 
 test('v14 or nested assemblies cannot disguise v15 provenance', async () => {

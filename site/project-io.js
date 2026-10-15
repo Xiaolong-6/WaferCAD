@@ -755,9 +755,10 @@ export function prepareProjectForExport(project) {
 }
 
 function serializedProject(project, maxBytes, { allowLosslessFallback = false } = {}) {
-  const result = allowLosslessFallback || project.waferAssembly != null
-    ? prepareProjectForExport(project)
-    : { stored: prepareProjectForStorage(project), mode: 'compact' };
+  const result =
+    allowLosslessFallback || project.waferAssembly != null
+      ? prepareProjectForExport(project)
+      : { stored: prepareProjectForStorage(project), mode: 'compact' };
   const text = JSON.stringify(result.stored);
   const blob = new Blob([text], { type: 'application/json' });
   if (blob.size > maxBytes) {
