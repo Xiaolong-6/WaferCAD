@@ -13,8 +13,7 @@ const bounds = (poly) => ({
   minY: Math.min(...poly.map(([, y]) => y)),
   maxY: Math.max(...poly.map(([, y]) => y)),
 });
-const axialOverlap = (a, b) =>
-  Math.max(0, Math.min(a.maxY, b.maxY) - Math.max(a.minY, b.minY));
+const axialOverlap = (a, b) => Math.max(0, Math.min(a.maxY, b.maxY) - Math.max(a.minY, b.minY));
 
 test('compact S8 candidate places both 20-cell banks across one longitudinal shuttle', () => {
   for (const state of ['off', 'on']) {
@@ -31,10 +30,7 @@ test('compact S8 candidate places both 20-cell banks across one longitudinal shu
     const shuttleRail = bounds(pose.shuttle[0]);
     closeTo(shuttleRail.maxX - shuttleRail.minX, 0.7);
     assert.ok(shuttleRail.maxY - shuttleRail.minY > 40);
-    assert.equal(
-      pose.integrationStatus,
-      'isolated-mechanical-candidate-not-manufacturing-project',
-    );
+    assert.equal(pose.integrationStatus, 'isolated-mechanical-candidate-not-manufacturing-project');
   }
 });
 
@@ -51,10 +47,7 @@ test('40 finger pairs preserve 300nm gap and 200nm plus travel axial overlap', (
         const f = bounds(bank.stationary[i]);
         const m = bounds(bank.moving[i]);
         closeTo(axialOverlap(f, m), overlap);
-        closeTo(
-          bank.side > 0 ? m.minX - f.maxX : f.minX - m.maxX,
-          SWX_REPORTED.combFingerGapUm,
-        );
+        closeTo(bank.side > 0 ? m.minX - f.maxX : f.minX - m.maxX, SWX_REPORTED.combFingerGapUm);
       }
     }
   }
@@ -89,10 +82,17 @@ test('compact candidate has no fixed/moving positive-area silicon overlap', asyn
     // The only physical flexure/shuttle intersection is at the moving
     // spring tip: upstream intersections would incorrectly stiffen the
     // 30/22um folded spring even if fixed/movable conductors stayed apart.
+    assert.equal(
+      union(pose.anchors).length,
+      4,
+      state + ' four independent spring anchors must not touch or merge',
+    );
     const contact = v.intersection(union(pose.springContours), union(pose.shuttle));
-    const maxAllowedY =
-      SWX_COMPACT_ASSUMPTIONS.springTipYUm + pose.travelUm + 0.35;
-    const unexpected = contact.flatMap((multi) => multi).flat().filter((point) => point[1] > maxAllowedY);
+    const maxAllowedY = SWX_COMPACT_ASSUMPTIONS.springTipYUm + pose.travelUm + 0.35;
+    const unexpected = contact
+      .flatMap((multi) => multi)
+      .flat()
+      .filter((point) => point[1] > maxAllowedY);
     assert.equal(
       unexpected.length,
       0,
@@ -108,10 +108,6 @@ test('compact candidate has no fixed/moving positive-area silicon overlap', asyn
     ];
     const indices = sample.map(component);
     assert.ok(indices.every((i) => i >= 0));
-    assert.equal(
-      new Set(indices).size,
-      1,
-      'two comb handles must share the shuttle moving net',
-    );
+    assert.equal(new Set(indices).size, 1, 'two comb handles must share the shuttle moving net');
   }
 });
