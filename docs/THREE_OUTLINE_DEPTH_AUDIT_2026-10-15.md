@@ -56,6 +56,12 @@ original material setting is restored before subsequent rendering. Opaque main
 depth is not reused automatically: nonstructural helpers can write depth, and
 the unbiased color pass does not establish the contour offset contract.
 
+The depth stage also temporarily sets the GPU rough micro-normal strength to
+zero. This skips fragment morphology sampling and derivative calculations used
+only for lighting. Vertex displacement, profile direction and all physical
+boundary positions stay unchanged. The original uniform value is restored
+before other passes, including when the depth render throws.
+
 The pass restores renderer, scene, object and material state even when rendering
 throws. It does not allocate persistent render targets or replace surface
 materials. With all outlines disabled, it uses one ordinary scene draw. With
@@ -70,7 +76,7 @@ Windows, Node `v26.7.0`, locked Three `0.179.1`:
 
 ```text
 node --test site/tests/three-outline-geometry.test.mjs site/tests/three-outline-pass.test.mjs
-12 passed, 0 failed
+13 passed, 0 failed
 ```
 
 The depth tests cover pass membership, excluded annotations, retained invisible

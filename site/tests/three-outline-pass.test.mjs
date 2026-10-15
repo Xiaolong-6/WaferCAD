@@ -161,7 +161,8 @@ test('depth rebuild retains the actual GPU rough material and instanced mesh', (
   decorateGpuRoughMaterial(material, appearance);
   const compile = material.onBeforeCompile,
     key = material.customProgramCacheKey(),
-    version = material.version;
+    version = material.version,
+    uniforms = material.userData.waferCadGpuRough.uniforms;
   scene.add(mesh, lines);
   let draws = 0;
   const renderer = {
@@ -182,8 +183,15 @@ test('depth rebuild retains the actual GPU rough material and instanced mesh', (
         assert.equal(material.colorWrite, false);
         assert.equal(material.depthWrite, true);
         assert.equal(material.forceSinglePass, true);
+        assert.equal(uniforms.waferCadRoughNormalStrength.value, 0);
+        assert.equal(
+          uniforms.waferCadRoughProfileNormal.value,
+          1,
+          'vertex displacement remains enabled',
+        );
       } else {
         assert.equal(material.forceSinglePass, false);
+        assert.equal(uniforms.waferCadRoughNormalStrength.value, 1);
       }
     },
   };
@@ -196,8 +204,35 @@ test('depth rebuild retains the actual GPU rough material and instanced mesh', (
   assert.equal(material.transparent, true);
   assert.equal(material.colorWrite, true);
   assert.equal(material.forceSinglePass, false);
+  assert.equal(uniforms.waferCadRoughNormalStrength.value, 1);
   mesh.geometry.dispose();
   material.dispose();
   lines.geometry.dispose();
   lines.material.dispose();
+});
+
+test('depth failure restores the rough lighting uniform without changing displacement', () => {
+  const f = fixture(2),
+    strength = { value: 0.82 },
+    profileNormal = { value: -1 };
+  f.material.userData = {
+    waferCadGpuRough: {
+      uniforms: {
+        waferCadRoughNormalStrength: strength,
+        waferCadRoughProfileNormal: profileNormal,
+      },
+    },
+  };
+  assert.throws(
+    () =>
+      renderDepthAwareOutlines(
+        f.renderer,
+        f.scene,
+        {},
+        { occluders: [f.mesh], outlines: [f.solid] },
+      ),
+    /render failed/,
+  );
+  assert.equal(strength.value, 0.82);
+  assert.equal(profileNormal.value, -1);
 });

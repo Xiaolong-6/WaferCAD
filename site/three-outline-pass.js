@@ -16,6 +16,7 @@ export function renderDepthAwareOutlines(
     occluderSet = new Set(occluders),
     renderables = [],
     materialStates = new Map(),
+    uniformStates = new Map(),
     background = scene.background,
     autoClear = renderer.autoClear,
     infoAutoReset = renderer.info?.autoReset;
@@ -26,6 +27,7 @@ export function renderDepthAwareOutlines(
   });
   const restoreMaterials = () => {
     for (const [material, state] of materialStates) Object.assign(material, state);
+    for (const [uniform, value] of uniformStates) uniform.value = value;
   };
   try {
     if (renderer.info) {
@@ -61,6 +63,14 @@ export function renderDepthAwareOutlines(
         // Three's separate front/back transparency draws cannot add information
         // here because this pass writes no color and keeps depth testing enabled.
         material.forceSinglePass = true;
+        const normalStrength =
+          material.userData?.waferCadGpuRough?.uniforms?.waferCadRoughNormalStrength;
+        if (normalStrength && !uniformStates.has(normalStrength)) {
+          uniformStates.set(normalStrength, normalStrength.value);
+          // Micro-normal shading affects lighting only. Structural depth needs
+          // the original displaced vertices and no fragment profile derivatives.
+          normalStrength.value = 0;
+        }
         // Bias surface depth away from its coincident physical contour. This
         // resolves raster precision only; hidden lines still require GreaterDepth.
         material.polygonOffset = true;
