@@ -35,8 +35,7 @@ try {
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
           return (
-            !state.workflow.busy &&
-            state.model.layers.some((layer) => layer.name === expected)
+            !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected)
           );
         },
         name,
@@ -52,15 +51,10 @@ try {
         .locator('.process-history-row.history-step-row', { hasText: name })
         .first()
         .click();
-      await page.waitForFunction(
-        (expected) => {
-          const state = window.WaferCadV2Workstation.snapshot();
-          return (
-            state.model.layers.some((layer) => layer.name === expected) && !state.workflow.busy
-          );
-        },
-        name,
-      );
+      await page.waitForFunction((expected) => {
+        const state = window.WaferCadV2Workstation.snapshot();
+        return state.model.layers.some((layer) => layer.name === expected) && !state.workflow.busy;
+      }, name);
     }
 
     await deposit('Native history A');
@@ -84,11 +78,10 @@ try {
     assert.equal(historical.workflow.branches.length, 1, 'Inspection does not fork a Variant');
 
     await page.locator('.snapshot-return-head').click();
-    await page.waitForFunction(
-      () =>
-        window.WaferCadV2Workstation.snapshot().model.layers.some(
-          (layer) => layer.name === 'Native history B',
-        ),
+    await page.waitForFunction(() =>
+      window.WaferCadV2Workstation.snapshot().model.layers.some(
+        (layer) => layer.name === 'Native history B',
+      ),
     );
     assert.deepEqual((await snapshot()).model, main.model, 'Return to HEAD restores all geometry');
 
@@ -114,7 +107,11 @@ try {
     assert.ok(variant, 'History mutation creates a new Variant');
 
     await openHistory();
-    await page.locator('.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name').click();
+    await page
+      .locator(
+        '.history-variant[data-variant-id="main"] > .history-variant-head .history-variant-name',
+      )
+      .click();
     await page.waitForFunction(
       () =>
         window.WaferCadV2Workstation.snapshot().model.layers.some(
@@ -128,13 +125,16 @@ try {
     );
 
     await page
-      .locator('.history-variant[data-variant-id="' + variant.id + '"] > .history-variant-head .history-variant-name')
+      .locator(
+        '.history-variant[data-variant-id="' +
+          variant.id +
+          '"] > .history-variant-head .history-variant-name',
+      )
       .click();
-    await page.waitForFunction(
-      () =>
-        window.WaferCadV2Workstation.snapshot().model.layers.some(
-          (layer) => layer.name === 'Native branch C',
-        ),
+    await page.waitForFunction(() =>
+      window.WaferCadV2Workstation.snapshot().model.layers.some(
+        (layer) => layer.name === 'Native branch C',
+      ),
     );
     assert.deepEqual(
       (await snapshot()).model,
@@ -151,8 +151,7 @@ try {
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#saveProjectBtn').click();
     await page.waitForFunction(
-      () =>
-        /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
+      () => /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
       null,
       { timeout: 30000 },
     );
