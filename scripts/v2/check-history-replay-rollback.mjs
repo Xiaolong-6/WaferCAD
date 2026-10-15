@@ -79,6 +79,12 @@ try {
 
     const applyLabel = await page.locator('#applyOperationBtn').innerText();
     assert.match(applyLabel, /Save edited Step/, 'Native v2 must remain in historical edit mode');
+    await page.evaluate(() => {
+      window.__v2HistoryClick = { count: 0 };
+      document.getElementById('applyOperationBtn').addEventListener('click', () => {
+        window.__v2HistoryClick.count++;
+      });
+    });
     await page.locator('#applyOperationBtn').click();
     // The Process button starts an async beforeApply transaction; give its
     // confirmation or error status a chance to appear before diagnosing it.
@@ -89,6 +95,10 @@ try {
       operation: document.getElementById('operationType')?.value,
       thickness: document.getElementById('operationThickness')?.value,
       disabled: document.getElementById('applyOperationBtn')?.disabled,
+      domApplyButtons: document.querySelectorAll('#applyOperationBtn').length,
+      onclick: typeof document.getElementById('applyOperationBtn')?.onclick,
+      clickTrace: window.__v2HistoryClick,
+      workflowBusy: window.WaferCadV2Workstation?.snapshot()?.workflow?.busy,
       dialogs: [...document.querySelectorAll('[role="dialog"]')].map((node) => ({
         hidden: node.hidden,
         text: node.textContent?.slice(0, 500),
