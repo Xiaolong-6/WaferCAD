@@ -165,7 +165,14 @@ test('one wide imported History state yields before publication and preserves ex
     layout: {
       name: 'mask',
       root: 'TOP',
-      elements: [{ points: [[0, 0], [0.5, 0.5]] }],
+      elements: [
+        {
+          points: [
+            [0, 0],
+            [0.5, 0.5],
+          ],
+        },
+      ],
       linework: [],
       combos: [],
       hierarchy: {},
@@ -220,7 +227,7 @@ test('one wide imported History state yields before publication and preserves ex
 
   sourceState.view0.pan[0] = 999;
   sourceState.model.regions[0].geometry[0][0] = 999;
-  assert.equal(manager.exportRecords()[0].state.view0.pan[0], 0);
+  assert.equal(Object.is(manager.exportRecords()[0].state.view0.pan[0], -0), true);
   assert.equal(manager.exportRecords()[0].state.model.regions[0].geometry[0][0], 0.0000004);
 });
 
