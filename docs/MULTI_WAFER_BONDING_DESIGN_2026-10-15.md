@@ -175,17 +175,17 @@ checks accurately. No merge or deployment without explicit user approval.
 
 ## Known gaps and handoff
 
-**Implemented:** branch isolation, geometric bonding primitive, candidate
-validation and initial test source.
+**Implemented:** isolated scientific Kernel, v15 lossless Assembly provenance
+and independent source replay, strict import/export and Recovery parity,
+legacy v14 version preservation, and fail-closed editor import guard.
 
-**Not verified:** runtime test results, 3D/Section visual evidence, model
-scale/performance, actual two-wafer reconstruction, saved source provenance,
-Recipe/History/Recovery and release CI.
+**Still unverified:** live multi-wafer editing and History/Recipe transactions,
+browser/3D visual evidence, original complete two-wafer process-flow reconstruction
+from PR #229, product-scale performance and required final Quality gates.
 
-**Next:** execute targeted tests in an accessible local workspace; fix any
-scientific mismatches; extend geometry coverage; then implement versioned
-Assembly persistence and History integration. The donor/receiver model and
-source masks from PR #229 should not be altered during this isolated stage.
+**Next:** integrate a first-class Bond History transaction plus source-aware UI,
+then remove the editor guard only after end-to-end Save/Recovery/Replay and
+real browser screenshots pass. Keep PR #229 source masks independent.
 
 ## Verified P1B/P2 milestone — 2026-10-15
 
@@ -202,11 +202,13 @@ source masks from PR #229 should not be altered during this isolated stage.
   `project-io.js` uses **lossless-only** storage for bonded projects. Source
   length drift, wrong contact metadata, illegal nested provenance, mismatched
   output geometry and pre-v15 Assembly files are refused before import/export.
-- **Acceptance:** five dedicated v15 IO/Recovery tests pass. Existing
-  `project-geometry-storage.test.mjs` was also attempted in the targeted
-  campaign but failed at module startup due to polygon-clipping preload
-  ordering; this unrelated fixture has **not** been counted as passing or
-  silently modified. It remains a later compatibility gate.
+- **Acceptance:** seven v15 IO/migration unit tests pass. The original
+  `project-geometry-storage.test.mjs` remains unchanged and now passes after
+  removing an eager geometry dependency and preserving v14 snapshot versions.
+  The Recovery path validates replay parity for Assembly records; v14 files
+  no longer create needless version-upgrade checkpoints on every startup.
+  A strict editor import guard prevents losing Assembly provenance before the
+  live state owner and Bond History transaction are implemented.
 - **Still missing:** a user-facing Bond operation and transaction in
   Recipe/History/Recovery, original two-wafer full PR #229 flow, real
   Chromium four-view screenshots, cross-version browser open test, complete
@@ -218,3 +220,15 @@ changes until a first-class Bond History/Recipe operation exists. The donor's
 independent source History remains inside the Assembly record and is not
 misrepresented as the product's own linear Process History. After P2 History
 integration this restriction can be lifted with explicit replay provenance.
+
+## Safety policy for the staged v15 codec
+
+A v15 Bonded Assembly can be generated, validated, exported and round-tripped
+through the standalone geometry/IO APIs. **It is intentionally not yet
+editable in the ordinary WaferCAD workstation**: the generic project-state
+controller currently does not own `waferAssembly` metadata. Until it is
+transactionally wired into the live Workspace and History controllers, that
+import is refused *before* any state mutation. Ordinary v14 project import
+continues unchanged. No source Project, Mask, Recipe or History may be silently
+discarded to make a Preview appear functional. The gate will be lifted only
+after a dedicated editor-state ownership and atomic Rollback test suite passes.
