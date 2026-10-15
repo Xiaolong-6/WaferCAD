@@ -149,6 +149,30 @@ try {
     displayZToXRatio: sectionView.zPxPerUm / sectionView.xPxPerUm,
     screenshotBytes: sectionPng.length,
   };
+  // Nanometre-scale ALD films are barely visible in the 9um whole-stack view.
+  // Capture an inspection-only zoom without altering the physical Section A-B.
+  await page.locator('[data-action="tool:zoom:section"]').click();
+  const sectionBox = await page.locator('#sectionCanvas').boundingBox();
+  assert.ok(sectionBox, 'Section canvas must be measurable for zoom evidence');
+  await page.mouse.move(
+    sectionBox.x + sectionBox.width * 0.56,
+    sectionBox.y + sectionBox.height * 0.22,
+  );
+  await page.mouse.wheel(0, -540);
+  await waitForPaint(page);
+  const magnification = await page
+    .locator('#sectionCanvas')
+    .evaluate((canvas) => Number(canvas.dataset.sectionViewportZoom));
+  assert.ok(magnification > 1.5, 'Local Section inspection zoom did not take effect');
+  const enlargedPng = await sectionPanel.screenshot({
+    path: resolve(output, 'section-local-zoomed-before-runall.png'),
+    animations: 'disabled',
+  });
+  assert.ok(enlargedPng.length > 8000, 'Magnified Section evidence is unexpectedly small');
+  report.sectionEvidence.inspectionZoom = magnification;
+  report.sectionEvidence.zoomedScreenshotBytes = enlargedPng.length;
+  assert.deepEqual((await snapshot()).section, expected.section);
+
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
     await waitForPaint(page);
