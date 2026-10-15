@@ -334,3 +334,32 @@ This is a candidate reduction in JavaScript allocation overhead, **not a
 verified end-to-end performance improvement** until a current-revision
 P1 CPU comparison and physical GPU/iGPU acceptance are available.
 Keep PR #188 Draft, do not merge or deploy on CI green alone.
+
+## P1-K asynchronous History attestation — 15 October 2026
+
+The Worker already validates the entire restored project. Before History
+adoption, the workstation independently clones the imported snapshots so
+mutation can be detected by `isValidSnapshotStates`. Previously the
+workstation cloned **all** snapshot, branch-node and branch-head states in
+one main-thread `structuredClone(states)` call. The single task remained
+visible in software-Chromium CPU profiles.
+
+Progressive startup and Worker-based project import now use
+`readWorkerValidatedProjectSnapshotAsync`, staging independent attestation
+copies in private batches of four states and yielding the browser thread
+between batches. A monotonically increasing generation guards against stale
+concurrent imports: a superseded attestation throws `AbortError`, and no
+partially cloned cache is published. The existing synchronous reader is
+preserved for legacy consumers. Test coverage includes five- and nine-state
+imports, deterministic yielding, atomic publication, independent copied
+geometry and a newer synchronous import superseding an older asynchronous
+one.
+
+A single extremely large state still incurs one indivisible
+`structuredClone` and could exceed 500 ms. The change reduces the
+**aggregate per-task** clone span in multi-state histories; it is not proof
+of the physical-GPU responsiveness gate. Monitor
+`wafercad:history:attestation-clone` duration and its
+`activeCloneMs` and `batches` detail, while retaining strict History
+integrity, Recovery and final screenshot gates. PR #188 remains Draft and
+must not be merged or deployed solely because CI is green.
