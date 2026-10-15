@@ -51,11 +51,11 @@ jobs:
           - example: photodetector-ge-b
             options: '--id=photodetector-literature --variant=ge-fig15-b'
           - example: perc-point-contact-solar-cell
-            options: '--id=perc-point-contact-solar-cell'
+            options: '--id=perc-point-contact-solar-cell --history-parity'
           - example: fully-textured-perovskite-silicon-tandem
-            options: '--id=fully-textured-perovskite-silicon-tandem'
+            options: '--id=fully-textured-perovskite-silicon-tandem --history-parity'
           - example: suspended-silica-microdisk
-            options: '--id=suspended-silica-microdisk'
+            options: '--id=suspended-silica-microdisk --history-parity'
           - example: suspended-silica-keep-history
             options: '--id=suspended-silica-microdisk --history=keep'
           - example: m3d-selfpowered-heterogeneous-ic
