@@ -164,9 +164,16 @@ test('moving optical paths use genuine 5um/3um tangent arcs in OFF and ON', () =
     const pose = createSwxOptomechanicalCandidate(state);
     const centerlines = pose.opticalRouting.movingCenterlines;
     assert.equal(centerlines.length, 2);
-    assert.deepEqual(centerlines.map(({ radiusUm }) => radiusUm), SWX_REPORTED.meanderRadiiUm);
+    assert.deepEqual(
+      centerlines.map(({ radiusUm }) => radiusUm),
+      SWX_REPORTED.meanderRadiiUm,
+    );
     for (const [leg, path] of centerlines.entries()) {
-      assert.equal(path.arcs.length, 3, 'Both moving optical legs need three curvature-controlled turns');
+      assert.equal(
+        path.arcs.length,
+        3,
+        'Both moving optical legs need three curvature-controlled turns',
+      );
       for (const arc of path.arcs) {
         assert.equal(arc.radiusUm, SWX_REPORTED.meanderRadiiUm[leg]);
         for (let index = arc.firstArcIndex; index <= arc.lastArcIndex; index++) {
@@ -186,7 +193,15 @@ test('moving optical paths use genuine 5um/3um tangent arcs in OFF and ON', () =
     }
   }
   assert.throws(
-    () => filletPolyline([[0, 0], [1, 0], [1, 1]], 5),
+    () =>
+      filletPolyline(
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+        5,
+      ),
     /does not fit available centerline segment/,
     'Unfabricable tight waveguide bends must be rejected instead of shrinking the radius',
   );
