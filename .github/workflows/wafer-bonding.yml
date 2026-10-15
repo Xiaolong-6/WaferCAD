@@ -1,0 +1,37 @@
+name: Wafer bonding targeted science
+
+on:
+  pull_request:
+    branches:
+      - feat/example-gan-hemt-microchannel-20261014
+    paths:
+      - site/wafer-bonding.js
+      - site/tests/wafer-bonding.test.mjs
+      - docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+      - .github/workflows/wafer-bonding.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wafer-bonding-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  bonding-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Bond-specific lint and formatting
+        run: |
+          npx eslint site/wafer-bonding.js site/tests/wafer-bonding.test.mjs
+          npx prettier --check site/wafer-bonding.js site/tests/wafer-bonding.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+      - name: Bond geometry scientific invariants
+        run: node --test site/tests/wafer-bonding.test.mjs
