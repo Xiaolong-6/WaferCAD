@@ -9,6 +9,12 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import {
+  desktopDockingEnabled,
+  projectDesktopLayout,
+  reduceDesktopLayout,
+} from './view-layout-model.js';
+import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -18,6 +24,14 @@ try {
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
+  const desktopPreferences = (() => {
+    if (readOnlyPreview) return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
   const project = readOnlyPreview
       ? await loadBundledProject(params.get('example'), undefined, { preview: true })
       : await loadWorkstationProject(),
@@ -55,6 +69,7 @@ try {
     maximize: null,
     mobile: 'view',
     splitViews: ['main', 'mask'],
+    desktopLayout: readOnlyPreview ? null : loadDesktopLayout(desktopPreferences),
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
@@ -81,6 +96,7 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
+      desktopLayout: readOnlyPreview ? null : projectDesktopLayout(uiState.desktopLayout),
       // Compact visibility has exactly one owner: mobile = view | edit.
       editorHidden: window.WaferCadV2ViewState.compact(window)
         ? uiState.mobile !== 'edit'
@@ -98,6 +114,17 @@ try {
     if (starting) return;
     shell.render();
     store.renderAll();
+  };
+  // Layout changes repaint only Shell/element sizing. Scientific invalidation
+  // remains owned by the existing model scheduler and canvas ResizeObservers.
+  const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
+  const changeDesktopLayout = (action) => {
+    if (!desktopDockingActive()) return;
+    const next = reduceDesktopLayout(uiState.desktopLayout, action);
+    if (next === uiState.desktopLayout) return;
+    uiState.desktopLayout = next;
+    saveDesktopLayout(desktopPreferences, next);
+    if (!starting) shell.render();
   };
   const status = (value) => {
     message = value;
@@ -196,6 +223,12 @@ try {
       if (domain === 'mask') uiState.view = 'mask';
       selectPane('edit', domain);
       render();
+    } else if (action === 'dock:overview') {
+      changeDesktopLayout({ type: 'RESET_OVERVIEW' });
+    } else if (action.startsWith('dock:view:')) {
+      changeDesktopLayout({ type: 'TOGGLE_VIEW', view: action.split(':')[2] });
+    } else if (action.startsWith('dock:close:')) {
+      changeDesktopLayout({ type: 'CLOSE_VIEW', view: action.split(':')[2] });
     } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
       uiState.maximize = null;
@@ -214,8 +247,11 @@ try {
       render();
     } else if (action.startsWith('maximize:')) {
       const key = action.split(':')[1];
-      uiState.maximize = uiState.maximize === key ? null : key;
-      render();
+      if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
+      else {
+        uiState.maximize = uiState.maximize === key ? null : key;
+        render();
+      }
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
