@@ -28,7 +28,7 @@ const strip = (a, b, width) => {
 export const SWX_COMPACT_ASSUMPTIONS = Object.freeze({
   fixedBusYUm: -18,
   movingBusYUm: -27.4,
-  shuttleExtentYUm: [-34, 20],
+  shuttleExtentYUm: [-34, 8],
   springAnchorYUm: 40,
   springTipYUm: 6,
   springBaseXUm: [2, 12],
