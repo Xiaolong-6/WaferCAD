@@ -101,13 +101,9 @@ try {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
-  await stalePage.waitForFunction(
-    () => document.body.dataset.ready === 'true',
-    null,
-    {
-      timeout: 120000,
-    },
-  );
+  await stalePage.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
   const nonOwner = await stalePage.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.equal(nonOwner.workflow.writable, false, 'A second v2 tab cannot steal the writer lease');
   assert.deepEqual(nonOwner.model, restoredInV2.model);
