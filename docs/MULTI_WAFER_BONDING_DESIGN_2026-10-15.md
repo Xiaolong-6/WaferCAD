@@ -228,7 +228,7 @@ through the standalone geometry/IO APIs. **It is intentionally not yet
 editable in the ordinary WaferCAD workstation**: the generic project-state
 controller currently does not own `waferAssembly` metadata. Until it is
 transactionally wired into the live Workspace and History controllers, that
-import is refused *before* any state mutation. Ordinary v14 project import
+import is refused _before_ any state mutation. Ordinary v14 project import
 continues unchanged. No source Project, Mask, Recipe or History may be silently
 discarded to make a Preview appear functional. The gate will be lifted only
 after a dedicated editor-state ownership and atomic Rollback test suite passes.
