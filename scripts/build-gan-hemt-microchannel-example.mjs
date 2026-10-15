@@ -714,8 +714,12 @@ export async function buildGanMicrochannel() {
         region.stack.some((segment) => segment.z0 < z && segment.z1 > z),
     );
   }
-  const tsvTi = model.layers.find((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um');
-  const tsvCu = model.layers.find((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  const tsvTi = model.layers.find(
+    (layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um',
+  );
+  const tsvCu = model.layers.find(
+    (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
+  );
   assert.ok(tsvTi && tsvCu, 'Missing physical Ti/Cu TSV seed material');
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550]) {

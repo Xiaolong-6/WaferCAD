@@ -16,7 +16,7 @@ jobs:
   tsv-conformal:
     name: TSV liner geometry and coolant invariants
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,15 +24,43 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Format targeted candidate before syncing generated project
-        run: npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+      - name: Verify focused formatting
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Targeted ESLint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Scientific wall and full native Recipe replay
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
-      - name: Rebuild canonical project and Preview
+      - name: Check canonical generated scientific artifacts and persisted project
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
-          node -e "const f=require('node:fs');for(const [name,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md'],['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('GAN_TSV_ASSET|'+name+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('GAN_TSV_ASSET_END|'+name+'|'+Math.ceil(s.length/1500));}"
-
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - name: Install Chromium for physical three-view audit
+        run: npx playwright install --with-deps chromium
+      - name: Launch local Workstation
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/gan-tsv-ui.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/gan-tsv-ui.log
+          exit 1
+      - name: Capture real Browser coolant, TSV and HEMT cross-sections
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Regenerate real browser 3D thumbnail for review
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Emit refreshed Welcome thumbnail and checksum manifest for synchronization
+        run: |
+          node -e "const f=require('node:fs');for(const [name,path] of [['webp','site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp'],['manifest','tests/fixtures/project-io/example-thumbnails.json']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('GAN_TSV_IMAGE|'+name+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('GAN_TSV_IMAGE_END|'+name+'|'+Math.ceil(s.length/1500));}"
+      - name: Upload actual rendered acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gan-tsv-conformal-browser-evidence
+          path: test-results/gan-microchannel/visual/
+          if-no-files-found: warn

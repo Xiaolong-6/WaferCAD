@@ -230,8 +230,12 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   );
   const platedTSV = project.snapshots.find((s) => s.name.startsWith('03b Open Ti/Cu-lined'));
   assert.ok(platedTSV, 'Ti/Cu deposition needs a distinct scientific Bookmark');
-  assert.ok(project.model.layers.some((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um'));
-  assert.ok(project.model.layers.some((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um'));
+  assert.ok(
+    project.model.layers.some((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um'),
+  );
+  assert.ok(
+    project.model.layers.some((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um'),
+  );
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);

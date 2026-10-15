@@ -34,7 +34,10 @@ test('Production Ti/Cu TSV seed walls preserve coolant and open via cores', asyn
       for (let offset = 33; offset <= 37.0001; offset += 0.05) {
         observed.add(layerAt(model, [x + offset, y], z));
       }
-      for (const [name, id] of [['Ti', ti.id], ['Cu', cu.id]]) {
+      for (const [name, id] of [
+        ['Ti', ti.id],
+        ['Cu', cu.id],
+      ]) {
         assert.ok(observed.has(id), name + ' wall film absent at ' + [x, y, z]);
       }
       seen[[x, y, z].join(',')] = [...observed].filter(Boolean).length;
@@ -62,5 +65,8 @@ test('Production Ti/Cu TSV seed walls preserve coolant and open via cores', asyn
       );
     }
   }
-  console.log('TSV conformal film probe passed:', JSON.stringify({ heightChecks: heights, sample: seen }));
+  console.log(
+    'TSV conformal film probe passed:',
+    JSON.stringify({ heightChecks: heights, sample: seen }),
+  );
 });
