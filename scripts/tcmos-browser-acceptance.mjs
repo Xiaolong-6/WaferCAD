@@ -387,6 +387,72 @@ try {
     endpointsUm: { a: [ax, 0], b: [bx, 0] },
     sourceGeometry: 'illustrative; gate length 130 nm only is source-supported',
   }));
+  // Inspect a physical local 3D cutaway using the existing Main ROI clipping
+  // contract. Each temporary project is an inspection-only derivative of the
+  // accepted file: the manufacturing geometry and published candidate bytes
+  // remain unchanged. The y = 0 ROI boundary exposes a cross-device sidewall.
+  report.localThreeD = [];
+  for (const local of localSections) {
+    const roi = {
+      type: 'rect',
+      a: [local.gateX - 0.85, 0],
+      b: [local.gateX + 0.85, 0.75],
+    };
+    const inspection = structuredClone(expected);
+    inspection.name = 'T-CMOS ' + local.device + ' LOCAL 3D INSPECTION ONLY';
+    inspection.roi = roi;
+    inspection.section = { a: [local.ax, 0], b: [local.bx, 0] };
+    inspection.display.threeOpacity = 0.6;
+    inspection.display.threeShowBorders = true;
+    // Do not reuse the full-field camera: Fit must resolve the ROI's own
+    // physical XY bounds and the renderer's Z-display transform.
+    delete inspection.display.threeCamera;
+    const inspectionPath = resolve(dir, 'tcmos-' + local.device + '-INSPECTION-ONLY.wafercad');
+    await writeFile(inspectionPath, JSON.stringify(inspection));
+    const validated = await readProjectFile(new Blob([await readFile(inspectionPath)]));
+    assert.deepEqual(validated.roi, roi);
+    assert.deepEqual(validated.model, expected.model, 'Inspection copy altered material model');
+    await panel('project');
+    await page.locator('#openProjectInput').setInputFiles(inspectionPath);
+    const confirm = page.getByRole('button', { name: 'Open project', exact: true });
+    if (await confirm.isVisible()) await confirm.click();
+    await page.waitForFunction(
+      ({ name, bounds }) => {
+        const s = window.WaferCadV2Workstation.snapshot();
+        return s.projectName === name && JSON.stringify(s.roi) === JSON.stringify(bounds) && !s.workflow.busy;
+      },
+      { name: inspection.name, bounds: roi },
+      { timeout: 120000 },
+    );
+    const inBrowser = await snap();
+    assert.deepEqual(inBrowser.model, opened.model, 'Local 3D capture modified physical model');
+    assert.deepEqual(inBrowser.section, inspection.section);
+    const expandThree = page.locator('[data-action="maximize:three"]').first();
+    await expandThree.click();
+    await waitForPaint(page);
+    await page.locator('#threePanel [data-action="fit:three"]').click();
+    await waitForPaint(page);
+    const framing = await snap();
+    assert.deepEqual(framing.roi, roi, '3D ROI clip must use exact local coordinates');
+    assert.equal(framing.threeDisplay.borders, true, 'Local cutaway should display borders');
+    assert.ok(
+      Math.abs(framing.threeCamera?.target?.[0] - local.gateX) < 0.1,
+      '3D Fit must target the transistor-local ROI rather than the full 14 µm field',
+    );
+    await page.locator('#threePanel').screenshot({
+      path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-cutaway.png'),
+    });
+    report.localThreeD.push({
+      device: local.device,
+      sourceSupported: false,
+      role: 'illustrative ROI-clipped device inspection; not calibrated dopant or BTBT physics',
+      roiUm: roi,
+      camera: framing.threeCamera,
+      unchangedPhysicalModel: true,
+    });
+    await expandThree.click();
+    await waitForPaint(page);
+  }
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
     result: 'pass',
