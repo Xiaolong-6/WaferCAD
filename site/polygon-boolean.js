@@ -274,9 +274,15 @@ export function robustIntersection(a, b) {
   // normalizing thousands of input vertices or entering the Martinez sweep
   // in this frequent no-hit path. Ambiguous/invalid boxes and EPS-near
   // boundaries still use the original exact Boolean and retry policy.
-  const aBounds = geometryBounds(a),
-    bBounds = geometryBounds(b);
-  if (aBounds && bBounds && !boundsMayOverlap(aBounds, bBounds)) return [];
+  if (Array.isArray(a) && Array.isArray(b)) {
+    try {
+      const aBounds = geometryBounds(a),
+        bBounds = geometryBounds(b);
+      if (aBounds && bBounds && !boundsMayOverlap(aBounds, bBounds)) return [];
+    } catch {
+      // Malformed legacy input must follow its existing normalization path.
+    }
+  }
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
   return aa.length && bb.length ? booleanWithQuantizedRetry('intersection', [aa, bb]) : [];
