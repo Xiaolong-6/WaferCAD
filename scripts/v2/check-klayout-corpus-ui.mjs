@@ -24,8 +24,7 @@ const expectedRejections = new Set([
   'oasis/t3.8.oas',
   'oasis/t3.11.oas',
 ]);
-const isLimit = (status) =>
-  /safe (?:flatten )?limit|expands beyond the safe limit/i.test(status);
+const isLimit = (status) => /safe (?:flatten )?limit|expands beyond the safe limit/i.test(status);
 async function walk(dir) {
   const found = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {

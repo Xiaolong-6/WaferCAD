@@ -32,8 +32,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Print exact Prettier delta
-        run: npx prettier scripts/v2/check-klayout-corpus-ui.mjs | diff -u scripts/v2/check-klayout-corpus-ui.mjs - || true
       - run: npx playwright install --with-deps chromium
       - name: Checkout pinned KLayout core GDS/OAS testdata
         uses: actions/checkout@v6
