@@ -401,7 +401,14 @@ export async function runRendererProductCases({ page, capture }) {
   await waitForPaint(page);
   await page.locator('#threeMaxBtn').click();
   await capture(page, 'wide-rough-3d-transparent-max');
-  await page.locator('#threeBorderControl').click();
+  // Maximizing hides the ordinary workspace header's Border control. Toggle
+  // in the normal 3D panel, then maximize again to validate the real viewport.
+  await page.locator('#threeMaxBtn').click();
+  if (!(await page.locator('#threeBorders').isChecked())) {
+    await page.locator('#threeBorderControl').click();
+  }
+  assert.equal(await page.locator('#threeBorders').isChecked(), true);
+  await page.locator('#threeMaxBtn').click();
   await page.waitForFunction(
     () => {
       const host = document.getElementById('threeHost');
@@ -419,8 +426,9 @@ export async function runRendererProductCases({ page, capture }) {
     'transparent buried material must expose physically owned internal contours',
   );
   await capture(page, 'wide-rough-3d-transparent-borders-max');
-  await page.locator('#threeBorderControl').click();
   await page.locator('#threeMaxBtn').click();
+  await page.locator('#threeBorderControl').click();
+  assert.equal(await page.locator('#threeBorders').isChecked(), false);
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('1');
   await page.locator('#threePanel .three-opacity-control > summary').click();
