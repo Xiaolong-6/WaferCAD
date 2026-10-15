@@ -101,8 +101,13 @@ try {
           'The Code layout must not override its hidden Process ancestor',
         );
         if (domain === 'mask') {
-          assert.equal((await snap()).ui.maximize, 'mask');
-          assert.equal((await snap()).ui.view, 'mask');
+          const maskNavigation = (await snap()).ui;
+          assert.equal(
+            width > 820 ? maskNavigation.desktopLayout.maximized : maskNavigation.maximize,
+            'mask',
+            'Mask workflow navigation focuses the corresponding scientific view',
+          );
+          assert.equal(maskNavigation.view, 'mask');
         }
       }
       const historyScroll = page.locator('#snapshotList');
