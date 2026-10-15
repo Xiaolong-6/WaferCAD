@@ -31,6 +31,7 @@ import {
 import {
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  supportsPreciseGpuRoughDisplacement,
 } from './gpu-rough-surface.js?v=rough-line-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
@@ -125,6 +126,7 @@ export function createThreeView({
   let smoothSidewallTemplateTriangleCount = 0;
   let transparentMeshes = [];
   let roughWorker = null;
+  let preciseGpuRoughDisplacement = true;
   let roughWorkerResolve = null;
   let roughWorkerGeneration = 0;
   let roughRefineTimer = null;
@@ -2053,7 +2055,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
 
   function gpuRoughTask(task) {
-    return canUseGpuRoughTask({
+    return preciseGpuRoughDisplacement && canUseGpuRoughTask({
       appearance: task?.cap?.appearance,
       buried: task?.cap?.buried,
       implant: Boolean(task?.implant),
@@ -2623,6 +2625,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
           renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
+          preciseGpuRoughDisplacement = supportsPreciseGpuRoughDisplacement(renderer);
+          host.dataset.roughDisplacementBackend = preciseGpuRoughDisplacement
+            ? 'gpu-vertex'
+            : 'cpu-software-parity';
 
           scene = new THREE.Scene();
           camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
