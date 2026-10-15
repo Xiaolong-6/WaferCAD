@@ -229,14 +229,16 @@ function componentwiseUnion(operation, geometries) {
   return canonicalizeBooleanGeometry(out.flatMap((piece) => piece));
 }
 
-export function booleanWithQuantizedRetry(operationName, geometries) {
+// Internal fast path for geometry that has already been deep-normalized.
+// Callers must own the input arrays: the kernel may inspect/mutate its input,
+// and an untrusted original geometry must still use booleanWithQuantizedRetry.
+// The exact Boolean, fallback grids and result normalization are unchanged.
+export function booleanWithNormalizedRetry(operationName, normalized) {
   const kernel = polygonKernel(),
     operation = kernel?.[operationName];
   if (typeof operation !== 'function') {
     throw new Error(`polygon-clipping does not provide ${operationName}().`);
   }
-
-  const normalized = geometries.map(normalizeMulti);
   try {
     return normalizeMulti(operation(...normalized));
   } catch (initialError) {
@@ -261,6 +263,10 @@ export function booleanWithQuantizedRetry(operationName, geometries) {
       throw retryError;
     }
   }
+}
+
+export function booleanWithQuantizedRetry(operationName, geometries) {
+  return booleanWithNormalizedRetry(operationName, geometries.map(normalizeMulti));
 }
 
 export function robustIntersection(a, b) {
