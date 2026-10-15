@@ -32,7 +32,10 @@ function hostFor(project) {
       checkpoints++;
       return true;
     },
-    captureTransaction: () => ({ project: structuredClone(current), history: structuredClone(history) }),
+    captureTransaction: () => ({
+      project: structuredClone(current),
+      history: structuredClone(history),
+    }),
     applyProject: (next) => {
       current = structuredClone(next);
       attempts++;
@@ -43,7 +46,12 @@ function hostFor(project) {
       history.splice(0, history.length, ...before.history);
       return true;
     },
-    inspect: () => ({ current: structuredClone(current), history: structuredClone(history), checkpoints, attempts }),
+    inspect: () => ({
+      current: structuredClone(current),
+      history: structuredClone(history),
+      checkpoints,
+      attempts,
+    }),
   };
 }
 
@@ -61,7 +69,10 @@ test('prepare Bond preserves each source and receiver view without product pre-b
   ];
   const beforeReceiver = structuredClone(receiver);
   const beforeDonor = structuredClone(donor);
-  const prepared = prepareWaferBondTransaction(receiver, donor, { receiverId: 'A', donorId: 'B' });
+  const prepared = prepareWaferBondTransaction(receiver, donor, {
+    receiverId: 'A',
+    donorId: 'B',
+  });
   assert.equal(prepared.project.version, 15);
   assert.equal(prepared.project.processRecipe, undefined);
   assert.equal(prepared.project.snapshots, undefined);
@@ -76,7 +87,9 @@ test('prepare Bond preserves each source and receiver view without product pre-b
 test('second Bond prepares a third source without inventing receiver Recipe or changing prior layers', () => {
   const first = prepareWaferBondTransaction(wafer('A'), wafer('B'), { donorId: 'B' });
   const prior = structuredClone(first.project);
-  const second = prepareWaferBondTransaction(first.project, wafer('C'), { donorId: 'C' });
+  const second = prepareWaferBondTransaction(first.project, wafer('C'), {
+    donorId: 'C',
+  });
   assert.equal(second.project.waferAssembly.sources.length, 3);
   assert.equal(second.project.waferAssembly.bonds.length, 2);
   assert.deepEqual(first.project, prior);
@@ -181,7 +194,7 @@ test('Bonded baseline rejects fake product History until the History state owner
   const assembled = prepareWaferBondTransaction(wafer('A'), wafer('B'), { donorId: 'B' })
     .project;
   const fake = structuredClone(assembled);
-  fake.processRecipe = { version: 1, steps: [] };
+  fake.processRecipe = { version: 1, name: 'Illegal product recipe', steps: [] };
   assert.throws(
     () => prepareWaferBondTransaction(fake, wafer('C'), { donorId: 'C' }),
     /requires a source-aware transaction owner/,
