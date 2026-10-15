@@ -4,7 +4,6 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import {
   baseUrl,
-  gotoWelcome,
   launchBrowser,
   newUiPage,
   observePageErrors,
@@ -30,8 +29,18 @@ const browser = await launchBrowser();
 try {
   const { context, page } = await newUiPage(browser);
   const errors = observePageErrors(page);
-  await gotoWelcome(page);
-  assert.match(page.url(), /\/index\.html$|\/$/, 'Scientific storage gate uses v2 Welcome');
+  // The v2 development server maps / to the obsolete prototype entry.
+  // Open the real Welcome explicitly to avoid accidentally testing the old shell.
+  await page.goto(`${baseUrl}/index.html`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000,
+  });
+  await page.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForFunction(
+    () => document.documentElement.dataset.welcomeReady === 'true',
+    null,
+    { timeout: 30000 },
+  );
   const result = await page.evaluate(async (text) => {
     const io = await import('./project-io.js'),
       api = await import('./workspace-persistence.js');
