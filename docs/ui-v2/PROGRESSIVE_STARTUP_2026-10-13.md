@@ -279,3 +279,33 @@ and the acceptance harness; **it cannot certify real GPU performance**.
 Keep #188 Draft until a current-revision physical GPU/iGPU report meets
 all gates. Reconcile Main's Mask post-import Cell/Layer refresh with
 the branch's Worker-validated project import shortcut at final sync.
+
+## P1-I sidewall assembly and Main synchronization — 15 October 2026
+
+The last completed single-sample software Chromium diagnostic before this
+change ([P1 CPU run 38579823696](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38579823696))
+reported maximum Long Tasks of **1,352 ms** for initial M3D and **1,290 ms**
+for restored Quality. Its hot functions included polygon-clipping/GC, native
+WebGL buffer creation, History snapshot cloning and sidewall triangle
+construction. These remain failures of the 500 ms responsiveness objective.
+
+The sidewall constructor now writes the same cross-product unit normals
+directly to the final attribute arrays instead of allocating an intermediate
+edge, normal and normalized-vector array for each triangle. The quality policy
+is resolved once per synchronous sidewall batch. An independent reference
+test compares the previous arithmetic against 5,000 random and degenerate
+triangles, including exact Float32 positions, normals and depth attributes.
+No physical edge threshold, topology, face winding or Shader policy changed.
+The expected benefit is reduced temporary allocations; **no runtime speedup
+is claimed until controlled post-change CPU results are recorded**.
+
+Main integration commit `0bbde6f` has two parents and incorporates four
+new Main commits. Eight new acceptance/workflow files and the updated
+`docs/testing.md` were adopted verbatim. The Main Mask Cell/Layer controls
+refresh is preserved alongside the branch's validated-Worker Project import
+shortcut. Compare reports zero commits behind Main at the integration point.
+
+The P1 PR remains Draft until an exact-head CPU comparison, current strict
+Quality/browser/scientific CI, and real GPU/iGPU acceptance satisfy their
+respective requirements. Do not infer hardware responsiveness from the
+Linux software-renderer sample.
