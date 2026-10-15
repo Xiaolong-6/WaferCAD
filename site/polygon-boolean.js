@@ -270,6 +270,13 @@ export function booleanWithQuantizedRetry(operationName, geometries) {
 }
 
 export function robustIntersection(a, b) {
+  // A provably separated pair cannot produce intersection geometry. Avoid
+  // normalizing thousands of input vertices or entering the Martinez sweep
+  // in this frequent no-hit path. Ambiguous/invalid boxes and EPS-near
+  // boundaries still use the original exact Boolean and retry policy.
+  const aBounds = geometryBounds(a),
+    bBounds = geometryBounds(b);
+  if (aBounds && bBounds && !boundsMayOverlap(aBounds, bBounds)) return [];
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
   return aa.length && bb.length ? booleanWithQuantizedRetry('intersection', [aa, bb]) : [];
