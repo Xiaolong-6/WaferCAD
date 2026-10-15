@@ -171,8 +171,12 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     )
       return;
     const panel = header.closest('.p-view[data-view]:not([hidden])');
-    if (!panel || panel.dataset.dockDraggable !== 'true' ||
-        displayedViews(getState()).length <= 1) return;
+    if (
+      !panel ||
+      panel.dataset.dockDraggable !== 'true' ||
+      displayedViews(getState()).length <= 1
+    )
+      return;
     const title = header.querySelector('.v2-view-title');
     end();
     pending = {
@@ -261,7 +265,8 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
       event.target.closest(
         'button,a,input,select,textarea,summary,[role="button"],[contenteditable="true"]',
       )
-    ) return;
+    )
+      return;
     dispatch({ type: 'MAXIMIZE', view: panel.dataset.view });
   }
   function resize() {
