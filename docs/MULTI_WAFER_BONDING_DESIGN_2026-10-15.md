@@ -107,7 +107,7 @@ advertised as complete. The pure Kernel continues returning the interface separa
 Assembly project wrapper now persists typed Bond metadata and full validated
 source projects, with strict replay parity before both export and import.
 
-`site/tests/wafer-bonding.test.mjs` defines eleven directed scientific tests:
+`site/tests/wafer-bonding.test.mjs` defines thirteen directed scientific tests:
 800 µm two-wafer stack, capped open coolant trench, handedness/90° rotation,
 front/back pairing, third-wafer extension, atomic rejection, and annotation/
 array exclusion. These are proposed acceptance tests; their execution must
@@ -189,7 +189,7 @@ real browser screenshots pass. Keep PR #229 source masks independent.
 
 ## Verified P1B/P2 milestone — 2026-10-15
 
-- **P1B:** eleven primary geometry/transaction tests, six Assembly source/replay
+- **P1B:** thirteen primary geometry/transaction tests, six Assembly source/replay
   tests, and a two-independent-400-µm-Si paper-dimension test passed. Check
   both bond faces, XY mirror/rotation, distinct layer IDs, contact islands,
   surface coverage fractions, buried coolant voids, oxide interface film and
