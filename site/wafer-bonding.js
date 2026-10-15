@@ -63,6 +63,21 @@ function contactFootprint(model, face, plane) {
   return unionGeometries(touching);
 }
 
+function positivePolygonArea(geometry) {
+  let area = 0;
+  for (const polygon of geometry) {
+    for (let i = 0; i < polygon.length; i++) {
+      const ring = polygon[i];
+      let doubled = 0;
+      for (let j = 0; j + 1 < ring.length; j++) {
+        doubled += ring[j][0] * ring[j + 1][1] - ring[j + 1][0] * ring[j][1];
+      }
+      area += (i === 0 ? 1 : -1) * Math.abs(doubled / 2);
+    }
+  }
+  return area > 0 && Number.isFinite(area);
+}
+
 function mergeStacks(left, right) {
   const segments = [...left, ...right]
     .map((segment) => structuredClone(segment))
@@ -117,6 +132,9 @@ function preparedDonor(receiver, donor, options, zShift, flipZ) {
   });
   for (const layer of layers) {
     if (layer.pairedLayerId) layer.pairedLayerId = layerIds.get(layer.pairedLayerId);
+    if (layer.processGroupId) {
+      layer.processGroupId = `bond-${options.donorId}-${layer.processGroupId}`;
+    }
     if (flipZ && (layer.processFace === 'front' || layer.processFace === 'back')) {
       layer.processFace = layer.processFace === 'front' ? 'back' : 'front';
     }
@@ -184,7 +202,7 @@ export function bondWaferModels(receiver, donor, request = {}) {
     })
     .map((region) => region.geom));
   const contact = intersection(receiverContact, donorContact);
-  if (isEmpty(contact)) {
+  if (isEmpty(contact) || !positivePolygonArea(contact)) {
     throw new Error('Bond rejected: no finite-area physical contact exists at the selected interface.');
   }
 
