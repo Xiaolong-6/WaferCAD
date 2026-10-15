@@ -1600,8 +1600,13 @@ function applyOperationImpl(
       if (exposed.role === 'conformal-sidewall') {
         if (growth !== 'pvd-step') return stack;
         const stepThickness = amount * Number(stepCoverageFraction);
-        const { width, height } = multiBounds(region.geom);
-        if (Math.min(width, height) > stepThickness + 1e-9) return stack;
+        // An owner may contain many disjoint wall polygons across the device
+        // array. Bound each physical wall, not the entire owner's broad bbox.
+        const eligibleWalls = region.geom.every((polygon) => {
+          const { width, height } = multiBounds([polygon]);
+          return Math.min(width, height) <= stepThickness + 1e-9;
+        });
+        if (!eligibleWalls) return stack;
         return addLayerToSurface(stack, layer?.id, stepThickness, face);
       }
       return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
