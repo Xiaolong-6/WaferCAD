@@ -152,6 +152,12 @@ try {
         { name: 'comb', position: [39, -10, topZ + 52], target: [0, -22, topZ], fov: 46 },
         { name: 'swt', position: [19, -71, topZ + 38], target: [0, -48, topZ], fov: 43 },
         { name: 'springs', position: [12, 62, topZ + 53], target: [0, 25, topZ], fov: 47 },
+        {
+          name: 'grating',
+          position: [-52, -39, topZ + 37],
+          target: [-62, -26, topZ],
+          fov: 30,
+        },
         // Nearly normal-incidence cameras show XY topology without
         // perspective clipping; Z targets account for the displayed
         // physical height rather than assuming an unscaled Z origin.
@@ -172,14 +178,19 @@ try {
         const camera = { position: view.position, target: view.target, fov: view.fov };
         const inspect = structuredClone(source);
         inspect.display.threeCamera = camera;
+        const gratingSection = { a: [-64.5, -26], b: [-56.5, -26] };
+        if (view.name === 'grating') inspect.section = gratingSection;
         for (const branch of inspect.snapshotBranches.branches) {
           if (branch.headState?.display) branch.headState.display.threeCamera = camera;
+          if (view.name === 'grating' && branch.headState) branch.headState.section = gratingSection;
         }
         for (const node of inspect.snapshotBranches.nodes) {
           if (node.state?.display) node.state.display.threeCamera = camera;
+          if (view.name === 'grating' && node.state) node.state.section = gratingSection;
         }
         for (const bookmark of inspect.snapshots) {
           if (bookmark.state?.display) bookmark.state.display.threeCamera = camera;
+          if (view.name === 'grating' && bookmark.state) bookmark.state.section = gratingSection;
         }
         await page.locator('[data-action="domain:project"]').click();
         await page.locator('#openProjectInput').setInputFiles({
@@ -232,6 +243,13 @@ try {
         await page.locator('#threePanel').screenshot({
           path: resolve(directory, 'compact-' + state + '-3d-' + view.name + '.png'),
         });
+        if (view.name === 'grating') {
+          if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
+          await waitForPaint(page);
+          await page.locator('#sectionPanel').screenshot({
+            path: resolve(directory, 'compact-' + state + '-section-grating.png'),
+          });
+        }
       }
       const sectionToggle = page.locator('[data-action="section"]');
       if ((await sectionToggle.getAttribute('aria-pressed')) !== 'true') {
