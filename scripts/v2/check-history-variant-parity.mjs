@@ -20,7 +20,7 @@ try {
 
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const visibleNames = (model) => model.layers.map((layer) => layer.name);
-    async function deposit(name) {
+    async function deposit(name, { fork = false } = {}) {
       await page.locator('[data-action="domain:process"]').click();
       await page.locator('#operationType').selectOption('add');
       await page.locator('#operationArea').selectOption('full');
@@ -28,6 +28,9 @@ try {
       await page.locator('#operationThickness').fill('0.05');
       await page.locator('#layerName').fill(name);
       await page.locator('#applyOperationBtn').click();
+      if (fork) {
+        await page.getByRole('button', { name: 'Create Variant & apply', exact: true }).click();
+      }
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
@@ -85,8 +88,7 @@ try {
     assert.deepEqual((await snapshot()).model, main.model, 'Return to HEAD restores all geometry');
 
     await selectStep('Native history A');
-    await deposit('Native branch C');
-    await page.getByRole('button', { name: 'Create Variant & apply', exact: true }).click();
+    await deposit('Native branch C', { fork: true });
     await page.waitForFunction(
       () => {
         const state = window.WaferCadV2Workstation.snapshot();
