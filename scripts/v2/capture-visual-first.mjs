@@ -40,7 +40,7 @@ try {
   let available = false;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      const response = await fetch(base + '/app.html', { signal: AbortSignal.timeout(1000) });
+      const response = await fetch(base + '/app.html');
       if (response.ok) {
         available = true;
         break;
