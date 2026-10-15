@@ -267,3 +267,35 @@ test('Black-Si metal removal keeps ALD; destructive QA removes part of ALD and S
   assert.ok(volume(qa, 'ALD Al2O3') < ald * 0.6);
   assert.ok(volume(qa, 'n- Si (111)') < volume(final, 'n- Si (111)'));
 });
+
+test('Record-only closing steps preserve the last real physical structure', async () => {
+  for (const id of [
+    'suspended-silica-microdisks',
+    'perc-solar-cells-point-contacts',
+    'fully-textured-perovskite-silicon-tandem',
+  ]) {
+    const project = await example(id);
+    const graph = project.snapshotBranches;
+    const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+    const finalNode = graph.nodes.find((node) => node.id === active.headNodeId);
+    const physicalNode = graph.nodes.find((node) => node.id === finalNode.parentId);
+    assert.equal(finalNode.operation.kind, 'record', id);
+    assert.equal(physicalNode.processRevision + 1, finalNode.processRevision);
+    assert.equal(finalNode.state.modelRef, 'project');
+    const physicalModel = project.sharedModels[physicalNode.state.modelRef];
+    assert.ok(physicalModel, id + ': missing last physical step model');
+    assert.deepEqual(
+      physicalModel.regions,
+      project.model.regions,
+      id + ': a Record-only step must leave the physical XY/Z material unchanged',
+    );
+    assert.equal(physicalModel.processRevision, physicalNode.processRevision);
+    const bookmarks = project.snapshots.filter(
+      (snapshot) => snapshot.historyNodeId === physicalNode.id,
+    );
+    assert.ok(bookmarks.length > 0, id + ': missing physical process-step bookmark');
+    for (const snapshot of bookmarks) {
+      assert.equal(snapshot.state.modelRef, physicalNode.state.modelRef);
+    }
+  }
+});
