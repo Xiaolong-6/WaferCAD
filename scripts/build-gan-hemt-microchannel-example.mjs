@@ -636,14 +636,25 @@ export async function buildGanMicrochannel() {
   // Probe-verified 35 um conformal geometric fill approximates an electroplated
   // Cu-filled column. It is NOT an electrochemical growth/cavity-free proof,
   // and its 35 um amount is inferred from the nominal 70 um square bore.
-  deposit(
+  const copperFill = deposit(
     'Idealized Cu TSV electrofill (inferred 35 um)',
     'TSV Cu electrofill surrogate 35 um',
     GAN_TSV_LINER.inferredFullCuFillUm,
     25,
     'conformal',
   );
-  bookmark('03c Cu-filled TSV columns / geometric idealization');
+  // Remove the geometrically artificial 35 um Cu cap from top of the vias.
+  // A target-layer-only directional etch approximates CMP without removing
+  // the Ti/Cu seed or Cu-filled TSV material below the upper Si surface.
+  etch(
+    'Planarize TSV Cu overburden (35 um CMP geometric surrogate)',
+    25,
+    GAN_TSV_LINER.inferredFullCuFillUm,
+    copperFill.layerId,
+    'front',
+    'TSV Cu electrofill surrogate 35 um',
+  );
+  bookmark('03c Cu-filled TSV columns / after inferred planarization');
   record(
     'Electrical TSV and chip wiring finishing steps (metadata only)',
     'Paper Fig. 2(c,d): the idealized Cu core and Ti/Cu seed geometry are modeled, but real sputter coverage, oxide insulation, electroplating kinetics/voids, NiPaAu and Au interconnect routing, and electrical continuity are NOT verified.',
@@ -734,6 +745,11 @@ export async function buildGanMicrochannel() {
   );
   const tsvFill = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
   assert.ok(tsvTi && tsvCu && tsvFill, 'Missing physical TSV Ti/Cu seed or Cu fill');
+  const copperZtops = model.regions.flatMap((region) =>
+    region.stack.filter((s) => s.layerId === tsvFill.id).map((s) => s.z1),
+  );
+  assert.ok(copperZtops.length > 0);
+  assert.ok(copperZtops.every((z) => z <= 600.700001), 'Unremoved Cu overburden above TSV');
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550]) {
       const centerCu = model.regions.some(
@@ -891,6 +907,7 @@ export async function buildGanMicrochannel() {
       physicalAlGaNAndSiNWith2DEGOnlyAsMetadata: true,
       fourTSVsWithContinuousTiCuSeedGeometry: true,
       fourCuFilledTSVsWithUnblockedCoolant: true,
+      idealizedCuPlanarizationPreservesTSVConductors: true,
     },
     checkpoints,
   };

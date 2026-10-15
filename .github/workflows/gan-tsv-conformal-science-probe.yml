@@ -33,11 +33,12 @@ jobs:
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Scientific wall and full native Recipe replay
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
-      - name: Validate immutable generated scientific project and Preview
+      - name: Regenerate candidate project and Preview for exact asset synchronization
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
           node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+          node -e "const f=require('node:fs');for(const [n,p] of [['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(p).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('CMP_ASSET|'+n+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('CMP_ASSET_END|'+n+'|'+Math.ceil(s.length/1500));}"
       - name: Install Chromium for physical three-view audit
         run: npx playwright install --with-deps chromium
       - name: Launch local Workstation

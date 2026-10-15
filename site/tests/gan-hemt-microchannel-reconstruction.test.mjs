@@ -104,8 +104,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
   assert.equal(validation.maskLayers, 16);
-  assert.equal(validation.processNodes, 30);
-  assert.equal(validation.recipeSteps, 29);
+  assert.equal(validation.processNodes, 31);
+  assert.equal(validation.recipeSteps, 30);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
@@ -113,6 +113,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.checks.fourTSVsWithContinuousTiCuSeedGeometry, true);
   assert.equal(validation.checks.fourTSVsAreActualCuFilledColumns, true);
   assert.equal(validation.checks.fourCuFilledTSVsWithUnblockedCoolant, true);
+  assert.equal(validation.checks.idealizedCuPlanarizationPreservesTSVConductors, true);
   assert.equal(
     project.processRecipe.steps.filter(
       (step) =>
@@ -244,6 +245,21 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     (l) => l.name === 'TSV Cu electrofill surrogate 35 um',
   );
   assert.ok(fillLayer, 'Model is missing full-depth Cu TSV fill layer');
+  const zTop = (node) =>
+    Math.max(
+      ...node.state.model.regions.flatMap((r) =>
+        r.stack.filter((s) => s.layerId === fillLayer.id).map((s) => s.z1),
+      ),
+    );
+  const preCmp = project.snapshotBranches.nodes.find((n) =>
+    n.operation.label.includes('Idealized Cu TSV electrofill'),
+  );
+  const postCmp = project.snapshotBranches.nodes.find((n) =>
+    n.operation.label.includes('Planarize TSV Cu overburden'),
+  );
+  assert.ok(preCmp && postCmp, 'Missing separately replayable Cu deposition and CMP');
+  assert.ok(Math.abs(zTop(preCmp) - 635.7) < 1e-6);
+  assert.ok(Math.abs(zTop(postCmp) - 600.7) < 1e-6);
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);
