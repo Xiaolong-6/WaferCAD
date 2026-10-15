@@ -22,9 +22,15 @@
   }
   body[data-workstation]:not([data-preview-mode]) .p-view .v2-view-actions {
     display: flex;
+    flex: 1 1 auto;
     align-items: center;
     justify-content: flex-end;
-    min-width: 0;
+    min-width: 58px;
+  }
+  body[data-workstation]:not([data-preview-mode]) .p-view .v2-view-actions > .p-toolbar {
+    flex: 0 1 auto;
+    max-width: calc(100% - 58px);
+    margin-left: auto;
   }
   body[data-workstation]:not([data-preview-mode]) .p-view .v2-dock-close {
     flex: 0 0 auto;
@@ -63,15 +69,31 @@
 
 /* Titlebar is the sole drag handle; scientific canvas and toolbar gestures stay intact. */
 @media (min-width: 821px) {
-  body[data-workstation]:not([data-preview-mode]) .p-view .v2-view-title[tabindex='0'] {
+  body[data-workstation]:not([data-preview-mode]) .p-view .v2-view-title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wc-space-1);
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  body[data-workstation]:not([data-preview-mode]) .p-view .v2-dock-title-icon {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--wc-muted);
+  }
+  body[data-workstation]:not([data-preview-mode]) .p-view[data-dock-draggable='true'] .p-view-head {
     cursor: grab;
     user-select: none;
     touch-action: none;
-    flex: 1 1 auto;
-    min-width: 0;
   }
-  body.v2-docking[data-workstation] .p-view .v2-view-title {
+  body.v2-docking[data-workstation] .p-view[data-dock-draggable='true'] .p-view-head {
     cursor: grabbing;
+  }
+  body[data-workstation]:not([data-preview-mode]) .p-view-head :is(button, a, select, input) {
+    cursor: pointer;
+    user-select: auto;
+    touch-action: auto;
   }
   body[data-workstation]:not([data-preview-mode]) .p-view .v2-dock-maximize {
     flex: 0 0 auto;
@@ -184,43 +206,50 @@
   body[data-workstation]:not([data-preview-mode]) .p-canvases[data-desktop-docking='true'] {
     position: relative;
   }
+  /* Reuse the existing workflow-panel divider visual language: subdued
+     gutter and a centered 2px × 32px handle on either axis. */
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider {
     position: absolute;
     z-index: 7;
     box-sizing: border-box;
     border: 0;
     padding: 0;
-    background: transparent;
+    background: var(--wc-subtle);
     touch-action: none;
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider::after {
     content: '';
     position: absolute;
-    border-radius: 2px;
-    background: transparent;
-    transition: background 100ms ease;
+    border-radius: 1px;
+    background: var(--wc-border-strong);
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider:hover::after,
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider:focus-visible::after {
     background: var(--wc-accent);
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-columns {
-    width: 10px;
-    margin-left: -5px;
+    width: 8px;
+    margin-left: -4px;
     cursor: col-resize;
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-columns::after {
-    width: 3px;
-    inset: 0 auto 0 4px;
+    width: 2px;
+    height: min(32px, 80%);
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-rows {
-    height: 10px;
-    margin-top: -5px;
+    height: 8px;
+    margin-top: -4px;
     cursor: row-resize;
   }
   body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-rows::after {
-    height: 3px;
-    inset: 4px 0 auto;
+    height: 2px;
+    width: min(32px, 80%);
+    left: 50%;
+    top: 3px;
+    transform: translateX(-50%);
   }
 }
 
