@@ -1697,7 +1697,9 @@ export function createSnapshotManager({
           ? new Date(raw.createdAt).toISOString()
           : new Date(0).toISOString();
         const headState =
-          raw.headState && isValid(raw.headState) ? yield* cloneState.cooperative(raw.headState) : null;
+          raw.headState && isValid(raw.headState)
+            ? yield* cloneState.cooperative(raw.headState)
+            : null;
         importedBranches.push({
           id: raw.id,
           name: cleanName(raw.name) || (raw.id === MAIN_SNAPSHOT_BRANCH_ID ? 'Main' : raw.id),
