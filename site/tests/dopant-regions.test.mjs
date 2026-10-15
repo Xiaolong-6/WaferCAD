@@ -6,8 +6,12 @@ await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const v = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
-const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps, findTerminalQualifiedDopantOverlaps } =
-  await import('../dopant-regions.js');
+const {
+  addQualitativeDopantRegion,
+  resolveQualitativeDopantRegion,
+  findDopantPolarityOverlaps,
+  findTerminalQualifiedDopantOverlaps,
+} = await import('../dopant-regions.js');
 
 test('legacy models retain their original storage shape until qualitative doping is requested', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });

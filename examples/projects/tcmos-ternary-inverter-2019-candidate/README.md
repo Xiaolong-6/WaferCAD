@@ -55,10 +55,10 @@ The existing `findDopantPolarityOverlaps` detects **co-occupancy of opposite-pol
 
 For this *illustrative* reconstruction, HVT and HDD intersect over **0.82–0.92 µm Z** (100 nm):
 
-| Device | Body vs Source XY overlap | Body vs Drain XY overlap |
-| --- | ---: | ---: |
-| pMOS (HVTN As+ donor / p+ HDD) | 1.287 µm² | 1.703 µm² |
-| nMOS (HVTP BF₂+ acceptor / n+ HDD) | 1.287 µm² | 1.703 µm² |
+| Device                             | Body vs Source XY overlap | Body vs Drain XY overlap |
+| ---------------------------------- | ------------------------: | -----------------------: |
+| pMOS (HVTN As+ donor / p+ HDD)     |                 1.287 µm² |                1.703 µm² |
+| nMOS (HVTP BF₂+ acceptor / n+ HDD) |                 1.287 µm² |                1.703 µm² |
 
 Both source and drain overlaps are nonzero. A nonzero overlap **must not** be interpreted as a physically resolved body–drain interface or tunnelling hot spot. The schematic n-/p-wells are `electricalRegions`, with no corresponding calibrated `dopantRegions` well concentrations. Until dopant net-concentration/activation, P/N boundary extraction and semiconductor transport exist, paper Fig. 1a junction-level scientific acceptance remains **open**. The per-device terminal measurements are reproduced by focused scientific tests and the generator's independent `validation.json` report; the generated project's material/Recipe geometry is unchanged.
 

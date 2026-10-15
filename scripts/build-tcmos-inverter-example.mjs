@@ -830,7 +830,9 @@ export async function buildTcmosInverter({
   const overlapAreas = Object.fromEntries(
     terminals.map(({ id }) => {
       const geom = v.unionGeometries(
-        terminalOverlaps.filter((overlap) => overlap.terminalId === id).map((overlap) => overlap.geom),
+        terminalOverlaps
+          .filter((overlap) => overlap.terminalId === id)
+          .map((overlap) => overlap.geom),
       );
       return [id, modelApi.geometryArea(geom)];
     }),

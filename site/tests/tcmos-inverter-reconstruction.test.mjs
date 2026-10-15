@@ -121,8 +121,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
     );
     assert.ok(
-      overlaps.every((overlap) => Math.abs(overlap.z0 - 0.82) < 1e-9 &&
-        Math.abs(overlap.z1 - 0.92) < 1e-9),
+      overlaps.every(
+        (overlap) =>
+          Math.abs(overlap.z0 - 0.82) < 1e-9 && Math.abs(overlap.z1 - 0.92) < 1e-9,
+      ),
       'HVT 80–240 nm / HDD 0–180 nm intervals overlap for 100 nm, not a measured junction',
     );
   }
@@ -131,14 +133,18 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     false,
     'Schematic electrical n-/p-well regions do not constitute calibrated well doping',
   );
-  assert.deepEqual(validation.qualitativeJunctionEvidence.overlapAreaUm2,
+  assert.deepEqual(
+    validation.qualitativeJunctionEvidence.overlapAreaUm2,
     Object.fromEntries(
       terminals.map(({ id }) => [
         id,
-        geometryArea(v.unionGeometries(
-          qualified.filter((overlap) => overlap.terminalId === id)
-            .map((overlap) => overlap.geom),
-        )),
+        geometryArea(
+          v.unionGeometries(
+            qualified
+              .filter((overlap) => overlap.terminalId === id)
+              .map((overlap) => overlap.geom),
+          ),
+        ),
       ]),
     ),
   );
