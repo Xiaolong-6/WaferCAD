@@ -271,49 +271,50 @@ export function auditSchematicWellBodyCoverage(model, vectorApi, geometryArea) {
 }
 
 /**
- * Audit qualitative well-tie contact semantics at caller-provided contact
- * centers. Physical W/Si/Metal continuity is checked by the device-level
- * material test, separately from schematic well doping. A contact-role
- * dopant intent reaching the Si surface is necessary but NOT sufficient
- * to demonstrate an ohmic contact; activation and transport are unknown.
+ * Distinguish schematic well association from explicit surface contact
+ * doping at caller-supplied body tie sites. Neither observation validates
+ * an ohmic contact, since activation and transport remain unknown.
  */
 export function auditSchematicBodyTieContacts(model, contacts, vectorApi) {
   const fragments = resolveQualitativeDopantRegions(model, vectorApi);
   const wellType = { donor: 'n-type', acceptor: 'p-type' };
-  return (contacts || []).map((contact) => {
-    const point = contact.point;
-    const expectedWellType = wellType[contact.polarity];
-    const matchingWells = (model.electricalRegions || []).filter(
-      (region) =>
-        region.regionType === expectedWellType &&
-        String(region.name).toLowerCase().includes('well') &&
-        (region.patches || []).some(
-          (patch) =>
-            patch.layerId === contact.hostLayerId &&
-            vectorApi.pointInMulti(point, patch.geom),
-        ),
-    );
-    const nearSurfaceContactIntents = fragments.filter(
-      (fragment) =>
-        fragment.role === 'contact' &&
-        fragment.hostLayerId === contact.hostLayerId &&
-        fragment.z0 <= contact.surfaceZ &&
-        fragment.z1 >= contact.surfaceZ - 1e-9 &&
-        vectorApi.pointInMulti(point, fragment.geom),
-    );
-    return {
+  const results = [];
+  for (const contact of contacts || []) {
+    let schematicWellPresent = false;
+    for (const well of model.electricalRegions || []) {
+      if (well.regionType !== wellType[contact.polarity]) continue;
+      if (!String(well.name).toLowerCase().includes('well')) continue;
+      for (const patch of well.patches || []) {
+        if (patch.layerId !== contact.hostLayerId) continue;
+        if (vectorApi.pointInMulti(contact.point, patch.geom)) {
+          schematicWellPresent = true;
+        }
+      }
+    }
+    const matchingContactDopantIds = [];
+    const oppositeContactDopantIds = [];
+    for (const fragment of fragments) {
+      if (fragment.role !== 'contact') continue;
+      if (fragment.hostLayerId !== contact.hostLayerId) continue;
+      if (fragment.z0 > contact.surfaceZ) continue;
+      if (fragment.z1 < contact.surfaceZ - 1e-9) continue;
+      if (!vectorApi.pointInMulti(contact.point, fragment.geom)) continue;
+      if (fragment.polarity === contact.polarity) {
+        matchingContactDopantIds.push(fragment.dopantRegionId);
+      } else {
+        oppositeContactDopantIds.push(fragment.dopantRegionId);
+      }
+    }
+    results.push({
       id: contact.id,
       net: contact.net,
-      point: [...point],
+      point: [...contact.point],
       polarity: contact.polarity,
-      schematicWellPresent: matchingWells.length > 0,
-      matchingContactDopantIds: nearSurfaceContactIntents
-        .filter((fragment) => fragment.polarity === contact.polarity)
-        .map((fragment) => fragment.dopantRegionId),
-      oppositeContactDopantIds: nearSurfaceContactIntents
-        .filter((fragment) => fragment.polarity !== contact.polarity)
-        .map((fragment) => fragment.dopantRegionId),
+      schematicWellPresent,
+      matchingContactDopantIds,
+      oppositeContactDopantIds,
       ohmicContactValidated: false,
-    };
-  });
+    });
+  }
+  return results;
 }
