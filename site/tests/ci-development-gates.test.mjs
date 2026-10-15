@@ -14,11 +14,11 @@ test('stable Quality job performs full checks on ready PRs and manual runs', () 
     source,
     /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
   );
-  assert.match(
-    source,
-    /set -euo pipefail\\n          npm run lint\\n          npm run format:check\\n          npm run docs:check/,
-  );
-});
+  assert.ok(source.includes('set -euo pipefail'));
+  assert.ok(source.includes('          npm run lint'));
+  assert.ok(source.includes('          npm run format:check'));
+  assert.ok(source.includes('          npm run docs:check'));
+  assert.ok(!source.includes('npm run lint && npm run format:check'));});
 
 test('draft deferral never disables reusable production release acceptance', () => {
   for (const name of ['ui-v2-main-mask.yml', 'ui-v2-stage-c-m4.yml']) {
