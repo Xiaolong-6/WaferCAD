@@ -151,7 +151,11 @@ try {
   };
   // Nanometre-scale ALD films are barely visible in the 9um whole-stack view.
   // Capture an inspection-only zoom without altering the physical Section A-B.
-  await page.locator('[data-action="tool:zoom:section"]').click();
+  // Pan and Zoom are both enabled by default in v2. Clicking an already
+  // pressed Zoom control disables wheel zoom, so only enable it when needed.
+  const zoomControl = page.locator('#sectionPanel [data-action="tool:zoom:section"]');
+  if ((await zoomControl.getAttribute('aria-pressed')) !== 'true') await zoomControl.click();
+  assert.equal(await zoomControl.getAttribute('aria-pressed'), 'true');
   const sectionBox = await page.locator('#sectionCanvas').boundingBox();
   assert.ok(sectionBox, 'Section canvas must be measurable for zoom evidence');
   await page.mouse.move(
