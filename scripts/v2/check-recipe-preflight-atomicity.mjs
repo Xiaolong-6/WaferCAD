@@ -26,9 +26,9 @@ try {
     await page.locator('#recipeRunAllBtn').click();
     await page.waitForFunction(
       () =>
-        window.WaferCadV2Workstation
-          .snapshot()
-          .model.layers.some((layer) => layer.name === 'Safety film') &&
+        window.WaferCadV2Workstation.snapshot().model.layers.some(
+          (layer) => layer.name === 'Safety film',
+        ) &&
         !window.WaferCadV2Workstation.snapshot().workflow.busy,
       null,
       { timeout: 120000 },
@@ -79,7 +79,9 @@ try {
       'Invalid new-base replay cannot request destructive History reset',
     );
     assert.deepEqual(errors, [], 'No v2 browser error during Recipe preflight');
-    console.log('v2 Recipe: valid Run All, invalid late Step, non-destructive new-base preflight PASS');
+    console.log(
+      'v2 Recipe: valid Run All, invalid late Step, non-destructive new-base preflight PASS',
+    );
   } finally {
     await context.close();
   }
