@@ -6,6 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import {
   baseUrl,
+  gotoWelcome,
   installPinnedThreeRoute,
   observePageErrors,
   waitForPaint,
@@ -97,12 +98,17 @@ try {
   await installPinnedThreeRoute(context);
   const page = await context.newPage();
   const historyErrors = observePageErrors(page);
-  await page.goto(`${baseUrl}/app.html?example=${id}&view=three`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 120000,
-  });
+  await gotoWelcome(page);
+  const example = page.locator(`.welcome-example-card[data-example-id="${id}"]`);
+  assert.equal(await example.count(), 1, 'GaN HEMT full-project Example missing from Welcome');
+  await example.locator('.welcome-example-title-link').click();
+  await page.waitForURL(/\\/app\\.html(?:\\?.*)?$/, { timeout: 120000 });
   await page.waitForFunction(
-    () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
+    () =>
+      document.body.dataset.ready === 'true' &&
+      window.WaferCadV2Workstation?.snapshot().source.endsWith(
+        '/gan-hemt-microchannel-2022.wafercad',
+      ),
     null,
     { timeout: 120000 },
   );
