@@ -66,9 +66,6 @@ test('Orbit alone does not satisfy wheel zoom and zoom must change camera radius
   assert.equal(threeCameraZoomChanged(before, orbit), false);
   assert.equal(threeCameraZoomChanged(orbit, zoom), true);
   assert.equal(threeCameraZoomChanged(orbit, structuredClone(orbit)), false);
-  assert.equal(
-    threeCameraZoomChanged(orbit, { position: [0, 8, NaN], target: [0, 0, 0] }),
-    false,
-  );
+  assert.equal(threeCameraZoomChanged(orbit, { position: [0, 8, NaN], target: [0, 0, 0] }), false);
   assert.equal(threeCameraZoomChanged(orbit, {}), false);
 });
