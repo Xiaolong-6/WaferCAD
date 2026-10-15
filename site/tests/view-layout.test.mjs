@@ -196,3 +196,23 @@ test('Shell projection maps stable panel IDs onto template slots without changin
   assert.equal(maximized.overviewPressed, false);
   assert.deepEqual(source, snapshot);
 });
+
+test('atomic snap places dragged view in a chosen grid cell and rejects invalid drops', () => {
+  const source = createDesktopLayout();
+  const snapped = apply(source, 'SNAP_TO_SLOT', {
+    view: 'section', preset: 'four-right', slot: 0,
+  });
+  assert.equal(snapped.preset, 'four-right');
+  assert.deepEqual(orderedVisible(snapped), ['section', 'main', 'mask', 'three']);
+  assert.equal(snapped.remembered[4], 'four-right');
+  assert.deepEqual(source, createDesktopLayout());
+  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
+    view: 'main', preset: 'three-left', slot: 0,
+  }), snapped);
+  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
+    view: 'unknown', preset: 'four-left', slot: 0,
+  }), snapped);
+  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
+    view: 'main', preset: 'four-left', slot: 9,
+  }), snapped);
+});
