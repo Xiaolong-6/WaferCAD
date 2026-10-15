@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { installPinnedThreeRoute } from '../test-helpers/ui.mjs';
 import { correlateWebglFramesWithLongTasks } from './p1-webgl-frame-correlation.mjs';
+import { classifyLongTaskCpuStacks } from './p1-cpu-stack-diagnostics.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const folder = 'test-results/p1-startup-cpu';
@@ -171,6 +172,7 @@ async function runCampaign(iteration) {
     return selected.map(({ counts, sampleCount, ...task }) => ({
       ...task,
       sampleCount,
+      stackDiagnostics: classifyLongTaskCpuStacks(profile.nodes || [], counts),
       hottest: [...counts.entries()]
         .sort((left, right) => right[1] - left[1])
         .slice(0, 8)
