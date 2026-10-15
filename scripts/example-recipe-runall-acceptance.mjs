@@ -2,7 +2,7 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
@@ -285,6 +285,110 @@ try {
           Number.isFinite(actual) && Math.abs(actual - expected) < 1e-12,
           `${example.id}: Step ${index + 1} changed physical length ${expected} to ${actual}`,
         );
+      }
+      // One-shot, branch-guarded History reconciliation. Preserve the entire
+      // lineage, source Recipe and paper Mask. Never run during ordinary CI.
+      if (process.argv.includes('--reconcile-intermediate-history')) {
+        const expectedFailures = new Map([
+          ['suspended-silica-microdisk', [4, 5, 6]],
+          ['fully-textured-perovskite-silicon-tandem', [1, 2, 12, 13, 14, 19, 20]],
+        ]);
+        assert.ok(!requestedVariant && historyChoice === 'clear');
+        assert.deepEqual(
+          [...expectedFailures.keys()].includes(example.id),
+          true,
+          'Reconciliation restricted to audited sources',
+        );
+        const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile } =
+          await import('../site/project-io.js');
+        const file = new URL('../site/' + example.path.replace(/^\\.\\//, ''), import.meta.url);
+        const project = expandProjectStorage(JSON.parse(await readFile(file, 'utf8')));
+        const nodesById = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
+        const originalIds = project.snapshotBranches.nodes.map((node) => node.id);
+        const originalBranches = project.snapshotBranches.branches.map((branch) => branch.id);
+        const expectedSteps = expectedFailures.get(example.id);
+        const changed = [];
+        for (const [index, step] of processSteps.entries()) {
+          const saved = nodesById.get(step.id.slice(7));
+          const replayed = replayNodes[index]?.state?.model;
+          assert.ok(saved?.state?.model && replayed, 'Missing intermediate material model');
+          try {
+            await assertSameMaterialGeometry(saved.state.model, replayed, {
+              allowRepeatedNames: true,
+              xyQuantumUm: 1e-4,
+              maxQuantizedAreaUm2: 25,
+            });
+          } catch (error) {
+            assert.ok(
+              expectedSteps.includes(index + 1),
+              'Unexpected physical disagreement at Step ' + (index + 1) + ': ' + error.message,
+            );
+            const previous = saved.state.model;
+            const model = structuredClone(replayed);
+            model.revision = previous.revision;
+            model.processRevision = previous.processRevision;
+            saved.state.model = model;
+            for (const snapshot of project.snapshots || []) {
+              if (snapshot.historyNodeId === saved.id) snapshot.state.model = model;
+            }
+            for (const branch of project.snapshotBranches.branches || []) {
+              if (branch.headNodeId === saved.id) branch.headState.model = model;
+            }
+            changed.push(index + 1);
+          }
+        }
+        assert.deepEqual(changed, expectedSteps, 'Disagreement matrix changed; investigate');
+        assert.deepEqual(
+          project.snapshotBranches.nodes.map((node) => node.id),
+          originalIds,
+        );
+        assert.deepEqual(
+          project.snapshotBranches.branches.map((branch) => branch.id),
+          originalBranches,
+        );
+        assert.deepEqual(project.model, sourceProject.model, 'Final canonical material changed');
+        for (const stepIndex of changed) {
+          const step = processSteps[stepIndex - 1];
+          const saved = nodesById.get(step.id.slice(7));
+          await assertSameMaterialGeometry(saved.state.model, replayNodes[stepIndex - 1].state.model, {
+            allowRepeatedNames: true,
+            xyQuantumUm: 1e-4,
+            maxQuantizedAreaUm2: 25,
+          });
+        }
+        const packed = JSON.stringify(
+          prepareProjectForWorkspaceStorage(project, { geometryTemplates: false }),
+        );
+        const reopened = await readProjectFile({
+          size: Buffer.byteLength(packed),
+          text: async () => packed,
+        });
+        assert.deepEqual(reopened.model, project.model, 'Packaging altered final geometry');
+        assert.deepEqual(
+          reopened.snapshotBranches.nodes.map((node) => node.id),
+          originalIds,
+          'Packing altered History ancestry',
+        );
+        assert.deepEqual(
+          reopened.snapshotBranches.branches.map((branch) => branch.id),
+          originalBranches,
+        );
+        for (const stepIndex of changed) {
+          const step = processSteps[stepIndex - 1];
+          const model = reopened.snapshotBranches.nodes.find(
+            (node) => node.id === step.id.slice(7),
+          )?.state?.model;
+          await assertSameMaterialGeometry(model, replayNodes[stepIndex - 1].state.model, {
+            allowRepeatedNames: true,
+            xyQuantumUm: 1e-4,
+            maxQuantizedAreaUm2: 25,
+          });
+        }
+        await writeFile(file, packed);
+        console.log(
+          example.id + ': reconciled exactly ' + changed.join(',') + ' saved History steps',
+        );
+        continue;
       }
       if (verifyHistoryParity) {
         if (sourceProject.model.array || exported.model.array) {
