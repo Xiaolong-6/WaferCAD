@@ -194,6 +194,14 @@ jobs:
           WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-no-worker
         run: node scripts/pr250-renderer-audit.mjs
 
+      - name: Capture real photodetector rough ROI evidence
+        if: needs.plan.outputs.renderer == 'true'
+        env:
+          WAFERCAD_AUDIT_PHOTODETECTOR: '1'
+          WAFERCAD_AUDIT_FILTER: photodetector-blacksi-final-roi
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-photodetector
+        run: node scripts/pr250-renderer-audit.mjs
+
       - name: Check rough boundary and depth visibility evidence
         if: needs.plan.outputs.renderer == 'true'
         env:

@@ -90,7 +90,7 @@ test('sorted rough-edge interval lookup exactly preserves inclusive and strict L
   assert.deepEqual(roughEdgeSamplesInInterval(undefined, 0, 1), []);
 });
 
-test('repeated rough cap vertices retain height, analytic normals, and cap-local determinism', async () => {
+test('repeated rough cap vertices retain height, mesh-smoothed normals, and cap-local determinism', async () => {
   const { roughProfileOffsetAtPoint } = await import('../surface-rendering.js');
   for (const morphology of ['stochastic', 'pyramid']) {
     for (const normal of [-1, 1]) {
@@ -154,6 +154,72 @@ test('repeated rough cap vertices retain height, analytic normals, and cap-local
       assert.notDeepEqual(differentSeed.positions, result.positions);
     }
   }
+});
+
+test('photodetector rough shading normals agree with rendered Float32 cap faces', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const stored = JSON.parse(
+    await readFile(
+      new URL('../examples/photodetector-literature-examples.wafercad', import.meta.url),
+      'utf8',
+    ),
+  );
+  const model = stored.model;
+  const appearance = model.regions
+    .flatMap((region) => region.stack.flatMap((layer) => [layer.frontSurface, layer.backSurface]))
+    .find((surface) => surface?.kind === 'rough');
+  assert.equal(appearance.featureSize, 0.3);
+  const z = 174.3,
+    width = 100,
+    base = [
+      [[0, 0, z], [width, 0, z], [width, width, z]],
+      [[0, 0, z], [width, width, z], [0, width, z]],
+    ],
+    options = {
+      z,
+      normal: 1,
+      appearance,
+      gpuDisplacement: false,
+      closeToIdeal: false,
+      lodZones: [
+        {
+          baseTriangles: base,
+          edges: roughBoundaryEdgesFromTriangles(base),
+          maxEdge: Math.SQRT2 * width,
+          triangleBudget: 20000,
+          lodContext: {
+            distance: width,
+            viewportWidth: 1300,
+            viewportHeight: 800,
+            roughnessDetail: 1,
+            maxDepth: 10,
+          },
+        },
+      ],
+    },
+    smooth = roughMeshDataFromPreparedCap({ ...options, analyticNormals: true }),
+    flat = roughMeshDataFromPreparedCap({ ...options, analyticNormals: false });
+  assert.deepEqual(smooth.positions, flat.positions);
+  assert.deepEqual(smooth.roughBoundaryPositions, flat.roughBoundaryPositions);
+  assert.deepEqual(smooth.metadata, flat.metadata);
+  let reversed = 0;
+  for (let i = 0; i < smooth.positions.length; i += 9) {
+    const p = smooth.positions.slice(i, i + 3),
+      q = smooth.positions.slice(i + 3, i + 6),
+      r = smooth.positions.slice(i + 6, i + 9),
+      u = q.map((value, index) => value - p[index]),
+      v = r.map((value, index) => value - p[index]),
+      cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]],
+      faceLength = Math.hypot(...cross);
+    assert.ok(faceLength > 0);
+    for (let vertex = 0; vertex < 3; vertex++) {
+      const n = smooth.normals.slice(i + 3 * vertex, i + 3 * vertex + 3);
+      assert.ok(n.every(Number.isFinite));
+      assert.ok(Math.abs(Math.hypot(...n) - 1) < 1e-6);
+      if (cross.reduce((sum, value, index) => sum + value * n[index], 0) < 0) reversed++;
+    }
+  }
+  assert.equal(reversed, 0, 'LOD normals may not face behind their displayed cap triangles');
 });
 
 test('triangle-derived rough boundaries remove internal triangulation edges', () => {

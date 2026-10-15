@@ -108,6 +108,8 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.vertexShader, /vWaferCadRoughXY/);
   assert.match(shader.fragmentShader, /waferCadRoughProfile/);
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
+  assert.match(shader.fragmentShader, /waferCadMicroNormalWeight = smoothstep\(1\.5, 3\.0/);
+  assert.match(shader.fragmentShader, /waferCadRoughNormalStrength \* waferCadMicroNormalWeight/);
   assert.match(shader.vertexShader, /vWaferCadRoughSurface = step\(0\.0, waferCadGpuDisplace\)/);
   assert.match(shader.fragmentShader, /if \(vWaferCadRoughSurface > 0\.5/);
   assert.doesNotMatch(

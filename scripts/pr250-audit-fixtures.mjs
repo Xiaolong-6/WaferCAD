@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
 
 // Render-only morphology: every project keeps the ideal region-stack geometry.
@@ -88,6 +89,24 @@ export async function pr250AuditFixtures() {
       name: `${name}-roi`,
       project: projectForBenchmark({ model: buried, section: project.section }),
       clip: rectMulti(15, 8, 0, -2),
+    });
+  }
+  if (process.env.WAFERCAD_AUDIT_PHOTODETECTOR === '1') {
+    const { expandProjectStorage } = await import('../site/project-io.js');
+    const stored = JSON.parse(
+      await readFile(
+        new URL('../site/examples/photodetector-literature-examples.wafercad', import.meta.url),
+        'utf8',
+      ),
+    );
+    const example = expandProjectStorage(stored);
+    fixtures.push({
+      name: 'photodetector-blacksi-final-roi',
+      project: projectForBenchmark({
+        model: example.model,
+        section: example.section,
+      }),
+      clip: rectMulti(800, 300, 2400, 0),
     });
   }
   for (const fixture of fixtures) fixture.project.version = CURRENT_PROJECT_VERSION;

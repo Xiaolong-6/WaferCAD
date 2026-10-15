@@ -294,6 +294,13 @@ ${ROUGH_PROFILE_GLSL}`,
       shader.fragmentShader,
       '#include <normal_fragment_maps>',
       `if (vWaferCadRoughSurface > 0.5 && waferCadRoughNormalStrength > 0.0) {
+  // Unresolved subpixel profile gradients must not fake mesh-height cracks.
+  // Leave the vertex displacement and section geometry untouched.
+  float waferCadFootprint = max(
+    length(dFdx(vWaferCadRoughXY)), length(dFdy(vWaferCadRoughXY))
+  );
+  float waferCadFeaturePixels = waferCadRoughFeatureSize / max(1e-9, waferCadFootprint);
+  float waferCadMicroNormalWeight = smoothstep(1.5, 3.0, waferCadFeaturePixels);
   float waferCadHeight = waferCadRoughProfile(vWaferCadRoughXY);
   float waferCadScreenDx = dFdx(waferCadHeight);
   float waferCadScreenDy = dFdy(waferCadHeight);
@@ -311,7 +318,8 @@ ${ROUGH_PROFILE_GLSL}`,
       normalize((waferCadSigmaX * waferCadStY.y - waferCadSigmaY * waferCadStX.y) / waferCadDet);
     vec3 waferCadBitangent =
       normalize((-waferCadSigmaX * waferCadStY.x + waferCadSigmaY * waferCadStX.x) / waferCadDet);
-    float waferCadSlope = waferCadRoughProfileNormal * waferCadRoughNormalStrength;
+    float waferCadSlope =
+      waferCadRoughProfileNormal * waferCadRoughNormalStrength * waferCadMicroNormalWeight;
     normal = normalize(
       normal -
         waferCadSlope *

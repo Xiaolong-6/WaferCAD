@@ -100,22 +100,6 @@ function roughPoint(point, z, profileNormal, appearance) {
   ];
 }
 
-function roughPointNormal(point, normal, profileNormal, appearance) {
-  const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
-    step = Math.max(1e-6, feature * 0.08),
-    dx =
-      (roughProfileOffsetAtPoint(point[0] + step, point[1], appearance) -
-        roughProfileOffsetAtPoint(point[0] - step, point[1], appearance)) /
-      (2 * step),
-    dy =
-      (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
-        roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
-      (2 * step),
-    length = Math.hypot(dx, dy, 1) || 1,
-    slopeSign = normal * profileNormal;
-  return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
-}
-
 // Edge samples are already sorted by the canonical line parameter. A given
 // spatial edge can be queried by many LOD subsegments: bound the search to the
 // requested interval instead of repeatedly scanning the entire shared edge.
@@ -140,6 +124,42 @@ export function roughEdgeSamplesInInterval(samples, t0, t1, { interior = false }
   const start = bound(lower, interior),
     end = bound(upper, !interior);
   return samples.slice(start, end);
+}
+
+// Use the actual Float32 tessellated cap for lighting: an unresolved
+// analytic microheight gradient can face behind its own coarse LOD triangle,
+// producing dark false cracks. This modifies normal buffers only, not vertices.
+function smoothCapNormals(positions, normals, triangleKinds) {
+  const sums = new Map(),
+    key = (offset) =>
+      `${positions[offset]},${positions[offset + 1]},${positions[offset + 2]}`;
+  for (let i = 0; i + 8 < positions.length; i += 9) {
+    if (triangleKinds[i / 3] !== 0) continue;
+    const ux = positions[i + 3] - positions[i],
+      uy = positions[i + 4] - positions[i + 1],
+      uz = positions[i + 5] - positions[i + 2],
+      vx = positions[i + 6] - positions[i],
+      vy = positions[i + 7] - positions[i + 1],
+      vz = positions[i + 8] - positions[i + 2],
+      cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    for (let j = i; j < i + 9; j += 3) {
+      const sampleKey = key(j),
+        current = sums.get(sampleKey);
+      if (current) {
+        current[0] += cross[0];
+        current[1] += cross[1];
+        current[2] += cross[2];
+      } else sums.set(sampleKey, cross.slice());
+    }
+  }
+  for (let i = 0; i + 2 < positions.length; i += 3) {
+    if (triangleKinds[i / 3] !== 0) continue;
+    const total = sums.get(key(i));
+    if (!total) continue;
+    const length = Math.hypot(...total);
+    if (!(length > 1e-12)) continue;
+    for (let axis = 0; axis < 3; axis++) normals[i + axis] = total[axis] / length;
+  }
 }
 
 export function roughMeshDataFromPreparedCap({
@@ -187,23 +207,13 @@ export function roughMeshDataFromPreparedCap({
       key = `${x},${y}`;
     let sample = roughSampleCache.get(key);
     if (!sample) {
-      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance), normal: null };
+      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance) };
       if (roughSampleCache.size < 131072) {
         roughSampleCache.set(key, sample);
       }
     }
     return sample.point;
   };
-  const roughNormal = (point) => {
-    const key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
-    const sample = roughSampleCache.get(key);
-    if (!sample) return roughPointNormal(point, normal, profileNormal, appearance);
-    if (!sample.normal) {
-      sample.normal = roughPointNormal(sample.point, normal, profileNormal, appearance);
-    }
-    return sample.normal;
-  };
-
   const polygonEdges = (zonePolys) => {
       const edges = [];
       for (const poly of zonePolys || []) {
@@ -244,7 +254,7 @@ export function roughMeshDataFromPreparedCap({
         return;
       }
       positions.push(...a, ...b, ...c);
-      normals.push(...roughNormal(a), ...roughNormal(b), ...roughNormal(c));
+      normals.push(0, 0, normal, 0, 0, normal, 0, 0, normal);
       gpuDisplace.push(0, 0, 0);
     },
     pushGpuRoughTriangle = (a, b, c) => {
@@ -424,6 +434,9 @@ export function roughMeshDataFromPreparedCap({
     }
   }
 
+  if (analyticNormals && !gpuDisplacement) {
+    smoothCapNormals(positions, normals, gpuDisplace);
+  }
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
