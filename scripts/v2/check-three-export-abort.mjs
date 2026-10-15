@@ -44,7 +44,10 @@ try {
     const downloads = [];
     const onDownload = (d) => downloads.push(d.suggestedFilename());
     page.on('download', onDownload);
-    await page.locator('[data-action="three-export-menu"]').click();
+    const exportControl = page.locator('[data-action="three-export-menu"]');
+    if (!(await exportControl.isVisible()))
+      await page.getByRole('button', { name: '3D more tools', exact: true }).click();
+    await exportControl.click();
     await page.locator('[data-action="export:three:glb"]').click();
     await page.locator('#processTaskDialog').waitFor({ state: 'visible' });
     assert.equal(await page.locator('[data-action="three-export-menu"]').isDisabled(), true);
