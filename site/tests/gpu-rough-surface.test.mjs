@@ -5,6 +5,7 @@ import {
   canUseGpuRoughPreview,
   canUseGpuRoughTask,
   decorateGpuRoughMaterial,
+  decorateGpuRoughLineMaterial,
   gpuRoughAppearanceUniforms,
 } from '../gpu-rough-surface.js';
 
@@ -95,4 +96,24 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.match(shader.fragmentShader, /waferCadHashBits/);
   assert.match(shader.fragmentShader, /prior-hook/);
   assert.equal(shader.uniforms.waferCadRoughFeatureSize.value, 0.8);
+});
+
+test('GPU rough outline shader shares cap vertex-height profile without normal-fragment hooks', () => {
+  const material = {
+    onBeforeCompile: null,
+    customProgramCacheKey: () => 'line',
+  };
+  assert.equal(decorateGpuRoughLineMaterial(material, appearance, { profileNormal: -1 }), true);
+  const shader = {
+    uniforms: {},
+    vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {}',
+  };
+  material.onBeforeCompile(shader, {});
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-line-v1/);
+  assert.match(shader.vertexShader, /waferCadRoughProfile\(position.xy\)/);
+  assert.match(shader.vertexShader, /waferCadGaussianHash/);
+  assert.doesNotMatch(shader.fragmentShader, /waferCadGaussianHash/);
+  assert.equal(shader.uniforms.waferCadRoughProfileNormal.value, -1);
+  assert.equal(shader.uniforms.waferCadRoughSampleOriginX.value, 12.5);
 });
