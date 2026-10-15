@@ -1314,6 +1314,7 @@ function applyOperationImpl(
     face = 'front',
     area,
     growth = 'direct',
+    stepCoverageFraction = null,
     surface,
     color,
     tilt = 0,
@@ -1321,6 +1322,24 @@ function applyOperationImpl(
     electricalRegionSource = 'custom',
   },
 ) {
+  // PVD has finite angular spread: optional, explicitly modelled partial
+  // coverage on narrow pre-existing oxide sidewall columns. This is NOT ALD:
+  // horizontal film receives the nominal thickness; sidewall cap receives
+  // only a declared fraction, with a grid-resolved width bound.
+  if (growth === 'pvd-step') {
+    const fraction = Number(stepCoverageFraction);
+    if (
+      type !== 'add' ||
+      !Number.isFinite(fraction) ||
+      fraction <= 0 ||
+      fraction > 1
+    ) {
+      return {
+        changed: false,
+        error: 'PVD step coverage requires a finite fraction in (0, 1] on Deposit.',
+      };
+    }
+  }
   // Use the actual requested physical value. Previously this clamped every
   // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
   const amount = Number(thickness);
@@ -1571,12 +1590,20 @@ function applyOperationImpl(
       face,
     );
   } else {
-    splitByArea(model, active, (stack) => {
+    splitByArea(model, active, (stack, region) => {
       const exposed = surfaceSegment(stack, face);
-      // A conformal-sidewall segment is a finite-width surrogate for a vertical
-      // film. Its outward Z cap is not a physical horizontal process surface, so
-      // directional Deposit/Extend must not grow another layer from that cap.
-      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
+      // Ordinary directional evaporation never grows from the artificial cap
+      // of a conformal sidewall. Explicit pvd-step mode approximates finite-
+      // angle coverage only where the width of that column is physically
+      // resolvable by the specified fractional sidewall deposition.
+      if (!exposed) return stack;
+      if (exposed.role === 'conformal-sidewall') {
+        if (growth !== 'pvd-step') return stack;
+        const stepThickness = amount * Number(stepCoverageFraction);
+        const { width, height } = multiBounds(region.geom);
+        if (Math.min(width, height) > stepThickness + 1e-9) return stack;
+        return addLayerToSurface(stack, layer?.id, stepThickness, face);
+      }
       return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
     });
   }
