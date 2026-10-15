@@ -91,6 +91,56 @@ try {
       });
       assert.deepEqual(stored.model, committed.model);
       assert.equal(stored.name, 'Recovery transaction owner');
+
+      // The non-owner can edit in memory, but has no persistence authority
+      // until an explicit, confirmed takeover reconciles the two tabs.
+      await second.locator('[data-action="domain:project"]').click();
+      await second.locator('#projectNameInput').fill('Takeover winner');
+      const guarded = await second.evaluate(async () => {
+        const { loadWorkspaceState } = await import('/workspace-persistence.js');
+        return (await loadWorkspaceState())?.name;
+      });
+      assert.equal(guarded, 'Recovery transaction owner', 'Non-owner cannot autosave');
+
+      await second.locator('#workspaceTakeOverBtn').click();
+      const takeoverChoice = second.getByRole('button', {
+        name: /^(Use this tab|Take over)$/,
+      });
+      await takeoverChoice.waitFor({ state: 'visible', timeout: 15000 });
+      await takeoverChoice.click();
+      await second.waitForFunction(
+        () => window.WaferCadV2Workstation.snapshot().workflow.writable,
+        null,
+        { timeout: 30000 },
+      );
+      await page.waitForFunction(
+        () => !window.WaferCadV2Workstation.snapshot().workflow.writable,
+        null,
+        { timeout: 30000 },
+      );
+      await second.waitForFunction(
+        async () => {
+          const { loadWorkspaceState } = await import('/workspace-persistence.js');
+          return (await loadWorkspaceState())?.name === 'Takeover winner';
+        },
+        null,
+        { timeout: 30000 },
+      );
+      const afterTakeover = await second.evaluate(async () => {
+        const { loadWorkspaceState } = await import('/workspace-persistence.js');
+        const project = await loadWorkspaceState();
+        return { model: project.model, name: project.name };
+      });
+      assert.equal(afterTakeover.name, 'Takeover winner');
+      assert.deepEqual(afterTakeover.model, committed.model);
+
+      // The displaced owner must not overwrite the replacement writer.
+      await page.locator('#saveProjectBtn').click();
+      const afterStaleSave = await page.evaluate(async () => {
+        const { loadWorkspaceState } = await import('/workspace-persistence.js');
+        return (await loadWorkspaceState())?.name;
+      });
+      assert.equal(afterStaleSave, 'Takeover winner', 'Stale writer cannot overwrite takeover');
     } finally {
       await second.close();
     }
@@ -102,9 +152,9 @@ try {
     const recovered = await snap();
     assert.deepEqual(recovered.model, committed.model, 'Reload restores exact committed geometry');
     assert.equal(recovered.workflow.steps.length, 1, 'Reload restores logical History');
-    assert.equal(recovered.projectName, 'Recovery transaction owner');
+    assert.equal(recovered.projectName, 'Takeover winner');
     assert.deepEqual(errors, []);
-    console.log('v2 History/Recovery: Undo, Redo, save, concurrent lease and reload PASS');
+    console.log('v2 History/Recovery: Undo, Redo, lease takeover, stale writer and reload PASS');
   } finally {
     await context.close();
   }
