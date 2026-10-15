@@ -118,6 +118,15 @@ try {
         null,
         { timeout: 30000 },
       );
+      // Lease acquisition occurs before asynchronous reconciliation and Save.
+      // Wait for the completed user-facing transaction, not the early lease flag.
+      await second.waitForFunction(
+        () => /This tab now owns the local workspace|Took over this workspace/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent || '',
+        ),
+        null,
+        { timeout: 30000 },
+      );
       await second.waitForFunction(
         async () => {
           const { loadWorkspaceState } = await import('/workspace-persistence.js');
