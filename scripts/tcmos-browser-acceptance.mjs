@@ -546,6 +546,56 @@ try {
     });
     await expandThree.click();
     await waitForPaint(page);
+    // Record a SECOND, explicitly isolated scientific-inspection image. Real
+    // Section Layers controls hide unrelated S/D and opposite-device markers;
+    // the underlying material topology, masks and Recipe remain unchanged.
+    // Keep the all-annotations image above as the unfiltered comparison.
+    await page.locator('[data-action="view:section"]').click();
+    await waitForPaint(page);
+    const selectedName = local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP';
+    const hiddenAnnotations = [
+      ...expected.model.implants,
+      ...(expected.model.electricalRegions || []),
+    ].filter((item) => !item.name.includes(selectedName));
+    for (const annotation of hiddenAnnotations) {
+      const toggle = page.locator(
+        '#sectionPanel [data-annotation-id="' + annotation.id + '"] input[type="checkbox"]',
+      );
+      await toggle.uncheck();
+    }
+    const isolatedModel = (await snap()).model;
+    assert.deepEqual(isolatedModel.regions, opened.model.regions);
+    assert.deepEqual(isolatedModel.layers, opened.model.layers);
+    assert.deepEqual(
+      isolatedModel.implants.map(({ visible, ...physical }) => physical),
+      opened.model.implants.map(({ visible, ...physical }) => physical),
+      'Visibility-only inspection must not rewrite implant geometry',
+    );
+    assert.equal(
+      isolatedModel.implants.filter((item) => item.visible !== false).length,
+      1,
+      'Only the target buried HVT annotation may remain visible in the isolated image',
+    );
+    await page.locator('[data-action="view:three"]').click();
+    await waitForPaint(page);
+    await expandThree.click();
+    await waitForPaint(page);
+    await page.waitForFunction(
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      null,
+      { timeout: 45000 },
+    );
+    await page.locator('#threePanel').screenshot({
+      path: resolve(dir, 'tcmos-fig1a-' + local.device + '-HVT-ONLY-display-3d.png'),
+    });
+    report.localThreeD.at(-1).isolatedAnnotationVisibility = {
+      target: selectedName,
+      hiddenCount: hiddenAnnotations.length,
+      materialGeometryUnchanged: true,
+      allMarkersScreenshotRetained: true,
+    };
+    await expandThree.click();
+    await waitForPaint(page);
   }
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
