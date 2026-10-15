@@ -16,9 +16,7 @@ test('transparent outlines deduplicate owned segments without exposing tessellat
     [[0, 0, 0], [4, 0, 0]],
     [[4, 0, 0], [0, 0, 0]],
   ];
-  const internal = {
-    z: 1, buried: true, polys: [square], layerId: 'buried',
-  };
+  const internal = { z: 1, buried: true, polys: [square], layerId: 'buried' };
   const result = transparentInspectionContours({
     borderLines: exterior,
     caps: [internal, { ...internal, z: 2, buried: false }],
@@ -42,7 +40,14 @@ test('buried rough perimeter follows the same deterministic profile as section s
     sampleOrigin: [0, 0],
     seed: 3,
   };
-  const cap = { buried: true, z: 2, normal: 1, profileNormal: -1, polys: [square], appearance };
+  const cap = {
+    buried: true,
+    z: 2,
+    normal: 1,
+    profileNormal: -1,
+    polys: [square],
+    appearance,
+  };
   const lines = buriedInterfaceContours([cap]);
   assert.ok(lines.length > 4);
   for (const point of contoursToPositions(lines)) {
@@ -56,7 +61,8 @@ test('buried rough perimeter follows the same deterministic profile as section s
 
 test('buried array contours honor instance transforms and reject degenerate edges', () => {
   const cap = {
-    buried: true, z: -1,
+    buried: true,
+    z: -1,
     polys: [square],
     instanceTranslations: [[0, 0], [10, 10]],
   };
