@@ -2,6 +2,16 @@
 
 WaferCAD browser tests are split by intent. New coverage should go into the narrowest suite that owns the behavior instead of extending one long stateful scenario.
 
+## Repository ownership and layout
+
+- `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
+- `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
+- `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
+- `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
+- `site/examples/`: released Welcome projects, previews and thumbnails. `examples/projects/`: authoring candidates, reconstruction source inputs, project provenance and non-published research fixtures. A byte-identical source/release copy is not deletable until its scripts, workflow paths and reconstruction ownership are proven independent.
+
+**Structure migration gate:** inventory import paths, npm/globs, workflow `paths` filters and documentation links; move one owner at a time; run owning Node/CI selectors and scientifically relevant fixtures. No broad restructure for cosmetic directory symmetry. Do not store transient CI reports under tracked fixture directories.
+
 ## Test tiers
 
 | Tier                        | Entry point                   | Purpose                                                                                                                  | Expected style                                                   |

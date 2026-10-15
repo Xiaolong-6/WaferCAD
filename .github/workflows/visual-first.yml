@@ -1,0 +1,57 @@
+name: Visual-first candidate screenshots
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'site/ui-v2/**'
+      - 'site/app.html'
+      - 'site/three-view.js'
+      - 'site/section-view.js'
+      - 'site/rough-mesh-geometry.js'
+      - 'site/rough-mesh-worker.js'
+      - 'site/examples/**'
+      - 'site/bundled-examples.js'
+      - 'site/workstation.css'
+      - 'scripts/v2/capture-visual-first.mjs'
+      - '.github/workflows/visual-first.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Draft screenshot evidence (not visual approval)
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Capture actual production UI v2 at desktop and portrait widths
+        run: npm run preview:visual
+      - name: Upload unreviewed evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: visual-first-${{ github.sha }}
+          path: test-results/visual-first/
+          retention-days: 7
+          if-no-files-found: warn

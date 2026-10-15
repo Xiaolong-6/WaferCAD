@@ -148,11 +148,11 @@ jobs:
         run: npm run test:ui:smoke
 
       - name: Run workstation regression
-        if: ${{ needs.plan.outputs.workstation == 'true' }}
+        if: ${{ needs.plan.outputs.workstation == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: npm run test:ui:workstation
 
       - name: Run resilience regression
-        if: ${{ needs.plan.outputs.resilience == 'true' }}
+        if: ${{ needs.plan.outputs.resilience == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: npm run test:ui:resilience
 
       - name: Run History regression
@@ -164,32 +164,32 @@ jobs:
         run: npm run test:ui:persistence
 
       - name: Run interaction regression
-        if: ${{ needs.plan.outputs.interaction == 'true' }}
+        if: ${{ needs.plan.outputs.interaction == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: npm run test:ui:interaction
 
       - name: Run bundled example regression
-        if: ${{ needs.plan.outputs.examples == 'true' }}
+        if: ${{ needs.plan.outputs.examples == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: npm run test:ui:examples
 
       - name: Run product layout regression
-        if: ${{ needs.plan.outputs.product_layout == 'true' }}
+        if: ${{ needs.plan.outputs.product_layout == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: npm run test:ui:product:layout
 
       - name: Run renderer product regression
-        if: ${{ needs.plan.outputs.renderer == 'true' }}
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         # The 625-site software-WebGL stress run is isolated below so the
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
 
       - name: Package tested preview
-        if: always()
+        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         run: |
           mkdir -p test-results/product-review/preview
           cp -R site/. test-results/product-review/preview/
           node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
 
       - name: Upload product review and preview
-        if: always()
+        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
         uses: actions/upload-artifact@v6
         with:
           name: wafercad-product-review-${{ github.sha }}
