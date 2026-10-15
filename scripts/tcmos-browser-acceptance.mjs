@@ -495,7 +495,28 @@ try {
       Math.abs(framing.threeCamera?.target?.[0] - local.gateX) < 0.1,
       '3D Fit must target the transistor-local ROI rather than the full 14 µm field',
     );
-    await page.locator('#threePanel').screenshot({
+    // The default Fit is an elevated isometric overview: it hides the
+    // y=0 inspection face under surface overlays. Reorient the *real*
+    // OrbitControls to a near-side elevation, then zoom the gate-local ROI.
+    // This is a user gesture, not a synthetic rendering or geometry edit.
+    const rotateButton = page.locator('#threePanel [data-action="tool:rotate:three"]');
+    if ((await rotateButton.getAttribute('aria-pressed')) !== 'true') await rotateButton.click();
+    const canvas = page.locator('#threeHost canvas').first();
+    const canvasBox = await canvas.boundingBox();
+    assert.ok(canvasBox && canvasBox.width > 400 && canvasBox.height > 300);
+    const cx = canvasBox.x + canvasBox.width / 2;
+    const cy = canvasBox.y + canvasBox.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx - canvasBox.height * 0.12, cy - canvasBox.height * 0.05, {
+      steps: 12,
+    });
+    await page.mouse.up();
+    await page.mouse.wheel(0, -220);
+    await waitForPaint(page);
+    const inspectionCamera = (await snap()).threeCamera;
+    assert.ok(inspectionCamera?.position?.every(Number.isFinite));
+        await page.locator('#threePanel').screenshot({
       path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-cutaway.png'),
     });
     report.localThreeD.push({
@@ -508,7 +529,8 @@ try {
       rendererImplantCutMeshes: Number(
         await page.locator('#threeHost').getAttribute('data-implant-cut-built-count'),
       ),
-      camera: framing.threeCamera,
+      fitCamera: framing.threeCamera,
+      camera: inspectionCamera,
       unchangedPhysicalModel: true,
     });
     await expandThree.click();
