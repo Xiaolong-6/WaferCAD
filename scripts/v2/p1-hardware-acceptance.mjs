@@ -64,6 +64,10 @@ const checkServer = async () => {
 };
 const hostMetrics = () =>
   page.evaluate(async () => {
+    // Freeze responsiveness evidence before snapshot/model hashing below.
+    // Otherwise the acceptance harness can include its own expensive
+    // instrumentation in the measured Long Task/input-delay window.
+    const vitals = structuredClone(window.__waferHardwareVitals || null);
     const host = document.getElementById('threeHost');
     const canvas = host?.querySelector('canvas');
     const gl = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
@@ -107,7 +111,7 @@ const hostMetrics = () =>
             ].map((key) => [key, host.dataset[key] ?? null]),
           )
         : null,
-      vitals: window.__waferHardwareVitals || null,
+      vitals,
     };
   });
 async function photograph(name) {
