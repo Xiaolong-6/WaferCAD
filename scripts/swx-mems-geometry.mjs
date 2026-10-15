@@ -465,9 +465,16 @@ function makeCombs(moveY) {
   for (const bank of banks) {
     for (let i = 0; i < 20; i++) {
       const x = 8.8 + i * 1.65;
-      fixed.push(rect(x, bank.fixedY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+      fixed.push(
+        rect(x, bank.fixedY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+      );
       moving.push(
-        rect(x + 0.8, bank.movingY + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+        rect(
+          x + 0.8,
+          bank.movingY + moveY,
+          SWX_REPORTED.combFingerWidthUm,
+          SWX_REPORTED.combFingerLengthUm,
+        ),
       );
     }
   }
