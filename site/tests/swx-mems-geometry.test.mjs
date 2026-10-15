@@ -31,7 +31,9 @@ test('SWX source parameters preserve reported SOI, SWT and MEMS dimensions', () 
   assert.equal(SWX_REPORTED.foldedSpringClearanceUm, 1.5);
   assert.equal(SWX_REPORTED.structuralAlignerBeamUm, 0.1);
   assert.equal(SWX_REPORTED.structuralAlignerLengthUm, 7);
-  assert.equal(SWX_ASSUMPTIONS.releaseUndercutUm, 4);
+  assert.equal(SWX_ASSUMPTIONS.releaseUndercutUm, 2);
+  assert.ok(SWX_ASSUMPTIONS.releaseUndercutUm > SWX_REPORTED.movableCombHandleUm / 2);
+  assert.ok(SWX_ASSUMPTIONS.releaseUndercutUm < SWX_REPORTED.fixedCombHandleUm / 2);
   assert.match(SWX_ASSUMPTIONS.maskSource, /not measured\/author layout/);
 });
 
@@ -325,6 +327,28 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
     assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(upperFixed, lowerFixed, 'Opposing stationary combs are electrically shorted');
+  }
+});
+
+test('all 40 fixed comb fingers physically join their anchored handles in OFF and ON', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  for (const state of ['off', 'on']) {
+    const pose = createSwxGeometry(state);
+    const components = v.unionGeometries(
+      pose.maskPolygons.get(1).map((points) => [[[...points, points[0]]]]),
+    );
+    const netAt = (point) => components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
+    const upperHandle = netAt([25, 9]);
+    const lowerHandle = netAt([25, -21]);
+    assert.ok(upperHandle >= 0 && lowerHandle >= 0);
+    assert.notEqual(upperHandle, lowerHandle);
+    for (let i = 0; i < 20; i++) {
+      const x = 8.8 + i * 1.65;
+      assert.equal(netAt([x, 5.9]), upperHandle, state + ' detached upper fixed finger ' + i);
+      assert.equal(netAt([x, -16.6]), lowerHandle, state + ' detached lower fixed finger ' + i);
+    }
   }
 });
 
