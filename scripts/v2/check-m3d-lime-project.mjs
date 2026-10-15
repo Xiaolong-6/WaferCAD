@@ -199,7 +199,11 @@ try {
   await page.locator('#sectionPanel [data-action="fit:section"]').click();
   await page.locator('#sectionPanel [data-action="maximize:section"]').click();
   await waitForPaint(page);
-  assert.equal((await snapshot()).state.maximize, null, 'Section inspection must restore UI layout');
+  assert.equal(
+    (await snapshot()).state.maximize,
+    null,
+    'Section inspection must restore UI layout',
+  );
 
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
