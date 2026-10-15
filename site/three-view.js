@@ -1527,7 +1527,7 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     const material = new THREE.LineBasicMaterial({
-      color: new THREE.Color(annotation.color || '#D65A6F').multiplyScalar(0.5),
+      color: new THREE.Color(annotation.color || '#D65A6F').lerp(new THREE.Color(0x111820), 0.5),
       depthTest: true,
       depthWrite: false,
     });
