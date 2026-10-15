@@ -28,7 +28,9 @@ try {
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
-          return !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected);
+          return (
+            !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected)
+          );
         },
         name,
         { timeout: 120000 },
@@ -132,7 +134,9 @@ try {
       'IndexedDB History graph is unchanged',
     );
     assert.deepEqual(errors, []);
-    console.log('V2_RECOVERY_FAIL_CLOSED: failed IndexedDB commit preserves Model/History/Variant PASS');
+    console.log(
+      'V2_RECOVERY_FAIL_CLOSED: failed IndexedDB commit preserves Model/History/Variant PASS',
+    );
   } finally {
     await context.close();
   }
