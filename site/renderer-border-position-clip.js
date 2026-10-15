@@ -36,14 +36,7 @@ export function clipBorderPositions(positions, state) {
       ) {
         continue;
       }
-      out.push(
-        ax + dx * t0,
-        ay + dy * t0,
-        az + dz * t0,
-        ax + dx * t1,
-        ay + dy * t1,
-        az + dz * t1,
-      );
+      out.push(ax + dx * t0, ay + dy * t0, az + dz * t0, ax + dx * t1, ay + dy * t1, az + dz * t1);
     }
   }
   return out;
