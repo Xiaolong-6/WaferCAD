@@ -13,7 +13,8 @@ import sys
 import klayout.db as kdb
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "test-results/swx-mems")
-PROJECT = ROOT / "swx-photonic-mems.wafercad"
+CANDIDATE = len(sys.argv) > 2 and sys.argv[2] == "compact"
+PROJECT = ROOT / ("swx-compact-candidate.wafercad" if CANDIDATE else "swx-photonic-mems.wafercad")
 BROWSER = ROOT / "browser"
 REPORT = ROOT / "klayout-independent-verification.json"
 GDS_DBU_UM = 0.0001
@@ -92,7 +93,7 @@ results = []
 baseline_by_format = {}
 for state in ("off", "on"):
     for extension in ("gds", "oas"):
-        filename = BROWSER / f"swx-{state}.{extension}"
+        filename = BROWSER / f"{'compact' if CANDIDATE else 'swx'}-{state}.{extension}"
         assert filename.is_file(), f"Missing actual browser export: {filename}"
         top_name, dbu, actual = exported_regions(filename)
         expected = canonical_regions(dbu)
@@ -134,6 +135,7 @@ for state in ("off", "on"):
 summary = {
     "pass": True,
     "engine": "KLayout 0.30.12 Python database API",
+    "candidate_mode": CANDIDATE,
     "source": str(PROJECT),
     "source_root": source["root"],
     "source_polygons": len(source["elements"]),
