@@ -54,10 +54,10 @@ export function createProjectStateController({
   }
 
   async function readProjectSnapshot(file) {
-    importedStates = new WeakMap();
     const project = await readValidatedFile(file);
     if (!project) return project;
     assertEditableProject(project);
+    importedStates = new WeakMap();
     const states = [
       ...(project.snapshots || []).map((record) => record.state),
       ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
