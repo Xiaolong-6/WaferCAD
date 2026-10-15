@@ -9,12 +9,26 @@ import {
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
 
-const square = [[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]];
+const square = [
+  [
+    [0, 0],
+    [4, 0],
+    [4, 4],
+    [0, 4],
+    [0, 0],
+  ],
+];
 
 test('transparent outlines deduplicate owned segments without exposing tessellation', () => {
   const exterior = [
-    [[0, 0, 0], [4, 0, 0]],
-    [[4, 0, 0], [0, 0, 0]],
+    [
+      [0, 0, 0],
+      [4, 0, 0],
+    ],
+    [
+      [4, 0, 0],
+      [0, 0, 0],
+    ],
   ];
   const internal = { z: 1, buried: true, polys: [square], layerId: 'buried' };
   const result = transparentInspectionContours({
@@ -64,10 +78,21 @@ test('buried array contours honor instance transforms and reject degenerate edge
     buried: true,
     z: -1,
     polys: [square],
-    instanceTranslations: [[0, 0], [10, 10]],
+    instanceTranslations: [
+      [0, 0],
+      [10, 10],
+    ],
   };
   const lines = buriedInterfaceContours([cap]);
   assert.equal(lines.length, 8);
   assert.ok(lines.some(([a]) => a[0] === 10 && a[1] === 10 && a[2] === -1));
-  assert.equal(ownedContourSegments([[[0, 0, 0], [0, 0, 0]]]).length, 0);
+  assert.equal(
+    ownedContourSegments([
+      [
+        [0, 0, 0],
+        [0, 0, 0],
+      ],
+    ]).length,
+    0,
+  );
 });
