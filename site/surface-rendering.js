@@ -362,6 +362,25 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
   return Object.is(offset, -0) ? 0 : offset;
 }
 
+// These overrides affect displayed geometry only, never the canonical profile.
+export function roughDisplayHeightBlend(featureSize, samplePitch) {
+  const feature = Number(featureSize),
+    pitch = Number(samplePitch);
+  if (!(feature > 0) || !(pitch > 0) || !Number.isFinite(feature + pitch)) return 1;
+  return 0.12 + 0.88 * smoothstep(0.25, 1, feature / pitch);
+}
+
+export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {
+  const original = roughProfileOffsetAtPoint(x, y, appearance),
+    weight = Number(appearance?.displayRoughBlend);
+  if (!Number.isFinite(weight) || weight >= 1) return original;
+  const fraction = Math.max(0, Math.min(1, weight)),
+    depth = roughMaxRelief(appearance),
+    mean = Math.min(depth, Math.max(0, Number(appearance?.meanHeight) || 0)),
+    center = appearance?.polarity === 'normal' ? depth - mean : mean;
+  return center + fraction * (original - center);
+}
+
 export function roughTextureValue(appearanceOrSeed, x, y, size = 64) {
   if (appearanceOrSeed && typeof appearanceOrSeed === 'object') {
     const appearance = appearanceOrSeed,

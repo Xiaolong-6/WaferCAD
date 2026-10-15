@@ -25,6 +25,11 @@ export function gpuRoughAppearanceUniforms(
   return {
     waferCadRoughFeatureSize: { value: featureSize },
     waferCadRoughMeanHeight: { value: meanHeight },
+    waferCadRoughVisualBlend: {
+      value: Number.isFinite(Number(appearance?.displayRoughBlend))
+        ? clamp01(appearance.displayRoughBlend)
+        : 1,
+    },
     waferCadRoughFeatureCv: { value: clamp01(appearance?.featureCv) },
     waferCadRoughHeightCv: { value: clamp01(appearance?.heightCv) },
     waferCadRoughEtchDepth: { value: etchDepth },
@@ -84,6 +89,7 @@ export function canUseGpuRoughTask({
 const ROUGH_PROFILE_GLSL = `
 uniform float waferCadRoughFeatureSize;
 uniform float waferCadRoughMeanHeight;
+uniform float waferCadRoughVisualBlend;
 uniform float waferCadRoughFeatureCv;
 uniform float waferCadRoughHeightCv;
 uniform float waferCadRoughEtchDepth;
@@ -226,9 +232,13 @@ float waferCadRoughProfile(vec2 absolutePoint) {
   vec2 point =
     absolutePoint - vec2(waferCadRoughSampleOriginX, waferCadRoughSampleOriginY);
   uint seed = waferCadRoughSeed();
-  return waferCadRoughMorphology > 0.5
+  float raw = waferCadRoughMorphology > 0.5
     ? waferCadPyramidOffset(point, seed)
     : waferCadStochasticOffset(point, seed);
+  float mean = min(waferCadRoughEtchDepth, max(0.0, waferCadRoughMeanHeight));
+  float center =
+    waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - mean : mean;
+  return mix(center, raw, waferCadRoughVisualBlend);
 }
 `;
 

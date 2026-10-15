@@ -45,6 +45,7 @@ import { boundaryProfileFromPositions, sidewallBoundarySamples } from './rough-b
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
+  roughDisplayHeightBlend,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
   roughProfileOffsetAtPoint,
@@ -2121,6 +2122,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
               };
             requests.push({
               zone: prepared,
+              appearance: task.cap.appearance,
               baseTriangles: Math.max(1, zone.baseTriangles.length),
               desiredTriangles: Math.max(1, preview.desiredTriangles),
               priority,
@@ -2147,6 +2149,39 @@ diffuseColor.a *= waferCadAlphaScale;`,
     requests.forEach((request, index) => {
       request.zone.triangleBudget = allocations[index];
     });
+    // Anti-alias unresolved features in the *displayed* stochastic heightfield
+    // without increasing the scene triangle budget or changing stored geometry.
+    const visibleArea = Math.max(1e-12, boundsArea(visibleBounds(context.model, context.clip))),
+      triangles = requests.reduce((sum, request) => {
+        const zone = request.zone;
+        return (
+          sum +
+          adaptiveRoughMeshLod({
+            triangleCount: request.baseTriangles,
+            maxEdge: zone.maxEdge,
+            featureSize: request.appearance?.featureSize,
+            ...zone.lodContext,
+            triangleBudget: zone.triangleBudget,
+          }).estimatedTriangles
+        );
+      }, 0),
+      pitch = Math.sqrt((2 * visibleArea) / Math.max(1, triangles));
+    tasks.forEach((task, index) => {
+      const appearance = task.cap.appearance,
+        blend =
+          appearance?.kind === 'rough' &&
+          appearance.morphology === 'stochastic' &&
+          !task.implant
+            ? roughDisplayHeightBlend(appearance.featureSize, pitch)
+            : 1;
+      task.visualAppearance =
+        blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
+      roughTasks[index].visualAppearance = task.visualAppearance;
+    });
+    host.dataset.roughDisplaySamplePitchUm = String(pitch);
+    host.dataset.roughDisplayBlendMin = String(
+      Math.min(1, ...tasks.map((task) => task.visualAppearance?.displayRoughBlend ?? 1)),
+    );
     return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount, policy };
   }
 
@@ -2209,9 +2244,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ? createAnnotationGradientMaterial(task.implant, task.state, {
             roughness: cap.appearance ? 0.84 : 0.72,
           })
-        : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
       if (geometry.userData.roughGpuDisplacement && !task.implant) {
-        decorateGpuRoughMaterial(material, cap.appearance, {
+        decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
         });
@@ -2292,7 +2327,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         geometry: {
           z: cap.z,
           normal: cap.normal,
-          appearance: cap.appearance,
+          appearance: task.visualAppearance || cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
@@ -2484,7 +2519,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           z: cap.z,
           normal: cap.normal,
           polys: cap.polys,
-          appearance: cap.appearance,
+          appearance: task.visualAppearance || cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
@@ -2513,9 +2548,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ? createAnnotationGradientMaterial(task.implant, task.state, {
               roughness: cap.appearance ? 0.84 : 0.72,
             })
-          : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+          : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
         if (geometry.userData.roughGpuDisplacement && !task.implant) {
-          decorateGpuRoughMaterial(material, cap.appearance, {
+          decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
           });

@@ -4,7 +4,7 @@ import {
   localParameterAtLineT,
   partitionLineIntervals,
 } from './line-intervals.js';
-import { adaptiveRoughMeshLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
+import { adaptiveRoughMeshLod, roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 
 function triangleNormal(a, b, c) {
@@ -95,7 +95,7 @@ function roughPoint(point, z, profileNormal, appearance) {
     Math.fround(
       z +
         profileNormal *
-          roughProfileOffsetAtPoint(Math.fround(point[0]), Math.fround(point[1]), appearance),
+          roughDisplayProfileOffsetAtPoint(Math.fround(point[0]), Math.fround(point[1]), appearance),
     ),
   ];
 }
