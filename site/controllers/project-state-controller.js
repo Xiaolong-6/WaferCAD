@@ -105,7 +105,11 @@ export function createProjectStateController({
     performance.measure('wafercad:history:attestation-clone', {
       start: started,
       end: performance.now(),
-      detail: { states: states.length, batches: Math.ceil(states.length / batchSize), activeCloneMs },
+      detail: {
+        states: states.length,
+        batches: Math.ceil(states.length / batchSize),
+        activeCloneMs,
+      },
     });
     importedStates = staged;
     return project;
