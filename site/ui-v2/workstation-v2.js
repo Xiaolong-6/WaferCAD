@@ -170,9 +170,8 @@
       const active = document.activeElement;
       const editing = active?.matches('input, select, textarea, [contenteditable="true"]');
       const occluded = window.innerHeight - (window.visualViewport?.height || window.innerHeight);
-      mounted.dataset.keyboard = narrow() && state.mobile === 'edit' && editing && occluded > 120
-        ? 'open'
-        : 'closed';
+      mounted.dataset.keyboard =
+        narrow() && state.mobile === 'edit' && editing && occluded > 120 ? 'open' : 'closed';
     };
     document.addEventListener('focusin', syncKeyboard);
     document.addEventListener('focusout', syncKeyboard);
@@ -245,7 +244,7 @@
       for (const [key, control] of navButtons)
         control.setAttribute('aria-pressed', String(info.selectedNavigation === key));
       for (const [key, control] of viewButtons)
-        control.setAttribute('aria-pressed', String(state.view === key));
+        control.setAttribute('aria-pressed', String((narrow() || state.mode === 'single') && state.view === key));
       mobileSection.setAttribute('aria-pressed', String(state.view === 'section'));
     }
     function renderMobileNav() {
@@ -479,7 +478,7 @@
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';
-      if (standaloneMobileReturn?.dataset.pane !== state.mobile && standaloneMobileReturn) {
+      if (standaloneMobileReturn && standaloneMobileReturn.dataset.pane !== state.mobile) {
         standaloneMobileReturn.replaceChildren(
           button(
             state.mobile === 'edit' ? 'View results' : 'Edit workspace',
