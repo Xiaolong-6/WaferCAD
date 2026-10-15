@@ -436,3 +436,34 @@ test('All saved literature History material references resolve to valid physical
     }
   }
 });
+
+test('Every recorded no-geometry step preserves its actual material geometry', async () => {
+  for (const id of [
+    'suspended-silica-microdisks',
+    'perc-solar-cells-point-contacts',
+    'fully-textured-perovskite-silicon-tandem',
+    'photodetector-literature-examples',
+  ]) {
+    const project = await example(id);
+    const nodes = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
+    const resolve = (ref) => (ref === 'project' ? project.model : project.sharedModels[ref]);
+    for (const node of nodes.values()) {
+      if (node.operation?.kind !== 'record' || node.parentId == null) continue;
+      const parent = nodes.get(node.parentId);
+      assert.ok(parent, id + ': missing Record parent ' + node.parentId);
+      const before = resolve(parent.state?.modelRef);
+      const after = resolve(node.state?.modelRef);
+      assert.ok(before && after, id + ': dangling Record material state ' + node.id);
+      assert.deepEqual(
+        after.regions,
+        before.regions,
+        id + ': Record changed the material XY/Z geometry at ' + node.id,
+      );
+      assert.deepEqual(
+        after.layers,
+        before.layers,
+        id + ': Record added/removed physical materials at ' + node.id,
+      );
+    }
+  }
+});
