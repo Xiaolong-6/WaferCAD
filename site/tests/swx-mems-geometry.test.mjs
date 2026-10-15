@@ -460,7 +460,10 @@ test('both electrostatic comb banks increase axial overlap equally along +Y', ()
       const [mx0, mx1] = extent(banks.moving[index], 0);
       const [fy0, fy1] = extent(banks.fixed[index], 1);
       const [my0, my1] = extent(banks.moving[index], 1);
-      if (index % 2 === 0) approx(mx0 - fx1, SWX_REPORTED.combFingerGapUm);
+      // makeCombs groups the 20 right (+X) fingers first, followed by
+      // 20 mirrored left (-X) fingers. Their positive lateral clearances
+      // are measured toward opposite X directions.
+      if (index < 22) approx(mx0 - fx1, SWX_REPORTED.combFingerGapUm);
       else approx(fx0 - mx1, SWX_REPORTED.combFingerGapUm);
       const overlap = Math.max(0, Math.min(fy1, my1) - Math.max(fy0, my0));
       approx(overlap, SWX_REPORTED.combFingerInitialOverlapUm + pose.travelUm);
