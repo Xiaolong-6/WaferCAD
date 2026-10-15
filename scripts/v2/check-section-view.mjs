@@ -60,17 +60,34 @@ try {
             : action.includes('main') || action === 'slice-coordinates'
               ? 'main'
               : 'section';
-          await page
-            .locator(
-              `#${panel}Panel button[aria-label="${{ main: 'Main', mask: 'Mask', section: 'Section' }[panel]} more tools"]`,
-            )
-            .click();
+          const label = { main: 'Main', mask: 'Mask', section: 'Section' }[panel];
+          const moreSelector = `#${panel}Panel button[aria-label="${label} more tools"]`;
+          // View changes reparent the original controls after the next paint.
+          // Wait for either an inline control or its actually enabled More menu;
+          // clicking a disabled/empty More must never silently pass.
+          await page.waitForFunction(
+            ({ action, moreSelector }) => {
+              const control = [...document.querySelectorAll('[data-action]')].find(
+                (node) => node.dataset.action === action,
+              );
+              const more = document.querySelector(moreSelector);
+              return (
+                (control?.checkVisibility() && !control.disabled) ||
+                (more?.checkVisibility() && !more.disabled)
+              );
+            },
+            { action, moreSelector },
+            { timeout: 10000 },
+          );
+          if (!(await target.isVisible())) await page.locator(moreSelector).click();
         }
         await target.click();
         await waitForPaint(page);
       };
       // Floating Mask actions must still reach the same ROI controller inside the shared shell.
       await page.locator('[data-action="view:mask"]').click();
+      await page.locator('#maskPanel').waitFor({ state: 'visible' });
+      await waitForPaint(page);
       await command('mask-roi-toggle');
       assert.equal(await page.locator('#maskRoiTools').isVisible(), true);
       await page.locator('[data-action="mask-roi-tool:square"]').click();

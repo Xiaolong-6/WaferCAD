@@ -23,7 +23,7 @@ try {
       // Compact Workstation starts in View: switch to Edit before targeting
       // navigation. Never weaken the actual tooltip lifecycle assertions.
       if (mobile) {
-        await page.locator('.p-mobile-return [data-action="show-editor"]').click();
+        await page.locator('.p-nav [data-action="show-editor"]').click();
         await page.locator('.p-nav [data-action="domain:project"]').waitFor({
           state: 'visible',
         });

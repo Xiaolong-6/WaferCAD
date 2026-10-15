@@ -20,6 +20,39 @@ async function snapshot() {
 
 try {
   await open('/app.html');
+  // The production shell must reach every viewport edge without a page scroller.
+  for (const viewport of [
+    { width: 1440, height: 960 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.locator('.p-workbench').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        margin: style.margin,
+        border: style.borderTopWidth,
+        radius: style.borderTopLeftRadius,
+        docWidth: document.documentElement.scrollWidth,
+        docHeight: document.documentElement.scrollHeight,
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+      };
+    });
+    assert.ok(Math.abs(bounds.left) <= 1 && Math.abs(bounds.top) <= 1);
+    assert.ok(Math.abs(bounds.right - bounds.viewportWidth) <= 1);
+    assert.ok(Math.abs(bounds.bottom - bounds.viewportHeight) <= 1);
+    assert.equal(bounds.margin, '0px');
+    assert.equal(bounds.border, '0px');
+    assert.equal(bounds.radius, '0px');
+    assert.ok(bounds.docWidth <= bounds.viewportWidth + 1);
+    assert.ok(bounds.docHeight <= bounds.viewportHeight + 1);
+  }
+  await page.setViewportSize({ width: 1440, height: 960 });
   let state = await snapshot();
   assert.equal(state.source, 'empty', 'No start intent initializes a blank workspace');
   assert.equal(state.model.layers.length, 1, 'A new project contains only its Base');

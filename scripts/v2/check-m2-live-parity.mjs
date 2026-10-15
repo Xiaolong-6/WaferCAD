@@ -122,8 +122,11 @@ try {
         await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
           timeout: 120000,
         });
-        if (role === 'real' && !(await page.locator('.p-nav').isVisible()))
-          await page.locator('[data-action="show-editor"]').click();
+        if (
+          role === 'real' &&
+          !(await page.locator('.p-nav [data-action="domain:process"]').isVisible())
+        )
+          await page.locator('.p-nav [data-action="show-editor"]').click();
         const process = page.locator('.p-nav [data-action="domain:process"]');
         await process.click();
         await waitForPaint(page);
@@ -141,7 +144,12 @@ try {
       assert.equal(real.overflowX, 0, 'Real shell must fit the viewport');
       assert.ok(m2.root && real.root && m2.nav && real.nav && m2.inspector && real.inspector);
       if (width >= 821) {
-        near(m2.root.width, real.root.width, 2, 'Workbench width');
+        // M2 remains an inset reference shell. Production deliberately occupies
+        // the viewport; compare the owned internal chrome, not the outer card.
+        near(real.root.x, 0, 1, 'Production left edge');
+        near(real.root.y, 0, 1, 'Production top edge');
+        near(real.root.width, width, 1, 'Production full viewport width');
+        assert.ok(m2.root.width < real.root.width, 'M2 reference keeps its inset shell');
         near(m2.nav.width, real.nav.width, 2, 'Primary navigation width');
         near(m2.inspector.width, real.inspector.width, 2, 'Manual inspector width');
       } else {
