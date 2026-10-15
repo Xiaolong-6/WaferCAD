@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import {
   baseUrl,
   gotoWelcome,
   launchBrowser,
-  newLegacyUiPage as newUiPage,
+  newUiPage,
   observePageErrors,
 } from './test-helpers/ui.mjs';
 
@@ -31,6 +31,7 @@ try {
   const { context, page } = await newUiPage(browser);
   const errors = observePageErrors(page);
   await gotoWelcome(page);
+  assert.match(page.url(), /\/index\.html$|\/$/, 'Scientific storage gate uses v2 Welcome');
   const result = await page.evaluate(async (text) => {
     const io = await import('./project-io.js'),
       api = await import('./workspace-persistence.js');
@@ -134,6 +135,7 @@ try {
   assert.equal(result.steps, 40);
   assert.equal(result.bookmarks, 5);
   assert.deepEqual(errors, []);
+  await mkdir('test-results/native-fig3', { recursive: true });
   await writeFile(
     'test-results/native-fig3/workspace-storage-worker.json',
     JSON.stringify({ baseUrl, browser: browser.version(), expected, ...result, errors }, null, 2),
