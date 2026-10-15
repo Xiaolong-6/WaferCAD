@@ -195,7 +195,7 @@ function pointInRing([x, y], ring) {
 
 function materialStackAt(project, point) {
   const owners = project.model.regions.filter((region) =>
-    (region.poly || project.sharedGeometries?.[region.geomRef] || []).some(
+    (region.geom || project.sharedGeometries?.[region.geomRef] || []).some(
       (polygon) =>
         pointInRing(point, polygon[0]) &&
         !polygon.slice(1).some((hole) => pointInRing(point, hole)),
