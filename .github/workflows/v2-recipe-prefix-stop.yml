@@ -45,8 +45,11 @@ jobs:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-recipe-prefix-stop-parity.mjs
       - uses: actions/upload-artifact@v6
-        if: failure()
+        if: always()
         with:
-          name: v2-recipe-prefix-stop-failure
-          path: serve-v2.log
+          name: v2-recipe-prefix-stop-review
+          path: |
+            test-results/v2-recipe-prefix-stop/inflight-task-abort.png
+            serve-v2.log
+          if-no-files-found: ignore
           retention-days: 14
