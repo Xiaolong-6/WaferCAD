@@ -58,8 +58,8 @@ try {
     await context.close();
   }
 
-  // Scope B: a 40-step Worker replay must yield to Stop; cancellation may
-  // retain already committed Steps but must not leave a busy/inconsistent UI.
+  // Scope B: the visible background-task Abort must stop the *entire* Recipe.
+  // Cancellation may retain completed Steps, never leave a stuck transaction.
   const { context: stopContext } = await newUiPage(browser);
   try {
     // Keep the *real* Process Worker execution while delaying only the
@@ -101,7 +101,7 @@ try {
     await page.locator('#recipeCodeEditor').fill(code);
     await page.locator('#recipeApplyCodeBtn').click();
     await page.locator('#recipeRunAllBtn').click();
-    await page.locator('#recipeStopBtn').click({ timeout: 5000 });
+    await page.locator('#processTaskAbortBtn').click({ timeout: 5000 });
     await page.waitForFunction(
       () => {
         const summary = document.getElementById('recipeRunSummary')?.textContent || '';
@@ -114,12 +114,20 @@ try {
       timeout: 30000,
     });
     const stopped = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
-    assert.ok(stopped.workflow.steps.length < 40, 'Stop must prevent the full 40-Step replay');
+    assert.ok(stopped.workflow.steps.length < 40, 'Abort must stop before the final Recipe Step');
+    const committedFilms = stopped.model.layers.filter((layer) =>
+      layer.name.startsWith('Stop film '),
+    );
+    assert.equal(
+      committedFilms.length,
+      stopped.workflow.steps.length,
+      'Cancelled Recipe may retain only physically committed Steps',
+    );
     assert.deepEqual(errors, [], 'No page exceptions while stopping Recipe');
   } finally {
     await stopContext.close();
   }
-  console.log('V2_RECIPE_PREFIX_STOP: prefix physical 30 nm film and 40-step Stop PASS');
+  console.log('V2_RECIPE_PREFIX_STOP: prefix 30 nm film and task Abort full-run STOP PASS');
 } finally {
   await browser.close();
 }
