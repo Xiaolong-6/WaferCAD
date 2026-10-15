@@ -117,7 +117,7 @@ never acquires the writer lease, and does not change the saved-workspace marker.
 It has no `start` intent, autosave or Recovery side effects. Full examples
 continue to open through the ordinary v2 Project route.
 `scripts/v2/check-cross-ui-recovery.mjs` retains its historical CI entry
-name while exercising the production v2 Workstation only: complete 47-Step/
+name while exercising the production v2 Workstation only: complete 47-Step and
 seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
 competing v2 writer exclusion, protected unload, and Recovery after replacement.
 Historical pre-v2 project decoding and compatibility remain separately owned
