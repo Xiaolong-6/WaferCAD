@@ -48,7 +48,7 @@ jobs:
       - name: Emit final normalized sources and candidate bytes for fixture review
         if: always()
         run: |
-          for file in scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/project-schema.js; do
+          for file in scripts/tcmos-browser-acceptance.mjs scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/project-schema.js; do
             echo "TCMOS_FMT_BEGIN:$file"
             npx prettier "$file"
             echo "TCMOS_FMT_END:$file"
