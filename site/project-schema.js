@@ -10,7 +10,7 @@ import {
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
 
-export const CURRENT_PROJECT_VERSION = 14;
+export const CURRENT_PROJECT_VERSION = 15;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
 export const PROJECT_LENGTH_LIMIT_UM = PROJECT_COORDINATE_LIMIT_UM * 2;
 
@@ -1332,6 +1332,79 @@ function validateAssetInBudget(asset, path, cache, budget, validate) {
   cache.set(asset, Object.fromEntries(keys.map((key) => [key, budget[key] - before[key]])));
 }
 
+// Version 15: bounded, fully embedded, independent source projects for a
+// direct-bond Assembly. Never accept a nested Assembly or silently discard it.
+function validateWaferAssembly(value, shared) {
+  const root = 'waferAssembly';
+  assertObject(value, root);
+  if (value.version !== 1) fail(`${root}.version`, 'must be 1.');
+  const sources = assertArray(value.sources, `${root}.sources`, 8);
+  if (!sources.length) fail(`${root}.sources`, 'must contain a receiver.');
+  const bonds = assertArray(value.bonds, `${root}.bonds`, 7);
+  if (bonds.length !== sources.length - 1) {
+    fail(`${root}.bonds`, 'must contain one Bond per additional source.');
+  }
+  const seen = new Set();
+  let totalBytes = 0;
+  sources.forEach((source, index) => {
+    const path = `${root}.sources[${index}]`;
+    assertObject(source, path);
+    const id = assertString(source.id, `${path}.id`, { max: 64 });
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(id) || seen.has(id)) {
+      fail(`${path}.id`, 'is unsafe or duplicated.');
+    }
+    seen.add(id);
+    assertObject(source.project, `${path}.project`);
+    if (source.project.waferAssembly != null || source.project.assembly != null) {
+      fail(`${path}.project`, 'must not contain a nested Assembly.');
+    }
+    // Preserve complete donor Masks, Recipe, History and source project state.
+    validateProjectCore(source.project, true, shared);
+    let bytes;
+    try {
+      bytes = new TextEncoder().encode(JSON.stringify(source.project)).byteLength;
+    } catch {
+      fail(`${path}.project`, 'must be serializable.');
+    }
+    assertInteger(source.bytes, `${path}.bytes`, { min: 1, max: 16 * 1024 * 1024 });
+    if (bytes !== source.bytes) fail(`${path}.bytes`, 'does not match embedded source.');
+    totalBytes += bytes;
+    if (totalBytes > 64 * 1024 * 1024) {
+      fail(`${root}.sources`, 'exceeds the 64 MiB source budget.');
+    }
+  });
+  bonds.forEach((bond, index) => {
+    const path = `${root}.bonds[${index}]`;
+    assertObject(bond, path);
+    if (bond.donorId !== sources[index + 1].id) {
+      fail(`${path}.donorId`, 'must match the ordered donor source.');
+    }
+    const spec = assertObject(bond.spec, `${path}.spec`);
+    if (spec.donorId !== bond.donorId) fail(`${path}.spec.donorId`, 'does not match.');
+    for (const face of ['receiverFace', 'donorFace']) {
+      if (!['front', 'back'].includes(spec[face])) {
+        fail(`${path}.spec.${face}`, 'must be front or back.');
+      }
+    }
+    if (!['x', 'y'].includes(spec.flipAxis)) fail(`${path}.spec.flipAxis`, 'is invalid.');
+    if (spec.method !== 'direct' || spec.gapUm !== 0) {
+      fail(`${path}.spec`, 'only zero-gap direct bonds are supported.');
+    }
+    for (const key of ['dx', 'dy', 'rotationDeg']) {
+      assertCoordinate(spec[key], `${path}.spec.${key}`);
+    }
+    assertFinite(bond.contactAreaUm2, `${path}.contactAreaUm2`, { min: 1e-18 });
+    const mapping = assertObject(bond.donorLayerIds, `${path}.donorLayerIds`);
+    if (Object.keys(mapping).length > LIMITS.layers) {
+      fail(`${path}.donorLayerIds`, 'exceeds the layer budget.');
+    }
+    for (const [original, transformed] of Object.entries(mapping)) {
+      assertString(original, `${path}.donorLayerIds key`, { max: 128 });
+      assertString(transformed, `${path}.donorLayerIds[${original}]`, { max: 128 });
+    }
+  });
+}
+
 function validateProjectCore(project, allowSnapshots, shared = createValidationContext()) {
   assertObject(project, 'project');
   if (project.format !== 'WaferCAD-vector') fail('format', 'is not supported.');
@@ -1386,6 +1459,13 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   validatePlanViews(project.planViews);
   validateDisplay(project.display);
   validateProcessRecipe(project.processRecipe);
+  if (project.waferAssembly != null) {
+    if (!allowSnapshots) fail('waferAssembly', 'must not be nested in History state.');
+    if (project.version !== CURRENT_PROJECT_VERSION) {
+      fail('version', 'must support Assembly format v15.');
+    }
+    validateWaferAssembly(project.waferAssembly, shared);
+  }
   if (allowSnapshots) {
     validateSnapshotRecords(project.snapshots, shared);
     validateSnapshotBranches(project.snapshotBranches, project.snapshots, shared);
@@ -1547,6 +1627,9 @@ function migrateProjectCore(project) {
   const version = project.version == null ? 1 : project.version;
   if (!Number.isInteger(version) || version < 1 || version > CURRENT_PROJECT_VERSION) {
     fail('version', `must be between 1 and ${CURRENT_PROJECT_VERSION}.`);
+  }
+  if (version < 15 && project.waferAssembly != null) {
+    fail('version', 'pre-v15 projects cannot encode multi-wafer Assembly.');
   }
 
   if (version < 2) {
