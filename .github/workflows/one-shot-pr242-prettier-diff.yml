@@ -1,0 +1,29 @@
+name: One-shot PR242 Prettier Diff
+
+on:
+  push:
+    branches:
+      - audit/example-literature-fidelity-20261014
+    paths:
+      - '.github/workflows/one-shot-pr242-prettier-diff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    if: ${{ github.repository == 'Xiaolong-6/WaferCAD' && github.ref == 'refs/heads/audit/example-literature-fidelity-20261014' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Print exact Prettier diff without changing the remote source
+        run: |
+          npx prettier --write site/tests/example-literature-fidelity.test.mjs
+          git diff --no-ext-diff -- site/tests/example-literature-fidelity.test.mjs
+          npx prettier --check site/tests/example-literature-fidelity.test.mjs
