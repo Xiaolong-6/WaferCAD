@@ -77,85 +77,81 @@ try {
       false,
       'Invalid new-base replay cannot request destructive History reset',
     );
-    // A malformed, unapplied draft also must not mutate the committed model.
-    // Keep this independently from the valid-but-unsatisfiable late-Step gate.
-    const beforeDraft = await snapshot();
+    // Retain the original v2 malformed-draft and successful-retry contract.
+    const valid =
+      'deposit({ material: "Recovered recipe film", thickness: "0.35 nm", area: "full" });';
+    await code.fill(valid);
+    await page.locator('#recipeApplyCodeBtn').click();
+    await page.waitForFunction(() =>
+      /Recipe code applied/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      ),
+    );
+    assert.deepEqual((await snapshot()).model, committed.model);
+    // An invalid, unapplied Code draft must block preflight while preserving
+    // the last applied Recipe, committed model and complete History topology.
+    const before = await snapshot();
     await code.fill('deposit({');
     await page.locator('#recipeApplyCodeBtn').click();
-    await page.waitForFunction(
-      () => /Recipe code error:/.test(
+    await page.waitForFunction(() =>
+      /Recipe code error:/.test(
         document.querySelector('[data-slot="status.message"]')?.textContent || '',
       ),
+    );
+    assert.equal(await code.inputValue(), 'deposit({');
+    await page.locator('#recipeRunAllBtn').click();
+    await page.waitForFunction(() =>
+      /Recipe preflight failed/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      ),
+    );
+    const rejected = await snapshot();
+    assert.deepEqual(rejected.model, before.model, 'Rejected draft preserves physical geometry');
+    assert.deepEqual(
+      rejected.workflow.steps,
+      before.workflow.steps,
+      'Rejected draft preserves Steps',
+    );
+    assert.deepEqual(
+      rejected.workflow.branches,
+      before.workflow.branches,
+      'Rejected draft cannot silently create a Variant',
     );
     assert.equal(
-      await code.inputValue(),
-      'deposit({',
-      'Invalid draft remains editable',
-    );
-    await page.locator('#recipeRunAllBtn').click();
-    await page.waitForFunction(
-      () => /Recipe preflight failed/.test(
-        document.querySelector('[data-slot="status.message"]')?.textContent || '',
-      ),
-    );
-    const afterDraft = await snapshot();
-    assert.deepEqual(afterDraft.model, beforeDraft.model, 'Malformed draft preserves geometry');
-    assert.deepEqual(
-      afterDraft.workflow.steps,
-      beforeDraft.workflow.steps,
-      'Malformed draft preserves History',
-    );
-    assert.deepEqual(
-      afterDraft.workflow.branches,
-      beforeDraft.workflow.branches,
-      'Malformed draft preserves Variants',
+      await page.getByRole('button', { name: 'Continue and apply', exact: true }).isVisible(),
+      false,
+      'Preflight must reject before a continuing-Recipe confirmation',
     );
 
-    // Correct the code; the ordinary Continue run must work after both failures
-    // and deposit exactly 0.35 nm (0.00035 µm) in canonical physical coordinates.
-    const recoveredCode =
-      'deposit({ material: "Recovered recipe film", thickness: "0.35 nm", area: "full" });';
-    await code.fill(recoveredCode);
+    await code.fill(valid);
     await page.locator('#recipeApplyCodeBtn').click();
-    await page.waitForFunction(
-      () => /Recipe code applied/.test(
+    await page.waitForFunction(() =>
+      /Recipe code applied/.test(
         document.querySelector('[data-slot="status.message"]')?.textContent || '',
       ),
     );
     await page.locator('#recipeRunStart').selectOption('continue');
-    assert.deepEqual(
-      (await snapshot()).model,
-      committed.model,
-      'Applying corrected code does not run it',
-    );
     await page.locator('#recipeRunAllBtn').click();
-    const confirm = page.getByRole('button', {
-      name: 'Continue and apply',
-      exact: true,
-    });
+    const confirm = page.getByRole('button', { name: 'Continue and apply', exact: true });
     await confirm.waitFor({ state: 'visible', timeout: 15000 });
     await confirm.click();
     await page.waitForFunction(
-      () => (document.querySelector('[data-slot="status.message"]')?.textContent || '')
-        .includes('Recipe completed: 1/1'),
+      () =>
+        /Recipe completed: 1\/1/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent || '',
+        ),
       null,
       { timeout: 120000 },
     );
     const recovered = await snapshot();
     assert.equal(recovered.workflow.steps.length, committed.workflow.steps.length + 1);
-    const film = recovered.model.layers.find(
-      (layer) => layer.name === 'Recovered recipe film',
-    );
-    assert.ok(film, 'Corrected code commits an actual material');
+    const film = recovered.model.layers.find((layer) => layer.name === 'Recovered recipe film');
+    assert.ok(film, 'Successful re-apply commits a real scientific material layer');
     const thickness = recovered.model.regions
       .flatMap((region) => region.stack.filter((segment) => segment.layerId === film.id))
       .map((segment) => segment.z1 - segment.z0);
-    assert.ok(thickness.length > 0, 'Recovered layer has canonical material segments');
-    assert.ok(
-      thickness.every((value) => Math.abs(value - 0.00035) < 1e-12),
-      'Recovered layer retains exact subnanometre thickness',
-    );
-
+    assert.ok(thickness.length > 0);
+    assert.ok(thickness.every((value) => Math.abs(value - 0.00035) < 1e-12));
     assert.deepEqual(errors, [], 'No v2 browser error during Recipe preflight');
     console.log(
       'v2 Recipe: invalid late Step, malformed draft, recovery and physical thickness PASS',
