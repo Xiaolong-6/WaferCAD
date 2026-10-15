@@ -4,6 +4,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createSwxGeometry, SWX_REPORTED } from './swx-mems-geometry.mjs';
+import { createSwxOptomechanicalCandidate } from './swx-mems-optomechanical-candidate.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -41,6 +42,26 @@ for (const state of ['off', 'on']) {
     bankLateralCenterSeparationUm: Math.abs(fixedCenters[0].x - fixedCenters[1].x),
   };
 }
+const prototype = {};
+for (const state of ['off', 'on']) {
+  const p = createSwxOptomechanicalCandidate(state);
+  const left = center(extent(p.actuator.banks[0].stationary[0]));
+  const right = center(extent(p.actuator.banks[1].stationary[0]));
+  prototype[state] = {
+    integrationStatus: p.integrationStatus,
+    swxAirGapUm: p.gapUm,
+    movableTravelUm: p.travelUm,
+    combCellsPerBank: p.actuator.banks.map((bank) => bank.stationary.length - 1),
+    bankAxialCenterSeparationUm: Math.abs(left.y - right.y),
+    foldedSpringContours: p.actuator.springContours.length,
+    fixedOpticalRoutes: p.opticalRouting.fixed.length,
+    compliantOpticalRoutes: p.opticalRouting.movingSpringWaveguides.length,
+    supportedOpticalPads: p.opticalRouting.supportedPads.length,
+    completeFabricationHistoryVerified: false,
+    fullWaferCADRendererAccepted: false,
+    calibratedOpticalAndMechanicalModelsAvailable: false,
+  };
+}
 const axialSeparation = poses.off.bankAxialCenterSeparationUm;
 // Heuristic review trigger, NOT a tolerance from the paper: adjacent banks
 // displaced by over two complete finger lengths cannot be called co-located.
@@ -64,6 +85,7 @@ const audit = {
   },
   scope: 'figure/topology review only; no calibrated FEM/FDTD or author-GDS claim',
   poses,
+  compactOptomechanicalPrototype: prototype,
   blockers,
   scienceVisualApproval: blockers.length === 0 ? 'requires-manual-review' : 'blocked',
   mergePermission: 'explicit-user-approval-required',
