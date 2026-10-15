@@ -179,9 +179,14 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     if (!pending || event.pointerId !== pending.pointerId) return;
     const started = pending.dragging;
     const view = pending.view;
-    const target = started && event.type !== 'pointercancel'
-      ? hit(event.clientX, event.clientY) || edgeTarget(event.clientX, event.clientY)
+    const pointerTarget = started && event.type !== 'pointercancel'
+      ? hit(event.clientX, event.clientY)
       : null;
+    // The source panel normally extends to the stage edge; its hit surface
+    // must not prevent an intentional edge-to-layout drop.
+    const target = pointerTarget?.kind === 'panel' && pointerTarget.view === view
+      ? edgeTarget(event.clientX, event.clientY)
+      : pointerTarget || (started ? edgeTarget(event.clientX, event.clientY) : null);
     document.body.classList.remove('v2-docking');
     end();
     if (started) {
