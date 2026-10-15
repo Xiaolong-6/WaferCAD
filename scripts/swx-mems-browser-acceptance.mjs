@@ -304,7 +304,9 @@ try {
         );
         if (state === 'on') {
           await page.locator('[data-action="domain:history"]').click();
-          await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+          await page
+            .locator('.history-variant[data-variant-id="on"] .history-variant-name')
+            .click();
           await page.waitForFunction(
             () =>
               window.WaferCadV2Workstation.snapshot().workflow.branches.some(
