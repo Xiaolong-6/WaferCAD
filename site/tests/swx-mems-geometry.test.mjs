@@ -370,8 +370,10 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
     const connectedPart = (point) =>
       components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
     const movable = connectedPart([25, g.travelUm]);
+    const leftMovable = connectedPart([-31, SWX_ASSUMPTIONS.lowerMovableCombYUm + g.travelUm]);
     const upperFixed = connectedPart([25, 9]);
     const lowerFixed = connectedPart([-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
+    assert.equal(leftMovable, movable, 'Opposed moving banks lost shuttle electrical continuity');
     assert.ok(movable >= 0 && upperFixed >= 0 && lowerFixed >= 0);
     assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
@@ -415,6 +417,31 @@ test('opposed comb banks remain on opposite shuttle sides in both poses', () => 
     assert.ok(centerX(left) < -SWX_REPORTED.shuttleWidthUm / 2);
     assert.equal(pose.physicalGroups.combBanks.fixed.length, 42);
     assert.equal(pose.physicalGroups.combBanks.moving.length, 42);
+  }
+});
+
+test('opposed comb banks cannot cross compliant optical routing', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const { geometryArea } = await import('../model.js');
+  const multi = (polygons) => v.unionGeometries(polygons.map((ring) => [[[...ring, ring[0]]]]));
+  for (const state of ['off', 'on']) {
+    const pose = createSwxGeometry(state);
+    const combs = multi([
+      ...pose.physicalGroups.combBanks.fixed,
+      ...pose.physicalGroups.combBanks.moving,
+    ]);
+    const optical = multi([
+      ...pose.physicalGroups.opticalMeanders.fixed,
+      ...pose.physicalGroups.opticalMeanders.moving,
+      ...pose.physicalGroups.gratingFeeds,
+    ]);
+    const overlap = geometryArea(v.intersection(combs, optical));
+    assert.ok(
+      overlap < 1e-8,
+      state + ' opposed combs intersect compliant optical lines by ' + overlap + ' µm²',
+    );
   }
 });
 
