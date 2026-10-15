@@ -85,6 +85,9 @@ export async function createMainView({ project, sharedState, workstation, render
     });
     const canvas = root.getElementById('mainCanvas');
     canvas.dataset.tool = state.tool;
+    const dimensions = hooks.get('mainCoords');
+    if (dimensions)
+      dimensions.textContent = `${units.format(state.model.width)} × ${units.format(state.model.height)} ${units.label()}`;
     shell?.getSlot('view.main.readout')?.replaceChildren(caption());
     if (!workstation) shell?.getSlot('status.message')?.replaceChildren(message);
   }
@@ -395,7 +398,7 @@ export async function createMainView({ project, sharedState, workstation, render
       buildRoiTools(),
       hook(
         'mainCoords',
-        el('span', { class: 'p-scale' }, `${state.model.width} × ${state.model.height} µm`),
+        el('span', { class: 'p-scale' }, `${units.format(state.model.width)} × ${units.format(state.model.height)} ${units.label()}`),
       ),
     );
     const views = window.createWaferCadV2ViewPanels();
