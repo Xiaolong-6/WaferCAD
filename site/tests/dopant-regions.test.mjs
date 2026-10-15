@@ -9,6 +9,13 @@ const { validateProcessModel } = await import('../project-schema.js');
 const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps } =
   await import('../dopant-regions.js');
 
+test('legacy models retain their original storage shape until qualitative doping is requested', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
+  assert.equal(Object.hasOwn(model, 'dopantRegions'), false);
+  validateProcessModel(model);
+  assert.equal(JSON.stringify(model).includes('"dopantRegions"'), false);
+});
+
 test('dopant intents are host-material clipped and updated after etch without a dopant diffusion solver', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 2, thickness: 2 });
   const host = model.layers[0].id;
