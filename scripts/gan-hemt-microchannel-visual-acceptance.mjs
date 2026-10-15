@@ -234,11 +234,63 @@ try {
     screenshotScope: 'expanded 3D host',
   };
   assert.deepEqual(historyErrors, [], 'HEMT Bookmark inspection emitted browser errors');
+
+  // The fluid port section runs along X=30; the off-axis electrical TSVs
+  // require a DIFFERENT physical plane. Restore the last full-interposer
+  // Bookmark instead of representing both as one fictitious A-A cut.
+  const tsvStep = page.locator('#snapshotList .history-step-wrap').filter({
+    has: page.locator('.history-bookmark-row', {
+      hasText: '06 Integrated GaN HEMT',
+    }),
+  });
+  await tsvStep.first().waitFor({ state: 'attached', timeout: 120000 });
+  assert.equal(await tsvStep.count(), 1, 'Full-interposer TSV Bookmark missing');
+  const tsvGroup = tsvStep.locator('.history-bookmarks-group');
+  if (!(await tsvGroup.evaluate((details) => details.open))) {
+    await tsvGroup.locator('.history-bookmarks-summary').click();
+  }
+  const tsvBookmark = tsvGroup.locator('.history-bookmark-row', {
+    hasText: '06 Integrated GaN HEMT',
+  });
+  await tsvBookmark.locator('.snapshot-more-trigger').click();
+  await tsvBookmark
+    .locator('.snapshot-more-popover button', { hasText: 'Restore bookmark' })
+    .click();
+  await page.waitForFunction(
+    () => {
+      const s = window.WaferCadV2Workstation?.snapshot();
+      return (
+        s?.roi == null &&
+        s?.section?.a?.[0] === -1800 &&
+        s?.section?.a?.[1] === 950 &&
+        s?.section?.b?.[0] === 1800 &&
+        s?.section?.b?.[1] === 950
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
+  const sectionButton = page.locator('[data-action="section"]').first();
+  if ((await sectionButton.getAttribute('aria-pressed')) !== 'true') {
+    await sectionButton.click();
+  }
+  await page.locator('#sectionCanvas').waitFor({ state: 'visible', timeout: 120000 });
+  await waitForPaint(page);
+  const tsvSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
+  await writeFile(new URL('tsv-transverse-section.png', directory), tsvSectionShot);
+  report.views.tsvTransverse = {
+    bytes: tsvSectionShot.length,
+    plane: 'Y = 950 um; X = -1800 to 1800 um',
+    distinctFromCoolantSection: true,
+    // This candidate presently contains open TSV bores, not electrical metal.
+    platedConductorsClaimed: false,
+  };
+  assert.deepEqual(historyErrors, [], 'TSV inspection emitted browser errors');
   await context.close();
 
   report.pass = true;
   report.note =
-    'Four final views, fluid-network Bookmark and HEMT device Bookmark have real-browser captures. Scientific image parity still needs visual review.';
+    'Four final views, separate coolant/TSV sections, fluid Bookmark and HEMT device Bookmark have real-browser captures. Actual TSV metal and source-figure parity still require validation.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',
