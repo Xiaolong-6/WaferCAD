@@ -35,6 +35,15 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(masks.get(10).rectangles[0].h, 900);
   assert.equal(masks.get(13).rectangles.length, 6);
   assert.ok(masks.get(13).rectangles.every((r) => r.w === 30 && r.h === 760));
+  const topStripes = masks.get(13).rectangles;
+  const leftEdge = Math.min(...topStripes.map((r) => r.x));
+  const rightEdge = Math.max(...topStripes.map((r) => r.x + r.w));
+  assert.equal(rightEdge - leftEdge, 330, 'Six 30/30 channels span 330 um, not 380 um');
+  assert.equal(
+    (380 - (rightEdge - leftEdge)) / 2,
+    25,
+    'Remaining 25 um per edge of the paper footprint is an inferred solid margin',
+  );
   const manifold = masks.get(22);
   assert.ok(manifold, 'Missing independent mask for Fig. 2h inlet/outlet diversion');
   assert.equal(manifold.polygons.length, 12, 'Every straight channel needs two fanout arms');
