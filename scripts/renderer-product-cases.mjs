@@ -410,20 +410,20 @@ export async function runRendererProductCases({ page, capture }) {
   assert.equal(await page.locator('#threeBorders').isChecked(), true);
   await page.locator('#threeMaxBtn').click();
   await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.hiddenBorderSegmentCount || 0) > 0 &&
-        Number(host.dataset.buriedContourSegmentCount || 0) > 0
-      );
-    },
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
     { timeout: 20000 },
   );
+  const outlineDiagnostics = await page.locator('#threeHost').evaluate((host) => ({
+    sceneVariant: host.dataset.sceneVariant,
+    updateKind: host.dataset.rendererUpdateKind,
+    renderState: host.dataset.renderState,
+    hiddenSegments: Number(host.dataset.hiddenBorderSegmentCount || 0),
+    buriedSegments: Number(host.dataset.buriedContourSegmentCount || 0),
+  }));
   assert.ok(
-    Number(await page.locator('#threeHost').getAttribute('data-buried-contour-segment-count')) > 0,
-    'transparent buried material must expose physically owned internal contours',
+    outlineDiagnostics.hiddenSegments > 0 && outlineDiagnostics.buriedSegments > 0,
+    `transparent buried material must expose physically owned internal contours: ${JSON.stringify(outlineDiagnostics)}`,
   );
   await capture(page, 'wide-rough-3d-transparent-borders-max');
   await page.locator('#threeMaxBtn').click();
