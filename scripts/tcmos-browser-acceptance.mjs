@@ -9,6 +9,8 @@ import { readProjectFile } from '../site/project-io.js';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
 await loadGeometryKernel();
+const { implantSolids, annotationInspectionCutSegments } =
+  await import('../site/model-view-geometry.js');
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
 const dir = resolve('test-results/tcmos');
 const candidate = resolve(dir, 'tcmos-ternary-inverter-130nm.wafercad');
@@ -388,9 +390,11 @@ try {
     sourceGeometry: 'illustrative; gate length 130 nm only is source-supported',
   }));
   // Inspect a physical local 3D cutaway using the existing Main ROI clipping
-  // contract. Each temporary project is an inspection-only derivative of the
-  // accepted file: the manufacturing geometry and published candidate bytes
-  // remain unchanged. The y = 0 ROI boundary exposes a cross-device sidewall.
+  // contract. The full 2 µm illustrative substrate previously compressed the
+  // buried 80–240 nm annotations to only a few display pixels. Use the same
+  // documented display-only Z break as Section to magnify the near-surface
+  // device while retaining original physical coordinates and model bytes.
+  // The y=0 ROI face crosses each gate and the annotated doping intervals.
   report.localThreeD = [];
   for (const local of localSections) {
     const roi = {
@@ -402,8 +406,34 @@ try {
     inspection.name = 'T-CMOS ' + local.device + ' LOCAL 3D INSPECTION ONLY';
     inspection.roi = roi;
     inspection.section = { a: [local.ax, 0], b: [local.bx, 0] };
-    inspection.display.threeOpacity = 0.6;
+    inspection.display.threeOpacity = 0.5;
     inspection.display.threeShowBorders = true;
+    inspection.display.sectionCollapse = {
+      enabled: true,
+      top: 0.68,
+      bottom: -0.8,
+      scaleLinked: false,
+      frontScale: 1,
+      backScale: 0.25,
+    };
+    // The removed Z span is unmodified Si handle only. The illustrated HVT
+    // interval (0.76–0.92 µm absolute Z) remains fully above the break.
+    const roiPolygon = [
+      [
+        [roi.a[0], roi.a[1]],
+        [roi.b[0], roi.a[1]],
+        [roi.b[0], roi.b[1]],
+        [roi.a[0], roi.b[1]],
+        [roi.a[0], roi.a[1]],
+      ],
+    ];
+    const roiCut = implantSolids(inspection.model, roiPolygon).filter(
+      (annotation) => annotationInspectionCutSegments(annotation, roiPolygon).length > 0,
+    );
+    assert.ok(
+      roiCut.some((annotation) => annotation.name?.includes(local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP')),
+      'Local ROI must intersect the buried HVT implant on the visible cut face',
+    );
     // Do not reuse the full-field camera: Fit must resolve the ROI's own
     // physical XY bounds and the renderer's Z-display transform.
     delete inspection.display.threeCamera;
@@ -411,6 +441,7 @@ try {
     await writeFile(inspectionPath, JSON.stringify(inspection));
     const validated = await readProjectFile(new Blob([await readFile(inspectionPath)]));
     assert.deepEqual(validated.roi, roi);
+    assert.deepEqual(validated.display.sectionCollapse, inspection.display.sectionCollapse);
     assert.deepEqual(validated.model, expected.model, 'Inspection copy altered material model');
     await panel('project');
     await page.locator('#openProjectInput').setInputFiles(inspectionPath);
@@ -444,6 +475,14 @@ try {
     const framing = await snap();
     assert.deepEqual(framing.roi, roi, '3D ROI clip must use exact local coordinates');
     assert.equal(framing.threeDisplay.borders, true, 'Local cutaway should display borders');
+    assert.equal(framing.sectionCollapse.enabled, true, 'Local cutaway must use display-only Z break');
+    assert.equal(framing.sectionCollapse.top, 0.68);
+    assert.equal(framing.sectionCollapse.bottom, -0.8);
+    await page.waitForFunction(
+      () => Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0,
+      null,
+      { timeout: 45000 },
+    );
     assert.ok(
       Math.abs(framing.threeCamera?.target?.[0] - local.gateX) < 0.1,
       '3D Fit must target the transistor-local ROI rather than the full 14 µm field',
@@ -454,8 +493,13 @@ try {
     report.localThreeD.push({
       device: local.device,
       sourceSupported: false,
-      role: 'illustrative ROI-clipped device inspection; not calibrated dopant or BTBT physics',
+      role: 'display-Z-break ROI cutaway; not calibrated dopant, junction thickness or BTBT physics',
       roiUm: roi,
+      displayOnlyZBreak: inspection.display.sectionCollapse,
+      buriedImplantCutFragments: roiCut.length,
+      rendererImplantCutMeshes: Number(
+        await page.locator('#threeHost').getAttribute('data-implant-cut-built-count'),
+      ),
       camera: framing.threeCamera,
       unchangedPhysicalModel: true,
     });
