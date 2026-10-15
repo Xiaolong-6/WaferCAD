@@ -142,7 +142,10 @@ try {
       assert.equal(chrome.titleOverflow, 'ellipsis', 'Long project titles are truncated');
       for (const item of chrome.headerItems) {
         assert.ok(
-          Math.abs(item.top - chrome.headerItems[0].top) <= 8,
+          Math.abs(
+            (item.top + item.bottom) / 2 -
+              (chrome.headerItems[0].top + chrome.headerItems[0].bottom) / 2,
+          ) <= 2,
           'Brand, title and View results occupy the same header row',
         );
         assert.ok(item.left >= -1 && item.right <= width + 1, 'Header controls fit viewport');
