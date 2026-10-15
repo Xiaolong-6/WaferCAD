@@ -31,6 +31,23 @@ const CASES = [
     cuts: [
       { id: 'rear-point-contact', a: [-9300, -9000], b: [-8700, -9000] },
       { id: 'front-plated-stripe', a: [0, -7580], b: [0, -7420] },
+      {
+        id: 'rear-contact-magnified',
+        a: [-9120, -9000],
+        b: [-8880, -9000],
+        zFocus: { top: 139.45, bottom: -139.7 },
+        probes: [
+          { id: 'rear-silicon-contact', xy: [-9000, -9000], rearOxide: false },
+          { id: 'insulated-neighbor', xy: [-8500, -8500], rearOxide: true },
+        ],
+      },
+      {
+        id: 'rear-oxide-control',
+        a: [-8620, -8500],
+        b: [-8380, -8500],
+        zFocus: { top: 139.45, bottom: -139.7 },
+        probes: [{ id: 'insulated-neighbor', xy: [-8500, -8500], rearOxide: true }],
+      },
     ],
   },
   {
@@ -40,9 +57,99 @@ const CASES = [
     cuts: [
       { id: 'active-between-grid', a: [-16, 0], b: [16, 0] },
       { id: 'across-ag-grid-finger', a: [0, 1700], b: [0, 2300] },
+      {
+        id: 'ag-finger-leading-edge-magnified',
+        a: [0, 1870],
+        b: [0, 1930],
+        zFocus: { top: 125.46, bottom: -125.65 },
+        probes: [
+          { id: 'outside-grid', xy: [0, 1899], agGrid: false },
+          { id: 'inside-grid', xy: [0, 1901], agGrid: true },
+        ],
+      },
+      {
+        id: 'ag-finger-center-magnified',
+        a: [0, 1970],
+        b: [0, 2030],
+        zFocus: { top: 125.46, bottom: -125.65 },
+        probes: [{ id: 'inside-grid', xy: [0, 2000], agGrid: true }],
+      },
+      {
+        id: 'between-grid-control',
+        a: [0, 1770],
+        b: [0, 1830],
+        zFocus: { top: 125.46, bottom: -125.65 },
+        probes: [{ id: 'outside-grid', xy: [0, 1800], agGrid: false }],
+      },
     ],
   },
 ];
+
+// Scientific reference values are read from the saved physical XY/Z owner at
+// each point. Screenshots alone cannot establish a 110 nm dielectric opening.
+function pointInRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function materialStackAt(project, point) {
+  const owners = project.model.regions.filter((region) =>
+    project.sharedGeometries[region.geomRef].some(
+      (polygon) =>
+        pointInRing(point, polygon[0]) &&
+        !polygon.slice(1).some((hole) => pointInRing(point, hole)),
+    ),
+  );
+  assert.equal(owners.length, 1, 'Exactly one physical owner expected at ' + point);
+  return owners[0].stack.map((segment) => ({
+    material: project.model.layers.find((layer) => layer.id === segment.layerId)?.name,
+    z0Um: segment.z0,
+    z1Um: segment.z1,
+    role: segment.role || null,
+  }));
+}
+
+function evaluateProbes(project, probes = []) {
+  return probes.map((probe) => {
+    const stack = materialStackAt(project, probe.xy);
+    if (typeof probe.rearOxide === 'boolean') {
+      const present = stack.some(
+        (layer) => layer.material?.includes('passivation') && layer.z1Um < 0,
+      );
+      assert.equal(present, probe.rearOxide, probe.id + ': wrong rear oxide continuity');
+      assert.ok(
+        stack.some((layer) => layer.material?.includes('Al rear')),
+        probe.id + ': missing rear Al',
+      );
+      assert.ok(
+        stack.some((layer) => layer.material === 'Base'),
+        probe.id + ': missing silicon',
+      );
+    }
+    if (typeof probe.agGrid === 'boolean') {
+      const metal = stack.find((layer) => layer.material?.startsWith('Ag grid SURROGATE'));
+      assert.equal(Boolean(metal), probe.agGrid, probe.id + ': wrong local Ag finger mask');
+      if (metal) {
+        assert.ok(
+          Math.abs(metal.z1Um - metal.z0Um - 0.12) < 1e-8,
+          probe.id + ': Ag finger thickness changed',
+        );
+      }
+      assert.ok(
+        stack.some((layer) => layer.material?.startsWith('IZO active electrode')),
+        probe.id + ': missing IZO under/away from grid',
+      );
+    }
+    return { id: probe.id, xyUm: probe.xy, stack };
+  });
+}
 
 const requested = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const selected = requested ? CASES.filter((item) => item.id === requested) : CASES;
@@ -76,9 +183,20 @@ try {
         // obscures the scientific cut. Keep the underlying geometry intact.
         const project = {
           ...source,
-          display: { ...source.display, sectionDetailRoi: null },
+          display: {
+            ...source.display,
+            sectionDetailRoi: null,
+            ...(cut.zFocus
+              ? {
+                  sectionCollapse: { ...cut.zFocus, enabled: true },
+                  sectionScaleMode: 'auto',
+                  sectionShowBorders: true,
+                }
+              : {}),
+          },
           section: { a: cut.a, b: cut.b },
         };
+        const probes = evaluateProbes(source, cut.probes);
         await loadProject(page, project, item.id + '-' + cut.id);
         // Section is a separate dock, not a primary view tab (Main/Mask/3D).
         const sectionPanel = page.locator('#sectionPanel');
@@ -119,6 +237,8 @@ try {
           a: cut.a,
           b: cut.b,
           sectionInk,
+          zFocus: cut.zFocus || null,
+          physicalProbes: probes,
           figureComparison: 'PENDING_REVIEW',
         });
       }
