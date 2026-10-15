@@ -2,7 +2,7 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
@@ -97,7 +97,6 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
-const refreshPercGds = process.argv.includes('--refresh-perc-gds-fixture');
 const requestedVariant =
   process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
@@ -264,90 +263,6 @@ try {
         (node) => node.branchId === 'main',
       );
       assert.equal(replayNodes.length, processSteps.length);
-      if (refreshPercGds) {
-        const id = 'perc-point-contact-solar-cell';
-        const variantId = 'branch-mutknd4v-hcdg7q';
-        assert.equal(example.id, id, 'Refresh must explicitly select PERC');
-        assert.equal(requestedVariant, variantId, 'Refresh must select the GDS Variant');
-        assert.equal(historyChoice, 'clear');
-        assert.equal(processSteps.length, 14);
-        const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
-        await loadGeometryKernel();
-        const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile } =
-          await import('../site/project-io.js');
-        const file = new URL('../site/examples/perc-solar-cells-point-contacts.wafercad', import.meta.url);
-        const original = expandProjectStorage(JSON.parse(await readFile(file, 'utf8')));
-        const graph = original.snapshotBranches;
-        const targetBranch = graph.branches.find((branch) => branch.id === variantId);
-        assert.ok(targetBranch, 'GDS contacts variant missing');
-        const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-        const chain = [];
-        let cursor = byId.get(targetBranch.headNodeId);
-        while (cursor) {
-          chain.unshift(cursor);
-          cursor = byId.get(cursor.parentId);
-        }
-        assert.equal(chain.length, processSteps.length);
-        assert.equal(chain[11].operation.kind, 'add');
-        assert.equal(chain[12].operation.kind, 'add');
-        assert.equal(chain[13].operation.kind, 'record');
-        assert.ok([11, 12, 13].every((index) => chain[index].branchId === variantId));
-        assert.deepEqual(
-          targetBranch.headState.model.layers.map((layer) => layer.name),
-          exported.model.layers.map((layer) => layer.name),
-          'Changing the paper-derived materials is prohibited',
-        );
-        const ancestors = graph.nodes.map((node) => node.id);
-        const branchIds = graph.branches.map((branch) => branch.id);
-        for (const index of [11, 12, 13]) {
-          const saved = chain[index].state.model;
-          const model = structuredClone(replayNodes[index].state.model);
-          assert.ok(model?.regions?.length > 0, 'Missing replay state for physical Step');
-          assert.deepEqual(
-            saved.layers.map((layer) => layer.name),
-            model.layers.map((layer) => layer.name),
-            'Changing an intermediate stage material is prohibited',
-          );
-          model.revision = saved.revision;
-          model.processRevision = saved.processRevision;
-          chain[index].state.model = model;
-          for (const snapshot of original.snapshots || []) {
-            if (snapshot.historyNodeId === chain[index].id) {
-              snapshot.state.model = model;
-            }
-          }
-        }
-        assert.deepEqual(
-          chain[12].state.model.regions,
-          chain[13].state.model.regions,
-          'Final sinter Record must not change material geometry',
-        );
-        const previouslyActive = original.snapshotBranches.activeBranchId;
-        assert.notEqual(previouslyActive, variantId, 'Cannot rewrite active source-order');
-        targetBranch.headState.model = chain[13].state.model;
-        assert.deepEqual(original.snapshotBranches.nodes.map((node) => node.id), ancestors);
-        assert.deepEqual(original.snapshotBranches.branches.map((branch) => branch.id), branchIds);
-        const packed = JSON.stringify(
-          prepareProjectForWorkspaceStorage(original, { geometryTemplates: false }),
-        );
-        const reopened = await readProjectFile({
-          size: Buffer.byteLength(packed),
-          text: async () => packed,
-        });
-        assert.equal(reopened.snapshotBranches.activeBranchId, previouslyActive);
-        assert.deepEqual(reopened.model.regions, original.model.regions);
-        assert.deepEqual(
-          reopened.snapshotBranches.branches.map((branch) => branch.id),
-          branchIds,
-        );
-        assert.deepEqual(
-          reopened.snapshotBranches.branches.find((branch) => branch.id === variantId).headState.model.regions,
-          exported.model.regions,
-        );
-        await writeFile(file, packed);
-        console.log('PERC GDS Variant: refreshed final 3 replay states and linked snapshots; other branches unchanged');
-        continue;
-      }
       for (const [index, step] of processSteps.entries()) {
         if (step.command === 'record') continue;
         if (step.command === 'liftoff') {
