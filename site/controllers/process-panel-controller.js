@@ -43,6 +43,7 @@ export function createProcessPanelController({
   // Advanced process primitives extend existing UI groups so old saved projects
   // and compact Function-panel layout remain compatible without a schema bump.
   ensureProcessOption('growthMode', 'transfer', 'Transfer / Laminate');
+  ensureProcessOption('growthMode', 'pvd-step', 'PVD step (idealized)');
   ensureProcessOption('etchProfile', 'planarize', 'Planarize / CMP');
   ensureProcessOption('etchProfile', 'undercut', 'Undercut release');
 
@@ -216,7 +217,8 @@ export function createProcessPanelController({
       electrical = t === 'electrical',
       growthMode = $('growthMode')?.value || 'direct',
       transfer = t === 'add' && growthMode === 'transfer';
-    if (t === 'grow' && growthMode === 'transfer') $('growthMode').value = 'direct';
+    if (t === 'grow' && ['transfer', 'pvd-step'].includes(growthMode))
+      $('growthMode').value = 'direct';
 
     $('layerNameRow').classList.toggle('hidden', t !== 'add');
     $('liftoffTargetRow').classList.toggle('hidden', !liftoff);
@@ -230,6 +232,10 @@ export function createProcessPanelController({
       t === 'etch' || liftoff || t === 'implant' || electrical || recordOnly,
     );
     $('transferModeRow')?.classList.toggle('hidden', !transfer);
+    $('pvdStepFractionRow')?.classList.toggle(
+      'hidden',
+      t !== 'add' || growthMode !== 'pvd-step',
+    );
     $('operationAreaRow').classList.toggle('hidden', recordOnly);
     $('operationThicknessRow').classList.toggle('hidden', recordOnly || liftoff);
     $('recordProcessParams').classList.toggle('hidden', !recordOnly);
@@ -497,6 +503,9 @@ export function createProcessPanelController({
     if (kind === 'add') {
       $('layerName').value = params.name || operation.name || '';
       $('growthMode').value = params.growth || operation.growth || 'direct';
+      if ((params.growth || operation.growth) === 'pvd-step' && $('pvdStepFraction')) {
+        $('pvdStepFraction').value = String(params.stepCoverageFraction ?? 0.25);
+      }
       if ((params.growth || operation.growth) === 'transfer' && $('transferMode')) {
         // Missing transferMode identifies a legacy flat-bridge operation.
         $('transferMode').value = params.transferMode || operation.transferMode || 'flat';
@@ -1018,6 +1027,16 @@ export function createProcessPanelController({
       params.electricalRegionSource = $('electricalRegionSource').value;
     } else {
       params.growth = $('growthMode').value;
+      if (type === 'add' && params.growth === 'pvd-step') {
+        params.stepCoverageFraction = Number($('pvdStepFraction')?.value);
+        if (
+          !Number.isFinite(params.stepCoverageFraction) ||
+          params.stepCoverageFraction <= 0 ||
+          params.stepCoverageFraction > 1
+        ) {
+          return status('PVD step fraction must be greater than zero and at most one.', 'error');
+        }
+      }
       if (type === 'add' && params.growth === 'transfer') {
         params.transferMode = $('transferMode')?.value === 'flat' ? 'flat' : 'follow';
       }
