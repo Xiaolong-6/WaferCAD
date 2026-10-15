@@ -123,3 +123,44 @@ Local convenience files under `output/` are untracked support only. The
 repository harnesses and linked committed reports are the portable handoff.
 The headless HTTP server on `127.0.0.1:4174` serves the working site;
 `127.0.0.1:4175` serves the frozen baseline. Neither uses the desktop UI.
+
+## Final budget stop: unresolved gates
+
+The user reported 9% account budget remaining and requested immediate handoff
+and push. Do not interpret this stop as final renderer acceptance.
+
+- Frozen-source Intel hardware run: **144 captures passed**, 28 fixtures and
+  project export/reloads, 280 presentation toggles and 720 steady-frame samples,
+  zero browser errors. Source hashes and both real WebGL oracles passed.
+- SwiftShader numerical oracle: **failed**, maximum stochastic error
+  `0.00067076351` um and pyramid error about `0.00006469` um against the
+  `0.00002` um gate. The tolerance was not loosened. This remains a CI blocker
+  to investigate independently of CPU-pinned boundary closure.
+- Explicit no-Worker fallback: **failed** to reach detailed-ready within
+  120 seconds, zero accepted captures. Inspect
+  `output/playwright/pr250-audit/final-no-worker/report.json`. A likely existing
+  control-flow defect is `requestRoughGeometry('interactive')` returning false
+  after Worker construction fails without scheduling the detailed fallback;
+  confirm this from the captured host diagnostics before changing it.
+- Software visual-only capture, with numerical oracle disabled explicitly for
+  diagnostic screenshots, is not numerical acceptance. See the acceptance
+  report for its final capture count/status.
+- Full local `npm run check` is **not recorded as passing**. Lint, formatting
+  and documentation gate passed after portable path repairs. The long parallel
+  Node run was stopped to relieve resource contention. An existing Windows
+  archive-path test bug was reproduced and corrected without changing its
+  assertions; the focused archive test then passed. Re-run the full Node suite
+  with bounded concurrency on resume: `node --test --test-concurrency=2 site/tests/*.test.mjs`.
+- The extended literature Detail fixture mismatch remains unfixed: layer-2 is
+  back oxide and layer-3 is front ALD, and the helper also assumes a particular
+  Detail viewport. A simple layer substitution was not verified; no assertion
+  was removed and no untested helper fix was committed.
+- Pushed-commit CI was queued at last observation. No all-green CI claim is
+  made. PR #250 stays Draft, and user merge authorization remains mandatory.
+
+Resume by resolving the SwiftShader precision and Worker fallback failures,
+running bounded full Quality plus CI, and reviewing the committed acceptance
+criteria and fixed-camera gallery. The +8.2 ms CPU geometry preparation cost
+and observed cold-ready latency still need performance acceptance. Do not
+merge or announce final visual acceptance on the basis of the passing hardware
+matrix alone.
