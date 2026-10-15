@@ -90,6 +90,72 @@ test('sorted rough-edge interval lookup exactly preserves inclusive and strict L
   assert.deepEqual(roughEdgeSamplesInInterval(undefined, 0, 1), []);
 });
 
+test('repeated rough cap vertices retain height, analytic normals, and cap-local determinism', async () => {
+  const { roughProfileOffsetAtPoint } = await import('../surface-rendering.js');
+  for (const morphology of ['stochastic', 'pyramid']) {
+    for (const normal of [-1, 1]) {
+      const appearance = {
+        kind: 'rough',
+        morphology,
+        polarity: 'normal',
+        featureSize: 0.2,
+        meanHeight: 0.15,
+        etchDepth: 0.3,
+        featureCv: 0.1,
+        heightCv: 0.1,
+        seed: 42,
+      };
+      const task = {
+        z: 0,
+        normal,
+        profileNormal: normal,
+        appearance,
+        gpuDisplacement: false,
+        closeToIdeal: false,
+        lodZones: [
+          {
+            baseTriangles: squareTriangles,
+            edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+            maxEdge: Math.SQRT2,
+            triangleBudget: 256,
+            lodContext: { distance: 1, viewportWidth: 1000, viewportHeight: 600, maxDepth: 3 },
+          },
+        ],
+      };
+      const result = roughMeshDataFromPreparedCap(task);
+      const repeatedVertices = new Map();
+      let repeatedCount = 0;
+      for (let i = 0; i < result.positions.length; i += 3) {
+        const x = result.positions[i],
+          y = result.positions[i + 1],
+          height = result.positions[i + 2],
+          key = `${x},${y}`,
+          sample = [...result.positions.slice(i, i + 3), ...result.normals.slice(i, i + 3)];
+        assert.ok(
+          Math.abs(height - Math.fround(normal * roughProfileOffsetAtPoint(x, y, appearance))) <
+            2e-5,
+        );
+        if (repeatedVertices.has(key)) {
+          repeatedCount++;
+          assert.deepEqual(sample, repeatedVertices.get(key));
+        } else {
+          repeatedVertices.set(key, sample);
+        }
+        assert.ok(Math.abs(Math.hypot(...result.normals.slice(i, i + 3)) - 1) < 1e-6);
+      }
+      assert.ok(repeatedCount > 0, 'fixture must have adjacent triangles sharing samples');
+      const repeat = roughMeshDataFromPreparedCap(task);
+      assert.deepEqual(repeat.positions, result.positions);
+      assert.deepEqual(repeat.normals, result.normals);
+      const differentSeed = roughMeshDataFromPreparedCap({
+        ...task,
+        appearance: { ...appearance, seed: appearance.seed + 1 },
+      });
+      assert.notDeepEqual(differentSeed.positions, result.positions);
+    }
+  }
+});
+
 test('triangle-derived rough boundaries remove internal triangulation edges', () => {
   const edges = roughBoundaryEdgesFromTriangles(squareTriangles);
   assert.equal(edges.length, 4);

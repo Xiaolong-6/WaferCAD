@@ -177,6 +177,30 @@ export function roughMeshDataFromPreparedCap({
   let maxDepth = 0,
     skippedDegenerateTriangles = 0;
 
+  // Cap-local memoization only; canonical geometry and the heightfield are
+  // unchanged. Cap entries are discarded with this mesh task and capped to
+  // bound transient memory on large detailed rough surfaces.
+  const roughSampleCache = new Map(),
+    roughSample = (point) => {
+      const x = Math.fround(point[0]),
+        y = Math.fround(point[1]),
+        key = `${x},${y}`;
+      let sample = roughSampleCache.get(key);
+      if (!sample) {
+        sample = { point: roughPoint([x, y, z], z, profileNormal, appearance), normal: null };
+        if (roughSampleCache.size < 131072) roughSampleCache.set(key, sample);
+      }
+      return sample.point;
+    },
+    roughNormal = (point) => {
+      const key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
+      const sample = roughSampleCache.get(key);
+      if (!sample) return roughPointNormal(point, normal, profileNormal, appearance);
+      if (!sample.normal)
+        sample.normal = roughPointNormal(sample.point, normal, profileNormal, appearance);
+      return sample.normal;
+    };
+
   const polygonEdges = (zonePolys) => {
       const edges = [];
       for (const poly of zonePolys || []) {
@@ -218,9 +242,9 @@ export function roughMeshDataFromPreparedCap({
       }
       positions.push(...a, ...b, ...c);
       normals.push(
-        ...roughPointNormal(a, normal, profileNormal, appearance),
-        ...roughPointNormal(b, normal, profileNormal, appearance),
-        ...roughPointNormal(c, normal, profileNormal, appearance),
+        ...roughNormal(a),
+        ...roughNormal(b),
+        ...roughNormal(c),
       );
       gpuDisplace.push(0, 0, 0);
     },
@@ -375,9 +399,9 @@ export function roughMeshDataFromPreparedCap({
         if (gpuDisplacement) pushGpuRoughTriangle(a, b, c);
         else
           pushRoughTriangle(
-            roughPoint(a, z, profileNormal, appearance),
-            roughPoint(b, z, profileNormal, appearance),
-            roughPoint(c, z, profileNormal, appearance),
+            roughSample(a),
+            roughSample(b),
+            roughSample(c),
           );
       }
     }
