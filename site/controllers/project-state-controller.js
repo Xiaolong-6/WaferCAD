@@ -41,10 +41,23 @@ export function createProjectStateController({
 }) {
   let importedStates = new WeakMap();
 
+  // Do not hand v15 Assembly projects to the ordinary single-wafer editor:
+  // its workspace-state lifecycle currently has no canonical Assembly owner.
+  // Importing would silently discard source/History lineage on the next Save.
+  // Keep the file untouched until a transactional Bond workspace is connected.
+  function assertEditableProject(project) {
+    if (project?.waferAssembly != null) {
+      throw new Error(
+        'This bonded Assembly project requires the multi-wafer editor, which is not enabled yet. The source file was not modified.',
+      );
+    }
+  }
+
   async function readProjectSnapshot(file) {
     importedStates = new WeakMap();
     const project = await readValidatedFile(file);
     if (!project) return project;
+    assertEditableProject(project);
     const states = [
       ...(project.snapshots || []).map((record) => record.state),
       ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
@@ -114,6 +127,7 @@ export function createProjectStateController({
   }
 
   function loadProjectSnapshot(project) {
+    assertEditableProject(project);
     setSectionEditEnabled(false);
 
     const model = project.model;
