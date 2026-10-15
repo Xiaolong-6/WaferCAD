@@ -23,7 +23,11 @@ import {
   simplifyDisplayPolygons,
   simplifyDisplaySidewallParts,
 } from './renderer-line-reduction.js';
-import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
+import {
+  canUseGpuRoughTask,
+  decorateGpuRoughMaterial,
+  decorateGpuRoughLineMaterial,
+} from './gpu-rough-surface.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -1906,12 +1910,18 @@ diffuseColor.a *= waferCadAlphaScale;`,
       adaptiveRough = false,
       dashed = false,
       dashSize = 1,
+      roughGpuAppearance = null,
+      roughProfileNormal = 1,
+      roughBaseZ = 0,
       presentation = { kind: 'border' },
     } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const edgePositions = roughGpuAppearance
+      ? positions.map((coordinate, index) => (index % 3 === 2 ? roughBaseZ : coordinate))
+      : positions;
+    edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgePositions, 3));
     const materialOptions = {
       color: dashed ? 0x263d57 : 0x111820,
       transparent: dashed || opacity < 0.999,
@@ -1928,6 +1938,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
           })
         : new THREE.LineBasicMaterial(materialOptions),
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    if (roughGpuAppearance) {
+      decorateGpuRoughLineMaterial(edgeMaterial, roughGpuAppearance, {
+        profileNormal: roughProfileNormal,
+      });
+    }
     if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
@@ -2127,6 +2142,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
             order: 100010 + (cap.solidIndex || 0),
             opacity: context.opacity,
             adaptiveRough: true,
+            roughGpuAppearance:
+              geometry.userData.roughGpuDisplacement && !cap.instanceTranslations
+                ? cap.appearance
+                : null,
+            roughProfileNormal: cap.profileNormal ?? cap.normal,
+            roughBaseZ: cap.z,
             presentation: { kind: 'border' },
           },
         );
@@ -2407,6 +2428,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
               order: 100010 + (cap.solidIndex || 0),
               opacity: context.opacity,
               adaptiveRough: true,
+              roughGpuAppearance:
+                geometry.userData.roughGpuDisplacement && !cap.instanceTranslations
+                  ? cap.appearance
+                  : null,
+              roughProfileNormal: cap.profileNormal ?? cap.normal,
+              roughBaseZ: cap.z,
               presentation: { kind: 'border' },
             },
           );
