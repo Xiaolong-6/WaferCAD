@@ -331,6 +331,62 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
   await maximizeThree.click();
   await waitForPaint(page);
+
+  // Fig. 1a's 130 nm gate/channel geometry needs a device-scale inspection
+  // separate from the 11 µm field section. Use the real Main Slice settings
+  // rather than modifying the project model or fabricating additional masks.
+  const localSections = [
+    { device: 'pmos-HVTN', gateX: -3, ax: -3.65, bx: -2.35 },
+    { device: 'nmos-HVTP', gateX: 3, ax: 2.35, bx: 3.65 },
+  ];
+  for (const local of localSections) {
+    await page.locator('[data-action="view:main"]').click();
+    const sliceSettings = page.locator('[data-action="slice-coordinates"]');
+    if (!(await sliceSettings.isVisible())) {
+      const roiToggle = page.locator('#mainPanel [data-action="roi"]');
+      if (!(await roiToggle.isVisible())) {
+        await page.locator('#mainPanel button[aria-label="Main more tools"]').click();
+      }
+      await roiToggle.click();
+    }
+    await sliceSettings.click();
+    for (const [id, value] of [
+      ['sectionAx', local.ax],
+      ['sectionAy', 0],
+      ['sectionBx', local.bx],
+      ['sectionBy', 0],
+    ]) {
+      await page.locator('#' + id).fill(String(value));
+      await page.locator('#' + id).press('Tab');
+    }
+    assert.deepEqual(
+      (await snap()).section,
+      { a: [local.ax, 0], b: [local.bx, 0] },
+      'Local section must keep exact µm physical endpoints',
+    );
+    assert.ok(local.ax < local.gateX && local.gateX < local.bx);
+    await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
+    const expandLocal = page.locator('[data-action="maximize:section"]').first();
+    await expandLocal.click();
+    await waitForPaint(page);
+    assert.ok(
+      Number(await page.locator('#sectionCanvas').getAttribute('data-x-px-per-um')) > 0,
+      'Local section must render at a nonzero physical scale',
+    );
+    await page.screenshot({
+      path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-section.png'),
+    });
+    await expandLocal.click();
+    await waitForPaint(page);
+  }
+  // Local sections are inspection-only UI state. The candidate project and
+  // its default cross-device Section remain unchanged on disk.
+  report.localSections = localSections.map(({ device, gateX, ax, bx }) => ({
+    device,
+    gateXUm: gateX,
+    endpointsUm: { a: [ax, 0], b: [bx, 0] },
+    sourceGeometry: 'illustrative; gate length 130 nm only is source-supported',
+  }));
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
     result: 'pass',
