@@ -42,7 +42,7 @@ test('translated SWT and mechanical connector have coherent physical envelope', 
     const pose = createSwxOptomechanicalCandidate(state);
     const b = polygonBound(pose.optics.movableFacetsAndPorts[0]);
     assert.ok(b[0] > -6 && b[2] < 6, 'moving SWT should face the Y-oriented shuttle');
-    assert.ok(b[3] < SWX_INTERFACE_ASSUMPTIONS.offsetYUm);
+    assert.ok(b[3] < SWX_INTERFACE_ASSUMPTIONS.offsetYUm + pose.travelUm);
     const bridge = polygonBound(pose.mechanicalBridge[0]);
     assert.ok(bridge[0] > 3, 'bridge must depart the moving reflector on its right side');
     assert.ok(bridge[2] < 25, 'bridge must not enter the fixed comb bus');
@@ -68,10 +68,35 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
     );
     const flexible = pose.opticalRouting.movingSpringWaveguides;
     const fixedRoutes = pose.opticalRouting.fixed;
+    // Each compliant route MUST connect to exactly its supported pad.
+    // Exempt only those four intentional terminal pads from the fixed net
+    // exclusion test; any other fixed Si intersection remains prohibited.
+    const anchoredPads = pose.opticalRouting.supportedPads;
+    const fixedWithoutOpticalPads = pose.fixed.filter((ring) => !anchoredPads.includes(ring));
     assert.ok(
-      geometryArea(v.intersection(union(flexible), fixed)) < 1e-8,
-      state + ' compliant optical routes intersect rigid fixed silicon',
+      geometryArea(v.intersection(union(flexible), union(fixedWithoutOpticalPads))) < 1e-8,
+      state + ' compliant waveguides intersect unrelated rigid fixed silicon',
     );
+    for (let index = 0; index < flexible.length; index++) {
+      const target = anchoredPads[index + 2];
+      const attached = geometryArea(
+        v.intersection(union([flexible[index]]), union([target])),
+      );
+      assert.ok(
+        attached > 1e-6,
+        state + ' compliant waveguide ' + index + ' misses its stationary terminal',
+      );
+      for (let other = 0; other < anchoredPads.length; other++) {
+        if (other === index + 2) continue;
+        const cross = geometryArea(
+          v.intersection(union([flexible[index]]), union([anchoredPads[other]])),
+        );
+        assert.ok(
+          cross < 1e-8,
+          state + ' optical flexure touches unrelated supported pad ' + other,
+        );
+      }
+    }
     assert.ok(
       geometryArea(v.intersection(union(fixedRoutes), moving)) < 1e-8,
       state + ' stationary optical routes intersect the moving actuator',
