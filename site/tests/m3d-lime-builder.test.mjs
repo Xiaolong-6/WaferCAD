@@ -35,9 +35,12 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   const conformalIds = new Set(
     project.model.layers
       .filter((layer) =>
-        ['CNT gate HfO2 10nm', 'CNT Al2O3 passivation 35nm', 'CNT HfO2 passivation 10nm', 'Digital Al2O3 passivation 45nm'].includes(
-          layer.name,
-        ),
+        [
+          'CNT gate HfO2 10nm',
+          'CNT Al2O3 passivation 35nm',
+          'CNT HfO2 passivation 10nm',
+          'Digital Al2O3 passivation 45nm',
+        ].includes(layer.name),
       )
       .map((layer) => layer.id),
   );
