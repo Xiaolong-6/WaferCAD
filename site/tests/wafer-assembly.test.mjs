@@ -5,11 +5,8 @@ import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-b
 await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const { migrateProjectFile } = await import('../project-schema.js');
-const {
-  createWaferAssembly,
-  appendWaferToAssembly,
-  replayWaferAssembly,
-} = await import('../wafer-assembly.js');
+const { createWaferAssembly, appendWaferToAssembly, replayWaferAssembly } =
+  await import('../wafer-assembly.js');
 const { pointInMulti } = await import('../vector-geometry.js');
 
 const project = (label = 'wafer') => {
@@ -23,8 +20,7 @@ const project = (label = 'wafer') => {
 
 const stack = (model, x = 0, y = 0) =>
   model.regions.find((region) => pointInMulti([x, y], region.geom))?.stack || [];
-const volume = (model) =>
-  stack(model).reduce((sum, segment) => sum + segment.z1 - segment.z0, 0);
+const volume = (model) => stack(model).reduce((sum, segment) => sum + segment.z1 - segment.z0, 0);
 
 test('Assembly preserves two independent full source projects with deterministic replay', () => {
   const a = project('receiver source');
@@ -75,10 +71,7 @@ test('Assembly source cloning isolates later source edits and failed donor valid
   const brokenDonor = project('broken');
   brokenDonor.model.regions[0].stack[0].z1 = -300;
   const beforeBad = structuredClone(brokenDonor);
-  assert.throws(
-    () => appendWaferToAssembly(initial, brokenDonor, { donorId: 'B' }),
-    /z1 > z0/,
-  );
+  assert.throws(() => appendWaferToAssembly(initial, brokenDonor, { donorId: 'B' }), /z1 > z0/);
   assert.deepEqual(initial, preserved);
   assert.deepEqual(brokenDonor, beforeBad);
 });
@@ -88,7 +81,10 @@ test('Assembly rejects duplicate source IDs, invalid ordering and replay tamperi
     donorId: 'B',
   });
   const before = structuredClone(first.assembly);
-  assert.throws(() => appendWaferToAssembly(first.assembly, project(), { donorId: 'B' }), /Duplicate/);
+  assert.throws(
+    () => appendWaferToAssembly(first.assembly, project(), { donorId: 'B' }),
+    /Duplicate/,
+  );
   const altered = structuredClone(first.assembly);
   altered.bonds[0].contactAreaUm2 = 1;
   assert.throws(() => replayWaferAssembly(altered), /replay differs/);

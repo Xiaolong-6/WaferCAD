@@ -212,7 +212,11 @@ test('front-to-back bond preserves a distinct oxide interlayer deposited on dono
   });
   assert.equal(oxide.changed, true, oxide.error);
   const before = structuredClone(donor);
-  const { model, interface: bond, donorLayerIds } = bondWaferModels(receiver, donor, {
+  const {
+    model,
+    interface: bond,
+    donorLayerIds,
+  } = bondWaferModels(receiver, donor, {
     receiverFace: 'front',
     donorFace: 'back',
     donorId: 'oxide-donor',
