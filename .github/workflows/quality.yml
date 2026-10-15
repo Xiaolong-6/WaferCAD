@@ -30,5 +30,11 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Temporary P1 exact Boolean test formatting diff
+        if: github.event.pull_request.number == 188
+        run: |
+          npx prettier --write site/tests/polygon-normalized-retry.test.mjs
+          git diff -- site/tests/polygon-normalized-retry.test.mjs
+
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
