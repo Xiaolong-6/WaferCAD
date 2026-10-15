@@ -22,6 +22,10 @@ const roughMeshGeometry = await readFile(
   new URL('../rough-mesh-geometry.js', import.meta.url),
   'utf8',
 );
+const surfaceRendering = await readFile(
+  new URL('../surface-rendering.js', import.meta.url),
+  'utf8',
+);
 const morphologyMeshPolicy = await readFile(
   new URL('../morphology-mesh-policy.js', import.meta.url),
   'utf8',
@@ -147,7 +151,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.equal((threeView.match(/\.forceSinglePass = true/g) || []).length, 1);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);
   assert.doesNotMatch(threeView, /opacity: 0\.3/);
-  assert.match(roughMeshGeometry, /roughProfileOffsetAtPoint\(/);
+  assert.match(roughMeshGeometry, /roughDisplayProfileOffsetAtPoint\(/);
+  assert.match(surfaceRendering, /export function roughDisplayProfileOffsetAtPoint\(/);
+  assert.match(surfaceRendering, /const original = roughProfileOffsetAtPoint\(x, y, appearance\)/);
   assert.match(threeView, /color: layer\?\.color \|\| '#999'/);
   assert.doesNotMatch(threeView, /0x24282c/);
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
