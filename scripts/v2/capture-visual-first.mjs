@@ -107,10 +107,13 @@ try {
         await waitForPaint(page);
         const sectionState =
           view === 'section'
-            ? await page.evaluate(() => {
+            ? await page.evaluate((compact) => {
                 const ui = window.WaferCadV2Workstation.snapshot().ui;
-                return { view: ui.view, maximize: width <= 820 ? ui.maximize : ui.desktopLayout?.maximized };
-              })
+                return {
+                  view: ui.view,
+                  maximize: compact ? ui.maximize : ui.desktopLayout?.maximized,
+                };
+              }, width <= 820)
             : null;
         if (sectionState) {
           if (width <= 820) assert.equal(sectionState.view, 'section', 'Portrait Section tab');
