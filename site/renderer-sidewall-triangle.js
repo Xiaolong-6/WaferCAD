@@ -1,7 +1,15 @@
 // Geometry-only triangle emission; preserves the former per-triangle cross
 // product, normalization, vertex order and optional annotation depths.
 // Avoid per-triangle normal/edge/unit arrays in dense sidewall assembly.
-export function appendSidewallTriangle(positions, normals, annotationDepths, a, b, c, depths = null) {
+export function appendSidewallTriangle(
+  positions,
+  normals,
+  annotationDepths,
+  a,
+  b,
+  c,
+  depths = null,
+) {
   const abX = b[0] - a[0];
   const abY = b[1] - a[1];
   const abZ = b[2] - a[2];
