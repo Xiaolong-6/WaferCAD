@@ -112,9 +112,7 @@ try {
     null,
     { timeout: 120000, polling: 500 },
   );
-  const importStatus = (
-    await page.locator('[data-slot="status.message"]').textContent()
-  ).trim();
+  const importStatus = (await page.locator('[data-slot="status.message"]').textContent()).trim();
   assert.match(importStatus, /^Opened m3d-lime-rram-cntfet\.wafercad\./, importStatus);
   const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   const initial = await snapshot();
