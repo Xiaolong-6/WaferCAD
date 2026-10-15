@@ -70,7 +70,7 @@ export const SWX_ASSUMPTIONS = Object.freeze({
   // Illustrative coordinates, not recovered GDS. The actuator axis is +Y.
   shuttleVerticalExtentUm: [-9, 9],
   lowerStationaryCombYUm: -5.8,
-  lowerMovableCombYUm: -11.2,
+  lowerMovableCombYUm: -15.2,
 });
 
 function ensureState(state) {
