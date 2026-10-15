@@ -9,6 +9,7 @@ on:
       - 'site/app.html'
       - 'site/ui-v2/**'
       - 'scripts/v2/**'
+      - '!scripts/v2/capture-visual-first.mjs'
       - 'scripts/test-helpers/ui.mjs'
       - 'package-lock.json'
       - '.github/workflows/ui-v2-three.yml'

@@ -60,3 +60,36 @@ test('visual evidence is explicitly unreviewed, never a merge gate', () => {
   assert.match(source, /github\.event\.pull_request\.draft/);
   assert.match(source, /workflow_dispatch:/);
 });
+
+test('heavy PR scopes ignore documentation tests and isolated screenshot collection', () => {
+  for (const name of [
+    'ui-v2-stage-c-m4.yml',
+    'ui-v2-main-mask.yml',
+    'ui-v2-d1.yml',
+    'example-recipe-reconstruction.yml',
+    'native-fig3-full-replay.yml',
+  ]) {
+    const source = workflow(name);
+    assert.ok(
+      source.includes("      - '!site/tests/**'") ||
+        source.includes('      - "!site/tests/**"'),
+    );
+    assert.ok(source.includes("      - 'site/**'") || source.includes('      - "site/**"'));
+  }
+  for (const name of [
+    'ui-v2-stage-c-m4.yml',
+    'ui-v2-main-mask.yml',
+    'ui-v2-d1.yml',
+    'ui-v2-three.yml',
+  ]) {
+    const source = workflow(name);
+    assert.ok(
+      source.includes("      - '!scripts/v2/capture-visual-first.mjs'") ||
+        source.includes('      - "!scripts/v2/capture-visual-first.mjs"'),
+    );
+  }
+  const browser = workflow('browser-regression.yml');
+  assert.ok(browser.includes('      - "!examples/**/README.md"'));
+  assert.ok(browser.includes('--base=${{ github.event.pull_request.base.sha }}'));
+  assert.ok(browser.includes('--head=${{ github.event.pull_request.head.sha }}'));
+});
