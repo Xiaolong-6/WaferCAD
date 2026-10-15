@@ -3,8 +3,9 @@
  *
  * This does not replace the canonical Recipe or create a project. Only the
  * existing tooth facets, four near-facet ports and stoppers are translated
- * as a rigid coordinate frame. The rest of the optical waveguide routing,
- * alignment supports and BOX recipe must be rebuilt independently.
+ * as a rigid coordinate frame. Four new optical links are an ILLUSTRATIVE
+ * clearance candidate; author-defined 3/5um meanders, optical grating
+ * teeth, alignment supports and BOX recipe must still be integrated.
  */
 import { createSwxGeometry, miteredPolyline } from './swx-mems-geometry.mjs';
 import { createCompactSwxActuator } from './swx-mems-actuator-candidate.mjs';
@@ -16,9 +17,10 @@ export const SWX_INTERFACE_ASSUMPTIONS = Object.freeze({
   bridgeCornerXUm: 24,
   bridgeStartXUm: 3.5,
   bridgeWidthUm: 0.7,
-  // The previous 104um field is intentionally NOT silently scaled here.
-  // Both BOX release and viewport extents need readjustment upon integration.
-  requiredFieldMinYUm: -64,
+  // The original 104um field must NOT be silently reused here. The
+  // illustrative optical terminal pads extend to y≈-97um and will need
+  // new substrate/mask/ROI bounds and BOX release upon integration.
+  requiredFieldMinYUm: -100,
 });
 
 const movePolygons = (polygons, deltaX, deltaY) =>
