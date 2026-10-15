@@ -14,7 +14,10 @@ test('Legacy owner audit distinguishes exact source references from unrelated pr
     bridge: false,
     requiresReview: true,
   });
-  assert.equal(classifyLegacyOwner('site/controllers/model.js', 'createModel()').requiresReview, false);
+  assert.equal(
+    classifyLegacyOwner('site/controllers/model.js', 'createModel()').requiresReview,
+    false,
+  );
   assert.equal(
     classifyLegacyOwner('site/app-v2-real.html', 'real-view-bridge.js').bridge,
     true,
@@ -30,6 +33,7 @@ test('Legacy retirement inventory retains live scientific owners until verified 
     'scripts/array-renderer-regression.mjs',
     'scripts/fig3-full-replay-acceptance.mjs',
     'site/ui-v2/real-view-bridge.js',
+    'site/app-v2-real.html',
   ]) {
     assert.ok(paths.has(path), `Unaccounted Legacy owner: ${path}`);
   }
