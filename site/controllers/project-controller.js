@@ -393,7 +393,7 @@ export function createProjectController({
           label: 'Restore bookmark',
           disabled: requiresVariantSwitch,
           title: requiresVariantSwitch
-            ? 'Switch to this bookmark\'s Variant before restoring its saved view.'
+            ? "Switch to this bookmark's Variant before restoring its saved view."
             : 'Restore the saved Process state, inspection camera, ROI and Section.',
           run: async () => {
             if (
