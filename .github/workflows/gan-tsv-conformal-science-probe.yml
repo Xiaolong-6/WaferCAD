@@ -27,6 +27,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Temporarily normalize and capture exact Prettier files
+        run: |
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+          node -e "const f=require('node:fs');for(const [n,p] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs']]){const s=f.readFileSync(p).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('CMP_FORMAT|'+n+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('CMP_FORMAT_END|'+n+'|'+Math.ceil(s.length/1500));}"
       - name: Verify focused formatting
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Targeted ESLint
