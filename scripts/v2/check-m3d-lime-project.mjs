@@ -405,6 +405,66 @@ try {
     resolve(output, 'three-tier-before-runall.png'),
   );
   report.coloredPixels = visibility.coloredPixels;
+  // Inspection-only 3D cutaway. Hide the illustrative handle and the broad
+  // dielectric blankets through the real Layers UI, never through the Kernel.
+  // Restore each checkbox before continuing to Mask export / Recipe Run All.
+  const beforeCutaway = await snapshot();
+  const sectionWasVisible = await sectionPanel.isVisible();
+  if (!sectionWasVisible) await page.locator('[data-action="section"]').click();
+  await waitForPaint(page);
+  const cutawayLayerIds = [
+    'base',
+    'layer-1',
+    'layer-7',
+    'layer-10',
+    'layer-11',
+    'layer-22',
+    'layer-23',
+    'layer-27',
+  ];
+  for (const id of cutawayLayerIds) {
+    const checkbox = page.locator(
+      '#sectionPanel [data-layer-id="' + id + '"] input[type="checkbox"]',
+    );
+    assert.equal(await checkbox.count(), 1, 'Missing real Layers UI checkbox: ' + id);
+    assert.equal(await checkbox.isChecked(), true, 'Expected initially visible layer: ' + id);
+    await checkbox.uncheck();
+  }
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await page.waitForFunction(
+    () =>
+      document.getElementById('threeHost')?.dataset.renderState === 'ready' &&
+      document.querySelector('.p-canvases')?.dataset.maximized === 'true',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const cutaway = await captureVisibleThree(
+    page,
+    resolve(output, 'three-device-cutaway-inspection.png'),
+  );
+  report.threeCutawayEvidence = {
+    hiddenLayers: cutawayLayerIds,
+    coloredPixels: cutaway.coloredPixels,
+    canvas: cutaway.canvas,
+    note: 'Inspection-only layer visibility: not a fabricated cross-section',
+  };
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
+  for (const id of cutawayLayerIds)
+    await page
+      .locator('#sectionPanel [data-layer-id="' + id + '"] input[type="checkbox"]')
+      .check();
+  if (!sectionWasVisible) await page.locator('[data-action="section"]').click();
+  await waitForPaint(page);
+  const afterCutaway = await snapshot();
+  assert.deepEqual(afterCutaway.model.regions, beforeCutaway.model.regions);
+  assert.deepEqual(afterCutaway.model.layers, beforeCutaway.model.layers);
+  assert.deepEqual(afterCutaway.roi, beforeCutaway.roi);
+  assert.deepEqual(afterCutaway.section, beforeCutaway.section);
+  assert.equal(afterCutaway.ui.maximize, null);
+  // Model.revision counts view-only layer toggles, hence is intentionally not
+  // compared. Every stored material segment and visibility flag is restored.
   // Real Mask-toolbar download, through the production export Worker. Select
   // all eleven author-unavailable *inferred* layers rather than the three
   // initially highlighted inspection layers.
