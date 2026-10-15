@@ -128,6 +128,85 @@ try {
       await page.locator('#threePanel').screenshot({
         path: resolve(directory, 'compact-' + state + '-3d.png'),
       });
+
+      // Inspect selected geometrical landmarks at the same physical
+      // cameras in OFF/ON. The saved source project is never changed;
+      // only this disposable browser-import copy carries camera overrides.
+      const zScale = Number(await page.locator('#threeHost').getAttribute('data-z-display-scale'));
+      assert.ok(zScale > 0 && Number.isFinite(zScale));
+      const deviceLayer = source.model.layers.find(
+        (layer) => layer.name === '220nm SOI device silicon',
+      ).id;
+      const topZ = Math.max(...source.model.regions.flatMap((region) =>
+        region.stack.filter((segment) => segment.layerId === deviceLayer).map((segment) => segment.z1),
+      )) * zScale;
+      const closeups = [
+        { name: 'comb', position: [27, -6, topZ + 33], target: [0, -22, topZ], fov: 35 },
+        { name: 'swt', position: [13, -39, topZ + 23], target: [0, -48, topZ], fov: 31 },
+        { name: 'springs', position: [12, 51, topZ + 35], target: [0, 24, topZ], fov: 38 },
+      ];
+      for (const view of closeups) {
+        const camera = { position: view.position, target: view.target, fov: view.fov };
+        const inspect = structuredClone(source);
+        inspect.display.threeCamera = camera;
+        for (const branch of inspect.snapshotBranches.branches) {
+          if (branch.headState?.display) branch.headState.display.threeCamera = camera;
+        }
+        for (const node of inspect.snapshotBranches.nodes) {
+          if (node.state?.display) node.state.display.threeCamera = camera;
+        }
+        for (const bookmark of inspect.snapshots) {
+          if (bookmark.state?.display) bookmark.state.display.threeCamera = camera;
+        }
+        await page.locator('[data-action="domain:project"]').click();
+        await page.locator('#openProjectInput').setInputFiles({
+          name: 'compact-scientific-camera.wafercad',
+          mimeType: 'application/json',
+          buffer: Buffer.from(JSON.stringify(inspect)),
+        });
+        const reopen = page.getByRole('button', { name: 'Open project', exact: true });
+        if (await reopen.isVisible()) await reopen.click();
+        await page.waitForFunction(
+          (expected) =>
+            window.WaferCadV2Workstation.snapshot().projectName === expected &&
+            !window.WaferCadV2Workstation.snapshot().workflow.busy,
+          source.name,
+          { timeout: 120000 },
+        );
+        if (state === 'on') {
+          await page.locator('[data-action="domain:history"]').click();
+          await page
+            .locator('.history-variant[data-variant-id="on"] .history-variant-name')
+            .click();
+          await page.waitForFunction(
+            () => window.WaferCadV2Workstation.snapshot().workflow.branches.some(
+              (branch) => branch.id === 'on' && branch.active,
+            ),
+            null,
+            { timeout: 120000 },
+          );
+        }
+        await page.locator('[data-action="mode:single"]').click();
+        await page.locator('[data-action="view:three"]').click();
+        const dock = page.locator('[data-action="section"]');
+        if ((await dock.getAttribute('aria-pressed')) === 'true') await dock.click();
+        await page.waitForFunction(
+          (expected) => {
+            const snapshot = window.WaferCadV2Workstation.snapshot();
+            return document.getElementById('threeHost')?.dataset.renderState === 'ready' &&
+              snapshot.threeCamera?.target?.every(
+                (coordinate, i) => Math.abs(coordinate - expected.target[i]) < 1e-4,
+              );
+          },
+          camera,
+          { timeout: 120000 },
+        );
+        await waitForPaint(page);
+        await page.mouse.move(1380, 920);
+        await page.locator('#threePanel').screenshot({
+          path: resolve(directory, 'compact-' + state + '-3d-' + view.name + '.png'),
+        });
+      }
       const sectionToggle = page.locator('[data-action="section"]');
       if ((await sectionToggle.getAttribute('aria-pressed')) !== 'true') {
         await sectionToggle.click();
