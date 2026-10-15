@@ -6,12 +6,9 @@ await loadGeometryKernel();
 const modelApi = await import('../model.js');
 const v = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
-const {
-  addQualitativeDopantRegion,
-  resolveQualitativeDopantRegion,
-  findDopantPolarityOverlaps,
-  findTerminalQualifiedDopantOverlaps,
-} = await import('../dopant-regions.js');
+const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps } =
+  await import('../dopant-regions.js');
+const { findTerminalQualifiedDopantOverlaps } = await import('../dopant-regions.js');
 
 test('legacy models retain their original storage shape until qualitative doping is requested', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
@@ -112,12 +109,14 @@ test('overlaps report qualitative opposite polarity without claiming a working j
     { id: 'excluded', kind: 'drain', geom: v.rectMulti(1, 2, 3, 0) },
   ];
   const qualified = findTerminalQualifiedDopantOverlaps(model, terminals, v);
-  assert.deepEqual(qualified.map((item) => item.terminalId), ['source', 'drain']);
-  assert.ok(qualified.every((item) => item.z0 === 0.7 && item.z1 === 0.9));
-  assert.ok(
-    qualified.every((item) => Math.abs(modelApi.geometryArea(item.geom) - 2) < 1e-9),
-    'Terminal labeling clips existing overlap geometry without creating a junction',
-  );
+  assert.equal(qualified.length, 2);
+  assert.equal(qualified[0].terminalId, 'source');
+  assert.equal(qualified[1].terminalId, 'drain');
+  for (const item of qualified) {
+    assert.equal(item.z0, 0.7);
+    assert.equal(item.z1, 0.9);
+    assert.ok(Math.abs(modelApi.geometryArea(item.geom) - 2) < 1e-9);
+  }
   validateProcessModel(model);
   assert.throws(() => {
     const invalid = structuredClone(model);

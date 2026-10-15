@@ -120,33 +120,20 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
       Math.abs(geometryArea(union) - expectedArea) < 1e-6,
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
     );
+    for (const overlap of overlaps) {
+      assert.ok(Math.abs(overlap.z0 - 0.82) < 1e-9);
+      assert.ok(Math.abs(overlap.z1 - 0.92) < 1e-9);
+    }
+    const reportedArea = validation.qualitativeJunctionEvidence.overlapAreaUm2[terminal.id];
     assert.ok(
-      overlaps.every(
-        (overlap) =>
-          Math.abs(overlap.z0 - 0.82) < 1e-9 && Math.abs(overlap.z1 - 0.92) < 1e-9,
-      ),
-      'HVT 80–240 nm / HDD 0–180 nm intervals overlap for 100 nm, not a measured junction',
+      Math.abs(reportedArea - geometryArea(union)) < 1e-12,
+      'Validation must report the actual terminal-clipped qualitative overlap',
     );
   }
   assert.equal(
     model.dopantRegions.some((region) => region.role === 'well'),
     false,
     'Schematic electrical n-/p-well regions do not constitute calibrated well doping',
-  );
-  assert.deepEqual(
-    validation.qualitativeJunctionEvidence.overlapAreaUm2,
-    Object.fromEntries(
-      terminals.map(({ id }) => [
-        id,
-        geometryArea(
-          v.unionGeometries(
-            qualified
-              .filter((overlap) => overlap.terminalId === id)
-              .map((overlap) => overlap.geom),
-          ),
-        ),
-      ]),
-    ),
   );
   assert.equal(validation.qualitativeJunctionEvidence.physicalJunctionResolved, false);
   assert.equal(validation.qualitativeJunctionEvidence.btbtCurrentComputed, false);
