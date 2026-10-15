@@ -216,18 +216,31 @@ try {
       { model: fixture.project.model, clip: fixture.clip },
     );
     const ready = () =>
-      page.waitForFunction(
-        () => {
-          const host = document.querySelector('#host');
-          const mode = host.querySelector('canvas')?.dataset.roughMeshMode;
-          return (
-            host.dataset.renderState === 'ready' &&
-            (!mode || mode === 'none' || mode === 'detailed')
-          );
-        },
-        null,
-        { timeout: 120000 },
-      );
+      page
+        .waitForFunction(
+          () => {
+            const host = document.querySelector('#host');
+            const mode = host.querySelector('canvas')?.dataset.roughMeshMode;
+            return (
+              host.dataset.renderState === 'ready' &&
+              (!mode || mode === 'none' || mode === 'detailed')
+            );
+          },
+          null,
+          { timeout: Number(process.env.WAFERCAD_AUDIT_TIMEOUT) || 120000 },
+        )
+        .catch(async (error) => {
+          report.failedReady = await page.evaluate(() => {
+            const host = document.querySelector('#host');
+            return {
+              host: { ...host.dataset },
+              canvas: { ...host.querySelector('canvas')?.dataset },
+              stats: document.querySelector('#stats').textContent,
+            };
+          });
+          await page.screenshot({ path: resolve(output, 'failed-ready.png') });
+          throw error;
+        });
     await ready();
     await page.evaluate(() => window.view.fit({ notify: false }));
     await ready();

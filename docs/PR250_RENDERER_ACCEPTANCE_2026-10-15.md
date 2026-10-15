@@ -138,13 +138,23 @@ The failure and all four measured morphology/polarity results are preserved in
 not relaxed. Universal CPU/GPU numerical agreement and a green software CI
 oracle must not be claimed.
 
-A separate software visual matrix (without the already-failed numerical
-oracle) is running in unified session `98997`, writing
-`output/playwright/pr250-audit/final-software-captures/`. The main-thread
-fallback matrix with `WAFERCAD_AUDIT_NO_WORKER=1` is running in session `68729`,
-writing `output/playwright/pr250-audit/final-no-worker/`. Neither has a
-completed first-frame result at this checkpoint. Investigate their runtime
-progress/resource contention before declaring fallback coverage complete.
+A separate software visual matrix, without the already-failed numerical
+oracle, completed with exit code 0: 40 captures, eight project round trips,
+80 stable presentation toggles and zero browser/shader errors. Its source
+hashes matched; artifacts are in
+`output/playwright/pr250-audit/final-software-captures/`. This visual pass does
+not override the software numerical failure.
+
+The main-thread fallback matrix with `WAFERCAD_AUDIT_NO_WORKER=1` failed:
+the first fixture timed out after 120 seconds. A bounded 15-second diagnostic
+reproduced the state and saved `fallback-diagnostic/report.json` and
+`fallback-diagnostic/failed-ready.png` under the audit artifact directory.
+The canvas already reports `roughMeshMode=detailed`, `roughMeshWorker=false`
+and 8,204 rough triangles, while the host remains `renderState=refining`,
+`renderPhase=rough-preview`, with stats `rebuilding 3D…`. There were zero
+browser errors. This demonstrates a readiness-state failure after synchronous
+geometry completed; fallback acceptance remains failed. No test processes
+from this workline remain running.
 
 Human visual approval, the remaining transparent facets, software numerical
 agreement, fallback completion, cold-refinement latency review and RTX 3060
