@@ -261,7 +261,10 @@ test('Photodetector Variants keep distinct front material owners', async () => {
   assert.ok(Math.abs(thickness(inactiveB, 'Passivation ALD') - 0.02) < 1e-9);
   assert.ok(!activeB.some((material) => material.name?.includes('SiO2 inactive')));
   assert.ok(Math.abs(thickness(activeB, 'Passivation ALD') - 0.02) < 1e-9);
-  for (const [id, expectedCount] of [['ge-fig15-a', 1], ['ge-fig15-b', 2]]) {
+  for (const [id, expectedCount] of [
+    ['ge-fig15-a', 1],
+    ['ge-fig15-b', 2],
+  ]) {
     const ref = branches.get(id).headState.modelRef;
     const model = ref === 'project' ? project.model : project.sharedModels[ref];
     assert.equal(model.electricalRegions.length, expectedCount);
