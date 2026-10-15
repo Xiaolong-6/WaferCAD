@@ -6,7 +6,7 @@ import {
 } from '../../site/ui-v2/view-layout-templates.js';
 import {
   DOCKABLE_VIEWS, createDesktopLayout, normalizeDesktopLayout, reduceDesktopLayout,
-  orderedVisible, displayedViews, isOverview, activeTracks, desktopDockingEnabled,
+  orderedVisible, displayedViews, isOverview, activeTracks, projectDesktopLayout, desktopDockingEnabled,
 } from '../../site/ui-v2/view-layout-model.js';
 import {
   loadDesktopLayout, saveDesktopLayout, DESKTOP_LAYOUT_STORAGE_KEY,
@@ -178,4 +178,21 @@ test('desktop layout activation respects exact CSS breakpoint, not touch pointer
   assert.equal(desktopDockingEnabled(1440), true);
   assert.equal(desktopDockingEnabled(NaN), false);
   assert.equal(desktopDockingEnabled('1440'), false);
+});
+
+test('Shell projection maps stable panel IDs onto template slots without changing state', () => {
+  const source = apply(createDesktopLayout(), 'APPLY_PRESET', { preset: 'four-right' });
+  const snapshot = structuredClone(source);
+  const projected = projectDesktopLayout(source);
+  assert.equal(projected.preset, 'four-right');
+  assert.deepEqual(projected.highlighted, DOCKABLE_VIEWS);
+  assert.equal(projected.placements.length, 4);
+  assert.deepEqual(projected.placements.map(({ view }) => view), DOCKABLE_VIEWS);
+  assert.equal(projected.placements[0].rowSpan, 3);
+  const maximized = projectDesktopLayout(apply(source, 'MAXIMIZE', { view: 'section' }));
+  assert.equal(maximized.preset, 'one-full');
+  assert.deepEqual(maximized.displayed, ['section']);
+  assert.deepEqual(maximized.highlighted, ['section']);
+  assert.equal(maximized.overviewPressed, false);
+  assert.deepEqual(source, snapshot);
 });
