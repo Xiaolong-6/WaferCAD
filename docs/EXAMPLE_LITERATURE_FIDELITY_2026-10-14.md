@@ -249,6 +249,31 @@ both contain the same safe-rejection error for regions 60/58. It is
 not classified as a new defect, nor as a passing compact export.
 No contact resistance, circuit logic or source-SEM fidelity was modeled.
 
+## 2026-10-15 M3D M2 presentation-reference repair
+
+The revised M3D power-via mask removes the unintended 10 nm HfO2 insulating
+film at both power-via metal landings. The published project thereby changed
+from 551 to **550** canonical XY material regions, and its source SHA-256
+became `473c1ed296d417db6f9ba1e49eb56cc955efb8ad3257063c65ed81aada8bea0e`.
+Real Main/Mask loaders already validated that new hash. The remaining UI
+browser failure arose from frozen, **source-derived M2 presentation data**
+still referring to the older SHA-256
+`31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b`.
+
+Rebuild performed with the existing read-only model summarizer
+`scripts/v2/build-a-prototype-fixtures.mjs --write` and M2 source packager
+`scripts/v2/build-m2-mock-data.mjs --write`. Only the two generated
+presentation fixtures were modified:
+`site/ui-v2/prototypes/a-full/source/prototype-data.json` and
+`site/ui-v2/mock-data.js`. Both real Chromium Main/M2 and Mask/M2
+multi-viewport interaction and visual evidence suites completed successfully
+in [one-shot run 38751937302](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38751937302),
+artifact `11981663671`. The one-shot commit `db687dab` was made only
+after both suites passed. Approved image baselines were not rewritten.
+Historical static design files remain archival; M2 presentation fixtures
+follow the current scientific source. The temporary writer workflow was
+removed after acceptance.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
