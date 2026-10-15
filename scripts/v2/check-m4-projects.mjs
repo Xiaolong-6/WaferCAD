@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 import { readProjectFile, PROJECT_LENGTH_QUANTUM_UM } from '../../site/project-io.js';
 await loadGeometryKernel();
 const { parseGDS, flattenGDS } = await import('../../site/gds.js');
@@ -106,14 +107,14 @@ try {
       );
       assert.equal(legacyBoot, false, 'UI v2 must not boot legacy app.js');
       for (const view of ['mask', 'main']) {
-        await page.locator(`[data-action="view:${view}"]`).click();
+        await selectScientificView(page, view, 1024);
         await waitForPaint(page);
       }
       if (example === 'metalens') {
         // End-to-end Mask export goes through the actual v2 toolbar, floating
         // settings panel and worker; existing Node export tests alone cannot
         // catch missing UI wiring or an empty browser download.
-        await page.locator('[data-action="view:mask"]').click();
+        await selectScientificView(page, 'mask', 1024);
         await waitForPaint(page);
         const beforeMaskExport = await snapshot();
         const exportMenu = page.locator('[data-action="mask-export-menu"]');
@@ -145,7 +146,7 @@ try {
           assert.deepEqual(unchangedMask.maskTransform, beforeMaskExport.maskTransform);
         }
         console.log('M4 metalens: real v2 GDSII and OASIS Mask downloads round-trip PASS');
-        await page.locator('[data-action="view:main"]').click();
+        await selectScientificView(page, 'main', 1024);
         await waitForPaint(page);
       }
       if (example === 'metalens-array') {
