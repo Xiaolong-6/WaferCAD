@@ -171,11 +171,7 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     )
       return;
     const panel = header.closest('.p-view[data-view]:not([hidden])');
-    if (
-      !panel ||
-      panel.dataset.dockDraggable !== 'true' ||
-      displayedViews(getState()).length <= 1
-    )
+    if (!panel || panel.dataset.dockDraggable !== 'true' || displayedViews(getState()).length <= 1)
       return;
     const title = header.querySelector('.v2-view-title');
     end();

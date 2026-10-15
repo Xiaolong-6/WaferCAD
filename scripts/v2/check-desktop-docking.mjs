@@ -261,10 +261,7 @@ try {
           const header = panel.querySelector('.p-view-head').getBoundingClientRect();
           return { left: title.right, right: controls.left, y: header.y + header.height / 2 };
         });
-        assert.ok(
-          headerGap.right - headerGap.left > 12,
-          'Window titlebar has an empty drag area',
-        );
+        assert.ok(headerGap.right - headerGap.left > 12, 'Window titlebar has an empty drag area');
         const target = await page.locator('#maskPanel').boundingBox();
         await page.mouse.move((headerGap.left + headerGap.right) / 2, headerGap.y);
         await page.mouse.down();
