@@ -195,12 +195,16 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
       [-2.65, travel], // vertical shuttle frame
       [25, travel], // upper moving comb handle
       [25, SWX_ASSUMPTIONS.lowerMovableCombYUm + travel], // lower moving handle
-      [5.1, 3 + travel], // top folded-spring junction
-      [5.1, -3 + travel], // bottom folded-spring junction
+      [4.8, 3 + travel], // interior of top folded-spring attachment
+      [4.8, -3 + travel], // interior of bottom folded-spring attachment
     ];
+    const componentIndices = points.map((point) =>
+      footprint.findIndex((polygon) => v.pointInMulti(point, [polygon])),
+    );
     assert.ok(
-      footprint.some((polygon) => points.every((point) => v.pointInMulti(point, [polygon]))),
-      pose + ' geometry lost a mechanical link between shuttle and comb buses',
+      componentIndices.every((index) => index >= 0) && new Set(componentIndices).size === 1,
+      pose + ' geometry lost a mechanical link between shuttle and comb buses: ' +
+        JSON.stringify(points.map((point, index) => ({ point, component: componentIndices[index] }))),
     );
   }
 });
