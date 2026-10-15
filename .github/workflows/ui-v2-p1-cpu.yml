@@ -6,6 +6,7 @@ on:
       - feat/ui-v2-progressive-startup-20261013
     paths:
       - 'scripts/v2/profile-startup-ci.mjs'
+      - 'scripts/v2/p1-offscreen-probe.mjs'
       - 'scripts/v2/p1-webgl-frame-correlation.mjs'
       - 'scripts/v2/p1-webgl-frame-correlation.test.mjs'
       - 'scripts/v2/p1-cpu-stack-diagnostics.mjs'
@@ -111,6 +112,8 @@ jobs:
           done
           cat serve-v2.log
           exit 1
+      - name: Isolated Worker WebGL2 capability probe (informational)
+        run: node scripts/v2/p1-offscreen-probe.mjs
       - name: Legacy owner persistence and async storage regression
         timeout-minutes: 8
         shell: bash
