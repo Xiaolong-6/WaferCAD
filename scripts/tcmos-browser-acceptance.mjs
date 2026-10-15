@@ -334,7 +334,7 @@ try {
   await maximizeThree.click();
   await waitForPaint(page);
 
-  // Fig. 1a's 130 nm gate/channel geometry needs a device-scale inspection
+  // An illustrative 0.13 µm gate in a reported 130 nm foundry node needs a device-scale inspection
   // separate from the 11 µm field section. Use the real Main Slice settings
   // rather than modifying the project model or fabricating additional masks.
   const localSections = [
@@ -387,7 +387,8 @@ try {
     device,
     gateXUm: gateX,
     endpointsUm: { a: [ax, 0], b: [bx, 0] },
-    sourceGeometry: 'illustrative; gate length 130 nm only is source-supported',
+    sourceGeometry: '130 nm process node reported; 0.13 µm gate width is an illustrative choice',
+    physicalGateLengthReportedInSource: false,
   }));
   // Inspect a physical local 3D cutaway using the existing Main ROI clipping
   // contract. The full 2 µm illustrative substrate previously compressed the

@@ -878,6 +878,7 @@ export async function buildTcmosInverter({
     note: '130nm local layout and masks inferred; not the foundry GDS or calibrated TCAD.',
     source: 'Jeong et al. 2019 Fig.1 + Supplementary Fig.1 + Methods',
     gatesUm: GATE_LENGTH_UM,
+    measuredGateLengthSourceReported: false,
     tiltDegrees: illustrativeTiltDeg,
     tiltSourceReported: false,
     processVariant: mode,
@@ -908,7 +909,7 @@ export async function buildTcmosInverter({
     },
     checkpoints,
     keyAssumptions: [
-      'L = 130 nm follows the foundry node; remaining XY placement and contact widths are illustrative.',
+      'The paper reports a 130 nm foundry node, not a measured gate length for this layout. L = 0.13 µm is an illustrative local Mask choice; all XY placement and contact widths are illustrative.',
       'The 5 nm gate oxide is represented only under POLY footprints, avoiding an unphysical display blanket over STI and body-tie surfaces; foundry oxidation/strip steps remain abstracted.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',

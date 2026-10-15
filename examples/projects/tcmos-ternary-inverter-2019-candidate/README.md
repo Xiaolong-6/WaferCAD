@@ -6,6 +6,7 @@ Status: **candidate generator, not yet a shipped Welcome Example**.
 - Evidence: paper Fig. 1a–b, Methods (pp. 311–312); Supplementary Fig. 1 and physical model note.
 - Implementation: scripts/build-tcmos-inverter-example.mjs
 - Regression: site/tests/tcmos-inverter-reconstruction.test.mjs
+- Figure-level provenance and visual acceptance: [FIG1_ACCEPTANCE.md](FIG1_ACCEPTANCE.md)
 
 ## Intended reconstruction and provenance
 
@@ -16,7 +17,7 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 | Feature      | Source-supported information                                                           | Geometric reconstruction choice                                                                                                |
 | ------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Inverter     | Fig. 1a/b complementary CMOS topology                                                  | Illustrative 14 x 8 µm local field with separate POLY gates and four isolated METAL1 nets VDD/VOUT/GND/VIN                     |
-| Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | Candidate chooses 130 nm and gate L=0.13 µm                                                                                    |
+| Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | Candidate uses a 130 nm foundry node; **L=0.13 µm is assumed**, not a measured gate length                                     |
 | ACTIVE/STI   | Si(100) and shallow trench isolation                                                   | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP                                                            |
 | HVTN/HVTP    | As+ pMOS / BF2+ nMOS body implants (paper Fig. 1b uses HVTN on left and HVTP on right) | Illustrative 80–240 nm buried marker; not a concentration profile                                                              |
 | Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2 selectively depicted under POLY; 200 nm Poly                                                                         |
@@ -31,7 +32,7 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 
 The paper's **left** device is pMOS in n-well, framed by the **LVTN/HVTN** optional masks; the **right** device is nMOS in p-well, framed by **LVTP/HVTP**. The earlier candidate accidentally swapped HVTN and HVTP. The masks now use the source's actual names while retaining the correct **As+ pMOS** and **BF2+ nMOS** species from Methods.
 
-Both cells have compact horizontal ACTIVE diffusion bars crossed by a vertical 130 nm POLY gate, and surrounding contact-dense U-shaped well/body ties. This local layout approximates Fig. 1b's _topology and silhouette_; it does not digitize a released foundry GDS. Because the paper does not specify exact cell, mask, contact pitch, gate oxide or implant-depth dimensions, all non-node sizes remain **illustrative**. LVTN/LVTP shapes are retained for visual comparison only and are **not executed as LVT doping steps** in the T-CMOS Recipe. The same project now carries a second **Conventional CMOS / LVT channel** Variant, forked from the common well-formation Step. Each branch stores an independent full Recipe and restorable post-fork History. The 80 nm comparison implant depth is explicitly assumed.
+Both cells have compact horizontal ACTIVE diffusion bars crossed by an **illustrative 0.13 µm POLY gate**, and surrounding contact-dense U-shaped well/body ties. This local layout approximates Fig. 1b's _topology and silhouette_; it does not digitize a released foundry GDS. Because the paper does not provide a measured gate length for this local layout, or exact cell, mask, contact pitch, gate oxide or implant-depth dimensions, **all such sizes including the 0.13 µm gate are illustrative**. LVTN/LVTP shapes are retained for visual comparison only and are **not executed as LVT doping steps** in the T-CMOS Recipe. The same project now carries a second **Conventional CMOS / LVT channel** Variant, forked from the common well-formation Step. Each branch stores an independent full Recipe and restorable post-fork History. The 80 nm comparison implant depth is explicitly assumed.
 
 **Tilt clarification:** Neither Methods nor Supplementary Fig. 1 specifies a beam incidence angle. The arrows in Supplementary Fig. 1 indicate the implantation direction, not a measurable off-normal tilt. The paper does **not** establish a 0° angle. The reconstructed Recipe uses **0° as an assumed, neutral geometric baseline**, not as a documented foundry implantation condition. WaferCAD supports a separate nonzero tilt control, but a genuine directional process comparison should be labelled an _illustrative variant_, never as the published recipe. At 130 nm feature scale a small true tilt-induced lateral displacement may be invisible at full 14 µm field-of-view; zoom and quantitative model checks are needed.
 
@@ -66,7 +67,7 @@ A separate material-clipped 3D audit compares the HVT donor/acceptor body intent
 1. Create the Si(100) Base. Etch Si in the inverse of ACTIVE, exposing a real trench.
 2. Deposit the illustrative STI oxide fill and planarize to original Si top Z. Assert that Si survives in ACTIVE and oxide occupies STI.
 3. Place NWELL/PWELL electrical annotations and buried HVT Implant interval markers; record foundry well/activation as non-geometric steps.
-4. Represent 5 nm gate oxide directly beneath the two POLY footprints (geometric surrogate; foundry blanket oxidation/strip sequence unavailable), then define separate 130 nm POLY gates. Connect VIN through gate contacts and overhead METAL1.
+4. Represent 5 nm gate oxide directly beneath the two POLY footprints (geometric surrogate; foundry blanket oxidation/strip sequence unavailable), then define separate illustrative 0.13 µm POLY gates. Connect VIN through gate contacts and overhead METAL1.
 5. Open simplified source/drain Si windows; annotate LDD/HDD; record spacer and RTA operations.
 6. Pattern silicide surrogate, deposit ILD, etch CNT openings including U-shaped well-body tie arrays, fill with W, pattern four separate METAL1 nets (VDD, VOUT, GND, VIN).
 

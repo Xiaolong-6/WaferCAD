@@ -14,7 +14,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
 
-test('TCMOS mask geometry is self-contained and resolves physical 130 nm POLY length', () => {
+test('TCMOS mask encodes an illustrative 0.13 µm gate at the reported 130 nm foundry node', () => {
   const layout = tcmosLayout();
   assert.deepEqual(FIELD_UM, [14, 8]);
   assert.equal(GATE_LENGTH_UM, 0.13);
@@ -47,6 +47,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const { project, validation } = await buildTcmosInverter();
   const model = project.model;
   assert.equal(validation.pass, true);
+  assert.equal(validation.measuredGateLengthSourceReported, false);
   assert.deepEqual(validation.availableVariants, ['main', 'conventional-cmos']);
   assert.equal(project.layout.elements.length > 0, true);
   assert.equal(project.processRecipe.steps.length, validation.recipeSteps);
