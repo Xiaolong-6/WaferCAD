@@ -1,9 +1,6 @@
 import { expandProjectStorage, prepareProjectForWorkspaceStorage } from './project-io.js';
-import {
-  CURRENT_PROJECT_VERSION,
-  migrateProjectFile,
-  validateProjectFile,
-} from './project-schema.js';
+import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { validateBondedAssemblyProject } from './wafer-assembly.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
 const DB_VERSION = 2;
@@ -220,7 +217,8 @@ export async function loadWorkspaceRecoveryPoint(key) {
     if (!record?.project) return null;
     const project = structuredClone(record.project);
     expandProjectStorage(project);
-    return validateProjectFile(migrateProjectFile(project));
+    const migrated = validateProjectFile(migrateProjectFile(project));
+    return validateBondedAssemblyProject(migrated);
   } finally {
     database.close();
   }
@@ -268,7 +266,11 @@ export async function loadWorkspaceState() {
   expandProjectStorage(project);
   const rawVersion = Number(project.version) || 1,
     migrated = validateProjectFile(migrateProjectFile(project));
-  if (rawVersion < CURRENT_PROJECT_VERSION) {
+  validateBondedAssemblyProject(migrated);
+  // Only checkpoint an actual migrated version. A legacy v14 workspace that
+  // does not contain an Assembly must not create a new checkpoint on every
+  // startup merely because the runtime also understands opt-in v15 files.
+  if (rawVersion < migrated.version) {
     await createWorkspaceRecoveryCheckpoint(migrated, {
       appCommit: metadata?.appCommit,
       reason: `pre-migration-v${rawVersion}`,
