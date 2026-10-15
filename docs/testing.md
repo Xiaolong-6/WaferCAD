@@ -120,6 +120,11 @@ continue to open through the ordinary v2 Project route.
 name while exercising the production v2 Workstation only: complete 47-Step and
 seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
 competing v2 writer exclusion, protected unload, and Recovery after replacement.
+The original executable Legacy↔v2 browser handoff test remains independently
+available in `scripts/v2/check-legacy-cross-ui-recovery.mjs` and runs under
+`legacy-cross-ui-retirement.yml` when either writer implementation changes,
+or by manual dispatch. This separate gate must be retired only after all
+cross-interface storage contracts have a verified replacement.
 Historical pre-v2 project decoding and compatibility remain separately owned
 by `check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
 The Workstation footer shows the deployed commit
