@@ -2,7 +2,7 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
@@ -97,6 +97,15 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
+const rebaselineFixture = process.argv.includes('--rebaseline-fixture');
+const rebaselineExamples = new Set([
+  'suspended-silica-microdisk',
+  'perc-point-contact-solar-cell',
+  'fully-textured-perovskite-silicon-tandem',
+]);
+if (rebaselineFixture && !process.argv.some((arg) => arg.startsWith('--id='))) {
+  throw new Error('A fixture rebaseline requires one explicit --id=<example>.');
+}
 const requestedVariant =
   process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
@@ -216,6 +225,81 @@ try {
 
       console.log(`${example.id}: browser reports ${summary}; checking final UI and export`);
       const exported = await exportCurrentProject(page, 120000);
+      if (rebaselineFixture) {
+        assert.ok(
+          rebaselineExamples.has(example.id) && !requestedVariant && historyChoice === 'clear',
+          'Only the three audited, active literature finals can be rebaselined',
+        );
+        const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
+        await loadGeometryKernel();
+        const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile } =
+          await import('../site/project-io.js');
+        const target = new URL('../site/' + example.path.replace(/^\.\//, ''), import.meta.url);
+        const stored = JSON.parse(await readFile(target, 'utf8'));
+        const full = expandProjectStorage(structuredClone(stored));
+        assert.deepEqual(
+          [full.model.shape, full.model.width, full.model.height, full.model.thickness],
+          [exported.model.shape, exported.model.width, exported.model.height, exported.model.thickness],
+          'Rebaseline changed the physical wafer',
+        );
+        assert.deepEqual(
+          full.model.layers.map((layer) => layer.name),
+          exported.model.layers.map((layer) => layer.name),
+          'Rebaseline cannot alter material names or layer order',
+        );
+        const activeBranch = full.snapshotBranches.branches.find(
+          (branch) => branch.id === full.snapshotBranches.activeBranchId,
+        );
+        assert.ok(activeBranch, 'The saved example has no active branch');
+        // Keep all ancestor snapshots, alternate variants, and branch IDs.
+        // Replace only historical final records referencing canonical project.
+        const nextModel = structuredClone(exported.model);
+        nextModel.processRevision = full.model.processRevision;
+        full.model = nextModel;
+        let updatedReferences = 0;
+        for (const [index, record] of (full.snapshots || []).entries()) {
+          if (stored.snapshots[index]?.state?.modelRef === 'project') {
+            record.state.model = nextModel;
+            updatedReferences++;
+          }
+        }
+        for (const [index, node] of full.snapshotBranches.nodes.entries()) {
+          if (stored.snapshotBranches.nodes[index]?.state?.modelRef === 'project') {
+            assert.equal(node.id, activeBranch.headNodeId);
+            node.state.model = nextModel;
+            updatedReferences++;
+          }
+        }
+        for (const [index, branch] of full.snapshotBranches.branches.entries()) {
+          if (stored.snapshotBranches.branches[index]?.headState?.modelRef === 'project') {
+            assert.equal(branch.id, full.snapshotBranches.activeBranchId);
+            branch.headState.model = nextModel;
+            updatedReferences++;
+          }
+        }
+        assert.ok(updatedReferences >= 3, 'No final History/snapshot references were updated');
+        const packed = JSON.stringify(
+          prepareProjectForWorkspaceStorage(full, { geometryTemplates: false }),
+        );
+        const reopened = await readProjectFile({
+          size: Buffer.byteLength(packed),
+          text: async () => packed,
+        });
+        assert.equal(reopened.model.regions.length, nextModel.regions.length);
+        assert.deepEqual(
+          reopened.snapshotBranches.nodes.map((node) => node.id),
+          full.snapshotBranches.nodes.map((node) => node.id),
+        );
+        assert.deepEqual(
+          reopened.snapshotBranches.branches.map((branch) => branch.id),
+          full.snapshotBranches.branches.map((branch) => branch.id),
+        );
+        await writeFile(target, packed);
+        console.log(
+          `${example.id}: final geometry ${stored.model.regions.length} -> ${nextModel.regions.length} regions; patched ${updatedReferences} references`,
+        );
+        continue;
+      }
       assert.equal(
         exported.processRecipe?.steps?.length,
         count,
