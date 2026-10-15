@@ -390,3 +390,36 @@ test('Regenerated literature projects retain restorable History and Variant ance
     }
   }
 });
+
+test('All saved literature History material references resolve to valid physical intervals', async () => {
+  for (const id of [
+    'suspended-silica-microdisks',
+    'perc-solar-cells-point-contacts',
+    'fully-textured-perovskite-silicon-tandem',
+  ]) {
+    const project = await example(id);
+    const models = new Map();
+    for (const node of project.snapshotBranches.nodes) {
+      const ref = node.state?.modelRef;
+      if (ref === undefined || ref === null) continue;
+      const model = ref === 'project' ? project.model : project.sharedModels[ref];
+      assert.ok(model, id + ': missing saved model for ' + node.id);
+      models.set(ref, model);
+    }
+    for (const [ref, model] of models) {
+      const layers = new Set(model.layers.map((layer) => layer.id));
+      for (const region of model.regions) {
+        assert.ok(project.sharedGeometries[region.geomRef], id + ': missing footprint in ' + ref);
+        for (const interval of region.stack) {
+          assert.ok(layers.has(interval.layerId), id + ': dangling material layer in ' + ref);
+          assert.ok(
+            Number.isFinite(interval.z0) &&
+              Number.isFinite(interval.z1) &&
+              interval.z1 > interval.z0,
+            id + ': invalid physical Z interval in ' + ref,
+          );
+        }
+      }
+    }
+  }
+});
