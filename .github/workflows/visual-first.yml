@@ -40,15 +40,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      # Temporary diagnostics for exact Prettier formatting; removed after use.
-      - name: Print deterministic source format for CI review
-        run: |
-          echo __VISUAL_SCRIPT_FORMAT_START__
-          npx prettier scripts/v2/capture-visual-first.mjs
-          echo __VISUAL_SCRIPT_FORMAT_END__
-          echo __VISUAL_TEST_FORMAT_START__
-          npx prettier site/tests/ci-development-gates.test.mjs
-          echo __VISUAL_TEST_FORMAT_END__
       - uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
