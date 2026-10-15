@@ -216,9 +216,9 @@ export async function runRendererProductCases({ page, capture }) {
     null,
     { timeout: 10000 },
   );
-  const actualDisplacementBackend = await page.locator('#threeHost').getAttribute(
-    'data-rough-displacement-backend',
-  );
+  const actualDisplacementBackend = await page
+    .locator('#threeHost')
+    .getAttribute('data-rough-displacement-backend');
   const expectedGpu = actualDisplacementBackend !== 'cpu-software-parity';
   assert.equal(
     await gpuRoughCanvas.getAttribute('data-rough-mesh-backend'),
