@@ -30,11 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Temporary P1 border formatting diff
-        if: github.event.pull_request.number == 188
-        run: |
-          npx prettier --write site/renderer-border-position-clip.js site/tests/renderer-border-position-clip.test.mjs
-          git diff -- site/renderer-border-position-clip.js site/tests/renderer-border-position-clip.test.mjs
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
