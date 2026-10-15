@@ -27,6 +27,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Print canonical formatting diff for migrated test
+        run: npx prettier scripts/workspace-storage-worker-regression.mjs | diff -u scripts/workspace-storage-worker-regression.mjs - || true
       - run: npx playwright install --with-deps chromium
       - name: Start production v2 server
         shell: bash
