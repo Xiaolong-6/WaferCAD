@@ -388,7 +388,25 @@ try {
       assert.equal(await welcome.isVisible(), false, 'History does not display Welcome');
       await page.locator('.p-nav [data-action="domain:project"]').click();
       await welcome.waitFor({ state: 'visible' });
+      // Preserve the unsaved-workspace beforeunload guard. Accept its native
+      // confirmation like a user choosing to leave; Playwright otherwise
+      // dismisses it by default and cancels the actual Welcome navigation.
+      const departureDialogs = [];
+      const confirmDeparture = async (dialog) => {
+        departureDialogs.push(dialog.type());
+        if (dialog.type() === 'beforeunload') await dialog.accept();
+        else await dialog.dismiss();
+      };
+      page.on('dialog', confirmDeparture);
+      try {
       await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
+      } finally {
+        page.off('dialog', confirmDeparture);
+      }
+      assert.ok(
+        departureDialogs.every((type) => type === 'beforeunload'),
+        `Unexpected modal dialogs during Welcome navigation: ${departureDialogs.join(', ')}`,
+      );
       assert.equal(
         await page.locator('#welcomeScreen').isVisible(),
         true,
