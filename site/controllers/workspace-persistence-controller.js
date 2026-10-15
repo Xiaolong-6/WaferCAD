@@ -1067,8 +1067,7 @@ export function createWorkspacePersistenceController({
       const successMessage = savedChanged
         ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
         : 'This tab now owns the local workspace.';
-      takeoverPendingMessage =
-        dirty || viewDirty || pendingDomainCheck ? successMessage : null;
+      takeoverPendingMessage = dirty || viewDirty || pendingDomainCheck ? successMessage : null;
       let persisted = true;
       try {
         if (dirty || viewDirty || pendingDomainCheck) {
