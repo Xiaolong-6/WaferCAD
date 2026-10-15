@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-three-export-abort');
@@ -33,7 +34,7 @@ try {
     assert.equal(initial.sharedIdentity, true);
     assert.equal(initial.model.layers.length, 27);
     assert.equal(initial.model.regions.length, 551);
-    await page.locator('[data-action="view:three"]').click();
+    await selectScientificView(page, 'three', 1024);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
