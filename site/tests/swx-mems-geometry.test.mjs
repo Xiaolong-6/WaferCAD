@@ -201,12 +201,16 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
     const componentIndices = points.map((point) =>
       footprint.findIndex((polygon) => v.pointInMulti(point, [polygon])),
     );
-    assert.ok(
-      componentIndices.every((index) => index >= 0) && new Set(componentIndices).size === 1,
-      pose + ' geometry lost a mechanical link between shuttle and comb buses: ' +
-        JSON.stringify(
-          points.map((point, index) => ({ point, component: componentIndices[index] })),
-        ),
+    const disconnected = points.map((point, index) => ({
+      point,
+      component: componentIndices[index],
+    }));
+    const details = JSON.stringify(disconnected);
+    assert.ok(componentIndices.every((index) => index >= 0), pose + ' missing point ' + details);
+    assert.equal(
+      new Set(componentIndices).size,
+      1,
+      pose + ' geometry lost a mechanical link between shuttle and comb buses: ' + details,
     );
   }
 });
