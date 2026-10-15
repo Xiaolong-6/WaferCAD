@@ -322,6 +322,9 @@ export async function buildM3DLime() {
         name: rawParams.material,
         thickness: rawParams.thickness,
         growth: rawParams.coverage || 'direct',
+        ...(rawParams.stepCoverageFraction != null
+          ? { stepCoverageFraction: rawParams.stepCoverageFraction }
+          : {}),
       });
       if (p.growth === 'transfer') p.transferMode = 'follow';
     } else if (command === 'etch') {
@@ -426,8 +429,8 @@ export async function buildM3DLime() {
     });
     validate(label);
   }
-  function deposit(label, material, thickness, maskId = null, coverage = 'direct') {
-    return execute(label, 'deposit', { material, thickness, coverage }, maskId);
+  function deposit(label, material, thickness, maskId = null, coverage = 'direct', options = {}) {
+    return execute(label, 'deposit', { material, thickness, coverage, ...options }, maskId);
   }
   function selectiveEtch(label, target, depth, maskId) {
     return execute(label, 'etch', { target, depth, profile: 'directional' }, maskId);
@@ -539,7 +542,17 @@ export async function buildM3DLime() {
   deposit('Evaporate Ti source adhesion 1nm', 'CNT source Ti 1nm', 0.001, 17);
   deposit('Evaporate Pd source 45nm', 'CNT source Pd 45nm', 0.045, 17);
   deposit('Evaporate Ti drain adhesion 1nm', 'CNT drain Ti 1nm', 0.001, 18);
-  deposit('Evaporate Pd drain 45nm', 'CNT drain Pd 45nm', 0.045, 18);
+  // Idealized finite-angle PVD at the gate HfO2 step. The 25% nominal
+  // sidewall fraction is an explicit modeling hypothesis, not author metrology;
+  // it is restricted to grid-resolved narrow sidewall columns.
+  deposit(
+    'Evaporate Pd drain 45nm (inferred 25% PVD step coverage)',
+    'CNT drain Pd 45nm',
+    0.045,
+    18,
+    'pvd-step',
+    { stepCoverageFraction: 0.25 },
+  );
   bookmark('05 CNTFET source/drain metallization');
 
   // Y 10nm converts in air to Y2O3; an explicit geometry surrogate, no oxidation solver.
