@@ -119,6 +119,28 @@ try {
         ]) {
           await setTemplate(page, id);
           await assertGrid(page, 4);
+          if (id === 'four-columns') {
+            const compact = await page.locator('#sectionPanel').evaluate((panel) => ({
+              compact: panel.querySelector('.v2-section-body').dataset.compactLegend,
+              sectionWidth: panel.querySelector('#sectionCanvas').getBoundingClientRect().width,
+              legendHidden: panel.querySelector('.v2-section-legend').hidden,
+            }));
+            assert.equal(compact.compact, 'true', 'Four-column Section uses compact Layers presentation');
+            assert.equal(compact.legendHidden, true, 'Narrow Section defaults to a full-width slice');
+            assert.ok(compact.sectionWidth >= 120, 'Section keeps a usable slice width');
+            const beforeLayers = await page.evaluate(
+              () => window.WaferCadV2Workstation.snapshot().sectionLayersVisible,
+            );
+            await page.locator('#sectionPanel [data-action="legend"]').evaluate((button) => button.click());
+            await waitForPaint(page);
+            assert.equal(await page.locator('#sectionPanel .v2-section-legend').evaluate(
+              (node) => node.hidden,
+            ), false, 'Layers can be temporarily opened');
+            await page.locator('#sectionPanel [data-action="legend"]').evaluate((button) => button.click());
+            assert.equal(await page.evaluate(
+              () => window.WaferCadV2Workstation.snapshot().sectionLayersVisible,
+            ), beforeLayers, 'Compact Layers presentation never changes saved visibility');
+          }
           await page.screenshot({ path: resolve(output, id + '.png') });
         }
         const ratiosBefore = (await layoutState(page)).tracks['four-grid'];
