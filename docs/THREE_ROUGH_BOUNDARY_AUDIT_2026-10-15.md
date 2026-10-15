@@ -98,8 +98,7 @@ node --test site/tests/rough-mesh-geometry.test.mjs site/tests/rough-boundary-pr
 node scripts/rough-boundary-audit.mjs
 ```
 
-The focused combined run passed 61 tests before the final additional zero-height
-skirt regression; the final cap/GPU rerun passed 17 tests including that
+The final focused combined run passed 62 tests, including the zero-height skirt
 regression. The parent integration run owns the full final Node gate.
 
 ## CPU preparation performance

@@ -232,7 +232,7 @@ test('worker-ready rough mesh data is transferable and reconstructs geometry met
   );
 });
 
-test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced triangles', () => {
+test('GPU rough mode pins physical boundary vertices and keeps shader-displaced interior ideal', () => {
   const appearance = {
       kind: 'rough',
       morphology: 'pyramid',
@@ -341,7 +341,7 @@ test('GPU rough cap interior without physical boundary does not sample the CPU m
   assert.ok(data.positions.every((value, index) => index % 3 !== 2 || value === 0));
 });
 
-test('GPU rough physical skirts and adaptive stitches share shader displacement on fine edges', () => {
+test('GPU rough caps retain mixed displacement triangles at pinned adaptive boundaries', () => {
   const appearance = {
     kind: 'rough',
     morphology: 'stochastic',
@@ -389,7 +389,10 @@ test('GPU rough physical skirts and adaptive stitches share shader displacement 
       if (flag === 1) assert.equal(data.positions[(i + localIndex) * 3 + 2], 0);
     });
   }
-  assert.ok(hasMixedTriangle, 'skirt/stitch vertices must share cap GPU displacement');
+  assert.ok(
+    hasMixedTriangle,
+    'cap triangles must join pinned boundary and shader-displaced interior vertices',
+  );
 });
 
 test('rough physical sidewall borders are emitted without duplicated closure skirts', () => {
