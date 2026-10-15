@@ -415,7 +415,7 @@
         panel.style.order = String(visible ? names.indexOf(key) : 99);
         panel.style.gridColumn = '';
         panel.style.gridRow = '';
-        window.WaferCadV2PanelChrome.restoreDesktop(panel, key);
+        window.WaferCadV2PanelChrome?.restoreDesktop(panel, key);
         const maximizeButton = panel.querySelector(`[data-action="maximize:${key}"]`);
         if (maximizeButton) {
           const maximized = state.maximize === key;
