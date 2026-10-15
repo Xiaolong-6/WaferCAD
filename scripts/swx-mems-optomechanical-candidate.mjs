@@ -41,11 +41,22 @@ function makeOpticalRouting(travel) {
   const coreWidth = 0.4;
   const fixed = [
     ...miteredPolyline(
-      [[-22, -35], [-36, -30], [-47, -31], [-62, -26]],
+      [
+        [-22, -35],
+        [-36, -30],
+        [-47, -31],
+        [-62, -26],
+      ],
       coreWidth,
     ),
     ...miteredPolyline(
-      [[21, -35], [20, -40], [-31, -40], [-44, -43], [-62, -45]],
+      [
+        [21, -35],
+        [20, -40],
+        [-31, -40],
+        [-44, -43],
+        [-62, -45],
+      ],
       coreWidth,
     ),
   ];
@@ -73,12 +84,7 @@ function makeOpticalRouting(travel) {
   ];
   // Fixed optical terminal pads represent supported endpoints; grating
   // tooth/groove masks and HF undercut boundaries are deliberately absent.
-  const supportedPads = [
-    pad(-62, -26, 8),
-    pad(-62, -45, 8),
-    pad(-55, -95, 8),
-    pad(55, -95, 8),
-  ];
+  const supportedPads = [pad(-62, -26, 8), pad(-62, -45, 8), pad(-55, -95, 8), pad(55, -95, 8)];
   return { fixed, movingSpringWaveguides, supportedPads };
 }
 
@@ -114,12 +120,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
       ...opticalRouting.fixed,
       ...opticalRouting.supportedPads,
     ],
-    movable: [
-      ...actuator.movable,
-      ...movableFacetsAndPorts,
-      ...movableStops,
-      ...mechanicalBridge,
-    ],
+    movable: [...actuator.movable, ...movableFacetsAndPorts, ...movableStops, ...mechanicalBridge],
     flexure: [...actuator.flexure, ...opticalRouting.movingSpringWaveguides],
     actuator,
     optics: { fixedFacetsAndPorts, movableFacetsAndPorts, fixedStops, movableStops },
