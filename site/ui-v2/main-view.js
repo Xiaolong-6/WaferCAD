@@ -399,10 +399,7 @@ export async function createMainView({ project, sharedState, workstation, render
       { class: 'p-science v2-main-stage v2-plan-stage', 'data-v2-stage-host': '' },
       hook('mainCanvas', el('canvas', { 'aria-label': 'Main scientific plan', tabindex: 0 })),
       buildRoiTools(),
-      hook(
-        'mainCoords',
-        el('span', { class: 'p-scale' }, dimensionsLabel()),
-      ),
+      hook('mainCoords', el('span', { class: 'p-scale' }, dimensionsLabel())),
     );
     const views = window.createWaferCadV2ViewPanels();
     const panel = views.update(
