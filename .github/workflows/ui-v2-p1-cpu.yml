@@ -52,12 +52,10 @@ on:
       - 'site/history-head-validate-worker.js'
       - 'site/workspace-snapshots.js'
       - 'site/tests/snapshots.test.mjs'
-      - 'site/controllers/workspace-persistence-controller.js'
       - 'site/ui-v2/workstation-runtime.js'
       - 'site/ui-v2/workstation-entry.js'
       - 'site/ui-v2/first-frame-three-gate.js'
       - 'site/tests/first-frame-three-gate.test.mjs'
-      - 'site/ui-v2/workstation-workflow.js'
       - 'site/tests/history-head-worker.test.mjs'
       - 'site/tests/issue-13-settings-ui.test.mjs'
       - '.github/workflows/ui-v2-p1-cpu.yml'
@@ -85,12 +83,21 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Quality gate for async scientific topology and Recovery changes
-        run: npm run check
+      # The required Quality PR check already runs full lint, formatting,
+      # generated documentation and all Node contracts. Avoid running it twice
+      # in this push-only CPU diagnostic; keep exact targeted science below.
+      - name: Syntax check for P1 profiling entry and Renderer
+        run: |
+          node --check scripts/v2/profile-startup-ci.mjs
+          node --check site/three-view.js
       - name: Hardware adapter and frame attribution regression
         run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs scripts/v2/p1-webgl-frame-correlation.test.mjs scripts/v2/p1-cpu-stack-diagnostics.test.mjs scripts/v2/p1-scientific-model-evidence.test.mjs
       - name: Targeted renderer parity and History integrity tests
         run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
