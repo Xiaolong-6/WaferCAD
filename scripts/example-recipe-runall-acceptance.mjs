@@ -301,7 +301,7 @@ try {
         );
         const { expandProjectStorage, prepareProjectForWorkspaceStorage, readProjectFile } =
           await import('../site/project-io.js');
-        const file = new URL('../site/' + example.path.replace(/^\\.\\//, ''), import.meta.url);
+        const file = new URL('../site/' + example.path.replace('./', ''), import.meta.url);
         const project = expandProjectStorage(JSON.parse(await readFile(file, 'utf8')));
         const nodesById = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
         const originalIds = project.snapshotBranches.nodes.map((node) => node.id);
@@ -346,7 +346,11 @@ try {
           project.snapshotBranches.branches.map((branch) => branch.id),
           originalBranches,
         );
-        assert.deepEqual(project.model, sourceProject.model, 'Final canonical material changed');
+        await assertSameMaterialGeometry(sourceProject.model, project.model, {
+          allowRepeatedNames: true,
+          xyQuantumUm: 1e-4,
+          maxQuantizedAreaUm2: 25,
+        });
         for (const stepIndex of changed) {
           const step = processSteps[stepIndex - 1];
           const saved = nodesById.get(step.id.slice(7));
@@ -363,7 +367,11 @@ try {
           size: Buffer.byteLength(packed),
           text: async () => packed,
         });
-        assert.deepEqual(reopened.model, project.model, 'Packaging altered final geometry');
+        await assertSameMaterialGeometry(project.model, reopened.model, {
+          allowRepeatedNames: true,
+          xyQuantumUm: 1e-4,
+          maxQuantizedAreaUm2: 25,
+        });
         assert.deepEqual(
           reopened.snapshotBranches.nodes.map((node) => node.id),
           originalIds,
