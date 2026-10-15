@@ -30,11 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Temporary P1 remaining formatting diff
-        if: github.event.pull_request.number == 188
-        run: |
-          npx prettier --write site/tests/renderer-sidewall-triangle.test.mjs site/three-view.js
-          git diff -- site/tests/renderer-sidewall-triangle.test.mjs site/three-view.js
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
