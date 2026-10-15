@@ -30,11 +30,5 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Diagnose SWX formatting difference (temporary; do not merge)
-        run: |
-          npx prettier --write site/tests/swx-mems-geometry.test.mjs
-          git diff -- site/tests/swx-mems-geometry.test.mjs
-          git diff --exit-code -- site/tests/swx-mems-geometry.test.mjs
-
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
