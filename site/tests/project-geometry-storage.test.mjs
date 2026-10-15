@@ -142,7 +142,9 @@ test('native three-tier geometry and complete History stay exactly equal through
   const bytes = readFileSync(
     new URL('../examples/three-tier-silicon-jlfets.wafercad', import.meta.url),
   );
-  const p = expandProjectStorage(JSON.parse(bytes));
+  // The fixture is an older project: normalize its recorded History to the
+  // active schema before asserting strict geometry/History round-trip parity.
+  const p = migrateProjectFile(expandProjectStorage(JSON.parse(bytes)));
   const before = structuredClone(p);
   const text = serializeProject(p);
   assert.equal(JSON.parse(text).storage.encoding, 'shared-assets-v3');
