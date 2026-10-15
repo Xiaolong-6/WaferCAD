@@ -479,7 +479,11 @@ try {
     const framing = await snap();
     assert.deepEqual(framing.roi, roi, '3D ROI clip must use exact local coordinates');
     assert.equal(framing.threeDisplay.borders, true, 'Local cutaway should display borders');
-    assert.equal(framing.sectionCollapse.enabled, true, 'Local cutaway must use display-only Z break');
+    assert.equal(
+      framing.sectionCollapse.enabled,
+      true,
+      'Local cutaway must use display-only Z break',
+    );
     assert.equal(framing.sectionCollapse.top, 0.68);
     assert.equal(framing.sectionCollapse.bottom, -0.8);
     await page.waitForFunction(
