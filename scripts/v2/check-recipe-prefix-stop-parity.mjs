@@ -67,6 +67,22 @@ try {
     // browser-observed completion event. This gives Stop an in-flight window
     // even on a fast CI runner and exercises actual cancellation ownership.
     await stopContext.addInitScript(() => {
+      // Test-only trace: distinguish a real task cancellation from a missed
+      // dialog event or a Recipe controller that never sees that cancellation.
+      window.__recipeAbortTrace = { click: [], abortCalls: 0 };
+      document.addEventListener('click', (event) => {
+        if (event.target.closest?.('#processTaskAbortBtn')) {
+          window.__recipeAbortTrace.click.push({
+            stopVisible: document.getElementById('recipeStopBtn')?.hidden === false,
+            taskVisible: document.getElementById('processTaskDialog')?.hidden === false,
+          });
+        }
+      }, true);
+      const nativeAbort = AbortController.prototype.abort;
+      AbortController.prototype.abort = function (...args) {
+        window.__recipeAbortTrace.abortCalls += 1;
+        return nativeAbort.apply(this, args);
+      };
       const NativeWorker = window.Worker;
       window.Worker = class extends NativeWorker {
         constructor(url, options) {
@@ -123,6 +139,7 @@ try {
       summary: document.getElementById('recipeRunSummary')?.textContent || '',
       status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
       steps: window.WaferCadV2Workstation.snapshot().workflow.steps.length,
+      abortTrace: window.__recipeAbortTrace,
     }));
     console.log('V2_RECIPE_STOP_EVIDENCE', JSON.stringify(stopEvidence));
     assert.match(
