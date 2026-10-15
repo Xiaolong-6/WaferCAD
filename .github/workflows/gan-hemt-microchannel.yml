@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
       - scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - scripts/example-recipe-runall-acceptance.mjs
       - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
       - site/tests/gan-hemt-microchannel-replay.test.mjs
@@ -46,6 +47,8 @@ jobs:
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+      - name: TSV conformal material wall-science probe
+        run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Generate reopenable project and validation evidence
         run: node scripts/build-gan-hemt-microchannel-example.mjs
       - name: Upload physical geometry and execution report
