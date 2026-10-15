@@ -103,6 +103,66 @@ try {
       assert.equal(await stage.isVisible(), false);
       assert.equal(await nav.isVisible(), true);
 
+      const chrome = await page.evaluate(() => {
+        const topbar = document.querySelector('.p-topbar');
+        const title = topbar.querySelector('.p-project-title');
+        const switcher = topbar.querySelector('.p-mobile-return .wc-button');
+        const nav = document.querySelector('.p-nav');
+        const domains = [...nav.querySelectorAll('[data-action^="domain:"]')];
+        const bounds = (node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+            height: rect.height,
+            width: rect.width,
+          };
+        };
+        return {
+          topbar: bounds(topbar),
+          headerItems: [
+            topbar.querySelector('.p-brand'),
+            title,
+            switcher,
+          ].map(bounds),
+          titleOverflow: getComputedStyle(title).textOverflow,
+          nav: bounds(nav),
+          domains: domains.map((node) => ({
+            action: node.dataset.action,
+            ...bounds(node),
+          })),
+          navScrollWidth: nav.scrollWidth,
+          navClientWidth: nav.clientWidth,
+          hideEditorVisible: nav.querySelector('[data-action="hide-editor"]').checkVisibility(),
+        };
+      });
+      assert.ok(chrome.topbar.height <= 60, 'Mobile topbar fits a compact single row');
+      assert.equal(chrome.titleOverflow, 'ellipsis', 'Long project titles are truncated');
+      for (const item of chrome.headerItems) {
+        assert.ok(
+          Math.abs(item.top - chrome.headerItems[0].top) <= 8,
+          'Brand, title and View results occupy the same header row',
+        );
+        assert.ok(item.left >= -1 && item.right <= width + 1, 'Header controls fit viewport');
+      }
+      assert.deepEqual(
+        chrome.domains.map(({ action }) => action),
+        ['domain:project', 'domain:mask', 'domain:process', 'domain:history'],
+      );
+      assert.equal(chrome.hideEditorVisible, false, 'Redundant mobile close button is hidden');
+      assert.ok(chrome.nav.height <= 54, 'Four-domain navigation fits one compact row');
+      assert.ok(chrome.navScrollWidth <= chrome.navClientWidth + 1, 'No horizontal nav scrolling');
+      for (const item of chrome.domains) {
+        assert.ok(Math.abs(item.top - chrome.domains[0].top) <= 1, 'One navigation row');
+        assert.ok(item.width >= 44 && item.height >= 44, 'Every domain remains touch-sized');
+        assert.ok(item.left >= -1 && item.right <= width + 1, 'All domains remain on screen');
+      }
+      await page.screenshot({
+        path: resolve(output, `mobile-${width}x${height}-edit-navigation.png`),
+      });
+
       const processNav = page.locator('.p-nav [data-action="domain:process"]');
       await processNav.click();
       assert.equal(await page.locator('#operationTools').isVisible(), true);
