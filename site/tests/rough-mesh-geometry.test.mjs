@@ -324,3 +324,97 @@ test('GPU rough cap interior does not sample the CPU morphology field', () => {
   assert.ok(data.gpuDisplace.every((value) => value === 1));
   assert.ok(data.positions.every((value, index) => index % 3 !== 2 || value === 0));
 });
+
+test('GPU rough physical skirts and adaptive stitches share shader displacement on fine edges', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+    featureSize: 0.5,
+    meanHeight: 0.3,
+    etchDepth: 0.3,
+    featureCv: 0.2,
+    heightCv: 0.1,
+    seed: 21,
+  };
+  const zoneFor = (triangle, triangleBudget) => ({
+    baseTriangles: [triangle],
+    edges: roughBoundaryEdgesFromTriangles([triangle]),
+    maxEdge: Math.SQRT2,
+    triangleBudget,
+    lodContext: {
+      distance: 10,
+      viewportWidth: 800,
+      viewportHeight: 600,
+      pixelRatio: 1,
+      fovDegrees: 34,
+      visibleFraction: 1,
+      roiFraction: 1,
+      screenPriority: 1,
+      maxDepth: 2,
+    },
+  });
+  const data = roughMeshDataFromPreparedCap({
+    z: 0,
+    normal: 1,
+    appearance,
+    gpuDisplacement: true,
+    closeToIdeal: true,
+    lodZones: [zoneFor(squareTriangles[0], 16), zoneFor(squareTriangles[1], 1)],
+  });
+  assert.ok(data.metadata.roughLodStitchCount > 0);
+  assert.ok(data.gpuDisplace.some((value) => value === 1));
+  assert.ok(data.gpuDisplace.some((value) => value === 0));
+  let hasMixedTriangle = false;
+  for (let i = 0; i < data.gpuDisplace.length; i += 3) {
+    const flags = [...data.gpuDisplace.slice(i, i + 3)];
+    if (flags.includes(0) && flags.includes(1)) hasMixedTriangle = true;
+    flags.forEach((flag, localIndex) => {
+      if (flag === 1) assert.equal(data.positions[(i + localIndex) * 3 + 2], 0);
+    });
+  }
+  assert.ok(hasMixedTriangle, 'skirt/stitch vertices must share cap GPU displacement');
+});
+
+test('rough physical sidewall borders are emitted without duplicated closure skirts', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 0.5,
+    meanHeight: 0.2,
+    etchDepth: 0.2,
+    featureCv: 0,
+    heightCv: 0,
+    seed: 10,
+  };
+  const baseTriangles = squareTriangles;
+  const edges = roughBoundaryEdgesFromTriangles(baseTriangles);
+  const zone = {
+    baseTriangles,
+    edges,
+    maxEdge: Math.SQRT2,
+    triangleBudget: 2,
+    lodContext: {
+      distance: 1000,
+      viewportWidth: 100,
+      viewportHeight: 100,
+      maxDepth: 0,
+    },
+  };
+  const baseline = roughMeshDataFromPreparedCap({
+    z: 0, normal: 1, appearance,
+    closeToIdeal: true, lodZones: [zone],
+  });
+  const physical = roughMeshDataFromPreparedCap({
+    z: 0, normal: 1, appearance,
+    closeToIdeal: true, lodZones: [zone],
+    sidewallBoundaryIntervals: [{
+      key: edges[0].key,
+      t0: edges[0].line.t0,
+      t1: edges[0].line.t1,
+    }],
+  });
+  assert.equal(physical.roughBorderPositions.length, baseline.roughBorderPositions.length);
+  assert.equal(baseline.positions.length - physical.positions.length, 18);
+});
