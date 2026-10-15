@@ -19,7 +19,7 @@ function referenceTriangle(positions, normals, annotationDepths, a, b, c, depths
   if (depths) annotationDepths.push(...depths);
 }
 
-test('optimized sidewall triangles match prior renderer positions, normals and annotation depths', () => {
+test('sidewall emission matches prior positions, normals and annotation depths', () => {
   let seed = 0x4bd15f29;
   const rand = () => {
     seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
@@ -46,10 +46,7 @@ test('optimized sidewall triangles match prior renderer positions, normals and a
   assert.deepEqual(newer, old);
   // The renderer still casts the same coordinate and normal sequence through
   // Float32BufferAttribute, so bitwise Float32 conversion must also match.
-  assert.deepEqual(
-    new Float32Array(newer.positions),
-    new Float32Array(old.positions),
-  );
+  assert.deepEqual(new Float32Array(newer.positions), new Float32Array(old.positions));
   assert.deepEqual(new Float32Array(newer.normals), new Float32Array(old.normals));
   assert.deepEqual(new Float32Array(newer.depths), new Float32Array(old.depths));
 });
