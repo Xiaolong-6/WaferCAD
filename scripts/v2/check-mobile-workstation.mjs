@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchBrowser, newUiPage, observePageErrors, waitForPaint } from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-mobile');
@@ -50,7 +50,22 @@ try {
       deviceScaleFactor: 1,
     });
     try {
-      const errors = observePageErrors(page);
+      // Use a single owner for native dialogs. The generic page-error observer
+      // dismisses unexpected dialogs; this test additionally needs to accept
+      // the guarded unload only during an explicit Back to Welcome click.
+      const errors = [];
+      const departureDialogs = [];
+      let acceptingWelcomeDeparture = false;
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('dialog', (dialog) => {
+        if (acceptingWelcomeDeparture && dialog.type() === 'beforeunload') {
+          departureDialogs.push(dialog.type());
+          void dialog.accept();
+        } else {
+          errors.push(`Unexpected native dialog: ${dialog.type()} ${dialog.message()}`);
+          void dialog.dismiss();
+        }
+      });
       await page.goto(`${base}/app.html?start=empty`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
@@ -391,17 +406,11 @@ try {
       // Preserve the unsaved-workspace beforeunload guard. Accept its native
       // confirmation like a user choosing to leave; Playwright otherwise
       // dismisses it by default and cancels the actual Welcome navigation.
-      const departureDialogs = [];
-      const confirmDeparture = async (dialog) => {
-        departureDialogs.push(dialog.type());
-        if (dialog.type() === 'beforeunload') await dialog.accept();
-        else await dialog.dismiss();
-      };
-      page.on('dialog', confirmDeparture);
+      acceptingWelcomeDeparture = true;
       try {
         await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
       } finally {
-        page.off('dialog', confirmDeparture);
+        acceptingWelcomeDeparture = false;
       }
       assert.ok(
         departureDialogs.every((type) => type === 'beforeunload'),
