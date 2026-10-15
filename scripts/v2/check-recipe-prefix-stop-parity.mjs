@@ -109,17 +109,27 @@ try {
       animations: 'disabled',
     });
     await page.locator('#processTaskAbortBtn').click({ timeout: 5000 });
+    // Wait for the Recipe controller to settle, not an optional summary label.
+    // Preserve the exact Stopped assertion, and report both summary and status
+    // if they disagree so a real state/reporting defect cannot be hidden.
     await page.waitForFunction(
-      () => {
-        const summary = document.getElementById('recipeRunSummary')?.textContent || '';
-        return /Stopped: [0-9]+\/40/.test(summary);
-      },
+      () =>
+        document.getElementById('recipeStopBtn')?.hidden === true &&
+        !window.WaferCadV2Workstation.snapshot().workflow.busy,
       null,
-      { timeout: 120000 },
+      { timeout: 30000 },
     );
-    await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.busy, null, {
-      timeout: 30000,
-    });
+    const stopEvidence = await page.evaluate(() => ({
+      summary: document.getElementById('recipeRunSummary')?.textContent || '',
+      status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      steps: window.WaferCadV2Workstation.snapshot().workflow.steps.length,
+    }));
+    console.log('V2_RECIPE_STOP_EVIDENCE', JSON.stringify(stopEvidence));
+    assert.match(
+      stopEvidence.summary,
+      /Stopped: [0-9]+\/40/,
+      'Recipe must expose an accurate stopped summary after task Abort',
+    );
     const stopped = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.ok(stopped.workflow.steps.length < 40, 'Abort must stop before the final Recipe Step');
     const committedFilms = stopped.model.layers.filter((layer) =>
