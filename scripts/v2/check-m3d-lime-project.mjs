@@ -9,6 +9,7 @@ import { loadGeometryKernel } from '../process-benchmarks.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
 import { parseGDS, flattenGDS } from '../../site/gds.js';
 import { parseOAS } from '../../site/oasis.js';
+import { pointInMulti } from '../../site/vector-geometry.js';
 
 await loadGeometryKernel();
 
@@ -189,6 +190,160 @@ try {
   assert.ok(enlargedPng.length > 8000, 'Magnified Section evidence is unexpectedly small');
   report.sectionEvidence.inspectionZoom = magnification;
   report.sectionEvidence.zoomedScreenshotBytes = enlargedPng.length;
+  // Make distinct nano-stack inspections; the 9um overview cannot resolve
+  // an 8nm switching film. Use genuine Section gestures, a physical 1:1 XZ
+  // scale and no Z break. None of these actions edits the saved device.
+  await page.locator('#sectionPanel [data-action="fit:section"]').click();
+  const sectionCanvas = page.locator('#sectionCanvas');
+  const previousScaleMode = await sectionCanvas.getAttribute('data-scale-mode');
+  if (previousScaleMode !== 'physical')
+    await page.locator('#sectionPanel [data-action="scale:section"]').click();
+  await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
+  const collapseToggle = page.locator('#section-collapse-enabled');
+  const previouslyCollapsed = await collapseToggle.isChecked();
+  if (previouslyCollapsed) await collapseToggle.uncheck();
+  await page.locator('#sectionZSettings [aria-label="Close Z Break"]').click();
+  await waitForPaint(page);
+  assert.equal(await sectionCanvas.getAttribute('data-scale-mode'), 'physical');
+  assert.equal(await sectionCanvas.getAttribute('data-section-collapse-enabled'), 'false');
+
+  report.nanoSectionEvidence = [];
+  for (const target of [
+    {
+      label: 'analog-rram',
+      material: 'CIM HfAlOx RSL 8nm',
+      physicalXUm: -40.7,
+      thicknessUm: 0.008,
+    },
+    {
+      label: 'digital-rram',
+      material: 'Digital Ta2O5 RSL 10nm',
+      physicalXUm: -38.5,
+      thicknessUm: 0.01,
+    },
+  ]) {
+    const layer = expected.model.layers.find((item) => item.name === target.material);
+    assert.ok(layer, target.material + ': source layer missing');
+    const region = expected.model.regions.find((item) =>
+      pointInMulti([target.physicalXUm, expected.section.a[1]], item.geom),
+    );
+    const film = region?.stack.find((part) => part.layerId === layer.id);
+    assert.ok(film, target.material + ': missing from actual Section intersection');
+    const actualThicknessUm = film.z1 - film.z0;
+    assert.ok(
+      Math.abs(actualThicknessUm - target.thicknessUm) < 1e-9,
+      target.material + ': source film thickness changed',
+    );
+    const physicalZUm = (film.z0 + film.z1) / 2;
+    await page.locator('#sectionPanel [data-action="fit:section"]').click();
+    await waitForPaint(page);
+    const initialPosition = await sectionCanvas.evaluate(
+      (canvas, { x, z, startX, spanX }) => {
+        const d = canvas.dataset;
+        const scaleX = Number(d.xPxPerUm);
+        const scaleZ = Number(d.zPxPerUm);
+        assertFinite(scaleX, scaleZ);
+        return {
+          x: Number(d.sectionPlotLeft) + (x - startX) * scaleX,
+          y: Number(d.sectionFrameTop) + (Number(d.sectionZ1Um) - z) * scaleZ,
+          width: canvas.getBoundingClientRect().width,
+          height: canvas.getBoundingClientRect().height,
+          spanX,
+        };
+        function assertFinite(sx, sz) {
+          if (!(sx > 0 && sz > 0)) throw Error('Section has invalid physical axes');
+        }
+      },
+      {
+        x: target.physicalXUm,
+        z: physicalZUm,
+        startX: expected.section.a[0],
+        spanX: expected.section.b[0] - expected.section.a[0],
+      },
+    );
+    assert.ok(
+      initialPosition.x > 20 &&
+        initialPosition.x < initialPosition.width - 20 &&
+        initialPosition.y > 20 &&
+        initialPosition.y < initialPosition.height - 20,
+      target.material + ': actual physical film is outside Section canvas',
+    );
+    const bounds = await sectionCanvas.boundingBox();
+    assert.ok(bounds, 'Nanoscale Section canvas must be visible');
+    const startX = bounds.x + initialPosition.x;
+    const startY = bounds.y + initialPosition.y;
+    const panButton = page.locator('#sectionPanel [data-action="tool:pan:section"]');
+    if ((await panButton.getAttribute('aria-pressed')) !== 'true') await panButton.click();
+    const nanoZoomButton = page.locator('#sectionPanel [data-action="tool:zoom:section"]');
+    if ((await nanoZoomButton.getAttribute('aria-pressed')) !== 'true')
+      await nanoZoomButton.click();
+    await page.mouse.move(startX, startY);
+    await page.mouse.wheel(0, -2000);
+    await waitForPaint(page);
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(
+      bounds.x + initialPosition.width / 2,
+      bounds.y + initialPosition.height / 2,
+      { steps: 6 },
+    );
+    await page.mouse.up();
+    await waitForPaint(page);
+    const evidence = await sectionCanvas.evaluate(
+      (canvas, { x, z, startX }) => {
+        const d = canvas.dataset;
+        const xScale = Number(d.xPxPerUm);
+        const zScale = Number(d.zPxPerUm);
+        return {
+          xPxPerUm: xScale,
+          zPxPerUm: zScale,
+          viewportZoom: Number(d.sectionViewportZoom),
+          centerX: Number(d.sectionPlotLeft) + (x - startX) * xScale,
+          centerY: Number(d.sectionFrameTop) + (Number(d.sectionZ1Um) - z) * zScale,
+          width: canvas.getBoundingClientRect().width,
+          height: canvas.getBoundingClientRect().height,
+        };
+      },
+      { x: target.physicalXUm, z: physicalZUm, startX: expected.section.a[0] },
+    );
+    assert.ok(evidence.viewportZoom >= 16, 'Nanoscale Section zoom is insufficient');
+    assert.ok(
+      Math.abs(evidence.xPxPerUm - evidence.zPxPerUm) < 1e-6,
+      'Nanoscale evidence must use physical 1:1 XZ scale',
+    );
+    assert.ok(
+      evidence.zPxPerUm * actualThicknessUm >= 8,
+      target.material + ': thin film projects below eight pixels',
+    );
+    assert.ok(
+      Math.abs(evidence.centerX - evidence.width / 2) < 25 &&
+        Math.abs(evidence.centerY - evidence.height / 2) < 25,
+      target.material + ': selected material is not centered',
+    );
+    const png = await sectionPanel.screenshot({
+      path: resolve(output, 'section-' + target.label + '-nanoscale.png'),
+      animations: 'disabled',
+    });
+    assert.ok(png.length > 8000, 'Nanoscale Section evidence is unexpectedly small');
+    report.nanoSectionEvidence.push({
+      material: target.material,
+      physicalXUm: target.physicalXUm,
+      physicalZUm,
+      filmThicknessNm: actualThicknessUm * 1000,
+      projectedFilmPixels: evidence.zPxPerUm * actualThicknessUm,
+      ...evidence,
+      screenshotBytes: png.length,
+    });
+  }
+  await page.locator('#sectionPanel [data-action="fit:section"]').click();
+  await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
+  if (previouslyCollapsed) await collapseToggle.check();
+  await page.locator('#sectionZSettings [aria-label="Close Z Break"]').click();
+  if (previousScaleMode !== 'physical')
+    await page.locator('#sectionPanel [data-action="scale:section"]').click();
+  await waitForPaint(page);
+  assert.deepEqual((await snapshot()).section, expected.section);
+
   const afterSectionInspection = await snapshot();
   assert.deepEqual(afterSectionInspection.section, expected.section);
   assert.deepEqual(
