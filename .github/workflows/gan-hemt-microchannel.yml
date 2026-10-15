@@ -92,9 +92,6 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
-      - name: Emit refreshed thumbnail for branch asset synchronization
-        run: |
-          node -e "const f=require('node:fs');for(const [label,path] of [['webp','site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp'],['manifest','tests/fixtures/project-io/example-thumbnails.json']]){const str=f.readFileSync(path).toString('base64');for(let i=0;i<str.length;i+=1500)console.log('WAFERCAD_THUMB|'+label+'|'+Math.floor(i/1500)+'|'+str.slice(i,i+1500));console.log('WAFERCAD_THUMB_END|'+label+'|'+Math.ceil(str.length/1500));}"
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
