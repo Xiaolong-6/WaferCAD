@@ -800,7 +800,14 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
-    if (!ready || !hasWriteAccess()) return false;
+    if (!ready || !hasWriteAccess()) {
+      console.warn('Recovery checkpoint refused before write', {
+        reason,
+        ready,
+        writable: hasWriteAccess(),
+      });
+      return false;
+    }
     clearTimer();
     // A refused checkpoint must not strand edits by cancelling the queued
     // autosave; keep the dirty workspace scheduled after a transient failure.
@@ -829,11 +836,13 @@ export function createWorkspacePersistenceController({
     );
 
     if (result?.busy) {
+      console.warn('Recovery checkpoint refused: task busy', { reason });
       resumePendingAutosave();
       status('Another background task is already running.', 'warning');
       return false;
     }
     if (result?.error || !result?.ok) {
+      console.warn('Recovery checkpoint failed', { reason, error: result?.error });
       resumePendingAutosave();
       return false;
     }
