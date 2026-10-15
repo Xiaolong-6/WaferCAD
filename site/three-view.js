@@ -9,6 +9,7 @@ import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
+import { batchOpaqueExteriorMeshes } from './renderer-opaque-batching.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -3409,6 +3410,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
       cancelSupersededVariant();
+      // Pack only adjacent, Z-compatible smooth opaque meshes. The exact
+      // triangle/normal buffers remain unchanged; scientific topology and
+      // GLB export never observe presentation batches.
+      const opaqueBatches =
+        targetVariant === 'opaque'
+          ? await batchOpaqueExteriorMeshes(THREE, group, {
+              onYield: maybeYieldAssembly,
+              onReplace: (removed, added) => {
+                if (removed) {
+                  presentationObjects.delete(removed);
+                  zDisplayObjects.delete(removed);
+                }
+                if (added) {
+                  zDisplayObjects.add(added);
+                  registerPresentationObject(added, added.userData.waferCadPresentation);
+                }
+              },
+            })
+          : { batches: 0, removed: 0, drawCallsSaved: 0 };
+      host.dataset.opaqueBatchCount = String(opaqueBatches.batches);
+      host.dataset.opaqueBatchDrawCallsSaved = String(opaqueBatches.drawCallsSaved);
       const rendererAssemblyAt = performance.now();
       host.dataset.rendererTopologyMs = String(rendererTopologyAt - rendererProfileStart);
       host.dataset.rendererSmoothCapsMs = String(rendererCapsAt - rendererTopologyAt);
