@@ -181,6 +181,17 @@ export function roughMeshDataFromPreparedCap({
       normals.push(0, 0, normal, 0, 0, normal, 0, 0, normal);
       gpuDisplace.push(1, 1, 1);
     },
+    // A mixed strip joins ideal/coarse vertices to shader-displaced fine
+    // vertices. Keeping its fine edge in the GPU displacement path prevents
+    // the cap and its skirt/LOD stitch from using different height evaluators.
+    pushMixedRoughTriangle = (a, b, c, displaced = [false, false, false]) => {
+      const faceNormal = triangleNormal(a, b, c);
+      for (const [index, point] of [a, b, c].entries()) {
+        positions.push(point[0], point[1], displaced[index] ? z : point[2]);
+        normals.push(...faceNormal);
+        gpuDisplace.push(displaced[index] ? 1 : 0);
+      }
+    },
     pointAlongEdge = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, z],
     roughAlongEdge = (p, q, t) => roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
     coarseApproxAlongEdge = (p, q, t, coarseDepth) => {
@@ -279,15 +290,22 @@ export function roughMeshDataFromPreparedCap({
           const t0 = ordered[index],
             t1 = ordered[index + 1],
             middleGlobalT = globalTAtLocal(edge.line, (t0 + t1) / 2);
-          if (isSeamAt(edge, middleGlobalT) || hasPhysicalSidewallAt(edge, middleGlobalT)) {
-            continue;
-          }
+          if (isSeamAt(edge, middleGlobalT)) continue;
           const base0 = pointAlongEdge(edge.p, edge.q, t0),
             base1 = pointAlongEdge(edge.p, edge.q, t1),
             top0 = roughAlongEdge(edge.p, edge.q, t0),
             top1 = roughAlongEdge(edge.p, edge.q, t1);
-          pushTriangle(base0, base1, top1);
-          pushTriangle(base0, top1, top0);
+          // Real sidewalls already close this boundary: outline the displaced
+          // rim, but do not generate another coplanar skirt over the sidewall.
+          if (!hasPhysicalSidewallAt(edge, middleGlobalT)) {
+            if (gpuDisplacement) {
+              pushMixedRoughTriangle(base0, base1, top1, [false, false, true]);
+              pushMixedRoughTriangle(base0, top1, top0, [false, true, true]);
+            } else {
+              pushTriangle(base0, base1, top1);
+              pushTriangle(base0, top1, top0);
+            }
+          }
           roughBorderPositions.push(...top0, ...top1);
         }
       }
@@ -332,8 +350,13 @@ export function roughMeshDataFromPreparedCap({
           localParameterAtLineT(coarse.edge.line, g1),
           coarseDepth,
         );
-      pushTriangle(coarse0, coarse1, fine1);
-      pushTriangle(coarse0, fine1, fine0);
+      if (gpuDisplacement) {
+        pushMixedRoughTriangle(coarse0, coarse1, fine1, [false, false, true]);
+        pushMixedRoughTriangle(coarse0, fine1, fine0, [false, true, true]);
+      } else {
+        pushTriangle(coarse0, coarse1, fine1);
+        pushTriangle(coarse0, fine1, fine0);
+      }
     }
   }
 
