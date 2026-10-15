@@ -403,17 +403,25 @@ test('rough physical sidewall borders are emitted without duplicated closure ski
     },
   };
   const baseline = roughMeshDataFromPreparedCap({
-    z: 0, normal: 1, appearance,
-    closeToIdeal: true, lodZones: [zone],
+    z: 0,
+    normal: 1,
+    appearance,
+    closeToIdeal: true,
+    lodZones: [zone],
   });
   const physical = roughMeshDataFromPreparedCap({
-    z: 0, normal: 1, appearance,
-    closeToIdeal: true, lodZones: [zone],
-    sidewallBoundaryIntervals: [{
-      key: edges[0].key,
-      t0: edges[0].line.t0,
-      t1: edges[0].line.t1,
-    }],
+    z: 0,
+    normal: 1,
+    appearance,
+    closeToIdeal: true,
+    lodZones: [zone],
+    sidewallBoundaryIntervals: [
+      {
+        key: edges[0].key,
+        t0: edges[0].line.t0,
+        t1: edges[0].line.t1,
+      },
+    ],
   });
   assert.equal(physical.roughBorderPositions.length, baseline.roughBorderPositions.length);
   assert.equal(baseline.positions.length - physical.positions.length, 18);
