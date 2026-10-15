@@ -282,13 +282,21 @@ function makeIllustrativeGratingCouplers(moveY) {
   for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
     const sign = Math.sign(cy);
     const sourceY = sign * 13;
-    const feed = polyline(
+    // Two lower-reflector optical ports are compliant: this input link
+    // and the opposite output meander. Taper the displacement to zero at
+    // the anchored coupler (the upper/static arm never actuates).
+    const compliant = sign < 0 ? moveY : 0;
+    const feed = miteredPolyline(
       [
-        [-53, sourceY + (sign < 0 ? moveY : 0)],
-        [-50.7, sign * 18],
+        [-53, sourceY + compliant],
+        [-52, sign * 15 + compliant * 0.85],
+        [-51.2, sign * 17 + compliant * 0.75],
+        [-50, sign * 17.8 + compliant * 0.55],
+        [-49.2, sign * 20.5 + compliant * 0.35],
+        [-47.8, sign * 21.8 + compliant * 0.2],
         [cx, cy],
       ],
-      0.4,
+      SWX_REPORTED.waveguideCoreUm,
     );
     const taper = taperedStrip([cx, cy], [cx + 2.3, cy], 0.4, 1.1);
     const outerRadius =
@@ -328,7 +336,8 @@ function makeIllustrativeGratingCouplers(moveY) {
 }
 
 function makeMeanders(moveY) {
-  const paths = [];
+  const fixed = [],
+    moving = [];
   // A compliant optical link must have both ends attached. The original
   // illustrative curves ended freely near (1,+/-32um), as seen in the
   // visual acceptance screenshot. Build a 3um/5um double-bend centerline
@@ -348,9 +357,11 @@ function makeMeanders(moveY) {
       const shift = sign < 0 ? moveY * (1 - i / (fixedPort.length - 1)) : 0;
       return [x, sign * y + shift];
     });
-    paths.push(...polyline(points, SWX_REPORTED.waveguideCoreUm));
+    const contour = polyline(points, SWX_REPORTED.waveguideCoreUm);
+    if (sign < 0) moving.push(...contour);
+    else fixed.push(...contour);
   }
-  return paths;
+  return { fixed, moving };
 }
 
 function makeFoldedSprings(moveY) {
@@ -521,9 +532,11 @@ export function createSwxGeometry(state = 'off') {
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
   const foldedSprings = makeFoldedSprings(travel);
+  const opticalMeanders = makeMeanders(travel);
   const flexure = [
     ...foldedSprings,
-    ...makeMeanders(travel),
+    ...opticalMeanders.fixed,
+    ...opticalMeanders.moving,
     ...aligners.flexure,
     ...gratings.flexibleSilicon,
   ];
@@ -610,6 +623,7 @@ export function createSwxGeometry(state = 'off') {
       gratingCouplers: gratings.groups,
       gratingSlabs: gratings.silicon,
       gratingFeeds: gratings.flexibleSilicon,
+      opticalMeanders,
       gratingGrooves: gratings.shallowEtch,
       structuralAligners: aligners,
       foldedSprings,
