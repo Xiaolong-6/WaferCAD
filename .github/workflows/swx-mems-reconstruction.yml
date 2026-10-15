@@ -88,6 +88,7 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
           python3 scripts/swx-mems-klayout-verify.py test-results/swx-mems
+          python3 scripts/swx-mems-klayout-verify.py test-results/swx-mems-compact compact
       - name: Archive reconstructed projects and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
