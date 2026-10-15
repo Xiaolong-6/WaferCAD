@@ -95,6 +95,9 @@ try {
       }
       assert.equal(viewDefaults.three.mode, 'rotate', '3D defaults to orbit');
       assert.equal(viewDefaults.three.zoomEnabled, true, '3D Zoom is available immediately');
+      await page.screenshot({
+        path: resolve(output, `mobile-${width}x${height}-view-navigation.png`),
+      });
 
       await page.locator('[data-action="show-editor"]').click();
       await waitForPaint(page);
