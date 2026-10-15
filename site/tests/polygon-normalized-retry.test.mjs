@@ -8,7 +8,7 @@ const { booleanWithNormalizedRetry, booleanWithQuantizedRetry } = await import(
   '../polygon-boolean.js'
 );
 
-test('normalized Boolean fast path is identical for touching, overlapping, holes and precision', () => {
+test('normalized Boolean parity for contact, overlap, holes and precision', () => {
   const holes = [
     [
       [
