@@ -126,6 +126,13 @@ try {
       // disappear after saving. Dismiss it explicitly before visual evidence.
       await page.getByRole('button', { name: 'Close Export Mask' }).click();
       await page.locator('#maskExportSettings').waitFor({ state: 'hidden' });
+      // Save full-size layout evidence instead of relying on the 4-up
+      // thumbnail, where 200nm teeth and individual comb fingers vanish.
+      await page.locator('[data-action="mode:single"]').click();
+      await waitForPaint(page);
+      await page.locator('#maskPanel').screenshot({
+        path: resolve(out, 'swx-' + state + '-mask-full.png'),
+      });
       await page.locator('[data-action="view:three"]').click();
       await page.waitForFunction(
         () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
