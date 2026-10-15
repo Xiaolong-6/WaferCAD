@@ -24,12 +24,12 @@ function segmentsOf(model, name) {
   return segments;
 }
 
-test('Ghosh M3D saved transfer films retain paper-derived thickness and zero support gap', async () => {
-  const { model } = await savedExample('m3d-selfpowered-full-replay');
+test('Ghosh M3D saved transfer films match Recipe thickness and zero support gap', async () => {
+  const { model, processRecipe } = await savedExample('m3d-selfpowered-full-replay');
   for (const [name, kind, thickness] of [
     ['WSe2', 'bilayer', 0.0014],
     ['MoS2', 'monolayer', 0.0007],
-    ['Graphene', 'monolayer', 0.0003],
+    ['Graphene', 'monolayer', 0.00035],
   ]) {
     const layer = model.layers.find(
       (entry) =>
@@ -37,6 +37,15 @@ test('Ghosh M3D saved transfer films retain paper-derived thickness and zero sup
         entry.name.toLowerCase().includes(kind),
     );
     assert.ok(layer, 'Missing transferred channel ' + name + ' ' + kind);
+    const recipeStep = processRecipe.steps.find(
+      (step) => step.command === 'deposit' && step.params?.material === layer.name,
+    );
+    assert.ok(recipeStep, name + ': missing editable transferred-film Recipe');
+    assert.equal(recipeStep.params.coverage, 'transfer');
+    assert.ok(
+      Math.abs(recipeStep.params.thicknessUm - thickness) < 1e-12,
+      name + ': saved Recipe thickness differs from the published project geometry',
+    );
     let checked = 0;
     for (const region of model.regions) {
       for (let index = 0; index < region.stack.length; index++) {

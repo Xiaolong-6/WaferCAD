@@ -198,6 +198,27 @@ images for Black-Si FINAL and destructive QA, plus Ge Fig. 15a and 15b.
 Physical XY/Z owner probes compare retained versus removed ALD and inactive
 SiO2 without changing source geometry or widening numerical tolerances.
 
+## 2026-10-15 M3D/MAGIC saved scientific stack probes
+
+The published M3D `.wafercad` asset independently stores all three transferred
+2D-material thicknesses in its executable Recipe **and** final physical model:
+WSe2 bilayer **1.4 nm**, MoS2 monolayer **0.7 nm**, and graphene monolayer
+**0.35 nm**. The former reconstruction driver uses an illustrative graphene
+value of 0.30 nm; that is **not** the number in the currently shipped project.
+The 0.35 nm geometry is also a visualization surrogate, **not a measured
+graphene thickness claimed in the source publication**. Do not silently
+replace, round or reclassify this sub-nanometre value to satisfy a test.
+
+The added published-asset scientific contract checks these exact saved
+Recipe values and the corresponding Z intervals against one another at
+1e-12/1e-9 µm respectively, and independently checks each film's contiguous
+support with the preceding material segment at 1e-7 µm. These are existing
+precision criteria; none were widened to accommodate the corrected nominal
+input. A separate MAGIC-1000 contract measures the four saved 250 nm Al
+conductor levels, 400 nm W gate, 10 nm HfO2 and illustrative 0.7 nm MoS2
+transistor film within the explicitly **40 × 24 µm local reconstruction**.
+Neither fixture is a reproduction of an unprovided original IC GDS.
+
 ## Remaining implementation gates
 
 1. **P1** — Tandem: compare Recipe-replayed canonical per-material occupancy
