@@ -33,3 +33,14 @@ jobs:
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
 
+
+      - name: Report canonical PR250 formatter diff (one-time diagnostic)
+        if: failure()
+        run: |
+          for path in site/rough-mesh-geometry.js site/tests/rough-mesh-geometry.test.mjs scripts/pr250-renderer-audit.mjs; do
+            cp "$path" /tmp/pr250-unformatted.js
+            npx prettier --write "$path"
+            echo "PR250_FORMAT_BEGIN:$path"
+            diff -u /tmp/pr250-unformatted.js "$path" || true
+            echo "PR250_FORMAT_END:$path"
+          done

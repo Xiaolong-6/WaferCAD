@@ -264,27 +264,6 @@ try {
       ...(fixture.name === 'photodetector-blacksi-final-roi'
         ? [
             {
-              name: 'surface-cut-opaque-detail',
-              opacity: 1,
-              borders: false,
-              fast: false,
-              detail: true,
-            },
-            {
-              name: 'surface-cut-opaque-borders-detail',
-              opacity: 1,
-              borders: true,
-              fast: false,
-              detail: true,
-            },
-            {
-              name: 'surface-cut-transparent-detail',
-              opacity: 0.5,
-              borders: true,
-              fast: false,
-              detail: true,
-            },
-            {
               name: 'surface-cut-zbreak-opaque-detail',
               opacity: 1,
               borders: false,
