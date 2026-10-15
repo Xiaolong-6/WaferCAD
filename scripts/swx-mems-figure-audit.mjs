@@ -65,7 +65,8 @@ for (const state of ['off', 'on']) {
     supportedOpticalPads: p.opticalRouting.supportedPads.length,
     candidateMaskFootprintUm: [widthUm, heightUm],
     reportedSingleSwitchFootprintUm: SWX_REPORTED.fullFootprintUm,
-    comparisonScope: 'illustrative optical pads and routing may lie outside published switch-only envelope',
+    comparisonScope:
+      'illustrative optical pads and routing may lie outside published switch-only envelope',
     candidateShallowGratingGrooves: compactMask.physicalGroups.gratingGrooves.length,
     reportedGratingPitchVerified: false,
     movingOpticalBendRadiiUm: p.opticalRouting.movingCenterlines.map((line) => line.radiusUm),
