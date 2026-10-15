@@ -15,7 +15,7 @@ test('stable Quality job performs full checks on ready PRs and manual runs', () 
 });
 
 test('draft deferral never disables reusable production release acceptance', () => {
-  for (const name of ['ui-v2-main-mask.yml', 'ui-v2-stage-c-m4.yml']) {
+  for (const name of ['ui-v2-main-mask.yml', 'ui-v2-stage-c-m4.yml', 'ui-v2-three.yml']) {
     const source = workflow(name);
     assert.match(source, /  workflow_call:/);
     assert.match(source, /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/);
