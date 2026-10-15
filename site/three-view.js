@@ -2305,6 +2305,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
   }
 
+  // If the Worker cannot run, finish the real detailed geometry in the main
+  // thread and settle the same readiness contract as the Worker completion.
+  // Do not synchronously build a preview followed by another detailed build.
+  function completeSynchronousRoughFallback(sceneToken, startedAt) {
+    const applied = rebuildAdaptiveRoughGeometrySync({ sceneToken });
+    if (!applied) return false;
+    host.dataset.rendererRoughMs = String(performance.now() - startedAt);
+    const profileStart = roughRenderContext?.profileStart;
+    if (Number.isFinite(profileStart)) {
+      host.dataset.rendererFinalReadyMs = String(performance.now() - profileStart);
+    }
+    roughInteractionCache = null;
+    host.dataset.renderPhase = 'complete';
+    host.dataset.renderState = 'ready';
+    stats.textContent = hasMaterial(roughRenderContext.model)
+      ? roughRenderContext.clip
+        ? 'ROI'
+        : 'full model'
+      : 'no material';
+    scheduleFrame();
+    return true;
+  }
+
   function requestRoughGeometry(mode = 'detailed', { force = false, refineAfter = false } = {}) {
     if (!roughRenderContext || !roughTasks.length || rendering) return Promise.resolve(false);
     const sceneToken = roughRenderContext.sceneGeneration,
@@ -2335,8 +2358,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       worker = new Worker(workerUrl);
     } catch (error) {
       console.warn('Rough mesh worker unavailable; using synchronous fallback.', error);
-      if (!interactive) return Promise.resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-      return Promise.resolve(false);
+      return Promise.resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
     }
 
     const generation = ++roughWorkerGeneration,
@@ -2364,8 +2386,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (message.type === 'error') {
           console.warn('Rough mesh worker failed.', message.message);
           finish();
-          if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-          else resolve(false);
+          resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
           return;
         }
         if (message.type !== 'done') return;
@@ -2410,8 +2431,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
         console.warn('Rough mesh worker failed.', event.message || event);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-        else resolve(false);
+        resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
       };
 
       try {
@@ -2423,8 +2443,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       } catch (error) {
         console.warn('Could not start rough mesh worker task.', error);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-        else resolve(false);
+        resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
       }
     });
   }
