@@ -129,7 +129,11 @@ try {
 
     const restored = await snapshot();
     assert.deepEqual(restored.model, baseline.model, 'Restore recovers exact physical geometry');
-    assert.deepEqual(restored.workflow.steps, baseline.workflow.steps, 'Restore recovers all Steps');
+    assert.deepEqual(
+      restored.workflow.steps,
+      baseline.workflow.steps,
+      'Restore recovers all Steps',
+    );
     assert.deepEqual(
       restored.workflow.branches,
       baseline.workflow.branches,
@@ -179,7 +183,9 @@ try {
     assert.deepEqual(reloaded.workflow.branches, baseline.workflow.branches);
     assert.deepEqual(errors, [], 'Recovery restore must not cause browser page errors');
     await stale.close();
-    console.log('V2_RECOVERY_RESTORE_PARITY: exact Model/History/Variants, pre-restore, lease, reload PASS');
+    console.log(
+      'V2_RECOVERY_RESTORE_PARITY: exact Model/History/Variants, pre-restore, lease, reload PASS',
+    );
   } finally {
     await context.close();
   }
