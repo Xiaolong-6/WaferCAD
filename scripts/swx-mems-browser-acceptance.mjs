@@ -344,7 +344,11 @@ try {
           path: resolve(out, 'swx-' + state + '-3d-' + review.name + '.png'),
         });
       }
-      await page.locator('[data-action="view:section"]').click();
+      // In UI v2 Section is a dock, not a "view:section" toolbar item.
+      const sectionToggle = page.locator('[data-action="section"]');
+      if ((await sectionToggle.getAttribute('aria-pressed')) !== 'true') {
+        await sectionToggle.click();
+      }
       await waitForPaint(page);
       const sectionReview = page.locator('#sectionPanel');
       assert.ok(await sectionReview.isVisible(), 'Comb BOX section must be visible');
