@@ -41,6 +41,10 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Diagnose compact browser script formatting (temporary)
+        run: |
+          npx prettier --write scripts/swx-mems-compact-browser-acceptance.mjs
+          git diff -- scripts/swx-mems-compact-browser-acceptance.mjs
       - name: Compact actuator targeted scientific contracts
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Compact optical/mechanical interface scientific contracts
