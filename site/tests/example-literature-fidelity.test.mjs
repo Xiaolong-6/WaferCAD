@@ -227,7 +227,6 @@ test('Photodetector variants distinguish Implant from Electrical Region', async 
   }
 });
 
-
 test('Photodetector Variants keep distinct front material owners', async () => {
   const project = await example('photodetector-literature-examples');
   const branches = new Map(project.snapshotBranches.branches.map((branch) => [branch.id, branch]));
