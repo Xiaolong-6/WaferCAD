@@ -308,3 +308,26 @@ ${ROUGH_PROFILE_GLSL}`,
   material.needsUpdate = true;
   return true;
 }
+
+// Wire/outline variant: the same vertex displacement as the rough cap, without
+// the fragment-normal shader (LineBasicMaterial has no normal_fragment_maps).
+export function decorateGpuRoughLineMaterial(material, appearance, { profileNormal = 1 } = {}) {
+  if (!material || !canUseGpuRoughPreview(appearance)) return false;
+  const uniforms = gpuRoughAppearanceUniforms(appearance, { profileNormal }),
+    previousCompile = material.onBeforeCompile,
+    previousProgramKey = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () =>
+    `${previousProgramKey ? previousProgramKey() : ''}|wafercad-gpu-rough-line-v1`;
+  material.onBeforeCompile = (shader, renderer) => {
+    previousCompile?.(shader, renderer);
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = injectAfter(shader.vertexShader, '#include <common>', ROUGH_PROFILE_GLSL);
+    shader.vertexShader = injectAfter(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      'transformed.z += waferCadRoughProfileNormal * waferCadRoughProfile(position.xy);',
+    );
+  };
+  material.needsUpdate = true;
+  return true;
+}
