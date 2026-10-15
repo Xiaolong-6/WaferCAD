@@ -38,3 +38,17 @@ jobs:
         run: |
           npx eslint site/wafer-bonding.js site/wafer-assembly.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs
           npx prettier --check site/wafer-bonding.js site/wafer-assembly.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+      - name: One-shot formatter evidence
+        if: failure()
+        run: |
+          npx prettier --write site/wafer-bonding.js site/wafer-assembly.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+          git fetch origin "${{ github.event.pull_request.head.sha }}" --depth=1
+          git rev-parse "FETCH_HEAD^{tree}" | sed 's/^/BOND_TREE:/'
+          node --input-type=module -e '
+            import fs from "node:fs";
+            for (const path of ["site/wafer-bonding.js","site/wafer-assembly.js","site/tests/wafer-bonding.test.mjs","site/tests/wafer-assembly.test.mjs","site/tests/wafer-bonding-gan-two-wafer.test.mjs","docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md"]) {
+              console.log("BOND_FORMAT_START:" + path);
+              console.log(fs.readFileSync(path).toString("base64"));
+              console.log("BOND_FORMAT_END:" + path);
+            }
+          '
