@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { isotropicReleaseBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
 import { checkRoughSectionDetail } from './test-helpers/section-profile.mjs';
 import {
@@ -17,6 +18,30 @@ import {
 
 export async function runRendererProductCases({ page, capture }) {
   const { pointInMulti } = await import('../site/vector-geometry.js');
+
+  // PR CI normally skips the full screenshot gallery for speed. Preserve
+  // just the two actual rough-surface acceptance frames so they can be
+  // visually reviewed before merging a change to the renderer.
+  const captureRoughEvidence = async (name) => {
+    if (process.env.WAFERCAD_CAPTURE_REVIEW !== '0') return;
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        const canvas = host?.querySelector('canvas');
+        return host?.dataset.renderState === 'ready' && canvas?.dataset.roughMeshMode === 'detailed';
+      },
+      null,
+      { timeout: 120000 },
+    );
+    await page.screenshot({
+      path: join(
+        resolve(process.env.WAFERCAD_REVIEW_DIR || 'test-results/product-review/renderer'),
+        `${name}.png`,
+      ),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  };
 
   // Literature acceptance path: open the pre-release spoked silica disk,
   // execute Isotropic release through the real Process/worker UI, verify the
@@ -295,6 +320,7 @@ export async function runRendererProductCases({ page, capture }) {
     `rough base triangulation cache is incomplete: ${fitBaseTriangulations} < ${fitSpatialZoneBuilds}`,
   );
   await capture(page, 'wide-rough-3d-opaque-max');
+  await captureRoughEvidence('rough-opaque-3d-evidence');
 
   // Interaction LOD: switch to a cached coarse mesh once at drag start,
   // avoid topology rebuilds during mousemove, then refine asynchronously.
@@ -426,6 +452,7 @@ export async function runRendererProductCases({ page, capture }) {
     `transparent buried material must expose physically owned internal contours: ${JSON.stringify(outlineDiagnostics)}`,
   );
   await capture(page, 'wide-rough-3d-transparent-borders-max');
+  await captureRoughEvidence('rough-transparent-borders-3d-evidence');
   await page.locator('#threeMaxBtn').click();
   // The Border label can remain hidden when the workspace reflows after
   // maximizing. Dispatch the same change event on its checkbox to restore
