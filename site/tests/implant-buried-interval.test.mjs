@@ -69,9 +69,7 @@ test('legacy Implant and optional buried Recipe survive normalization and code r
   );
   assert.equal(legacy.steps[0].params.startDepthUm ?? 0, 0);
   const explicitZero = normalizeProcessRecipe({
-    steps: [
-      { command: 'implant', params: { name: 'Zero', depth: '200 nm', startDepth: '0 nm' } },
-    ],
+    steps: [{ command: 'implant', params: { name: 'Zero', depth: '200 nm', startDepth: '0 nm' } }],
   });
   assert.equal(
     Object.hasOwn(explicitZero.steps[0].params, 'startDepthUm'),
