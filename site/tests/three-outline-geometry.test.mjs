@@ -5,6 +5,7 @@ import {
   buriedInterfaceContours,
   contoursToPositions,
   ownedContourSegments,
+  sectionCutContours,
   transparentInspectionContours,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
@@ -95,4 +96,46 @@ test('buried array contours honor instance transforms and reject degenerate edge
     ]).length,
     0,
   );
+});
+
+test('ROI material section contours include rough and smooth cut levels only', () => {
+  const clip = [
+    [
+      [
+        [0, 0],
+        [8, 0],
+        [8, 8],
+        [0, 8],
+        [0, 0],
+      ],
+    ],
+  ];
+  const appearance = {
+    kind: 'rough',
+    morphology: 'pyramid',
+    polarity: 'normal',
+    featureSize: 1,
+    meanHeight: 0.2,
+    etchDepth: 0.2,
+    featureCv: 0,
+    heightCv: 0,
+    seed: 8,
+  };
+  const wall = {
+    p: [0, 0],
+    q: [8, 0],
+    z0: 0,
+    z1: 2,
+    upperSurface: { appearance, profileNormal: -1 },
+  };
+  const inside = { ...wall, p: [2, 2], q: [6, 2] };
+  const lines = sectionCutContours([wall, inside], clip);
+  assert.ok(lines.length > 10);
+  assert.ok(lines.every(([a, b]) => a[1] === 0 && b[1] === 0));
+  const first = lines.find(([a, b]) => a[0] === 0 && b[0] === 0 && a[2] !== b[2]);
+  assert.ok(first, 'cut edge has a material-height vertical border');
+  assert.ok(Math.abs(Math.max(first[0][2], first[1][2]) -
+    (2 - roughProfileOffsetAtPoint(0, 0, appearance))) < 1e-9);
+  assert.deepEqual(sectionCutContours([inside], clip), []);
+  assert.deepEqual(sectionCutContours([wall], null), []);
 });
