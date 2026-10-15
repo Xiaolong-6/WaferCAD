@@ -1,7 +1,8 @@
 // Float target readback executes the production GLSL, rather than a JS port.
 export async function gpuHeightOracle() {
   const THREE = await import('three');
-  const { decorateGpuRoughMaterial, supportsPreciseGpuRoughDisplacement } = await import('/site/gpu-rough-surface.js');
+  const { decorateGpuRoughMaterial, supportsPreciseGpuRoughDisplacement } =
+    await import('/site/gpu-rough-surface.js');
   const { roughProfileOffsetAtPoint } = await import('/site/surface-rendering.js');
   const renderer = new THREE.WebGLRenderer();
   if (!renderer.extensions.has('EXT_color_buffer_float'))
