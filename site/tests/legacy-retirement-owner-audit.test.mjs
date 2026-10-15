@@ -75,7 +75,10 @@ test('source-only editor, experimental D1 and public redirect are distinct owner
   assert.equal(classifyRetirementSurface('site/workstation.css'), 'source-only-legacy-editor');
   assert.equal(classifyRetirementSurface('site/app-v2-real.html'), 'experimental-d1');
   assert.equal(classifyRetirementSurface('site/ui-v2/real-view-bridge.js'), 'experimental-d1');
-  assert.equal(classifyRetirementSurface('site/ui-v2/real-section-controls.js'), 'experimental-d1');
+  assert.equal(
+    classifyRetirementSurface('site/ui-v2/real-section-controls.js'),
+    'experimental-d1',
+  );
   assert.equal(
     classifyRetirementSurface('site/ui-v2/real-three-controls.js'),
     'shared-production-controls',
@@ -84,5 +87,8 @@ test('source-only editor, experimental D1 and public redirect are distinct owner
     classifyRetirementSurface('scripts/build-pages-artifact.mjs'),
     'published-redirect-owner',
   );
-  assert.equal(classifyRetirementSurface('site/controllers/startup-controller.js'), 'site-runtime');
+  assert.equal(
+    classifyRetirementSurface('site/controllers/startup-controller.js'),
+    'site-runtime',
+  );
 });
