@@ -1,6 +1,6 @@
 # Multi-wafer bonding design and staged scientific acceptance
 
-Status: **Draft / P0 design + isolated P1 geometry prototype** (2026-10-15).
+Status: **Draft / P1B scientific prototype + P2 lossless Assembly IO candidate** (2026-10-15).
 Branch: `feat/multi-wafer-bonding-from-pr229-20261015`.
 Reference example: PR #229, Lian et al., _Microsystems & Nanoengineering_ 8, 119 (2022), DOI 10.1038/s41378-022-00462-3.
 **Do not merge to Main without explicit scientific/visual user approval.**
@@ -28,7 +28,7 @@ bow/overlay statistics, and heat/CFD/electrical transport are not predicted.
   one model; it is not a donor/receiver operation.
 - `site/process-recipe.js` currently accepts Deposit/Extend/Etch/Lift-off/
   Implant/Electrical/Record/Snapshot, not a Bond command.
-- `site/project-schema.js` uses project v14 with strict physical model budgets;
+- `site/project-schema.js` now supports project v15 with strict Assembly validation and legacy v14 migration;
   `site/project-io.js` packs shared geometries and model dictionaries.
 - History/Recovery require validated candidate commit, stable replay input and
   safe downstream rollback.
@@ -56,8 +56,8 @@ An Assembly can be extended with a third wafer by bonding against a completed
 product revision. Source identities and Layer IDs must remain distinct and
 traceable. The external source file shall be embedded (bounded, deduplicated)
 rather than linked by an unverifiable local path. Recursive/foreign-project
-references must be rejected, bounded and migration-tested. No v14 on-disk
-format change is authorized by the standalone prototype.
+references must be rejected, bounded and migration-tested. The new v15 project schema explicitly gates embedded Assembly provenance; older
+v14 readers reject v15 rather than silently misinterpreting it.
 
 ### Physical coordinate contract
 
@@ -103,11 +103,11 @@ The strict prototype intentionally rejects canonical Array models and models
 with Implant/Electrical Region annotations instead of silently dropping their
 geometry. It does not yet create History operations, persistent provenance,
 Recipe syntax, imported donor projects, or UI controls. These must not be
-advertised as complete. The interface record is **not yet part of the
-versioned project schema**, and is returned separately rather than persisted
-as unvalidated model metadata.
+advertised as complete. The pure Kernel continues returning the interface separately; the v15
+Assembly project wrapper now persists typed Bond metadata and full validated
+source projects, with strict replay parity before both export and import.
 
-`site/tests/wafer-bonding.test.mjs` defines seven directed scientific tests:
+`site/tests/wafer-bonding.test.mjs` defines eleven directed scientific tests:
 800 µm two-wafer stack, capped open coolant trench, handedness/90° rotation,
 front/back pairing, third-wafer extension, atomic rejection, and annotation/
 array exclusion. These are proposed acceptance tests; their execution must
@@ -186,3 +186,35 @@ Recipe/History/Recovery and release CI.
 scientific mismatches; extend geometry coverage; then implement versioned
 Assembly persistence and History integration. The donor/receiver model and
 source masks from PR #229 should not be altered during this isolated stage.
+
+## Verified P1B/P2 milestone — 2026-10-15
+
+- **P1B:** eleven primary geometry/transaction tests, six Assembly source/replay
+  tests, and a two-independent-400-µm-Si paper-dimension test passed. Check
+  both bond faces, XY mirror/rotation, distinct layer IDs, contact islands,
+  surface coverage fractions, buried coolant voids, oxide interface film and
+  three-wafer extension. The GaN case is a source-dimension **geometric
+  fixture**, not the complete author's GDS/Recipe or a visual reconstruction.
+- **P2 (partial):** `site/wafer-assembly.js` embeds full validated source
+  projects (including Mask/layout, Recipe and source History snapshots) with
+  bounded byte budgets and deterministic ordered replay. A v15
+  `waferAssembly` field is validated in `project-schema.js`, and
+  `project-io.js` uses **lossless-only** storage for bonded projects. Source
+  length drift, wrong contact metadata, illegal nested provenance, mismatched
+  output geometry and pre-v15 Assembly files are refused before import/export.
+- **Acceptance:** five dedicated v15 IO/Recovery tests pass. Existing
+  `project-geometry-storage.test.mjs` was also attempted in the targeted
+  campaign but failed at module startup due to polygon-clipping preload
+  ordering; this unrelated fixture has **not** been counted as passing or
+  silently modified. It remains a later compatibility gate.
+- **Still missing:** a user-facing Bond operation and transaction in
+  Recipe/History/Recovery, original two-wafer full PR #229 flow, real
+  Chromium four-view screenshots, cross-version browser open test, complete
+  Quality and release gates. Do not merge or deploy.
+
+The v15 assembled project currently exposes an **immutable post-bond
+baseline**. To prevent corruption, it refuses to save post-bond material
+changes until a first-class Bond History/Recipe operation exists. The donor's
+independent source History remains inside the Assembly record and is not
+misrepresented as the product's own linear Process History. After P2 History
+integration this restriction can be lifted with explicit replay provenance.
