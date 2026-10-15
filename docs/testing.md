@@ -126,9 +126,18 @@ on-demand four-view preview renders the small final-stage project through v2,
 never acquires the writer lease, and does not change the saved-workspace marker.
 It has no `start` intent, autosave or Recovery side effects. Full examples
 continue to open through the ordinary v2 Project route.
-`scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
-opening the optional Legacy URL, exact cross-interface recovery, and concurrent
-Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
+`scripts/v2/check-cross-ui-recovery.mjs` retains its historical CI entry
+name while exercising the production v2 Workstation only: complete 47-Step and
+seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
+competing v2 writer exclusion, protected unload, and Recovery after replacement.
+The original executable Legacy↔v2 browser handoff test remains independently
+available in `scripts/v2/check-legacy-cross-ui-recovery.mjs` and runs under
+`legacy-cross-ui-retirement.yml` when either writer implementation changes,
+or by manual dispatch. This separate gate must be retired only after all
+cross-interface storage contracts have a verified replacement.
+Historical pre-v2 project decoding and compatibility remain separately owned
+by `check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
+The Workstation footer shows the deployed commit
 from `build-info.json` (or `commit local` in local development).
 Existing scientific/controller suites retain their Legacy DOM assertions at
 `app-legacy.html`. Suites that start through Welcome explicitly use

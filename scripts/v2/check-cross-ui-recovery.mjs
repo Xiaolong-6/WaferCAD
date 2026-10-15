@@ -1,3 +1,5 @@
+// Retirement parity: v2 Example → Save → Reload → competing v2 writer → Recovery.
+// Historical Legacy file decoding remains owned by check-legacy-project-recovery.mjs.
 import assert from 'node:assert/strict';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
@@ -7,16 +9,11 @@ const { page, context } = await newUiPage(browser, { viewport: { width: 1440, he
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 
-async function open(path, ui) {
+async function open(path) {
   await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction(
-    (mode) =>
-      mode === 'legacy'
-        ? document.documentElement.dataset.appReady === 'true'
-        : document.body.dataset.ready === 'true',
-    ui,
-    { timeout: 120000 },
-  );
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
 }
 
 async function waitForSavedProject(expected) {
@@ -54,69 +51,70 @@ async function waitForProjectName(name) {
 }
 
 try {
-  await open('/app-legacy.html?start=example&example=photodetector-literature', 'legacy');
-  const fromLegacy = await waitForSavedProject({ layers: 6 });
-  assert.equal(fromLegacy.model.layers.length, 6);
-  assert.equal(fromLegacy.branches, 7);
+  await open('/app.html?start=example&example=photodetector-literature');
+  const fromExample = await waitForSavedProject({ layers: 6 });
+  assert.equal(fromExample.model.layers.length, 6);
+  assert.equal(fromExample.branches, 7);
+  const example = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  assert.equal(example.workflow.steps.length, 47);
+  assert.equal(example.workflow.branches.length, 7);
 
-  await open('/app.html', 'v2');
+  await open('/app.html');
   const v2FirstLoad = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.deepEqual(
     v2FirstLoad.model,
-    fromLegacy.model,
-    'V2 restores Legacy geometry without drift',
+    fromExample.model,
+    'V2 restores the complete saved Example geometry without drift',
   );
-  assert.equal(v2FirstLoad.workflow.steps.length, 47, 'V2 restores Legacy History');
-  assert.equal(v2FirstLoad.workflow.branches.length, 7, 'V2 restores all Legacy Variants');
+  assert.equal(v2FirstLoad.workflow.steps.length, 47, 'V2 reload restores complete History');
+  assert.equal(v2FirstLoad.workflow.branches.length, 7, 'V2 reload restores all Variants');
 
-  const v2Title = 'V2 cross-interface save';
+  const v2Title = 'V2 session save';
   await page.locator('#projectNameInput').fill(v2Title);
-  // The optional Legacy URL is no longer linked from v2. Save through
-  // the visible Project action and verify persisted state before navigation.
+  // Save through the visible Project action and verify the committed state
+  // before a new independent v2 session reads it.
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(() =>
-    /Saved "V2 cross-interface save" locally/.test(
+    /Saved "V2 session save" locally/.test(
       document.querySelector('[data-slot="status.message"]')?.textContent || '',
     ),
   );
   const fromV2 = await waitForSavedProject({ name: v2Title });
   await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.dirty);
-  await open('/app-legacy.html', 'legacy');
+  await open('/app.html');
   await waitForProjectName(v2Title);
-  assert.deepEqual(fromV2.model, fromLegacy.model, 'V2 autosave preserves exact physical geometry');
+  assert.deepEqual(fromV2.model, fromExample.model, 'V2 Save preserves exact physical geometry');
   assert.equal(fromV2.branches, 7);
 
-  const legacyTitle = 'Legacy cross-interface save';
-  await page.locator('#projectNameInput').fill(legacyTitle);
-  await waitForSavedProject({ name: legacyTitle });
-  await open('/app.html', 'v2');
+  const secondTitle = 'V2 second-session save';
+  await page.locator('#projectNameInput').fill(secondTitle);
+  await waitForSavedProject({ name: secondTitle });
+  await open('/app.html');
   const restoredInV2 = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
-  assert.equal(restoredInV2.projectName, legacyTitle);
-  assert.deepEqual(restoredInV2.model, fromLegacy.model);
+  assert.equal(restoredInV2.projectName, secondTitle);
+  assert.deepEqual(restoredInV2.model, fromExample.model);
   assert.equal(restoredInV2.workflow.steps.length, 47);
 
   const stalePage = await context.newPage();
   stalePage.on('pageerror', (error) => errors.push(error.message));
-  await stalePage.goto(`${base}/app-legacy.html`, {
+  await stalePage.goto(`${base}/app.html`, {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
-  await stalePage.waitForFunction(
-    () => document.documentElement.dataset.appReady === 'true',
-    null,
-    {
-      timeout: 120000,
-    },
-  );
-  assert.equal(
-    await stalePage.locator('.workspace').getAttribute('data-autosave-owner'),
-    'false',
-    'A simultaneous Legacy tab does not acquire the active v2 writer lease',
-  );
+  await stalePage.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
+  const nonOwner = await stalePage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  assert.equal(nonOwner.workflow.writable, false, 'A second v2 tab cannot steal the writer lease');
+  assert.deepEqual(nonOwner.model, restoredInV2.model);
+  assert.deepEqual(nonOwner.workflow.steps, restoredInV2.workflow.steps);
+  assert.deepEqual(nonOwner.workflow.branches, restoredInV2.workflow.branches);
   const primaryTitle = 'Active v2 writer';
   await page.locator('#projectNameInput').fill(primaryTitle);
   await waitForSavedProject({ name: primaryTitle });
+  await stalePage.locator('[data-action="domain:project"]').click();
   await stalePage.locator('#projectNameInput').fill('Stale tab must not save');
+  await stalePage.locator('#saveProjectBtn').click();
   for (let attempt = 0; attempt < 12; attempt++) {
     const savedName = await stalePage.evaluate(
       async () => (await (await import('/workspace-persistence.js')).loadWorkspaceState())?.name,
@@ -140,12 +138,47 @@ try {
   await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
   const reloaded = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.equal(reloaded.projectName, exitTitle);
-  assert.deepEqual(reloaded.model, fromLegacy.model);
+  assert.deepEqual(reloaded.model, fromExample.model);
   assert.equal(reloaded.workflow.steps.length, 47);
-  assert.deepEqual(errors, [], 'Cross-interface and lease scenarios produce no page errors');
-  console.log(
-    'M5 cross-UI: Legacy → V2 → Legacy → V2 restores exact geometry, History and Variants PASS',
+  assert.deepEqual(reloaded.workflow.steps, example.workflow.steps, 'Reload preserves exact Steps');
+  assert.deepEqual(
+    reloaded.workflow.branches,
+    example.workflow.branches,
+    'Reload preserves exact Variants',
   );
+  const savedGraph = await page.evaluate(async () => {
+    const { loadWorkspaceState } = await import('/workspace-persistence.js');
+    const project = await loadWorkspaceState();
+    return {
+      nodes: project.snapshotBranches?.nodes,
+      branches: project.snapshotBranches?.branches,
+    };
+  });
+  assert.equal(savedGraph.nodes.length, 47);
+  assert.equal(savedGraph.branches.length, 7);
+  // Replacing the active workspace must checkpoint the last committed
+  // model and its complete 47-Step / seven-Variant graph for Recovery.
+  await open('/app.html?start=empty');
+  const recovery = await page.evaluate(async (name) => {
+    const storage = await import('/workspace-persistence.js');
+    for (const point of await storage.listWorkspaceRecoveryPoints()) {
+      const saved = await storage.loadWorkspaceRecoveryPoint(point.key);
+      if (saved?.name === name) {
+        return {
+          model: saved.model,
+          nodes: saved.snapshotBranches?.nodes,
+          branches: saved.snapshotBranches?.branches,
+        };
+      }
+    }
+    return null;
+  }, exitTitle);
+  assert.ok(recovery, 'Replacing the v2 project creates a Recovery checkpoint');
+  assert.deepEqual(recovery.model, fromExample.model);
+  assert.deepEqual(recovery.nodes, savedGraph.nodes, 'Recovery retains the exact 47-Step graph');
+  assert.deepEqual(recovery.branches, savedGraph.branches, 'Recovery retains exact Variants');
+  assert.deepEqual(errors, [], 'v2 session and lease scenarios produce no page errors');
+  console.log('M5 v2 session: 47 Steps, seven Variants, stale writer and Recovery PASS');
 } finally {
   await context.close();
   await browser.close();
