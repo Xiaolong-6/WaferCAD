@@ -38,6 +38,7 @@ export const SWX_REPORTED = Object.freeze({
   combFingerWidthUm: 0.5,
   combFingerLengthUm: 3.2,
   combFingerGapUm: 0.3,
+  combFingerInitialOverlapUm: 0.2,
   combFingerUnits: 40,
 });
 
@@ -66,6 +67,10 @@ export const SWX_ASSUMPTIONS = Object.freeze({
   maskSource: 'paper-constrained illustrative reconstruction, not measured/author layout',
   // Alternative ON is a geometric pose, not a voltage-driven elastic simulation.
   onPose: 'rigid-body translation of movable geometry; no FEM',
+  // Illustrative coordinates, not recovered GDS. The actuator axis is +Y.
+  shuttleVerticalExtentUm: [-9, 9],
+  lowerStationaryCombYUm: -5.8,
+  lowerMovableCombYUm: -11.2,
 });
 
 function ensureState(state) {
@@ -410,57 +415,61 @@ function makeStructuralAligners(moveY) {
 }
 
 function makeShuttle(moveY) {
-  const left = -23,
-    right = 44,
-    halfHeight = SWX_REPORTED.shuttleWidthUm / 2;
-  const top = halfHeight + moveY;
-  const bottom = -halfHeight + moveY;
+  // S8: the shuttle's *long* axis follows its +Y actuation. Reconstruct a
+  // perforated 6um-wide ladder, rather than a 67um transverse truss. Exact
+  // hole spacing and the span between the spring attachments are inferred.
+  const [y0, y1] = SWX_ASSUMPTIONS.shuttleVerticalExtentUm;
+  const railX = (SWX_REPORTED.shuttleWidthUm - 0.7) / 2;
   const beams = [
-    strip([left, top], [right, top], 0.55),
-    strip([left, bottom], [right, bottom], 0.55),
-    // Rigid moving SWX half attaches to the central triangular truss.
-    strip([-28, -1.6 + moveY], [left + 0.2, bottom], 0.7),
+    strip([-railX, y0 + moveY], [-railX, y1 + moveY], 0.7),
+    strip([railX, y0 + moveY], [railX, y1 + moveY], 0.7),
   ];
-  const pitch = 5;
-  for (let x = left; x + pitch <= right; x += pitch) {
-    beams.push(strip([x, top], [x + pitch * 0.5, bottom], 0.4));
-    beams.push(strip([x + pitch * 0.5, bottom], [x + pitch, top], 0.4));
+  for (let y = y0 + 1; y < y1; y += 4) {
+    beams.push(strip([-railX, y + moveY], [railX, y + moveY], 0.45));
+  }
+  beams.push(
+    // The lower SWX reflector translates with the vertical shuttle.
+    strip([-28, -1.6 + moveY], [-railX, -1.6 + moveY], 0.7),
+    // Both suspended 3um comb handles belong to ONE moving Si net.
+    strip([railX, moveY], [5.8, moveY], 1),
+    strip([railX, -8 + moveY], [5.8, SWX_ASSUMPTIONS.lowerMovableCombYUm + moveY], 1),
+  );
+  // The four folded spring ends attach to the sides of the shuttle. No
+  // spring is allowed to terminate freely at the actuator interface.
+  for (const side of [-1, 1]) {
+    beams.push(strip([railX, side * 3 + moveY], [5.1, side * 3 + moveY], 0.45));
   }
   return beams;
 }
 
 function makeCombs(moveY) {
+  const lowerFixedY = SWX_ASSUMPTIONS.lowerStationaryCombYUm;
+  const lowerMovingY = SWX_ASSUMPTIONS.lowerMovableCombYUm;
   const fixed = [
     rect(25, 9, 39, SWX_REPORTED.fixedCombHandleUm),
-    rect(25, -21, 39, SWX_REPORTED.fixedCombHandleUm),
+    rect(25, lowerFixedY, 39, SWX_REPORTED.fixedCombHandleUm),
   ];
   const moving = [
     rect(25, moveY, 39, SWX_REPORTED.movableCombHandleUm),
-    rect(25, -11.2 + moveY, 39, SWX_REPORTED.movableCombHandleUm),
-    strip([42, -11.2 + moveY], [42, moveY], 0.9),
+    rect(25, lowerMovingY + moveY, 39, SWX_REPORTED.movableCombHandleUm),
   ];
-  // The upper fixed finger starts at y=4.3um, above the ON-state
-  // shuttle rail maximum y=4.16um. Its 300nm lateral clearance from
-  // movable fingers is preserved during the 885nm vertical stroke.
-  // Adjacent comb fingers have 500nm width, 300nm lateral clearance and
-  // a real 2D interdigitation overlap; each bank has 20 finger pairs.
-  for (let i = 0; i < 20; i++) {
-    const x = 8.8 + i * 1.65;
-    fixed.push(rect(x, 5.9, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(
-      rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
-    );
-    // Allow 0.2um physical overlap with the lower 6um stationary handle;
-    // an exact butt joint at y=-18um is fragile after mask grid snapping.
-    fixed.push(rect(x, -16.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
-    moving.push(
-      rect(
-        x + 0.8,
-        -14.15 + moveY,
-        SWX_REPORTED.combFingerWidthUm,
-        SWX_REPORTED.combFingerLengthUm,
-      ),
-    );
+  // Both pairs must produce +Y force: each stationary finger points
+  // downward from a supported handle toward a suspended finger pointing
+  // upward. At OFF the axial overlap is Lc-ac=0.2um; at ON it rises to
+  // 1.085um. Horizontal edge-to-edge spacing stays 0.3um in both states.
+  // Twenty interleaved finger pairs per bank give 40 comb cells overall.
+  const banks = [
+    { fixedY: 5.7, movingY: 2.7 },
+    { fixedY: -9.5, movingY: -12.5 },
+  ];
+  for (const bank of banks) {
+    for (let i = 0; i < 20; i++) {
+      const x = 8.8 + i * 1.65;
+      fixed.push(rect(x, bank.fixedY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+      moving.push(
+        rect(x + 0.8, bank.movingY + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
+      );
+    }
   }
   return { fixed, moving };
 }
@@ -484,7 +493,7 @@ export function createSwxGeometry(state = 'off') {
     rect(2, 40, 10, 10),
     rect(2, -40, 10, 10),
     rect(46, 9, 9, 9),
-    rect(46, -21, 9, 9),
+    rect(46, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 9, 6),
   ];
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
@@ -521,7 +530,7 @@ export function createSwxGeometry(state = 'off') {
     rect(2, 40, 5.5, 5.5),
     rect(2, -40, 5.5, 5.5),
     rect(46, 9, 5, 5),
-    rect(46, -21, 5, 5),
+    rect(46, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 5, 5),
   ];
   const polys = new Map([
     [1, silicon],
