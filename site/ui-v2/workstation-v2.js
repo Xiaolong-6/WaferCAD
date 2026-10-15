@@ -329,9 +329,9 @@
         for (const [key, control] of desktopViewButtons)
           control.setAttribute('aria-pressed', String(docking.highlighted.includes(key)));
         viewbar.replaceChildren(
-          state.editorHidden
-            ? el('div', { class: 'p-actions' }, button('Restore panel', 'expand-empty', 'process'))
-            : null,
+          ...(state.editorHidden
+            ? [el('div', { class: 'p-actions' }, button('Restore panel', 'expand-empty', 'process'))]
+            : []),
           desktopViewbar,
         );
         dockEmpty.hidden = docking.displayed.length > 0;
