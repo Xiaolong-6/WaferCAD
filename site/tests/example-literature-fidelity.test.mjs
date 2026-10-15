@@ -75,13 +75,20 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
   assert.equal(project.layout.elements.length, 7);
 
   const center = materialAt(project, [0, 0]);
-  const released = materialAt(project, [100, 0]);
+  const inner = materialAt(project, [100, 0]);
+  const middle = materialAt(project, [120, 0]);
+  const rim = materialAt(project, [140, 0]);
   const outside = materialAt(project, [150, 0]);
   assert.ok(Math.abs(thickness(center, 'Thermal SiO₂') - 1.8) < 1e-9);
   assert.ok(Math.abs(segment(center, 'Silicon').z1 - segment(center, 'Thermal').z0) < 1e-9);
+  const siliconTop = (stack) => segment(stack, 'Silicon').z1;
+  assert.ok(siliconTop(center) > siliconTop(middle));
+  assert.ok(siliconTop(middle) > siliconTop(inner));
+  assert.ok(siliconTop(inner) > siliconTop(rim));
+  assert.ok(Math.abs(siliconTop(rim) - 4) < 1e-9);
   assert.ok(
-    segment(released, 'Thermal').z0 - segment(released, 'Silicon').z1 >= 35.9,
-    'A canonical released void must separate silica from silicon',
+    segment(inner, 'Thermal').z0 - siliconTop(inner) >= 30,
+    'The release must leave a real void beneath the silica annulus',
   );
   assert.equal(
     outside.some((entry) => entry.name.includes('SiO₂')),
