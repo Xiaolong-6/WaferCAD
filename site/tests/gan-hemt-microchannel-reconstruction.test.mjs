@@ -14,6 +14,7 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
 const { readProjectFile } = await import('../project-io.js');
+const { createSnapshotManager } = await import('../workspace-snapshots.js');
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { collectMaskExportElements, serializeGDS, serializeOASIS } =
   await import('../layout-export.js');
@@ -101,6 +102,42 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     snapshot.name.startsWith('01 Four-level open microchannels'),
   );
   assert.ok(manifoldReview, 'No pre-assembly manifold inspection bookmark');
+  // A Bookmark with a custom 3D camera/ROI/Section intentionally differs
+  // from the associated Process Step state. Snapshot Manager describes it as a
+  // distinct checkpoint; the History UI must nevertheless offer the same
+  // "Restore bookmark" action as for an ordinary Step-aligned bookmark.
+  let live = project;
+  const history = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: (state) => {
+      try {
+        validateProcessModel(state.model);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  });
+  history.importRecords(project.snapshots, project.snapshotBranches);
+  const listedBookmark = history.list().find((record) => record.id === manifoldReview.id);
+  assert.ok(listedBookmark, 'First manifold Bookmark was lost during Snapshot Manager import');
+  assert.equal(
+    listedBookmark.legacyCheckpoint,
+    true,
+    'Custom inspection state must remain distinct from the Process Step checkpoint',
+  );
+  assert.equal(history.restore(listedBookmark.id), true, 'Custom inspection Bookmark cannot restore');
+  assert.deepEqual(live.roi, manifoldReview.state.roi);
+  assert.deepEqual(live.section, manifoldReview.state.section);
+  assert.deepEqual(live.display.threeCamera, manifoldReview.state.display.threeCamera);
+  assert.equal(
+    live.model.layers.some((layer) => layer.name.startsWith('GaN HEMT SiC substrate')),
+    false,
+    'The restored pre-assembly Bookmark incorrectly contains the final HEMT',
+  );
   assert.deepEqual(manifoldReview.state.roi, {
     type: 'rect',
     a: [-500, -520],
