@@ -123,8 +123,16 @@ try {
     await awaitMessage(/Process result rejected/);
     await awaitIdle();
     const rejected = await snapshot();
-    assert.deepEqual(rejected.model, before.model, 'Rejected Worker may not mutate canonical model');
-    assert.deepEqual(rejected.workflow.steps, before.workflow.steps, 'Rejected Worker preserves Steps');
+    assert.deepEqual(
+      rejected.model,
+      before.model,
+      'Rejected Worker may not mutate canonical model',
+    );
+    assert.deepEqual(
+      rejected.workflow.steps,
+      before.workflow.steps,
+      'Rejected Worker preserves Steps',
+    );
     assert.deepEqual(
       rejected.workflow.branches,
       before.workflow.branches,
@@ -144,7 +152,11 @@ try {
     const aborted = await snapshot();
     assert.deepEqual(aborted.model, before.model, 'Abort cannot mutate geometry');
     assert.deepEqual(aborted.workflow.steps, before.workflow.steps, 'Abort preserves Steps');
-    assert.deepEqual(aborted.workflow.branches, before.workflow.branches, 'Abort preserves Variants');
+    assert.deepEqual(
+      aborted.workflow.branches,
+      before.workflow.branches,
+      'Abort preserves Variants',
+    );
     assert.equal((await page.evaluate(() => window.__v2WorkerFault)).aborted, 1);
 
     await prepare('Recovered worker candidate');
