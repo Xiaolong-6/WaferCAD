@@ -125,6 +125,7 @@ export const GAN_TSV_LINER = Object.freeze({
   localMaskWindow: 90,
   titaniumUm: 0.2,
   copperUm: 0.5,
+  inferredFullCuFillUm: 35,
 });
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
@@ -632,9 +633,20 @@ export async function buildGanMicrochannel() {
     'conformal',
   );
   bookmark('03b Open Ti/Cu-lined TSVs (seed only)');
+  // Probe-verified 35 um conformal geometric fill approximates an electroplated
+  // Cu-filled column. It is NOT an electrochemical growth/cavity-free proof,
+  // and its 35 um amount is inferred from the nominal 70 um square bore.
+  deposit(
+    'Idealized Cu TSV electrofill (inferred 35 um)',
+    'TSV Cu electrofill surrogate 35 um',
+    GAN_TSV_LINER.inferredFullCuFillUm,
+    25,
+    'conformal',
+  );
+  bookmark('03c Cu-filled TSV columns / geometric idealization');
   record(
-    'Full Au/Cu/NiPaAu TSV and surface-metallization completion (metadata only)',
-    'Paper Fig. 2(c,d): the geometry contains idealized conformal Ti/Cu seed films (200/500 nm), but not validated sputter coverage, insulating oxide, full Cu plating/fill, NiPaAu, Au routing, or device electrical continuity.',
+    'Electrical TSV and chip wiring finishing steps (metadata only)',
+    'Paper Fig. 2(c,d): the idealized Cu core and Ti/Cu seed geometry are modeled, but real sputter coverage, oxide insulation, electroplating kinetics/voids, NiPaAu and Au interconnect routing, and electrical continuity are NOT verified.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -720,10 +732,21 @@ export async function buildGanMicrochannel() {
   const tsvCu = model.layers.find(
     (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
   );
-  assert.ok(tsvTi && tsvCu, 'Missing physical Ti/Cu TSV seed material');
+  const tsvFill = model.layers.find(
+    (layer) => layer.name === 'TSV Cu electrofill surrogate 35 um',
+  );
+  assert.ok(tsvTi && tsvCu && tsvFill, 'Missing physical TSV Ti/Cu seed or Cu fill');
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550]) {
-      assert.equal(materialAt([x, y], z), false, 'TSV central void is blocked at ' + [x, y, z]);
+      const centerCu = model.regions.some(
+        (region) =>
+          vectorApi.pointInMulti([x, y], region.geom) &&
+          region.stack.some(
+            (segment) =>
+              segment.layerId === tsvFill.id && segment.z0 < z && segment.z1 > z,
+          ),
+      );
+      assert.equal(centerCu, true, 'Cu electrofill is absent at ' + [x, y, z]);
       assert.equal(materialAt([x + 43, y], z), true, 'Missing surrounding Si at ' + [x, y, z]);
       const present = new Set();
       for (let delta = 33; delta <= 37.0001; delta += 0.05) {
@@ -870,6 +893,7 @@ export async function buildGanMicrochannel() {
       longSupplyReturnRoutesReachBothRemotePorts: true,
       physicalAlGaNAndSiNWith2DEGOnlyAsMetadata: true,
       fourOpenTSVsWithContinuousTiCuSeedGeometry: true,
+      fourCuFilledTSVsWithUnblockedCoolant: true,
     },
     checkpoints,
   };
