@@ -2,6 +2,43 @@
 
 WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
 
+## Visual-first Draft development
+
+Visual changes use an inexpensive, explicit evidence loop before full acceptance.
+From the repository root, with pinned dependencies and Playwright installed:
+
+`npm run preview:visual`
+
+The command starts a temporary local v2 server, loads a real bundled JLFET
+example in the production `app.html` Workstation, and captures Main, Mask,
+3D and Section in desktop (1440 px) and portrait (390 px) viewports.
+Set `WAFERCAD_VISUAL_SMALL=1` for an additional 360 px portrait case, or
+`WAFERCAD_VISUAL_EXAMPLE=<published-slug>` to select another real example.
+
+Artifacts are written to `test-results/visual-first/`. The report includes
+real model/History summary and a 3D frame-readiness diagnostic. Screenshots
+are **unreviewed evidence**, not automated visual approval, pixel baselines,
+scientific/geometry acceptance, or permission to merge. The developing agent
+must open and inspect the images, note deviations, and iterate locally before
+requesting full acceptance. A screenshot workflow success means only that
+the capture completed.
+
+`visual-first.yml` automatically captures applicable **Draft** PRs, and
+can also be dispatched manually. It never publishes and cannot approve
+the PR. A Draft `Quality` run keeps ESLint, Prettier, and docs consistency
+checks; its complete Node test suite runs after the PR becomes
+Ready for Review. The general Browser regression keeps smoke in Draft,
+and retains the targeted scientific Process Geometry job when needed.
+Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1 and non-science Browser
+regressions defer until Ready for Review or explicit manual/release triggers.
+Other science-specific workflows may still run on Draft if their own
+contracts require it.
+
+The exact `main` release chain is unchanged: Quality, targeted Browser,
+real v2 Stage C/M4, selected scientific checks, staged Pages artifact and
+deployment verdict remain mandatory. A Draft skipped check means
+**unverified**, not passed; no one may merge on the basis of Draft green alone.
+
 ## Pull-request gates
 
 `Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes. It runs pinned ESLint, Prettier format verification, generated-document consistency and the complete Node test suite (`npm run check`). It is a stable required-check candidate; repository ruleset configuration is a separate GitHub administration action.
