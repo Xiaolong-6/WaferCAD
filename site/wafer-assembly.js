@@ -192,12 +192,35 @@ export function createBondedAssemblyProject(assembly) {
   return project;
 }
 
+function sameCanonicalModel(a, b) {
+  const pending = [[a, b]];
+  while (pending.length) {
+    const [left, right] = pending.pop();
+    if (Object.is(left, right)) continue;
+    if (typeof left !== typeof right || left === null || right === null) return false;
+    if (typeof left !== 'object') return false;
+    if (Array.isArray(left) !== Array.isArray(right)) return false;
+    if (Array.isArray(left)) {
+      if (left.length !== right.length) return false;
+      for (let i = 0; i < left.length; i++) pending.push([left[i], right[i]]);
+    } else {
+      const keys = Object.keys(left);
+      if (keys.length !== Object.keys(right).length) return false;
+      for (const key of keys) {
+        if (!Object.hasOwn(right, key)) return false;
+        pending.push([left[key], right[key]]);
+      }
+    }
+  }
+  return true;
+}
+
 /** Fail closed before export/import if root physical material has drifted. */
 export function validateBondedAssemblyProject(project) {
   if (project?.waferAssembly == null) return project;
   validateProjectFile(project);
   const replay = replayWaferAssembly(project.waferAssembly);
-  if (JSON.stringify(replay) !== JSON.stringify(project.model)) {
+  if (!sameCanonicalModel(replay, project.model)) {
     throw new Error('Bonded Assembly material differs from source-project replay; export/import refused.');
   }
   return project;
