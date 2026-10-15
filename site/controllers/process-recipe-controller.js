@@ -1828,10 +1828,9 @@ export function createProcessRecipeController({
       stopRequested = true;
       processTaskController?.abort?.();
     });
-    // The background task dialog overlays the Recipe pane while a Worker is
-    // running. Its user-visible Abort must cancel the *whole* Recipe run, not
-    // merely the current Worker Step followed by the next Step.
-    $('processTaskAbortBtn')?.addEventListener('click', () => {
+    // Observe the task owner's Abort transaction, not its transient dialog
+    // button. This runs before a cancelled Worker result can settle the Step.
+    processTaskController?.onAbort?.(() => {
       if (running) stopRequested = true;
     });
 
