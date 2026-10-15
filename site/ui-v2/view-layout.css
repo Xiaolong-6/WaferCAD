@@ -221,3 +221,31 @@
     inset: 4px 0 auto;
   }
 }
+
+/* Section is scientifically unchanged; narrow desktop docking slots give its
+   slice the full width by default. Layers remains available as a temporary overlay. */
+@media (min-width: 821px) {
+  body[data-workstation]:not([data-preview-mode])
+    .p-canvases[data-desktop-docking='true']
+    .v2-section-body[data-compact-legend='true'] {
+    grid-template-columns: minmax(0, 1fr);
+    position: relative;
+  }
+  body[data-workstation]:not([data-preview-mode])
+    .p-canvases[data-desktop-docking='true']
+    .v2-section-body[data-compact-legend='true'] .v2-section-legend-resizer {
+    display: none;
+  }
+  body[data-workstation]:not([data-preview-mode])
+    .p-canvases[data-desktop-docking='true']
+    .v2-section-body[data-compact-legend='true'] .v2-section-legend:not([hidden]) {
+    position: absolute;
+    z-index: 8;
+    inset: 0 0 0 auto;
+    width: min(270px, calc(100% - 16px));
+    max-height: 100%;
+    background: var(--wc-surface);
+    border: 1px solid var(--wc-border-strong);
+    box-shadow: var(--wc-shadow-2);
+  }
+}
