@@ -175,7 +175,7 @@ write-enabled workflow and fixture-mutating code were then deleted.
 before conversion. The current Kernel Recipe represents its first 235 nm with
 the eventual perovskite material class and subsequently extends it by 205 nm;
 it has no physical chemical-conversion operation. The reconciled History now
-faithfully records what this *geometric surrogate* computes, not the actual
+faithfully records what this _geometric surrogate_ computes, not the actual
 precursor's composition. Keep the original precursor processing sequence in
 Record notes. Do not claim precursor-composition or semiconductor device-physics
 fidelity, and do not equate software replay success with paper Figure/SEM acceptance.
