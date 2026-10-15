@@ -34,7 +34,10 @@ try {
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
-          return !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected);
+          return (
+            !state.workflow.busy &&
+            state.model.layers.some((layer) => layer.name === expected)
+          );
         },
         name,
         { timeout: 120000 },
@@ -52,7 +55,9 @@ try {
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
-          return state.model.layers.some((layer) => layer.name === expected) && !state.workflow.busy;
+          return (
+            state.model.layers.some((layer) => layer.name === expected) && !state.workflow.busy
+          );
         },
         name,
       );
@@ -116,7 +121,11 @@ try {
           (layer) => layer.name === 'Native history B',
         ),
     );
-    assert.deepEqual((await snapshot()).model, main.model, 'Main geometry is copy-on-write isolated');
+    assert.deepEqual(
+      (await snapshot()).model,
+      main.model,
+      'Main geometry is copy-on-write isolated',
+    );
 
     await page
       .locator('.history-variant[data-variant-id="' + variant.id + '"] .history-variant-name')
@@ -142,7 +151,8 @@ try {
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#saveProjectBtn').click();
     await page.waitForFunction(
-      () => /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
+      () =>
+        /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
       null,
       { timeout: 30000 },
     );
