@@ -28,7 +28,9 @@ try {
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
-          return !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected);
+          return (
+            !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected)
+          );
         },
         name,
         { timeout: 120000 },
@@ -55,7 +57,9 @@ try {
       });
       const geometry = () => ({
         buttonTop: Math.round(button.getBoundingClientRect().top),
-        guideTop: Math.round(document.querySelector('.p-process-guide')?.getBoundingClientRect().top || 0),
+        guideTop: Math.round(
+          document.querySelector('.p-process-guide')?.getBoundingClientRect().top || 0,
+        ),
         scrollTop: scroller?.scrollTop ?? 0,
         scrollHeight: scroller?.scrollHeight ?? 0,
         clientHeight: scroller?.clientHeight ?? 0,
@@ -100,8 +104,7 @@ try {
       document.addEventListener(
         'scroll',
         (event) => {
-          if (event.target === scroller)
-            trace.scrolls.push({ type: 'scroll', ...geometry() });
+          if (event.target === scroller) trace.scrolls.push({ type: 'scroll', ...geometry() });
         },
         true,
       );
@@ -127,8 +130,8 @@ try {
         inert: button.closest('[inert]')?.className || '',
         centerTarget: document.elementFromPoint(x, y)?.outerHTML?.slice(0, 300),
         status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
-        dialogs: [...document.querySelectorAll('.v2-workflow-dialog-actions button')].map(
-          (item) => item.textContent?.trim(),
+        dialogs: [...document.querySelectorAll('.v2-workflow-dialog-actions button')].map((item) =>
+          item.textContent?.trim(),
         ),
       };
     });
