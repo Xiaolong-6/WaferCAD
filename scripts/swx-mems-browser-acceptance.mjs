@@ -258,6 +258,12 @@ try {
           fov: 43,
         },
         {
+          name: 'comb-left',
+          position: [-41, -17, visualSiliconZ + 34],
+          target: [-32, -39, visualSiliconZ],
+          fov: 42,
+        },
+        {
           name: 'folded-springs',
           position: [17, 48, visualSiliconZ + 40],
           target: [0, 22, visualSiliconZ],
@@ -274,7 +280,10 @@ try {
         inspectProject.display.threeCamera = reviewCamera;
         // A separately focused cross-section along both comb handle classes:
         // fixed cores must retain BOX and moving cores must be released.
-        inspectProject.section = { a: [25, -20], b: [25, 15] };
+        inspectProject.section =
+          review.name === 'comb-left'
+            ? { a: [-32, -52], b: [-32, -20] }
+            : { a: [25, -20], b: [25, 15] };
         for (const branch of inspectProject.snapshotBranches.branches) {
           if (branch.headState?.display) branch.headState.display.threeCamera = reviewCamera;
           if (branch.headState) branch.headState.section = structuredClone(inspectProject.section);
@@ -348,6 +357,14 @@ try {
         await reviewView.screenshot({
           path: resolve(out, 'swx-' + state + '-3d-' + review.name + '.png'),
         });
+        if (review.name === 'comb-left') {
+          const dock = page.locator('[data-action="section"]');
+          if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
+          await waitForPaint(page);
+          await page.locator('#sectionPanel').screenshot({
+            path: resolve(out, 'swx-' + state + '-section-left-comb-box.png'),
+          });
+        }
       }
       // In UI v2 Section is a dock, not a "view:section" toolbar item.
       const sectionToggle = page.locator('[data-action="section"]');
