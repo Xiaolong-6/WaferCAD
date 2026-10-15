@@ -289,9 +289,17 @@ test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced tr
       assert.ok(Math.abs(Math.hypot(...vector) - 1) < 1e-6);
     }
   }
+  for (let index = 0; index < data.gpuDisplace.length; index += 3) {
+    assert.ok(
+      data.gpuDisplace
+        .slice(index, index + 3)
+        .every((value) => value >= 0 === data.gpuDisplace[index] >= 0),
+      'normal shading domain is constant within each face, including pinned boundaries',
+    );
+  }
 });
 
-test('GPU rough cap interior does not sample the CPU morphology field', () => {
+test('GPU rough cap interior without physical boundary does not sample the CPU morphology field', () => {
   const appearance = new Proxy(
       { kind: 'rough', featureSize: 0.5 },
       {
@@ -304,7 +312,7 @@ test('GPU rough cap interior does not sample the CPU morphology field', () => {
     zone = {
       baseTriangles: squareTriangles,
       maxEdge: Math.SQRT2,
-      edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+      edges: [],
       triangleBudget: 2,
       lodContext: {
         distance: 1000,
@@ -433,4 +441,235 @@ test('rough physical sidewall borders are emitted without duplicated closure ski
   });
   assert.equal(physical.roughBorderPositions.length, baseline.roughBorderPositions.length);
   assert.equal(baseline.positions.length - physical.positions.length, 18);
+});
+
+test('unequal LOD caps conform their common edge without vertical seam sheets', () => {
+  const appearance = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+    featureSize: 0.5,
+    meanHeight: 0.3,
+    etchDepth: 0.3,
+    featureCv: 0.2,
+    heightCv: 0.1,
+    seed: 21,
+  };
+  const data = roughMeshDataFromPreparedCap({
+    z: 0,
+    normal: 1,
+    appearance,
+    closeToIdeal: false,
+    lodZones: squareTriangles.map((triangle, index) => ({
+      baseTriangles: [triangle],
+      edges: roughBoundaryEdgesFromTriangles([triangle]),
+      maxEdge: Math.SQRT2,
+      triangleBudget: index ? 1 : 16,
+      lodContext: {
+        distance: 10,
+        viewportWidth: 800,
+        viewportHeight: 600,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 1,
+        roiFraction: 1,
+        screenPriority: 1,
+        maxDepth: 2,
+      },
+    })),
+  });
+  let verticalSheets = 0,
+    projectedArea = 0;
+  for (let i = 0; i < data.positions.length; i += 9) {
+    const p = data.positions.slice(i, i + 9);
+    const area = ((p[3] - p[0]) * (p[7] - p[1]) - (p[4] - p[1]) * (p[6] - p[0])) / 2;
+    if (Math.abs(area) < 1e-12) verticalSheets++;
+    projectedArea += area;
+  }
+  assert.equal(
+    verticalSheets,
+    0,
+    'LOD joins must refine boundary triangles instead of vertical curtains',
+  );
+  assert.ok(
+    Math.abs(projectedArea - 1) < 1e-7,
+    'conforming mesh preserves projected physical area',
+  );
+});
+
+function assertCapBoundaryPaired(data) {
+  const pointKey = (p, flag = 0) => [...p, flag].join(','),
+    edgeKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`),
+    edges = new Map(),
+    boundary = new Set();
+  for (let index = 0; index < data.roughBoundaryPositions.length; index += 6) {
+    boundary.add(
+      edgeKey(
+        pointKey(data.roughBoundaryPositions.slice(index, index + 3)),
+        pointKey(data.roughBoundaryPositions.slice(index + 3, index + 6)),
+      ),
+    );
+  }
+  for (let index = 0; index < data.positions.length; index += 9) {
+    const vertices = [0, 1, 2].map((vertex) =>
+      pointKey(
+        data.positions.slice(index + vertex * 3, index + vertex * 3 + 3),
+        data.gpuDisplace[index / 3 + vertex] || 0,
+      ),
+    );
+    for (let edge = 0; edge < 3; edge++) {
+      const key = edgeKey(vertices[edge], vertices[(edge + 1) % 3]);
+      edges.set(key, (edges.get(key) || 0) + 1);
+    }
+  }
+  const unmatched = [...edges].filter(
+    ([key, count]) => count !== 2 && !(count === 1 && boundary.has(key)),
+  );
+  assert.deepEqual(unmatched, [], 'all nonphysical cap edges must have an identical paired edge');
+  assert.equal([...edges].filter(([, count]) => count === 1).length, boundary.size);
+}
+
+test('partial unequal LOD seams have no unpaired edges in CPU and GPU meshes', () => {
+  const appearance = {
+      kind: 'rough',
+      morphology: 'stochastic',
+      polarity: 'inverted',
+      featureSize: 0.37,
+      meanHeight: 0.2,
+      etchDepth: 0.3,
+      featureCv: 0.2,
+      heightCv: 0.1,
+      seed: 21,
+    },
+    m = [0.5, 0.5, 0],
+    triangles = [squareTriangles[0], [a, m, d], [m, c, d]],
+    lodZones = triangles.map((triangle, index) => ({
+      baseTriangles: [triangle],
+      edges: roughBoundaryEdgesFromTriangles([triangle]),
+      maxEdge: Math.SQRT2,
+      triangleBudget: [16, 1, 4][index],
+      lodContext: {
+        distance: 10,
+        viewportWidth: 800,
+        viewportHeight: 600,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 1,
+        roiFraction: 1,
+        screenPriority: 1,
+        maxDepth: 2,
+      },
+    }));
+  for (const gpuDisplacement of [false, true]) {
+    const data = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      closeToIdeal: false,
+      gpuDisplacement,
+      lodZones,
+    });
+    assertCapBoundaryPaired(data);
+    assert.ok(data.metadata.roughConformingExtraTriangles > 0);
+    assert.ok(data.metadata.roughConformingExtraTriangles < 30);
+  }
+});
+
+test('curved ring caps have matching actual boundary segments after adaptive subdivision', async () => {
+  const THREE = await import('three'),
+    appearance = {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 0.37,
+      meanHeight: 0.2,
+      etchDepth: 0.2,
+      featureCv: 0.2,
+      heightCv: 0.1,
+      seed: 21,
+    };
+  const { roughCapBaseTriangles } = await import('../rough-mesh-geometry.js');
+  const ring = (radius) =>
+      Array.from({ length: 17 }, (_, i) => [
+        0.123 + radius * Math.cos((i * Math.PI) / 8),
+        -0.31 + radius * Math.sin((i * Math.PI) / 8),
+      ]),
+    polys = [[ring(2), ring(1).reverse()]],
+    base = roughCapBaseTriangles(THREE, 0, 1, polys),
+    lodZones = base.triangles.map((triangle, index) => ({
+      baseTriangles: [triangle],
+      edges: roughBoundaryEdgesFromTriangles([triangle]),
+      maxEdge: base.maxEdge,
+      triangleBudget: index % 2 ? 1 : 16,
+      lodContext: {
+        distance: 10,
+        viewportWidth: 800,
+        viewportHeight: 600,
+        pixelRatio: 1,
+        fovDegrees: 34,
+        visibleFraction: 1,
+        roiFraction: 1,
+        screenPriority: 1,
+        maxDepth: 2,
+      },
+    })),
+    data = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      closeToIdeal: false,
+      gpuDisplacement: true,
+      lodZones,
+    });
+  assertCapBoundaryPaired(data);
+});
+
+test('zero-height rough skirts omit degenerate Float32 closure triangles', () => {
+  const appearance = {
+      kind: 'rough',
+      morphology: 'pyramid',
+      polarity: 'normal',
+      featureSize: 1,
+      meanHeight: 0.2,
+      etchDepth: 0.2,
+      featureCv: 0,
+      heightCv: 0,
+      seed: 1,
+    },
+    data = roughMeshDataFromPreparedCap({
+      z: 0,
+      normal: 1,
+      appearance,
+      closeToIdeal: true,
+      lodZones: [
+        {
+          baseTriangles: squareTriangles,
+          maxEdge: Math.SQRT2,
+          edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+          triangleBudget: 8,
+          lodContext: {
+            maxDepth: 1,
+            distance: 1,
+            viewportWidth: 800,
+            viewportHeight: 600,
+            visibleFraction: 1,
+            roiFraction: 1,
+            screenPriority: 1,
+          },
+        },
+      ],
+    });
+  assert.ok(data.metadata.roughSkippedDegenerateTriangles > 0);
+  for (let index = 0; index < data.positions.length; index += 9) {
+    const p = data.positions.slice(index, index + 9),
+      ab = [p[3] - p[0], p[4] - p[1], p[5] - p[2]],
+      ac = [p[6] - p[0], p[7] - p[1], p[8] - p[2]];
+    assert.ok(
+      Math.hypot(
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0],
+      ) > 0,
+    );
+  }
 });

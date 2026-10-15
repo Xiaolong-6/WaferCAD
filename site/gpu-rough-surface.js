@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v3';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v4';
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -252,7 +252,7 @@ export function decorateGpuRoughMaterial(
       '#include <common>',
       `attribute float waferCadGpuDisplace;
 varying vec2 vWaferCadRoughXY;
-varying float vWaferCadGpuDisplace;
+varying float vWaferCadRoughSurface;
 ${ROUGH_PROFILE_GLSL}`,
     );
     shader.vertexShader = injectAfter(
@@ -260,7 +260,9 @@ ${ROUGH_PROFILE_GLSL}`,
       '#include <begin_vertex>',
       `// Compact arrays define rough morphology in the template-local physical frame.
 vWaferCadRoughXY = position.xy;
-vWaferCadGpuDisplace = waferCadGpuDisplace;
+// Cap vertices use 0 (CPU-pinned) or 1 (GPU); closures use -1.
+// This shading domain stays constant within every triangle.
+vWaferCadRoughSurface = step(0.0, waferCadGpuDisplace);
 if (waferCadGpuDisplace > 0.5) {
   transformed.z += waferCadRoughProfileNormal * waferCadRoughProfile(vWaferCadRoughXY);
 }`,
@@ -270,13 +272,13 @@ if (waferCadGpuDisplace > 0.5) {
       shader.fragmentShader,
       '#include <common>',
       `varying vec2 vWaferCadRoughXY;
-varying float vWaferCadGpuDisplace;
+varying float vWaferCadRoughSurface;
 ${ROUGH_PROFILE_GLSL}`,
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
       '#include <normal_fragment_maps>',
-      `if (vWaferCadGpuDisplace > 0.5 && waferCadRoughNormalStrength > 0.0) {
+      `if (vWaferCadRoughSurface > 0.5 && waferCadRoughNormalStrength > 0.0) {
   float waferCadHeight = waferCadRoughProfile(vWaferCadRoughXY);
   float waferCadScreenDx = dFdx(waferCadHeight);
   float waferCadScreenDy = dFdy(waferCadHeight);

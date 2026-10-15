@@ -86,13 +86,20 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v3/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v4/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);
   assert.match(shader.vertexShader, /vWaferCadRoughXY/);
   assert.match(shader.fragmentShader, /waferCadRoughProfile/);
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
+  assert.match(shader.vertexShader, /vWaferCadRoughSurface = step\(0\.0, waferCadGpuDisplace\)/);
+  assert.match(shader.fragmentShader, /if \(vWaferCadRoughSurface > 0\.5/);
+  assert.doesNotMatch(
+    shader.fragmentShader,
+    /vWaferCadGpuDisplace/,
+    'CPU-pinned vertices cannot switch normal shading partway through cap triangles',
+  );
   assert.match(shader.fragmentShader, /waferCadHashBits/);
   assert.match(shader.fragmentShader, /prior-hook/);
   assert.equal(shader.uniforms.waferCadRoughFeatureSize.value, 0.8);
