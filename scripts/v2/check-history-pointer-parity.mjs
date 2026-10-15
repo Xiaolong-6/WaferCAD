@@ -46,7 +46,22 @@ try {
 
     await page.evaluate(() => {
       const button = document.getElementById('applyOperationBtn');
-      const trace = { buttonClick: 0, captures: [], sourceConnected: true, mutations: 0 };
+      const scroller = button.closest('.p-panel-content');
+      const geometry = () => ({
+        buttonTop: Math.round(button.getBoundingClientRect().top),
+        guideTop: Math.round(document.querySelector('.p-process-guide')?.getBoundingClientRect().top || 0),
+        scrollTop: scroller?.scrollTop ?? 0,
+        scrollHeight: scroller?.scrollHeight ?? 0,
+        clientHeight: scroller?.clientHeight ?? 0,
+      });
+      const trace = {
+        buttonClick: 0,
+        captures: [],
+        scrolls: [],
+        before: geometry(),
+        sourceConnected: true,
+        mutations: 0,
+      };
       window.__v2PointerTrace = trace;
       window.__v2PointerOrigin = button;
       button.addEventListener('click', () => {
@@ -63,15 +78,26 @@ try {
               applyInPath: event.composedPath().includes(current),
               currentSame: current === button,
               originalConnected: button.isConnected,
+              pointerY: event.clientY,
+              ...geometry(),
             });
           },
           true,
         );
       }
-      new MutationObserver(() => {
-        trace.mutations++;
-        trace.sourceConnected = button.isConnected;
-      }).observe(button.parentElement, { childList: true, subtree: true });
+      document.addEventListener(
+        'scroll',
+        (event) => {
+          if (event.target === scroller)
+            trace.scrolls.push({ type: 'scroll', ...geometry() });
+        },
+        true,
+      );
+      window.MutationObserver &&
+        new window.MutationObserver(() => {
+          trace.mutations++;
+          trace.sourceConnected = button.isConnected;
+        }).observe(button.parentElement, { childList: true, subtree: true });
     });
 
     await page.locator('#applyOperationBtn').click();
