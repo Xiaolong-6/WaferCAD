@@ -34,7 +34,7 @@ function readPoint(model, v, point) {
   return model.regions.find((region) => v.pointInMulti(point, region.geom)) || null;
 }
 
-export async function buildSwxMems(state = 'off') {
+export async function buildSwxMems(state = 'off', profile = null) {
   if (state !== 'off') {
     throw new Error(
       'Fabrication uses only the shared OFF mask; buildSwxMemsUnified() creates ON as a post-release Variant.',
@@ -49,8 +49,8 @@ export async function buildSwxMems(state = 'off') {
   const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
   const { prepareProjectForWorkspaceStorage, readProjectFile } =
     await import('../site/project-io.js');
-  const source = createSwxGeometry(state);
-  const [width, height] = SWX_ASSUMPTIONS.fieldUm;
+  const source = profile?.geometryFactory?.(state) ?? createSwxGeometry(state);
+  const [width, height] = profile?.fieldUm ?? SWX_ASSUMPTIONS.fieldUm;
   const BASE = {
     shape: 'rect',
     width,
@@ -67,7 +67,7 @@ export async function buildSwxMems(state = 'off') {
   model.layers[0].name = HANDLE;
   const project = projectForBenchmark({
     model,
-    section: { a: [-31, -5], b: [-31, 5] },
+    section: profile?.section ?? { a: [-31, -5], b: [-31, 5] },
   });
   project.name = 'Hu 2025 split-waveguide-crossing MEMS switch · ' + state.toUpperCase();
   project.layout = source.layout;
@@ -268,10 +268,10 @@ export async function buildSwxMems(state = 'off') {
 
   record(
     'EBL ridge mask / proximity correction',
-    'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
+    profile?.ridgeNote ?? 'Paper reports EBL + proximity effect correction; original mask polygons unavailable.',
   );
   etch(
-    '150nm ridge-waveguide and grating-groove etch',
+    profile?.shallowEtchLabel ?? '150nm ridge-waveguide and grating-groove etch',
     DEVICE,
     SWX_REPORTED.ridgeEtchUm,
     'directional',
@@ -296,16 +296,20 @@ export async function buildSwxMems(state = 'off') {
     readPoint(model, vectorApi, point)
       ?.stack.filter((seg) => seg.layerId === siliconId)
       .reduce((sum, seg) => sum + (seg.z1 - seg.z0), 0);
-  for (const [cx, cy] of SWX_ASSUMPTIONS.gratingCentersUm) {
-    const groovePoint = [
-      cx + SWX_ASSUMPTIONS.gratingRadiiUm[0] + SWX_ASSUMPTIONS.gratingToothWidthUm / 2,
-      cy,
-    ];
-    const ridgePoint = [cx + 2.1, cy];
+  const grooveAndRidgePoints =
+    profile?.shallowEtchProbes ??
+    SWX_ASSUMPTIONS.gratingCentersUm.map(([cx, cy]) => ({
+      groovePoint: [
+        cx + SWX_ASSUMPTIONS.gratingRadiiUm[0] + SWX_ASSUMPTIONS.gratingToothWidthUm / 2,
+        cy,
+      ],
+      ridgePoint: [cx + 2.1, cy],
+    }));
+  for (const { groovePoint, ridgePoint } of grooveAndRidgePoints) {
     assert.ok(
       Math.abs(siHeightAt(groovePoint) - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) <
         1e-4,
-      'Shallow optical grating groove lacks the 70nm silicon floor',
+      'Shallow optical etch lacks the 70nm silicon floor',
     );
     assert.ok(
       Math.abs(siHeightAt(ridgePoint) - SWX_REPORTED.siliconUm) < 1e-4,
@@ -322,12 +326,14 @@ export async function buildSwxMems(state = 'off') {
   deposit('E-beam evaporated Au 300nm', AU, SWX_REPORTED.auUm, 3);
   // The electrical terminals must not float on BOX disconnected from the
   // patterned silicon. Verify all four supported contact areas before HF.
-  for (const point of [
-    [2, 40],
-    [2, -40],
-    [46, 9],
-    [-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
-  ]) {
+  const electricalContactPoints =
+    profile?.electricalContactPoints ?? [
+      [2, 40],
+      [2, -40],
+      [46, 9],
+      [-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
+    ];
+  for (const point of electricalContactPoints) {
     const region = readPoint(model, vectorApi, point);
     for (const material of [DEVICE, CR, AU]) {
       assert.ok(
@@ -363,7 +369,7 @@ export async function buildSwxMems(state = 'off') {
 
   const beam = readPoint(model, vectorApi, source.releasedBeamTestPoint);
   const anchor = readPoint(model, vectorApi, source.anchorTestPoint);
-  const gapPoint = [-31, SWX_REPORTED.offGapUm / 2 - source.gapUm / 2];
+  const gapPoint = profile?.gapPoint?.(source) ?? [-31, SWX_REPORTED.offGapUm / 2 - source.gapUm / 2];
   const gap = readPoint(model, vectorApi, gapPoint);
   assert.ok(
     beam?.stack.some((item) => item.layerId === layerIds.get(DEVICE)),
@@ -383,12 +389,14 @@ export async function buildSwxMems(state = 'off') {
   // electrodes is a physical modeling error even if the view looks cleaner.
   const siId = layerIds.get(DEVICE);
   const boxId = layerIds.get(BOX);
-  for (const { point, shouldRetainBOX } of [
-    { point: [25, 9], shouldRetainBOX: true },
-    { point: [-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
-    { point: [25, 0], shouldRetainBOX: false },
-    { point: [-31, SWX_ASSUMPTIONS.lowerMovableCombYUm], shouldRetainBOX: false },
-  ]) {
+  const combSupportProbes =
+    profile?.combSupportProbes ?? [
+      { point: [25, 9], shouldRetainBOX: true },
+      { point: [-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
+      { point: [25, 0], shouldRetainBOX: false },
+      { point: [-31, SWX_ASSUMPTIONS.lowerMovableCombYUm], shouldRetainBOX: false },
+    ];
+  for (const { point, shouldRetainBOX } of combSupportProbes) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
       column?.stack.some((segment) => segment.layerId === siId),
@@ -401,27 +409,22 @@ export async function buildSwxMems(state = 'off') {
         point.join(','),
     );
   }
-  for (const point of [
-    [2, 40],
-    [2, -40],
-    [46, 9],
-    [-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm],
-  ]) {
+  for (const point of electricalContactPoints) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
       column?.stack.some((segment) => segment.layerId === boxId),
       'Supported contact anchor lost BOX at ' + point.join(','),
     );
   }
-  for (const y of [-27, 27]) {
-    const support = readPoint(model, vectorApi, [-2, y]);
+  for (const point of profile?.guidedSupportPoints ?? [[-2, -27], [-2, 27]]) {
+    const support = readPoint(model, vectorApi, point);
     assert.ok(
       support?.stack.some((item) => item.layerId === siId),
-      'Guided aligner pad lost its device silicon at y=' + y,
+      'Guided aligner pad lost its device silicon at ' + point.join(','),
     );
     assert.ok(
       support?.stack.some((item) => item.layerId === boxId),
-      'Guided aligner pad is mechanically floating without BOX at y=' + y,
+      'Guided aligner pad is mechanically floating without BOX at ' + point.join(','),
     );
   }
   assert.ok(
@@ -468,7 +471,7 @@ export async function buildSwxMems(state = 'off') {
     geometricGapUm: source.gapUm,
     movableRigidBodyTravelUm: source.travelUm,
     paperDimensions: SWX_REPORTED,
-    reconstructionAssumptions: SWX_ASSUMPTIONS,
+    reconstructionAssumptions: profile?.assumptions ?? SWX_ASSUMPTIONS,
     operations: steps.length,
     historyNodes: nodes.length,
     bookmarks: bookmarks.length,
@@ -559,19 +562,19 @@ export async function makeSwxActuatedModel(released, pose = createSwxGeometry('o
   return out;
 }
 
-export async function buildSwxMemsUnified() {
-  const { project, validation: offValidation } = await buildSwxMems('off');
+export async function buildSwxMemsUnified(profile = null) {
+  const { project, validation: offValidation } = await buildSwxMems('off', profile);
   // Project identity belongs to the shared device. All restorable History
   // states must retain it; otherwise switching ON restores an obsolete
   // OFF-only project title even while the two physical Variants are correct.
-  const projectName = 'SWX photonic MEMS · one device, OFF/ON Variants';
+  const projectName = profile?.projectName ?? 'SWX photonic MEMS · one device, OFF/ON Variants';
   project.name = projectName;
   for (const node of project.snapshotBranches.nodes) node.state.name = projectName;
   for (const bookmark of project.snapshots) bookmark.state.name = projectName;
   for (const variant of project.snapshotBranches.branches) {
     if (variant.headState) variant.headState.name = projectName;
   }
-  const onPose = createSwxGeometry('on');
+  const onPose = profile?.geometryFactory?.('on') ?? createSwxGeometry('on');
   const onModel = await makeSwxActuatedModel(project.model, onPose);
   const v = await import('../site/vector-geometry.js');
   const { validateProjectFile } = await import('../site/project-schema.js');
