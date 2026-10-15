@@ -45,3 +45,24 @@ export function threeCameraGestureChanged(before, after) {
     distance(before.position, after.position) > 1e-6 || distance(before.target, after.target) > 1e-6
   );
 }
+
+export function threeCameraZoomChanged(before, after) {
+  const distance = (camera) => {
+    if (
+      !Array.isArray(camera?.position) ||
+      !Array.isArray(camera?.target) ||
+      camera.position.length !== 3 ||
+      camera.target.length !== 3 ||
+      !camera.position.every(Number.isFinite) ||
+      !camera.target.every(Number.isFinite)
+    ) {
+      return null;
+    }
+    return Math.hypot(
+      ...camera.position.map((value, index) => value - camera.target[index]),
+    );
+  };
+  const previous = distance(before);
+  const current = distance(after);
+  return previous !== null && current !== null && Math.abs(previous - current) > 1e-6;
+}
