@@ -45,7 +45,8 @@ export function filletPolyline(points, radius, segmentsPerTurn = 12) {
       throw new Error('Optical bend radius does not fit available centerline segment');
     }
   }
-  const result = [points[0]], arcs = [];
+  const result = [points[0]],
+    arcs = [];
   for (const turn of turns) {
     if (!turn) continue;
     result.push(turn.entry);
