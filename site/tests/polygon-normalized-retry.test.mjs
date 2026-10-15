@@ -38,13 +38,14 @@ test('normalized Boolean fast path is identical for touching, overlapping, holes
     for (let a = 0; a < inputs.length; a++) {
       for (let b = 0; b < inputs.length; b++) {
         const original = [inputs[a], inputs[b]];
+        const originalBefore = structuredClone(original);
         const owned = original.map(normalizeMulti);
         const ownedBefore = structuredClone(owned);
         const baseline = booleanWithQuantizedRetry(operation, original);
         const optimized = booleanWithNormalizedRetry(operation, owned);
         assert.deepEqual(optimized, baseline, `${operation} input ${a}/${b}`);
-        assert.deepEqual(original, [inputs[a], inputs[b]]);
-        assert.deepEqual(owned, ownedBefore, 'kernel cannot change independently owned normalized operands');
+        assert.deepEqual(original, originalBefore, 'input remains unchanged after Boolean');
+        assert.deepEqual(owned, ownedBefore, 'kernel cannot change independently owned operands');
       }
     }
   }
