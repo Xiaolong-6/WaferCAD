@@ -49,6 +49,7 @@ export function renderDepthAwareOutlines(
           colorWrite: material.colorWrite,
           depthWrite: material.depthWrite,
           depthTest: material.depthTest,
+          forceSinglePass: material.forceSinglePass,
           polygonOffset: material.polygonOffset,
           polygonOffsetFactor: material.polygonOffsetFactor,
           polygonOffsetUnits: material.polygonOffsetUnits,
@@ -56,6 +57,10 @@ export function renderDepthAwareOutlines(
         material.colorWrite = false;
         material.depthWrite = true;
         material.depthTest = true;
+        // Both triangle orientations write the same nearest structural depth.
+        // Three's separate front/back transparency draws cannot add information
+        // here because this pass writes no color and keeps depth testing enabled.
+        material.forceSinglePass = true;
         // Bias surface depth away from its coincident physical contour. This
         // resolves raster precision only; hidden lines still require GreaterDepth.
         material.polygonOffset = true;

@@ -49,6 +49,13 @@ The final outline pass uses solid `LessEqualDepth` and dashed `GreaterDepth`
 materials. Both require depth testing and neither writes depth. Implant and
 Electrical annotation volumes are excluded from structural occlusion.
 
+The structural depth stage temporarily uses `forceSinglePass=true`. With no
+color writes, one DoubleSide draw retains the nearest depth from both triangle
+orientations; separate front/back transparency submissions are redundant. The
+original material setting is restored before subsequent rendering. Opaque main
+depth is not reused automatically: nonstructural helpers can write depth, and
+the unbiased color pass does not establish the contour offset contract.
+
 The pass restores renderer, scene, object and material state even when rendering
 throws. It does not allocate persistent render targets or replace surface
 materials. With all outlines disabled, it uses one ordinary scene draw. With

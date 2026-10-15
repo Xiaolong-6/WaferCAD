@@ -10,6 +10,7 @@ function fixture(failAt = -1) {
     depthWrite: false,
     depthTest: true,
     transparent: true,
+    forceSinglePass: false,
     polygonOffset: false,
     polygonOffsetFactor: 0,
     polygonOffsetUnits: 0,
@@ -42,6 +43,7 @@ function fixture(failAt = -1) {
           depthWrite: material.depthWrite,
           background: scene.background,
           autoClear: this.autoClear,
+          forceSinglePass: material.forceSinglePass,
         });
         if (frames.length === failAt) throw new Error('render failed');
       },
@@ -71,6 +73,7 @@ test('depth aware outlines classify against structural depth after intact transp
       depthWrite: false,
       background: 'background',
       autoClear: true,
+      forceSinglePass: false,
     },
     {
       visible: [true, false, false, false, false],
@@ -78,6 +81,7 @@ test('depth aware outlines classify against structural depth after intact transp
       depthWrite: true,
       background: null,
       autoClear: false,
+      forceSinglePass: true,
     },
     {
       visible: [false, false, false, true, true],
@@ -85,6 +89,7 @@ test('depth aware outlines classify against structural depth after intact transp
       depthWrite: false,
       background: null,
       autoClear: false,
+      forceSinglePass: false,
     },
   ]);
   assert.deepEqual(f.events, ['reset', 'depth']);
@@ -176,6 +181,9 @@ test('depth rebuild retains the actual GPU rough material and instanced mesh', (
       if (draws === 2) {
         assert.equal(material.colorWrite, false);
         assert.equal(material.depthWrite, true);
+        assert.equal(material.forceSinglePass, true);
+      } else {
+        assert.equal(material.forceSinglePass, false);
       }
     },
   };
@@ -187,6 +195,7 @@ test('depth rebuild retains the actual GPU rough material and instanced mesh', (
   assert.equal(material.opacity, 0.15);
   assert.equal(material.transparent, true);
   assert.equal(material.colorWrite, true);
+  assert.equal(material.forceSinglePass, false);
   mesh.geometry.dispose();
   material.dispose();
   lines.geometry.dispose();
