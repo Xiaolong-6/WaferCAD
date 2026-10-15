@@ -234,6 +234,7 @@ export function createWorkstationRuntime(project) {
     restore,
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
+    cooperativeValidateStates: true,
   });
   history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
   return {
