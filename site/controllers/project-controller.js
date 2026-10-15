@@ -386,7 +386,9 @@ export function createProjectController({
           },
         });
       } else {
-        const requiresVariantSwitch = Boolean(bookmark.branchId && bookmark.branchId !== activeBranch.id);
+        const requiresVariantSwitch = Boolean(
+          bookmark.branchId && bookmark.branchId !== activeBranch.id,
+        );
         bookmarkActions.push({
           label: 'Restore bookmark',
           disabled: requiresVariantSwitch,
