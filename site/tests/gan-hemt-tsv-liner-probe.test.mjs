@@ -5,6 +5,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const vectorApi = await import('../vector-geometry.js');
+const modelApi = await import('../model.js');
+const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 
@@ -71,4 +73,54 @@ test('Production Cu-filled TSVs retain seed liners and open coolant network', as
     'TSV conformal film probe passed:',
     JSON.stringify({ heightChecks: heights, sample: seen }),
   );
+});
+
+test('CMP probe removes the false 35 um Cu cap while retaining plated through-TSVs', async () => {
+  const { project } = await buildGanMicrochannel();
+  const model = structuredClone(project.model);
+  const cuFill = model.layers.find((l) => l.name === 'TSV Cu electrofill surrogate 35 um');
+  const cuSeed = model.layers.find((l) => l.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  assert.ok(cuFill && cuSeed, 'Missing modeled TSV fill or Cu seed');
+  for (const [x, y] of tsvCenters) {
+    assert.equal(layerAt(model, [x, y], 625), cuFill.id, 'Baseline top Cu cap absent');
+  }
+  const window = vectorApi.unionGeometries(
+    tsvCenters.map(([x, y]) => vectorApi.rectMulti(90, 90, x, y)),
+  );
+  const op = {
+    type: 'etch',
+    thickness: 35,
+    etchProfile: 'directional',
+    etchTargetLayerIds: [cuFill.id],
+    face: 'front',
+  };
+  const result =
+    applyAdvancedProcessOperation(model, op, window, modelApi, vectorApi) ||
+    modelApi.applyOperation(model, { ...op, area: window });
+  assert.equal(result?.changed, true, result?.error || 'Cu planarization did not change solids');
+  for (const [x, y] of tsvCenters) {
+    for (const z of [-150, 50, 250, 450, 550, 600]) {
+      assert.equal(
+        layerAt(model, [x, y], z),
+        cuFill.id,
+        'Cu vertical TSV fill lost after planarization at ' + [x, y, z],
+      );
+    }
+    assert.notEqual(layerAt(model, [x, y], 625), cuFill.id, 'Unphysical Cu overburden remains');
+    assert.equal(
+      layerAt(model, [x + 35.4, y], 600.45),
+      cuSeed.id,
+      'CMP damaged the 500 nm Cu seed layer',
+    );
+  }
+  for (const side of [-1, 1]) {
+    for (const [x, y, z] of [
+      [0, side * 1450, -150],
+      [0, side * 1200, 100],
+      [0, side * 420, 100],
+      [30, side * 395, 550],
+    ]) {
+      assert.equal(layerAt(model, [x, y], z), null, 'CMP obstructed coolant');
+    }
+  }
 });
