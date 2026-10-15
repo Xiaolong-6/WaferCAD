@@ -11,7 +11,11 @@ export const CRITICAL_LEGACY_CONTRACTS = [
     domain: 'Recipe drafts, templates, prefix replay and Stop',
     native: ['scripts/v2/check-recipe-preflight-atomicity.mjs'],
     draftPrs: [268],
-    gaps: ['template replacement/Recovery and Undo', 'Code draft switching', 'full Run-to/Stop parity'],
+    gaps: [
+      'template replacement/Recovery and Undo',
+      'Code draft switching',
+      'full Run-to/Stop parity',
+    ],
   },
   {
     path: 'scripts/process-transaction-ui-regression.mjs',
