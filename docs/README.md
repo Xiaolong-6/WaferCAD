@@ -22,7 +22,6 @@ Use this page to find the document that owns a question. Current contracts descr
 | Implementation contracts and local checks                        | [Development](DEVELOPMENT.md)                  |
 | Shared ChatGPT/Codex workflow and reproducible handoff           | [Collaboration](COLLABORATION.md)              |
 | Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md)                          |
-| Production Workstation viewport and mobile acceptance evidence | [Edge-to-edge Workstation](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) |
 | PR/main/scheduled/manual triggers and Draft cost controls        | [CI routing](CI.md)                            |
 | Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
 | Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
@@ -50,6 +49,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Process Report Export](REPORT_EXPORT.md) — portable offline HTML/Markdown ZIP, complete History ledger, export limits and accepted capture boundaries.
 - [Report historical keyframes](REPORT_KEYFRAMES.md) — saved-state Section SVG provenance, keyframe budgets, failure reporting and planned extensions.
 - [UI v2 DOM contract](ui-v2/CONTRACT.md) — revision-specific generated inventory; do not mistake legacy selector evidence for current UI.
+- [Production Workstation edge-to-edge viewport — 2026-10-15](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — full-viewport shell, mobile scroll preservation and browser regression handoff.
 
 - [P1 science, release and Recovery handoff — 2026-10-14](P1_SCIENCE_RELEASE_RECOVERY_HANDOFF_2026-10-14.md) — branch baseline, fault ownership, planned CI evidence and unresolved administration tasks.
 - [Process History transaction integrity — 2026-10-13](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — fault injection and atomicity boundaries for Recipe, edit and insertion.
