@@ -66,25 +66,9 @@ test('software CPU rough mesh preserves physical height at Float32 vertices with
 });
 
 test('sorted rough-edge interval lookup exactly preserves inclusive and strict LOD sampling', () => {
-  const samples = Array.from({ length: 65 }, (_, i) => [
-    (i - 32) / 16,
-    ['point', i],
-  ]);
+  const samples = Array.from({ length: 65 }, (_, i) => [(i - 32) / 16, ['point', i]]);
   samples.splice(33, 0, [1 / 16, ['duplicate', 33]]);
-  const queryValues = [
-    -3,
-    -2,
-    -1,
-    -0.5,
-    -1e-10,
-    0,
-    1e-10,
-    1 / 16,
-    0.5,
-    1.375,
-    2,
-    3,
-  ];
+  const queryValues = [-3, -2, -1, -0.5, -1e-10, 0, 1e-10, 1 / 16, 0.5, 1.375, 2, 3];
   for (const t0 of queryValues) {
     for (const t1 of queryValues) {
       for (const interior of [false, true]) {
