@@ -113,7 +113,7 @@ try {
           if (value && value !== statuses.at(-1)) statuses.push(value);
         };
         if (slot) {
-          new MutationObserver(record).observe(slot, {
+          new window.MutationObserver(record).observe(slot, {
             childList: true,
             characterData: true,
             subtree: true,

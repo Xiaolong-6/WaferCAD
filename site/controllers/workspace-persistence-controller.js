@@ -143,7 +143,8 @@ export function createWorkspacePersistenceController({
     channel = null,
     channelSequence = 0,
     interactionDepth = 0,
-    transientTimer = null;
+    transientTimer = null,
+    takeoverPendingMessage = null;
   const flushWaiters = new Map();
 
   function installSnapshotMutationTracking() {
@@ -504,7 +505,13 @@ export function createWorkspacePersistenceController({
         return saveCurrentProject(project);
       })
       .then((saved) => {
-        if (!saved) return false;
+        if (!saved) {
+          if (takeoverPendingMessage && !hasWriteAccess()) {
+            takeoverPendingMessage = null;
+            status('Workspace takeover lost its storage lease before Save.', 'error');
+          }
+          return false;
+        }
         writeMarker();
         clearStoredViewState();
         structuralBaseline = savingIdentity;
@@ -516,6 +523,21 @@ export function createWorkspacePersistenceController({
         if (editVersion !== savingVersion) classifyCurrentDirty();
         syncSaveStatus();
         if (dirty || viewDirty) schedule({ markDirty: false });
+        // An earlier takeover Save may have been superseded while the
+        // background scheduler subsequently committed the latest valid state.
+        // Only a completed, current, lease-authorized storage write can
+        // publish the deferred takeover success message.
+        if (
+          takeoverPendingMessage &&
+          hasWriteAccess() &&
+          !dirty &&
+          !viewDirty &&
+          !pendingDomainCheck
+        ) {
+          const message = takeoverPendingMessage;
+          takeoverPendingMessage = null;
+          status(message, 'success');
+        }
         return true;
       });
 
@@ -523,6 +545,10 @@ export function createWorkspacePersistenceController({
       saving = false;
       failed = true;
       syncSaveStatus();
+      if (takeoverPendingMessage) {
+        takeoverPendingMessage = null;
+        status(`Workspace takeover Save failed: ${error?.message || String(error)}`, 'error');
+      }
       console.warn('Workspace autosave failed.', error);
     });
     return write;
@@ -1006,6 +1032,7 @@ export function createWorkspacePersistenceController({
     }
 
     if (choice === 'cancel') return;
+    takeoverPendingMessage = null;
     if (!workspaceSession.takeOver()) {
       status('Could not take over the local workspace.', 'error');
       return;
@@ -1037,6 +1064,11 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markStructuralDirty();
+      const successMessage = savedChanged
+        ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
+        : 'This tab now owns the local workspace.';
+      takeoverPendingMessage =
+        dirty || viewDirty || pendingDomainCheck ? successMessage : null;
       let persisted = true;
       try {
         if (dirty || viewDirty || pendingDomainCheck) {
@@ -1055,12 +1087,22 @@ export function createWorkspacePersistenceController({
           }
         }
       } catch (error) {
+        takeoverPendingMessage = null;
         failed = true;
         syncSaveStatus();
         status(`Workspace takeover Save failed: ${error?.message || String(error)}`, 'error');
         return;
       }
       if (!persisted || !hasWriteAccess()) {
+        if (hasWriteAccess()) {
+          // A newer, validated autosave may have already committed while
+          // the superseded attempt returned false, or may still be scheduled.
+          // Do not replace its success message with an obsolete failure.
+          syncSaveStatus();
+          await refreshRecoveryOptions();
+          return;
+        }
+        takeoverPendingMessage = null;
         status(
           'Workspace takeover was interrupted by another tab before this state could be saved.',
           'error',
@@ -1068,13 +1110,9 @@ export function createWorkspacePersistenceController({
         syncSaveStatus();
         return;
       }
+      takeoverPendingMessage = null;
       syncSaveStatus();
-      status(
-        savedChanged
-          ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
-          : 'This tab now owns the local workspace.',
-        'success',
-      );
+      status(successMessage, 'success');
     }
     await refreshRecoveryOptions();
   }
