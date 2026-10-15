@@ -80,22 +80,25 @@ try {
       });
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
       for (const view of ['main', 'mask', 'three', 'section']) {
-        await page.evaluate(({ name, width }) => {
-          // Section has its own dock: maximize on desktop, use the mobile
-          // Section action in portrait. An Overview screenshot is not proof
-          // that the dedicated Section view can be selected.
-          const actions =
-            name === 'section'
-              ? width <= 820
-                ? ['mobile-section']
-                : ['maximize:section']
-              : ['view:' + name];
-          const button = actions
-            .map((action) => document.querySelector('button[data-action="' + action + '"]'))
-            .find(Boolean);
-          if (!button) throw new Error('View selector is missing: ' + name);
-          button.click();
-        }, { name: view, width });
+        await page.evaluate(
+          ({ name, width }) => {
+            // Section has its own dock: maximize on desktop, use the mobile
+            // Section action in portrait. An Overview screenshot is not proof
+            // that the dedicated Section view can be selected.
+            const actions =
+              name === 'section'
+                ? width <= 820
+                  ? ['mobile-section']
+                  : ['maximize:section']
+                : ['view:' + name];
+            const button = actions
+              .map((action) => document.querySelector('button[data-action="' + action + '"]'))
+              .find(Boolean);
+            if (!button) throw new Error('View selector is missing: ' + name);
+            button.click();
+          },
+          { name: view, width },
+        );
         await waitForPaint(page);
         const sectionState =
           view === 'section'
