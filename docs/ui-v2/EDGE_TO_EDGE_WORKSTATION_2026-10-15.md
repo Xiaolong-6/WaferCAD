@@ -14,6 +14,7 @@ The production `site/app.html` Workstation now uses an edge-to-edge shell, remov
 ## CI follow-up
 
 The first complete CI attempt on `c4b6d0a` passed Quality, general Browser, 3D and scientific workflows. Two focused suites failed:
+
 - Stage C `check-m2-live-parity` compared the intentionally inset M2 card width (1416 px) with the now edge-to-edge production shell (1440 px). The updated test asserts the production viewport boundary and continues comparing navigation, inspector, and Manual editor internals.
 - Main/Mask/Mobile `check-section-view` passed 1440/1024/768 but timed out at 390 px while clicking a disabled Mask More button during responsive view transition. The updated test waits for the Mask panel and responsive toolbar to settle, then requires the actual target or an enabled overflow entry before proceeding.
 
