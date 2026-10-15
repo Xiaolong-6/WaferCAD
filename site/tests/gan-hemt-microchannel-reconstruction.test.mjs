@@ -8,6 +8,7 @@ import {
   GAN_SILICON_COLOR,
   GAN_MANIFOLD_PARAMETERS,
   GAN_LOWER_FEED,
+  GAN_TSV_LINER,
   GAN_HEMT_STACK,
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
@@ -38,6 +39,13 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(masks.get(10).rectangles[0].w, 700);
   assert.equal(masks.get(10).rectangles[0].h, 900);
   assert.equal(masks.get(23).rectangles.length, 2);
+  assert.equal(masks.get(25).rectangles.length, 4);
+  assert.ok(
+    masks.get(25).rectangles.every((r) => r.w === 90 && r.h === 90),
+    'TSV seed coating window must include the actual material sidewall',
+  );
+  assert.equal(GAN_TSV_LINER.titaniumUm, 0.2);
+  assert.equal(GAN_TSV_LINER.copperUm, 0.5);
   assert.equal(GAN_LOWER_FEED.portOffsetY, 1450);
   assert.ok(masks.get(23).rectangles.every((r) => r.w === 110 && r.h === 1100));
   assert.equal(masks.get(13).rectangles.length, 6);
@@ -95,13 +103,24 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 15);
-  assert.equal(validation.processNodes, 27);
-  assert.equal(validation.recipeSteps, 26);
+  assert.equal(validation.maskLayers, 16);
+  assert.equal(validation.processNodes, 29);
+  assert.equal(validation.recipeSteps, 28);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
   assert.equal(validation.checks.physicalAlGaNAndSiNWith2DEGOnlyAsMetadata, true);
+  assert.equal(validation.checks.fourOpenTSVsWithContinuousTiCuSeedGeometry, true);
+  assert.equal(
+    project.processRecipe.steps.filter(
+      (step) =>
+        step.command === 'deposit' &&
+        step.params.coverage === 'conformal' &&
+        step.params.material.startsWith('TSV '),
+    ).length,
+    2,
+    'Native Recipe must replay both conformal Ti/Cu seed coatings',
+  );
   assert.ok(
     project.processRecipe.steps.some(
       (step) => step.command === 'record' && step.params.label.includes('2DEG'),
@@ -209,6 +228,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     false,
     '2DEG is an electronic state rather than a physically deposited solid',
   );
+  const platedTSV = project.snapshots.find((s) => s.name.startsWith('03b Open Ti/Cu-lined'));
+  assert.ok(platedTSV, 'Ti/Cu deposition needs a distinct scientific Bookmark');
+  assert.ok(project.model.layers.some((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um'));
+  assert.ok(project.model.layers.some((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um'));
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);
