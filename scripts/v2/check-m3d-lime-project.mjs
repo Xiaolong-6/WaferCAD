@@ -370,6 +370,185 @@ try {
       screenshotBytes: png.length,
     });
   }
+  // Mid-scale Section bridge evidence: CNTFET channel, Pd drain landing and
+  // digital RRAM must appear in one physical XZ view. Original horizontal
+  // alignment is inferred; this checks the committed model, not author GDS.
+  const sectionY = expected.section.a[1];
+  const localMask = (maskLayer) => {
+    const matches = expected.layout.elements
+      .filter((e) => e.kind === 'polygon' && e.layer === maskLayer)
+      .map((e) => {
+        const xs = e.points.map((p) => p[0]);
+        const ys = e.points.map((p) => p[1]);
+        return {
+          left: Math.min(...xs),
+          right: Math.max(...xs),
+          bottom: Math.min(...ys),
+          top: Math.max(...ys),
+        };
+      })
+      .filter(
+        (bounds) =>
+          bounds.bottom < sectionY &&
+          sectionY < bounds.top &&
+          bounds.left >= expected.section.a[0] &&
+          bounds.right <= expected.section.b[0],
+      );
+    assert.equal(matches.length, 1, 'Expected one local Mask ' + maskLayer + ' on Section');
+    return matches[0];
+  };
+  const channelMask = localMask(16);
+  const pdMask = localMask(18);
+  const rramMask = localMask(19);
+  const inferredGapUm = rramMask.left - channelMask.right;
+  assert.ok(
+    Math.abs(inferredGapUm - 0.45) < 1e-9,
+    'Inferred CNT island to RRAM lateral clearance changed',
+  );
+  assert.ok(
+    pdMask.left < channelMask.right && pdMask.right > rramMask.right,
+    'Pd drain mask no longer bridges CNT island and RRAM footprint',
+  );
+  const regionAt = (x) =>
+    expected.model.regions.find((region) => pointInMulti([x, sectionY], region.geom));
+  const layerId = (name) => {
+    const found = expected.model.layers.find((layer) => layer.name === name);
+    assert.ok(found, 'Missing material for bridge inspection: ' + name);
+    return found.id;
+  };
+  const channelId = layerId('CNT channel 1nm SURROGATE');
+  const pdId = layerId('CNT drain Pd 45nm');
+  const taOxId = layerId('Digital TaOx ORL 20nm');
+  const ta2o5Id = layerId('Digital Ta2O5 RSL 10nm');
+  const ptId = layerId('Digital Pt TE 10nm');
+  const channelPart = regionAt((channelMask.left + channelMask.right) / 2)?.stack.find(
+    (part) => part.layerId === channelId,
+  );
+  assert.ok(channelPart, 'CNT material absent from mid-scale Section');
+  const rramX = (rramMask.left + rramMask.right) / 2;
+  const rramStack = regionAt(rramX)?.stack;
+  assert.ok(rramStack, 'RRAM midpoint has no model stack');
+  const pdIndex = rramStack.findIndex((part) => part.layerId === pdId);
+  assert.ok(pdIndex >= 0, 'RRAM does not land on CNT drain Pd');
+  assert.deepEqual(
+    rramStack.slice(pdIndex + 1, pdIndex + 4).map((part) => part.layerId),
+    [taOxId, ta2o5Id, ptId],
+    'Digital TaOx / Ta2O5 / Pt must vertically contact the Pd landing',
+  );
+  const pdPathIntervals = [];
+  const pdPathSamples = 40;
+  const startPdX = channelMask.right - 0.07;
+  for (let i = 0; i < pdPathSamples; i++) {
+    const x = startPdX + ((rramX - startPdX) * (i + 0.5)) / pdPathSamples;
+    const pdPart = regionAt(x)?.stack.find((part) => part.layerId === pdId);
+    assert.ok(pdPart, 'Pd landing physically interrupted at X=' + x.toFixed(4));
+    const previous = pdPathIntervals.at(-1);
+    if (previous) {
+      const commonZ = Math.min(pdPart.z1, previous.z1) - Math.max(pdPart.z0, previous.z0);
+      assert.ok(commonZ > 0.025, 'Pd landing loses vertical overlap along lateral bridge');
+    }
+    pdPathIntervals.push({ z0: pdPart.z0, z1: pdPart.z1 });
+  }
+  const inspectionXUm = (channelMask.left + rramMask.right) / 2;
+  const inspectionZUm = (channelPart.z0 + rramStack[pdIndex + 3].z1) / 2;
+  await page.locator('#sectionPanel [data-action="fit:section"]').click();
+  await waitForPaint(page);
+  const midBounds = await sectionCanvas.boundingBox();
+  assert.ok(midBounds, 'Mid-scale Section canvas missing');
+  const midInitial = await sectionCanvas.evaluate(
+    (canvas, { x, z, startX }) => {
+      const d = canvas.dataset;
+      return {
+        x: Number(d.sectionPlotLeft) + (x - startX) * Number(d.xPxPerUm),
+        y: Number(d.sectionFrameTop) + (Number(d.sectionZ1Um) - z) * Number(d.zPxPerUm),
+      };
+    },
+    { x: inspectionXUm, z: inspectionZUm, startX: expected.section.a[0] },
+  );
+  assert.ok(
+    midInitial.x > 20 &&
+      midInitial.x < midBounds.width - 20 &&
+      midInitial.y > 20 &&
+      midInitial.y < midBounds.height - 20,
+    'Mid-scale CNTFET / RRAM bridge must lie inside the physical Section',
+  );
+  const midPanButton = page.locator('#sectionPanel [data-action="tool:pan:section"]');
+  if ((await midPanButton.getAttribute('aria-pressed')) !== 'true')
+    await midPanButton.click();
+  const midZoomButton = page.locator('#sectionPanel [data-action="tool:zoom:section"]');
+  if ((await midZoomButton.getAttribute('aria-pressed')) !== 'true')
+    await midZoomButton.click();
+  await page.mouse.move(midBounds.x + midInitial.x, midBounds.y + midInitial.y);
+  await page.mouse.wheel(0, -150);
+  await waitForPaint(page);
+  const midAfterZoom = await sectionCanvas.evaluate(
+    (canvas, { x, z, startX }) => {
+      const d = canvas.dataset;
+      return {
+        x: Number(d.sectionPlotLeft) + (x - startX) * Number(d.xPxPerUm),
+        y: Number(d.sectionFrameTop) + (Number(d.sectionZ1Um) - z) * Number(d.zPxPerUm),
+      };
+    },
+    { x: inspectionXUm, z: inspectionZUm, startX: expected.section.a[0] },
+  );
+  await page.mouse.move(midBounds.x + midAfterZoom.x, midBounds.y + midAfterZoom.y);
+  await page.mouse.down();
+  await page.mouse.move(midBounds.x + midBounds.width / 2, midBounds.y + midBounds.height / 2, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  await waitForPaint(page);
+  const midEvidence = await sectionCanvas.evaluate(
+    (canvas, { x, z, startX }) => {
+      const d = canvas.dataset;
+      return {
+        xPxPerUm: Number(d.xPxPerUm),
+        zPxPerUm: Number(d.zPxPerUm),
+        centerX: Number(d.sectionPlotLeft) + (x - startX) * Number(d.xPxPerUm),
+        centerY: Number(d.sectionFrameTop) + (Number(d.sectionZ1Um) - z) * Number(d.zPxPerUm),
+        viewportZoom: Number(d.sectionViewportZoom),
+        width: canvas.getBoundingClientRect().width,
+        height: canvas.getBoundingClientRect().height,
+      };
+    },
+    { x: inspectionXUm, z: inspectionZUm, startX: expected.section.a[0] },
+  );
+  assert.ok(
+    Math.abs(midEvidence.xPxPerUm - midEvidence.zPxPerUm) < 1e-6,
+    'Mid-scale Section must use physical X:Z 1:1',
+  );
+  assert.ok(
+    inferredGapUm * midEvidence.xPxPerUm > 20,
+    'CNTFET-to-RRAM inferred gap not resolved in mid-scale image',
+  );
+  assert.ok(
+    (rramMask.right - channelMask.left) * midEvidence.xPxPerUm <
+      midEvidence.width - 80,
+    'CNTFET channel and RRAM do not both fit in mid-scale screenshot',
+  );
+  assert.ok(
+    Math.abs(midEvidence.centerX - midEvidence.width / 2) < 40 &&
+      Math.abs(midEvidence.centerY - midEvidence.height / 2) < 40,
+    'Mid-scale view does not center the physical bridge',
+  );
+  const midPng = await sectionPanel.screenshot({
+    path: resolve(output, 'section-cntfet-digital-rram-bridge.png'),
+    animations: 'disabled',
+  });
+  assert.ok(midPng.length > 8000, 'Mid-scale bridge Section evidence is unexpectedly small');
+  report.middleSectionEvidence = {
+    channelMask,
+    pdMask,
+    rramMask,
+    inferredGapUm,
+    lateralPdSamples: pdPathSamples,
+    inspectionXUm,
+    inspectionZUm,
+    screenshotBytes: midPng.length,
+    ...midEvidence,
+    note: 'Physical Section of modeled Pd bridge; mask positions and electrical routing are inferred',
+  };
+  await page.locator('#sectionPanel [data-action="fit:section"]').click();
   await page.locator('#sectionPanel [data-action="fit:section"]').click();
   await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
   if (previouslyCollapsed) await collapseToggle.check();
