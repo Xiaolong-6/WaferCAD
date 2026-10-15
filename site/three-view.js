@@ -3106,7 +3106,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
         presentation: { kind: 'border' },
       });
       host.dataset.hiddenBorderSegmentCount = '0';
-      if (targetVariant === 'transparent') {
+      host.dataset.buriedContourSegmentCount = '0';
+      // Small scenes and rough scenes can switch opaque <-> transparent
+      // through a presentation-only update without rebuilding the scene.
+      // Prepare their dormant hidden lines once, regardless of initial opacity.
+      // Large smooth arrays get a dedicated transparent scene variant instead,
+      // so their opaque startup remains free of hidden-contour allocations.
+      const needsHiddenContourSuperset =
+        targetVariant === 'transparent' ||
+        Number(plan.arrayInstances || 0) < 64 ||
+        roughTasks.length > 0;
+      if (needsHiddenContourSuperset) {
         // Physically owned contours only. The subdued dashed reference goes
         // behind transparent faces (renderOrder 100+) so their colors attenuate
         // rear/interior edges, rather than outlining every LOD triangle.
