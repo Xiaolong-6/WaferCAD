@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const example = process.env.WAFERCAD_V2_EXAMPLE || 'm3d';
 const fixtures = { m3d: [27, 551], photodetector: [5, 5], metalens: [5, 2] };
@@ -44,7 +45,7 @@ try {
       assert.equal(initial.sharedIdentity, true);
       assert.equal(initial.model.layers.length, fixtures[example][0]);
       assert.equal(initial.model.regions.length, fixtures[example][1]);
-      await page.locator('[data-action="view:three"]').click();
+      await selectScientificView(page, 'three', width);
       const host = page.locator('#threeHost'),
         canvas = host.locator('canvas');
       const ready = async () => {
@@ -202,7 +203,7 @@ try {
       await ready();
       // Use real Main drawing tools; a Main ROI must change the real 3D clip.
       if (width === 1440) {
-        await page.locator('[data-action="view:main"]').click();
+        await selectScientificView(page, 'main', width);
         await page.locator('[data-action="roi"]').click();
         await page.locator('[data-action="roi-tool:rect"]').click();
         const b = await page.locator('#mainCanvas').boundingBox();
@@ -212,7 +213,7 @@ try {
         await page.mouse.up();
         const roi = (await snapshot()).roi;
         assert.ok(roi);
-        await page.locator('[data-action="view:three"]').click();
+        await selectScientificView(page, 'three', width);
         await ready();
         assert.equal(await page.locator('#threeStats').innerText(), 'ROI');
         assert.notEqual(await host.getAttribute('data-scene-generation'), generation);
@@ -318,7 +319,7 @@ try {
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
-    await page.locator('[data-action="view:three"]').click();
+    await selectScientificView(page, 'three', 1024);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
