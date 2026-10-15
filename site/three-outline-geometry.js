@@ -1,3 +1,5 @@
+import { roughProfileOffsetAtPoint } from './surface-rendering.js';
+
 // Presentation-only contour ownership for transparent 3D inspection.
 // Never derive contour lines from triangle edges: LOD boundaries are not physical interfaces.
 const coord = (value) => Number(value).toPrecision(12);
@@ -24,13 +26,30 @@ function capPerimeter(cap) {
   const z = Number(cap?.z);
   if (!Number.isFinite(z)) return [];
   const positions = [];
+  const appearance = cap.appearance?.kind === 'rough' ? cap.appearance : null;
+  const normal = Number(cap.profileNormal ?? cap.normal) < 0 ? -1 : 1;
+  const heightAt = (x, y) =>
+    z + (appearance ? normal * roughProfileOffsetAtPoint(x, y, appearance) : 0);
   for (const poly of cap.polys || []) {
     for (const ring of poly || []) {
       if (!Array.isArray(ring) || ring.length < 2) continue;
       for (let i = 0; i < ring.length; i++) {
         const a = ring[i], b = ring[(i + 1) % ring.length];
         if (!a || !b) continue;
-        positions.push([[Number(a[0]), Number(a[1]), z], [Number(b[0]), Number(b[1]), z]]);
+        const ax = Number(a[0]), ay = Number(a[1]);
+        const bx = Number(b[0]), by = Number(b[1]);
+        const length = Math.hypot(bx - ax, by - ay);
+        const subdivisions = appearance
+          ? Math.min(48, Math.max(1, Math.ceil(length / Math.max(1e-9, Number(appearance.featureSize) || 1) * 3)))
+          : 1;
+        let previous = [ax, ay, heightAt(ax, ay)];
+        for (let step = 1; step <= subdivisions; step++) {
+          const t = step / subdivisions;
+          const x = ax + (bx - ax) * t, y = ay + (by - ay) * t;
+          const next = [x, y, heightAt(x, y)];
+          positions.push([previous, next]);
+          previous = next;
+        }
       }
     }
   }
@@ -45,7 +64,7 @@ function translate(segment, delta) {
 // material edges and clipped inspection edges. Ignore all artificial LOD edges.
 export function buriedInterfaceContours(caps = []) {
   return ownedContourSegments(
-    caps.filter((cap) => cap?.buried && !cap?.appearance)
+    caps.filter((cap) => cap?.buried)
       .flatMap((cap) => {
         const boundary = capPerimeter(cap);
         return cap.instanceTranslations?.length
