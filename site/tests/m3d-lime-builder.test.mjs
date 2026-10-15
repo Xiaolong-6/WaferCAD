@@ -227,6 +227,48 @@ test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal a
   }
 });
 
+test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps', async () => {
+  const { project } = await verifiedFixture();
+  const { pointInMulti } = await import('../vector-geometry.js');
+  const pd = project.model.layers.find((layer) => layer.name === 'CNT drain Pd 45nm');
+  assert.ok(pd, 'The drain Pd film must exist');
+  const rects = (maskId) =>
+    project.layout.elements
+      .filter((element) => element.layer === maskId)
+      .map((element) => ({
+        x0: Math.min(...element.points.map((point) => point[0])),
+        x1: Math.max(...element.points.map((point) => point[0])),
+        y0: Math.min(...element.points.map((point) => point[1])),
+        y1: Math.max(...element.points.map((point) => point[1])),
+      }));
+  const channels = rects(16);
+  const rram = rects(19);
+  assert.equal(channels.length, 14);
+  assert.equal(rram.length, 14);
+  const samples = 72;
+  for (let cell = 0; cell < channels.length; cell++) {
+    const y = (channels[cell].y0 + channels[cell].y1) / 2;
+    const startX = channels[cell].x1 - 0.07;
+    const endX = (rram[cell].x0 + rram[cell].x1) / 2;
+    let previous = null;
+    for (let sample = 0; sample < samples; sample++) {
+      const x = startX + ((endX - startX) * (sample + 0.5)) / samples;
+      const region = project.model.regions.find((item) => pointInMulti([x, y], item.geom));
+      const segment = region?.stack.find((part) => part.layerId === pd.id);
+      assert.ok(segment, 'Pd open circuit at CNTFET cell ' + cell + ', X=' + x);
+      if (previous) {
+        const connectedZ =
+          Math.min(previous.z1, segment.z1) - Math.max(previous.z0, segment.z0);
+        assert.ok(
+          connectedZ > 0.001,
+          'Pd has no 3D-overlapping conductive bridge at CNTFET cell ' + cell + ', X=' + x,
+        );
+      }
+      previous = segment;
+    }
+  }
+});
+
 test('sampled 3-tier cut is physically ordered through both analog CIM and digital RRAM', async () => {
   const { project, validation } = await verifiedFixture();
   const { pointInMulti } = await import('../vector-geometry.js');
