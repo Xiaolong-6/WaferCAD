@@ -113,8 +113,8 @@ and RTX 3060 hardware acceptance remain unverified.
 ## Commands
 
 ```powershell
-$env:PLAYWRIGHT_BROWSERS_PATH = 'C:/Users/liux16/AppData/Local/ms-playwright'
-$env:WAFERCAD_CHROMIUM = 'C:/Users/liux16/AppData/Local/ms-playwright/chromium-1193/chrome-win/chrome.exe'
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:LOCALAPPDATA 'ms-playwright'
+$env:WAFERCAD_CHROMIUM = Join-Path $env:PLAYWRIGHT_BROWSERS_PATH 'chromium-1193/chrome-win/chrome.exe'
 $env:WAFERCAD_AUDIT_ANGLE = 'd3d11'
 $env:WAFERCAD_AUDIT_EXTENDED = '1'
 $env:WAFERCAD_AUDIT_ORACLE = '1'
