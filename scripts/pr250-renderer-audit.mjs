@@ -261,7 +261,7 @@ try {
       { name: 'transparent', opacity: 0.5, borders: true, fast: true },
       { name: 'transparent-back', opacity: 0.15, borders: true, fast: true, back: true },
       { name: 'quality-zoom', opacity: 0.5, borders: true, fast: false, zoom: 0.7 },
-      ...(fixture.name.startsWith('photodetector-')
+      ...(fixture.name === 'photodetector-blacksi-final-roi'
         ? [
             {
               name: 'surface-cut-opaque-detail',
@@ -310,6 +310,37 @@ try {
             },
           ]
         : []),
+      ...(fixture.name === 'photodetector-blacksi-final-micro-roi'
+        ? [
+            {
+              name: 'micro-zbreak-opaque-detail',
+              opacity: 1,
+              borders: false,
+              fast: false,
+              detail: true,
+              micro: true,
+              zBreak: true,
+            },
+            {
+              name: 'micro-zbreak-opaque-borders-detail',
+              opacity: 1,
+              borders: true,
+              fast: false,
+              detail: true,
+              micro: true,
+              zBreak: true,
+            },
+            {
+              name: 'micro-zbreak-transparent-detail',
+              opacity: 0.5,
+              borders: true,
+              fast: false,
+              detail: true,
+              micro: true,
+              zBreak: true,
+            },
+          ]
+        : []),
       ...(fixture.name.includes('-back-') || fixture.name.includes('-both-')
         ? [{ name: 'underneath', opacity: 0.5, borders: true, fast: true, underneath: true }]
         : []),
@@ -343,11 +374,11 @@ try {
               displayScale
             : fit.target[2];
           const target = config.zBreak
-            ? [2400, 0, focusedZ]
+            ? [config.micro ? 2495 : 2400, 0, focusedZ]
             : config.detail
               ? [2495, -140, fit.target[2]]
               : fit.target;
-          const distance = config.zBreak ? 110 : 40;
+          const distance = config.micro ? 14 : config.zBreak ? 110 : 40;
           const position = config.detail
             ? target.map((value, index) => value + (delta[index] / length) * distance)
             : fit.position.map(

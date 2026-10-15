@@ -108,6 +108,17 @@ export async function pr250AuditFixtures() {
       }),
       clip: rectMulti(800, 300, 2400, 0),
     });
+    // Twelve-micrometre patch straddling the black-Si active-ring boundary.
+    // It provides a physically meaningful 0.3 um feature-size reference without
+    // changing the full-scale project or increasing the global triangle budget.
+    fixtures.push({
+      name: 'photodetector-blacksi-final-micro-roi',
+      project: projectForBenchmark({
+        model: example.model,
+        section: example.section,
+      }),
+      clip: rectMulti(12, 12, 2495, 0),
+    });
   }
   for (const fixture of fixtures) fixture.project.version = CURRENT_PROJECT_VERSION;
   return fixtures;
