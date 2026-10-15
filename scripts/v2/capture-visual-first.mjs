@@ -81,8 +81,10 @@ try {
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
       for (const view of ['main', 'mask', 'three', 'section']) {
         await page.evaluate((name) => {
-          const button = document.querySelector('button[data-action="view:' + name + '"]');
-          if (!button) throw new Error('View selector is missing: ' + name);
+          // Section uses a dedicated action rather than view:section.
+          const action = name === 'section' ? 'mobile-section' : 'view:' + name;
+          const button = document.querySelector('button[data-action="' + action + '"]');
+          if (!button) throw new Error('View selector is missing: ' + action);
           button.click();
         }, view);
         await waitForPaint(page);
