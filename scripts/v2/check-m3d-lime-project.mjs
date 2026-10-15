@@ -105,12 +105,16 @@ try {
     () => {
       const message =
         document.querySelector('[data-slot="status.message"]')?.textContent?.trim() || '';
-      return /^Opened m3d-lime-rram-cntfet\.wafercad\./.test(message) || /^Open failed:/.test(message);
+      return (
+        /^Opened m3d-lime-rram-cntfet\.wafercad\./.test(message) || /^Open failed:/.test(message)
+      );
     },
     null,
     { timeout: 120000, polling: 500 },
   );
-  const importStatus = (await page.locator('[data-slot="status.message"]').textContent()).trim();
+  const importStatus = (
+    await page.locator('[data-slot="status.message"]').textContent()
+  ).trim();
   assert.match(importStatus, /^Opened m3d-lime-rram-cntfet\.wafercad\./, importStatus);
   const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   const initial = await snapshot();
