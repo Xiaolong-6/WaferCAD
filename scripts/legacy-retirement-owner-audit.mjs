@@ -69,7 +69,8 @@ export function classifyLegacyOwner(path, content) {
     helpers,
     editor,
     bridge,
-    requiresReview: helpers || editor || bridge || sourceOnlyEditor || experimentalD1 || sharedProduction,
+    requiresReview:
+      helpers || editor || bridge || sourceOnlyEditor || experimentalD1 || sharedProduction,
   };
 }
 
