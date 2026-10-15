@@ -9,6 +9,7 @@ import {
   transparentInspectionContours,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
+import { boundaryProfileFromPositions } from '../rough-boundary-profile.js';
 
 const square = [
   [
@@ -141,4 +142,90 @@ test('ROI material section contours include rough and smooth cut levels only', (
   );
   assert.deepEqual(sectionCutContours([inside], clip), []);
   assert.deepEqual(sectionCutContours([wall], null), []);
+});
+
+test('ROI contour ownership spans collinear subdivisions of irregular outer and hole rings', () => {
+  const outer = [
+      [0, 0],
+      [2, 2],
+      [4, 4],
+      [0, 8],
+      [0, 0],
+    ],
+    hole = [
+      [0.5, 2],
+      [1, 3],
+      [1.5, 4],
+      [0.5, 4],
+      [0.5, 2],
+    ],
+    walls = [
+      { p: [0, 0], q: [4, 4], z0: 0, z1: 1, layerId: 'film' },
+      { p: [0.5, 2], q: [1.5, 4], z0: 0, z1: 1, layerId: 'film' },
+    ],
+    lines = sectionCutContours(walls, [[outer, hole]]);
+  assert.equal(lines.length, 8, 'both unsplit physical walls match split ROI boundary intervals');
+  assert.ok(lines.some(([a, b]) => a[0] === 0 && b[0] === 4 && a[2] === 1 && b[2] === 1));
+  assert.ok(lines.some(([a, b]) => a[0] === 0.5 && b[0] === 1.5 && a[2] === 1 && b[2] === 1));
+});
+
+test('collinear same-material wall subdivisions do not create vertical section seams', () => {
+  const walls = [
+    { p: [0, 0], q: [2, 0], z0: 0, z1: 1, layerId: 'film' },
+    { p: [2, 0], q: [4, 0], z0: 0, z1: 1, layerId: 'film' },
+  ];
+  const lines = sectionCutContours(walls, [square]);
+  assert.ok(
+    !lines.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]),
+    'a split on the cut face is not a physical vertical material edge',
+  );
+  const cornerWalls = [...walls, { p: [4, 0], q: [4, 4], z0: 0, z1: 1, layerId: 'film' }];
+  assert.ok(
+    sectionCutContours(cornerWalls, [square]).some(
+      ([a, b]) => a[0] === 4 && a[1] === 0 && b[0] === 4 && b[1] === 0 && a[2] !== b[2],
+    ),
+    'the actual ROI corner remains a vertical edge',
+  );
+});
+
+test('ROI and buried contours consume actual mesh boundary profiles instead of resampling heights', () => {
+  const positions = new Float32Array([0, 0, 1.1, 1.25, 0, 1.8, 1.25, 0, 1.8, 4, 0, 1.2]),
+    profile = boundaryProfileFromPositions(positions),
+    boundaryProfiles = new Map([[0, profile]]),
+    wall = { p: [0, 0], q: [4, 0], z0: 0, z1: 1, upperSurface: { capIndex: 0 } },
+    lines = sectionCutContours([wall], [square], { boundaryProfiles });
+  const upper = lines.filter(([a, b]) => a[2] > 1 && b[2] > 1);
+  assert.deepEqual(
+    upper,
+    profile.segments.map(({ p, q }) => [p, q]),
+  );
+  const caps = [{ buried: true, z: 1, polys: [square] }];
+  assert.deepEqual(buriedInterfaceContours(caps, { boundaryProfiles }), upper);
+  assert.equal(lines.length, 6, 'two exact upper and lower intervals plus physical corner lines');
+});
+
+test('ROI contour matching clips only overlapping spans and retains material junctions', () => {
+  const clip = [
+      [
+        [
+          [1, 0],
+          [3, 0],
+          [3, 1],
+          [1, 1],
+          [1, 0],
+        ],
+      ],
+    ],
+    wall = { p: [0, 0], q: [4, 0], z0: 0, z1: 1, layerId: 'film' },
+    lines = sectionCutContours([wall], clip);
+  assert.equal(lines.length, 4);
+  assert.ok(lines.every(([a, b]) => a[0] >= 1 && b[0] <= 3));
+  const junction = sectionCutContours(
+    [
+      { ...wall, p: [0, 0], q: [2, 0] },
+      { ...wall, p: [2, 0], q: [4, 0], layerId: 'other' },
+    ],
+    [square],
+  );
+  assert.ok(junction.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]));
 });

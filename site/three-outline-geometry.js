@@ -1,4 +1,5 @@
 import { roughProfileOffsetAtPoint } from './surface-rendering.js';
+import { sidewallBoundarySamples } from './rough-boundary-profile.js';
 
 // Presentation-only contour ownership for transparent 3D inspection.
 // Never derive contour lines from triangle edges: LOD boundaries are not physical interfaces.
@@ -69,11 +70,17 @@ function translate(segment, delta) {
 
 // Buried caps are owned material interfaces; their perimeters include true
 // material edges and clipped inspection edges. Ignore all artificial LOD edges.
-export function buriedInterfaceContours(caps = []) {
+export function buriedInterfaceContours(caps = [], { boundaryProfiles = null } = {}) {
   const segments = [];
-  for (const cap of caps) {
+  for (const [capIndex, cap] of caps.entries()) {
     if (!cap?.buried) continue;
-    const boundary = capPerimeter(cap);
+    const profile = boundaryProfiles?.get(capIndex),
+      boundary = profile?.positions
+        ? Array.from({ length: Math.floor(profile.positions.length / 6) }, (_, index) => [
+            Array.from(profile.positions.slice(index * 6, index * 6 + 3)),
+            Array.from(profile.positions.slice(index * 6 + 3, index * 6 + 6)),
+          ])
+        : capPerimeter(cap);
     if (cap.instanceTranslations?.length) {
       for (const delta of cap.instanceTranslations) {
         for (const line of boundary) segments.push(translate(line, delta));
@@ -113,65 +120,97 @@ function clipBoundaryEdges(clip) {
   return edges;
 }
 
-function pointNearSegment(point, a, b, tolerance) {
-  const dx = b[0] - a[0],
-    dy = b[1] - a[1];
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared <= 1e-24) return false;
-  const t = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lengthSquared;
-  if (t < -1e-7 || t > 1 + 1e-7) return false;
-  const x = a[0] + Math.max(0, Math.min(1, t)) * dx;
-  const y = a[1] + Math.max(0, Math.min(1, t)) * dy;
-  return Math.hypot(point[0] - x, point[1] - y) <= tolerance;
-}
-
-function displacedCutZ(point, z, surface) {
-  const appearance = surface?.appearance;
-  const normal = Number(surface?.profileNormal) < 0 ? -1 : 1;
-  return (
-    z +
-    (appearance?.kind === 'rough'
-      ? normal * roughProfileOffsetAtPoint(point[0], point[1], appearance)
-      : 0)
-  );
+function cutBoundarySpans(p, q, edges, tolerance) {
+  const dx = q[0] - p[0],
+    dy = q[1] - p[1],
+    length = Math.hypot(dx, dy);
+  if (length <= tolerance) return [];
+  const spans = [];
+  for (const [a, b] of edges) {
+    // Match the union of collinear ROI intervals. A polygon kernel may split
+    // an ROI edge without splitting the corresponding owned material wall.
+    if (
+      Math.abs((a[0] - p[0]) * dy - (a[1] - p[1]) * dx) / length > tolerance ||
+      Math.abs((b[0] - p[0]) * dy - (b[1] - p[1]) * dx) / length > tolerance
+    )
+      continue;
+    const ta = ((a[0] - p[0]) * dx + (a[1] - p[1]) * dy) / (dx * dx + dy * dy),
+      tb = ((b[0] - p[0]) * dx + (b[1] - p[1]) * dy) / (dx * dx + dy * dy),
+      start = Math.max(0, Math.min(ta, tb)),
+      end = Math.min(1, Math.max(ta, tb));
+    if ((end - start) * length > tolerance) spans.push([start, end]);
+  }
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const span of spans) {
+    const previous = merged.at(-1);
+    if (previous && (span[0] - previous[1]) * length <= tolerance) {
+      previous[1] = Math.max(previous[1], span[1]);
+    } else merged.push(span.slice());
+  }
+  return merged;
 }
 
 // Outline the *real* material intersections exposed on a section/ROI cut.
 // Include both rough interfaces and smooth ones. Sampling follows the same
 // deterministic physical profile used by the cut sidewall triangles.
-export function sectionCutContours(sidewalls = [], clip = null) {
+export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfiles = null } = {}) {
   const edges = clipBoundaryEdges(clip);
   if (!edges.length) return [];
-  const result = [];
+  const result = [],
+    verticals = new Map();
   for (const wall of sidewalls || []) {
     const p = wall?.p,
       q = wall?.q;
-    if (!p || !q || !(Number(wall.z1) > Number(wall.z0))) continue;
-    const length = Math.hypot(q[0] - p[0], q[1] - p[1]);
-    const tolerance = Math.max(1e-8, length * 1e-7);
     if (
-      !edges.some(
-        ([a, b]) => pointNearSegment(p, a, b, tolerance) && pointNearSegment(q, a, b, tolerance),
-      )
+      !p ||
+      !q ||
+      ![...p, ...q, wall.z0, wall.z1].every(Number.isFinite) ||
+      !(Number(wall.z1) > Number(wall.z0))
     )
       continue;
-    const featureSizes = [wall.lowerSurface, wall.upperSurface]
-        .map((surface) => Number(surface?.appearance?.featureSize))
-        .filter((value) => Number.isFinite(value) && value > 0),
-      step = featureSizes.length ? Math.min(...featureSizes) / 3 : length,
-      sections = Math.max(1, Math.min(128, Math.ceil(length / Math.max(step, 1e-9))));
-    const sample = (t, z, surface) => {
-      const xy = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-      return [...xy, displacedCutZ(xy, z, surface)];
-    };
-    for (let i = 0; i < sections; i++) {
-      const t0 = i / sections,
-        t1 = (i + 1) / sections;
-      result.push([sample(t0, wall.z0, wall.lowerSurface), sample(t1, wall.z0, wall.lowerSurface)]);
-      result.push([sample(t0, wall.z1, wall.upperSurface), sample(t1, wall.z1, wall.upperSurface)]);
+    const length = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    const tolerance = Math.max(1e-8, length * 1e-10);
+    const spans = cutBoundarySpans(p, q, edges, tolerance);
+    if (!spans.length) continue;
+    const xyAt = (t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    for (const [start, end] of spans) {
+      const samples = sidewallBoundarySamples(
+        { ...wall, line: null, p: xyAt(start), q: xyAt(end) },
+        {
+          lowerProfile: boundaryProfiles?.get(wall.lowerSurface?.capIndex),
+          upperProfile: boundaryProfiles?.get(wall.upperSurface?.capIndex),
+        },
+      );
+      const at = (sample, face) => [...sample.point, sample[face]];
+      for (let i = 0; i + 1 < samples.length; i++) {
+        result.push([at(samples[i], 'lowerZ'), at(samples[i + 1], 'lowerZ')]);
+        result.push([at(samples[i], 'upperZ'), at(samples[i + 1], 'upperZ')]);
+      }
+      for (const [sample, direction] of [
+        [samples[0], 1],
+        [samples.at(-1), -1],
+      ]) {
+        if (!sample) continue;
+        const line = [at(sample, 'lowerZ'), at(sample, 'upperZ')],
+          key = `${wall.layerId ?? ''}|${segmentKey(...line)}`;
+        if (!verticals.has(key)) verticals.set(key, []);
+        verticals.get(key).push({
+          line,
+          tangent: [(direction * (q[0] - p[0])) / length, (direction * (q[1] - p[1])) / length],
+        });
+      }
     }
-    result.push([sample(0, wall.z0, wall.lowerSurface), sample(0, wall.z1, wall.upperSurface)]);
-    result.push([sample(1, wall.z0, wall.lowerSurface), sample(1, wall.z1, wall.upperSurface)]);
+  }
+  for (const candidates of verticals.values()) {
+    // Equal material spans meeting on one straight cut are artificial wall
+    // partitions. Keep genuine ROI corners and changes in material ownership.
+    const continuation = candidates.some((a, i) =>
+      candidates.some(
+        (b, j) => i !== j && a.tangent[0] * b.tangent[0] + a.tangent[1] * b.tangent[1] < -1 + 1e-7,
+      ),
+    );
+    if (!continuation) result.push(candidates[0].line);
   }
   return ownedContourSegments(result);
 }
@@ -182,9 +221,9 @@ export function contoursToPositions(lines) {
 
 // Physical outline spans are also used for the subdued hidden-line reference.
 // Includes exposed perimeter/cut edges, but never triangulation or LOD seams.
-export function transparentInspectionContours(plan) {
+export function transparentInspectionContours(plan, options = {}) {
   const exposed = ownedContourSegments(plan?.borderLines || []);
-  const buried = buriedInterfaceContours(plan?.caps || []);
+  const buried = buriedInterfaceContours(plan?.caps || [], options);
   const exposedKeys = new Set(exposed.map(([a, b]) => segmentKey(a, b)));
   return {
     exposed,
