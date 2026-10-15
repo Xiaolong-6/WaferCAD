@@ -32,3 +32,10 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      - name: Print exact changed formatting of section-outline module
+        if: failure()
+        run: |
+          cp site/three-outline-geometry.js /tmp/outline-before.js
+          npx prettier --write site/three-outline-geometry.js
+          diff -u /tmp/outline-before.js site/three-outline-geometry.js || true
