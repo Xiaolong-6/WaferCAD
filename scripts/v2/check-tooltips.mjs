@@ -29,11 +29,13 @@ try {
         });
       }
       const mode = page.locator(
-        mobile ? '[data-action="domain:project"]' : '[data-action="mode:single"]',
+        mobile
+          ? '[data-action="domain:project"]'
+          : '.p-desktop-dock-actions [data-action="dock:overview"]',
       );
       assert.equal(
         await mode.getAttribute('data-help'),
-        mobile ? 'shell.navigation' : 'shell.single',
+        mobile ? 'shell.navigation' : 'shell.overview',
       );
       assert.equal(
         await mode.getAttribute('title'),
@@ -44,7 +46,7 @@ try {
       await page.locator('.wc-context-tooltip:visible').waitFor({ timeout: 5000 });
       assert.match(
         await page.locator('.wc-context-tooltip').innerText(),
-        mobile ? /Workspace panel/ : /Single view/,
+        mobile ? /Workspace panel/ : /Overview/,
       );
       assert.equal(await page.locator('.wc-context-tooltip').getAttribute('role'), 'tooltip');
       assert.equal(await mode.getAttribute('aria-describedby'), 'wc-context-tooltip');
