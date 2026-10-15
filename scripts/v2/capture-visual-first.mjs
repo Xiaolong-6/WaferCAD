@@ -84,29 +84,25 @@ try {
           // Section has its own dock: maximize on desktop, use the mobile
           // Section action in portrait. An Overview screenshot is not proof
           // that the dedicated Section view can be selected.
-          const actions =
-            name === 'section'
-              ? width <= 820
-                ? ['mobile-section']
-                : ['maximize:section']
-              : ['view:' + name];
-          const button = actions
-            .map((action) => document.querySelector('button[data-action="' + action + '"]'))
-            .find(Boolean);
+          let action = 'view:' + name;
+          if (name === 'section') {
+            action = width <= 820 ? 'mobile-section' : 'maximize:section';
+          }
+          const button = document.querySelector('button[data-action="' + action + '"]');
           if (!button) throw new Error('View selector is missing: ' + name);
           button.click();
         }, { name: view, width });
         await waitForPaint(page);
-        const sectionState =
-          view === 'section'
-            ? await page.evaluate(() => {
-                const ui = window.WaferCadV2Workstation.snapshot().ui;
-                return { view: ui.view, maximize: ui.maximize };
-              })
-            : null;
-        if (sectionState) {
-          if (width <= 820) assert.equal(sectionState.view, 'section', 'Portrait Section tab');
-          else assert.equal(sectionState.maximize, 'section', 'Desktop Section maximized');
+        if (view === 'section') {
+          const sectionState = await page.evaluate(() => {
+            const ui = window.WaferCadV2Workstation.snapshot().ui;
+            return { view: ui.view, maximize: ui.maximize };
+          });
+          if (width <= 820) {
+            assert.equal(sectionState.view, 'section', 'Portrait Section tab');
+          } else {
+            assert.equal(sectionState.maximize, 'section', 'Desktop Section maximized');
+          }
         }
         if (view === 'three') {
           try {
