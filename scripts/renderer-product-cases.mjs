@@ -401,6 +401,25 @@ export async function runRendererProductCases({ page, capture }) {
   await waitForPaint(page);
   await page.locator('#threeMaxBtn').click();
   await capture(page, 'wide-rough-3d-transparent-max');
+  await page.locator('#threeBorderControl').click();
+  await page.waitForFunction(
+    () => {
+      const host = document.getElementById('threeHost');
+      return (
+        host?.dataset.renderState === 'ready' &&
+        Number(host.dataset.hiddenBorderSegmentCount || 0) > 0 &&
+        Number(host.dataset.buriedContourSegmentCount || 0) > 0
+      );
+    },
+    null,
+    { timeout: 20000 },
+  );
+  assert.ok(
+    Number(await page.locator('#threeHost').getAttribute('data-buried-contour-segment-count')) > 0,
+    'transparent buried material must expose physically owned internal contours',
+  );
+  await capture(page, 'wide-rough-3d-transparent-borders-max');
+  await page.locator('#threeBorderControl').click();
   await page.locator('#threeMaxBtn').click();
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('1');
