@@ -101,11 +101,8 @@ test('photodetector family uses the device-oriented Welcome title', () => {
   const example = BUNDLED_EXAMPLES.find((entry) => entry.id === 'photodetector-literature');
   assert.equal(example?.title, 'Photodetectors with nanopatterns');
   assert.equal(example?.sources?.length, 3);
-  assert.ok(
-    example.sources.some(
-      (source) => source.href === 'https://urn.fi/URN:ISBN:978-952-64-2900-7',
-    ),
-  );
+  const thesisSource = example.sources.find((source) => !source.doi);
+  assert.equal(thesisSource?.href, 'https://urn.fi/URN:ISBN:978-952-64-2900-7');
 });
 
 test('all promoted Welcome examples are valid project files', async () => {
