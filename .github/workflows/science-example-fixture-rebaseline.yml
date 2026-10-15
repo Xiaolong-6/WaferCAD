@@ -30,7 +30,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx prettier --write scripts/example-recipe-runall-acceptance.mjs
       - run: npx playwright install --with-deps chromium
-      - name: Regenerate only the three approved active final device geometries
+      - name: Regenerate final and immediately preceding physical states, preserving original ancestry
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: |
