@@ -152,6 +152,16 @@ export function reduceDesktopLayout(state, action) {
         state,
         state.visible.filter((key) => key !== id),
       );
+    case 'FOCUS_VIEW': {
+      // Workflow navigation is an explicit request to inspect this view, not
+      // a maximize toggle. A previously closed view is reopened atomically.
+      if (!validId(id)) return state;
+      if (state.maximized === id && state.visible.includes(id)) return state;
+      const restored = state.visible.includes(id)
+        ? state
+        : withVisibility(state, [...state.visible, id]);
+      return { ...restored, maximized: id };
+    }
     case 'MAXIMIZE':
       if (!validId(id) || !state.visible.includes(id)) return state;
       return { ...state, maximized: state.maximized === id ? null : id };
