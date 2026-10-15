@@ -68,6 +68,33 @@ test('Ghosh M3D saved transfer films match Recipe thickness and zero support gap
   }
 });
 
+test('Ghosh M3D both power via landings and the data via have contiguous conductor stacks', async () => {
+  const { model } = await savedExample('m3d-selfpowered-full-replay');
+  const { pointInMulti } = await import('../vector-geometry.js');
+  const names = new Map(model.layers.map((layer) => [layer.id, layer.name]));
+  for (const [point, lowerName] of [
+    [[16, -5.3], 'M3D Ti power via 120nm'],
+    [[16, 5.3], 'M3D Ti power via 120nm'],
+    [[16, 0], 'M3D MoS2 bridge Au 10nm'],
+  ]) {
+    const owners = model.regions.filter((region) => pointInMulti(point, region.geom));
+    assert.equal(owners.length, 1, 'One physical material owner expected at ' + point);
+    const stack = owners[0].stack;
+    const segmentOf = (name) => stack.find((segment) => names.get(segment.layerId) === name);
+    const bottom = segmentOf(lowerName);
+    const ti = segmentOf('M3D via2 Ti 2nm');
+    const ni = segmentOf('M3D via2 Ni 28nm');
+    const au = segmentOf('M3D via2 Au 30nm');
+    assert.ok(bottom && ti && ni && au, 'Missing via conductor at ' + point);
+    assert.ok(
+      Math.abs(bottom.z1 - ti.z0) < 1e-9,
+      'Insulating film breaks actual metal continuity at ' + point,
+    );
+    assert.ok(Math.abs(ti.z1 - ni.z0) < 1e-9, 'Discontinuous Ti/Ni at ' + point);
+    assert.ok(Math.abs(ni.z1 - au.z0) < 1e-9, 'Discontinuous Ni/Au at ' + point);
+  }
+});
+
 test('Fan MAGIC local reconstruction preserves four 250 nm Al levels and transistor films', async () => {
   const { model } = await savedExample('magic-1000-mos2-beol');
   assert.equal(model.width, 40, 'This asset is only the 40 um local representative');
