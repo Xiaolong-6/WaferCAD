@@ -319,12 +319,34 @@ contains 43 captured Section/Mask/Main/3D/detail PNGs and a machine-readable
 marked `PENDING_REVIEW`. Independently reviewing these captures against the
 *original* paper figures yields the following bounded results:
 
-| Original publication and panel | Concrete observed evidence | Scientific disposition |
-| --- | --- | --- |
-| Sahli 2018, [Supplementary Fig. S2d–i, S3a–c](https://doi.org/10.1038/s41563-018-0115-4), including ridge/valley SEM | Active-field screenshot shows triangular ridges and continuous color bands; saved material intervals have **one** Si top Z plane (125.5 µm) across all XY owners, with `frontSurface.morphology=pyramid`, `geometryMode=ideal`. The current procedural cross-section image does not constitute physical facet/conformal-deposition geometry. SEM also exhibits irregular peak geometry and a grainy, nonuniform converted perovskite structure not reproduced by ideal film slabs. | **Film sequence and nominal perovskite 440 nm / LiF 1 nm / IZO 110 nm checks pass. True faceted substrate, facet-local film coverage and quantitative SEM morphology: NOT ACCEPTED.** The source-model/renderer distinction is enforced by a scientific test and surfaced in the Chromium evidence manifest. |
-| Sahli 2018, [Supplementary Fig. S3d–e](https://doi.org/10.1038/s41563-018-0115-4), at Ag grid | `ag-finger-center-magnified-section.png` and `ag-finger-leading-edge-magnified-section.png` show idealized strip/ridge geometry; saved `(0,1901)` and `(0,2000)` stacks confirm Ag 120 nm and MgF₂ 100 nm above IZO. Original STEM–EDX marks In/Ag/Mg/F, Pb and Si across a textured valley. | **Layer order and sampled nominal film thickness: PASS. Grain-boundary/sidewall continuity and experimental STEM–EDX spatial agreement: PENDING.** |
-| Basiri-Esfahani 2019, [Fig. 2a](https://doi.org/10.1038/s41467-018-08038-4) | The rendered diameter Section contains a silica disk and Si support, but also eight-slice stair-stepped lateral XeF₂ undercut mounds. Original source SEM demonstrates the spoked suspended disk and central pedestal, with a **20 µm scale bar**. Paper specifies radii **148 / 82 µm** and thickness **~1.8 µm**, all correctly present in the saved geometry. The **36 µm** release-depth/radius parameter and stair-step contour were introduced by the engineering reconstruction. | **Paper-given dimensions and released void: PASS. Undercut depth/profile vs original SEM: NOT SOURCE-CALIBRATED; quantitative silhouette acceptance remains OPEN.** |
-| Blakers 1989, [PERC](https://doi.org/10.1063/1.101596) | At all 100 representative mask opening centers Al directly contacts Si, adjacent points retain 110 nm oxide, and the real Section screenshots resolve the rear contact and Si/passivation sequence. | **Modeled electrical landing and passivation: PASS. Original author lithographic pitch, whole-array geometry, assumed contact thickness and diffusion/profile fidelity: NOT ESTABLISHED.** |
+**Sahli 2018 SI Figs. S2d–i and S3a–c (ridge/valley):** The captured
+active-field Section shows triangular ridges and color bands. The canonical
+Si interval is a single plane at Z=125.5 µm at every inspected XY point;
+`frontSurface.morphology=pyramid` and `geometryMode=ideal` are display
+metadata. The original SEM has irregular ridges/valleys and granular,
+nonuniform converted perovskite. **Result:** Paper-derived nominal film stack
+(440 nm perovskite, 1 nm LiF, 110 nm IZO) PASS; physically faceted substrate,
+facet-local coverage and quantitative SEM morphology NOT ACCEPTED.
+
+**Sahli 2018 SI Fig. S3d–e (Ag finger):** The two
+`ag-finger-*-magnified-section.png` files show an idealized strip/ridge
+surrogate. Physical stacks at (0,1901) and (0,2000) µm confirm 120 nm Ag
+and 100 nm MgF₂ over IZO. The original STEM–EDX identifies In/Ag/Mg/F,
+Pb and Si across a textured valley. **Result:** Sampled nominal films and
+material order PASS; experimental STEM–EDX spatial agreement PENDING.
+
+**Basiri-Esfahani 2019 Fig. 2a (microdisk):** The diameter Section contains
+a silica disk and Si support with eight-slice stair-stepped XeF₂ undercut
+mounds. The SEM shows a spoked suspended disk, central pedestal and 20 µm
+scale bar. Source dimensions of 148 / 82 µm radii and ~1.8 µm silica PASS.
+The 36 µm undercut depth and stepped contour are engineering assumptions;
+quantitative undercut silhouette comparison remains OPEN.
+
+**Blakers 1989 (PERC):** All 100 representative rear opening centers
+have physical Al–Si contact, adjacent points retain 110 nm passivation,
+and captured Sections show the interface. Modeled landing/passivation PASS.
+Author-original lithography pitches and whole-grid geometry, unreported
+contact thicknesses and diffusion/dopant profiles remain NOT ESTABLISHED.
 
 Importantly, a successful screenshot workflow shows **capture success**, while a
 completed visual-source check requires a separate literature judgment. The
