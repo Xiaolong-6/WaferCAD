@@ -154,7 +154,10 @@ export async function commitWaferBondTransaction(prepared, host) {
   }
   try {
     synchronousResult(host.applyProject(structuredClone(prepared.project)), 'applyProject');
-    synchronousResult(host.recordOperation(structuredClone(prepared.operation)), 'recordOperation');
+    synchronousResult(
+      host.recordOperation(structuredClone(prepared.operation)),
+      'recordOperation',
+    );
   } catch (error) {
     try {
       const restored = host.restoreTransaction(before);
