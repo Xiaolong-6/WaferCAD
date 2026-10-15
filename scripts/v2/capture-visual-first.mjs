@@ -82,20 +82,25 @@ try {
       for (const view of ['main', 'mask', 'three', 'section']) {
         await page.evaluate(
           ({ name, width }) => {
-            // Section has its own dock: maximize on desktop, use the mobile
-            // Section action in portrait. An Overview screenshot is not proof
-            // that the dedicated Section view can be selected.
-            const actions =
-              name === 'section'
-                ? width <= 820
-                  ? ['mobile-section']
-                  : ['maximize:section']
-                : ['view:' + name];
-            const button = actions
-              .map((action) => document.querySelector('button[data-action="' + action + '"]'))
-              .find(Boolean);
-            if (!button) throw new Error('View selector is missing: ' + name);
-            button.click();
+            if (width > 820) {
+              // Desktop docking uses independent visibility switches. Capture
+              // each view by restoring Overview then maximizing that view.
+              const overview = document.querySelector(
+                '.p-desktop-dock-actions [data-action="dock:overview"]',
+              );
+              if (!overview) throw new Error('Desktop Overview selector is missing');
+              overview.click();
+              const maximize = document.querySelector(
+                'button[data-action="maximize:' + name + '"]',
+              );
+              if (!maximize) throw new Error('Maximize selector is missing: ' + name);
+              maximize.click();
+              return;
+            }
+            const action = name === 'section' ? 'mobile-section' : 'view:' + name;
+            const control = document.querySelector('button[data-action="' + action + '"]');
+            if (!control) throw new Error('Compact view selector is missing: ' + name);
+            control.click();
           },
           { name: view, width },
         );
@@ -104,7 +109,7 @@ try {
           view === 'section'
             ? await page.evaluate(() => {
                 const ui = window.WaferCadV2Workstation.snapshot().ui;
-                return { view: ui.view, maximize: ui.maximize };
+                return { view: ui.view, maximize: width <= 820 ? ui.maximize : ui.desktopLayout?.maximized };
               })
             : null;
         if (sectionState) {
