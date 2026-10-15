@@ -451,9 +451,9 @@ try {
   const originalCamera = (await snapshot()).threeCamera;
   await page.mouse.move(centerX, centerY);
   await page.mouse.down();
-  // Preserve a visibly oblique view: the previous +115px vertical drag
-  // clamped polar angle to top-down and hid the very sidewalls under review.
-  await page.mouse.move(centerX + 145, centerY + 45, { steps: 12 });
+  // Aim at the device sidewalls: positive vertical drags flatten the camera
+  // into a top-down view, obscuring the 3D morphology under inspection.
+  await page.mouse.move(centerX + 145, centerY - 20, { steps: 12 });
   await page.mouse.up();
   await waitForPaint(page);
   const orbitedCamera = (await snapshot()).threeCamera;
@@ -471,10 +471,10 @@ try {
   const viewOffset = localCamera.position.map(
     (coordinate, index) => coordinate - localCamera.target[index],
   );
-  const horizontalViewFraction = Math.hypot(viewOffset[0], viewOffset[1]) /
-    Math.hypot(...viewOffset);
+  const horizontalDistance = Math.hypot(viewOffset[0], viewOffset[1]);
+  const horizontalViewFraction = horizontalDistance / Math.hypot(...viewOffset);
   assert.ok(
-    horizontalViewFraction > 0.35 && horizontalViewFraction < 0.96,
+    horizontalViewFraction > 0.7 && horizontalViewFraction < 0.95,
     '3D inspection camera must be oblique, not top-down or edge-on: ' +
       horizontalViewFraction.toFixed(4),
   );
