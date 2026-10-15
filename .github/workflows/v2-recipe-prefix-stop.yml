@@ -29,6 +29,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      # One-shot read-only formatter diff; remove after applying exact changes.
+      - name: Show exact Recipe test formatting difference
+        shell: bash
+        run: |
+          npx prettier scripts/v2/check-recipe-prefix-stop-parity.mjs > /tmp/recipe-parity-formatted.mjs
+          diff -u scripts/v2/check-recipe-prefix-stop-parity.mjs /tmp/recipe-parity-formatted.mjs || true
       - run: npx playwright install --with-deps chromium
       - name: Start production v2 Workstation
         shell: bash
