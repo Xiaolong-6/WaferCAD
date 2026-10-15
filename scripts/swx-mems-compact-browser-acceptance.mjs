@@ -218,6 +218,47 @@ try {
         path: resolve(directory, 'compact-' + state + '-section.png'),
       });
       assert.deepEqual(errors, [], 'Real UI v2 runtime errors');
+      // The saved manufacturing History is not accepted until the browser
+      // re-executes every Recipe operation from a fresh Si handle and
+      // reproduces the saved OFF material model.
+      if (state === 'off') {
+        await page.locator('[data-action="domain:process"]').click();
+        const recipeTab = page.locator('[data-action="process-mode:recipe"]');
+        if (await recipeTab.isVisible()) await recipeTab.click();
+        await page.locator('#recipeRunStart').selectOption('new-base');
+        assert.doesNotMatch(
+          await page.locator('#recipeValidation').innerText(),
+          /✕/,
+          'Compact process Recipe preflight failed in the browser',
+        );
+        const expectedSteps = source.processRecipe.steps.length;
+        await page.locator('#recipeRunAllBtn').click();
+        const clearHistory = page.getByRole('button', {
+          name: 'Clear history',
+          exact: true,
+        });
+        const keepHistory = page.getByRole('button', {
+          name: 'Keep previous history',
+          exact: true,
+        });
+        await page.getByRole('button', {
+          name: /Clear history|Keep previous history/,
+        }).first().waitFor({ state: 'visible', timeout: 15000 });
+        if (await clearHistory.isVisible()) await clearHistory.click();
+        else await keepHistory.click();
+        await page.waitForFunction(
+          () => /^(Completed|Failed|Stopped):/.test(
+            document.querySelector('#recipeRunSummary')?.textContent || '',
+          ),
+          null,
+          { timeout: 300000 },
+        );
+        const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
+        assert.match(summary, new RegExp('^Completed: ' + expectedSteps + '/' + expectedSteps));
+        await assertSameMaterialGeometry(source.model, (await snapshot()).model, {
+          areaToleranceUm2: 0.01,
+        });
+      }
       report.cases.push({
         state,
         projectLoaded: true,
@@ -227,6 +268,7 @@ try {
         gdsAndOasBrowserExports: true,
         threeDReady: true,
         boxSectionVisible: true,
+        fullRecipeReplayMatchesSavedOFFModel: state === 'off' ? true : 'shared OFF fabrication',
       });
     } finally {
       await context.close();
