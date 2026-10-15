@@ -44,9 +44,19 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-recipe-prefix-stop-parity.mjs
+      - name: Start retained Legacy test route (Welcome at /)
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > legacy-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:4173/index.html && exit 0
+            sleep 1
+          done
+          cat legacy-server.log
+          exit 1
       - name: Preserve Legacy Recipe preflight, prefix and Stop scientific contracts
         env:
-          WAFERCAD_URL: http://127.0.0.1:4182
+          WAFERCAD_URL: http://127.0.0.1:4173
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/process-recipe-safety-regression.mjs
       - uses: actions/upload-artifact@v6
