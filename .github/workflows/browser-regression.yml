@@ -156,11 +156,11 @@ jobs:
         run: npm run test:ui:resilience
 
       - name: Run History regression
-        if: ${{ needs.plan.outputs.history == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ needs.plan.outputs.history == 'true' }}
         run: npm run test:ui:history
 
       - name: Run persistence regression
-        if: ${{ needs.plan.outputs.persistence == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ needs.plan.outputs.persistence == 'true' }}
         run: npm run test:ui:persistence
 
       - name: Run interaction regression
