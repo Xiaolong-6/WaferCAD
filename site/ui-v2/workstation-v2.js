@@ -20,11 +20,21 @@
     };
     let mounted,
       activeAdapter = null;
+    // Standalone M2 prototypes still use their original mobile header switcher.
+    // Production has exactly one contextual switcher in the bottom navigation.
+    const standaloneMobileReturn = !document.body.hasAttribute('data-workstation')
+      ? el(
+          'div',
+          { class: 'p-actions p-mobile-return' },
+          button('Back to results', 'return-results', 'back'),
+        )
+      : null;
     const topbar = el(
       'header',
       { class: 'p-topbar' },
       el('a', { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' }, 'WaferCAD'),
       slot('topbar.project', 'p-project-title', 'span'),
+      standaloneMobileReturn,
       el('span', { class: 'p-review-badge' }),
     );
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
@@ -469,6 +479,16 @@
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';
+      if (standaloneMobileReturn?.dataset.pane !== state.mobile && standaloneMobileReturn) {
+        standaloneMobileReturn.replaceChildren(
+          button(
+            state.mobile === 'edit' ? 'View results' : 'Edit workspace',
+            state.mobile === 'edit' ? 'return-results' : 'show-editor',
+            state.mobile === 'edit' ? 'back' : 'process',
+          ),
+        );
+        standaloneMobileReturn.dataset.pane = state.mobile;
+      }
       renderNav(info);
       renderPanel(info);
       renderStage(info);
