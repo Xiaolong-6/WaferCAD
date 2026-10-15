@@ -194,7 +194,7 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
       [-28, -1.6 + travel], // moving SWX facet attachment
       [-2.65, travel], // vertical shuttle frame
       [25, travel], // upper moving comb handle
-      [25, SWX_ASSUMPTIONS.lowerMovableCombYUm + travel], // lower moving handle
+      [-31, SWX_ASSUMPTIONS.lowerMovableCombYUm + travel], // lower left moving handle
       [6.7, 3 + travel], // upper right spring attachment
       [-6.7, 3 + travel], // upper left spring attachment
       [6.7, -3 + travel], // lower right spring attachment
@@ -371,7 +371,7 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
       components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
     const movable = connectedPart([25, g.travelUm]);
     const upperFixed = connectedPart([25, 9]);
-    const lowerFixed = connectedPart([25, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
+    const lowerFixed = connectedPart([-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
     assert.ok(movable >= 0 && upperFixed >= 0 && lowerFixed >= 0);
     assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
@@ -390,14 +390,31 @@ test('all 40 fixed comb fingers physically join their anchored handles in OFF an
     );
     const netAt = (point) => components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
     const upperHandle = netAt([25, 9]);
-    const lowerHandle = netAt([25, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
+    const lowerHandle = netAt([-32, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
     assert.ok(upperHandle >= 0 && lowerHandle >= 0);
     assert.notEqual(upperHandle, lowerHandle);
     for (let i = 0; i < 20; i++) {
       const x = 8.8 + i * 1.65;
       assert.equal(netAt([x, 5.7]), upperHandle, state + ' detached upper fixed finger ' + i);
-      assert.equal(netAt([x, -9.5]), lowerHandle, state + ' detached lower fixed finger ' + i);
+      const leftX = -x + SWX_ASSUMPTIONS.leftCombXShiftUm;
+      assert.equal(
+        netAt([leftX, -9.5 + SWX_ASSUMPTIONS.leftCombYShiftUm]),
+        lowerHandle,
+        state + ' detached lower fixed finger ' + i,
+      );
     }
+  }
+});
+
+test('opposed comb banks remain on opposite shuttle sides in both poses', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxGeometry(state);
+    const [right, left] = pose.physicalGroups.combBanks.fixed;
+    const centerX = (shape) => shape.reduce((sum, vertex) => sum + vertex[0], 0) / shape.length;
+    assert.ok(centerX(right) > SWX_REPORTED.shuttleWidthUm / 2);
+    assert.ok(centerX(left) < -SWX_REPORTED.shuttleWidthUm / 2);
+    assert.equal(pose.physicalGroups.combBanks.fixed.length, 42);
+    assert.equal(pose.physicalGroups.combBanks.moving.length, 42);
   }
 });
 
@@ -416,7 +433,8 @@ test('both electrostatic comb banks increase axial overlap equally along +Y', ()
       const [mx0, mx1] = extent(banks.moving[index], 0);
       const [fy0, fy1] = extent(banks.fixed[index], 1);
       const [my0, my1] = extent(banks.moving[index], 1);
-      approx(mx0 - fx1, SWX_REPORTED.combFingerGapUm);
+      if (index % 2 === 0) approx(mx0 - fx1, SWX_REPORTED.combFingerGapUm);
+      else approx(fx0 - mx1, SWX_REPORTED.combFingerGapUm);
       const overlap = Math.max(0, Math.min(fy1, my1) - Math.max(fy0, my0));
       approx(overlap, SWX_REPORTED.combFingerInitialOverlapUm + pose.travelUm);
     }
