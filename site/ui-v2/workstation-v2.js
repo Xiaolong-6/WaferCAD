@@ -348,33 +348,12 @@
             ? `${placement.column + 1} / span ${placement.columnSpan}`
             : '';
           panel.style.gridRow = placement ? `${placement.row + 1} / span ${placement.rowSpan}` : '';
-          const title = panel.querySelector(`[data-slot="view.${key}.header"]`);
-          if (title) {
-            title.tabIndex = docking.displayed.length > 1 ? 0 : -1;
-            title.setAttribute('aria-label', `${label} layout titlebar; Alt+Enter to choose Snap Layout`);
-          }
-          const maximize = panel.querySelector(`[data-action="maximize:${key}"]`);
-          if (maximize) {
-            const active = docking.maximized === key;
-            maximize.setAttribute('aria-label', `${label} ${active ? 'restore' : 'maximize'}`);
-            maximize.querySelector('use')?.setAttribute(
-              'href', `#p-icon-${active ? 'restore' : 'maximize'}`,
-            );
-          }
-          const actionHost = panel.querySelector(`[data-slot="view.${key}.actions"]`);
-          if (actionHost && !actionHost.querySelector(`[data-action="dock:close:${key}"]`)) {
-            const close = button('', `dock:close:${key}`, 'close', {
-              'aria-label': `Close ${label} view`,
-              title: `Close ${label} view`,
-            });
-            close.classList.add('v2-dock-close');
-            actionHost.append(close);
-          }
-          const close = actionHost?.querySelector(`[data-action="dock:close:${key}"]`);
-          if (maximize && actionHost && close) {
-            maximize.classList.add('v2-dock-maximize');
-            close.before(maximize);
-          }
+          window.WaferCadV2PanelChrome.prepareDesktop(panel, {
+            key,
+            label,
+            maximized: docking.maximized === key,
+            draggable: docking.displayed.length > 1,
+          });
           // Layout only: active scientific renderers retain their DOM and camera.
           // Newly displayed views render via the existing adapter onShow hook.
           if (placement) adapters.show(id, canvases);
@@ -436,16 +415,8 @@
         panel.style.order = String(visible ? names.indexOf(key) : 99);
         panel.style.gridColumn = '';
         panel.style.gridRow = '';
-        const title = panel.querySelector(`[data-slot="view.${key}.header"]`);
-        title?.removeAttribute('tabindex');
-        title?.removeAttribute('aria-label');
-        const actionHost = panel.querySelector(`[data-slot="view.${key}.actions"]`);
+        window.WaferCadV2PanelChrome.restoreDesktop(panel, key);
         const maximizeButton = panel.querySelector(`[data-action="maximize:${key}"]`);
-        const toolbar = actionHost?.querySelector('.p-toolbar');
-        if (maximizeButton && toolbar && maximizeButton.parentNode !== toolbar) {
-          toolbar.append(maximizeButton);
-          maximizeButton.classList.remove('v2-dock-maximize');
-        }
         if (maximizeButton) {
           const maximized = state.maximize === key;
           const label = registry.views.find((view) => view.key === key).label;
