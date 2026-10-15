@@ -58,6 +58,11 @@ try {
     { timeout: 120000 },
   );
   const opened = await snap();
+  await page.waitForFunction(
+    () => document.querySelector('#mainCoords')?.textContent?.trim() === '14 × 8 µm',
+    null,
+    { timeout: 30000 },
+  );
   assert.equal(
     opened.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
     false,
