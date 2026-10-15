@@ -200,7 +200,7 @@ try {
   await page.locator('#sectionPanel [data-action="maximize:section"]').click();
   await waitForPaint(page);
   assert.equal(
-    (await snapshot()).state.maximize,
+    (await snapshot()).ui.maximize,
     null,
     'Section inspection must restore UI layout',
   );
