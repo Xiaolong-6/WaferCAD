@@ -31,6 +31,7 @@ export const CRITICAL_LEGACY_CONTRACTS = [
       'scripts/v2/check-cross-ui-recovery.mjs',
       'scripts/v2/check-history-variant-parity.mjs',
       'scripts/v2/check-history-replay-rollback.mjs',
+      'scripts/v2/check-history-pointer-parity.mjs',
     ],
     gaps: [
       'bookmark editing and complete historical Step edit/insert action matrix',
