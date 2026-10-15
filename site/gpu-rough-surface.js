@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v4';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v5';
 
 function finitePositive(value, fallback) {
   const number = Number(value);

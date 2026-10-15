@@ -65,6 +65,59 @@ test('software CPU rough mesh preserves physical height at Float32 vertices with
   assert.ok(maxError < 2e-5, `Float32 CPU displacement parity exceeded: ${maxError} um`);
 });
 
+test('coarse display filtering keeps CPU/GPU rough boundaries and sidewall ownership identical', async () => {
+  const { roughDisplayProfileOffsetAtPoint } = await import('../surface-rendering.js');
+  const appearance = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'normal',
+    featureSize: 0.3,
+    meanHeight: 0.5,
+    etchDepth: 0.9,
+    featureCv: 0.25,
+    heightCv: 0.3,
+    seed: 20261015,
+    displayRoughBlend: 0.12,
+  };
+  const task = {
+    z: 2,
+    normal: 1,
+    profileNormal: 1,
+    appearance,
+    closeToIdeal: true,
+    lodZones: [{
+      baseTriangles: squareTriangles,
+      edges: roughBoundaryEdgesFromTriangles(squareTriangles),
+      maxEdge: Math.SQRT2,
+      triangleBudget: 256,
+      lodContext: { distance: 2, viewportWidth: 1100, viewportHeight: 800, maxDepth: 3 },
+    }],
+  };
+  const cpu = roughMeshDataFromPreparedCap({
+    ...task,
+    gpuDisplacement: false,
+    analyticNormals: true,
+  });
+  const gpu = roughMeshDataFromPreparedCap({
+    ...task,
+    gpuDisplacement: true,
+    analyticNormals: false,
+  });
+  assert.deepEqual(cpu.roughBoundaryPositions, gpu.roughBoundaryPositions);
+  assert.deepEqual(cpu.roughBorderPositions, gpu.roughBorderPositions);
+  for (let i = 0; i < cpu.roughBoundaryPositions.length; i += 3) {
+    const x = cpu.roughBoundaryPositions[i],
+      y = cpu.roughBoundaryPositions[i + 1],
+      z = cpu.roughBoundaryPositions[i + 2],
+      expected = Math.fround(task.z + roughDisplayProfileOffsetAtPoint(x, y, appearance));
+    assert.ok(Math.abs(z - expected) < 1e-6);
+  }
+  assert.deepEqual(
+    roughMeshDataFromPreparedCap({ ...task, gpuDisplacement: false }).positions,
+    cpu.positions,
+  );
+});
+
 test('sorted rough-edge interval lookup exactly preserves inclusive and strict LOD sampling', () => {
   const samples = Array.from({ length: 65 }, (_, i) => [(i - 32) / 16, ['point', i]]);
   samples.splice(33, 0, [1 / 16, ['duplicate', 33]]);

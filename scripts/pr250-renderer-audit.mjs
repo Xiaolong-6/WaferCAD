@@ -399,6 +399,15 @@ try {
       );
       delete diagnostics.canonicalModel;
       assert.equal(diagnostics.host.renderState, 'ready');
+      if (fixture.name.startsWith('photodetector-') && config.zBreak) {
+        const blend = Number(diagnostics.host.roughDisplayBlendMin);
+        assert.ok(Number.isFinite(blend) && blend > 0);
+        if (fixture.name.includes('-micro-')) {
+          assert.equal(blend, 1, 'microscopic roughness must retain full display relief');
+        } else {
+          assert.ok(blend < 0.5, 'macro under-sampled roughness must be prefiltered');
+        }
+      }
       if (config.zBreak) {
         assert.equal(Number(diagnostics.host.zFrontScale), 8);
         assert.equal(diagnostics.host.zScaleLinked, 'false');

@@ -38,6 +38,12 @@ test('GPU rough uniforms preserve deterministic appearance identity', () => {
   assert.equal(uniforms.waferCadRoughSampleOriginY.value, -7.25);
   assert.equal(uniforms.waferCadRoughProfileNormal.value, -1);
   assert.equal(uniforms.waferCadRoughNormalStrength.value, 0.75);
+  assert.equal(uniforms.waferCadRoughVisualBlend.value, 1);
+  assert.equal(
+    gpuRoughAppearanceUniforms({ ...appearance, displayRoughBlend: 0.12 })
+      .waferCadRoughVisualBlend.value,
+    0.12,
+  );
 });
 
 test('GPU rough preview rejects non-rough or degenerate appearances', () => {
@@ -101,12 +107,14 @@ test('GPU rough decorator chains existing material shader hooks', () => {
   assert.equal(priorCompileCalls, 1);
   assert.equal(material.needsUpdate, true);
   assert.equal(material.userData.waferCadGpuRough.normalStrengthBase, 1);
-  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v4/);
+  assert.match(material.customProgramCacheKey(), /wafercad-gpu-rough-v5/);
   assert.match(shader.vertexShader, /waferCadGpuDisplace/);
   assert.doesNotMatch(shader.vertexShader, /instanceMatrix\[3\]\.xy/);
   assert.match(shader.vertexShader, /transformed\.z \+= waferCadRoughProfileNormal/);
   assert.match(shader.vertexShader, /vWaferCadRoughXY/);
   assert.match(shader.fragmentShader, /waferCadRoughProfile/);
+  assert.match(shader.vertexShader, /waferCadRoughVisualBlend/);
+  assert.match(shader.vertexShader, /return mix\(center, raw, waferCadRoughVisualBlend\)/);
   assert.match(shader.fragmentShader, /waferCadScreenDx/);
   assert.match(shader.fragmentShader, /waferCadMicroNormalWeight = smoothstep\(1\.5, 3\.0/);
   assert.match(shader.fragmentShader, /waferCadRoughNormalStrength \* waferCadMicroNormalWeight/);
