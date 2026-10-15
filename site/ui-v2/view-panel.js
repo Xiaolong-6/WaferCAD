@@ -87,7 +87,8 @@
     if (!title || !actions) return;
     const glyphName = icon || null;
     const existingIcon = title.querySelector('.v2-dock-title-icon');
-    if (glyphName && existingIcon?.dataset.glyph !== glyphName) existingIcon.remove();
+    if (glyphName && existingIcon && existingIcon.dataset.glyph !== glyphName)
+      existingIcon.remove();
     if (glyphName && !title.querySelector('.v2-dock-title-icon')) {
       const glyph = window.WaferCadV2Icons.icon(glyphName);
       glyph.classList.add('v2-dock-title-icon');
