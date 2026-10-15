@@ -300,7 +300,10 @@ try {
           const sourceNode = savedNodes.get(sourceNodeId);
           const rebuiltNode = replayNodes[index];
           assert.ok(sourceNode?.state?.model, `Unresolved saved History model at ${step.id}`);
-          assert.ok(rebuiltNode?.state?.model, `Unresolved replay History model at Step ${index + 1}`);
+          assert.ok(
+            rebuiltNode?.state?.model,
+            `Unresolved replay History model at Step ${index + 1}`,
+          );
           try {
             const result = await assertSameMaterialGeometry(
               sourceNode.state.model,
@@ -334,7 +337,7 @@ try {
         };
         await writeFile(
           `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-history-parity.json`,
-          JSON.stringify(historyReport, null, 2) + '\\n',
+          JSON.stringify(historyReport, null, 2) + '\n',
         );
         console.log(
           `${example.id}: intermediate History XY/Z: ${comparisons.length}/${processSteps.length} steps matched, ${mismatches.length} discrepancies`,
