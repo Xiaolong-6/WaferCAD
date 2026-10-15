@@ -310,3 +310,34 @@ Remaining evidence before scientific acceptance:
 5. Compare **intermediate** saved History and Variant nodes to stepwise Recipe replay at each physical operation, not merely final geometry; preserve pre-existing node IDs/revisions and shared ancestry. Capture independent Section/3D visual evidence for mismatches.
 
 **Merge policy:** Do not merge on CI-green alone. Preserve this PR head for independent scientific/visual acceptance; request owner approval before merge.
+
+## 2026-10-15 independent original-figure review — scientific acceptance is still split
+
+The [real Chromium figure-cut evidence (run 38753459685, artifact 11982606386)](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386)
+contains 43 captured Section/Mask/Main/3D/detail PNGs and a machine-readable
+`figure-cut-manifest.json`. Each captured `figureComparison` was correctly
+marked `PENDING_REVIEW`. Independently reviewing these captures against the
+*original* paper figures yields the following bounded results:
+
+| Original publication and panel | Concrete observed evidence | Scientific disposition |
+| --- | --- | --- |
+| Sahli 2018, [Supplementary Fig. S2d–i, S3a–c](https://doi.org/10.1038/s41563-018-0115-4), including ridge/valley SEM | Active-field screenshot shows triangular ridges and continuous color bands; saved material intervals have **one** Si top Z plane (125.5 µm) across all XY owners, with `frontSurface.morphology=pyramid`, `geometryMode=ideal`. The current procedural cross-section image does not constitute physical facet/conformal-deposition geometry. SEM also exhibits irregular peak geometry and a grainy, nonuniform converted perovskite structure not reproduced by ideal film slabs. | **Film sequence and nominal perovskite 440 nm / LiF 1 nm / IZO 110 nm checks pass. True faceted substrate, facet-local film coverage and quantitative SEM morphology: NOT ACCEPTED.** The source-model/renderer distinction is enforced by a scientific test and surfaced in the Chromium evidence manifest. |
+| Sahli 2018, [Supplementary Fig. S3d–e](https://doi.org/10.1038/s41563-018-0115-4), at Ag grid | `ag-finger-center-magnified-section.png` and `ag-finger-leading-edge-magnified-section.png` show idealized strip/ridge geometry; saved `(0,1901)` and `(0,2000)` stacks confirm Ag 120 nm and MgF₂ 100 nm above IZO. Original STEM–EDX marks In/Ag/Mg/F, Pb and Si across a textured valley. | **Layer order and sampled nominal film thickness: PASS. Grain-boundary/sidewall continuity and experimental STEM–EDX spatial agreement: PENDING.** |
+| Basiri-Esfahani 2019, [Fig. 2a](https://doi.org/10.1038/s41467-018-08038-4) | The rendered diameter Section contains a silica disk and Si support, but also eight-slice stair-stepped lateral XeF₂ undercut mounds. Original source SEM demonstrates the spoked suspended disk and central pedestal, with a **20 µm scale bar**. Paper specifies radii **148 / 82 µm** and thickness **~1.8 µm**, all correctly present in the saved geometry. The **36 µm** release-depth/radius parameter and stair-step contour were introduced by the engineering reconstruction. | **Paper-given dimensions and released void: PASS. Undercut depth/profile vs original SEM: NOT SOURCE-CALIBRATED; quantitative silhouette acceptance remains OPEN.** |
+| Blakers 1989, [PERC](https://doi.org/10.1063/1.101596) | At all 100 representative mask opening centers Al directly contacts Si, adjacent points retain 110 nm oxide, and the real Section screenshots resolve the rear contact and Si/passivation sequence. | **Modeled electrical landing and passivation: PASS. Original author lithographic pitch, whole-array geometry, assumed contact thickness and diffusion/profile fidelity: NOT ESTABLISHED.** |
+
+Importantly, a successful screenshot workflow shows **capture success**, while a
+completed visual-source check requires a separate literature judgment. The
+browser manifest now emits `canonicalFacetEvidence` and
+`paperImageAcceptance=PENDING_INDEPENDENT_FIGURE_COMPARISON`; these cannot be
+mistaken for a passed scientific SEM comparison. This work does **not**
+alter the physical Kernel, geometry assets, paper-derived Recipe steps,
+scientific comparison tolerances or any figure baseline.
+
+**Next engineering dependency:** a genuine heightfield/faceted canonical material
+interface (including actual conformal film footprints on facet sidewalls)
+requires a separately reviewed Kernel/Renderer representation design and
+physical invariant tests. Do not silently translate procedural Section pixels
+into physical mask or film dimensions. Native published-image overlays and
+independent intermediate-step scientific reconstruction remain required before
+claiming the full eight-family paper-fidelity audit has passed.
