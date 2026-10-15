@@ -104,13 +104,15 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
   assert.equal(validation.maskLayers, 16);
-  assert.equal(validation.processNodes, 29);
-  assert.equal(validation.recipeSteps, 28);
+  assert.equal(validation.processNodes, 30);
+  assert.equal(validation.recipeSteps, 29);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
   assert.equal(validation.checks.physicalAlGaNAndSiNWith2DEGOnlyAsMetadata, true);
-  assert.equal(validation.checks.fourOpenTSVsWithContinuousTiCuSeedGeometry, true);
+  assert.equal(validation.checks.fourTSVsWithContinuousTiCuSeedGeometry, true);
+  assert.equal(validation.checks.fourTSVsAreActualCuFilledColumns, true);
+  assert.equal(validation.checks.fourCuFilledTSVsWithUnblockedCoolant, true);
   assert.equal(
     project.processRecipe.steps.filter(
       (step) =>
@@ -118,8 +120,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
         step.params.coverage === 'conformal' &&
         step.params.material.startsWith('TSV '),
     ).length,
-    2,
-    'Native Recipe must replay both conformal Ti/Cu seed coatings',
+    3,
+    'Native Recipe must replay Ti/Cu seed coatings and inferred Cu electrofill',
   );
   assert.ok(
     project.processRecipe.steps.some(
@@ -230,12 +232,16 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   );
   const platedTSV = project.snapshots.find((s) => s.name.startsWith('03b Open Ti/Cu-lined'));
   assert.ok(platedTSV, 'Ti/Cu deposition needs a distinct scientific Bookmark');
+  const filledBookmark = project.snapshots.find((r) => r.name.startsWith('03c Cu-filled TSV'));
+  assert.ok(filledBookmark, 'Full Cu TSV geometry needs a distinct History Bookmark');
   assert.ok(
     project.model.layers.some((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um'),
   );
   assert.ok(
     project.model.layers.some((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um'),
   );
+  const fillLayer = project.model.layers.find((l) => l.name === 'TSV Cu electrofill surrogate 35 um');
+  assert.ok(fillLayer, 'Model is missing full-depth Cu TSV fill layer');
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);
@@ -307,31 +313,22 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   }
   assert.equal(solidAt(project.model, [0, 0], -100), true);
   assert.equal(solidAt(project.model, [0, 0], 100), false);
-  // The screenshot's four apparent vertical pillars must be *empty bores*
-  // with solid surrounding Si. Assert cross-section at each published-side
-  // illustrative TSV, not only one XY center / one axial elevation.
+  // All four vias have real Cu-filled cores. Test the idealized physical
+  // material, not just the presence of a layer label or render artifact.
   for (const x of [-1450, 1450]) {
     for (const y of [-950, 950]) {
       for (const z of [-150, -50, 50, 150, 250, 350, 450, 550]) {
-        assert.equal(
-          solidAt(project.model, [x, y], z),
-          false,
-          'TSV became a solid pillar at ' + [x, y, z],
+        assert.ok(
+          stackAt(project.model, [x, y]).some(
+            (seg) => seg.layerId === fillLayer.id && seg.z0 < z && seg.z1 > z,
+          ),
+          'Cu TSV core missing at ' + [x, y, z],
         );
         assert.equal(
           solidAt(project.model, [x + 43, y], z),
           true,
-          'Silicon TSV sidewall is missing at ' + [x + 43, y, z],
+          'Surrounding silicon TSV wall missing at ' + [x + 43, y, z],
         );
-      }
-      for (const dx of [-20, 0, 20]) {
-        for (const dy of [-20, 0, 20]) {
-          assert.equal(
-            stackAt(project.model, [x + dx, y + dy]).length,
-            0,
-            'TSV bore has a filled corner at ' + [x + dx, y + dy],
-          );
-        }
       }
     }
   }
