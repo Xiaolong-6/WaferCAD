@@ -10,7 +10,6 @@ const output = resolve('test-results/ui-v2-desktop-docking');
 await mkdir(output, { recursive: true });
 const browser = await launchBrowser();
 const views = ['main', 'mask', 'three', 'section'];
-const panels = views.map((view) => '#' + (view === 'three' ? 'three' : view) + 'Panel');
 
 function intersect(a, b) {
   const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
