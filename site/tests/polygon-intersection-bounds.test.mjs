@@ -3,7 +3,8 @@ import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const { EPS, rectMulti, robustIntersection } = await import('../vector-geometry.js');
+const { rectMulti } = await import('../vector-geometry.js');
+const { EPS, robustIntersection } = await import('../polygon-boolean.js');
 
 test('separated polygon bounds skip the exact Boolean kernel without changing input', () => {
   const left = Array.from({ length: 40 }, (_, i) => [
