@@ -43,10 +43,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: Inspect exact Prettier patch for compact grating change (temporary)
-        run: |
-          npx prettier --write site/tests/swx-mems-compact-process.test.mjs scripts/swx-mems-compact-gratings.mjs scripts/swx-mems-compact-browser-acceptance.mjs scripts/swx-mems-compact-bends.mjs scripts/swx-mems-optomechanical-candidate.mjs site/tests/swx-mems-optomechanical-candidate.test.mjs
-          git diff -- site/tests/swx-mems-compact-process.test.mjs scripts/swx-mems-compact-gratings.mjs scripts/swx-mems-compact-browser-acceptance.mjs scripts/swx-mems-compact-bends.mjs scripts/swx-mems-optomechanical-candidate.mjs site/tests/swx-mems-optomechanical-candidate.test.mjs
       - name: Compact actuator targeted scientific contracts
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Compact optical/mechanical interface scientific contracts
