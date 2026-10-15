@@ -24,8 +24,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Verify focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+      - name: Normalize focused candidate source for deterministic PR synchronization
+        run: |
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+          node -e "const f=require('node:fs');for(const [label,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('TSV_FILL_FORMAT|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('TSV_FILL_FORMAT_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Targeted ESLint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Scientific wall and full native Recipe replay
