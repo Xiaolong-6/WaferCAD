@@ -119,13 +119,23 @@ try {
     store.renderAll();
     requestAnimationFrame(() => desktopResizer?.refresh());
   };
+  // View-specific, nonmodal floating editors are transient UI, not model state.
+  // Dismissing them when their view is hidden prevents stale Mask/Section
+  // dialogs from intercepting the desktop workflow navigation.
+  const floatingManagers = new Map();
   // Layout changes repaint only Shell/element sizing. Scientific invalidation
   // remains owned by the existing model scheduler and canvas ResizeObservers.
   const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
   const changeDesktopLayout = (action) => {
     if (!desktopDockingActive()) return;
-    const next = reduceDesktopLayout(uiState.desktopLayout, action);
-    if (next === uiState.desktopLayout) return;
+    const previous = uiState.desktopLayout;
+    const next = reduceDesktopLayout(previous, action);
+    if (next === previous) return;
+    if (previous.maximized && previous.maximized !== next.maximized)
+      floatingManagers.get(previous.maximized)?.closeFloatings();
+    for (const view of previous.visible) {
+      if (!next.visible.includes(view)) floatingManagers.get(view)?.closeFloatings();
+    }
     uiState.desktopLayout = next;
     saveDesktopLayout(desktopPreferences, next);
     if (!starting) {
@@ -178,10 +188,13 @@ try {
     store.changed(key);
     if (!readOnlyPreview) workflow.persistence.schedule();
   };
-  const scope = (key) => ({
-    ...workstation,
-    overlays: createFloatingEditorManager(shell.overlays, { className: `v2-${key}-floating` }),
-  });
+  const scope = (key) => {
+    const overlays = createFloatingEditorManager(shell.overlays, {
+      className: `v2-${key}-floating`,
+    });
+    floatingManagers.set(key, overlays);
+    return { ...workstation, overlays };
+  };
   const main = await createMainView({
     renderModel: store.renderModel,
     project,
