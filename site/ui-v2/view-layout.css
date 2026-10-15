@@ -174,3 +174,47 @@
     position: relative;
   }
 }
+
+@media (min-width: 821px) {
+  body[data-workstation]:not([data-preview-mode]) .p-canvases[data-desktop-docking='true'] {
+    position: relative;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider {
+    position: absolute;
+    z-index: 7;
+    box-sizing: border-box;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    touch-action: none;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider::after {
+    content: '';
+    position: absolute;
+    border-radius: 2px;
+    background: transparent;
+    transition: background 100ms ease;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider:hover::after,
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider:focus-visible::after {
+    background: var(--wc-accent);
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-columns {
+    width: 10px;
+    margin-left: -5px;
+    cursor: col-resize;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-columns::after {
+    width: 3px;
+    inset: 0 auto 0 4px;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-rows {
+    height: 10px;
+    margin-top: -5px;
+    cursor: row-resize;
+  }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-divider-rows::after {
+    height: 3px;
+    inset: 4px 0 auto;
+  }
+}
