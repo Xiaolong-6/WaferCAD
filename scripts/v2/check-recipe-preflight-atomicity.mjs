@@ -34,7 +34,8 @@ try {
 
     await page.locator('[data-action="process-mode:code"]').click();
     const editor = page.locator('#recipeCodeEditor');
-    const valid = 'deposit({ material: "Recovered recipe film", thickness: "0.35 nm", area: "full" });';
+    const valid =
+      'deposit({ material: "Recovered recipe film", thickness: "0.35 nm", area: "full" });';
     await editor.fill(valid);
     await page.locator('#recipeApplyCodeBtn').click();
     await page.waitForFunction(() =>
@@ -62,7 +63,11 @@ try {
     );
     const rejected = await snapshot();
     assert.deepEqual(rejected.model, before.model, 'Rejected draft preserves physical geometry');
-    assert.deepEqual(rejected.workflow.steps, before.workflow.steps, 'Rejected draft preserves Steps');
+    assert.deepEqual(
+      rejected.workflow.steps,
+      before.workflow.steps,
+      'Rejected draft preserves Steps',
+    );
     assert.deepEqual(
       rejected.workflow.branches,
       before.workflow.branches,
