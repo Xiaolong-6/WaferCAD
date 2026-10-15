@@ -24,4 +24,15 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs
+      - name: Format targeted candidate before syncing generated project
+        run: npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+      - name: Targeted ESLint
+        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+      - name: Scientific wall and full native Recipe replay
+        run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+      - name: Rebuild canonical project and Preview
+        run: |
+          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+          node -e "const f=require('node:fs');for(const [name,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md'],['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('GAN_TSV_ASSET|'+name+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('GAN_TSV_ASSET_END|'+name+'|'+Math.ceil(s.length/1500));}"
+

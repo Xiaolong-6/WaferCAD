@@ -4,9 +4,7 @@ import { buildGanMicrochannel } from '../../scripts/build-gan-hemt-microchannel-
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const modelApi = await import('../model.js');
 const vectorApi = await import('../vector-geometry.js');
-const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 
@@ -21,25 +19,12 @@ function layerAt(model, point, z) {
   return segment?.layerId || null;
 }
 
-function depositConformal(model, mask, name, thickness) {
-  const op = { type: 'add', name, thickness, growth: 'conformal', face: 'front' };
-  const result =
-    applyAdvancedProcessOperation(model, op, mask, modelApi, vectorApi) ||
-    modelApi.applyOperation(model, { ...op, area: mask });
-  assert.equal(result?.changed, true, name + ': ' + (result?.error || 'no material change'));
-  return result.layerId;
-}
-
-test('TSV-focused conformal Ti/Cu probe preserves the coolant and open via cores', async () => {
+test('Production Ti/Cu TSV seed walls preserve coolant and open via cores', async () => {
   const { project } = await buildGanMicrochannel();
-  const model = structuredClone(project.model);
-  // The 70 um square bore must be surrounded by a little exposed silicon:
-  // a mask exactly equal to the empty bore cannot seed a physical wall.
-  const tsvMask = vectorApi.unionGeometries(
-    tsvCenters.map(([x, y]) => vectorApi.rectMulti(90, 90, x, y)),
-  );
-  const ti = depositConformal(model, tsvMask, 'TSV Ti seed probe 0.2 um', 0.2);
-  const cu = depositConformal(model, tsvMask, 'TSV Cu seed probe 0.5 um', 0.5);
+  const model = project.model;
+  const ti = model.layers.find((l) => l.name === 'TSV Ti conformal seed surrogate 0.2 um');
+  const cu = model.layers.find((l) => l.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  assert.ok(ti && cu, 'Production build omitted real Ti/Cu wall material');
   const heights = [-150, 50, 250, 450, 550];
   const seen = {};
   for (const [x, y] of tsvCenters) {
@@ -49,7 +34,7 @@ test('TSV-focused conformal Ti/Cu probe preserves the coolant and open via cores
       for (let offset = 33; offset <= 37.0001; offset += 0.05) {
         observed.add(layerAt(model, [x + offset, y], z));
       }
-      for (const [name, id] of [['Ti', ti], ['Cu', cu]]) {
+      for (const [name, id] of [['Ti', ti.id], ['Cu', cu.id]]) {
         assert.ok(observed.has(id), name + ' wall film absent at ' + [x, y, z]);
       }
       seen[[x, y, z].join(',')] = [...observed].filter(Boolean).length;
@@ -70,11 +55,9 @@ test('TSV-focused conformal Ti/Cu probe preserves the coolant and open via cores
       [0, side * 425, 550],
     ];
     for (const [x, y, z] of coolantPath) {
-      const original = layerAt(project.model, [x, y], z);
-      assert.equal(original, null, 'Fluid-path baseline is not actually void at ' + [x, y, z]);
       assert.equal(
         layerAt(model, [x, y], z),
-        original,
+        null,
         'TSV metal altered fluid-path material at ' + [x, y, z],
       );
     }
