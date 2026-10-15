@@ -44,6 +44,11 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-recipe-prefix-stop-parity.mjs
+      - name: Preserve Legacy Recipe preflight, prefix and Stop scientific contracts
+        env:
+          WAFERCAD_URL: http://127.0.0.1:4182
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/process-recipe-safety-regression.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
