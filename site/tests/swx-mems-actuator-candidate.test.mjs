@@ -28,7 +28,10 @@ test('compact S8 candidate places both 20-cell banks across one longitudinal shu
     const shuttleRail = bounds(pose.shuttle[0]);
     closeTo(shuttleRail.maxX - shuttleRail.minX, 0.7);
     assert.ok(shuttleRail.maxY - shuttleRail.minY > 40);
-    assert.equal(pose.integrationStatus, 'isolated-mechanical-candidate-not-manufacturing-project');
+    assert.equal(
+      pose.integrationStatus,
+      'isolated-mechanical-candidate-not-manufacturing-project',
+    );
   }
 });
 
@@ -90,6 +93,10 @@ test('compact candidate has no fixed/moving positive-area silicon overlap', asyn
     ];
     const indices = sample.map(component);
     assert.ok(indices.every((i) => i >= 0));
-    assert.equal(new Set(indices).size, 1, 'two comb handles must share the shuttle moving net');
+    assert.equal(
+      new Set(indices).size,
+      1,
+      'two comb handles must share the shuttle moving net',
+    );
   }
 });
