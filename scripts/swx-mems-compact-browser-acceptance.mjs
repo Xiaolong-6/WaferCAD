@@ -149,9 +149,9 @@ try {
           ),
         ) * zScale;
       const closeups = [
-        { name: 'comb', position: [27, -6, topZ + 33], target: [0, -22, topZ], fov: 35 },
-        { name: 'swt', position: [13, -39, topZ + 23], target: [0, -48, topZ], fov: 31 },
-        { name: 'springs', position: [12, 51, topZ + 35], target: [0, 24, topZ], fov: 38 },
+        { name: 'comb', position: [39, -10, topZ + 52], target: [0, -22, topZ], fov: 46 },
+        { name: 'swt', position: [19, -71, topZ + 38], target: [0, -48, topZ], fov: 43 },
+        { name: 'springs', position: [12, 62, topZ + 53], target: [0, 25, topZ], fov: 47 },
       ];
       for (const view of closeups) {
         const camera = { position: view.position, target: view.target, fov: view.fov };
