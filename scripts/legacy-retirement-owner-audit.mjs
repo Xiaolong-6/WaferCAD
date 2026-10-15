@@ -31,8 +31,9 @@ export function classifyLegacyOwner(path, content) {
 }
 
 export async function auditLegacyRetirementOwners(root = resolve('.')) {
-  const paths = (await Promise.all(scanRoots.map((dir) => listSources(root, dir))))
-    .flat()
+  const paths = ['site/app-v2-real.html', ...(await Promise.all(scanRoots.map((dir) => listSources(root, dir)))).flat()]
+    .filter((path) => !path.endsWith('legacy-retirement-owner-audit.mjs') &&
+      !path.endsWith('legacy-retirement-owner-audit.test.mjs'))
     .sort();
   const owners = [];
   for (const path of paths) {
