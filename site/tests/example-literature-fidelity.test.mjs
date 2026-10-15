@@ -227,6 +227,49 @@ test('Photodetector variants distinguish Implant from Electrical Region', async 
   }
 });
 
+
+test('Photodetector saved variants have distinct front material owners at reference cuts', async () => {
+  const project = await example('photodetector-literature-examples');
+  const branches = new Map(project.snapshotBranches.branches.map((branch) => [branch.id, branch]));
+  const stackAt = (branchId, point) => {
+    const branch = branches.get(branchId);
+    assert.ok(branch, 'Missing photodetector Variant ' + branchId);
+    const ref = branch.headState.modelRef;
+    const model = ref === 'project' ? project.model : project.sharedModels[ref];
+    assert.ok(model, 'Missing photodetector material model ' + branchId);
+    return materialAt({ ...project, model }, point);
+  };
+
+  for (const id of ['black-si-fig1a-final', 'black-si-fig1a-qa']) {
+    const outside = stackAt(id, [-3200, 0]);
+    assert.ok(Math.abs(thickness(outside, 'ALD Al2O3') - 0.05) < 1e-9);
+    assert.ok(Math.abs(thickness(outside, 'Thermal SiO2') - 0.65) < 1e-9);
+  }
+  const activeFinal = stackAt('black-si-fig1a-final', [0, 0]);
+  const activeQa = stackAt('black-si-fig1a-qa', [0, 0]);
+  assert.ok(Math.abs(thickness(activeFinal, 'ALD Al2O3') - 0.05) < 1e-9);
+  assert.ok(!activeQa.some((material) => material.name?.includes('ALD Al2O3')));
+  assert.ok(
+    segment(activeQa, 'n- Si (111)').z1 < segment(activeFinal, 'n- Si (111)').z1,
+    'QA overetch must recess real active silicon',
+  );
+
+  const inactiveA = stackAt('ge-fig15-a', [-3200, 0]);
+  const inactiveB = stackAt('ge-fig15-b', [-3200, 0]);
+  const activeB = stackAt('ge-fig15-b', [0, 0]);
+  assert.ok(!inactiveA.some((material) => material.name?.includes('SiO2 inactive')));
+  assert.ok(Math.abs(thickness(inactiveB, 'SiO2 inactive') - 0.045) < 1e-9);
+  assert.ok(Math.abs(thickness(inactiveB, 'Passivation ALD') - 0.02) < 1e-9);
+  assert.ok(!activeB.some((material) => material.name?.includes('SiO2 inactive')));
+  assert.ok(Math.abs(thickness(activeB, 'Passivation ALD') - 0.02) < 1e-9);
+  for (const [id, expectedCount] of [['ge-fig15-a', 1], ['ge-fig15-b', 2]]) {
+    const ref = branches.get(id).headState.modelRef;
+    const model = ref === 'project' ? project.model : project.sharedModels[ref];
+    assert.equal(model.electricalRegions.length, expectedCount);
+    assert.equal(model.implants.length, 2);
+  }
+});
+
 function ringArea(ring) {
   let twiceArea = 0;
   for (let i = 0; i < ring.length; i++) {

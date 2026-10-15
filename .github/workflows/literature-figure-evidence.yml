@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/example-literature-visual-evidence.mjs'
+      - 'site/examples/photodetector-literature-examples.wafercad'
       - '.github/workflows/literature-figure-evidence.yml'
   workflow_dispatch:
 

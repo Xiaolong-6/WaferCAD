@@ -14,8 +14,12 @@ import {
   observePageErrors,
   waitForPaint,
 } from './test-helpers/ui.mjs';
-import { ensurePrimaryViewVisible } from './test-helpers/product.mjs';
-import { loadProject } from './test-helpers/product-scientific.mjs';
+import {
+  closeFunctionPanel,
+  ensurePrimaryViewVisible,
+  openFunctionPanel,
+} from './test-helpers/product.mjs';
+import { exportCurrentProject, loadProject } from './test-helpers/product-scientific.mjs';
 
 const CASES = [
   {
@@ -91,6 +95,88 @@ const CASES = [
       },
     ],
   },
+  // Branch evidence always selects a real History Variant in the browser. The
+  // four models are never synthesized or replaced outside the History UI.
+  {
+    id: 'photodetector-black-si-final',
+    file: 'photodetector-literature-examples',
+    variant: 'black-si-fig1a-final',
+    source: 'Setälä et al. 2023, Black-Si Fig. 1a; FINAL protected ALD variant',
+    expected: { substrate: 'n- Si (111)', implants: 2, electrical: 0 },
+    cuts: [
+      {
+        id: 'active-ald-protected',
+        a: [-2600, 0],
+        b: [-2100, 0],
+        zFocus: { top: 174.0, bottom: -174.7 },
+        probes: [
+          { id: 'active-passivated', xy: [0, 0], present: ['ALD Al2O3'], absent: ['Front sputtered Al'] },
+          { id: 'outer-passivated', xy: [-3200, 0], present: ['ALD Al2O3', 'Thermal SiO2 650 nm'] },
+        ],
+      },
+      { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
+    ],
+  },
+  {
+    id: 'photodetector-black-si-qa',
+    file: 'photodetector-literature-examples',
+    variant: 'black-si-fig1a-qa',
+    source: 'Setälä et al. 2023, Black-Si Fig. 1a; deliberately destructive QA overetch',
+    expected: { substrate: 'n- Si (111)', implants: 2, electrical: 0 },
+    cuts: [
+      {
+        id: 'active-ald-overetched',
+        a: [-2600, 0],
+        b: [-2100, 0],
+        zFocus: { top: 174.0, bottom: -174.7 },
+        probes: [
+          { id: 'active-overetched', xy: [0, 0], absent: ['ALD Al2O3', 'Front sputtered Al'] },
+          { id: 'outer-still-passivated', xy: [-3200, 0], present: ['ALD Al2O3', 'Thermal SiO2 650 nm'] },
+        ],
+      },
+      { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
+    ],
+  },
+  {
+    id: 'photodetector-ge-a',
+    file: 'photodetector-literature-examples',
+    variant: 'ge-fig15-a',
+    source: 'Liu et al. 2025, Ge Fig. 15a; active Al2O3 interface',
+    expected: { substrate: 'n-Ge Sb', implants: 2, electrical: 1 },
+    cuts: [
+      {
+        id: 'oxide-free-inactive-control',
+        a: [-3400, 0],
+        b: [-2600, 0],
+        zFocus: { top: 150.15, bottom: -150.8 },
+        probes: [
+          { id: 'ge-a-outside', xy: [-3200, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
+          { id: 'ge-a-center', xy: [0, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
+        ],
+      },
+      { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
+    ],
+  },
+  {
+    id: 'photodetector-ge-b',
+    file: 'photodetector-literature-examples',
+    variant: 'ge-fig15-b',
+    source: 'Liu et al. 2025, Ge Fig. 15b; SiO2/Al2O3 inactive interface',
+    expected: { substrate: 'n-Ge Sb', implants: 2, electrical: 2 },
+    cuts: [
+      {
+        id: 'inactive-oxide-contact',
+        a: [-3400, 0],
+        b: [-2600, 0],
+        zFocus: { top: 150.15, bottom: -150.8 },
+        probes: [
+          { id: 'ge-b-outside', xy: [-3200, 0], present: ['SiO2 inactive', 'Passivation ALD Al2O3'] },
+          { id: 'ge-b-active', xy: [0, 0], present: ['Passivation ALD Al2O3'], absent: ['SiO2 inactive'] },
+        ],
+      },
+      { id: 'whole-diameter', a: [-3400, 0], b: [3400, 0] },
+    ],
+  },
 ];
 
 // Scientific reference values are read from the saved physical XY/Z owner at
@@ -109,7 +195,7 @@ function pointInRing([x, y], ring) {
 
 function materialStackAt(project, point) {
   const owners = project.model.regions.filter((region) =>
-    project.sharedGeometries[region.geomRef].some(
+    (region.poly || project.sharedGeometries?.[region.geomRef] || []).some(
       (polygon) =>
         pointInRing(point, polygon[0]) &&
         !polygon.slice(1).some((hole) => pointInRing(point, hole)),
@@ -127,6 +213,18 @@ function materialStackAt(project, point) {
 function evaluateProbes(project, probes = []) {
   return probes.map((probe) => {
     const stack = materialStackAt(project, probe.xy);
+    for (const name of probe.present || []) {
+      assert.ok(
+        stack.some((entry) => entry.material?.includes(name)),
+        probe.id + ': missing expected material ' + name,
+      );
+    }
+    for (const name of probe.absent || []) {
+      assert.ok(
+        !stack.some((entry) => entry.material?.includes(name)),
+        probe.id + ': unexpectedly retained ' + name,
+      );
+    }
     if (typeof probe.rearOxide === 'boolean') {
       const present = stack.some(
         (layer) => layer.material?.includes('passivation') && layer.z1Um < 0,
@@ -159,6 +257,37 @@ function evaluateProbes(project, probes = []) {
   });
 }
 
+async function selectHistoryVariant(page, branchId) {
+  await openFunctionPanel(page, 'snapshots', { timeout: 30000 });
+  const variant = page.locator(`.history-variant[data-variant-id="${branchId}"]`);
+  await variant.waitFor({ state: 'attached', timeout: 30000 });
+  const parentIds = await variant.evaluate((element) => {
+    const ids = [];
+    let parent = element.parentElement?.closest('.history-variant');
+    while (parent) {
+      ids.unshift(parent.dataset.variantId);
+      parent = parent.parentElement?.closest('.history-variant');
+    }
+    return ids;
+  });
+  for (const id of parentIds) {
+    const parent = page.locator(`.history-variant[data-variant-id="${id}"]`);
+    const body = parent.locator(':scope > .history-variant-body');
+    if (await body.evaluate((element) => element.hidden)) {
+      await parent.locator(':scope > .history-variant-head .history-variant-toggle').click();
+    }
+  }
+  await variant.locator(':scope > .history-variant-head .history-variant-name').click();
+  await page.waitForFunction(
+    (id) =>
+      document.querySelector(`.history-variant[data-variant-id="${id}"]`)?.dataset.active ===
+      'true',
+    branchId,
+    { timeout: 30000 },
+  );
+  await closeFunctionPanel(page);
+}
+
 const requested = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const selected = requested ? CASES.filter((item) => item.id === requested) : CASES;
 assert.ok(selected.length > 0, 'No matching literature visual evidence case');
@@ -182,9 +311,25 @@ try {
         timeout: 120000,
       });
       await waitForAppReady(page);
-      const source = JSON.parse(
+      let source = JSON.parse(
         await readFile(new URL('../site/examples/' + item.file + '.wafercad', import.meta.url)),
       );
+      if (item.variant) {
+        await loadProject(page, source, item.id + '-original');
+        await selectHistoryVariant(page, item.variant);
+        source = await exportCurrentProject(page, 120000);
+        assert.equal(
+          source.snapshotBranches.activeBranchId,
+          item.variant,
+          item.id + ': browser export failed to restore the requested Variant',
+        );
+        assert.ok(
+          source.model.layers.some((layer) => layer.name.startsWith(item.expected.substrate)),
+          item.id + ': wrong substrate after History restore',
+        );
+        assert.equal(source.model.implants.length, item.expected.implants);
+        assert.equal(source.model.electricalRegions.length, item.expected.electrical);
+      }
       const examples = [];
       for (const cut of item.cuts) {
         // Saved presentation preferences may open a Detail ROI overlay that
@@ -276,7 +421,7 @@ try {
         });
       }
       assert.deepEqual(errors, [], item.id + ': browser errors');
-      report.push({ example: item.id, source: item.source, cuts: examples });
+      report.push({ example: item.id, variant: item.variant || null, source: item.source, cuts: examples });
     } finally {
       await context.close();
     }
