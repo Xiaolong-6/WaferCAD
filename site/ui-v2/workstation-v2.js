@@ -243,8 +243,10 @@
     function renderNav(info) {
       for (const [key, control] of navButtons)
         control.setAttribute('aria-pressed', String(info.selectedNavigation === key));
-      for (const [key, control] of viewButtons)
-        control.setAttribute('aria-pressed', String((narrow() || state.mode === 'single') && state.view === key));
+      for (const [key, control] of viewButtons) {
+        const selected = (narrow() || state.mode === 'single') && state.view === key;
+        control.setAttribute('aria-pressed', String(selected));
+      }
       mobileSection.setAttribute('aria-pressed', String(state.view === 'section'));
     }
     function renderMobileNav() {
