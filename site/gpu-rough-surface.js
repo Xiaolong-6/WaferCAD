@@ -52,6 +52,23 @@ export function canUseGpuRoughPreview(appearance) {
   );
 }
 
+// WebGL2 highp float does not guarantee the same transcendental accuracy
+// across hardware and software backends. SwiftShader has exceeded the
+// 2e-5 um physical-height parity contract on this profile. Use the existing
+// deterministic CPU mesh on known software rasterizers instead of relying on
+// approximate per-vertex GLSL displacement. Do not disable WebGL itself.
+export function supportsPreciseGpuRoughDisplacement(renderer) {
+  const gl = renderer?.getContext?.();
+  if (!gl) return true;
+  const debug = gl.getExtension?.('WEBGL_debug_renderer_info');
+  const name = String(
+    (debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) ||
+      gl.getParameter(gl.RENDERER) ||
+      '',
+  );
+  return !/swiftshader|llvmpipe|softpipe|software rasterizer/i.test(name);
+}
+
 export function canUseGpuRoughTask({
   appearance,
   buried = false,
