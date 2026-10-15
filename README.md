@@ -13,7 +13,7 @@ Its core question is practical: **given this mask and this sequence of process s
 
 The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The historical `app-legacy.html` URL redirects to the current v2 Workstation in published Pages; no separate Legacy editor is shipped. Existing `.wafercad` project files and browser Recovery remain supported.
 
-The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
+The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 
 ## Your first five steps
 

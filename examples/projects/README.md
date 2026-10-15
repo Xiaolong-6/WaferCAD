@@ -2,6 +2,15 @@
 
 This directory keeps project fixtures that are useful for regression and development review.
 
+## Asset lifecycle and directory boundary
+
+- `examples/projects/` holds development/source candidates, scripts, masks, provenance and regression-only projects. Candidate `README`/manifest/audit files are scientific reproducibility material when they record source dimensions, process order, mask geometry or validation assumptions.
+- `site/examples/` holds published Welcome family projects and previews/thumbnails consumed by the app. Do not reorganize published paths without updating `site/bundled-examples.js`, browser regressions, Pages artifact ownership and publication links.
+- `tests/fixtures/` holds low-level compatibility input; `site/tests/` and `scripts/` own assertions and executable acceptance. Ephemeral logs belong in CI artifacts or ignored `test-results/`, not `examples/projects/`.
+- The M3D replay project at `m3d-selfpowered-2026-replay/M3D_selfpowered_full_replay.wafercad` is byte-identical to `site/examples/m3d-selfpowered-full-replay.wafercad` at the 2026-10-15 inventory. Reconstruction scripts and an M3D workflow still reference the source path, so **keep both** until consumers are migrated and reproducibility is revalidated.
+
+For a completed example, prefer links to its PR/CI acceptance for transient status. Retain a short scientific provenance/assumptions record and indispensable source data; do not create per-run audit Markdown solely to record green checks.
+
 ## Production bundled example families
 
 The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundled examples live under `site/examples/` and should be grouped by **device/application family**, not one card per paper.
