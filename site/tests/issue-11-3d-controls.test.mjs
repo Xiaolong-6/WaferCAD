@@ -172,7 +172,8 @@ test('3D inspection controls default to opaque layers with borders off', () => {
     threeView,
     /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
   );
-  assert.match(threeView, /captureRenderer\.render\(scene, camera\)/);
+  assert.match(threeView, /renderInspectionFrame\(captureRenderer\)/);
+  assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(
     threeView,
     /restoreScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
@@ -267,6 +268,7 @@ test('3D Border preserves accessible checked/focus states and attenuates buried 
   assert.match(style, /\.view-head \.three-border-toggle:has\(input:checked\)/);
   assert.match(style, /#threeBorderControl:has\(input:focus-visible\)/);
   assert.match(threeView, /waferCadBorderOrder/);
-  assert.match(threeView, /\?\s*80\s*:\s*\(?object\.userData\?\.waferCadBorderOrder/);
+  assert.match(threeView, /object\.renderOrder = object\.userData\?\.waferCadBorderOrder \?\? object\.renderOrder/);
+  assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(threeView, /case 'material-interface':/);
 });
