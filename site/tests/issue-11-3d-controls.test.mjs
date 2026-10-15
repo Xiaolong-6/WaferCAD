@@ -84,7 +84,8 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /controls\.addEventListener\('start'/);
   assert.match(threeView, /controls\.addEventListener\('end'/);
   assert.match(threeView, /return normalizedDistance <= 1\.75 \? 0\.28 : 0\.06/);
-  assert.match(roughMeshGeometry, /function roughPointNormal\(/);
+  assert.match(roughMeshGeometry, /function smoothCapNormals\(/);
+  assert.doesNotMatch(roughMeshGeometry, /function roughPointNormal\(/);
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);

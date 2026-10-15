@@ -88,10 +88,10 @@ html,body{margin:0;background:#f5f7f9;font:14px sans-serif}#host{width:1100px;he
 </style><script src="/site/vendor/polygon-clipping.umd.js"></script><script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script></head>
 <body><div id="host"></div><div id="stats"></div><script type="module">
 import {createThreeView} from '/site/three-view.js';
-window.inspection={opacity:1,borders:true,fast:true};
+window.inspection={opacity:1,borders:true,fast:true};window.zCollapse=null;
 window.model=null;window.clip=null;
 window.view=createThreeView({host:document.querySelector('#host'),stats:document.querySelector('#stats'),
-getModel:()=>window.model,getClipGeometry:()=>window.clip,getInspection:()=>window.inspection});
+getModel:()=>window.model,getClipGeometry:()=>window.clip,getInspection:()=>window.inspection,getZCollapse:()=>window.zCollapse});
 window.boot=true;</script></body></html>`;
 const server = createServer(async (request, response) => {
   try {
@@ -263,9 +263,51 @@ try {
       { name: 'quality-zoom', opacity: 0.5, borders: true, fast: false, zoom: 0.7 },
       ...(fixture.name.startsWith('photodetector-')
         ? [
-            { name: 'surface-cut-opaque-detail', opacity: 1, borders: false, fast: false, detail: true },
-            { name: 'surface-cut-opaque-borders-detail', opacity: 1, borders: true, fast: false, detail: true },
-            { name: 'surface-cut-transparent-detail', opacity: 0.5, borders: true, fast: false, detail: true },
+            {
+              name: 'surface-cut-opaque-detail',
+              opacity: 1,
+              borders: false,
+              fast: false,
+              detail: true,
+            },
+            {
+              name: 'surface-cut-opaque-borders-detail',
+              opacity: 1,
+              borders: true,
+              fast: false,
+              detail: true,
+            },
+            {
+              name: 'surface-cut-transparent-detail',
+              opacity: 0.5,
+              borders: true,
+              fast: false,
+              detail: true,
+            },
+            {
+              name: 'surface-cut-zbreak-opaque-detail',
+              opacity: 1,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+            },
+            {
+              name: 'surface-cut-zbreak-opaque-borders-detail',
+              opacity: 1,
+              borders: true,
+              fast: false,
+              detail: true,
+              zBreak: true,
+            },
+            {
+              name: 'surface-cut-zbreak-transparent-detail',
+              opacity: 0.5,
+              borders: true,
+              fast: false,
+              detail: true,
+              zBreak: true,
+            },
           ]
         : []),
       ...(fixture.name.includes('-back-') || fixture.name.includes('-both-')
@@ -276,15 +318,38 @@ try {
       await page.evaluate(
         async ({ config, fit }) => {
           Object.assign(window.inspection, config);
+          // Use the existing 3D Z Break display-only transform to pull the
+          // active Black-Si surface away from the 350 um base. Front/Back
+          // scales do NOT modify the canonical layer z coordinates.
+          window.zCollapse = config.zBreak
+            ? {
+                enabled: true,
+                top: 173.2,
+                bottom: -174.4,
+                scaleLinked: false,
+                frontScale: 8,
+                backScale: 1,
+              }
+            : null;
+          window.view.updateZCollapse();
           await window.view.render();
-          // A full 350 um substrate cannot resolve the 0.3 um roughness or
-          // 50 nm conformal film. Inspect the real Black-Si ROI cut near its
-          // patterned rim at a camera scale where both are pixel-resolved.
-          const target = config.detail ? [2495, -140, 174.325] : fit.target;
           const delta = fit.position.map((value, index) => value - fit.target[index]);
           const length = Math.hypot(...delta) || 1;
+          const displayScale = Number(document.querySelector('#host').dataset.zDisplayScale);
+          const upperSurfaceZ = 174.325;
+          const c = window.zCollapse;
+          const focusedZ = c
+            ? ((c.top + c.bottom) / 2 + (upperSurfaceZ - c.top) * c.frontScale) *
+              displayScale
+            : fit.target[2];
+          const target = config.zBreak
+            ? [2400, 0, focusedZ]
+            : config.detail
+              ? [2495, -140, fit.target[2]]
+              : fit.target;
+          const distance = config.zBreak ? 110 : 40;
           const position = config.detail
-            ? target.map((value, index) => value + (delta[index] / length) * 40)
+            ? target.map((value, index) => value + (delta[index] / length) * distance)
             : fit.position.map(
                 (value, index) =>
                   target[index] +
@@ -325,6 +390,11 @@ try {
       );
       delete diagnostics.canonicalModel;
       assert.equal(diagnostics.host.renderState, 'ready');
+      if (config.zBreak) {
+        assert.equal(Number(diagnostics.host.zFrontScale), 8);
+        assert.equal(diagnostics.host.zScaleLinked, 'false');
+        assert.ok(Number(diagnostics.host.zCollapseTopUm) < 174.3);
+      }
       if (
         diagnostics.host.roughDisplacementBackend === 'cpu-software-parity' &&
         !fixture.name.includes('smooth')

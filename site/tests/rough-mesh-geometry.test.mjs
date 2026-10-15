@@ -209,7 +209,11 @@ test('photodetector rough shading normals agree with rendered Float32 cap faces'
       r = smooth.positions.slice(i + 6, i + 9),
       u = q.map((value, index) => value - p[index]),
       v = r.map((value, index) => value - p[index]),
-      cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]],
+      cross = [
+        u[1] * v[2] - u[2] * v[1],
+        u[2] * v[0] - u[0] * v[2],
+        u[0] * v[1] - u[1] * v[0],
+      ],
       faceLength = Math.hypot(...cross);
     assert.ok(faceLength > 0);
     for (let vertex = 0; vertex < 3; vertex++) {
