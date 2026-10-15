@@ -159,6 +159,74 @@ test('cooperative History import yields without exposing partial lineage and rej
   assert.deepEqual(exported, synchronous.exportBranchState());
 });
 
+test('opt-in History state validation yields in independent batches and stays atomic', async () => {
+  const validatedGroups = [];
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    id: `batch-${index}`,
+    name: `State ${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: index }, view: { zoom: index + 0.0000004 } },
+  }));
+  const options = {
+    capture: () => ({ model: { processRevision: 0 } }),
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    validateStates: (states) => {
+      validatedGroups.push(states.map((state) => state.model.processRevision));
+      return states.every((state) => Number.isInteger(state?.model?.processRevision));
+    },
+    cooperativeValidateStates: true,
+  };
+  const manager = createSnapshotManager(options);
+  const pending = manager.importRecordsAsync(records);
+  assert.deepEqual(validatedGroups, [[0, 1]]);
+  assert.equal(manager.list().length, 0, 'No validated batch can publish History early');
+  await pending;
+  assert.deepEqual(validatedGroups, [[0, 1], [2, 3], [4]]);
+  assert.equal(manager.list().length, 5);
+
+  const synchronousGroups = [];
+  const synchronous = createSnapshotManager({
+    ...options,
+    validateStates: (states) => {
+      synchronousGroups.push(states.length);
+      return states.every((state) => Number.isInteger(state?.model?.processRevision));
+    },
+  });
+  synchronous.importRecords(records);
+  assert.deepEqual(synchronousGroups, [5], 'The synchronous API keeps single-batch validation');
+  assert.deepEqual(manager.exportRecords(), synchronous.exportRecords());
+  records[0].state.view.zoom = 99;
+  assert.equal(manager.exportRecords()[0].state.view.zoom, 0.0000004);
+});
+
+test('abort during cooperative validation keeps previous History and skips publication', async () => {
+  const before = {
+    id: 'previous',
+    name: 'Previous',
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: 0 } },
+  };
+  const manager = createSnapshotManager({
+    capture: () => before.state,
+    restore: () => {},
+    validateState: () => true,
+    validateStates: () => true,
+    cooperativeValidateStates: true,
+  });
+  manager.importRecords([before]);
+  const imported = Array.from({ length: 5 }, (_, index) => ({
+    ...before,
+    id: `after-${index}`,
+  }));
+  const abort = new AbortController();
+  const pending = manager.importRecordsAsync(imported, null, { signal: abort.signal });
+  assert.equal(manager.list()[0].id, 'previous');
+  abort.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.deepEqual(manager.list().map((item) => item.id), ['previous']);
+});
+
 test('one wide imported History state yields before publication and preserves exact copies', async () => {
   const sourceState = {
     model: { revision: 1, processRevision: 0, regions: [{ geometry: [[0.0000004, 8]] }] },
