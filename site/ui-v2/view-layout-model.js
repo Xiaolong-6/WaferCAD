@@ -136,6 +136,20 @@ export function reduceDesktopLayout(state, action) {
         remembered: { ...state.remembered, [selected.count]: selected.id },
       };
     }
+    case 'SNAP_TO_SLOT': {
+      const current = orderedVisible(state);
+      const template = templateById(action.preset);
+      if (!template || template.count !== current.length || current.length < 2 ||
+          !current.includes(id) || !Number.isInteger(action.slot) ||
+          action.slot < 0 || action.slot >= current.length) return state;
+      current.splice(current.indexOf(id), 1);
+      current.splice(action.slot, 0, id);
+      const reordered = reorderVisible(state, current);
+      return {
+        ...reordered, preset: template.id,
+        remembered: { ...state.remembered, [template.count]: template.id },
+      };
+    }
     case 'SWAP': {
       const a = action.a;
       const b = action.b;
