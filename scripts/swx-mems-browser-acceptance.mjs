@@ -247,21 +247,21 @@ try {
       const closeups = [
         {
           name: 'swt-stoppers',
-          position: [-26, -12, visualSiliconZ + 13],
+          position: [-30, -23, visualSiliconZ + 26],
           target: [-31, 0, visualSiliconZ],
-          fov: 31,
+          fov: 43,
         },
         {
           name: 'comb-banks',
-          position: [33, 23, visualSiliconZ + 21],
-          target: [24, 1, visualSiliconZ],
-          fov: 37,
+          position: [31, 20, visualSiliconZ + 38],
+          target: [24, -3, visualSiliconZ],
+          fov: 43,
         },
         {
           name: 'folded-springs',
-          position: [13, 38, visualSiliconZ + 18],
-          target: [0, 25, visualSiliconZ],
-          fov: 36,
+          position: [17, 48, visualSiliconZ + 40],
+          target: [0, 22, visualSiliconZ],
+          fov: 42,
         },
       ];
       for (const review of closeups) {
@@ -334,6 +334,9 @@ try {
           { timeout: 120000 },
         );
         await waitForPaint(page);
+        // Move the pointer off navigation controls before taking science
+        // evidence: otherwise tooltip cards obscure the upper geometry.
+        await page.mouse.move(1380, 920);
         const reviewView = page.locator('#threePanel');
         const bounds = await reviewView.boundingBox();
         assert.ok(
@@ -350,6 +353,7 @@ try {
         await sectionToggle.click();
       }
       await waitForPaint(page);
+      await page.mouse.move(1380, 920);
       const sectionReview = page.locator('#sectionPanel');
       assert.ok(await sectionReview.isVisible(), 'Comb BOX section must be visible');
       await sectionReview.screenshot({
