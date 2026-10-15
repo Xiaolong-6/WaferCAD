@@ -32,3 +32,15 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      - name: Print exact PR250 canonical formatting diff
+        if: failure()
+        run: |
+          files=(site/gpu-rough-surface.js site/three-view.js scripts/pr250-renderer-audit.mjs scripts/renderer-product-cases.mjs scripts/test-helpers/pr250-gpu-height-oracle.mjs)
+          for file in "${files[@]}"; do
+            cp "$file" /tmp/pr250-prettier-original
+            npx prettier --write "$file"
+            echo "PR250_DIFF_BEGIN:$file"
+            diff -u /tmp/pr250-prettier-original "$file" || true
+            echo "PR250_DIFF_END:$file"
+          done
