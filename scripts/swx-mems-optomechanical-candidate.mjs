@@ -9,6 +9,7 @@
  */
 import { createSwxGeometry, miteredPolyline } from './swx-mems-geometry.mjs';
 import { createCompactSwxActuator } from './swx-mems-actuator-candidate.mjs';
+import { SWX_COMPACT_GRATING_ASSUMPTIONS } from './swx-mems-compact-gratings.mjs';
 
 export const SWX_INTERFACE_ASSUMPTIONS = Object.freeze({
   // Measured from the illustrative mask, not a published registration datum.
@@ -84,7 +85,8 @@ function makeOpticalRouting(travel) {
   ];
   // Fixed optical terminal pads represent supported endpoints; grating
   // tooth/groove masks and HF undercut boundaries are deliberately absent.
-  const supportedPads = [pad(-62, -26, 8), pad(-62, -45, 8), pad(-55, -95, 8), pad(55, -95, 8)];
+  const { centersUm, padWidthUm } = SWX_COMPACT_GRATING_ASSUMPTIONS;
+  const supportedPads = centersUm.map(([x, y]) => pad(x, y, padWidthUm));
   return { fixed, movingSpringWaveguides, supportedPads };
 }
 
@@ -129,7 +131,8 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
     integrationStatus: 'optical-four-port-routing-candidate-no-wafercad-project',
     unresolved: [
       'Optical routes are illustrative; 3/5um meander radii and FDTD losses are not yet qualified',
-      'Optical grating coupler geometry and structural aligner supports are not yet connected',
+      'Shallow grating groove masks are illustrative; source pitch and coupling efficiency unverified',
+      'Guided mechanical aligner supports have not yet been reconstructed',
       'BOX undercut, electrode insulation and complete process History need new verification',
       'Interface placement and mechanical-bridge thickness are illustrative, not published author GDS',
     ],
