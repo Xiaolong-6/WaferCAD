@@ -455,11 +455,7 @@ function makeShuttle(moveY) {
   for (const signY of [-1, 1]) {
     for (const signX of [-1, 1]) {
       beams.push(
-        strip(
-          [signX * railX, signY * 3 + moveY],
-          [signX * springTipX, signY * 3 + moveY],
-          0.45,
-        ),
+        strip([signX * railX, signY * 3 + moveY], [signX * springTipX, signY * 3 + moveY], 0.45),
       );
     }
   }
