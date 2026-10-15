@@ -18,6 +18,7 @@ import {
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
+import { clipBorderPositions } from './renderer-border-position-clip.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -523,37 +524,7 @@ export function createThreeView({
   }
 
   function displayBorderPositions(positions, state = currentZDisplay) {
-    if (!state || !positions?.length) return positions || [];
-    const out = [],
-      lerpPoint = (a, b, t) => [
-        a[0] + (b[0] - a[0]) * t,
-        a[1] + (b[1] - a[1]) * t,
-        a[2] + (b[2] - a[2]) * t,
-      ];
-
-    for (let index = 0; index + 5 < positions.length; index += 6) {
-      const a = [positions[index], positions[index + 1], positions[index + 2]],
-        b = [positions[index + 3], positions[index + 4], positions[index + 5]],
-        dz = b[2] - a[2],
-        cuts = [0, 1];
-
-      if (Math.abs(dz) > 1e-12) {
-        for (const boundary of [state.bottom, state.top]) {
-          const t = (boundary - a[2]) / dz;
-          if (t > 0 && t < 1) cuts.push(t);
-        }
-      }
-
-      cuts.sort((left, right) => left - right);
-      for (let part = 0; part < cuts.length - 1; part++) {
-        const t0 = cuts[part],
-          t1 = cuts[part + 1],
-          middleZ = a[2] + dz * ((t0 + t1) / 2);
-        if (!zIsVisible(middleZ, state)) continue;
-        out.push(...lerpPoint(a, b, t0), ...lerpPoint(a, b, t1));
-      }
-    }
-    return out;
+    return clipBorderPositions(positions, state);
   }
 
   function visibleBounds(model, clip) {
