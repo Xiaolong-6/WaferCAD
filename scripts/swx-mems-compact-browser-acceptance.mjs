@@ -244,12 +244,26 @@ try {
         await page.locator('#threePanel').screenshot({
           path: resolve(directory, 'compact-' + state + '-3d-' + view.name + '.png'),
         });
+        if (state === 'off' && view.name === 'grating') {
+          const preview = await page.locator('#threePanel').screenshot({
+            type: 'jpeg',
+            quality: 35,
+          });
+          console.log('SWX_REVIEW_GRATING_3D_JPEG:' + preview.toString('base64'));
+        }
         if (view.name === 'grating') {
           if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
           await waitForPaint(page);
           await page.locator('#sectionPanel').screenshot({
             path: resolve(directory, 'compact-' + state + '-section-grating.png'),
           });
+          if (state === 'off') {
+            const preview = await page.locator('#sectionPanel').screenshot({
+              type: 'jpeg',
+              quality: 35,
+            });
+            console.log('SWX_REVIEW_GRATING_SECTION_JPEG:' + preview.toString('base64'));
+          }
         }
       }
       const sectionToggle = page.locator('[data-action="section"]');
