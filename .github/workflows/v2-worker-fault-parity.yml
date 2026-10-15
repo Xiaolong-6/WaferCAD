@@ -30,21 +30,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      # Temporary, read-only formatting diff while local source checkout is unavailable.
-      # Remove after both Draft branches match the repository formatter.
-      - name: One-shot formatter diff for parallel Draft owners
-        shell: bash
-        run: |
-          npx prettier scripts/v2/check-worker-fault-parity.mjs > /tmp/worker-formatted.mjs
-          diff -u scripts/v2/check-worker-fault-parity.mjs /tmp/worker-formatted.mjs || true
-          git fetch --no-tags --depth=1 origin retire/legacy-d1-source-audit-20261015
-          for path in scripts/legacy-retirement-owner-audit.mjs site/tests/legacy-retirement-owner-audit.test.mjs; do
-            original="/tmp/$(basename "${path}").original"
-            formatted="/tmp/$(basename "${path}").formatted"
-            git show "FETCH_HEAD:${path}" > "${original}"
-            npx prettier --stdin-filepath "${path}" < "${original}" > "${formatted}"
-            diff -u "${original}" "${formatted}" || true
-          done
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash
