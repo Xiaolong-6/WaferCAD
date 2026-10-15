@@ -81,10 +81,15 @@ try {
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
       for (const view of ['main', 'mask', 'three', 'section']) {
         await page.evaluate((name) => {
-          // Section uses a dedicated action rather than view:section.
-          const action = name === 'section' ? 'mobile-section' : 'view:' + name;
-          const button = document.querySelector('button[data-action="' + action + '"]');
-          if (!button) throw new Error('View selector is missing: ' + action);
+          // Desktop Section is shown in Overview; portrait has its own dock action.
+          const actions =
+            name === 'section'
+              ? ['mobile-section', 'mode:overview', 'section']
+              : ['view:' + name];
+          const button = actions
+            .map((action) => document.querySelector('button[data-action="' + action + '"]'))
+            .find(Boolean);
+          if (!button) throw new Error('View selector is missing: ' + name);
           button.click();
         }, view);
         await waitForPaint(page);
