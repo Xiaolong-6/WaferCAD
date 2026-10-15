@@ -200,6 +200,31 @@ test('opt-in History state validation yields in independent batches and stays at
   assert.equal(manager.exportRecords()[0].state.view.zoom, 0.0000004);
 });
 
+test('repeated History state references validate once across cooperative batches', async () => {
+  const shared = { model: { processRevision: 2 } };
+  const independent = { model: { processRevision: 3 } };
+  const records = [shared, independent, shared, independent, shared].map((state, index) => ({
+    id: `reference-${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state,
+  }));
+  const groups = [];
+  const manager = createSnapshotManager({
+    capture: () => ({}),
+    restore: () => {},
+    validateState: () => true,
+    validateStates: (states) => {
+      groups.push(states);
+      return true;
+    },
+    cooperativeValidateStates: true,
+  });
+  await manager.importRecordsAsync(records);
+  assert.equal(groups.length, 1, 'Repeated identities must not consume attestation twice');
+  assert.deepEqual(groups[0], [shared, independent]);
+  assert.equal(manager.list().length, 5);
+});
+
 test('a failed cooperative validation batch still consumes remaining attestation groups', async () => {
   const visited = [];
   const records = Array.from({ length: 5 }, (_, index) => ({
