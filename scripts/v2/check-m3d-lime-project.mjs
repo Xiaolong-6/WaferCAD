@@ -9,9 +9,8 @@ import { loadGeometryKernel } from '../process-benchmarks.mjs';
 import { captureVisibleThree } from './three-visibility.mjs';
 import { parseGDS, flattenGDS } from '../../site/gds.js';
 import { parseOAS } from '../../site/oasis.js';
-import { pointInMulti } from '../../site/vector-geometry.js';
-
 await loadGeometryKernel();
+const { pointInMulti } = await import('../../site/vector-geometry.js');
 
 function assertModelPersistence(actual, expected, path = 'model') {
   if (typeof expected === 'number') {
