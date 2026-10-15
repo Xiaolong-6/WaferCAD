@@ -15,7 +15,11 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import { transparentInspectionContours, contoursToPositions } from './three-outline-geometry.js';
+import {
+  transparentInspectionContours,
+  contoursToPositions,
+  sectionCutContours,
+} from './three-outline-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -3107,6 +3111,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       });
       host.dataset.hiddenBorderSegmentCount = '0';
       host.dataset.buriedContourSegmentCount = '0';
+      host.dataset.sectionContourSegmentCount = '0';
       // Small scenes and rough scenes can switch opaque <-> transparent
       // through a presentation-only update without rebuilding the scene.
       // Prepare their dormant hidden lines once, regardless of initial opacity.
@@ -3121,9 +3126,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
         // behind transparent faces (renderOrder 100+) so their colors attenuate
         // rear/interior edges, rather than outlining every LOD triangle.
         const contours = transparentInspectionContours(plan);
-        const hiddenLines = [...contours.exposed, ...contours.buried];
+        const sectionLines = sectionCutContours(plan.sidewalls, clip);
+        const hiddenLines = [...contours.exposed, ...contours.buried, ...sectionLines];
         host.dataset.hiddenBorderSegmentCount = String(hiddenLines.length);
         host.dataset.buriedContourSegmentCount = String(contours.buried.length);
+        host.dataset.sectionContourSegmentCount = String(sectionLines.length);
         const outlineScale = Math.max(
           1e-5,
           Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
