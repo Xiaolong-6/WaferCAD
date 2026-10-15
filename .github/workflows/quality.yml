@@ -32,14 +32,3 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
-
-      - name: Print canonical Prettier files for diagnostics
-        if: failure()
-        run: |
-          npx prettier --write site/three-outline-geometry.js site/tests/three-outline-geometry.test.mjs
-          for file in site/three-outline-geometry.js site/tests/three-outline-geometry.test.mjs; do
-            echo "PRETTIER_BEGIN:${file}"
-            base64 -w0 "${file}"
-            echo
-            echo "PRETTIER_END:${file}"
-          done
