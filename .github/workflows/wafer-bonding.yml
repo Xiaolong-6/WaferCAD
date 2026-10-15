@@ -6,7 +6,9 @@ on:
       - feat/example-gan-hemt-microchannel-20261014
     paths:
       - site/wafer-bonding.js
+      - site/wafer-assembly.js
       - site/tests/wafer-bonding.test.mjs
+      - site/tests/wafer-assembly.test.mjs
       - docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
       - .github/workflows/wafer-bonding.yml
   workflow_dispatch:
@@ -30,8 +32,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Bond geometry scientific invariants
-        run: node --test site/tests/wafer-bonding.test.mjs
+        run: node --test site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs
       - name: Bond-specific lint and formatting
         run: |
-          npx eslint site/wafer-bonding.js site/tests/wafer-bonding.test.mjs
-          npx prettier --check site/wafer-bonding.js site/tests/wafer-bonding.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+          npx eslint site/wafer-bonding.js site/wafer-assembly.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs
+          npx prettier --check site/wafer-bonding.js site/wafer-assembly.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
