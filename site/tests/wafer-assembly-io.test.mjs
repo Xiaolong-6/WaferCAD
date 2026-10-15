@@ -21,6 +21,7 @@ const {
   expandProjectStorage,
 } = await import('../project-io.js');
 const { recipeTemplate } = await import('../process-recipe.js');
+const { requiresWorkspaceMigrationCheckpoint } = await import('../workspace-persistence.js');
 
 function sourceProject(name) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
@@ -128,4 +129,24 @@ test('three-source Assembly remains deterministically reopenable', async () => {
   assert.equal(loaded.waferAssembly.sources.length, 3);
   assert.equal(loaded.waferAssembly.bonds.length, 2);
   assert.deepEqual(loaded.model, original.model);
+});
+
+test('v14 legacy History remains v14 and does not cause repeated migration checkpoints', () => {
+  const source = sourceProject('Legacy source');
+  assert.equal(source.version, 14);
+  const migrated = migrateProjectFile(source);
+  assert.equal(migrated.version, 14);
+  assert.equal(migrated.snapshots[0].state.version, 14);
+  assert.equal(requiresWorkspaceMigrationCheckpoint(14, migrated.version), false);
+  assert.equal(requiresWorkspaceMigrationCheckpoint(1, migrated.version), true);
+  assert.equal(requiresWorkspaceMigrationCheckpoint(15, 15), false);
+  assert.equal(requiresWorkspaceMigrationCheckpoint(15, 14), false);
+});
+
+test('v15 bonded project retains v14 source histories and is not re-migrated', () => {
+  const assembled = createBondedAssemblyProject(bonded().assembly);
+  assert.equal(assembled.version, 15);
+  assert.equal(requiresWorkspaceMigrationCheckpoint(assembled.version, 15), false);
+  assert.equal(assembled.waferAssembly.sources[0].project.version, 14);
+  assert.equal(assembled.waferAssembly.sources[1].project.version, 14);
 });
