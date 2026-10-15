@@ -550,7 +550,13 @@ try {
     // Section Layers controls hide unrelated S/D and opposite-device markers;
     // the underlying material topology, masks and Recipe remain unchanged.
     // Keep the all-annotations image above as the unfiltered comparison.
-    await page.locator('[data-action="view:section"]').click();
+    // On desktop Section is a dock (data-action="section"), not a view tab.
+    const sectionPanel = page.locator('#sectionPanel');
+    if (!(await sectionPanel.isVisible())) {
+      const showSection = page.locator('[data-action="section"]');
+      if (await showSection.isVisible()) await showSection.click();
+    }
+    await sectionPanel.waitFor({ state: 'visible', timeout: 12000 });
     await waitForPaint(page);
     const selectedName = local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP';
     const hiddenAnnotations = [
