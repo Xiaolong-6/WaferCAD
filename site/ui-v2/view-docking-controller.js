@@ -159,15 +159,21 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
   }
   function pointerDown(event) {
     if (!enabled() || event.button !== 0 || event.isPrimary === false) return;
-    const title = event.target.closest('.v2-view-title');
+    // The entire unoccupied desktop window header is a drag surface.
+    // Toolbar and title controls always retain their original pointer actions.
+    const header = event.target.closest('.p-view-head');
     if (
-      !title ||
-      !stage.contains(title) ||
-      event.target.closest('button,a,input,select,textarea,[contenteditable=true]')
+      !header ||
+      !stage.contains(header) ||
+      event.target.closest(
+        'button,a,input,select,textarea,summary,[role="button"],[contenteditable="true"]',
+      )
     )
       return;
-    const panel = title.closest('.p-view[data-view]:not([hidden])');
-    if (!panel || displayedViews(getState()).length <= 1) return;
+    const panel = header.closest('.p-view[data-view]:not([hidden])');
+    if (!panel || panel.dataset.dockDraggable !== 'true' ||
+        displayedViews(getState()).length <= 1) return;
+    const title = header.querySelector('.v2-view-title');
     end();
     pending = {
       view: panel.dataset.view,
@@ -177,7 +183,7 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
       dragging: false,
       title,
     };
-    title.setPointerCapture?.(event.pointerId);
+    header.setPointerCapture?.(event.pointerId);
   }
   function pointerMove(event) {
     if (!pending || event.pointerId !== pending.pointerId) return;
@@ -248,9 +254,14 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
   }
   function doubleClick(event) {
     if (!enabled()) return;
-    const title = event.target.closest('.v2-view-title');
-    const panel = title?.closest('.p-view[data-view]:not([hidden])');
-    if (!panel || event.target.closest('button,input,select,a')) return;
+    const header = event.target.closest('.p-view-head');
+    const panel = header?.closest('.p-view[data-view]:not([hidden])');
+    if (
+      !panel ||
+      event.target.closest(
+        'button,a,input,select,textarea,summary,[role="button"],[contenteditable="true"]',
+      )
+    ) return;
     dispatch({ type: 'MAXIMIZE', view: panel.dataset.view });
   }
   function resize() {
