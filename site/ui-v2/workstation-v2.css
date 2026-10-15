@@ -486,6 +486,10 @@ body[data-workstation] .p-workbench {
 .p-panel-content > * {
   flex-shrink: 0;
 }
+/* The production Project tab reveals this only on compact Edit screens. */
+.p-mobile-welcome-link {
+  display: none;
+}
 /* Persistent adapters retain hidden leaves. Only the visible domain sets spacing. */
 .v2-panel-host > [data-slot-content],
 .v2-panel-subhost > [data-slot-content] {

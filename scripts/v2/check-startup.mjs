@@ -51,6 +51,9 @@ try {
     assert.equal(bounds.radius, '0px');
     assert.ok(bounds.docWidth <= bounds.viewportWidth + 1);
     assert.ok(bounds.docHeight <= bounds.viewportHeight + 1);
+    const mobileWelcome = page.locator('.p-mobile-welcome-link');
+    assert.equal(await mobileWelcome.count(), 1, 'Project owns the only Welcome link');
+    assert.equal(await mobileWelcome.isVisible(), false, 'Desktop keeps titlebar navigation');
   }
   await page.setViewportSize({ width: 1440, height: 960 });
   let state = await snapshot();

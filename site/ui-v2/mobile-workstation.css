@@ -35,6 +35,16 @@
     overflow: visible;
   }
 
+  /* Project is the one mobile Edit tab providing a route back to Welcome. */
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    [data-slot='panel.project']
+    .p-mobile-welcome-link {
+    display: inline-flex;
+    align-self: flex-start;
+    min-height: 44px;
+  }
+
   /* Fixed dock is outside scrolling document flow, with a reserved safe area.
      The same .p-nav host owns Workspaces in Edit and Views in View. */
   body[data-workstation]:not([data-preview-mode]) .p-nav {

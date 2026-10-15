@@ -91,6 +91,10 @@ try {
         window.__mobileCanvasIdentity = document.querySelector('#mainCanvas');
       });
       assert.equal(await root.getAttribute('data-mobile'), 'view');
+      const welcome = page.locator('.p-mobile-welcome-link');
+      assert.equal(await welcome.count(), 1, 'Only Project owns the Welcome link');
+      assert.equal(await welcome.isVisible(), false, 'View canvas does not display Welcome');
+      assert.equal(await welcome.getAttribute('href'), './index.html');
       const viewBounds = await root.evaluate((element) => {
         const rect = element.getBoundingClientRect();
         const style = getComputedStyle(element);
@@ -142,6 +146,15 @@ try {
       assert.equal(await editor.isVisible(), true);
       assert.equal(await stage.isVisible(), false);
       assert.equal(await nav.isVisible(), true);
+      assert.equal(await welcome.isVisible(), true, 'Project shows Welcome above its tools');
+      const welcomeBounds = await welcome.boundingBox();
+      const actionsBounds = await page.locator('#projectExportMenuBtn').boundingBox();
+      assert.ok(welcomeBounds && actionsBounds, 'Welcome and Project actions are measurable');
+      assert.ok(welcomeBounds.height >= 44, 'Welcome provides a 44px minimum touch target');
+      assert.ok(
+        welcomeBounds.bottom <= actionsBounds.top,
+        'Welcome appears before New/Open/Export actions',
+      );
 
       const dock = await page.evaluate(() => {
         const nav = document.querySelector('.p-nav');
@@ -188,6 +201,10 @@ try {
       });
 
       const processNav = page.locator('.p-nav [data-action="domain:process"]');
+      await processNav.click();
+      assert.equal(await welcome.isVisible(), false, 'Process does not display Welcome');
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      assert.equal(await welcome.isVisible(), false, 'Mask does not display Welcome');
       await processNav.click();
       assert.equal(await page.locator('#operationTools').isVisible(), true);
       await page.evaluate(() => {
@@ -345,6 +362,15 @@ try {
       await page.screenshot({
         path: resolve(output, `mobile-${width}x${height}-history.png`),
       });
+      assert.equal(await welcome.isVisible(), false, 'History does not display Welcome');
+      await page.locator('.p-nav [data-action="domain:project"]').click();
+      await welcome.waitFor({ state: 'visible' });
+      await Promise.all([page.waitForURL(/\/index\.html(?:[?#]|$)/), welcome.click()]);
+      assert.equal(
+        await page.locator('#welcomeScreen').isVisible(),
+        true,
+        'Welcome link opens the real Welcome screen',
+      );
       assert.deepEqual(errors, [], 'No uncaught browser errors');
       console.log(`Mobile Workstation ${width}x${height}: OK`);
     } finally {
