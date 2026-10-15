@@ -10,11 +10,12 @@ import {
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
 const { readProjectFile } = await import('../project-io.js');
-const { createSnapshotManager } = await import('../workspace-snapshots.js');
+
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { collectMaskExportElements, serializeGDS, serializeOASIS } =
   await import('../layout-export.js');
