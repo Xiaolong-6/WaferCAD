@@ -69,8 +69,13 @@ export const SWX_ASSUMPTIONS = Object.freeze({
   onPose: 'rigid-body translation of movable geometry; no FEM',
   // Illustrative coordinates, not recovered GDS. The actuator axis is +Y.
   shuttleVerticalExtentUm: [-9, 9],
-  lowerStationaryCombYUm: -5.8,
-  lowerMovableCombYUm: -15.2,
+  // Provisional opposed-bank placement within existing optical mask window.
+  // The lower bank is mirrored to -X and shifted below the optical routing.
+  // Source S8 still requires axial co-location refinement; see candidate audit.
+  lowerStationaryCombYUm: -37.8,
+  lowerMovableCombYUm: -47.2,
+  leftCombXShiftUm: -6,
+  leftCombYShiftUm: -32,
 });
 
 function ensureState(state) {
@@ -444,9 +449,20 @@ function makeShuttle(moveY) {
   beams.push(
     // The lower SWX reflector translates with the vertical shuttle.
     strip([-28, -1.6 + moveY], [-railX, -1.6 + moveY], 0.7),
-    // Both suspended 3um comb handles belong to ONE moving Si net.
+    // The upper moving handle connects directly to the right shuttle rail.
     strip([railX, moveY], [5.8, moveY], 1),
-    strip([railX, -8 + moveY], [5.8, SWX_ASSUMPTIONS.lowerMovableCombYUm + moveY], 1),
+    // Keep a clear corridor left of the fixed (-2,-27) guided-aligner
+    // anchor. This is a provisional support lead for the opposite bank,
+    // NOT the final source-authenticated S8 comb/shuttle routing.
+    ...polyline(
+      [
+        [-railX, -8 + moveY],
+        [-8.5, -15 + moveY],
+        [-8.5, -44.5 + moveY],
+        [-14.5, SWX_ASSUMPTIONS.lowerMovableCombYUm + moveY],
+      ],
+      0.7,
+    ),
   );
   // All four spring tips must attach to the corresponding moving rail.
   // Place finite-area bridges under the 200nm flexure terminals.
@@ -465,16 +481,19 @@ function makeShuttle(moveY) {
 function makeCombs(moveY) {
   const lowerFixedY = SWX_ASSUMPTIONS.lowerStationaryCombYUm;
   const lowerMovingY = SWX_ASSUMPTIONS.lowerMovableCombYUm;
-  // Keep the fixed handle edge at x=7.25um, clear of the four folded
-  // spring terminals ending at x=+/-7.1um. This preserves both the
-  // 6um anchored handle width and 300nm comb lateral clearance.
+  // The fixed right-side bus starts at x=7.25um, clearing the folded
+  // spring terminals. The lower bus is mirrored to -X, away from the
+  // SWX optical paths; both retain the paper's handle cross-section.
+  const shift = SWX_ASSUMPTIONS.leftCombXShiftUm;
+  const lowerFixedX = -26 + shift;
+  const lowerMovingX = -25 + shift;
   const fixed = [
     rect(26, 9, 37.5, SWX_REPORTED.fixedCombHandleUm),
-    rect(26, lowerFixedY, 37.5, SWX_REPORTED.fixedCombHandleUm),
+    rect(lowerFixedX, lowerFixedY, 37.5, SWX_REPORTED.fixedCombHandleUm),
   ];
   const moving = [
     rect(25, moveY, 39, SWX_REPORTED.movableCombHandleUm),
-    rect(25, lowerMovingY + moveY, 39, SWX_REPORTED.movableCombHandleUm),
+    rect(lowerMovingX, lowerMovingY + moveY, 39, SWX_REPORTED.movableCombHandleUm),
   ];
   // Both pairs must produce +Y force: each stationary finger points
   // downward from a supported handle toward a suspended finger pointing
@@ -482,18 +501,23 @@ function makeCombs(moveY) {
   // 1.085um. Horizontal edge-to-edge spacing stays 0.3um in both states.
   // Twenty interleaved finger pairs per bank give 40 comb cells overall.
   const banks = [
-    { fixedY: 5.7, movingY: 2.7 },
-    { fixedY: -9.5, movingY: -12.5 },
+    { side: 1, fixedY: 5.7, movingY: 2.7, xShift: 0 },
+    {
+      side: -1,
+      fixedY: -9.5 + SWX_ASSUMPTIONS.leftCombYShiftUm,
+      movingY: -12.5 + SWX_ASSUMPTIONS.leftCombYShiftUm,
+      xShift: shift,
+    },
   ];
   for (const bank of banks) {
     for (let i = 0; i < 20; i++) {
-      const x = 8.8 + i * 1.65;
+      const x = bank.side * (8.8 + i * 1.65) + bank.xShift;
       fixed.push(
         rect(x, bank.fixedY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
       );
       moving.push(
         rect(
-          x + 0.8,
+          x + bank.side * 0.8,
           bank.movingY + moveY,
           SWX_REPORTED.combFingerWidthUm,
           SWX_REPORTED.combFingerLengthUm,
@@ -523,7 +547,7 @@ export function createSwxGeometry(state = 'off') {
     rect(2, 40, 10, 10),
     rect(2, -40, 10, 10),
     rect(46, 9, 9, 9),
-    rect(46, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 9, 6),
+    rect(-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 9, 6),
   ];
   const shuttle = makeShuttle(travel);
   const aligners = makeStructuralAligners(travel);
@@ -562,7 +586,7 @@ export function createSwxGeometry(state = 'off') {
     rect(2, 40, 5.5, 5.5),
     rect(2, -40, 5.5, 5.5),
     rect(46, 9, 5, 5),
-    rect(46, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 5, 5),
+    rect(-47, SWX_ASSUMPTIONS.lowerStationaryCombYUm, 5, 5),
   ];
   const polys = new Map([
     [1, silicon],
