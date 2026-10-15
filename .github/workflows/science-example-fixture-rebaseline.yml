@@ -7,6 +7,10 @@ on:
     paths:
       - .github/workflows/science-example-fixture-rebaseline.yml
 
+concurrency:
+  group: science-example-fixture-rebaseline
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -24,6 +28,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx prettier --write scripts/example-recipe-runall-acceptance.mjs
       - run: npx playwright install --with-deps chromium
       - name: Regenerate only the three approved active final device geometries
         env:
@@ -55,6 +60,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/example-recipe-runall-acceptance.mjs
           git add site/examples/suspended-silica-microdisks.wafercad site/examples/perc-solar-cells-point-contacts.wafercad site/examples/fully-textured-perovskite-silicon-tandem.wafercad
           git add site/examples/previews/suspended-silica-microdisk.wafercad site/examples/previews/perc-point-contact-solar-cell.wafercad site/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad tests/fixtures/project-io/example-thumbnails.json
           git diff --cached --exit-code && exit 1 || true
