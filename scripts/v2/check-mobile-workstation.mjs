@@ -66,8 +66,8 @@ try {
           loaded: Boolean(link?.sheet),
           viewportWidth: innerWidth,
           workstation: document.body.hasAttribute('data-workstation'),
-          headerWrap: getComputedStyle(document.querySelector('.p-topbar')).flexWrap,
-          badgeDisplay: getComputedStyle(document.querySelector('.p-review-badge')).display,
+          headerDisplay: getComputedStyle(document.querySelector('.p-topbar')).display,
+          dockPosition: getComputedStyle(document.querySelector('.p-nav')).position,
         };
       });
       assert.equal(loadedStyle.workstation, true, 'Production entry has its shell scope');
@@ -78,8 +78,8 @@ try {
         '20261015-249-compact',
         'Compact stylesheet uses the expected cache key',
       );
-      assert.equal(loadedStyle.headerWrap, 'nowrap', 'Portrait header cannot wrap');
-      assert.equal(loadedStyle.badgeDisplay, 'none', 'Empty review badge takes no space');
+      assert.equal(loadedStyle.headerDisplay, 'none', 'Redundant mobile topbar is removed');
+      assert.equal(loadedStyle.dockPosition, 'fixed', 'Mobile navigation is viewport-fixed');
 
       const root = page.locator('.p-workbench');
       const editor = page.locator('.p-inspector');
@@ -106,12 +106,25 @@ try {
       });
       assert.ok(Math.abs(viewBounds.left) <= 1 && Math.abs(viewBounds.top) <= 1);
       assert.ok(Math.abs(viewBounds.right - width) <= 1);
-      assert.ok(Math.abs(viewBounds.bottom - height) <= 1);
+      assert.ok(viewBounds.bottom < height - 44, 'View reserves the bottom dock area');
       assert.equal(viewBounds.margin, '0px');
       assert.equal(viewBounds.border, '0px');
       assert.equal(viewBounds.radius, '0px');
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
+      assert.equal(await nav.isVisible(), true);
+      const viewDock = await nav.evaluate((node) => {
+        const bounds = node.getBoundingClientRect();
+        return { top: bounds.top, bottom: bounds.bottom, height: bounds.height };
+      });
+      assert.ok(viewDock.height >= 55, 'Bottom dock reserves touch targets and safe area');
+      assert.ok(Math.abs(viewDock.bottom - height) <= 1, 'View dock reaches viewport bottom');
+      assert.ok(Math.abs(viewBounds.bottom - viewDock.top) <= 1, 'Canvas ends above bottom dock');
+      assert.deepEqual(
+        await nav.locator('button').evaluateAll((buttons) => buttons.map((b) => b.dataset.action)),
+        ['show-editor', 'view:main', 'view:mask', 'view:three', 'mobile-section'],
+        'View dock contains exactly five contextual actions',
+      );
       const viewDefaults = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().local);
       for (const name of ['main', 'mask', 'section']) {
         assert.equal(viewDefaults[name].panEnabled, true, `${name}: default Pan`);
@@ -130,12 +143,9 @@ try {
       assert.equal(await stage.isVisible(), false);
       assert.equal(await nav.isVisible(), true);
 
-      const chrome = await page.evaluate(() => {
-        const topbar = document.querySelector('.p-topbar');
-        const title = topbar.querySelector('.p-project-title');
-        const switcher = topbar.querySelector('.p-mobile-return .wc-button');
+      const dock = await page.evaluate(() => {
         const nav = document.querySelector('.p-nav');
-        const domains = [...nav.querySelectorAll('[data-action^="domain:"]')];
+        const buttons = [...nav.querySelectorAll('button')];
         const bounds = (node) => {
           const rect = node.getBoundingClientRect();
           return {
@@ -148,42 +158,30 @@ try {
           };
         };
         return {
-          topbar: bounds(topbar),
-          headerItems: [topbar.querySelector('.p-brand'), title, switcher].map(bounds),
-          titleOverflow: getComputedStyle(title).textOverflow,
           nav: bounds(nav),
-          domains: domains.map((node) => ({
+          buttons: buttons.map((node) => ({
             action: node.dataset.action,
             ...bounds(node),
           })),
           navScrollWidth: nav.scrollWidth,
           navClientWidth: nav.clientWidth,
-          hideEditorVisible: nav.querySelector('[data-action="hide-editor"]').checkVisibility(),
+          navPosition: getComputedStyle(nav).position,
+          hiddenTopbar: getComputedStyle(document.querySelector('.p-topbar')).display,
         };
       });
-      assert.ok(chrome.topbar.height <= 60, 'Mobile topbar fits a compact single row');
-      assert.equal(chrome.titleOverflow, 'ellipsis', 'Long project titles are truncated');
-      for (const item of chrome.headerItems) {
-        assert.ok(
-          Math.abs(
-            (item.top + item.bottom) / 2 -
-              (chrome.headerItems[0].top + chrome.headerItems[0].bottom) / 2,
-          ) <= 2,
-          'Brand, title and View results occupy the same header row',
-        );
-        assert.ok(item.left >= -1 && item.right <= width + 1, 'Header controls fit viewport');
-      }
+      assert.equal(dock.hiddenTopbar, 'none');
+      assert.equal(dock.navPosition, 'fixed');
+      assert.ok(Math.abs(dock.nav.bottom - height) <= 1, 'Edit dock reaches viewport bottom');
       assert.deepEqual(
-        chrome.domains.map(({ action }) => action),
-        ['domain:project', 'domain:mask', 'domain:process', 'domain:history'],
+        dock.buttons.map(({ action }) => action),
+        ['return-results', 'domain:project', 'domain:mask', 'domain:process', 'domain:history'],
+        'Edit dock contains exactly five contextual actions',
       );
-      assert.equal(chrome.hideEditorVisible, false, 'Redundant mobile close button is hidden');
-      assert.ok(chrome.nav.height <= 54, 'Four-domain navigation fits one compact row');
-      assert.ok(chrome.navScrollWidth <= chrome.navClientWidth + 1, 'No horizontal nav scrolling');
-      for (const item of chrome.domains) {
-        assert.ok(Math.abs(item.top - chrome.domains[0].top) <= 1, 'One navigation row');
-        assert.ok(item.width >= 44 && item.height >= 44, 'Every domain remains touch-sized');
-        assert.ok(item.left >= -1 && item.right <= width + 1, 'All domains remain on screen');
+      assert.ok(dock.navScrollWidth <= dock.navClientWidth + 1, 'No horizontal nav scrolling');
+      for (const item of dock.buttons) {
+        assert.ok(Math.abs(item.top - dock.buttons[0].top) <= 1, 'Single bottom row');
+        assert.ok(item.width >= 44 && item.height >= 44, 'Every dock item is touch-sized');
+        assert.ok(item.left >= -1 && item.right <= width + 1, 'Every dock item is visible');
       }
       await page.screenshot({
         path: resolve(output, `mobile-${width}x${height}-edit-navigation.png`),
@@ -218,7 +216,8 @@ try {
       assert.ok(Math.abs(dimensions.shell[0]) <= 1);
       assert.ok(Math.abs(dimensions.shellEdges[0]) <= 1);
       assert.ok(Math.abs(dimensions.shellEdges[1] - width) <= 1);
-      assert.ok(dimensions.inspector[0] >= dimensions.nav[1] - 1);
+      assert.ok(dimensions.inspector[0] >= 0, 'Editor starts at document top');
+      assert.ok(Math.abs(dimensions.nav[1] - height) <= 1, 'Dock stays at viewport bottom');
       assert.ok(dimensions.horizontalOverflow <= 1, 'No document horizontal overflow');
       assert.ok(dimensions.bodyScrollHeight > height + 2, 'Long Process form expands document');
       assert.ok(
@@ -241,20 +240,22 @@ try {
       const swipeOffset = await page.evaluate(() => document.scrollingElement.scrollTop);
       const afterScroll = await nav.boundingBox();
       assert.ok(swipeOffset > 20, 'Touch swipe scrolls the document');
-      assert.ok(afterScroll.y < beforeScroll.y - 20, 'Navigation follows document scroll');
+      assert.ok(
+        Math.abs(afterScroll.y - beforeScroll.y) <= 1,
+        'Fixed dock must not move during document swipe',
+      );
       const touch = await processNav.boundingBox();
       assert.ok(
         touch.width >= 44 && touch.height >= 44,
         `Primary touch target >= 44px; measured ${touch.width} × ${touch.height}`,
       );
-      // The Process pane also exposes a contextual View results action.
-      // Exercise the persistent mobile chrome control explicitly.
+      // Return to results through the same fixed contextual bottom dock.
       // Capture and activate in the same browser task. Touch inertia may
       // advance between Playwright operations; the user's actual position at
       // navigation, not an earlier scroll snapshot, must be restored exactly.
       const documentOffset = await page.evaluate(() => {
         const position = document.scrollingElement.scrollTop;
-        document.querySelector('.p-mobile-return [data-action="return-results"]').click();
+        document.querySelector('.p-nav [data-action="return-results"]').click();
         return position;
       });
       await waitForPaint(page);
@@ -271,7 +272,7 @@ try {
         true,
         'Canvas host retains identity between panes',
       );
-      await page.locator('[data-action="show-editor"]').evaluate((node) => node.click());
+      await page.locator('.p-nav [data-action="show-editor"]').evaluate((node) => node.click());
       await waitForPaint(page);
       const restoredOffset = await page.evaluate(() => window.scrollY);
       assert.ok(
