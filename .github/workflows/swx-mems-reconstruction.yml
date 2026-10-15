@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'scripts/swx-mems-geometry.mjs'
+      - 'scripts/swx-mems-actuator-candidate.mjs'
+      - 'site/tests/swx-mems-actuator-candidate.test.mjs'
       - 'scripts/swx-mems-figure-audit.mjs'
       - 'scripts/build-swx-mems-example.mjs'
       - 'scripts/swx-mems-browser-acceptance.mjs'
@@ -32,6 +34,12 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Inspect candidate Prettier formatting (temporary; remove after diff)
+        run: |
+          npx prettier --write scripts/swx-mems-actuator-candidate.mjs site/tests/swx-mems-actuator-candidate.test.mjs
+          git diff -- scripts/swx-mems-actuator-candidate.mjs site/tests/swx-mems-actuator-candidate.test.mjs
+      - name: Compact actuator targeted scientific contracts
+        run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Geometry and pose tests
         run: node --test site/tests/swx-mems-geometry.test.mjs
       - name: Quantify published figure layout discrepancies (advisory)
