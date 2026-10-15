@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   paper-derived-kernel:
@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -37,10 +39,17 @@ jobs:
         run: node --test site/tests/m3d-lime-ald45-regression.test.mjs
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
-      # Temporary one-shot fixture handoff; remove after the rebuilt project is committed.
-      - name: Emit regenerated example in safely escaped chunks
+      # One-shot artifact bootstrap. Remove this block and restore read permission once committed.
+      - name: Commit generated project to PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
+        shell: bash
         run: |
-          node -e 'const fs = require("node:fs"); const s = fs.readFileSync("site/examples/m3d-lime-rram-cntfet.wafercad", "utf8"); const size = 1700; for (let i = 0; i < s.length; i += size) console.log("WAFERCAD_FIXTURE_CHUNK:" + JSON.stringify([i / size, s.slice(i, i + size)])); console.log("WAFERCAD_FIXTURE_END:" + s.length);'
+          git add -- site/examples/m3d-lime-rram-cntfet.wafercad
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "fix(examples): commit native 45nm conformal M3D-LIME project"
+          git push origin "HEAD:refs/heads/${{ github.head_ref }}"
       - name: Check committed project matches source recipe
         run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
       - name: Source-derived structural regression
