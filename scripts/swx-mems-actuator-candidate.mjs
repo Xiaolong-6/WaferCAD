@@ -31,7 +31,7 @@ export const SWX_COMPACT_ASSUMPTIONS = Object.freeze({
   shuttleExtentYUm: [-34, 8],
   springAnchorYUm: 40,
   springTipYUm: 6,
-  springBaseXUm: [2, 12],
+  springBaseXUm: [6, 16],
   fingerPitchUm: 1.65,
   firstFingerXUm: 8.8,
 });
@@ -74,11 +74,7 @@ export function createCompactSwxActuator(state = 'off') {
     fixed.push(...stationary);
     movable.push(...moving);
     shuttle.push(
-      strip(
-        [side * railX, a.movingBusYUm + travel],
-        [side * 5.9, a.movingBusYUm + travel],
-        0.7,
-      ),
+      strip([side * railX, a.movingBusYUm + travel], [side * 5.9, a.movingBusYUm + travel], 0.7),
     );
   }
   const springPitch = p.foldedSpringWidthUm + p.foldedSpringClearanceUm;
@@ -89,10 +85,7 @@ export function createCompactSwxActuator(state = 'off') {
         [x(0), a.springAnchorYUm],
         [x(0), a.springAnchorYUm - p.foldedSpringLongBeamUm],
         [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [
-          x(springPitch),
-          a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm,
-        ],
+        [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm],
         [
           x(2 * springPitch),
           a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm,
