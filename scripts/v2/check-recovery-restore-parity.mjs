@@ -155,10 +155,19 @@ try {
       originalPoint.project.snapshotBranches.nodes,
       'Restored persisted History graph is exact',
     );
+    // Each Variant keeps exact geometry, History references and scientific
+    // state. The browser may recompute an initially null 3D camera while
+    // restoring the view; exclude only this presentation-only camera field.
+    const withoutAutoFitCamera = (branches) =>
+      branches.map((branch) => {
+        const saved = structuredClone(branch);
+        if (saved.headState?.display) saved.headState.display.threeCamera = null;
+        return saved;
+      });
     assert.deepEqual(
-      persisted.snapshotBranches.branches,
-      originalPoint.project.snapshotBranches.branches,
-      'Restored persisted Variant graph is exact',
+      withoutAutoFitCamera(persisted.snapshotBranches.branches),
+      withoutAutoFitCamera(originalPoint.project.snapshotBranches.branches),
+      'Restored persisted Variant graph and physical headState are exact except 3D auto-fit',
     );
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
