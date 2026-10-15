@@ -3,8 +3,9 @@
  * compact SWX optomechanical candidate. Nothing here replaces the public
  * example or the previously validated original-mask baseline.
  *
- * Important: no real grating-groove geometry, physical aligner or FEM/FDTD
- * is supplied. Layer 2 represents trial ridge trims, NOT source grating GDS.
+ * Important: shallow-etched grating geometry is now modeled with explicit,
+ * illustrative arcs. Grating pitch/duty and pad locations are NOT source
+ * GDS and no optical coupling efficiency or FEM/FDTD is claimed.
  */
 import { createSwxGeometry, SWX_REPORTED, SWX_ASSUMPTIONS } from './swx-mems-geometry.mjs';
 import {
@@ -12,6 +13,10 @@ import {
   SWX_INTERFACE_ASSUMPTIONS,
 } from './swx-mems-optomechanical-candidate.mjs';
 import { SWX_COMPACT_ASSUMPTIONS } from './swx-mems-actuator-candidate.mjs';
+import {
+  SWX_COMPACT_GRATING_ASSUMPTIONS,
+  createCompactGratingGrooves,
+} from './swx-mems-compact-gratings.mjs';
 
 const rect = (x, y, w, h) => [
   [x - w / 2, y - h / 2],
@@ -36,12 +41,17 @@ export function createSwxCompactProcessGeometry(state = 'off') {
   const traditional = createSwxGeometry(state);
   const silicon = [...source.fixed, ...source.movable, ...source.flexure];
   const { offsetXUm: dx, offsetYUm: dy } = SWX_INTERFACE_ASSUMPTIONS;
-  // Four partial-etch trial transitions are the only ridge polygons.
-  // Grating groove arcs are NOT synthesized until source-level redesign.
-  const ridge = traditional.maskPolygons
-    .get(2)
-    .slice(0, 4)
-    .map((p) => shift(p, dx, dy));
+  // The same 150nm partial etch is used for trial SWT ridge trims and four
+  // stationary grating coupler groove sets. Every arc remains inside
+  // a 220nm device silicon pad; the etch leaves a 70nm Si floor.
+  const compactGratings = createCompactGratingGrooves();
+  const ridge = [
+    ...traditional.maskPolygons
+      .get(2)
+      .slice(0, 4)
+      .map((p) => shift(p, dx, dy)),
+    ...compactGratings.grooves,
+  ];
   const electrodes = ELECTRICAL.map(([x, y]) => rect(x, y, 3.5, 3.5));
   const maskPolygons = new Map([
     [1, silicon],
@@ -50,7 +60,7 @@ export function createSwxCompactProcessGeometry(state = 'off') {
   ]);
   const labels = [
     [1, 'Illustrative full-height compact MEMS and optical silicon'],
-    [2, 'Illustrative 150nm ridge trim, not reconstructed grating grooves'],
+    [2, 'Illustrative 150nm SWT ridge trim and four shallow grating groove sets'],
     [3, 'Six supported candidate Cr/Au electrode pads'],
   ];
   const elements = [...maskPolygons].flatMap(([layer, polygons]) =>
@@ -103,6 +113,8 @@ export function createSwxCompactProcessGeometry(state = 'off') {
       actuator: source.actuator,
       optics: source.optics,
       opticalRouting: source.opticalRouting,
+      gratingGrooves: compactGratings.grooves,
+      gratingGrooveProbes: compactGratings.probes,
     },
     reconstructionStatus: 'isolated-compact-candidate',
   };
@@ -114,11 +126,15 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
   section: { a: [25, -36], b: [25, -10] },
   projectName: 'SWX compact optomechanical process candidate · OFF/ON',
   ridgeNote:
-    'Trial 150nm ridge trims on 4 SWT ports; source grating grooves are not yet reconstructed.',
-  shallowEtchLabel: '150nm trial ridge-waveguide trim (grating verification remains BLOCKED)',
+    'Four trial SWT ridge trims plus four six-groove couplers; grating pitch/duty are illustrative.',
+  shallowEtchLabel: '150nm SWT ridge trims and illustrative four-terminal grating grooves',
   shallowEtchProbes: [
     { groovePoint: [-19, -35], ridgePoint: [-21, -35] },
     { groovePoint: [-19, -61], ridgePoint: [-21, -61] },
+    ...createCompactGratingGrooves().probes.map(({ groovePoint, ridgePoint }) => ({
+      groovePoint,
+      ridgePoint,
+    })),
   ],
   electricalContactPoints: ELECTRICAL,
   gapPoint: (source) => [
@@ -143,6 +159,8 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
     compactOptical: SWX_INTERFACE_ASSUMPTIONS,
     fieldUm: FIELD,
     sourceGratingGroovesImplemented: false,
+    physicallyEtchedCandidateGratingGrooves: true,
+    candidateGratings: SWX_COMPACT_GRATING_ASSUMPTIONS,
     guidedMechanicalAlignersImplemented: false,
     originalGdsAvailable: false,
     independentFEMOrFDTDVerified: false,
