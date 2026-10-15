@@ -1,6 +1,6 @@
 // Standalone Assembly lineage / replay contract.
 // Not yet a live .wafercad schema field or a user-visible Process operation.
-import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { CURRENT_PROJECT_VERSION, migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { bondWaferModels } from './wafer-bonding.js';
 
 export const WAFER_ASSEMBLY_VERSION = 1;
@@ -166,4 +166,39 @@ export function appendWaferToAssembly(assembly, donorProject, request) {
   verifySources(next.sources);
   validateRecord(next);
   return { assembly: next, model: result.model, interface: result.interface };
+}
+
+/**
+ * Materialize a portable, version-15 .wafercad candidate from independent
+ * sources. Its original source Recipes/History/Masks live under waferAssembly.
+ * The assembled top-level workspace intentionally has no falsely inherited
+ * Process History or prebond Recipe. Post-bond Process/History is blocked by
+ * strict baseline parity until an explicit Bond transaction is integrated.
+ */
+export function createBondedAssemblyProject(assembly) {
+  validateRecord(assembly);
+  if (assembly.sources.length < 2) {
+    throw new Error('At least two sources are required for a Bonded project.');
+  }
+  const project = structuredClone(assembly.sources[0].project);
+  project.version = CURRENT_PROJECT_VERSION;
+  project.model = replayWaferAssembly(assembly);
+  project.waferAssembly = structuredClone(assembly);
+  delete project.snapshots;
+  delete project.snapshotBranches;
+  delete project.processRecipe;
+  project.name = `${project.name || 'WaferCAD'} · Bonded assembly`;
+  validateProjectFile(project);
+  return project;
+}
+
+/** Fail closed before export/import if root physical material has drifted. */
+export function validateBondedAssemblyProject(project) {
+  if (project?.waferAssembly == null) return project;
+  validateProjectFile(project);
+  const replay = replayWaferAssembly(project.waferAssembly);
+  if (JSON.stringify(replay) !== JSON.stringify(project.model)) {
+    throw new Error('Bonded Assembly material differs from source-project replay; export/import refused.');
+  }
+  return project;
 }
