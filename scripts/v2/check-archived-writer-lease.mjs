@@ -6,9 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
-const metadata = JSON.parse(
-  await readFile('tests/fixtures/project-io/metadata.json', 'utf8'),
-);
+const metadata = JSON.parse(await readFile('tests/fixtures/project-io/metadata.json', 'utf8'));
 const archive = await readFile(
   'tests/fixtures/project-io/nature2026-fig3-wafer-legacy.wafercad.br',
 );
