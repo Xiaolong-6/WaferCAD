@@ -252,15 +252,19 @@ try {
           name: 'Keep previous history',
           exact: true,
         });
-        await page.getByRole('button', {
-          name: /Clear history|Keep previous history/,
-        }).first().waitFor({ state: 'visible', timeout: 15000 });
+        await page
+          .getByRole('button', {
+            name: /Clear history|Keep previous history/,
+          })
+          .first()
+          .waitFor({ state: 'visible', timeout: 15000 });
         if (await clearHistory.isVisible()) await clearHistory.click();
         else await keepHistory.click();
         await page.waitForFunction(
-          () => /^(Completed|Failed|Stopped):/.test(
-            document.querySelector('#recipeRunSummary')?.textContent || '',
-          ),
+          () =>
+            /^(Completed|Failed|Stopped):/.test(
+              document.querySelector('#recipeRunSummary')?.textContent || '',
+            ),
           null,
           { timeout: 300000 },
         );
