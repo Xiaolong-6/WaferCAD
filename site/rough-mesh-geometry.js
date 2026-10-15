@@ -180,26 +180,29 @@ export function roughMeshDataFromPreparedCap({
   // Cap-local memoization only; canonical geometry and the heightfield are
   // unchanged. Cap entries are discarded with this mesh task and capped to
   // bound transient memory on large detailed rough surfaces.
-  const roughSampleCache = new Map(),
-    roughSample = (point) => {
-      const x = Math.fround(point[0]),
-        y = Math.fround(point[1]),
-        key = `${x},${y}`;
-      let sample = roughSampleCache.get(key);
-      if (!sample) {
-        sample = { point: roughPoint([x, y, z], z, profileNormal, appearance), normal: null };
-        if (roughSampleCache.size < 131072) roughSampleCache.set(key, sample);
+  const roughSampleCache = new Map();
+  const roughSample = (point) => {
+    const x = Math.fround(point[0]),
+      y = Math.fround(point[1]),
+      key = `${x},${y}`;
+    let sample = roughSampleCache.get(key);
+    if (!sample) {
+      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance), normal: null };
+      if (roughSampleCache.size < 131072) {
+        roughSampleCache.set(key, sample);
       }
-      return sample.point;
-    },
-    roughNormal = (point) => {
-      const key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
-      const sample = roughSampleCache.get(key);
-      if (!sample) return roughPointNormal(point, normal, profileNormal, appearance);
-      if (!sample.normal)
-        sample.normal = roughPointNormal(sample.point, normal, profileNormal, appearance);
-      return sample.normal;
-    };
+    }
+    return sample.point;
+  };
+  const roughNormal = (point) => {
+    const key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
+    const sample = roughSampleCache.get(key);
+    if (!sample) return roughPointNormal(point, normal, profileNormal, appearance);
+    if (!sample.normal) {
+      sample.normal = roughPointNormal(sample.point, normal, profileNormal, appearance);
+    }
+    return sample.normal;
+  };
 
   const polygonEdges = (zonePolys) => {
       const edges = [];
