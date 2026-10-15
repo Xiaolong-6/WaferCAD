@@ -4,18 +4,21 @@
 
 The active product is entirely under `site/`.
 
-`app.html` opens the v2 Workstation. `app-legacy.html` retains the previous
-workspace and the embedded Welcome preview protocol. Both use the same
-workspace storage and writer lease. The v2 footer shows the short SHA from
-the deployment's `build-info.json` as a clickable GitHub commit link (or
-non-clickable `commit local` without deployment metadata). The Workstation no longer offers a Legacy switch; if the optional
-Legacy URL is used directly, save or export pending changes before navigation.
-If `localStorage` is
-unreadable or unwritable, both interfaces remain editable in memory, but
-persistent autosave is disabled rather than risking cross-tab overwrite. Export
-a `.wafercad` project while storage coordination is unavailable; after restoring
-storage access, use the explicit takeover/reconciliation flow. A missing or
-expired write lease cannot authorize an IndexedDB commit.
+`app.html` opens the production v2 Workstation. The Welcome page's four-view
+interactive preview uses a read-only v2 renderer; it never acquires the writer
+lease or saves a preview into the local Workspace. The historical
+`app-legacy.html` editor, `app.js`, and `workstation.css` remain in Git for
+scientific browser regressions pending migration. Published Pages ships only a
+same-origin redirect from `app-legacy.html` to `app.html` (preserving query and
+fragment), and excludes the old editor's executable resources.
+
+The v2 footer links the deployed short commit SHA to its full GitHub commit
+(`commit local` for unstamped development). If browser `localStorage` is
+unreadable or unwritable, v2 remains editable in memory, but persistent
+autosave is disabled rather than risking cross-tab overwrite. Export a
+`.wafercad` project while storage coordination is unavailable; after
+restoring access use the explicit takeover/reconciliation flow. A missing
+or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 

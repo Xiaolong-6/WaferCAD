@@ -20,7 +20,10 @@ test('production Pages requires quality, browser and UI acceptance before publis
   assert.match(pages, /run: npm run check/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/browser-regression\.yml/);
   assert.match(pages, /uses: \.\/\.github\/workflows\/ui-v2-stage-c-m4\.yml/);
-  assert.match(pages, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
+  assert.match(
+    pages,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' && needs\.stage-pages\.result == 'success' \}\}/,
+  );
   assert.match(pages, /uses: actions\/deploy-pages@v4/);
   assert.match(pages, /run: node scripts\/smoke-pages-artifact\.mjs/);
   assert.match(pages, /uses: actions\/upload-pages-artifact@v4/);
@@ -35,6 +38,50 @@ test('production Pages requires quality, browser and UI acceptance before publis
     commitLine?.trim(),
     String.raw`printf '{"commit":"%s"}\n' "$GITHUB_SHA" > build/pages/build-info.json`,
   );
+});
+
+test('Pages cannot silently skip publishing after an upstream optional suite skips', () => {
+  const pages = workflow('pages');
+  const stage = pages.split('  stage-pages:\n')[1]?.split('  deploy:\n')[0];
+  assert.ok(stage, 'production stage job must exist');
+  assert.match(
+    stage,
+    /if: \$\{\{ always\(\) && !cancelled\(\) && github\.ref == 'refs\/heads\/main' \}\}/,
+  );
+  for (const gate of ['QUALITY', 'BROWSER', 'UI_V2', 'SCIENCE']) {
+    assert.match(stage, new RegExp(`\\b${gate}_RESULT:\\s*\\$\\{\\{ needs\\.`));
+  }
+  assert.match(stage, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(stage, /exit 1/);
+  assert.ok(
+    stage.indexOf('Require successful same-revision release gates') <
+      stage.indexOf('Checkout verified revision'),
+    'fail-closed release gate must precede artifact construction',
+  );
+});
+
+test('Pages requires a real deploy and rejects false-green skipped publish jobs', () => {
+  const pages = workflow('pages');
+  const deploy = pages.split('  deploy:\n')[1]?.split('  release-verdict:\n')[0];
+  const verdict = pages.split('  release-verdict:\n')[1];
+  assert.ok(deploy, 'deploy job must exist');
+  assert.ok(verdict, 'final release verdict job must exist');
+  assert.match(deploy, /needs: \[stage-pages\]/);
+  assert.ok(
+    deploy.includes(
+      "if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.stage-pages.result == 'success' }}",
+    ),
+    'explicit success status must allow a completed stage to run despite skipped optional upstream jobs',
+  );
+  assert.match(verdict, /needs: \[stage-pages, deploy\]/);
+  assert.ok(
+    verdict.includes("if: ${{ always() && github.ref == 'refs/heads/main' }}"),
+    'final verdict must be evaluated even if the deployment was skipped',
+  );
+  assert.ok(verdict.includes('STAGE_RESULT: ${{ needs.stage-pages.result }}'));
+  assert.ok(verdict.includes('DEPLOY_RESULT: ${{ needs.deploy.result }}'));
+  assert.match(verdict, /if \[\[ "\$result" != success \]\]; then/);
+  assert.match(verdict, /exit 1/);
 });
 
 test('Pages scientific gate requires routed Main/Mask, KLayout and Recipe outcomes', () => {
@@ -92,11 +139,11 @@ test('manual reconstruction runs cannot mutate main', () => {
   assert.match(m3d, /  replay:\n    if: \$\{\{/);
   assert.ok(m3d.includes("github.ref_name == 'fix/m3d-conformal-microcracks-20261008'"));
   assert.ok(m3d.includes("github.ref_name == 'integrate/reviewed-branches-20261008'"));
-  assert.ok(
-    workflow('magic1000-candidate').includes(
-      "if: ${{ github.ref_name == 'feat/magic-1000-mos2-beol-reconstruction' }}",
-    ),
-  );
+  const magic = workflow('magic1000-candidate');
+  assert.match(magic, /  pull_request:\n    branches: \[main\]/);
+  assert.match(magic, /permissions:\n  contents: read/);
+  assert.doesNotMatch(magic, /contents: write|git push|feat\/magic-1000-mos2-beol-reconstruction/);
+  assert.match(magic, /node scripts\/magic1000-visual-acceptance\.mjs/);
   assert.ok(
     workflow('photodetector-reconstruction-v2').includes(
       "if: ${{ github.ref_name == 'fix/photodetector-reconstruction-v2' }}",

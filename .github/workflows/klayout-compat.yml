@@ -34,6 +34,10 @@ on:
       - "site/controllers/export-controller.js"
       - "scripts/klayout-compat.mjs"
       - "scripts/klayout-ui-compat.mjs"
+      - "scripts/v2/check-klayout-core-corpus.mjs"
+      - "scripts/v2/check-klayout-mask-process.mjs"
+      - "site/ui-v2/project-mask-panels.js"
+      - "site/ui-v2/workstation-workflow.js"
       - "scripts/klayout-export-fixtures.mjs"
       - "scripts/klayout-export-verify.py"
       - ".github/workflows/klayout-compat.yml"
@@ -130,6 +134,16 @@ jobs:
           cat /tmp/wafercad-http.log
           exit 1
 
+      - name: Real v2 GDS/OAS Mask import and masked Process Worker
+        env:
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: node scripts/v2/check-klayout-mask-process.mjs
+
+      - name: Sweep pinned KLayout core corpus through native v2 Mask UI
+        env:
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: node scripts/v2/check-klayout-core-corpus.mjs
+
       - name: Sweep actual browser import path
         run: node scripts/klayout-ui-compat.mjs --root _klayout/testdata --url http://127.0.0.1:4173 --report klayout-ui-compat.json --failure-dir ui-failures
 
@@ -140,5 +154,7 @@ jobs:
           name: klayout-ui-compat
           path: |
             klayout-ui-compat.json
+            test-results/klayout-v2-corpus/
+            test-results/klayout-v2/
             ui-failures
           if-no-files-found: ignore

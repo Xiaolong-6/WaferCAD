@@ -16,6 +16,13 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | Bundled examples            | `npm run test:ui:examples`    | Literature/example structural contracts and restore behavior                                                             | Example-specific geometry/render invariants                      |
 | Product/visual review       | `npm run test:ui:product`     | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots                                    | Multiple viewports; deterministic renderer inputs in CI          |
 
+The resilience owner `scripts/resilience-regression.mjs` now starts the production
+**v2** Workstation. It independently simulates a missing Three.js CDN and a
+WebGL context allocation failure, requires a visible 3D unavailability
+diagnostic, then proves that Main, Mask, Section and a real Process Worker
+operation still function. It does not route through the Legacy test adapter,
+and replaces the equivalent old-UI degraded renderer scenarios.
+
 The focused real-worker fault acceptance in `scripts/process-transaction-ui-regression.mjs` checks rejection and Abort against actual Model/History exports; it is invoked from Recipe safety CI. Node controller fault injection additionally checks worker cancellation/late results and failed History rollback without pretending to be real IndexedDB or browser reload.
 
 The former 2993-line UI smoke has been fully decomposed into focused browser suites. New coverage should go directly into the suite that owns the behavior; there is no generic catch-all UI regression file anymore.
@@ -32,6 +39,58 @@ Use the smallest group that matches the change:
 - `npm run test:ui:visual`: opt-in approved visual baselines only.
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
+
+### Published Legacy URL policy
+
+`app-legacy.html` remains available in the Git source tree for legacy-only
+scientific regression tests. In the staged Pages artifact its public URL
+serves only a same-origin redirect to the v2 `app.html`, preserving query
+and fragment. `app.js` and `workstation.css` are not published.
+`site/tests/pages-artifact.test.mjs` and
+`scripts/smoke-pages-artifact.mjs` enforce the production artifact
+boundary and verify that the deployed Worker-backed app still boots.
+This does **not** remove the old editor's test source or change historical
+project-format and Recovery compatibility.
+
+### M3D Welcome and 3D Border v2 ownership
+
+`scripts/m3d-welcome-regression.mjs` runs against the production v2
+Workstation, verifies the Welcome thumbnail and full project handoff,
+36 real History Steps, 27 stage bookmarks, an initialized 3D view and
+reversible Border selection without model mutation. The targeted
+`m3d-example-integration.yml` gate runs on relevant `main` PR changes.
+The full legacy M3D process/geometry/export acceptance remains available
+through manual workflow dispatch until those separate scientific contracts
+are migrated. This is an incremental test-owner transfer, not a reason
+to delete `site/app-legacy.html` from the test source tree.
+
+### MAGIC-1000 Section/3D preview
+
+`scripts/magic1000-visual-acceptance.mjs` now opens the production v2
+read-only Example preview and verifies Section raster content and initialized
+3D without workspace writer ownership. The default run saves WebP evidence
+and a JSON report to `test-results/magic1000/`, leaving committed thumbnails
+unchanged. Regenerate the repository thumbnail only with the explicit
+`--write-thumbnail` flag and visual review. The formerly obsolete
+`magic1000-candidate.yml` is now a read-only PR/manual browser gate rather
+than a branch-specific workflow with permission to push generated files.
+Scientific geometry and Recipe replay remain governed by separate tests.
+
+### KLayout v2 Mask-to-Process bridge
+
+`scripts/v2/check-klayout-mask-process.mjs` imports the pinned GDS hierarchy
+and OASIS rectangles sample in the real production v2 Workstation. It
+checks nonempty rendered Mask, selected imported layers, unchanged Base model
+before fabrication, then runs a masked Deposit through the real Process
+Worker, verifies the new physical layer and History Step, and retains the
+layout geometry. This browser gate is included in
+`.github/workflows/klayout-compat.yml` and saves evidence in
+`test-results/klayout-v2/`.
+
+The external KLayout parser/export corpus and the full historical Legacy
+UI corpus remain active as separate owners. This focused v2 bridge is a
+progressive ownership transfer and does not yet authorize removing
+`scripts/klayout-ui-compat.mjs` or the Legacy scientific DOM.
 
 ### Legacy project compatibility before UI retirement
 

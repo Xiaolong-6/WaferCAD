@@ -77,10 +77,15 @@ export function createWorkstationThreeView({ store, workstation }) {
     },
   });
   renderer.setGestureMode(local.mode, { wheelZoom: local.zoomEnabled });
-  if (state.threeCamera) renderer.setViewState(state.threeCamera);
+  // Preview gets a fresh whole-structure fit; the editable project's saved
+  // camera remains untouched and each preview retains its own live camera.
+  if (!workstation.readOnlyPreview && state.threeCamera) renderer.setViewState(state.threeCamera);
   let initializing = null;
   const render = async () => {
     if (!host.checkVisibility()) return;
+    // A staged Example/Recovery load can replace display settings after this
+    // toolbar is constructed. Keep selected controls in sync with real state.
+    sync();
     if (!renderer.ready) {
       initializing ||= renderer.init();
       if (!(await initializing)) return;

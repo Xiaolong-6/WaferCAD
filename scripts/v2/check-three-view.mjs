@@ -98,15 +98,21 @@ try {
         await page.waitForTimeout(400);
       };
       assert.equal((await snapshot()).local.three.mode, 'rotate');
+      assert.equal((await snapshot()).local.three.zoomEnabled, true);
       assert.equal(
         await page.locator('#threePanel [aria-pressed="true"][data-action^="tool:"]').count(),
-        1,
+        2,
       );
       let before = await camera();
       await wheel();
+      assert.ok(distance(await camera()) < distance(before), 'Default Orbit allows wheel Zoom');
+      await command('tool:zoom:three');
+      assert.equal((await snapshot()).local.three.zoomEnabled, false);
+      before = await camera();
+      await wheel();
       assert.ok(
         Math.abs(distance(await camera()) - distance(before)) < 1e-6,
-        'Rotate must block wheel zoom',
+        'Explicitly disabling Zoom blocks wheel while rotating',
       );
       await drag(32, 18);
       assert.ok(

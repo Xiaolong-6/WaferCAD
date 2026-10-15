@@ -23,9 +23,20 @@ try {
       : await loadWorkstationProject(),
     store = createWorkstationRuntime(project);
   if (readOnlyPreview) {
-    // Preview keeps the old inspect-only wheel gesture without enabling editors.
+    // Navigation is enabled from the first frame without activating editing tools.
+    store.local.main.panEnabled = true;
     store.local.main.zoomEnabled = true;
+    store.local.mask.panEnabled = true;
     store.local.mask.zoomEnabled = true;
+    store.local.section.panEnabled = true;
+    store.local.section.zoomEnabled = true;
+    store.local.three.mode = 'rotate';
+    store.local.three.zoomEnabled = true;
+    // Reset view-only saved offsets so each example begins with a meaningful fit.
+    for (const view of ['main', 'mask']) {
+      store.state.planViews[view] = { zoom: 1, panX: 0, panY: 0 };
+    }
+    store.state.sectionViewport = { zoom: 1, panX: 0, panY: 0 };
   }
   const geometryBefore = store.geometrySnapshot();
   const uiState = {
@@ -93,6 +104,7 @@ try {
     shell.getSlot('status.message').textContent = value;
   };
   const workstation = {
+    readOnlyPreview,
     adapters,
     shell,
     uiState,
@@ -147,20 +159,42 @@ try {
     onHide() {},
     destroy() {},
   });
-  // Centralized transition. On desktop the independent inspector toggle remains.
-  const selectPane = (pane) => {
+  // Mobile Edit has one document scroller. Remember its offset per domain
+  // instead of saving scrollTop on the desktop-only inspector subtree.
+  // Pane transitions keep all scientific hosts and unsaved form drafts mounted.
+  const mobileDocumentScroll = new Map();
+  let mobileTransitionSerial = 0;
+  const selectPane = (pane, domain = uiState.domain) => {
+    const compact = window.WaferCadV2ViewState.compact(window);
+    if (compact && uiState.mobile === 'edit') {
+      mobileDocumentScroll.set(uiState.domain, document.scrollingElement?.scrollTop || 0);
+    }
+    uiState.domain = domain;
     uiState.mobile = pane;
-    if (!window.WaferCadV2ViewState.compact(window)) uiState.editorHidden = pane === 'view';
+    if (!compact) {
+      uiState.editorHidden = pane === 'view';
+      return;
+    }
+    const destination = pane === 'edit' ? mobileDocumentScroll.get(domain) || 0 : 0;
+    const serial = ++mobileTransitionSerial;
+    requestAnimationFrame(() => {
+      if (serial !== mobileTransitionSerial) return;
+      // Reapply after the new pane's adapters complete layout. One frame can
+      // clamp the offset against the previous (shorter) View document.
+      requestAnimationFrame(() => {
+        if (serial === mobileTransitionSerial) window.scrollTo(0, destination);
+      });
+    });
   };
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
     if (action.startsWith('domain:')) {
-      uiState.domain = action.split(':')[1];
-      uiState.maximize = uiState.domain === 'mask' ? 'mask' : null;
-      if (uiState.domain === 'mask') uiState.view = 'mask';
-      selectPane('edit');
+      const domain = action.split(':')[1];
+      uiState.maximize = domain === 'mask' ? 'mask' : null;
+      if (domain === 'mask') uiState.view = 'mask';
+      selectPane('edit', domain);
       render();
     } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
