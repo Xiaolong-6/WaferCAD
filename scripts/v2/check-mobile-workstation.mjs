@@ -75,7 +75,7 @@ try {
       assert.equal(loadedStyle.loaded, true, 'Compact Workstation stylesheet is loaded');
       assert.equal(
         new URL(loadedStyle.href).searchParams.get('v'),
-        '20261015-249-compact',
+        '20261015-249-bottom-dock',
         'Compact stylesheet uses the expected cache key',
       );
       assert.equal(loadedStyle.headerDisplay, 'none', 'Redundant mobile topbar is removed');
