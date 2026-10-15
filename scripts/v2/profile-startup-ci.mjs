@@ -59,6 +59,12 @@ async function runCampaign(iteration) {
             variant: host.dataset.sceneVariant || null,
             drawCalls: Number(host.dataset.rendererDrawCalls || 0),
             triangles: Number(host.dataset.rendererDrawTriangles || 0),
+            sceneObjects: Number(host.dataset.sceneObjectCount || 0),
+            visibleObjects: Number(host.dataset.sceneVisibleObjectCount || 0),
+            uniqueGeometries: Number(host.dataset.sceneGeometryCount || 0),
+            uniqueMaterials: Number(host.dataset.sceneMaterialCount || 0),
+            shaderPrograms: Number(host.dataset.webglProgramCount || 0),
+            trianglesByKind: host.dataset.sceneTriangleKinds || null,
           });
         }
       }
