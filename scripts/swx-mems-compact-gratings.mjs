@@ -51,8 +51,7 @@ export function createCompactGratingGrooves(assumptions = SWX_COMPACT_GRATING_AS
   if (!(groovePitchUm > grooveWidthUm && grooveWidthUm > 0)) {
     throw new Error('Compact grating pitch must exceed positive groove width');
   }
-  const maxRadius =
-    firstGrooveRadiusUm + (groovesPerTerminal - 1) * groovePitchUm + grooveWidthUm;
+  const maxRadius = firstGrooveRadiusUm + (groovesPerTerminal - 1) * groovePitchUm + grooveWidthUm;
   if (!(firstGrooveRadiusUm > 0 && padWidthUm / 2 > maxRadius)) {
     throw new Error('Compact grating arcs must stay entirely on supported silicon pads');
   }
