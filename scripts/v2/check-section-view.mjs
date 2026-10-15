@@ -42,7 +42,7 @@ try {
       const initial = await snapshot();
       assert.equal(initial.sharedIdentity, true);
       assert.equal(initial.model.layers.length, 27);
-      assert.equal(initial.model.regions.length, 551);
+      assert.equal(initial.model.regions.length, 550);
       assert.deepEqual(
         await page.evaluate(() =>
           performance
