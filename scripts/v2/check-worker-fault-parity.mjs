@@ -36,7 +36,7 @@ try {
               window.__abortNextV2Candidate = false;
               window.__v2WorkerFault.aborted++;
               const result = post(request, ...rest);
-              queueMicrotask(() => document.getElementById('processTaskAbortBtn')?.click());
+              window.queueMicrotask(() => document.getElementById('processTaskAbortBtn')?.click());
               return result;
             }
             return post(request, ...rest);
@@ -88,11 +88,15 @@ try {
       .locator('.process-history-row.history-step-row', { hasText: 'Committed fault baseline' })
       .first()
       .click();
+    // Scientific state, not an optional/history-only banner, is the gate.
     await page.waitForFunction(
-      () =>
-        /Historical Step/.test(
-          document.querySelector('.snapshot-continuation-banner')?.textContent || '',
-        ),
+      () => {
+        const model = window.WaferCadV2Workstation.snapshot().model;
+        return (
+          model.layers.some((layer) => layer.name === 'Committed fault baseline') &&
+          !model.layers.some((layer) => layer.name === 'Second fault baseline')
+        );
+      },
       null,
       { timeout: 30000 },
     );
