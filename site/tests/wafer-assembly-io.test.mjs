@@ -150,3 +150,43 @@ test('v15 bonded project retains v14 source histories and is not re-migrated', (
   assert.equal(assembled.waferAssembly.sources[0].project.version, 14);
   assert.equal(assembled.waferAssembly.sources[1].project.version, 14);
 });
+
+test('bonded product rejects forged History or Recipe before export and after import', async () => {
+  const original = createBondedAssemblyProject(bonded().assembly);
+  const receiverSource = original.waferAssembly.sources[0].project;
+
+  const withHistory = structuredClone(original);
+  withHistory.snapshots = structuredClone(receiverSource.snapshots);
+  assert.throws(
+    () => serializeProject(withHistory),
+    /cannot coexist with product History/,
+  );
+  const withBranches = structuredClone(original);
+  withBranches.snapshotBranches = {
+    version: 3,
+    activeBranchId: 'main',
+    branches: [],
+    nodes: [],
+  };
+  assert.throws(
+    () => validateProjectFile(withBranches),
+    /cannot coexist with product History/,
+  );
+
+  const withRecipe = structuredClone(original);
+  withRecipe.processRecipe = structuredClone(receiverSource.processRecipe);
+  assert.throws(
+    () => serializeProject(withRecipe),
+    /cannot coexist with product Recipe/,
+  );
+
+  const stored = JSON.parse(serializeProject(original));
+  stored.processRecipe = structuredClone(receiverSource.processRecipe);
+  await assert.rejects(
+    () => readProjectFile(fileLike(JSON.stringify(stored))),
+    /cannot coexist with product Recipe/,
+  );
+  // A valid source-project recipe remains legal inside embedded donor/receiver sources.
+  assert.ok(original.waferAssembly.sources[0].project.processRecipe);
+  assert.ok(original.waferAssembly.sources[1].project.processRecipe);
+});
