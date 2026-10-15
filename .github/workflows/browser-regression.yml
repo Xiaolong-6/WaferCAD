@@ -202,6 +202,15 @@ jobs:
           WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-photodetector
         run: node scripts/pr250-renderer-audit.mjs
 
+      - name: Upload targeted Photodetector ROI evidence
+        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr250-photodetector-${{ github.sha }}
+          path: test-results/product-review/pr250-photodetector/
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Check rough boundary and depth visibility evidence
         if: needs.plan.outputs.renderer == 'true'
         env:
