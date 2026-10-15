@@ -37,3 +37,17 @@ test('ordinary v14 project import path remains available', async () => {
   assert.deepEqual(received, source);
   assert.equal(read, 1);
 });
+
+test('workspace save refuses Assembly lineage before hierarchy or serialization mutations', () => {
+  const calls = [];
+  const state = { waferAssembly: { version: 1 }, model: {} };
+  const controller = createProjectStateController({
+    ensureHierarchy: () => calls.push('hierarchy'),
+    getState: () => state,
+    applyState: () => calls.push('mutated'),
+    setSectionEditEnabled: () => calls.push('section-state'),
+  });
+  assert.throws(() => controller.buildProjectSnapshot(true), /requires the multi-wafer editor/);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(state, { waferAssembly: { version: 1 }, model: {} });
+});
