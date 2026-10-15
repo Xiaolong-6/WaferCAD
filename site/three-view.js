@@ -2055,12 +2055,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
 
   function gpuRoughTask(task) {
-    return preciseGpuRoughDisplacement && canUseGpuRoughTask({
-      appearance: task?.cap?.appearance,
-      buried: task?.cap?.buried,
-      implant: Boolean(task?.implant),
-      zDisplay: currentZDisplay,
-    });
+    return (
+      preciseGpuRoughDisplacement &&
+      canUseGpuRoughTask({
+        appearance: task?.cap?.appearance,
+        buried: task?.cap?.buried,
+        implant: Boolean(task?.implant),
+        zDisplay: currentZDisplay,
+      })
+    );
   }
 
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
