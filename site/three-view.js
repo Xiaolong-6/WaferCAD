@@ -15,6 +15,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { transparentInspectionContours, contoursToPositions } from './three-outline-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -1097,9 +1098,21 @@ export function createThreeView({
         return {
           visible: Boolean(inspection.borders),
           materialState: {
-            opacity: transparent ? 0.46 : 1,
+            opacity: transparent ? 0.85 : 1,
             transparent,
             depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
+        };
+      case 'hidden-border':
+        return {
+          visible: transparent && Boolean(inspection.borders),
+          materialState: {
+            // Draw behind translucent surfaces, not on top of their colors.
+            opacity: Math.min(0.34, 0.14 + (1 - opacity) * 0.24),
+            transparent: true,
+            depthTest: false,
             depthWrite: false,
           },
           transparentSort: false,
@@ -1887,20 +1900,35 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
   function addBorderPositions(
     positions,
-    { order = 100000, opacity = 1, adaptiveRough = false, presentation = { kind: 'border' } } = {},
+    {
+      order = 100000,
+      opacity = 1,
+      adaptiveRough = false,
+      dashed = false,
+      dashSize = 1,
+      presentation = { kind: 'border' },
+    } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
     edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    const edgeMaterial = new THREE.LineBasicMaterial({
-        color: 0x111820,
-        transparent: opacity < 0.999,
-        opacity: opacity < 0.999 ? 0.46 : 1,
-        depthTest: true,
-        depthFunc: THREE.LessEqualDepth,
-        depthWrite: false,
-      }),
+    const materialOptions = {
+      color: dashed ? 0x263d57 : 0x111820,
+      transparent: dashed || opacity < 0.999,
+      opacity: dashed ? 0.25 : opacity < 0.999 ? 0.85 : 1,
+      depthTest: !dashed,
+      depthFunc: THREE.LessEqualDepth,
+      depthWrite: false,
+    };
+    const edgeMaterial = dashed
+        ? new THREE.LineDashedMaterial({
+            ...materialOptions,
+            dashSize: Math.max(1e-5, dashSize),
+            gapSize: Math.max(1e-5, dashSize * 0.7),
+          })
+        : new THREE.LineBasicMaterial(materialOptions),
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
     group.add(edges);
@@ -3050,6 +3078,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
         opacity,
         presentation: { kind: 'border' },
       });
+      if (targetVariant === 'transparent') {
+        // Physically owned contours only. The subdued dashed reference goes
+        // behind transparent faces (renderOrder 100+) so their colors attenuate
+        // rear/interior edges, rather than outlining every LOD triangle.
+        const contours = transparentInspectionContours(plan);
+        const hiddenLines = [...contours.exposed, ...contours.buried];
+        const outlineScale = Math.max(
+          1e-5,
+          Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+        );
+        addBorderPositions(displayBorderPositions(contoursToPositions(hiddenLines)), {
+          order: 75,
+          opacity,
+          dashed: true,
+          dashSize: outlineScale,
+          presentation: { kind: 'hidden-border' },
+        });
+      }
 
       // Implant and Electrical Region annotations are built as a persistent
       // superset. Presentation state decides which internal volumes are visible,
