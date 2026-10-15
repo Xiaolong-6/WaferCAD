@@ -19,10 +19,7 @@ test('Legacy owner audit distinguishes exact source references from unrelated pr
     classifyLegacyOwner('site/controllers/model.js', 'createModel()').requiresReview,
     false,
   );
-  assert.equal(
-    classifyLegacyOwner('site/app-v2-real.html', 'real-view-bridge.js').bridge,
-    true,
-  );
+  assert.equal(classifyLegacyOwner('site/app-v2-real.html', 'real-view-bridge.js').bridge, true);
 });
 
 test('Legacy retirement inventory retains live scientific owners until verified parity', async () => {
@@ -62,8 +59,7 @@ test('Legacy retirement inventory retains live scientific owners until verified 
   assert.ok(
     audit.owners.some(
       (owner) =>
-        owner.path === 'site/controllers/startup-controller.js' &&
-        owner.surface === 'site-runtime',
+        owner.path === 'site/controllers/startup-controller.js' && owner.surface === 'site-runtime',
     ),
     'Startup Legacy compatibility must be audited before removal',
   );
@@ -75,10 +71,7 @@ test('source-only editor, experimental D1 and public redirect are distinct owner
   assert.equal(classifyRetirementSurface('site/workstation.css'), 'source-only-legacy-editor');
   assert.equal(classifyRetirementSurface('site/app-v2-real.html'), 'experimental-d1');
   assert.equal(classifyRetirementSurface('site/ui-v2/real-view-bridge.js'), 'experimental-d1');
-  assert.equal(
-    classifyRetirementSurface('site/ui-v2/real-section-controls.js'),
-    'experimental-d1',
-  );
+  assert.equal(classifyRetirementSurface('site/ui-v2/real-section-controls.js'), 'experimental-d1');
   assert.equal(
     classifyRetirementSurface('site/ui-v2/real-three-controls.js'),
     'shared-production-controls',
@@ -87,8 +80,5 @@ test('source-only editor, experimental D1 and public redirect are distinct owner
     classifyRetirementSurface('scripts/build-pages-artifact.mjs'),
     'published-redirect-owner',
   );
-  assert.equal(
-    classifyRetirementSurface('site/controllers/startup-controller.js'),
-    'site-runtime',
-  );
+  assert.equal(classifyRetirementSurface('site/controllers/startup-controller.js'), 'site-runtime');
 });
