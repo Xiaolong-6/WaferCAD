@@ -197,6 +197,6 @@ test('Bonded baseline rejects fake product History until the History state owner
   fake.processRecipe = { version: 1, name: 'Illegal product recipe', steps: [] };
   assert.throws(
     () => prepareWaferBondTransaction(fake, wafer('C'), { donorId: 'C' }),
-    /requires a source-aware transaction owner/,
+    /cannot coexist with product Recipe/,
   );
 });
