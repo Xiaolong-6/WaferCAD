@@ -202,7 +202,9 @@ try {
         `CPU/GPU height mismatch: ${JSON.stringify(result)}`,
       );
     }
-    console.log(`GPU height oracle (unselected software shader is diagnostic only): ${JSON.stringify(report.gpuHeightOracle)}`);
+    console.log(
+      `GPU height oracle (unselected software shader is diagnostic only): ${JSON.stringify(report.gpuHeightOracle)}`,
+    );
   }
   for (const fixture of fixtures) {
     if (
@@ -309,8 +311,10 @@ try {
       );
       delete diagnostics.canonicalModel;
       assert.equal(diagnostics.host.renderState, 'ready');
-      if (diagnostics.host.roughDisplacementBackend === 'cpu-software-parity' &&
-          !fixture.name.includes('smooth')) {
+      if (
+        diagnostics.host.roughDisplacementBackend === 'cpu-software-parity' &&
+        !fixture.name.includes('smooth')
+      ) {
         assert.equal(diagnostics.canvas.roughMeshBackend, 'cpu-mesh');
         assert.equal(
           Number(diagnostics.canvas.roughGpuTaskCount || 0),
