@@ -15,6 +15,7 @@ import {
   reduceDesktopLayout,
 } from './view-layout-model.js';
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
+import { createDesktopDockingController } from './view-docking-controller.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -126,6 +127,12 @@ try {
     saveDesktopLayout(desktopPreferences, next);
     if (!starting) shell.render();
   };
+  const desktopDocking = readOnlyPreview ? null : createDesktopDockingController({
+    root: shell.getRoot(),
+    getState: () => uiState.desktopLayout,
+    dispatch: changeDesktopLayout,
+    enabled: desktopDockingActive,
+  });
   const status = (value) => {
     message = value;
     shell.getSlot('status.message').textContent = value;
