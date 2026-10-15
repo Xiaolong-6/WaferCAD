@@ -180,7 +180,7 @@ test('one WaferCAD project restores OFF and ON from shared released manufacturin
   assert.deepEqual(live.model, project.model, 'OFF physical model failed to restore');
 });
 
-test('lattice shuttle physically connects the upper and lower moving comb buses', async () => {
+test('longitudinal shuttle physically connects both moving comb handles', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
