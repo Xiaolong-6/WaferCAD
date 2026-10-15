@@ -62,9 +62,7 @@ export function supportsPreciseGpuRoughDisplacement(renderer) {
   if (!gl) return true;
   const debug = gl.getExtension?.('WEBGL_debug_renderer_info');
   const name = String(
-    (debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) ||
-      gl.getParameter(gl.RENDERER) ||
-      '',
+    (debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '',
   );
   return !/swiftshader|llvmpipe|softpipe|software rasterizer/i.test(name);
 }
