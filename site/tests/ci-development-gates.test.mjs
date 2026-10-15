@@ -14,7 +14,10 @@ test('stable Quality job performs full checks on ready PRs and manual runs', () 
     source,
     /github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft/,
   );
-  assert.match(source, /npm run lint && npm run format:check && npm run docs:check/);
+  assert.match(
+    source,
+    /set -euo pipefail\\n          npm run lint\\n          npm run format:check\\n          npm run docs:check/,
+  );
 });
 
 test('draft deferral never disables reusable production release acceptance', () => {
@@ -69,12 +72,9 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
     'example-recipe-reconstruction.yml',
     'native-fig3-full-replay.yml',
   ]) {
-    const source = workflow(name);
-    assert.ok(
-      source.includes("      - '!site/tests/**'") ||
-        source.includes('      - "!site/tests/**"'),
-    );
-    assert.ok(source.includes("      - 'site/**'") || source.includes('      - "site/**"'));
+    const source = workflow(name).replaceAll('"', "'");
+    assert.ok(source.includes("      - '!site/tests/**'"));
+    assert.ok(source.includes("      - 'site/**'"));
   }
   for (const name of [
     'ui-v2-stage-c-m4.yml',
@@ -82,11 +82,8 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
     'ui-v2-d1.yml',
     'ui-v2-three.yml',
   ]) {
-    const source = workflow(name);
-    assert.ok(
-      source.includes("      - '!scripts/v2/capture-visual-first.mjs'") ||
-        source.includes('      - "!scripts/v2/capture-visual-first.mjs"'),
-    );
+    const source = workflow(name).replaceAll('"', "'");
+    assert.ok(source.includes("      - '!scripts/v2/capture-visual-first.mjs'"));
   }
   const browser = workflow('browser-regression.yml');
   assert.ok(browser.includes('      - "!examples/**/README.md"'));

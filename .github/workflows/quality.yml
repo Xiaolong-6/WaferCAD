@@ -35,7 +35,10 @@ jobs:
       - name: Draft lint, formatting and generated-document contracts
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
         run: |
-          npm run lint && npm run format:check && npm run docs:check
+          set -euo pipefail
+          npm run lint
+          npm run format:check
+          npm run docs:check
           node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs
 
       - name: Final lint, formatting, generated documentation and Node tests
