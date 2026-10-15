@@ -195,8 +195,10 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
       [-2.65, travel], // vertical shuttle frame
       [25, travel], // upper moving comb handle
       [25, SWX_ASSUMPTIONS.lowerMovableCombYUm + travel], // lower moving handle
-      [4.8, 3 + travel], // interior of top folded-spring attachment
-      [4.8, -3 + travel], // interior of bottom folded-spring attachment
+      [6.7, 3 + travel], // upper right spring attachment
+      [-6.7, 3 + travel], // upper left spring attachment
+      [6.7, -3 + travel], // lower right spring attachment
+      [-6.7, -3 + travel], // lower left spring attachment
     ];
     const componentIndices = points.map((point) =>
       footprint.findIndex((polygon) => v.pointInMulti(point, [polygon])),
@@ -284,7 +286,7 @@ test('folded spring and guided aligner dimensions are distinguished from illustr
     4,
     'each aligner must be one continuous Si beam and one brace',
   );
-  assert.equal(g.physicalGroups.foldedSprings.length, 2);
+  assert.equal(g.physicalGroups.foldedSprings.length, 4);
   assert.ok(g.physicalGroups.foldedSprings.every((ring) => ring.length === 16));
   const foldedPitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
   approx(foldedPitch, 1.7);
@@ -512,31 +514,34 @@ test('mitered 90-degree flexure corners are one solid ring without square-cap li
   );
 });
 
-test('OFF and ON folded MEMS springs have continuous, mitered bends', async () => {
+test('all four OFF/ON folded MEMS springs preserve reported widths and continuous bends', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const v = await import('../vector-geometry.js');
   const pitch = SWX_REPORTED.foldedSpringWidthUm + SWX_REPORTED.foldedSpringClearanceUm;
   for (const state of ['off', 'on']) {
     const g = createSwxGeometry(state);
-    assert.equal(g.physicalGroups.foldedSprings.length, 2);
-    for (const [i, sign] of [-1, 1].entries()) {
-      const ring = g.physicalGroups.foldedSprings[i];
-      const footprint = [[[...ring, ring[0]]]];
-      const gradedDisplacement = (index) => (g.travelUm * index) / 7;
-      const bends = [
-        [0, sign * 10 + gradedDisplacement(1)],
-        [pitch, sign * 10 + gradedDisplacement(2)],
-        [pitch, sign * 32 + gradedDisplacement(3)],
-        [2 * pitch, sign * 32 + gradedDisplacement(4)],
-        [2 * pitch, sign * 10 + gradedDisplacement(5)],
-        [3 * pitch, sign * 10 + gradedDisplacement(6)],
-      ];
-      for (const point of bends) {
-        assert.ok(
-          v.pointInMulti(point, footprint),
-          state + ' spring lost connected silicon at miter ' + point.join(','),
-        );
+    assert.equal(g.physicalGroups.foldedSprings.length, 4);
+    for (const [yi, signY] of [-1, 1].entries()) {
+      for (const [xi, signX] of [-1, 1].entries()) {
+        const ring = g.physicalGroups.foldedSprings[yi * 2 + xi];
+        assert.equal(ring.length, 16, 'one smooth polygon per folded spring');
+        const footprint = [[[...ring, ring[0]]]];
+        const shift = (index) => (g.travelUm * index) / 7;
+        const bends = [
+          [signX * 2, signY * 10 + shift(1)],
+          [signX * (2 + pitch), signY * 10 + shift(2)],
+          [signX * (2 + pitch), signY * 32 + shift(3)],
+          [signX * (2 + 2 * pitch), signY * 32 + shift(4)],
+          [signX * (2 + 2 * pitch), signY * 10 + shift(5)],
+          [signX * (2 + 3 * pitch), signY * 10 + shift(6)],
+        ];
+        for (const point of bends) {
+          assert.ok(
+            v.pointInMulti(point, footprint),
+            state + ' spring lost connected silicon at miter ' + point.join(','),
+          );
+        }
       }
     }
   }
