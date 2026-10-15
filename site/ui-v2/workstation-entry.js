@@ -133,22 +133,30 @@ try {
       requestAnimationFrame(() => desktopResizer?.refresh());
     }
   };
-  const desktopDocking = readOnlyPreview ? null : createDesktopDockingController({
-    root: shell.getRoot(),
-    getState: () => uiState.desktopLayout,
-    dispatch: changeDesktopLayout,
-    enabled: desktopDockingActive,
-  });
-  desktopResizer = readOnlyPreview ? null : createDesktopLayoutResizer({
-    root: shell.getRoot(),
-    getState: () => uiState.desktopLayout,
-    dispatch: changeDesktopLayout,
-    enabled: desktopDockingActive,
-  });
-  window.addEventListener('pagehide', () => {
-    desktopDocking?.destroy();
-    desktopResizer?.destroy();
-  }, { once: true });
+  const desktopDocking = readOnlyPreview
+    ? null
+    : createDesktopDockingController({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  desktopResizer = readOnlyPreview
+    ? null
+    : createDesktopLayoutResizer({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  window.addEventListener(
+    'pagehide',
+    () => {
+      desktopDocking?.destroy();
+      desktopResizer?.destroy();
+    },
+    { once: true },
+  );
   const status = (value) => {
     message = value;
     shell.getSlot('status.message').textContent = value;

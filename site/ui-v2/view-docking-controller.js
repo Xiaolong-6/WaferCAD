@@ -31,7 +31,8 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     return templateOptions(count).map((template) => ({
       template,
       allowed: templateFits(template, rect.width, rect.height, {
-        minWidth: 122, minHeight: 96,
+        minWidth: 122,
+        minHeight: 96,
       }),
     }));
   }
@@ -62,8 +63,8 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
         cell.dataset.dockPreset = template.id;
         cell.dataset.dockSlot = String(span.slot);
         cell.disabled = !allowed;
-        cell.style.gridColumn = (span.column + 1) + ' / span ' + span.columnSpan;
-        cell.style.gridRow = (span.row + 1) + ' / span ' + span.rowSpan;
+        cell.style.gridColumn = span.column + 1 + ' / span ' + span.columnSpan;
+        cell.style.gridRow = span.row + 1 + ' / span ' + span.rowSpan;
         cell.setAttribute('aria-label', template.label + ', position ' + (span.slot + 1));
         mini.append(cell);
       }
@@ -86,8 +87,12 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     const under = document.elementFromPoint(clientX, clientY);
     const cell = under?.closest('.v2-dock-cell:not(:disabled)');
     if (cell && palette.contains(cell))
-      return { kind: 'slot', node: cell, preset: cell.dataset.dockPreset,
-        slot: Number(cell.dataset.dockSlot) };
+      return {
+        kind: 'slot',
+        node: cell,
+        preset: cell.dataset.dockPreset,
+        slot: Number(cell.dataset.dockSlot),
+      };
     const panel = under?.closest('.p-view[data-view]:not([hidden])');
     if (panel && stage.contains(panel))
       return { kind: 'panel', node: panel, view: panel.dataset.view };
@@ -129,8 +134,8 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
   function edgeTarget(x, y) {
     const rect = stage.querySelector('.p-canvases').getBoundingClientRect();
     const visible = displayedViews(getState());
-    if (visible.length < 2 || x < rect.left || x > rect.right ||
-        y < rect.top || y > rect.bottom) return null;
+    if (visible.length < 2 || x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)
+      return null;
     const margin = 22;
     let axis = null;
     if (x - rect.left < margin) axis = 'left';
@@ -139,9 +144,14 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     else if (rect.bottom - y < margin) axis = 'bottom';
     if (!axis) return null;
     const count = visible.length;
-    const preset = count === 2
-      ? (axis === 'left' ? 'two-left' : axis === 'right' ? 'two-right' : 'two-rows')
-      : (count === 3 ? 'three-' : 'four-') + axis;
+    const preset =
+      count === 2
+        ? axis === 'left'
+          ? 'two-left'
+          : axis === 'right'
+            ? 'two-right'
+            : 'two-rows'
+        : (count === 3 ? 'three-' : 'four-') + axis;
     const candidate = templatesForCurrentStage().find(
       (entry) => entry.template.id === preset && entry.allowed,
     );
@@ -150,14 +160,22 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
   function pointerDown(event) {
     if (!enabled() || event.button !== 0 || event.isPrimary === false) return;
     const title = event.target.closest('.v2-view-title');
-    if (!title || !stage.contains(title) ||
-        event.target.closest('button,a,input,select,textarea,[contenteditable=true]')) return;
+    if (
+      !title ||
+      !stage.contains(title) ||
+      event.target.closest('button,a,input,select,textarea,[contenteditable=true]')
+    )
+      return;
     const panel = title.closest('.p-view[data-view]:not([hidden])');
     if (!panel || displayedViews(getState()).length <= 1) return;
     end();
     pending = {
-      view: panel.dataset.view, pointerId: event.pointerId,
-      x: event.clientX, y: event.clientY, dragging: false, title,
+      view: panel.dataset.view,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      dragging: false,
+      title,
     };
     title.setPointerCapture?.(event.pointerId);
   }
@@ -179,14 +197,14 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     if (!pending || event.pointerId !== pending.pointerId) return;
     const started = pending.dragging;
     const view = pending.view;
-    const pointerTarget = started && event.type !== 'pointercancel'
-      ? hit(event.clientX, event.clientY)
-      : null;
+    const pointerTarget =
+      started && event.type !== 'pointercancel' ? hit(event.clientX, event.clientY) : null;
     // The source panel normally extends to the stage edge; its hit surface
     // must not prevent an intentional edge-to-layout drop.
-    const target = pointerTarget?.kind === 'panel' && pointerTarget.view === view
-      ? edgeTarget(event.clientX, event.clientY)
-      : pointerTarget || (started ? edgeTarget(event.clientX, event.clientY) : null);
+    const target =
+      pointerTarget?.kind === 'panel' && pointerTarget.view === view
+        ? edgeTarget(event.clientX, event.clientY)
+        : pointerTarget || (started ? edgeTarget(event.clientX, event.clientY) : null);
     document.body.classList.remove('v2-docking');
     end();
     if (started) {
@@ -204,8 +222,7 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     if (!enabled()) return;
     const title = event.target.closest('.v2-view-title');
     const panel = title?.closest('.p-view[data-view]:not([hidden])');
-    if (event.altKey && event.key === 'Enter' && panel &&
-        displayedViews(getState()).length > 1) {
+    if (event.altKey && event.key === 'Enter' && panel && displayedViews(getState()).length > 1) {
       end();
       keyboardSource = panel.dataset.view;
       focusReturn = title;
@@ -221,8 +238,11 @@ export function createDesktopDockingController({ root, getState, dispatch, enabl
     const cell = event.target.closest('.v2-dock-cell:not(:disabled)');
     if (!cell || !palette.contains(cell)) return;
     const view = keyboardSource;
-    const target = { kind: 'slot', preset: cell.dataset.dockPreset,
-      slot: Number(cell.dataset.dockSlot) };
+    const target = {
+      kind: 'slot',
+      preset: cell.dataset.dockPreset,
+      slot: Number(cell.dataset.dockSlot),
+    };
     end();
     commitHit(target, view);
   }

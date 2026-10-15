@@ -605,7 +605,10 @@ try {
         await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
         assert.equal((await snap()).sharedIdentity, true);
         assert.deepEqual((await snap()).ui.desktopLayout.visible, [
-          'main', 'mask', 'three', 'section',
+          'main',
+          'mask',
+          'three',
+          'section',
         ]);
       }
       await waitForPaint(page);

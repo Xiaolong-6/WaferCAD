@@ -14,7 +14,9 @@ export async function selectScientificView(page, name, width) {
     );
     if (previous !== name) {
       if (previous) {
-        await page.locator('#' + previous + 'Panel [data-action="maximize:' + previous + '"]').click();
+        await page
+          .locator('#' + previous + 'Panel [data-action="maximize:' + previous + '"]')
+          .click();
       }
       await page.locator('#' + name + 'Panel [data-action="maximize:' + name + '"]').click();
     }

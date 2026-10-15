@@ -74,9 +74,9 @@
     const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
     if (maximize) {
       maximize.setAttribute('aria-label', label + (maximized ? ' restore' : ' maximize'));
-      maximize.querySelector('use')?.setAttribute(
-        'href', '#p-icon-' + (maximized ? 'restore' : 'maximize'),
-      );
+      maximize
+        .querySelector('use')
+        ?.setAttribute('href', '#p-icon-' + (maximized ? 'restore' : 'maximize'));
       maximize.classList.add('v2-dock-maximize');
     }
     let close = actions.querySelector('[data-action="dock:close:' + key + '"]');

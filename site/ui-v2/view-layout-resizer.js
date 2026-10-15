@@ -28,10 +28,18 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     const innerHeight = rect.height - top - bottom;
     const width = innerWidth - colGap * (ratios.columns.length - 1);
     const height = innerHeight - rowGap * (ratios.rows.length - 1);
-    if (width <= 0 || height <= 0 || !templateFits(template, innerWidth, innerHeight, {
-      columns: ratios.columns, rows: ratios.rows,
-      gap: Math.max(colGap, rowGap), minWidth: MIN_WIDTH, minHeight: MIN_HEIGHT,
-    })) return null;
+    if (
+      width <= 0 ||
+      height <= 0 ||
+      !templateFits(template, innerWidth, innerHeight, {
+        columns: ratios.columns,
+        rows: ratios.rows,
+        gap: Math.max(colGap, rowGap),
+        minWidth: MIN_WIDTH,
+        minHeight: MIN_HEIGHT,
+      })
+    )
+      return null;
     const colWidths = ratios.columns.map((value) => value * width);
     const rowHeights = ratios.rows.map((value) => value * height);
     return { template, ratios, left, top, colGap, rowGap, width, height, colWidths, rowHeights };
@@ -54,17 +62,20 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
       node.dataset.dockIndex = String(index);
       node.setAttribute('role', 'separator');
       node.setAttribute('aria-orientation', axis === 'columns' ? 'vertical' : 'horizontal');
-      node.setAttribute('aria-label', 'Resize docked views ' + (axis === 'columns' ? 'horizontally' : 'vertically'));
+      node.setAttribute(
+        'aria-label',
+        'Resize docked views ' + (axis === 'columns' ? 'horizontally' : 'vertically'),
+      );
       node.setAttribute('aria-valuemin', '8');
       node.setAttribute('aria-valuemax', '92');
       node.setAttribute('aria-valuenow', String(Math.round(g.ratios[axis][index] * 100)));
       if (axis === 'columns') {
-        node.style.left = (g.left + start) + 'px';
-        node.style.top = (g.top + crossStart) + 'px';
+        node.style.left = g.left + start + 'px';
+        node.style.top = g.top + crossStart + 'px';
         node.style.height = crossLength + 'px';
       } else {
-        node.style.top = (g.top + start) + 'px';
-        node.style.left = (g.left + crossStart) + 'px';
+        node.style.top = g.top + start + 'px';
+        node.style.left = g.left + crossStart + 'px';
         node.style.width = crossLength + 'px';
       }
       node.style.setProperty('--dock-divider-width', String(end - start) + 'px');
@@ -75,7 +86,8 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     for (let axisIndex = 1; axisIndex < g.ratios.columns.length; axisIndex++) {
       let first = -1;
       for (let row = 0; row <= g.template.rows.length; row++) {
-        const boundary = row < g.template.rows.length &&
+        const boundary =
+          row < g.template.rows.length &&
           g.template.cells[row][axisIndex - 1] !== g.template.cells[row][axisIndex];
         if (boundary && first < 0) first = row;
         if (!boundary && first >= 0) {
@@ -90,7 +102,8 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     for (let axisIndex = 1; axisIndex < g.ratios.rows.length; axisIndex++) {
       let first = -1;
       for (let column = 0; column <= g.template.columns.length; column++) {
-        const boundary = column < g.template.columns.length &&
+        const boundary =
+          column < g.template.columns.length &&
           g.template.cells[axisIndex - 1][column] !== g.template.cells[axisIndex][column];
         if (boundary && first < 0) first = column;
         if (!boundary && first >= 0) {
@@ -115,19 +128,33 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     return current;
   }
   function setPreview(axis, values) {
-    host.style[axis === 'columns' ? 'gridTemplateColumns' : 'gridTemplateRows'] =
-      values.map((value) => 'minmax(0, ' + value + 'fr)').join(' ');
+    host.style[axis === 'columns' ? 'gridTemplateColumns' : 'gridTemplateRows'] = values
+      .map((value) => 'minmax(0, ' + value + 'fr)')
+      .join(' ');
   }
   function pointerDown(event) {
     const handle = event.target.closest('.v2-dock-divider');
-    if (!enabled() || !handle || !host.contains(handle) ||
-        event.button !== 0 || event.isPrimary === false) return;
+    if (
+      !enabled() ||
+      !handle ||
+      !host.contains(handle) ||
+      event.button !== 0 ||
+      event.isPrimary === false
+    )
+      return;
     const g = geometry();
     if (!g) return;
     const axis = handle.dataset.dockAxis;
     const index = Number(handle.dataset.dockIndex);
-    drag = { pointerId: event.pointerId, axis, index, start: axis === 'columns' ? event.clientX : event.clientY,
-      g, values: [...g.ratios[axis]], handle };
+    drag = {
+      pointerId: event.pointerId,
+      axis,
+      index,
+      start: axis === 'columns' ? event.clientX : event.clientY,
+      g,
+      values: [...g.ratios[axis]],
+      handle,
+    };
     handle.setPointerCapture?.(event.pointerId);
     event.preventDefault();
     event.stopPropagation();

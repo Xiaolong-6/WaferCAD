@@ -1,33 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  VIEW_LAYOUT_DEFAULTS, VIEW_LAYOUT_TEMPLATES, resolveTemplate,
-  templateOptions, templateById, templateFits,
+  VIEW_LAYOUT_DEFAULTS,
+  VIEW_LAYOUT_TEMPLATES,
+  resolveTemplate,
+  templateOptions,
+  templateById,
+  templateFits,
 } from '../ui-v2/view-layout-templates.js';
 import {
-  DOCKABLE_VIEWS, createDesktopLayout, normalizeDesktopLayout, reduceDesktopLayout,
-  orderedVisible, displayedViews, isOverview, activeTracks, projectDesktopLayout, desktopDockingEnabled,
+  DOCKABLE_VIEWS,
+  createDesktopLayout,
+  normalizeDesktopLayout,
+  reduceDesktopLayout,
+  orderedVisible,
+  displayedViews,
+  isOverview,
+  activeTracks,
+  projectDesktopLayout,
+  desktopDockingEnabled,
 } from '../ui-v2/view-layout-model.js';
 import {
-  loadDesktopLayout, saveDesktopLayout, DESKTOP_LAYOUT_STORAGE_KEY,
+  loadDesktopLayout,
+  saveDesktopLayout,
+  DESKTOP_LAYOUT_STORAGE_KEY,
 } from '../ui-v2/view-layout-storage.js';
 
 const apply = (state, type, fields = {}) => reduceDesktopLayout(state, { type, ...fields });
 
 test('desktop templates cover every slot exactly as a rectangle', () => {
-  assert.deepEqual([1, 2, 3, 4].map((count) => templateOptions(count).length), [1, 4, 6, 8]);
+  assert.deepEqual(
+    [1, 2, 3, 4].map((count) => templateOptions(count).length),
+    [1, 4, 6, 8],
+  );
   for (const template of VIEW_LAYOUT_TEMPLATES) {
     assert.equal(templateById(template.id), template);
     assert.equal(template.spans.length, template.count);
     for (const span of template.spans) {
       let area = 0;
-      template.cells.forEach((row, r) => row.forEach((slot, c) => {
-        if (slot === span.slot) {
-          assert.ok(r >= span.row && r < span.row + span.rowSpan);
-          assert.ok(c >= span.column && c < span.column + span.columnSpan);
-          area++;
-        }
-      }));
+      template.cells.forEach((row, r) =>
+        row.forEach((slot, c) => {
+          if (slot === span.slot) {
+            assert.ok(r >= span.row && r < span.row + span.rowSpan);
+            assert.ok(c >= span.column && c < span.column + span.columnSpan);
+            area++;
+          }
+        }),
+      );
       assert.equal(area, span.rowSpan * span.columnSpan, template.id);
     }
     assert.equal(resolveTemplate(template.count, template.id), template);
@@ -131,14 +150,20 @@ test('invalid actions/ratios cannot corrupt template geometry or mutate previous
 
 test('malformed hydrated preferences revert to safe layout without trusting maximized', () => {
   const invalid = [
-    null, [], {}, { visible: ['main', 'main'], order: [...DOCKABLE_VIEWS] },
+    null,
+    [],
+    {},
+    { visible: ['main', 'main'], order: [...DOCKABLE_VIEWS] },
     { visible: ['evil'], order: [...DOCKABLE_VIEWS] },
     { visible: ['main'], order: ['main', 'mask', 'three', 'three'] },
   ];
-  for (const value of invalid) assert.deepEqual(normalizeDesktopLayout(value), createDesktopLayout());
+  for (const value of invalid)
+    assert.deepEqual(normalizeDesktopLayout(value), createDesktopLayout());
   const state = normalizeDesktopLayout({
-    visible: ['three', 'main'], order: ['three', 'main', 'mask', 'section'],
-    preset: 'two-right', maximized: 'three',
+    visible: ['three', 'main'],
+    order: ['three', 'main', 'mask', 'section'],
+    preset: 'two-right',
+    maximized: 'three',
     remembered: { 4: 'four-left', 3: 'bad', 2: 'two-right' },
     tracks: { 'two-right': { columns: [30, 70], rows: [1] } },
   });
@@ -165,8 +190,12 @@ test('versioned storage is view-only, tolerant of disabled storage and excludes 
   values.set(DESKTOP_LAYOUT_STORAGE_KEY, '{broken');
   assert.deepEqual(loadDesktopLayout(storage), createDesktopLayout());
   const denied = {
-    getItem() { throw Error('denied'); },
-    setItem() { throw Error('denied'); },
+    getItem() {
+      throw Error('denied');
+    },
+    setItem() {
+      throw Error('denied');
+    },
   };
   assert.deepEqual(loadDesktopLayout(denied), createDesktopLayout());
   assert.equal(saveDesktopLayout(denied, state), false);
@@ -187,7 +216,10 @@ test('Shell projection maps stable panel IDs onto template slots without changin
   assert.equal(projected.preset, 'four-right');
   assert.deepEqual(projected.highlighted, DOCKABLE_VIEWS);
   assert.equal(projected.placements.length, 4);
-  assert.deepEqual(projected.placements.map(({ view }) => view), DOCKABLE_VIEWS);
+  assert.deepEqual(
+    projected.placements.map(({ view }) => view),
+    DOCKABLE_VIEWS,
+  );
   assert.equal(projected.placements[0].rowSpan, 3);
   const maximized = projectDesktopLayout(apply(source, 'MAXIMIZE', { view: 'section' }));
   assert.equal(maximized.preset, 'one-full');
@@ -200,19 +232,36 @@ test('Shell projection maps stable panel IDs onto template slots without changin
 test('atomic snap places dragged view in a chosen grid cell and rejects invalid drops', () => {
   const source = createDesktopLayout();
   const snapped = apply(source, 'SNAP_TO_SLOT', {
-    view: 'section', preset: 'four-right', slot: 0,
+    view: 'section',
+    preset: 'four-right',
+    slot: 0,
   });
   assert.equal(snapped.preset, 'four-right');
   assert.deepEqual(orderedVisible(snapped), ['section', 'main', 'mask', 'three']);
   assert.equal(snapped.remembered[4], 'four-right');
   assert.deepEqual(source, createDesktopLayout());
-  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
-    view: 'main', preset: 'three-left', slot: 0,
-  }), snapped);
-  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
-    view: 'unknown', preset: 'four-left', slot: 0,
-  }), snapped);
-  assert.equal(apply(snapped, 'SNAP_TO_SLOT', {
-    view: 'main', preset: 'four-left', slot: 9,
-  }), snapped);
+  assert.equal(
+    apply(snapped, 'SNAP_TO_SLOT', {
+      view: 'main',
+      preset: 'three-left',
+      slot: 0,
+    }),
+    snapped,
+  );
+  assert.equal(
+    apply(snapped, 'SNAP_TO_SLOT', {
+      view: 'unknown',
+      preset: 'four-left',
+      slot: 0,
+    }),
+    snapped,
+  );
+  assert.equal(
+    apply(snapped, 'SNAP_TO_SLOT', {
+      view: 'main',
+      preset: 'four-left',
+      slot: 9,
+    }),
+    snapped,
+  );
 });

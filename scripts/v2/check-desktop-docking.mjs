@@ -26,8 +26,15 @@ async function measure(page) {
       documentOverflow: document.documentElement.scrollWidth - innerWidth,
       panels: [...stage.querySelectorAll('.p-view:not([hidden])')].map((node) => {
         const r = node.getBoundingClientRect();
-        return { name: node.dataset.view, left: r.left, right: r.right, top: r.top,
-          bottom: r.bottom, width: r.width, height: r.height };
+        return {
+          name: node.dataset.view,
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+          width: r.width,
+          height: r.height,
+        };
       }),
       stageWidth: stage.getBoundingClientRect().width,
     };
@@ -55,11 +62,16 @@ async function setTemplate(page, id) {
   assert.equal((await layoutState(page)).preset, id);
 }
 async function verifyIdentity(page) {
-  assert.equal(await page.evaluate(() =>
-    window.__dockOriginalMain === document.querySelector('#mainCanvas') &&
-    window.__dockOriginalMask === document.querySelector('#maskCanvas') &&
-    window.__dockOriginalSection === document.querySelector('#sectionCanvas') &&
-    window.__dockOriginalThree === document.querySelector('#threeHost')), true);
+  assert.equal(
+    await page.evaluate(
+      () =>
+        window.__dockOriginalMain === document.querySelector('#mainCanvas') &&
+        window.__dockOriginalMask === document.querySelector('#maskCanvas') &&
+        window.__dockOriginalSection === document.querySelector('#sectionCanvas') &&
+        window.__dockOriginalThree === document.querySelector('#threeHost'),
+    ),
+    true,
+  );
 }
 try {
   for (const width of [1440, 1024, 821]) {
@@ -72,13 +84,17 @@ try {
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 120000,
       });
-      await page.waitForFunction(() => document.querySelector('#threeHost')?.dataset.renderState === 'ready', null, {
-        timeout: 60000,
-      });
-      await waitForPaint(page);
-      const controls = await page.locator('.p-desktop-dock-actions [data-action]').evaluateAll(
-        (nodes) => nodes.map((node) => node.dataset.action),
+      await page.waitForFunction(
+        () => document.querySelector('#threeHost')?.dataset.renderState === 'ready',
+        null,
+        {
+          timeout: 60000,
+        },
       );
+      await waitForPaint(page);
+      const controls = await page
+        .locator('.p-desktop-dock-actions [data-action]')
+        .evaluateAll((nodes) => nodes.map((node) => node.dataset.action));
       assert.deepEqual(controls, ['dock:overview', ...views.map((view) => 'dock:view:' + view)]);
       assert.equal(await page.locator('.p-section-dock-actions:visible').count(), 0);
       await assertGrid(page, 4);
@@ -94,7 +110,10 @@ try {
       });
       await page.locator('[data-action="dock:close:mask"]').click();
       await assertGrid(page, 3);
-      assert.equal(await page.locator('[data-action="dock:view:mask"]').getAttribute('aria-pressed'), 'false');
+      assert.equal(
+        await page.locator('[data-action="dock:view:mask"]').getAttribute('aria-pressed'),
+        'false',
+      );
       await page.locator('[data-action="dock:view:mask"]').click();
       await assertGrid(page, 4);
       await verifyIdentity(page);
@@ -104,8 +123,11 @@ try {
       await page.locator('#threePanel [data-action="maximize:three"]').click();
       await assertGrid(page, 4);
       assert.equal((await layoutState(page)).maximized, null);
-      const unchanged = await page.evaluate(() =>
-        JSON.stringify(window.WaferCadV2Workstation.snapshot().model) === window.__dockOriginalModel);
+      const unchanged = await page.evaluate(
+        () =>
+          JSON.stringify(window.WaferCadV2Workstation.snapshot().model) ===
+          window.__dockOriginalModel,
+      );
       assert.equal(unchanged, true, 'Docking must not mutate the physical model');
       await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
       await assertGrid(page, 4);
@@ -113,8 +135,14 @@ try {
       // Presets and drag/keyboard acceptance run once at comfortable desktop width.
       if (width === 1440) {
         for (const id of [
-          'four-left', 'four-right', 'four-top', 'four-bottom', 'four-columns',
-          'four-rows', 'four-corner', 'four-grid',
+          'four-left',
+          'four-right',
+          'four-top',
+          'four-bottom',
+          'four-columns',
+          'four-rows',
+          'four-corner',
+          'four-grid',
         ]) {
           await setTemplate(page, id);
           await assertGrid(page, 4);
@@ -124,21 +152,41 @@ try {
               sectionWidth: panel.querySelector('#sectionCanvas').getBoundingClientRect().width,
               legendHidden: panel.querySelector('.v2-section-legend').hidden,
             }));
-            assert.equal(compact.compact, 'true', 'Four-column Section uses compact Layers presentation');
-            assert.equal(compact.legendHidden, true, 'Narrow Section defaults to a full-width slice');
+            assert.equal(
+              compact.compact,
+              'true',
+              'Four-column Section uses compact Layers presentation',
+            );
+            assert.equal(
+              compact.legendHidden,
+              true,
+              'Narrow Section defaults to a full-width slice',
+            );
             assert.ok(compact.sectionWidth >= 120, 'Section keeps a usable slice width');
             const beforeLayers = await page.evaluate(
               () => window.WaferCadV2Workstation.snapshot().sectionLayersVisible,
             );
-            await page.locator('#sectionPanel [data-action="legend"]').evaluate((button) => button.click());
+            await page
+              .locator('#sectionPanel [data-action="legend"]')
+              .evaluate((button) => button.click());
             await waitForPaint(page);
-            assert.equal(await page.locator('#sectionPanel .v2-section-legend').evaluate(
-              (node) => node.hidden,
-            ), false, 'Layers can be temporarily opened');
-            await page.locator('#sectionPanel [data-action="legend"]').evaluate((button) => button.click());
-            assert.equal(await page.evaluate(
-              () => window.WaferCadV2Workstation.snapshot().sectionLayersVisible,
-            ), beforeLayers, 'Compact Layers presentation never changes saved visibility');
+            assert.equal(
+              await page
+                .locator('#sectionPanel .v2-section-legend')
+                .evaluate((node) => node.hidden),
+              false,
+              'Layers can be temporarily opened',
+            );
+            await page
+              .locator('#sectionPanel [data-action="legend"]')
+              .evaluate((button) => button.click());
+            assert.equal(
+              await page.evaluate(
+                () => window.WaferCadV2Workstation.snapshot().sectionLayersVisible,
+              ),
+              beforeLayers,
+              'Compact Layers presentation never changes saved visibility',
+            );
           }
           await page.screenshot({ path: resolve(output, id + '.png') });
         }
@@ -153,7 +201,8 @@ try {
         });
         await page.mouse.up();
         await page.waitForFunction(() =>
-          Boolean(window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid']));
+          Boolean(window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid']),
+        );
         assert.notDeepEqual((await layoutState(page)).tracks['four-grid'], ratiosBefore);
         await verifyIdentity(page);
 
@@ -164,7 +213,9 @@ try {
         await page.mouse.move(source.x + 18, source.y + source.height / 2);
         await page.mouse.down();
         // Drop near the lower Mask canvas, clear of the top Snap palette.
-        await page.mouse.move(target.x + target.width - 50, target.y + target.height - 45, { steps: 12 });
+        await page.mouse.move(target.x + target.width - 50, target.y + target.height - 45, {
+          steps: 12,
+        });
         await page.mouse.up();
         await waitForPaint(page);
         assert.notDeepEqual((await layoutState(page)).order, beforeSwap);
@@ -172,8 +223,12 @@ try {
 
         await page.locator('[data-action="dock:close:section"]').click();
         for (const id of [
-          'three-left', 'three-right', 'three-top', 'three-bottom',
-          'three-columns', 'three-rows',
+          'three-left',
+          'three-right',
+          'three-top',
+          'three-bottom',
+          'three-columns',
+          'three-rows',
         ]) {
           await setTemplate(page, id);
           await assertGrid(page, 3);
@@ -188,7 +243,9 @@ try {
   }
   // A compact viewport must still use its approved five-action bottom navigation.
   const { context, page } = await newUiPage(browser, {
-    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
   });
   try {
     const errors = observePageErrors(page);
@@ -199,9 +256,10 @@ try {
     assert.equal(await page.locator('.p-desktop-dock-actions:visible').count(), 0);
     assert.equal(await page.locator('.v2-dock-divider:visible').count(), 0);
     assert.equal(await page.locator('.p-nav [data-action]').count(), 5);
-    assert.equal(await page.locator('.p-nav').evaluate(
-      (node) => getComputedStyle(node).position,
-    ), 'fixed');
+    assert.equal(
+      await page.locator('.p-nav').evaluate((node) => getComputedStyle(node).position),
+      'fixed',
+    );
     await page.screenshot({ path: resolve(output, 'mobile-unchanged-390.png') });
     assert.deepEqual(errors, []);
   } finally {

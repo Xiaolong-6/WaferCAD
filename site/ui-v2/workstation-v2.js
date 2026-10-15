@@ -330,7 +330,13 @@
           control.setAttribute('aria-pressed', String(docking.highlighted.includes(key)));
         viewbar.replaceChildren(
           ...(state.editorHidden
-            ? [el('div', { class: 'p-actions' }, button('Restore panel', 'expand-empty', 'process'))]
+            ? [
+                el(
+                  'div',
+                  { class: 'p-actions' },
+                  button('Restore panel', 'expand-empty', 'process'),
+                ),
+              ]
             : []),
           desktopViewbar,
         );

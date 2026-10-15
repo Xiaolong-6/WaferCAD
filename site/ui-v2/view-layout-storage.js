@@ -20,17 +20,20 @@ export function saveDesktopLayout(storage, state) {
   try {
     if (!storage?.setItem) return false;
     const layout = normalizeDesktopLayout(state);
-    storage.setItem(DESKTOP_LAYOUT_STORAGE_KEY, JSON.stringify({
-      version: DESKTOP_LAYOUT_STORAGE_VERSION,
-      layout: {
-        visible: layout.visible,
-        order: layout.order,
-        preset: layout.preset,
-        remembered: layout.remembered,
-        tracks: layout.tracks,
-        // Never persist transient maximization or active pointer drag.
-      },
-    }));
+    storage.setItem(
+      DESKTOP_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        version: DESKTOP_LAYOUT_STORAGE_VERSION,
+        layout: {
+          visible: layout.visible,
+          order: layout.order,
+          preset: layout.preset,
+          remembered: layout.remembered,
+          tracks: layout.tracks,
+          // Never persist transient maximization or active pointer drag.
+        },
+      }),
+    );
     return true;
   } catch {
     return false;

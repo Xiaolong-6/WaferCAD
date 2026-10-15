@@ -227,7 +227,7 @@ export function createSectionView({ store, main, workstation }) {
     window.innerWidth > 820 &&
     Boolean(workstation?.uiState?.desktopLayout) &&
     panel.getBoundingClientRect().width < 390;
-  const legendDisplayed = () => sectionDockCompact() ? compactLegendExpanded : legendOpen;
+  const legendDisplayed = () => (sectionDockCompact() ? compactLegendExpanded : legendOpen);
   const syncLegendPlacement = () => {
     const compact = sectionDockCompact();
     if (compact !== compactLegendBefore) {
