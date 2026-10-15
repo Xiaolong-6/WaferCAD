@@ -223,6 +223,8 @@ try {
         // its actual toolbar, while keeping the 3D renderer and camera alive.
         await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
         await waitForPaint(page);
+        assert.equal(await page.locator('#sectionPanel').isVisible(), true);
+        assert.equal(await host.locator('canvas').count(), 1, 'Dock restore retains 3D canvas');
         await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
         await page.locator('#section-collapse-enabled').setChecked(collapseEnabled !== 'true');
         await ready();
