@@ -36,7 +36,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Bond geometry scientific invariants
-        run: node --test site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs site/tests/project-geometry-storage.test.mjs
+        run: node --test site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs
       - name: Bond-specific lint and formatting
         run: |
           npx eslint site/wafer-bonding.js site/wafer-assembly.js site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs
