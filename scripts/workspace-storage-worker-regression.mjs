@@ -31,11 +31,9 @@ try {
     timeout: 30000,
   });
   await page.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 30000 });
-  await page.waitForFunction(
-    () => document.documentElement.dataset.welcomeReady === 'true',
-    null,
-    { timeout: 30000 },
-  );
+  await page.waitForFunction(() => document.documentElement.dataset.welcomeReady === 'true', null, {
+    timeout: 30000,
+  });
   const result = await page.evaluate(async (text) => {
     const io = await import('./project-io.js'),
       api = await import('./workspace-persistence.js');
