@@ -154,3 +154,100 @@ test('does not silently drop Implant/Electrical annotations or array geometry', 
   const array = { ...wafer(), kernel: 'vector-2.5d-array-v1' };
   assert.throws(() => bondWaferModels(wafer(), array), /array inputs are not yet supported/);
 });
+
+test('disconnected bond lands preserve genuine channels and report contact fractions', () => {
+  const receiver = wafer();
+  const cut = modelApi.applyOperation(receiver, {
+    type: 'etch',
+    thickness: 100,
+    face: 'front',
+    area: vectorApi.rectMulti(8, 80),
+  });
+  assert.equal(cut.changed, true, cut.error);
+  const { model, interface: bond } = bondWaferModels(receiver, wafer());
+  near(bond.contactAreaUm2, 7360);
+  near(bond.receiverExposedAreaUm2, 7360);
+  near(bond.donorExposedAreaUm2, 8000);
+  near(bond.contactFractionReceiver, 1);
+  near(bond.contactFractionDonor, 0.92);
+  assert.equal(bond.contactIslands, 2, 'two separated bonding lands');
+  assert.equal(layerAt(model, [0, 0], 150), null, 'channel remains empty');
+  assert.notEqual(layerAt(model, [-30, 0], 150), null);
+  assert.notEqual(layerAt(model, [30, 0], 150), null);
+  validateProcessModel(model);
+});
+
+test('two independent recessed pockets remain true voids below donor material', () => {
+  const receiver = wafer();
+  const area = vectorApi.unionGeometries([
+    vectorApi.rectMulti(8, 10, -25, 0),
+    vectorApi.rectMulti(12, 10, 25, 0),
+  ]);
+  const etch = modelApi.applyOperation(receiver, {
+    type: 'etch',
+    thickness: 120,
+    face: 'front',
+    area,
+  });
+  assert.equal(etch.changed, true, etch.error);
+  const { model, interface: bond } = bondWaferModels(receiver, wafer());
+  near(bond.contactAreaUm2, 8000 - 80 - 120);
+  assert.equal(layerAt(model, [-25, 0], 150), null);
+  assert.equal(layerAt(model, [25, 0], 150), null);
+  assert.equal(layerAt(model, [0, 0], 150), 'base');
+  assert.notEqual(layerAt(model, [-25, 0], 250), null);
+  assert.notEqual(layerAt(model, [25, 0], 250), null);
+  validateProcessModel(model);
+});
+
+test('front-to-back bond preserves a distinct oxide interlayer deposited on donor back', () => {
+  const receiver = wafer();
+  const donor = wafer();
+  const oxide = modelApi.applyOperation(donor, {
+    type: 'add',
+    name: 'Bonding oxide',
+    thickness: 2,
+    face: 'back',
+    area: donor.boundary,
+  });
+  assert.equal(oxide.changed, true, oxide.error);
+  const before = structuredClone(donor);
+  const { model, interface: bond, donorLayerIds } = bondWaferModels(receiver, donor, {
+    receiverFace: 'front',
+    donorFace: 'back',
+    donorId: 'oxide-donor',
+  });
+  near(bond.z, 200);
+  assert.equal(bond.flipped, false);
+  const stack = stackAt(model, [0, 0]);
+  assert.equal(stack.length, 3);
+  near(stack[1].z0, 200);
+  near(stack[1].z1, 202);
+  assert.equal(stack[1].layerId, donorLayerIds[oxide.layerId]);
+  assert.equal(stack[2].layerId, donorLayerIds.base);
+  near(stack[2].z1, 602);
+  assert.deepEqual(donor, before, 'source donor model remains untouched');
+  validateProcessModel(model);
+});
+
+test('line contact, duplicate provenance and nested donor are rejected without mutation', () => {
+  const receiver = wafer();
+  const donor = wafer();
+  assert.throws(() => bondWaferModels(receiver, donor, { dx: 100 }), /no finite-area/);
+  const initial = bondWaferModels(receiver, donor, { donorId: 'w2' });
+  const before = structuredClone(initial.model);
+  assert.throws(
+    () => bondWaferModels(initial.model, wafer(), { donorId: 'w2' }),
+    /donorId already exists/,
+  );
+  assert.throws(
+    () => bondWaferModels(receiver, initial.model, { donorId: 'nested' }),
+    /already assembled/,
+  );
+  assert.deepEqual(initial.model, before);
+  const broken = wafer();
+  broken.regions[0].stack.push({ layerId: 'base', z0: 0, z1: 20 });
+  const brokenBefore = structuredClone(broken);
+  assert.throws(() => bondWaferModels(receiver, broken), /overlap/i);
+  assert.deepEqual(broken, brokenBefore);
+});
