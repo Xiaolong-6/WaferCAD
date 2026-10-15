@@ -8,6 +8,7 @@ on:
       - 'scripts/swx-mems-optomechanical-candidate.mjs'
       - 'scripts/swx-mems-compact-process-geometry.mjs'
       - 'scripts/build-swx-mems-compact-candidate.mjs'
+      - 'scripts/swx-mems-compact-browser-acceptance.mjs'
       - 'site/tests/swx-mems-compact-process.test.mjs'
       - 'scripts/swx-mems-optomechanical-preview.mjs'
       - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
@@ -75,6 +76,8 @@ jobs:
           done
           cat test-results/swx-mems/serve-v2.log
           exit 1
+      - name: Compact candidate real v2 four-view and browser GDS/OAS acceptance
+        run: node scripts/swx-mems-compact-browser-acceptance.mjs
       - name: Real v2 project import and Mask GDS export
         run: node scripts/swx-mems-browser-acceptance.mjs
       - name: Verify actual OFF/ON browser GDS/OAS independently with KLayout
