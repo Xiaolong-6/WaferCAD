@@ -87,9 +87,73 @@ try {
     };
     await context.close();
   }
+  // The first scientific inspection Bookmark has its own camera/ROI/Section.
+  // Capture it through the real History UI, rather than only verifying a
+  // serialized state or the opaque final-device cutaway.
+  const context = await browser.newContext({
+    viewport: { width: 1000, height: 640 },
+    deviceScaleFactor: 1,
+  });
+  await installPinnedThreeRoute(context);
+  const page = await context.newPage();
+  const historyErrors = observePageErrors(page);
+  await page.goto(`${baseUrl}/app.html?example=${id}&view=three`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 120000,
+  });
+  await page.waitForFunction(
+    () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
+    null,
+    { timeout: 120000 },
+  );
+  await page.locator('[data-action="domain:history"]').click();
+  const step = page.locator('#snapshotList .history-step-wrap', {
+    hasText: 'Open twin six-branch coolant diversion manifolds',
+  });
+  assert.equal(await step.count(), 1, 'Manifold Step is missing from the real History');
+  const group = step.locator('.history-bookmarks-group');
+  await group.locator('summary').click();
+  const bookmark = group.locator('.history-bookmark-row', {
+    hasText: '01 Four-level open microchannels',
+  });
+  assert.equal(await bookmark.count(), 1, 'Pre-assembly inspection Bookmark is not listed');
+  await bookmark.locator('.snapshot-more-trigger').click();
+  await bookmark.locator('.snapshot-more-popover button', { hasText: 'Restore bookmark' }).click();
+  await page.locator('[data-action="view:three"]').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const inspection = await page.evaluate(() => {
+    const state = window.WaferCadV2Workstation.snapshot();
+    return {
+      roi: state.roi,
+      section: state.section,
+      hasAttachedSiC: state.model.layers.some((layer) =>
+        layer.name.startsWith('GaN HEMT SiC substrate'),
+      ),
+    };
+  });
+  assert.deepEqual(inspection.roi, { type: 'rect', a: [-500, -520], b: [500, 520] });
+  assert.deepEqual(inspection.section, { a: [30, -500], b: [30, 500] });
+  assert.equal(inspection.hasAttachedSiC, false, 'Pre-assembly manifold is obscured by the die');
+  const manifoldShot = await page.screenshot({ type: 'png' });
+  await writeFile(new URL('preassembly-manifold.png', directory), manifoldShot);
+  assert.deepEqual(historyErrors, [], 'Restoring a Bookmark emitted browser errors');
+  report.views.preassemblyManifold = {
+    viewport: [1000, 640],
+    bytes: manifoldShot.length,
+    renderState: await page.locator('#threeHost').getAttribute('data-render-state'),
+    savedRoiAndSectionRestored: true,
+    attachedSiCPresent: false,
+  };
+  await context.close();
+
   report.pass = true;
   report.note =
-    'Screenshots are automated visual evidence. Exact comparison to the source figures needs a separate visual audit.';
+    'Four final views and the first History Bookmark have real-browser captures. Source contour parity still needs a separate visual audit.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',
