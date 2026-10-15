@@ -36,7 +36,9 @@ try {
               window.__abortNextV2Candidate = false;
               window.__v2WorkerFault.aborted++;
               const result = post(request, ...rest);
-              window.queueMicrotask(() => document.getElementById('processTaskAbortBtn')?.click());
+              window.queueMicrotask(() => {
+                document.getElementById('processTaskAbortBtn')?.click();
+              });
               return result;
             }
             return post(request, ...rest);
@@ -110,9 +112,7 @@ try {
     );
     const applyFromHistory = async () => {
       await page.locator('#applyOperationBtn').click();
-      await page
-        .getByRole('button', { name: 'Create Variant & apply', exact: true })
-        .click();
+      await page.getByRole('button', { name: 'Create Variant & apply', exact: true }).click();
     };
 
     await prepare('Rejected worker candidate');
