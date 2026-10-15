@@ -204,7 +204,9 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
     assert.ok(
       componentIndices.every((index) => index >= 0) && new Set(componentIndices).size === 1,
       pose + ' geometry lost a mechanical link between shuttle and comb buses: ' +
-        JSON.stringify(points.map((point, index) => ({ point, component: componentIndices[index] }))),
+        JSON.stringify(
+          points.map((point, index) => ({ point, component: componentIndices[index] })),
+        ),
     );
   }
 });
