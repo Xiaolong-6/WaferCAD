@@ -1,0 +1,71 @@
+name: Controlled literature fixture rebaseline (PR 242 only)
+
+on:
+  push:
+    branches:
+      - audit/example-literature-fidelity-20261014
+    paths:
+      - .github/workflows/science-example-fixture-rebaseline.yml
+
+permissions:
+  contents: write
+
+jobs:
+  rebaseline:
+    if: github.repository == 'Xiaolong-6/WaferCAD' && github.ref == 'refs/heads/audit/example-literature-fidelity-20261014'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Regenerate only the three approved active final device geometries
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-rebaseline.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/example-recipe-runall-acceptance.mjs --id=suspended-silica-microdisk --rebaseline-fixture
+          node scripts/example-recipe-runall-acceptance.mjs --id=perc-point-contact-solar-cell --rebaseline-fixture
+          node scripts/example-recipe-runall-acceptance.mjs --id=fully-textured-perovskite-silicon-tandem --rebaseline-fixture
+      - name: Sync final previews and their integrity hashes
+        run: |
+          node scripts/build-example-previews.mjs --write --id=suspended-silica-microdisk
+          node scripts/build-example-previews.mjs --write --id=perc-point-contact-solar-cell
+          node scripts/build-example-previews.mjs --write --id=fully-textured-perovskite-silicon-tandem
+          node scripts/maintenance/sync-example-recipe-previews.mjs --write
+      - name: Verify committed asset semantics and strict source reproducibility
+        run: |
+          node scripts/maintenance/backfill-example-recipes.mjs
+          node scripts/maintenance/sync-example-recipe-previews.mjs
+          git diff --check
+          git diff --stat
+      - name: Commit only the audited generated fixtures to this PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/examples/suspended-silica-microdisks.wafercad site/examples/perc-solar-cells-point-contacts.wafercad site/examples/fully-textured-perovskite-silicon-tandem.wafercad
+          git add site/examples/previews/suspended-silica-microdisk.wafercad site/examples/previews/perc-point-contact-solar-cell.wafercad site/examples/previews/fully-textured-perovskite-silicon-tandem.wafercad tests/fixtures/project-io/example-thumbnails.json
+          git diff --cached --exit-code && exit 1 || true
+          git commit -m "fix(science): regenerate three literature final models with current physical Kernel"
+          git push origin HEAD:refs/heads/audit/example-literature-fidelity-20261014
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: controlled-science-rebaseline-diagnostic
+          path: |
+            test-results/example-recipe-runall/
+            /tmp/wafercad-rebaseline.log
+          if-no-files-found: ignore
+          retention-days: 7
