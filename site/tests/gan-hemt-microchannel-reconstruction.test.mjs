@@ -103,8 +103,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
   assert.equal(validation.checks.physicalAlGaNAndSiNWith2DEGOnlyAsMetadata, true);
   assert.ok(
-    project.processRecipe.steps.some((step) =>
-      step.command === 'record' && step.params.label.includes('2DEG'),
+    project.processRecipe.steps.some(
+      (step) => step.command === 'record' && step.params.label.includes('2DEG'),
     ),
     '2DEG interface must be explicitly recorded as non-geometric metadata',
   );
@@ -187,6 +187,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const hemtReview = project.snapshots.find((s) => s.name.startsWith('05 HEMT active'));
   assert.ok(hemtReview, 'Missing HEMT active structure inspection Bookmark');
   assert.deepEqual(hemtReview.state.section, { a: [-440, 0], b: [440, 0] });
+  assert.deepEqual(hemtReview.state.display.threeCamera, {
+    position: [1650, -2150, 2350],
+    target: [0, 0, 580],
+    fov: 37,
+  });
   assert.deepEqual(hemtReview.state.roi, {
     type: 'rect',
     a: [-470, -580],

@@ -40,23 +40,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      # Temporary collection only; final committed formatting is checked in
-      # an unmodified CI workflow after the regenerated assets are synced.
-      - name: Format and emit HEMT code/docs source candidates
-        run: |
-          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-          node -e "const f=require('node:fs');for(const [label,path] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['test','site/tests/gan-hemt-microchannel-reconstruction.test.mjs'],['doc','docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('WAFERCAD_FORMAT|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('WAFERCAD_FORMAT_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Focused lint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - name: Focused formatting
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
-      # Temporary diagnostic only: regenerate both canonical project artifacts
-      # in Actions, then print bounded base64 chunks for one branch asset sync.
-      - name: Rebuild and emit canonical HEMT project assets
-        run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
-          node -e "const f=require('node:fs');for(const [label,path] of [['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('WAFERCAD_ACTIVE|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('WAFERCAD_ACTIVE_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: Generate reopenable project and validation evidence
@@ -85,8 +72,9 @@ jobs:
       - run: npm ci
       - name: Validate committed project without rewriting tracked sources
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/welcome-example.test.mjs
       - name: Check candidate text formatting
         run: npx prettier --check site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
       - name: Install headless Chromium for real render acceptance
@@ -104,9 +92,6 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
-      - name: Emit rebuilt real-browser thumbnail assets
-        run: |
-          node -e "const f=require('node:fs');for(const [label,path] of [['webp','site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp'],['manifest','tests/fixtures/project-io/example-thumbnails.json']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('WAFERCAD_ACTIVE|'+label+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('WAFERCAD_ACTIVE_END|'+label+'|'+Math.ceil(s.length/1500));}"
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three

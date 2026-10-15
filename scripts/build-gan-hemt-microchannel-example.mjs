@@ -109,19 +109,14 @@ const activeWidth = 303;
 const activeHeight = 393;
 const isolationFrame = [
   ...[-1, 1].map((side) =>
-    centered(
-      (chipWidth - activeWidth) / 2,
-      chipHeight,
-      side * (chipWidth + activeWidth) / 4,
-      0,
-    ),
+    centered((chipWidth - activeWidth) / 2, chipHeight, (side * (chipWidth + activeWidth)) / 4, 0),
   ),
   ...[-1, 1].map((side) =>
     centered(
       activeWidth,
       (chipHeight - activeHeight) / 2,
       0,
-      side * (chipHeight + activeHeight) / 4,
+      (side * (chipHeight + activeHeight)) / 4,
     ),
   ),
 ];
@@ -647,9 +642,9 @@ export async function buildGanMicrochannel() {
     roi: { type: 'rect', a: [-470, -580], b: [470, 580] },
     section: { a: [-440, 0], b: [440, 0] },
     threeCamera: {
-      position: [650, -900, 1050],
-      target: [0, 0, 690],
-      fov: 32,
+      position: [1650, -2150, 2350],
+      target: [0, 0, 580],
+      fov: 37,
     },
   });
   deposit('Illustrative GSG pads on interposer', 'GSG Au pads surrogate 0.5 um', 0.5, 20);
