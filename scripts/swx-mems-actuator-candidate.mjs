@@ -41,7 +41,12 @@ export function createCompactSwxActuator(state = 'off') {
   const p = SWX_REPORTED;
   const a = SWX_COMPACT_ASSUMPTIONS;
   const travel = state === 'on' ? p.offGapUm - p.onGapUm : 0;
-  const fixed = [], movable = [], flexure = [], springContours = [], anchors = [], banks = [];
+  const fixed = [],
+    movable = [],
+    flexure = [],
+    springContours = [],
+    anchors = [],
+    banks = [];
   const railX = (p.shuttleWidthUm - 0.7) / 2;
   const shuttle = [
     strip([-railX, a.shuttleExtentYUm[0] + travel], [-railX, a.shuttleExtentYUm[1] + travel], 0.7),
@@ -84,8 +89,14 @@ export function createCompactSwxActuator(state = 'off') {
         [x(0), a.springAnchorYUm],
         [x(0), a.springAnchorYUm - p.foldedSpringLongBeamUm],
         [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm],
-        [x(2 * springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm],
+        [
+          x(springPitch),
+          a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm,
+        ],
+        [
+          x(2 * springPitch),
+          a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm,
+        ],
         [x(2 * springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
         [x(3 * springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
         [x(3 * springPitch), a.springTipYUm],
@@ -97,13 +108,26 @@ export function createCompactSwxActuator(state = 'off') {
       const anchor = rect(side * baseX, a.springAnchorYUm, 8, 8);
       anchors.push(anchor);
       fixed.push(anchor);
-      shuttle.push(strip([side * railX, a.springTipYUm + travel], [x(3 * springPitch), a.springTipYUm + travel], 0.45));
+      shuttle.push(
+        strip(
+          [side * railX, a.springTipYUm + travel],
+          [x(3 * springPitch), a.springTipYUm + travel],
+          0.45,
+        ),
+      );
     }
   }
   movable.push(...shuttle);
   return {
-    state, travelUm: travel, fixed, movable, flexure, shuttle,
-    springContours, anchors, banks,
+    state,
+    travelUm: travel,
+    fixed,
+    movable,
+    flexure,
+    shuttle,
+    springContours,
+    anchors,
+    banks,
     integrationStatus: 'isolated-mechanical-candidate-not-manufacturing-project',
     unresolved: [
       'Must connect moving SWX reflector and both compliant optical ports without silicon shorts',
