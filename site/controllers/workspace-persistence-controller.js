@@ -800,6 +800,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
+    workspaceSession?.refreshOwnedLease?.();
     if (!ready || !hasWriteAccess()) {
       console.warn('Recovery checkpoint refused before write', {
         reason,
@@ -849,6 +850,7 @@ export function createWorkspacePersistenceController({
     // Packing the Recovery payload and committing it to IndexedDB are async.
     // Another tab may take over during that interval. A completed checkpoint
     // is not permission to replace this tab's live model after lease loss.
+    workspaceSession?.refreshOwnedLease?.();
     if (!hasWriteAccess()) {
       syncSaveStatus();
       status(
