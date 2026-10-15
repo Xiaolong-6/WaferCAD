@@ -27,22 +27,17 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Temporarily normalize and capture exact Prettier files
-        run: |
-          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
-          node -e "const f=require('node:fs');for(const [n,p] of [['builder','scripts/build-gan-hemt-microchannel-example.mjs'],['probe','site/tests/gan-hemt-tsv-liner-probe.test.mjs']]){const s=f.readFileSync(p).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('CMP_FORMAT|'+n+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('CMP_FORMAT_END|'+n+'|'+Math.ceil(s.length/1500));}"
       - name: Verify focused formatting
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - name: Targeted ESLint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Scientific wall and full native Recipe replay
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
-      - name: Regenerate candidate project and Preview for exact asset synchronization
+      - name: Validate immutable candidate project and Preview
         run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
           node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
-          node -e "const f=require('node:fs');for(const [n,p] of [['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const s=f.readFileSync(p).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('CMP_ASSET|'+n+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('CMP_ASSET_END|'+n+'|'+Math.ceil(s.length/1500));}"
       - name: Install Chromium for physical three-view audit
         run: npx playwright install --with-deps chromium
       - name: Launch local Workstation
@@ -62,6 +57,9 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Temporarily emit regenerated browser thumbnail for synchronization
+        run: |
+          node -e "const f=require('node:fs');for(const [name,path] of [['webp','site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp'],['manifest','tests/fixtures/project-io/example-thumbnails.json']]){const s=f.readFileSync(path).toString('base64');for(let i=0;i<s.length;i+=1500)console.log('CMP_THUMB|'+name+'|'+Math.floor(i/1500)+'|'+s.slice(i,i+1500));console.log('CMP_THUMB_END|'+name+'|'+Math.ceil(s.length/1500));}"
       - name: Check shipped thumbnail and project remain immutable
         run: |
           git restore -- site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json

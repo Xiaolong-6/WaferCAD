@@ -749,7 +749,10 @@ export async function buildGanMicrochannel() {
     region.stack.filter((s) => s.layerId === tsvFill.id).map((s) => s.z1),
   );
   assert.ok(copperZtops.length > 0);
-  assert.ok(copperZtops.every((z) => z <= 600.700001), 'Unremoved Cu overburden above TSV');
+  assert.ok(
+    copperZtops.every((z) => z <= 600.700001),
+    'Unremoved Cu overburden above TSV',
+  );
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550]) {
       const centerCu = model.regions.some(

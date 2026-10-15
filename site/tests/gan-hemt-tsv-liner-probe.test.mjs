@@ -73,12 +73,13 @@ test('Production Cu-filled TSVs retain seed liners and open coolant network', as
   );
 });
 
-
 test('Persisted Cu-filled TSV geometry is planarized without losing metal', async () => {
   const { project } = await buildGanMicrochannel();
   const model = project.model;
   const fill = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
-  const seed = model.layers.find((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  const seed = model.layers.find(
+    (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
+  );
   assert.ok(fill && seed);
   for (const [x, y] of tsvCenters) {
     for (const z of [-150, 50, 250, 450, 550, 600]) {
