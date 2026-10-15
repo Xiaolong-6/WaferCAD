@@ -7,6 +7,7 @@ on:
       - 'scripts/swx-mems-actuator-candidate.mjs'
       - 'scripts/swx-mems-optomechanical-candidate.mjs'
       - 'scripts/swx-mems-compact-process-geometry.mjs'
+      - 'scripts/swx-mems-compact-gratings.mjs'
       - 'scripts/build-swx-mems-compact-candidate.mjs'
       - 'scripts/swx-mems-compact-browser-acceptance.mjs'
       - 'site/tests/swx-mems-compact-process.test.mjs'
