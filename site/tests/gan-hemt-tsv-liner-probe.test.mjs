@@ -5,6 +5,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const vectorApi = await import('../vector-geometry.js');
+const modelApi = await import('../model.js');
+const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 
@@ -69,4 +71,51 @@ test('Production Ti/Cu TSV seed walls preserve coolant and open via cores', asyn
     'TSV conformal film probe passed:',
     JSON.stringify({ heightChecks: heights, sample: seen }),
   );
+});
+
+test('Probe idealized Cu electrofill without editing the canonical TSV project', async () => {
+  const { project } = await buildGanMicrochannel();
+  const filled = structuredClone(project.model);
+  const mask = vectorApi.unionGeometries(
+    tsvCenters.map(([x, y]) => vectorApi.rectMulti(90, 90, x, y)),
+  );
+  // A 70 um square bore after 0.2 + 0.5 um seed leaves roughly 34.3 um
+  // from each wall to its center. This probes a 35 um geometric electrofill,
+  // NOT a real plating kinetics or void-free electrochemical deposition.
+  const fillOperation = {
+    type: 'add',
+    name: 'Test-only geometric TSV Cu electrofill 35 um',
+    thickness: 35,
+    growth: 'conformal',
+    face: 'front',
+  };
+  const result =
+    applyAdvancedProcessOperation(filled, fillOperation, mask, modelApi, vectorApi) ||
+    modelApi.applyOperation(filled, { ...fillOperation, area: mask });
+  assert.equal(result?.changed, true, result?.error || 'No Cu electrofill geometry');
+  const heights = [-150, 50, 250, 450, 550];
+  for (const [x, y] of tsvCenters) {
+    for (const z of heights) {
+      assert.equal(
+        layerAt(filled, [x, y], z),
+        result.layerId,
+        'Idealized Cu does not fill TSV center at ' + [x, y, z],
+      );
+    }
+  }
+  for (const side of [-1, 1]) {
+    for (const [x, y, z] of [
+      [0, side * 1450, -150],
+      [0, side * 1200, 100],
+      [0, side * 420, 100],
+      [30, side * 395, 550],
+    ]) {
+      assert.equal(
+        layerAt(filled, [x, y], z),
+        null,
+        'TSV electrofill blocked a real coolant path at ' + [x, y, z],
+      );
+    }
+  }
+  console.log('Idealized Cu TSV electrofill kept all sampled coolant paths open');
 });
