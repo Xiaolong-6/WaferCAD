@@ -165,6 +165,48 @@ test('workspace session does not silently acquire an expired lease after startin
   second.stop();
 });
 
+test('workspace session can renew an expired owner lease only when ownership is uncontested', () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+  const windowRef = {
+    setInterval: () => 1,
+    clearInterval: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  let clock = 1000;
+  const original = createWorkspaceSessionController({
+    storage,
+    windowRef,
+    now: () => clock,
+    tabId: 'original',
+  });
+  const other = createWorkspaceSessionController({
+    storage,
+    windowRef,
+    now: () => clock,
+    tabId: 'other',
+  });
+  assert.equal(original.start(), true);
+  assert.equal(other.start(), false);
+  assert.equal(other.refreshOwnedLease(), false, 'read-only tabs must never auto-acquire');
+
+  clock += 8000;
+  assert.equal(original.hasWriteLease(), false, 'a blocked renewal timer expires the lease');
+  assert.equal(original.refreshOwnedLease(), true, 'existing writer can safely revalidate');
+  assert.equal(original.hasWriteLease(), true);
+  assert.equal(other.takeOver(), true);
+  assert.equal(original.refreshOwnedLease(), false, 'a takeover must never be overridden');
+  assert.equal(original.hasWriteLease(), false);
+  assert.equal(other.hasWriteLease(), true);
+  original.stop();
+  other.stop();
+});
+
 test('workspace session keeps a stable tab identity across reloads', () => {
   const leaseValues = new Map();
   const sessionValues = new Map();
