@@ -57,6 +57,30 @@ try {
       });
       await waitForPaint(page);
 
+      // Verify the CSS actually served to the browser, not just the Git
+      // revision. An old cached stylesheet silently restores wrapped chrome.
+      const loadedStyle = await page.evaluate(() => {
+        const link = document.querySelector('link[href*="mobile-workstation.css"]');
+        return {
+          href: link?.href || '',
+          loaded: Boolean(link?.sheet),
+          viewportWidth: innerWidth,
+          workstation: document.body.hasAttribute('data-workstation'),
+          headerWrap: getComputedStyle(document.querySelector('.p-topbar')).flexWrap,
+          badgeDisplay: getComputedStyle(document.querySelector('.p-review-badge')).display,
+        };
+      });
+      assert.equal(loadedStyle.workstation, true, 'Production entry has its shell scope');
+      assert.ok(loadedStyle.viewportWidth <= 820, 'Mobile CSS breakpoint is active');
+      assert.equal(loadedStyle.loaded, true, 'Compact Workstation stylesheet is loaded');
+      assert.equal(
+        new URL(loadedStyle.href).searchParams.get('v'),
+        '20261015-249-compact',
+        'Compact stylesheet uses the expected cache key',
+      );
+      assert.equal(loadedStyle.headerWrap, 'nowrap', 'Portrait header cannot wrap');
+      assert.equal(loadedStyle.badgeDisplay, 'none', 'Empty review badge takes no space');
+
       const root = page.locator('.p-workbench');
       const editor = page.locator('.p-inspector');
       const stage = page.locator('.p-stage');
