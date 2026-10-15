@@ -387,7 +387,7 @@ export async function buildSwxMems(state = 'off') {
     { point: [25, 9], shouldRetainBOX: true },
     { point: [25, SWX_ASSUMPTIONS.lowerStationaryCombYUm], shouldRetainBOX: true },
     { point: [25, 0], shouldRetainBOX: false },
-    { point: [25, -11.2], shouldRetainBOX: false },
+    { point: [25, SWX_ASSUMPTIONS.lowerMovableCombYUm], shouldRetainBOX: false },
   ]) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
