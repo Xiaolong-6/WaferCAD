@@ -70,12 +70,12 @@ try {
     assert.deepEqual(persistedBefore.model, before.model);
 
     await page.evaluate(() => {
-      const nativePut = IDBObjectStore.prototype.put;
+      const nativePut = window.IDBObjectStore.prototype.put;
       window.__restoreWriteFault = { writes: 0, originals: 0 };
-      IDBObjectStore.prototype.put = function (record, ...argumentsAfter) {
+      window.IDBObjectStore.prototype.put = function (record, ...argumentsAfter) {
         if (this.name === 'workspace' && record?.key === 'current') {
           window.__restoreWriteFault.writes++;
-          throw new DOMException('Synthetic Recovery write failure', 'QuotaExceededError');
+          throw new window.DOMException('Synthetic Recovery write failure', 'QuotaExceededError');
         }
         if (this.name === 'workspace' && String(record?.key).startsWith('recovery:'))
           window.__restoreWriteFault.originals++;

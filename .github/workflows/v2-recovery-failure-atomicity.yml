@@ -27,6 +27,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Show precise formatter changes for scientific fault acceptance
+        run: |
+          npx prettier --write scripts/v2/check-recovery-failure-atomicity.mjs site/controllers/workspace-persistence-controller.js
+          git diff -- scripts/v2/check-recovery-failure-atomicity.mjs site/controllers/workspace-persistence-controller.js
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash

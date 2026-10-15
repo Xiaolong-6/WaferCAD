@@ -714,22 +714,46 @@ export function createWorkspacePersistenceController({
           reason: 'pre-restore',
         });
 
-        updateStage('Loading Recovery checkpoint…');
-        const recovered = await loadWorkspaceRecoveryPoint(key);
-        if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
-        const hasCamera = loadProjectWithSnapshotHistory(recovered);
-        syncBaseControls();
-        syncTransformInputs();
-        renderAll();
-        renderSnapshots();
-        if (!hasCamera) fit3d();
-        markStructuralDirty();
+        // Installing a Recovery point mutates the live Model/History before
+        // IndexedDB can confirm its final commit. A failed write must restore
+        // the complete pre-operation transaction, not leave a mixed workspace.
+        let replacementStarted = false;
+        let committed = false;
+        try {
+          updateStage('Loading Recovery checkpoint…');
+          const recovered = await loadWorkspaceRecoveryPoint(key);
+          if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+          replacementStarted = true;
+          const hasCamera = loadProjectWithSnapshotHistory(recovered);
+          syncBaseControls();
+          syncTransformInputs();
+          renderAll();
+          renderSnapshots();
+          if (!hasCamera) fit3d();
+          markStructuralDirty();
 
-        updateStage('Saving restored workspace…');
-        const persisted = await persistNow({ force: true });
-        if (!persisted) throw new Error('Another tab took over local autosave.');
-        await refreshRecoveryOptions();
-        return { ok: true };
+          updateStage('Saving restored workspace…');
+          const persisted = await persistNow({ force: true });
+          if (!persisted) throw new Error('Another tab took over local autosave.');
+          committed = true;
+          await refreshRecoveryOptions();
+          return { ok: true };
+        } catch (error) {
+          if (replacementStarted && !committed) {
+            try {
+              loadProjectWithSnapshotHistory(current, { restoreView: true });
+              syncBaseControls();
+              syncTransformInputs();
+              renderAll();
+              renderSnapshots();
+            } catch (rollbackError) {
+              throw new Error(
+                `Recovery write failed, and in-memory rollback also failed: ${rollbackError.message}. The pre-restore checkpoint is available. Original error: ${error.message}`,
+              );
+            }
+          }
+          throw error;
+        }
       },
       {
         label: 'Restoring Recovery checkpoint…',
