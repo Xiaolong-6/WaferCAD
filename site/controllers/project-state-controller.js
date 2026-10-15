@@ -71,8 +71,11 @@ export function createProjectStateController({
   }
 
   function buildProjectSnapshot(includeSnapshots = false) {
-    ensureHierarchy();
+    // Fail closed even if future workspace wiring exposes Assembly state before
+    // this controller owns its source lineage and History transactions.
     const state = getState();
+    assertEditableProject(state);
+    ensureHierarchy();
     const project = {
       format: 'WaferCAD-vector',
       version: CURRENT_PROJECT_VERSION,
