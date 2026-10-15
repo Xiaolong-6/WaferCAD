@@ -73,6 +73,7 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button .wc-icon {
+    display: inline-block;
     flex: 0 0 auto;
   }
 
