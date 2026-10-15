@@ -69,6 +69,11 @@ test('async worker attestation yields between batches but commits the whole priv
   const pending = state.readWorkerValidatedProjectSnapshotAsync(project);
   assert.equal(yieldCount, 1, 'four states form one asynchronous batch');
   assert.equal(typeof resume, 'function');
+  assert.equal(
+    state.isValidSnapshotStates([snapshots[0].state]),
+    false,
+    'a staged attestation is never exposed before its final batch',
+  );
   resume();
   assert.equal(await pending, project);
   assert.equal(
