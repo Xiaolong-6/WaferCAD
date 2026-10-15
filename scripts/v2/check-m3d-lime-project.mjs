@@ -422,10 +422,10 @@ try {
     'layer-23',
     'layer-27',
   ];
+  const checkboxFor = (id) =>
+    page.locator(`#sectionPanel [data-layer-id="${id}"] input[type="checkbox"]`);
   for (const id of cutawayLayerIds) {
-    const checkbox = page.locator(
-      '#sectionPanel [data-layer-id="' + id + '"] input[type="checkbox"]',
-    );
+    const checkbox = checkboxFor(id);
     assert.equal(await checkbox.count(), 1, 'Missing real Layers UI checkbox: ' + id);
     assert.equal(await checkbox.isChecked(), true, 'Expected initially visible layer: ' + id);
     await checkbox.uncheck();
@@ -439,22 +439,46 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
-  const cutaway = await captureVisibleThree(
-    page,
-    resolve(output, 'three-device-cutaway-inspection.png'),
-  );
+  // The source camera gives an almost edge-on stack. Inspect using actual
+  // orbit and wheel gestures, with no changes to ROI or material geometry.
+  const orbitTool = page.locator('#threePanel [data-action="tool:rotate:three"]');
+  if ((await orbitTool.getAttribute('aria-pressed')) !== 'true') await orbitTool.click();
+  const threeCanvas = page.locator('#threeHost canvas');
+  const threeBox = await threeCanvas.boundingBox();
+  assert.ok(threeBox, 'Inspection 3D canvas is missing');
+  const centerX = threeBox.x + threeBox.width / 2;
+  const centerY = threeBox.y + threeBox.height / 2;
+  const originalCamera = (await snapshot()).threeCamera;
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(centerX + 145, centerY + 115, { steps: 12 });
+  await page.mouse.up();
+  await waitForPaint(page);
+  const orbitedCamera = (await snapshot()).threeCamera;
+  assert.notDeepEqual(orbitedCamera.position, originalCamera.position);
+  const zoomControl3d = page.locator('#threePanel [data-action="tool:zoom:three"]');
+  const zoomWasActive = (await zoomControl3d.getAttribute('aria-pressed')) === 'true';
+  if (!zoomWasActive) await zoomControl3d.click();
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.wheel(0, -220);
+  await waitForPaint(page);
+  const localCamera = (await snapshot()).threeCamera;
+  const cameraDistance = (value) =>
+    Math.hypot(...value.position.map((coordinate, index) => coordinate - value.target[index]));
+  assert.ok(cameraDistance(localCamera) < cameraDistance(orbitedCamera));
+  const cutawayPath = resolve(output, 'three-device-cutaway-inspection.png');
+  const cutaway = await captureVisibleThree(page, cutawayPath);
   report.threeCutawayEvidence = {
     hiddenLayers: cutawayLayerIds,
     coloredPixels: cutaway.coloredPixels,
     canvas: cutaway.canvas,
-    note: 'Inspection-only layer visibility: not a fabricated cross-section',
+    camera: localCamera,
+    note: 'Inspection-only layer visibility and orbit: not a fabricated cross-section',
   };
+  if (!zoomWasActive) await zoomControl3d.click();
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
-  for (const id of cutawayLayerIds)
-    await page
-      .locator('#sectionPanel [data-layer-id="' + id + '"] input[type="checkbox"]')
-      .check();
+  for (const id of cutawayLayerIds) await checkboxFor(id).check();
   if (!sectionWasVisible) await page.locator('[data-action="section"]').click();
   await waitForPaint(page);
   const afterCutaway = await snapshot();
