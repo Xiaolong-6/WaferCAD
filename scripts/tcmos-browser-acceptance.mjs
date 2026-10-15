@@ -433,7 +433,9 @@ try {
       (annotation) => annotationInspectionCutSegments(annotation, roiPolygon).length > 0,
     );
     assert.ok(
-      roiCut.some((annotation) => annotation.name?.includes(local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP')),
+      roiCut.some((annotation) =>
+        annotation.name?.includes(local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP'),
+      ),
       'Local ROI must intersect the buried HVT implant on the visible cut face',
     );
     // Do not reuse the full-field camera: Fit must resolve the ROI's own
