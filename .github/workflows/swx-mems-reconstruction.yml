@@ -6,6 +6,9 @@ on:
       - 'scripts/swx-mems-geometry.mjs'
       - 'scripts/swx-mems-actuator-candidate.mjs'
       - 'scripts/swx-mems-optomechanical-candidate.mjs'
+      - 'scripts/swx-mems-compact-process-geometry.mjs'
+      - 'scripts/build-swx-mems-compact-candidate.mjs'
+      - 'site/tests/swx-mems-compact-process.test.mjs'
       - 'scripts/swx-mems-optomechanical-preview.mjs'
       - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
       - 'site/tests/swx-mems-actuator-candidate.test.mjs'
@@ -47,6 +50,10 @@ jobs:
         run: node scripts/swx-mems-figure-audit.mjs
       - name: Compile shared fabrication and OFF/ON Variants
         run: node scripts/build-swx-mems-example.mjs
+      - name: Compact process targeted mask and substrate contracts
+        run: node --test site/tests/swx-mems-compact-process.test.mjs
+      - name: Build independent compact candidate using real Kernel and Recipe
+        run: node scripts/build-swx-mems-compact-candidate.mjs
       - name: Install browser runtime
         uses: actions/cache@v4
         with:
@@ -81,4 +88,12 @@ jobs:
           name: swx-mems-projects-and-validation
           path: test-results/swx-mems/
           if-no-files-found: warn
+          retention-days: 14
+      - name: Archive isolated compact candidate project and process report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swx-compact-candidate-science-evidence
+          path: test-results/swx-mems-compact/
+          if-no-files-found: ignore
           retention-days: 14
