@@ -148,6 +148,11 @@ try {
         console.log('M4 metalens: real v2 GDSII and OASIS Mask downloads round-trip PASS');
         await selectScientificView(page, 'main', 1024);
         await waitForPaint(page);
+        assert.equal(
+          await page.locator('#maskExportSettings').count(),
+          0,
+          'Mask floating export settings close when its scientific view loses focus',
+        );
       }
       if (example === 'metalens-array') {
         const label = await page.locator('[data-slot="view.main.readout"]').innerText();
