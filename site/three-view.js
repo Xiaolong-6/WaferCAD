@@ -17,6 +17,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
+import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -1545,26 +1546,15 @@ export function createThreeView({
       normals = [],
       annotationDepths = [];
 
-    const triangle = (a, b, c, depths = null) => {
-        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
-          ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
-          normal = [
-            ab[1] * ac[2] - ab[2] * ac[1],
-            ab[2] * ac[0] - ab[0] * ac[2],
-            ab[0] * ac[1] - ab[1] * ac[0],
-          ],
-          magnitude = Math.hypot(...normal) || 1,
-          unit = normal.map((value) => value / magnitude);
-        positions.push(...a, ...b, ...c);
-        normals.push(...unit, ...unit, ...unit);
-        if (depths) annotationDepths.push(...depths);
-      },
-      displacedZ = (point, z, surface) =>
-        surface?.appearance?.kind === 'rough'
-          ? z +
-            (Number(surface.profileNormal) || 1) *
-              roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
-          : z;
+    const displacedZ = (point, z, surface) =>
+      surface?.appearance?.kind === 'rough'
+        ? z +
+          (Number(surface.profileNormal) || 1) *
+            roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+        : z;
+    // This synchronous geometry phase runs under one fixed render policy.
+    // Resolve quality budgets once rather than for every physical sidewall.
+    const policy = renderPolicy(false);
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
@@ -1583,12 +1573,12 @@ export function createThreeView({
         targetStep = featureSizes.length
           ? Math.max(
               1e-6,
-              Math.min(...featureSizes) / (4 * Math.sqrt(renderPolicy(false).roughnessDetail)),
+              Math.min(...featureSizes) / (4 * Math.sqrt(policy.roughnessDetail)),
             )
           : length,
         segments = Math.max(
           1,
-          Math.min(renderPolicy(false).sidewallSegments, Math.ceil(length / targetStep)),
+          Math.min(policy.sidewallSegments, Math.ceil(length / targetStep)),
         ),
         pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
         hasDepth =
@@ -1607,8 +1597,8 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        triangle(lower0, lower1, upper1, firstDepths);
-        triangle(lower0, upper1, upper0, secondDepths);
+        appendSidewallTriangle(positions, normals, annotationDepths, lower0, lower1, upper1, firstDepths);
+        appendSidewallTriangle(positions, normals, annotationDepths, lower0, upper1, upper0, secondDepths);
       }
     }
 
