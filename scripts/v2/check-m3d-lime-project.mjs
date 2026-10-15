@@ -150,6 +150,20 @@ try {
     screenshotBytes: sectionPng.length,
   };
   // Nanometre-scale ALD films are barely visible in the 9um whole-stack view.
+  // Enlarge the real Section panel before inspection, keeping Section A-B fixed.
+  await page.locator('#sectionPanel [data-action="maximize:section"]').click();
+  await waitForPaint(page);
+  const maximizedCanvas = await page.locator('#sectionCanvas').boundingBox();
+  assert.ok(
+    maximizedCanvas &&
+      maximizedCanvas.width > sectionView.width * 1.5 &&
+      maximizedCanvas.height > sectionView.height * 1.5,
+    'Maximized Section must provide a larger physical morphology inspection surface',
+  );
+  report.sectionEvidence.maximizedCanvas = {
+    width: maximizedCanvas.width,
+    height: maximizedCanvas.height,
+  };
   // Capture an inspection-only zoom without altering the physical Section A-B.
   // Pan and Zoom are both enabled by default in v2. Clicking an already
   // pressed Zoom control disables wheel zoom, so only enable it when needed.
@@ -175,7 +189,17 @@ try {
   assert.ok(enlargedPng.length > 8000, 'Magnified Section evidence is unexpectedly small');
   report.sectionEvidence.inspectionZoom = magnification;
   report.sectionEvidence.zoomedScreenshotBytes = enlargedPng.length;
-  assert.deepEqual((await snapshot()).section, expected.section);
+  const afterSectionInspection = await snapshot();
+  assert.deepEqual(afterSectionInspection.section, expected.section);
+  assert.deepEqual(
+    afterSectionInspection.model,
+    initial.model,
+    'Maximize and zoom must not change the physical model',
+  );
+  await page.locator('#sectionPanel [data-action="fit:section"]').click();
+  await page.locator('#sectionPanel [data-action="maximize:section"]').click();
+  await waitForPaint(page);
+  assert.equal((await snapshot()).state.maximize, null, 'Section inspection must restore UI layout');
 
   for (const view of ['main', 'mask', 'three']) {
     await page.locator('[data-action="view:' + view + '"]').click();
