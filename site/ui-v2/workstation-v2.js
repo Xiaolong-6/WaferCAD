@@ -51,8 +51,8 @@
       ]),
     );
     const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
-    const hideEditor = button('', 'hide-editor', 'close', {
-      'aria-label': 'Hide navigation and workflow editor',
+    const hideEditor = button('', 'hide-editor', 'back', {
+      'aria-label': 'Collapse workflow panel',
       'data-help': 'shell.navigation',
     });
     navHost.append(navLabel, ...navButtons.values(), hideEditor);
@@ -357,6 +357,7 @@
           window.WaferCadV2PanelChrome.prepareDesktop(panel, {
             key,
             label,
+            icon: registry.views.find((view) => view.key === key)?.icon,
             maximized: docking.maximized === key,
             draggable: docking.displayed.length > 1,
           });
