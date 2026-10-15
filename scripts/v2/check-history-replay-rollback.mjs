@@ -45,10 +45,7 @@ try {
     await page.locator('[data-action="domain:history"]').click();
     const first = page.locator('.history-step-wrap', { hasText: names[1] }).first();
     await first.locator('.snapshot-more-trigger').click();
-    await page
-      .locator('.snapshot-more-popover button', { hasText: 'Edit Step' })
-      .first()
-      .click();
+    await first.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
     await page.waitForFunction(
       () => document.querySelector('#layerName')?.value === 'Rollback B',
       null,
@@ -119,7 +116,9 @@ try {
       'No orphan edited layer survives rollback',
     );
     assert.deepEqual(errors, [], 'No uncaught page errors during failed v2 replay');
-    console.log('V2_HISTORY_REPLAY_ROLLBACK: fault after 1/2 downstream commits, exact rollback PASS');
+    console.log(
+      'V2_HISTORY_REPLAY_ROLLBACK: fault after 1/2 downstream commits, exact rollback PASS',
+    );
   } finally {
     await context.close();
   }

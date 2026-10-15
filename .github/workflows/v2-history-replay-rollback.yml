@@ -29,10 +29,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Show exact Prettier diff for failing Draft Quality
-        run: |
-          npx prettier --write scripts/v2/check-history-replay-rollback.mjs
-          git diff -- scripts/v2/check-history-replay-rollback.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash
