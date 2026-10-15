@@ -6,7 +6,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "site/**"
+      - "!site/tests/**"
       - "scripts/v2/**"
+      - "!scripts/v2/capture-visual-first.mjs"
       - ".github/workflows/ui-v2-d1.yml"
   workflow_dispatch:
 
