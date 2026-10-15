@@ -4,6 +4,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { installPinnedThreeRoute } from '../test-helpers/ui.mjs';
+import { correlateWebglFramesWithLongTasks } from './p1-webgl-frame-correlation.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const folder = 'test-results/p1-startup-cpu';
@@ -21,10 +22,46 @@ async function runCampaign(iteration) {
   page.setDefaultTimeout(limit);
   await page.addInitScript(() => {
     const start = performance.now();
-    const summary = { marks: {}, longTasksMs: [], longTasks: [], transitions: [], measures: [] };
+    const summary = {
+      marks: {},
+      longTasksMs: [],
+      longTasks: [],
+      transitions: [],
+      measures: [],
+      webglFrames: [],
+    };
     window.__cpuStartupTiming = summary;
+    let previousFrameSerial = 0;
     const sample = () => {
-      const elapsed = Math.round(performance.now() - start);
+      const now = performance.now();
+      const elapsed = Math.round(now - start);
+      // The renderer publishes its frame serial only after renderer.render returns.
+      // This observer is diagnostic-only: its callback may lag the actual frame
+      // endpoint, so derived wall-clock spans are estimates, not GPU timestamps.
+      const host = document.getElementById('threeHost');
+      const serial = Number(host?.dataset.rendererFrameSerial);
+      const renderMs = Number(host?.dataset.rendererFrameMs);
+      if (
+        Number.isInteger(serial) &&
+        serial > previousFrameSerial &&
+        Number.isFinite(renderMs) &&
+        renderMs >= 0
+      ) {
+        previousFrameSerial = serial;
+        if (summary.webglFrames.length < 256) {
+          const endEpochMs = performance.timeOrigin + now;
+          summary.webglFrames.push({
+            serial,
+            startEpochMs: endEpochMs - renderMs,
+            endEpochMs,
+            renderMs,
+            quality: host.dataset.renderQuality || null,
+            variant: host.dataset.sceneVariant || null,
+            drawCalls: Number(host.dataset.rendererDrawCalls || 0),
+            triangles: Number(host.dataset.rendererDrawTriangles || 0),
+          });
+        }
+      }
       const shell = document.querySelector('.p-workbench');
       const phase = shell?.dataset.boot;
       const view = document.getElementById('threePanel')?.dataset.viewLoad;
@@ -48,7 +85,12 @@ async function runCampaign(iteration) {
       attributes: true,
       childList: true,
       subtree: true,
-      attributeFilter: ['data-boot', 'data-view-load', 'data-first-frame-ready'],
+      attributeFilter: [
+        'data-boot',
+        'data-view-load',
+        'data-first-frame-ready',
+        'data-renderer-frame-serial',
+      ],
     });
     try {
       new window.PerformanceObserver((items) => {
@@ -165,6 +207,10 @@ async function runCampaign(iteration) {
       profileStartEpochMs,
       info.timings?.longTasks,
     );
+    info.webglFrameCorrelation = correlateWebglFramesWithLongTasks(
+      info.timings?.longTasks,
+      info.timings?.webglFrames,
+    );
     campaignSamples.push({
       iteration,
       scenario: name.replace(/-r\d+$/, ''),
@@ -180,6 +226,9 @@ async function runCampaign(iteration) {
     console.log('P1_CPU_TIMING', name, JSON.stringify(info.timings));
     for (const task of info.longTaskAttribution.slice(0, 8)) {
       console.log('P1_CPU_LONG_TASK', name, JSON.stringify(task));
+    }
+    for (const task of info.webglFrameCorrelation.slice(0, 8)) {
+      console.log('P1_CPU_WEBGL_CORRELATION', name, JSON.stringify(task));
     }
     for (const item of info.hot.slice(0, 35)) {
       console.log('P1_CPU_HOT', name, item.samples, item.function, item.file, item.line);
