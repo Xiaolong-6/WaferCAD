@@ -11,6 +11,14 @@ The production `site/app.html` Workstation now uses an edge-to-edge shell, remov
 - `scripts/v2/check-startup.mjs`: desktop 1440×960 and 1024×768 shell edge, chrome and document-overflow assertions.
 - `scripts/v2/check-mobile-workstation.mjs`: 360×640, 390×844 and 430×932 View edge assertions plus Edit horizontal-shell checks, while retaining the existing mobile scroll and state assertions.
 
+## CI follow-up
+
+The first complete CI attempt on `c4b6d0a` passed Quality, general Browser, 3D and scientific workflows. Two focused suites failed:
+- Stage C `check-m2-live-parity` compared the intentionally inset M2 card width (1416 px) with the now edge-to-edge production shell (1440 px). The updated test asserts the production viewport boundary and continues comparing navigation, inspector, and Manual editor internals.
+- Main/Mask/Mobile `check-section-view` passed 1440/1024/768 but timed out at 390 px while clicking a disabled Mask More button during responsive view transition. The updated test waits for the Mask panel and responsive toolbar to settle, then requires the actual target or an enabled overflow entry before proceeding.
+
+These fixes are unverified until the subsequent GitHub Actions run completes. A separate proposed one-row portrait navigation refinement is not part of PR #249.
+
 ## Validation and handoff
 
 Implementation commits: `76611cf7`, `76d1c04c`, `028dd5db`, `ada3fcdc`.
