@@ -137,7 +137,11 @@ try {
       assert.equal((await layoutState(page)).maximized, 'mask');
       assert.equal((await layoutState(page)).visible.includes('mask'), true);
       await page.locator('.p-nav [data-action="domain:mask"]').click();
-      assert.equal((await layoutState(page)).maximized, 'mask', 'Repeated Mask navigation does not restore');
+      assert.equal(
+        (await layoutState(page)).maximized,
+        'mask',
+        'Repeated Mask navigation does not restore',
+      );
       await page.locator('#maskPanel [data-action="maximize:mask"]').click();
       await assertGrid(page, 4);
       await verifyIdentity(page);
@@ -251,11 +255,16 @@ try {
         const beforeSwap = (await layoutState(page)).order;
         const headerGap = await page.locator('#mainPanel').evaluate((panel) => {
           const title = panel.querySelector('.v2-view-title').getBoundingClientRect();
-          const controls = panel.querySelector('.v2-view-actions .p-toolbar').getBoundingClientRect();
+          const controls = panel
+            .querySelector('.v2-view-actions .p-toolbar')
+            .getBoundingClientRect();
           const header = panel.querySelector('.p-view-head').getBoundingClientRect();
           return { left: title.right, right: controls.left, y: header.y + header.height / 2 };
         });
-        assert.ok(headerGap.right - headerGap.left > 12, 'Window titlebar has an empty drag area');
+        assert.ok(
+          headerGap.right - headerGap.left > 12,
+          'Window titlebar has an empty drag area',
+        );
         const target = await page.locator('#maskPanel').boundingBox();
         await page.mouse.move((headerGap.left + headerGap.right) / 2, headerGap.y);
         await page.mouse.down();
