@@ -109,7 +109,11 @@ try {
 
     const rolledBack = await snapshot();
     assert.deepEqual(rolledBack.model, original.model, 'No partial deposited material survives');
-    assert.deepEqual(rolledBack.workflow.steps, original.workflow.steps, 'All original Steps survive');
+    assert.deepEqual(
+      rolledBack.workflow.steps,
+      original.workflow.steps,
+      'All original Steps survive',
+    );
     assert.deepEqual(
       rolledBack.workflow.branches,
       original.workflow.branches,
