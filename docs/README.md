@@ -63,6 +63,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
 - [Mobile Workstation layout contract — 2026-10-13](ui-v2/MOBILE_WORKSTATION_LAYOUT_2026-10-13.md) — compact Edit/View pane, single-scroll ownership, retained scientific hosts, and mobile CI acceptance boundaries.
+- [Production Workstation edge-to-edge viewport — 2026-10-15](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — full-viewport shell, mobile scroll preservation and browser regression handoff.
 - [M5-Lite release handoff](ui-v2/M5_LITE_HANDOFF_2026-10-12.md) — v2 default route, Legacy fallback, deployed revision, and remaining post-release tasks. This is a dated release snapshot.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
