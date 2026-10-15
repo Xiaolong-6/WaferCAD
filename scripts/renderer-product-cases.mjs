@@ -203,23 +203,32 @@ export async function runRendererProductCases({ page, capture }) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#threeHost canvas');
+      const backend = document.querySelector('#threeHost')?.dataset.roughDisplacementBackend;
       return (
         canvas?.dataset.roughMeshMode === 'detailed' &&
-        canvas.dataset.roughMeshBackend === 'gpu-hybrid' &&
-        Number(canvas.dataset.roughGpuTaskCount || 0) > 0
+        (backend === 'cpu-software-parity'
+          ? canvas.dataset.roughMeshBackend === 'cpu-mesh' &&
+            Number(canvas.dataset.roughGpuTaskCount || 0) === 0
+          : canvas.dataset.roughMeshBackend === 'gpu-hybrid' &&
+            Number(canvas.dataset.roughGpuTaskCount || 0) > 0)
       );
     },
     null,
     { timeout: 10000 },
   );
+  const actualDisplacementBackend = await page.locator('#threeHost').getAttribute(
+    'data-rough-displacement-backend',
+  );
+  const expectedGpu = actualDisplacementBackend !== 'cpu-software-parity';
   assert.equal(
     await gpuRoughCanvas.getAttribute('data-rough-mesh-backend'),
-    'gpu-hybrid',
-    'exposed rough cap did not activate the GPU rough backend',
+    expectedGpu ? 'gpu-hybrid' : 'cpu-mesh',
+    'rough cap must use a backend that meets the displacement precision contract',
   );
-  assert.ok(
+  assert.equal(
     Number(await gpuRoughCanvas.getAttribute('data-rough-gpu-task-count')) > 0,
-    'GPU rough backend reported no shader-displaced tasks',
+    expectedGpu,
+    'software WebGL must not execute an unverified GPU heightfield',
   );
   await capture(page, 'wide-gpu-rough-exposed');
   await page.locator('#threeMaxBtn').click();
