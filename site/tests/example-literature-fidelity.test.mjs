@@ -514,3 +514,32 @@ test('Reconciled Tandem History explicitly uses a geometric precursor surrogate'
     assert.ok(model.regions.length > 1, 'Lost patterned contact geometry in Step ' + stepIndex);
   }
 });
+
+test('Reconciled Microdisk intermediate mask cut remains physical through Record steps', async () => {
+  const project = await example('suspended-silica-microdisks');
+  const nodes = new Map(project.snapshotBranches.nodes.map((node) => [node.id, node]));
+  const modelAt = (stepNumber) => {
+    const id = project.processRecipe.steps[stepNumber - 1].id.slice(7);
+    const ref = nodes.get(id)?.state?.modelRef;
+    assert.ok(ref !== undefined, 'Missing Microdisk step ' + stepNumber);
+    return ref === 'project' ? project.model : project.sharedModels[ref];
+  };
+  const patterned = modelAt(4);
+  const oxide = patterned.layers.find((layer) => layer.name.startsWith('Thermal SiO₂'));
+  assert.ok(oxide, 'Missing SiO₂ immediately after patterned etch');
+  const containsOxide = (point) =>
+    patterned.regions.some(
+      (region) =>
+        region.stack.some((segment) => segment.layerId === oxide.id) &&
+        pointInMulti(point, project.sharedGeometries[region.geomRef]),
+    );
+  assert.equal(containsOxide([0, 0]), true, 'Center hub oxide must remain');
+  assert.equal(containsOxide([170, 0]), false, 'Outside radius must be stripped');
+  for (const stepNumber of [5, 6]) {
+    assert.deepEqual(
+      modelAt(stepNumber).regions,
+      patterned.regions,
+      'Record must preserve patterned oxide before XeF2 release',
+    );
+  }
+});
