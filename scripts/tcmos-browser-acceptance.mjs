@@ -419,7 +419,11 @@ try {
     await page.waitForFunction(
       ({ name, bounds }) => {
         const s = window.WaferCadV2Workstation.snapshot();
-        return s.projectName === name && JSON.stringify(s.roi) === JSON.stringify(bounds) && !s.workflow.busy;
+        return (
+          s.projectName === name &&
+          JSON.stringify(s.roi) === JSON.stringify(bounds) &&
+          !s.workflow.busy
+        );
       },
       { name: inspection.name, bounds: roi },
       { timeout: 120000 },
@@ -427,6 +431,11 @@ try {
     const inBrowser = await snap();
     assert.deepEqual(inBrowser.model, opened.model, 'Local 3D capture modified physical model');
     assert.deepEqual(inBrowser.section, inspection.section);
+    // Project Open returns to the Main single view. Activate 3D explicitly
+    // before interacting with its toolbar; a hidden maximize control must
+    // never be clicked in a browser acceptance test.
+    await page.locator('[data-action="view:three"]').click();
+    await waitForPaint(page);
     const expandThree = page.locator('[data-action="maximize:three"]').first();
     await expandThree.click();
     await waitForPaint(page);
