@@ -16,21 +16,3 @@ export function canRenderPlanarCapInSinglePass({
     (presentation.kind === 'material-exterior' || presentation.kind === 'material-interface')
   );
 }
-
-/**
- * A heightfield cap is a single zero-thickness skin, including when its Z
- * varies. Rendering it twice in a transparent DoubleSide pass composites the
- * same physical interface twice and amplifies per-triangle alpha seams.
- * Walls and volumetric annotations are intentionally excluded.
- */
-export function canRenderRoughCapInSinglePass({
-  transparentScene,
-  materialState,
-  appearance,
-} = {}) {
-  return (
-    transparentScene === true &&
-    materialState?.transparent === true &&
-    appearance?.kind === 'rough'
-  );
-}

@@ -5,10 +5,7 @@ import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
-import {
-  canRenderPlanarCapInSinglePass,
-  canRenderRoughCapInSinglePass,
-} from './transparent-pass-policy.js';
+import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
@@ -1737,16 +1734,6 @@ export function createThreeView({
       ) {
         material.forceSinglePass = true;
         material.userData.waferCadSinglePassPlanarCap = true;
-      }
-      if (
-        canRenderRoughCapInSinglePass({
-          transparentScene: presentationMode() === 'transparent',
-          materialState,
-          appearance,
-        })
-      ) {
-        material.forceSinglePass = true;
-        material.userData.waferCadSinglePassRoughCap = true;
       }
       return material;
     };
