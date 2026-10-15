@@ -205,6 +205,46 @@ test('Sahli tandem retains a nanometre top-cell stack with a localized Ag stripe
   }
 });
 
+test('Sahli pyramid SEM remains outside the canonical 2.5D facet contract', async () => {
+  // Original Sahli 2018 SI Fig. S3b/c shows a genuinely faceted Si ridge and
+  // valley. Our saved base intervals remain planar despite the Section's
+  // procedural pyramid appearance. Never certify SEM ridge/valley geometry
+  // from the appearance-only screenshot or nominal conformal film heights.
+  const project = await example('fully-textured-perovskite-silicon-tandem');
+  const silicon = project.model.regions.flatMap((region) =>
+    region.stack.filter((interval) => interval.layerId === 'base'),
+  );
+  assert.ok(silicon.length > 1);
+  assert.ok(
+    silicon.every(
+      (interval) =>
+        interval.frontSurface?.morphology === 'pyramid' &&
+        interval.frontSurface?.geometryMode === 'ideal' &&
+        interval.backSurface?.morphology === 'pyramid',
+    ),
+    'The procedural front/back texture metadata must remain explicit',
+  );
+  const topPlanes = [...new Set(silicon.map((interval) => interval.z1))];
+  assert.deepEqual(
+    topPlanes,
+    [125.5],
+    'Current saved model has a single canonical Si top plane; true facets require a new contract',
+  );
+  for (const xy of [
+    [-8, 0],
+    [-4, 0],
+    [0, 0],
+    [4, 0],
+    [8, 0],
+  ]) {
+    assert.equal(
+      segment(materialAt(project, xy), 'n-type FZ c-Si').z1,
+      125.5,
+      'Appearance-only pyramids must not be misreported as physical XY/Z facets',
+    );
+  }
+});
+
 test('Photodetector variants distinguish Implant from Electrical Region', async () => {
   const project = await example('photodetector-literature-examples');
   const branches = new Map(project.snapshotBranches.branches.map((b) => [b.id, b]));
