@@ -1037,8 +1037,29 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markStructuralDirty();
-      const persisted =
-        dirty || viewDirty || pendingDomainCheck ? await persistNow({ force: true }) : true;
+      let persisted = true;
+      try {
+        if (dirty || viewDirty || pendingDomainCheck) {
+          persisted = await persistNow({ force: true });
+          // An off-thread History attestation can be superseded by a newer
+          // in-memory edit before it reaches storage. Retry one fresh,
+          // independently validated transaction while we still own the lease.
+          // Never retry an invalid History head, storage failure or lost lease.
+          const retryReason = root.querySelector('.workspace')?.dataset.autosaveRetryReason;
+          if (
+            !persisted &&
+            hasWriteAccess() &&
+            ['history-stale', 'edit-version'].includes(retryReason)
+          ) {
+            persisted = await persistNow({ force: true });
+          }
+        }
+      } catch (error) {
+        failed = true;
+        syncSaveStatus();
+        status(`Workspace takeover Save failed: ${error?.message || String(error)}`, 'error');
+        return;
+      }
       if (!persisted || !hasWriteAccess()) {
         status(
           'Workspace takeover was interrupted by another tab before this state could be saved.',
