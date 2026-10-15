@@ -25,6 +25,8 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 
 **Scientific limitation:** The optional Implant startDepth defines a geometrically buried interval while retaining a reference to the original exposed surface. The illustrative 80–240 nm HVT intervals are explicitly inferred and **not** concentration distributions or tunnel-junction thicknesses. No calibrated BTBT or dopant physics is computed. The electrical curves in Figs. 1d/3 and SI equations S1–S4 are out of scope for the geometric Kernel.
 
+**Supplementary-model distinction:** The physical-model discussion preceding Supplementary Fig. 1 estimates an effective junction thickness `Tj` of **75 nm for boron in T-nMOS** and **30 nm for arsenic in T-pMOS** from the implant-spread standard deviation, for use in a tunnelling-current area estimate. Neither number specifies an HVT mask width or a measured start/end depth. The candidate's **80–240 nm band (160 nm thick)** is therefore **not** the paper's `Tj`. An unannotated upper 0–80 nm slice means **concentration unmodelled**, not proven undoped silicon. The Section colour band is a qualitative high-doping intent only.
+
 ## Figure 1b topology review (2026-10-14)
 
 The paper's **left** device is pMOS in n-well, framed by the **LVTN/HVTN** optional masks; the **right** device is nMOS in p-well, framed by **LVTP/HVTP**. The earlier candidate accidentally swapped HVTN and HVTP. The masks now use the source's actual names while retaining the correct **As+ pMOS** and **BF2+ nMOS** species from Methods.
@@ -90,4 +92,4 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage: Fig. 1b topology correction under review. A generated fixture and browser CI must be regenerated and audited at the latest branch revision before declaring it accepted or published.
+Current stage: 130 nm candidate passes generator, real v2 fresh-Base replay, GDS/OAS and storage acceptance at `9bde408`. Subsequent Main physical-dimensions regression is under CI. Manuscript Fig. 1a/b visual signoff and repository-wide red workflow ownership remain open; do not ship as Welcome Example.
