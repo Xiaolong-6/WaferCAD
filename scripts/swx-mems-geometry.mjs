@@ -44,9 +44,10 @@ export const SWX_REPORTED = Object.freeze({
 export const SWX_ASSUMPTIONS = Object.freeze({
   fieldUm: [112, 104],
   handleSiUm: 5,
-  // Illustrative lateral reach sufficient to clear 6um comb buses, while
-  // retaining support beneath the 9-10um anchor pads.
-  releaseUndercutUm: 4,
+  // Illustrative HF reach between the 3um movable handle half-width (1.5um)
+  // and the 6um fixed handle half-width (3um). This releases the moving
+  // handles while retaining BOX below the stationary comb cores.
+  releaseUndercutUm: 2,
   facetCenterXUm: -31,
   facetPeriods: 24,
   // Paper supplies stopper function/ON gap, not its precise lateral placement.
@@ -449,7 +450,9 @@ function makeCombs(moveY) {
     moving.push(
       rect(x + 0.8, 3.0 + moveY, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm),
     );
-    fixed.push(rect(x, -16.4, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
+    // Allow 0.2um physical overlap with the lower 6um stationary handle;
+    // an exact butt joint at y=-18um is fragile after mask grid snapping.
+    fixed.push(rect(x, -16.6, SWX_REPORTED.combFingerWidthUm, SWX_REPORTED.combFingerLengthUm));
     moving.push(
       rect(
         x + 0.8,
