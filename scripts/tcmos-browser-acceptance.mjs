@@ -527,7 +527,7 @@ try {
       cameraDz > 0 && cameraDz < Math.hypot(cameraDx, cameraDy) * 0.45,
       'Local 3D camera must keep a low side elevation',
     );
-        await page.locator('#threePanel').screenshot({
+    await page.locator('#threePanel').screenshot({
       path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-cutaway.png'),
     });
     report.localThreeD.push({
