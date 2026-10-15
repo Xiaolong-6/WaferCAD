@@ -708,7 +708,13 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     refreshAfterHistoricalLoad: refresh,
     renderSnapshots: () => project?.renderSnapshots(),
     openProcessPanel: openProcess,
-    updateOperationUI: () => process?.updateUi(),
+    updateOperationUI: () => {
+      process?.updateUi();
+      // History edit/insert loads the old Process controller after opening the
+      // v2 panel. Keep retired helper rows hidden before the next pointerdown:
+      // hiding operationNote later shifts the Apply button during the click.
+      syncManualPresentation();
+    },
     captureReplayTransaction: transaction,
     restoreReplayTransaction: restoreTransaction,
     status,
