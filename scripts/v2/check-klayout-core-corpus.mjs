@@ -71,8 +71,7 @@ try {
             const snap = window.WaferCadV2Workstation.snapshot();
             return (
               status.startsWith('Layout import failed:') ||
-              (snap.layout.name === expected &&
-                status !== '__V2_IMPORT_PENDING__')
+              (snap.layout.name === expected && status !== '__V2_IMPORT_PENDING__')
             );
           },
           name,
@@ -91,10 +90,9 @@ try {
               : 'fail'
             : 'pass';
         if (result.status === 'pass') {
-          const size = await page.locator('#maskCanvas').evaluate((canvas) => [
-            canvas.width,
-            canvas.height,
-          ]);
+          const size = await page
+            .locator('#maskCanvas')
+            .evaluate((canvas) => [canvas.width, canvas.height]);
           if (!size.every((value) => value > 0)) {
             result.status = 'fail';
             result.error = 'Mask canvas is empty';
