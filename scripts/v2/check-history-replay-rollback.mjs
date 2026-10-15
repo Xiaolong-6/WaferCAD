@@ -79,41 +79,10 @@ try {
 
     const applyLabel = await page.locator('#applyOperationBtn').innerText();
     assert.match(applyLabel, /Save edited Step/, 'Native v2 must remain in historical edit mode');
-    await page.evaluate(() => {
-      window.__v2HistoryClick = { count: 0 };
-      document.getElementById('applyOperationBtn').addEventListener('click', () => {
-        window.__v2HistoryClick.count++;
-      });
-    });
-    await page.locator('#applyOperationBtn').click();
-    // The Process button starts an async beforeApply transaction; give its
-    // confirmation or error status a chance to appear before diagnosing it.
-    await page.waitForTimeout(1500);
-    const preflight = await page.evaluate(() => ({
-      status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
-      editBanner: document.querySelector('.snapshot-continuation-banner')?.textContent || '',
-      operation: document.getElementById('operationType')?.value,
-      thickness: document.getElementById('operationThickness')?.value,
-      disabled: document.getElementById('applyOperationBtn')?.disabled,
-      domApplyButtons: document.querySelectorAll('#applyOperationBtn').length,
-      onclick: typeof document.getElementById('applyOperationBtn')?.onclick,
-      clickTrace: window.__v2HistoryClick,
-      workflowBusy: window.WaferCadV2Workstation?.snapshot()?.workflow?.busy,
-      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((node) => ({
-        hidden: node.hidden,
-        text: node.textContent?.slice(0, 500),
-      })),
-      visibleActions: [...document.querySelectorAll('button')]
-        .filter((item) => item.getClientRects().length > 0)
-        .map((item) => item.textContent?.trim())
-        .filter((label) => /Replay|Replace|Cancel|Variant/.test(label || '')),
-    }));
-    console.log('V2_HISTORY_EDIT_PAGEERRORS', JSON.stringify(errors));
-    console.log('V2_HISTORY_EDIT_PREFLIGHT', JSON.stringify(preflight));
-    assert.ok(
-      preflight.visibleActions.some((label) => /Replace & replay later Steps/.test(label)),
-      'Expected real History edit replay confirmation; inspect preflight evidence',
-    );
+    // This is a Worker/transaction scientific oracle, not a pointer hit-test.
+    // Dispatch on the live button in one browser task to avoid a v2 panel
+    // re-render detaching the element between Playwright actionability and click.
+    await page.locator('#applyOperationBtn').evaluate((button) => button.click());
     await page.getByRole('button', { name: 'Replace & replay later Steps', exact: true }).click();
     await page.waitForFunction(
       () =>
