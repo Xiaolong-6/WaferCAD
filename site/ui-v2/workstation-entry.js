@@ -16,6 +16,7 @@ import {
 } from './view-layout-model.js';
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
+import { createDesktopLayoutResizer } from './view-layout-resizer.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -111,10 +112,12 @@ try {
   shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
+  let desktopResizer = null;
   const render = () => {
     if (starting) return;
     shell.render();
     store.renderAll();
+    requestAnimationFrame(() => desktopResizer?.refresh());
   };
   // Layout changes repaint only Shell/element sizing. Scientific invalidation
   // remains owned by the existing model scheduler and canvas ResizeObservers.
@@ -125,7 +128,10 @@ try {
     if (next === uiState.desktopLayout) return;
     uiState.desktopLayout = next;
     saveDesktopLayout(desktopPreferences, next);
-    if (!starting) shell.render();
+    if (!starting) {
+      shell.render();
+      requestAnimationFrame(() => desktopResizer?.refresh());
+    }
   };
   const desktopDocking = readOnlyPreview ? null : createDesktopDockingController({
     root: shell.getRoot(),
@@ -133,6 +139,16 @@ try {
     dispatch: changeDesktopLayout,
     enabled: desktopDockingActive,
   });
+  desktopResizer = readOnlyPreview ? null : createDesktopLayoutResizer({
+    root: shell.getRoot(),
+    getState: () => uiState.desktopLayout,
+    dispatch: changeDesktopLayout,
+    enabled: desktopDockingActive,
+  });
+  window.addEventListener('pagehide', () => {
+    desktopDocking?.destroy();
+    desktopResizer?.destroy();
+  }, { once: true });
   const status = (value) => {
     message = value;
     shell.getSlot('status.message').textContent = value;
@@ -288,6 +304,7 @@ try {
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
+  requestAnimationFrame(() => desktopResizer?.refresh());
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
