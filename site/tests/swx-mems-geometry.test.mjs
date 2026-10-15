@@ -314,6 +314,29 @@ test('both optical meanders connect SWX port and supported anchor without free e
   }
 });
 
+test('both lower-reflector optical links deform while fixed upper routing stays unchanged', () => {
+  const off = createSwxGeometry('off');
+  const on = createSwxGeometry('on');
+  assert.deepEqual(
+    off.physicalGroups.opticalMeanders.fixed,
+    on.physicalGroups.opticalMeanders.fixed,
+    'the upper stationary reflector must not be actuated',
+  );
+  assert.notDeepEqual(
+    off.physicalGroups.opticalMeanders.moving,
+    on.physicalGroups.opticalMeanders.moving,
+    'the lower output spring waveguide must deform',
+  );
+  assert.notDeepEqual(
+    off.physicalGroups.gratingFeeds,
+    on.physicalGroups.gratingFeeds,
+    'the lower input spring waveguide must deform toward the anchored coupler',
+  );
+  assert.equal(off.physicalGroups.gratingFeeds.length, 1);
+  assert.equal(on.physicalGroups.gratingFeeds.length, 1);
+  assert.deepEqual(off.physicalGroups.gratingCouplers, on.physicalGroups.gratingCouplers);
+});
+
 test('both grating couplers have a continuous silicon slab with shallow-etched teeth', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
