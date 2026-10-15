@@ -3105,12 +3105,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
         opacity,
         presentation: { kind: 'border' },
       });
+      host.dataset.hiddenBorderSegmentCount = '0';
       if (targetVariant === 'transparent') {
         // Physically owned contours only. The subdued dashed reference goes
         // behind transparent faces (renderOrder 100+) so their colors attenuate
         // rear/interior edges, rather than outlining every LOD triangle.
         const contours = transparentInspectionContours(plan);
         const hiddenLines = [...contours.exposed, ...contours.buried];
+        host.dataset.hiddenBorderSegmentCount = String(hiddenLines.length);
+        host.dataset.buriedContourSegmentCount = String(contours.buried.length);
         const outlineScale = Math.max(
           1e-5,
           Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
