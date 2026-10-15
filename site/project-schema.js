@@ -1460,6 +1460,17 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   validateDisplay(project.display);
   validateProcessRecipe(project.processRecipe);
   if (project.waferAssembly != null) {
+    // Until a first-class Bond Step owns the entire product History, accepting
+    // ordinary single-wafer snapshots or Process Recipe beside an Assembly
+    // would permit restoring an unrelated model without preserving provenance.
+    // Independently manufactured source Recipes/History remain embedded under
+    // waferAssembly.sources; the assembled product has no editable timeline yet.
+    if (project.snapshots != null || project.snapshotBranches != null) {
+      fail('waferAssembly', 'cannot coexist with product History until Bond replay is supported.');
+    }
+    if (project.processRecipe != null) {
+      fail('waferAssembly', 'cannot coexist with product Recipe until Bond replay is supported.');
+    }
     if (!allowSnapshots) fail('waferAssembly', 'must not be nested in History state.');
     if (project.version !== CURRENT_PROJECT_VERSION) {
       fail('version', 'must support Assembly format v15.');
