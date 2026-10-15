@@ -1,0 +1,59 @@
+name: Desktop Docking one-shot format
+
+on:
+  push:
+    branches:
+      - feat/desktop-view-docking-20261015
+    paths:
+      - '.github/workflows/desktop-docking-format-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  scoped-format:
+    if: github.ref == 'refs/heads/feat/desktop-view-docking-20261015'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format only PR #267 affected source
+        run: |
+          npx --no-install prettier --write \
+            site/tests/view-layout.test.mjs \
+            site/ui-v2/section-view.js \
+            site/ui-v2/view-docking-controller.js \
+            site/ui-v2/view-layout-model.js \
+            site/ui-v2/view-layout-resizer.js \
+            site/ui-v2/view-layout-storage.js \
+            site/ui-v2/view-layout-templates.js \
+            site/ui-v2/view-layout.css \
+            site/ui-v2/view-panel.js \
+            site/ui-v2/workstation-entry.js \
+            site/ui-v2/workstation-v2.js \
+            scripts/v2/check-desktop-docking.mjs \
+            scripts/v2/check-three-view.mjs \
+            scripts/v2/check-section-view.mjs \
+            scripts/v2/check-m4-projects.mjs \
+            scripts/v2/check-unit-roi-alignment-lifecycle.mjs \
+            scripts/v2/check-tooltips.mjs \
+            scripts/v2/check-sync.mjs \
+            scripts/v2/check-review-interactions.mjs \
+            scripts/v2/desktop-view-selector.mjs \
+            docs/ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md
+      - name: Remove temporary format workflow, commit formatted results
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/desktop-docking-format-once.yml
+          git add -u
+          git diff --cached --check
+          git commit -m 'style(docking): format scoped sources and remove temporary formatter'
+          git push origin HEAD:feat/desktop-view-docking-20261015
