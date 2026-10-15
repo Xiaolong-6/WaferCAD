@@ -47,9 +47,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 14112,
-      "sourceSha256": "1c7180ea334d553b3031ee553134e85686cdbf7be9035a0964f76772bc0c7d4d",
-      "sha256": "46cb1c9a4984f57334ddaac5e23a4ed5a4b02ec9d164c8890196d89d6d320605"
+      "bytes": 13304,
+      "sourceSha256": "a9d04459daf1953a8bca755f0dbc748a14eee57d05569c7a230dcaaaa3294a07",
+      "sha256": "92238e30c4811430fc77c011dd2532877f1744e9786486f9c20b09527c5f90ea"
     },
     {
       "id": "magic-1000-mos2-beol",
