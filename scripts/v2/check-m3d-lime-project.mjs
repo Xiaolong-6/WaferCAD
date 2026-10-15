@@ -76,8 +76,14 @@ const { page, context } = await newUiPage(browser, {
   acceptDownloads: true,
 });
 const errors = [];
+const browserMessages = [];
 const report = { pass: false, test: 'v2 open / 3D / Run All / project roundtrip' };
 page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (message) => {
+  if (['warning', 'error'].includes(message.type())) {
+    browserMessages.push(message.text());
+  }
+});
 try {
   await page.goto(base + '/app.html?start=empty', {
     waitUntil: 'domcontentloaded',
@@ -259,6 +265,7 @@ try {
 } catch (error) {
   report.error = error.stack || error.message;
   report.pageErrors = errors;
+  report.consoleMessages = browserMessages.slice(-30);
   report.browserState = await page
     .evaluate(() => ({
       ready: document.body?.dataset.ready,
@@ -269,12 +276,14 @@ try {
         .filter((element) => element.getClientRects().length)
         .map((element) => element.innerText.slice(0, 500)),
       recentBodyText: document.body?.innerText?.slice(-1500),
+      workflow: window.WaferCadV2Workstation?.snapshot?.()?.workflow,
     }))
     .catch((diagnosticError) => ({ error: diagnosticError.message }));
   await page.screenshot({ path: resolve(output, 'failure.png') }).catch(() => {});
   console.error(report.error);
   console.error('M3D-LIME browser failure state:', JSON.stringify(report.browserState));
   console.error('M3D-LIME page errors:', JSON.stringify(errors));
+  console.error('M3D-LIME console warnings:', JSON.stringify(report.consoleMessages));
   process.exitCode = 1;
 } finally {
   await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
