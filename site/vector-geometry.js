@@ -2,7 +2,7 @@ import { connectedBoundingBoxGroups } from './polygon-bounds-groups.js';
 import {
   BOOLEAN_RETRY_GRID_UM,
   EPS,
-  booleanWithQuantizedRetry,
+  booleanWithNormalizedRetry,
   canonicalizeBooleanGeometry,
   closeRing,
   normalizeMulti,
@@ -100,7 +100,7 @@ function unionPolygonComponents(geometries) {
       continue;
     }
     mergedComponents = true;
-    const merged = booleanWithQuantizedRetry('union', component);
+    const merged = booleanWithNormalizedRetry('union', component);
     out.push(...merged);
   }
   // Singleton components are already independent, normalized geometry.
@@ -119,7 +119,7 @@ function unionGeometriesPairwise(geometries) {
     const next = [];
     for (let i = 0; i < level.length; i += 2) {
       if (i + 1 >= level.length) next.push(level[i]);
-      else next.push(booleanWithQuantizedRetry('union', [level[i], level[i + 1]]));
+      else next.push(booleanWithNormalizedRetry('union', [level[i], level[i + 1]]));
     }
     level = next;
   }
