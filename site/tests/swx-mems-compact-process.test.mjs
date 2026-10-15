@@ -5,7 +5,10 @@ import {
   SWX_COMPACT_PROCESS_PROFILE,
 } from '../../scripts/swx-mems-compact-process-geometry.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
-import { createCompactGratingGrooves, SWX_COMPACT_GRATING_ASSUMPTIONS } from '../../scripts/swx-mems-compact-gratings.mjs';
+import {
+  createCompactGratingGrooves,
+  SWX_COMPACT_GRATING_ASSUMPTIONS,
+} from '../../scripts/swx-mems-compact-gratings.mjs';
 
 test('compact process retains all canonical mask layers within its true field', () => {
   const [width, height] = SWX_COMPACT_PROCESS_PROFILE.fieldUm;
@@ -46,7 +49,10 @@ test('compact candidate keeps common lithographic mask and numeric OFF/ON optica
   assert.ok(Math.abs(on.gapUm - SWX_REPORTED.onGapUm) < 1e-10);
   assert.equal(on.travelUm, SWX_REPORTED.offGapUm - SWX_REPORTED.onGapUm);
   assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.sourceGratingGroovesImplemented, false);
-  assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.physicallyEtchedCandidateGratingGrooves, true);
+  assert.equal(
+    SWX_COMPACT_PROCESS_PROFILE.assumptions.physicallyEtchedCandidateGratingGrooves,
+    true,
+  );
   assert.deepEqual(
     off.physicalGroups.gratingGrooves,
     on.physicalGroups.gratingGrooves,
@@ -80,8 +86,12 @@ test('candidate four-terminal grating patterns have physical 150nm etch sites an
   assert.equal(grooves.length, a.centersUm.length * a.groovesPerTerminal);
   assert.equal(probes.length, grooves.length);
   assert.ok(a.grooveWidthUm > 0 && a.groovePitchUm > a.grooveWidthUm);
-  assert.ok(a.padWidthUm / 2 > a.firstGrooveRadiusUm +
-    (a.groovesPerTerminal - 1) * a.groovePitchUm + a.grooveWidthUm);
+  assert.ok(
+    a.padWidthUm / 2 >
+      a.firstGrooveRadiusUm +
+        (a.groovesPerTerminal - 1) * a.groovePitchUm +
+        a.grooveWidthUm,
+  );
   assert.equal(a.sourcePitchVerified, false);
   const tol = 1e-8;
   // Segment-resolved polygon occupancy: probe should genuinely lie in its
@@ -99,13 +109,17 @@ test('candidate four-terminal grating patterns have physical 150nm etch sites an
   for (let i = 0; i < probes.length; i++) {
     const { groovePoint, ridgePoint, terminal } = probes[i];
     assert.ok(isInside(groovePoint, grooves[i]), 'Missing etched groove mask at ' + i);
-    assert.ok(grooves.every((polygon) => !isInside(ridgePoint, polygon)),
-      'Residual silicon rib incorrectly etched at ' + i);
+    assert.ok(
+      grooves.every((polygon) => !isInside(ridgePoint, polygon)),
+      'Residual silicon rib incorrectly etched at ' + i,
+    );
     for (const point of grooves[i]) {
       assert.ok(Math.abs(point[0] - terminal[0]) < a.padWidthUm / 2 - tol);
       assert.ok(Math.abs(point[1] - terminal[1]) < a.padWidthUm / 2 - tol);
     }
   }
   assert.equal(a.deviceEtchDepthUm, SWX_REPORTED.ridgeEtchUm);
-  assert.ok(Math.abs(a.residualSiUm - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) < tol);
+  assert.ok(
+    Math.abs(a.residualSiUm - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) < tol,
+  );
 });
