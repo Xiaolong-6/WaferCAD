@@ -508,14 +508,25 @@ try {
     const cy = canvasBox.y + canvasBox.height / 2;
     await page.mouse.move(cx, cy);
     await page.mouse.down();
-    await page.mouse.move(cx - canvasBox.height * 0.12, cy - canvasBox.height * 0.05, {
+    await page.mouse.move(cx + canvasBox.height * 0.12, cy - canvasBox.height * 0.05, {
       steps: 12,
     });
     await page.mouse.up();
-    await page.mouse.wheel(0, -220);
+    await page.mouse.wheel(0, -740);
     await waitForPaint(page);
     const inspectionCamera = (await snap()).threeCamera;
     assert.ok(inspectionCamera?.position?.every(Number.isFinite));
+    const cameraDx = inspectionCamera.position[0] - inspectionCamera.target[0];
+    const cameraDy = inspectionCamera.position[1] - inspectionCamera.target[1];
+    const cameraDz = inspectionCamera.position[2] - inspectionCamera.target[2];
+    assert.ok(
+      cameraDy < -0.5 && Math.abs(cameraDx) < Math.abs(cameraDy) * 0.2,
+      'Local 3D evidence must face the exposed y=0 section rather than a top or end view',
+    );
+    assert.ok(
+      cameraDz > 0 && cameraDz < Math.hypot(cameraDx, cameraDy) * 0.45,
+      'Local 3D camera must keep a low side elevation',
+    );
         await page.locator('#threePanel').screenshot({
       path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-3d-cutaway.png'),
     });
