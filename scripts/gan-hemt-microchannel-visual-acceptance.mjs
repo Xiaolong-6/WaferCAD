@@ -102,7 +102,7 @@ try {
   const example = page.locator(`.welcome-example-card[data-example-id="${id}"]`);
   assert.equal(await example.count(), 1, 'GaN HEMT full-project Example missing from Welcome');
   await example.locator('.welcome-example-title-link').click();
-  await page.waitForURL(/\\/app\\.html(?:\\?.*)?$/, { timeout: 120000 });
+  await page.waitForURL(/\/app\.html(?:\?.*)?$/, { timeout: 120000 });
   await page.waitForFunction(
     () =>
       document.body.dataset.ready === 'true' &&
