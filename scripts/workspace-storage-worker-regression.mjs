@@ -2,12 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import {
-  baseUrl,
-  launchBrowser,
-  newUiPage,
-  observePageErrors,
-} from './test-helpers/ui.mjs';
+import { baseUrl, launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
 const { readProjectFile } = await import('../site/project-io.js');
