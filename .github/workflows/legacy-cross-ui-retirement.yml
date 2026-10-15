@@ -8,11 +8,14 @@ on:
       - 'scripts/v2/check-cross-ui-recovery.mjs'
       - 'site/app-legacy.html'
       - 'site/app.js'
-      - 'site/workspace-persistence.js'
+      - 'site/workspace-persistence*.js'
+      - 'site/project-*.js'
+      - 'site/startup-file.js'
       - 'site/controllers/workspace-persistence-controller.js'
       - 'site/controllers/workspace-session-controller.js'
       - 'site/ui-v2/workstation-entry.js'
       - 'site/ui-v2/workstation-workflow.js'
+      - 'site/ui-v2/project-mask-panels.js'
       - '.github/workflows/legacy-cross-ui-retirement.yml'
   workflow_dispatch:
 
