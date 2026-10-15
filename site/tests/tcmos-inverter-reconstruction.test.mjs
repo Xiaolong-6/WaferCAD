@@ -158,6 +158,12 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     assert.ok(Math.abs(reported.outsideMatchingWellVolumeUm3 - outside) < 1e-12);
   }
   assert.equal(validation.qualitativeJunctionEvidence.oxideStoppingPowerKnown, false);
+  const bodyTies = validation.bodyTieContactEvidence.contacts;
+  assert.deepEqual(bodyTies.map((item) => item.net), ['VDD', 'GND']);
+  assert.deepEqual(bodyTies.map((item) => item.schematicWellPresent), [true, true]);
+  assert.ok(bodyTies.every((item) => item.matchingContactDopantIds.length === 0));
+  assert.ok(bodyTies.every((item) => item.oppositeContactDopantIds.length === 0));
+  assert.ok(bodyTies.every((item) => item.ohmicContactValidated === false));
   assert.match(model.implants[0].name, /HVTN As\+ pMOS/);
   assert.match(model.implants[1].name, /HVTP BF2\+ nMOS/);
   for (const body of model.implants.slice(0, 2)) {

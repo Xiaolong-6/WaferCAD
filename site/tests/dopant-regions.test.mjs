@@ -8,8 +8,11 @@ const v = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
 const { addQualitativeDopantRegion, resolveQualitativeDopantRegion, findDopantPolarityOverlaps } =
   await import('../dopant-regions.js');
-const { findTerminalQualifiedDopantOverlaps, auditSchematicWellBodyCoverage } =
-  await import('../dopant-regions.js');
+const {
+  findTerminalQualifiedDopantOverlaps,
+  auditSchematicWellBodyCoverage,
+  auditSchematicBodyTieContacts,
+} = await import('../dopant-regions.js');
 
 test('legacy models retain their original storage shape until qualitative doping is requested', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
@@ -149,4 +152,63 @@ test('overlaps report qualitative opposite polarity without claiming a working j
   const legacy = structuredClone(model);
   delete legacy.dopantRegions;
   validateProcessModel(legacy);
+});
+
+test('body-tie well attribution and surface contact doping are separate from ohmic physics', () => {
+  const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
+  const well = modelApi.applyOperation(model, {
+    type: 'electrical',
+    name: 'Illustrative N-well',
+    electricalRegionType: 'n-type',
+    electricalRegionSource: 'doped',
+    thickness: 0.5,
+    area: v.rectMulti(2, 2, -1, 0),
+  });
+  assert.equal(well.changed, true);
+  const ties = [
+    {
+      id: 'nwell-tie',
+      net: 'VDD',
+      polarity: 'donor',
+      point: [-1, 0],
+      hostLayerId: 'base',
+      surfaceZ: 1,
+    },
+    {
+      id: 'outside-well',
+      net: 'GND',
+      polarity: 'acceptor',
+      point: [1, 0],
+      hostLayerId: 'base',
+      surfaceZ: 1,
+    },
+  ];
+  const before = auditSchematicBodyTieContacts(model, ties, v);
+  assert.equal(before[0].schematicWellPresent, true);
+  assert.equal(before[1].schematicWellPresent, false);
+  assert.deepEqual(before[0].matchingContactDopantIds, []);
+  assert.ok(before.every((contact) => !contact.ohmicContactValidated));
+  assert.equal(
+    addQualitativeDopantRegion(
+      model,
+      {
+        id: 'nplus-contact-marker',
+        polarity: 'donor',
+        role: 'contact',
+        face: 'front',
+        hostLayerId: 'base',
+        area: v.rectMulti(1, 1, -1, 0),
+        sourceZ: 1,
+        depthStartUm: 0,
+        depthEndUm: 0.1,
+        provenance: 'test-only qualitative marker',
+      },
+      v,
+    ).changed,
+    true,
+  );
+  const after = auditSchematicBodyTieContacts(model, ties, v);
+  assert.deepEqual(after[0].matchingContactDopantIds, ['nplus-contact-marker']);
+  assert.deepEqual(after[1].matchingContactDopantIds, []);
+  assert.equal(after[0].ohmicContactValidated, false);
 });

@@ -814,8 +814,11 @@ export async function buildTcmosInverter({
   // Drain vs source is inferred from terminal contact connectivity in the
   // reconstructed Fig. 1b layout. Shared source/drain implant masks alone
   // cannot identify a junction or a conducting BTBT path.
-  const { findTerminalQualifiedDopantOverlaps, auditSchematicWellBodyCoverage } =
-    await import('../site/dopant-regions.js');
+  const {
+    findTerminalQualifiedDopantOverlaps,
+    auditSchematicWellBodyCoverage,
+    auditSchematicBodyTieContacts,
+  } = await import('../site/dopant-regions.js');
   const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
   const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
   const terminals = [
@@ -856,6 +859,19 @@ export async function buildTcmosInverter({
       return [polarity, summary];
     }),
   );
+  const contactSites = [
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.35, -0.85] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.35, -0.85] },
+  ].map((site) => {
+    const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
+    const silicon = region?.stack.find((segment) => segment.layerId === 'base');
+    assert.ok(silicon, 'Well-tie validation requires an actual silicon contact site');
+    return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
+  });
+  const bodyTieContactEvidence = {
+    provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
+    contacts: auditSchematicBodyTieContacts(model, contactSites, v),
+  };
   const validation = {
     pass: true,
     doi: TCMOS_DOI,
@@ -872,6 +888,7 @@ export async function buildTcmosInverter({
     bookmarks: bookmarks.length,
     implantMarkers: model.implants.length,
     dopantRegionIntents: model.dopantRegions.length,
+    bodyTieContactEvidence,
     qualitativeJunctionEvidence: {
       kind: 'terminal-clipped-opposite-polarity-cooccupancy',
       sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
@@ -898,6 +915,7 @@ export async function buildTcmosInverter({
       'Well/LDD/HDD annotations are qualitative; no dopant concentration, diffusion, activation, tunnelling current or inverter transfer curve is predicted.',
       'HVT body intent intersects both source and drain HDD intent in the assumed geometry. Opposite-polarity volumetric overlaps are not electrically resolved PN boundaries or BTBT junctions.',
       'HVT mask extends beyond ACTIVE and the schematic Well under STI: a small qualitative body volume survives beneath STI in silicon; actual ion stopping/penetration is not modeled.',
+      'U-shaped n-/p-well body-tie contact geometry is inferred. No separate surface n+/p+ contact-dopant intent or verified ohmic contact is present.',
       'LVTN/LVTP mask windows are reference-only and NOT executed in the T-CMOS process; U-shaped body-tie diffusion, contact arrays and metal routing are traced visually from Fig. 1b, not measured dimensions.',
       'Contact metallization is an ideal geometry surrogate; foundry silicide/etch chemistry and spacer details are not simulated.',
       illustrativeTiltDeg
