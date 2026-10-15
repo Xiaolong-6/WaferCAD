@@ -52,6 +52,9 @@ test('two independently created 400 µm wafers bond into an 800 µm native stack
   near(bond.z, 200);
   assert.equal(bond.flipped, true);
   near(modelApi.modelBoundsZ(model)[1] - modelApi.modelBoundsZ(model)[0], 800);
+  near(model.thickness, 800);
+  near(receiver.thickness, 400);
+  near(donor.thickness, 400);
   near(modelApi.geometryArea(bond.contactGeometry), 8000);
   validateProcessModel(model);
 });
@@ -117,6 +120,8 @@ test('third wafer attaches in another independent step without flattening the fi
   assert.equal(third.model.layers.length, 3);
   assert.equal(stackAt(third.model, [0, 0]).length, 3);
   near(modelApi.modelBoundsZ(third.model)[1] - modelApi.modelBoundsZ(third.model)[0], 1200);
+  near(third.model.thickness, 1200);
+  near(pair.model.thickness, 800);
   near(third.interface.z, 600);
   validateProcessModel(third.model);
 });
