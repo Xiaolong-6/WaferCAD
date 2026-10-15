@@ -130,6 +130,7 @@ export async function auditSiteReachability(root = resolve('site'), { surface = 
     compatibilityRoots,
     productionReachable: production.size,
     compatibilityReachable: compatibility.size,
+    compatibilityOnly: [...compatibility].filter((file) => !production.has(file)).sort(),
     developerReachable: developer.size,
     developerOnly,
     unproven,
