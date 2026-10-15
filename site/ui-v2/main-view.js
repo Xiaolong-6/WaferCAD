@@ -62,6 +62,10 @@ export async function createMainView({ project, sharedState, workstation, render
   );
   const caption = () =>
     `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
+  const dimensionsLabel = () => {
+    const { width, height } = state.model;
+    return `${units.format(width)} × ${units.format(height)} ${units.label()}`;
+  };
   function sync() {
     if (!state) return;
     syncDisplayUnitFields(document, units.key());
@@ -86,8 +90,7 @@ export async function createMainView({ project, sharedState, workstation, render
     const canvas = root.getElementById('mainCanvas');
     canvas.dataset.tool = state.tool;
     const dimensions = hooks.get('mainCoords');
-    if (dimensions)
-      dimensions.textContent = `${units.format(state.model.width)} × ${units.format(state.model.height)} ${units.label()}`;
+    if (dimensions) dimensions.textContent = dimensionsLabel();
     shell?.getSlot('view.main.readout')?.replaceChildren(caption());
     if (!workstation) shell?.getSlot('status.message')?.replaceChildren(message);
   }
@@ -398,7 +401,7 @@ export async function createMainView({ project, sharedState, workstation, render
       buildRoiTools(),
       hook(
         'mainCoords',
-        el('span', { class: 'p-scale' }, `${units.format(state.model.width)} × ${units.format(state.model.height)} ${units.label()}`),
+        el('span', { class: 'p-scale' }, dimensionsLabel()),
       ),
     );
     const views = window.createWaferCadV2ViewPanels();
