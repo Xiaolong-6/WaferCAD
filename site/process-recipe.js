@@ -264,13 +264,17 @@ function normalizeStep(command, input, index = 0) {
       ? Number(params.depthUm)
       : recipeLengthUm(params.depth ?? params.thickness, 'implant.depth');
     if (!(params.depthUm > 0)) throw new Error('implant.depth must be greater than zero.');
-    params.startDepthUm = recipeLengthUm(
+    // Preserve the historic Recipe storage contract: a surface-start Implant
+    // has no startDepthUm key. Only explicitly buried intervals need one.
+    const startDepthUm = recipeLengthUm(
       params.startDepthUm ?? params.startDepth ?? 0,
       'implant.startDepth',
     );
-    if (!(params.startDepthUm >= 0 && params.startDepthUm < params.depthUm)) {
+    if (!(startDepthUm >= 0 && startDepthUm < params.depthUm)) {
       throw new Error('implant.startDepth must be nonnegative and less than total implant.depth.');
     }
+    if (startDepthUm > 0) params.startDepthUm = startDepthUm;
+    else delete params.startDepthUm;
     params.tilt = Number(params.tilt ?? 0);
     if (!Number.isFinite(params.tilt) || params.tilt < -80 || params.tilt > 80) {
       throw new Error('implant.tilt must be between -80 and 80 degrees.');
