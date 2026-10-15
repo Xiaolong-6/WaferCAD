@@ -120,6 +120,13 @@ const isolationFrame = [
     ),
   ),
 ];
+export const GAN_TSV_LINER = Object.freeze({
+  boreWidth: 70,
+  localMaskWindow: 90,
+  titaniumUm: 0.2,
+  copperUm: 0.5,
+});
+const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
 const chip = centered(878.5, 1120);
 const solder = [
@@ -160,6 +167,13 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
       centered(70, 70, -1450, 950),
       centered(70, 70, 1450, 950),
     ],
+  },
+  {
+    id: 25,
+    name: 'Four local Ti/Cu seed-coating windows with exposed TSV silicon rim',
+    rectangles: tsvCenters.map(([x, y]) =>
+      centered(GAN_TSV_LINER.localMaskWindow, GAN_TSV_LINER.localMaskWindow, x, y),
+    ),
   },
   {
     id: 21,
@@ -386,7 +400,12 @@ export async function buildGanMicrochannel() {
       Object.assign(kernel, {
         name: params.material,
         thickness: params.thickness,
-        growth: params.coverage === 'transfer' ? 'transfer' : 'direct',
+        growth:
+          params.coverage === 'transfer'
+            ? 'transfer'
+            : params.coverage === 'conformal'
+              ? 'conformal'
+              : 'direct',
         ...(params.coverage === 'transfer' ? { transferMode: 'flat' } : {}),
       });
     } else {
@@ -414,7 +433,12 @@ export async function buildGanMicrochannel() {
     if (command === 'deposit') {
       recipe.thicknessUm = params.thickness;
       delete recipe.thickness;
-      recipe.coverage = params.coverage === 'transfer' ? 'transfer' : 'direct';
+      recipe.coverage =
+        params.coverage === 'transfer'
+          ? 'transfer'
+          : params.coverage === 'conformal'
+            ? 'conformal'
+            : 'direct';
       if (params.coverage === 'transfer') recipe.placement = 'flat';
     } else {
       recipe.thicknessUm = params.depth;
@@ -590,9 +614,27 @@ export async function buildGanMicrochannel() {
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
   bookmark('03 TSV bores');
+  // Local mask includes both the exposed 70 um bore and 10 um of Si rim.
+  // Uniform 800 um-deep Ti/Cu coating is a geometric assumption, not a
+  // simulation of real sputter coverage or complete TSV copper filling.
+  deposit(
+    'Idealized conformal TSV Ti seed (200 nm)',
+    'TSV Ti conformal seed surrogate 0.2 um',
+    GAN_TSV_LINER.titaniumUm,
+    25,
+    'conformal',
+  );
+  deposit(
+    'Idealized conformal TSV Cu seed (500 nm)',
+    'TSV Cu conformal seed surrogate 0.5 um',
+    GAN_TSV_LINER.copperUm,
+    25,
+    'conformal',
+  );
+  bookmark('03b Open Ti/Cu-lined TSVs (seed only)');
   record(
-    'Thermal oxidation; double-side Ti/Cu 200/500 nm, Au plating and TSV Cu/NiPaAu',
-    'Paper Fig. 2(c,d): continuous oxide, Ti/Cu (200/500 nm), Au; TSV electroplating Cu and NiPaAu coating. Metal/oxide placement inside bores is not modeled. No conductivity or metallurgical continuity is implied.',
+    'Full Au/Cu/NiPaAu TSV and surface-metallization completion (metadata only)',
+    'Paper Fig. 2(c,d): the geometry contains idealized conformal Ti/Cu seed films (200/500 nm), but not validated sputter coverage, insulating oxide, full Cu plating/fill, NiPaAu, Au routing, or device electrical continuity.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -672,12 +714,24 @@ export async function buildGanMicrochannel() {
         region.stack.some((segment) => segment.z0 < z && segment.z1 > z),
     );
   }
-  for (const x of [-1450, 1450]) {
-    for (const y of [-950, 950]) {
-      for (const z of [-150, 50, 250, 450, 550]) {
-        assert.equal(materialAt([x, y], z), false, 'TSV void filled at ' + [x, y, z]);
-        assert.equal(materialAt([x + 43, y], z), true, 'Missing TSV sidewall at ' + [x, y, z]);
+  const tsvTi = model.layers.find((layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um');
+  const tsvCu = model.layers.find((layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  assert.ok(tsvTi && tsvCu, 'Missing physical Ti/Cu TSV seed material');
+  for (const [x, y] of tsvCenters) {
+    for (const z of [-150, 50, 250, 450, 550]) {
+      assert.equal(materialAt([x, y], z), false, 'TSV central void is blocked at ' + [x, y, z]);
+      assert.equal(materialAt([x + 43, y], z), true, 'Missing surrounding Si at ' + [x, y, z]);
+      const present = new Set();
+      for (let delta = 33; delta <= 37.0001; delta += 0.05) {
+        for (const region of model.regions) {
+          if (!vectorApi.pointInMulti([x + delta, y], region.geom)) continue;
+          for (const seg of region.stack) {
+            if (seg.z0 < z && seg.z1 > z) present.add(seg.layerId);
+          }
+        }
       }
+      assert.ok(present.has(tsvTi.id), 'Ti coating missing at ' + [x, y, z]);
+      assert.ok(present.has(tsvCu.id), 'Cu coating missing at ' + [x, y, z]);
     }
   }
   // A structural fluid network requires continuous *void*, rather than two
@@ -811,6 +865,7 @@ export async function buildGanMicrochannel() {
       retainedInterChannelSiRibs: true,
       longSupplyReturnRoutesReachBothRemotePorts: true,
       physicalAlGaNAndSiNWith2DEGOnlyAsMetadata: true,
+      fourOpenTSVsWithContinuousTiCuSeedGeometry: true,
     },
     checkpoints,
   };
