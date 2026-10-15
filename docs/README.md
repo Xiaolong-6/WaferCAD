@@ -22,6 +22,7 @@ Use this page to find the document that owns a question. Current contracts descr
 | Implementation contracts and local checks                        | [Development](DEVELOPMENT.md)                  |
 | Shared ChatGPT/Codex workflow and reproducible handoff           | [Collaboration](COLLABORATION.md)              |
 | Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md)                          |
+| Production Workstation viewport and mobile acceptance evidence | [Edge-to-edge Workstation](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) |
 | PR/main/scheduled/manual triggers and Draft cost controls        | [CI routing](CI.md)                            |
 | Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
 | Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
@@ -60,7 +61,6 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
 - [Mobile Workstation layout contract — 2026-10-13](ui-v2/MOBILE_WORKSTATION_LAYOUT_2026-10-13.md) — compact Edit/View pane, single-scroll ownership, retained scientific hosts, and mobile CI acceptance boundaries.
-- [Production Workstation edge-to-edge viewport — 2026-10-15](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — full-viewport shell, mobile scroll preservation and browser regression handoff.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 Z Break editor integration — 2026-10-13](ui-v2/Z_BREAK_EDITOR_2026-10-13.md) — precision-first editor, physical-Z ownership, keyboard controls and contextual-tooltip migration.
