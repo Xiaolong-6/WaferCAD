@@ -331,6 +331,8 @@ export async function createMainView({ project, sharedState, workstation, render
     );
   }
   function buildMain() {
+    // Preserve controller hooks without mounting editable ROI tools in preview.
+    const roiTools = buildRoiTools();
     const common = [
       hook(
         'mainZoomFit',
@@ -398,7 +400,7 @@ export async function createMainView({ project, sharedState, workstation, render
       'div',
       { class: 'p-science v2-main-stage v2-plan-stage', 'data-v2-stage-host': '' },
       hook('mainCanvas', el('canvas', { 'aria-label': 'Main scientific plan', tabindex: 0 })),
-      buildRoiTools(),
+      ...(workstation?.readOnlyPreview ? [] : [roiTools]),
       hook('mainCoords', el('span', { class: 'p-scale' }, dimensionsLabel())),
     );
     const views = window.createWaferCadV2ViewPanels();
