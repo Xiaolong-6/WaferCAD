@@ -355,27 +355,30 @@ function makeMeanders(moveY) {
 
 function makeFoldedSprings(moveY) {
   const parts = [];
-  // Paper Fig S7: 30um/22um beams, 200nm width and 1.5um clear gap.
-  // The loop path joins a stationary pad at +/-40um to a moving
-  // triangular shuttle rail, with displacements graded along the beam.
+  // Supplement S7/S8: two pairs (four separate spring paths), mirrored
+  // on the two sides of the Y-actuated shuttle. Retain the 30/22um,
+  // 200nm and 1.5um reported dimensions; anchor/site coordinates are inferred.
   const halfShuttle = SWX_REPORTED.shuttleWidthUm / 2;
-  for (const sign of [-1, 1]) {
-    const y = (distance) => sign * distance;
-    const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
-    const long = SWX_REPORTED.foldedSpringLongBeamUm;
-    const short = SWX_REPORTED.foldedSpringShortBeamUm;
-    const path = [
-      [0, y(40)],
-      [0, y(40 - long)],
-      [pitch, y(40 - long)],
-      [pitch, y(40 - long + short)],
-      [2 * pitch, y(40 - long + short)],
-      [2 * pitch, y(40 - long)],
-      [3 * pitch, y(40 - long)],
-      [3 * pitch, sign * halfShuttle],
-    ];
-    const deform = path.map(([x, py], i) => [x, py + (moveY * i) / (path.length - 1)]);
-    parts.push(...miteredPolyline(deform, SWX_REPORTED.foldedSpringWidthUm));
+  const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
+  const long = SWX_REPORTED.foldedSpringLongBeamUm;
+  const short = SWX_REPORTED.foldedSpringShortBeamUm;
+  for (const signY of [-1, 1]) {
+    for (const signX of [-1, 1]) {
+      const x = (distance) => signX * distance;
+      const y = (distance) => signY * distance;
+      const path = [
+        [x(2), y(40)],
+        [x(2), y(40 - long)],
+        [x(2 + pitch), y(40 - long)],
+        [x(2 + pitch), y(40 - long + short)],
+        [x(2 + 2 * pitch), y(40 - long + short)],
+        [x(2 + 2 * pitch), y(40 - long)],
+        [x(2 + 3 * pitch), y(40 - long)],
+        [x(2 + 3 * pitch), signY * halfShuttle],
+      ];
+      const deformed = path.map(([px, py], i) => [px, py + (moveY * i) / (path.length - 1)]);
+      parts.push(...miteredPolyline(deformed, SWX_REPORTED.foldedSpringWidthUm));
+    }
   }
   return parts;
 }
@@ -434,10 +437,20 @@ function makeShuttle(moveY) {
     strip([railX, moveY], [5.8, moveY], 1),
     strip([railX, -8 + moveY], [5.8, SWX_ASSUMPTIONS.lowerMovableCombYUm + moveY], 1),
   );
-  // The four folded spring ends attach to the sides of the shuttle. No
-  // spring is allowed to terminate freely at the actuator interface.
-  for (const side of [-1, 1]) {
-    beams.push(strip([railX, side * 3 + moveY], [5.1, side * 3 + moveY], 0.45));
+  // All four spring tips must attach to the corresponding moving rail.
+  // Place finite-area bridges under the 200nm flexure terminals.
+  const springTipX =
+    2 + 3 * (SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm);
+  for (const signY of [-1, 1]) {
+    for (const signX of [-1, 1]) {
+      beams.push(
+        strip(
+          [signX * railX, signY * 3 + moveY],
+          [signX * springTipX, signY * 3 + moveY],
+          0.45,
+        ),
+      );
+    }
   }
   return beams;
 }
