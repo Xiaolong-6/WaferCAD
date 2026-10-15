@@ -1586,7 +1586,12 @@ export function createSnapshotManager({
 
   // Keep staged History data private until all copies and lineage repairs finish.
   // Both synchronous callers and cooperative startup use this same importer.
-  function* stageImportedRecords(value, branchState = null, beforeCommit = null, cooperative = false) {
+  function* stageImportedRecords(
+    value,
+    branchState = null,
+    beforeCommit = null,
+    cooperative = false,
+  ) {
     if (!Array.isArray(value)) {
       clear();
       return 0;
@@ -1637,7 +1642,11 @@ export function createSnapshotManager({
     performance.measure('wafercad:history:validation', {
       start: validationStart,
       end: performance.now(),
-      detail: { states: states.length, batches: validationBatchCount, activeMs: validationActiveMs },
+      detail: {
+        states: states.length,
+        batches: validationBatchCount,
+        activeMs: validationActiveMs,
+      },
     });
     const isValid = (state) => (validStates ? validStates.has(state) : validateState(state));
 

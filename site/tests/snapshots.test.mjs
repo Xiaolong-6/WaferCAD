@@ -283,7 +283,10 @@ test('abort during cooperative validation keeps previous History and skips publi
   assert.equal(manager.list()[0].id, 'previous');
   abort.abort();
   await assert.rejects(pending, { name: 'AbortError' });
-  assert.deepEqual(manager.list().map((item) => item.id), ['previous']);
+  assert.deepEqual(
+    manager.list().map((item) => item.id),
+    ['previous'],
+  );
 });
 
 test('one wide imported History state yields before publication and preserves exact copies', async () => {
