@@ -206,7 +206,10 @@ test('longitudinal shuttle physically connects both moving comb handles', async 
       component: componentIndices[index],
     }));
     const details = JSON.stringify(disconnected);
-    assert.ok(componentIndices.every((index) => index >= 0), pose + ' missing point ' + details);
+    assert.ok(
+      componentIndices.every((index) => index >= 0),
+      pose + ' missing point ' + details,
+    );
     assert.equal(
       new Set(componentIndices).size,
       1,
