@@ -242,6 +242,10 @@ export async function buildTcmosInverter({
     height: FIELD_UM[1],
     thickness: BASE_THICKNESS_UM,
   });
+  // This opt-in example stores qualitative doping intent throughout History.
+  // Preserve its existing empty snapshots without changing ordinary legacy
+  // examples, which never opted into the dopantRegions model extension.
+  model.dopantRegions = [];
   model.layers[0].name = 'Si (100) substrate; 2 µm display thickness';
   const base = {
     shape: 'rect',
