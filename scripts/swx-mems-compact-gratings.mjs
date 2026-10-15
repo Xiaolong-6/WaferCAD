@@ -28,7 +28,8 @@ export const SWX_COMPACT_GRATING_ASSUMPTIONS = Object.freeze({
 });
 
 function grooveAnnulus(cx, cy, inside, outside, assumptions) {
-  const outer = [], inner = [];
+  const outer = [],
+    inner = [];
   const { sectorHalfAngleRad: extent, segmentsPerArc: segments } = assumptions;
   for (let index = 0; index <= segments; index++) {
     const angle = -extent + (2 * extent * index) / segments;
@@ -38,9 +39,7 @@ function grooveAnnulus(cx, cy, inside, outside, assumptions) {
   return [...outer, ...inner.reverse()];
 }
 
-export function createCompactGratingGrooves(
-  assumptions = SWX_COMPACT_GRATING_ASSUMPTIONS,
-) {
+export function createCompactGratingGrooves(assumptions = SWX_COMPACT_GRATING_ASSUMPTIONS) {
   const {
     centersUm,
     padWidthUm,
@@ -52,12 +51,13 @@ export function createCompactGratingGrooves(
   if (!(groovePitchUm > grooveWidthUm && grooveWidthUm > 0)) {
     throw new Error('Compact grating pitch must exceed positive groove width');
   }
-  const maxRadius = firstGrooveRadiusUm + (groovesPerTerminal - 1) * groovePitchUm +
-    grooveWidthUm;
+  const maxRadius =
+    firstGrooveRadiusUm + (groovesPerTerminal - 1) * groovePitchUm + grooveWidthUm;
   if (!(firstGrooveRadiusUm > 0 && padWidthUm / 2 > maxRadius)) {
     throw new Error('Compact grating arcs must stay entirely on supported silicon pads');
   }
-  const grooves = [], probes = [];
+  const grooves = [],
+    probes = [];
   for (const [cx, cy] of centersUm) {
     for (let i = 0; i < groovesPerTerminal; i++) {
       const radius = firstGrooveRadiusUm + i * groovePitchUm;
