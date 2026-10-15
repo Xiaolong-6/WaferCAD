@@ -121,9 +121,10 @@ try {
       // Lease acquisition occurs before asynchronous reconciliation and Save.
       // Wait for the completed user-facing transaction, not the early lease flag.
       await second.waitForFunction(
-        () => /This tab now owns the local workspace|Took over this workspace/.test(
-          document.querySelector('[data-slot="status.message"]')?.textContent || '',
-        ),
+        () =>
+          /This tab now owns the local workspace|Took over this workspace/.test(
+            document.querySelector('[data-slot="status.message"]')?.textContent || '',
+          ),
         null,
         { timeout: 30000 },
       );
@@ -149,7 +150,11 @@ try {
         const { loadWorkspaceState } = await import('/workspace-persistence.js');
         return (await loadWorkspaceState())?.name;
       });
-      assert.equal(afterStaleSave, 'Takeover winner', 'Stale writer cannot overwrite takeover');
+      assert.equal(
+        afterStaleSave,
+        'Takeover winner',
+        'Stale writer cannot overwrite takeover',
+      );
     } finally {
       await second.close();
     }
@@ -163,7 +168,9 @@ try {
     assert.equal(recovered.workflow.steps.length, 1, 'Reload restores logical History');
     assert.equal(recovered.projectName, 'Takeover winner');
     assert.deepEqual(errors, []);
-    console.log('v2 History/Recovery: Undo, Redo, lease takeover, stale writer and reload PASS');
+    console.log(
+      'v2 History/Recovery: Undo, Redo, lease takeover, stale writer and reload PASS',
+    );
   } finally {
     await context.close();
   }
