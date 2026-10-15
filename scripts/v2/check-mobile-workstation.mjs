@@ -125,11 +125,7 @@ try {
         };
         return {
           topbar: bounds(topbar),
-          headerItems: [
-            topbar.querySelector('.p-brand'),
-            title,
-            switcher,
-          ].map(bounds),
+          headerItems: [topbar.querySelector('.p-brand'), title, switcher].map(bounds),
           titleOverflow: getComputedStyle(title).textOverflow,
           nav: bounds(nav),
           domains: domains.map((node) => ({
