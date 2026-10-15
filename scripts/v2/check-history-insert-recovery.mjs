@@ -43,7 +43,11 @@ try {
     assert.equal(original.workflow.branches.length, 1);
 
     await page.locator('[data-action="domain:history"]').click();
-    const target = page.locator('.history-step-wrap', { hasText: 'Insert B' }).first();
+    const target = page
+      .locator('.history-step-wrap', {
+        has: page.locator('.process-history-body strong', { hasText: 'Deposit Insert B' }),
+      })
+      .first();
     await target.locator('.snapshot-more-trigger').click();
     await target.locator('.snapshot-more-popover button', { hasText: 'Insert before' }).click();
     await page.getByRole('button', { name: 'Update current Variant', exact: true }).click();
