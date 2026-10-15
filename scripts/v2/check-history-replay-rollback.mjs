@@ -80,14 +80,25 @@ try {
     const applyLabel = await page.locator('#applyOperationBtn').innerText();
     assert.match(applyLabel, /Save edited Step/, 'Native v2 must remain in historical edit mode');
     await page.locator('#applyOperationBtn').click();
+    // The Process button starts an async beforeApply transaction; give its
+    // confirmation or error status a chance to appear before diagnosing it.
+    await page.waitForTimeout(1500);
     const preflight = await page.evaluate(() => ({
       status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
       editBanner: document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+      operation: document.getElementById('operationType')?.value,
+      thickness: document.getElementById('operationThickness')?.value,
+      disabled: document.getElementById('applyOperationBtn')?.disabled,
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((node) => ({
+        hidden: node.hidden,
+        text: node.textContent?.slice(0, 500),
+      })),
       visibleActions: [...document.querySelectorAll('button')]
         .filter((item) => item.getClientRects().length > 0)
         .map((item) => item.textContent?.trim())
         .filter((label) => /Replay|Replace|Cancel|Variant/.test(label || '')),
     }));
+    console.log('V2_HISTORY_EDIT_PAGEERRORS', JSON.stringify(errors));
     console.log('V2_HISTORY_EDIT_PREFLIGHT', JSON.stringify(preflight));
     assert.ok(
       preflight.visibleActions.some((label) => /Replace & replay later Steps/.test(label)),
