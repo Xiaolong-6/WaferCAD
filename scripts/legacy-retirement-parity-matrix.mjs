@@ -45,8 +45,12 @@ export const CRITICAL_LEGACY_CONTRACTS = [
     native: [
       'scripts/v2/check-cross-ui-recovery.mjs',
       'scripts/v2/check-legacy-project-recovery.mjs',
+      'scripts/v2/check-recovery-restore-parity.mjs',
     ],
-    gaps: ['complete storage failure matrix', 'multi-tab lease and rollback equivalence'],
+    gaps: [
+      'IndexedDB failure injection and restore/replay atomicity',
+      'multi-tab takeover conflict race and unavailable-storage recovery',
+    ],
   },
   {
     path: 'scripts/process-geometry-regression.mjs',
