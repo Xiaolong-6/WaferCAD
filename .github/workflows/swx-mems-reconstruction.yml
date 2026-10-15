@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/swx-mems-geometry.mjs'
+      - 'scripts/swx-mems-figure-audit.mjs'
       - 'scripts/build-swx-mems-example.mjs'
       - 'scripts/swx-mems-browser-acceptance.mjs'
       - 'scripts/swx-mems-klayout-verify.py'
@@ -33,6 +34,8 @@ jobs:
         run: npm ci
       - name: Geometry and pose tests
         run: node --test site/tests/swx-mems-geometry.test.mjs
+      - name: Quantify published figure layout discrepancies (advisory)
+        run: node scripts/swx-mems-figure-audit.mjs
       - name: Compile shared fabrication and OFF/ON Variants
         run: node scripts/build-swx-mems-example.mjs
       - name: Install browser runtime
