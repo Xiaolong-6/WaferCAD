@@ -2,7 +2,7 @@
 
 Status: **Draft / P0 design + isolated P1 geometry prototype** (2026-10-15).
 Branch: `feat/multi-wafer-bonding-from-pr229-20261015`.
-Reference example: PR #229, Lian et al., *Microsystems & Nanoengineering* 8, 119 (2022), DOI 10.1038/s41378-022-00462-3.
+Reference example: PR #229, Lian et al., _Microsystems & Nanoengineering_ 8, 119 (2022), DOI 10.1038/s41378-022-00462-3.
 **Do not merge to Main without explicit scientific/visual user approval.**
 
 ## Goal and non-goals
@@ -22,7 +22,7 @@ bow/overlay statistics, and heat/CFD/electrical transport are not predicted.
 - `site/model.js`: canonical physical model = XY nonoverlapping polygon regions
   carrying sorted (layerId, z0, z1) material slabs; micrometre coordinates.
 - `site/process-topology.js` derives actual surfaces/voids and Section/3D.
-- `site/model-array.js` is a *translation-only lateral repetition* mechanism,
+- `site/model-array.js` is a _translation-only lateral repetition_ mechanism,
   **not** a generic stacked-chip assembly; it must not be overloaded.
 - `site/process-face-execution.js` implements atomic Front/Back processing of
   one model; it is not a donor/receiver operation.
@@ -154,7 +154,7 @@ sections; inspect screenshots autonomously before any full CI.
 
 ### P4: GaN interposer article test, PR #229
 
-Build *two independent* `thickness: 400` µm Si material models. Preserve
+Build _two independent_ `thickness: 400` µm Si material models. Preserve
 source-reporting vs inferred XY masks. Etch each separately (front/back 200 µm
 DRIE where paper-supported), align correctly and Bond once. Verify total
 interposer 800 µm only at physically solid sites, open longitudinal coolant

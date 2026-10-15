@@ -30,13 +30,17 @@ function requireFinite(value, name) {
 
 function assertSupported(model, name) {
   if (model?.kernel !== 'vector-2.5d-v1') {
-    throw new Error(`Bond ${name} must be a resolved vector-2.5d-v1 model (array inputs are not yet supported).`);
+    throw new Error(
+      `Bond ${name} must be a resolved vector-2.5d-v1 model (array inputs are not yet supported).`,
+    );
   }
   if (model?.units?.xy !== 'µm' || model?.units?.z !== 'µm') {
     throw new Error(`Bond ${name} must use canonical physical µm coordinates.`);
   }
   if (model?.implants?.length || model?.electricalRegions?.length) {
-    throw new Error(`Bond ${name} contains annotations; remapping of physical Implant/Electrical Regions is not yet supported.`);
+    throw new Error(
+      `Bond ${name} contains annotations; remapping of physical Implant/Electrical Regions is not yet supported.`,
+    );
   }
   validateProcessModel(model);
 }
@@ -172,14 +176,22 @@ export function bondWaferModels(receiver, donor, request = {}) {
   if (!['x', 'y'].includes(options.flipAxis)) {
     throw new Error('Bond flipAxis must be x or y.');
   }
-  if (typeof options.donorId !== 'string' || !options.donorId.trim() || options.donorId.length > 64) {
+  if (
+    typeof options.donorId !== 'string' ||
+    !options.donorId.trim() ||
+    options.donorId.length > 64
+  ) {
     throw new Error('Bond donorId must be a nonempty identifier (maximum 64 characters).');
   }
   if (request.method != null && request.method !== 'direct') {
-    throw new Error('Bond prototype supports only direct contact without an intermediate material.');
+    throw new Error(
+      'Bond prototype supports only direct contact without an intermediate material.',
+    );
   }
   if (request.gapUm != null && requireFinite(request.gapUm, 'gapUm') !== 0) {
-    throw new Error('Bond direct contact requires zero gap; an adhesive spacer must be modeled explicitly.');
+    throw new Error(
+      'Bond direct contact requires zero gap; an adhesive spacer must be modeled explicitly.',
+    );
   }
   assertSupported(receiver, 'receiver');
   assertSupported(donor, 'donor');
@@ -193,17 +205,19 @@ export function bondWaferModels(receiver, donor, request = {}) {
   const transformed = preparedDonor(candidate, donor, options, zShift, flipZ);
 
   const receiverContact = contactFootprint(receiver, options.receiverFace, receiverPlane);
-  const donorContact = unionGeometries(transformed.regions
-    .filter((region) => {
-      const z = options.receiverFace === 'front'
-        ? region.stack[0]?.z0
-        : region.stack.at(-1)?.z1;
-      return z !== undefined && Math.abs(z - receiverPlane) <= Z_TOLERANCE_UM;
-    })
-    .map((region) => region.geom));
+  const donorContact = unionGeometries(
+    transformed.regions
+      .filter((region) => {
+        const z = options.receiverFace === 'front' ? region.stack[0]?.z0 : region.stack.at(-1)?.z1;
+        return z !== undefined && Math.abs(z - receiverPlane) <= Z_TOLERANCE_UM;
+      })
+      .map((region) => region.geom),
+  );
   const contact = intersection(receiverContact, donorContact);
   if (isEmpty(contact) || !positivePolygonArea(contact)) {
-    throw new Error('Bond rejected: no finite-area physical contact exists at the selected interface.');
+    throw new Error(
+      'Bond rejected: no finite-area physical contact exists at the selected interface.',
+    );
   }
 
   candidate.layers.push(...transformed.layers);
