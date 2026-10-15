@@ -30,5 +30,7 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Explain new test formatter delta
+        run: npx prettier scripts/v2/check-recipe-preflight-atomicity.mjs | diff -u scripts/v2/check-recipe-preflight-atomicity.mjs - || true
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
