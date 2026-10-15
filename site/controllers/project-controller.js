@@ -385,6 +385,33 @@ export function createProjectController({
             status(`Restored legacy saved state "${bookmark.name}".`);
           },
         });
+      } else {
+        const requiresVariantSwitch = Boolean(bookmark.branchId && bookmark.branchId !== activeBranch.id);
+        bookmarkActions.push({
+          label: 'Restore bookmark',
+          disabled: requiresVariantSwitch,
+          title: requiresVariantSwitch
+            ? 'Switch to this bookmark\'s Variant before restoring its saved view.'
+            : 'Restore the saved Process state, inspection camera, ROI and Section.',
+          run: async () => {
+            if (
+              !(await prepareHistoryReplacement(
+                'pre-snapshot-bookmark-restore',
+                'Bookmark restore',
+              ))
+            ) {
+              return;
+            }
+            if (!snapshotManager.restore(bookmark.id)) {
+              status('Bookmark state failed validation.', 'error');
+              return;
+            }
+            refreshAfterSnapshotLoad();
+            onProjectChanged();
+            renderSnapshots();
+            status(`Restored bookmark "${bookmark.name}".`);
+          },
+        });
       }
       bookmarkActions.push(
         {
