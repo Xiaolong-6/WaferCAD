@@ -156,6 +156,17 @@
     );
     root.replaceChildren(workbench);
     mounted = workbench;
+    const syncKeyboard = () => {
+      const active = document.activeElement;
+      const editing = active?.matches('input, select, textarea, [contenteditable="true"]');
+      const occluded = window.innerHeight - (window.visualViewport?.height || window.innerHeight);
+      mounted.dataset.keyboard = narrow() && state.mobile === 'edit' && editing && occluded > 120
+        ? 'open'
+        : 'closed';
+    };
+    document.addEventListener('focusin', syncKeyboard);
+    document.addEventListener('focusout', syncKeyboard);
+    window.visualViewport?.addEventListener('resize', syncKeyboard);
     const tooltips = window.WaferCadV2TooltipController?.create({ root: document });
 
     // Share one measured default between initial ARIA state, drag/keyboard
@@ -228,18 +239,25 @@
       mobileSection.setAttribute('aria-pressed', String(state.view === 'section'));
     }
     function renderMobileNav() {
-      if (narrow()) {
-        navHost.setAttribute('aria-label', state.mobile === 'edit' ? 'Edit workspaces' : 'Views');
-        navHost.replaceChildren(
-          state.mobile === 'edit' ? mobileView : mobileEdit,
-          ...(state.mobile === 'edit'
-            ? [...navButtons.values()]
-            : [...viewButtons.values(), mobileSection]),
-        );
-      } else {
-        navHost.setAttribute('aria-label', 'Workspaces');
-        navHost.replaceChildren(navLabel, ...navButtons.values(), hideEditor);
-      }
+      const compact = narrow();
+      const desired = compact
+        ? [
+            state.mobile === 'edit' ? mobileView : mobileEdit,
+            ...(state.mobile === 'edit'
+              ? [...navButtons.values()]
+              : [...viewButtons.values(), mobileSection]),
+          ]
+        : [navLabel, ...navButtons.values(), hideEditor];
+      navHost.setAttribute(
+        'aria-label',
+        compact ? (state.mobile === 'edit' ? 'Edit workspaces' : 'Views') : 'Workspaces',
+      );
+      // Re-rendering a view must not detach the focused navigation control.
+      if (
+        navHost.childNodes.length !== desired.length ||
+        desired.some((control, index) => navHost.childNodes[index] !== control)
+      )
+        navHost.replaceChildren(...desired);
     }
     function selectedViews(info) {
       const mode = narrow() ? 'single' : state.mode;
@@ -455,6 +473,7 @@
       renderPanel(info);
       renderStage(info);
       renderMobileNav();
+      syncKeyboard();
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
       renderVersion(info);
@@ -484,6 +503,9 @@
         ]),
       destroy: () => {
         adapters.destroy();
+        document.removeEventListener('focusin', syncKeyboard);
+        document.removeEventListener('focusout', syncKeyboard);
+        window.visualViewport?.removeEventListener('resize', syncKeyboard);
         tooltips?.destroy();
         overlays.destroy();
       },
