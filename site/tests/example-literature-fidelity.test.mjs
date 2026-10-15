@@ -344,3 +344,49 @@ test('PERC GDS Variant has no mask-edge Ag curtain and a geometry-neutral sinter
     for (const bookmark of bookmarks) assert.equal(bookmark.state.modelRef, node.state.modelRef);
   }
 });
+
+test('Regenerated literature projects retain restorable History and Variant ancestry', async () => {
+  for (const id of [
+    'suspended-silica-microdisks',
+    'perc-solar-cells-point-contacts',
+    'fully-textured-perovskite-silicon-tandem',
+  ]) {
+    const project = await example(id);
+    const graph = project.snapshotBranches;
+    const ids = graph.nodes.map((node) => node.id);
+    assert.equal(new Set(ids).size, ids.length, id + ': duplicate History node ID');
+    const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+    const branches = new Map(graph.branches.map((branch) => [branch.id, branch]));
+    assert.equal(branches.size, graph.branches.length, id + ': duplicate Variant ID');
+    assert.ok(branches.has(graph.activeBranchId), id + ': missing active Variant');
+
+    for (const branch of graph.branches) {
+      assert.ok(nodes.has(branch.headNodeId), id + ': dangling Variant head ' + branch.id);
+      const visited = new Set();
+      let cursor = branch.headNodeId;
+      while (cursor != null) {
+        assert.ok(!visited.has(cursor), id + ': cyclic History at ' + cursor);
+        visited.add(cursor);
+        const node = nodes.get(cursor);
+        assert.ok(node, id + ': missing History ancestor ' + cursor);
+        if (node.parentId != null) {
+          const parent = nodes.get(node.parentId);
+          assert.ok(parent, id + ': dangling History parent ' + node.parentId);
+        }
+        cursor = node.parentId;
+      }
+    }
+    for (const snapshot of project.snapshots) {
+      if (snapshot.historyNodeId == null) continue;
+      const node = nodes.get(snapshot.historyNodeId);
+      assert.ok(node, id + ': dangling step bookmark ' + snapshot.historyNodeId);
+      if (snapshot.state?.modelRef !== undefined && node.state?.modelRef !== undefined) {
+        assert.equal(
+          snapshot.state.modelRef,
+          node.state.modelRef,
+          id + ': bookmark must restore the recorded material state',
+        );
+      }
+    }
+  }
+});
