@@ -138,11 +138,9 @@ try {
       url.searchParams.get('view') === 'section' &&
       url.hash === '#old-preview-bookmark',
   );
-  await page.waitForFunction(
-    () => window.WaferCadV2Workstation?.ready,
-    null,
-    { timeout: 120000 },
-  );
+  await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+    timeout: 120000,
+  });
   const previewState = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   assert.ok(previewState.model.layers.length > 1, 'Retired preview links retain real geometry');
   assert.equal(previewState.workflow.writable, false, 'Retired preview link has no writer lease');
