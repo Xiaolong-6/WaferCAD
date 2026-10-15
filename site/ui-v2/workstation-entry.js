@@ -250,9 +250,13 @@ try {
     const action = trigger.dataset.action;
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
-      uiState.maximize = domain === 'mask' ? 'mask' : null;
+      // Compact navigation keeps its prior single-view behavior; desktop
+      // workflow Mask explicitly opens/maximizes the real Mask docked panel.
+      uiState.maximize = !desktopDockingActive() && domain === 'mask' ? 'mask' : null;
       if (domain === 'mask') uiState.view = 'mask';
       selectPane('edit', domain);
+      if (domain === 'mask' && desktopDockingActive())
+        changeDesktopLayout({ type: 'FOCUS_VIEW', view: 'mask' });
       render();
     } else if (action === 'dock:overview') {
       changeDesktopLayout({ type: 'RESET_OVERVIEW' });
