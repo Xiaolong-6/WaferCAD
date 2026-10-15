@@ -70,7 +70,16 @@ function polygonBounds(poly) {
 
 function unionPolygonComponents(geometries) {
   const entries = [];
+  const seenGeometryRefs = new WeakSet();
   for (const geom of geometries || []) {
+    // Union is idempotent: repeated *identical object references* represent
+    // the same physical polygon set. Shared Geometry/History templates can
+    // otherwise force duplicate normalization and expensive Boolean sweeps.
+    // Keep value-equal but independently owned geometries in the input.
+    if (geom && typeof geom === 'object') {
+      if (seenGeometryRefs.has(geom)) continue;
+      seenGeometryRefs.add(geom);
+    }
     for (const poly of normalizeMulti(geom)) {
       const bounds = polygonBounds(poly);
       if (bounds) entries.push({ geom: [poly], bounds });
