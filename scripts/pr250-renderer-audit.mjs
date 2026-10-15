@@ -238,6 +238,9 @@ try {
       { name: 'transparent', opacity: 0.5, borders: true, fast: true },
       { name: 'transparent-back', opacity: 0.15, borders: true, fast: true, back: true },
       { name: 'quality-zoom', opacity: 0.5, borders: true, fast: false, zoom: 0.7 },
+      ...(fixture.name.includes('-back-') || fixture.name.includes('-both-')
+        ? [{ name: 'underneath', opacity: 0.5, borders: true, fast: true, underneath: true }]
+        : []),
     ]) {
       const started = performance.now();
       await page.evaluate(
@@ -248,7 +251,9 @@ try {
           const position = fit.position.map(
             (value, index) =>
               target[index] +
-              (value - target[index]) * (config.zoom || 1) * (config.back && index < 2 ? -1 : 1),
+              (value - target[index]) *
+                (config.zoom || 1) *
+                ((config.back && index < 2) || (config.underneath && index === 2) ? -1 : 1),
           );
           window.view.setViewState({ ...fit, position });
         },
