@@ -268,7 +268,10 @@ test('3D Border preserves accessible checked/focus states and attenuates buried 
   assert.match(style, /\.view-head \.three-border-toggle:has\(input:checked\)/);
   assert.match(style, /#threeBorderControl:has\(input:focus-visible\)/);
   assert.match(threeView, /waferCadBorderOrder/);
-  assert.match(threeView, /object\.renderOrder = object\.userData\?\.waferCadBorderOrder \?\? object\.renderOrder/);
+  assert.match(
+    threeView,
+    /object\.renderOrder = object\.userData\?\.waferCadBorderOrder \?\? object\.renderOrder/,
+  );
   assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(threeView, /case 'material-interface':/);
 });
