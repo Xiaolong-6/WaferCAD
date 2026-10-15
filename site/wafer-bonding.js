@@ -1,14 +1,39 @@
 // Experimental, geometry-only multi-wafer direct-bond kernel.
 // Deliberately separate from Process/Recipe until assembly provenance, replay,
 // storage schema and UI have independent acceptance contracts.
+// Import lazy polygon boolean primitives so importing project-io.js does not
+// require the Process geometry kernel before the caller has initialized it.
 import {
-  difference,
-  intersection,
-  isEmpty,
-  multiBounds,
-  transformMulti,
-  unionGeometries,
-} from './vector-geometry.js';
+  booleanWithQuantizedRetry,
+  normalizeMulti,
+  robustDifference as difference,
+  robustIntersection as intersection,
+} from './polygon-boolean.js';
+
+const isEmpty = (geometry) => !geometry || geometry.length === 0;
+const transformMulti = (geometry, transform) =>
+  normalizeMulti(geometry.map((polygon) => polygon.map((ring) => ring.map(transform))));
+function multiBounds(geometry) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const polygon of geometry)
+    for (const ring of polygon)
+      for (const [x, y] of ring) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+  return { minX, minY, maxX, maxY };
+}
+function unionGeometries(geometries) {
+  const inputs = geometries.filter((geometry) => !isEmpty(geometry));
+  if (inputs.length === 0) return [];
+  if (inputs.length === 1) return structuredClone(inputs[0]);
+  return booleanWithQuantizedRetry('union', inputs);
+}
 import { validateProcessModel } from './project-schema.js';
 
 const Z_TOLERANCE_UM = 1e-9;
