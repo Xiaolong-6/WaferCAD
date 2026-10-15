@@ -299,3 +299,48 @@ test('Record-only closing steps preserve the last real physical structure', asyn
     }
   }
 });
+
+test('PERC GDS Variant has no mask-edge Ag curtain and a geometry-neutral sinter', async () => {
+  const project = await example('perc-solar-cells-point-contacts');
+  const graph = project.snapshotBranches;
+  const branch = graph.branches.find((entry) => entry.id === 'branch-mutknd4v-hcdg7q');
+  assert.ok(branch, 'Missing literature GDS-contact Variant');
+  const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+  const sinter = nodes.get(branch.headNodeId);
+  const rearMetal = nodes.get(sinter.parentId);
+  const platedSilver = nodes.get(rearMetal.parentId);
+  assert.deepEqual(
+    [platedSilver.operation.kind, rearMetal.operation.kind, sinter.operation.kind],
+    ['add', 'add', 'record'],
+  );
+  const silverModel = project.sharedModels[platedSilver.state.modelRef];
+  const rearModel = project.sharedModels[rearMetal.state.modelRef];
+  const finalModel = project.sharedModels[sinter.state.modelRef];
+  const silverLayer = silverModel.layers.find((layer) =>
+    layer.name.includes('Front silver-plated contact fingers'),
+  );
+  assert.ok(silverLayer);
+  const silverSegments = silverModel.regions.flatMap((region) =>
+    region.stack.filter((interval) => interval.layerId === silverLayer.id),
+  );
+  assert.ok(silverSegments.length > 0);
+  for (const interval of silverSegments) {
+    assert.ok(Math.abs(interval.z1 - interval.z0 - 0.2) < 1e-9);
+    assert.notEqual(interval.role, 'conformal-sidewall');
+  }
+  assert.ok(materialVolume(project, silverModel, 'Front silver-plated contact') > 0);
+  assert.ok(
+    Math.abs(
+      materialVolume(project, rearModel, 'Front silver-plated contact') -
+        materialVolume(project, silverModel, 'Front silver-plated contact'),
+    ) < 1e-5,
+    'Rear metal must not change front plated silver occupancy',
+  );
+  assert.deepEqual(finalModel.regions, rearModel.regions);
+  assert.deepEqual(project.sharedModels[branch.headState.modelRef].regions, finalModel.regions);
+  for (const node of [platedSilver, rearMetal, sinter]) {
+    const bookmarks = project.snapshots.filter((entry) => entry.historyNodeId === node.id);
+    assert.ok(bookmarks.length > 0);
+    for (const bookmark of bookmarks) assert.equal(bookmark.state.modelRef, node.state.modelRef);
+  }
+});
