@@ -173,3 +173,26 @@ export function reduceDesktopLayout(state, action) {
       return state;
   }
 }
+
+/** Read-only projection for the desktop Shell: panel placement, navigation and tracks.
+ * The renderer never receives a new project/scene/camera from a layout transition.
+ */
+export function projectDesktopLayout(state) {
+  const displayed = displayedViews(state);
+  const template = resolveTemplate(
+    displayed.length, state.maximized ? 'one-full' : state.preset,
+  );
+  const tracks = state.maximized ? { columns: [1], rows: [1] } : activeTracks(state);
+  return {
+    displayed,
+    highlighted: [...displayed],
+    overviewPressed: isOverview(state),
+    maximized: state.maximized,
+    preset: template?.id || null,
+    columns: tracks?.columns || [],
+    rows: tracks?.rows || [],
+    placements: displayed.map((view, slot) => ({
+      view, ...template.spans[slot],
+    })),
+  };
+}
