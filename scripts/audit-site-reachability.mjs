@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const textExtensions = new Set(['.js', '.mjs', '.html', '.css']);
 const sourceExtensions = new Set(['.js', '.mjs', '.css']);
-const productEntries = ['index.html', 'app.html', 'app-legacy.html', 'guide/index.html'];
+// Source-tree tests still have a real Legacy editor; published Pages ship only
+// the redirect shim. Audit these two execution surfaces independently.
+const sourceEntries = ['index.html', 'app.html', 'app-legacy.html', 'guide/index.html'];
+const pagesEntries = ['index.html', 'app.html', 'guide/index.html'];
+const pagesRedirects = ['app-legacy.html'];
 const devEntries = new Set([
   'app-v2.html',
   'app-v2-main.html',
@@ -85,7 +89,10 @@ function reachableFrom(roots, edges) {
   return seen;
 }
 
-export async function auditSiteReachability(root = resolve('site')) {
+export async function auditSiteReachability(root = resolve('site'), { surface = 'source' } = {}) {
+  if (surface !== 'source' && surface !== 'pages') {
+    throw new Error(`Unknown reachability surface: ${surface}`);
+  }
   const inventory = new Set(await listFiles(root));
   const edges = new Map();
   for (const file of inventory) {
@@ -97,11 +104,16 @@ export async function auditSiteReachability(root = resolve('site')) {
       .filter(Boolean);
     edges.set(file, new Set(targets));
   }
-  const productionRoots = productEntries.filter((file) => inventory.has(file));
+  const productionRoots = (surface === 'pages' ? pagesEntries : sourceEntries).filter((file) =>
+    inventory.has(file),
+  );
+  const compatibilityRoots =
+    surface === 'pages' ? pagesRedirects.filter((file) => inventory.has(file)) : [];
   const developerRoots = [...inventory].filter(
     (file) => isDevelopment(file) && textExtensions.has(extname(file)),
   );
   const production = reachableFrom(productionRoots, edges);
+  const compatibility = reachableFrom(compatibilityRoots, edges);
   const developer = reachableFrom(developerRoots, edges);
   const candidates = [...inventory].filter(
     (file) =>
@@ -113,8 +125,11 @@ export async function auditSiteReachability(root = resolve('site')) {
   const unproven = candidates.filter(isUnproven);
   return {
     scannedFiles: inventory.size,
+    surface,
     productionRoots,
+    compatibilityRoots,
     productionReachable: production.size,
+    compatibilityReachable: compatibility.size,
     developerReachable: developer.size,
     developerOnly,
     unproven,
@@ -122,6 +137,7 @@ export async function auditSiteReachability(root = resolve('site')) {
       'Static file-level evidence does not establish function- or export-level dead code.',
       'Computed URLs, implicit globals and dynamically constructed module paths can be missed.',
       'Unproven paths require manual review and are never automatically deleted.',
+      'The Pages surface must be audited against the staged deploy tree, not source files.',
     ],
   };
 }
