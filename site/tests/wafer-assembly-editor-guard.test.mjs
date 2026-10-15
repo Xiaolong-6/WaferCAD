@@ -15,14 +15,8 @@ test('v15 Assembly file is refused before any ordinary editor state mutation', a
     setSectionEditEnabled: () => calls.push('section-state'),
     readValidatedFile: async () => structuredClone(unsafe),
   });
-  await assert.rejects(
-    () => controller.readProjectSnapshot({}),
-    /requires the multi-wafer editor/,
-  );
-  assert.throws(
-    () => controller.loadProjectSnapshot(unsafe),
-    /requires the multi-wafer editor/,
-  );
+  await assert.rejects(() => controller.readProjectSnapshot({}), /requires the multi-wafer editor/);
+  assert.throws(() => controller.loadProjectSnapshot(unsafe), /requires the multi-wafer editor/);
   assert.deepEqual(calls, [], 'not even transient editor selection may be changed');
 });
 
