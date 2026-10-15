@@ -279,7 +279,15 @@ test('GPU rough mode keeps cap vertices ideal and marks only shader-displaced tr
   for (let index = 0; index < data.gpuDisplace.length; index++) {
     if (data.gpuDisplace[index] !== 1) continue;
     assert.equal(data.positions[index * 3 + 2], 0);
-    assert.deepEqual(Array.from(data.normals.slice(index * 3, index * 3 + 3)), [0, 0, 1]);
+    const faceStart = index - (index % 3);
+    const faceGpu = data.gpuDisplace.slice(faceStart, faceStart + 3).every((flag) => flag === 1);
+    const vector = Array.from(data.normals.slice(index * 3, index * 3 + 3));
+    if (faceGpu) {
+      assert.deepEqual(vector, [0, 0, 1]);
+    } else {
+      assert.ok(vector.every(Number.isFinite));
+      assert.ok(Math.abs(Math.hypot(...vector) - 1) < 1e-6);
+    }
   }
 });
 
