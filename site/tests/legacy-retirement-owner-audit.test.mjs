@@ -34,6 +34,9 @@ test('Legacy retirement inventory retains live scientific owners until verified 
     'scripts/array-renderer-regression.mjs',
     'scripts/fig3-full-replay-acceptance.mjs',
     'site/ui-v2/real-view-bridge.js',
+    'site/ui-v2/real-view-bridge.css',
+    'site/ui-v2/real-section-controls.js',
+    'site/ui-v2/real-three-controls.js',
     'site/app-v2-real.html',
     'site/app-legacy.html',
     'site/app.js',
@@ -46,7 +49,8 @@ test('Legacy retirement inventory retains live scientific owners until verified 
   assert.ok(audit.counts.helpers > 0);
   assert.ok(audit.counts.bridge > 0);
   assert.equal(audit.counts.sourceOnlyEditor, 3, 'Legacy sources tracked but not auto-deleted');
-  assert.ok(audit.counts.experimentalD1 >= 2, 'Experimental D1 route and bridge tracked');
+  assert.ok(audit.counts.experimentalD1 >= 4, 'D1-only route, bridge and Section tracked');
+  assert.equal(audit.counts.sharedProductionControls, 1, 'Shared v2 3D controls preserved');
   assert.ok(
     audit.owners.some(
       (owner) =>
@@ -71,6 +75,11 @@ test('source-only editor, experimental D1 and public redirect are distinct owner
   assert.equal(classifyRetirementSurface('site/workstation.css'), 'source-only-legacy-editor');
   assert.equal(classifyRetirementSurface('site/app-v2-real.html'), 'experimental-d1');
   assert.equal(classifyRetirementSurface('site/ui-v2/real-view-bridge.js'), 'experimental-d1');
+  assert.equal(classifyRetirementSurface('site/ui-v2/real-section-controls.js'), 'experimental-d1');
+  assert.equal(
+    classifyRetirementSurface('site/ui-v2/real-three-controls.js'),
+    'shared-production-controls',
+  );
   assert.equal(
     classifyRetirementSurface('scripts/build-pages-artifact.mjs'),
     'published-redirect-owner',
