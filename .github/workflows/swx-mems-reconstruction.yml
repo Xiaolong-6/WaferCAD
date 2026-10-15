@@ -34,10 +34,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: Inspect candidate Prettier formatting (temporary; remove after diff)
-        run: |
-          npx prettier --write scripts/swx-mems-actuator-candidate.mjs site/tests/swx-mems-actuator-candidate.test.mjs
-          git diff -- scripts/swx-mems-actuator-candidate.mjs site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Compact actuator targeted scientific contracts
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Geometry and pose tests
