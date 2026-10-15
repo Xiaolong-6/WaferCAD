@@ -1606,9 +1606,15 @@ export function createSnapshotManager({
       // snapshot validations. The public synchronous contract is unchanged.
       if (cooperative && cooperativeValidateStates) {
         const validationBatchSize = 2;
-        for (let start = 0; start < states.length; start += validationBatchSize) {
+        // The same state may appear in milestones, process nodes and branch
+        // heads. validateStates consumes each attestation once; do not feed
+        // repeated references into different validation batches.
+        const uniqueStates = [...new Set(states)];
+        for (let start = 0; start < uniqueStates.length; start += validationBatchSize) {
           const began = performance.now();
-          const batchIsValid = validateStates(states.slice(start, start + validationBatchSize));
+          const batchIsValid = validateStates(
+            uniqueStates.slice(start, start + validationBatchSize),
+          );
           validationActiveMs += performance.now() - began;
           validationBatchCount++;
           // Consume the complete attestation, even after a failed batch.
