@@ -166,6 +166,9 @@
     opacity: 0.85;
     pointer-events: none;
   }
+  body[data-workstation]:not([data-preview-mode]) .v2-dock-ghost[hidden] {
+    display: none;
+  }
   body[data-workstation]:not([data-preview-mode]) .p-view.is-dock-target {
     outline: 2px solid var(--wc-accent-active);
     outline-offset: -2px;
