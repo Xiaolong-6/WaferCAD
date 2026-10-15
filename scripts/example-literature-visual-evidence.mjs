@@ -72,7 +72,13 @@ try {
       );
       const examples = [];
       for (const cut of item.cuts) {
-        const project = { ...source, section: { a: cut.a, b: cut.b } };
+        // Saved presentation preferences may open a Detail ROI overlay that
+        // obscures the scientific cut. Keep the underlying geometry intact.
+        const project = {
+          ...source,
+          display: { ...source.display, sectionDetailRoi: null },
+          section: { a: cut.a, b: cut.b },
+        };
         await loadProject(page, project, item.id + '-' + cut.id);
         // Section is a separate dock, not a primary view tab (Main/Mask/3D).
         const sectionPanel = page.locator('#sectionPanel');
