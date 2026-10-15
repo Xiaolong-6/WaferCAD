@@ -76,10 +76,7 @@ test('async worker attestation yields between batches but commits the whole priv
   );
   resume();
   assert.equal(await pending, project);
-  assert.equal(
-    state.isValidSnapshotStates(snapshots.slice(1).map((record) => record.state)),
-    true,
-  );
+  assert.equal(state.isValidSnapshotStates(snapshots.slice(1).map((record) => record.state)), true);
   snapshots[0].state.model.regions[0].xy[0] = 999;
   assert.equal(
     state.isValidSnapshotStates([snapshots[0].state]),
