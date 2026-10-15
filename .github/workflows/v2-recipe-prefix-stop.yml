@@ -6,6 +6,8 @@ on:
     paths:
       - 'scripts/v2/check-recipe-prefix-stop-parity.mjs'
       - 'site/controllers/process-recipe-controller.js'
+      - 'site/controllers/process-task-controller.js'
+      - 'site/tests/process-task-controller.test.mjs'
       - 'site/process-recipe-preflight.js'
       - 'site/process-recipe.js'
       - '.github/workflows/v2-recipe-prefix-stop.yml'
@@ -29,6 +31,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify transaction Abort notification ordering
+        run: node --test site/tests/process-task-controller.test.mjs site/tests/process-task-abort-fault.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start production v2 Workstation
         shell: bash
