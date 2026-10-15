@@ -35,6 +35,8 @@ on:
       - 'site/controllers/workspace-persistence-controller.js'
       - 'site/ui-v2/workstation-workflow.js'
       - 'site/three-view.js'
+      - 'site/renderer-sidewall-triangle.js'
+      - 'site/tests/renderer-sidewall-triangle.test.mjs'
       - 'site/history-head-validation.js'
       - 'site/history-head-validate-worker.js'
       - 'site/workspace-snapshots.js'
@@ -77,7 +79,7 @@ jobs:
       - name: Hardware adapter classification regression
         run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs
       - name: Targeted renderer parity and History integrity tests
-        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
