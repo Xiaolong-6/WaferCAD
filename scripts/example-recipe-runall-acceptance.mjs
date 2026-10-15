@@ -278,6 +278,40 @@ try {
           }
         }
         assert.ok(updatedReferences >= 3, 'No final History/snapshot references were updated');
+        const finalNode = full.snapshotBranches.nodes.find(
+          (node) => node.id === activeBranch.headNodeId,
+        );
+        const predecessor = full.snapshotBranches.nodes.find(
+          (node) => node.id === finalNode.parentId,
+        );
+        const savedPredecessor = stored.snapshotBranches.nodes.find(
+          (node) => node.id === predecessor?.id,
+        );
+        assert.equal(finalNode.operation.kind, 'record');
+        assert.ok(
+          predecessor && Number.isInteger(savedPredecessor?.state?.modelRef),
+          'Expected a unique physical predecessor to the final Record',
+        );
+        const oldPredecessorModel = predecessor.state.model;
+        const predecessorModel = structuredClone(nextModel);
+        predecessorModel.revision = oldPredecessorModel.revision;
+        predecessorModel.processRevision = oldPredecessorModel.processRevision;
+        predecessor.state.model = predecessorModel;
+        for (const [index, snapshot] of (full.snapshots || []).entries()) {
+          if (snapshot.historyNodeId === predecessor.id) {
+            assert.equal(
+              stored.snapshots[index].state.modelRef,
+              savedPredecessor.state.modelRef,
+              'Historical physical step was not stored as an independent model',
+            );
+            snapshot.state.model = predecessorModel;
+          }
+        }
+        assert.deepEqual(
+          predecessor.state.model.regions,
+          full.model.regions,
+          'A non-geometric final Record must not change material geometry',
+        );
         const packed = JSON.stringify(
           prepareProjectForWorkspaceStorage(full, { geometryTemplates: false }),
         );
