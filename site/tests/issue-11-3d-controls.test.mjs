@@ -147,8 +147,6 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   // incorrect single-pass ordering. Smooth single-Z material caps now have a
   // dedicated guarded exception; all other meshes remain two-pass.
   assert.match(threeView, /canRenderPlanarCapInSinglePass/);
-  assert.match(threeView, /roughInterface: Boolean\(part\.buried && part\.appearance\?\.kind === 'rough'\)/);
-  assert.match(threeView, /interfaceMaterialState\(opacity, \{ rough: descriptor\.roughInterface \}\)/);
   assert.match(threeView, /transparentScene: presentationMode\(\) === 'transparent'/);
   assert.equal((threeView.match(/\.forceSinglePass = true/g) || []).length, 1);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);

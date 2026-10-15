@@ -1,9 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  canRenderPlanarCapInSinglePass,
-  transparentInterfaceOpacity,
-} from '../transparent-pass-policy.js';
+import { canRenderPlanarCapInSinglePass } from '../transparent-pass-policy.js';
 
 const materialState = { transparent: true, opacity: 0.5 };
 const canUseSinglePass = (options) =>
@@ -71,12 +68,4 @@ test('opaque scenes, sides, rough surfaces and annotations retain the two-pass p
   );
   assert.equal(canUseSinglePass({ materialState }), false);
   assert.equal(canRenderPlanarCapInSinglePass(), false);
-});
-
-test('rough buried-interface fill is subdued while physical interfaces remain visible', () => {
-  assert.equal(transparentInterfaceOpacity(0.5), 0.21);
-  assert.equal(transparentInterfaceOpacity(0.5, { rough: true }), 0.06);
-  assert.equal(transparentInterfaceOpacity(1, { rough: true }), 0.1);
-  assert.equal(transparentInterfaceOpacity(0.1, { rough: true }), 0.025);
-  assert.equal(transparentInterfaceOpacity(0.5, { rough: false }), 0.21);
 });

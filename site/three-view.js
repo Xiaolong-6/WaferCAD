@@ -5,10 +5,7 @@ import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
-import {
-  canRenderPlanarCapInSinglePass,
-  transparentInterfaceOpacity,
-} from './transparent-pass-policy.js';
+import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
@@ -1099,9 +1096,9 @@ export function createThreeView({
     }
   }
 
-  function interfaceMaterialState(opacity, { rough = false } = {}) {
+  function interfaceMaterialState(opacity) {
     return {
-      opacity: transparentInterfaceOpacity(opacity, { rough }),
+      opacity: Math.max(0.035, Math.min(0.34, opacity * 0.42)),
       transparent: true,
       depthTest: true,
       depthWrite: false,
@@ -1122,7 +1119,7 @@ export function createThreeView({
       case 'material-interface':
         return {
           visible: transparent,
-          materialState: interfaceMaterialState(opacity, { rough: descriptor.roughInterface }),
+          materialState: interfaceMaterialState(opacity),
           transparentSort: true,
         };
       case 'border':
@@ -2933,7 +2930,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const stateFor = (part) => (part.buried ? interfaceState : materialState),
         presentationFor = (part, sortBias = 0) => ({
           kind: part.buried ? 'material-interface' : 'material-exterior',
-          roughInterface: Boolean(part.buried && part.appearance?.kind === 'rough'),
           sortBias,
         }),
         bucketKey = (part, state) => {

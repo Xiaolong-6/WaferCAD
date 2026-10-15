@@ -16,16 +16,3 @@ export function canRenderPlanarCapInSinglePass({
     (presentation.kind === 'material-exterior' || presentation.kind === 'material-interface')
   );
 }
-
-/**
- * Internal rough layers contain two physically distinct nearby heightfield
- * skins. Keep their colored fill for material context, but de-emphasize the
- * buried one in translucent inspection so multiple unresolved interfaces do
- * not overpower the real section contours. This is presentation only.
- */
-export function transparentInterfaceOpacity(opacity, { rough = false } = {}) {
-  const alpha = Math.max(0, Math.min(1, Number(opacity) || 0));
-  return rough
-    ? Math.max(0.025, Math.min(0.1, alpha * 0.12))
-    : Math.max(0.035, Math.min(0.34, alpha * 0.42));
-}
