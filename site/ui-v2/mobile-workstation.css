@@ -20,11 +20,41 @@
     overflow: visible;
   }
 
+  /* One compact chrome row: home, clipped project title and pane switch.
+     The persistent controls remain the same DOM nodes in both mobile modes. */
   body[data-workstation]:not([data-preview-mode]) .p-topbar {
     position: relative;
     top: auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: var(--wc-space-1);
+    padding: var(--wc-space-1) var(--wc-space-2);
     z-index: var(--wc-z-toolbar);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar .p-brand {
+    margin-left: 0;
+    padding-inline: 0;
+    white-space: nowrap;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar .p-project-title {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: var(--wc-font-aux);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar .p-review-badge:empty {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-mobile-return {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-mobile-return > .wc-button {
+    gap: var(--wc-space-1);
+    padding-inline: var(--wc-space-2);
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-body {
@@ -35,15 +65,31 @@
     overflow: visible;
   }
 
+  /* All four domains fit one row at 360px without another horizontal scroller.
+     View results in the header supersedes the duplicate hide-navigation action. */
   body[data-workstation]:not([data-preview-mode]) .p-nav {
     flex-direction: row;
+    flex-wrap: nowrap;
     flex: 0 0 auto;
     min-width: 0;
-    overflow-x: auto;
+    gap: 2px;
+    padding: var(--wc-space-1);
+    overflow-x: hidden;
     overflow-y: hidden;
     border-right: 0;
     border-bottom: 1px solid var(--wc-border);
-    overscroll-behavior-x: contain;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > [data-action^='domain:'] {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    justify-content: center;
+    padding-inline: var(--wc-space-1);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > [data-action='hide-editor'] {
+    display: none;
   }
 
   /* Touch targets cannot depend on the browser reporting pointer:coarse. */
