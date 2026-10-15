@@ -88,9 +88,7 @@ test('candidate four-terminal grating patterns have physical 150nm etch sites an
   assert.ok(a.grooveWidthUm > 0 && a.groovePitchUm > a.grooveWidthUm);
   assert.ok(
     a.padWidthUm / 2 >
-      a.firstGrooveRadiusUm +
-        (a.groovesPerTerminal - 1) * a.groovePitchUm +
-        a.grooveWidthUm,
+      a.firstGrooveRadiusUm + (a.groovesPerTerminal - 1) * a.groovePitchUm + a.grooveWidthUm,
   );
   assert.equal(a.sourcePitchVerified, false);
   const tol = 1e-8;
@@ -99,8 +97,9 @@ test('candidate four-terminal grating patterns have physical 150nm etch sites an
   const isInside = ([px, py], polygon) => {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const [ax, ay] = polygon[i], [bx, by] = polygon[j];
-      if ((ay > py) !== (by > py) && px < ((bx - ax) * (py - ay)) / (by - ay) + ax) {
+      const [ax, ay] = polygon[i],
+        [bx, by] = polygon[j];
+      if (ay > py !== by > py && px < ((bx - ax) * (py - ay)) / (by - ay) + ax) {
         inside = !inside;
       }
     }
@@ -119,7 +118,5 @@ test('candidate four-terminal grating patterns have physical 150nm etch sites an
     }
   }
   assert.equal(a.deviceEtchDepthUm, SWX_REPORTED.ridgeEtchUm);
-  assert.ok(
-    Math.abs(a.residualSiUm - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) < tol,
-  );
+  assert.ok(Math.abs(a.residualSiUm - (SWX_REPORTED.siliconUm - SWX_REPORTED.ridgeEtchUm)) < tol);
 });
