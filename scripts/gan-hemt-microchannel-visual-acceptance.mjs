@@ -304,7 +304,7 @@ try {
   await page.mouse.move(bounds.x + bounds.width * 0.15, bounds.y + bounds.height * 0.49);
   await page.mouse.wheel(0, -900);
   await page.waitForFunction(
-    () => (window.WaferCadV2Workstation?.snapshot().display?.sectionViewport?.zoom || 1) >= 2,
+    () => (window.WaferCadV2Workstation?.snapshot().sectionViewport?.zoom || 1) >= 2,
     null,
     { timeout: 30000 },
   );
@@ -312,7 +312,7 @@ try {
   const tsvDetail = await sectionCanvas.screenshot({ type: 'png' });
   await writeFile(new URL('tsv-transverse-zoomed.png', directory), tsvDetail);
   const sectionZoom = await page.evaluate(
-    () => window.WaferCadV2Workstation.snapshot().display.sectionViewport.zoom,
+    () => window.WaferCadV2Workstation.snapshot().sectionViewport.zoom,
   );
   report.views.tsvTransverse = {
     bytes: tsvSectionShot.length,
