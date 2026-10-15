@@ -63,7 +63,7 @@ function createStateCloner() {
     return stored;
   }
 
-  return function cloneState(value) {
+  function cloneState(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return clone(value);
     const state = {};
     for (const [key, item] of Object.entries(value)) {
@@ -72,7 +72,23 @@ function createStateCloner() {
       else state[key] = clone(item);
     }
     return state;
+  }
+
+  // Only the privately staged History importer uses this cooperative version.
+  // A large model/layout is still cloned atomically, but independent fields
+  // can yield before another costly clone. No partially copied state escapes.
+  cloneState.cooperative = function* (value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return clone(value);
+    const state = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (key === 'layout') state.layout = cloneLayout(item);
+      else if (key === 'model') state.model = cloneModel(item);
+      else state[key] = clone(item);
+      yield;
+    }
+    return state;
   };
+  return cloneState;
 }
 
 function cleanName(value) {
@@ -1616,7 +1632,7 @@ export function createSnapshotManager({
         parentId: typeof raw.parentId === 'string' && raw.parentId ? raw.parentId : null,
         historyNodeId:
           typeof raw.historyNodeId === 'string' && raw.historyNodeId ? raw.historyNodeId : null,
-        state: cloneState(raw.state),
+        state: yield* cloneState.cooperative(raw.state),
       });
       seen.add(raw.id);
       yield;
@@ -1649,7 +1665,7 @@ export function createSnapshotManager({
           createdAt,
           processRevision: Number.isInteger(raw.processRevision) ? raw.processRevision : 0,
           operation: raw.operation && typeof raw.operation === 'object' ? clone(raw.operation) : {},
-          state: raw.state && isValid(raw.state) ? cloneState(raw.state) : null,
+          state: raw.state && isValid(raw.state) ? yield* cloneState.cooperative(raw.state) : null,
         });
         nodeIds.add(raw.id);
         yield;
@@ -1681,7 +1697,7 @@ export function createSnapshotManager({
           ? new Date(raw.createdAt).toISOString()
           : new Date(0).toISOString();
         const headState =
-          raw.headState && isValid(raw.headState) ? cloneState(raw.headState) : null;
+          raw.headState && isValid(raw.headState) ? yield* cloneState.cooperative(raw.headState) : null;
         importedBranches.push({
           id: raw.id,
           name: cleanName(raw.name) || (raw.id === MAIN_SNAPSHOT_BRANCH_ID ? 'Main' : raw.id),
