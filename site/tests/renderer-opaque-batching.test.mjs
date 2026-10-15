@@ -3,13 +3,19 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { batchOpaqueExteriorMeshes } from '../renderer-opaque-batching.js';
 
-function addMesh(group, material, z0, z1, {
-  kind = 'material-exterior',
-  translate = 0,
-  mapped = false,
-  indexed = false,
-  rough = false,
-} = {}) {
+function addMesh(
+  group,
+  material,
+  z0,
+  z1,
+  {
+    kind = 'material-exterior',
+    translate = 0,
+    mapped = false,
+    indexed = false,
+    rough = false,
+  } = {},
+) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',

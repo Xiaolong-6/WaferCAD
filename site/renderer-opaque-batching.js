@@ -76,8 +76,7 @@ function compatible(first, second) {
     SAME(first.position.z, second.position.z) &&
     SAME(firstPresentation.sortBias || 0, secondPresentation.sortBias || 0) &&
     Boolean(firstPresentation.planarCap) === Boolean(secondPresentation.planarCap) &&
-    first.geometry.getAttribute('position').usage ===
-      second.geometry.getAttribute('position').usage
+    first.geometry.getAttribute('position').usage === second.geometry.getAttribute('position').usage
   );
 }
 
