@@ -98,7 +98,7 @@ test('OFF/ON physical groups keep stationary anchors and move only the articulat
   assert.deepEqual(off.physicalGroups.fixed, on.physicalGroups.fixed, 'fixed Si must not move');
   assert.notDeepEqual(off.physicalGroups.movable, on.physicalGroups.movable);
   assert.notDeepEqual(off.physicalGroups.flexure, on.physicalGroups.flexure);
-  assert.ok(off.physicalGroups.movable.length > 70, 'missing comb fingers or lattice shuttle');
+  assert.ok(off.physicalGroups.movable.length > 55, 'missing comb fingers or perforated shuttle');
   assert.ok(on.physicalGroups.flexure.length > 30, 'missing flexure centerline segments');
   approx(on.gapUm, 0.015, 1e-10);
 });
@@ -191,10 +191,12 @@ test('lattice shuttle physically connects the upper and lower moving comb buses'
     );
     const travel = g.travelUm;
     const points = [
-      [-20, SWX_REPORTED.shuttleWidthUm / 2 + travel],
-      [25, travel],
-      [25, -11.2 + travel],
-      [42, -6 + travel],
+      [-28, -1.6 + travel], // moving SWX facet attachment
+      [-2.65, travel], // vertical shuttle frame
+      [25, travel], // upper moving comb handle
+      [25, SWX_ASSUMPTIONS.lowerMovableCombYUm + travel], // lower moving handle
+      [5.1, 3 + travel], // top folded-spring junction
+      [5.1, -3 + travel], // bottom folded-spring junction
     ];
     assert.ok(
       footprint.some((polygon) => points.every((point) => v.pointInMulti(point, [polygon]))),
@@ -242,13 +244,22 @@ test('representative grating couplers keep full physical polygon bounds and port
   );
 });
 
-test('shuttle truss uses the reported 6um outside rail separation', () => {
+test('6um shuttle is longitudinal in Y with genuine through-perforations', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
   for (const state of ['off', 'on']) {
     const g = createSwxGeometry(state);
-    const [top, bottom] = g.physicalGroups.shuttle;
-    const yTop = top[0][1];
-    const yBottom = bottom[0][1];
-    approx(yTop - yBottom, SWX_REPORTED.shuttleWidthUm);
+    const [left, right] = g.physicalGroups.shuttle;
+    const outerX = [...left, ...right].map(([x]) => x);
+    approx(Math.max(...outerX) - Math.min(...outerX), SWX_REPORTED.shuttleWidthUm);
+    const y = [...left, ...right].map(([, value]) => value);
+    assert.ok(Math.max(...y) - Math.min(...y) > 2 * SWX_REPORTED.shuttleWidthUm);
+    const solids = v.unionGeometries(
+      g.physicalGroups.shuttle.map((ring) => [[[...ring, ring[0]]]]),
+    );
+    assert.equal(v.pointInMulti([0, 2 + g.travelUm], solids), false, 'shuttle perforation filled');
+    assert.equal(v.pointInMulti([0, 4 + g.travelUm], solids), true, 'shuttle cross brace missing');
   }
 });
 
@@ -322,7 +333,7 @@ test('fixed comb electrodes remain mechanically isolated from the moving shuttle
       components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
     const movable = connectedPart([25, g.travelUm]);
     const upperFixed = connectedPart([25, 9]);
-    const lowerFixed = connectedPart([25, -21]);
+    const lowerFixed = connectedPart([25, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
     assert.ok(movable >= 0 && upperFixed >= 0 && lowerFixed >= 0);
     assert.notEqual(movable, upperFixed, 'Upper fixed comb touches moving Si shuttle in ' + state);
     assert.notEqual(movable, lowerFixed, 'Lower fixed comb touches moving Si shuttle in ' + state);
@@ -341,13 +352,35 @@ test('all 40 fixed comb fingers physically join their anchored handles in OFF an
     );
     const netAt = (point) => components.findIndex((polygon) => v.pointInMulti(point, [polygon]));
     const upperHandle = netAt([25, 9]);
-    const lowerHandle = netAt([25, -21]);
+    const lowerHandle = netAt([25, SWX_ASSUMPTIONS.lowerStationaryCombYUm]);
     assert.ok(upperHandle >= 0 && lowerHandle >= 0);
     assert.notEqual(upperHandle, lowerHandle);
     for (let i = 0; i < 20; i++) {
       const x = 8.8 + i * 1.65;
-      assert.equal(netAt([x, 5.9]), upperHandle, state + ' detached upper fixed finger ' + i);
-      assert.equal(netAt([x, -16.6]), lowerHandle, state + ' detached lower fixed finger ' + i);
+      assert.equal(netAt([x, 5.7]), upperHandle, state + ' detached upper fixed finger ' + i);
+      assert.equal(netAt([x, -9.5]), lowerHandle, state + ' detached lower fixed finger ' + i);
+    }
+  }
+});
+
+test('both electrostatic comb banks increase axial overlap equally along +Y', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxGeometry(state);
+    const banks = pose.physicalGroups.combBanks;
+    assert.equal(banks.fixed.length, 42);
+    assert.equal(banks.moving.length, 42);
+    const extent = (ring, axis) => {
+      const coords = ring.map((point) => point[axis]);
+      return [Math.min(...coords), Math.max(...coords)];
+    };
+    for (let index = 2; index < 42; index++) {
+      const [fx0, fx1] = extent(banks.fixed[index], 0);
+      const [mx0, mx1] = extent(banks.moving[index], 0);
+      const [fy0, fy1] = extent(banks.fixed[index], 1);
+      const [my0, my1] = extent(banks.moving[index], 1);
+      approx(mx0 - fx1, SWX_REPORTED.combFingerGapUm);
+      const overlap = Math.max(0, Math.min(fy1, my1) - Math.max(fy0, my0));
+      approx(overlap, SWX_REPORTED.combFingerInitialOverlapUm + pose.travelUm);
     }
   }
 });
