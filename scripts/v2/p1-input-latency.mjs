@@ -58,9 +58,7 @@ export function threeCameraZoomChanged(before, after) {
     ) {
       return null;
     }
-    return Math.hypot(
-      ...camera.position.map((value, index) => value - camera.target[index]),
-    );
+    return Math.hypot(...camera.position.map((value, index) => value - camera.target[index]));
   };
   const previous = distance(before);
   const current = distance(after);
