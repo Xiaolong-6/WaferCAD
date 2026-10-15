@@ -6,6 +6,7 @@ on:
       - 'scripts/swx-mems-geometry.mjs'
       - 'scripts/swx-mems-actuator-candidate.mjs'
       - 'scripts/swx-mems-optomechanical-candidate.mjs'
+      - 'scripts/swx-mems-optomechanical-preview.mjs'
       - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
       - 'site/tests/swx-mems-actuator-candidate.test.mjs'
       - 'scripts/swx-mems-figure-audit.mjs'
@@ -53,6 +54,8 @@ jobs:
           key: playwright-ubuntu-chromium-1.55.1
       - name: Install pinned Chromium
         run: npx playwright install --with-deps chromium
+      - name: Render isolated optomechanical geometry in Chromium
+        run: node scripts/swx-mems-optomechanical-preview.mjs
       - name: Launch isolated UI v2
         shell: bash
         run: |
