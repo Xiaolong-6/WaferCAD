@@ -24,6 +24,62 @@ export const SWX_INTERFACE_ASSUMPTIONS = Object.freeze({
 const movePolygons = (polygons, deltaX, deltaY) =>
   polygons.map((ring) => ring.map(([x, y]) => [x + deltaX, y + deltaY]));
 
+const pad = (x, y, width) => [
+  [x - width / 2, y - width / 2],
+  [x + width / 2, y - width / 2],
+  [x + width / 2, y + width / 2],
+  [x - width / 2, y + width / 2],
+];
+
+function makeOpticalRouting(travel) {
+  // Each stationary reflector port remains on the fixed half of the SWX.
+  // The right fixed port loops to the left BELOW the shuttle bottom, while
+  // the two compliant lower-half waveguides are routed farther downstream.
+  // This deliberately avoids the moving bridge at (24,-49.6..-27.4)um.
+  const coreWidth = 0.4;
+  const fixed = [
+    ...miteredPolyline(
+      [[-22, -35], [-36, -30], [-47, -31], [-62, -26]],
+      coreWidth,
+    ),
+    ...miteredPolyline(
+      [[21, -35], [20, -40], [-31, -40], [-44, -43], [-62, -45]],
+      coreWidth,
+    ),
+  ];
+  const movingSpringWaveguides = [
+    ...miteredPolyline(
+      [
+        [-22, -61 + travel],
+        [-35, -65 + 0.8 * travel],
+        [-37, -74 + 0.6 * travel],
+        [-47, -83 + 0.3 * travel],
+        [-55, -95],
+      ],
+      coreWidth,
+    ),
+    ...miteredPolyline(
+      [
+        [21, -61 + travel],
+        [31, -66 + 0.8 * travel],
+        [39, -72 + 0.5 * travel],
+        [49, -87 + 0.2 * travel],
+        [55, -95],
+      ],
+      coreWidth,
+    ),
+  ];
+  // Fixed optical terminal pads represent supported endpoints; grating
+  // tooth/groove masks and HF undercut boundaries are deliberately absent.
+  const supportedPads = [
+    pad(-62, -26, 4),
+    pad(-62, -45, 4),
+    pad(-55, -95, 4),
+    pad(55, -95, 4),
+  ];
+  return { fixed, movingSpringWaveguides, supportedPads };
+}
+
 export function createSwxOptomechanicalCandidate(state = 'off') {
   const actuator = createCompactSwxActuator(state);
   const nativeOptics = createSwxGeometry(state).physicalGroups;
@@ -44,25 +100,33 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
     [bridgeStart, bridgeCorner, bridgeEnd],
     SWX_INTERFACE_ASSUMPTIONS.bridgeWidthUm,
   );
+  const opticalRouting = makeOpticalRouting(travel);
   return {
     state,
     travelUm: travel,
     gapUm: state === 'off' ? 0.9 : 0.015,
-    fixed: [...actuator.fixed, ...fixedFacetsAndPorts, ...fixedStops],
+    fixed: [
+      ...actuator.fixed,
+      ...fixedFacetsAndPorts,
+      ...fixedStops,
+      ...opticalRouting.fixed,
+      ...opticalRouting.supportedPads,
+    ],
     movable: [
       ...actuator.movable,
       ...movableFacetsAndPorts,
       ...movableStops,
       ...mechanicalBridge,
     ],
-    flexure: actuator.flexure,
+    flexure: [...actuator.flexure, ...opticalRouting.movingSpringWaveguides],
     actuator,
     optics: { fixedFacetsAndPorts, movableFacetsAndPorts, fixedStops, movableStops },
     mechanicalBridge,
-    integrationStatus: 'facet-and-shuttle-interface-only-no-wafercad-project',
+    opticalRouting,
+    integrationStatus: 'optical-four-port-routing-candidate-no-wafercad-project',
     unresolved: [
-      'Both compliant moving optical waveguides and fixed-side optical routing remain to be designed',
-      'Optical grating couplers and structural aligner supports are not yet connected',
+      'Optical routes are illustrative; 3/5um meander radii and FDTD losses are not yet qualified',
+      'Optical grating coupler geometry and structural aligner supports are not yet connected',
       'BOX undercut, electrode insulation and complete process History need new verification',
       'Interface placement and mechanical-bridge thickness are illustrative, not published author GDS',
     ],
