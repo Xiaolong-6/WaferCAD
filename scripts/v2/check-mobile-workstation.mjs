@@ -67,6 +67,25 @@ try {
         window.__mobileCanvasIdentity = document.querySelector('#mainCanvas');
       });
       assert.equal(await root.getAttribute('data-mobile'), 'view');
+      const viewBounds = await root.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          left: rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          margin: style.margin,
+          border: style.borderTopWidth,
+          radius: style.borderTopLeftRadius,
+        };
+      });
+      assert.ok(Math.abs(viewBounds.left) <= 1 && Math.abs(viewBounds.top) <= 1);
+      assert.ok(Math.abs(viewBounds.right - width) <= 1);
+      assert.ok(Math.abs(viewBounds.bottom - height) <= 1);
+      assert.equal(viewBounds.margin, '0px');
+      assert.equal(viewBounds.border, '0px');
+      assert.equal(viewBounds.radius, '0px');
       assert.equal(await stage.isVisible(), true);
       assert.equal(await editor.isVisible(), false);
       const viewDefaults = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().local);
@@ -100,6 +119,7 @@ try {
         const panel = document.querySelector('.p-panel-content');
         return {
           shell: [shell.top, shell.bottom],
+          shellEdges: [shell.left, shell.right],
           nav: [navigation.top, navigation.bottom],
           inspector: [inspector.top, inspector.bottom],
           available: window.innerHeight,
@@ -109,7 +129,9 @@ try {
           panelClientHeight: panel.clientHeight,
         };
       });
-      assert.ok(dimensions.shell[0] >= 0);
+      assert.ok(Math.abs(dimensions.shell[0]) <= 1);
+      assert.ok(Math.abs(dimensions.shellEdges[0]) <= 1);
+      assert.ok(Math.abs(dimensions.shellEdges[1] - width) <= 1);
       assert.ok(dimensions.inspector[0] >= dimensions.nav[1] - 1);
       assert.ok(dimensions.horizontalOverflow <= 1, 'No document horizontal overflow');
       assert.ok(dimensions.bodyScrollHeight > height + 2, 'Long Process form expands document');
