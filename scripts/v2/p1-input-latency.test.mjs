@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { summarizeHardwareInput, threeCameraGestureChanged } from './p1-input-latency.mjs';
+import {
+  summarizeHardwareInput,
+  threeCameraGestureChanged,
+  threeCameraZoomChanged,
+} from './p1-input-latency.mjs';
 
 const event = (phase, queueMs, extra = {}) => ({
   trusted: true,
@@ -52,4 +56,19 @@ test('real Orbit/Pan/Zoom camera evidence needs finite three-vector change', () 
   assert.equal(threeCameraGestureChanged(before, { ...before, target: [1, 0, 0] }), true);
   assert.equal(threeCameraGestureChanged(before, { position: [1, 2] }), false);
   assert.equal(threeCameraGestureChanged(before, { ...before, position: [NaN, 2, 3] }), false);
+});
+
+test('Orbit alone does not satisfy wheel zoom and zoom must change camera radius', () => {
+  const before = { position: [10, 0, 0], target: [0, 0, 0] };
+  const orbit = { position: [0, 10, 0], target: [0, 0, 0] };
+  const zoom = { position: [0, 8, 0], target: [0, 0, 0] };
+  assert.equal(threeCameraGestureChanged(before, orbit), true);
+  assert.equal(threeCameraZoomChanged(before, orbit), false);
+  assert.equal(threeCameraZoomChanged(orbit, zoom), true);
+  assert.equal(threeCameraZoomChanged(orbit, structuredClone(orbit)), false);
+  assert.equal(
+    threeCameraZoomChanged(orbit, { position: [0, 8, NaN], target: [0, 0, 0] }),
+    false,
+  );
+  assert.equal(threeCameraZoomChanged(orbit, {}), false);
 });
