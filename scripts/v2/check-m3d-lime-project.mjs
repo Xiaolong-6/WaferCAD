@@ -212,7 +212,7 @@ try {
       label: 'analog-rram',
       material: 'CIM HfAlOx RSL 8nm',
       physicalXUm: -40.7,
-      inspectionMaskLayer: 13,
+      inspectionMaskLayer: 12,
       inspectionEdge: 'right',
       thicknessUm: 0.008,
     },
@@ -262,9 +262,7 @@ try {
     const stacksAt = (x) =>
       expected.model.regions
         .filter((item) => pointInMulti([x, sectionYUm], item.geom))
-        .map((item) =>
-          item.stack.map((part) => [part.layerId, part.z0, part.z1, part.role || '']),
-        );
+        .map((item) => JSON.stringify(item.stack));
     assert.notDeepEqual(
       stacksAt(inspectionXUm - 0.06),
       stacksAt(inspectionXUm + 0.06),
