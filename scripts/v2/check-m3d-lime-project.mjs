@@ -509,7 +509,19 @@ try {
   const activeStackHiddenLayerIds = beforeCutaway.model.layers
     .map((layer) => layer.id)
     .filter((id) => !cutawayLayerIds.includes(id) && !activeStackLayerIdSet.has(id));
+  // The Layers dock is hidden while 3D is maximized. Return to the grid
+  // before changing visibility, then maximize 3D for the actual screenshot.
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
   for (const id of activeStackHiddenLayerIds) await checkboxFor(id).uncheck();
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await page.waitForFunction(
+    () =>
+      document.getElementById('threeHost')?.dataset.renderState === 'ready' &&
+      document.querySelector('.p-canvases')?.dataset.maximized === 'true',
+    null,
+    { timeout: 120000 },
+  );
   await waitForPaint(page);
   const activeStack = await captureVisibleThree(
     page,
@@ -524,11 +536,11 @@ try {
     horizontalViewFraction,
     note: 'Inspection-only CNTFET / Pd / digital RRAM layer isolation, not source mask fidelity',
   };
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
   for (const id of activeStackHiddenLayerIds) await checkboxFor(id).check();
   await waitForPaint(page);
   if (!zoomWasActive) await zoomControl3d.click();
-  await page.locator('#threePanel [data-action="maximize:three"]').click();
-  await waitForPaint(page);
   for (const id of cutawayLayerIds) await checkboxFor(id).check();
   if (!sectionWasVisible) await page.locator('[data-action="section"]').click();
   await waitForPaint(page);
