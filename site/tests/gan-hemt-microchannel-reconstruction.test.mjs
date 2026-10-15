@@ -129,7 +129,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     true,
     'Custom inspection state must remain distinct from the Process Step checkpoint',
   );
-  assert.equal(history.restore(listedBookmark.id), true, 'Custom inspection Bookmark cannot restore');
+  assert.equal(
+    history.restore(listedBookmark.id),
+    true,
+    'Custom inspection Bookmark cannot restore',
+  );
   assert.deepEqual(live.roi, manifoldReview.state.roi);
   assert.deepEqual(live.section, manifoldReview.state.section);
   assert.deepEqual(live.display.threeCamera, manifoldReview.state.display.threeCamera);
