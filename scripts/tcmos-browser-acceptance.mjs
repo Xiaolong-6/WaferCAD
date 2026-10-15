@@ -408,6 +408,7 @@ try {
     inspection.section = { a: [local.ax, 0], b: [local.bx, 0] };
     inspection.display.threeOpacity = 0.5;
     inspection.display.threeShowBorders = true;
+    inspection.display.threeCutaway = true;
     inspection.display.sectionCollapse = {
       enabled: true,
       top: 0.68,
@@ -445,6 +446,7 @@ try {
     await writeFile(inspectionPath, JSON.stringify(inspection));
     const validated = await readProjectFile(new Blob([await readFile(inspectionPath)]));
     assert.deepEqual(validated.roi, roi);
+    assert.equal(validated.display.threeCutaway, true);
     assert.deepEqual(validated.display.sectionCollapse, inspection.display.sectionCollapse);
     assert.deepEqual(validated.model, expected.model, 'Inspection copy altered material model');
     await panel('project');
@@ -479,6 +481,11 @@ try {
     const framing = await snap();
     assert.deepEqual(framing.roi, roi, '3D ROI clip must use exact local coordinates');
     assert.equal(framing.threeDisplay.borders, true, 'Local cutaway should display borders');
+    assert.equal(framing.threeDisplay.cutaway, true, 'Local 3D cutaway mode must be active');
+    assert.equal(
+      await page.locator('#threePanel [data-action="cutaway:three"]').getAttribute('aria-pressed'),
+      'true',
+    );
     assert.equal(
       framing.sectionCollapse.enabled,
       true,
@@ -536,6 +543,8 @@ try {
       role: 'display-Z-break ROI cutaway; not calibrated dopant, junction thickness or BTBT physics',
       roiUm: roi,
       displayOnlyZBreak: inspection.display.sectionCollapse,
+      threeCutaway: true,
+      physicalZExaggeration: false,
       buriedImplantCutFragments: roiCut.length,
       rendererImplantCutMeshes: Number(
         await page.locator('#threeHost').getAttribute('data-implant-cut-built-count'),

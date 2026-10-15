@@ -1011,6 +1011,9 @@ function validateDisplay(display) {
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
   }
+  if (display.threeCutaway != null && typeof display.threeCutaway !== 'boolean') {
+    fail('display.threeCutaway', 'must be boolean.');
+  }
   if (display.threeCamera != null) {
     const view = assertObject(display.threeCamera, 'display.threeCamera'),
       position = assertArray(view.position, 'display.threeCamera.position', 3),
