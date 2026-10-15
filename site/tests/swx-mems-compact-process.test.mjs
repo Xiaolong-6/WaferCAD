@@ -51,9 +51,10 @@ test('every critical BOX/electrode probe is inside the expanded fabrication fiel
     ...SWX_COMPACT_PROCESS_PROFILE.electricalContactPoints,
     ...SWX_COMPACT_PROCESS_PROFILE.guidedSupportPoints,
     ...SWX_COMPACT_PROCESS_PROFILE.combSupportProbes.map(({ point }) => point),
-    ...SWX_COMPACT_PROCESS_PROFILE.shallowEtchProbes.flatMap(
-      ({ groovePoint, ridgePoint }) => [groovePoint, ridgePoint],
-    ),
+    ...SWX_COMPACT_PROCESS_PROFILE.shallowEtchProbes.flatMap(({ groovePoint, ridgePoint }) => [
+      groovePoint,
+      ridgePoint,
+    ]),
   ];
   for (const [x, y] of points) {
     assert.ok(
