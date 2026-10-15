@@ -121,9 +121,10 @@ try {
           view,
           screenshot: filename,
           initial,
-          frame: view === 'three'
-            ? await page.locator('#threeHost').getAttribute('data-render-phase')
-            : null,
+          frame:
+            view === 'three'
+              ? await page.locator('#threeHost').getAttribute('data-render-phase')
+              : null,
         });
       }
     } finally {
