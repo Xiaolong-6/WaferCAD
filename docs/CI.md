@@ -29,7 +29,7 @@ the PR. A Draft `Quality` run keeps ESLint, Prettier, and docs consistency
 checks; its complete Node test suite runs after the PR becomes
 Ready for Review. The general Browser regression keeps smoke in Draft,
 and retains the targeted scientific Process Geometry job when needed.
-Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1 and non-science Browser
+Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1, 3D Phase B and non-science Browser
 regressions defer until Ready for Review or explicit manual/release triggers.
 Other science-specific workflows may still run on Draft if their own
 contracts require it.
