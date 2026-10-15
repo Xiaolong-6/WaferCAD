@@ -68,24 +68,54 @@ try {
         { timeout: 120000 },
       );
     await page.locator('[data-action="domain:process"]').click();
-    await prepare('Committed fault baseline');
-    await page.locator('#applyOperationBtn').click();
+    // Match the historical Legacy scenario: two committed Steps, then restore
+    // the first before injecting failures. Failure must not fork History.
+    for (const name of ['Committed fault baseline', 'Second fault baseline']) {
+      await prepare(name);
+      await page.locator('#applyOperationBtn').click();
+      await page.waitForFunction(
+        (layerName) =>
+          window.WaferCadV2Workstation.snapshot().model.layers.some(
+            (layer) => layer.name === layerName,
+          ) && !window.WaferCadV2Workstation.snapshot().workflow.busy,
+        name,
+        { timeout: 120000 },
+      );
+    }
+    assert.equal((await snapshot()).workflow.steps.length, 2);
+    await page.locator('[data-action="domain:history"]').click();
+    await page
+      .locator('.process-history-row.history-step-row', { hasText: 'Committed fault baseline' })
+      .first()
+      .click();
     await page.waitForFunction(
       () =>
-        window.WaferCadV2Workstation.snapshot().model.layers.some(
-          (layer) => layer.name === 'Committed fault baseline',
-        ) && !window.WaferCadV2Workstation.snapshot().workflow.busy,
+        /Historical Step/.test(
+          document.querySelector('.snapshot-continuation-banner')?.textContent || '',
+        ),
       null,
-      { timeout: 120000 },
+      { timeout: 30000 },
     );
+    await page.locator('[data-action="domain:process"]').click();
     const before = await snapshot();
-    assert.equal(before.workflow.steps.length, 1);
+    assert.ok(before.model.layers.some((layer) => layer.name === 'Committed fault baseline'));
+    assert.equal(
+      before.model.layers.some((layer) => layer.name === 'Second fault baseline'),
+      false,
+      'Restoring historical Step must remove downstream physical layer from working state',
+    );
+    const applyFromHistory = async () => {
+      await page.locator('#applyOperationBtn').click();
+      await page
+        .getByRole('button', { name: 'Create Variant & apply', exact: true })
+        .click();
+    };
 
     await prepare('Rejected worker candidate');
     await page.evaluate(() => {
       window.__injectRejectedV2Candidate = true;
     });
-    await page.locator('#applyOperationBtn').click();
+    await applyFromHistory();
     await awaitMessage(/Process result rejected/);
     await awaitIdle();
     const rejected = await snapshot();
@@ -104,7 +134,7 @@ try {
     await page.evaluate(() => {
       window.__abortNextV2Candidate = true;
     });
-    await page.locator('#applyOperationBtn').click();
+    await applyFromHistory();
     await awaitMessage(/Operation aborted/);
     await awaitIdle();
     const aborted = await snapshot();
@@ -114,7 +144,7 @@ try {
     assert.equal((await page.evaluate(() => window.__v2WorkerFault)).aborted, 1);
 
     await prepare('Recovered worker candidate');
-    await page.locator('#applyOperationBtn').click();
+    await applyFromHistory();
     await page.waitForFunction(
       () =>
         window.WaferCadV2Workstation.snapshot().model.layers.some(
@@ -125,6 +155,15 @@ try {
     );
     const restored = await snapshot();
     assert.equal(restored.workflow.steps.length, before.workflow.steps.length + 1);
+    assert.equal(
+      restored.workflow.branches.length,
+      before.workflow.branches.length + 1,
+      'Only a successful Worker result creates the copy-on-write Variant',
+    );
+    assert.ok(
+      restored.model.layers.some((layer) => layer.name === 'Recovered worker candidate'),
+      'New Variant contains the successful deposition',
+    );
     assert.deepEqual(errors, [], 'No uncaught page errors');
     console.log('V2_WORKER_FAULT_PARITY: rejection, Abort and retry PASS');
   } finally {
