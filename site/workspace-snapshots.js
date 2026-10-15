@@ -1611,10 +1611,10 @@ export function createSnapshotManager({
           const batchIsValid = validateStates(states.slice(start, start + validationBatchSize));
           validationActiveMs += performance.now() - began;
           validationBatchCount++;
-          if (!batchIsValid) {
-            valid = false;
-            break;
-          }
+          // Consume the complete attestation, even after a failed batch.
+          // The legacy full-array validator likewise checked every state
+          // before falling back to strict individual project validation.
+          if (!batchIsValid) valid = false;
           yield;
         }
       } else {
