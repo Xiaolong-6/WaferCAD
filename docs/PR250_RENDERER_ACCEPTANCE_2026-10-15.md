@@ -11,7 +11,7 @@ remain separate gates.
 - Before source: exact `f76c8e02a2e9944dcea72ea1db3410727bb9a67d`, frozen
   using `git archive` before implementation edits.
 - Final source snapshot: `20b387a7` (runtime implementation through `09f83eda`);
-  final fixed-revision captures are being collected. Per-module SHA-256 values
+  final hardware fixed-revision captures passed. Per-module SHA-256 values
   in each report establish source identity independently of later documentation
   commits.
 - Windows, Node `26.7.0`, pinned Playwright `1.55.1`, Chromium
@@ -42,7 +42,7 @@ from the opposite azimuth, and Quality with `0.7×` camera distance.
 
 Extended coverage adds smooth, polygon and sector footprints, plus Back/Both
 Process faces. The Back/Both fixtures additionally capture an underside view.
-The full extended matrix contains 28 fixtures and 148 captures.
+The full extended matrix contains 28 fixtures and 144 captures.
 
 The runner asserts unchanged canonical material-model JSON after each view;
 real Worker or explicitly selected main-thread fallback; completed detailed
@@ -106,9 +106,50 @@ cost, not a GPU timer query. Shader compilation/first-frame assembly and
 concurrent suites can distort `readyMs`; performance acceptance must use the
 steady samples and the separate large-array benchmark.
 
-Final fixed-revision hardware/software/fallback results and the before/after
-performance comparison are pending in this checkpoint. Human visual approval
-and RTX 3060 hardware acceptance remain unverified.
+Final frozen-source hardware execution completed with exit code 0: **144
+captures, 28 successful project round trips, 280 stable presentation toggles,
+720 steady-frame samples, zero browser/shader errors**, both pixel/numerical
+oracles passed, and start/end source hashes matched. Artifacts are in
+`output/playwright/pr250-audit/final-hardware/`.
+
+The comparator successfully matched 40 before/after material models, cameras
+and graphics backends. The gallery is
+`output/playwright/pr250-audit/comparison/index.html`; measurements are in
+the adjacent `comparison.json`.
+
+| Quality view            | Median submission before/after, ms | Median two-RAF wall before/after, ms | Submitted triangles before/after |
+| ----------------------- | ---------------------------------: | -----------------------------------: | -------------------------------: |
+| Rect stochastic exposed |                          1.5 / 0.7 |                          33.0 / 33.4 |                 67,166 / 101,688 |
+| Rect stochastic ROI     |                          1.5 / 1.4 |                          33.2 / 33.3 |                  84,126 / 95,312 |
+| Ring stochastic ROI     |                          0.6 / 2.1 |                          33.3 / 33.3 |                226,865 / 275,982 |
+| Ring pyramid ROI        |                          0.6 / 1.8 |                          33.1 / 33.1 |                226,865 / 274,992 |
+
+The extra structural depth pass increases draw submissions. Steady frame
+cadence stayed comparable in these small fixtures, but cold Quality refinement
+is a remaining latency risk: ring pyramid ROI measured `1,749 → 4,837 ms`.
+These local measurements alone do not approve large-array performance.
+
+**Software numerical acceptance failed.** SwiftShader executes the same
+production GLSL with maximum stochastic error `6.7076351e-4 µm` (RMS
+`1.1348247e-4 µm`) and maximum pyramid error `6.4686143e-5 µm`. These exceed
+the explicit `2e-5 µm` oracle tolerance. The depth pixel oracle still passed.
+The failure and all four measured morphology/polarity results are preserved in
+`output/playwright/pr250-audit/final-software/report.json`. The threshold was
+not relaxed. Universal CPU/GPU numerical agreement and a green software CI
+oracle must not be claimed.
+
+A separate software visual matrix (without the already-failed numerical
+oracle) is running in unified session `98997`, writing
+`output/playwright/pr250-audit/final-software-captures/`. The main-thread
+fallback matrix with `WAFERCAD_AUDIT_NO_WORKER=1` is running in session `68729`,
+writing `output/playwright/pr250-audit/final-no-worker/`. Neither has a
+completed first-frame result at this checkpoint. Investigate their runtime
+progress/resource contention before declaring fallback coverage complete.
+
+Human visual approval, the remaining transparent facets, software numerical
+agreement, fallback completion, cold-refinement latency review and RTX 3060
+hardware acceptance remain open. The evidence supports reviewing the revised
+captures; it does not support merge authorization.
 
 ## Commands
 
