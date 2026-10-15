@@ -182,7 +182,8 @@ try {
         if (view.name === 'grating') inspect.section = gratingSection;
         for (const branch of inspect.snapshotBranches.branches) {
           if (branch.headState?.display) branch.headState.display.threeCamera = camera;
-          if (view.name === 'grating' && branch.headState) branch.headState.section = gratingSection;
+          if (view.name === 'grating' && branch.headState)
+            branch.headState.section = gratingSection;
         }
         for (const node of inspect.snapshotBranches.nodes) {
           if (node.state?.display) node.state.display.threeCamera = camera;
