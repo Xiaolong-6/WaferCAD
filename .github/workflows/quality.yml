@@ -32,3 +32,10 @@ jobs:
 
       - name: Lint, formatting, generated documentation and Node tests
         run: npm run check
+
+      # Temporary PR-only diagnostic, removed after applying exact formatter output.
+      - name: Show exact Markdown formatter diff after Quality failure
+        if: failure()
+        run: |
+          npx prettier --write docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md
+          git diff -- docs/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md
