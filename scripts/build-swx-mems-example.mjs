@@ -348,7 +348,7 @@ export async function buildSwxMems(state = 'off') {
     'A suspended beam requires pre-release BOX beneath it',
   );
   etch(
-    'HF vapor BOX undercut release, illustrative 4um lateral front',
+    `HF vapor BOX undercut release, illustrative ${SWX_ASSUMPTIONS.releaseUndercutUm}um lateral front`,
     BOX,
     SWX_ASSUMPTIONS.releaseUndercutUm,
     'undercut',
@@ -377,25 +377,28 @@ export async function buildSwxMems(state = 'off') {
     anchor?.stack.some((item) => item.layerId === layerIds.get(BOX)),
     'Stationary anchor lost its BOX support',
   );
-  // The MEMS comb buses are suspended. A BOX slab remaining underneath the
-  // 6um-wide long rails, as in the initial browser screenshots, is a real
-  // release failure even when one narrow beam has been freed.
+  // Hu et al. deliberately keep the 6um stationary comb handles bonded to
+  // BOX, while the 3um movable handles must release (article Fig. 2f).
+  // Verify both classes separately: an undercut that suspends the fixed
+  // electrodes is a physical modeling error even if the view looks cleaner.
   const siId = layerIds.get(DEVICE);
   const boxId = layerIds.get(BOX);
-  for (const point of [
-    [25, 9],
-    [25, -21],
-    [25, 0],
-    [25, -11.2],
+  for (const { point, shouldRetainBOX } of [
+    { point: [25, 9], shouldRetainBOX: true },
+    { point: [25, -21], shouldRetainBOX: true },
+    { point: [25, 0], shouldRetainBOX: false },
+    { point: [25, -11.2], shouldRetainBOX: false },
   ]) {
     const column = readPoint(model, vectorApi, point);
     assert.ok(
       column?.stack.some((segment) => segment.layerId === siId),
       'Comb body has no silicon at ' + point.join(','),
     );
-    assert.ok(
-      !column?.stack.some((segment) => segment.layerId === boxId),
-      'Comb body is still supported by unreleased BOX at ' + point.join(','),
+    assert.equal(
+      !!column?.stack.some((segment) => segment.layerId === boxId),
+      shouldRetainBOX,
+      (shouldRetainBOX ? 'Stationary comb lost BOX support at ' : 'Movable comb retained BOX at ') +
+        point.join(','),
     );
   }
   for (const point of [
