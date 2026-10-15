@@ -64,8 +64,9 @@ try {
   const { context: stopContext } = await newUiPage(browser);
   try {
     // Keep the *real* Process Worker execution while delaying only the
-    // browser-observed completion event. This gives Stop an in-flight window
-    // even on a fast CI runner and exercises actual cancellation ownership.
+    // browser-observed completion event. Leave room for a Chromium screenshot
+    // before the real Abort click, including on heavily loaded CI runners.
+    // The real Worker and its physical result are otherwise unmodified.
     await stopContext.addInitScript(() => {
       const NativeWorker = window.Worker;
       window.Worker = class extends NativeWorker {
@@ -81,7 +82,7 @@ try {
           }
           super.onmessage = (event) => {
             if (event.data?.type === 'done') {
-              window.setTimeout(() => handler(event), 500);
+              window.setTimeout(() => handler(event), 5000);
             } else {
               handler(event);
             }
@@ -108,6 +109,11 @@ try {
       path: 'test-results/v2-recipe-prefix-stop/inflight-task-abort.png',
       animations: 'disabled',
     });
+    assert.equal(
+      await page.evaluate(() => window.WaferCadV2Workstation.snapshot().workflow.busy),
+      true,
+      'Abort screenshot must show an in-flight task, not a completed dialog',
+    );
     await page.locator('#processTaskAbortBtn').click({ timeout: 5000 });
     // Wait for the Recipe controller to settle, not an optional summary label.
     // Preserve the exact Stopped assertion, and report both summary and status
