@@ -207,6 +207,31 @@ const CASES = [
   },
 ];
 
+// Expose the distinction between paper-visible faceting and the physical
+// 2.5D material intervals. A procedural pyramid drawn in Section is not a
+// polygonally faceted semiconductor interface for etch/deposit simulation.
+function facetTopologyEvidence(project) {
+  const substrate = project.model.layers.find((layer) => layer.id === 'base');
+  assert.ok(substrate, 'Saved figure example has no physical base substrate');
+  const intervals = project.model.regions.flatMap((region) =>
+    region.stack.filter((segment) => segment.layerId === substrate.id),
+  );
+  assert.ok(intervals.length > 0, 'No saved physical silicon material');
+  const topPlanes = [...new Set(intervals.map((segment) => segment.z1))].sort((a, b) => a - b);
+  const hasDisplayPyramids = intervals.some(
+    (segment) => segment.frontSurface?.morphology === 'pyramid',
+  );
+  return {
+    substrate: substrate.name,
+    canonicalSubstrateTopPlanesUm: topPlanes,
+    displayPyramids: hasDisplayPyramids,
+    status:
+      hasDisplayPyramids && topPlanes.length === 1
+        ? 'PROCEDURAL_PYRAMIDS_ONLY__PHYSICAL_FACETS_NOT_VERIFIED'
+        : 'PAPER_FACET_TOPOLOGY_NOT_YET_COMPARED',
+  };
+}
+
 // Scientific reference values are read from the saved physical XY/Z owner at
 // each point. Screenshots alone cannot establish a 110 nm dielectric opening.
 function pointInRing([x, y], ring) {
@@ -453,6 +478,8 @@ try {
         example: item.id,
         variant: item.variant || null,
         source: item.source,
+        canonicalFacetEvidence: facetTopologyEvidence(source),
+        paperImageAcceptance: 'PENDING_INDEPENDENT_FIGURE_COMPARISON',
         cuts: examples,
       });
     } finally {
@@ -464,4 +491,14 @@ try {
 }
 
 await writeFile(join(output, 'figure-cut-manifest.json'), JSON.stringify(report, null, 2) + '\n');
-console.log(JSON.stringify({ evidenceComplete: true, report }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      evidenceComplete: true,
+      paperImageAcceptance: 'PENDING_INDEPENDENT_FIGURE_COMPARISON',
+      report,
+    },
+    null,
+    2,
+  ),
+);
