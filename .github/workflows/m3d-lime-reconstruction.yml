@@ -10,6 +10,11 @@ on:
       - scripts/v2/check-m3d-lime-project.mjs
       - scripts/klayout-m3d-lime-verify.py
       - site/controllers/base-controls-controller.js
+      - site/controllers/project-controller.js
+      - site/controllers/workspace-persistence-controller.js
+      - site/controllers/workspace-session-controller.js
+      - site/workspace-persistence.js
+      - site/tests/controllers.test.mjs
       - site/ui-v2/project-mask-panels.js
       - site/ui-v2/workstation-workflow.js
       - site/app.js
