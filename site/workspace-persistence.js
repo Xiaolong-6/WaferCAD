@@ -245,6 +245,17 @@ export async function clearWorkspaceRecoveryPoints() {
   }
 }
 
+// Legacy non-Assembly v14 projects remain v14 even when the runtime supports
+// opt-in v15 Assembly. A Recovery checkpoint is needed only for real migration.
+export function requiresWorkspaceMigrationCheckpoint(rawVersion, migratedVersion) {
+  return (
+    Number.isInteger(rawVersion) &&
+    rawVersion >= 1 &&
+    Number.isInteger(migratedVersion) &&
+    migratedVersion > rawVersion
+  );
+}
+
 export async function loadWorkspaceState() {
   const database = await openDatabase();
   let record = null;
@@ -270,7 +281,7 @@ export async function loadWorkspaceState() {
   // Only checkpoint an actual migrated version. A legacy v14 workspace that
   // does not contain an Assembly must not create a new checkpoint on every
   // startup merely because the runtime also understands opt-in v15 files.
-  if (rawVersion < migrated.version) {
+  if (requiresWorkspaceMigrationCheckpoint(rawVersion, migrated.version)) {
     await createWorkspaceRecoveryCheckpoint(migrated, {
       appCommit: metadata?.appCommit,
       reason: `pre-migration-v${rawVersion}`,
