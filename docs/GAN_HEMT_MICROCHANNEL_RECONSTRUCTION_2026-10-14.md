@@ -34,7 +34,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
 4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Six 30 µm-wide strips with five 30 µm solid ribs span **330 µm**, while the paper gives a **380 µm** overall top microchannel footprint. The remaining **50 µm**, represented by nominal 25 µm solid margins on both lateral edges, is a _geometric interpretation_, not a measured original-mask feature; the Mask layer 13 itself spans 330 × 760 µm, not a continuously etched 380 × 760 µm rectangle. Do not describe the modeled top etch as an exact 380 µm opening. Original GDS and the exact channel count are unavailable. **Fig. 1(c) / Fig. 2(h) show symmetric curved inlet/outlet diversion structures**, and the Example now includes a separate top-cap DRIE step using Mask 22: twelve rounded diversion branches (six on each end), plus two central 110 × 50 µm collection throats at Y = ±425 µm. Each branch is a 24 µm-wide piecewise curve with a nested U-shaped return bend around the collecting throat, spanning approximately Y = ±355 to ±478 µm for the outer channels. The inside lanes take shorter arcs. The source contours are inferred, and the geometry is mirrored at both ends. The coordinates and curve geometry are explicitly **inferred**, not the authors' GDS. The published figure has its inlet/outlet horizontally; the Example is rotated 90° in XY so flow is along Y.
-5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±415 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
+5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±1450 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. Two inferred 110 × 1150 µm bottom feeder trenches (Mask 23) connect these remote ports at Y = ±1450 µm to the reported-size central bottom cavity; the corridor coordinates are engineering assumptions, not paper dimensions. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Real TSVs have stepped diameters and Cu/NiPaAu metallization; plating remains source metadata, not an electrically validated conductive structure.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
 8. Gate/source/drain metals (0.2 µm each), GSG pads and pad routing are schematic. AlGaN/SiN thicknesses are unreported and their layers are omitted from the solid model.
@@ -58,13 +58,14 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
   an empty volume immediately beneath that SiC bottom surface. The fluid is
   exposed to the _SiC substrate backside_, not directly to the GaN epitaxy.
-- **Inspection only:** the saved 3D cutaway ROI is X = −650…650 µm and Y = 0…650 µm,
-  so its Y=0 boundary exposes the stepped voids under the HEMT. The
-  saved oblique camera looks into this cut face. This visual
-  clipping omits distant TSV sites from the initial local 3D inspection but
-  does **not** delete them from the model or mask, and does not constrain
-  Recipe operations. Clear the ROI for a full-interposer view. Main and Mask
-  preserve the full 6000 × 5000 µm geometry. Main starts at 2.5× zoom, while Mask keeps its whole-field overview.
+- **Inspection only:** the saved 3D cutaway ROI is X = 0…650 µm and Y = −1650…1650 µm,
+  so its X=0 boundary exposes both separated backside ports and the
+  stepped coolant core in a longitudinal Section along X = 30 µm.
+  The separate final **06 Integrated GaN HEMT** Bookmark clears ROI and
+  selects Y = 950 µm to inspect both off-axis electrical TSV bores.
+  These are **different physical section planes**: Fig. 1(a) is a composite
+  schematic, not a single literal slice of the authors' layout. Clipping is
+  display-only and does not alter the mask or Kernel geometry.
 
 These assertions establish solid/void occupancy only; they do not prove
 manufacturable sidewall profiles, bonded-wafer hermeticity, hydraulic flow
@@ -74,7 +75,7 @@ Every inferred element must remain labeled as an assumption; do not promote it t
 
 ## Diversion manifold topology verification
 
-The manifold was reconstructed from the _layout topology_ shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **22 Recipe operations**, **23 History nodes** and **13 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
+The manifold was reconstructed from the _layout topology_ shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **23 Recipe operations**, **24 History nodes** and **14 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
 
 A structural connectivity invariant interpolates points along real 3D _empty space_: it follows each of the two Back DRIE ports through the stepped lower chambers into its top-cap throat, then follows all six curved arms into the corresponding straight channel. All 12 side-to-channel paths must be free of material, and neighboring Si ribs must remain solid. This is stronger than testing that the inlet/outlet bores or masks merely overlap in 2D.
 
@@ -103,7 +104,7 @@ insufficient for a scientific reconstruction.
 
 The default build writes the candidate project under test-results/gan-microchannel, together with a validation report. The --write-repo switch updates site/examples; the candidate is already registered in the feature-branch Welcome catalog. Registration does not imply scientific approval or production deployment.
 
-The dedicated test checks real four-level cavity Z gaps, two rear coolant connections, source-reported gate/chip masks, open TSV bores, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
+The dedicated test checks real four-level cavity Z gaps, two separated remote backside ports and lower feeder routes, source-reported gate/chip masks, open TSV bores, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
 
 ## Verification and release boundary
 

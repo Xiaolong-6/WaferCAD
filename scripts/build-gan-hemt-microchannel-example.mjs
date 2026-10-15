@@ -30,6 +30,7 @@ const corners = ({ x, y, w, h }) => [
 ];
 const centered = (w, h, x = 0, y = 0) => rect(x - w / 2, y - h / 2, w, h);
 
+export const GAN_LOWER_FEED = Object.freeze({ portOffsetY: 1450, routeCenterY: 950, routeLength: 1150, routeWidth: 110 });
 const CHANNEL_CENTERS = Object.freeze(Array.from({ length: 6 }, (_, i) => (i - 2.5) * 60));
 const fingers = CHANNEL_CENTERS.map((x) => centered(30, 760, x));
 
@@ -101,6 +102,14 @@ const solder = [
 ];
 export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   { id: 10, name: 'Bottom cavity 700 x 900 um', rectangles: [centered(700, 900)] },
+  {
+    id: 23,
+    name: 'Two inferred lower supply/return trenches (Fig. 1a surrogate)',
+    rectangles: [-1, 1].map((side) => centered(
+      GAN_LOWER_FEED.routeWidth, GAN_LOWER_FEED.routeLength,
+      0, side * GAN_LOWER_FEED.routeCenterY,
+    )),
+  },
   { id: 11, name: 'Lower transition 600 x 860 um (inferred)', rectangles: [centered(600, 860)] },
   { id: 12, name: 'Upper transition 480 x 820 um (inferred)', rectangles: [centered(480, 820)] },
   { id: 13, name: 'Six 30 um parallel channels (count inferred)', rectangles: fingers },
@@ -123,7 +132,7 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   {
     id: 21,
     name: 'Rear coolant inlet and outlet bores (inferred)',
-    rectangles: [centered(100, 60, 0, -415), centered(100, 60, 0, 415)],
+    rectangles: [-1, 1].map((side) => centered(100, 60, 0, side * GAN_LOWER_FEED.portOffsetY)),
   },
   { id: 15, name: 'Peripheral AuSn solder supports (inferred)', rectangles: solder },
   { id: 16, name: 'GaN HEMT die 878.5 x 1120 um', rectangles: [chip] },
@@ -215,7 +224,7 @@ export async function buildGanMicrochannel() {
   };
   const root = projectForBenchmark({
     model,
-    section: { a: [-700, 0], b: [700, 0] },
+    section: { a: [30, -1700], b: [30, 1700] },
   });
   root.name = 'GaN HEMT / four-level Si microchannel (Lian 2022 surrogate)';
   // Default auto Z-break hides the scientific core of this 800 um device.
@@ -224,19 +233,15 @@ export async function buildGanMicrochannel() {
   root.display.sectionCollapse = { top: 0, bottom: -150, enabled: false };
   root.display.threeOpacity = 0.56;
   root.display.threeShowBorders = false;
-  // Saved inspection ROI is display-only: it is NOT a Process / Mask limiter.
-  // Open the full structure by clearing ROI. The default view focuses on
-  // microfluidic contact rather than an opaque 6 x 5 mm silicon slab.
-  // Open the 3D view with a physically faithful *half-device cutaway*.
-  // The Y=0 ROI edge intersects the published A-B section and exposes the
-  // four-level void without editing any Process model solids.
-  root.roi = { type: 'rect', a: [-650, 0], b: [650, 650] };
+  // Inspect one longitudinal side of both port-fed lower channels and the
+  // full stepped cavity; ROI affects only the display, not physical geometry.
+  root.roi = { type: 'rect', a: [0, -1650], b: [650, 1650] };
   // Main should open with the package/chip visible at useful pixel size.
   // Mask intentionally retains the full 6 x 5 mm published-scale context.
   root.planViews.main.zoom = 2.5;
   root.display.threeCamera = {
-    position: [1050, -1650, 1120],
-    target: [0, 0, 370],
+    position: [-1700, -2250, 1500],
+    target: [200, 0, 330],
     fov: 36,
   };
   root.layout = makeLayout();
@@ -453,6 +458,9 @@ export async function buildGanMicrochannel() {
     'Paper Fig. 2(a-c): two 400 um double-side-polished wafers; DRIE to 200 um on each face, stepped TSVs; wafer alignment/direct bonding. Current geometry operations cannot bond two previously processed 3D models. The following bridge-and-open sequence is an explicit single-model surrogate.',
   );
   etch('Lower chamber: 700 x 900 um, 200 um DRIE', 10, 200);
+  // Distinct lower feeders connect the remote inlet/outlet into the
+  // existing central 700 x 900 um cavity. Dimensions are inferred.
+  etch('Two lower supply/return route trenches (inferred)', 23, 200);
   let finalBridgeLayerId = null;
   for (const [index, maskId] of [10, 11, 12, 13].entries()) {
     const layer = deposit(
@@ -519,13 +527,24 @@ export async function buildGanMicrochannel() {
   // XY placement are inferred; etching from Back reaches the real cavity
   // without placing solid "water" or drilling through the top HEMT.
   etch('Rear inlet and outlet ports opened to the lower fluid cavity', 21, 200, null, 'back');
-  for (const y of [-415, 415]) {
+  for (const y of [-GAN_LOWER_FEED.portOffsetY, GAN_LOWER_FEED.portOffsetY]) {
     assert.ok(
       model.regions
         .filter((region) => vectorApi.pointInMulti([0, y], region.geom))
         .flatMap((region) => region.stack)
         .every((segment) => !(segment.z0 < -100 && segment.z1 > -100)),
       'Rear coolant port is not open at y=' + y,
+    );
+  }
+  for (const side of [-1, 1]) {
+    assert.equal(
+      owner([0, side * 1200]).stack.some((segment) => segment.z0 < 100 && segment.z1 > 100),
+      false,
+      'Lower coolant feeder is blocked',
+    );
+    assert.ok(
+      owner([100, side * 1200]).stack.some((segment) => segment.z0 < 100 && segment.z1 > 100),
+      'Lower coolant feeder is missing its Si sidewall',
     );
   }
   bookmark('02 Rear coolant inlet / outlet');
@@ -574,7 +593,11 @@ export async function buildGanMicrochannel() {
     'Experimental thermal operating point (metadata only)',
     'Paper: DI water 3 mL/min, Vds approximately 7.5 V, Ids approximately 0.8 A, measured Tmax 93.8 C. Geometry model does not compute CFD, thermal or electrical results.',
   );
-  bookmark('06 Integrated GaN HEMT / final');
+  bookmark('06 Integrated GaN HEMT / full interposer and TSV inspection', {
+    roi: null,
+    section: { a: [-1800, 950], b: [1800, 950] },
+    threeCamera: { position: [3600, -4250, 2650], target: [0, 0, 240], fov: 36 },
+  });
 
   // Production builder invariants: verify actual material occupancy, never
   // mistake the translucent internal walls of a TSV for a filled metal post.
@@ -616,7 +639,10 @@ export async function buildGanMicrochannel() {
   }
   for (const side of [-1, 1]) {
     const upstream = [
-      [0, side * 415, -150],
+      [0, side * GAN_LOWER_FEED.portOffsetY, -150],
+      [0, side * GAN_LOWER_FEED.portOffsetY, 100],
+      [0, side * 1200, 100],
+      [0, side * 420, 100],
       [0, side * 415, 350],
       [30, side * 395, 350],
       [30, side * 395, 550],
@@ -694,6 +720,7 @@ export async function buildGanMicrochannel() {
       fiveDistinctSiliconLayerIdsShareMaterialColor: true,
       bothBacksidePortsConnectToAllSixTopChannels: true,
       retainedInterChannelSiRibs: true,
+      longSupplyReturnRoutesReachBothRemotePorts: true,
     },
     checkpoints,
   };

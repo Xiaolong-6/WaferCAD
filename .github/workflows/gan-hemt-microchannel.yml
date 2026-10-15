@@ -48,6 +48,11 @@ jobs:
         run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: Generate reopenable project and validation evidence
         run: node scripts/build-gan-hemt-microchannel-example.mjs
+      - name: Emit rebuilt assets for branch synchronization
+        run: |
+          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+          node -e "const f=require('node:fs');for(const [label,path] of [['full','site/examples/gan-hemt-microchannel-2022.wafercad'],['preview','site/examples/previews/gan-hemt-microchannel-2022.wafercad']]){const str=f.readFileSync(path).toString('base64');for(let i=0;i<str.length;i+=1500)console.log('WAFERCAD_ASSET|'+label+'|'+Math.floor(i/1500)+'|'+str.slice(i,i+1500));console.log('WAFERCAD_ASSET_END|'+label+'|'+Math.ceil(str.length/1500));}"
       - name: Upload physical geometry and execution report
         if: always()
         uses: actions/upload-artifact@v4

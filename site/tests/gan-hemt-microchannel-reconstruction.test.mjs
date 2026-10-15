@@ -7,6 +7,7 @@ import {
   GAN_MICROCHANNEL_MASKS,
   GAN_SILICON_COLOR,
   GAN_MANIFOLD_PARAMETERS,
+  GAN_LOWER_FEED,
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -35,6 +36,9 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   const masks = new Map(GAN_MICROCHANNEL_MASKS.map((mask) => [mask.id, mask]));
   assert.equal(masks.get(10).rectangles[0].w, 700);
   assert.equal(masks.get(10).rectangles[0].h, 900);
+  assert.equal(masks.get(23).rectangles.length, 2);
+  assert.equal(GAN_LOWER_FEED.portOffsetY, 1450);
+  assert.ok(masks.get(23).rectangles.every((r) => r.w === 110 && r.h === 1150));
   assert.equal(masks.get(13).rectangles.length, 6);
   assert.ok(masks.get(13).rectangles.every((r) => r.w === 30 && r.h === 760));
   const topStripes = masks.get(13).rectangles;
@@ -83,11 +87,12 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 13);
-  assert.equal(validation.processNodes, 23);
-  assert.equal(validation.recipeSteps, 22);
+  assert.equal(validation.maskLayers, 14);
+  assert.equal(validation.processNodes, 24);
+  assert.equal(validation.recipeSteps, 23);
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
+  assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
   assert.ok(
     project.processRecipe.steps.some(
       (step) =>
@@ -164,11 +169,16 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     project.model.layers.some((layer) => layer.name.startsWith('GaN HEMT SiC substrate')),
     'Final integrated project must still contain the HEMT',
   );
+  const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
+  assert.ok(tsvInspection);
+  assert.equal(tsvInspection.state.roi, null);
+  assert.deepEqual(tsvInspection.state.section, { a: [-1800, 950], b: [1800, 950] });
   assert.equal(project.snapshotBranches.nodes.length, validation.processNodes);
   validateProcessModel(project.model);
   validateProjectFile(project);
   assert.equal(project.planViews.main.zoom, 2.5);
   assert.equal(project.planViews.mask.zoom, 1);
+  assert.deepEqual(project.section, { a: [30, -1700], b: [30, 1700] });
   assert.deepEqual(
     project.display.sectionCollapse,
     { top: 0, bottom: -150, enabled: false },
@@ -178,16 +188,16 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     project.roi,
     {
       type: 'rect',
-      a: [-650, 0],
-      b: [650, 650],
+      a: [0, -1650],
+      b: [650, 1650],
     },
     'Saved ROI must be a local 3D inspection crop',
   );
   assert.deepEqual(
     project.display.threeCamera,
     {
-      position: [1050, -1650, 1120],
-      target: [0, 0, 370],
+      position: [-1700, -2250, 1500],
+      target: [200, 0, 330],
       fov: 36,
     },
     'Saved camera must focus on chip and microchannels',
@@ -220,9 +230,13 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(solidAt(project.model, [30, 0], 650), true);
   assert.equal(solidAt(project.model, [2000, 0], 550), true);
   // The two backside fluid ports open into the central bottom chamber.
-  for (const y of [-415, 415]) {
+  for (const y of [-1450, 1450]) {
     assert.equal(solidAt(project.model, [0, y], -100), false);
     assert.equal(solidAt(project.model, [0, y], 100), false);
+  }
+  for (const y of [-1200, 1200]) {
+    assert.equal(solidAt(project.model, [0, y], 100), false);
+    assert.equal(solidAt(project.model, [100, y], 100), true);
   }
   assert.equal(solidAt(project.model, [0, 0], -100), true);
   assert.equal(solidAt(project.model, [0, 0], 100), false);
