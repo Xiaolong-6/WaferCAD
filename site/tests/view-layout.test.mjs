@@ -265,3 +265,19 @@ test('atomic snap places dragged view in a chosen grid cell and rejects invalid 
     snapped,
   );
 });
+
+test('workflow Mask focus atomically reopens and maximizes without toggling restore', () => {
+  const original = createDesktopLayout();
+  let state = apply(original, 'CLOSE_VIEW', { view: 'mask' });
+  assert.equal(state.visible.includes('mask'), false);
+  state = apply(state, 'FOCUS_VIEW', { view: 'mask' });
+  assert.equal(state.visible.includes('mask'), true);
+  assert.equal(state.maximized, 'mask');
+  assert.deepEqual(displayedViews(state), ['mask']);
+  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'mask' }), state);
+  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'unknown' }), state);
+  const restored = apply(state, 'RESTORE');
+  assert.equal(restored.maximized, null);
+  assert.equal(restored.visible.includes('mask'), true);
+  assert.deepEqual(original, createDesktopLayout());
+});
