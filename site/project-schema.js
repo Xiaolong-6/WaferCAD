@@ -1700,7 +1700,13 @@ function migrateProjectCore(project) {
       }
     }
   }
-  project.version = CURRENT_PROJECT_VERSION;
+  // v15 is opt-in for bounded Assembly provenance. Preserve the v14 wire
+  // contract of normal projects and of old restorable History states. Upgrading
+  // every v14 snapshot solely because this runtime knows v15 breaks lossless
+  // History/Recovery round-trips and deterministic file export.
+  project.version = version < 15 && project.waferAssembly == null
+    ? 14
+    : CURRENT_PROJECT_VERSION;
   return project;
 }
 
