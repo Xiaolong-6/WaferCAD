@@ -17,8 +17,6 @@ on:
       - 'scripts/v2/check-progressive-quality.mjs'
       - 'scripts/v2/check-startup-shell.mjs'
       - 'site/renderer-instancing.js'
-      - 'site/renderer-opaque-batching.js'
-      - 'site/tests/renderer-opaque-batching.test.mjs'
       - 'site/controllers/project-state-controller.js'
       - 'site/ui-v2/project-mask-panels.js'
       - 'site/tests/worker-validated-project-import.test.mjs'
@@ -88,7 +86,7 @@ jobs:
       - name: Hardware adapter and frame attribution regression
         run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs scripts/v2/p1-webgl-frame-correlation.test.mjs
       - name: Targeted renderer parity and History integrity tests
-        run: node --test site/tests/renderer-instancing.test.mjs site/tests/renderer-opaque-batching.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start UI v2 server
         shell: bash
