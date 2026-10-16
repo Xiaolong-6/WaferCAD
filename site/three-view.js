@@ -3824,6 +3824,38 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
+      // glTF contains the same true 3D packaging tubes as the workstation,
+      // in physical micrometres before the group-wide 1e-6 metre conversion.
+      // These explicit meshes must never be inferred from a screenshot.
+      for (const wire of getAssemblyWires() || []) {
+        throwIfAborted();
+        const curve = new THREE.CubicBezierCurve3(
+          ...wire.points.map((point) => new THREE.Vector3(...point)),
+        );
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
+        const material = new THREE.MeshStandardMaterial({
+          color: '#D8A83A',
+          metalness: 0.78,
+          roughness: 0.24,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = `Au wire bond / ${wire.id} (inferred)`;
+        mesh.userData.wafercadAssemblyWireId = wire.id;
+        mesh.userData.wafercadMaterial = wire.material;
+        mesh.userData.wafercadDiameterUm = wire.diameterUm;
+        mesh.userData.wafercadContactLayerIds = wire.contactLayerIds;
+        mesh.userData.wafercadSource = wire.source;
+        exportGroup.add(mesh);
+        disposable.push(mesh);
+      }
       await yieldToUi();
       reportProgress(0.91, 'Encoding GLB');
       const exporter = new GLTFExporter();
