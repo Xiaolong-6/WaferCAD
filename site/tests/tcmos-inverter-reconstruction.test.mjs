@@ -7,6 +7,7 @@ import {
   TCMOS_DOI,
   TCMOS_MASKS,
   TCMOS_METAL_NETS,
+  auditTcmosTerminalNetProvenance,
   tcmosLayout,
 } from '../../scripts/build-tcmos-inverter-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -43,11 +44,73 @@ test('TCMOS mask encodes an illustrative 0.13 µm gate at the reported 130 nm fo
   assert.equal(TCMOS_DOI, '10.1038/s41928-019-0272-8');
 });
 
+
+test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad body ties', () => {
+  const evidence = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
+  assert.equal(evidence.kind, 'illustrative-layout-terminal-net-provenance');
+  assert.equal(evidence.sourceDocumentedFoundryRouting, false);
+  assert.equal(evidence.physicalElectricalConnectivityVerified, false);
+  assert.equal(evidence.ohmicContactsValidated, false);
+  assert.equal(evidence.physicalJunctionResolved, false);
+  assert.deepEqual(
+    evidence.terminals.map(({ id, net }) => [id, net]),
+    [
+      ['pMOS-source', 'VDD'],
+      ['pMOS-drain', 'VOUT'],
+      ['nMOS-drain', 'VOUT'],
+      ['nMOS-source', 'GND'],
+      ['pMOS-gate', 'VIN'],
+      ['nMOS-gate', 'VIN'],
+      ['pMOS-well-tie', 'VDD'],
+      ['nMOS-well-tie', 'GND'],
+    ],
+  );
+  assert.ok(
+    evidence.terminals.every(
+      ({ provenance }) => provenance === 'inferred-from-reconstructed-CNT/METAL1-layout',
+    ),
+  );
+  const swapped = structuredClone(TCMOS_METAL_NETS);
+  swapped[0].name = 'GND';
+  swapped[2].name = 'VDD';
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, swapped),
+    /wrong net/,
+    'Source rail swaps cannot be silently accepted',
+  );
+  const disconnected = structuredClone(TCMOS_METAL_NETS);
+  disconnected[3].rectangles.pop();
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, disconnected),
+    /disconnected routing/,
+  );
+  const shorted = structuredClone(TCMOS_METAL_NETS);
+  shorted[1].rectangles[0].w = 7;
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, shorted),
+    /Metal1 short/,
+  );
+  const shiftedContact = structuredClone(TCMOS_MASKS);
+  shiftedContact.find(({ id }) => id === 10).rectangles[0].x += 1;
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(shiftedContact, TCMOS_METAL_NETS),
+    /missing or ambiguous Metal1 owner/,
+  );
+  const invalidWellTie = structuredClone(TCMOS_MASKS);
+  invalidWellTie.find(({ id }) => id === 10).rectangles[18].x += 0.8;
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(invalidWellTie, TCMOS_METAL_NETS),
+    /incorrect device footprint/,
+  );
+});
+
 test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and exportable History', async () => {
   const { project, validation } = await buildTcmosInverter();
   const model = project.model;
   assert.equal(validation.pass, true);
   assert.equal(validation.measuredGateLengthSourceReported, false);
+  assert.equal(validation.terminalNetProvenance.terminals.length, 8);
+  assert.equal(validation.terminalNetProvenance.physicalElectricalConnectivityVerified, false);
   assert.deepEqual(validation.availableVariants, ['main', 'conventional-cmos']);
   assert.equal(project.layout.elements.length > 0, true);
   assert.equal(project.processRecipe.steps.length, validation.recipeSteps);
