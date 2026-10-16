@@ -2132,6 +2132,75 @@ diffuseColor.a *= waferCadAlphaScale;`,
         appearanceByCapIndex.set(index, task.visualAppearance);
       }
     }
+    // A conformal upper cap and the buried lower cap may use independently
+    // tessellated XY footprints (including the physical lateral film offset).
+    // For an ROI cut, derive the material sidewall's shared rough boundary from
+    // one real Float32 cap and shift only by the physical film thickness.
+    // This does not change the buried cap mesh, Kernel or saved layer geometry.
+    const wallProfiles = new Map(boundaryProfiles);
+    const profileCapsForWalls = [...boundaryProfiles].map(([index, profile]) => ({
+      index,
+      profile,
+      cap: physicalSurfacePlan?.caps?.[index],
+    }));
+    const clipEdges = (getClipGeometry() || []).flatMap((polygon) =>
+      (polygon || []).flatMap((ring) =>
+        (ring || []).slice(1).map((point, index) => [ring[index], point]),
+      ),
+    );
+    const profileFields = [
+      'kind',
+      'profileId',
+      'seed',
+      'morphology',
+      'polarity',
+      'featureSize',
+      'meanHeight',
+      'etchDepth',
+      'featureCv',
+      'heightCv',
+    ];
+    const isContiguousFilm = (lower, upper) =>
+      (getModel()?.regions || []).some((region) => {
+        const substrate = region.stack?.find(
+          (layer) =>
+            layer.layerId === lower.layerId && Math.abs(layer.z1 - lower.z) < 2e-5,
+        );
+        const coating = region.stack?.find(
+          (layer) =>
+            layer.layerId === upper.layerId &&
+            Math.abs(layer.z0 - lower.z) < 2e-5 &&
+            Math.abs(layer.z1 - upper.z) < 2e-5,
+        );
+        return Boolean(substrate && coating);
+      });
+    let alignedConformalCutPairs = 0;
+    for (const lower of profileCapsForWalls) {
+      if (!lower.cap?.buried || lower.cap.appearance?.kind !== 'rough') continue;
+      const upper = profileCapsForWalls.find((candidate) => {
+        const coat = candidate.cap;
+        if (!coat || coat.buried || coat.appearance?.kind !== 'rough') return false;
+        if (!(coat.z > lower.cap.z)) return false;
+        if (Number(coat.profileNormal ?? coat.normal) !==
+          Number(lower.cap.profileNormal ?? lower.cap.normal)) return false;
+        if (!profileFields.every(
+          (field) => lower.cap.appearance[field] === coat.appearance[field],
+        )) return false;
+        if (!isContiguousFilm(lower.cap, coat)) return false;
+        return clipEdges.some(
+          ([p, q]) =>
+            boundaryProfileOverlapsEdge(lower.profile, p, q) &&
+            boundaryProfileOverlapsEdge(candidate.profile, p, q),
+        );
+      });
+      if (!upper) continue;
+      wallProfiles.set(
+        lower.index,
+        shiftedBoundaryProfile(upper.profile, lower.cap.z - upper.cap.z),
+      );
+      alignedConformalCutPairs++;
+    }
+    host.dataset.roughConformalCutAlignedPairs = String(alignedConformalCutPairs);
     let rebuilt = 0;
     let matchedImplantCuts = 0;
     const implantCutAudit = [];
@@ -2143,12 +2212,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         : previous?.userData?.waferCadSidewallParts;
       if (!parts) continue;
       const aligned = implant
-        ? matchImplantCutToRoughCaps(implant, parts, boundaryProfiles, appearanceByCapIndex)
+        ? matchImplantCutToRoughCaps(implant, parts, wallProfiles, appearanceByCapIndex)
         : null;
       const geometry = geometryFromSidewallParts(
         aligned?.parts || parts,
         previous.userData.waferCadSidewallTolerance || 0,
-        aligned?.profiles || boundaryProfiles,
+        aligned?.profiles || wallProfiles,
         aligned?.appearances || appearanceByCapIndex,
       );
       object.geometry = implant ? shearImplantGeometry(geometry, implant) : geometry;
@@ -2211,6 +2280,17 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const deviations = samples.map(
         (sample) => sample.upperZ - sample.lowerZ - (aluminaCap.cap.z - siliconCap.cap.z),
       );
+
+      const corrected = sidewallBoundarySamples(
+        { p, q, z0: siliconCap.cap.z, z1: aluminaCap.cap.z },
+        {
+          lowerProfile: wallProfiles.get(siliconCap.index),
+          upperProfile: wallProfiles.get(aluminaCap.index),
+        },
+      );
+      const correctedDeviations = corrected.map(
+        (sample) => sample.upperZ - sample.lowerZ - (aluminaCap.cap.z - siliconCap.cap.z),
+      );
       thicknessAudit = {
         available: true,
         samples: samples.length,
@@ -2219,12 +2299,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
         negativeThicknessSamples: samples.filter(
           (sample) => sample.upperZ - sample.lowerZ <= 0,
         ).length,
+        correctedSamples: corrected.length,
+        correctedMinimumDeviation: Math.min(...correctedDeviations),
+        correctedMaximumDeviation: Math.max(...correctedDeviations),
       };
     }
     host.dataset.roughConformalCutGapAudit = JSON.stringify(thicknessAudit);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
-    rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
+    rebuildInspectionContours(wallProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
   }
 
   function roughSceneRoiFraction(model, clip) {
