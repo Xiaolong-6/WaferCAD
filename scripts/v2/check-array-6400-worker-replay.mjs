@@ -378,6 +378,221 @@ try {
       'V2_ARRAY_4725_FULL_MASK: 4725 exact deposits/etches, 1675 protected background, IO PASS',
     );
 
+
+    // The two full-field operations above used real Workers; now promote
+    // those exact scientific states into an actual native v2 History project.
+    // Editing the earlier 4725-device Mask through UI must replay the later
+    // whole-device Mask Etch, not merely replay a synthetic per-site request.
+    let uiProject = migrateProjectFile(
+      projectForBenchmark({
+        model: structuredClone(seed),
+        section: { a: [-15, 0], b: [15, 0] },
+      }),
+    );
+    uiProject.name = '4725 device full Mask History replay';
+    uiProject.layout.root = 'GRID';
+    uiProject.layout.hierarchy = { GRID: [] };
+    uiProject.activeCell = 'GRID';
+    uiProject.selectedLayerKeys = ['1|0'];
+    uiProject.maskSourceMode = 'file';
+    const uiHistory = createSnapshotManager({
+      capture: () => uiProject,
+      restore: (value) => {
+        uiProject = value;
+      },
+      validateState: (value) => {
+        validateProjectFile(value);
+        return true;
+      },
+      nodeIdFactory: (() => {
+        let n = 0;
+        return () => 'full-mask-ui-' + ++n;
+      })(),
+    });
+    const maskSteps = [
+      {
+        kind: 'add',
+        label: '4725 device masked film',
+        model: fullMask.deposited,
+        elements: activeMask,
+        params: {
+          type: 'add',
+          name: '4725-device mask 10nm',
+          face: 'front',
+          growth: 'direct',
+          thickness: 0.01,
+        },
+        resultLayerId: fullMask.filmId,
+      },
+      {
+        kind: 'etch',
+        label: '4725 device masked selective Etch',
+        model: fullMask.etched,
+        elements: innerMask,
+        params: {
+          type: 'etch',
+          face: 'front',
+          etchProfile: 'directional',
+          thickness: 0.01,
+          etchTargetLayerIds: [fullMask.filmId],
+        },
+      },
+    ];
+    for (const step of maskSteps) {
+      uiProject.model = structuredClone(step.model);
+      uiProject.layout.elements = step.elements.map((element) => ({
+        kind: 'polygon',
+        sourceCell: 'GRID',
+        layer: 1,
+        datatype: 0,
+        points: element.points,
+      }));
+      uiHistory.recordOperation({
+        kind: step.kind,
+        label: step.label,
+        areaMode: 'mask',
+        ...(step.resultLayerId ? { resultLayerId: step.resultLayerId } : {}),
+        replay: {
+          version: 1,
+          params: structuredClone(step.params),
+          areaMode: 'mask',
+          maskContext: {
+            sourceMode: 'file',
+            cell: 'GRID',
+            layerKeys: ['1|0'],
+            transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+            roi: null,
+          },
+        },
+      });
+    }
+    const uiSaved = {
+      ...uiProject,
+      snapshots: uiHistory.exportRecords(),
+      snapshotBranches: uiHistory.exportBranchState(),
+    };
+    validateProjectFile(uiSaved);
+    const uiBytes = serializeProject(uiSaved);
+    await page.locator('[data-action="domain:project"]').click();
+    await page.locator('#openProjectInput').setInputFiles({
+      name: '4725-device-full-mask-history.wafercad',
+      mimeType: 'application/json',
+      buffer: Buffer.from(uiBytes),
+    });
+    const openConfirmation = page.getByRole('button', {
+      name: 'Open project',
+      exact: true,
+    });
+    if (await openConfirmation.isVisible()) await openConfirmation.click();
+    await page.waitForFunction(
+      (name) => {
+        const state = window.WaferCadV2Workstation.snapshot();
+        return (
+          state.projectName === name &&
+          state.workflow.steps.length === 2 &&
+          !state.workflow.busy
+        );
+      },
+      uiSaved.name,
+      { timeout: 180000 },
+    );
+    const imported = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(imported.model.array.instances.length, 6400);
+    assert.deepEqual(imported.model, fullMask.etched, 'Actual UI import keeps the complete Mask result');
+    await page.locator('[data-action="domain:history"]').click();
+    const editRow = page.locator('.history-step-wrap', {
+      hasText: '4725 device masked film',
+    }).first();
+    await editRow.locator('.snapshot-more-trigger').click();
+    await editRow.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+    await page.waitForFunction(
+      () =>
+        /Save edited Step/.test(document.querySelector('#applyOperationBtn')?.textContent || ''),
+      null,
+      { timeout: 120000 },
+    );
+    await page.locator('#operationThickness').fill('0.02');
+    await page.evaluate(() => {
+      const post = Worker.prototype.postMessage;
+      window.__largeHistoryReplay = { requests: 0 };
+      Worker.prototype.postMessage = function (message, ...rest) {
+        if (message?.params && message?.model) window.__largeHistoryReplay.requests++;
+        return Reflect.apply(post, this, [message, ...rest]);
+      };
+    });
+    await page.locator('#applyOperationBtn').evaluate((button) => button.click());
+    await page.getByRole('button', {
+      name: 'Replace & replay later Steps',
+      exact: true,
+    }).click();
+    await page.waitForFunction(
+      () =>
+        /Replayed 1 later Step/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent || '',
+        ) && !window.WaferCadV2Workstation.snapshot().workflow.busy,
+      null,
+      { timeout: 300000 },
+    );
+    assert.equal(
+      await page.evaluate(() => window.__largeHistoryReplay.requests),
+      2,
+      'Full-device-field edited Mask and selective successor Etch must use two real Workers',
+    );
+    const uiEdited = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(uiEdited.workflow.steps.length, 2);
+    assert.equal(uiEdited.workflow.branches.length, 1);
+    const newParts = physicalSites(uiEdited.model);
+    let replayDevices = 0;
+    for (let n = 0; n < newParts.length; n++) {
+      if (initialParts[n].role === 'background') {
+        assert.deepEqual(
+          newParts[n].model,
+          initialParts[n].model,
+          initialParts[n].id + ' must remain untouched by replay',
+        );
+        continue;
+      }
+      replayDevices++;
+      const part = newParts[n];
+      assert.deepEqual(
+        stack(part, [0, 0]),
+        [['base', -1, 1], [fullMask.filmId, 1, 1.01]],
+        part.id + ' should retain 10 nm at the etched center',
+      );
+      assert.deepEqual(
+        stack(part, [0.075, 0.075]),
+        [['base', -1, 1], [fullMask.filmId, 1, 1.02]],
+        part.id + ' should retain 20 nm outside selective Etch',
+      );
+      assert.deepEqual(
+        stack(part, [0.15, 0.15]),
+        [['base', -1, 1]],
+        part.id + ' outside the file Mask must remain bare',
+      );
+    }
+    assert.equal(replayDevices, 4725);
+    await page.locator('[data-action="domain:project"]').click();
+    await page.locator('#saveProjectBtn').click();
+    await page.waitForFunction(
+      () => /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
+      null,
+      { timeout: 180000 },
+    );
+    await page.goto(base + '/app.html', {
+      waitUntil: 'domcontentloaded',
+      timeout: 180000,
+    });
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 180000,
+    });
+    const afterReload = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.deepEqual(afterReload.model, uiEdited.model, 'Full Mask UI replay survives reopening');
+    assert.deepEqual(afterReload.workflow.steps, uiEdited.workflow.steps);
+    assert.deepEqual(afterReload.workflow.branches, uiEdited.workflow.branches);
+    console.log(
+      'V2_ARRAY_4725_HISTORY_UI: full Mask edit plus replayed Etch, 4725 Z probes, Save/Reload PASS',
+    );
+
     assert.deepEqual(pageErrors, []);
     console.log('V2_ARRAY_6400_WORKER_HISTORY_REPLAY: persisted Mask steps -> actual Worker PASS');
   } finally {
