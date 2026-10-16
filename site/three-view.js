@@ -17,7 +17,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
-  transparentInspectionContours,
+  ownedContourSegments,
   contoursToPositions,
   sectionCutContours,
   unownedContourSegments,
@@ -2006,21 +2006,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const plan = physicalSurfacePlan,
       clip = getClipGeometry(),
-      contours = transparentInspectionContours(plan, { boundaryProfiles }),
-      roughBorders = [...(boundaryProfiles?.entries() || [])].flatMap(([index, profile]) =>
-        plan.caps[index]?.buried || plan.caps[index]?.appearance?.kind !== 'rough'
-          ? []
-          : profile.segments.map(({ p, q }) => [p, q]),
-      ),
+      exposedBorders = ownedContourSegments(plan.borderLines),
+      // A cut alone may introduce additional edges. Keep full-wafer scenes
+      // free of per-rough-cap outline collection and extra geometry.
+      roughBorders = clip
+        ? [...(boundaryProfiles?.entries() || [])].flatMap(([index, profile]) =>
+            plan.caps[index]?.buried || plan.caps[index]?.appearance?.kind !== 'rough'
+              ? []
+              : profile.segments.map(({ p, q }) => [p, q]),
+          )
+        : [],
       // Only the cut face introduces new structural borders. Buried cap
       // perimeters are not exposed outlines: drawing them as solid black
       // produces false internal lines across translucent materials.
       sectionLines = unownedContourSegments(
         sectionCutContours(plan.sidewalls, clip, { boundaryProfiles }),
-        [...contours.exposed, ...roughBorders],
+        [...exposedBorders, ...roughBorders],
       ),
       model = getModel();
-    host.dataset.hiddenBorderSegmentCount = String(contours.exposed.length + sectionLines.length);
+    host.dataset.hiddenBorderSegmentCount = String(exposedBorders.length + sectionLines.length);
     host.dataset.buriedContourSegmentCount = '0';
     host.dataset.sectionContourSegmentCount = String(sectionLines.length);
     addBorderPositions(displayBorderPositions(contoursToPositions(sectionLines)), {

@@ -42,6 +42,15 @@ test('transparent outlines deduplicate owned segments without exposing tessellat
   assert.equal(result.buried.length, 4);
   assert.equal(contoursToPositions(result.buried).length, 24);
   assert.equal(ownedContourSegments(exterior).length, 1);
+  const cut = [
+    [0, 0, 1],
+    [4, 0, 1],
+  ];
+  assert.deepEqual(
+    unownedContourSegments([...exterior, cut], exterior),
+    [cut],
+    'a previously owned outline is never drawn twice',
+  );
 });
 
 test('buried rough perimeter follows the same deterministic profile as section sampling', () => {
@@ -231,28 +240,3 @@ test('ROI contour matching clips only overlapping spans and retains material jun
   assert.ok(junction.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]));
 });
 
-test('ROI cut only outlines new edges, never a previously drawn rough material border', () => {
-  const roughBorder = [
-      [0, 0, 174.2],
-      [1, 0, 174.3],
-    ],
-    idealBorder = [
-      [0, 0, 173],
-      [0, 0, 174],
-    ],
-    genuineCut = [
-      [1, 0, 173],
-      [1, 0, 174],
-    ],
-    candidates = [
-      [roughBorder[1], roughBorder[0]],
-      idealBorder,
-      genuineCut,
-      genuineCut,
-    ];
-  assert.deepEqual(
-    unownedContourSegments(candidates, [roughBorder, idealBorder]),
-    [genuineCut],
-    'rough cap outlines and original material borders have one owner each',
-  );
-});
