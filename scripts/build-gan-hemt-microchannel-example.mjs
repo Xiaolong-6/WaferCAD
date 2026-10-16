@@ -134,6 +134,7 @@ export const GAN_TSV_LINER = Object.freeze({
   // This native conformal deposit is restricted to four TSV windows;
   // whole-outside-surface oxide remains explicitly UNMODELED.
   inferredLocalSiO2Um: 0.5,
+  inferredWholeSurfaceSiO2Um: 0.5,
   titaniumUm: 0.2,
   copperUm: 0.5,
   inferredFullCuFillUm: 35,
@@ -457,7 +458,12 @@ export async function buildGanMicrochannel() {
           ? '#B78F69'
           : '#8095A7';
     }
-    if (command === 'deposit' && params.material.startsWith('TSV SiO2')) {
+    if (
+      command === 'deposit' &&
+      (params.material.startsWith('TSV SiO2') ||
+        params.material.startsWith('Interposer front exposed-surface SiO2') ||
+        params.material.startsWith('Interposer back exposed-surface SiO2'))
+    ) {
       const oxide = model.layers.find((layer) => layer.id === result.layerId);
       assert.ok(oxide, 'Local TSV oxide deposition produced no layer');
       oxide.color = '#B9DCE8';
@@ -652,11 +658,37 @@ export async function buildGanMicrochannel() {
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
   bookmark('03 TSV bores');
+  // Fig. 2(c) oxidizes the external surfaces of the bonded interposer.
+  // Native conformal coverage follows actual exposed front/back geometry,
+  // including narrow physical opening sidewalls. Thickness (0.5 um) is
+  // INFERRED, not a measured thermal-oxidation recipe. Any coolant fluid
+  // obstruction is explicitly rejected by the science gates below.
+  process(
+    'Full-exterior front SiO2 on exposed interposer (inferred 0.5 um)',
+    'deposit',
+    {
+      material: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
+      thickness: GAN_TSV_LINER.inferredWholeSurfaceSiO2Um,
+      coverage: 'conformal',
+      face: 'front',
+    },
+  );
+  process(
+    'Full-exterior backside SiO2 on exposed interposer (inferred 0.5 um)',
+    'deposit',
+    {
+      material: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
+      thickness: GAN_TSV_LINER.inferredWholeSurfaceSiO2Um,
+      coverage: 'conformal',
+      face: 'back',
+    },
+  );
+  bookmark('03a Front/back interposer exterior oxide before local via lining');
   // The paper oxidizes the bonded silicon BEFORE Ti/Cu metallization.
-  // SiO2 thickness is not reported. Restrict this 0.5 um native conformal
-  // surrogate to four TSV mask windows, leaving all open coolant channels
-  // unchanged. This is NOT the whole-wafer outside-surface oxide of Fig 2c,
-  // and occupancy cannot prove electrical insulation or hermeticity.
+  // SiO2 thickness is not reported. This SECOND local conformal oxide
+  // covers the four TSV mask windows on top of the separate front/back
+  // exposed-surface oxide; it is not a claim of realistic oxide growth
+  // kinetics or perfect electrical isolation.
   deposit(
     'Inferred local SiO2 TSV insulation before Ti/Cu (0.5 um)',
     'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
@@ -707,7 +739,7 @@ export async function buildGanMicrochannel() {
   bookmark('03c Cu-filled TSV columns / after inferred planarization');
   record(
     'Electrical TSV and chip wiring finishing steps (metadata only)',
-    'Paper Fig. 2(c,d): local TSV SiO2 geometry plus Ti/Cu seed and Cu core now exist, but whole-surface thermal oxidation, dielectric isolation quality, sputter/plating kinetics, NiPaAu, Au routing and electrical continuity are NOT verified.',
+    'Paper Fig. 2(c,d): native front/back exposed-surface SiO2 and additional local TSV oxide precede Ti/Cu seed and Cu core. Oxidation chemistry, pinhole-free electrical insulation, actual sputter/plating kinetics, NiPaAu, Au routes and electrical continuity remain UNVERIFIED.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -822,6 +854,29 @@ export async function buildGanMicrochannel() {
         region.stack.some((segment) => segment.z0 < z && segment.z1 > z),
     );
   }
+  const exteriorFrontOxide = model.layers.find(
+    (layer) => layer.name === 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
+  );
+  const exteriorBackOxide = model.layers.find(
+    (layer) => layer.name === 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
+  );
+  assert.ok(exteriorFrontOxide && exteriorBackOxide, 'Missing native front/back exterior oxides');
+  for (const [point, z, oxide] of [
+    [[2000, 0], 600.25, exteriorFrontOxide],
+    [[2000, 0], -200.25, exteriorBackOxide],
+    [[2500, 1800], 600.25, exteriorFrontOxide],
+    [[2500, 1800], -200.25, exteriorBackOxide],
+  ]) {
+    assert.ok(
+      owner(point).stack.some(
+        (segment) => segment.layerId === oxide.id && segment.z0 < z && segment.z1 > z,
+      ),
+      'Full exterior oxide missing or not following the true front/back surface at ' + [point, z],
+    );
+  }
+  for (const y of [-GAN_LOWER_FEED.portOffsetY, GAN_LOWER_FEED.portOffsetY]) {
+    assert.equal(materialAt([0, y], -150), false, 'Global SiO2 sealed a rear coolant port');
+  }
   const tsvOxide = model.layers.find(
     (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
   );
@@ -842,6 +897,7 @@ export async function buildGanMicrochannel() {
       (z) =>
         z <=
         600 +
+          GAN_TSV_LINER.inferredWholeSurfaceSiO2Um +
           GAN_TSV_LINER.inferredLocalSiO2Um +
           GAN_TSV_LINER.titaniumUm +
           GAN_TSV_LINER.copperUm +
@@ -948,9 +1004,9 @@ export async function buildGanMicrochannel() {
   );
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
-  assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
+  assert.equal(cooledSegments[0].z0, 605.5, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
-  assert.equal(materialAt([30, 0], 604.99), false, 'SiC backside is coolant-obstructed');
+  assert.equal(materialAt([30, 0], 605.49), false, 'SiC backside is coolant-obstructed');
   const gsgDie = model.layers.find(
     (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
   );
@@ -961,9 +1017,9 @@ export async function buildGanMicrochannel() {
   assert.ok(gsgDie && gsgSolder && gsgPad, 'Missing one or more physical GSG assembly layers');
   for (const x of [-1250, 1250]) {
     for (const [layerId, z0, z1] of [
-      [gsgSolder.id, 600, 605],
-      [gsgDie.id, 605, 705],
-      [gsgPad.id, 705, 705.5],
+      [gsgSolder.id, 600.5, 605.5],
+      [gsgDie.id, 605.5, 705.5],
+      [gsgPad.id, 705.5, 706],
     ]) {
       assert.ok(
         owner([x, 0]).stack.some(
@@ -1034,6 +1090,7 @@ export async function buildGanMicrochannel() {
       fourCuFilledTSVsWithUnblockedCoolant: true,
       idealizedCuPlanarizationPreservesTSVConductors: true,
       localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage: true,
+      frontBackExteriorSiO2WithUnsealedCoolant: true,
       twoInferredGsgDieBodiesAndPadsAreRealGeometry: true,
     },
     checkpoints,

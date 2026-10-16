@@ -290,6 +290,8 @@ try {
     const byName = new Map(model.layers.map((layer) => [layer.name, layer.id]));
     const names = {
       oxide: 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
+      globalFront: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
+      globalBack: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
       ti: 'TSV Ti conformal seed surrogate 0.2 um',
       cu: 'TSV Cu conformal seed surrogate 0.5 um',
       fill: 'TSV Cu electrofill surrogate 35 um',
@@ -313,11 +315,17 @@ try {
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
     const missingLocalOxideRims = viaCenters.filter(
-      ([x, y]) => !hasLayer([x + 43, y], 600.25, ids.oxide),
+      ([x, y]) => !hasLayer([x + 43, y], 600.75, ids.oxide),
+    );
+    const missingGlobalFrontOxide = [[2000, 0], [2500, 1800]].filter(
+      (xy) => !hasLayer(xy, 600.25, ids.globalFront),
+    );
+    const missingGlobalBackOxide = [[2000, 0], [2500, 1800]].filter(
+      (xy) => !hasLayer(xy, -200.25, ids.globalBack),
     );
     const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
-    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.25, ids.pad));
+    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.75, ids.pad));
     const missingGsgDieCenters = [-1250, 1250]
       .map((x) => [x, 0])
       .filter((xy) => !hasLayer(xy, 650, gsgDieId));
@@ -332,6 +340,8 @@ try {
       gsgGoldSamples: gsgPadCenters.length,
       missingCuCore,
       missingLocalOxideRims,
+      missingGlobalFrontOxide,
+      missingGlobalBackOxide,
       missingGsgPads,
       missingGsgDieCenters,
       sourceProcessLayersPresent: {
@@ -347,6 +357,8 @@ try {
     [],
     'Browser-loaded TSV SiO2 rim geometry missing',
   );
+  assert.deepEqual(geometry.missingGlobalFrontOxide, [], 'Full front surface SiO2 missing');
+  assert.deepEqual(geometry.missingGlobalBackOxide, [], 'Full backside SiO2 missing');
   assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG gold contacts are absent');
   assert.deepEqual(
     geometry.missingGsgDieCenters,
@@ -477,6 +489,9 @@ try {
     hemtBacksideViaMetallizationModeled: false,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
+    frontBackExposedOxideGeometryVerified:
+      geometry.missingGlobalFrontOxide.length === 0 &&
+      geometry.missingGlobalBackOxide.length === 0,
     wholeOutsideSurfaceOxideVerified: false,
     oxideInsulationScientificVerification: false,
     electricalContinuityVerified: false,

@@ -91,12 +91,12 @@ test('Persisted Cu-filled TSV geometry is planarized without losing metal', asyn
     }
     assert.notEqual(layerAt(model, [x, y], 625), fill.id);
     assert.equal(
-      layerAt(model, [x + 43, y], 600.25),
+      layerAt(model, [x + 43, y], 600.75),
       model.layers.find((l) => l.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)').id,
       'Oxide top rim must sit between Si and Ti',
     );
     assert.equal(
-      layerAt(model, [x + 43, y], 600.95),
+      layerAt(model, [x + 43, y], 601.45),
       seed.id,
       'Cu seed top rim must sit above the local oxide and Ti',
     );
@@ -118,12 +118,12 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
   // DO NOT require a fabricated direct GSG-to-TSV Au trace as a paper fact.
   for (const side of [-1, 1]) {
     assert.equal(
-      layerAt(model, [side * 1250, 0], 705.25),
+      layerAt(model, [side * 1250, 0], 705.75),
       gsgPad.id,
       'Illustrative GSG pad footprint is missing',
     );
     assert.equal(
-      layerAt(model, [side * 1250, 0], 705.51),
+      layerAt(model, [side * 1250, 0], 706.01),
       null,
       'The 0.5 um GSG pad footprint must not silently grow into a thicker structure',
     );

@@ -109,8 +109,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
   assert.equal(validation.maskLayers, 18);
-  assert.equal(validation.processNodes, 34);
-  assert.equal(validation.recipeSteps, 33);
+  assert.equal(validation.processNodes, 36);
+  assert.equal(validation.recipeSteps, 35);
+  assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
   assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
   assert.equal(validation.checks.twoInferredGsgDieBodiesAndPadsAreRealGeometry, true);
   // Candidate process-order contract: source paper distinguishes metalized
@@ -122,6 +123,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const wireBondRecordIndex = recipe.findIndex(
     (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
   );
+  const frontOxideIndex = depositIndex('Interposer front exposed-surface SiO2 0.5 um (inferred)');
+  const backOxideIndex = depositIndex('Interposer back exposed-surface SiO2 0.5 um (inferred)');
   const localOxideIndex = depositIndex('TSV SiO2 local oxide surrogate 0.5 um (inferred)');
   const tiSeedIndex = depositIndex('TSV Ti conformal seed surrogate 0.2 um');
   const cuSeedIndex = depositIndex('TSV Cu conformal seed surrogate 0.5 um');
@@ -137,6 +140,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const gsgIndex = depositIndex('GSG Au pads surrogate 0.5 um');
   assert.ok(
     [
+      frontOxideIndex,
+      backOxideIndex,
       localOxideIndex,
       tiSeedIndex,
       cuSeedIndex,
@@ -152,7 +157,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     'Expected physical TSV/HEMT materials and separate wire-bond source record',
   );
   assert.ok(
-    localOxideIndex < tiSeedIndex &&
+    frontOxideIndex < backOxideIndex &&
+      backOxideIndex < localOxideIndex &&
+      localOxideIndex < tiSeedIndex &&
       tiSeedIndex < cuSeedIndex &&
       cuSeedIndex < cuFillIndex &&
       cuFillIndex < cuPlanarizationIndex &&
@@ -322,8 +329,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     n.operation.label.includes('Planarize TSV Cu overburden'),
   );
   assert.ok(preCmp && postCmp, 'Missing separately replayable Cu deposition and CMP');
-  assert.ok(Math.abs(zTop(preCmp) - 636.2) < 1e-6);
-  assert.ok(Math.abs(zTop(postCmp) - 601.2) < 1e-6);
+  assert.ok(Math.abs(zTop(preCmp) - 636.7) < 1e-6);
+  assert.ok(Math.abs(zTop(postCmp) - 601.7) < 1e-6);
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);
@@ -422,10 +429,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   ).id;
   const sic = channel.find((segment) => segment.layerId === sicId);
   assert.ok(sic, 'GaN-on-SiC chip is not positioned over channel');
-  assert.equal(sic.z0, 605, 'AuSn bond stand-off must set the SiC backside at z=605');
+  assert.equal(sic.z0, 605.5, 'AuSn bond stand-off must set the SiC backside at z=605.5');
   assert.equal(sic.z1 - sic.z0, 99);
   assert.equal(
-    solidAt(project.model, [30, 0], 604.99),
+    solidAt(project.model, [30, 0], 605.49),
     false,
     'Cooling liquid must contact exposed SiC bottom face',
   );
