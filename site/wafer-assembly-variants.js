@@ -168,6 +168,12 @@ export function validateAssemblyVariantGraph(graph) {
         throw new Error('Assembly Variant parent branch or fork index is invalid.');
       }
       if (
+        branch.forkProcessIndex === undefined &&
+        branch.forkIndex === parent.bonds.length
+      ) {
+        throw new Error('Assembly Variant full-Bond fork requires explicit Process ancestry.');
+      }
+      if (
         JSON.stringify(branch.sourceRefs.slice(0, branch.forkIndex + 1)) !==
           JSON.stringify(parent.sourceRefs.slice(0, branch.forkIndex + 1)) ||
         JSON.stringify(branch.bonds.slice(0, branch.forkIndex)) !==
