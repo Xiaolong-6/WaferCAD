@@ -3,7 +3,6 @@ import test from 'node:test';
 import {
   ARRAY_MODEL_KERNEL,
   arrayParts,
-  resolveArrayModel,
   translatedAppearance,
 } from '../model-array.js';
 
@@ -84,7 +83,8 @@ for (const side of [25, 80]) {
       assert.equal(part.x, (index % side) * 5);
       assert.equal(part.y, Math.floor(index / side) * 5);
       assert.deepEqual(part.model.regions[0].stack, original.array.templates[0].model.regions[0].stack);
-      assert.equal(part.model.regions[0].stack[1].z1 - part.model.regions[0].stack[1].z0, 0.01);
+      assert.equal(part.model.regions[0].stack[1].z0, 1);
+      assert.equal(part.model.regions[0].stack[1].z1, 1.01);
     }
     assert.deepEqual(restored, original);
   });
