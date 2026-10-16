@@ -250,20 +250,14 @@ try {
       persistedBefore,
       'No deferred autosave may overwrite durable current after double fault',
     );
-    assert.ok(
-      durability.protectedModels.some(
-        (model) => JSON.stringify(model) === JSON.stringify(before.model),
-      ),
-      'A valid pre-restore checkpoint must contain the original exact Model: ' +
-        JSON.stringify({
-          reasons: durability.reasons,
-          expectedRevision: before.model.processRevision,
-          expectedLayers: before.model.layers.map((layer) => layer.name),
-          protectedRevisions: durability.protectedModels.map((model) => model.processRevision),
-          protectedLayers: durability.protectedModels.map((model) =>
-            model.layers.map((layer) => layer.name),
-          ),
-        }),
+    const protectedOriginal = durability.protectedModels.find(
+      (model) => model.processRevision === before.model.processRevision,
+    );
+    assert.ok(protectedOriginal, 'A valid pre-restore checkpoint must retain the original revision');
+    assert.deepEqual(
+      protectedOriginal,
+      before.model,
+      'The durable protective Recovery must contain the complete original physical Model',
     );
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
