@@ -33,7 +33,7 @@ try {
       assert.ok(physicalSize[0] > 100 && physicalSize[1] > 100);
     }
 
-    await page.locator('[data-action="view:three"]').click();
+    await selectScientificView(page, 'three', 1440);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
