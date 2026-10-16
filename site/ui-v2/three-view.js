@@ -64,6 +64,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     host,
     stats,
     getModel: store.renderModel,
+    getAssemblyWires: () => state.assemblyWires || [],
     getClipGeometry: store.selection.roiGeometry,
     getInspection: () => ({
       opacity: state.threeOpacity,
