@@ -111,7 +111,6 @@ export function sidewallBoundarySamples(
   return result;
 }
 
-
 // A display-only annotation can follow a neighboring conformal layer's
 // resolved XY mesh boundary while retaining its own physical Z offset.
 export function shiftedBoundaryProfile(profile, dz = 0) {
