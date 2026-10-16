@@ -238,16 +238,121 @@ try {
         assert.equal(dividerAppearance.background, dividerAppearance.baselineBackground);
         await divider.waitFor({ state: 'visible' });
         const rect = await divider.boundingBox();
-        await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        // The row and column splitter handles cross at their centers. Grab
+        // an unambiguous quarter-point rather than the overlapping intersection.
+        const columnX = rect.x + rect.width / 2;
+        const columnY = rect.y + rect.height / 4;
+        assert.equal(
+          await page.evaluate(
+            ({ x, y }) =>
+              document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            { x: columnX, y: columnY },
+          ),
+          'columns',
+          'Pointer must actually hit the column resize handle',
+        );
+        await page.mouse.move(columnX, columnY);
         await page.mouse.down();
-        await page.mouse.move(rect.x + rect.width / 2 + 35, rect.y + rect.height / 2, {
-          steps: 5,
+        await page.mouse.move(columnX + 35, columnY, { steps: 5 });
+        // Check the splitter WHILE the button is held, not only after release.
+        // CSS grid tracks move immediately; absolute splitters must move too.
+        const columnAlignment = await page.evaluate(() => {
+          const rectOf = (id) => document.querySelector('#' + id + 'Panel').getBoundingClientRect();
+          const main = rectOf('main');
+          const mask = rectOf('mask');
+          const three = rectOf('three');
+          const section = rectOf('section');
+          const handles = [...document.querySelectorAll('.v2-dock-divider-columns')];
+          return {
+            expected: [(main.right + mask.left) / 2, (three.right + section.left) / 2],
+            gridColumns: document.querySelector('.p-canvases').style.gridTemplateColumns,
+            savedTracks:
+              window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid'],
+            handles: handles.map((handle) => ({
+              left: handle.style.left,
+              axis: handle.dataset.dockAxis,
+              index: handle.dataset.dockIndex,
+            })),
+            observed: handles.map((handle) => {
+              const r = handle.getBoundingClientRect();
+              return r.left + r.width / 2;
+            }),
+          };
         });
+        assert.ok(
+          columnAlignment.observed.length > 0,
+          'Column splitter remains present while dragging',
+        );
+        for (const position of columnAlignment.observed) {
+          for (const boundary of columnAlignment.expected)
+            assert.ok(
+              Math.abs(position - boundary) < 3,
+              'Column splitter must follow live Grid boundary',
+            );
+        }
+        await page.screenshot({ path: resolve(output, 'divider-mid-drag-columns.png') });
+        console.log(
+          'Live column splitter measurement',
+          JSON.stringify({
+            initial: rect.x + rect.width / 2,
+            ...columnAlignment,
+          }),
+        );
+        assert.ok(
+          columnAlignment.observed[0] > rect.x + rect.width / 2 + 12,
+          'Column splitter visibly moves during drag',
+        );
         await page.mouse.up();
         await page.waitForFunction(() =>
           Boolean(window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid']),
         );
+        await waitForPaint(page);
         assert.notDeepEqual((await layoutState(page)).tracks['four-grid'], ratiosBefore);
+        await verifyIdentity(page);
+
+        const rowDivider = page.locator('.v2-dock-divider-rows').first();
+        await rowDivider.waitFor({ state: 'visible' });
+        const rowRect = await rowDivider.boundingBox();
+        assert.ok(rowRect, 'Row splitter remains available after a column resize');
+        const rowX = rowRect.x + rowRect.width / 4;
+        const rowY = rowRect.y + rowRect.height / 2;
+        assert.equal(
+          await page.evaluate(
+            ({ x, y }) =>
+              document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            { x: rowX, y: rowY },
+          ),
+          'rows',
+          'Pointer must actually hit the row resize handle',
+        );
+        await page.mouse.move(rowX, rowY);
+        await page.mouse.down();
+        await page.mouse.move(rowX, rowY + 28, { steps: 5 });
+        const rowAlignment = await page.evaluate(() => {
+          const rectOf = (id) => document.querySelector('#' + id + 'Panel').getBoundingClientRect();
+          const main = rectOf('main');
+          const mask = rectOf('mask');
+          const three = rectOf('three');
+          const section = rectOf('section');
+          return {
+            expected: [(main.bottom + three.top) / 2, (mask.bottom + section.top) / 2],
+            observed: [...document.querySelectorAll('.v2-dock-divider-rows')].map((handle) => {
+              const r = handle.getBoundingClientRect();
+              return r.top + r.height / 2;
+            }),
+          };
+        });
+        assert.ok(rowAlignment.observed.length > 0, 'Row splitter remains present while dragging');
+        for (const position of rowAlignment.observed) {
+          for (const boundary of rowAlignment.expected)
+            assert.ok(
+              Math.abs(position - boundary) < 3,
+              'Row splitter must follow live Grid boundary',
+            );
+        }
+        assert.ok(rowAlignment.observed[0] > rowRect.y + rowRect.height / 2 + 12);
+        await page.screenshot({ path: resolve(output, 'divider-mid-drag-rows.png') });
+        await page.mouse.up();
         await verifyIdentity(page);
 
         // Real pointer drag from the EMPTY header area must swap slots without

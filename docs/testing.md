@@ -127,8 +127,13 @@ maximize/restore, Snap and preference invariants. After starting the v2
 browser server, `npm run test:ui:docking` checks real Chromium 1440/1024/821px
 Grid geometry, all four-/three-view presets, titlebar Snap exchange,
 split-resize handles, Panel/Canvas identity, scientific-model invariance,
-and the unchanged 390px compact navigation. It writes unapproved screenshot
-evidence to `test-results/ui-v2-desktop-docking/`. The final
+and the unchanged 390px compact navigation. During resize, the browser test
+holds the pointer down and checks that both column and row divider centers
+follow the actual Grid pane edges; use quarter-point grips to avoid the
+row/column crossing. It saves `divider-mid-drag-columns.png` and
+`divider-mid-drag-rows.png` before pointer release, and confirms the final
+ratio is committed afterward. It writes screenshot evidence to
+`test-results/ui-v2-desktop-docking/`. The final
 Main/Mask/Mobile targeted CI owner invokes it; Draft visual iterations should
 prefer the direct command rather than the full browser matrix.
 No temporary standalone workflow is required after the initial screenshot acceptance.
