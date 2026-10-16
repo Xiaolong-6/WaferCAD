@@ -7,10 +7,12 @@ export function createWorkstationRenderScheduler({
   invalidateScientific,
   scheduleLayout,
 }) {
-  return function render({ scientific = true } = {}) {
+  return function render(options) {
     if (isStarting()) return;
     renderShell();
-    if (scientific) invalidateScientific();
+    // A few legacy callback sites pass opaque or null arguments.
+    // Only the explicit navigation policy skips scientific invalidation.
+    if (options?.scientific !== false) invalidateScientific();
     scheduleLayout();
   };
 }
