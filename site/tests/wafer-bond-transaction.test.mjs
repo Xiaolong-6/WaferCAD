@@ -6,8 +6,11 @@ await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const { replayWaferAssembly } = await import('../wafer-assembly.js');
-const { prepareWaferBondTransaction, commitWaferBondTransaction } =
-  await import('../wafer-bond-transaction.js');
+const {
+  prepareWaferBondTransaction,
+  commitWaferBondTransaction,
+  replayWaferBondTransaction,
+} = await import('../wafer-bond-transaction.js');
 
 function wafer(name) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
@@ -193,5 +196,85 @@ test('Bonded baseline rejects fake product History until the History state owner
   assert.throws(
     () => prepareWaferBondTransaction(fake, wafer('C'), { donorId: 'C' }),
     /cannot coexist with product Recipe/,
+  );
+});
+
+test('Bond History replay reconstructs first and third-wafer material exactly', () => {
+  const a = wafer('receiver');
+  const b = wafer('donor B');
+  const first = prepareWaferBondTransaction(a, b, { donorId: 'B' });
+  const replayed = replayWaferBondTransaction(a, b, first.operation, first.project);
+  assert.deepEqual(replayed.project, first.project);
+
+  const c = wafer('donor C');
+  const second = prepareWaferBondTransaction(first.project, c, { donorId: 'C' });
+  const replayedThird = replayWaferBondTransaction(
+    first.project,
+    c,
+    second.operation,
+    second.project,
+  );
+  assert.deepEqual(replayedThird.project, second.project);
+});
+
+test('Bond replay rejects forged contact, layer mapping and changed donor identity', () => {
+  const a = wafer('receiver');
+  const b = wafer('donor B');
+  const original = prepareWaferBondTransaction(a, b, { donorId: 'B' });
+
+  const contact = structuredClone(original.operation);
+  contact.contactAreaUm2 += 1;
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, contact, original.project),
+    /contactAreaUm2 provenance/,
+  );
+
+  const mapping = structuredClone(original.operation);
+  mapping.donorLayerIds = {};
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, mapping, original.project),
+    /donorLayerIds provenance/,
+  );
+
+  const identity = structuredClone(original.operation);
+  identity.donorId = 'forged-donor';
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, identity, original.project),
+    /donor ID does not match/,
+  );
+});
+
+test('Bond replay rejects mutated alignment or altered source even with identical geometry', () => {
+  const a = wafer('receiver');
+  const b = wafer('donor B');
+  const original = prepareWaferBondTransaction(a, b, { donorId: 'B' });
+  const alignment = structuredClone(original.operation);
+  alignment.spec.dx = 5;
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, alignment, original.project),
+    /differs from the committed product Assembly/,
+  );
+
+  const modifiedSource = structuredClone(b);
+  modifiedSource.name = 'Edited donor source provenance';
+  assert.throws(
+    () => replayWaferBondTransaction(a, modifiedSource, original.operation, original.project),
+    /differs from the committed product Assembly/,
+  );
+});
+
+test('Bond History requires a material-validated committed Assembly baseline', () => {
+  const a = wafer('A');
+  const b = wafer('B');
+  const original = prepareWaferBondTransaction(a, b, { donorId: 'B' });
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, original.operation),
+    /requires the committed product Assembly baseline/,
+  );
+  const forged = structuredClone(original.project);
+  forged.model.layers[0].name = 'Forged material';
+  assert.throws(
+    () => replayWaferBondTransaction(a, b, original.operation, forged),
+    /material differs/,
   );
 });
