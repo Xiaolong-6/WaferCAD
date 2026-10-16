@@ -47,7 +47,9 @@ export function validateAssemblyWires(wires) {
     if (
       !Array.isArray(wire.contactLayerIds) ||
       wire.contactLayerIds.length !== 2 ||
-      !wire.contactLayerIds.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128)
+      !wire.contactLayerIds.every(
+        (id) => typeof id === 'string' && id.length > 0 && id.length <= 128,
+      )
     ) {
       throw new Error('assemblyWires wire endpoints must name both physical metal layer IDs');
     }
