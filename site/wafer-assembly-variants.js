@@ -102,17 +102,31 @@ export function validateAssemblyVariantGraph(graph) {
     ) {
       throw new Error('Assembly Variant source references and Bond count disagree.');
     }
-    if (branch.sourceRefs[0] !== 0 || new Set(branch.sourceRefs).size !== branch.sourceRefs.length) {
+    if (
+      branch.sourceRefs[0] !== 0 ||
+      new Set(branch.sourceRefs).size !== branch.sourceRefs.length
+    ) {
       throw new Error('Assembly Variant lineage must use a unique, shared receiver source.');
     }
-    if (!Number.isInteger(branch.cursor) || branch.cursor < 0 || branch.cursor > branch.bonds.length) {
+    if (
+      !Number.isInteger(branch.cursor) ||
+      branch.cursor < 0 ||
+      branch.cursor > branch.bonds.length
+    ) {
       throw new Error('Assembly Variant cursor is outside its Bond lineage.');
     }
     for (const ref of branch.sourceRefs) requireIndex(ref, graph.sources.length, 'lineage');
-    if (!Number.isInteger(branch.forkIndex) || branch.forkIndex < 0 || branch.forkIndex > branch.bonds.length) {
+    if (
+      !Number.isInteger(branch.forkIndex) ||
+      branch.forkIndex < 0 ||
+      branch.forkIndex > branch.bonds.length
+    ) {
       throw new Error('Invalid Assembly Variant fork index.');
     }
-    if (branch.parentId != null && (typeof branch.parentId !== 'string' || branch.parentId === branch.id)) {
+    if (
+      branch.parentId != null &&
+      (typeof branch.parentId !== 'string' || branch.parentId === branch.id)
+    ) {
       throw new Error('Invalid Assembly Variant parent reference.');
     }
     materialize(graph, branch, branch.bonds.length); // strict geometrical replay
@@ -164,9 +178,7 @@ export function validateAssemblyVariantGraph(graph) {
 export function createAssemblyVariantGraph(product) {
   validateProjectFile(product);
   validateBondedAssemblyProject(product);
-  const source =
-    product.waferAssembly ??
-    createWaferAssembly(product, 'receiver');
+  const source = product.waferAssembly ?? createWaferAssembly(product, 'receiver');
   const graph = {
     version: ASSEMBLY_VARIANTS_VERSION,
     sources: structuredClone(source.sources),
@@ -271,4 +283,3 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
   }
   return { graph: next, project, operation: prepared.operation };
 }
-
