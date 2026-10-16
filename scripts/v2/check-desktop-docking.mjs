@@ -79,6 +79,33 @@ async function assertDesktopShell(page) {
   assert.ok(shell.projectInSidebar);
   assert.ok(shell.outerOverflow <= 1);
 }
+async function assertMockChrome(page) {
+  const result = await page.evaluate(() => {
+    const sidebarButton = document.querySelector('.p-topbar [data-action="hide-editor"]');
+    const overviewButton = document.querySelector('[data-action="dock:overview"]');
+    const switcher = overviewButton.closest('.p-desktop-dock-actions');
+    const icon = overviewButton.querySelector('.wc-icon');
+    const sidebarIcon = sidebarButton.querySelector('.wc-icon');
+    return {
+      sidebarIcon: sidebarButton.querySelector('use')?.getAttribute('href'),
+      overviewIcon: overviewButton.querySelector('use')?.getAttribute('href'),
+      sidebarIconWidth: sidebarIcon.getBoundingClientRect().width,
+      overviewIconWidth: icon.getBoundingClientRect().width,
+      switcherGap: getComputedStyle(switcher).gap,
+      overviewHeight: overviewButton.getBoundingClientRect().height,
+      overviewMinWidth: parseFloat(getComputedStyle(overviewButton).minWidth),
+      overviewActiveBackground: getComputedStyle(overviewButton).backgroundColor,
+    };
+  });
+  assert.equal(result.sidebarIcon, '#p-icon-sidebarCollapse');
+  assert.equal(result.overviewIcon, '#p-icon-overview');
+  assert.equal(result.sidebarIconWidth, 17);
+  assert.equal(result.overviewIconWidth, 15);
+  assert.equal(result.switcherGap, '7px');
+  assert.equal(result.overviewHeight, 36);
+  assert.ok(result.overviewMinWidth >= 72);
+  assert.equal(result.overviewActiveBackground, 'rgb(237, 243, 249)');
+}
 async function setTemplate(page, id) {
   const header = page.locator('#mainPanel [data-slot="view.main.header"]');
   await header.focus();
@@ -128,6 +155,7 @@ try {
       assert.equal(await page.locator('.p-section-dock-actions:visible').count(), 0);
       await assertGrid(page, 4);
       await assertDesktopShell(page);
+      await assertMockChrome(page);
       if (width === 1440) {
         await page.locator('.p-topbar [data-action="hide-editor"]').click();
         assert.equal(await page.locator('.p-sidebar:visible').count(), 0);
