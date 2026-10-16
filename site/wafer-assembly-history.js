@@ -32,7 +32,7 @@ function prefixAssembly(assembly, bondIndex) {
  * indices 1..N are assembled products with independent embedded sources.
  * No mutable state from a later donor can leak into earlier checkpoints.
  */
-export function assemblyBondCheckpoint(assembly, bondIndex) {
+function checkpointFromValidatedLineage(assembly, bondIndex) {
   const partial = prefixAssembly(assembly, bondIndex);
   if (bondIndex === 0) {
     const receiver = structuredClone(partial.sources[0].project);
@@ -44,18 +44,24 @@ export function assemblyBondCheckpoint(assembly, bondIndex) {
   return project;
 }
 
+export function assemblyBondCheckpoint(assembly, bondIndex) {
+  // The zero-Bond receiver is only safe if the full donor lineage is valid.
+  replayWaferAssembly(assembly);
+  return checkpointFromValidatedLineage(assembly, bondIndex);
+}
+
 /**
  * Compact, canonical History operation pointer for an Assembly Bond.
  * No donor project, physical model, or source History is copied into a node.
  */
-export function assemblyBondHistoryStep(assembly, bondIndex) {
-  const partial = prefixAssembly(assembly, bondIndex);
+function stepFromValidatedLineage(assembly, bondIndex) {
+  if (!Number.isInteger(bondIndex) || bondIndex < 0 || bondIndex > assembly.bonds.length) {
+    throw new Error('Bond History checkpoint is outside the Assembly lineage.');
+  }
   if (bondIndex === 0) {
     throw new Error('Bond History step 0 is the original receiver, not a Bond.');
   }
-  // Recompute all previous interfaces before admitting this History step.
-  replayWaferAssembly(partial);
-  const record = partial.bonds.at(-1);
+  const record = assembly.bonds[bondIndex - 1];
   return {
     kind: 'bond',
     bondIndex,
@@ -67,6 +73,11 @@ export function assemblyBondHistoryStep(assembly, bondIndex) {
   };
 }
 
+export function assemblyBondHistoryStep(assembly, bondIndex) {
+  replayWaferAssembly(assembly);
+  return stepFromValidatedLineage(assembly, bondIndex);
+}
+
 /** Resolve an untrusted saved History pointer against canonical donor sources. */
 export function resolveAssemblyBondHistoryStep(project, step) {
   validateBondedAssemblyProject(project);
@@ -74,11 +85,11 @@ export function resolveAssemblyBondHistoryStep(project, step) {
   if (!step || step.kind !== 'bond') {
     throw new Error('Bond History pointer must be a Bond operation.');
   }
-  const canonical = assemblyBondHistoryStep(assembly, step.bondIndex);
+  const canonical = stepFromValidatedLineage(assembly, step.bondIndex);
   if (!equalCanonical(step, canonical)) {
     throw new Error('Bond History pointer differs from immutable Assembly provenance.');
   }
-  return assemblyBondCheckpoint(assembly, step.bondIndex);
+  return checkpointFromValidatedLineage(assembly, step.bondIndex);
 }
 
 /**
@@ -91,8 +102,6 @@ export function assemblyBondHistoryTimeline(project) {
   return {
     initial: 0,
     head: waferAssembly.bonds.length,
-    steps: waferAssembly.bonds.map((_, index) =>
-      assemblyBondHistoryStep(waferAssembly, index + 1),
-    ),
+    steps: waferAssembly.bonds.map((_, index) => stepFromValidatedLineage(waferAssembly, index + 1)),
   };
 }
