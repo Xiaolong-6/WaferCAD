@@ -15,7 +15,12 @@ test('physical pyramid preserves apex, valley and front/back reflection', () => 
   assert.equal(back.z, 121);
   assert.equal(front.normal, null, 'A pyramid apex has no unique face normal');
   assert.equal(front.crease, true);
-  for (const point of [[3.2, 0], [0, 3.2], [3.2, 3.2], [6.4, 3.2]]) {
+  for (const point of [
+    [3.2, 0],
+    [0, 3.2],
+    [3.2, 3.2],
+    [6.4, 3.2],
+  ]) {
     const top = squarePyramidSample(...point, args);
     const bottom = squarePyramidSample(...point, { ...args, face: 'back' });
     assert.ok(Math.abs(top.z + bottom.z - 251) < 1e-12);
@@ -24,7 +29,12 @@ test('physical pyramid preserves apex, valley and front/back reflection', () => 
 });
 
 test('facet normal is unit length, consistent with analytic tangent slopes', () => {
-  for (const [x, y] of [[1.2, 0.4], [-1.2, 0.4], [0.4, 1.2], [0.4, -1.2]]) {
+  for (const [x, y] of [
+    [1.2, 0.4],
+    [-1.2, 0.4],
+    [0.4, 1.2],
+    [0.4, -1.2],
+  ]) {
     const sample = squarePyramidSample(x, y, args);
     assert.ok(sample.normal);
     const [nx, ny, nz] = sample.normal;

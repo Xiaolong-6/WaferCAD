@@ -19,7 +19,7 @@ four-facet square-pyramid surface, gradients and outward face normal for
 non-crease samples. An apex, diagonal crease, boundary or mask discontinuity
 requires topology-aware geometry; the oracle refuses to invent a unique normal
 at the apex/crease. `facetNormalFilmVerticalSeparation` is valid only for a
-**single infinite planar face** at fixed XY: it is *not* a Boolean coating
+**single infinite planar face** at fixed XY: it is _not_ a Boolean coating
 operator across apexes, valleys, steps or mask boundaries.
 
 A complete opt-in Kernel design must resolve:
