@@ -137,6 +137,10 @@ try {
       'Full physical 625-site array must survive reload',
     );
     assert.deepEqual(restored.workflow.steps, saved.workflow.steps, 'All 41 History Steps survive');
+    // Reload creates a new JS realm; restore the immutable paper baseline for later physical probes.
+    await page.evaluate((model) => {
+      window.__arrayBaseline = model;
+    }, initial.model);
 
     // #289: run a real Fig3 JLFET 625-device conformal/ROI Etch transaction
     // through the native v2 UI and Worker. The original 40 paper Steps remain intact.
