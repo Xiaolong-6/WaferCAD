@@ -352,12 +352,15 @@ try {
     const nav = mountAssemblyPreviewControls({
       currentIndex: () => session.currentIndex(),
       maxIndex: () => session.maxIndex(),
-      stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.state.model).thicknessUm} µm`,
+      stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.renderModel()).thicknessUm} µm`,
       restoreIndex: async (index) => {
         if (draftEditor) {
           await store.restoreAssemblyStageDurable(index);
         } else {
           store.restoreAssemblyStage(index);
+        }
+        if (draftEditor) {
+          store.setPostBondPresentationModel(draftEditor.postBondPreviewModel());
         }
         draftUi?.sync();
         workflow.refresh();
@@ -373,14 +376,17 @@ try {
       editableBondDraft: assemblyEdit,
     });
     if (draftEditor) {
+      const refreshPostBondProcess = () => {
+        store.setPostBondPresentationModel(draftEditor.postBondPreviewModel());
+        nav.sync();
+        workflow.refresh();
+      };
       draftUi = mountAssemblyBondDraftControls({
         editor: draftEditor,
-        onChanged: () => {
-          nav.sync();
-          workflow.refresh();
-        },
+        onChanged: refreshPostBondProcess,
       });
-      status('Assembly Bond draft · durable Recovery before commit; export explicitly.');
+      refreshPostBondProcess();
+      status('Assembly Bond draft · source-bound Process preview; export all Variants to keep edits.');
     } else {
       status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
     }
