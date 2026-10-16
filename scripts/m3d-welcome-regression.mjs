@@ -43,6 +43,17 @@ try {
   );
 
   const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  // Desktop docking uses window titlebars; compact/legacy shells use view tabs.
+  // Always exercise real view controls, not a programmatic snapshot mutation.
+  const focusView = async (view) => {
+    const overview = page.locator('.p-desktop-dock-actions [data-action="dock:overview"]');
+    if (await overview.isVisible()) {
+      await overview.click();
+      await page.locator(`#${view}Panel [data-action="maximize:${view}"]`).click();
+    } else {
+      await page.locator(`[data-action="view:${view}"]`).click();
+    }
+  };
   const before = await snapshot();
   assert.equal(before.workflow.steps.length, 36, 'M3D source has 36 History Steps');
   assert.equal(before.workflow.bookmarks.length, 27, 'M3D stage bookmarks must survive');
@@ -56,7 +67,7 @@ try {
   assert.equal(await page.locator('#snapshotList .history-step-wrap').count(), 36);
   assert.equal((await page.locator('#snapshotCount').textContent()).trim(), '36');
 
-  await page.locator('[data-action="view:three"]').click();
+  await focusView('three');
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,

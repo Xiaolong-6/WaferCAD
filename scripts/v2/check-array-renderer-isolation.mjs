@@ -17,6 +17,17 @@ try {
       timeout: 120000,
     });
     const snap = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    // Desktop docking uses window titlebars; compact/legacy shells use view tabs.
+    // Always exercise real view controls, not a programmatic snapshot mutation.
+    const focusView = async (view) => {
+      const overview = page.locator('.p-desktop-dock-actions [data-action="dock:overview"]');
+      if (await overview.isVisible()) {
+        await overview.click();
+        await page.locator(`#${view}Panel [data-action="maximize:${view}"]`).click();
+      } else {
+        await page.locator(`[data-action="view:${view}"]`).click();
+      }
+    };
     const initial = await snap();
     assert.equal(initial.sharedIdentity, true);
     assert.equal(initial.model.array.instances.length, 6400, '80×80 physical array');
@@ -25,7 +36,7 @@ try {
     assert.equal(initial.workflow.writable, true);
 
     for (const view of ['mask', 'main']) {
-      await page.locator('[data-action="view:' + view + '"]').click();
+      await focusView(view);
       await waitForPaint(page);
       const canvas = page.locator('#' + view + 'Canvas');
       assert.ok(await canvas.isVisible());
@@ -33,7 +44,7 @@ try {
       assert.ok(physicalSize[0] > 100 && physicalSize[1] > 100);
     }
 
-    await page.locator('[data-action="view:three"]').click();
+    await focusView('three');
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
