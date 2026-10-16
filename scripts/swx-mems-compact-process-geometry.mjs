@@ -28,10 +28,10 @@ const rect = (x, y, w, h) => [
 const shift = (polygon, dx, dy) => polygon.map(([x, y]) => [x + dx, y + dy]);
 const FIELD = [160, 220];
 const ELECTRICAL = [
-  [-16, 70],
+  [-16, 62],
   [-6, -30],
   [6, -30],
-  [16, 70],
+  [16, 62],
   [-41, 12],
   [41, 12],
 ];

@@ -54,6 +54,24 @@ test('40 finger pairs preserve 300nm gap and 200nm plus travel axial overlap', (
   }
 });
 
+test('compact actuator envelope is 89.5 by 100um without resizing reported springs', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createCompactSwxActuator(state);
+    const polygons = [...pose.fixed, ...pose.movable, ...pose.flexure];
+    const extents = polygons.map(bounds);
+    const minX = Math.min(...extents.map((value) => value.minX));
+    const maxX = Math.max(...extents.map((value) => value.maxX));
+    const minY = Math.min(...extents.map((value) => value.minY));
+    const maxY = Math.max(...extents.map((value) => value.maxY));
+    closeTo(maxX - minX, 89.5);
+    closeTo(maxY - minY, 100);
+    assert.equal(pose.springContours.length, 4);
+    assert.equal(pose.banks.length, 2);
+    assert.equal(pose.anchors.filter((ring) => bounds(ring).maxY > 60).length, 2);
+    assert.equal(pose.anchors.filter((ring) => bounds(ring).minY < -25).length, 2);
+  }
+});
+
 test('S8 shuttle contains two open triangular cells between each alternate diagonal rib', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
@@ -102,7 +120,7 @@ test('compact spring anchors stay fixed and springs move only at shuttle ends', 
       closeTo(a.minY, b.minY);
       assert.ok(b.maxY > a.maxY, 'lower spring tip must follow positive Y stroke');
     } else {
-      assert.ok(a.maxY > 69, 'upper spring anchor is above the comb');
+      assert.ok(a.maxY > 61, 'upper spring anchor is above the comb');
       closeTo(a.maxY, b.maxY);
       assert.ok(b.minY > a.minY, 'upper spring tip must follow positive Y stroke');
     }
