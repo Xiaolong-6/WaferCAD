@@ -8,6 +8,7 @@ import {
   newUiContext,
   observePageErrors,
 } from './test-helpers/ui.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
 const appUrl = `${baseUrl.replace(/\/$/, '')}/app.html?start=empty`;
 const browser = await launchBrowser();
@@ -34,14 +35,11 @@ async function checkTwoDimensionalEditing(page) {
     ['main', '#mainPanel'],
     ['mask', '#maskPanel'],
   ]) {
-    await page.locator(`[data-action="view:${view}"]`).first().click();
+    await selectScientificView(page, view, 1440);
     await page.locator(panel).waitFor({ state: 'visible', timeout: 30000 });
   }
-  // Desktop Section is a dock controlled independently from the three
-  // primary view buttons; mobile uses the separate mobile-section action.
-  await page.locator('[data-action="view:main"]').first().click();
+  await selectScientificView(page, 'section', 1440);
   const section = page.locator('#sectionPanel');
-  if (!(await section.isVisible())) await page.locator('[data-action="section"]').click();
   await section.waitFor({ state: 'visible', timeout: 30000 });
   await page.locator('[data-action="domain:process"]').click();
   await page.locator('#operationType').selectOption('add');
@@ -70,7 +68,7 @@ try {
     route.fulfill({ status: 503, body: 'CDN unavailable' }),
   );
   const { page: unavailable, errors: dependencyErrors } = await openV2(unavailableContext);
-  await unavailable.locator('[data-action="view:three"]').first().click();
+  await selectScientificView(unavailable, 'three', 1440);
   await unavailable.waitForFunction(
     () => document.querySelector('#threeHost')?.dataset.threeUnavailableReason === 'dependency',
     null,
@@ -101,7 +99,7 @@ try {
     };
   });
   const { page: unavailableWebGL, errors: webglErrors } = await openV2(webglContext);
-  await unavailableWebGL.locator('[data-action="view:three"]').first().click();
+  await selectScientificView(unavailableWebGL, 'three', 1440);
   await unavailableWebGL.waitForFunction(
     () => document.querySelector('#threeHost')?.dataset.threeUnavailableReason === 'webgl',
     null,
