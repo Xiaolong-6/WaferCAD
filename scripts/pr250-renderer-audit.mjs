@@ -359,6 +359,19 @@ try {
                   ]),
                   // Temporary PR250 isolation captures: do not remove real
                   // scientific interfaces in the final product Renderer.
+                  // Separate overlay-depth competition from mismatched
+                  // geometry at the same exact camera and opaque material.
+                  ...[-2, -6, -20, -80].map((auditCutOffset) => ({
+                    name: `surface-cut-zbreak-roi-edge-85-depth-bias-${Math.abs(auditCutOffset)}`,
+                    opacity: 1,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 85,
+                    targetXY: [2240, -150],
+                    auditCutOffset,
+                  })),
                   ...[
                     'implant-surface',
                     'implant-cut',
@@ -451,6 +464,7 @@ try {
         async ({ config, fit }) => {
           Object.assign(window.inspection, config);
           window.inspection.__auditHideKind = config.auditHiddenKind || null;
+          window.inspection.__auditCutOffset = config.auditCutOffset ?? null;
           // Use the existing 3D Z Break display-only transform to pull the
           // active Black-Si surface away from the 350 um base. Front/Back
           // scales do NOT modify the canonical layer z coordinates.
