@@ -175,8 +175,84 @@ try {
       await recoveryPage.close();
     }
 
+    // Fork A+B into a physically independent D alternative, keeping C on Main.
+    await page.getByRole('button', { name: '← Bond' }).click();
+    await page.getByRole('button', { name: 'Fork from current Bond' }).click();
+    await page.locator('.assembly-bond-variants').getByLabel('Bond Variant').selectOption('variant-1');
+    await page.locator('.assembly-bond-draft-form input[name="donorId"]').fill('D');
+    await page.getByLabel('Select independent donor wafer').setInputFiles({
+      name: 'donor-d.wafercad',
+      mimeType: 'application/json',
+      buffer: Buffer.from(serializeProject(source('donor D'))),
+    });
+    await page.getByRole('button', { name: 'Validate and Bond' }).click();
+    await page.waitForFunction(
+      () =>
+        window.WaferCadV2Workstation?.snapshot().assemblyPreview.bonds === 2 &&
+        window.WaferCadV2Workstation?.snapshot().assemblyPreview.originDisplayColors.length >= 3,
+      null,
+      { timeout: 60000 },
+    );
+    const alternate = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(alternate.assemblyPreview.sources, 3);
+    await page.locator('.assembly-preview-views [data-view="three"]').click();
+    await waitForPaint(page);
+    await page.screenshot({ path: resolve(output, 'variant-d-alternative.png') });
+
+    const graphDownloadPromise = page.waitForEvent('download', { timeout: 30000 });
+    await page.getByRole('button', { name: 'Export all Variants' }).click();
+    const graphDownload = await graphDownloadPromise;
+    assert.match(graphDownload.suggestedFilename(), /\.wafercad-variants\.json$/);
+    const graphBytes = await readFile(await graphDownload.path());
+    const graph = JSON.parse(graphBytes.toString('utf8'));
+    assert.equal(graph.sources.length, 4);
+    assert.equal(graph.branches.length, 2);
+    assert.deepEqual(graph.branches.map((b) => b.bonds.at(-1).donorId), ['C', 'D']);
+    assert.deepEqual(graph.branches[0].sourceRefs, [0, 1, 2]);
+    assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
+
+    await page.getByLabel('Bond Variant').selectOption('main');
+    const switchedMain = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.deepEqual(switchedMain.model, committed.model);
+    assert.equal(switchedMain.workflow.writable, false);
+    await page.getByLabel('Bond Variant').selectOption('variant-1');
+    assert.deepEqual(
+      (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
+      alternate.model,
+    );
+
+    const sidecarTab = await context.newPage();
+    try {
+      const sidecarErrors = observePageErrors(sidecarTab);
+      await sidecarTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await sidecarTab.getByLabel('Open bonded Assembly project').setInputFiles({
+        name: graphDownload.suggestedFilename(),
+        mimeType: 'application/json',
+        buffer: graphBytes,
+      });
+      await sidecarTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 90000,
+      });
+      const sidecarView = await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.deepEqual(sidecarView.model, alternate.model);
+      assert.equal(sidecarView.assemblyPreview.bonds, 2);
+      await sidecarTab.locator('.assembly-bond-draft-tools summary').click();
+      assert.equal(await sidecarTab.getByLabel('Bond Variant').locator('option').count(), 2);
+      await sidecarTab.getByLabel('Bond Variant').selectOption('main');
+      assert.deepEqual(
+        (await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
+        committed.model,
+      );
+      assert.deepEqual(sidecarErrors, []);
+    } finally {
+      await sidecarTab.close();
+    }
+
     assert.deepEqual(errors, [], 'No uncaught page errors during transaction or export');
     console.log('Native Assembly Bond draft: donor C, durable Recovery, Undo/Redo, export = OK');
+    console.log('Native Bond Variants: fork C/D, Main switch, sidecar reload = OK');
   } finally {
     await context.close();
   }
