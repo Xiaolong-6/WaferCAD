@@ -84,7 +84,9 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   border-radius: 16px;
   background: var(--surface, #fff);
   color: var(--text, #20242b);
-  font: 15px/1.5 system-ui, sans-serif;
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
 }
 
 .assembly-preview-file-picker h1 {
@@ -120,7 +122,9 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   background: rgba(250, 252, 255, 0.96);
   box-shadow: 0 8px 28px rgba(20, 32, 46, 0.15);
   color: #202d3e;
-  font: 12px/1.4 system-ui, sans-serif;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
 }
 
 .assembly-preview-controls button {
