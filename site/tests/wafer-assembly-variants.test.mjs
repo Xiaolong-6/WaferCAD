@@ -388,6 +388,9 @@ test('Process-fork ancestry, checkpoint and immutable stage prefix fail closed o
     g.branches[1].forkIndex = 0;
   }, /Process fork checkpoint/);
   invalid((g) => {
+    delete g.branches[1].forkProcessIndex;
+  }, /explicit Process ancestry/);
+  invalid((g) => {
     g.branches[1].postBondSteps = [];
     g.branches[1].postBondCursor = 0;
   }, /Process fork checkpoint/);
