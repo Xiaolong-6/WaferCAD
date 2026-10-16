@@ -55,6 +55,9 @@ function fixture({ checkpoint, apply, commit } = {}) {
     tamper: () => {
       visible.model.layers[0].name = 'Uncommitted material edit';
     },
+    reorder: () => {
+      visible.model = Object.fromEntries(Object.entries(visible.model).reverse());
+    },
   };
 }
 
@@ -194,4 +197,13 @@ test('pending asynchronous Recovery prevents concurrent Bond and History navigat
   await pending;
   assert.equal(host.controller.isCommitting(), false);
   assert.equal(host.controller.maxIndex(), 2);
+});
+
+test('strict material parity ignores JSON property order without relaxing values', async () => {
+  const host = fixture();
+  host.reorder();
+  await host.controller.bond(source('donor C'), { donorId: 'C' });
+  assert.equal(host.controller.maxIndex(), 2);
+  assert.equal(host.backups.length, 1);
+  assert.deepEqual(host.getVisible().model, host.controller.fullProduct().model);
 });
