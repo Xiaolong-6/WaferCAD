@@ -46,11 +46,9 @@ const revealSectionDock = async () => {
   const dock = page.locator('#sectionPanel');
   const sectionTab = page.getByRole('button', { name: 'Section', exact: true }).first();
   if (await sectionTab.count()) {
-    // Overview also renders Section as a visible thumbnail: select the actual
-    // full-stage Section tab even when the thumbnail is already visible.
-    if ((await sectionTab.getAttribute('aria-pressed')) !== 'true') {
-      await sectionTab.click();
-    }
+    // A pressed Section control can still represent an Overview thumbnail.
+    // Explicitly activate its real full-stage view each time we inspect it.
+    await sectionTab.click();
   } else if (!(await dock.isVisible())) {
     await page.locator('[data-action="section"]:visible').first().click();
   }
@@ -63,7 +61,8 @@ const requireLargeView = async (kind) => {
   const bounds = await panel.boundingBox();
   assert.ok(
     bounds && bounds.width > 700 && bounds.height > 500,
-    kind + ' scientific view must occupy the stage rather than a thumbnail',
+    kind + ' scientific view must occupy the stage rather than a thumbnail: ' +
+      JSON.stringify(bounds),
   );
   await waitForPaint(page);
 };
