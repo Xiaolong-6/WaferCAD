@@ -1,6 +1,15 @@
 name: GaN HEMT microchannel reconstruction
 
 on:
+  # One scoped branch-validation entrypoint while this Draft PR conflicts
+  # with main. GitHub suppresses pull_request workflows for conflicted PRs.
+  # Only edits to this workflow initiate a branch push run; normal code
+  # changes still wait for a deliberate final targeted validation request.
+  push:
+    branches:
+      - feat/example-gan-hemt-microchannel-20261014
+    paths:
+      - .github/workflows/gan-hemt-microchannel.yml
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
