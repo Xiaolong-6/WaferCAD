@@ -507,7 +507,7 @@ try {
           .getByLabel('Bond Variant', { exact: true })
           .locator('option')
           .filter({ hasText: /variant-2/ })
-          .waitFor();
+          .waitFor({ state: 'attached' });
         await restoredProcessTab.getByLabel('Post-Bond Process operation').selectOption('deposit');
         await restoredProcessTab.getByLabel('Post-Bond Process material').fill('Al');
         await restoredProcessTab.getByLabel('Post-Bond Process thickness µm').fill('0.4');
