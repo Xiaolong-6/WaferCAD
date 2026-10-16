@@ -209,11 +209,10 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
   }
   for (const net of metalNets) {
     const rectangles = net.rectangles;
-    if (
-      !Array.isArray(rectangles) ||
-      !rectangles.length ||
-      rectangles.some((r) => !validRect(r))
-    ) {
+    if (!Array.isArray(rectangles) || !rectangles.length) {
+      fail(net.name + ': invalid routing');
+    }
+    if (rectangles.some((r) => !validRect(r))) {
       fail(net.name + ': invalid routing');
     }
     const visited = new Set([0]);
@@ -322,7 +321,8 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       fail(site.id + ': ambiguous CNT');
     }
     const footprints = mask(site.mask);
-    const matches = footprints.map((r, i) => (inRect(point, r) ? i : -1)).filter((i) => i >= 0);
+    const matchingIndices = footprints.map((r, i) => (inRect(point, r) ? i : -1));
+    const matches = matchingIndices.filter((i) => i >= 0);
     if (matches.length !== 1 || (site.rect !== undefined && matches[0] !== site.rect)) {
       fail(site.id + ': incorrect device footprint');
     }
