@@ -4,20 +4,20 @@
 
 ## Sources and evidence
 
-- Literature: Jeong et al., *Nature Electronics* (2019), [DOI 10.1038/s41928-019-0272-8](https://doi.org/10.1038/s41928-019-0272-8), especially Fig. 1a–b, Methods and Supplementary Fig. 1.
+- Literature: Jeong et al., _Nature Electronics_ (2019), [DOI 10.1038/s41928-019-0272-8](https://doi.org/10.1038/s41928-019-0272-8), especially Fig. 1a–b, Methods and Supplementary Fig. 1.
 - Real Chromium acceptance: [run 38744110625](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625), [browser artifact 11978041932](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625/artifacts/11978041932). Includes `browser-acceptance.json`, unmodified candidate, local-inspection derivatives and original PNG evidence.
 - Last fully verified pre-cleanup Head `61da11e`: [T-CMOS targeted/Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820768), [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820753), [Mask](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820798), [full-array renderer](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820661), and [M3D Welcome](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820854) all passed. The cleanup Head requires its own targeted verification.
 
 ## Fig. 1a: source topology versus demonstrated model
 
-| Criterion | Source | WaferCAD evidence and disposition |
-| --- | --- | --- |
-| Complementary topology | Left pMOS in n-well; right nMOS in p-well | Both modeled with corresponding well markers: **qualitative pass**. |
-| Source / Drain / Gate | Two MOS structures; common VIN gates, joined VOUT drains, VDD / GND sources | Two distinct POLY geometries, silicon/silicide/W/Metal1 interfaces and net isolation checked: **topology pass**. |
-| Body-tie contacts | Inverter bias requires connection to body/well | Inferred U-shaped body ties with Si/W/Metal1; n+/p+ contact implant and ohmic behavior **not validated**. |
-| Enhanced body doping | HVTN As+ on pMOS; HVTP BF2+ on nMOS | Qualitative material-clipped body intervals visible in both local Sections and ROI cutaways. 80–240 nm model interval is **assumed**. |
-| Body–drain region | Paper attributes tunnelling to highly doped body/drain regions | Material-clipped HVT/HDD **structural annotations** are visualized. External PN/BTBT simulation results may later be overlaid; no device-physics calculation or quantitative PN acceptance is required here. |
-| Energy bands / ternary VTC | Bias-specific BTBT band diagrams and electronic output | Outside the PR #225 reconstruction scope; externally computed data can be displayed separately with source and units. |
+| Criterion                  | Source                                                                      | WaferCAD evidence and disposition                                                                                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Complementary topology     | Left pMOS in n-well; right nMOS in p-well                                   | Both modeled with corresponding well markers: **qualitative pass**.                                                                                                                                          |
+| Source / Drain / Gate      | Two MOS structures; common VIN gates, joined VOUT drains, VDD / GND sources | Two distinct POLY geometries, silicon/silicide/W/Metal1 interfaces and net isolation checked: **topology pass**.                                                                                             |
+| Body-tie contacts          | Inverter bias requires connection to body/well                              | Inferred U-shaped body ties with Si/W/Metal1; n+/p+ contact implant and ohmic behavior **not validated**.                                                                                                    |
+| Enhanced body doping       | HVTN As+ on pMOS; HVTP BF2+ on nMOS                                         | Qualitative material-clipped body intervals visible in both local Sections and ROI cutaways. 80–240 nm model interval is **assumed**.                                                                        |
+| Body–drain region          | Paper attributes tunnelling to highly doped body/drain regions              | Material-clipped HVT/HDD **structural annotations** are visualized. External PN/BTBT simulation results may later be overlaid; no device-physics calculation or quantitative PN acceptance is required here. |
+| Energy bands / ternary VTC | Bias-specific BTBT band diagrams and electronic output                      | Outside the PR #225 reconstruction scope; externally computed data can be displayed separately with source and units.                                                                                        |
 
 The paper reports **commercial 130 nm and 90 nm CMOS foundry processes**. It does **not** provide a measured physical gate length for this depicted local cell. The candidate uses a **0.44 µm illustrative POLY band** traced from the image's 24-pixel drawn width; it is **not a source-confirmed physical gate length**, despite the paper's 130 nm technology-node label.
 
@@ -34,7 +34,6 @@ HVTP (455,306)-(588,409), VIN top (188,151)-(532,191), VOUT top
 The overlay and exact-head real-Chromium screenshot are compared at identical
 pixel registration, with no digitally painted CAD screenshot.
 
-
 **2026-10-16 redraw:** The revised Mask has distinct inverted-U VIN and VOUT
 bridges above the devices, source-rail inverted U shapes on the outer edges,
 and two U-shaped body-tie/CNT arrays underneath. The drawing tracks the
@@ -44,15 +43,14 @@ disjoint and connected by the terminal-provenance invariant. Every Source/Drain 
 style differences are the Mask UI's filled HVT/LVT windows rather than the
 original illustration's outline-only labels.
 
-
-| Criterion | Browser / model evidence | Disposition |
-| --- | --- | --- |
-| ACTIVE / STI and complementary wells | Full Section and 3D show both side-by-side MOS structures | Qualitative topology pass. |
-| LVTN / LVTP and HVTN / HVTP labels | Left HVTN pMOS / right HVTP nMOS correct; LVTN/LVTP are reference-only masks, not T-CMOS process doping | Naming and branch intent pass. |
-| Two POLY gates and contacts | Model assigns 0.44 µm pixel-measured illustrative gate bands and separate CNT contacts | Model-internal geometry pass, **not foundry-dimension pass**. |
-| VDD, VOUT, GND, VIN | Four separate METAL1 net footprints; VOUT joins both drains, VIN both gates | Model-internal topology pass. |
-| Polygon counts and serialization | Fig. 1b redrawing now uses 13 layers and 196 Mask elements | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
-| Exact physical layout dimensions | Paper does not disclose the complete foundry GDS or mask coordinates | Unverifiable; candidate is a reconstructed layout, **not a digitized foundry mask**. |
+| Criterion                            | Browser / model evidence                                                                                | Disposition                                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| ACTIVE / STI and complementary wells | Full Section and 3D show both side-by-side MOS structures                                               | Qualitative topology pass.                                                                            |
+| LVTN / LVTP and HVTN / HVTP labels   | Left HVTN pMOS / right HVTP nMOS correct; LVTN/LVTP are reference-only masks, not T-CMOS process doping | Naming and branch intent pass.                                                                        |
+| Two POLY gates and contacts          | Model assigns 0.44 µm pixel-measured illustrative gate bands and separate CNT contacts                  | Model-internal geometry pass, **not foundry-dimension pass**.                                         |
+| VDD, VOUT, GND, VIN                  | Four separate METAL1 net footprints; VOUT joins both drains, VIN both gates                             | Model-internal topology pass.                                                                         |
+| Polygon counts and serialization     | Fig. 1b redrawing now uses 13 layers and 196 Mask elements                                              | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
+| Exact physical layout dimensions     | Paper does not disclose the complete foundry GDS or mask coordinates                                    | Unverifiable; candidate is a reconstructed layout, **not a digitized foundry mask**.                  |
 
 ## Browser screenshots inspected
 

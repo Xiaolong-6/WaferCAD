@@ -212,7 +212,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const overlaps = qualified.filter((overlap) => overlap.terminalId === terminal.id);
     assert.ok(overlaps.length, `${terminal.id} must intersect opposite-polarity body/HDD intents`);
     const union = v.unionGeometries(overlaps.map((overlap) => overlap.geom));
-    const expectedArea = ({ 'pMOS-source': 0.88, 'pMOS-drain': 0.88, 'nMOS-drain': 0.86, 'nMOS-source': 0.9 })[terminal.id] * 0.78;
+    const expectedArea =
+      { 'pMOS-source': 0.88, 'pMOS-drain': 0.88, 'nMOS-drain': 0.86, 'nMOS-source': 0.9 }[
+        terminal.id
+      ] * 0.78;
     assert.ok(
       Math.abs(geometryArea(union) - expectedArea) < 1e-6,
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,

@@ -17,7 +17,7 @@ The key published mechanism is the **highly doped body-to-drain tunnel junction*
 | Feature      | Source-supported information                                                           | Geometric reconstruction choice                                                                                                |
 | ------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Inverter     | Fig. 1a/b complementary CMOS topology                                                  | Illustrative 14 x 8 µm local field with separate POLY gates and four isolated METAL1 nets VDD/VOUT/GND/VIN                     |
-| Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | 130 nm process node only; **the 0.44 µm schematic POLY stroke is image-proportional**, not measured gate length                                     |
+| Process      | Commercial 130 nm and 90 nm CMOS foundries                                             | 130 nm process node only; **the 0.44 µm schematic POLY stroke is image-proportional**, not measured gate length                |
 | ACTIVE/STI   | Si(100) and shallow trench isolation                                                   | 2 µm display handle, 230 nm trench, 280 nm oxide fill and ideal CMP                                                            |
 | HVTN/HVTP    | As+ pMOS / BF2+ nMOS body implants (paper Fig. 1b uses HVTN on left and HVTP on right) | Illustrative 80–240 nm buried marker; not a concentration profile                                                              |
 | Gate         | SiO2 in 130 nm flow; patterned POLY                                                    | 5 nm SiO2 selectively depicted under POLY; 200 nm Poly                                                                         |
@@ -62,7 +62,7 @@ external dataset and desired presentation are defined.
 The updated layout follows the supplied paper image's **visual topology** rather than
 treating the old 14 × 8 µm illustrative Mask as foundry data:
 
-- Each compact horizontal ACTIVE island has a central 0.44 µm *schematic-proportional*
+- Each compact horizontal ACTIVE island has a central 0.44 µm _schematic-proportional_
   vertical POLY gate, a source and a drain, and a separately connected U-shaped
   body-tie diffusion/contact rail below the transistor.
 - The tallest **inverted U-shaped METAL1** bridge connects both POLY gate
