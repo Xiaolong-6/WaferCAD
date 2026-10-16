@@ -850,40 +850,29 @@ function conformalSourcePatchesBeforeCoating(model, active, face, amount) {
     preserveOppositeZ: true,
   })
     .filter(({ geom }) => !isEmpty(intersection(geom, active)))
-    .map(({ z, oppositeZ, connectedZ, appearance, geom }) => ({
+    .map(({ z, oppositeZ, appearance, geom }) => ({
       z: face === 'front' ? z + amount : z - amount,
       oppositeZ,
-      connectedZ,
       appearance,
       geom,
     }));
 }
 
-function conformalSidewallStack(
-  stack,
-  layerId,
-  face,
-  sourceZ,
-  appearance = null,
-  connectedZ = null,
-) {
+function conformalSidewallStack(stack, layerId, face, sourceZ, appearance = null) {
   const local = surfaceZ(stack, face);
   if (local == null || sourceZ == null || !layerId) return stack;
 
-  // The source-facing solid may be a floating cap over an internal void.
-  // Do not extend a topological sidewall through the gap merely because an
-  // XY-neighboring lower column ends far below the source's top surface.
-  const continuousLimit = Number.isFinite(connectedZ) ? connectedZ : local;
-  const lower = face === 'front' ? Math.max(local, continuousLimit) : sourceZ;
-  const upper = face === 'front' ? sourceZ : Math.min(local, continuousLimit);
-  if (upper <= lower + 1e-9) return stack;
-
   const out = stack.map((seg) => ({ ...seg })),
-    sidewall = { layerId, z0: lower, z1: upper, role: 'conformal-sidewall' };
+    sidewall =
+      face === 'front'
+        ? { layerId, z0: local, z1: sourceZ, role: 'conformal-sidewall' }
+        : { layerId, z0: sourceZ, z1: local, role: 'conformal-sidewall' };
   if (face === 'front') {
+    if (local >= sourceZ - 1e-9) return out;
     if (appearance) sidewall.frontSurface = cloneAppearance(appearance);
     out.push(sidewall);
   } else {
+    if (local <= sourceZ + 1e-9) return out;
     if (appearance) sidewall.backSurface = cloneAppearance(appearance);
     out.unshift(sidewall);
   }
@@ -898,7 +887,6 @@ function applyConformalMaterialWalls(
   face,
   sourceZ,
   appearance,
-  connectedZ,
 ) {
   const targets = new Map((materialWalls || []).map((target) => [target.regionId, target])),
     next = [];
@@ -912,18 +900,15 @@ function applyConformalMaterialWalls(
       continue;
     }
 
-    // Partition this original owner using the *same intersected* target
-    // geometry for the sidewall and its complement. Re-differencing against
-    // the untrimmed band can disagree with the snapped intersection at thin
-    // curved contours and silently drop part of the original XY owner.
-    // Both outputs remain subsets of region.geom; no physical void is healed.
-    const rest = difference(region.geom, target.geom);
+    // Derive both halves from the same band. Subtracting the already clipped
+    // target can retry on a different grid and leave two owners at one wall.
+    const rest = difference(region.geom, band);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
     if (!isEmpty(target.geom)) {
       next.push({
         id: `region-${model.nextRegionId++}`,
         geom: target.geom,
-        stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance, connectedZ),
+        stack: conformalSidewallStack(stack, layerId, face, sourceZ, appearance),
       });
     }
   }
@@ -1041,9 +1026,8 @@ function healNumericalCoverageCracks(model) {
 
 function addVoidConformalSidewall(model, geom, layerId, face, source) {
   if (isEmpty(geom) || !layerId || source?.z == null || source?.oppositeZ == null) return;
-  const continuousLimit = Number.isFinite(source.connectedZ) ? source.connectedZ : source.oppositeZ;
-  const z0 = face === 'front' ? continuousLimit : source.z,
-    z1 = face === 'front' ? source.z : continuousLimit;
+  const z0 = face === 'front' ? source.oppositeZ : source.z,
+    z1 = face === 'front' ? source.z : source.oppositeZ;
   if (!(z1 > z0 + 1e-9)) return;
   model.regions.push({
     id: `region-${model.nextRegionId++}`,
@@ -1137,7 +1121,6 @@ function applyConformalCoating(model, active, layerId, amount, face) {
         face,
         source.z,
         source.appearance,
-        source.connectedZ,
       );
 
       for (const wall of voidWalls) {
