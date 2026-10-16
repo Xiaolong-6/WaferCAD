@@ -132,13 +132,16 @@ export function mountAssemblyBondDraftControls({
     }
   };
 
-  forkButton.addEventListener('click', () => {
+  forkButton.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    sync();
     try {
       const ids = new Set(editor.listVariants().map((item) => item.id));
       let number = 1;
       while (ids.has(`variant-${number}`)) number++;
       const id = `variant-${number}`;
-      editor.createVariant(id, variantName.value || id);
+      await editor.createVariantDurable(id, variantName.value || id);
       variantName.value = '';
       status.dataset.error = 'false';
       status.textContent = `Created ${id}. Export all Variants to preserve both routes.`;
@@ -147,19 +150,26 @@ export function mountAssemblyBondDraftControls({
     } catch (error) {
       status.dataset.error = 'true';
       status.textContent = error?.message || String(error);
+    } finally {
+      busy = false;
       sync();
     }
   });
-  variantSelect.addEventListener('change', () => {
+  variantSelect.addEventListener('change', async () => {
+    if (busy) return;
+    const selectedId = variantSelect.value;
+    busy = true;
+    sync();
     try {
-      editor.switchVariant(variantSelect.value);
+      await editor.switchVariantDurable(selectedId);
       status.dataset.error = 'false';
-      status.textContent = `Switched to ${variantSelect.value}.`;
-      sync();
+      status.textContent = `Switched to ${selectedId}.`;
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';
       status.textContent = error?.message || String(error);
+    } finally {
+      busy = false;
       sync();
     }
   });
@@ -207,7 +217,7 @@ export function mountAssemblyBondDraftControls({
         receiverFace: fields.get('receiverFace').value,
         donorFace: fields.get('donorFace').value,
       };
-      status.textContent = 'Writing pre-Bond Recovery checkpoint…';
+      status.textContent = 'Writing pre-Bond Recovery and committed Variant revision…';
       const completed = await editor.bond(donor, request);
       status.textContent =
         editor.listVariants().length > 1
