@@ -516,6 +516,10 @@ try {
           Number(diagnostics.host.roughImplantCutProfileMatches) > 0,
           'Implant ROI cut must share final rough-cap boundary vertices',
         );
+        assert.ok(
+          Number(diagnostics.host.roughConformalCutAlignedPairs) > 0,
+          'Photodetector conformal Si/ALD ROI cut must share a physical Float32 boundary',
+        );
         if (fixture.name.includes('-micro-')) {
           assert.equal(blend, 1, 'microscopic roughness must retain full display relief');
           assert.equal(implantBlend, 1, 'microscopic implant must match physical roughness');
