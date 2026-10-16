@@ -202,13 +202,13 @@ test('ROI top cut yields to emitted rough cap border while preserving structural
   };
   const boundaryProfiles = new Map([[3, profile]]);
   const original = sectionCutContours([wall], [square], { boundaryProfiles });
-  assert.ok(original.some(([a, b]) => a[2] > 2 && b[2] > 2));
+  assert.ok(original.some(([a, b]) => Math.max(a[2], b[2]) > 2));
   const cut = sectionCutContours([wall], [square], {
     boundaryProfiles,
     ownedCapBorderIndices: new Set([3]),
   });
   assert.ok(cut.some(([a, b]) => a[2] === 1 && b[2] === 1));
-  assert.ok(!cut.some(([a, b]) => a[2] > 2 && b[2] > 2));
+  assert.ok(!cut.some(([a, b]) => Math.max(a[2], b[2]) > 2));
   assert.ok(cut.some(([a, b]) => a[0] === b[0] && a[2] !== b[2]));
 });
 
