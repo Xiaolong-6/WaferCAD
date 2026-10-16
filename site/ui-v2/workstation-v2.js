@@ -53,7 +53,7 @@
       ]),
     );
     const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
-    const hideEditor = button('', 'hide-editor', 'back', {
+    const hideEditor = button('', 'hide-editor', production ? 'sidebarCollapse' : 'back', {
       'aria-label': 'Collapse workflow panel',
       'data-help': 'shell.navigation',
     });
@@ -85,7 +85,7 @@
       'data-help': 'shell.section',
     });
     // Desktop controls are separate from the stable contextual mobile dock.
-    const desktopOverview = button('Overview', 'dock:overview', null, {
+    const desktopOverview = button('Overview', 'dock:overview', production ? 'overview' : null, {
       'aria-pressed': 'false',
       'data-help': 'shell.overview',
     });
