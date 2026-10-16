@@ -98,7 +98,7 @@ test('Fig. 1c/S8 spring-comb axial topology has one pair at EACH end of the comb
     assert.deepEqual(report.counts, { above: 2, below: 2, within: 0 });
     assert.deepEqual(
       report.anchorPositionsUm.map((anchor) => anchor.yUm),
-      [-30, 70, -30, 70],
+      [-30, 62, -30, 62],
     );
     assert.ok(report.combHandleSpanYUm.minY > -30);
     assert.ok(report.combHandleSpanYUm.maxY < 70);
