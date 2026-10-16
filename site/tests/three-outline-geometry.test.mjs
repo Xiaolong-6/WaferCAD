@@ -250,9 +250,6 @@ test('same silicon slab seam is clipped to its actual uncovered XY span', () => 
 
   const splitUpper = [upper, { ...upper, p: [2, 0], q: [4, 0] }];
   const continuous = sectionCutContours([lower, ...splitUpper], [square]);
-  assert.equal(
-    continuous.some(([a, b]) => a[2] === 1 && b[2] === 1),
-    false,
-    'different XY subdivisions of the same silicon still have no seam',
-  );
+  const hasSeam = ([a, b]) => a[2] === 1 && b[2] === 1;
+  assert.equal(continuous.some(hasSeam), false);
 });
