@@ -159,7 +159,17 @@ try {
       if (width === 1440) {
         await page.locator('.p-topbar [data-action="hide-editor"]').click();
         assert.equal(await page.locator('.p-sidebar:visible').count(), 0);
-        await page.locator('.p-viewbar [data-action="expand-empty"]').click();
+        const restore = page.locator('.p-viewbar [data-action="expand-empty"]');
+        assert.equal(
+          await restore.locator('use').getAttribute('href'),
+          '#p-icon-sidebarExpand',
+          'Restore and Collapse use mirrored sidebar glyphs',
+        );
+        assert.equal(
+          await restore.locator('.wc-icon').evaluate((node) => getComputedStyle(node).width),
+          '17px',
+        );
+        await restore.click();
         await assertDesktopShell(page);
         await assertGrid(page, 4);
       }
