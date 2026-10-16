@@ -121,10 +121,14 @@ try {
     await waitForPaint(page);
     await page.screenshot({ path: resolve(output, 'bond-three-after-commit.png') });
     await page.getByRole('button', { name: '← Bond' }).click();
-    await page.waitForFunction(() => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '1');
+    await page.waitForFunction(
+      () => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '1',
+    );
     assert.equal(await page.getByRole('button', { name: 'Validate and Bond' }).isDisabled(), true);
     await page.getByRole('button', { name: 'Bond →' }).click();
-    await page.waitForFunction(() => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '2');
+    await page.waitForFunction(
+      () => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '2',
+    );
     assert.deepEqual(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
       committed.model,
@@ -163,9 +167,16 @@ try {
         null,
         { timeout: 15000 },
       );
-      const checkpointOption = await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').locator('option').evaluateAll((options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value);
+      const checkpointOption = await recoveryPage
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .locator('option')
+        .evaluateAll(
+          (options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value,
+        );
       assert.ok(checkpointOption, 'pre-Bond checkpoint remains independently recoverable');
-      await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').selectOption(checkpointOption);
+      await recoveryPage
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .selectOption(checkpointOption);
       await recoveryPage.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
       await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 90000,
@@ -182,9 +193,13 @@ try {
 
     // Fork A+B into a physically independent D alternative, keeping C on Main.
     await page.getByRole('button', { name: '← Bond' }).click();
-    await page.waitForFunction(() => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '1');
+    await page.waitForFunction(
+      () => document.querySelector('.assembly-preview-controls')?.dataset.bondIndex === '1',
+    );
     await page.getByRole('button', { name: 'Fork from current Bond' }).click();
-    await page.waitForFunction(() => document.querySelector('.assembly-bond-variants select')?.options.length === 2);
+    await page.waitForFunction(
+      () => document.querySelector('.assembly-bond-variants select')?.options.length === 2,
+    );
     await page
       .locator('.assembly-bond-variants')
       .getByLabel('Bond Variant', { exact: true })
@@ -232,13 +247,17 @@ try {
     assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
 
     await page.getByLabel('Bond Variant', { exact: true }).selectOption('main');
-    await page.waitForFunction(() => document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'));
+    await page.waitForFunction(() =>
+      document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'),
+    );
     const switchedMain = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.deepEqual(switchedMain.model, committed.model);
     assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1200 µm/);
     assert.equal(switchedMain.workflow.writable, false);
     await page.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
-    await page.waitForFunction(() => document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1150 µm'));
+    await page.waitForFunction(() =>
+      document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1150 µm'),
+    );
     assert.deepEqual(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
       alternate.model,
@@ -269,7 +288,9 @@ try {
         2,
       );
       await sidecarTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
-      await sidecarTab.waitForFunction(() => document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'));
+      await sidecarTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'),
+      );
       assert.deepEqual(
         (await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
         committed.model,
@@ -287,16 +308,23 @@ try {
         waitUntil: 'domcontentloaded',
       });
       await committedTab.waitForFunction(
-        () => Array.from(document.querySelectorAll('[aria-label="Assembly Bond Recovery checkpoint"] option')).some((option) => option.value.startsWith('workspace:')),
+        () =>
+          Array.from(
+            document.querySelectorAll('[aria-label="Assembly Bond Recovery checkpoint"] option'),
+          ).some((option) => option.value.startsWith('workspace:')),
         null,
         { timeout: 20000 },
       );
       const committedOption = await committedTab
         .getByLabel('Assembly Bond Recovery checkpoint')
         .locator('option')
-        .evaluateAll((options) => options.find((option) => option.value.startsWith('workspace:'))?.value);
+        .evaluateAll(
+          (options) => options.find((option) => option.value.startsWith('workspace:'))?.value,
+        );
       assert.ok(committedOption);
-      await committedTab.getByLabel('Assembly Bond Recovery checkpoint').selectOption(committedOption);
+      await committedTab
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .selectOption(committedOption);
       await committedTab.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
       await committedTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 90000,
@@ -310,7 +338,9 @@ try {
         2,
       );
       await committedTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
-      await committedTab.waitForFunction(() => document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'));
+      await committedTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'),
+      );
       assert.deepEqual(
         (await committedTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
         committed.model,
@@ -430,9 +460,16 @@ try {
         null,
         { timeout: 20000 },
       );
-      const checkpointOption = await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').locator('option').evaluateAll((options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value);
+      const checkpointOption = await recoveryPage
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .locator('option')
+        .evaluateAll(
+          (options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value,
+        );
       assert.ok(checkpointOption, 'pre-Bond checkpoint remains independently recoverable');
-      await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').selectOption(checkpointOption);
+      await recoveryPage
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .selectOption(checkpointOption);
       await recoveryPage.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
       await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 90000,
