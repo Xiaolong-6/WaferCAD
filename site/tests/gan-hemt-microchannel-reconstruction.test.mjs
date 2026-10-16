@@ -16,11 +16,11 @@ import {
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
-import { createProjectStateController } from '../controllers/project-state-controller.js';
 
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
 const { readProjectFile } = await import('../project-io.js');
+const { createProjectStateController } = await import('../controllers/project-state-controller.js');
 
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { collectMaskExportElements, serializeGDS, serializeOASIS } =
