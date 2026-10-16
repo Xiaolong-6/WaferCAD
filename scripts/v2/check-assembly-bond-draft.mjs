@@ -413,7 +413,9 @@ try {
         await processTab.locator('.assembly-bond-post-process-count').textContent(),
         /1 saved geometry steps/,
       );
-      const processBaseline = await processTab.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      const processBaseline = await processTab.evaluate(() =>
+        window.WaferCadV2Workstation.snapshot(),
+      );
       assert.deepEqual(processBaseline.model, committed.model);
       await processTab.locator('.assembly-preview-views [data-view="three"]').click();
       await waitForPaint(processTab);
@@ -447,7 +449,9 @@ try {
           /Z 1201.8 µm/,
         );
         await restoredProcessTab.locator('.assembly-bond-draft-tools summary').click();
-        await restoredProcessTab.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
+        await restoredProcessTab
+          .getByLabel('Bond Variant', { exact: true })
+          .selectOption('variant-1');
         await restoredProcessTab.waitForFunction(() =>
           document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1150 µm'),
         );
