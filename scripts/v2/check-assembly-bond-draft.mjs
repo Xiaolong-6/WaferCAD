@@ -431,9 +431,7 @@ try {
       await waitForPaint(processTab);
       await processTab.screenshot({ path: resolve(output, 'postbond-deposit-section.png') });
       // Same Recipe: deposit 1.8 µm, then directional etch 0.5 µm.
-      await processTab
-        .getByLabel('Post-Bond Process operation')
-        .selectOption('etch');
+      await processTab.getByLabel('Post-Bond Process operation').selectOption('etch');
       await processTab.getByLabel('Post-Bond Process thickness µm').fill('0.5');
       await processTab.getByRole('button', { name: 'Apply Process preview' }).click();
       await processTab.waitForFunction(() =>
@@ -451,7 +449,10 @@ try {
         .locator('.assembly-bond-post-process-count')
         .filter({ hasText: /Process 1 \/ 2/ })
         .waitFor();
-      assert.equal(await processTab.getByRole('button', { name: 'Apply Process preview' }).isDisabled(), true);
+      assert.equal(
+        await processTab.getByRole('button', { name: 'Apply Process preview' }).isDisabled(),
+        true,
+      );
       await processTab.getByRole('button', { name: '← Process' }).click();
       await processTab.waitForFunction(() =>
         document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'),
