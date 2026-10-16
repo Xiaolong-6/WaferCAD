@@ -1,5 +1,7 @@
 # Documentation and handoff closeout — 2026-10-13
 
+> **Historical status record:** This handoff captures successive 2026-10-13/14 integration checkpoints. References to running CI, Draft status and pending deployment are dated observations, not current Main status. For example, [PR #233](https://github.com/Xiaolong-6/WaferCAD/pull/233) subsequently merged on 2026-10-14. Follow the [current documentation map](README.md) for maintained contracts.
+
 ## 2026-10-14 P2 release and Legacy follow-up
 
 Main `65ec07ea` merged [PR #220](https://github.com/Xiaolong-6/WaferCAD/pull/220):

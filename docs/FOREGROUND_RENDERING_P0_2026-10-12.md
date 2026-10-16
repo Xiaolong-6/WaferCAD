@@ -1,6 +1,8 @@
 # Foreground-first renderer: P0 scene continuity
 
-**Status:** Draft, focused full-array cancellation browser acceptance pending.
+> **Status verified 2026-10-16:** [PR #186](https://github.com/Xiaolong-6/WaferCAD/pull/186) merged into Main on 2026-10-13 (`1d091a3`). The Draft and pending-gate notes below are a dated development snapshot, not an assertion that PR #186 is still open. This record does not certify physical-GPU acceptance of later renderer changes.
+
+**Historical status at this checkpoint:** Draft, focused full-array cancellation browser acceptance pending.
 
 ## Scope
 

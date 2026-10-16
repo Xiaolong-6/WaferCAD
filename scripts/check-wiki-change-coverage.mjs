@@ -9,6 +9,9 @@ const sourcePatterns = [
   /^site\/app(?:-legacy)?\.html$/,
   /^site\/controllers\/(?:process-panel|process-recipe|workspace-actions|mask-roi|draw-mask|project|history-mutation|base-controls|export|roi)-controller\.js$/,
   /^site\/(?:process-recipe|project-io|project-schema|selection-geometry|layout-export)\.js$/,
+  // The production Workstation moved into ui-v2. Shell, mobile and docking
+  // changes need the same manual-review signal as the older controller paths.
+  /^site\/ui-v2\/(?:workstation-(?:v2|entry|runtime|workflow)|desktop-shell|mobile-workstation|mobile-workspace-controller|view-layout(?:-(?:model|resizer|storage|templates))?|shell-registry)\.(?:js|css)$/,
 ];
 const docPattern = /^(docs\/wiki\/|site\/process-guide(?:-svg)?\.js$|site\/guide\/)/;
 

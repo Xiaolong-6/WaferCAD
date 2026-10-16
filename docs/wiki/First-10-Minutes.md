@@ -31,16 +31,16 @@ _This diagram illustrates the operation, not your project's exact dimensions._
 1. Open [WaferCAD](https://xiaolong-6.github.io/WaferCAD/) and click **Start empty** on the Welcome screen. If you are already in the workspace, use **Project → New** and review any confirmation before discarding work.
 2. Open **Project** and choose **XYZ display unit → µm**. This controls the units of Base and manual Process inputs, without changing stored geometry.
 3. In the **Base** editor within Project, choose **Shape → Rectangle**; set **Width = 100**, **Height = 100**, and **Thickness = 10** (µm).
-4. Click **Rebuild Base** (the equivalent button is **Apply base** in the legacy interface). If a confirmation appears, read its History implications before continuing. Choose **Main** or **Overview** to inspect the rectangle; use **Fit** if it is off-screen.
+4. Click **Rebuild Base**. If a confirmation appears, read its History implications before continuing. Choose **Main** or **Overview** to inspect the rectangle on desktop, or switch to **View** using the bottom navigation on a compact screen. Use **Fit** if it is off-screen.
 
 **Check:** Main should show one rectangular substrate without patterned openings; Section A–B should show a single **Base** body from Z = −5 µm to +5 µm. **Base** is the default layer name, not a physical silicon material specification. If an older project's History is still present, use **Project → New** rather than continuing in that project.
 
 ## Step 2 — Coat the entire front face
 
-1. Open **Process → Manual** and choose **Surface → Front** (called **Step** in some older builds).
+1. Open **Process → Manual** and choose **Surface → Front**.
 2. Choose **Operation → Deposit**, **Area → Whole face**, and **Coverage → Direct** (directional deposition).
 3. Set **Layer name = SiO2** and **Thickness / depth = 0.2** with display units set to µm (equivalent to 200 nm). This layer name labels geometric material; it does not activate a chemical simulation model.
-4. Set **Also add to Recipe → No** (the default in the current workstation); then click **Apply** **once**. If using an older interface with a checkbox, make sure it is unchecked.
+4. Set **Also add to Recipe → No**; then click **Apply** **once**.
 
 **Check:** **Section A–B** should show a thin oxide layer over the silicon. The process History should have advanced. Section **Auto** can exaggerate Z; switch to **1:1** to compare physical scales, although a 0.2 µm film may then be difficult to see.
 
