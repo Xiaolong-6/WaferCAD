@@ -7,6 +7,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
+import { loadGeometryKernel } from './process-benchmarks.mjs';
+
+await loadGeometryKernel();
 
 const directory = resolve('test-results/swx-sem-v2/browser');
 await mkdir(directory, { recursive: true });
