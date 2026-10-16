@@ -12,7 +12,7 @@ test('S7 isolated guide candidates preserve the measured beam/truss dimensions',
   const on = createCompactSwxGuides(SWX_REPORTED.offGapUm - SWX_REPORTED.onGapUm);
   assert.equal(off.guides.length, 2);
   assert.equal(off.fixed.length, 2);
-  assert.equal(off.flexure.length, 4);
+  assert.equal(off.flexure.length, 6);
   assert.equal(SWX_REPORTED.structuralAlignerLengthUm, 7);
   assert.equal(SWX_REPORTED.structuralAlignerBeamUm, 0.1);
   assert.equal(SWX_REPORTED.structuralAlignerTrussUm, 1);
@@ -21,9 +21,20 @@ test('S7 isolated guide candidates preserve the measured beam/truss dimensions',
     const a = off.guides[i],
       b = on.guides[i];
     assert.equal(a.centerline.length, 17);
+    assert.equal(a.beams.length, 2);
+    assert.equal(a.centerlines.length, 2);
     assert.deepEqual(a.centerline[0], b.centerline[0]);
     assert.ok(Math.abs(b.centerline.at(-1)[1] - a.centerline.at(-1)[1] - on.travelUm) < 1e-10);
     assert.equal(a.truss.length, 4);
+    for (const pose of [a, b]) {
+      const lower = pose.centerlines[0];
+      const upper = pose.centerlines[1];
+      assert.equal(lower.length, 17);
+      assert.equal(upper.length, 17);
+      for (let index = 0; index < lower.length; index++) {
+        assert.ok(Math.abs(upper[index][1] - lower[index][1] - 0.8) < 1e-10);
+      }
+    }
   }
   assert.equal(SWX_COMPACT_GUIDE_ASSUMPTIONS.validatedFEM, false);
   assert.throws(() => createCompactSwxGuides(-0.01), /Invalid guide stroke/);
@@ -56,7 +67,12 @@ test('S7 guide anchor/beam separation and intended attachment survive both poses
       state + ' S7 beam contacts an unrelated fixed silicon region',
     );
     for (const guide of aligned.guides) {
-      assert.ok(overlapArea([guide.beam], [guide.pad]) > 1e-6);
+      assert.equal(guide.beams.length, 2);
+      assert.ok(overlapArea(guide.beams.slice(0, 1), guide.beams.slice(1)) < 1e-8);
+      for (const beam of guide.beams) {
+        assert.ok(overlapArea([beam], [guide.pad]) > 1e-6);
+        assert.ok(overlapArea([beam], [guide.truss]) > 1e-6);
+      }
       assert.ok(overlapArea([guide.truss], model.movable) > 1e-6);
     }
   }

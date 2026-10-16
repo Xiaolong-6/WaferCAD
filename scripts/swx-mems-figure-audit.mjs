@@ -100,7 +100,7 @@ const blockers = [
     includedInCompactProcessMask: true,
     fullSourceS7SchematicTopologyVerified: false,
     sourceEvidence:
-      'Supplement Fig. S7a shows folded structural-alignment beams; current guide geometry is a provisional single-centerline flexure with a terminal truss, not an authenticated reproduction.',
+      'Supplement Fig. S7a shows parallel/folded alignment flexures. The two-beam surrogate uses an unreported 0.8um spacing and inferred pad coordinates; it is still not equivalent to original GDS or FEM.',
   },
 ];
 const compactExtent = prototype.off.candidateMaskFootprintUm;

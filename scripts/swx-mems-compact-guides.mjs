@@ -2,7 +2,8 @@
  * Source S7 structural-aligner candidate for compact SWX.
  *
  * Each guide links a BOX-supported stationary pad to the suspended
- * reflector with a 7um, 100nm-wide compliant beam and 1um truss.
+ * reflector/bridge with two 7um, 100nm-wide compliant beams and 1um truss.
+ * The inter-beam spacing and pad locations are illustrative.
  * The x/y pad registration and cubic displacement interpolation are
  * explicit assumptions, NOT a reconstructed author GDS or a solved FEM.
  */
@@ -26,6 +27,9 @@ export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
   // at its free tip. This provisional support is not author GDS.
   rightBridgeAttachUm: [24, -45],
   interpolationSamples: 16,
+  // S7a shows multiple parallel flexures. Its inter-beam spacing was
+  // not published; this is a clearance-tested illustrative hypothesis.
+  parallelGuideSeparationUm: 0.8,
   paperAlignmentDimensions: true,
   validatedFEM: false,
 });
@@ -50,7 +54,15 @@ export function createCompactSwxGuides(travelUm = 0) {
       const smooth = t * t * (3 - 2 * t);
       return [fixedX + (movingX - fixedX) * t, py + travelUm * smooth];
     });
-    const beam = miteredPolyline(centerline, source.structuralAlignerBeamUm);
+    const spacing = options.parallelGuideSeparationUm;
+    if (spacing <= source.structuralAlignerBeamUm)
+      throw new Error('S7 guide beams must remain laterally separated');
+    const centerlines = [-1, 1].map((offset) =>
+      centerline.map(([x, y]) => [x, y + (offset * spacing) / 2]),
+    );
+    const beams = centerlines.flatMap((line) =>
+      miteredPolyline(line, source.structuralAlignerBeamUm),
+    );
     // Left guide reaches the movable reflector; right guide attaches
     // to the separate, movable actuator bridge (not the fixed pad).
     const truss = isLeft
@@ -61,8 +73,8 @@ export function createCompactSwxGuides(travelUm = 0) {
           source.structuralAlignerTrussUm,
           source.structuralAlignerTrussUm,
         );
-    flexure.push(...beam, truss);
-    guides.push({ side, pad, beam: beam[0], truss, centerline });
+    flexure.push(...beams, truss);
+    guides.push({ side, pad, beams, truss, centerline, centerlines });
   }
   return { fixed, flexure, guides, travelUm };
 }
