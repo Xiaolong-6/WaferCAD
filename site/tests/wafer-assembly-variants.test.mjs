@@ -160,7 +160,10 @@ test('post-Bond Recipe stays on one Variant and never contaminates independent s
   assert.notDeepEqual(assemblyVariantPostBondModel(processed.graph), baselineModel);
   assert.deepEqual(assemblyVariantPostBondModel(processed.graph), processed.model);
   assert.equal(JSON.stringify(processed.graph).includes('modelFingerprint'), true);
-  assert.equal(JSON.stringify(processed.graph.branches[0].postBondSteps).includes('regions'), false);
+  assert.equal(
+    JSON.stringify(processed.graph.branches[0].postBondSteps).includes('regions'),
+    false,
+  );
   assert.throws(
     () => appendAssemblyVariantBond(processed.graph, wafer('Donor E'), { donorId: 'E' }),
     /Further Bond after post-Bond Process/,
