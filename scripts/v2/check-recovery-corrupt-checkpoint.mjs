@@ -159,6 +159,93 @@ try {
     );
     assert.deepEqual(storedAfter, storedBefore, 'Corruption cannot modify current IndexedDB state');
 
+    // A selectable, valid checkpoint must remain available; storage-open
+    // denial during either the protective write or Recovery read must fail
+    // closed without discarding the current scientific project.
+    const validKey = await page.evaluate(async (corruptKey) => {
+      const storage = await import('/workspace-persistence.js');
+      for (const point of await storage.listWorkspaceRecoveryPoints()) {
+        if (point.key === corruptKey) continue;
+        const candidate = await storage.loadWorkspaceRecoveryPoint(point.key);
+        if (candidate?.name === 'Corruption active workspace') return point.key;
+      }
+      return null;
+    }, selectedKey);
+    assert.ok(validKey, 'A separate valid Recovery checkpoint must exist');
+
+    for (const failAtOpen of [1, 2]) {
+      await page.locator('#workspaceRecoverySelect').selectOption(validKey);
+      await page.evaluate((failAt) => {
+        const nativeOpen = IDBFactory.prototype.open;
+        const trace = { attempts: 0, hits: 0, failAt };
+        window.__recoveryStorageFault = trace;
+        window.__recoveryNativeOpen = nativeOpen;
+        IDBFactory.prototype.open = function (...args) {
+          if (args[0] === 'wafercad-workspace-v1') {
+            trace.attempts++;
+            if (trace.attempts === failAt) {
+              trace.hits++;
+              throw new DOMException('Synthetic IndexedDB unavailable', 'SecurityError');
+            }
+          }
+          return Reflect.apply(nativeOpen, this, args);
+        };
+      }, failAtOpen);
+      try {
+        await page.locator('#workspaceRestoreBtn').click();
+        await page
+          .locator('.v2-workflow-dialog-actions')
+          .getByRole('button', { name: 'Restore', exact: true })
+          .click();
+        await page.waitForFunction(
+          () => {
+            const failed = /Recovery restore failed/.test(
+              document.querySelector('[data-slot="status.message"]')?.textContent || '',
+            );
+            return (
+              window.__recoveryStorageFault?.hits === 1 &&
+              failed &&
+              !window.WaferCadV2Workstation.snapshot().workflow.busy
+            );
+          },
+          null,
+          { timeout: 120000 },
+        );
+        const trace = await page.evaluate(() => window.__recoveryStorageFault);
+        assert.equal(trace.hits, 1, 'Real IndexedDB open must be blocked exactly once');
+        assert.equal(
+          trace.attempts,
+          failAtOpen,
+          'The intended Recovery transaction boundary must be the one blocked',
+        );
+      } finally {
+        await page.evaluate(() => {
+          IDBFactory.prototype.open = window.__recoveryNativeOpen;
+          delete window.__recoveryNativeOpen;
+        });
+      }
+      const unchanged = await snapshot();
+      assert.deepEqual(
+        unchanged.model,
+        before.model,
+        'Unavailable storage cannot replace physical Model',
+      );
+      assert.deepEqual(
+        unchanged.workflow.steps,
+        before.workflow.steps,
+        'Unavailable storage cannot replace History Steps',
+      );
+      assert.deepEqual(
+        unchanged.workflow.branches,
+        before.workflow.branches,
+        'Unavailable storage cannot replace Variant topology',
+      );
+      const durable = await page.evaluate(async () =>
+        (await import('/workspace-persistence.js')).loadWorkspaceState(),
+      );
+      assert.deepEqual(durable, storedBefore, 'Current IndexedDB record must remain exact');
+    }
+
     await page.goto(base + '/app.html', { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
