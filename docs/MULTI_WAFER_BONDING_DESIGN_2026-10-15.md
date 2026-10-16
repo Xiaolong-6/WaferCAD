@@ -1,6 +1,6 @@
 # Multi-wafer bonding design and staged scientific acceptance
 
-Status: **Draft / P1B scientific prototype + P2 lossless Assembly IO candidate** (2026-10-15).
+Status: **Draft / validated source-aware Bond authoring, persistent Variants and restricted post-Bond geometric Process preview** (updated 2026-10-16).
 Branch: `feat/multi-wafer-bonding-from-pr229-20261015`.
 Reference example: PR #229, Lian et al., _Microsystems & Nanoengineering_ 8, 119 (2022), DOI 10.1038/s41378-022-00462-3.
 **Do not merge to Main without explicit scientific/visual user approval.**
@@ -173,19 +173,29 @@ After verified geometry, targeted browser screenshots and paper comparison,
 run targeted CI then the full required release gates. Record red/not-run
 checks accurately. No merge or deployment without explicit user approval.
 
-## Known gaps and handoff
+## Known gaps and handoff (current, 2026-10-16)
 
-**Implemented:** isolated scientific Kernel, v15 lossless Assembly provenance
-and independent source replay, strict import/export and Recovery parity,
-legacy v14 version preservation, and fail-closed editor import guard.
+**Implemented and scoped-verified:** independent source-preserving direct Bond
+Kernel and v15 Assembly files; experimental native Workstation first and
+incremental Bond; atomic source-aware History and C/D Variants; isolated
+revision-controlled durable IndexedDB Recovery; deterministic geometric
+post-Bond full-face Deposit/Etch replay stored only in the Variant sidecar;
+real Chromium Main/Mask/3D/Section checks and autonomous screenshot inspection.
+The ordinary editable Workstation Assembly import **remains fail-closed**.
 
-**Still unverified:** live multi-wafer editing and History/Recipe transactions,
-browser/3D visual evidence, original complete two-wafer process-flow reconstruction
-from PR #229, product-scale performance and required final Quality gates.
+**Still unverified / unsupported:** normal Workstation editable Process/Recipe
+and Worker orchestration with global History ownership; masked/ROI, Conformal,
+Planarize, Implant, Electrical and other post-Bond operations; a single
+portable v15 project format with integrated post-Bond Process provenance;
+source-aware mixed Bond–Process branch continuation; mobile acceptance;
+full Quality and browser regression; full original GaN Fig. 1/2 author-mask
+and intermediate Recipe fidelity; final release/merge approval.
 
-**Next:** integrate a first-class Bond History transaction plus source-aware UI,
-then remove the editor guard only after end-to-end Save/Recovery/Replay and
-real browser screenshots pass. Keep PR #229 source masks independent.
+**Next:** integrate supported post-Bond steps into the formal Workstation
+Process transaction owner without duplicating History writers, then extend
+only operations with validated science and transaction invariants. Perform
+final Quality/release gates after complete visual acceptance. Keep all source
+wafers and PR #229 masks independently auditable.
 
 ## Verified P1B/P2 milestone — 2026-10-15
 
@@ -232,3 +242,42 @@ import is refused _before_ any state mutation. Ordinary v14 project import
 continues unchanged. No source Project, Mask, Recipe or History may be silently
 discarded to make a Preview appear functional. The gate will be lifted only
 after a dedicated editor-state ownership and atomic Rollback test suite passes.
+
+## October 16 — source-aware post-Bond geometric Process acceptance
+
+The physical Bond project remains a **canonical v15 provenance baseline**.
+Post-Bond processing never rewrites `waferAssembly.sources` or substitutes
+a derived model for the source-backed `project.model`. The experimental
+Bond editor at `app.html?assemblyPreview=1&bondEdit=1` has a separate,
+versioned `.wafercad-variants.json` graph (v2, with legacy v1 readable).
+Each branch stores compact `postBondSteps` with normalized Process Recipe
+parameters and a deterministic material checksum. Replay executes each
+step from a fresh Bond geometry baseline, validates the complete Process
+model and rejects stale/corrupted steps. The checksum is a **drift
+diagnostic**, not cryptographic attestation.
+
+Initial **supported geometry subset**: full-area Front or Back directional
+Deposit and smooth directional Etch. Geometry is computed with the same
+`fullFaceGeometry`, `applyProcessFaces` and `applyOperation` interfaces
+as Process Worker. These are geometric emulations without chemistry,
+dopant transport, activation, thermal stress, or transport equations.
+Masked/ROI Process, multi-face post-Bond operations, Conformal, Implant,
+Electrical and unrelated commands deliberately fail closed.
+
+The native 3D/Section renderers display the derived result as an isolated
+presentation model; added Process films are highlighted pink **only for
+inspection**, with physical thickness unchanged. For example, three
+400 µm wafers plus a 1.8 µm full-face SiO₂ deposit display **1201.8 µm**
+total height, while the canonical source Bond baseline remains **1200 µm**.
+A standard `.wafercad` export from this experimental editor is explicitly
+labelled **Bond baseline only** and cannot carry the derived film. Users
+must export **all Variants** to retain post-Bond Process records.
+
+**Acceptance evidence:** [Targeted scientific and transaction CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38895445291)
+(135/135 tests, ESLint and Prettier),
+[real Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38895445269)
+(17 Main/Mask/3D/Section and Process screenshots; attached artifact).
+Scientific invariants include source immutability, Worker-equivalent
+full-face replay, split C/D branches, corrupted checksum rejection,
+persistence/failed-write rollback, and sidecar reload. This is a
+**scoped experimental milestone**, not full PR or Main release acceptance.
