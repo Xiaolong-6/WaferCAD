@@ -8,6 +8,15 @@ import {
 import { createAssemblyBondHistorySession } from './wafer-assembly-history-session.js';
 import { sameCanonicalModel, validateBondedAssemblyProject } from './wafer-assembly.js';
 import { validateProjectFile } from './project-schema.js';
+import {
+  createAssemblyVariantGraph,
+  appendAssemblyVariantBond,
+  assemblyVariantProject,
+  activateAssemblyVariant,
+  forkAssemblyVariant,
+  setAssemblyVariantCursor,
+  validateAssemblyVariantGraph,
+} from './wafer-assembly-variants.js';
 
 function same(left, right) {
   return sameCanonicalModel(left, right);
@@ -26,7 +35,7 @@ function matchesRecordedBond(operation, step) {
 
 export function createAssemblyBondEditorSession(
   initialProduct,
-  { checkpointRecovery, applyVisibleProject, getVisibleModel, onCommit = () => {} } = {},
+  { checkpointRecovery, applyVisibleProject, getVisibleModel, onCommit = () => {}, variantGraph = null } = {},
 ) {
   if (typeof checkpointRecovery !== 'function') {
     throw new Error('Assembly editor requires a durable Recovery checkpoint owner.');
@@ -39,6 +48,15 @@ export function createAssemblyBondEditorSession(
   validateProjectFile(initialProduct);
   validateBondedAssemblyProject(initialProduct);
   const originalReceiver = structuredClone(initialProduct);
+  let graph = variantGraph
+    ? structuredClone(validateAssemblyVariantGraph(variantGraph))
+    : createAssemblyVariantGraph(initialProduct);
+  if (
+    variantGraph &&
+    !same(assemblyVariantProject(graph).model, initialProduct.model)
+  ) {
+    throw new Error('Assembly Variant workspace differs from selected physical project.');
+  }
   let history = initialProduct.waferAssembly
     ? createAssemblyBondHistorySession(initialProduct)
     : null;
@@ -76,7 +94,49 @@ export function createAssemblyBondEditorSession(
       }
       throw error;
     }
+    graph = setAssemblyVariantCursor(graph, index);
     return structuredClone(next);
+  }
+
+  function createVariant(id, name = '') {
+    assertReadable();
+    if (!visibleParity()) throw new Error('Bond workspace material drift; fork refused.');
+    const candidate = forkAssemblyVariant(graph, {
+      id,
+      name,
+      atIndex: currentIndex(),
+    });
+    const project = assemblyVariantProject(candidate);
+    if (!same(project.model, currentProject().model)) {
+      throw new Error('Assembly Variant fork changed its source geometry.');
+    }
+    const nextHistory = project.waferAssembly
+      ? createAssemblyBondHistorySession(project)
+      : null;
+    if (applyVisibleProject(structuredClone(project)) !== true) {
+      throw new Error('Assembly Variant fork was rejected by the workstation.');
+    }
+    graph = candidate;
+    history = nextHistory;
+    revision++;
+    return { id, name: candidate.branches.at(-1).name, project: structuredClone(project) };
+  }
+
+  function switchVariant(id) {
+    assertReadable();
+    if (!visibleParity()) throw new Error('Bond workspace material drift; switch refused.');
+    const candidate = activateAssemblyVariant(graph, id);
+    const project = assemblyVariantProject(candidate);
+    const nextHistory = project.waferAssembly
+      ? createAssemblyBondHistorySession(project)
+      : null;
+    if (applyVisibleProject(structuredClone(project)) !== true) {
+      throw new Error('Assembly Variant switch was rejected by the workstation.');
+    }
+    graph = candidate;
+    history = nextHistory;
+    revision++;
+    return structuredClone(project);
   }
 
   async function bond(donorProject, request) {
@@ -88,6 +148,16 @@ export function createAssemblyBondEditorSession(
     // Preflight first. No IndexedDB writer or UI mutation is needed for bad input.
     const previous = fullProduct();
     const prepared = prepareWaferBondTransaction(previous, donorProject, request);
+    const nextGraph = previous.waferAssembly
+      ? appendAssemblyVariantBond(graph, donorProject, request).graph
+      : createAssemblyVariantGraph(prepared.project);
+    const graphProduct = assemblyVariantProject(nextGraph);
+    if (
+      !same(graphProduct.model, prepared.project.model) ||
+      !same(graphProduct.waferAssembly, prepared.project.waferAssembly)
+    ) {
+      throw new Error('Bond Variant source registry differs from canonical prepared material.');
+    }
     const expectedRevision = revision;
     committing = true;
     try {
@@ -99,6 +169,7 @@ export function createAssemblyBondEditorSession(
         captureTransaction: () => ({
           project: fullProduct(),
           index: currentIndex(),
+          graph: structuredClone(graph),
         }),
         applyProject: (project) => {
           const nextHistory = createAssemblyBondHistorySession(project);
@@ -115,6 +186,7 @@ export function createAssemblyBondEditorSession(
             throw new Error('Bond History did not record the canonical donor operation.');
           }
           onCommit(structuredClone(operation));
+          graph = nextGraph;
           revision++;
           return true;
         },
@@ -131,6 +203,7 @@ export function createAssemblyBondEditorSession(
             throw new Error('Bond rollback workspace restoration was not confirmed.');
           }
           history = previousHistory;
+          graph = snapshot.graph;
           revision = expectedRevision;
           return true;
         },
@@ -148,6 +221,19 @@ export function createAssemblyBondEditorSession(
     currentIndex,
     maxIndex,
     listHistory: () => (history ? history.listHistory() : []),
+    listVariants: () =>
+      graph.branches.map(({ id, name, parentId, forkIndex, bonds, cursor }) => ({
+        id,
+        name,
+        parentId,
+        forkIndex,
+        headIndex: bonds.length,
+        cursorIndex: cursor,
+        active: id === graph.activeBranchId,
+      })),
+    createVariant,
+    switchVariant,
+    exportVariantGraph: () => structuredClone(graph),
     exportCompactHistory: () => (history ? history.exportCompactHistory() : null),
     restoreIndex,
     undo: () => restoreIndex(Math.max(0, currentIndex() - 1)),
