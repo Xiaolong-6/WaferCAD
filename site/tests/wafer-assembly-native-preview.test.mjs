@@ -9,7 +9,7 @@ const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject 
   await import('../wafer-assembly.js');
 const { serializeProject, MAX_PROJECT_FILE_BYTES } = await import('../project-io.js');
 const { createWorkstationRuntime } = await import('../ui-v2/workstation-runtime.js');
-const { readAssemblyPreviewFile, assemblyPreviewZExtent } =
+const { readAssemblyPreviewFile, assemblyPreviewZExtent, ASSEMBLY_ORIGIN_COLORS } =
   await import('../ui-v2/assembly-preview.js');
 
 function wafer(name) {
@@ -78,6 +78,18 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   assert.deepEqual(store.state.model, original.model);
   assert.equal(store.state.threeShowBorders, true);
   assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 1200);
+  const physicalBeforePresentation = structuredClone(store.state.model);
+  const presentation = store.renderModel();
+  assert.notEqual(presentation, store.state.model, 'Render copy may carry origin colors');
+  for (const [index, bond] of original.waferAssembly.bonds.entries()) {
+    for (const donorLayerId of Object.values(bond.donorLayerIds)) {
+      assert.equal(
+        presentation.layers.find((layer) => layer.id === donorLayerId)?.color,
+        ASSEMBLY_ORIGIN_COLORS[index + 1],
+      );
+    }
+  }
+  assert.deepEqual(store.state.model, physicalBeforePresentation);
   const main = store.viewState('main');
   const mask = store.viewState('mask');
   const section = store.viewState('section');
@@ -96,6 +108,7 @@ test('real native v2 runtime renders one shared physical model for each read-onl
 
   const receiver = store.restoreAssemblyStage(0);
   assert.equal(receiver.waferAssembly, undefined);
+  assert.equal(store.renderModel(), store.state.model, 'Standalone receiver uses native colors');
   assert.deepEqual(store.state.model, original.waferAssembly.sources[0].project.model);
   assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 400);
   assert.equal(store.state.threeShowBorders, true);
