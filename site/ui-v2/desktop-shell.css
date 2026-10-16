@@ -116,6 +116,10 @@
     background: transparent;
   }
 
+  body[data-workstation]:not([data-preview-mode]) .p-inspector[hidden] {
+    display: none;
+  }
+
   body[data-workstation]:not([data-preview-mode]) .p-panel-content {
     padding: 8px 14px 16px;
     gap: 12px;
@@ -137,14 +141,9 @@
     width: 8px;
     min-width: 8px;
     border: 0;
+    border-right: 1px solid var(--wc-border);
     padding: 0;
-    background: linear-gradient(
-      to right,
-      transparent 3px,
-      var(--wc-border) 3px,
-      var(--wc-border) 4px,
-      transparent 4px
-    );
+    background: transparent;
     cursor: col-resize;
     touch-action: none;
   }
@@ -154,13 +153,7 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-divider:is(:hover, :focus-visible) {
-    background: linear-gradient(
-      to right,
-      transparent 3px,
-      var(--wc-accent) 3px,
-      var(--wc-accent) 4px,
-      transparent 4px
-    );
+    border-right-color: var(--wc-accent);
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-workspace {
@@ -205,8 +198,7 @@
     overflow-x: auto;
   }
 
-  body[data-workstation]:not([data-preview-mode])
-    .p-viewbar > .p-actions:not(.p-desktop-dock-actions) {
+  body[data-workstation]:not([data-preview-mode]) .p-restore-panel-actions {
     grid-column: 1;
     grid-row: 1;
     justify-self: start;
