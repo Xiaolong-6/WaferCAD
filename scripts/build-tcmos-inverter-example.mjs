@@ -1132,8 +1132,8 @@ export async function buildTcmosInverter({
     }),
   );
   const contactSites = [
-    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-4.37, -1.30] },
-    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [1.59, -1.30] },
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-4.37, -1.3] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [1.59, -1.3] },
   ].map((site) => {
     const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
     const silicon = region?.stack.find((segment) => segment.layerId === 'base');

@@ -379,8 +379,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     { name: 'GND', point: [3.78, -0.28] },
     { name: 'VIN pMOS gate', point: [-2.98, 0.46] },
     { name: 'VIN nMOS gate', point: [2.98, 0.46] },
-    { name: 'VDD pMOS body tie', point: [-4.37, -1.30] },
-    { name: 'GND nMOS body tie', point: [1.59, -1.30] },
+    { name: 'VDD pMOS body tie', point: [-4.37, -1.3] },
+    { name: 'GND nMOS body tie', point: [1.59, -1.3] },
   ];
   for (const {
     name,
