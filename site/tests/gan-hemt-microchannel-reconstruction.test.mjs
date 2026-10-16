@@ -111,9 +111,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   // record into an assertion of physical electrical connectivity.
   const recipe = project.processRecipe.steps;
   const depositIndex = (material) =>
-    recipe.findIndex(
-      (step) => step.command === 'deposit' && step.params.material === material,
-    );
+    recipe.findIndex((step) => step.command === 'deposit' && step.params.material === material);
   const wireBondRecordIndex = recipe.findIndex(
     (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
   );
@@ -122,8 +120,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const cuFillIndex = depositIndex('TSV Cu electrofill surrogate 35 um');
   const cuPlanarizationIndex = recipe.findIndex(
     (step) =>
-      step.command === 'etch' &&
-      step.params.target === 'TSV Cu electrofill surrogate 35 um',
+      step.command === 'etch' && step.params.target === 'TSV Cu electrofill surrogate 35 um',
   );
   const solderIndex = depositIndex('AuSn perimeter solder (5 um surrogate)');
   const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');

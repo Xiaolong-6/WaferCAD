@@ -94,9 +94,7 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
   const { project } = await buildGanMicrochannel();
   const model = project.model;
   const gsgPad = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
-  const copper = model.layers.find(
-    (layer) => layer.name === 'TSV Cu electrofill surrogate 35 um',
-  );
+  const copper = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
   assert.ok(gsgPad && copper, 'Expected GSG pad footprint and Cu-filled TSV materials');
 
   // Fig. 2(f) shows wire bonds between the HEMT and the separate GSG pad
