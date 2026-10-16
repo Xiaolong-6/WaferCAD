@@ -257,12 +257,16 @@ test('post-Bond Process timeline moves without truncating full Recipe and reject
   assert.equal(undoAll.branches[0].postBondCursor, 0);
   assert.deepEqual(assemblyVariantPostBondModel(undoOne), first.model);
   assert.deepEqual(assemblyVariantPostBondModel(undoAll), assemblyVariantProject(original).model);
-  assert.deepEqual(assemblyVariantPostBondModel(setAssemblyVariantPostBondCursor(undoOne, 2)), second.model);
+  assert.deepEqual(
+    assemblyVariantPostBondModel(setAssemblyVariantPostBondCursor(undoOne, 2)),
+    second.model,
+  );
   assert.throws(
-    () => appendAssemblyVariantPostBondStep(undoOne, {
-      command: 'deposit',
-      params: { material: 'Al', thicknessUm: 1, face: 'front' },
-    }),
+    () =>
+      appendAssemblyVariantPostBondStep(undoOne, {
+        command: 'deposit',
+        params: { material: 'Al', thicknessUm: 1, face: 'front' },
+      }),
     /historical Recipe requires a new Variant/,
   );
   const reloaded = JSON.parse(JSON.stringify(undoOne));
@@ -277,7 +281,10 @@ test('post-Bond cursor rejects forged indices and accepts previous v2 sidecar at
     params: { material: 'SiO2', thicknessUm: 1, face: 'front' },
   }).graph;
   for (const bad of [-1, 2, 0.5, NaN]) {
-    assert.throws(() => setAssemblyVariantPostBondCursor(graph, bad), /outside its Recipe timeline/);
+    assert.throws(
+      () => setAssemblyVariantPostBondCursor(graph, bad),
+      /outside its Recipe timeline/,
+    );
   }
   const forged = structuredClone(graph);
   forged.branches[0].postBondCursor = 5;
