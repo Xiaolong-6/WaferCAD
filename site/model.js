@@ -871,7 +871,7 @@ function mutateStack(
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator, merge = true) {
+function splitByArea(model, area, mutator, merge = true, separateHits = false) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
@@ -879,11 +879,19 @@ function splitByArea(model, area, mutator, merge = true) {
     if (!isEmpty(rest))
       next.push({ id: region.id, geom: rest, stack: region.stack.map((s) => ({ ...s })) });
     if (!isEmpty(hit)) {
-      const stack = mutator(
-        region.stack.map((s) => ({ ...s })),
-        region,
-      );
-      if (stack.length) next.push({ id: `region-${model.nextRegionId++}`, geom: hit, stack });
+      // PVD must inspect each disconnected *masked* wall separately. A single
+      // conformal-sidewall owner can group widely spaced devices and include
+      // large polygon bounds even when each exposed band is only 10 nm wide.
+      const fragments = separateHits ? hit.map((polygon) => [polygon]) : [hit];
+      for (const fragment of fragments) {
+        const stack = mutator(
+          region.stack.map((s) => ({ ...s })),
+          region,
+          fragment,
+        );
+        if (stack.length)
+          next.push({ id: `region-${model.nextRegionId++}`, geom: fragment, stack });
+      }
     }
   }
   model.regions = merge ? mergeRegions(model, next) : next;
@@ -1585,27 +1593,31 @@ function applyOperationImpl(
       face,
     );
   } else {
-    splitByArea(model, active, (stack, region) => {
-      const exposed = surfaceSegment(stack, face);
-      // Ordinary directional evaporation never grows from the artificial cap
-      // of a conformal sidewall. Explicit pvd-step mode approximates finite-
-      // angle coverage only where the width of that column is physically
-      // resolvable by the specified fractional sidewall deposition.
-      if (!exposed) return stack;
-      if (exposed.role === 'conformal-sidewall') {
-        if (growth !== 'pvd-step') return stack;
-        const stepThickness = amount * Number(stepCoverageFraction);
-        // An owner may contain many disjoint wall polygons across the device
-        // array. Bound each physical wall, not the entire owner's broad bbox.
-        const eligibleWalls = region.geom.every((polygon) => {
-          const { width, height } = multiBounds([polygon]);
-          return Math.min(width, height) <= stepThickness + 1e-9;
-        });
-        if (!eligibleWalls) return stack;
-        return addLayerToSurface(stack, layer?.id, stepThickness, face);
-      }
-      return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
-    });
+    splitByArea(
+      model,
+      active,
+      (stack, _region, fragment) => {
+        const exposed = surfaceSegment(stack, face);
+        // Directional evaporation cannot grow from an artificial sidewall cap.
+        // Explicit PVD-step mode grants finite-angle coverage only to narrow,
+        // masked physical wall strips. Bounds of their parent owner or polygon
+        // are misleading: the 10 nm strips can have 0.56 µm-wide boundary
+        // skirts after Boolean clipping.
+        if (!exposed) return stack;
+        if (exposed.role === 'conformal-sidewall') {
+          if (growth !== 'pvd-step') return stack;
+          const stepThickness = amount * Number(stepCoverageFraction);
+          const { width, height } = multiBounds(fragment);
+          const longAxis = Math.max(width, height);
+          const effectiveWidth = longAxis > 0 ? geometryArea(fragment) / longAxis : Infinity;
+          if (!(effectiveWidth > 0 && effectiveWidth <= stepThickness + 1e-9)) return stack;
+          return addLayerToSurface(stack, layer?.id, stepThickness, face);
+        }
+        return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
+      },
+      true,
+      growth === 'pvd-step',
+    );
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
