@@ -166,7 +166,10 @@ try {
         if (this.name === 'workspace' && record?.key === 'current') {
           trace.failedCurrentWrites++;
           trace.armed = true;
-          throw new window.DOMException('Synthetic final restore commit failure', 'QuotaExceededError');
+          throw new window.DOMException(
+            'Synthetic final restore commit failure',
+            'QuotaExceededError',
+          );
         }
         if (this.name === 'workspace' && String(record?.key).startsWith('recovery:'))
           trace.checkpointWrites++;
@@ -190,7 +193,8 @@ try {
         .click();
       await page.waitForFunction(
         () => {
-          const message = document.querySelector('[data-slot="status.message"]')?.textContent || '';
+          const message =
+            document.querySelector('[data-slot="status.message"]')?.textContent || '';
           return (
             /in-memory rollback also failed/i.test(message) &&
             !window.WaferCadV2Workstation.snapshot().workflow.busy
@@ -203,7 +207,10 @@ try {
         trace: window.__recoveryDoubleFault,
         message: document.querySelector('[data-slot="status.message"]')?.textContent || '',
       }));
-      assert.ok(doubleFault.trace.checkpointWrites >= 1, 'Original Recovery point was protected');
+      assert.ok(
+        doubleFault.trace.checkpointWrites >= 1,
+        'Original Recovery point was protected',
+      );
       assert.ok(
         doubleFault.trace.failedCurrentWrites >= 1,
         'Actual IndexedDB current write must fail after protection',
@@ -236,7 +243,7 @@ try {
         const entry = await storage.loadWorkspaceRecoveryPoint(point.key);
         if (entry) protectedModels.push(entry.model);
       }
-      return { current, protectedModels };
+      return { current, protectedModels, reasons: points.map((point) => point.reason) };
     });
     assert.deepEqual(
       durability.current,
@@ -247,14 +254,27 @@ try {
       durability.protectedModels.some(
         (model) => JSON.stringify(model) === JSON.stringify(before.model),
       ),
-      'A valid pre-restore checkpoint must contain the original exact Model',
+      'A valid pre-restore checkpoint must contain the original exact Model: ' +
+        JSON.stringify({
+          reasons: durability.reasons,
+          expectedRevision: before.model.processRevision,
+          expectedLayers: before.model.layers.map((layer) => layer.name),
+          protectedRevisions: durability.protectedModels.map((model) => model.processRevision),
+          protectedLayers: durability.protectedModels.map((model) =>
+            model.layers.map((layer) => layer.name),
+          ),
+        }),
     );
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
     const reopened = await snapshot();
-    assert.deepEqual(reopened.model, before.model, 'Reload must use original durable physical Model');
+    assert.deepEqual(
+      reopened.model,
+      before.model,
+      'Reload must use original durable physical Model',
+    );
     assert.deepEqual(reopened.workflow.steps, before.workflow.steps);
     assert.deepEqual(reopened.workflow.branches, before.workflow.branches);
     assert.deepEqual(errors, []);
