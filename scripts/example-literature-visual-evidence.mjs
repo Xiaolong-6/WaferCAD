@@ -260,7 +260,8 @@ const CASES = [
   {
     id: 'tio2-metalens-four-unit',
     file: 'tio2-metalens-four-unit-process',
-    source: 'Wang TiO2 metalens 2021 Figs. 2–3 illustrative four-meta-atom geometry; not optimized GDS',
+    source:
+      'Wang TiO2 metalens 2021 Figs. 2–3 illustrative four-meta-atom geometry; not optimized GDS',
     cuts: [
       {
         id: 'two-nanopillar-diameters',
@@ -566,8 +567,10 @@ async function selectHistoryVariant(page, branchId) {
 }
 
 const requested = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
-const selected = requested ? CASES.filter((item) => item.id === requested) : CASES;
-assert.ok(selected.length > 0, 'No matching literature visual evidence case');
+const ids = requested?.split(',').filter(Boolean) || [];
+assert.equal(new Set(ids).size, ids.length, 'Repeated literature figure case identifier');
+const selected = ids.length ? ids.map((id) => CASES.find((item) => item.id === id)) : CASES;
+assert.ok(selected.length > 0 && selected.every(Boolean), 'No matching literature visual evidence case');
 
 const output = 'test-results/literature-figure-cuts';
 await mkdir(output, { recursive: true });
@@ -637,7 +640,10 @@ try {
         try {
           await loadProject(page, project, item.id + '-' + cut.id);
         } catch (error) {
-          const status = await page.locator('#statusText').textContent().catch(() => 'unavailable');
+          const status = await page
+            .locator('#statusText')
+            .textContent()
+            .catch(() => 'unavailable');
           const diagnostic = join(output, item.id + '-' + cut.id + '-import-failure.png');
           await page.screenshot({ path: diagnostic }).catch(() => {});
           throw new Error(
