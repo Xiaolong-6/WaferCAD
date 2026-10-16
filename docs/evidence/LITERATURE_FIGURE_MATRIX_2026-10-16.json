@@ -20,14 +20,27 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
       "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
       "secondarySources": [
         {
           "url": "https://urn.fi/URN:ISBN:978-952-64-2900-7",
           "panel": "Ge A/B: 2026 thesis Fig. 15a/b"
         }
-      ]
+      ],
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "photodetector-black-si-final-active-ald-protected-section.png",
+          "photodetector-black-si-qa-active-ald-overetched-section.png",
+          "photodetector-ge-a-oxide-free-inactive-control-section.png",
+          "photodetector-ge-b-inactive-oxide-contact-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "perc-point-contact-solar-cell",
@@ -41,8 +54,19 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "perc-point-contact-solar-cell-rear-point-contact-section.png",
+          "perc-point-contact-solar-cell-rear-oxide-control-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "fully-textured-perovskite-silicon-tandem",
@@ -56,8 +80,21 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "fully-textured-perovskite-silicon-tandem-active-between-grid-section.png",
+          "fully-textured-perovskite-silicon-tandem-across-ag-grid-finger-section.png",
+          "fully-textured-perovskite-silicon-tandem-ag-finger-center-magnified-ridge-detail.png",
+          "fully-textured-perovskite-silicon-tandem-ag-finger-center-magnified-valley-detail.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "suspended-silica-microdisk",
@@ -71,8 +108,18 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "suspended-silica-microdisk-disk-diameter-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "m3d-selfpowered-heterogeneous-ic",
@@ -87,7 +134,8 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
+      "captureEvidence": null
     },
     {
       "id": "magic-1000-mos2-beol",
@@ -102,7 +150,8 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
+      "captureEvidence": null
     },
     {
       "id": "three-tier-silicon-jlfets",
@@ -116,8 +165,20 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831/artifacts/12031383878",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "three-tier-silicon-jlfets-three-tier-channel-to-pads-section.png",
+          "three-tier-silicon-jlfets-central-gate-detail-section.png",
+          "three-tier-silicon-jlfets-conformal-gate-sidewall-detail-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "tio2-metalens-four-unit",
@@ -132,7 +193,8 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
+      "captureEvidence": null
     }
   ]
 }

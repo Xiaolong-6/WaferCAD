@@ -38,3 +38,20 @@ modify physical geometry or numeric scientific tolerances. Future
 acceptance requires original publication panel with DOI, journal rights
 considerations, accurate dimensions, actual browser output and an
 independent interpretation of any mismatch.
+
+## Verified evidence bundle mapping
+
+The register now enumerates the exact `figure-cut-manifest.json` and
+captured PNG member names from real GitHub Actions archives:
+
+- Microdisk, PERC, Tandem and Black-Si/Ge:
+  [literature Section/Mask evidence run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38753459685/artifacts/11982606386).
+- Three-tier JLFET:
+  [Lam three-section evidence run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38867834831/artifacts/12031383878).
+- M3D, MAGIC-1000 and TiO₂ metalens: **no recorded paper-matched
+  Figure Cut** in this register; their other tests and browser acceptance
+  are not substitutes.
+
+These screenshots and saved point probes support software geometry
+reconstruction. All source-paper quantitative overlay fields remain false
+because no device-matched SEM calibration has been demonstrated.

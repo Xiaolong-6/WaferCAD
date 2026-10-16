@@ -40,7 +40,17 @@ test('eight paper provenance records match the actual published example catalog'
     assert.ok(acceptanceStatuses.has(entry.acceptance.status));
     if (entry.browserEvidenceURL) {
       assert.match(entry.browserEvidenceURL, /^https:\/\/github\.com\//);
+      assert.equal(entry.captureEvidence.kind, 'actual-chromium-project-capture');
+      assert.equal(entry.captureEvidence.runURL, entry.browserEvidenceURL);
+      assert.match(entry.captureEvidence.artifactURL, /\/artifacts\/\d+$/);
+      assert.equal(entry.captureEvidence.manifestMember, 'figure-cut-manifest.json');
+      assert.ok(entry.captureEvidence.capturedMembers.length > 0);
+      assert.equal(entry.captureEvidence.originalPaperOverlay, false);
+      for (const member of entry.captureEvidence.capturedMembers) {
+        assert.match(member, /\.png$/);
+      }
     } else {
+      assert.equal(entry.captureEvidence, null);
       assert.match(entry.evidenceType, /figure cut still missing/);
       assert.notEqual(entry.acceptance.status, 'accepted-paper-match');
     }
