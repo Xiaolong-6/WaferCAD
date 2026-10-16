@@ -181,3 +181,94 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
     display: none;
   }
 }
+
+/* Bond drafts are opt-in and isolated from the normal Process/Recipe editor. */
+.assembly-bond-draft-tools {
+  position: fixed;
+  z-index: 130;
+  top: 12px;
+  right: 12px;
+  box-sizing: border-box;
+  width: min(324px, calc(100vw - 24px));
+  max-height: calc(100dvh - 90px);
+  overflow: auto;
+  padding: 10px 14px;
+  border: 1px solid #cad2db;
+  border-radius: 14px;
+  background: rgba(250, 252, 255, 0.98);
+  box-shadow: 0 8px 28px rgba(20, 32, 46, 0.15);
+  color: #202d3e;
+  font: 12px/1.45 system-ui, sans-serif;
+}
+
+.assembly-bond-draft-tools summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.assembly-bond-draft-tools p {
+  color: #586579;
+}
+
+.assembly-bond-draft-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.assembly-bond-draft-form label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.assembly-bond-draft-form label:has(input[type='file']) {
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-draft-form input,
+.assembly-bond-draft-form select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px;
+  border: 1px solid #bdc8d6;
+  border-radius: 7px;
+  font: inherit;
+}
+
+.assembly-bond-draft-actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-draft-actions button {
+  flex: 1;
+  padding: 7px 8px;
+  border: 1px solid #a7b7cb;
+  border-radius: 7px;
+  background: #e8effa;
+  color: #203146;
+  cursor: pointer;
+  font: inherit;
+}
+
+.assembly-bond-draft-actions button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.assembly-bond-draft-status[data-error='true'] {
+  color: #a22a2a;
+}
+
+@media (max-width: 560px) {
+  .assembly-bond-draft-tools {
+    right: 8px;
+    top: 8px;
+    width: min(290px, calc(100vw - 16px));
+    max-height: calc(100dvh - 100px);
+  }
+}
