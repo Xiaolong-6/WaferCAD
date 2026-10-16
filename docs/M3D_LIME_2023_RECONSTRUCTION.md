@@ -136,6 +136,27 @@ measured device connectivity.
 - The generator validates real Process stages, final contact topology, project serialization and Recipe/History round-trip; CI additionally checks the checked-in artifact byte-for-byte against its deterministic rebuild. Passing these checks establishes **internal geometric and persistence correctness**, not exact ALD corner morphology at TEM resolution, electrically proven ILVs, or original-author layout fidelity.
 - The [October 15 native-ALD acceptance run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38700722241) passed the actual v2 browser Open, local Section capture, 3D visibility check, 46-step Recipe Run All, Section A–B preservation and exported-project round-trip. Browser-exported GDSII and OASIS independently passed KLayout Python 0.30.12 for all **11 inferred layers and 130 rectangles**; the checked-in Conformal artifact rebuilt byte-for-byte. The Section evidence used a 9 µm local span and **Z:X display magnification ×4.40**. Its capture and the automated 3D view still show a simplified, substrate-dominated depiction, so automated visibility is **not** a match to **main Fig. 2c–d / Supplementary Fig. 6a**. Human TEM-to-Section morphology review and adequate local 3D scientific framing remain **unpassed release gates**.
 
+## Native desktop docking CI integration (October 16, 2026)
+
+The M3D-LIME branch was brought up to date with Main's native desktop
+Overview/Dock shell. The old `view:mask` and `view:three` browser actions
+are not desktop navigation contracts in that shell. The tested four-file
+Playwright adapter from [PR #288](https://github.com/Xiaolong-6/WaferCAD/pull/288)
+was therefore incorporated into **this feature branch only**, with no merge
+to Main. It checks real panel visibility in the desktop Overview and retains
+the existing mobile/Single behavior. The original 1 µm² Mask process area,
+0.125 µm film, 6400-instance renderer isolation, and M3D Welcome 36-step
+History / reversible Border invariants remain mandatory. Previous targeted
+CI on the adapter alone passed; final combined-HEAD acceptance is required
+before calling the overall PR green.
+
+The latest representative `.wafercad` retains 46 Recipe operations,
+47 History process nodes and 30 material layers, with **239 final XY regions**
+after the corrected, explicitly inferred 11.25 nm partial PVD bridge. All
+14 modeled CNTFET gate-edge locations have a locally continuous Pd segment
+under that hypothesis. This does not establish the paper's undisclosed PVD
+angle, original GDS placement, electrical performance or TEM contour fidelity.
+
 ## Working branch and status
 
 - Branch: `feat/m3d-rram-cntfet-lime-20261014`.
