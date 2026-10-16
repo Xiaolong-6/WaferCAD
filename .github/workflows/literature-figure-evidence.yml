@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/example-literature-visual-evidence.mjs'
+      - 'scripts/v2/check-m3d-second-power-via-section.mjs'
       - 'site/tests/literature-provenance-matrix.test.mjs'
       - 'docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
       - 'docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json'
@@ -39,6 +40,39 @@ jobs:
             diff -u "$file" <(npx prettier "$file") || failure=1
           done
           exit "$failure"
+  native-m3d:
+    name: Targeted native v2 dual power-via Section and topology
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Launch native v2
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-m3d-v2.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-m3d-v2.log
+          exit 1
+      - name: Capture both M3D power-via A-B sections from physical v2 topology
+        run: node scripts/v2/check-m3d-second-power-via-section.mjs
+      - name: Upload native M3D Section and probe manifest
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-v2-m3d-power-via-section
+          path: test-results/literature-figure-cuts/native-v2-m3d/
+          if-no-files-found: warn
   evidence:
     name: Real browser Section and 3D figure cuts
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
