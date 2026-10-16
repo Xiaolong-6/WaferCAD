@@ -21,7 +21,13 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay",
+      "secondarySources": [
+        {
+          "url": "https://urn.fi/URN:ISBN:978-952-64-2900-7",
+          "panel": "Ge A/B: 2026 thesis Fig. 15a/b"
+        }
+      ]
     },
     {
       "id": "perc-point-contact-solar-cell",
@@ -80,8 +86,8 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": null,
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
     },
     {
       "id": "magic-1000-mos2-beol",
@@ -95,8 +101,8 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": null,
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
     },
     {
       "id": "three-tier-silicon-jlfets",
@@ -125,8 +131,8 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
-      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+      "browserEvidenceURL": null,
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
     }
   ]
 }
