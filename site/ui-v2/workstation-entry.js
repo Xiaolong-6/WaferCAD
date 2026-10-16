@@ -112,13 +112,14 @@ try {
       versionCommit: commitSha,
     }),
   });
-  const mobileViewport = readOnlyPreview
-    ? null
-    : createMobileViewportController({
-        root: shell.getRoot(),
-        state: uiState,
-        compact: () => window.WaferCadV2ViewState.compact(window),
-      });
+  let mobileViewport = null;
+  if (!readOnlyPreview) {
+    mobileViewport = createMobileViewportController({
+      root: shell.getRoot(),
+      state: uiState,
+      compact: () => window.WaferCadV2ViewState.compact(window),
+    });
+  }
   window.addEventListener('pagehide', () => mobileViewport?.destroy(), { once: true });
   shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
@@ -265,10 +266,9 @@ try {
     if (mobileWorkspace.handleAction(action)) {
       // Main/Mask adapters do not repaint in onShow; refresh only the view
       // that becomes visible, never all four scientific views.
-      const switchedToView =
-        uiState.mobile === 'view' &&
-        (previousMobile !== 'view' || previousView !== uiState.view);
-      if (switchedToView) {
+      if (uiState.mobile !== 'view') {
+        render({ scientific: false });
+      } else if (previousMobile !== 'view' || previousView !== uiState.view) {
         render({ scientificView: uiState.view });
       } else {
         render({ scientific: false });
