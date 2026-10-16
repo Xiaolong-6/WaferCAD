@@ -164,3 +164,22 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 - The regenerated native-ALD project passed isolated ALD rollback, deterministic Kernel rebuild, full v2 Chromium Run All/Export-Reopen, physical mask GDSII/OASIS plus external KLayout and Quality checks on [the October 15 green run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38700722241). Its CI evidence includes a local Section screenshot, a 3D overview and machine-readable validation results. **Paper-to-geometry morphology and usable local 3D visual presentation have not passed**; Draft PR [#226](https://github.com/Xiaolong-6/WaferCAD/pull/226) remains blocked on scientific/visual review rather than Kernel or persistence CI.
 - Recipe **Rebuild Base → Run All** now retains a valid pre-existing physical Section A–B (including the paper-aligned local slice); the UI v2 and legacy Base controllers share this policy, while a manual Base change or an out-of-bounds Section still selects a centered default. Browser-level persistence is a required CI assertion.
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
+
+
+## Paper-figure visual evidence boundary (October 2026)
+
+| Original evidence | Source-constrained statement | Browser artifact and physical gate | Limit |
+| --- | --- | --- | --- |
+| Fig. 1b, three-tier TEM, 1 µm scale bar | CMOS / analog-CIM / CNTFET–digital-RRAM tiers exist in vertical order | `three-tier-before-runall.png`, `section-local-before-runall.png`, complete 46-step replay | Foundry FEOL, exact ILDs and 2→3 tier ILVs are not reconstructed from TEM pixels; source explicitly omits those ILVs |
+| Fig. 2c, analog RRAM TEM, 20 nm scale bar | TiN / HfAlOₓ (8 nm) / TaOₓ (45 nm) / TiN | `section-analog-rram-nanoscale-canvas.png` and matching full-panel capture; check actual material IDs, Z span, X:Z physical scale and lateral Mask transition | Model surfaces are piecewise ideal, not measured TEM roughness or inferred lithography width |
+| Fig. 2d, digital RRAM TEM, 20 nm scale bar | Pd / TaOₓ (20 nm) / Ta₂O₅ (10 nm) / Pt | `section-digital-rram-nanoscale-canvas.png`, independent XY/Z stack checks | No claim that ideal geometry reproduces the fabricated interface contours |
+| Supplementary Fig. 6a, CNTFET with adjacent RRAM | RRAM is separated from the active CNT channel and lands on the Pd drain | `section-cntfet-pd-gate-step-nanoscale-canvas.png`, `section-cntfet-digital-rram-bridge-canvas.png` and 14-site Pd continuity checks | 0.45 µm lateral separation, mask footprints and 25% evaporation sidewall coverage are uncalibrated reconstruction assumptions |
+
+The browser produces both full Section-panel evidence (including toolbar and true X:Z readout)
+and native canvas-only screenshots with the **real Layers pane temporarily closed** to avoid
+obscuring the nanoscale material interface. It restores the original Layers preference and
+localStorage value before the saved model, ROI, Section, History and export checks.
+These renders verify the **model-specific internal geometry**, not TEM-derived metrology,
+actual metal continuity or an author-GDS match. The original paper images are accessible
+through [Li et al. 2023](https://doi.org/10.1038/s41467-023-42981-1) and retain their
+own independently reported scale bars.

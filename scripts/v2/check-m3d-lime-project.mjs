@@ -206,6 +206,32 @@ try {
   assert.equal(await sectionCanvas.getAttribute('data-scale-mode'), 'physical');
   assert.equal(await sectionCanvas.getAttribute('data-section-collapse-enabled'), 'false');
 
+  // A 30-layer legend consumes a quarter of each nanoscale screenshot. Hide it
+  // via the real Section toolbar, not by synthetic CSS or renderer overrides.
+  // Record and restore both the user's preference and its localStorage key.
+  const sectionLegendToggle = page.locator('#sectionPanel [data-action="legend"]');
+  const legendInitiallyOpen = (await sectionLegendToggle.getAttribute('aria-pressed')) === 'true';
+  const originalLayersPreference = (await snapshot()).sectionLayersVisible;
+  const legendStorageKey = 'wafercad.v2.section-layers.v1';
+  const originalLegendStorage = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    legendStorageKey,
+  );
+  const legendOpenCanvasWidth = await sectionCanvas.evaluate(
+    (canvas) => canvas.getBoundingClientRect().width,
+  );
+  if (legendInitiallyOpen) await sectionLegendToggle.click();
+  await waitForPaint(page);
+  assert.equal(await sectionLegendToggle.getAttribute('aria-pressed'), 'false');
+  const inspectionCanvasWidth = await sectionCanvas.evaluate(
+    (canvas) => canvas.getBoundingClientRect().width,
+  );
+  if (legendInitiallyOpen)
+    assert.ok(
+      inspectionCanvasWidth > legendOpenCanvasWidth + 100,
+      'Closing Section Layers must expose more real scientific canvas area',
+    );
+
   report.nanoSectionEvidence = [];
   for (const target of [
     {
@@ -367,6 +393,13 @@ try {
       animations: 'disabled',
     });
     assert.ok(png.length > 8000, 'Nanoscale Section evidence is unexpectedly small');
+    // Canvas-only output is an unmodified Chromium raster of the real Section.
+    // Keep the complete panel image too, for reproducible UI/scale evidence.
+    const canvasPng = await sectionCanvas.screenshot({
+      path: resolve(output, 'section-' + target.label + '-nanoscale-canvas.png'),
+      animations: 'disabled',
+    });
+    assert.ok(canvasPng.length > 8000, 'Scientific-only Section crop is empty');
     report.nanoSectionEvidence.push({
       material: target.material,
       physicalXUm: target.physicalXUm,
@@ -377,6 +410,8 @@ try {
       projectedFilmPixels: evidence.zPxPerUm * actualThicknessUm,
       ...evidence,
       screenshotBytes: png.length,
+      canvasOnlyScreenshotBytes: canvasPng.length,
+      layersHiddenForInspection: !(await sectionLegendToggle.getAttribute('aria-pressed') === 'true'),
     });
   }
   // Mid-scale Section bridge evidence: CNTFET channel, Pd drain landing and
@@ -553,6 +588,11 @@ try {
     animations: 'disabled',
   });
   assert.ok(midPng.length > 8000, 'Mid-scale bridge Section evidence is unexpectedly small');
+  const midCanvasPng = await sectionCanvas.screenshot({
+    path: resolve(output, 'section-cntfet-digital-rram-bridge-canvas.png'),
+    animations: 'disabled',
+  });
+  assert.ok(midCanvasPng.length > 8000, 'Scientific-only bridge image is empty');
   report.middleSectionEvidence = {
     channelMask,
     pdMask,
@@ -562,9 +602,32 @@ try {
     inspectionXUm,
     inspectionZUm,
     screenshotBytes: midPng.length,
+    canvasOnlyScreenshotBytes: midCanvasPng.length,
     ...midEvidence,
     note: 'Physical Section of modeled Pd bridge; mask positions and electrical routing are inferred',
   };
+  // Restore the real Layers pane and exact persistence key before leaving the
+  // scientific inspection. No layer visibility, ROI, physical model or Section
+  // coordinates have changed.
+  if (legendInitiallyOpen) await sectionLegendToggle.click();
+  await waitForPaint(page);
+  assert.equal(
+    await sectionLegendToggle.getAttribute('aria-pressed'),
+    String(legendInitiallyOpen),
+    'Section Layers pane must return to its original state',
+  );
+  assert.equal(
+    (await snapshot()).sectionLayersVisible,
+    originalLayersPreference,
+    'Section Layers preference must survive inspection',
+  );
+  if (originalLegendStorage === null)
+    await page.evaluate((key) => localStorage.removeItem(key), legendStorageKey);
+  assert.equal(
+    await page.evaluate((key) => localStorage.getItem(key), legendStorageKey),
+    originalLegendStorage,
+    'Nanoscale inspection must preserve stored Section Layers preference',
+  );
   await page.locator('#sectionPanel [data-action="fit:section"]').click();
   await page.locator('#sectionPanel [data-action="fit:section"]').click();
   await page.locator('#sectionPanel [data-action="zbreak-settings"]').click();
