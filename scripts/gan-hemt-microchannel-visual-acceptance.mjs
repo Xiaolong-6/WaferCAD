@@ -486,6 +486,17 @@ try {
     null,
     { timeout: 120000 },
   );
+  await page.waitForFunction(
+    () => {
+      const state = window.WaferCadV2Workstation?.snapshot();
+      return (
+        state?.assemblyWires?.length === 2 &&
+        document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2'
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
   await waitForPaint(page);
   const packageCanvas = await page.locator('#threeHost').boundingBox();
   assert.ok(
@@ -500,7 +511,9 @@ try {
     bookmarkRestored: true,
     independentGsgDieBodies: 2,
     separateGsgAuContacts: 6,
-    wireBondGeometryVerified: false,
+    wireBondGeometryVerified: true,
+    wireBondCount: 2,
+    wireBondDiameterUmInferred: 12,
   };
   assert.deepEqual(historyErrors, [], 'Three-chip Bookmark restore emitted browser errors');
   await context.close();
@@ -515,7 +528,8 @@ try {
     verifiedIdealizedCopperCoreSamples: geometry.viaCoreSamples,
     trueDualWaferBondModeled: false,
     twoIndependentGsgDieBodiesModeled: geometry.missingGsgDieCenters.length === 0,
-    hemtToGsgWireBondGeometryModeled: false,
+    hemtToGsgWireBondGeometryModeled: true,
+    wireBondLoopDimensionsInferred: true,
     completeInterposerAuNiPaAuMetallizationModeled: false,
     hemtBacksideViaMetallizationModeled: false,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
@@ -532,7 +546,7 @@ try {
     fig1aContourAndAppearanceVerified: false,
   };
   report.note =
-    'Captured separate coolant, TSV and HEMT views. Cu cores and GSG pad footprints have sampled XY/Z occupancy. Paper Fig. 2(f) HEMT-to-GSG wire bonds, backside HEMT via metallization, oxide insulation and completed interposer electrical routing still require separate scientific verification. Browser smoke pass is not Fig. 1(a) acceptance.';
+    'Captured separate coolant, TSV, HEMT and assembly views; physical materials and two inferred 3D Au wire tubes are checked in the real browser. Paper Fig. 2(f) wire count/net assignments, backside HEMT via metallization, dielectric isolation and complete interposer routing remain unverified. Browser geometry pass is not Fig. 1(a) paper-silhouette acceptance.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',
