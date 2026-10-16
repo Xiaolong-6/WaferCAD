@@ -301,3 +301,43 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
     max-height: calc(100dvh - 100px);
   }
 }
+
+/* Source-aware Branch control lives only in experimental Bond drafts. */
+.assembly-bond-variants {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #d7dfe8;
+}
+
+.assembly-bond-variants > strong,
+.assembly-bond-variants > select,
+.assembly-bond-variants > input,
+.assembly-bond-variants > button:last-child {
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-variants input,
+.assembly-bond-variants select,
+.assembly-bond-variants button {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #bdc8d6;
+  border-radius: 7px;
+  background: #fff;
+  color: #293c54;
+  font: inherit;
+}
+
+.assembly-bond-variants > button:nth-last-child(2) {
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-variants button:disabled,
+.assembly-bond-variants select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
