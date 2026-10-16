@@ -1,6 +1,8 @@
 # Desktop View Docking reconstruction — implementation contract (2026-10-15)
 
-**Initial base:** `integrate/legacy-retirement-20261015` at `45bc459c`. Once #256 merged and the integration branch was deleted, GitHub automatically closed #261. Its unchanged feature branch continues in Draft **PR #267 targeting Main**, synchronized with post-integration Main; no Merge without explicit maintainer approval.
+> **Status verified 2026-10-16:** [PR #267](https://github.com/Xiaolong-6/WaferCAD/pull/267) merged into Main on 2026-10-16 (`76a98b5`). The stages and acceptance language below are retained as implementation history, not as a currently pending Draft or merge request. For current controls and ownership, consult [Architecture](../ARCHITECTURE.md) and [Usage](../USAGE.md).
+
+**Initial base:** `integrate/legacy-retirement-20261015` at `45bc459c`. Once #256 merged and the integration branch was deleted, GitHub automatically closed #261. Its feature work continued through PR #267, which has since merged into Main.
 
 ## Approved UX
 
@@ -36,6 +38,6 @@
 - Preserve Panel/Canvas DOM identity, WebGL context and camera orientation through layout changes; use resize notification after settled layout rather than renderer reinitialization.
 - Disable docking below 821px even when CSS viewport/pointer inputs differ. `workstation-preview.css` and `mobile-workstation.css` retain their owners.
 - Layout preferences are versioned, view-only, safe on unavailable storage; reset to 2×2 on corrupt data. Never written into `.wafercad`, History or Recovery.
-- Track every unchecked gate openly; merged `#256` component checks do not prove this stacked PR. No merge to Main without maintainer approval.
+- Historical gate: track unchecked checks openly; merged `#256` component checks did not alone prove the stacked PR, which required maintainer approval.
 
-The full implementation plan and execution checkpoints are maintained in the Draft PR Conversation comment.
+The full implementation plan and execution checkpoints are preserved in the [PR #267 conversation](https://github.com/Xiaolong-6/WaferCAD/pull/267).

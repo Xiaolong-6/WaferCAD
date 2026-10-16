@@ -1,5 +1,17 @@
 # Documentation architecture and maintenance
 
+## Folder ownership and compatibility
+
+- `docs/` owns stable entrypoints, engineering conventions and compatibility links.
+- `docs/science/` owns current process, geometry, annotation and numerical contracts.
+- `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
+- `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
+- `docs/wiki/` stays flat for the Main-only GitHub Wiki publisher, with its SVG assets under `assets/`.
+- `docs/archive/` owns frozen historical audits; old data and dates remain unchanged.
+- `docs/review/` contains retained historical visual evidence and does not certify current UI.
+
+When relocating an already published Markdown document, retain its old URL as a short compatibility page, including its original heading anchors where feasible. Point navigation to the single canonical destination. Update or preserve repository-relative links and run the focused documentation check. Do not duplicate the full text across active folders or delete scientific provenance for cosmetic tidiness.
+
 ## Authority and readers
 
 **Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
@@ -44,7 +56,7 @@ flowchart LR
 - Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
 - `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
-- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
+- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Relevant documentation PRs run focused Process Guide, Wiki and navigation Node tests in a read-only workflow; only the separate Main push workflow may publish Wiki content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
 ## Change workflow
 

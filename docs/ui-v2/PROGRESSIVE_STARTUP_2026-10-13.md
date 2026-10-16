@@ -1,8 +1,10 @@
 # Progressive Workstation startup (P1)
 
+> **Status verified 2026-10-16:** [PR #188](https://github.com/Xiaolong-6/WaferCAD/pull/188) merged into Main on 2026-10-16 (`269c561`). Draft/merge-stop instructions below describe the historical acceptance stage. The recorded 1,000 ms responsiveness ceiling and independent scientific checks remain a review contract; this document does not re-certify later hardware or renderer revisions.
+
 **Scope:** UI v2 and cooperative 3D scene scheduling. This work is layered on the
-startup-shell and inspector-width correction in PR #187. Keep the P1 PR in Draft
-until the browser gates and any necessary physical-GPU review are complete.
+startup-shell and inspector-width correction in PR #187. The original P1 review
+required browser gates and physical-GPU evidence before the now-completed merge.
 
 ## Current acceptance decision (16 October 2026)
 
@@ -23,8 +25,8 @@ mandatory. No existing scientific tolerance or assertion is relaxed.
 Existing references to 500 ms elsewhere in this document describe **historical
 acceptance targets, diagnostic counters or past samples**, not the current
 release gate. A software-Chromium pass cannot certify physical RTX/iGPU
-responsiveness; do not merge until the updated gate and all required visual,
-science and recovery checks pass and the user explicitly approves Merge.
+responsiveness. At the time, the merge gate also required the updated visual,
+scientific and Recovery checks plus explicit maintainer approval.
 
 ## Ownership and commit boundaries
 
@@ -74,7 +76,7 @@ isolation until a measured hardware run covers those tasks.
 - Later hardware review: input latency, first-frame timestamps, GL identity,
   final geometry/pixel stability and visible recovery from a 3D failure.
 
-**Do not change accepted visual baselines or merge into main before review.**
+**Historical pre-merge instruction:** preserve accepted visual baselines and obtain review before merging.
 
 ## Hardware evidence and CPU root-cause update (13 October 2026)
 
