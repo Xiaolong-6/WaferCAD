@@ -146,8 +146,7 @@ export function createAssemblyBondEditorSession(
     }
     if (!visibleParity()) throw new Error('Bond workspace material drift; fork refused.');
     const timeline = processTimeline();
-    const processFork =
-      currentIndex() === maxIndex() && timeline.index < timeline.length;
+    const processFork = currentIndex() === maxIndex() && timeline.index < timeline.length;
     const visibleProcess = processFork ? assemblyVariantPostBondModel(graph) : null;
     const candidate = processFork
       ? forkAssemblyProcessVariant(graph, { id, name, atProcessIndex: timeline.index })
