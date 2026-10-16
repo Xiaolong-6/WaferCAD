@@ -55,3 +55,14 @@ captured PNG member names from real GitHub Actions archives:
 These screenshots and saved point probes support software geometry
 reconstruction. All source-paper quantitative overlay fields remain false
 because no device-matched SEM calibration has been demonstrated.
+
+## New targeted Chromium evidence cases (pending browser execution)
+
+New browser cuts are now configured for the M3D vertical metal-via
+junctions, the local MAGIC M4→M1 metal ladder and MoS₂/AlOx gate,
+and the small Wang TiO₂ four-meta-atom process fixture. Material
+ownership is probed against the real saved XY/Z stacks before capture.
+These cases are not yet published screenshot evidence: the register
+retains `captureEvidence: null` for all three until an actual browser
+artifact is generated and independently inspected. The four-atom fixture
+is a local proxy, not the 4,725-site optimized author lens/GDS.

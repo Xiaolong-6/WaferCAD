@@ -179,6 +179,102 @@ const CASES = [
       },
     ],
   },
+  {
+    id: 'm3d-selfpowered-heterogeneous-ic',
+    file: 'm3d-selfpowered-full-replay',
+    source: 'Ghosh M3D reconstructed power-via interfaces; publication panel not yet calibrated',
+    cuts: [
+      {
+        id: 'power-via-both-tiers',
+        a: [12, -5.3],
+        b: [20, -5.3],
+        probes: [
+          {
+            id: 'first-power-via',
+            xy: [16, -5.3],
+            present: ['M3D Ti power via 120nm', 'M3D via2 Ti 2nm', 'M3D via2 Au 30nm'],
+          },
+          {
+            id: 'second-power-via',
+            xy: [16, 5.3],
+            present: ['M3D Ti power via 120nm', 'M3D via2 Ni 28nm'],
+          },
+        ],
+      },
+      {
+        id: 'data-via-transfer',
+        a: [12, 0],
+        b: [20, 0],
+        probes: [
+          {
+            id: 'data-via-contact',
+            xy: [16, 0],
+            present: ['M3D MoS2 bridge Au 10nm', 'M3D via2 Ti 2nm', 'M3D via2 Au 30nm'],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'magic-1000-mos2-beol',
+    file: 'magic-1000-mos2-beol',
+    source: 'Fan MAGIC-1000 Fig. 1 local BEOL/Gate proxy; 40×24 µm, not author GDS',
+    cuts: [
+      {
+        id: 'beol-four-metal-levels',
+        a: [-10, -4],
+        b: [10, -4],
+        probes: [
+          {
+            id: 'left-four-levels',
+            xy: [-7, -4],
+            present: ['M4 Al conductor', 'V34 W fill', 'V23 W fill', 'V12 W fill'],
+          },
+          {
+            id: 'right-four-levels',
+            xy: [7, 4],
+            present: ['M1 Al conductor', 'Via (to W gate) W fill'],
+          },
+        ],
+      },
+      {
+        id: 'mos2-gate-and-alox',
+        a: [-10, 4],
+        b: [10, 4],
+        probes: [
+          {
+            id: 'enhancement-gate',
+            xy: [7, 4],
+            present: ['W bottom gate 400nm', 'ALD HfO2 10nm', 'Monolayer MoS2'],
+            absent: ['D-mode AlOx coating'],
+          },
+          {
+            id: 'depletion-surrogate',
+            xy: [-7, 4],
+            present: ['D-mode AlOx coating'],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tio2-metalens-four-unit',
+    file: 'tio2-metalens-four-unit-process',
+    source: 'Wang TiO2 metalens 2021 Figs. 2–3 illustrative four-meta-atom geometry; not optimized GDS',
+    cuts: [
+      {
+        id: 'two-nanopillar-diameters',
+        a: [-2.3, 1.1],
+        b: [2.3, 1.1],
+        probes: [
+          { id: 'negative-x-pillar', xy: [-1.1, 1.1], present: ['TiO2', 'ITO'] },
+          { id: 'positive-x-pillar', xy: [1.1, 1.1], present: ['TiO2', 'ITO'] },
+          { id: 'substrate-control', xy: [0, 0], present: ['ITO'], absent: ['TiO2'] },
+        ],
+      },
+      { id: 'opposite-nanopillar-row', a: [-2.3, -1.1], b: [2.3, -1.1] },
+    ],
+  },
   // Branch evidence always selects a real History Variant in the browser. The
   // four models are never synthesized or replaced outside the History UI.
   {
@@ -338,7 +434,13 @@ function regionPhysicalPolygons(project, region) {
   if (!project.sharedPolygonTemplates || typeof geometry[0]?.[0] !== 'number') {
     return geometry;
   }
-  const quantum = project.storage?.lengthQuantumUm;
+  // Older lossless shared-assets-v3 examples omit the explicit quantum.
+  // The canonical project reader defines a 0.0001 µm default for this
+  // encoding; never infer arbitrary XY scales for unknown formats.
+  const encoding = project.storage?.encoding;
+  const quantum =
+    project.storage?.lengthQuantumUm ??
+    (encoding === 'shared-assets-v3' && project.storage?.lossless === true ? 0.0001 : null);
   assert.ok(Number.isFinite(quantum) && quantum > 0, 'Missing shared geometry quantum');
   return geometry.map(([templateId, originX, originY]) => {
     const template = project.sharedPolygonTemplates[templateId];
