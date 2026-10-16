@@ -40,7 +40,7 @@ const grid = (n) => Math.round(n * 100) / 100;
 const fig = (l, t, r, b) => {
   const x0 = grid((l - 359) / 54), x1 = grid((r - 359) / 54);
   const y0 = grid((365 - b) / 54), y1 = grid((365 - t) / 54);
-  return rect(x0, y0, x1 - x0, y1 - y0);
+  return rect(x0, y0, grid(x1 - x0), grid(y1 - y0));
 };
 const P_ACTIVE = fig(137,356,259,398), N_ACTIVE = fig(460,356,582,398);
 const P_POLY = fig(186,327,210,401), N_POLY = fig(508,327,532,401);

@@ -47,7 +47,7 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
 test('Fig.1b schematic masks retain nested inverted-U upper nets and dense body-tie rows', () => {
   const byId = (id) => TCMOS_MASKS.find((mask) => mask.id === id).rectangles;
   const [p, n] = byId(1);
-  assert.deepEqual(p, { x: -4.11, y: -0.61, w: 2.2600000000000002, h: 0.78 });
+  assert.deepEqual(p, { x: -4.11, y: -0.61, w: 2.26, h: 0.78 });
   assert.deepEqual(n, { x: 1.87, y: -0.61, w: 2.26, h: 0.78 });
   const [pHvt] = byId(4);
   const [nHvt] = byId(5);
