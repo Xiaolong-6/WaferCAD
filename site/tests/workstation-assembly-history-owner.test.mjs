@@ -19,7 +19,8 @@ test('Assembly workspace cannot instantiate or mutate generic Snapshot History',
   assert.equal(history.exportForWorkerStorage(), null);
   assert.deepEqual(history.listHistory(), []);
   assert.deepEqual(history.listBranches(), []);
-  assert.equal(history.activeBranch(), null);
+  assert.equal(history.activeBranch().id, 'assembly-isolated');
+  assert.equal(history.currentPosition().branchId, history.activeBranch().id);
   assert.equal(history.currentPosition().atHead, true);
   assert.equal(history.canRecordOperation(), false);
   assert.equal(history.canCreateVariant(), false);

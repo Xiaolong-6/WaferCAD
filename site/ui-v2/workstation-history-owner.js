@@ -20,15 +20,20 @@ export function createWorkstationHistoryOwner({ assemblyWorkspace = false, ...op
   // Only read-only compatibility queries are exposed to the generic UI.
   // All Bond / post-Bond edits, cursor moves, variants and Recovery remain
   // exclusively under createAssemblyBondEditorSession's durable owner.
+  const isolatedBranch = Object.freeze({
+    id: 'assembly-isolated',
+    name: 'Assembly-managed',
+    processStepCount: 0,
+  });
   const reads = Object.freeze({
     mode: 'assembly-isolated',
     list: () => [],
     listHistory: () => [],
     listBranches: () => [],
-    activeBranch: () => null,
+    activeBranch: () => isolatedBranch,
     continuationContext: () => null,
     currentPosition: () => ({
-      branchId: null,
+      branchId: isolatedBranch.id,
       nodeId: null,
       bookmarkId: null,
       atHead: true,
