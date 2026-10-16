@@ -776,7 +776,10 @@ export function createWorkspacePersistenceController({
 
   async function restoreSelectedRecovery() {
     if (recoveryRollbackUnsafe) {
-      status('Recovery rollback failed. Reload this tab from the last saved project before restoring again.', 'error');
+      status(
+        'Recovery rollback failed. Reload this tab from the last saved project before restoring again.',
+        'error',
+      );
       return;
     }
     if (!hasWriteAccess()) {
@@ -901,7 +904,10 @@ export function createWorkspacePersistenceController({
 
   async function reloadSafely() {
     if (recoveryRollbackUnsafe) {
-      status('Recovery rollback failed. Reload the browser tab to reopen the last saved project; local saving is locked.', 'error');
+      status(
+        'Recovery rollback failed. Reload the browser tab to reopen the last saved project; local saving is locked.',
+        'error',
+      );
       return;
     }
     if (!hasWriteAccess()) {
