@@ -76,8 +76,9 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
       const own = pose.fixedActuator.at(-4 + i);
       assert.ok(contact([pose.springContours[i]], [own]) > 1e-4);
       if (i % 2 === 0) {
+        const unrelatedFixed = pose.fixed.filter((ring) => ring !== own);
         assert.ok(
-          contact([pose.springContours[i]], pose.fixed.filter((ring) => ring !== own)) < 1e-8,
+          contact([pose.springContours[i]], unrelatedFixed) < 1e-8,
           state + ' new horizontal lower spring touches unrelated stationary Si',
         );
         assert.ok(

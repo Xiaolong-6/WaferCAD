@@ -121,10 +121,7 @@ function semV2PhysicalPose(state) {
       [x(outerX - 2 * long + short), anchorY + 3 * pitch],
       [x((SWX_REPORTED.shuttleWidthUm - 0.7) / 2), anchorY + 3 * pitch],
     ];
-    return path.map(([px, py], index) => [
-      px,
-      py + (travel * index) / (path.length - 1),
-    ]);
+    return path.map(([px, py], index) => [px, py + (travel * index) / (path.length - 1)]);
   };
   const fixedActuator = [
     ...actuator.banks.flatMap((bank) => bank.stationary.map((p) => move(p, 0, down))),
@@ -154,10 +151,7 @@ function semV2PhysicalPose(state) {
   const springs = actuator.springContours.map((ring, index) => {
     if (index % 2 === 1) return translateActuatorAnchor(ring, index);
     const side = index < 2 ? -1 : 1;
-    return miteredPolyline(
-      lowerSpringCenterline(side),
-      SWX_REPORTED.foldedSpringWidthUm,
-    )[0];
+    return miteredPolyline(lowerSpringCenterline(side), SWX_REPORTED.foldedSpringWidthUm)[0];
   });
   // The source SEM has opposing, inward-sloped fixed input/output guides,
   // not two vertical posts and a horizontal roof above the SWX. The
