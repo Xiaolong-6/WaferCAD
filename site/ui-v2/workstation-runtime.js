@@ -301,6 +301,7 @@ export function createWorkstationRuntime(
     }
     assemblyBondEditor = createAssemblyBondEditorSession(project.data, {
       checkpointRecovery,
+      variantGraph: project.variantGraph ?? null,
       applyVisibleProject: (next) => {
         restore(next);
         useAssemblyInspectionSettings();
