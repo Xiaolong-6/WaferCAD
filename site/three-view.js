@@ -1354,7 +1354,18 @@ export function createThreeView({
       // PR250 closeup diagnosis only: isolate one presentation family without
       // changing any physical geometry, materials, or production defaults.
       if (inspection.__auditHideKind === descriptor.kind) object.visible = false;
-      for (const material of materials) applyMaterialPresentation(material, state.materialState);
+      for (const material of materials) {
+        applyMaterialPresentation(material, state.materialState);
+        // PR250 transient diagnosis: distinguish coplanar depth fighting
+        // from geometrically displaced ROI cut surface interpolation.
+        if (descriptor.kind === 'implant-cut') {
+          const offset = Number.isFinite(inspection.__auditCutOffset)
+            ? inspection.__auditCutOffset
+            : -2;
+          material.polygonOffsetFactor = offset;
+          material.polygonOffsetUnits = offset;
+        }
+      }
       if (object.isLineSegments && descriptor.kind === 'border') {
         object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
       } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
