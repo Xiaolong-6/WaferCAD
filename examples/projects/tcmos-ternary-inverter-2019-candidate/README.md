@@ -36,7 +36,7 @@ Both cells have compact horizontal ACTIVE diffusion bars crossed by an **image-p
 
 **Tilt clarification:** Neither Methods nor Supplementary Fig. 1 specifies a beam incidence angle. The arrows in Supplementary Fig. 1 indicate the implantation direction, not a measurable off-normal tilt. The paper does **not** establish a 0° angle. The reconstructed Recipe uses **0° as an assumed, neutral geometric baseline**, not as a documented foundry implantation condition. WaferCAD supports a separate nonzero tilt control, but a genuine directional process comparison should be labelled an _illustrative variant_, never as the published recipe. At 130 nm feature scale a small true tilt-induced lateral displacement may be invisible at full 14 µm field-of-view; zoom and quantitative model checks are needed.
 
-**Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and connected Metal1 are geometrical reconstructions inferred to represent electrical well ties. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
+**Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and Metal1 are inferred body-tie regions. Fig.1b does not draw a continuous metal path from the outside supply leg to the U-shaped body rail, so these islands are deliberately kept separate and electrical continuity is unverified. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
 
 ## Scope: externally calculated device results are visualization inputs
 
@@ -68,14 +68,17 @@ treating the old 14 × 8 µm illustrative Mask as foundry data:
 - The tallest **inverted U-shaped METAL1** bridge connects both POLY gate
   contacts (**VIN**). A shorter nested upper inverted-U bridge connects the two
   inner drain contacts (**VOUT**). The outer source leads and lower U rail connect
-  left pMOS to **VDD** and right nMOS to **GND**.
+  source pads to the **VDD/GND** labels. The original image leaves a
+  24–25 px white gap between each outside supply leg and inner U-shaped
+  body metal. This gap is preserved: it is **not** bridged to satisfy an
+  invented connectivity constraint.
 - The mask contains **218 CNT polygons**: four 3×3 source/drain matrices, two POLY
   terminals, and **87 contact sites per U-shaped well-tie** (3 × 19 along the
   horizontal bottom plus five rows × three columns on each side). These pitches, widths, and even
   the figure's apparent number of CNT symbols are illustrative.
 - HVTN (left)/HVTP (right) frame the relevant ACTIVE/gate regions. LVTN/LVTP
   are reference outline masks only and are not executed as T-CMOS LVT steps.
-- **13 layers and 274 layout polygons** export through the same File Mask as
+- **13 layers and 272 layout polygons** export through the same File Mask as
   GDS/OAS. The canonical .wafercad, full process History, both Variants,
   recipe replay, and browser screenshots all derive from this same Mask.
 
@@ -156,6 +159,6 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/274-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
+Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/272-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
 
 Scientific visual acceptance still required: archive a close local pMOS Section and nMOS Section showing the respective gate, semiconductor body and intended body–drain interface, plus a corresponding focused 3D view. Include a wide-field context image for each crop, the exact Section endpoints and view/visibility settings, a legend identifying inferred geometry versus source-supported features, and a comparison with paper Fig. 1a/b and Supplementary Fig. 1. Expanded full-field screenshots alone cannot establish 130 nm junction correspondence. Do not present the 80–240 nm display band as a measured junction thickness or imply a calibrated dopant concentration/BTBT current. Keep this PR Draft, and do not add to Welcome or merge until current-head CI and these evidence gates are satisfied.

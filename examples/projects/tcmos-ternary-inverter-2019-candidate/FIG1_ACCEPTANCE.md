@@ -38,8 +38,10 @@ pixel registration, with no digitally painted CAD screenshot.
 bridges above the devices, source-rail inverted U shapes on the outer edges,
 and two U-shaped body-tie/CNT arrays underneath. The drawing tracks the
 user-provided Fig. 1b schematic's relative geometry and colors. It is not
-foundry layout metrology. Four separate Metal1 electrical nets remain proven
-disjoint and connected by the terminal-provenance invariant. Every Source/Drain terminal now has a 3×3 CNT matrix. Remaining paper-vs-browser
+foundry layout metrology. Four named Metal1 groups remain mutually disjoint. Fig.1b leaves white
+gaps between each outer VDD/GND supply leg and the inner U-shaped body
+rail. Each drawn island is internally verified; a supply/body wire not
+shown in the figure is not invented or claimed as physically connected. Every Source/Drain terminal now has a 3×3 CNT matrix. Remaining paper-vs-browser
 style differences are the Mask UI's filled HVT/LVT windows rather than the
 original illustration's outline-only labels.
 
