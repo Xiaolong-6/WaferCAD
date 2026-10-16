@@ -19,6 +19,9 @@ import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
 import { createProgressiveStartup } from './progressive-startup.js';
 import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
+import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
+import { createMobileViewportController } from './mobile-viewport-controller.js';
+import { createWorkstationRenderScheduler } from './workstation-render-scheduler.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -111,6 +114,15 @@ try {
       versionCommit: commitSha,
     }),
   });
+  let mobileViewport = null;
+  if (!readOnlyPreview) {
+    mobileViewport = createMobileViewportController({
+      root: shell.getRoot(),
+      state: uiState,
+      compact: () => window.WaferCadV2ViewState.compact(window),
+    });
+  }
+  window.addEventListener('pagehide', () => mobileViewport?.destroy(), { once: true });
   shell.getRoot().dataset.boot = 'loading';
   const progressive = createProgressiveStartup({
     onChange: (snapshot) => {
@@ -127,12 +139,16 @@ try {
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   let desktopResizer = null;
-  const render = () => {
-    if (starting) return;
-    shell.render();
-    store.renderAll();
-    requestAnimationFrame(() => desktopResizer?.refresh());
-  };
+  const render = createWorkstationRenderScheduler({
+    isStarting: () => starting,
+    renderShell: () => {
+      shell.render();
+      mobileViewport?.update();
+    },
+    invalidateScientific: () => store.renderAll(),
+    invalidateVisibleView: (key) => store.invalidate(key),
+    scheduleLayout: () => requestAnimationFrame(() => desktopResizer?.refresh()),
+  });
   // View-specific, nonmodal floating editors are transient UI, not model state.
   // Dismissing them when their view is hidden prevents stale Mask/Section
   // dialogs from intercepting the desktop workflow navigation.
@@ -279,37 +295,35 @@ try {
     onHide() {},
     destroy() {},
   });
-  // Mobile Edit has one document scroller. Remember its offset per domain
-  // instead of saving scrollTop on the desktop-only inspector subtree.
-  // Pane transitions keep all scientific hosts and unsaved form drafts mounted.
-  const mobileDocumentScroll = new Map();
-  let mobileTransitionSerial = 0;
+  const mobileWorkspace = createMobileWorkspaceController({
+    state: uiState,
+    compact: () => window.WaferCadV2ViewState.compact(window),
+  });
   const selectPane = (pane, domain = uiState.domain) => {
-    const compact = window.WaferCadV2ViewState.compact(window);
-    if (compact && uiState.mobile === 'edit') {
-      mobileDocumentScroll.set(uiState.domain, document.scrollingElement?.scrollTop || 0);
-    }
+    if (mobileWorkspace.selectPane(pane, domain)) return;
     uiState.domain = domain;
     uiState.mobile = pane;
-    if (!compact) {
-      uiState.editorHidden = pane === 'view';
-      return;
-    }
-    const destination = pane === 'edit' ? mobileDocumentScroll.get(domain) || 0 : 0;
-    const serial = ++mobileTransitionSerial;
-    requestAnimationFrame(() => {
-      if (serial !== mobileTransitionSerial) return;
-      // Reapply after the new pane's adapters complete layout. One frame can
-      // clamp the offset against the previous (shorter) View document.
-      requestAnimationFrame(() => {
-        if (serial === mobileTransitionSerial) window.scrollTo(0, destination);
-      });
-    });
+    uiState.editorHidden = pane === 'view';
   };
+  window.addEventListener('pagehide', mobileWorkspace.destroy, { once: true });
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
+    const previousMobile = uiState.mobile;
+    const previousView = uiState.view;
+    if (mobileWorkspace.handleAction(action)) {
+      // Main/Mask adapters do not repaint in onShow; refresh only the view
+      // that becomes visible, never all four scientific views.
+      if (uiState.mobile !== 'view') {
+        render({ scientific: false });
+      } else if (previousMobile !== 'view' || previousView !== uiState.view) {
+        render({ scientificView: uiState.view });
+      } else {
+        render({ scientific: false });
+      }
+      return;
+    }
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
       // Compact navigation keeps its prior single-view behavior; desktop
@@ -367,12 +381,12 @@ try {
     const width = window.innerWidth;
     const compact = window.WaferCadV2ViewState.compact(window);
     if (width === previousWidth && compact === previousCompact) return;
+    if (compact !== previousCompact) mobileWorkspace.cancelPendingScroll();
     previousWidth = width;
     previousCompact = compact;
     render();
   });
-  // Build the final navigation/grid now, while data remains protected.
-  // Project restore can yield to the browser without exposing the dummy Base.
+  // Build the final navigation/grid while restored project data is protected.
   shell.render();
   shell.getRoot().dataset.boot = 'project';
   await workflow.start();
@@ -383,8 +397,6 @@ try {
   store.start();
   requestAnimationFrame(() => desktopResizer?.refresh());
   if (!hasVisiblePlanarView()) firstThreeFrame.release();
-  // Fail open if a visible planar canvas cannot complete its first render.
-  // This fallback never changes Quality or geometry and has no effect after release.
   setTimeout(() => firstThreeFrame.release(), 2500);
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.

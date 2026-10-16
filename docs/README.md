@@ -64,6 +64,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.
 
 - [Mobile Workstation layout contract — 2026-10-13](ui-v2/MOBILE_WORKSTATION_LAYOUT_2026-10-13.md) — compact Edit/View pane, single-scroll ownership, retained scientific hosts, and mobile CI acceptance boundaries.
+- [Mobile CSS ownership audit — 2026-10-16](ui-v2/MOBILE_CSS_OWNERSHIP_AUDIT_2026-10-16.md) — Production compact CSS boundaries, P2/P3 contracts and deferred cleanup gates.
 - [UI v2 Manual Both acceptance — 2026-10-12](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md) — Front/Back/Both Manual selector, paired Layer IDs, Recipe restore, atomicity and CI evidence at its tested revision.
 - [UI v2 contextual tooltip architecture](ui-v2/TOOLTIP_ARCHITECTURE_2026-10-13.md) — delegated plain-text hover, focus and lifecycle contract for the production UI.
 - [UI v2 Z Break editor integration — 2026-10-13](ui-v2/Z_BREAK_EDITOR_2026-10-13.md) — precision-first editor, physical-Z ownership, keyboard controls and contextual-tooltip migration.

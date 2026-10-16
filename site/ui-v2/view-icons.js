@@ -9,6 +9,12 @@
     grip: 'M5 3h.01 M11 3h.01 M5 8h.01 M11 8h.01 M5 13h.01 M11 13h.01',
     code: 'M5 3L1 8l4 5 M11 3l4 5-4 5 M9 2L7 14',
     project: 'M2 4h5l2 2h5v8H2Z M2 4V2h5l2 2',
+    // Desktop navigation chrome follows the accepted minimal Shell prototype.
+    sidebarCollapse:
+      'M3 2.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z M6 2.5v11 M11 6l-2 2 2 2',
+    sidebarExpand:
+      'M3 2.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z M6 2.5v11 M9 6l2 2-2 2',
+    overview: 'M2 2h5v5H2Z M9 2h5v5H9Z M2 9h5v5H2Z M9 9h5v5H9Z',
     mask: 'M2 2h12v12H2Z M5 5h6v6H5Z',
     select: 'M3 2v11l3-3 2 4 2-1-2-4h4Z',
     rectangle: 'M2 3h12v10H2Z',
@@ -48,6 +54,7 @@
     plus: 'M8 2v12 M2 8h12',
     minus: 'M2 8h12',
     back: 'M7 2L1 8l6 6 M1 8h14',
+    switchMode: 'M10 1l4 3-4 3 M14 4H2 M6 9l-4 3 4 3 M2 12h12',
     undo: 'M5 2L1 6l4 4 M1 6h8a4 4 0 0 1 0 8',
     redo: 'M11 2l4 4-4 4 M15 6H7a4 4 0 0 0 0 8',
     close: 'M3 3l10 10 M13 3L3 13',
