@@ -8,7 +8,7 @@ import {
 
 const args = { pitch: 6.4, height: 4.5, planeZ: 125.5, originX: 0, originY: 0 };
 
-test('physical facet oracle preserves exact apex, lattice valley and front/back reflection', () => {
+test('physical pyramid preserves apex, valley and front/back reflection', () => {
   const front = squarePyramidSample(0, 0, args);
   const back = squarePyramidSample(0, 0, { ...args, face: 'back' });
   assert.equal(front.z, 130);
@@ -60,8 +60,5 @@ test('invalid parameters fail closed', () => {
   assert.throws(() => squarePyramidSample(0, 0, { ...args, height: 0 }), RangeError);
   assert.throws(() => squarePyramidSample(0, 0, { ...args, pitch: NaN }), RangeError);
   assert.throws(() => squarePyramidSample(0, 0, { ...args, face: 'both' }), RangeError);
-  assert.throws(
-    () => facetNormalFilmVerticalSeparation({ gradient: [0, 0] }, 0.01),
-    RangeError,
-  );
+  assert.throws(() => facetNormalFilmVerticalSeparation({ gradient: [0, 0] }, 0.01), RangeError);
 });
