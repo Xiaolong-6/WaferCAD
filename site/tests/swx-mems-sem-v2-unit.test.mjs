@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   createSwxSemV2ProcessGeometry,
   SWX_SEM_V2_ASSUMPTIONS,
+  createSwxSemV2SupportAudit,
 } from '../../scripts/swx-mems-sem-v2-unit.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
@@ -14,10 +15,7 @@ const contact = (a, b) => geometryArea(v.intersection(union(a), union(b)));
 const centroid = (ring) => {
   const x = ring.map((p) => p[0]);
   const y = ring.map((p) => p[1]);
-  return [
-    (Math.min(...x) + Math.max(...x)) / 2,
-    (Math.min(...y) + Math.max(...y)) / 2,
-  ];
+  return [(Math.min(...x) + Math.max(...x)) / 2, (Math.min(...y) + Math.max(...y)) / 2];
 };
 
 test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
@@ -32,10 +30,12 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
       centerCombY < mobileSwxY,
       state + ' actuator must be BELOW movable reflector, like paper SEM',
     );
-    assert.deepEqual(
-      pose.fixedPads.map(centroid),
-      [[-70, -20], [70, -20], [-64, -77], [64, -77]],
-    );
+    assert.deepEqual(pose.fixedPads.map(centroid), [
+      [-70, -20],
+      [70, -20],
+      [-64, -77],
+      [64, -77],
+    ]);
     assert.equal(
       maskPolygons.get(1).length,
       pose.fixed.length + pose.movable.length + pose.flexure.length,
@@ -80,5 +80,19 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
     }
     assert.ok(contact(pose.bridge, pose.source.optics.movableFacetsAndPorts) > 1e-4);
     assert.ok(contact(pose.bridge, pose.movableActuator) > 1e-4);
+  }
+});
+
+test('SEM v2 real post-release support ownership is 12 fixed and 14 suspended sites', () => {
+  for (const state of ['off', 'on']) {
+    const probes = createSwxSemV2SupportAudit(state);
+    assert.equal(probes.supported.length, 12);
+    assert.equal(probes.released.length, 14);
+    assert.equal(probes.outerIsolationTrenchVerified, false);
+    assert.equal(probes.sourceHFUndercutFrontVerified, false);
+    assert.equal(
+      new Set([...probes.supported, ...probes.released].map((x) => x.name)).size,
+      26,
+    );
   }
 });

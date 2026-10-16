@@ -63,10 +63,7 @@ function newHairpin(side, travel) {
   const addReturn = (cx, cy, sweep) => {
     for (let index = 1; index <= 24; index++) {
       const radians = Math.PI / 2 + (sweep * index) / 24;
-      points.push([
-        cx + arcRadius * Math.cos(radians),
-        cy + arcRadius * Math.sin(radians),
-      ]);
+      points.push([cx + arcRadius * Math.cos(radians), cy + arcRadius * Math.sin(radians)]);
     }
   };
   addReturn(x(58), y(-68), -side * Math.PI);
@@ -106,7 +103,7 @@ function semV2PhysicalPose(state) {
       shuttle.push(
         strip(
           [
-            [side * (SWX_REPORTED.shuttleWidthUm - 0.7) / 2, station.y],
+            [(side * (SWX_REPORTED.shuttleWidthUm - 0.7)) / 2, station.y],
             [side * station.outerX, station.y],
           ],
           0.45,
@@ -120,14 +117,34 @@ function semV2PhysicalPose(state) {
   ];
   const springs = actuator.springContours.map(translateActuatorAnchor);
   const fixedRoutes = [
-    strip([[-22, -35], [-22, -15], [-70, -20]], 0.4),
-    strip([[21, -35], [21, -15], [70, -20]], 0.4),
+    strip(
+      [
+        [-22, -35],
+        [-22, -15],
+        [-70, -20],
+      ],
+      0.4,
+    ),
+    strip(
+      [
+        [21, -35],
+        [21, -15],
+        [70, -20],
+      ],
+      0.4,
+    ),
   ];
   const hairpins = [-1, 1].map((side) => newHairpin(side, travel));
   const opticalFlexures = hairpins.flatMap((route) => route.polygons);
   const fixedPads = newTerminalsUm.map(([x, y]) => rect(x, y, 12, 12));
   const bridge = [
-    strip([[0, -50 + travel], [0, -53.4 + travel]], 0.7),
+    strip(
+      [
+        [0, -50 + travel],
+        [0, -53.4 + travel],
+      ],
+      0.7,
+    ),
     strip(
       [
         [0, -50 + travel],
@@ -253,8 +270,53 @@ export function createSwxSemV2ProcessGeometry(state = 'off') {
   };
 }
 
+/**
+ * BOX support ownership for the re-registered silicon, verified on both
+ * real Kernel states. All points are illustrative local model coordinates.
+ * SEM cannot provide a 3D undercut front or full peripheral material map.
+ */
+export function createSwxSemV2SupportAudit(state = 'off') {
+  const travel = state === 'on' ? SWX_REPORTED.offGapUm - SWX_REPORTED.onGapUm : 0;
+  const add = (name, point) => ({ name, point });
+  const supported = [
+    add('stationary left comb handle', [-25, -78]),
+    add('stationary right comb handle', [25, -78]),
+    add('lower left spring anchor', [-6, -120]),
+    add('upper left spring anchor', [-46, -24]),
+    add('lower right spring anchor', [6, -120]),
+    add('upper right spring anchor', [46, -24]),
+    add('S7 left stationary anchor', [-14, -50]),
+    add('S7 right stationary anchor', [34, -45]),
+    ...newTerminalsUm.map((point, index) => add('terminal support ' + index, point)),
+  ];
+  const released = [
+    add('moving shuttle rail', [2.65, -72 + travel]),
+    add('left moving comb handle', [-25, -87.4 + travel]),
+    add('right moving comb handle', [25, -87.4 + travel]),
+    add('left lower folded spring', [-6, -110]),
+    add('left upper folded spring', [-46, -40]),
+    add('right lower folded spring', [6, -110]),
+    add('right upper folded spring', [46, -40]),
+    add('stationary-but-suspended input guide', [-40, -16.875]),
+    add('stationary-but-suspended output guide', [40, -16.875]),
+    add('left moving S6 optical hairpin', [-58, -65 + travel]),
+    add('right moving S6 optical hairpin', [58, -65 + travel]),
+    add('left S7 narrow aligner beam', [-7.5, -50 + travel / 2]),
+    add('right S7 narrow aligner beam', [27.5, -45 + travel / 2]),
+    add('central movable SWX-to-shuttle link', [0, -52 + travel]),
+  ];
+  return {
+    state,
+    supported,
+    released,
+    outerIsolationTrenchVerified: false,
+    sourceHFUndercutFrontVerified: false,
+  };
+}
+
 export const SWX_SEM_V2_PROCESS_PROFILE = Object.freeze({
   geometryFactory: createSwxSemV2ProcessGeometry,
+  semSupportAudit: createSwxSemV2SupportAudit,
   fieldUm: SWX_SEM_V2_ASSUMPTIONS.fieldUm,
   section: { a: [-25, -102], b: [-25, -70] },
   projectName: 'Hu 2025 single 2x2 MEMS · SEM axial layout v2 · EXPERIMENTAL',
@@ -273,10 +335,6 @@ export const SWX_SEM_V2_PROCESS_PROFILE = Object.freeze({
     { point: [-25, -87.4], shouldRetainBOX: false },
     { point: [25, -87.4], shouldRetainBOX: false },
   ],
-  guidedSupportPoints: [
-    ...newTerminalsUm,
-    [-14, -50],
-    [34, -45],
-  ],
+  guidedSupportPoints: [...newTerminalsUm, [-14, -50], [34, -45]],
   assumptions: SWX_SEM_V2_ASSUMPTIONS,
 });
