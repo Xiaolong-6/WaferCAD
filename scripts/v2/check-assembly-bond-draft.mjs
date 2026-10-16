@@ -417,7 +417,9 @@ try {
         await processTab.getByRole('button', { name: 'Redo Assembly history' }).isDisabled(),
         true,
       );
-      await processTab.screenshot({ path: resolve(output, 'unified-assembly-history-bond-head.png') });
+      await processTab.screenshot({
+        path: resolve(output, 'unified-assembly-history-bond-head.png'),
+      });
       await processTab.getByLabel('Post-Bond Process material').fill('SiO2');
       await processTab.getByLabel('Post-Bond Process thickness µm').fill('1.8');
       await processTab.getByRole('button', { name: 'Apply Process preview' }).click();
@@ -452,21 +454,23 @@ try {
       // Follow the full source-aware timeline across Process -> Bond -> Process.
       // Six durable mutations must reproduce the exact prior physical stages.
       await unifiedHistory.scrollIntoViewIfNeeded();
-      await processTab.screenshot({ path: resolve(output, 'unified-assembly-history-process-head.png') });
+      await processTab.screenshot({
+        path: resolve(output, 'unified-assembly-history-process-head.png'),
+      });
       for (const thickness of ['1201.8', '1200', '800']) {
         await processTab.getByRole('button', { name: 'Undo Assembly history' }).click();
-        await processTab.waitForFunction(
-          (z) => document.querySelector('.assembly-preview-stage')?.textContent.includes(`Z ${z} µm`),
-          thickness,
-        );
+        await processTab
+          .locator('.assembly-preview-stage')
+          .filter({ hasText: `Z ${thickness} µm` })
+          .waitFor();
       }
       assert.match(await unifiedHistory.textContent(), /Bond 1 \/ 2/);
       for (const thickness of ['1200', '1201.8', '1201.3']) {
         await processTab.getByRole('button', { name: 'Redo Assembly history' }).click();
-        await processTab.waitForFunction(
-          (z) => document.querySelector('.assembly-preview-stage')?.textContent.includes(`Z ${z} µm`),
-          thickness,
-        );
+        await processTab
+          .locator('.assembly-preview-stage')
+          .filter({ hasText: `Z ${thickness} µm` })
+          .waitFor();
       }
       assert.match(await unifiedHistory.textContent(), /Bond 2 \/ 2.*Process 2 \/ 2/);
       await processTab.getByRole('button', { name: '← Process' }).click();

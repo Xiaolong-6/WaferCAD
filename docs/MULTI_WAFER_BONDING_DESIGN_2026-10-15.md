@@ -321,7 +321,6 @@ derived Process provenance, while a normal `.wafercad` export represents
 only the canonical Bond baseline. Do not merge or deploy without the user's
 explicit approval and final required gates.
 
-
 ## October 16 — unified Assembly History transaction boundary
 
 The opt-in Bond editor exposes a single source-aware Undo/Redo entry spanning
