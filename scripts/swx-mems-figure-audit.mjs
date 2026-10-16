@@ -74,7 +74,9 @@ for (const state of ['off', 'on']) {
       line.halfTurns.map((arc) => arc.radiusUm),
     ),
     halfTurnsPerOpticalLeg: p.opticalRouting.movingCenterlines.map((line) => line.halfTurns.length),
-    s7GuidesIntegrated: false,
+    s7GuidesIntegrated: true,
+    s7GuidesOriginalAnchorRegistrationVerified: false,
+    s7GuideSourceDimensionsUm: [7, 0.1, 1],
     opticalBendWaypointSourceVerified: false,
     completeFabricationHistoryVerified: false,
     fullWaferCADRendererAccepted: false,
@@ -87,12 +89,12 @@ const axialSeparation = poses.off.bankAxialCenterSeparationUm;
 const illustrativeTriggerUm = 2 * SWX_REPORTED.combFingerLengthUm;
 const blockers = [
   {
-    id: 'compact-s7-guided-aligner-bridge-short',
-    kind: 'unqualified-fixed-moving-silicon-contact',
-    note: 'S7-size guide candidate is quarantined: its right-side stationary pad overlaps the existing suspended SWT-to-shuttle mechanical bridge in both OFF and ON. Reroute the bridge or anchored guide without shortening the reported 7um/100nm beam.',
+    id: 'compact-s7-guide-source-registration',
+    kind: 'paper-figure-position-unverified',
+    note: 'Two 7um by 100nm structural guides with 1um trusses now satisfy illustrative OFF/ON material separation, but source-level pad positions, stiffness and displacement fields are not verified by original GDS/FEM.',
     guideAnchorsUm: SWX_COMPACT_GUIDE_ASSUMPTIONS.padCentersUm,
     sourceDimensionsPreserved: true,
-    includedInCompactProcessMask: false,
+    includedInCompactProcessMask: true,
   },
 ];
 const compactExtent = prototype.off.candidateMaskFootprintUm;
