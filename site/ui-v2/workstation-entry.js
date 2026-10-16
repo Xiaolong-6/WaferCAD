@@ -32,11 +32,15 @@ try {
   const project = assemblyPreview
       ? await chooseAssemblyPreviewFile(document.getElementById('app-root'), {
           recovery: assemblyDraftRecovery,
+          allowStandalone: assemblyEdit,
         })
       : readOnlyPreview
         ? await loadBundledProject(params.get('example'), undefined, { preview: true })
         : await loadWorkstationProject(),
-    store = createWorkstationRuntime(project, { assemblyPreview });
+    store = createWorkstationRuntime(project, {
+      assemblyPreview,
+      firstBondDraft: assemblyEdit && !project.data.waferAssembly,
+    });
   if (readOnlyPreview) {
     // Navigation is enabled from the first frame without activating editing tools.
     store.local.main.panEnabled = true;
@@ -312,7 +316,8 @@ try {
               assemblyPreview: {
                 index: store.assemblyPreviewSession.currentIndex(),
                 bonds: store.assemblyPreviewSession.maxIndex(),
-                sources: store.assemblyPreviewSession.fullProduct().waferAssembly.sources.length,
+                sources:
+                  store.assemblyPreviewSession.fullProduct().waferAssembly?.sources.length ?? 1,
                 readOnly: !assemblyEdit,
                 originDisplayColors: [
                   ...new Set(store.renderModel().layers.map((layer) => layer.color)),
