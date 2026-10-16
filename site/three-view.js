@@ -1987,7 +1987,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return edges;
   }
 
-  function rebuildInspectionContours(boundaryProfiles = null, appearanceByCapIndex = null) {
+  function rebuildInspectionContours(
+    boundaryProfiles = null,
+    appearanceByCapIndex = null,
+    outlinedRoughCapIndices = null,
+  ) {
     if (!physicalSurfacePlan) return;
     for (const object of [...presentationObjects]) {
       if (!object.userData?.waferCadPlanContours) continue;
@@ -2017,7 +2021,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         upperSurface: displaySurfaceProfile(part.upperSurface, appearanceByCapIndex),
       })),
       sectionLines = unownedContourSegments(
-        sectionCutContours(sectionSidewalls, clip, { boundaryProfiles }),
+        sectionCutContours(sectionSidewalls, clip, {
+          boundaryProfiles,
+          ownedCapBorderIndices: outlinedRoughCapIndices,
+        }),
         [...exposedBorders, ...roughBorders],
       ),
       model = getModel();
@@ -2037,7 +2044,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
   }
 
-  function installRoughBoundaryProfiles(boundaryProfiles) {
+  function installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices = null) {
     const appearanceByCapIndex = new Map();
     for (const task of roughTasks) {
       const index = physicalSurfacePlan?.caps?.indexOf(task.cap) ?? -1;
@@ -2067,7 +2074,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
-    rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex);
+    rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
   }
 
   function roughSceneRoiFraction(model, clip) {
@@ -2238,6 +2245,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     clearAdaptiveRoughObjects();
     const boundaryProfiles = new Map();
+    const outlinedRoughCapIndices = new Set();
     for (const result of results || []) {
       const task = roughTasks[result.taskId];
       if (!task || !result.data) continue;
@@ -2311,9 +2319,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
             presentation: { kind: 'border' },
           },
         );
+        if (capIndex >= 0) outlinedRoughCapIndices.add(capIndex);
       }
     }
-    installRoughBoundaryProfiles(boundaryProfiles);
+    installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices);
     roughRebuildCount++;
     currentRoughMode = mode;
     const data = renderer?.domElement?.dataset;
@@ -2538,7 +2547,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     rendering = true;
     try {
       const prepared = prepareAdaptiveRoughTasks({ interactive }),
-        boundaryProfiles = new Map();
+        boundaryProfiles = new Map(),
+        outlinedRoughCapIndices = new Set();
       for (const task of prepared.tasks) {
         const cap = task.cap;
         let geometry = geometryFromRoughCap(THREE, {
@@ -2618,10 +2628,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
               presentation: { kind: 'border' },
             },
           );
+          if (capIndex >= 0) outlinedRoughCapIndices.add(capIndex);
         }
       }
 
-      installRoughBoundaryProfiles(boundaryProfiles);
+      installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices);
       roughRebuildCount++;
       currentRoughMode = interactive ? 'interactive' : 'detailed';
       const data = renderer?.domElement?.dataset;

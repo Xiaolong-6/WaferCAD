@@ -155,7 +155,11 @@ function cutBoundarySpans(p, q, edges, tolerance) {
 // Outline the *real* material intersections exposed on a section/ROI cut.
 // Include both rough interfaces and smooth ones. Sampling follows the same
 // deterministic physical profile used by the cut sidewall triangles.
-export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfiles = null } = {}) {
+export function sectionCutContours(
+  sidewalls = [],
+  clip = null,
+  { boundaryProfiles = null, ownedCapBorderIndices = null } = {},
+) {
   const edges = clipBoundaryEdges(clip);
   if (!edges.length) return [];
   const result = [],
@@ -185,17 +189,25 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
         },
       );
       const at = (sample, face) => [...sample.point, sample[face]];
+      // Use the actual rough mesh border as the sole outline owner. A
+      // second cut-profile line can diverge by a pixel at close zoom.
+      const lowerOwned = ownedCapBorderIndices?.has(wall.lowerSurface?.capIndex) ?? false;
+      const upperOwned = ownedCapBorderIndices?.has(wall.upperSurface?.capIndex) ?? false;
       for (let i = 0; i + 1 < samples.length; i++) {
-        horizontal.push({
-          line: [at(samples[i], 'lowerZ'), at(samples[i + 1], 'lowerZ')],
-          layerId: wall.layerId,
-          face: 'lower',
-        });
-        horizontal.push({
-          line: [at(samples[i], 'upperZ'), at(samples[i + 1], 'upperZ')],
-          layerId: wall.layerId,
-          face: 'upper',
-        });
+        if (!lowerOwned) {
+          horizontal.push({
+            line: [at(samples[i], 'lowerZ'), at(samples[i + 1], 'lowerZ')],
+            layerId: wall.layerId,
+            face: 'lower',
+          });
+        }
+        if (!upperOwned) {
+          horizontal.push({
+            line: [at(samples[i], 'upperZ'), at(samples[i + 1], 'upperZ')],
+            layerId: wall.layerId,
+            face: 'upper',
+          });
+        }
       }
       for (const [sample, direction] of [
         [samples[0], 1],

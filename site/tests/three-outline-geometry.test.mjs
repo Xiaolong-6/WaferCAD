@@ -188,6 +188,30 @@ test('collinear same-material wall subdivisions do not create vertical section s
   );
 });
 
+test('ROI top cut yields to emitted rough cap border while preserving structural cuts', () => {
+  const profile = boundaryProfileFromPositions(
+    new Float32Array([0, 0, 2, 2, 0, 2.125, 2, 0, 2.125, 4, 0, 2]),
+  );
+  const wall = {
+    p: [0, 0],
+    q: [4, 0],
+    z0: 1,
+    z1: 2,
+    layerId: 'base',
+    upperSurface: { capIndex: 3 },
+  };
+  const boundaryProfiles = new Map([[3, profile]]);
+  const original = sectionCutContours([wall], [square], { boundaryProfiles });
+  assert.ok(original.some(([a, b]) => a[2] > 2 && b[2] > 2));
+  const cut = sectionCutContours([wall], [square], {
+    boundaryProfiles,
+    ownedCapBorderIndices: new Set([3]),
+  });
+  assert.ok(cut.some(([a, b]) => a[2] === 1 && b[2] === 1));
+  assert.ok(!cut.some(([a, b]) => a[2] > 2 && b[2] > 2));
+  assert.ok(cut.some(([a, b]) => a[0] === b[0] && a[2] !== b[2]));
+});
+
 test('ROI and buried contours consume actual mesh boundary profiles instead of resampling heights', () => {
   const positions = new Float32Array([0, 0, 1.1, 1.25, 0, 1.8, 1.25, 0, 1.8, 4, 0, 1.2]),
     profile = boundaryProfileFromPositions(positions),
