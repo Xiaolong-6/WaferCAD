@@ -106,6 +106,43 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.maskLayers, 16);
   assert.equal(validation.processNodes, 31);
   assert.equal(validation.recipeSteps, 30);
+  // Candidate process-order contract: source paper distinguishes metalized
+  // TSVs from HEMT-to-GSG Au wire bonds. Do not turn a metadata-only assembly
+  // record into an assertion of physical electrical connectivity.
+  const recipe = project.processRecipe.steps;
+  const depositIndex = (material) =>
+    recipe.findIndex(
+      (step) => step.command === 'deposit' && step.params.material === material,
+    );
+  const wireBondRecordIndex = recipe.findIndex(
+    (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
+  );
+  const tiSeedIndex = depositIndex('TSV Ti conformal seed surrogate 0.2 um');
+  const cuSeedIndex = depositIndex('TSV Cu conformal seed surrogate 0.5 um');
+  const cuFillIndex = depositIndex('TSV Cu electrofill surrogate 35 um');
+  const cuPlanarizationIndex = recipe.findIndex(
+    (step) =>
+      step.command === 'etch' &&
+      step.params.target === 'TSV Cu electrofill surrogate 35 um',
+  );
+  const solderIndex = depositIndex('AuSn perimeter solder (5 um surrogate)');
+  const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');
+  const gsgIndex = depositIndex('GSG Au pads surrogate 0.5 um');
+  assert.ok(
+    [tiSeedIndex, cuSeedIndex, cuFillIndex, cuPlanarizationIndex, solderIndex, sicIndex, gsgIndex, wireBondRecordIndex]
+      .every((index) => index >= 0),
+    'Expected physical TSV/HEMT materials and separate wire-bond source record',
+  );
+  assert.ok(
+    tiSeedIndex < cuSeedIndex &&
+      cuSeedIndex < cuFillIndex &&
+      cuFillIndex < cuPlanarizationIndex &&
+      cuPlanarizationIndex < solderIndex &&
+      solderIndex < sicIndex &&
+      sicIndex < gsgIndex &&
+      gsgIndex < wireBondRecordIndex,
+    'Surrogate TSV metallization, assembly and recorded Au wire bonding are out of order',
+  );
   assert.equal(validation.checks.bothBacksidePortsConnectToAllSixTopChannels, true);
   assert.equal(validation.checks.retainedInterChannelSiRibs, true);
   assert.equal(validation.checks.longSupplyReturnRoutesReachBothRemotePorts, true);
