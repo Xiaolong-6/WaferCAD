@@ -322,6 +322,41 @@ try {
                     distance: 1000,
                     targetXY: [2240, -150],
                   },
+                  // Real camera closeups of the same ROI front inspection cut
+                  // (Y = -150 um), not enlarged screenshots. Two distances
+                  // retain the same target and azimuth, enabling border A/B.
+                  ...[260, 85].flatMap((distance) => [
+                    {
+                      name: `surface-cut-zbreak-roi-edge-${distance}-opaque-borders`,
+                      opacity: 1,
+                      borders: true,
+                      fast: false,
+                      detail: true,
+                      zBreak: true,
+                      distance,
+                      targetXY: [2240, -150],
+                    },
+                    {
+                      name: `surface-cut-zbreak-roi-edge-${distance}-transparent-borders`,
+                      opacity: 0.5,
+                      borders: true,
+                      fast: false,
+                      detail: true,
+                      zBreak: true,
+                      distance,
+                      targetXY: [2240, -150],
+                    },
+                    {
+                      name: `surface-cut-zbreak-roi-edge-${distance}-transparent-no-borders`,
+                      opacity: 0.5,
+                      borders: false,
+                      fast: false,
+                      detail: true,
+                      zBreak: true,
+                      distance,
+                      targetXY: [2240, -150],
+                    },
+                  ]),
                 ]
               : []),
             {
