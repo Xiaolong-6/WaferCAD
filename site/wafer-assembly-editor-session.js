@@ -14,6 +14,7 @@ import {
   assemblyVariantProject,
   activateAssemblyVariant,
   forkAssemblyVariant,
+  forkAssemblyProcessVariant,
   setAssemblyVariantCursor,
   validateAssemblyVariantGraph,
   appendAssemblyVariantPostBondStep,
@@ -144,14 +145,19 @@ export function createAssemblyBondEditorSession(
       throw new Error('Assembly Variant fork requires durable publication.');
     }
     if (!visibleParity()) throw new Error('Bond workspace material drift; fork refused.');
-    const candidate = forkAssemblyVariant(graph, {
-      id,
-      name,
-      atIndex: currentIndex(),
-    });
+    const timeline = processTimeline();
+    const processFork =
+      currentIndex() === maxIndex() && timeline.index < timeline.length;
+    const visibleProcess = processFork ? assemblyVariantPostBondModel(graph) : null;
+    const candidate = processFork
+      ? forkAssemblyProcessVariant(graph, { id, name, atProcessIndex: timeline.index })
+      : forkAssemblyVariant(graph, { id, name, atIndex: currentIndex() });
     const project = assemblyVariantProject(candidate);
     if (!same(project.model, currentProject().model)) {
       throw new Error('Assembly Variant fork changed its source geometry.');
+    }
+    if (processFork && !same(assemblyVariantPostBondModel(candidate), visibleProcess)) {
+      throw new Error('Assembly Process Variant fork changed its selected Recipe geometry.');
     }
     const nextHistory = project.waferAssembly ? createAssemblyBondHistorySession(project) : null;
     applyVariantProject(project, 'fork');
