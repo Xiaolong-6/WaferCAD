@@ -17,6 +17,7 @@ import {
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
+import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -230,37 +231,25 @@ try {
     onHide() {},
     destroy() {},
   });
-  // Mobile Edit has one document scroller. Remember its offset per domain
-  // instead of saving scrollTop on the desktop-only inspector subtree.
-  // Pane transitions keep all scientific hosts and unsaved form drafts mounted.
-  const mobileDocumentScroll = new Map();
-  let mobileTransitionSerial = 0;
+  const mobileWorkspace = createMobileWorkspaceController({
+    state: uiState,
+    compact: () => window.WaferCadV2ViewState.compact(window),
+  });
   const selectPane = (pane, domain = uiState.domain) => {
-    const compact = window.WaferCadV2ViewState.compact(window);
-    if (compact && uiState.mobile === 'edit') {
-      mobileDocumentScroll.set(uiState.domain, document.scrollingElement?.scrollTop || 0);
-    }
+    if (mobileWorkspace.selectPane(pane, domain)) return;
     uiState.domain = domain;
     uiState.mobile = pane;
-    if (!compact) {
-      uiState.editorHidden = pane === 'view';
-      return;
-    }
-    const destination = pane === 'edit' ? mobileDocumentScroll.get(domain) || 0 : 0;
-    const serial = ++mobileTransitionSerial;
-    requestAnimationFrame(() => {
-      if (serial !== mobileTransitionSerial) return;
-      // Reapply after the new pane's adapters complete layout. One frame can
-      // clamp the offset against the previous (shorter) View document.
-      requestAnimationFrame(() => {
-        if (serial === mobileTransitionSerial) window.scrollTo(0, destination);
-      });
-    });
+    uiState.editorHidden = pane === 'view';
   };
+  window.addEventListener('pagehide', mobileWorkspace.destroy, { once: true });
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
+    if (mobileWorkspace.handleAction(action)) {
+      render();
+      return;
+    }
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
       // Compact navigation keeps its prior single-view behavior; desktop
@@ -318,6 +307,7 @@ try {
     const width = window.innerWidth;
     const compact = window.WaferCadV2ViewState.compact(window);
     if (width === previousWidth && compact === previousCompact) return;
+    if (compact !== previousCompact) mobileWorkspace.cancelPendingScroll();
     previousWidth = width;
     previousCompact = compact;
     render();
