@@ -312,18 +312,26 @@ try {
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
-    const gsgPadCenters = [-1250, 1250].map((x) => [x, 0]);
-    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 600.25, ids.pad));
+    const gsgPadCenters = [-1250, 1250].flatMap((x) =>
+      [-95, 0, 95].map((y) => [x, y]),
+    );
+    const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
+    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.25, ids.pad));
+    const missingGsgDieCenters = [-1250, 1250]
+      .map((x) => [x, 0])
+      .filter((xy) => !hasLayer(xy, 650, gsgDieId));
     // Figure 2(f) connects the HEMT and the independently mounted GSG Pad
     // chips with Au wire bonds. TSV Cu is a separate vertical interconnection.
     // These material samples validate components, NOT a particular circuit net.
     const hasOxideLayer = model.layers.some((layer) => /SiO(?:2|₂)/i.test(layer.name));
     const hasNiPaAuLayer = model.layers.some((layer) => /NiPaAu/i.test(layer.name));
     return {
-      materialLayerIdsFound: Object.values(ids).every(Boolean),
+      materialLayerIdsFound: Object.values(ids).every(Boolean) && Boolean(gsgDieId),
       viaCoreSamples: viaCenters.length * viaZ.length,
+      gsgGoldSamples: gsgPadCenters.length,
       missingCuCore,
       missingGsgPads,
+      missingGsgDieCenters,
       sourceProcessLayersPresent: {
         siliconOxide: hasOxideLayer,
         nickelPalladiumGold: hasNiPaAuLayer,
@@ -332,7 +340,12 @@ try {
   });
   assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
   assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
-  assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG pads are absent');
+  assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG gold contacts are absent');
+  assert.deepEqual(
+    geometry.missingGsgDieCenters,
+    [],
+    'Browser-loaded independent GSG substrates are absent',
+  );
   const tsvSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('tsv-transverse-section.png', directory), tsvSectionShot);
 
@@ -367,6 +380,7 @@ try {
     distinctFromCoolantSection: true,
     copperFilledGeometry: geometry.missingCuCore.length === 0,
     copperCoreOccupancySamples: geometry.viaCoreSamples,
+    gsgGoldOccupancySamples: geometry.gsgGoldSamples,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     physicalSeedThicknessUm: { Ti: 0.2, Cu: 0.5 },
     inferredCuFillUm: 35,
@@ -374,6 +388,57 @@ try {
     paperContourParityVerified: false,
   };
   assert.deepEqual(historyErrors, [], 'TSV inspection emitted browser errors');
+  // Figure 2(e): the two distinct GSG chip solids require a package-scale
+  // view. The default fluid half-cut intentionally hides these outer chips.
+  const packageStep = page.locator('#snapshotList .history-step-wrap').filter({
+    has: page.locator('.history-bookmark-row', {
+      hasText: '07 HEMT and dual GSG die upper package inspection',
+    }),
+  });
+  await packageStep.first().waitFor({ state: 'attached', timeout: 120000 });
+  assert.equal(await packageStep.count(), 1, 'Three-chip package Bookmark missing');
+  const packageGroup = packageStep.locator('.history-bookmarks-group');
+  if (!(await packageGroup.evaluate((details) => details.open))) {
+    await packageGroup.locator('.history-bookmarks-summary').click();
+  }
+  const packageBookmark = packageGroup.locator('.history-bookmark-row', {
+    hasText: '07 HEMT and dual GSG die upper package inspection',
+  });
+  await packageBookmark.locator('.snapshot-more-trigger').click();
+  await packageBookmark
+    .locator('.snapshot-more-popover button', { hasText: 'Restore bookmark' })
+    .click();
+  await page.waitForFunction(
+    () => {
+      const state = window.WaferCadV2Workstation?.snapshot();
+      return (
+        state?.roi?.a?.[0] === -1600 &&
+        state?.roi?.b?.[0] === 1600 &&
+        state?.model?.layers?.some((layer) =>
+          layer.name === 'GSG chip substrate surrogate (100 um inferred)',
+        )
+      );
+    },
+    null,
+    { timeout: 120000 },
+  );
+  await page.locator('[data-action="view:three"]').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const threeChipShot = await page.locator('#threeHost').screenshot({ type: 'png' });
+  await writeFile(new URL('three-chip-upper-package.png', directory), threeChipShot);
+  report.views.threeChipUpperPackage = {
+    bytes: threeChipShot.length,
+    bookmarkRestored: true,
+    independentGsgDieBodies: 2,
+    separateGsgAuContacts: 6,
+    wireBondGeometryVerified: false,
+  };
+  assert.deepEqual(historyErrors, [], 'Three-chip Bookmark restore emitted browser errors');
   await context.close();
 
   // pass applies strictly to rendering, saved-state restoration and sampled
@@ -385,6 +450,7 @@ try {
     reference: 'Lian et al. (2022), Fig. 1(a), Fig. 2(c-f), DOI 10.1038/s41378-022-00462-3',
     verifiedIdealizedCopperCoreSamples: geometry.viaCoreSamples,
     trueDualWaferBondModeled: false,
+    twoIndependentGsgDieBodiesModeled: geometry.missingGsgDieCenters.length === 0,
     hemtToGsgWireBondGeometryModeled: false,
     completeInterposerAuNiPaAuMetallizationModeled: false,
     hemtBacksideViaMetallizationModeled: false,
