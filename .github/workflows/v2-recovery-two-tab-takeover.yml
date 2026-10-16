@@ -28,10 +28,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Show exact formatter diff before Chromium acceptance
-        run: |
-          npx prettier --write scripts/v2/check-recovery-two-tab-takeover.mjs
-          git diff -- scripts/v2/check-recovery-two-tab-takeover.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash

@@ -56,7 +56,9 @@ try {
     const oldKey = await page.evaluate(async () => {
       const storage = await import('/workspace-persistence.js');
       for (const point of await storage.listWorkspaceRecoveryPoints()) {
-        if ((await storage.loadWorkspaceRecoveryPoint(point.key))?.name === 'Takeover old checkpoint')
+        if (
+          (await storage.loadWorkspaceRecoveryPoint(point.key))?.name === 'Takeover old checkpoint'
+        )
           return point.key;
       }
       return null;
