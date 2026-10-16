@@ -12,54 +12,7 @@ const {
   findTerminalQualifiedDopantOverlaps,
   auditSchematicWellBodyCoverage,
   auditSchematicBodyTieContacts,
-  auditDopantPhysicsEvidence,
 } = await import('../dopant-regions.js');
-
-test('qualitative well markers cannot falsely authorize calibrated junction or BTBT claims', () => {
-  const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });
-  const baseline = auditDopantPhysicsEvidence(model);
-  assert.equal(baseline.qualitativeIntentCount, 0);
-  assert.equal(baseline.quantifiedWellDoping, false);
-  const wellIntent = {
-    id: 'schematic-well-only',
-    role: 'well',
-    polarity: 'donor',
-    face: 'front',
-    hostLayerId: 'base',
-    area: v.rectMulti(1, 1),
-    sourceZ: 1,
-    depthStartUm: 0,
-    depthEndUm: 0.5,
-    provenance: 'illustrative',
-  };
-  assert.equal(addQualitativeDopantRegion(model, wellIntent, v).changed, true);
-  const withWell = auditDopantPhysicsEvidence(model);
-  assert.equal(withWell.qualitativeWellIntentCount, 1);
-  for (const key of [
-    'calibratedNetDopantProfileAvailable',
-    'quantifiedWellDoping',
-    'activatedJunctionProfileAvailable',
-    'physicalJunctionResolved',
-    'ohmicContactValidated',
-    'btbtCurrentComputed',
-  ]) {
-    assert.equal(withWell[key], false, key + ' cannot follow from a qualitative well marker');
-  }
-  const misleading = structuredClone(model);
-  misleading.dopantRegions[0].calibratedConcentrationCm3 = 1e20;
-  assert.equal(
-    auditDopantPhysicsEvidence(misleading).quantifiedWellDoping,
-    false,
-    'Unvalidated concentration properties must not promote qualitative evidence',
-  );
-  misleading.dopantRegions[0].profile = { kind: 'gaussian', peakConcentration: 1e20 };
-  assert.throws(
-    () => auditDopantPhysicsEvidence(misleading),
-    /qualitative-interval/,
-    'Unknown profile schemas must fail closed rather than imply calibrated physics',
-  );
-  validateProcessModel(model);
-});
 
 test('legacy models retain their original storage shape until qualitative doping is requested', () => {
   const model = modelApi.createModel({ shape: 'rect', width: 4, height: 4, thickness: 2 });

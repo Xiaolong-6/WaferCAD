@@ -38,6 +38,25 @@ Both cells have compact horizontal ACTIVE diffusion bars crossed by an **illustr
 
 **Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and connected Metal1 are geometrical reconstructions inferred to represent electrical well ties. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
 
+## Scope: externally calculated device results are visualization inputs
+
+WaferCAD is a **process reconstruction and structure visualization** product. We do
+not implement PN/BTBT transport physics, Poisson equations, numerical dopant
+activation or a semiconductor device simulator. Existing Implant depth/tilt and
+qualitative polarity are annotations supplied or chosen by the user.
+
+If another tool or paper provides **numerical PN/BTBT results**, a separate
+display-only visualization importer may show them over the correct Main/Section/3D
+coordinates, with original units, source, device bias and dataset identity.
+A scalar (e.g. reported Tj or current) can be labeled or plotted; it **must not**
+be transformed into a fabricated 3D junction contour. Spatial rendering requires
+spatial input data or explicitly user-provided geometry. Importing external data
+must not rewrite materials, process history or the original `.wafercad` model.
+
+Generic external profile import/rendering is **not shipped by PR #225**; it is
+tracked as a potential independent visualization task only when an actual
+external dataset and desired presentation are defined.
+
 ## Shared Base and two process Variants
 
 - **Main / T-CMOS:** 0° As+ donor HVTN marker for pMOS and BF2+ acceptor HVTP marker for nMOS, illustrated as a buried 80–240 nm interval.

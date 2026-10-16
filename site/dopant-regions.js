@@ -10,42 +10,6 @@ const POLARITIES = new Set(['donor', 'acceptor']);
 const ROLES = new Set(['well', 'body', 'source-drain', 'channel', 'contact']);
 const validNumber = (value) => typeof value === 'number' && Number.isFinite(value);
 
-/**
- * Fail-closed evidence boundary for the currently supported qualitative-interval
- * model. A role=well annotation or schematic electrical well can never be
- * mistaken for a concentration-calibrated well, PN junction or BTBT solver.
- *
- * This audit deliberately does not accept ad-hoc "concentration" properties:
- * the project schema has no calibrated net-dopant/activation profile contract.
- */
-export function auditDopantPhysicsEvidence(model) {
-  const intents = model.dopantRegions || [];
-  const validIntents =
-    Array.isArray(intents) &&
-    intents.every((intent) => intent?.profile?.kind === 'qualitative-interval');
-  if (!validIntents) {
-    throw new TypeError('Expected qualitative-interval dopant physics evidence.');
-  }
-  let schematicWellCount = 0;
-  for (const region of model.electricalRegions || []) {
-    if (String(region.name).toLowerCase().includes('well')) schematicWellCount += 1;
-  }
-  const qualitativeWellCount = intents.filter((intent) => intent.role === 'well').length;
-  return {
-    kind: 'qualitative-only-physics-evidence',
-    qualitativeIntentCount: intents.length,
-    qualitativeWellIntentCount: qualitativeWellCount,
-    schematicWellAnnotationCount: schematicWellCount,
-    calibratedNetDopantProfileAvailable: false,
-    quantifiedWellDoping: false,
-    activatedJunctionProfileAvailable: false,
-    physicalJunctionResolved: false,
-    ohmicContactValidated: false,
-    btbtCurrentComputed: false,
-    evidenceLimitation: 'Only qualitative mask/depth and schematic well markers are supported.',
-  };
-}
-
 export function addQualitativeDopantRegion(model, spec, vectorApi) {
   const id = String(spec?.id ?? '');
   const hostLayerId = String(spec?.hostLayerId ?? '');

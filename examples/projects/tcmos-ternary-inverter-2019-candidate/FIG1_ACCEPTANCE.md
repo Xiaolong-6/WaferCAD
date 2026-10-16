@@ -1,12 +1,12 @@
 # Fig. 1a/1b scientific and visual acceptance — T-CMOS candidate
 
-**Status: qualified qualitative structure only; physical tunnel-junction reproduction NOT accepted.** This is a source-traceability and real-browser evidence record, not an electronic-device simulation.
+**Scope: paper process flow, Mask/layout, and 3D/Section structural reconstruction only.** Qualified illustrative geometry is the acceptance target. Semiconductor-device physics is not part of WaferCAD or PR #225.
 
 ## Sources and evidence
 
 - Literature: Jeong et al., *Nature Electronics* (2019), [DOI 10.1038/s41928-019-0272-8](https://doi.org/10.1038/s41928-019-0272-8), especially Fig. 1a–b, Methods and Supplementary Fig. 1.
 - Real Chromium acceptance: [run 38744110625](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625), [browser artifact 11978041932](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625/artifacts/11978041932). Includes `browser-acceptance.json`, unmodified candidate, local-inspection derivatives and original PNG evidence.
-- Most recent verified exact-head evidence before this scientific-gate change: Head `61da11e` — [T-CMOS Kernel/Recipe/storage and Chromium Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820768), [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820753), [Mask area](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820798), [full-array renderer](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820661) and [M3D Welcome](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820854): all pass. Subsequent heads require independent verification.
+- Last fully verified pre-cleanup Head `61da11e`: [T-CMOS targeted/Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820768), [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820753), [Mask](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820798), [full-array renderer](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820661), and [M3D Welcome](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820854) all passed. The cleanup Head requires its own targeted verification.
 
 ## Fig. 1a: source topology versus demonstrated model
 
@@ -16,8 +16,8 @@
 | Source / Drain / Gate | Two MOS structures; common VIN gates, joined VOUT drains, VDD / GND sources | Two distinct POLY geometries, silicon/silicide/W/Metal1 interfaces and net isolation checked: **topology pass**. |
 | Body-tie contacts | Inverter bias requires connection to body/well | Inferred U-shaped body ties with Si/W/Metal1; n+/p+ contact implant and ohmic behavior **not validated**. |
 | Enhanced body doping | HVTN As+ on pMOS; HVTP BF2+ on nMOS | Qualitative material-clipped body intervals visible in both local Sections and ROI cutaways. 80–240 nm model interval is **assumed**. |
-| Body–drain junction | Highly doped PN interface and BTBT at the body-to-drain junction | Both HVT–HDD source and drain annotations co-occupy volumes. Neither depletion boundary, electrical PN interface, carrier profile nor BTBT is solved: **fail for physical-junction acceptance**. |
-| Energy bands / ternary VTC | Bias-specific BTBT band diagrams and electronic output | Not produced by Kernel; **out of scope**, not a simulated result. |
+| Body–drain region | Paper attributes tunnelling to highly doped body/drain regions | Material-clipped HVT/HDD **structural annotations** are visualized. External PN/BTBT simulation results may later be overlaid; no device-physics calculation or quantitative PN acceptance is required here. |
+| Energy bands / ternary VTC | Bias-specific BTBT band diagrams and electronic output | Outside the PR #225 reconstruction scope; externally computed data can be displayed separately with source and units. |
 
 The paper reports **commercial 130 nm and 90 nm CMOS foundry processes**. It does **not** provide a measured physical gate length for this depicted local cell. The candidate chooses `GATE_LENGTH_UM=0.13`; this is a geometry assumption, **not source-confirmed measured L**, despite sharing the 130 nm node number.
 
@@ -49,67 +49,36 @@ HVT-only PNGs isolate one annotation via real Section visibility toggles; full-m
 - In illustrative geometry each pMOS and nMOS body/HDD annotation co-occupies Source area 1.287 µm² and Drain area 1.703 µm², Z=0.82–0.92 µm; **co-occupancy is not a PN junction**.
 - HVT annotation material clipped to matching schematic Well: 0.51584 µm³; residual silicon below STI outside matching Well: 0.01364 µm³, per device. Actual oxide stopping power/implant penetration is unknown.
 - Both Well ties geometrically contact Si/W/Metal1 with appropriate schematic well polarity; n+/p+ contact doping is missing and ohmic conduction not established.
-- The read-only `auditDopantPhysicsEvidence` gate rejects unsupported profile kinds and reports only **qualitative** well intents. Even adding a `role=well` intent or an unvalidated numeric concentration property cannot set `quantifiedWellDoping`, `physicalJunctionResolved`, `ohmicContactValidated` or `btbtCurrentComputed` to true. The present project schema has no calibrated net-doping or activation profile.
 - Candidate is immutable across these diagnostic-only refinements. The alternate 18° tilt demonstration is explicitly NOT PAPER.
 
-## PN/BTBT quantitative readiness and Kernel dependencies
+## External simulation visualization: product boundary
 
-The generator now exports `validation.pnBtbtReadiness`, a **read-only stage-gate report**
-with explicit source provenance and missing model capabilities. Geometry qualifies only
-when the eight contact sites map to the intended nets and all four inferred
-source/drain body–HDD overlaps remain nonzero. Missing or miswired geometry fails
-this prerequisite gate; passing it never authorizes electrical computation.
+WaferCAD **does not solve PN junctions, Poisson, electric fields, BTBT or transistor currents**.
+When somebody has already calculated results elsewhere, WaferCAD's role is to **import and
+visualize supplied results** over its reconstructed geometry:
 
-| Stage | Existing evidence | Required before numerical acceptance |
-| --- | --- | --- |
-| Topology / material | Fig. 1 qualitative masks, 8 CNT-to-net sites, 4 co-occupancy footprints | Structural stage only; not physical current |
-| PN concentration and depletion | Species As+ for pMOS and BF2+ for nMOS; schematic Well, LDD/HDD, HVT | Calibrated 3D activated `N_D-N_A`, implant dose/energy, stopping in STI oxide, diffusion and electrostatic boundaries |
-| PN surface / electric field | No net-concentration zero crossing or Poisson solution | Charge neutrality / space-charge interface extraction and Poisson solver with bias/contact conditions |
-| BTBT current | Source discusses off-state tunnelling; no computed junction field | Calibrated band model, field-dependent BTBT law and transport / current integration |
-| Body contacts | Inferred VDD/GND well ties; no surface tap doping | Activated n+/p+ contact doping, barriers and contact resistivity |
-| Ternary transfer curve | Circuit topology only; published I-V is evidence, not Kernel output | Bias-dependent transistor I-V and external circuit solver with calibration data |
+- Externally supplied scalar inputs (for example an effective junction thickness or a
+  measured current at a stated bias) are shown as labeled parameters, legends or plots,
+  with units and provenance. A scalar alone **cannot establish the 3D shape of a PN junction**.
+- If the external tool supplies explicit coordinates and spatial profiles or contours
+  (for example a PN boundary, a 2D concentration map or a current-density field),
+  an independently developed visualization importer can map the supplied data to the
+  WaferCAD coordinate frame and render it in Section/3D without changing the geometry.
+- An imported result must retain its source, units, coordinate alignment, bias/state,
+  and display-only status. Any interpolation is a display choice, **not a physical prediction**.
+- No solver, concentration field generated from an Implant annotation, TCAD calibration
+  requirement, or BTBT readiness gate is part of PR #225.
 
-The supplementary `Tj` estimates (75 nm boron T-nMOS, 30 nm arsenic T-pMOS)
-are **analytical model estimates**, not an HVT implanted depth or an electrical
-PN surface. The candidate's 80–240 nm illustrated band remains separate.
-`numericalOutputAuthorized=false` and all physical readiness flags remain false,
-even if an unvalidated numeric field is attached to a qualitative record.
-This does not add a calibrated solver, new project schema, or material geometry.
-
-## Independent semiconductor numerical input contract
-
-The experimental `site/semiconductor-field-contract.js` provides an opt-in,
-read-only **two-dimensional X–Z numerical input boundary**. It is not part of
-the `.wafercad` project schema and cannot silently convert qualitative
-Implant or Well annotations into activated doping.
-
-- `validateNetDopantCrossSection` requires explicit physical units (µm,
-  cm⁻³), monotonically increasing axes, nonnegative finite donor/acceptor
-  samples, matching semiconductor-host IDs, and *synthetic* or
-  *external-unverified* provenance. Samples outside a semiconductor must
-  carry zero concentration.
-- `findSampledNetDopantSignCrossings` locates **strict sign changes of
-  supplied `N_D-N_A` between adjacent samples** within the same host,
-  using linear interpolation. Exact-zero nodes and different host materials
-  cannot be promoted into fictitious junction surfaces. The output contains
-  point candidates, not a continuous physical PN interface.
-- `validatePoissonCrossSectionInput` verifies positive relative
-  permittivity, temperature and four consistent Dirichlet edge arrays,
-  but **does not run Poisson, calculate potential/electric field, or perform
-  carrier statistics and BTBT**. A validated boundary input is not a
-  numerically verified device.
-
-Synthetic tests prove that sign changes are localized, empty/equal fields
-produce no artificial junction, incompatible hosts are separated, invalid
-concentrations and units fail closed, and inconsistent Poisson corners
-are rejected. All outputs explicitly preserve
-`physicalPnInterfaceResolved=false` or `poissonSolved=false`.
-The T-CMOS candidate and the original 80–240 nm HVT band remain unchanged.
+**Status:** the existing qualitative Implant/Section/3D visualization is implemented
+and browser-tested. A generic external PN/BTBT field importer is **not implemented or
+accepted** in this PR; it is a separately scoped future visualization feature if needed.
 
 ## Acceptance decision and next stage
 
-**Accept as a qualified, clearly labeled illustrative structural T-CMOS example** for further candidate review, with complete Recipe, two process Variants and the above image evidence. **Do not approve it as a quantitatively reproduced body–drain tunnelling junction** or as verified BTBT / ternary-transfer simulation.
+**Accept as a qualified, clearly labeled illustrative process and 3D structural
+reconstruction** with complete Recipe, two process Variants, traceable masks and
+real-browser visual evidence. This PR does not require numerical PN/BTBT matching;
+it must not present illustrative color bands as externally computed data.
 
-Unresolved science requires foundry implant energy, dose, activation and diffusion details or an explicitly approximate semiconductor model before true PN-surface extraction, contact resistivity or BTBT calculation. Those are separate Kernel/semiconductor-model milestones and must not be simulated by shaded annotations or arbitrary dimensions.
-
-Keep PR #225 Draft and out of Welcome pending explicit release/merge approval. This record alone does not authorize Main merge.
+Keep PR #225 Draft and out of Welcome pending explicit release/merge approval.
+This record alone does not authorize Main merge.
