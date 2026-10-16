@@ -110,6 +110,41 @@ test('compact spring anchors stay fixed and springs move only at shuttle ends', 
   }
 });
 
+test('four folded springs preserve fixed-anchor and moving-tip contacts', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  const { geometryArea } = await import('../model.js');
+  const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[0]]]]));
+  for (const state of ['off', 'on']) {
+    const pose = createCompactSwxActuator(state);
+    const movingShuttle = union(pose.shuttle);
+    const otherFixed = union(pose.fixed.filter((ring) => !pose.anchors.includes(ring)));
+    for (const [i, spring] of pose.springContours.entries()) {
+      const beam = union([spring]);
+      assert.ok(
+        geometryArea(v.intersection(beam, union([pose.anchors[i]]))) > 1e-4,
+        state + ' spring ' + i + ' must contact its own anchor',
+      );
+      assert.ok(
+        geometryArea(v.intersection(beam, movingShuttle)) > 1e-4,
+        state + ' spring ' + i + ' must contact the moving shuttle',
+      );
+      assert.ok(
+        geometryArea(v.intersection(beam, otherFixed)) < 1e-8,
+        state + ' spring ' + i + ' must not touch unrelated fixed silicon',
+      );
+      for (let j = 0; j < pose.anchors.length; j++) {
+        if (i === j) continue;
+        assert.ok(
+          geometryArea(v.intersection(beam, union([pose.anchors[j]]))) < 1e-8,
+          state + ' spring ' + i + ' must not touch anchor ' + j,
+        );
+      }
+    }
+  }
+});
+
 test('compact candidate has no fixed/moving positive-area silicon overlap', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
