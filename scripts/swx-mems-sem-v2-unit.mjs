@@ -34,8 +34,8 @@ const newTerminalsUm = Object.freeze([
 ]);
 const electrodeCentersUm = Object.freeze([
   [-46, -24],
-  [-6, -120],
-  [6, -120],
+  [-49, -99],
+  [49, -99],
   [46, -24],
   [-41, -78],
   [41, -78],
@@ -46,6 +46,10 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   actuatorFrameTranslationYUm: -90,
   upperSpringLateralityShiftUm: 30,
   upperSpringShiftYUm: -86,
+  lowerHorizontalAnchorXUm: 49,
+  lowerHorizontalAnchorYUm: -99,
+  lowerSpringBeamLongUm: SWX_REPORTED.foldedSpringLongBeamUm,
+  lowerSpringBeamShortUm: SWX_REPORTED.foldedSpringShortBeamUm,
   sourceAuthorGdsAvailable: false,
   fullFidelityClaim: false,
   fixedLeadIllustrativeFilletRadiusUm: 6,
@@ -87,9 +91,40 @@ function semV2PhysicalPose(state) {
   const down = SWX_SEM_V2_ASSUMPTIONS.actuatorFrameTranslationYUm;
   const translateActuatorAnchor = (ring, index) => {
     const upper = index % 2 === 1;
-    if (!upper) return move(ring, 0, down);
     const side = index < 2 ? -1 : 1;
+    if (!upper) {
+      return rect(
+        side * SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm,
+        SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm,
+        8,
+        8,
+      );
+    }
     return move(ring, side * 30, -86);
+  };
+  const lowerSpringCenterline = (side) => {
+    const x = (value) => side * value;
+    const anchorY = SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm;
+    const long = SWX_REPORTED.foldedSpringLongBeamUm;
+    const short = SWX_REPORTED.foldedSpringShortBeamUm;
+    const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
+    const outerX = SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm;
+    // Source S7: 30um, 22um and 30um parallel horizontal runs, with
+    // exact 1.5um silicon-edge gap and a narrow 200nm beam.
+    const path = [
+      [x(outerX), anchorY],
+      [x(outerX - long), anchorY],
+      [x(outerX - long), anchorY + pitch],
+      [x(outerX - long + short), anchorY + pitch],
+      [x(outerX - long + short), anchorY + 2 * pitch],
+      [x(outerX - 2 * long + short), anchorY + 2 * pitch],
+      [x(outerX - 2 * long + short), anchorY + 3 * pitch],
+      [x((SWX_REPORTED.shuttleWidthUm - 0.7) / 2), anchorY + 3 * pitch],
+    ];
+    return path.map(([px, py], index) => [
+      px,
+      py + (travel * index) / (path.length - 1),
+    ]);
   };
   const fixedActuator = [
     ...actuator.banks.flatMap((bank) => bank.stationary.map((p) => move(p, 0, down))),
@@ -97,26 +132,33 @@ function semV2PhysicalPose(state) {
   ];
   const shuttle = actuator.shuttle.slice(0, -4).map((ring) => move(ring, 0, down));
   for (const side of [-1, 1]) {
-    for (const station of [
-      { outerX: 6 + 3 * 1.7, y: -86 + travel },
-      { outerX: 46 + 3 * 1.7, y: -58 + travel },
-    ]) {
-      shuttle.push(
-        strip(
-          [
-            [(side * (SWX_REPORTED.shuttleWidthUm - 0.7)) / 2, station.y],
-            [side * station.outerX, station.y],
-          ],
-          0.45,
-        ),
-      );
-    }
+    // Lower horizontal springs terminate directly on the moving shuttle
+    // rail. The old lower horizontal bridge is intentionally removed:
+    // leaving it behind would create a false disconnected Si feature.
+    const upperStation = { outerX: 46 + 3 * 1.7, y: -58 + travel };
+    shuttle.push(
+      strip(
+        [
+          [(side * (SWX_REPORTED.shuttleWidthUm - 0.7)) / 2, upperStation.y],
+          [side * upperStation.outerX, upperStation.y],
+        ],
+        0.45,
+      ),
+    );
   }
   const movableActuator = [
     ...actuator.banks.flatMap((bank) => bank.moving.map((p) => move(p, 0, down))),
     ...shuttle,
   ];
-  const springs = actuator.springContours.map(translateActuatorAnchor);
+  const lowerSpringCenterlines = [-1, 1].map(lowerSpringCenterline);
+  const springs = actuator.springContours.map((ring, index) => {
+    if (index % 2 === 1) return translateActuatorAnchor(ring, index);
+    const side = index < 2 ? -1 : 1;
+    return miteredPolyline(
+      lowerSpringCenterline(side),
+      SWX_REPORTED.foldedSpringWidthUm,
+    )[0];
+  });
   // The source SEM has opposing, inward-sloped fixed input/output guides,
   // not two vertical posts and a horizontal roof above the SWX. The
   // intermediate XY and 6um fillet radius are illustrative placements:
@@ -183,6 +225,7 @@ function semV2PhysicalPose(state) {
     fixedActuator,
     movableActuator,
     springContours: springs,
+    lowerSpringCenterlines,
     fixedRoutes,
     opticalFlexures,
     fixedPads,
@@ -260,7 +303,7 @@ export function createSwxSemV2ProcessGeometry(state = 'off') {
     maskPolygons,
     layout,
     releasedBeamTestPoint: [(SWX_REPORTED.shuttleWidthUm - 0.7) / 2, -72 + pose.travel],
-    anchorTestPoint: [6, -120],
+    anchorTestPoint: [49, -99],
     physicalGroups: {
       ...original.physicalGroups,
       fixed: pose.fixed,
@@ -285,9 +328,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
   const supported = [
     add('stationary left comb handle', [-25, -78]),
     add('stationary right comb handle', [25, -78]),
-    add('lower left spring anchor', [-6, -120]),
+    add('lower left spring anchor', [-49, -99]),
     add('upper left spring anchor', [-46, -24]),
-    add('lower right spring anchor', [6, -120]),
+    add('lower right spring anchor', [49, -99]),
     add('upper right spring anchor', [46, -24]),
     add('S7 left stationary anchor', [-14, -50]),
     add('S7 right stationary anchor', [34, -45]),
@@ -297,9 +340,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('moving shuttle rail', [2.65, -72 + travel]),
     add('left moving comb handle', [-25, -87.4 + travel]),
     add('right moving comb handle', [25, -87.4 + travel]),
-    add('left lower folded spring', [-6, -110]),
+    add('left lower folded spring', [-34, -99 + travel / 14]),
     add('left upper folded spring', [-46, -40]),
-    add('right lower folded spring', [6, -110]),
+    add('right lower folded spring', [34, -99 + travel / 14]),
     add('right upper folded spring', [46, -40]),
     add('stationary-but-suspended input guide', [-40, -14.75]),
     add('stationary-but-suspended output guide', [40, -14.75]),
