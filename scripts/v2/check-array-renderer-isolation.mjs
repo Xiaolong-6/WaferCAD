@@ -1,11 +1,7 @@
 // Shared-geometry 80×80 array: camera interaction may never mutate 6400 physical instances.
 import assert from 'node:assert/strict';
-import {
-  launchBrowser,
-  newUiPage,
-  showWorkstationView,
-  waitForPaint,
-} from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const browser = await launchBrowser();
@@ -30,14 +26,14 @@ try {
     assert.equal(initial.workflow.writable, true);
 
     for (const view of ['mask', 'main']) {
-      await showWorkstationView(page, view);
+      await selectScientificView(page, view, 1440);
       const canvas = page.locator('#' + view + 'Canvas');
       assert.ok(await canvas.isVisible());
       const physicalSize = await canvas.evaluate((c) => [c.width, c.height]);
       assert.ok(physicalSize[0] > 100 && physicalSize[1] > 100);
     }
 
-    await showWorkstationView(page, 'three');
+    await selectScientificView(page, 'three', 1440);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
