@@ -7,8 +7,7 @@ const { createModel } = await import('../model.js');
 const { migrateProjectFile } = await import('../project-schema.js');
 const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject } =
   await import('../wafer-assembly.js');
-const { createAssemblyBondHistorySession } =
-  await import('../wafer-assembly-history-session.js');
+const { createAssemblyBondHistorySession } = await import('../wafer-assembly-history-session.js');
 const { serializeProject, readProjectFile } = await import('../project-io.js');
 
 function wafer(name) {
@@ -32,10 +31,7 @@ test('existing snapshotManager tracks compact source-bound Bond nodes', () => {
   const session = createAssemblyBondHistorySession(root);
   assert.equal(session.currentIndex(), 2);
   assert.equal(session.maxIndex(), 2);
-  assert.deepEqual(
-    session.listHistory().map((step) => step.operation.donorId),
-    ['B', 'C'],
-  );
+  assert.deepEqual(session.listHistory().map((step) => step.operation.donorId), ['B', 'C']);
   assert.equal(session.listVariants().length, 1);
   const graph = session.exportCompactHistory();
   assert.equal(graph.records.length, 1);
