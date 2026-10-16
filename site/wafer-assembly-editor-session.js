@@ -1,7 +1,10 @@
 // Source-aware transaction owner for incremental Bond editing.
 // Only a host capable of *durable* Recovery checkpointing may commit a Bond.
 // The canonical product owns source provenance once; History contains pointers.
-import { prepareWaferBondTransaction, commitWaferBondTransaction } from './wafer-bond-transaction.js';
+import {
+  prepareWaferBondTransaction,
+  commitWaferBondTransaction,
+} from './wafer-bond-transaction.js';
 import { createAssemblyBondHistorySession } from './wafer-assembly-history-session.js';
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
 
