@@ -145,3 +145,48 @@ test('pending graph publication blocks second Bond, fork, switch and cursor chan
   await inFlight;
   assert.equal(h.revision(), 1);
 });
+
+test('post-Bond Deposit is published as one source-aware revision without editing the v15 baseline', async () => {
+  const h = host();
+  const original = h.session.fullProduct();
+  const committed = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, area: 'full', face: 'front' },
+  });
+  assert.equal(h.revision(), 1);
+  assert.equal(h.confirmed().version, 2);
+  assert.equal(h.confirmed().branches[0].postBondSteps.length, 1);
+  assert.notDeepEqual(committed.model, original.model);
+  assert.deepEqual(h.session.fullProduct(), original);
+  assert.deepEqual(h.currentModel(), original.model);
+  assert.deepEqual(h.session.postBondPreviewModel(), committed.model);
+  assert.equal(JSON.stringify(h.confirmed().branches[0].postBondSteps).includes('regions'), false);
+  assert.deepEqual(h.session.exportVariantGraph().sources, h.confirmed().sources);
+  await assert.rejects(
+    () => h.session.bond(wafer('Donor C'), { donorId: 'C' }),
+    /Further Bond after post-Bond Process/,
+  );
+});
+
+test('failed durable Process write reverts step graph and derived preview, never changes baseline', async () => {
+  let deny = false;
+  const h = host({ reject: () => deny });
+  const first = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1, face: 'front' },
+  });
+  const previous = h.session.exportVariantGraph();
+  deny = true;
+  await assert.rejects(
+    () =>
+      h.session.appendPostBondStepDurable({
+        command: 'etch',
+        params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+      }),
+    /Simulated durable graph write failure/,
+  );
+  assert.deepEqual(h.session.exportVariantGraph(), previous);
+  assert.deepEqual(h.session.postBondPreviewModel(), first.model);
+  assert.deepEqual(h.currentModel(), start().model);
+  assert.equal(h.revision(), 1);
+});
