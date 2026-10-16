@@ -93,12 +93,15 @@ export function synchronizeConformalRoughLods(requests, allocations) {
   const sameZoneXY = (a, b) => {
     const left = a?.baseTriangles;
     const right = b?.baseTriangles;
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length)
-      return false;
-    for (let i = 0; i < left.length; i++)
-      for (let j = 0; j < 3; j++)
-        for (let k = 0; k < 2; k++)
+    if (!Array.isArray(left) || !Array.isArray(right)) return false;
+    if (left.length !== right.length) return false;
+    for (let i = 0; i < left.length; i++) {
+      for (let j = 0; j < 3; j++) {
+        for (let k = 0; k < 2; k++) {
           if (left[i]?.[j]?.[k] !== right[i]?.[j]?.[k]) return false;
+        }
+      }
+    }
     return true;
   };
   for (let index = 0; index < requests.length; index++) {
@@ -106,13 +109,10 @@ export function synchronizeConformalRoughLods(requests, allocations) {
     const cap = request?.cap;
     const appearance = cap?.appearance;
     if (appearance?.kind !== 'rough' || !request?.zone?.baseTriangles?.length) continue;
-    const profile = JSON.stringify(
-      Object.fromEntries(
-        Object.entries(appearance)
-          .filter(([key]) => key !== 'displayRoughBlend')
-          .sort(([a], [b]) => a.localeCompare(b)),
-      ),
-    );
+    const entries = Object.entries(appearance)
+      .filter(([key]) => key !== 'displayRoughBlend')
+      .sort(([a], [b]) => a.localeCompare(b));
+    const profile = JSON.stringify(Object.fromEntries(entries));
     const zone = request.zone;
     const bounds = zone.bounds || {};
     const key = JSON.stringify([
@@ -126,9 +126,8 @@ export function synchronizeConformalRoughLods(requests, allocations) {
     ]);
     if (!groups.has(key)) groups.set(key, []);
     const alternatives = groups.get(key);
-    let group = alternatives.find((candidate) =>
-      sameZoneXY(requests[candidate[0]].zone, zone),
-    );
+    const match = (candidate) => sameZoneXY(requests[candidate[0]].zone, zone);
+    let group = alternatives.find(match);
     if (!group) {
       group = [];
       alternatives.push(group);
@@ -140,13 +139,9 @@ export function synchronizeConformalRoughLods(requests, allocations) {
     for (const group of alternatives) {
       if (group.length < 2) continue;
       // One cap appearing twice at the same physical plane is not a film.
-      if (
-        new Set(group.map((index) => requests[index].cap.z)).size < 2
-      )
-        continue;
-      const budget = Math.floor(
-        group.reduce((sum, index) => sum + allocations[index], 0) / group.length,
-      );
+      if (new Set(group.map((index) => requests[index].cap.z)).size < 2) continue;
+      const totalBudget = group.reduce((sum, index) => sum + allocations[index], 0);
+      const budget = Math.floor(totalBudget / group.length);
       const contexts = group.map((index) => requests[index].zone.lodContext || {});
       const context = {
         ...contexts[0],
