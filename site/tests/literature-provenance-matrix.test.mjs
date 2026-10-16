@@ -24,7 +24,10 @@ test('eight paper provenance records match the actual published example catalog'
   assert.equal(provenance.issue, 241);
   const ids = provenance.entries.map((entry) => entry.id);
   assert.equal(ids.length, new Set(ids).size, 'Duplicate provenance entry');
-  assert.deepEqual(ids, BUNDLED_EXAMPLES.map((entry) => entry.id));
+  assert.deepEqual(
+    ids,
+    BUNDLED_EXAMPLES.map((entry) => entry.id),
+  );
   for (const entry of provenance.entries) {
     const published = BUNDLED_EXAMPLES.find((example) => example.id === entry.id);
     assert.equal(entry.projectPath, published.path);
