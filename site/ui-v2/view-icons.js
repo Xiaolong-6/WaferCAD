@@ -12,6 +12,8 @@
     // Desktop navigation chrome follows the accepted minimal Shell prototype.
     sidebarCollapse:
       'M3 2.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z M6 2.5v11 M11 6l-2 2 2 2',
+    sidebarExpand:
+      'M3 2.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z M6 2.5v11 M9 6l2 2-2 2',
     overview: 'M2 2h5v5H2Z M9 2h5v5H9Z M2 9h5v5H2Z M9 9h5v5H9Z',
     mask: 'M2 2h12v12H2Z M5 5h6v6H5Z',
     select: 'M3 2v11l3-3 2 4 2-1-2-4h4Z',
