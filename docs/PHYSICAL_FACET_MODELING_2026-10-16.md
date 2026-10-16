@@ -69,3 +69,18 @@ boundaries, support real facet-normal coating at creases, persist
 the data, or enable a new Process mode. Kernel integration must
 confirm which wafer-thickness/etch-depth interpretation is
 supported by the paper. The current Sahli project remains intact.
+
+## Versioned physical material-owner prototype (not active Model)
+
+New `site/physical-facet-owner.js` exports a JSON-safe, opt-in 
+`wafercad-physical-pyramid-slab-v1` descriptor. It owns one material,
+a rectangular integer-cell XY domain and two analytic physical interfaces.
+Point probes distinguish solid interiors, exact interfaces and voids.
+Volume is integrated from canonical analytic boundaries, not the 3D display.
+
+This remains isolated from `region.stack`, the .wafercad project serializer,
+Recipe, History, Recovery and all rendering. The isolated JSON round-trip
+is NOT proof of application-wide persistence; changing Process operations
+explicitly fails closed. Partial-cell masks and multi-owner intersections
+are intentionally unsupported. Next gate: canonical owner/region attachment,
+exact interface topology, conformal offset Booleans and save/reopen parity.
