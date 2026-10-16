@@ -7,8 +7,8 @@
  * clearance candidate; author-defined 3/5um meanders, optical grating
  * teeth, alignment supports and BOX recipe must still be integrated.
  */
-import { createSwxGeometry, miteredPolyline, SWX_REPORTED } from './swx-mems-geometry.mjs';
-import { filletPolyline } from './swx-mems-compact-bends.mjs';
+import { createSwxGeometry, miteredPolyline } from './swx-mems-geometry.mjs';
+import { createSwxDoubleHairpin } from './swx-mems-compact-bends.mjs';
 import { createCompactSwxActuator } from './swx-mems-actuator-candidate.mjs';
 import { SWX_COMPACT_GRATING_ASSUMPTIONS } from './swx-mems-compact-gratings.mjs';
 
@@ -62,27 +62,11 @@ function makeOpticalRouting(travel) {
       coreWidth,
     ),
   ];
-  // Fillet both moving optical centerlines with their full reported
-  // 5um and 3um radii. Do not decrease R when a deformed pose is tight.
-  // The mapping of reported radii to individual legs is an assumption.
-  const movingWaypoints = [
-    [
-      [-22, -61 + travel],
-      [-35, -65 + 0.8 * travel],
-      [-37, -74 + 0.6 * travel],
-      [-47, -83 + 0.3 * travel],
-      [-55, -95],
-    ],
-    [
-      [21, -61 + travel],
-      [31, -66 + 0.8 * travel],
-      [39, -72 + 0.5 * travel],
-      [49, -87 + 0.2 * travel],
-      [55, -95],
-    ],
-  ];
-  const movingCenterlines = movingWaypoints.map((waypoints, index) =>
-    filletPolyline(waypoints, SWX_REPORTED.meanderRadiiUm[index]),
+  // In source S6 BOTH waveguides have TWO 180-degree turns, R1=5um and
+  // R2=3um. Assigning one radius to each waveguide was geometrically
+  // valid but scientifically incorrect; model the paper topology here.
+  const movingCenterlines = [-1, 1].map((side) =>
+    createSwxDoubleHairpin({ side, travelUm: travel }),
   );
   const movingSpringWaveguides = movingCenterlines.flatMap((centerline) =>
     miteredPolyline(centerline.points, coreWidth),
@@ -134,7 +118,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
     opticalRouting,
     integrationStatus: 'optical-four-port-routing-candidate-no-wafercad-project',
     unresolved: [
-      'Moving 5/3um bend radii are geometric fillets; waypoint placement and FDTD optical loss remain unverified',
+      'Both moving optical legs carry S6 5/3um semicircles; placement, elastic deformation and FDTD losses remain unverified',
       'Shallow grating groove masks are illustrative; source pitch and coupling efficiency unverified',
       'Guided mechanical aligner supports have not yet been reconstructed',
       'BOX undercut, electrode insulation and complete process History need new verification',
