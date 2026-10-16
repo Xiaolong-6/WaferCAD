@@ -713,6 +713,11 @@ export function createWorkspacePersistenceController({
           appCommit,
           reason: 'pre-restore',
         });
+        if (!hasWriteAccess()) {
+          throw new Error(
+            'This tab no longer owns local autosave. Recovery restore cancelled before changing the workspace.',
+          );
+        }
 
         // Installing a Recovery point mutates the live Model/History before
         // IndexedDB can confirm its final commit. A failed write must restore
@@ -723,6 +728,11 @@ export function createWorkspacePersistenceController({
           updateStage('Loading Recovery checkpoint…');
           const recovered = await loadWorkspaceRecoveryPoint(key);
           if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
+          if (!hasWriteAccess()) {
+            throw new Error(
+              'This tab no longer owns local autosave. Recovery restore cancelled before changing the workspace.',
+            );
+          }
           replacementStarted = true;
           const hasCamera = loadProjectWithSnapshotHistory(recovered);
           syncBaseControls();
