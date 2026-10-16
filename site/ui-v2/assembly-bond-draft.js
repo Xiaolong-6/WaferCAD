@@ -15,8 +15,8 @@ export function mountAssemblyBondDraftControls({
   header.textContent = 'Add donor · Direct Bond';
   const description = document.createElement('p');
   description.textContent =
-    'Source projects remain independent. Before each Bond, a separate durable Recovery checkpoint ' +
-    'is written. Export the full Assembly file after editing; autosave is disabled.';
+    'Sources remain independent and each Bond has a durable pre-Bond Recovery checkpoint. ' +
+    'Autosave is disabled: export the active Assembly or all Variants explicitly.';
 
   const form = document.createElement('form');
   form.className = 'assembly-bond-draft-form';
@@ -141,7 +141,7 @@ export function mountAssemblyBondDraftControls({
       editor.createVariant(id, variantName.value || id);
       variantName.value = '';
       status.dataset.error = 'false';
-      status.textContent = `Created ${id}. You can now Bond a different donor.`;
+      status.textContent = `Created ${id}. Export all Variants to preserve both routes.`;
       sync();
       onChanged();
     } catch (error) {
@@ -209,7 +209,10 @@ export function mountAssemblyBondDraftControls({
       };
       status.textContent = 'Writing pre-Bond Recovery checkpoint…';
       const completed = await editor.bond(donor, request);
-      status.textContent = `Bonded ${completed.operation.donorId}. Export the full Assembly to keep this edit.`;
+      status.textContent =
+        editor.listVariants().length > 1
+          ? `Bonded ${completed.operation.donorId}. Export all Variants to retain every branch.`
+          : `Bonded ${completed.operation.donorId}. Export the full Assembly to keep this edit.`;
       donorFile.value = '';
       onChanged();
     } catch (error) {
@@ -225,7 +228,10 @@ export function mountAssemblyBondDraftControls({
       const project = editor.fullProduct();
       downloadProject(project, 'wafercad-bonded-assembly.wafercad');
       status.dataset.error = 'false';
-      status.textContent = 'Full Assembly export initiated, including every source Recipe/History.';
+      status.textContent =
+        editor.listVariants().length > 1
+          ? 'Exported active branch only. Export all Variants to keep the other branches.'
+          : 'Full Assembly export initiated, including every source Recipe/History.';
     } catch (error) {
       status.dataset.error = 'true';
       status.textContent = error?.message || String(error);
