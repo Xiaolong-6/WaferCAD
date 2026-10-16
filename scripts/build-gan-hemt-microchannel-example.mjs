@@ -677,26 +677,18 @@ export async function buildGanMicrochannel() {
   // source-reported-unknown film cannot fill a many-um-wide open fluid turn.
   // This still models idealized geometry, not thermal oxide kinetics.
   // Conservative Mask 28 remains available as a fallback if science fails.
-  process(
-    'Full-exposed-surface front SiO2 on interposer (inferred 0.5 um)',
-    'deposit',
-    {
-      material: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
-      thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
-      coverage: 'conformal',
-      face: 'front',
-    },
-  );
-  process(
-    'Full-exposed-surface backside SiO2 on interposer (inferred 0.5 um)',
-    'deposit',
-    {
-      material: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
-      thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
-      coverage: 'conformal',
-      face: 'back',
-    },
-  );
+  process('Full-exposed-surface front SiO2 on interposer (inferred 0.5 um)', 'deposit', {
+    material: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
+    thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
+    coverage: 'conformal',
+    face: 'front',
+  });
+  process('Full-exposed-surface backside SiO2 on interposer (inferred 0.5 um)', 'deposit', {
+    material: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
+    thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
+    coverage: 'conformal',
+    face: 'back',
+  });
   bookmark('03a Full exposed front/back SiO2 before local TSV lining');
   // The paper oxidizes the bonded silicon BEFORE Ti/Cu metallization.
   // SiO2 thickness is not reported. This SECOND local conformal oxide
