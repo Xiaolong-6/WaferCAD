@@ -1,9 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  canRenderPlanarCapInSinglePass,
-  canRenderRoughExteriorCapInSinglePass,
-} from '../transparent-pass-policy.js';
+import { canRenderPlanarCapInSinglePass } from '../transparent-pass-policy.js';
 
 const materialState = { transparent: true, opacity: 0.5 };
 const canUseSinglePass = (options) =>
@@ -71,62 +68,4 @@ test('opaque scenes, sides, rough surfaces and annotations retain the two-pass p
   );
   assert.equal(canUseSinglePass({ materialState }), false);
   assert.equal(canRenderPlanarCapInSinglePass(), false);
-});
-
-test('only physical exterior rough caps can use one transparent DoubleSide pass', () => {
-  const exterior = { kind: 'material-exterior', roughCap: true };
-  const rough = { kind: 'rough', featureSize: 0.3 };
-  assert.equal(
-    canRenderRoughExteriorCapInSinglePass({
-      transparentScene: true,
-      materialState,
-      appearance: rough,
-      presentation: exterior,
-    }),
-    true,
-  );
-  for (const presentation of [
-    { ...exterior, kind: 'material-interface' },
-    { ...exterior, kind: 'implant-surface' },
-    { ...exterior, kind: 'electrical-surface' },
-    { ...exterior, roughCap: false },
-    { kind: 'material-exterior' },
-  ]) {
-    assert.equal(
-      canRenderRoughExteriorCapInSinglePass({
-        transparentScene: true,
-        materialState,
-        appearance: rough,
-        presentation,
-      }),
-      false,
-    );
-  }
-  assert.equal(
-    canRenderRoughExteriorCapInSinglePass({
-      transparentScene: false,
-      materialState,
-      appearance: rough,
-      presentation: exterior,
-    }),
-    false,
-  );
-  assert.equal(
-    canRenderRoughExteriorCapInSinglePass({
-      transparentScene: true,
-      materialState: { opacity: 1, transparent: false },
-      appearance: rough,
-      presentation: exterior,
-    }),
-    false,
-  );
-  assert.equal(
-    canRenderRoughExteriorCapInSinglePass({
-      transparentScene: true,
-      materialState,
-      appearance: { kind: 'smooth' },
-      presentation: exterior,
-    }),
-    false,
-  );
 });

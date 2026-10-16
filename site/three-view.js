@@ -5,10 +5,7 @@ import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
-import {
-  canRenderPlanarCapInSinglePass,
-  canRenderRoughExteriorCapInSinglePass,
-} from './transparent-pass-policy.js';
+import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
@@ -1121,7 +1118,7 @@ export function createThreeView({
     switch (descriptor?.kind) {
       case 'material-interface':
         return {
-          visible: transparent,
+          visible: transparent && inspection.__auditHideMaterialInterfaces !== true,
           materialState: interfaceMaterialState(opacity),
           transparentSort: true,
         };
@@ -1149,7 +1146,7 @@ export function createThreeView({
         };
       case 'implant-cut':
         return {
-          visible: true,
+          visible: inspection.__auditHideImplantFaces !== true,
           materialState: alwaysTransparent(
             opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
           ),
@@ -1157,19 +1154,21 @@ export function createThreeView({
         };
       case 'implant-internal':
         return {
-          visible: transparent,
+          visible: transparent && inspection.__auditHideImplantFaces !== true,
           materialState: alwaysTransparent(opacity * 0.18),
           transparentSort: true,
         };
       case 'implant-depth':
         return {
-          visible: transparent,
+          visible: transparent && inspection.__auditHideImplantFaces !== true,
           materialState: alwaysTransparent(opacity * 0.24),
           transparentSort: true,
         };
       case 'implant-surface':
         return {
-          visible: transparent || Boolean(descriptor?.exposed),
+          visible:
+            inspection.__auditHideImplantFaces !== true &&
+            (transparent || Boolean(descriptor?.exposed)),
           materialState: alwaysTransparent(opacity * 0.3),
           transparentSort: true,
         };
@@ -1733,12 +1732,6 @@ export function createThreeView({
           materialState,
           appearance,
           presentation,
-        }) ||
-        canRenderRoughExteriorCapInSinglePass({
-          transparentScene: presentationMode() === 'transparent',
-          materialState,
-          appearance,
-          presentation,
         })
       ) {
         material.forceSinglePass = true;
@@ -2250,12 +2243,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ? createAnnotationGradientMaterial(task.implant, task.state, {
             roughness: cap.appearance ? 0.84 : 0.72,
           })
-        : createSurfaceMaterial(
-            task.layer,
-            task.state,
-            task.visualAppearance || cap.appearance,
-            { ...task.presentation, roughCap: task.kind === 'material' },
-          );
+        : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
       if (geometry.userData.roughGpuDisplacement && !task.implant) {
         decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
@@ -2559,12 +2547,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ? createAnnotationGradientMaterial(task.implant, task.state, {
               roughness: cap.appearance ? 0.84 : 0.72,
             })
-          : createSurfaceMaterial(
-            task.layer,
-            task.state,
-            task.visualAppearance || cap.appearance,
-            { ...task.presentation, roughCap: task.kind === 'material' },
-          );
+          : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
         if (geometry.userData.roughGpuDisplacement && !task.implant) {
           decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
