@@ -288,71 +288,6 @@ try {
               zBreak: true,
             },
             {
-              name: 'surface-cut-zbreak-no-interfaces-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideMaterialInterfaces: true,
-            },
-            {
-              name: 'surface-cut-zbreak-no-implant-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideImplantFaces: true,
-            },
-            {
-              name: 'surface-cut-zbreak-no-implant-surface-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideImplantSurface: true,
-            },
-            {
-              name: 'surface-cut-zbreak-no-implant-volume-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideImplantVolume: true,
-            },
-            {
-              name: 'surface-cut-zbreak-no-implant-cut-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideImplantCut: true,
-            },
-            {
-              name: 'surface-cut-zbreak-implant-cut-only-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideImplantSurface: true,
-              __auditHideImplantVolume: true,
-            },
-            {
-              name: 'surface-cut-zbreak-no-overlays-audit',
-              opacity: 0.5,
-              borders: false,
-              fast: false,
-              detail: true,
-              zBreak: true,
-              __auditHideMaterialInterfaces: true,
-              __auditHideImplantFaces: true,
-            },
-            {
               name: 'surface-cut-zbreak-transparent-detail',
               opacity: 0.5,
               borders: true,
@@ -400,11 +335,6 @@ try {
       const started = performance.now();
       await page.evaluate(
         async ({ config, fit }) => {
-          window.inspection.__auditHideMaterialInterfaces = false;
-          window.inspection.__auditHideImplantFaces = false;
-          window.inspection.__auditHideImplantSurface = false;
-          window.inspection.__auditHideImplantVolume = false;
-          window.inspection.__auditHideImplantCut = false;
           Object.assign(window.inspection, config);
           // Use the existing 3D Z Break display-only transform to pull the
           // active Black-Si surface away from the 350 um base. Front/Back
@@ -479,11 +409,18 @@ try {
       assert.equal(diagnostics.host.renderState, 'ready');
       if (fixture.name.startsWith('photodetector-') && config.zBreak) {
         const blend = Number(diagnostics.host.roughDisplayBlendMin);
+        const implantBlend = Number(diagnostics.host.roughImplantDisplayBlendMin);
         assert.ok(Number.isFinite(blend) && blend > 0);
+        assert.ok(Number.isFinite(implantBlend) && implantBlend > 0);
         if (fixture.name.includes('-micro-')) {
           assert.equal(blend, 1, 'microscopic roughness must retain full display relief');
+          assert.equal(implantBlend, 1, 'microscopic implant must match physical roughness');
         } else {
           assert.ok(blend < 0.5, 'macro under-sampled roughness must be prefiltered');
+          assert.ok(
+            Math.abs(blend - implantBlend) < 1e-12,
+            'Implant and material must share the same display-only roughness sampling',
+          );
         }
       }
       if (config.zBreak) {

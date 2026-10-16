@@ -1118,7 +1118,7 @@ export function createThreeView({
     switch (descriptor?.kind) {
       case 'material-interface':
         return {
-          visible: transparent && inspection.__auditHideMaterialInterfaces !== true,
+          visible: transparent,
           materialState: interfaceMaterialState(opacity),
           transparentSort: true,
         };
@@ -1146,9 +1146,7 @@ export function createThreeView({
         };
       case 'implant-cut':
         return {
-          visible:
-            inspection.__auditHideImplantFaces !== true &&
-            inspection.__auditHideImplantCut !== true,
+          visible: true,
           materialState: alwaysTransparent(
             opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
           ),
@@ -1156,28 +1154,19 @@ export function createThreeView({
         };
       case 'implant-internal':
         return {
-          visible:
-            transparent &&
-            inspection.__auditHideImplantFaces !== true &&
-            inspection.__auditHideImplantVolume !== true,
+          visible: transparent,
           materialState: alwaysTransparent(opacity * 0.18),
           transparentSort: true,
         };
       case 'implant-depth':
         return {
-          visible:
-            transparent &&
-            inspection.__auditHideImplantFaces !== true &&
-            inspection.__auditHideImplantVolume !== true,
+          visible: transparent,
           materialState: alwaysTransparent(opacity * 0.24),
           transparentSort: true,
         };
       case 'implant-surface':
         return {
-          visible:
-            inspection.__auditHideImplantFaces !== true &&
-            inspection.__auditHideImplantSurface !== true &&
-            (transparent || Boolean(descriptor?.exposed)),
+          visible: transparent || Boolean(descriptor?.exposed),
           materialState: alwaysTransparent(opacity * 0.3),
           transparentSort: true,
         };
@@ -2180,7 +2169,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     tasks.forEach((task, index) => {
       const appearance = task.cap.appearance,
         blend =
-          appearance?.kind === 'rough' && appearance.morphology === 'stochastic' && !task.implant
+          appearance?.kind === 'rough' && appearance.morphology === 'stochastic'
             ? roughDisplayHeightBlend(appearance.featureSize, pitch)
             : 1;
       task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
@@ -2189,6 +2178,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.roughDisplaySamplePitchUm = String(pitch);
     host.dataset.roughDisplayBlendMin = String(
       Math.min(1, ...tasks.map((task) => task.visualAppearance?.displayRoughBlend ?? 1)),
+    );
+    host.dataset.roughImplantDisplayBlendMin = String(
+      Math.min(
+        1,
+        ...tasks
+          .filter((task) => task.implant && task.cap.appearance?.kind === 'rough')
+          .map((task) => task.visualAppearance?.displayRoughBlend ?? 1),
+      ),
     );
     return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount, policy };
   }
