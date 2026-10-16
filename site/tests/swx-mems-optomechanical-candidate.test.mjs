@@ -159,37 +159,30 @@ test('each optical port terminates at the correct fixed/moving node', async () =
   }
 });
 
-test('moving optical paths use genuine 5um/3um tangent arcs in OFF and ON', () => {
+test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree bends', () => {
   for (const state of ['off', 'on']) {
     const pose = createSwxOptomechanicalCandidate(state);
     const centerlines = pose.opticalRouting.movingCenterlines;
     assert.equal(centerlines.length, 2);
-    assert.deepEqual(
-      centerlines.map(({ radiusUm }) => radiusUm),
-      SWX_REPORTED.meanderRadiiUm,
-    );
     for (const [leg, path] of centerlines.entries()) {
-      assert.equal(
-        path.arcs.length,
-        3,
-        'Both moving optical legs need three curvature-controlled turns',
-      );
+      assert.equal(path.halfTurns.length, 2, 'Each waveguide needs two 180deg bends, not one');
+      assert.deepEqual(path.halfTurns.map(({ radiusUm }) => radiusUm), SWX_REPORTED.meanderRadiiUm);
+      assert.equal(path.arcs.length, 3, 'Two U-bends plus one tangent terminal approach');
+      assert.ok(path.arcs.every((arc) => Number.isFinite(arc.sweepRad)));
       for (const arc of path.arcs) {
-        assert.equal(arc.radiusUm, SWX_REPORTED.meanderRadiiUm[leg]);
-        for (let index = arc.firstArcIndex; index <= arc.lastArcIndex; index++) {
+        for (let index = arc.startIndex; index <= arc.endIndex; index++) {
           const [x, y] = path.points[index];
-          const actualRadius = Math.hypot(x - arc.center[0], y - arc.center[1]);
           assert.ok(
-            Math.abs(actualRadius - arc.radiusUm) < 1e-9,
-            state + ' leg ' + leg + ' violates centerline bend radius',
+            Math.abs(Math.hypot(x - arc.center[0], y - arc.center[1]) - arc.radiusUm) < 1e-9,
+            state + ' leg ' + leg + ' violates exact circular radius',
           );
         }
       }
-      const start = path.points[0];
-      const end = path.points.at(-1);
-      const travel = pose.travelUm;
-      approx(start[1], -61 + travel);
-      approx(end[1], -95);
+      assert.equal(path.motionModel, 'kinematic_extension_of_terminal_straight_not_FEM');
+      approx(path.movingStart[1], -61 + pose.travelUm);
+      approx(path.stationaryEnd[1], -95);
+      assert.deepEqual(path.points.at(-1), path.stationaryEnd);
+      assert.equal(path.placementSource, 'illustrative_S6_topology_not_authors_GDS');
     }
   }
   assert.throws(
@@ -203,6 +196,6 @@ test('moving optical paths use genuine 5um/3um tangent arcs in OFF and ON', () =
         5,
       ),
     /does not fit available centerline segment/,
-    'Unfabricable tight waveguide bends must be rejected instead of shrinking the radius',
+    'Unfabricable tight optical fillets must be rejected',
   );
 });
