@@ -308,7 +308,9 @@ try {
                 bonds: store.assemblyPreviewSession.maxIndex(),
                 sources: project.data.waferAssembly.sources.length,
                 readOnly: true,
-                originDisplayColors: [...new Set(store.renderModel().layers.map((layer) => layer.color))],
+                originDisplayColors: [
+                  ...new Set(store.renderModel().layers.map((layer) => layer.color)),
+                ],
               },
             }
           : {}),
