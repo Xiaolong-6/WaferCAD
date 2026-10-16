@@ -1,11 +1,15 @@
 name: Wafer bonding preview Chromium
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/multi-wafer-bonding-from-pr229-20261015
+      - feat/example-gan-hemt-microchannel-20261014
     paths:
       - scripts/v2/check-assembly-preview.mjs
+      - site/ui-v2/assembly-preview.js
+      - site/ui-v2/workstation-entry.js
+      - site/ui-v2/workstation-runtime.js
+      - site/ui-v2/workstation-preview.css
       - .github/workflows/wafer-bonding-preview.yml
   workflow_dispatch:
 
