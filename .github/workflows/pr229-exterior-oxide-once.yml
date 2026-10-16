@@ -1,4 +1,4 @@
-name: PR229 one-shot exposed-surface oxide validation
+name: PR229 one-shot coolant-protected exterior oxide validation
 
 on:
   push:

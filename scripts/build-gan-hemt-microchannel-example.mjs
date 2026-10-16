@@ -134,7 +134,7 @@ export const GAN_TSV_LINER = Object.freeze({
   // This native conformal deposit is restricted to four TSV windows;
   // whole-outside-surface oxide remains explicitly UNMODELED.
   inferredLocalSiO2Um: 0.5,
-  inferredWholeSurfaceSiO2Um: 0.5,
+  inferredProtectedExteriorSiO2Um: 0.5,
   titaniumUm: 0.2,
   copperUm: 0.5,
   inferredFullCuFillUm: 35,
@@ -218,6 +218,19 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     id: 27,
     name: 'Independent GSG AuSn solder footprints (inferred)',
     rectangles: [-1250, 1250].map((x) => centered(200, 330, x)),
+  },
+  {
+    id: 28,
+    name: 'Protected exterior oxide region excluding interconnected central coolant (inferred)',
+    // Four disjoint rectangles preserve all original central coolant bores,
+    // feeder trenches and top manifold branches without tiny mask holes.
+    // This is intentionally NOT full exterior wafer oxidation.
+    rectangles: [
+      rect(-3000, -2500, 2350, 5000),
+      rect(650, -2500, 2350, 5000),
+      rect(-650, -2500, 1300, 650),
+      rect(-650, 1850, 1300, 650),
+    ],
   },
   {
     id: 20,
@@ -658,32 +671,36 @@ export async function buildGanMicrochannel() {
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
   bookmark('03 TSV bores');
-  // Fig. 2(c) oxidizes the external surfaces of the bonded interposer.
-  // Native conformal coverage follows actual exposed front/back geometry,
-  // including narrow physical opening sidewalls. Thickness (0.5 um) is
-  // INFERRED, not a measured thermal-oxidation recipe. Any coolant fluid
-  // obstruction is explicitly rejected by the science gates below.
+  // Unmasked conformal oxide on ALL exposed front/back faces creates a
+  // physical solid bridging the central coolant turning path: this FAILED
+  // the scientific 3D empty-fluid invariant at [7.5,-410,350]. Never hide
+  // or weaken that test. Protect central coolant with editable Mask 28 and
+  // coat the broad peripheral front/back exposed surfaces instead. This
+  // remains a PARTIAL exterior-oxide geometric surrogate, not full coverage.
+  // The 0.5 um thickness is inferred rather than reported by Fig. 2(c).
   process(
-    'Full-exterior front SiO2 on exposed interposer (inferred 0.5 um)',
+    'Protected-periphery front SiO2 on exposed interposer (inferred 0.5 um)',
     'deposit',
     {
       material: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
-      thickness: GAN_TSV_LINER.inferredWholeSurfaceSiO2Um,
+      thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
       coverage: 'conformal',
       face: 'front',
     },
+    28,
   );
   process(
-    'Full-exterior backside SiO2 on exposed interposer (inferred 0.5 um)',
+    'Protected-periphery backside SiO2 on exposed interposer (inferred 0.5 um)',
     'deposit',
     {
       material: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
-      thickness: GAN_TSV_LINER.inferredWholeSurfaceSiO2Um,
+      thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
       coverage: 'conformal',
       face: 'back',
     },
+    28,
   );
-  bookmark('03a Front/back interposer exterior oxide before local via lining');
+  bookmark('03a Protected peripheral front/back oxide before local TSV lining');
   // The paper oxidizes the bonded silicon BEFORE Ti/Cu metallization.
   // SiO2 thickness is not reported. This SECOND local conformal oxide
   // covers the four TSV mask windows on top of the separate front/back
@@ -739,7 +756,7 @@ export async function buildGanMicrochannel() {
   bookmark('03c Cu-filled TSV columns / after inferred planarization');
   record(
     'Electrical TSV and chip wiring finishing steps (metadata only)',
-    'Paper Fig. 2(c,d): native front/back exposed-surface SiO2 and additional local TSV oxide precede Ti/Cu seed and Cu core. Oxidation chemistry, pinhole-free electrical insulation, actual sputter/plating kinetics, NiPaAu, Au routes and electrical continuity remain UNVERIFIED.',
+    'Paper Fig. 2(c,d): MASKED peripheral front/back SiO2 plus local TSV oxide precede Ti/Cu and Cu core; the central coolant area is intentionally uncoated because unmasked conformal Kernel coverage blocked a fluid branch. Full exterior oxidation, dielectric insulation, metal finishing, Au routing and electrical continuity remain UNVERIFIED.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -897,7 +914,7 @@ export async function buildGanMicrochannel() {
       (z) =>
         z <=
         600 +
-          GAN_TSV_LINER.inferredWholeSurfaceSiO2Um +
+          GAN_TSV_LINER.inferredProtectedExteriorSiO2Um +
           GAN_TSV_LINER.inferredLocalSiO2Um +
           GAN_TSV_LINER.titaniumUm +
           GAN_TSV_LINER.copperUm +
@@ -1004,9 +1021,9 @@ export async function buildGanMicrochannel() {
   );
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
-  assert.equal(cooledSegments[0].z0, 605.5, 'Unexpected SiC/AuSn stand-off');
+  assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
-  assert.equal(materialAt([30, 0], 605.49), false, 'SiC backside is coolant-obstructed');
+  assert.equal(materialAt([30, 0], 604.99), false, 'SiC backside is coolant-obstructed');
   const gsgDie = model.layers.find(
     (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
   );
