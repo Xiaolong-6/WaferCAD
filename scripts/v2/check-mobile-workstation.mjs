@@ -155,8 +155,20 @@ try {
         path: resolve(output, `mobile-${width}x${height}-view-navigation.png`),
       });
 
+      // Pure View/Edit navigation must not invalidate all four scientific models.
+      const countersBeforeNavigation = await page.evaluate(
+        () => window.WaferCadV2Workstation.snapshot().counts,
+      );
       await page.locator('[data-action="show-editor"]').click();
       await waitForPaint(page);
+      const countersAfterNavigation = await page.evaluate(
+        () => window.WaferCadV2Workstation.snapshot().counts,
+      );
+      assert.deepEqual(
+        countersAfterNavigation,
+        countersBeforeNavigation,
+        'Mobile View/Edit switches update Shell hosts without invalidating all scientific views',
+      );
       assert.equal(await root.getAttribute('data-mobile'), 'edit');
       assert.equal(await editor.isVisible(), true);
       assert.equal(await stage.isVisible(), false);
