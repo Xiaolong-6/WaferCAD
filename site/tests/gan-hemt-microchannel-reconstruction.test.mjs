@@ -117,10 +117,7 @@ test('GSG independent die and contact geometry stays distinct from HEMT and TSV'
     inner.x + inner.w <= outer.x + outer.w &&
     inner.y + inner.h <= outer.y + outer.h;
   const overlaps = (a, b) =>
-    a.x < b.x + b.w &&
-    b.x < a.x + a.w &&
-    a.y < b.y + b.h &&
-    b.y < a.y + a.h;
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   assert.equal(gsgDie.length, 2);
   assert.equal(gsgSolder.length, 2);
   assert.equal(gsgPads.length, 6);
