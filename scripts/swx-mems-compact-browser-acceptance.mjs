@@ -76,7 +76,25 @@ try {
       const expectedModel = state === 'off' ? source.model : onBranch.headState.model;
       await assertSameMaterialGeometry(expectedModel, loaded.model, { areaToleranceUm2: 0.01 });
       assert.equal(loaded.layout.elements.length, source.layout.elements.length);
-      await page.locator('[data-action="mode:overview"]').click();
+      const overview = page.locator('[data-action="mode:overview"]');
+      if ((await overview.count()) === 0) {
+        const actionDiagnostics = await page.evaluate(() => ({
+          url: location.pathname,
+          ui: document.documentElement.getAttribute('data-ui'),
+          actions: [...document.querySelectorAll('[data-action]')]
+            .map((node) => node.getAttribute('data-action'))
+            .filter((action) => /^(mode:|view:|domain:)/.test(action))
+            .slice(0, 90),
+          root: document.body.dataset.ready,
+        }));
+        console.error('SWX_COMPACT_BROWSER_MODE_DIAGNOSTIC', JSON.stringify(actionDiagnostics));
+        await page.screenshot({
+          path: resolve(directory, 'compact-' + state + '-missing-overview.png'),
+          animations: 'disabled',
+        });
+        throw new Error('Overview action unavailable; inspect captured UI before changing acceptance');
+      }
+      await overview.click();
       await waitForPaint(page);
       await page.screenshot({
         path: resolve(directory, 'compact-' + state + '-overview.png'),
