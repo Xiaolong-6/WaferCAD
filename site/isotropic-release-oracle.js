@@ -16,12 +16,7 @@ export function isotropicReleaseDepth(radius, lateralDistance) {
   return Math.sqrt((radius - lateralDistance) * (radius + lateralDistance));
 }
 
-export function isotropicReleaseFrontZ({
-  seedZ,
-  radius,
-  lateralDistance,
-  face = 'front',
-}) {
+export function isotropicReleaseFrontZ({ seedZ, radius, lateralDistance, face = 'front' }) {
   if (!Number.isFinite(seedZ)) throw new RangeError('seedZ must be finite');
   if (face !== 'front' && face !== 'back') throw new RangeError('Invalid face');
   const depth = isotropicReleaseDepth(radius, lateralDistance);

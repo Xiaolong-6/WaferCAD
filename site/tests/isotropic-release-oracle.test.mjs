@@ -50,7 +50,7 @@ test('uniform 8-step release has explicit conservative bound; refinement converg
   const bounds = [8, 16, 32, 64].map((n) => uniformRadialStairErrorBound(radius, n));
   assert.ok(bounds.every(Number.isFinite));
   assert.ok(bounds[0] > bounds[1] && bounds[1] > bounds[2] && bounds[2] > bounds[3]);
-  assert.ok(bounds[0] > 0, 'Eight-slice undercut is not a continuous silhouette');
+  assert.ok(bounds[0] > 17, 'Eight radial staircase slices have a large edge-depth bound');
   for (const n of [8, 16, 32]) {
     const step = radius / n;
     const exactNearRim = isotropicReleaseDepth(radius, radius - step);
@@ -61,6 +61,9 @@ test('uniform 8-step release has explicit conservative bound; refinement converg
 test('invalid inputs fail rather than creating an unphysical etch envelope', () => {
   assert.throws(() => isotropicReleaseDepth(-1, 0), RangeError);
   assert.throws(() => isotropicReleaseDepth(5, NaN), RangeError);
-  assert.throws(() => isotropicReleaseFrontZ({ seedZ: 0, radius: 2, lateralDistance: 0, face: 'both' }), RangeError);
+  assert.throws(
+    () => isotropicReleaseFrontZ({ seedZ: 0, radius: 2, lateralDistance: 0, face: 'both' }),
+    RangeError,
+  );
   assert.throws(() => uniformRadialStairErrorBound(36, 0), RangeError);
 });
