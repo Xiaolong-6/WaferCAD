@@ -491,7 +491,8 @@ try {
       const state = window.WaferCadV2Workstation?.snapshot();
       return (
         state?.assemblyWires?.length === 2 &&
-        document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2'
+        document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2' &&
+        document.getElementById('threeHost')?.dataset.assemblyWireEndcapCount === '4'
       );
     },
     null,
@@ -513,6 +514,7 @@ try {
     separateGsgAuContacts: 6,
     wireBondGeometryVerified: true,
     wireBondCount: 2,
+    closedEndcapSurfaces: 4,
     wireBondDiameterUmInferred: 12,
   };
   assert.deepEqual(historyErrors, [], 'Three-chip Bookmark restore emitted browser errors');
