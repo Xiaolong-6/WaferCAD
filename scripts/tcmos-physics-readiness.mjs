@@ -63,10 +63,12 @@ export function auditTcmosPnBtbtReadiness(model, netEvidence, overlapAreaUm2) {
     byId.size === EXPECTED_TERMINAL_NETS.length &&
     EXPECTED_TERMINAL_NETS.every(([id, net]) => byId.get(id) === net);
 
-  const terminalNames = EXPECTED_TERMINAL_NETS.filter(([id]) =>
-    id.endsWith('-source') || id.endsWith('-drain'),
-  ).map(([id]) => id);
-  const overlapAreas = terminalNames.map((id) => overlapAreaUm2?.[id]);
+  const overlapAreas = [];
+  for (const [id] of EXPECTED_TERMINAL_NETS) {
+    if (id.endsWith('-source') || id.endsWith('-drain')) {
+      overlapAreas.push(overlapAreaUm2?.[id]);
+    }
+  }
   const qualitativeOverlapPresent = overlapAreas.every(
     (area) => typeof area === 'number' && Number.isFinite(area) && area > 0,
   );
@@ -99,10 +101,7 @@ export function auditTcmosPnBtbtReadiness(model, netEvidence, overlapAreaUm2) {
       ohmicContactReady: false,
       ternaryVoltageTransferReady: false,
     },
-    prerequisites: REQUIRED_INPUTS.map((item) => ({
-      ...item,
-      status: 'missing',
-    })),
+    prerequisites: REQUIRED_INPUTS.map((item) => ({ ...item, status: 'missing' })),
     numericalOutputAuthorized: false,
   };
 }
