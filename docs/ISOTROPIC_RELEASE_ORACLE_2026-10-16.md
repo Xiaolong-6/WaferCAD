@@ -46,7 +46,7 @@ Targeted test: `node --test site/tests/isotropic-release-oracle.test.mjs`.
 
 ## Adaptive reference geometry (not production Kernel)
 
-A new opt-in *pure* depth-band generator partitions **lateral footprint
+A new opt-in _pure_ depth-band generator partitions **lateral footprint
 radii** evenly and maps those endpoints through the continuous
 `z(L)=sqrt(r²-L²)` profile. Its variable-depth bands are guaranteed to
 have at most the requested lateral footprint error when the midpoint

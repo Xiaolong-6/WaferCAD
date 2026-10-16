@@ -109,8 +109,8 @@ test('adaptive depth bands guarantee lateral accuracy at every depth', () => {
 });
 
 test('adaptive front accuracy is monotone and fails closed on band budget', () => {
-  const counts = [1, 0.5, 0.25].map((error) =>
-    adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: error }).length,
+  const counts = [1, 0.5, 0.25].map(
+    (error) => adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: error }).length,
   );
   assert.deepEqual(counts, [18, 36, 72]);
   assert.deepEqual(adaptiveReleaseDepthBands({ radius: 0, maxLateralErrorUm: 0.5 }), []);

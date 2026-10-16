@@ -70,11 +70,7 @@ export function uniformDepthMidpointLateralErrorBound(radius, slices) {
  * This is a pure reference for a SINGLE exposed seed. It does not account
  * for selectivity, other seed islands or XY Boolean polygonization.
  */
-export function adaptiveReleaseDepthBands({
-  radius,
-  maxLateralErrorUm,
-  maxBands = 4096,
-}) {
+export function adaptiveReleaseDepthBands({ radius, maxLateralErrorUm, maxBands = 4096 }) {
   nonnegative(radius, 'radius');
   if (!Number.isFinite(maxLateralErrorUm) || maxLateralErrorUm <= 0) {
     throw new RangeError('maxLateralErrorUm must be finite and positive');
