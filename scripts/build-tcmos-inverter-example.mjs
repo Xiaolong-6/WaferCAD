@@ -65,11 +65,17 @@ function bodyTapActive(cx) {
 const pixelCnt = (x, y, w = 6) => fig(x - w / 2, y - w / 2, x + w / 2, y + w / 2);
 function bodyTapContacts(cx) {
   const out = [];
-  // Contact arrays measured along the U's two bottom rows and upright legs.
-  for (const y of [439, 451])
-    for (let x = cx - 112; x <= cx + 112; x += 14) out.push(pixelCnt(x, y));
-  for (const x of [cx - 99, cx - 87, cx + 87, cx + 99])
-    for (const y of [374, 387, 400, 413]) out.push(pixelCnt(x, y));
+  // Fig.1b shows three rows of CNT along the lower U and three columns
+  // along each upright. Every position is specified in source-image pixels.
+  for (const y of [435, 447, 459]) {
+    for (let col = 0; col < 19; col++) {
+      const x = cx - 112 + Math.round((col * 224) / 18);
+      out.push(pixelCnt(x, y));
+    }
+  }
+  for (const x of [cx - 112, cx - 99, cx - 86, cx + 86, cx + 99, cx + 112]) {
+    for (const y of [374, 387, 400, 413, 425]) out.push(pixelCnt(x, y));
+  }
   return out;
 }
 // First six slots are semantically stable terminals used by contact/net audit.
