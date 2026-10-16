@@ -19,6 +19,73 @@ const classifications = new Set([
 ]);
 const acceptanceStatuses = new Set(['open-paper-match', 'accepted-paper-match', 'blocked-source']);
 
+// A label or screenshot alone cannot certify scientific correspondence with
+// a published micrograph. A future positive acceptance must carry the
+// source-panel identity, a real comparison artifact and quantitative geometry.
+// These are *metadata integrity* gates; an independent reviewer must still
+// inspect the actual original and overlay before changing the status.
+function assertPaperMatchEvidence(entry) {
+  if (entry.acceptance.status !== 'accepted-paper-match') return;
+  assert.ok(
+    entry.classification === 'reported' || entry.classification === 'derived',
+    'Assumed, unreported and display-only geometry cannot certify a paper figure',
+  );
+  assert.equal(entry.acceptance.calibratedScale, true);
+  assert.equal(entry.acceptance.quantitativeOverlay, true);
+  assert.equal(entry.captureEvidence?.originalPaperOverlay, true);
+
+  const evidence = entry.acceptance.paperMatchEvidence;
+  assert.ok(evidence && typeof evidence === 'object' && !Array.isArray(evidence));
+  assert.ok(
+    typeof evidence.sourcePanel === 'string' &&
+      evidence.sourcePanel.length >= 5 &&
+      entry.paperPanel.includes(evidence.sourcePanel),
+    'The paper overlay must identify a specific cited figure panel',
+  );
+  assert.match(evidence.sourcePanelURL || '', /^https:\/\/[^\s]+$/);
+  assert.match(
+    evidence.comparisonArtifactURL || '',
+    /^https:\/\/github\.com\/Xiaolong-6\/WaferCAD\/actions\/runs\/\d+\/artifacts\/\d+$/,
+  );
+  assert.match(evidence.measurementReportMember || '', /^[\w./-]+\.json$/);
+  const cut = evidence.modelCutUm;
+  assert.ok(
+    Array.isArray(cut?.a) &&
+      Array.isArray(cut?.b) &&
+      cut.a.length === 2 &&
+      cut.b.length === 2 &&
+      [...cut.a, ...cut.b].every(Number.isFinite) &&
+      Math.hypot(cut.b[0] - cut.a[0], cut.b[1] - cut.a[1]) > 0,
+    'Accepted overlay needs a finite nonzero physical A-B cut',
+  );
+  const m = evidence.measurement;
+  assert.ok(
+    m &&
+      Number.isFinite(m.umPerPixel) &&
+      m.umPerPixel > 0 &&
+      Number.isInteger(m.matchedFeatures) &&
+      m.matchedFeatures >= 3,
+    'Accepted overlay needs a positive image scale and at least three matched features',
+  );
+  assert.ok(
+    Number.isFinite(m.maxRegistrationErrorUm) &&
+      m.maxRegistrationErrorUm > 0 &&
+      Number.isFinite(m.registrationErrorUm) &&
+      m.registrationErrorUm >= 0 &&
+      m.registrationErrorUm <= m.maxRegistrationErrorUm,
+    'Paper-model image registration exceeds its declared acceptance bound',
+  );
+  assert.ok(
+    Number.isFinite(m.maxShapeMismatchUm) &&
+      m.maxShapeMismatchUm > 0 &&
+      Number.isFinite(m.shapeMismatchUm) &&
+      m.shapeMismatchUm >= 0 &&
+      m.shapeMismatchUm <= m.maxShapeMismatchUm,
+    'Paper-model physical shape mismatch exceeds its declared acceptance bound',
+  );
+}
+
+
 test('eight paper provenance records match the actual published example catalog', async () => {
   assert.equal(provenance.schema, 'wafercad-literature-figure-provenance-v1');
   assert.equal(provenance.issue, 241);
@@ -58,7 +125,7 @@ test('eight paper provenance records match the actual published example catalog'
       assert.match(entry.captureEvidence.artifactURL, /\/artifacts\/\d+$/);
       assert.equal(entry.captureEvidence.manifestMember, 'figure-cut-manifest.json');
       assert.ok(entry.captureEvidence.capturedMembers.length > 0);
-      assert.equal(entry.captureEvidence.originalPaperOverlay, false);
+      assert.equal(typeof entry.captureEvidence.originalPaperOverlay, 'boolean');
       for (const member of entry.captureEvidence.capturedMembers) {
         assert.match(member, /\.png$/);
       }
@@ -97,15 +164,51 @@ test('eight paper provenance records match the actual published example catalog'
 
 test('no scientific paper-figure claim is accepted without real calibrated overlay', () => {
   for (const entry of provenance.entries) {
-    const accepted = entry.acceptance.status === 'accepted-paper-match';
-    if (accepted) {
-      assert.equal(entry.acceptance.calibratedScale, true);
-      assert.equal(entry.acceptance.quantitativeOverlay, true);
-      assert.equal(
-        entry.classification === 'display-only' || entry.classification === 'assumed',
-        false,
-        'Assumed geometry or render-only facets cannot certify a publication figure',
-      );
-    }
+    assertPaperMatchEvidence(entry);
+  }
+});
+
+// Synthetically validated metadata is never counted as a real accepted figure:
+// these mutations only prove that unsupported acceptance status fails closed.
+test('paper-match status rejects uncalibrated and scientifically unsupported claims', () => {
+  const unverified = structuredClone(provenance.entries[0]);
+  unverified.acceptance.status = 'accepted-paper-match';
+  unverified.acceptance.calibratedScale = true;
+  unverified.acceptance.quantitativeOverlay = true;
+  assert.throws(() => assertPaperMatchEvidence(unverified), /equal|paperMatchEvidence|object/);
+
+  const validSchema = structuredClone(unverified);
+  validSchema.captureEvidence.originalPaperOverlay = true;
+  validSchema.acceptance.paperMatchEvidence = {
+    sourcePanel: 'Fig. 1a',
+    sourcePanelURL: validSchema.sourceURL,
+    comparisonArtifactURL: validSchema.captureEvidence.artifactURL,
+    measurementReportMember: 'paper-fig1a-measurement.json',
+    modelCutUm: { a: [-1, 0], b: [1, 0] },
+    measurement: {
+      umPerPixel: 0.01,
+      matchedFeatures: 3,
+      registrationErrorUm: 0.01,
+      maxRegistrationErrorUm: 0.02,
+      shapeMismatchUm: 0.03,
+      maxShapeMismatchUm: 0.05,
+    },
+  };
+  assert.doesNotThrow(() => assertPaperMatchEvidence(validSchema));
+
+  for (const change of [
+    (entry) => { entry.classification = 'assumed'; },
+    (entry) => { entry.captureEvidence.originalPaperOverlay = false; },
+    (entry) => { entry.acceptance.paperMatchEvidence.sourcePanel = 'Fig. 99z'; },
+    (entry) => { entry.acceptance.paperMatchEvidence.modelCutUm.b = [-1, 0]; },
+    (entry) => { entry.acceptance.paperMatchEvidence.measurement.umPerPixel = 0; },
+    (entry) => { entry.acceptance.paperMatchEvidence.measurement.matchedFeatures = 2; },
+    (entry) => { entry.acceptance.paperMatchEvidence.measurement.registrationErrorUm = 0.03; },
+    (entry) => { entry.acceptance.paperMatchEvidence.measurement.shapeMismatchUm = 0.06; },
+    (entry) => { entry.acceptance.paperMatchEvidence.comparisonArtifactURL = 'https://example.com/mock.png'; },
+  ]) {
+    const entry = structuredClone(validSchema);
+    change(entry);
+    assert.throws(() => assertPaperMatchEvidence(entry));
   }
 });

@@ -39,6 +39,30 @@ acceptance requires original publication panel with DOI, journal rights
 considerations, accurate dimensions, actual browser output and an
 independent interpretation of any mismatch.
 
+## Acceptance escalation: independently reproducible paper match
+
+The `accepted-paper-match` state is deliberately unused for all eight
+families. The fail-closed metadata contract requires, *before* this status
+can be assigned:
+
+- A specific original **paper panel** identified in the source citation,
+  a published source-panel URL, a real Chromium comparison artifact URL
+  and a named JSON measurement-report member in that artifact.
+- The exact physical A–B cut in µm, a positive µm/pixel registration scale,
+  and at least **three** identified correspondence features.
+- Explicit measured registration and physical-shape mismatch errors, each
+  bounded by its own **predeclared** positive acceptance limit.
+- An actual overlay using the original paper panel. An assumed mask, an
+  unreported material structure or a display-only roughness surface may
+  never be labeled accepted.
+
+`node --test site/tests/literature-provenance-matrix.test.mjs` includes
+synthetic positive/negative *schema* fixtures to test these requirements.
+Those synthetic fixtures provide **zero evidence** of actual image
+correspondence. The scientific reviewer still must independently verify the
+paper image, calibration, saved material owner, exact cut and numerical
+comparison. No new geometric tolerance was approved by this metadata update.
+
 ## Verified evidence bundle mapping
 
 The register now enumerates the exact `figure-cut-manifest.json` and
@@ -55,17 +79,6 @@ captured PNG member names from real GitHub Actions archives:
 These screenshots and saved point probes support software geometry
 reconstruction. All source-paper quantitative overlay fields remain false
 because no device-matched SEM calibration has been demonstrated.
-
-## New targeted Chromium evidence cases (pending browser execution)
-
-New browser cuts are now configured for the M3D vertical metal-via
-junctions, the local MAGIC M4→M1 metal ladder and MoS₂/AlOx gate,
-and the small Wang TiO₂ four-meta-atom process fixture. Material
-ownership is probed against the real saved XY/Z stacks before capture.
-These cases are not yet published screenshot evidence: the register
-retains `captureEvidence: null` for all three until an actual browser
-artifact is generated and independently inspected. The four-atom fixture
-is a local proxy, not the 4,725-site optimized author lens/GDS.
 
 ## October 16 — three newly captured family-specific sections
 
