@@ -94,10 +94,20 @@ export function samplePhysicalPyramidSlab(
     throw new RangeError('Physical top plane must exceed bottom plane');
   }
   const front = squarePyramidSample(x, y, {
-    pitch, height, planeZ: topPlaneZ, originX, originY, face: 'front',
+    pitch,
+    height,
+    planeZ: topPlaneZ,
+    originX,
+    originY,
+    face: 'front',
   });
   const back = squarePyramidSample(x, y, {
-    pitch, height, planeZ: bottomPlaneZ, originX, originY, face: 'back',
+    pitch,
+    height,
+    planeZ: bottomPlaneZ,
+    originX,
+    originY,
+    face: 'back',
   });
   return {
     layerId,
@@ -111,12 +121,7 @@ export function samplePhysicalPyramidSlab(
 // Integrate the two symmetric four-facet pyramid surfaces over one cell.
 // The averaged physical slab is thicker than its valley-to-valley distance
 // by 2h/3. This is a distinct physical invariant from a planar 2.5D stack.
-export function physicalPyramidSlabCellVolume({
-  pitch,
-  height,
-  bottomPlaneZ,
-  topPlaneZ,
-}) {
+export function physicalPyramidSlabCellVolume({ pitch, height, bottomPlaneZ, topPlaneZ }) {
   positive(pitch, 'pitch');
   positive(height, 'height');
   finite(bottomPlaneZ, 'bottomPlaneZ');
@@ -124,6 +129,5 @@ export function physicalPyramidSlabCellVolume({
   if (!(bottomPlaneZ < topPlaneZ)) {
     throw new RangeError('Physical top plane must exceed bottom plane');
   }
-  return pitch * pitch * (topPlaneZ - bottomPlaneZ) +
-    2 * squarePyramidReliefVolume(pitch, height);
+  return pitch * pitch * (topPlaneZ - bottomPlaneZ) + 2 * squarePyramidReliefVolume(pitch, height);
 }

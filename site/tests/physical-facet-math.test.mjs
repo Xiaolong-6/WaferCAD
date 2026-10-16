@@ -83,7 +83,13 @@ test('physical slab has unique front/back material interfaces at every XY point'
     bottomPlaneZ: -125.5,
     topPlaneZ: 125.5,
   };
-  for (const point of [[0, 0], [1.2, 0.4], [3.2, 0], [3.2, 3.2], [-2, -1]]) {
+  for (const point of [
+    [0, 0],
+    [1.2, 0.4],
+    [3.2, 0],
+    [3.2, 3.2],
+    [-2, -1],
+  ]) {
     const slab = samplePhysicalPyramidSlab(...point, descriptor);
     assert.equal(slab.layerId, 'silicon');
     assert.ok(slab.z0 < slab.z1);
@@ -123,16 +129,13 @@ test('physical double-sided relief conserves integral thickness separately from 
 
 test('physical slab owner fails closed for invalid layer or inverted planes', () => {
   const valid = {
-    layerId: 'silicon', pitch: 6.4, height: 4.5,
-    bottomPlaneZ: -125.5, topPlaneZ: 125.5,
+    layerId: 'silicon',
+    pitch: 6.4,
+    height: 4.5,
+    bottomPlaneZ: -125.5,
+    topPlaneZ: 125.5,
   };
   assert.throws(() => samplePhysicalPyramidSlab(0, 0, { ...valid, layerId: '' }), RangeError);
-  assert.throws(
-    () => samplePhysicalPyramidSlab(0, 0, { ...valid, bottomPlaneZ: 126 }),
-    RangeError,
-  );
-  assert.throws(
-    () => physicalPyramidSlabCellVolume({ ...valid, topPlaneZ: NaN }),
-    RangeError,
-  );
+  assert.throws(() => samplePhysicalPyramidSlab(0, 0, { ...valid, bottomPlaneZ: 126 }), RangeError);
+  assert.throws(() => physicalPyramidSlabCellVolume({ ...valid, topPlaneZ: NaN }), RangeError);
 });
