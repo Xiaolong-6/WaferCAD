@@ -8,6 +8,7 @@ test('mobile navigation updates Shell and docking schedule without invalidating 
     isStarting: () => false,
     renderShell: () => calls.push('shell'),
     invalidateScientific: () => calls.push('scientific'),
+    invalidateVisibleView: (key) => calls.push(`view:${key}`),
     scheduleLayout: () => calls.push('layout'),
   });
   for (let index = 0; index < 5; index++) render({ scientific: false });
@@ -22,6 +23,7 @@ test('model workflow and breakpoint repaint retain full scientific invalidation 
     isStarting: () => false,
     renderShell: () => calls.push('shell'),
     invalidateScientific: () => calls.push('scientific'),
+    invalidateVisibleView: (key) => calls.push(`view:${key}`),
     scheduleLayout: () => calls.push('layout'),
   });
   render();
@@ -35,6 +37,7 @@ test('initial shell boot does not invalidate incomplete scientific hosts', () =>
     isStarting: () => starting,
     renderShell: () => calls.push('shell'),
     invalidateScientific: () => calls.push('scientific'),
+    invalidateVisibleView: (key) => calls.push(`view:${key}`),
     scheduleLayout: () => calls.push('layout'),
   });
   render();
@@ -42,4 +45,17 @@ test('initial shell boot does not invalidate incomplete scientific hosts', () =>
   starting = false;
   render({ scientific: false });
   assert.deepEqual(calls, ['shell', 'layout']);
+});
+
+test('returning to a scientific view invalidates only that view', () => {
+  const calls = [];
+  const render = createWorkstationRenderScheduler({
+    isStarting: () => false,
+    renderShell: () => calls.push('shell'),
+    invalidateScientific: () => calls.push('all'),
+    invalidateVisibleView: (key) => calls.push(`view:${key}`),
+    scheduleLayout: () => calls.push('layout'),
+  });
+  render({ scientificView: 'mask' });
+  assert.deepEqual(calls, ['shell', 'view:mask', 'layout']);
 });
