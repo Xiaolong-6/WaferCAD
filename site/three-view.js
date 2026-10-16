@@ -46,7 +46,12 @@ import {
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
-import { boundaryProfileFromPositions, sidewallBoundarySamples } from './rough-boundary-profile.js';
+import {
+  boundaryProfileFromPositions,
+  boundaryProfileOverlapsEdge,
+  shiftedBoundaryProfile,
+  sidewallBoundarySamples,
+} from './rough-boundary-profile.js';
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
@@ -2044,6 +2049,68 @@ diffuseColor.a *= waferCadAlphaScale;`,
     });
   }
 
+  function matchImplantCutToRoughCaps(implant, parts, profiles, appearances) {
+    const surfaceKey = implant.face === 'back' ? 'lowerSurface' : 'upperSurface';
+    const outside = Number(implant.outerZ);
+    const direction = implant.face === 'back' ? -1 : 1;
+    const source = implant.surfaceAppearance;
+    if (source?.kind !== 'rough' || !Number.isFinite(outside)) {
+      return { parts, profiles, appearances, matched: 0 };
+    }
+    const physicalCaps = physicalSurfacePlan?.caps || [];
+    const candidates = [...profiles].flatMap(([capIndex, profile]) => {
+      const cap = physicalCaps[capIndex];
+      if (!cap || cap.buried || cap.appearance?.kind !== 'rough') return [];
+      if (Number(cap.profileNormal ?? cap.normal) !== direction) return [];
+      if ((Number(cap.z) - outside) * direction < -2e-5) return [];
+      // Display-only LOD is not a physical profile characteristic.
+      const same = [
+        'profileId',
+        'seed',
+        'morphology',
+        'polarity',
+        'featureSize',
+        'meanHeight',
+        'etchDepth',
+        'featureCv',
+        'heightCv',
+      ].every((key) => cap.appearance[key] === source[key]);
+      return same ? [{ capIndex, cap, profile }] : [];
+    });
+    if (!candidates.length) return { parts, profiles, appearances, matched: 0 };
+    const matchedProfiles = new Map(profiles);
+    const matchedAppearances = new Map(appearances);
+    const resolvedParts = [];
+    let matched = 0;
+    for (const part of parts) {
+      const selected = candidates
+        .filter(({ profile }) => boundaryProfileOverlapsEdge(profile, part.p, part.q))
+        .sort((a, b) => Math.abs(a.cap.z - outside) - Math.abs(b.cap.z - outside))[0];
+      if (!selected) {
+        resolvedParts.push(part);
+        continue;
+      }
+      const syntheticCapIndex = -(matched + 1);
+      const shifted = shiftedBoundaryProfile(selected.profile, outside - selected.cap.z);
+      matchedProfiles.set(syntheticCapIndex, shifted);
+      matchedAppearances.set(
+        syntheticCapIndex,
+        appearances.get(selected.capIndex) || selected.cap.appearance,
+      );
+      resolvedParts.push({
+        ...part,
+        [surfaceKey]: { ...part[surfaceKey], capIndex: syntheticCapIndex },
+      });
+      matched++;
+    }
+    return {
+      parts: resolvedParts,
+      profiles: matchedProfiles,
+      appearances: matchedAppearances,
+      matched,
+    };
+  }
+
   function installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices = null) {
     const appearanceByCapIndex = new Map();
     for (const task of roughTasks) {
@@ -2053,16 +2120,25 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
     let rebuilt = 0;
+    let matchedImplantCuts = 0;
     for (const object of presentationObjects) {
-      const previous = object.geometry,
-        parts = previous?.userData?.waferCadSidewallParts;
+      const previous = object.geometry;
+      const implant = object.userData?.waferCadImplantCut;
+      const parts = implant
+        ? displaySidewallParts(annotationSidewallParts(implant, getClipGeometry()))
+        : previous?.userData?.waferCadSidewallParts;
       if (!parts) continue;
-      object.geometry = geometryFromSidewallParts(
-        parts,
+      const aligned = implant
+        ? matchImplantCutToRoughCaps(implant, parts, boundaryProfiles, appearanceByCapIndex)
+        : null;
+      const geometry = geometryFromSidewallParts(
+        aligned?.parts || parts,
         previous.userData.waferCadSidewallTolerance || 0,
-        boundaryProfiles,
-        appearanceByCapIndex,
+        aligned?.profiles || boundaryProfiles,
+        aligned?.appearances || appearanceByCapIndex,
       );
+      object.geometry = implant ? shearImplantGeometry(geometry, implant) : geometry;
+      matchedImplantCuts += aligned?.matched || 0;
       previous.dispose();
       object.position.z = 0;
       trackZDisplayObject(object);
@@ -2072,6 +2148,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       rebuilt++;
     }
+    host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
     rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
@@ -3419,6 +3496,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           if (cut) {
             cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
+            // Rebuild its visual cut only after the actual conformal rough
+            // caps are prepared; canonical implant depth/dose stay unchanged.
+            if (appearance) cut.userData.waferCadImplantCut = implant;
             implantCutCount++;
             implantGradientMeshCount++;
           }

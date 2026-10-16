@@ -110,3 +110,27 @@ export function sidewallBoundarySamples(
     }));
   return result;
 }
+
+
+// A display-only annotation can follow a neighboring conformal layer's
+// resolved XY mesh boundary while retaining its own physical Z offset.
+export function shiftedBoundaryProfile(profile, dz = 0) {
+  if (!profile || !Number.isFinite(dz)) return null;
+  if (dz === 0) return profile;
+  const positions = new Float32Array(profile.positions);
+  for (let index = 2; index < positions.length; index += 3) {
+    positions[index] = Math.fround(positions[index] + dz);
+  }
+  return boundaryProfileFromPositions(positions);
+}
+
+export function boundaryProfileOverlapsEdge(profile, p, q) {
+  const line = canonicalLineInterval(p, q);
+  if (!line) return false;
+  return matchingSegments(profile, line).some(({ p: a, q: b }) => {
+    const ta = line.ux * a[0] + line.uy * a[1];
+    const tb = line.ux * b[0] + line.uy * b[1];
+    return Math.min(line.t1, Math.max(ta, tb)) -
+      Math.max(line.t0, Math.min(ta, tb)) > 1e-8;
+  });
+}

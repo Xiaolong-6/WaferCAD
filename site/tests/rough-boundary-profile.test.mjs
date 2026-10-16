@@ -97,3 +97,32 @@ test('display-only anti-alias fallback matches rough cap without altering canoni
   assert.ok(Math.abs(upperZ - expected) < 1e-12);
   assert.equal(roughProfileOffsetAtPoint(0, 0, appearance), raw);
 });
+
+
+test('translated final cap boundary retains Float32 XY and physical 50 nm separation', () => {
+  const positions = new Float32Array([
+    0, 0, 174.35, 0.25, 0, 174.4, 0.25, 0, 174.4, 0.5, 0, 174.35,
+  ]);
+  const source = boundaryProfileFromPositions(positions);
+  const implant = shiftedBoundaryProfile(source, -0.05);
+  assert.equal(boundaryProfileOverlapsEdge(source, [0, 0], [0.5, 0]), true);
+  assert.equal(boundaryProfileOverlapsEdge(source, [0, 1], [0.5, 1]), false);
+  const samples = sidewallBoundarySamples(
+    {
+      p: [0, 0],
+      q: [0.5, 0],
+      z0: 172.8,
+      z1: 174.3,
+      upperSurface: { capIndex: -1 },
+    },
+    { upperProfile: implant },
+  );
+  assert.equal(samples.length, 3);
+  for (let i = 0; i < samples.length; i++) {
+    const top = source.positions[i * 3 + 2];
+    assert.equal(samples[i].point[0], source.positions[i * 3]);
+    assert.equal(samples[i].point[1], source.positions[i * 3 + 1]);
+    assert.ok(Math.abs(top - samples[i].upperZ - 0.05) < 2e-5);
+  }
+  assert.deepEqual(source.positions, positions, 'canonical cap buffer remains unchanged');
+});
