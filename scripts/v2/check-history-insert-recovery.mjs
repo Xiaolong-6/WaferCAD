@@ -141,6 +141,7 @@ try {
     assert.deepEqual(reloaded.workflow.steps, original.workflow.steps);
     assert.deepEqual(reloaded.workflow.branches, original.workflow.branches);
     console.log('V2_HISTORY_INSERT_RECOVERY: Worker fault, exact rollback, Save/Reload PASS');
+
     // #289 success contract: actual v2 Insert-before must replay three saved
     // successor Steps through production Workers and preserve their Z order.
     assert.equal(reloaded.workflow.writable, true, 'Reopened owning tab must retain its lease');
@@ -227,7 +228,6 @@ try {
     console.log(
       'V2_HISTORY_INSERT_SUCCESS: exact 25nm layer Z, three Worker replays, History/IO PASS',
     );
-
   } finally {
     await context.close();
   }
