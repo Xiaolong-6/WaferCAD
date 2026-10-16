@@ -206,7 +206,9 @@ try {
         root: shell.getRoot(),
         getState: () => uiState.desktopLayout,
         dispatch: changeDesktopLayout,
-        enabled: desktopDockingActive,
+        // Focus is a single-view projection; never show splitters from the
+        // underlying multi-view user layout while it is active.
+        enabled: () => desktopDockingActive() && !uiState.temporaryFocus,
       });
   window.addEventListener(
     'pagehide',
