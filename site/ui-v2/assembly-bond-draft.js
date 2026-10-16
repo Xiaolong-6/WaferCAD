@@ -7,11 +7,11 @@ export function mountAssemblyBondDraftControls({
   root = document.body,
   onChanged = () => {},
 }) {
-  const panel = document.createElement('section');
+  const panel = document.createElement('details');
   panel.className = 'assembly-bond-draft-tools';
   panel.setAttribute('aria-label', 'Experimental Assembly Bond editor');
 
-  const header = document.createElement('strong');
+  const header = document.createElement('summary');
   header.textContent = 'Add donor · Direct Bond';
   const description = document.createElement('p');
   description.textContent =
