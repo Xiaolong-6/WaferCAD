@@ -30,12 +30,28 @@ const panel = async (key) => {
   await page.locator(`.p-nav [data-action="domain:${key}"]`).click();
   await waitForPaint(page);
 };
-// Project Open may return the workstation to Main-only view. Section is a
-// dock on desktop, and its maximize button must be visible before clicking.
+// Current desktop UI can switch among Overview / Main / Mask / 3D / Section
+// directly; earlier shells use view:* actions and an independent Section dock.
+// Use actual visible navigation controls, never synthetic state changes.
+const selectView = async (key) => {
+  const legacy = page.locator(`[data-action="view:${key}"]:visible`);
+  if (await legacy.count()) {
+    await legacy.first().click();
+  } else {
+    const label = key === 'three' ? '3D' : 'Main';
+    await page.getByRole('button', { name: label, exact: true }).first().click();
+  }
+};
 const revealSectionDock = async () => {
   const dock = page.locator('#sectionPanel');
   if (!(await dock.isVisible())) {
-    await page.locator('[data-action="section"]').click();
+    const legacy = page.locator('[data-action="section"]:visible');
+    if (await legacy.count()) {
+      await legacy.first().click();
+    } else {
+      // The current single-view shell exposes Section as a primary view tab.
+      await page.getByRole('button', { name: 'Section', exact: true }).first().click();
+    }
   }
   await dock.waitFor({ state: 'visible', timeout: 12000 });
   await waitForPaint(page);
@@ -338,7 +354,7 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-section-expanded.png') });
   await maximizeSection.click();
   await waitForPaint(page);
-  await page.locator('[data-action="view:three"]').click();
+  await selectView('three');
   await waitForPaint(page);
   const maximizeThree = page.locator('[data-action="maximize:three"]:visible').first();
   await maximizeThree.click();
@@ -355,7 +371,7 @@ try {
     { device: 'nmos-HVTP', gateX: 3, ax: 2.35, bx: 3.65 },
   ];
   for (const local of localSections) {
-    await page.locator('[data-action="view:main"]').click();
+    await selectView('main');
     const sliceSettings = page.locator('[data-action="slice-coordinates"]');
     if (!(await sliceSettings.isVisible())) {
       const roiToggle = page.locator('#mainPanel [data-action="roi"]');
@@ -486,7 +502,7 @@ try {
     // Project Open returns to the Main single view. Activate 3D explicitly
     // before interacting with its toolbar; a hidden maximize control must
     // never be clicked in a browser acceptance test.
-    await page.locator('[data-action="view:three"]').click();
+    await selectView('three');
     await waitForPaint(page);
     const expandThree = page.locator('[data-action="maximize:three"]').first();
     await expandThree.click();
@@ -611,7 +627,7 @@ try {
       1,
       'Only the target buried HVT annotation may remain visible in the isolated image',
     );
-    await page.locator('[data-action="view:three"]').click();
+    await selectView('three');
     await waitForPaint(page);
     await expandThree.click();
     await waitForPaint(page);
