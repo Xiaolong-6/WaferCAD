@@ -59,8 +59,7 @@ function materialVolume(model, layerId) {
           volume +
           geometryArea(region.geom) *
             region.stack.reduce(
-              (height, layer) =>
-                height + (layer.layerId === layerId ? layer.z1 - layer.z0 : 0),
+              (height, layer) => height + (layer.layerId === layerId ? layer.z1 - layer.z0 : 0),
               0,
             ),
         0,
