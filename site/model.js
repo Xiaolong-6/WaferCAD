@@ -642,7 +642,11 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
       model.width * model.height * 1e-15,
     ),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
-    snapped = canonical.map((region) => ({
+    // Synchronize collinear shared-edge nodes while all coordinates are still
+    // exact. Independent per-region rounding can otherwise open zero-width
+    // seams into real missing XY material on curved, highly noded contours.
+    synchronized = nodeProcessPartitionEdges(canonical),
+    snapped = synchronized.map((region) => ({
       ...region,
       geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
     }));
@@ -663,6 +667,7 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
     }));
   };
   probe('canonical', canonical);
+  probe('pre-snap-node-synchronization', synchronized);
   probe('first-snap', snapped);
 
   // Runtime geometry is checked before snapping. Any overlap in this second
