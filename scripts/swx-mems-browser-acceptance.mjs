@@ -39,6 +39,37 @@ try {
       });
       assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      // Run the same acceptance on the legacy shell and Main's desktop Dock.
+      const desktopDock = page.locator('.p-desktop-dock-actions [data-action="dock:overview"]');
+      const isDocking = (await desktopDock.count()) > 0;
+      const showOverview = async () => {
+        if (isDocking) await desktopDock.click();
+        else await page.locator('[data-action="mode:overview"]').click();
+      };
+      const focusView = async (view) => {
+        if (isDocking) {
+          await desktopDock.click();
+          if (view === 'mask') {
+            await page.locator('[data-action="domain:mask"]').click();
+          } else {
+            await page.locator('#threePanel [data-action="maximize:three"]').click();
+          }
+        } else {
+          await page.locator('[data-action="mode:single"]').click();
+          await page.locator('[data-action="view:' + view + '"]').click();
+        }
+      };
+      const showSection = async () => {
+        if (isDocking) {
+          await desktopDock.click();
+        } else {
+          const sectionDock = page.locator('[data-action="section"]');
+          if ((await sectionDock.getAttribute('aria-pressed')) !== 'true') {
+            await sectionDock.click();
+          }
+        }
+        await page.locator('#sectionPanel').waitFor({ state: 'visible' });
+      };
       await page.locator('[data-action="domain:project"]').click();
       await page.locator('#openProjectInput').setInputFiles(filename);
       const confirmation = page.getByRole('button', {
@@ -89,7 +120,7 @@ try {
       assert.equal(imported.layout.elements.length, source.layout.elements.length);
       assert.ok(imported.workflow.steps.length >= 8, 'History did not import');
       assert.ok(imported.model.layers.some((layer) => layer.name === 'Au electrode'));
-      await page.locator('[data-action="view:mask"]').click();
+      await focusView('mask');
       await waitForPaint(page);
       assert.ok((await snapshot()).layout.elements.length > 100);
 
@@ -128,12 +159,12 @@ try {
       await page.locator('#maskExportSettings').waitFor({ state: 'hidden' });
       // Save full-size layout evidence instead of relying on the 4-up
       // thumbnail, where 200nm teeth and individual comb fingers vanish.
-      await page.locator('[data-action="mode:single"]').click();
+      await focusView('mask');
       await waitForPaint(page);
       await page.locator('#maskPanel').screenshot({
         path: resolve(out, 'swx-' + state + '-mask-full.png'),
       });
-      await page.locator('[data-action="view:three"]').click();
+      await focusView('three');
       await page.waitForFunction(
         () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
         null,
@@ -141,10 +172,10 @@ try {
       );
       await waitForPaint(page);
       await page.locator('[data-action="domain:history"]').click();
-      await page.locator('[data-action="mode:overview"]').click();
+      await showOverview();
       await page.waitForFunction(
         () => {
-          const stage = document.querySelector('[data-view-mode="overview"]');
+          const stage = document.querySelector('[data-view-mode="overview"],[data-view-mode="docking"]');
           if (!stage) return false;
           return ['mainCanvas', 'maskCanvas', 'threeHost', 'sectionCanvas'].every((id) => {
             const node = document.getElementById(id);
@@ -325,12 +356,7 @@ try {
             { timeout: 120000 },
           );
         }
-        await page.locator('[data-action="mode:single"]').click();
-        await page.locator('[data-action="view:three"]').click();
-        const sectionDock = page.locator('[data-action="section"]');
-        if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
-          await sectionDock.click();
-        }
+        await focusView('three');
         await page.waitForFunction(
           (expected) => {
             const host = document.getElementById('threeHost');
@@ -358,19 +384,15 @@ try {
           path: resolve(out, 'swx-' + state + '-3d-' + review.name + '.png'),
         });
         if (review.name === 'comb-left') {
-          const dock = page.locator('[data-action="section"]');
-          if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
+          await showSection();
           await waitForPaint(page);
           await page.locator('#sectionPanel').screenshot({
             path: resolve(out, 'swx-' + state + '-section-left-comb-box.png'),
           });
         }
       }
-      // In UI v2 Section is a dock, not a "view:section" toolbar item.
-      const sectionToggle = page.locator('[data-action="section"]');
-      if ((await sectionToggle.getAttribute('aria-pressed')) !== 'true') {
-        await sectionToggle.click();
-      }
+      // Section is a dock in both shells, with different public controls.
+      await showSection();
       await waitForPaint(page);
       await page.mouse.move(1380, 920);
       const sectionReview = page.locator('#sectionPanel');

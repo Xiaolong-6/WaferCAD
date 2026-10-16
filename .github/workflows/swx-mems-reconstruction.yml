@@ -45,10 +45,6 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: Diagnostic Prettier patch for S6 and S7 candidate (temporary)
-        run: |
-          npx prettier --write site/tests/swx-mems-compact-guides.test.mjs site/tests/swx-mems-optomechanical-candidate.test.mjs scripts/swx-mems-compact-bends.mjs scripts/swx-mems-compact-guides.mjs scripts/swx-mems-figure-audit.mjs scripts/swx-mems-compact-browser-acceptance.mjs
-          git diff -- site/tests/swx-mems-compact-guides.test.mjs site/tests/swx-mems-optomechanical-candidate.test.mjs scripts/swx-mems-compact-bends.mjs scripts/swx-mems-compact-guides.mjs scripts/swx-mems-figure-audit.mjs scripts/swx-mems-compact-browser-acceptance.mjs
       - name: Compact actuator targeted scientific contracts
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Compact optical/mechanical interface scientific contracts
