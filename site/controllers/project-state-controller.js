@@ -13,6 +13,7 @@ import { normalizeSectionZScales } from '../section-z-collapse.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
 import { equalStatePairs } from '../state-equality.js';
+import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 
 export function createEmptyLayout() {
   return {
@@ -38,6 +39,8 @@ export function createProjectStateController({
   // This reader must validate the entire migrated project before returning it.
   // The app supplies the strict import worker; non-worker callers use project IO.
   readValidatedFile = readProjectFile,
+  // Opt-in for the future source-aware workspace adapter, not the ordinary UI.
+  enableAssemblyWorkspace = false,
 }) {
   let importedStates = new WeakMap();
 
@@ -45,18 +48,20 @@ export function createProjectStateController({
   // its workspace-state lifecycle currently has no canonical Assembly owner.
   // Importing would silently discard source/History lineage on the next Save.
   // Keep the file untouched until a transactional Bond workspace is connected.
-  function assertEditableProject(project) {
-    if (project?.waferAssembly != null) {
+  function assertEditableProject(project, { completeProject = false } = {}) {
+    if (project?.waferAssembly == null) return;
+    if (!enableAssemblyWorkspace) {
       throw new Error(
         'This bonded Assembly project requires the multi-wafer editor, which is not enabled yet. The source file was not modified.',
       );
     }
+    if (completeProject) validateBondedAssemblyProject(project);
   }
 
   async function readProjectSnapshot(file) {
     const project = await readValidatedFile(file);
     if (!project) return project;
-    assertEditableProject(project);
+    assertEditableProject(project, { completeProject: true });
     importedStates = new WeakMap();
     const states = [
       ...(project.snapshots || []).map((record) => record.state),
@@ -100,6 +105,9 @@ export function createProjectStateController({
       maskRoiAnchor: state.maskRoiAnchor,
       activeFace: state.activeFace,
       ...(state.processRecipe ? { processRecipe: structuredClone(state.processRecipe) } : {}),
+      ...(state.waferAssembly != null
+        ? { waferAssembly: structuredClone(state.waferAssembly) }
+        : {}),
       roi: state.roi,
       roiAnchor: state.roiAnchor,
       section: state.section,
@@ -123,15 +131,25 @@ export function createProjectStateController({
 
     if (includeSnapshots) {
       project.name = state.projectName;
-      project.snapshots = getSnapshotRecords();
+      const records = getSnapshotRecords();
       const snapshotBranches = getSnapshotBranchState();
-      if (snapshotBranches) project.snapshotBranches = snapshotBranches;
+      if (state.waferAssembly != null) {
+        // Product History needs first-class Bond references; ordinary History
+        // records cannot safely own a bonded source graph or embed it again.
+        if (records.length || snapshotBranches) {
+          throw new Error('Bonded Assembly product History is not yet supported.');
+        }
+      } else {
+        project.snapshots = records;
+        if (snapshotBranches) project.snapshotBranches = snapshotBranches;
+      }
     }
+    if (state.waferAssembly != null) validateBondedAssemblyProject(project);
     return project;
   }
 
   function loadProjectSnapshot(project) {
-    assertEditableProject(project);
+    assertEditableProject(project, { completeProject: true });
     setSectionEditEnabled(false);
 
     const model = project.model;
@@ -196,6 +214,7 @@ export function createProjectStateController({
         project.processRecipe && typeof project.processRecipe === 'object'
           ? structuredClone(project.processRecipe)
           : null,
+      waferAssembly: project.waferAssembly ? structuredClone(project.waferAssembly) : null,
       roi: project.roi ? normalizeRoi(project.roi) : null,
       roiAnchor: project.roiAnchor || 'center',
       section: project.section,
@@ -240,6 +259,7 @@ export function createProjectStateController({
       maskRoiAnchor: 'center',
       activeFace: 'front',
       processRecipe: null,
+      waferAssembly: null,
       roi: null,
       roiAnchor: 'center',
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
@@ -265,6 +285,7 @@ export function createProjectStateController({
   }
 
   function isValidSnapshotState(state) {
+    if (state?.waferAssembly != null) return false;
     try {
       validateProjectFile(state);
       return state.snapshots == null;
@@ -274,6 +295,7 @@ export function createProjectStateController({
   }
 
   function isValidSnapshotStates(states) {
+    if (states.some((state) => state?.waferAssembly != null)) return false;
     try {
       const uniqueStates = [...new Set(states)];
       const copies = uniqueStates.map((state) => {
