@@ -36,9 +36,7 @@ export function createSwxSemSupportAudit(state = 'off') {
   const supported = [
     entry('fixed comb left 6um handle', [-25, a.fixedBusYUm]),
     entry('fixed comb right 6um handle', [25, a.fixedBusYUm]),
-    ...pose.actuator.anchors.map((ring, i) =>
-      entry('folded-spring anchor ' + (i + 1), midpoint(ring)),
-    ),
+    ...pose.actuator.anchors.map((ring, i) => entry('folded-spring anchor ' + (i + 1), midpoint(ring))),
     ...pose.guides.guides.map((guide, i) =>
       entry('S7 structural-aligner anchor ' + (i + 1), midpoint(guide.pad)),
     ),
