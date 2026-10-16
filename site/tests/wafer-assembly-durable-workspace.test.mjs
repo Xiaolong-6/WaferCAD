@@ -234,7 +234,10 @@ test('failed durable Process navigation restores prior cursor, graph and visual 
   });
   const prior = h.session.exportVariantGraph();
   deny = true;
-  await assert.rejects(() => h.session.restorePostBondStepDurable(0), /durable graph write failure/);
+  await assert.rejects(
+    () => h.session.restorePostBondStepDurable(0),
+    /durable graph write failure/,
+  );
   assert.deepEqual(h.session.exportVariantGraph(), prior);
   assert.deepEqual(h.session.postBondPreviewModel(), film.model);
   assert.equal(h.session.processTimeline().index, 1);
