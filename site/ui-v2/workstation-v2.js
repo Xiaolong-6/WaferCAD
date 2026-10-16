@@ -2,7 +2,8 @@
 // All domain lifecycle and visible business state arrive through an adapter/presentation API.
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
-  const production = document.body.hasAttribute('data-workstation');
+  const production =
+    document.body.hasAttribute('data-workstation') && document.body.dataset.previewMode !== 'true';
   window.createWaferCadV2Workstation = ({
     root,
     state,
