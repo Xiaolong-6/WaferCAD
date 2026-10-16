@@ -4,13 +4,19 @@
 import { readFileSync } from 'node:fs';
 
 const svg = readFileSync(
-  new URL('../examples/projects/tcmos-ternary-inverter-2019-candidate/layout-complete.svg', import.meta.url),
+  new URL(
+    '../examples/projects/tcmos-ternary-inverter-2019-candidate/layout-complete.svg',
+    import.meta.url,
+  ),
   'utf8',
 );
 const layerIds = { ACTIVE: 1, POLY: 6, LVTN: 12, LVTP: 13, HVTN: 4, HVTP: 5, CNT: 10, METAL1: 11 };
 const expected = { ACTIVE: 4, POLY: 2, LVTN: 1, LVTP: 1, HVTN: 1, HVTP: 1, CNT: 218, METAL1: 4 };
 export const TCMOS_SVG_FRAME = Object.freeze({
-  width: 1113, height: 758, origin: [560, 480], unitsPerIllustrativeUm: 80,
+  width: 1113,
+  height: 758,
+  origin: [560, 480],
+  unitsPerIllustrativeUm: 80,
 });
 const toUm = ([x, y]) => [
   Math.round(((x - 560) / 80) * 1000000) / 1000000,
@@ -32,16 +38,26 @@ function group(name) {
   throw Error('Unclosed SVG group: ' + name);
 }
 function rect(a) {
-  const x = Number(a.x), y = Number(a.y), w = Number(a.width), h = Number(a.height);
+  const x = Number(a.x),
+    y = Number(a.y),
+    w = Number(a.width),
+    h = Number(a.height);
   if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) {
     throw Error('Invalid SVG rectangle');
   }
-  return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+  return [
+    [x, y],
+    [x + w, y],
+    [x + w, y + h],
+    [x, y + h],
+  ];
 }
 function path(d) {
   const tokens = d.match(/[MLHVZ]|-?\d+(?:\.\d+)?/g) || [];
   const points = [];
-  let x = 0, y = 0, i = 0;
+  let x = 0,
+    y = 0,
+    i = 0;
   while (i < tokens.length) {
     const op = tokens[i++];
     if (op === 'M' || op === 'L') {

@@ -22,7 +22,10 @@ test('Approved vector Mask imports four integral METAL1 paths and 218 exact CNT 
   const active = groups.find(({ name }) => name === 'ACTIVE');
   const contacts = groups.find(({ name }) => name === 'CNT');
   assert.equal(metal.shapes.length, 4);
-  assert.deepEqual(metal.shapes.map(({ points }) => points.length), [8, 12, 16, 16]);
+  assert.deepEqual(
+    metal.shapes.map(({ points }) => points.length),
+    [8, 12, 16, 16],
+  );
   assert.equal(active.shapes.length, 4);
   assert.equal(contacts.shapes.length, 218);
   assert.deepEqual(metal.shapes[2].points[0], [-6.7625, 2.0875]);
