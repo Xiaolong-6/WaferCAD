@@ -18,6 +18,7 @@ const {
   appendAssemblyVariantPostBondStep,
   assemblyVariantPostBondModel,
   setAssemblyVariantPostBondCursor,
+  forkAssemblyProcessVariant,
 } = await import('../wafer-assembly-variants.js');
 const { readProjectFile, serializeProject } = await import('../project-io.js');
 
@@ -294,4 +295,89 @@ test('post-Bond cursor rejects forged indices and accepts previous v2 sidecar at
   assert.deepEqual(assemblyVariantPostBondModel(legacyV2), assemblyVariantPostBondModel(graph));
   const historicalBond = setAssemblyVariantCursor(graph, 0);
   assert.throws(() => setAssemblyVariantPostBondCursor(historicalBond, 0), /completed Bond HEAD/);
+});
+
+test('Process-stage fork preserves the selected Recipe prefix and diverges without donor duplication', () => {
+  const base = createAssemblyVariantGraph(bonded());
+  const first = appendAssemblyVariantPostBondStep(base, {
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const main = appendAssemblyVariantPostBondStep(first.graph, {
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  const undone = setAssemblyVariantPostBondCursor(main.graph, 1);
+  const alternate = forkAssemblyProcessVariant(undone, {
+    id: 'process-alt',
+    name: 'Alternative cap',
+  });
+  assert.equal(alternate.branches.length, 2);
+  assert.equal(alternate.sources.length, base.sources.length);
+  assert.equal(alternate.branches[1].forkIndex, 1);
+  assert.equal(alternate.branches[1].forkProcessIndex, 1);
+  assert.deepEqual(alternate.branches[1].postBondSteps, first.graph.branches[0].postBondSteps);
+  assert.equal(alternate.branches[0].postBondSteps.length, 2);
+  assert.equal(alternate.branches[0].postBondCursor, 1);
+  assert.deepEqual(assemblyVariantPostBondModel(alternate), first.model);
+  const deviated = appendAssemblyVariantPostBondStep(alternate, {
+    command: 'deposit',
+    params: { material: 'Al', thicknessUm: 0.4, face: 'front' },
+  });
+  assert.equal(deviated.graph.sources.length, 2);
+  assert.equal(deviated.graph.branches[0].postBondSteps.length, 2);
+  assert.equal(deviated.graph.branches[1].postBondSteps.length, 2);
+  assert.equal(deviated.graph.branches[1].forkProcessIndex, 1);
+  assert.notDeepEqual(deviated.model, main.model);
+  assert.deepEqual(
+    assemblyVariantPostBondModel(activateAssemblyVariant(deviated.graph, 'main')),
+    first.model,
+  );
+  assert.deepEqual(
+    assemblyVariantPostBondModel(setAssemblyVariantPostBondCursor(
+      activateAssemblyVariant(deviated.graph, 'main'), 2,
+    )),
+    main.model,
+  );
+  assert.deepEqual(
+    assemblyVariantPostBondModel(JSON.parse(JSON.stringify(deviated.graph))),
+    deviated.model,
+  );
+  assert.throws(
+    () => appendAssemblyVariantBond(forkAssemblyProcessVariant(undone, { id: 'no-bond', atProcessIndex: 0 }), wafer('later'), { donorId: 'X' }),
+    /Further Bond after post-Bond Process/,
+  );
+});
+
+test('Process-fork ancestry, checkpoint and immutable stage prefix fail closed on corruption', () => {
+  const first = appendAssemblyVariantPostBondStep(createAssemblyVariantGraph(bonded()), {
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1, face: 'front' },
+  });
+  const main = appendAssemblyVariantPostBondStep(first.graph, {
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.4, face: 'front' },
+  });
+  const original = setAssemblyVariantPostBondCursor(main.graph, 1);
+  assert.throws(
+    () => forkAssemblyProcessVariant(main.graph, { id: 'bad' }),
+    /historical Process checkpoint/,
+  );
+  assert.throws(
+    () => forkAssemblyProcessVariant(original, { id: 'bad', atProcessIndex: 2 }),
+    /historical Process checkpoint/,
+  );
+  const forked = forkAssemblyProcessVariant(original, { id: 'alt' });
+  const invalid = (change, pattern) => {
+    const copy = structuredClone(forked);
+    change(copy);
+    assert.throws(() => validateAssemblyVariantGraph(copy), pattern);
+  };
+  invalid((g) => { g.branches[1].forkProcessIndex = 2; }, /Process fork checkpoint/);
+  invalid((g) => { g.branches[1].forkProcessIndex = -1; }, /Process fork checkpoint/);
+  invalid((g) => { g.branches[1].forkIndex = 0; }, /Process fork checkpoint/);
+  invalid((g) => { g.branches[1].postBondSteps = []; }, /Process fork checkpoint/);
+  invalid((g) => { g.branches[1].parentId = null; }, /Root Assembly Variant|source registry/);
+  invalid((g) => { g.branches[1].postBondSteps[0].modelFingerprint = 'bad'; }, /checksum differs/);
+  invalid((g) => { g.version = 1; }, /Process fork checkpoint|format v2/);
 });
