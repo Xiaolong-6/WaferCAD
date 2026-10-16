@@ -326,3 +326,33 @@ test('native runtime restores a committed historical cursor without truncating i
   assert.deepEqual(restored.restoreIndex(2).model, original.model);
   assert.equal(restored.exportVariantGraph().branches[0].bonds.length, 2);
 });
+
+test('native 3D/Section receives derived post-Bond geometry without mutating source model', async () => {
+  const original = bonded();
+  const runtime = createWorkstationRuntime(
+    { source: 'three.wafercad', hash: '', data: original },
+    { assemblyPreview: true },
+  );
+  const owner = runtime.createAssemblyBondDraftSession(async () => true);
+  const baseline = structuredClone(runtime.state.model);
+  assert.equal(owner.postBondPreviewModel(), null);
+  const applied = await owner.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, area: 'full', face: 'front' },
+  });
+  runtime.setPostBondPresentationModel(owner.postBondPreviewModel());
+  assert.deepEqual(runtime.state.model, baseline);
+  assert.deepEqual(runtime.renderModel().regions, applied.model.regions);
+  assert.notDeepEqual(runtime.renderModel().regions, baseline.regions);
+  assert.equal(owner.exportVariantGraph().branches[0].postBondSteps.length, 1);
+  const graph = owner.exportVariantGraph();
+  const reloaded = createWorkstationRuntime(
+    { source: 'recovered', hash: '', data: original, variantGraph: graph },
+    { assemblyPreview: true },
+  );
+  const reopened = reloaded.createAssemblyBondDraftSession(async () => true);
+  reloaded.setPostBondPresentationModel(reopened.postBondPreviewModel());
+  assert.deepEqual(reloaded.renderModel().regions, applied.model.regions);
+  assert.deepEqual(reloaded.state.model, baseline);
+  assert.deepEqual(reopened.fullProduct().model, original.model);
+});
