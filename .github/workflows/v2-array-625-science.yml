@@ -6,6 +6,8 @@ on:
     paths:
       - 'scripts/v2/check-array-625-science.mjs'
       - 'site/model-array.js'
+      - 'site/tests/array-6400-history.test.mjs'
+      - 'scripts/v2/check-array-6400-worker-replay.mjs'
       - 'site/model-array-process.js'
       - '.github/workflows/v2-array-625-science.yml'
   workflow_dispatch:
@@ -28,6 +30,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify 6400-site sparse Process/History/atomic science
+        run: node --test site/tests/array-6400-history.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash
@@ -43,6 +47,10 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-array-625-science.mjs
+      - name: Verify saved 6400-site Mask History with production Chromium Worker
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/v2/check-array-6400-worker-replay.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
