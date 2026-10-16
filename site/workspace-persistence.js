@@ -1,8 +1,5 @@
 import { expandProjectStorage, prepareProjectForWorkspaceStorage } from './project-io.js';
-import {
-  migrateProjectFile,
-  validateProjectFile,
-} from './project-schema.js';
+import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
 
 const DB_NAME = 'wafercad-workspace-v1';

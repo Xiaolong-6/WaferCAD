@@ -50,7 +50,9 @@ export function createProjectStateController({
   function assertEditableProject(project, { completeProject = false } = {}) {
     if (project?.waferAssembly == null) return;
     if (!enableAssemblyWorkspace) {
-      throw new Error('This bonded Assembly requires the multi-wafer editor. The source file was not modified.');
+      throw new Error(
+        'This bonded Assembly requires the multi-wafer editor. The source file was not modified.',
+      );
     }
     if (completeProject) validateBondedAssemblyProject(project);
   }
