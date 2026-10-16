@@ -158,10 +158,7 @@ function historicalSidewallSnap(value, quantum) {
   return Object.is(rounded, -0) ? 0 : Number(rounded.toPrecision(15));
 }
 
-function historicalSidewallGroups(
-  parts,
-  { minInstances = 8, quantum = 1e-4 } = {},
-) {
+function historicalSidewallGroups(parts, { minInstances = 8, quantum = 1e-4 } = {}) {
   const threshold = Math.max(2, Math.floor(Number(minInstances) || 8)),
     buckets = new Map(),
     leftovers = [];
