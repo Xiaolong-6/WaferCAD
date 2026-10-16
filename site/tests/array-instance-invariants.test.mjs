@@ -1,108 +1,154 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  ARRAY_MODEL_KERNEL,
-  arrayParts,
-  translatedAppearance,
-} from '../model-array.js';
+import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
 
-const boundary = [
-  [
-    [
-      [-1, -1],
-      [1, -1],
-      [1, 1],
-      [-1, 1],
-      [-1, -1],
-    ],
-  ],
-];
+await loadGeometryKernel();
+const { applyOperation, createModel } = await import('../model.js');
+const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
+const { arrayParts, resolveArrayModel } = await import('../model-array.js');
+const { migrateProjectFile, validateProcessModel } = await import('../project-schema.js');
+const { readProjectFile, serializeProject } = await import('../project-io.js');
+const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
 
-function fixture(side) {
-  const model = {
-    kernel: ARRAY_MODEL_KERNEL,
-    revision: 1,
-    processRevision: 1,
-    boundary,
-    layers: [{ id: 'base', name: 'Si' }, { id: 'film', name: 'Film' }],
-    implants: [],
-    electricalRegions: [],
-    array: {
-      templates: [
-        {
-          id: 'cell',
-          model: {
-            boundary,
-            regions: [
-              {
-                id: 'r0',
-                geom: boundary,
-                stack: [
-                  { layerId: 'base', z0: 0, z1: 1 },
-                  {
-                    layerId: 'film',
-                    z0: 1,
-                    z1: 1.01,
-                    frontSurface: {
-                      kind: 'rough',
-                      sampleOrigin: [0.25, -0.25],
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-      instances: Array.from({ length: side * side }, (_, index) => ({
-        id: `site-${index}`,
-        templateId: 'cell',
-        role: 'device',
-        x: (index % side) * 5,
-        y: Math.floor(index / side) * 5,
-      })),
-    },
-  };
-  return model;
+function grid(rows, pitch, activeSites = rows * rows) {
+  const source = createModel({ shape: 'rect', width: pitch, height: pitch, thickness: 2 });
+  return createRectangularGridArrayModel(source, {
+    kind: 'rect-grid',
+    rows,
+    columns: rows,
+    pitchX: pitch,
+    pitchY: pitch,
+    activeSites,
+  });
 }
 
-for (const side of [25, 80]) {
-  test(`${side * side}-site array retains physical stack and site identity through JSON roundtrip`, () => {
-    const original = fixture(side);
-    const restored = JSON.parse(JSON.stringify(original));
-    const parts = arrayParts(restored);
-    assert.equal(parts.length, side * side);
-    assert.equal(new Set(parts.map((part) => part.id)).size, side * side);
-    assert.equal(
-      new Set(parts.map((part) => `${part.x},${part.y}`)).size,
-      side * side,
+function stackAtCenter(part) {
+  const owners = part.model.regions.filter((region) => pointInMulti([0, 0], region.geom));
+  assert.equal(owners.length, 1, 'Each device center must have exactly one physical owner');
+  return owners[0].stack.map(({ layerId, z0, z1, role }) => [
+    layerId,
+    z0,
+    z1,
+    role || null,
+  ]);
+}
+
+async function roundTrip(model) {
+  const project = migrateProjectFile(
+    projectForBenchmark({ model, section: { a: [-20, 0], b: [20, 0] } }),
+  );
+  const serialized = serializeProject(project);
+  const loaded = await readProjectFile({
+    size: Buffer.byteLength(serialized),
+    text: async () => serialized,
+  });
+  assert.deepEqual(loaded, project, 'Project IO must preserve the entire canonical array');
+  return loaded.model;
+}
+
+test('625-site canonical Process keeps buried Z, selective ROI and Save/Reload exact', async () => {
+  const model = grid(25, 2);
+  validateProcessModel(model);
+  const baseline = new Map(arrayParts(model).map((part) => [part.id, stackAtCenter(part)]));
+  assert.equal(baseline.size, 625);
+
+  const direct = applyOperation(model, {
+    type: 'add',
+    name: '10 nm film',
+    thickness: 0.01,
+    area: model.boundary,
+    face: 'front',
+    growth: 'direct',
+  });
+  assert.equal(direct.changed, true, direct.error);
+  const conformal = applyOperation(model, {
+    type: 'add',
+    name: '10 nm conformal',
+    thickness: 0.01,
+    area: model.boundary,
+    face: 'front',
+    growth: 'conformal',
+  });
+  assert.equal(conformal.changed, true, conformal.error);
+  validateProcessModel(model);
+
+  const coated = new Map(arrayParts(model).map((part) => [part.id, stackAtCenter(part)]));
+  assert.equal(coated.size, 625);
+  for (const [id, stack] of coated) {
+    assert.deepEqual(stack.filter((s) => s[0] === 'base'), baseline.get(id), id);
+    assert.deepEqual(
+      stack.filter((s) => s[0] === direct.layerId),
+      [[direct.layerId, 1, 1.01, null]],
+      id,
     );
-    for (let index = 0; index < parts.length; index++) {
-      const part = parts[index];
-      assert.equal(part.id, `site-${index}`);
-      assert.equal(part.x, (index % side) * 5);
-      assert.equal(part.y, Math.floor(index / side) * 5);
-      assert.deepEqual(part.model.regions[0].stack, original.array.templates[0].model.regions[0].stack);
-      assert.equal(part.model.regions[0].stack[1].z0, 1);
-      assert.equal(part.model.regions[0].stack[1].z1, 1.01);
-    }
-    assert.deepEqual(restored, original);
-  });
-}
+    assert.deepEqual(
+      stack.filter((s) => s[0] === conformal.layerId),
+      [[conformal.layerId, 1.01, 1.02, null]],
+      id,
+    );
+  }
 
-test('array ROI selects only intersecting sites and preserves local roughness coordinates', () => {
-  const model = fixture(25);
-  const selected = arrayParts(model, {
-    minX: 4,
-    maxX: 6,
-    minY: 9,
-    maxY: 11,
+  const roi = applyOperation(model, {
+    type: 'etch',
+    thickness: 0.01,
+    area: rectMulti(1, 1),
+    face: 'front',
+    etchTargetLayerIds: [conformal.layerId],
   });
-  assert.equal(selected.length, 1);
-  assert.equal(selected[0].x, 5);
-  assert.equal(selected[0].y, 10);
-  const appearance = model.array.templates[0].model.regions[0].stack[1].frontSurface;
-  assert.deepEqual(translatedAppearance(appearance, 5, 10).sampleOrigin, [5.25, 9.75]);
-  assert.deepEqual(appearance.sampleOrigin, [0.25, -0.25]);
-  assert.equal(arrayParts(model).length, 625);
+  assert.equal(roi.changed, true, roi.error);
+  validateProcessModel(model);
+  const etched = new Map(arrayParts(model).map((part) => [part.id, stackAtCenter(part)]));
+  assert.equal(etched.size, 625);
+  const middleId = 'site-312';
+  for (const [id, stack] of etched) {
+    if (id === middleId) {
+      assert.deepEqual(
+        stack.filter((s) => s[0] !== conformal.layerId),
+        coated.get(id).filter((s) => s[0] !== conformal.layerId),
+      );
+      assert.equal(
+        stack.some((s) => s[0] === conformal.layerId),
+        false,
+        'Selective ROI removes only the top conformal film at the target center',
+      );
+    } else {
+      assert.deepEqual(stack, coated.get(id), 'Unselected site changed: ' + id);
+    }
+  }
+
+  const restored = await roundTrip(model);
+  assert.deepEqual(
+    arrayParts(restored).map((part) => [part.id, stackAtCenter(part)]),
+    arrayParts(model).map((part) => [part.id, stackAtCenter(part)]),
+    'Save/Reload must preserve all 625 physical stacks',
+  );
+});
+
+test('6400-site real GRID survives canonical IO with physical roles and XY/Z locality', async () => {
+  const model = grid(80, 0.375, 4725);
+  validateProcessModel(model);
+  const original = arrayParts(model);
+  assert.equal(original.length, 6400);
+  assert.equal(original.filter((part) => part.role === 'device').length, 4725);
+  assert.equal(original.filter((part) => part.role === 'background').length, 1675);
+
+  const restored = await roundTrip(model);
+  const parts = arrayParts(restored);
+  assert.equal(parts.length, 6400);
+  assert.equal(new Set(parts.map((part) => part.id)).size, 6400);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    assert.equal(part.id, 'site-' + i);
+    assert.equal(part.x, ((i % 80) - 39.5) * 0.375);
+    assert.equal(part.y, (Math.floor(i / 80) - 39.5) * 0.375);
+    assert.equal(part.role, original[i].role);
+    assert.deepEqual(stackAtCenter(part), [['base', -1, 1, null]]);
+  }
+  const center = resolveArrayModel(restored, {
+    minX: -0.1,
+    maxX: 0.1,
+    minY: -0.1,
+    maxY: 0.1,
+  });
+  assert.equal(center.regions.length, 4, 'ROI expansion must include only four center sites');
 });
