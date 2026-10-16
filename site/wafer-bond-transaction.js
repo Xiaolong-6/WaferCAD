@@ -95,7 +95,6 @@ export function prepareWaferBondTransaction(receiverProject, donorProject, reque
   };
 }
 
-
 /**
  * Deterministically recompute a Bond History operation from independently
  * preserved source projects. The History record never carries mutable donor
