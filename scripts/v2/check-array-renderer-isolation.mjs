@@ -1,6 +1,7 @@
 // Shared-geometry 80×80 array: camera interaction may never mutate 6400 physical instances.
 import assert from 'node:assert/strict';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const browser = await launchBrowser();
@@ -17,17 +18,6 @@ try {
       timeout: 120000,
     });
     const snap = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
-    // Desktop docking uses window titlebars; compact/legacy shells use view tabs.
-    // Always exercise real view controls, not a programmatic snapshot mutation.
-    const focusView = async (view) => {
-      const overview = page.locator('.p-desktop-dock-actions [data-action="dock:overview"]');
-      if (await overview.isVisible()) {
-        await overview.click();
-        await page.locator(`#${view}Panel [data-action="maximize:${view}"]`).click();
-      } else {
-        await page.locator(`[data-action="view:${view}"]`).click();
-      }
-    };
     const initial = await snap();
     assert.equal(initial.sharedIdentity, true);
     assert.equal(initial.model.array.instances.length, 6400, '80×80 physical array');
@@ -36,15 +26,14 @@ try {
     assert.equal(initial.workflow.writable, true);
 
     for (const view of ['mask', 'main']) {
-      await focusView(view);
-      await waitForPaint(page);
+      await selectScientificView(page, view, 1440);
       const canvas = page.locator('#' + view + 'Canvas');
       assert.ok(await canvas.isVisible());
       const physicalSize = await canvas.evaluate((c) => [c.width, c.height]);
       assert.ok(physicalSize[0] > 100 && physicalSize[1] > 100);
     }
 
-    await focusView('three');
+    await selectScientificView(page, 'three', 1440);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,

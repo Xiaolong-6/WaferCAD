@@ -17,6 +17,8 @@ import {
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
+import { createProgressiveStartup } from './progressive-startup.js';
+import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -110,6 +112,18 @@ try {
     }),
   });
   shell.getRoot().dataset.boot = 'loading';
+  const progressive = createProgressiveStartup({
+    onChange: (snapshot) => {
+      const root = shell.getRoot();
+      root.dataset.shellReady = String(snapshot.shell === 'ready');
+      root.dataset.projectReady = String(snapshot.project === 'ready');
+      root.dataset.firstFrameReady = String(snapshot.firstFrame === 'ready');
+      for (const [key, stage] of Object.entries(snapshot.views)) {
+        const panel = store.views.get(key)?.panel;
+        if (panel) panel.dataset.viewLoad = stage;
+      }
+    },
+  });
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   let desktopResizer = null;
@@ -178,6 +192,7 @@ try {
     uiState,
     render,
     status,
+    progressive,
     changed: store.changed,
     selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
@@ -212,12 +227,46 @@ try {
   store.views.set('section', section);
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
+  // In overview, let a visible 2D scientific canvas present before expensive
+  // WebGL initialization/scene work. All 3D requests, including onShow, pass
+  // through the same one-time gate. 3D-only layouts release it immediately.
+  const firstThreeFrame = createFirstFrameThreeGate(three.runtime.render);
+  three.runtime.render = () => firstThreeFrame.request();
+  const hasVisiblePlanarView = () =>
+    ['main', 'mask', 'section'].some((key) => {
+      const panel = store.views.get(key)?.panel;
+      return panel && !panel.hidden && panel.getClientRects().length > 0;
+    });
+  // Non-WebGL canvases can become visible after their own completed paint.
+  // Hidden Single-mode panels remain pending until their first visible render.
+  for (const key of ['main', 'mask', 'section']) {
+    const view = store.views.get(key);
+    const originalRender = view.runtime.render;
+    view.runtime.render = (...args) => {
+      const result = originalRender(...args);
+      if (progressive.snapshot().project === 'ready') {
+        requestAnimationFrame(() => {
+          if (!view.panel.hidden && view.panel.getClientRects().length) {
+            progressive.viewFrame(key);
+            firstThreeFrame.release();
+          }
+        });
+      }
+      return result;
+    };
+  }
+  progressive.shellReady();
   adapters.register('view.three', {
     mount: (host) => {
       host.append(three.panel);
       return three.panel;
     },
-    onShow: three.runtime.render,
+    onShow: () => {
+      if (!starting) {
+        if (!hasVisiblePlanarView()) firstThreeFrame.release();
+        three.runtime.render();
+      }
+    },
     onHide() {},
     destroy() {},
   });
@@ -322,14 +371,21 @@ try {
     previousCompact = compact;
     render();
   });
-  // Keep the incomplete Shell covered until the restored project is ready.
-  // The initial workflow.refresh() applies panel ownership and view order.
+  // Build the final navigation/grid now, while data remains protected.
+  // Project restore can yield to the browser without exposing the dummy Base.
+  shell.render();
+  shell.getRoot().dataset.boot = 'project';
   await workflow.start();
+  progressive.projectReady();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
   requestAnimationFrame(() => desktopResizer?.refresh());
+  if (!hasVisiblePlanarView()) firstThreeFrame.release();
+  // Fail open if a visible planar canvas cannot complete its first render.
+  // This fallback never changes Quality or geometry and has no effect after release.
+  setTimeout(() => firstThreeFrame.release(), 2500);
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
@@ -345,6 +401,7 @@ try {
     .catch(() => {});
   window.WaferCadV2Workstation = {
     ready: true,
+    startup: () => progressive.snapshot(),
     snapshot: () =>
       structuredClone({
         source: project.source,

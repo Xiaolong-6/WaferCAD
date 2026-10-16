@@ -9,7 +9,6 @@ const reviewed = [
   { file: 'site/renderer-line-reduction.js', symbol: 'simplifyDisplayPolyline' },
   { file: 'site/report-history-captures.js', symbol: 'MAX_HISTORY_SVG_TOTAL_BYTES' },
   { file: 'site/ui-v2/main-runtime.js', symbol: 'formatMainPosition' },
-  { file: 'site/workspace-persistence.js', symbol: 'clearWorkspaceState' },
   { file: 'site/workspace-snapshots.js', symbol: 'MAX_SNAPSHOT_BRANCHES' },
   { file: 'site/workspace-snapshots.js', symbol: 'MAX_PROCESS_HISTORY_NODES' },
   { file: 'site/workspace-snapshots.js', symbol: 'MAIN_SNAPSHOT_BRANCH_ID' },

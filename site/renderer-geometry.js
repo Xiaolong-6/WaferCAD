@@ -234,9 +234,8 @@ export function buildRenderSurfacePlan(model, clip = null) {
     return ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip);
   }
 
-  const key = surfacePlanCacheKey(model, clip),
-    cached = surfacePlanCache.get(model);
-  if (cached?.key === key) return cached.plan;
+  const cached = cachedRenderSurfacePlan(model, clip);
+  if (cached) return cached;
 
   const plan = isArrayModel(model)
       ? buildArrayRenderPlan(visibleMaterialModel(model), clip, buildRenderSurfacePlan)
@@ -246,6 +245,22 @@ export function buildRenderSurfacePlan(model, clip = null) {
       ...plan,
       ...decorated,
     };
-  surfacePlanCache.set(model, { key, plan: result });
+  rememberRenderSurfacePlan(model, clip, result);
   return result;
+}
+
+export function cachedRenderSurfacePlan(model, clip = null) {
+  if (!model || typeof model !== 'object') return null;
+  const cached = surfacePlanCache.get(model);
+  return cached?.key === surfacePlanCacheKey(model, clip) ? cached.plan : null;
+}
+
+// A background worker returns the very same deterministic physical plan.
+// Register it under the same revision/visibility/clip key used by the
+// foreground and GLB exporter; no second geometry ownership implementation.
+export function rememberRenderSurfacePlan(model, clip, plan) {
+  if (model && typeof model === 'object') {
+    surfacePlanCache.set(model, { key: surfacePlanCacheKey(model, clip), plan });
+  }
+  return plan;
 }

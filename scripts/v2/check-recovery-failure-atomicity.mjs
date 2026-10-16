@@ -108,9 +108,18 @@ try {
       { timeout: 120000 },
     );
 
-    const fault = await page.evaluate(() => window.__restoreWriteFault);
+    const diagnostic = await page.evaluate(() => ({
+      fault: window.__restoreWriteFault,
+      status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      saveStatus: document.querySelector('#workspaceSaveStatus')?.textContent || '',
+      retryReason: document.querySelector('.workspace')?.dataset.autosaveRetryReason || null,
+    }));
+    const { fault } = diagnostic;
     assert.ok(fault.originals >= 1, 'Pre-restore Recovery checkpoint must commit before restore');
-    assert.ok(fault.writes >= 1, 'The injected failure must hit the final workspace commit');
+    assert.ok(
+      fault.writes >= 1,
+      'The injected failure must hit the final workspace commit: ' + JSON.stringify(diagnostic),
+    );
     const after = await snapshot();
     assert.deepEqual(after.model, before.model, 'Failed save must restore previous physical Model');
     assert.deepEqual(
