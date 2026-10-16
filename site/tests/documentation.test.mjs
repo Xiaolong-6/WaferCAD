@@ -85,8 +85,15 @@ test('archived documents have canonical links and no obsolete originals', async 
     'SITE_EXPORT_API_REVIEW_2026-10-13.md',
     'SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md',
   ]);
-  assert.equal(archived.length, 79 + relocated.size, 'archive inventory must be reviewed deliberately');
-  const compatibility = await readFile(new URL('../../docs/COMPATIBILITY.md', import.meta.url), 'utf8');
+  assert.equal(
+    archived.length,
+    79 + relocated.size,
+    'archive inventory must be reviewed deliberately',
+  );
+  const compatibility = await readFile(
+    new URL('../../docs/COMPATIBILITY.md', import.meta.url),
+    'utf8',
+  );
   assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
   for (const entry of archived) {
     assert.ok(
