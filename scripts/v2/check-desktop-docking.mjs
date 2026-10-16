@@ -295,11 +295,14 @@ try {
         await page.waitForFunction(() =>
           Boolean(window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid']),
         );
+        await waitForPaint(page);
         assert.notDeepEqual((await layoutState(page)).tracks['four-grid'], ratiosBefore);
         await verifyIdentity(page);
 
         const rowDivider = page.locator('.v2-dock-divider-rows').first();
+        await rowDivider.waitFor({ state: 'visible' });
         const rowRect = await rowDivider.boundingBox();
+        assert.ok(rowRect, 'Row splitter remains available after a column resize');
         const rowX = rowRect.x + rowRect.width / 4;
         const rowY = rowRect.y + rowRect.height / 2;
         assert.equal(
