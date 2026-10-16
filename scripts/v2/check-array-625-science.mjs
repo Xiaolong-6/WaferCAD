@@ -313,10 +313,62 @@ try {
       [['device', 0, 0]],
       'Only the center JLFET device may change within the selected ROI',
     );
+    const etchVolume = await page.evaluate(
+      async ({ layerId, originalLayerIds }) => {
+        const { arrayParts } = await import('/model-array.js');
+        const { geometryArea } = await import('/model.js');
+        const { pointInMulti } = await import('/vector-geometry.js');
+        const center = (model) =>
+          arrayParts(model).find((site) => site.role === 'device' && site.x === 0 && site.y === 0);
+        const original = center(window.__arrayBaseline);
+        const before = center(window.__jlfetBeforeEtch);
+        const after = center(window.WaferCadV2Workstation.snapshot().model);
+        if (!original || !before || !after) throw Error('The center JLFET site is missing');
+        const volume = (site) =>
+          site.model.regions.reduce(
+            (sum, region) =>
+              sum +
+              geometryArea(region.geom) *
+                region.stack
+                  .filter((segment) => segment.layerId === layerId)
+                  .reduce((value, segment) => value + segment.z1 - segment.z0, 0),
+            0,
+          );
+        const originalStack = (stack) =>
+          stack
+            .filter((segment) => originalLayerIds.includes(segment.layerId))
+            .map((segment) => [segment.layerId, segment.z0, segment.z1, segment.role || null]);
+        const samples = [[0, 0], [-575, 0], [575, 0], [0, 150], [-700.005, 0], [700.005, 0]];
+        for (const point of samples) {
+          const owner = (site) =>
+            site.model.regions.filter((region) => pointInMulti(point, region.geom));
+          const previous = owner(original);
+          const next = owner(after);
+          if (previous.length !== 1 || next.length !== 1)
+            throw Error('Etch changed center material ownership at ' + point);
+          if (JSON.stringify(originalStack(previous[0].stack)) !==
+              JSON.stringify(originalStack(next[0].stack)))
+            throw Error('Etch modified the original buried stack at ' + point);
+        }
+        return { before: volume(before), after: volume(after), preservedSamples: samples.length };
+      },
+      {
+        layerId: conformalLayer.id,
+        originalLayerIds: initial.model.layers.map((layer) => layer.id),
+      },
+    );
+    assert.equal(etchVolume.preservedSamples, 6);
+    assert.ok(
+      etchVolume.before > etchVolume.after,
+      'Selective center-site Etch must physically reduce the conformal film volume',
+    );
+    console.log('V2_ARRAY_JLFET_ETCH_VOLUME', JSON.stringify(etchVolume));
     const etchStep = etched.workflow.steps.at(-1)?.operation;
     assert.equal(etchStep?.maskRoi, true, 'Etch History records its Mask ROI');
     assert.deepEqual(etchStep?.etchTargetLayerIds, [conformalLayer.id]);
+    assert.equal(etchStep?.replay?.maskContext?.roi?.size, 1590);
     await selectScientificView(page, 'section', 1440);
+    await page.mouse.move(311, 45);
     await page.screenshot({
       path: 'test-results/v2-array-science/625-jlfet-roi-etch-section.png',
       animations: 'disabled',
