@@ -102,6 +102,17 @@ test('real Pages staging preserves each entrypoint local stylesheet and script',
   const destination = join(root, 'pages');
   await stagePagesAssets({ source, destination });
 
+  const audit = await auditSiteReachability(destination, { surface: 'pages' });
+  assert.equal(audit.surface, 'pages');
+  assert.deepEqual(audit.productionRoots, ['index.html', 'app.html', 'guide/index.html']);
+  assert.deepEqual(audit.compatibilityRoots, ['app-legacy.html']);
+  assert.ok(audit.productionReachable > 20, 'Published v2 modules stay reachable');
+  assert.deepEqual(
+    audit.compatibilityOnly,
+    ['app-legacy.html'],
+    'The Legacy bookmark shim must not introduce executable-only dependencies',
+  );
+
   const redirect = await readFile(join(destination, 'app-legacy.html'), 'utf8');
   assert.ok(redirect.includes("location.replace('./app.html' + location.search + location.hash)"));
   assert.doesNotMatch(redirect, /app\.js|workstation\.css|workstation-boot/i);

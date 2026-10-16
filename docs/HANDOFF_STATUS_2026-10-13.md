@@ -59,7 +59,7 @@ Audited public `main` at `1e34da5d23f8fd9db8db13b249a7e4816cdb7ced`, then opened
 ## Confirmed closed or superseded
 
 - **Mask wheel diagnostic:** The older [Mask handoff](archive/ui-v2/HANDOFF_2026-10-11.md) reports a first-width zoom assertion failure. Current `scripts/v2/check-mask-view.mjs` moves the pointer to the Mask canvas center before the wheel event. The later [Main/Mask acceptance](archive/ui-v2/MAIN_MASK_ACCEPTANCE_2026-10-11.md) supersedes the earlier paused checkpoint. No new browser execution is claimed here.
-- **UI v2 entry migration:** PR [#177](https://github.com/Xiaolong-6/WaferCAD/pull/177) was merged and deployed as recorded in [M5-Lite](ui-v2/M5_LITE_HANDOFF_2026-10-12.md). Historical M0–M4 Draft-PR and unmerged-route statements are archived, not current deployment instructions.
+- **UI v2 entry migration:** PR [#177](https://github.com/Xiaolong-6/WaferCAD/pull/177) was merged and deployed as recorded in [M5-Lite](archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md). Historical M0–M4 Draft-PR and unmerged-route statements are archived, not current deployment instructions.
 - **Legacy footer action:** Removed in current v2; a linked commit is displayed instead. `site/app-legacy.html` remains as source for historical tests, while the public Pages URL is a redirect. Direct navigation must not be described as automatically saving a workspace.
 
 ## Open: explicit implementation or acceptance work

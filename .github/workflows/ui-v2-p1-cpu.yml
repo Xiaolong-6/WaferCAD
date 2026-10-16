@@ -1,0 +1,158 @@
+name: UI v2 P1 CPU diagnostics
+
+on:
+  push:
+    branches:
+      - feat/ui-v2-progressive-startup-20261013
+    paths:
+      - 'scripts/v2/profile-startup-ci.mjs'
+      - 'scripts/v2/p1-offscreen-probe.mjs'
+      - 'scripts/v2/p1-worker-three-probe.mjs'
+      - 'scripts/v2/p1-surface-groups-probe.mjs'
+      - 'site/p1-surface-groups-worker.js'
+      - 'scripts/v2/p1-webgl-frame-correlation.mjs'
+      - 'scripts/v2/p1-webgl-frame-correlation.test.mjs'
+      - 'scripts/v2/p1-cpu-stack-diagnostics.mjs'
+      - 'scripts/v2/p1-cpu-stack-diagnostics.test.mjs'
+      - 'scripts/v2/p1-hardware-acceptance.mjs'
+      - 'scripts/v2/p1-gpu-identity.mjs'
+      - 'scripts/v2/p1-gpu-identity.test.mjs'
+      - 'scripts/v2/p1-input-latency.mjs'
+      - 'scripts/v2/p1-input-latency.test.mjs'
+      - 'scripts/v2/p1-scientific-model-evidence.mjs'
+      - 'scripts/v2/p1-scientific-model-evidence.test.mjs'
+      - 'scripts/persistence-regression.mjs'
+      - 'scripts/v2/check-progressive-quality.mjs'
+      - 'scripts/v2/check-startup-shell.mjs'
+      - 'site/renderer-instancing.js'
+      - 'site/controllers/project-state-controller.js'
+      - 'site/ui-v2/project-mask-panels.js'
+      - 'site/tests/worker-validated-project-import.test.mjs'
+      - 'site/tests/renderer-instancing.test.mjs'
+      - 'site/renderer-surface-plan-async.js'
+      - 'site/renderer-surface-plan-worker.js'
+      - 'site/renderer-surface-plan-stream.js'
+      - 'site/tests/renderer-surface-plan-stream.test.mjs'
+      - 'site/renderer-geometry.js'
+      - 'site/vector-geometry.js'
+      - 'site/polygon-boolean.js'
+      - 'site/tests/polygon-normalized-retry.test.mjs'
+      - 'site/tests/polygon-intersection-bounds.test.mjs'
+      - 'site/polygon-bounds-groups.js'
+      - 'site/tests/polygon-bounds-groups.test.mjs'
+      - 'site/tests/union-fast-path.test.mjs'
+      - 'site/workspace-persistence.js'
+      - 'site/workspace-restore-worker.js'
+      - 'site/tests/workspace-restore-worker.test.mjs'
+      - 'site/tests/renderer-surface-plan-worker.test.mjs'
+      - 'site/controllers/workspace-persistence-controller.js'
+      - 'site/ui-v2/workstation-workflow.js'
+      - 'site/three-view.js'
+      - 'site/renderer-sidewall-triangle.js'
+      - 'site/renderer-border-position-clip.js'
+      - 'site/tests/renderer-border-position-clip.test.mjs'
+      - 'site/tests/renderer-sidewall-triangle.test.mjs'
+      - 'site/history-head-validation.js'
+      - 'site/history-head-validate-worker.js'
+      - 'site/workspace-snapshots.js'
+      - 'site/tests/snapshots.test.mjs'
+      - 'site/ui-v2/workstation-runtime.js'
+      - 'site/ui-v2/workstation-entry.js'
+      - 'site/ui-v2/first-frame-three-gate.js'
+      - 'site/tests/first-frame-three-gate.test.mjs'
+      - 'site/tests/history-head-worker.test.mjs'
+      - 'site/tests/issue-13-settings-ui.test.mjs'
+      - '.github/workflows/ui-v2-p1-cpu.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-cpu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-hotspots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      # Push runs use a single CPU smoke sample; explicit dispatch collects a three-run baseline.
+      WAFERCAD_CPU_REPETITIONS: ${{ github.event_name == 'workflow_dispatch' && '3' || '1' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      # The required Quality PR check already runs full lint, formatting,
+      # generated documentation and all Node contracts. Avoid running it twice
+      # in this push-only CPU diagnostic; keep exact targeted science below.
+      - name: Syntax check for P1 profiling entry and Renderer
+        run: |
+          node --check scripts/v2/profile-startup-ci.mjs
+          node --check site/three-view.js
+          node --check scripts/v2/p1-worker-three-probe.mjs
+          node --check scripts/v2/p1-surface-groups-probe.mjs
+          node --check site/p1-surface-groups-worker.js
+      - name: Hardware adapter and frame attribution regression
+        run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs scripts/v2/p1-webgl-frame-correlation.test.mjs scripts/v2/p1-cpu-stack-diagnostics.test.mjs scripts/v2/p1-scientific-model-evidence.test.mjs
+      - name: Targeted renderer parity and History integrity tests
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start UI v2 server
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > serve-v2.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat serve-v2.log
+          exit 1
+      - name: Isolated Worker WebGL2 capability probe (informational)
+        run: node scripts/v2/p1-offscreen-probe.mjs
+      - name: Synthetic Three.js main versus Worker pixel parity (informational)
+        run: node scripts/v2/p1-worker-three-probe.mjs
+      - name: Real M3D Front/Back science groups Worker parity
+        timeout-minutes: 5
+        run: node scripts/v2/p1-surface-groups-probe.mjs
+      - name: Legacy owner persistence and async storage regression
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > serve-legacy.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4173/index.html; then
+              break
+            fi
+            sleep 1
+          done
+          npm run test:ui:persistence
+      - name: Real UI progressive boot, Quality restore, cross-view Recovery
+        timeout-minutes: 12
+        run: |
+          node scripts/v2/check-startup-shell.mjs
+          node scripts/v2/check-progressive-quality.mjs
+          node scripts/v2/check-cross-ui-recovery.mjs
+      - name: CPU sample M3D and restored Quality
+        timeout-minutes: 20
+        run: node scripts/v2/profile-startup-ci.mjs
+      - name: Upload CPU evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: p1-startup-cpu-${{ github.sha }}
+          path: |
+            test-results/p1-startup-cpu/
+            serve-v2.log
+          retention-days: 14
+          if-no-files-found: warn

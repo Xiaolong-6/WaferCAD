@@ -55,12 +55,27 @@ export function sectionSlices(model, a, b) {
   return sectionSlicesFromTopology(visibleMaterialModel(model), a, b);
 }
 
-// Region partitions describe processing history, not visible material boundaries.
-// Topology v2 owns which horizontal faces are physically exposed and which
-// rough interfaces are buried; the view layer only adapts those facts.
+// Main, Mask reference and rough overlays draw the same exact topography.
+// Reusing this read-only presentation data avoids running the Boolean surface
+// union for each canvas redraw, including pan/zoom and inspection updates.
+// A model revision or layer visibility change invalidates the derived cache;
+// canonical geometry and all process calculations remain independent.
+const surfaceGroupCache = new WeakMap();
+
 export function surfaceGroups(model, face = 'front') {
   if (isArrayModel(model)) return surfaceGroups(resolveArrayModel(model), face);
-  return visibleSurfaceGroups(visibleMaterialModel(model), { face }).map(
+  if (!model || typeof model !== 'object') return [];
+  const visibility = (model.layers || [])
+    .map((layer) => `${layer.id}:${layer.visible === false ? 0 : 1}`)
+    .join('|');
+  const key = `${model.revision ?? 0}|${model.processRevision ?? 0}|${visibility}`;
+  let cached = surfaceGroupCache.get(model);
+  if (!cached || cached.key !== key || cached.regions !== model.regions) {
+    cached = { key, regions: model.regions, faces: new Map() };
+    surfaceGroupCache.set(model, cached);
+  }
+  if (cached.faces.has(face)) return cached.faces.get(face);
+  const groups = visibleSurfaceGroups(visibleMaterialModel(model), { face }).map(
     ({ layerId, z, geom, appearance }) => ({
       layerId,
       z,
@@ -68,6 +83,8 @@ export function surfaceGroups(model, face = 'front') {
       appearance,
     }),
   );
+  cached.faces.set(face, groups);
+  return groups;
 }
 
 export function appearanceSurfaceGroups(model, clip = null) {

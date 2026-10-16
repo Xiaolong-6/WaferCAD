@@ -27,7 +27,6 @@ try {
 
     for (const view of ['mask', 'main']) {
       await selectScientificView(page, view, 1440);
-      await waitForPaint(page);
       const canvas = page.locator('#' + view + 'Canvas');
       assert.ok(await canvas.isVisible());
       const physicalSize = await canvas.evaluate((c) => [c.width, c.height]);

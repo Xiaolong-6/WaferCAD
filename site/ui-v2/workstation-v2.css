@@ -331,6 +331,16 @@ p {
   background: var(--wc-surface);
   overflow: hidden;
 }
+/* Production Workstation owns the entire browser viewport. M2 standalone
+   prototypes retain the inset card geometry from the shared .p-workbench. */
+body[data-workstation] .p-workbench {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
 /* Shell geometry stays fixed while startup restores/imports the scientific state.
    Hidden content can be initialized, but no stale Base/Process or unordered views
    should be presented before the first committed workstation render. */
@@ -358,6 +368,46 @@ p {
 }
 .p-workbench[data-boot='loading'] .p-stage::after {
   content: 'Preparing views…';
+}
+/* P1: keep the finalized navigation and view grid visible while the project
+   worker restores state. No pre-restore forms or temporary Base may leak. */
+.p-workbench[data-boot='project'] .p-panel-content {
+  visibility: hidden;
+}
+.p-workbench[data-boot='project'] .p-inspector {
+  position: relative;
+}
+.p-workbench[data-boot='project'] .p-inspector::after {
+  content: 'Opening project…';
+  position: absolute;
+  inset: var(--wc-space-2);
+  display: grid;
+  place-items: center;
+  color: var(--wc-muted);
+  background: var(--wc-subtle);
+  pointer-events: none;
+}
+.p-view[data-view-load='pending'] {
+  position: relative;
+}
+.p-view[data-view-load='pending']::after {
+  content: 'Preparing view…';
+  position: absolute;
+  inset: 40px 0 0;
+  display: grid;
+  place-items: center;
+  color: var(--wc-muted);
+  background: var(--wc-page);
+  pointer-events: auto;
+}
+.p-workbench[data-boot='project'] .p-view[data-view-load='pending']::after {
+  content: 'Waiting for project…';
+}
+.p-view[data-view-load='refining'] .p-view-head::after {
+  content: 'Refining';
+  color: var(--wc-muted);
+  font-size: var(--wc-font-aux);
+  margin-left: auto;
 }
 .p-topbar {
   display: flex;
@@ -475,6 +525,10 @@ p {
 }
 .p-panel-content > * {
   flex-shrink: 0;
+}
+/* The production Project tab reveals this only on compact Edit screens. */
+.p-mobile-welcome-link {
+  display: none;
 }
 /* Persistent adapters retain hidden leaves. Only the visible domain sets spacing. */
 .v2-panel-host > [data-slot-content],

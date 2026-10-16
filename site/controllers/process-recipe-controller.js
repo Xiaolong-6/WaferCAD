@@ -1840,6 +1840,11 @@ export function createProcessRecipeController({
       stopRequested = true;
       processTaskController?.abort?.();
     });
+    // Observe the task owner's Abort transaction, not its transient dialog
+    // button. This runs before a cancelled Worker result can settle the Step.
+    processTaskController?.onAbort?.(() => {
+      if (running) stopRequested = true;
+    });
 
     setMode('manual');
     setCodeMode(false);

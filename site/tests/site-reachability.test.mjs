@@ -48,15 +48,21 @@ test('site reachability separates runtime, developer and unproven modules', asyn
   assert.deepEqual(report.unproven, ['js/orphan.js']);
 });
 
-test('audit real site entrypoint reachability without deleting uncertain modules', async () => {
+test('audit source-tree Legacy browser-test entrypoint separately from Pages', async () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const report = await auditSiteReachability(root);
+  assert.equal(report.surface, 'source');
+  assert.deepEqual(report.compatibilityRoots, []);
+  assert.deepEqual(report.compatibilityOnly, []);
   assert.ok(report.productionRoots.includes('app.html'));
-  assert.ok(report.productionRoots.includes('app-legacy.html'));
+  assert.ok(
+    report.productionRoots.includes('app-legacy.html'),
+    'Retained test editor exists only in source',
+  );
   assert.ok(report.productionReachable > 20);
   assert.ok(!report.unproven.includes('welcome.js'), 'Welcome must be reachable');
   assert.ok(!report.unproven.includes('app.js'), 'Legacy app.js must be reachable');
-  assert.ok(!report.developerOnly.includes('app.js'), 'Legacy is a production dependency');
+  assert.ok(!report.developerOnly.includes('app.js'), 'Legacy is a source-tree browser-test root');
   assert.ok(!report.unproven.includes('controllers/tool-tabs-controller.js'));
   const summary = {
     scannedFiles: report.scannedFiles,

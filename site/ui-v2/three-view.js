@@ -61,6 +61,15 @@ export function createWorkstationThreeView({ store, workstation }) {
   workstation.mount(panel);
   const stats = panel.querySelector('[data-slot="view.three.readout"]');
   stats.id = 'threeStats';
+  // The startup preview is presentation-only; never save Fast over the
+  // project's persisted Quality choice or change canonical scene geometry.
+  let startupPreview = Boolean(workstation.progressive);
+  let firstSceneFrame = false;
+  let backgroundRefine = false;
+  let assemblyFinished = false;
+  let refinementStartSerial = 0;
+  let pointerActive = false;
+  const progressive = workstation.progressive;
   const renderer = createThreeView({
     host,
     stats,
@@ -70,7 +79,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       opacity: state.threeOpacity,
       borders: state.threeShowBorders,
       cutaway: Boolean(state.threeCutaway && state.roi),
-      fast: state.threeFastMode,
+      fast: startupPreview || state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
     onViewChanged: (camera) => {
@@ -90,12 +99,95 @@ export function createWorkstationThreeView({ store, workstation }) {
     sync();
     if (!renderer.ready) {
       initializing ||= renderer.init();
-      if (!(await initializing)) return;
+      if (!(await initializing)) {
+        progressive?.viewFrame('three', 'unavailable');
+        return;
+      }
     }
     await renderer.render();
   };
+  function scheduleQualityRefinement() {
+    const enqueue = () => {
+      if (pointerActive) {
+        setTimeout(scheduleQualityRefinement, 150);
+        return;
+      }
+      if (state.threeFastMode !== false) {
+        startupPreview = false;
+        progressive?.viewFrame('three', 'ready');
+        return;
+      }
+      startupPreview = false;
+      backgroundRefine = true;
+      assemblyFinished = false;
+      refinementStartSerial = Number(host.dataset.rendererFrameSerial || 0);
+      progressive?.viewFrame('three', 'refining');
+      void render()
+        .then(() => {
+          assemblyFinished = true;
+          inspectCommittedFrame();
+        })
+        .catch((error) => {
+          backgroundRefine = false;
+          host.dataset.renderError = error.message;
+          // The coarse 3D frame is still usable after an optional refinement failure.
+          progressive?.viewFrame('three', 'ready');
+          workstation.status(`3D quality refinement failed: ${error.message}`);
+        });
+    };
+    if (typeof globalThis.requestIdleCallback === 'function') {
+      globalThis.requestIdleCallback(enqueue, { timeout: 2500 });
+    } else {
+      setTimeout(enqueue, 60);
+    }
+  }
+  function inspectCommittedFrame() {
+    if (!progressive || progressive.snapshot().project !== 'ready') return;
+    const serial = Number(host.dataset.rendererFrameSerial || 0);
+    if (!serial || !['ready', 'refining'].includes(host.dataset.renderState)) return;
+    if (!firstSceneFrame) {
+      firstSceneFrame = true;
+      if (state.threeFastMode === false) {
+        progressive.viewFrame('three', 'coarse');
+        scheduleQualityRefinement();
+      } else {
+        startupPreview = false;
+        progressive.viewFrame('three', 'ready');
+      }
+    } else if (
+      backgroundRefine &&
+      assemblyFinished &&
+      serial > refinementStartSerial &&
+      host.dataset.renderQuality === 'quality' &&
+      host.dataset.renderState === 'ready'
+    ) {
+      backgroundRefine = false;
+      progressive.viewFrame('three', 'ready');
+    }
+  }
+  if (progressive) {
+    const frameObserver = new MutationObserver(inspectCommittedFrame);
+    frameObserver.observe(host, {
+      attributes: true,
+      attributeFilter: ['data-renderer-frame-serial', 'data-render-state'],
+    });
+    host.addEventListener(
+      'pointerdown',
+      () => {
+        pointerActive = true;
+      },
+      true,
+    );
+    window.addEventListener('pointerup', () => {
+      pointerActive = false;
+    });
+    window.addEventListener('pointercancel', () => {
+      pointerActive = false;
+    });
+  }
   const requestRender = () => {
     void render().catch((error) => {
+      progressive?.viewFrame('three', 'unavailable');
       host.dataset.renderError = error.message;
       workstation.status(`3D render failed: ${error.message}`);
       console.error(error);
@@ -205,6 +297,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     } else if (action === 'fit:three') renderer.fit();
     else if (action === 'quality:three') {
       state.threeFastMode = !state.threeFastMode;
+      startupPreview = false;
       sync();
       requestRender();
     } else if (action === 'opacity:three') {

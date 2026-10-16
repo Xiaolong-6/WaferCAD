@@ -218,6 +218,29 @@ export function createSectionView({ store, main, workstation }) {
       el('div'),
     );
   workstation.mount(panel);
+  // Compact desktop docking is a presentation mode only. The persisted Layers
+  // preference and scientific layer visibility stay unchanged.
+  let compactLegendExpanded = false;
+  let compactLegendBefore = false;
+  const sectionDockCompact = () =>
+    !preview &&
+    window.innerWidth > 820 &&
+    Boolean(workstation?.uiState?.desktopLayout) &&
+    panel.getBoundingClientRect().width < 390;
+  const legendDisplayed = () => (sectionDockCompact() ? compactLegendExpanded : legendOpen);
+  const syncLegendPlacement = () => {
+    const compact = sectionDockCompact();
+    if (compact !== compactLegendBefore) {
+      compactLegendExpanded = false;
+      compactLegendBefore = compact;
+    }
+    const shown = compact ? compactLegendExpanded : legendOpen;
+    body.dataset.compactLegend = String(compact);
+    body.dataset.legendOpen = String(shown);
+    if (legend) legend.hidden = !shown;
+    legendResizer.hidden = compact || !shown;
+    panel.querySelector('[data-action="legend"]')?.setAttribute('aria-pressed', String(shown));
+  };
   let renderer, detail, collapse;
   const render = () => {
     if (!canvas.checkVisibility()) return;
@@ -321,6 +344,7 @@ export function createSectionView({ store, main, workstation }) {
   }
   function renderLegend() {
     if (preview) return;
+    syncLegendPlacement();
     const annotations = [
       ...(state.model.implants || []).map((item) => ({ ...item, kind: 'Implant' })),
       ...(state.model.electricalRegions || []).map((item) => ({ ...item, kind: 'Electrical' })),
@@ -328,7 +352,7 @@ export function createSectionView({ store, main, workstation }) {
     const next = window.createWaferCadV2SectionLegend({
       layers: state.model.layers,
       annotations,
-      open: legendOpen,
+      open: legendDisplayed(),
       paletteName: legendPalette,
       paletteOpen,
     });
@@ -432,13 +456,11 @@ export function createSectionView({ store, main, workstation }) {
     if (legend) legend.replaceWith(next);
     else body.append(next);
     legend = next;
-    legendResizer.hidden = !legendOpen;
+    syncLegendPlacement();
     legendResizer.setAttribute(
       'aria-valuenow',
       String(Math.round(legend.getBoundingClientRect().width)),
     );
-    body.dataset.legendOpen = String(legendOpen);
-    panel.querySelector('[data-action="legend"]').setAttribute('aria-pressed', String(legendOpen));
   }
   const exporter = createExportController({
     root,
@@ -486,12 +508,17 @@ export function createSectionView({ store, main, workstation }) {
       });
       sync();
     } else if (action === 'legend') {
-      legendOpen = !legendOpen;
-      state.sectionLayersVisible = legendOpen;
-      try {
-        localStorage.setItem('wafercad.v2.section-layers.v1', String(legendOpen));
-      } catch {}
-      renderLegend();
+      if (sectionDockCompact()) {
+        compactLegendExpanded = !compactLegendExpanded;
+        syncLegendPlacement();
+      } else {
+        legendOpen = !legendOpen;
+        state.sectionLayersVisible = legendOpen;
+        try {
+          localStorage.setItem('wafercad.v2.section-layers.v1', String(legendOpen));
+        } catch {}
+        renderLegend();
+      }
     } else if (action === 'section-export-menu')
       mountToolPopover(workstation.overlays, {
         trigger,
@@ -536,6 +563,7 @@ export function createSectionView({ store, main, workstation }) {
     }
   });
   new ResizeObserver(render).observe(canvas);
+  if (!preview) new ResizeObserver(syncLegendPlacement).observe(panel);
   renderLegend();
   return {
     panel,

@@ -2,6 +2,15 @@
 
 This is an evidence index, not an alternative product contract. Canonical historical text lives under `docs/archive/`. Original files have been removed; internal documentation links point directly to the archived copies. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
 
+## Additional lifecycle dispositions (2026-10-15)
+
+The following are previously committed, revision-specific records preserved in full. Current rules and unresolved work remain in the documentation map and owning engineering contracts.
+
+- [Site publication/dead-code cleanup (2026-10-13)](SITE_PUBLICATION_CLEANUP_2026-10-13.md)
+- [Site symbol reachability audit (2026-10-13)](SITE_SYMBOL_AUDIT_2026-10-13.md)
+- [UI v2 legacy synchronization audit (2026-10-11)](ui-v2/SYNC_TABLE_2026-10-11.md)
+- [M5-Lite production rollout handoff (2026-10-12)](ui-v2/M5_LITE_HANDOFF_2026-10-12.md)
+
 ## Historical verification (revision-specific; not current acceptance)
 
 - [Unified toolbar integration — 2026-10-08](UNIFIED_TOOLBAR_INTEGRATION_2026-10-08.md): reviewed branch merge, Pan palette repair and real browser acceptance.

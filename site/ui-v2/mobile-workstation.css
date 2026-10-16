@@ -13,18 +13,18 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-workbench {
+    --p-mobile-dock-height: calc(60px + env(safe-area-inset-bottom, 0px));
     height: auto;
     min-height: 0;
-    margin: var(--wc-space-2);
+    margin: 0;
     grid-template-rows: auto auto auto;
     overflow: visible;
   }
 
+  /* A single contextual bottom dock replaces the old brand / switcher /
+     viewbar stack. Project title remains available in Project and document title. */
   body[data-workstation]:not([data-preview-mode]) .p-topbar {
-    position: relative;
-    top: auto;
-    flex-wrap: wrap;
-    z-index: var(--wc-z-toolbar);
+    display: none;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-body {
@@ -35,23 +35,75 @@
     overflow: visible;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-nav {
-    flex-direction: row;
-    flex: 0 0 auto;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-right: 0;
-    border-bottom: 1px solid var(--wc-border);
-    overscroll-behavior-x: contain;
+  /* Project is the one mobile Edit tab providing a route back to Welcome. */
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    [data-slot='panel.project']
+    .p-mobile-welcome-link {
+    display: inline-flex;
+    align-self: flex-start;
+    min-height: 44px;
   }
 
-  /* Touch targets cannot depend on the browser reporting pointer:coarse. */
-  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button,
-  body[data-workstation]:not([data-preview-mode]) .p-mobile-return > .wc-button,
-  body[data-workstation]:not([data-preview-mode]) .p-viewbar .wc-button {
-    min-width: 44px;
+  /* Fixed dock is outside scrolling document flow, with a reserved safe area.
+     The same .p-nav host owns Workspaces in Edit and Views in View. */
+  body[data-workstation]:not([data-preview-mode]) .p-nav {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    height: var(--p-mobile-dock-height);
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: start;
+    gap: 2px;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    background: var(--wc-surface);
+    border: 0;
+    border-top: 1px solid var(--wc-border);
+    z-index: var(--wc-z-toolbar);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button {
+    width: 100%;
+    min-width: 0;
     min-height: 44px;
+    height: 51px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 0;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-radius: var(--wc-radius-sm);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button .wc-icon {
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button[aria-pressed='true'] {
+    background: var(--wc-accent-tint);
+    color: var(--wc-accent-active);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-viewbar {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] {
+    padding-bottom: var(--p-mobile-dock-height);
+  }
+
+  /* Software keyboard reduces visualViewport but not the document viewport.
+     Hide the dock only while the keyboard is actually open. */
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-keyboard='open'] .p-nav {
+    display: none;
   }
 
   /* Edit is one vertically flowing document. The scientific view remains
@@ -123,8 +175,8 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] {
-    height: calc(100dvh - 2 * var(--wc-space-2));
-    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - var(--p-mobile-dock-height));
+    grid-template-rows: minmax(0, 1fr);
     overflow: hidden;
   }
 
@@ -154,7 +206,6 @@
      maximum uninterrupted canvas area. No fixed footer in either mode. */
   body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-status,
   body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] .p-stage,
-  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-nav,
   body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-inspector {
     display: none;
   }

@@ -9,6 +9,16 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import {
+  desktopDockingEnabled,
+  projectDesktopLayout,
+  reduceDesktopLayout,
+} from './view-layout-model.js';
+import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
+import { createDesktopDockingController } from './view-docking-controller.js';
+import { createDesktopLayoutResizer } from './view-layout-resizer.js';
+import { createProgressiveStartup } from './progressive-startup.js';
+import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -18,6 +28,14 @@ try {
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
+  const desktopPreferences = (() => {
+    if (readOnlyPreview) return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
   const project = readOnlyPreview
       ? await loadBundledProject(params.get('example'), undefined, { preview: true })
       : await loadWorkstationProject(),
@@ -55,6 +73,7 @@ try {
     maximize: null,
     mobile: 'view',
     splitViews: ['main', 'mask'],
+    desktopLayout: readOnlyPreview ? null : loadDesktopLayout(desktopPreferences),
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
@@ -81,6 +100,7 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
+      desktopLayout: readOnlyPreview ? null : projectDesktopLayout(uiState.desktopLayout),
       // Compact visibility has exactly one owner: mobile = view | edit.
       editorHidden: window.WaferCadV2ViewState.compact(window)
         ? uiState.mobile !== 'edit'
@@ -92,13 +112,75 @@ try {
     }),
   });
   shell.getRoot().dataset.boot = 'loading';
+  const progressive = createProgressiveStartup({
+    onChange: (snapshot) => {
+      const root = shell.getRoot();
+      root.dataset.shellReady = String(snapshot.shell === 'ready');
+      root.dataset.projectReady = String(snapshot.project === 'ready');
+      root.dataset.firstFrameReady = String(snapshot.firstFrame === 'ready');
+      for (const [key, stage] of Object.entries(snapshot.views)) {
+        const panel = store.views.get(key)?.panel;
+        if (panel) panel.dataset.viewLoad = stage;
+      }
+    },
+  });
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
+  let desktopResizer = null;
   const render = () => {
     if (starting) return;
     shell.render();
     store.renderAll();
+    requestAnimationFrame(() => desktopResizer?.refresh());
   };
+  // View-specific, nonmodal floating editors are transient UI, not model state.
+  // Dismissing them when their view is hidden prevents stale Mask/Section
+  // dialogs from intercepting the desktop workflow navigation.
+  const floatingManagers = new Map();
+  // Layout changes repaint only Shell/element sizing. Scientific invalidation
+  // remains owned by the existing model scheduler and canvas ResizeObservers.
+  const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
+  const changeDesktopLayout = (action) => {
+    if (!desktopDockingActive()) return;
+    const previous = uiState.desktopLayout;
+    const next = reduceDesktopLayout(previous, action);
+    if (next === previous) return;
+    if (previous.maximized && previous.maximized !== next.maximized)
+      floatingManagers.get(previous.maximized)?.closeFloatings();
+    for (const view of previous.visible) {
+      if (!next.visible.includes(view)) floatingManagers.get(view)?.closeFloatings();
+    }
+    uiState.desktopLayout = next;
+    saveDesktopLayout(desktopPreferences, next);
+    if (!starting) {
+      shell.render();
+      requestAnimationFrame(() => desktopResizer?.refresh());
+    }
+  };
+  const desktopDocking = readOnlyPreview
+    ? null
+    : createDesktopDockingController({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  desktopResizer = readOnlyPreview
+    ? null
+    : createDesktopLayoutResizer({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  window.addEventListener(
+    'pagehide',
+    () => {
+      desktopDocking?.destroy();
+      desktopResizer?.destroy();
+    },
+    { once: true },
+  );
   const status = (value) => {
     message = value;
     shell.getSlot('status.message').textContent = value;
@@ -110,6 +192,7 @@ try {
     uiState,
     render,
     status,
+    progressive,
     changed: store.changed,
     selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
@@ -120,10 +203,13 @@ try {
     store.changed(key);
     if (!readOnlyPreview) workflow.persistence.schedule();
   };
-  const scope = (key) => ({
-    ...workstation,
-    overlays: createFloatingEditorManager(shell.overlays, { className: `v2-${key}-floating` }),
-  });
+  const scope = (key) => {
+    const overlays = createFloatingEditorManager(shell.overlays, {
+      className: `v2-${key}-floating`,
+    });
+    floatingManagers.set(key, overlays);
+    return { ...workstation, overlays };
+  };
   const main = await createMainView({
     renderModel: store.renderModel,
     project,
@@ -141,12 +227,46 @@ try {
   store.views.set('section', section);
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
+  // In overview, let a visible 2D scientific canvas present before expensive
+  // WebGL initialization/scene work. All 3D requests, including onShow, pass
+  // through the same one-time gate. 3D-only layouts release it immediately.
+  const firstThreeFrame = createFirstFrameThreeGate(three.runtime.render);
+  three.runtime.render = () => firstThreeFrame.request();
+  const hasVisiblePlanarView = () =>
+    ['main', 'mask', 'section'].some((key) => {
+      const panel = store.views.get(key)?.panel;
+      return panel && !panel.hidden && panel.getClientRects().length > 0;
+    });
+  // Non-WebGL canvases can become visible after their own completed paint.
+  // Hidden Single-mode panels remain pending until their first visible render.
+  for (const key of ['main', 'mask', 'section']) {
+    const view = store.views.get(key);
+    const originalRender = view.runtime.render;
+    view.runtime.render = (...args) => {
+      const result = originalRender(...args);
+      if (progressive.snapshot().project === 'ready') {
+        requestAnimationFrame(() => {
+          if (!view.panel.hidden && view.panel.getClientRects().length) {
+            progressive.viewFrame(key);
+            firstThreeFrame.release();
+          }
+        });
+      }
+      return result;
+    };
+  }
+  progressive.shellReady();
   adapters.register('view.three', {
     mount: (host) => {
       host.append(three.panel);
       return three.panel;
     },
-    onShow: three.runtime.render,
+    onShow: () => {
+      if (!starting) {
+        if (!hasVisiblePlanarView()) firstThreeFrame.release();
+        three.runtime.render();
+      }
+    },
     onHide() {},
     destroy() {},
   });
@@ -192,10 +312,20 @@ try {
     const action = trigger.dataset.action;
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
-      uiState.maximize = domain === 'mask' ? 'mask' : null;
+      // Compact navigation keeps its prior single-view behavior; desktop
+      // workflow Mask explicitly opens/maximizes the real Mask docked panel.
+      uiState.maximize = !desktopDockingActive() && domain === 'mask' ? 'mask' : null;
       if (domain === 'mask') uiState.view = 'mask';
       selectPane('edit', domain);
+      if (domain === 'mask' && desktopDockingActive())
+        changeDesktopLayout({ type: 'FOCUS_VIEW', view: 'mask' });
       render();
+    } else if (action === 'dock:overview') {
+      changeDesktopLayout({ type: 'RESET_OVERVIEW' });
+    } else if (action.startsWith('dock:view:')) {
+      changeDesktopLayout({ type: 'TOGGLE_VIEW', view: action.split(':')[2] });
+    } else if (action.startsWith('dock:close:')) {
+      changeDesktopLayout({ type: 'CLOSE_VIEW', view: action.split(':')[2] });
     } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
       uiState.maximize = null;
@@ -214,8 +344,11 @@ try {
       render();
     } else if (action.startsWith('maximize:')) {
       const key = action.split(':')[1];
-      uiState.maximize = uiState.maximize === key ? null : key;
-      render();
+      if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
+      else {
+        uiState.maximize = uiState.maximize === key ? null : key;
+        render();
+      }
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
@@ -238,13 +371,21 @@ try {
     previousCompact = compact;
     render();
   });
-  // Keep the incomplete Shell covered until the restored project is ready.
-  // The initial workflow.refresh() applies panel ownership and view order.
+  // Build the final navigation/grid now, while data remains protected.
+  // Project restore can yield to the browser without exposing the dummy Base.
+  shell.render();
+  shell.getRoot().dataset.boot = 'project';
   await workflow.start();
+  progressive.projectReady();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
+  requestAnimationFrame(() => desktopResizer?.refresh());
+  if (!hasVisiblePlanarView()) firstThreeFrame.release();
+  // Fail open if a visible planar canvas cannot complete its first render.
+  // This fallback never changes Quality or geometry and has no effect after release.
+  setTimeout(() => firstThreeFrame.release(), 2500);
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
@@ -260,6 +401,7 @@ try {
     .catch(() => {});
   window.WaferCadV2Workstation = {
     ready: true,
+    startup: () => progressive.snapshot(),
     snapshot: () =>
       structuredClone({
         source: project.source,
