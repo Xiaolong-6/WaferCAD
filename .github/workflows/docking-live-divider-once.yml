@@ -1,4 +1,4 @@
-# Targeted rerun: test genuine column/row handle hit targets away from their crossing.
+# Targeted rerun: await new row splitter after completed column resize.
 name: Docking Live Divider Visual Check
 
 on:
