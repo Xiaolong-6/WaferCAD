@@ -271,9 +271,10 @@ export function createWorkstationRuntime(
     assemblyPreview ? [] : project.data.snapshots || [],
     assemblyPreview ? null : project.data.snapshotBranches,
   );
-  let assemblyPreviewSession = assemblyPreview && project.data.waferAssembly
-    ? createAssemblyBondHistorySession(project.data)
-    : null;
+  let assemblyPreviewSession =
+    assemblyPreview && project.data.waferAssembly
+      ? createAssemblyBondHistorySession(project.data)
+      : null;
   let assemblyBondEditor = null;
   function restoreAssemblyStage(index) {
     const active = assemblyBondEditor || assemblyPreviewSession;
