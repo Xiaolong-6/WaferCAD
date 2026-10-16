@@ -415,7 +415,9 @@
         el(
           'div',
           { class: 'p-actions' },
-          state.editorHidden ? button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process') : null,
+          state.editorHidden
+            ? button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process')
+            : null,
           modeButton('overview'),
           viewDivider(),
           modeButton('single'),
