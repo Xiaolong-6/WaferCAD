@@ -16,7 +16,7 @@ const rect = (x, y, w, h) => [
 ];
 
 export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
-  padCentersUm: [[-14, -50], [17, -46]],
+  padCentersUm: [[-14, -50], [17, -45]],
   padWidthUm: 6,
   // Move the right guide to a separately supported corridor above the
   // moving optical taper, connecting its moving truss to the shuttle
