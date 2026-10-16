@@ -1,4 +1,4 @@
-name: PR229 repaired 3D Au wires final Chromium science
+name: PR229 fully formatted paper science and real 3D closure
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - name: Format focused scientific test files exactly and verify geometry
         run: |
-          npx prettier --write site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
           npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
           npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
           node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs
@@ -47,7 +47,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+          git add scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
           if ! git diff --cached --quiet; then
             git commit -m "style(gan): format 3D Au bond and TSV scientific contracts"
             git push origin HEAD:"$GITHUB_REF_NAME"
