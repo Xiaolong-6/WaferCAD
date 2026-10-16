@@ -11,6 +11,7 @@ import {
   tcmosLayout,
 } from '../../scripts/build-tcmos-inverter-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { auditTcmosPnBtbtReadiness } from '../../scripts/tcmos-physics-readiness.mjs';
 
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
@@ -98,6 +99,53 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
     () => auditTcmosTerminalNetProvenance(invalidWellTie, TCMOS_METAL_NETS),
     /incorrect device footprint/,
   );
+});
+
+test('PN/BTBT readiness separates valid contact geometry from missing device physics', async () => {
+  const { project, validation } = await buildTcmosInverter();
+  const readiness = validation.pnBtbtReadiness;
+  assert.equal(readiness.contract, 'tcmos-pn-btbt-prerequisites-v1');
+  assert.equal(readiness.structural.geometryCandidateQualified, true);
+  assert.equal(readiness.structural.terminalCount, 8);
+  assert.equal(readiness.sourceEvidence.effectiveTjEstimateNm.tNmosBoron, 75);
+  assert.equal(readiness.sourceEvidence.effectiveTjEstimateNm.tPmosArsenic, 30);
+  assert.match(readiness.sourceEvidence.effectiveTjEstimateNm.interpretation, /not an HVT/);
+  assert.equal(readiness.prerequisites.length, 6);
+  assert.ok(readiness.prerequisites.every((item) => item.status === 'missing'));
+  assert.ok(readiness.prerequisites.some((item) => item.id === 'activated-net-dopant-field'));
+  assert.ok(readiness.prerequisites.some((item) => item.id === 'field-resolved-btbt-transport'));
+  assert.ok(Object.values(readiness.quantitative).every((value) => value === false));
+  assert.equal(readiness.numericalOutputAuthorized, false);
+
+  const invalidNets = structuredClone(validation.terminalNetProvenance);
+  invalidNets.terminals[1].net = 'VDD';
+  const netMismatch = auditTcmosPnBtbtReadiness(
+    project.model,
+    invalidNets,
+    validation.qualitativeJunctionEvidence.overlapAreaUm2,
+  );
+  assert.equal(netMismatch.structural.geometryCandidateQualified, false);
+  assert.equal(netMismatch.numericalOutputAuthorized, false);
+
+  const missingDrain = { ...validation.qualitativeJunctionEvidence.overlapAreaUm2 };
+  missingDrain['pMOS-drain'] = 0;
+  const absentGeometry = auditTcmosPnBtbtReadiness(
+    project.model,
+    validation.terminalNetProvenance,
+    missingDrain,
+  );
+  assert.equal(absentGeometry.structural.qualitativeOverlapPresent, false);
+  assert.equal(absentGeometry.structural.geometryCandidateQualified, false);
+
+  const uncalibrated = structuredClone(project.model);
+  uncalibrated.dopantRegions[0].calibratedConcentrationCm3 = 1e20;
+  const fakeCalibration = auditTcmosPnBtbtReadiness(
+    uncalibrated,
+    validation.terminalNetProvenance,
+    validation.qualitativeJunctionEvidence.overlapAreaUm2,
+  );
+  assert.equal(fakeCalibration.quantitative.physicalPnInterfaceReady, false);
+  assert.equal(fakeCalibration.numericalOutputAuthorized, false);
 });
 
 test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and exportable History', async () => {

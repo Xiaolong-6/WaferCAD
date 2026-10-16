@@ -52,6 +52,30 @@ HVT-only PNGs isolate one annotation via real Section visibility toggles; full-m
 - The read-only `auditDopantPhysicsEvidence` gate rejects unsupported profile kinds and reports only **qualitative** well intents. Even adding a `role=well` intent or an unvalidated numeric concentration property cannot set `quantifiedWellDoping`, `physicalJunctionResolved`, `ohmicContactValidated` or `btbtCurrentComputed` to true. The present project schema has no calibrated net-doping or activation profile.
 - Candidate is immutable across these diagnostic-only refinements. The alternate 18° tilt demonstration is explicitly NOT PAPER.
 
+## PN/BTBT quantitative readiness and Kernel dependencies
+
+The generator now exports `validation.pnBtbtReadiness`, a **read-only stage-gate report**
+with explicit source provenance and missing model capabilities. Geometry qualifies only
+when the eight contact sites map to the intended nets and all four inferred
+source/drain body–HDD overlaps remain nonzero. Missing or miswired geometry fails
+this prerequisite gate; passing it never authorizes electrical computation.
+
+| Stage | Existing evidence | Required before numerical acceptance |
+| --- | --- | --- |
+| Topology / material | Fig. 1 qualitative masks, 8 CNT-to-net sites, 4 co-occupancy footprints | Structural stage only; not physical current |
+| PN concentration and depletion | Species As+ for pMOS and BF2+ for nMOS; schematic Well, LDD/HDD, HVT | Calibrated 3D activated `N_D-N_A`, implant dose/energy, stopping in STI oxide, diffusion and electrostatic boundaries |
+| PN surface / electric field | No net-concentration zero crossing or Poisson solution | Charge neutrality / space-charge interface extraction and Poisson solver with bias/contact conditions |
+| BTBT current | Source discusses off-state tunnelling; no computed junction field | Calibrated band model, field-dependent BTBT law and transport / current integration |
+| Body contacts | Inferred VDD/GND well ties; no surface tap doping | Activated n+/p+ contact doping, barriers and contact resistivity |
+| Ternary transfer curve | Circuit topology only; published I-V is evidence, not Kernel output | Bias-dependent transistor I-V and external circuit solver with calibration data |
+
+The supplementary `Tj` estimates (75 nm boron T-nMOS, 30 nm arsenic T-pMOS)
+are **analytical model estimates**, not an HVT implanted depth or an electrical
+PN surface. The candidate's 80–240 nm illustrated band remains separate.
+`numericalOutputAuthorized=false` and all physical readiness flags remain false,
+even if an unvalidated numeric field is attached to a qualitative record.
+This does not add a calibrated solver, new project schema, or material geometry.
+
 ## Acceptance decision and next stage
 
 **Accept as a qualified, clearly labeled illustrative structural T-CMOS example** for further candidate review, with complete Recipe, two process Variants and the above image evidence. **Do not approve it as a quantitatively reproduced body–drain tunnelling junction** or as verified BTBT / ternary-transfer simulation.
