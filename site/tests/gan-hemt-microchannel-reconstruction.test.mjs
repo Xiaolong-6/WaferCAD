@@ -109,8 +109,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
   assert.equal(validation.maskLayers, 18);
-  const oxideProtection = GAN_MICROCHANNEL_MASKS.find((mask) => mask.id === 28);
-  assert.equal(oxideProtection?.rectangles.length, 4, 'Outer oxide must protect the coolant');
+  assert.equal(
+    GAN_MICROCHANNEL_MASKS.some((mask) => mask.id === 28),
+    false,
+    'Temporary partial-oxide protection mask must not ship in the full-exposure example',
+  );
   assert.equal(validation.processNodes, 36);
   assert.equal(validation.recipeSteps, 35);
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
