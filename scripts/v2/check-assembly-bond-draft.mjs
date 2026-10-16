@@ -13,8 +13,8 @@ const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject 
   await import('../../site/wafer-assembly.js');
 const { serializeProject, readProjectFile } = await import('../../site/project-io.js');
 
-function source(name) {
-  const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
+function source(name, thickness = 400) {
+  const model = createModel({ shape: 'rect', width: 100, height: 80, thickness });
   const project = migrateProjectFile(
     projectForBenchmark({ model, section: { a: [-40, 0], b: [40, 0] } }),
   );
@@ -183,10 +183,11 @@ try {
       .getByLabel('Bond Variant', { exact: true })
       .selectOption('variant-1');
     await page.locator('.assembly-bond-draft-form input[name="donorId"]').fill('D');
+    await page.locator('.assembly-bond-draft-form input[name="dx"]').fill('10');
     await page.getByLabel('Select independent donor wafer').setInputFiles({
       name: 'donor-d.wafercad',
       mimeType: 'application/json',
-      buffer: Buffer.from(serializeProject(source('donor D'))),
+      buffer: Buffer.from(serializeProject(source('donor D', 350))),
     });
     await page.getByRole('button', { name: 'Validate and Bond' }).click();
     await page.waitForFunction(
@@ -198,6 +199,9 @@ try {
     );
     const alternate = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(alternate.assemblyPreview.sources, 3);
+    assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
+    assert.notDeepEqual(alternate.model, committed.model);
+    assert.match(await page.locator('.assembly-bond-draft-status').textContent(), /Export all Variants/);
     await page.locator('.assembly-preview-views [data-view="three"]').click();
     await waitForPaint(page);
     await page.screenshot({ path: resolve(output, 'variant-d-alternative.png') });
@@ -220,12 +224,14 @@ try {
     await page.getByLabel('Bond Variant', { exact: true }).selectOption('main');
     const switchedMain = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.deepEqual(switchedMain.model, committed.model);
+    assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1200 µm/);
     assert.equal(switchedMain.workflow.writable, false);
     await page.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
     assert.deepEqual(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
       alternate.model,
     );
+    assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
 
     const sidecarTab = await context.newPage();
     try {
@@ -244,6 +250,7 @@ try {
       const sidecarView = await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot());
       assert.deepEqual(sidecarView.model, alternate.model);
       assert.equal(sidecarView.assemblyPreview.bonds, 2);
+      assert.match(await sidecarTab.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
       await sidecarTab.locator('.assembly-bond-draft-tools summary').click();
       assert.equal(await sidecarTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(), 2);
       await sidecarTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
@@ -251,6 +258,7 @@ try {
         (await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
         committed.model,
       );
+      assert.match(await sidecarTab.locator('.assembly-preview-stage').textContent(), /Z 1200 µm/);
       assert.deepEqual(sidecarErrors, []);
     } finally {
       await sidecarTab.close();
