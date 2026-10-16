@@ -153,6 +153,9 @@ export function mountAssemblyPreviewControls({
   };
   backward.addEventListener('click', () => navigate(-1));
   forward.addEventListener('click', () => navigate(1));
+  const colorNote = document.createElement('span');
+  colorNote.className = 'assembly-preview-origin-note';
+  colorNote.textContent = 'Origin colors · display only';
   const views = document.createElement('div');
   views.className = 'assembly-preview-views';
   for (const [key, label] of [
@@ -174,7 +177,7 @@ export function mountAssemblyPreviewControls({
     });
     views.append(button);
   }
-  nav.append(title, backward, stage, forward, views);
+  nav.append(title, backward, stage, forward, colorNote, views);
   root.append(nav);
   sync();
   return { element: nav, sync };
