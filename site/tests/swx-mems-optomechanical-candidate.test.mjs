@@ -6,6 +6,7 @@ import {
 } from '../../scripts/swx-mems-optomechanical-candidate.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
 import { filletPolyline } from '../../scripts/swx-mems-compact-bends.mjs';
+import { createSwxFootprintScopeAudit } from '../../scripts/swx-mems-footprint-scope.mjs';
 
 const approx = (a, b, tolerance = 1e-10) =>
   assert.ok(Math.abs(a - b) < tolerance, a + ' differs from ' + b);
@@ -201,4 +202,34 @@ test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree 
     /does not fit available centerline segment/,
     'Unfabricable tight optical fillets must be rejected',
   );
+});
+
+test('S8 switch, S6 feeds and external couplers have separately accountable envelopes', () => {
+  for (const state of ['off', 'on']) {
+    const report = createSwxFootprintScopeAudit(state);
+    const scopes = report.scopes;
+    const entries = [
+      scopes.actuatorOnly,
+      scopes.actuatorAndSwx,
+      scopes.actuatorSwxGuides,
+      scopes.withCompliantOpticalLegs,
+      scopes.withFixedOpticalFeeds,
+      scopes.fullSiliconIncludingExternalCouplers,
+    ];
+    for (let i = 1; i < entries.length; i++) {
+      assert.ok(entries[i].minX <= entries[i - 1].minX + 1e-9);
+      assert.ok(entries[i].maxX >= entries[i - 1].maxX - 1e-9);
+      assert.ok(entries[i].minY <= entries[i - 1].minY + 1e-9);
+      assert.ok(entries[i].maxY >= entries[i - 1].maxY - 1e-9);
+    }
+    assert.deepEqual(scopes.fullSiliconIncludingExternalCouplers, report.maskEnvelope);
+    assert.ok(scopes.actuatorOnly.widthUm < report.maskEnvelope.widthUm);
+    assert.ok(scopes.actuatorOnly.heightUm < report.maskEnvelope.heightUm);
+    assert.equal(report.opticalTerminals, 4);
+    assert.equal(report.movingS6OpticalLegs, 2);
+    assert.equal(report.guides, 2);
+    assert.equal(report.references.sourcesDisagreeOnFullEnvelope, true);
+    assert.equal(report.sourceS7CompleteFoldedGuideTopologyVerified, false);
+    assert.equal(report.sourceFullFootprintScopeConfirmed, false);
+  }
 });

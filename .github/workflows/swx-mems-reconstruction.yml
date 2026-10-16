@@ -18,6 +18,7 @@ on:
       - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
       - 'site/tests/swx-mems-actuator-candidate.test.mjs'
       - 'scripts/swx-mems-figure-audit.mjs'
+      - 'scripts/swx-mems-footprint-scope.mjs'
       - 'scripts/build-swx-mems-example.mjs'
       - 'scripts/swx-mems-browser-acceptance.mjs'
       - 'scripts/swx-mems-klayout-verify.py'

@@ -7,6 +7,7 @@ import { createSwxGeometry, SWX_REPORTED } from './swx-mems-geometry.mjs';
 import { createSwxOptomechanicalCandidate } from './swx-mems-optomechanical-candidate.mjs';
 import { createSwxCompactProcessGeometry } from './swx-mems-compact-process-geometry.mjs';
 import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
+import { createSwxFootprintScopeAudit } from './swx-mems-footprint-scope.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -65,6 +66,7 @@ for (const state of ['off', 'on']) {
     compliantOpticalRoutes: p.opticalRouting.movingSpringWaveguides.length,
     supportedOpticalPads: p.opticalRouting.supportedPads.length,
     candidateMaskFootprintUm: [widthUm, heightUm],
+    physicalEnvelopeByScopeUm: createSwxFootprintScopeAudit(state).scopes,
     reportedSingleSwitchFootprintUm: SWX_REPORTED.fullFootprintUm,
     comparisonScope:
       'illustrative optical pads and routing may lie outside published switch-only envelope',
@@ -76,6 +78,7 @@ for (const state of ['off', 'on']) {
     halfTurnsPerOpticalLeg: p.opticalRouting.movingCenterlines.map((line) => line.halfTurns.length),
     s7GuidesIntegrated: true,
     s7GuidesOriginalAnchorRegistrationVerified: false,
+    s7CompleteSourceSchematicTopologyVerified: false,
     s7GuideSourceDimensionsUm: [7, 0.1, 1],
     opticalBendWaypointSourceVerified: false,
     completeFabricationHistoryVerified: false,
@@ -95,6 +98,8 @@ const blockers = [
     guideAnchorsUm: SWX_COMPACT_GUIDE_ASSUMPTIONS.padCentersUm,
     sourceDimensionsPreserved: true,
     includedInCompactProcessMask: true,
+    fullSourceS7SchematicTopologyVerified: false,
+    sourceEvidence: 'Supplement Fig. S7a shows folded structural-alignment beams; current guide geometry is a provisional single-centerline flexure with a terminal truss, not an authenticated reproduction.',
   },
 ];
 const compactExtent = prototype.off.candidateMaskFootprintUm;
@@ -104,7 +109,7 @@ if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[in
     kind: 'paper-footprint-comparability',
     candidateMaskExtentUm: compactExtent,
     reportedSwitchFootprintUm: SWX_REPORTED.fullFootprintUm,
-    note: 'The reconstructed grating pads and optical routing extend beyond the published 95x100um switch footprint; first determine whether the paper excludes fiber-coupler pads, then redesign optical routing without hiding the discrepancy.',
+    note: 'The full Mask includes separate external couplers and routing; Main text states 95x100um including MEMS while Supplement Table S1 lists 100x90um. See separate actuator/SWX/guides/meanders/feeds/pads envelopes before comparing any dimensions. The core geometry still requires source-level alignment.',
     scopeMatchedToPaper: false,
   });
 }
@@ -123,6 +128,11 @@ const audit = {
     doi: '10.1038/s41467-024-55528-9',
     figures: ['article Fig. 1c', 'Supplement S8'],
     originalGdsAvailable: false,
+    publishedEnvelopeDisagreement: {
+      mainTextSwitchWithActuatorUm: [95, 100],
+      supplementaryTableS1FullFootprintUm: [100, 90],
+      comparisonScopeUnresolved: true,
+    },
   },
   scope: 'figure/topology review only; no calibrated FEM/FDTD or author-GDS claim',
   poses,
