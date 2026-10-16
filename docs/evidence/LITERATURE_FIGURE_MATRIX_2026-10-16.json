@@ -202,6 +202,52 @@
               ]
             }
           ]
+        },
+        "nativeV2SectionAudit": {
+          "kind": "actual-chromium-native-v2-physical-section",
+          "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619",
+          "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619/artifacts/12070530260",
+          "manifestMember": "manifest.json",
+          "originalPaperOverlay": false,
+          "paperMatchVerified": false,
+          "materialStacksIdentical": true,
+          "sectionPngIdentical": true,
+          "screenshotSha256": "4b2dfbfa32f4c66bd1064699f29a8ce8d9a3dec38940cc5ba2d8acf9c106d412",
+          "materialObservation": "Both points [16,-5.3] and [16,5.3] contain the same eight Z intervals, including Ti/Ni/Au; distinct via topology not established by these images.",
+          "cuts": [
+            {
+              "id": "first-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "probeXY": [
+                16,
+                -5.3
+              ],
+              "image": "first-power-via-native-v2-section.png"
+            },
+            {
+              "id": "second-power-via",
+              "a": [
+                12,
+                5.3
+              ],
+              "b": [
+                20,
+                5.3
+              ],
+              "probeXY": [
+                16,
+                5.3
+              ],
+              "image": "second-power-via-native-v2-section.png"
+            }
+          ]
         }
       }
     },

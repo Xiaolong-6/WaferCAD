@@ -176,8 +176,7 @@ try {
   assert.deepEqual(errors, [], 'Native v2 cut generated browser exceptions');
   report.materialStacksIdentical =
     JSON.stringify(report.cuts[0].physical) === JSON.stringify(report.cuts[1].physical);
-  report.sectionPngIdentical =
-    report.cuts[0].screenshotSha256 === report.cuts[1].screenshotSha256;
+  report.sectionPngIdentical = report.cuts[0].screenshotSha256 === report.cuts[1].screenshotSha256;
   report.structuralDistinction = report.materialStacksIdentical
     ? 'NOT_ESTABLISHED__BOTH_COORDINATES_CONTAIN_TI_NI_AU'
     : 'CUTS_HAVE_DIFFERENT_Z_MATERIAL_BANDS';

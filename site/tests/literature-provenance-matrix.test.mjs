@@ -133,6 +133,37 @@ test('eight paper provenance records match the actual published example catalog'
       assert.match(entry.evidenceType, /figure cut still missing/);
       assert.notEqual(entry.acceptance.status, 'accepted-paper-match');
     }
+    if (entry.captureEvidence?.nativeV2SectionAudit) {
+      const native = entry.captureEvidence.nativeV2SectionAudit;
+      assert.equal(entry.id, 'm3d-selfpowered-heterogeneous-ic');
+      assert.equal(entry.acceptance.status, 'open-paper-match');
+      assert.equal(native.paperMatchVerified, false);
+      assert.equal(native.originalPaperOverlay, false);
+      assert.match(native.runURL, /^https:\/\/github\.com\/Xiaolong-6\/WaferCAD\/actions\/runs\/\d+$/);
+      assert.match(native.artifactURL, /\/artifacts\/\d+$/);
+      assert.equal(native.manifestMember, 'manifest.json');
+      assert.match(native.screenshotSha256, /^[0-9a-f]{64}$/);
+      assert.equal(native.cuts.length, 2);
+      for (const cut of native.cuts) {
+        const [ax, ay] = cut.a;
+        const [bx, by] = cut.b;
+        const [px, py] = cut.probeXY;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const lengthSq = dx * dx + dy * dy;
+        assert.ok(lengthSq > 0);
+        const projection = ((px - ax) * dx + (py - ay) * dy) / lengthSq;
+        assert.ok(Math.abs(dx * (py - ay) - dy * (px - ax)) < 1e-9);
+        assert.ok(projection >= 0 && projection <= 1);
+        assert.match(cut.image, /-native-v2-section\.png$/);
+      }
+      assert.notDeepEqual(native.cuts[0].a, native.cuts[1].a);
+      assert.equal(native.cuts[0].probeXY[1], -5.3);
+      assert.equal(native.cuts[1].probeXY[1], 5.3);
+      if (native.materialStacksIdentical || native.sectionPngIdentical) {
+        assert.equal(native.paperMatchVerified, false, 'Duplicate evidence is not a SEM match');
+      }
+    }
     if (entry.captureEvidence?.probePlacementAudit) {
       const audit = entry.captureEvidence.probePlacementAudit;
       assert.equal(

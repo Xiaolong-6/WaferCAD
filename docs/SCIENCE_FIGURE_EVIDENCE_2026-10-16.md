@@ -107,3 +107,33 @@ segment projection, rejecting material points on the extension beyond A or B.
 The regression also recomputes each off-section control's distance.
 A matching Section for M3D's second power via remains a
 visual-acceptance follow-up.
+
+## October 16 — native v2 M3D power-via cut audit
+
+A new true **native-v2** Chromium Section acceptance uses two temporary
+source-project copies with presentation-only A–B cuts; it never modifies
+the M3D physical material model or the bundled project. The exact browser
+[run 38953627619](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619)
+produced [artifact 12070530260](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38953627619/artifacts/12070530260):
+two Section PNGs and the complete Z-slice manifest.
+
+- First cut A=(12, −5.3), B=(20, −5.3) µm; sample (16, −5.3) µm.
+- Second cut A=(12, +5.3), B=(20, +5.3) µm; sample (16, +5.3) µm.
+- Both cut locations contain the same eight recorded material intervals,
+  including Ti power via 120 nm, Ni 28 nm and Au 30 nm.
+- **The two screenshot files are byte-for-byte identical**, SHA-256
+  `4b2dfbfa32f4c66bd1064699f29a8ce8d9a3dec38940cc5ba2d8acf9c106d412`.
+  Both renders are visible and nonempty. This is a scientific observation;
+  it cannot establish whether the original author manufactured identical
+  vias or whether the reconstructed mask/metal placement is insufficient.
+- This native screenshot now places the *second* power-via material probe
+  on its own displayed Section, resolving the old off-section placement.
+  The older Fig. 3 figure-cut evidence retains its original off-section
+  classification; it has not been silently rewritten.
+
+**Status stays `open-paper-match`.** Before acceptance, compare an exact
+source-paper panel and distinguish the claimed Ni/Au interface geometries
+with independently grounded authors' SEM, dimensions or mask provenance.
+If the paper lacks distinguishing geometry, record `unreported` rather
+than inventing a device-specific difference. The screenshots do not prove
+a published SEM silhouette match.
