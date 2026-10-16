@@ -135,14 +135,14 @@ export function validateAssemblyVariantGraph(graph) {
     }
     const baseline = materialize(graph, branch, branch.bonds.length); // strict Bond replay
     if (branch.postBondSteps !== undefined) {
+      if (!Array.isArray(branch.postBondSteps)) {
+        throw new Error('Invalid source-aware post-Bond Recipe record.');
+      }
       if (graph.version === 1 && branch.postBondSteps.length) {
         throw new Error('Post-Bond geometry requires Assembly Variant format v2.');
       }
       if (branch.postBondSteps.length > 0 && branch.bonds.length < 1) {
         throw new Error('Post-Bond Recipe requires at least one canonical Bond.');
-      }
-      if (!Array.isArray(branch.postBondSteps)) {
-        throw new Error('Invalid source-aware post-Bond Recipe record.');
       }
       if (branch.postBondSteps.length) replayPostBondGeometry(baseline, branch.postBondSteps);
     }
