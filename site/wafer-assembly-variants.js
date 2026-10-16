@@ -1,0 +1,277 @@
+// Canonical source registry for Bond Variants. A wafer source is stored
+// once; each Variant stores only source references and direct-Bond records.
+// This codec is independent of the v15 .wafercad product schema. It must not
+// be attached to root snapshots or used as an undocumented project field.
+import {
+  createWaferAssembly,
+  createBondedAssemblyProject,
+  validateBondedAssemblyProject,
+  WAFER_ASSEMBLY_VERSION,
+} from './wafer-assembly.js';
+import { prepareWaferBondTransaction } from './wafer-bond-transaction.js';
+import { validateProjectFile } from './project-schema.js';
+
+export const ASSEMBLY_VARIANTS_VERSION = 1;
+const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+
+function requireIndex(value, length, field) {
+  if (!Number.isSafeInteger(value) || value < 0 || value >= length) {
+    throw new Error(`Invalid Assembly Variant ${field} source reference.`);
+  }
+}
+
+function assertPlain(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Invalid Assembly Variant ${label}.`);
+  }
+}
+
+function sourceAndBonds(graph, branch, index) {
+  if (!Number.isInteger(index) || index < 0 || index > branch.bonds.length) {
+    throw new Error('Assembly Variant Bond cursor is outside the lineage.');
+  }
+  const sources = branch.sourceRefs.slice(0, index + 1).map((ref) => {
+    requireIndex(ref, graph.sources.length, 'branch');
+    return structuredClone(graph.sources[ref]);
+  });
+  const bonds = structuredClone(branch.bonds.slice(0, index));
+  return { version: WAFER_ASSEMBLY_VERSION, sources, bonds };
+}
+
+function materialize(graph, branch, index) {
+  const assembly = sourceAndBonds(graph, branch, index);
+  if (index === 0) {
+    return structuredClone(assembly.sources[0].project);
+  }
+  return createBondedAssemblyProject(assembly);
+}
+
+export function validateAssemblyVariantGraph(graph) {
+  assertPlain(graph, 'graph');
+  if (graph.version !== ASSEMBLY_VARIANTS_VERSION) {
+    throw new Error('Unsupported Assembly Variant graph version.');
+  }
+  if (!Array.isArray(graph.sources) || !graph.sources.length || graph.sources.length > 64) {
+    throw new Error('Assembly Variant source registry must contain 1–64 sources.');
+  }
+  if (!Array.isArray(graph.branches) || !graph.branches.length || graph.branches.length > 32) {
+    throw new Error('Assembly Variant graph must contain 1–32 branches.');
+  }
+  const sourceIDs = new Set();
+  for (const source of graph.sources) {
+    assertPlain(source, 'source');
+    if (typeof source.id !== 'string' || !ID_PATTERN.test(source.id)) {
+      throw new Error('Invalid Assembly Variant source identity.');
+    }
+    if (!Number.isInteger(source.bytes) || source.bytes < 0) {
+      throw new Error('Invalid Assembly Variant source byte provenance.');
+    }
+    validateProjectFile(source.project);
+    if (source.project.waferAssembly != null) {
+      throw new Error('Assembly Variant source must be an independent wafer.');
+    }
+    const bytes = new TextEncoder().encode(JSON.stringify(source.project)).byteLength;
+    if (source.bytes !== bytes) {
+      throw new Error('Assembly Variant source byte provenance mismatch.');
+    }
+    const identity = JSON.stringify(source);
+    if (sourceIDs.has(identity)) {
+      throw new Error('Duplicate Assembly Variant registry source.');
+    }
+    sourceIDs.add(identity);
+  }
+  const branchIds = new Set();
+  for (const branch of graph.branches) {
+    assertPlain(branch, 'branch');
+    if (typeof branch.id !== 'string' || !ID_PATTERN.test(branch.id) || branchIds.has(branch.id)) {
+      throw new Error('Invalid or duplicate Assembly Variant branch identity.');
+    }
+    branchIds.add(branch.id);
+    if (
+      !Array.isArray(branch.sourceRefs) ||
+      !Array.isArray(branch.bonds) ||
+      branch.sourceRefs.length !== branch.bonds.length + 1 ||
+      branch.sourceRefs.length > 8
+    ) {
+      throw new Error('Assembly Variant source references and Bond count disagree.');
+    }
+    if (branch.sourceRefs[0] !== 0 || new Set(branch.sourceRefs).size !== branch.sourceRefs.length) {
+      throw new Error('Assembly Variant lineage must use a unique, shared receiver source.');
+    }
+    if (!Number.isInteger(branch.cursor) || branch.cursor < 0 || branch.cursor > branch.bonds.length) {
+      throw new Error('Assembly Variant cursor is outside its Bond lineage.');
+    }
+    for (const ref of branch.sourceRefs) requireIndex(ref, graph.sources.length, 'lineage');
+    if (!Number.isInteger(branch.forkIndex) || branch.forkIndex < 0 || branch.forkIndex > branch.bonds.length) {
+      throw new Error('Invalid Assembly Variant fork index.');
+    }
+    if (branch.parentId != null && (typeof branch.parentId !== 'string' || branch.parentId === branch.id)) {
+      throw new Error('Invalid Assembly Variant parent reference.');
+    }
+    materialize(graph, branch, branch.bonds.length); // strict geometrical replay
+  }
+  if (graph.branches[0].id !== 'main' || graph.branches[0].parentId != null) {
+    throw new Error('Assembly Variant graph must have a root Main branch.');
+  }
+  for (const branch of graph.branches) {
+    if (branch.parentId != null) {
+      const parent = graph.branches.find((candidate) => candidate.id === branch.parentId);
+      if (!parent || parent === branch || branch.forkIndex > parent.bonds.length) {
+        throw new Error('Assembly Variant parent branch or fork index is invalid.');
+      }
+      if (
+        JSON.stringify(branch.sourceRefs.slice(0, branch.forkIndex + 1)) !==
+          JSON.stringify(parent.sourceRefs.slice(0, branch.forkIndex + 1)) ||
+        JSON.stringify(branch.bonds.slice(0, branch.forkIndex)) !==
+          JSON.stringify(parent.bonds.slice(0, branch.forkIndex))
+      ) {
+        throw new Error('Assembly Variant fork must retain its immutable parent Bond prefix.');
+      }
+    }
+  }
+  if (!branchIds.has(graph.activeBranchId)) {
+    throw new Error('Assembly Variant active branch does not exist.');
+  }
+  // An active source registry must be bound to its actual parent lineage; do
+  // not allow orphan donors that would be silently dropped during export.
+  const used = new Set(graph.branches.flatMap((branch) => branch.sourceRefs));
+  if (used.size !== graph.sources.length) {
+    throw new Error('Assembly Variant source registry contains orphaned provenance.');
+  }
+  return graph;
+}
+
+export function createAssemblyVariantGraph(product) {
+  validateProjectFile(product);
+  validateBondedAssemblyProject(product);
+  const source =
+    product.waferAssembly ??
+    createWaferAssembly(product, 'receiver');
+  const graph = {
+    version: ASSEMBLY_VARIANTS_VERSION,
+    sources: structuredClone(source.sources),
+    activeBranchId: 'main',
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        parentId: null,
+        forkIndex: 0,
+        sourceRefs: source.sources.map((_, index) => index),
+        bonds: structuredClone(source.bonds),
+        cursor: source.bonds.length,
+      },
+    ],
+  };
+  validateAssemblyVariantGraph(graph);
+  return graph;
+}
+
+export function assemblyVariantProject(graph, branchId = graph?.activeBranchId, cursor = null) {
+  validateAssemblyVariantGraph(graph);
+  const branch = graph.branches.find((item) => item.id === branchId);
+  if (!branch) throw new Error('Assembly Variant branch does not exist.');
+  return materialize(graph, branch, cursor ?? branch.cursor);
+}
+
+export function setAssemblyVariantCursor(graph, index, branchId = graph?.activeBranchId) {
+  validateAssemblyVariantGraph(graph);
+  const next = structuredClone(graph);
+  const branch = next.branches.find((item) => item.id === branchId);
+  if (!branch) throw new Error('Assembly Variant branch does not exist.');
+  if (!Number.isInteger(index) || index < 0 || index > branch.bonds.length) {
+    throw new Error('Assembly Variant cursor is outside its Bond lineage.');
+  }
+  branch.cursor = index;
+  validateAssemblyVariantGraph(next);
+  return next;
+}
+
+export function forkAssemblyVariant(graph, { id, name, atIndex } = {}) {
+  validateAssemblyVariantGraph(graph);
+  if (typeof id !== 'string' || !ID_PATTERN.test(id) || graph.branches.some((b) => b.id === id)) {
+    throw new Error('Assembly Variant requires a unique, valid branch ID.');
+  }
+  const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+  const index = atIndex ?? active.cursor;
+  if (!Number.isInteger(index) || index < 0 || index >= active.bonds.length) {
+    throw new Error('Assembly Variant fork requires a historical Bond checkpoint.');
+  }
+  const next = structuredClone(graph);
+  next.branches.push({
+    id,
+    name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 120) : id,
+    parentId: active.id,
+    forkIndex: index,
+    sourceRefs: active.sourceRefs.slice(0, index + 1),
+    bonds: active.bonds.slice(0, index),
+    cursor: index,
+  });
+  next.activeBranchId = id;
+  validateAssemblyVariantGraph(next);
+  return next;
+}
+
+export function activateAssemblyVariant(graph, branchId) {
+  validateAssemblyVariantGraph(graph);
+  const branch = graph.branches.find((item) => item.id === branchId);
+  if (!branch) throw new Error('Assembly Variant branch does not exist.');
+  const next = structuredClone(graph);
+  next.activeBranchId = branchId;
+  next.branches.find((item) => item.id === branchId).cursor = branch.bonds.length;
+  validateAssemblyVariantGraph(next);
+  return next;
+}
+
+export function appendAssemblyVariantBond(graph, donorProject, request) {
+  validateAssemblyVariantGraph(graph);
+  const active = graph.branches.find((b) => b.id === graph.activeBranchId);
+  if (active.cursor !== active.bonds.length) {
+    throw new Error('Bond from a historical checkpoint requires an explicit new Variant.');
+  }
+  const receiver = materialize(graph, active, active.bonds.length);
+  const prepared = prepareWaferBondTransaction(receiver, donorProject, request);
+  const appended = prepared.project.waferAssembly;
+  const donor = appended.sources.at(-1);
+  const record = appended.bonds.at(-1);
+  const next = structuredClone(graph);
+  let ref = next.sources.findIndex((source) => JSON.stringify(source) === JSON.stringify(donor));
+  if (ref < 0) {
+    ref = next.sources.length;
+    next.sources.push(structuredClone(donor));
+  }
+  const target = next.branches.find((b) => b.id === graph.activeBranchId);
+  target.sourceRefs.push(ref);
+  target.bonds.push(structuredClone(record));
+  target.cursor = target.bonds.length;
+  validateAssemblyVariantGraph(next);
+  const project = materialize(next, target, target.cursor);
+  if (!sameModel(project.model, prepared.project.model)) {
+    throw new Error('Assembly Variant commit failed deterministic model parity.');
+  }
+  return { graph: next, project, operation: prepared.operation };
+}
+
+function sameModel(a, b) {
+  // This comparison is exact and independent of incidental object key order.
+  const stack = [[a, b]];
+  while (stack.length) {
+    const [left, right] = stack.pop();
+    if (Object.is(left, right)) continue;
+    if (typeof left !== typeof right || left === null || right === null) return false;
+    if (typeof left !== 'object') return false;
+    if (Array.isArray(left) !== Array.isArray(right)) return false;
+    if (Array.isArray(left)) {
+      if (left.length !== right.length) return false;
+      for (let i = 0; i < left.length; i++) stack.push([left[i], right[i]]);
+    } else {
+      const keys = Object.keys(left);
+      if (keys.length !== Object.keys(right).length) return false;
+      for (const key of keys) {
+        if (!Object.hasOwn(right, key)) return false;
+        stack.push([left[key], right[key]]);
+      }
+    }
+  }
+  return true;
+}
