@@ -21,6 +21,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -962,7 +963,16 @@ function healConformalCoverageCracks(model, originalVoids) {
     if (isEmpty(missing)) return;
     const missingArea = geometryArea(missing);
     if (missingArea > maxRepairArea) {
-      throw new Error(`Conformal lost ${missingArea} µm² of existing XY material coverage.`);
+      // Keep hard failure and rollback; include the actual missing polygons'
+      // bounds so a future geometry fix can reproduce the precise owner split.
+      // Reporting the bounds never grants permission to heal lost material.
+      const lostBounds = missing.slice(0, 8).map((polygon) => ({
+        area: geometryArea([polygon]),
+        ...multiBounds([polygon]),
+      }));
+      throw new Error(
+        `Conformal lost ${missingArea} µm² of existing XY material coverage (pieces=${missing.length}, firstBounds=${JSON.stringify(lostBounds)}).`,
+      );
     }
 
     for (const polygon of missing) {
