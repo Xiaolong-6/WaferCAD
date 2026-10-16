@@ -837,6 +837,37 @@ function validateLayout(layout, budget) {
     assertInteger(combo.count, `${path}.count`, { min: 0 });
   });
 
+  if (layout.maskPresentation != null) {
+    const presentation = assertObject(layout.maskPresentation, 'layout.maskPresentation');
+    if (presentation.version !== 1) fail('layout.maskPresentation.version', 'must be 1.');
+    if (!/^#[0-9a-fA-F]{6}$/.test(presentation.background)) {
+      fail('layout.maskPresentation.background', 'must be a six-digit hex color.');
+    }
+    for (const key of ['showStructure', 'showUnselected']) {
+      if (typeof presentation[key] !== 'boolean') {
+        fail('layout.maskPresentation.' + key, 'must be boolean.');
+      }
+    }
+    const styles = assertArray(presentation.layers, 'layout.maskPresentation.layers', 32);
+    const identifiers = new Set();
+    for (const [index, style] of styles.entries()) {
+      const path = 'layout.maskPresentation.layers[' + index + ']';
+      assertObject(style, path);
+      assertInteger(style.layer, path + '.layer');
+      assertInteger(style.datatype, path + '.datatype');
+      const identifier = style.layer + '|' + style.datatype;
+      if (identifiers.has(identifier)) fail(path, 'contains duplicate layer and datatype.');
+      identifiers.add(identifier);
+      if (!/^#[0-9a-fA-F]{6}$/.test(style.color)) {
+        fail(path + '.color', 'must be a six-digit hex color.');
+      }
+      if (!['fill', 'outline', 'hatch', 'cross'].includes(style.mode)) {
+        fail(path + '.mode', 'must be fill, outline, hatch, or cross.');
+      }
+      assertFinite(style.opacity, path + '.opacity', { min: 0, max: 1 });
+    }
+  }
+
   const hierarchy = assertObject(layout.hierarchy, 'layout.hierarchy');
   const entries = Object.entries(hierarchy);
   if (entries.length > LIMITS.hierarchyCells) fail('layout.hierarchy', 'contains too many cells.');

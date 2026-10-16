@@ -17,6 +17,12 @@ const v = await import('../vector-geometry.js');
 
 test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', () => {
   const layout = tcmosLayout();
+  assert.equal(layout.maskPresentation.version, 1);
+  assert.equal(layout.maskPresentation.showUnselected, false);
+  assert.deepEqual(
+    layout.maskPresentation.layers.map((layer) => layer.layer),
+    [1, 11, 6, 10, 12, 13, 4, 5],
+  );
   assert.deepEqual(FIELD_UM, [14, 8]);
   assert.equal(GATE_LENGTH_UM, 0.44);
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');

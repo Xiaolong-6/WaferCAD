@@ -134,6 +134,27 @@ export const TCMOS_METAL_NETS = Object.freeze([
     ],
   },
 ]);
+export const TCMOS_MASK_PRESENTATION = Object.freeze({
+  version: 1,
+  background: '#ffffff',
+  showUnselected: false,
+  showStructure: false,
+  layers: [
+    { layer: 1, datatype: 0, color: '#247b9a', mode: 'fill', opacity: 0.42 },
+    { layer: 11, datatype: 0, color: '#6c71ce', mode: 'fill', opacity: 0.46 },
+    { layer: 6, datatype: 0, color: '#df4d55', mode: 'hatch', opacity: 0.24 },
+    { layer: 10, datatype: 0, color: '#3b7b43', mode: 'cross', opacity: 0 },
+    { layer: 12, datatype: 0, color: '#e37b28', mode: 'outline', opacity: 0 },
+    { layer: 13, datatype: 0, color: '#78d746', mode: 'outline', opacity: 0 },
+    { layer: 4, datatype: 0, color: '#e34d86', mode: 'outline', opacity: 0 },
+    { layer: 5, datatype: 0, color: '#145d1c', mode: 'outline', opacity: 0 },
+  ],
+});
+
+// Display metadata only. Exported GDS/OAS remains the same geometry and
+// layer/datatype mapping. In particular, inferred NWELL/PWELL/S-D/silicide
+// support layers are preserved, but do not clutter the Fig. 1b visual overlay.
+
 export const TCMOS_MASKS = Object.freeze([
   {
     id: 1,
@@ -441,6 +462,7 @@ export function tcmosLayout() {
       height: 8,
     },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
+    maskPresentation: copy(TCMOS_MASK_PRESENTATION),
   };
 }
 function maskContext(id) {
