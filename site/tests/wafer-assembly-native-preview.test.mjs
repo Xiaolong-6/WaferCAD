@@ -184,3 +184,67 @@ test('isolated Recovery store refuses commits where IndexedDB is unavailable', a
   await assert.rejects(() => recovery.checkpoint(bonded()), /requires IndexedDB/);
   await assert.rejects(() => recovery.load('missing'), /requires IndexedDB/);
 });
+
+test('editable native v2 begins with a standalone receiver and delegates first Bond to one source owner', async () => {
+  const receiver = wafer('Standalone A');
+  const preview = await readAssemblyPreviewFile(
+    {
+      name: 'receiver.wafercad',
+      size: Buffer.byteLength(serializeProject(receiver)),
+      text: async () => serializeProject(receiver),
+    },
+    undefined,
+    { allowStandalone: true },
+  );
+  assert.deepEqual(preview.data.model, receiver.model);
+  await assert.rejects(
+    () =>
+      readAssemblyPreviewFile({
+        name: 'receiver.wafercad',
+        size: Buffer.byteLength(serializeProject(receiver)),
+        text: async () => serializeProject(receiver),
+      }),
+    /does not contain a bonded v15 Assembly/,
+  );
+  const store = createWorkstationRuntime(preview, {
+    assemblyPreview: true,
+    firstBondDraft: true,
+  });
+  const checkpoints = [];
+  const session = store.createAssemblyBondDraftSession(async (project, reason) => {
+    checkpoints.push({ project, reason });
+    return true;
+  });
+  assert.equal(session.currentIndex(), 0);
+  assert.equal(session.maxIndex(), 0);
+  assert.deepEqual(store.state.model, receiver.model);
+  const first = await session.bond(wafer('Donor B'), { receiverId: 'A', donorId: 'B' });
+  assert.equal(first.project.waferAssembly.sources.length, 2);
+  assert.equal(store.assemblyPreviewSession.currentIndex(), 1);
+  assert.deepEqual(store.state.model, first.project.model);
+  assert.equal(store.history.listHistory().length, 0);
+  assert.deepEqual(checkpoints[0].project, receiver);
+  assert.deepEqual(store.restoreAssemblyStage(0).model, receiver.model);
+  assert.deepEqual(store.restoreAssemblyStage(1).model, first.project.model);
+  const third = await session.bond(wafer('Donor C'), { donorId: 'C' });
+  assert.equal(third.project.waferAssembly.sources.length, 3);
+  assert.equal(checkpoints.length, 2);
+  assert.deepEqual(checkpoints[1].project, first.project);
+  assert.deepEqual(store.state.model, third.project.model);
+  assert.deepEqual(store.assemblyPreviewSession.listHistory().map((node) => node.operation.donorId), [
+    'B',
+    'C',
+  ]);
+});
+
+test('editable native v2 refuses the standalone source without a first-Bond opt-in', () => {
+  const receiver = wafer('Standalone A');
+  assert.throws(
+    () => createWorkstationRuntime({ source: 'receiver', data: receiver }, { assemblyPreview: true }),
+    /requires verified Assembly provenance/,
+  );
+  assert.throws(
+    () => createWorkstationRuntime({ source: 'receiver', data: receiver }, { firstBondDraft: true }),
+    /First-Bond draft requires/,
+  );
+});
