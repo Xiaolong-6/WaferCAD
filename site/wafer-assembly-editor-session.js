@@ -246,9 +246,9 @@ export function createAssemblyBondEditorSession(
   }
 
   function postBondPreviewModel() {
-    if (currentIndex() !== maxIndex()) return structuredClone(currentProject().model);
+    if (currentIndex() !== maxIndex()) return null;
     const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
-    if (!active?.postBondSteps?.length) return structuredClone(currentProject().model);
+    if (!active?.postBondSteps?.length) return null;
     return assemblyVariantPostBondModel(graph);
   }
 
