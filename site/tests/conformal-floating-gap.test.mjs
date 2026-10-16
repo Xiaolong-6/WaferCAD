@@ -12,7 +12,12 @@ function buildFloatingCap(face) {
   const model = createModel({ shape: 'rect', width: 20, height: 10, thickness: 10 });
   const island = rectMulti(4, 10);
   const remaining = difference(model.boundary, island);
-  model.layers.push({ id: 'floating', name: 'Floating disjoint slab', visible: true, color: '#aaaaaa' });
+  model.layers.push({
+    id: 'floating',
+    name: 'Floating disjoint slab',
+    visible: true,
+    color: '#aaaaaa',
+  });
   model.regions = [
     {
       id: 'region-1',
@@ -41,12 +46,7 @@ function materialAt(model, x, z, layerId = null) {
   return model.regions.some(
     (region) =>
       pointInMulti([x, 0], region.geom) &&
-      region.stack.some(
-        (s) =>
-          s.z0 < z &&
-          s.z1 > z &&
-          (layerId == null || s.layerId === layerId),
-      ),
+      region.stack.some((s) => s.z0 < z && s.z1 > z && (layerId == null || s.layerId === layerId)),
   );
 }
 

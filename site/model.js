@@ -1038,9 +1038,7 @@ function healNumericalCoverageCracks(model) {
 
 function addVoidConformalSidewall(model, geom, layerId, face, source) {
   if (isEmpty(geom) || !layerId || source?.z == null || source?.oppositeZ == null) return;
-  const continuousLimit = Number.isFinite(source.connectedZ)
-    ? source.connectedZ
-    : source.oppositeZ;
+  const continuousLimit = Number.isFinite(source.connectedZ) ? source.connectedZ : source.oppositeZ;
   const z0 = face === 'front' ? continuousLimit : source.z,
     z1 = face === 'front' ? source.z : continuousLimit;
   if (!(z1 > z0 + 1e-9)) return;
