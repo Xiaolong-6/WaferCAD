@@ -232,7 +232,10 @@ try {
     let nextZ = physicalStack.find((segment) => segment.layerId === 'base').z1;
     for (const [index, film] of expectedLayers.entries()) {
       const segment = films[index];
-      assert.ok(Math.abs(segment.z0 - nextZ) <= 1e-10, film.name + ' must start at preceding top Z');
+      assert.ok(
+        Math.abs(segment.z0 - nextZ) <= 1e-10,
+        film.name + ' must start at preceding top Z',
+      );
       assert.ok(
         Math.abs(segment.z1 - segment.z0 - film.thickness) <= 1e-10,
         film.name + ' must retain its physical thickness without rounding',
@@ -251,7 +254,11 @@ try {
       }
       return null;
     });
-    assert.deepEqual(beforeInsertion, original.model, 'Recovery protects exact pre-insert geometry');
+    assert.deepEqual(
+      beforeInsertion,
+      original.model,
+      'Recovery protects exact pre-insert geometry',
+    );
 
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#saveProjectBtn').click();
