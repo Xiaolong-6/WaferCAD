@@ -153,7 +153,7 @@ try {
       const progress = document.getElementById('recipeProgressCount');
       window.__metalensProgress = [];
       if (progress) {
-        new MutationObserver(() => {
+        new globalThis.MutationObserver(() => {
           const value = progress.textContent?.trim();
           if (value) window.__metalensProgress.push(value);
         }).observe(progress, { childList: true, subtree: true });
