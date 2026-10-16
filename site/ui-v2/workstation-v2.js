@@ -219,9 +219,13 @@
       mounted.dataset.keyboard =
         narrow() && state.mobile === 'edit' && editing && occluded > 120 ? 'open' : 'closed';
     };
-    document.addEventListener('focusin', syncKeyboard);
-    document.addEventListener('focusout', syncKeyboard);
-    window.visualViewport?.addEventListener('resize', syncKeyboard);
+    // Standalone M2/Preview keep their original keyboard lifecycle.
+    // Production compact keyboard ownership is in mobile-viewport-controller.js.
+    if (!production) {
+      document.addEventListener('focusin', syncKeyboard);
+      document.addEventListener('focusout', syncKeyboard);
+      window.visualViewport?.addEventListener('resize', syncKeyboard);
+    }
     const tooltips = window.WaferCadV2TooltipController?.create({ root: document });
 
     // Share one measured default between initial ARIA state, drag/keyboard
@@ -352,7 +356,7 @@
                 el(
                   'div',
                   { class: 'p-actions p-restore-panel-actions' },
-                  button('Restore panel', 'expand-empty', 'process'),
+                  button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process'),
                 ),
               ]
             : []),
@@ -411,7 +415,7 @@
         el(
           'div',
           { class: 'p-actions' },
-          state.editorHidden ? button('Restore panel', 'expand-empty', 'process') : null,
+          state.editorHidden ? button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process') : null,
           modeButton('overview'),
           viewDivider(),
           modeButton('single'),
@@ -602,7 +606,7 @@
       renderPanel(info);
       renderStage(info);
       renderMobileNav();
-      syncKeyboard();
+      if (!production) syncKeyboard();
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
       renderVersion(info);
@@ -632,9 +636,11 @@
         ]),
       destroy: () => {
         adapters.destroy();
-        document.removeEventListener('focusin', syncKeyboard);
-        document.removeEventListener('focusout', syncKeyboard);
-        window.visualViewport?.removeEventListener('resize', syncKeyboard);
+        if (!production) {
+          document.removeEventListener('focusin', syncKeyboard);
+          document.removeEventListener('focusout', syncKeyboard);
+          window.visualViewport?.removeEventListener('resize', syncKeyboard);
+        }
         tooltips?.destroy();
         overlays.destroy();
       },
