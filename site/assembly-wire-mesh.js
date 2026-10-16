@@ -31,8 +31,10 @@ export function createAssemblyWireMeshes(THREE, wire, curve = assemblyWireCurve(
     })),
   ];
   return parts.map(({ kind, geometry, point }) => {
+    // Bake contact coordinates into canonical vertices: the shared Z-break
+    // transformer rewrites mesh.position.z and would erase a local translation.
+    if (point) geometry.translate(...point);
     const mesh = new THREE.Mesh(geometry, material());
-    if (point) mesh.position.set(...point);
     mesh.name = 'Au bond ' + wire.id + ' / ' + kind + ' (inferred)';
     mesh.userData.waferCadAssemblyWireId = wire.id;
     mesh.userData.wafercadAssemblyWireId = wire.id;
