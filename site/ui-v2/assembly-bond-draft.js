@@ -104,6 +104,21 @@ export function mountAssemblyBondDraftControls({
   variantExport.type = 'button';
   variantExport.textContent = 'Export all Variants';
   variants.append(variantsTitle, variantSelect, variantName, forkButton, variantExport);
+  const timeline = document.createElement('section');
+  timeline.className = 'assembly-bond-workstation-history';
+  const timelineTitle = document.createElement('strong');
+  timelineTitle.textContent = 'Assembly History · committed';
+  const timelineStatus = document.createElement('span');
+  timelineStatus.className = 'assembly-bond-workstation-history-status';
+  const undoAssembly = document.createElement('button');
+  undoAssembly.type = 'button';
+  undoAssembly.textContent = 'Undo';
+  undoAssembly.setAttribute('aria-label', 'Undo Assembly history');
+  const redoAssembly = document.createElement('button');
+  redoAssembly.type = 'button';
+  redoAssembly.textContent = 'Redo';
+  redoAssembly.setAttribute('aria-label', 'Redo Assembly history');
+  timeline.append(timelineTitle, timelineStatus, undoAssembly, redoAssembly);
   const process = document.createElement('section');
   process.className = 'assembly-bond-post-process';
   const processTitle = document.createElement('strong');
@@ -164,12 +179,23 @@ export function mountAssemblyBondDraftControls({
     processUndo,
     processRedo,
   );
-  panel.append(header, description, form, variants, process, status);
+  panel.append(header, description, timeline, form, variants, process, status);
   root.append(panel);
 
   let busy = false;
   const sync = () => {
     const all = editor.listVariants();
+    const navigation = editor.workstationHistoryNavigation();
+    timelineStatus.textContent =
+      `Bond ${navigation.bondIndex} / ${navigation.bondLength} · Process ${navigation.processIndex} / ${navigation.processLength}`;
+    undoAssembly.disabled = busy || !navigation.canUndo;
+    redoAssembly.disabled = busy || !navigation.canRedo;
+    undoAssembly.title = navigation.undoKind
+      ? `Undo last ${navigation.undoKind === 'bond' ? 'Bond' : 'Process'} stage`
+      : 'At source History start';
+    redoAssembly.title = navigation.redoKind
+      ? `Redo ${navigation.redoKind === 'bond' ? 'Bond' : 'Process'} stage`
+      : 'At active Variant HEAD';
     variantSelect.replaceChildren();
     for (const branch of all) {
       const option = document.createElement('option');
@@ -235,6 +261,30 @@ export function mountAssemblyBondDraftControls({
       sync();
     }
   };
+  const navigateAssembly = async (direction) => {
+    if (busy) return;
+    const before = editor.workstationHistoryNavigation();
+    const kind = direction === 'undo' ? before.undoKind : before.redoKind;
+    if (!kind) return;
+    busy = true;
+    sync();
+    try {
+      if (direction === 'undo') await editor.undoWorkstationDurable();
+      else await editor.redoWorkstationDurable();
+      status.dataset.error = 'false';
+      status.textContent = `${direction === 'undo' ? 'Undid' : 'Redid'} ${kind} stage. Durable Assembly revision saved.`;
+      onChanged();
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+      onChanged();
+    } finally {
+      busy = false;
+      sync();
+    }
+  };
+  undoAssembly.addEventListener('click', () => void navigateAssembly('undo'));
+  redoAssembly.addEventListener('click', () => void navigateAssembly('redo'));
   processUndo.addEventListener('click', () => void navigateProcess(-1));
   processRedo.addEventListener('click', () => void navigateProcess(1));
 

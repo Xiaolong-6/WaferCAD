@@ -304,3 +304,70 @@ test('rejected durable Process fork restores original Recipe cursor and physical
   assert.deepEqual(h.currentModel(), start().model);
   assert.equal(h.revision(), revision);
 });
+
+
+test('unified Assembly undo/redo crosses Process and Bond boundaries with durable replay', async () => {
+  const h = host();
+  const original = h.session.fullProduct();
+  const third = await h.session.bond(wafer('Donor C'), { donorId: 'C' });
+  const film = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const tip = await h.session.appendPostBondStepDurable({
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  const graph = h.session.exportVariantGraph();
+  const baseRevision = h.revision();
+  assert.deepEqual(h.session.workstationHistoryNavigation(), {
+    bondIndex: 2,
+    bondLength: 2,
+    processIndex: 2,
+    processLength: 2,
+    canUndo: true,
+    canRedo: false,
+    undoKind: 'process',
+    redoKind: null,
+  });
+  await h.session.undoWorkstationDurable();
+  assert.deepEqual(h.session.postBondPreviewModel(), film.model);
+  await h.session.undoWorkstationDurable();
+  assert.equal(h.session.postBondPreviewModel(), null);
+  assert.equal(h.session.workstationHistoryNavigation().undoKind, 'bond');
+  await h.session.undoWorkstationDurable();
+  assert.equal(h.session.currentIndex(), 1);
+  assert.deepEqual(h.currentModel(), original.model);
+  assert.equal(h.session.workstationHistoryNavigation().redoKind, 'bond');
+  await h.session.redoWorkstationDurable();
+  assert.deepEqual(h.currentModel(), third.project.model);
+  assert.equal(h.session.workstationHistoryNavigation().redoKind, 'process');
+  await h.session.redoWorkstationDurable();
+  assert.deepEqual(h.session.postBondPreviewModel(), film.model);
+  await h.session.redoWorkstationDurable();
+  assert.deepEqual(h.session.postBondPreviewModel(), tip.model);
+  assert.deepEqual(h.session.exportVariantGraph(), graph, 'source/Recipe content is immutable across navigation');
+  assert.equal(h.revision(), baseRevision + 6, 'one confirmed graph revision per navigation');
+  assert.equal(h.session.workstationHistoryNavigation().canRedo, false);
+  assert.equal(await h.session.redoWorkstationDurable(), null, 'HEAD is a no-op without writes');
+  assert.equal(h.revision(), baseRevision + 6);
+});
+
+test('unified History rejects stale durable publication and restores the exact Process cursor', async () => {
+  let deny = false;
+  const h = host({ reject: () => deny });
+  const film = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const graph = h.session.exportVariantGraph();
+  const revision = h.revision();
+  deny = true;
+  await assert.rejects(() => h.session.undoWorkstationDurable(), /durable graph write failure/);
+  assert.deepEqual(h.session.exportVariantGraph(), graph);
+  assert.deepEqual(h.session.postBondPreviewModel(), film.model);
+  assert.equal(h.revision(), revision);
+  assert.equal(h.session.workstationHistoryNavigation().undoKind, 'process');
+  assert.equal(await h.session.redoWorkstationDurable(), null);
+  assert.equal(h.revision(), revision);
+});

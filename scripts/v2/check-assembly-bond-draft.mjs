@@ -441,6 +441,16 @@ try {
         .locator('.assembly-bond-post-process-count')
         .filter({ hasText: /Process 2 \/ 2/ })
         .waitFor();
+      // Native unified Assembly History must undo/redo the real derived model,
+      // using its durable graph owner (not the generic Workstation SnapshotManager).
+      await processTab.getByRole('button', { name: 'Undo Assembly history' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
+      );
+      await processTab.getByRole('button', { name: 'Redo Assembly history' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
+      );
       await processTab.getByRole('button', { name: '← Process' }).click();
       await processTab.waitForFunction(() =>
         document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),

@@ -285,6 +285,49 @@ export function createAssemblyBondEditorSession(
     };
   }
 
+  // One source-aware navigation boundary spans the immutable Bond stages
+  // and the derived post-Bond Process cursor. No ordinary SnapshotManager
+  // operation is permitted to participate in this transaction.
+  function workstationHistoryNavigation() {
+    const process = processTimeline();
+    const bondIndex = currentIndex();
+    const bondLength = maxIndex();
+    const undoKind =
+      process.available && process.index > 0 ? 'process' : bondIndex > 0 ? 'bond' : null;
+    const redoKind =
+      bondIndex < bondLength
+        ? 'bond'
+        : process.available && process.index < process.length
+          ? 'process'
+          : null;
+    return {
+      bondIndex,
+      bondLength,
+      processIndex: process.index,
+      processLength: process.length,
+      canUndo: undoKind != null,
+      canRedo: redoKind != null,
+      undoKind,
+      redoKind,
+    };
+  }
+
+  async function navigateWorkstationHistoryDurable(direction) {
+    assertReadable();
+    if (direction !== 'undo' && direction !== 'redo') {
+      throw new Error('Unknown Assembly History navigation direction.');
+    }
+    const navigation = workstationHistoryNavigation();
+    const kind = direction === 'undo' ? navigation.undoKind : navigation.redoKind;
+    if (!kind) return null;
+    const delta = direction === 'undo' ? -1 : 1;
+    return durableChange(() =>
+      kind === 'process'
+        ? restorePostBondStep(navigation.processIndex + delta)
+        : restoreIndex(navigation.bondIndex + delta),
+    );
+  }
+
   function restorePostBondStep(index) {
     assertReadable();
     if (persistVariantGraph && !durableMutation) {
@@ -415,6 +458,9 @@ export function createAssemblyBondEditorSession(
     appendPostBondStepDurable: (input) => durableChange(() => appendPostBondStep(input)),
     restorePostBondStepDurable: (index) => durableChange(() => restorePostBondStep(index)),
     processTimeline,
+    workstationHistoryNavigation,
+    undoWorkstationDurable: () => navigateWorkstationHistoryDurable('undo'),
+    redoWorkstationDurable: () => navigateWorkstationHistoryDurable('redo'),
     postBondPreviewModel,
     durableRevision: () => durableRevision,
     exportVariantGraph: () => structuredClone(graph),
