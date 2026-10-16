@@ -397,8 +397,9 @@ try {
         waitUntil: 'domcontentloaded',
       });
       await processTab.waitForFunction(
-        () => Boolean(document.querySelector(`option[value="workspace:${originalWorkspaceId}"]`)),
-        null,
+        (workspaceId) =>
+          Boolean(document.querySelector(`option[value="workspace:${workspaceId}"]`)),
+        originalWorkspaceId,
         { timeout: 20000 },
       );
       await processTab
@@ -415,10 +416,10 @@ try {
       await processTab.waitForFunction(() =>
         document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
       );
-      assert.match(
-        await processTab.locator('.assembly-bond-post-process-count').textContent(),
-        /1 saved geometry steps/,
-      );
+      await processTab
+        .locator('.assembly-bond-post-process-count')
+        .filter({ hasText: /1 saved geometry steps/ })
+        .waitFor();
       const processBaseline = await processTab.evaluate(() =>
         window.WaferCadV2Workstation.snapshot(),
       );
