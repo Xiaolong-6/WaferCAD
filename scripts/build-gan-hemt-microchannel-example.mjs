@@ -777,7 +777,10 @@ export async function buildGanMicrochannel() {
     process('Inferred NiPaAu TSV terminal cap on ' + face, 'deposit', {
       material: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
       thickness: GAN_TSV_LINER.inferredNiPaAuUm,
-      coverage: 'direct',
+      // A Cu-filled TSV with native conformal closure has no eligible flat
+      // top-face owner; the real exposed metal is a conformal boundary.
+      // Attempt a conformal coating of the *Cu-only inner terminal mask*.
+      coverage: 'conformal',
       face,
     }, 29);
   }
