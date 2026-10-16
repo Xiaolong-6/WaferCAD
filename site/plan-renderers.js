@@ -486,7 +486,7 @@ export function createPlanRenderers({
       getDrawMaskController()?.render(ctx, v, maskOpacity);
     } else {
       ctx.save();
-      ctx.globalAlpha = maskOpacity;
+      ctx.globalAlpha = presentation ? 1 : maskOpacity;
       if (presentation) {
         // Keep the physical File Mask unchanged. Presentation is an opt-in,
         // display-only overlay with per-layer ordering and visual semantics.

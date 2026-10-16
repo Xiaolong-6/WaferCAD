@@ -10,10 +10,24 @@ import {
   auditTcmosTerminalNetProvenance,
   tcmosLayout,
 } from '../../scripts/build-tcmos-inverter-example.mjs';
+import { readTcmosReferenceMask } from '../../scripts/tcmos-svg-mask.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
+
+test('Approved vector Mask imports four integral METAL1 paths and 218 exact CNT sites', () => {
+  const groups = readTcmosReferenceMask();
+  const metal = groups.find(({ name }) => name === 'METAL1');
+  const active = groups.find(({ name }) => name === 'ACTIVE');
+  const contacts = groups.find(({ name }) => name === 'CNT');
+  assert.equal(metal.shapes.length, 4);
+  assert.deepEqual(metal.shapes.map(({ points }) => points.length), [8, 12, 16, 16]);
+  assert.equal(active.shapes.length, 4);
+  assert.equal(contacts.shapes.length, 218);
+  assert.deepEqual(metal.shapes[2].points[0], [-6.7625, 2.0875]);
+  assert.deepEqual(metal.shapes[3].points[0], [3.98125, 2.0875]);
+});
 
 test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', () => {
   const layout = tcmosLayout();
@@ -28,14 +42,18 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
   assert.equal(layout.combos.length, 13);
+  const vectorLayers = readTcmosReferenceMask();
+  const visible = new Set(vectorLayers.map(({ layer }) => layer));
+  const auxiliary = TCMOS_MASKS.filter(({ id }) => !visible.has(id));
   assert.equal(
     layout.elements.length,
-    TCMOS_MASKS.reduce((n, m) => n + m.rectangles.length, 0),
+    232 + auxiliary.reduce((n, group) => n + group.rectangles.length, 0),
   );
-  for (const layer of TCMOS_MASKS) {
-    assert.equal(
-      layout.elements.filter((e) => e.layer === layer.id).length,
-      layer.rectangles.length,
+  for (const group of vectorLayers) {
+    assert.deepEqual(
+      layout.elements.filter(({ layer }) => layer === group.layer).map(({ points }) => points),
+      group.shapes.map(({ points }) => points),
+      group.name + ' must preserve the exact SVG polygon coordinates',
     );
   }
   const gates = TCMOS_MASKS.find((m) => m.id === 6).rectangles;

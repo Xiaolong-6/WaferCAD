@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import { readTcmosReferenceMask } from './tcmos-svg-mask.mjs';
 
 export const TCMOS_DOI = '10.1038/s41928-019-0272-8';
 export const FIELD_UM = [14, 8];
@@ -159,14 +160,14 @@ export const TCMOS_MASK_PRESENTATION = Object.freeze({
   showUnselected: false,
   showStructure: false,
   layers: [
-    { layer: 1, datatype: 0, color: '#247b9a', mode: 'fill', opacity: 0.42 },
-    { layer: 11, datatype: 0, color: '#6c71ce', mode: 'hatch', opacity: 0.46 },
-    { layer: 6, datatype: 0, color: '#df4d55', mode: 'hatch', opacity: 0.24 },
-    { layer: 10, datatype: 0, color: '#3b7b43', mode: 'cross', opacity: 0 },
-    { layer: 12, datatype: 0, color: '#e37b28', mode: 'outline', opacity: 0 },
-    { layer: 13, datatype: 0, color: '#78d746', mode: 'outline', opacity: 0 },
-    { layer: 4, datatype: 0, color: '#e34d86', mode: 'outline', opacity: 0 },
-    { layer: 5, datatype: 0, color: '#145d1c', mode: 'outline', opacity: 0 },
+    { layer: 1, datatype: 0, color: '#226c89', mode: 'outline', opacity: 0 },
+    { layer: 11, datatype: 0, color: '#b5b5f3', mode: 'fill', opacity: 1 },
+    { layer: 6, datatype: 0, color: '#ff303a', mode: 'hatch', opacity: 0.28 },
+    { layer: 10, datatype: 0, color: '#88a17a', mode: 'cross', opacity: 0 },
+    { layer: 12, datatype: 0, color: '#d88c48', mode: 'outline', opacity: 0 },
+    { layer: 13, datatype: 0, color: '#78e750', mode: 'outline', opacity: 0 },
+    { layer: 4, datatype: 0, color: '#e25e9c', mode: 'outline', opacity: 0 },
+    { layer: 5, datatype: 0, color: '#137e12', mode: 'outline', opacity: 0 },
   ],
 });
 
@@ -474,15 +475,31 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 
 export function tcmosLayout() {
-  const elements = TCMOS_MASKS.flatMap((mask) =>
-    mask.rectangles.map((r) => ({
-      kind: 'polygon',
-      sourceCell: CELL,
-      layer: mask.id,
-      datatype: 0,
-      points: rectanglePolygon(r),
-    })),
-  );
+  // The approved SVG is authoritative for all eight user-visible Mask
+  // layers. Auxiliary process-only layers stay intact until the Mask gate
+  // has been approved. Do not substitute the old raster approximations.
+  const traced = readTcmosReferenceMask();
+  const visibleLayers = new Set(traced.map(({ layer }) => layer));
+  const elements = [
+    ...traced.flatMap(({ layer, datatype, shapes }) =>
+      shapes.map(({ points }) => ({
+        kind: 'polygon',
+        sourceCell: CELL,
+        layer,
+        datatype,
+        points,
+      })),
+    ),
+    ...TCMOS_MASKS.filter(({ id }) => !visibleLayers.has(id)).flatMap((mask) =>
+      mask.rectangles.map((r) => ({
+        kind: 'polygon',
+        sourceCell: CELL,
+        layer: mask.id,
+        datatype: 0,
+        points: rectanglePolygon(r),
+      })),
+    ),
+  ];
   return {
     name: 'T-CMOS 130nm representative inverter; reconstructed masks, not foundry GDS',
     root: CELL,
@@ -494,7 +511,7 @@ export function tcmosLayout() {
       cell: CELL,
       layer: mask.id,
       datatype: 0,
-      count: mask.rectangles.length,
+      count: elements.filter((element) => element.layer === mask.id).length,
     })),
     bounds: {
       minX: -7,
