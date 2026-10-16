@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
+import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../model.js');
@@ -9,7 +10,6 @@ const { arrayParts } = await import('../model-array.js');
 const { readProjectFile, serializeProject } = await import('../project-io.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
-const { createSnapshotManager } = await import('../workspace-snapshots.js');
 
 function siteStack(site, point = [0, 0]) {
   const owners = site.model.regions.filter((region) => pointInMulti(point, region.geom));
