@@ -10,6 +10,7 @@ import {
   GAN_LOWER_FEED,
   GAN_TSV_LINER,
   GAN_HEMT_STACK,
+  GAN_GSG_STACK,
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -97,15 +98,20 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.ok(masks.get(18).rectangles.every((r) => r.w === 0.5 && r.h === 300));
   assert.equal(masks.get(16).rectangles[0].w, 878.5);
   assert.equal(masks.get(16).rectangles[0].h, 1120);
+  assert.equal(masks.get(26).rectangles.length, 2);
+  assert.equal(masks.get(27).rectangles.length, 2);
+  assert.equal(masks.get(20).rectangles.length, 6);
+  assert.equal(GAN_GSG_STACK.substrateThicknessUm, 100);
 });
 
 test('Lian 2022 structure uses true stepped voids, a suspended die and replayable history', async () => {
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 16);
-  assert.equal(validation.processNodes, 31);
-  assert.equal(validation.recipeSteps, 30);
+  assert.equal(validation.maskLayers, 18);
+  assert.equal(validation.processNodes, 33);
+  assert.equal(validation.recipeSteps, 32);
+  assert.equal(validation.checks.twoInferredGsgDieBodiesAndPadsAreRealGeometry, true);
   // Candidate process-order contract: source paper distinguishes metalized
   // TSVs from HEMT-to-GSG Au wire bonds. Do not turn a metadata-only assembly
   // record into an assertion of physical electrical connectivity.
@@ -124,6 +130,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   );
   const solderIndex = depositIndex('AuSn perimeter solder (5 um surrogate)');
   const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');
+  const gsgSolderIndex = depositIndex('GSG AuSn solder supports 5 um (inferred)');
+  const gsgDieIndex = depositIndex('GSG chip substrate surrogate (100 um inferred)');
   const gsgIndex = depositIndex('GSG Au pads surrogate 0.5 um');
   assert.ok(
     [
@@ -132,7 +140,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       cuFillIndex,
       cuPlanarizationIndex,
       solderIndex,
+      gsgSolderIndex,
       sicIndex,
+      gsgDieIndex,
       gsgIndex,
       wireBondRecordIndex,
     ].every((index) => index >= 0),
@@ -143,8 +153,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       cuSeedIndex < cuFillIndex &&
       cuFillIndex < cuPlanarizationIndex &&
       cuPlanarizationIndex < solderIndex &&
-      solderIndex < sicIndex &&
-      sicIndex < gsgIndex &&
+      solderIndex < gsgSolderIndex &&
+      gsgSolderIndex < sicIndex &&
+      sicIndex < gsgDieIndex &&
+      gsgDieIndex < gsgIndex &&
       gsgIndex < wireBondRecordIndex,
     'Surrogate TSV metallization, assembly and recorded Au wire bonding are out of order',
   );

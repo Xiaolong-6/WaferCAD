@@ -103,6 +103,13 @@ export const GAN_HEMT_STACK = Object.freeze({
   barrierUm: 0.025,
   isolationSiNUm: 0.15,
 });
+export const GAN_GSG_STACK = Object.freeze({
+  chipWidthUm: 220,
+  chipHeightUm: 350,
+  substrateThicknessUm: 100, // INFERRED: source does not give GSG die thickness
+  solderUm: 5, // INFERRED: original support standoff not reported
+  goldPadUm: 0.5, // INFERRED: illustrative top contacts
+});
 const chipWidth = 878.5;
 const chipHeight = 1120;
 const activeWidth = 303;
@@ -196,9 +203,23 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     rectangles: [centered(60, 370, -225), centered(60, 370, 225)],
   },
   {
+    id: 26,
+    name: 'Two GSG die footprints (dimensions inferred)',
+    rectangles: [-1250, 1250].map((x) =>
+      centered(GAN_GSG_STACK.chipWidthUm, GAN_GSG_STACK.chipHeightUm, x),
+    ),
+  },
+  {
+    id: 27,
+    name: 'Independent GSG AuSn solder footprints (inferred)',
+    rectangles: [-1250, 1250].map((x) => centered(200, 330, x)),
+  },
+  {
     id: 20,
-    name: 'Illustrative GSG chip pads',
-    rectangles: [centered(220, 350, -1250), centered(220, 350, 1250)],
+    name: 'Three inferred Au GSG contacts on each die',
+    rectangles: [-1250, 1250].flatMap((x) =>
+      [-95, 0, 95].map((y) => centered(160, 60, x, y)),
+    ),
   },
 ]);
 const byId = new Map(GAN_MICROCHANNEL_MASKS.map((mask) => [mask.id, mask]));
@@ -424,6 +445,15 @@ export async function buildGanMicrochannel() {
       const depositedSi = model.layers.find((layer) => layer.id === result.layerId);
       assert.ok(depositedSi, 'New Si bridge layer is missing');
       depositedSi.color = GAN_SILICON_COLOR;
+    }
+    if (command === 'deposit' && params.material.startsWith('GSG ')) {
+      const layer = model.layers.find((candidate) => candidate.id === result.layerId);
+      assert.ok(layer, 'GSG deposition did not produce a material layer');
+      layer.color = params.material.startsWith('GSG Au pads')
+        ? '#D8A83A'
+        : params.material.startsWith('GSG AuSn')
+          ? '#B78F69'
+          : '#8095A7';
     }
     const recipe = {
       ...params,
@@ -666,6 +696,12 @@ export async function buildGanMicrochannel() {
     15,
   );
   assert.ok(solderResult.layerId);
+  deposit(
+    'Inferred AuSn solder under both separate GSG Pad chips',
+    'GSG AuSn solder supports 5 um (inferred)',
+    GAN_GSG_STACK.solderUm,
+    27,
+  );
   bookmark('04 AuSn peripheral supports');
   const sic = deposit(
     'Place thinned SiC chip as suspended flat bridge (99 um)',
@@ -712,7 +748,22 @@ export async function buildGanMicrochannel() {
       fov: 37,
     },
   });
-  deposit('Illustrative GSG pads on interposer', 'GSG Au pads surrogate 0.5 um', 0.5, 20);
+  // Fig. 2(e,f) includes two separately soldered GSG Pad chips, not two
+  // gold rectangles painted directly on the silicon interposer.
+  // These substrate dimensions/composition and pad masks are INFERRED.
+  deposit(
+    'Transfer two independent illustrative GSG Pad die bodies',
+    'GSG chip substrate surrogate (100 um inferred)',
+    GAN_GSG_STACK.substrateThicknessUm,
+    26,
+    'transfer',
+  );
+  deposit(
+    'Three inferred Au contacts on each separate GSG Pad die',
+    'GSG Au pads surrogate 0.5 um',
+    GAN_GSG_STACK.goldPadUm,
+    20,
+  );
   record(
     'Au wire bonds to GSG and aluminum manifold assembly',
     'Paper Fig. 2(e,f) and SI Fig. S-5: AuSn-bonded HEMT and two GSG chips, gold wires, aluminum enclosure and coolant fittings. True curved wires, full package and coolant flow are not geometric model features.',
@@ -725,6 +776,18 @@ export async function buildGanMicrochannel() {
     roi: null,
     section: { a: [-1800, 950], b: [1800, 950] },
     threeCamera: { position: [3600, -4250, 2650], target: [0, 0, 240], fov: 36 },
+  });
+
+  // Separate package inspection view keeps both GSG dies while the default
+  // longitudinal half-section remains available for coolant topology.
+  bookmark('07 HEMT and dual GSG die upper package inspection', {
+    roi: { type: 'rect', a: [-1600, -750], b: [1600, 750] },
+    section: { a: [-1500, 0], b: [1500, 0] },
+    threeCamera: {
+      position: [1750, -2200, 1950],
+      target: [0, 0, 670],
+      fov: 36,
+    },
   });
 
   // Production builder invariants: verify actual material occupancy, never
@@ -854,6 +917,31 @@ export async function buildGanMicrochannel() {
   assert.equal(cooledSegments[0].z0, 605, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
   assert.equal(materialAt([30, 0], 604.99), false, 'SiC backside is coolant-obstructed');
+  const gsgDie = model.layers.find(
+    (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
+  );
+  const gsgSolder = model.layers.find(
+    (layer) => layer.name === 'GSG AuSn solder supports 5 um (inferred)',
+  );
+  const gsgPad = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  assert.ok(gsgDie && gsgSolder && gsgPad, 'Missing one or more physical GSG assembly layers');
+  for (const x of [-1250, 1250]) {
+    for (const [layerId, z0, z1] of [
+      [gsgSolder.id, 600, 605],
+      [gsgDie.id, 605, 705],
+      [gsgPad.id, 705, 705.5],
+    ]) {
+      assert.ok(
+        owner([x, 0]).stack.some(
+          (segment) =>
+            segment.layerId === layerId &&
+            Math.abs(segment.z0 - z0) < 1e-8 &&
+            Math.abs(segment.z1 - z1) < 1e-8,
+        ),
+        'Inferred GSG die material missing at ' + [x, z0, z1],
+      );
+    }
+  }
   const siMaterials = model.layers.filter(
     (layer) => layer.id === 'base' || layer.name.startsWith('Si geometric bridge tier '),
   );
@@ -911,6 +999,7 @@ export async function buildGanMicrochannel() {
       fourTSVsWithContinuousTiCuSeedGeometry: true,
       fourCuFilledTSVsWithUnblockedCoolant: true,
       idealizedCuPlanarizationPreservesTSVConductors: true,
+      twoInferredGsgDieBodiesAndPadsAreRealGeometry: true,
     },
     checkpoints,
   };

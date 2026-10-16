@@ -94,22 +94,30 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
   const { project } = await buildGanMicrochannel();
   const model = project.model;
   const gsgPad = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  const gsgDie = model.layers.find(
+    (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
+  );
   const copper = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
-  assert.ok(gsgPad && copper, 'Expected GSG pad footprint and Cu-filled TSV materials');
+  assert.ok(gsgPad && gsgDie && copper, 'Missing physical GSG die or Cu TSV materials');
 
   // Fig. 2(f) shows wire bonds between the HEMT and the separate GSG pad
   // chips. TSV copper supports distinct vertical interconnection / grounding.
   // DO NOT require a fabricated direct GSG-to-TSV Au trace as a paper fact.
   for (const side of [-1, 1]) {
     assert.equal(
-      layerAt(model, [side * 1250, 0], 600.25),
+      layerAt(model, [side * 1250, 0], 705.25),
       gsgPad.id,
       'Illustrative GSG pad footprint is missing',
     );
     assert.equal(
-      layerAt(model, [side * 1250, 0], 600.51),
+      layerAt(model, [side * 1250, 0], 705.51),
       null,
       'The 0.5 um GSG pad footprint must not silently grow into a thicker structure',
+    );
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 650),
+      gsgDie.id,
+      'GSG chip must occupy a physical 100 um high substrate body',
     );
     for (const y of [-950, 950]) {
       assert.equal(
