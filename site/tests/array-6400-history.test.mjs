@@ -37,7 +37,7 @@ function physicalChanges(before, after) {
   return changed;
 }
 
-test('6400-site sparse process, History/Variant and project IO remain physically isolated', async () => {
+test('6400-site sparse Process, History and Variant remain isolated', async () => {
   const base = createModel({ shape: 'rect', width: 0.375, height: 0.375, thickness: 2 });
   const initialModel = createRectangularGridArrayModel(base, {
     kind: 'rect-grid',
@@ -47,8 +47,9 @@ test('6400-site sparse process, History/Variant and project IO remain physically
     pitchY: 0.375,
     activeSites: 4725,
   });
-  assert.equal(arrayParts(initialModel).filter((site) => site.role === 'device').length, 4725);
-  assert.equal(arrayParts(initialModel).filter((site) => site.role === 'background').length, 1675);
+  const initialSites = arrayParts(initialModel);
+  assert.equal(initialSites.filter((site) => site.role === 'device').length, 4725);
+  assert.equal(initialSites.filter((site) => site.role === 'background').length, 1675);
   const initial = structuredClone(initialModel);
   let live = migrateProjectFile(
     projectForBenchmark({
@@ -58,12 +59,8 @@ test('6400-site sparse process, History/Variant and project IO remain physically
   );
   let nextNodeId = 0;
   const validation = (candidate) => {
-    try {
-      validateProjectFile(candidate);
-      return true;
-    } catch {
-      return false;
-    }
+    validateProjectFile(candidate);
+    return true;
   };
   const manager = createSnapshotManager({
     capture: () => live,
@@ -131,7 +128,7 @@ test('6400-site sparse process, History/Variant and project IO remain physically
   assert.deepEqual(replayed, mainHead, 'Replaying the same steps produces an identical model');
 
   assert.equal(manager.restoreProcessNode(first.id), true);
-  assert.deepEqual(live.model, afterDeposit, 'History restores the exact earlier physical state');
+  assert.deepEqual(live.model, afterDeposit, 'History restores exact earlier geometry');
   assert.equal(manager.restoreActiveBranchHead(), true);
   assert.deepEqual(live.model, mainHead, 'Return to Main HEAD restores Etch exactly');
 
@@ -158,7 +155,7 @@ test('6400-site sparse process, History/Variant and project IO remain physically
   assert.equal(manager.switchBranch('main'), true);
   assert.deepEqual(live.model, mainHead, 'Variant must not mutate Main physical geometry');
   assert.equal(manager.switchBranch(variant.id), true);
-  assert.deepEqual(live.model, variantHead, 'Returning to Variant restores its physical model');
+  assert.deepEqual(live.model, variantHead, 'Variant switch restores geometry');
 
   const project = {
     ...live,
