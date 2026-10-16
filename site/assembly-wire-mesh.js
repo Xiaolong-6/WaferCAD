@@ -1,9 +1,9 @@
 /**
  * Renderer/exporter adapter for explicit 3D Au packaging wires.
  * The nominal diameter, bond-foot radius and control points are inferred.
- * End spheres seal the visible open tube ends and intersect the metal-pad
- * surfaces. This visual construction is not a watertight Boolean union or
- * proof of a metallurgical/electrical bond.
+ * Tangent-oriented end disks close the visible tube surfaces without
+ * inventing ball-bond volumes inside the semiconductor. This construction
+ * is not a welded Boolean union or proof of a metallurgical/electrical bond.
  */
 export function assemblyWireCurve(THREE, wire) {
   return new THREE.CubicBezierCurve3(
@@ -24,16 +24,19 @@ export function createAssemblyWireMeshes(THREE, wire, curve = assemblyWireCurve(
       kind: 'tube',
       geometry: new THREE.TubeGeometry(curve, 64, radius, 10, false),
     },
-    ...[0, 1].map((end) => ({
-      kind: 'contact-' + end,
-      geometry: new THREE.SphereGeometry(radius * 1.01, 12, 8),
-      point: wire.points[end ? 3 : 0],
-    })),
+    ...[0, 1].map((end) => {
+      const normal = curve.getTangent(end).clone();
+      if (end === 0) normal.negate();
+      const geometry = new THREE.CircleGeometry(radius, 10);
+      geometry.applyQuaternion(
+        new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal),
+      );
+      // Bake contact XYZ into vertices because Z-break rewrites position.z.
+      geometry.translate(...wire.points[end ? 3 : 0]);
+      return { kind: 'contact-' + end, geometry };
+    }),
   ];
-  return parts.map(({ kind, geometry, point }) => {
-    // Bake contact coordinates into canonical vertices: the shared Z-break
-    // transformer rewrites mesh.position.z and would erase a local translation.
-    if (point) geometry.translate(...point);
+  return parts.map(({ kind, geometry }) => {
     const mesh = new THREE.Mesh(geometry, material());
     mesh.name = 'Au bond ' + wire.id + ' / ' + kind + ' (inferred)';
     mesh.userData.waferCadAssemblyWireId = wire.id;
