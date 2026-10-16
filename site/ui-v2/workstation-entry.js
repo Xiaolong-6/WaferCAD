@@ -308,6 +308,7 @@ try {
                 bonds: store.assemblyPreviewSession.maxIndex(),
                 sources: project.data.waferAssembly.sources.length,
                 readOnly: true,
+                originDisplayColors: [...new Set(store.renderModel().layers.map((layer) => layer.color))],
               },
             }
           : {}),
@@ -337,7 +338,7 @@ try {
       },
       initialView,
     });
-    status('Bonded Assembly loaded · inspection only; no editor or autosave.');
+    status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
   }
   if (readOnlyPreview && window.parent !== window) {
     window.addEventListener('message', (event) => {
