@@ -193,6 +193,10 @@ jobs:
         if: needs.plan.outputs.renderer == 'true'
         run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
 
+      - name: Verify PR250 conformal 50 nm common-XY geometry
+        if: ${{ needs.plan.outputs.renderer == 'true' && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
+        run: node --test site/tests/photodetector-rough-conformal.test.mjs
+
       - name: Capture real photodetector rough ROI evidence
         if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         env:
