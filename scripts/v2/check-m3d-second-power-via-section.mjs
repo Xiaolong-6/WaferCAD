@@ -56,9 +56,7 @@ try {
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
   assert.equal(
     await page.evaluate(() =>
-      performance
-        .getEntriesByType('resource')
-        .some((item) => /\/app\.js(?:\?|$)/.test(item.name)),
+      performance.getEntriesByType('resource').some((item) => /\/app\.js(?:\?|$)/.test(item.name)),
     ),
     false,
     'Native v2 figure evidence must not boot the legacy app',
@@ -176,10 +174,10 @@ try {
     console.log('NATIVE_M3D_POWER_VIA_SECTION', item.id, 'materials', physical.length, 'ink', ink);
   }
   assert.deepEqual(errors, [], 'Native v2 cut generated browser exceptions');
-  report.materialStacksIdentical = JSON.stringify(report.cuts[0].physical) ===
-    JSON.stringify(report.cuts[1].physical);
-  report.sectionPngIdentical = report.cuts[0].screenshotSha256 ===
-    report.cuts[1].screenshotSha256;
+  report.materialStacksIdentical =
+    JSON.stringify(report.cuts[0].physical) === JSON.stringify(report.cuts[1].physical);
+  report.sectionPngIdentical =
+    report.cuts[0].screenshotSha256 === report.cuts[1].screenshotSha256;
   report.structuralDistinction = report.materialStacksIdentical
     ? 'NOT_ESTABLISHED__BOTH_COORDINATES_CONTAIN_TI_NI_AU'
     : 'CUTS_HAVE_DIFFERENT_Z_MATERIAL_BANDS';
