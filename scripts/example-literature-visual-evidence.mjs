@@ -570,7 +570,10 @@ const requested = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
 const ids = requested?.split(',').filter(Boolean) || [];
 assert.equal(new Set(ids).size, ids.length, 'Repeated literature figure case identifier');
 const selected = ids.length ? ids.map((id) => CASES.find((item) => item.id === id)) : CASES;
-assert.ok(selected.length > 0 && selected.every(Boolean), 'No matching literature visual evidence case');
+assert.ok(
+  selected.length > 0 && selected.every(Boolean),
+  'No matching literature visual evidence case',
+);
 
 const output = 'test-results/literature-figure-cuts';
 await mkdir(output, { recursive: true });
