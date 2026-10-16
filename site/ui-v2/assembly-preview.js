@@ -2,6 +2,24 @@
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 
+
+/** Physical Z span across all material stacks; preview-only, no model changes. */
+export function assemblyPreviewZExtent(model) {
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const region of model?.regions || []) {
+    for (const segment of region?.stack || []) {
+      if (!Number.isFinite(segment.z0) || !Number.isFinite(segment.z1)) continue;
+      minZ = Math.min(minZ, segment.z0);
+      maxZ = Math.max(maxZ, segment.z1);
+    }
+  }
+  if (!Number.isFinite(minZ) || !Number.isFinite(maxZ) || maxZ <= minZ) {
+    throw new Error('Assembly preview cannot derive a physical Z extent.');
+  }
+  return { minZ, maxZ, thicknessUm: Number((maxZ - minZ).toPrecision(10)) };
+}
+
 export async function readAssemblyPreviewFile(file, readProject = readProjectFile) {
   if (!file || typeof file.name !== 'string' || !/\.wafercad$/i.test(file.name)) {
     throw new Error('Select a .wafercad Assembly project.');
@@ -67,6 +85,7 @@ export function mountAssemblyPreviewControls({
   root = document.body,
   currentIndex,
   maxIndex,
+  stageDetail = () => '',
   restoreIndex,
   selectView,
   initialView = 'three',
@@ -87,8 +106,8 @@ export function mountAssemblyPreviewControls({
 
   const sync = () => {
     const index = currentIndex();
-    stage.textContent =
-      index === 0 ? `Original wafer · 0 / ${maxIndex()}` : `Bond ${index} / ${maxIndex()}`;
+    const step = index === 0 ? `Original wafer · 0 / ${maxIndex()}` : `Bond ${index} / ${maxIndex()}`;
+    stage.textContent = `${step}${stageDetail()}`;
     backward.disabled = index === 0;
     forward.disabled = index === maxIndex();
     nav.dataset.bondIndex = String(index);
