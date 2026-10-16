@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
+import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { readTcmosReferenceMask } from './tcmos-svg-mask.mjs';
 import { parseGDS, flattenGDS } from '../site/gds.js';
 import { parseOAS } from '../site/oasis.js';
@@ -13,6 +14,7 @@ const projectPath = resolve(
 );
 const dir = resolve('test-results/tcmos-svg-mask');
 await mkdir(dir, { recursive: true });
+await loadGeometryKernel();
 const project = await readProjectFile(new Blob([await readFile(projectPath)]));
 const source = readTcmosReferenceMask();
 assert.equal(project.layout.combos.length, 8);
@@ -99,9 +101,10 @@ try {
     const filename = resolve(dir, 'approved-svg-mask.' + format);
     await download.saveAs(filename);
     const bytes = await readFile(filename);
-    const parsed = format === 'gds'
-      ? parseGDS(Uint8Array.from(bytes).buffer)
-      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const parsed =
+      format === 'gds'
+        ? parseGDS(Uint8Array.from(bytes).buffer)
+        : await parseOAS(Uint8Array.from(bytes).buffer);
     const elements = flattenGDS(parsed, parsed.root).elements;
     const counts = {};
     for (const element of elements) {
