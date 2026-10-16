@@ -331,6 +331,16 @@ p {
   background: var(--wc-surface);
   overflow: hidden;
 }
+/* Production Workstation owns the entire browser viewport. M2 standalone
+   prototypes retain the inset card geometry from the shared .p-workbench. */
+body[data-workstation] .p-workbench {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
 /* Shell geometry stays fixed while startup restores/imports the scientific state.
    Hidden content can be initialized, but no stale Base/Process or unordered views
    should be presented before the first committed workstation render. */
@@ -515,6 +525,10 @@ p {
 }
 .p-panel-content > * {
   flex-shrink: 0;
+}
+/* The production Project tab reveals this only on compact Edit screens. */
+.p-mobile-welcome-link {
+  display: none;
 }
 /* Persistent adapters retain hidden leaves. Only the visible domain sets spacing. */
 .v2-panel-host > [data-slot-content],

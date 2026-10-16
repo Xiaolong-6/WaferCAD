@@ -1,14 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
-import {
-  baseUrl,
-  gotoWelcome,
-  launchBrowser,
-  newLegacyUiPage as newUiPage,
-  observePageErrors,
-} from './test-helpers/ui.mjs';
+import { baseUrl, launchBrowser, newUiPage, observePageErrors } from './test-helpers/ui.mjs';
 
 await loadGeometryKernel();
 const { readProjectFile } = await import('../site/project-io.js');
@@ -30,7 +24,16 @@ const browser = await launchBrowser();
 try {
   const { context, page } = await newUiPage(browser);
   const errors = observePageErrors(page);
-  await gotoWelcome(page);
+  // The v2 development server maps / to the obsolete prototype entry.
+  // Open the real Welcome explicitly to avoid accidentally testing the old shell.
+  await page.goto(`${baseUrl}/index.html`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000,
+  });
+  await page.locator('#welcomeScreen').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForFunction(() => document.documentElement.dataset.welcomeReady === 'true', null, {
+    timeout: 30000,
+  });
   const result = await page.evaluate(async (text) => {
     const io = await import('./project-io.js'),
       api = await import('./workspace-persistence.js');
@@ -134,6 +137,7 @@ try {
   assert.equal(result.steps, 40);
   assert.equal(result.bookmarks, 5);
   assert.deepEqual(errors, []);
+  await mkdir('test-results/native-fig3', { recursive: true });
   await writeFile(
     'test-results/native-fig3/workspace-storage-worker.json',
     JSON.stringify({ baseUrl, browser: browser.version(), expected, ...result, errors }, null, 2),

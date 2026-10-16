@@ -9,6 +9,14 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import {
+  desktopDockingEnabled,
+  projectDesktopLayout,
+  reduceDesktopLayout,
+} from './view-layout-model.js';
+import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
+import { createDesktopDockingController } from './view-docking-controller.js';
+import { createDesktopLayoutResizer } from './view-layout-resizer.js';
 import { createProgressiveStartup } from './progressive-startup.js';
 import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
 
@@ -20,6 +28,14 @@ try {
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
+  const desktopPreferences = (() => {
+    if (readOnlyPreview) return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
   const project = readOnlyPreview
       ? await loadBundledProject(params.get('example'), undefined, { preview: true })
       : await loadWorkstationProject(),
@@ -57,6 +73,7 @@ try {
     maximize: null,
     mobile: 'view',
     splitViews: ['main', 'mask'],
+    desktopLayout: readOnlyPreview ? null : loadDesktopLayout(desktopPreferences),
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
@@ -83,6 +100,7 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
+      desktopLayout: readOnlyPreview ? null : projectDesktopLayout(uiState.desktopLayout),
       // Compact visibility has exactly one owner: mobile = view | edit.
       editorHidden: window.WaferCadV2ViewState.compact(window)
         ? uiState.mobile !== 'edit'
@@ -108,11 +126,61 @@ try {
   });
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
+  let desktopResizer = null;
   const render = () => {
     if (starting) return;
     shell.render();
     store.renderAll();
+    requestAnimationFrame(() => desktopResizer?.refresh());
   };
+  // View-specific, nonmodal floating editors are transient UI, not model state.
+  // Dismissing them when their view is hidden prevents stale Mask/Section
+  // dialogs from intercepting the desktop workflow navigation.
+  const floatingManagers = new Map();
+  // Layout changes repaint only Shell/element sizing. Scientific invalidation
+  // remains owned by the existing model scheduler and canvas ResizeObservers.
+  const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
+  const changeDesktopLayout = (action) => {
+    if (!desktopDockingActive()) return;
+    const previous = uiState.desktopLayout;
+    const next = reduceDesktopLayout(previous, action);
+    if (next === previous) return;
+    if (previous.maximized && previous.maximized !== next.maximized)
+      floatingManagers.get(previous.maximized)?.closeFloatings();
+    for (const view of previous.visible) {
+      if (!next.visible.includes(view)) floatingManagers.get(view)?.closeFloatings();
+    }
+    uiState.desktopLayout = next;
+    saveDesktopLayout(desktopPreferences, next);
+    if (!starting) {
+      shell.render();
+      requestAnimationFrame(() => desktopResizer?.refresh());
+    }
+  };
+  const desktopDocking = readOnlyPreview
+    ? null
+    : createDesktopDockingController({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  desktopResizer = readOnlyPreview
+    ? null
+    : createDesktopLayoutResizer({
+        root: shell.getRoot(),
+        getState: () => uiState.desktopLayout,
+        dispatch: changeDesktopLayout,
+        enabled: desktopDockingActive,
+      });
+  window.addEventListener(
+    'pagehide',
+    () => {
+      desktopDocking?.destroy();
+      desktopResizer?.destroy();
+    },
+    { once: true },
+  );
   const status = (value) => {
     message = value;
     shell.getSlot('status.message').textContent = value;
@@ -135,10 +203,13 @@ try {
     store.changed(key);
     if (!readOnlyPreview) workflow.persistence.schedule();
   };
-  const scope = (key) => ({
-    ...workstation,
-    overlays: createFloatingEditorManager(shell.overlays, { className: `v2-${key}-floating` }),
-  });
+  const scope = (key) => {
+    const overlays = createFloatingEditorManager(shell.overlays, {
+      className: `v2-${key}-floating`,
+    });
+    floatingManagers.set(key, overlays);
+    return { ...workstation, overlays };
+  };
   const main = await createMainView({
     renderModel: store.renderModel,
     project,
@@ -241,10 +312,20 @@ try {
     const action = trigger.dataset.action;
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
-      uiState.maximize = domain === 'mask' ? 'mask' : null;
+      // Compact navigation keeps its prior single-view behavior; desktop
+      // workflow Mask explicitly opens/maximizes the real Mask docked panel.
+      uiState.maximize = !desktopDockingActive() && domain === 'mask' ? 'mask' : null;
       if (domain === 'mask') uiState.view = 'mask';
       selectPane('edit', domain);
+      if (domain === 'mask' && desktopDockingActive())
+        changeDesktopLayout({ type: 'FOCUS_VIEW', view: 'mask' });
       render();
+    } else if (action === 'dock:overview') {
+      changeDesktopLayout({ type: 'RESET_OVERVIEW' });
+    } else if (action.startsWith('dock:view:')) {
+      changeDesktopLayout({ type: 'TOGGLE_VIEW', view: action.split(':')[2] });
+    } else if (action.startsWith('dock:close:')) {
+      changeDesktopLayout({ type: 'CLOSE_VIEW', view: action.split(':')[2] });
     } else if (action.startsWith('mode:')) {
       uiState.mode = action.split(':')[1];
       uiState.maximize = null;
@@ -263,8 +344,11 @@ try {
       render();
     } else if (action.startsWith('maximize:')) {
       const key = action.split(':')[1];
-      uiState.maximize = uiState.maximize === key ? null : key;
-      render();
+      if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
+      else {
+        uiState.maximize = uiState.maximize === key ? null : key;
+        render();
+      }
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
@@ -297,6 +381,7 @@ try {
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
+  requestAnimationFrame(() => desktopResizer?.refresh());
   if (!hasVisiblePlanarView()) firstThreeFrame.release();
   // Fail open if a visible planar canvas cannot complete its first render.
   // This fallback never changes Quality or geometry and has no effect after release.

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const out = resolve('test-results/ui-v2-unit-lifecycle');
@@ -22,6 +23,7 @@ try {
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const original = await snapshot();
     await page.locator('.p-nav [data-action="domain:mask"]').click();
+    await selectScientificView(page, 'mask', 1440);
     const canvas = page.locator('#maskCanvas');
     const bounds = await canvas.boundingBox();
     assert.ok(bounds && bounds.width > 50 && bounds.height > 50);

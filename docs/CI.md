@@ -2,9 +2,63 @@
 
 WaferCAD keeps the full regression inventory, but pull requests do not run every browser suite unconditionally. The browser workflow first classifies the changed paths with `scripts/ci-test-plan.mjs`, then runs the narrowest regression scopes that own those changes.
 
+## Visual-first Draft development
+
+Visual changes use an inexpensive, explicit evidence loop before full acceptance.
+From the repository root, with pinned dependencies and Playwright installed:
+
+`npm run preview:visual`
+
+The command starts a temporary local v2 server, loads a real bundled JLFET
+example in the production `app.html` Workstation, and captures Main, Mask,
+3D and Section in desktop (1440 px) and portrait (390 px) viewports.
+Set `WAFERCAD_VISUAL_SMALL=1` for an additional 360 px portrait case, or
+`WAFERCAD_VISUAL_EXAMPLE=<published-slug>` to select another real example.
+
+Artifacts are written to `test-results/visual-first/`. The report includes
+real model/History summary and a 3D frame-readiness diagnostic. Screenshots
+are **unreviewed evidence**, not automated visual approval, pixel baselines,
+scientific/geometry acceptance, or permission to merge. The developing agent
+must open and inspect the images, note deviations, and iterate locally before
+requesting full acceptance. A screenshot workflow success means only that
+the capture completed.
+
+`visual-first.yml` automatically captures applicable **Draft** PRs, and
+can also be dispatched manually. It never publishes and cannot approve
+the PR. A Draft `Quality` run keeps ESLint, Prettier, and docs consistency
+checks; its complete Node test suite runs after the PR becomes
+Ready for Review. The general Browser regression keeps smoke in Draft,
+and retains impact-selected Process Geometry, History and Persistence gates
+when needed to protect scientific invariants and stored project data.
+Heavy shared UI v2 Stage C/M4, Main/Mask/Mobile, D1, 3D Phase B and non-science Browser
+regressions defer until Ready for Review or explicit manual/release triggers.
+Other science-specific workflows may still run on Draft if their own
+contracts require it.
+
+The exact `main` release chain is unchanged: Quality, targeted Browser,
+real v2 Stage C/M4, selected scientific checks, staged Pages artifact and
+deployment verdict remain mandatory. A Draft skipped check means
+**unverified**, not passed; no one may merge on the basis of Draft green alone.
+
+## Narrow PR path routing
+
+Only production/source owners trigger heavyweight PR UI acceptance. A change to
+`site/tests/**` or the standalone screenshot collector does not start Stage C,
+Main/Mask, D1, Phase B or Example replay. The tests themselves still run under
+Quality. Stage C listens to `scripts/v2/**` and browser helpers, rather than
+all maintenance scripts. Example README/provenance edits do not select browser
+replay, while project files and fixtures still do.
+
+The Browser planner compares base/head `package.json` for PRs. It de-scopes
+**only** the addition of the exact `preview:visual` command. Dependency changes,
+lockfile changes, existing test command changes, missing history and all other
+npm script changes fail closed to the full browser suite. Reusable release gates,
+manual runs and required scientific ownership are unchanged. New configuration
+tests explicitly guard these assumptions.
+
 ## Pull-request gates
 
-`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes. It runs pinned ESLint, Prettier format verification, generated-document consistency and the complete Node test suite (`npm run check`). It is a stable required-check candidate; repository ruleset configuration is a separate GitHub administration action.
+`Quality` is an unconditional gate for every pull request into `main`, including documentation-only changes, and retains a stable check name. Draft runs pinned ESLint, Prettier, documentation consistency and focused CI configuration tests. **Ready for Review and manual execution run the complete Node suite** (`npm run check`). A Draft Quality pass does not certify the Node suite. Repository ruleset configuration is a separate GitHub administration action.
 
 `Browser regression` always runs the small UI smoke when application/browser-test changes trigger the workflow. Workstation integration and degraded-mode resilience are selected only when their owned startup/shell or Three/WebGL paths change.
 

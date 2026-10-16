@@ -68,6 +68,18 @@ export function createProjectMaskPanels({
   );
   projectHost.append(
     el(
+      'a',
+      {
+        class: 'wc-button p-mobile-welcome-link',
+        href: './index.html',
+        'aria-label': 'Back to Welcome',
+        'data-size': 'sm',
+        'data-variant': 'ghost',
+      },
+      window.WaferCadV2Icons.icon('back'),
+      'Back to Welcome',
+    ),
+    el(
       'div',
       { class: 'p-actions' },
       hook('newProjectBtn', button('New', null, 'plus', { 'data-variant': 'ghost' })),

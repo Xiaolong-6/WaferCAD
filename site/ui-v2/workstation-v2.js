@@ -20,16 +20,21 @@
     };
     let mounted,
       activeAdapter = null;
+    // Standalone M2 prototypes still use their original mobile header switcher.
+    // Production has exactly one contextual switcher in the bottom navigation.
+    const standaloneMobileReturn = !document.body.hasAttribute('data-workstation')
+      ? el(
+          'div',
+          { class: 'p-actions p-mobile-return' },
+          button('Back to results', 'return-results', 'back'),
+        )
+      : null;
     const topbar = el(
       'header',
       { class: 'p-topbar' },
       el('a', { class: 'p-brand', href: homeUrl, 'aria-label': 'WaferCAD home' }, 'WaferCAD'),
       slot('topbar.project', 'p-project-title', 'span'),
-      el(
-        'div',
-        { class: 'p-actions p-mobile-return' },
-        button('Back to results', 'return-results', 'back'),
-      ),
+      standaloneMobileReturn,
       el('span', { class: 'p-review-badge' }),
     );
     const navHost = slot('navigation.primary', 'p-nav', 'nav');
@@ -45,13 +50,57 @@
         }),
       ]),
     );
-    navHost.append(
-      el('span', { class: 'p-nav-label' }, 'WORKSPACE'),
-      ...navButtons.values(),
-      button('', 'hide-editor', 'close', {
-        'aria-label': 'Hide navigation and workflow editor',
-        'data-help': 'shell.navigation',
-      }),
+    const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
+    const hideEditor = button('', 'hide-editor', 'back', {
+      'aria-label': 'Collapse workflow panel',
+      'data-help': 'shell.navigation',
+    });
+    navHost.append(navLabel, ...navButtons.values(), hideEditor);
+    // Mobile uses this exact navigation host as a fixed bottom dock. Reparent
+    // stable buttons instead of creating duplicate actions or domain adapters.
+    const mobileEdit = button('Edit', 'show-editor', 'process', {
+      'aria-label': 'Edit workspace',
+      'data-help': 'shell.navigation',
+    });
+    const mobileView = button('View', 'return-results', 'back', {
+      'aria-label': 'View results',
+      'data-help': 'shell.navigation',
+    });
+    const viewButtons = new Map(
+      registry.views
+        .filter(({ key }) => key !== 'section')
+        .map(({ key, label, icon }) => [
+          key,
+          button(label, `view:${key}`, icon, {
+            'aria-pressed': 'false',
+            'data-help': `shell.view.${key}`,
+          }),
+        ]),
+    );
+    const mobileSection = button('Section', 'mobile-section', 'section', {
+      'aria-pressed': 'false',
+      'data-help': 'shell.section',
+    });
+    // Desktop controls are separate from the stable contextual mobile dock.
+    const desktopOverview = button('Overview', 'dock:overview', null, {
+      'aria-pressed': 'false',
+      'data-help': 'shell.overview',
+    });
+    const desktopViewButtons = new Map(
+      registry.views.map(({ key, label, icon }) => [
+        key,
+        button(label, `dock:view:${key}`, icon, {
+          'aria-pressed': 'false',
+          'data-help': `shell.view.${key}`,
+        }),
+      ]),
+    );
+    const desktopViewbar = el(
+      'div',
+      { class: 'p-actions p-desktop-dock-actions' },
+      desktopOverview,
+      el('span', { class: 'p-viewbar-divider', 'aria-hidden': 'true' }),
+      ...desktopViewButtons.values(),
     );
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
     const editorContent = el('div', { class: 'p-panel-content' });
@@ -84,6 +133,13 @@
     const separator = divider(false);
     separator.dataset.help = 'shell.panel.resize';
     const canvases = el('div', { class: 'p-canvases' });
+    const dockEmpty = el(
+      'div',
+      { class: 'p-dock-empty', hidden: true },
+      el('p', {}, 'No views visible'),
+      button('Restore Overview', 'dock:overview', null),
+    );
+    canvases.append(dockEmpty);
     const viewbar = el('div', { class: 'p-viewbar' });
     const stage = el(
       'main',
@@ -138,6 +194,16 @@
     );
     root.replaceChildren(workbench);
     mounted = workbench;
+    const syncKeyboard = () => {
+      const active = document.activeElement;
+      const editing = active?.matches('input, select, textarea, [contenteditable="true"]');
+      const occluded = window.innerHeight - (window.visualViewport?.height || window.innerHeight);
+      mounted.dataset.keyboard =
+        narrow() && state.mobile === 'edit' && editing && occluded > 120 ? 'open' : 'closed';
+    };
+    document.addEventListener('focusin', syncKeyboard);
+    document.addEventListener('focusout', syncKeyboard);
+    window.visualViewport?.addEventListener('resize', syncKeyboard);
     const tooltips = window.WaferCadV2TooltipController?.create({ root: document });
 
     // Share one measured default between initial ARIA state, drag/keyboard
@@ -205,6 +271,32 @@
     function renderNav(info) {
       for (const [key, control] of navButtons)
         control.setAttribute('aria-pressed', String(info.selectedNavigation === key));
+      for (const [key, control] of viewButtons) {
+        const selected = (narrow() || state.mode === 'single') && state.view === key;
+        control.setAttribute('aria-pressed', String(selected));
+      }
+      mobileSection.setAttribute('aria-pressed', String(state.view === 'section'));
+    }
+    function renderMobileNav() {
+      const compact = narrow();
+      const desired = compact
+        ? [
+            state.mobile === 'edit' ? mobileView : mobileEdit,
+            ...(state.mobile === 'edit'
+              ? [...navButtons.values()]
+              : [...viewButtons.values(), mobileSection]),
+          ]
+        : [navLabel, ...navButtons.values(), hideEditor];
+      navHost.setAttribute(
+        'aria-label',
+        compact ? (state.mobile === 'edit' ? 'Edit workspaces' : 'Views') : 'Workspaces',
+      );
+      // Re-rendering a view must not detach the focused navigation control.
+      if (
+        navHost.childNodes.length !== desired.length ||
+        desired.some((control, index) => navHost.childNodes[index] !== control)
+      )
+        navHost.replaceChildren(...desired);
     }
     function selectedViews(info) {
       const mode = narrow() ? 'single' : state.mode;
@@ -221,6 +313,65 @@
       return { mode, names: [...new Set(names)] };
     }
     function renderStage(info) {
+      const docking = !narrow() ? info.desktopLayout : null;
+      if (docking) {
+        stage.dataset.viewMode = 'docking';
+        canvases.dataset.mode = 'docking';
+        canvases.dataset.desktopDocking = 'true';
+        canvases.dataset.maximized = String(Boolean(docking.maximized));
+        canvases.style.gridTemplateColumns = docking.columns
+          .map((value) => `minmax(0, ${value}fr)`)
+          .join(' ');
+        canvases.style.gridTemplateRows = docking.rows
+          .map((value) => `minmax(0, ${value}fr)`)
+          .join(' ');
+        desktopOverview.setAttribute('aria-pressed', String(docking.overviewPressed));
+        for (const [key, control] of desktopViewButtons)
+          control.setAttribute('aria-pressed', String(docking.highlighted.includes(key)));
+        viewbar.replaceChildren(
+          ...(state.editorHidden
+            ? [
+                el(
+                  'div',
+                  { class: 'p-actions' },
+                  button('Restore panel', 'expand-empty', 'process'),
+                ),
+              ]
+            : []),
+          desktopViewbar,
+        );
+        dockEmpty.hidden = docking.displayed.length > 0;
+        const placements = new Map(docking.placements.map((entry) => [entry.view, entry]));
+        for (const { key, label } of registry.views) {
+          const id = `view.${key}`;
+          const panel = adapters.prepare(id, canvases);
+          if (!panel) throw Error(`Missing view adapter ${id}`);
+          if (panel.parentNode !== canvases) canvases.append(panel);
+          const placement = placements.get(key);
+          panel.hidden = !placement;
+          panel.style.order = '';
+          panel.style.gridColumn = placement
+            ? `${placement.column + 1} / span ${placement.columnSpan}`
+            : '';
+          panel.style.gridRow = placement ? `${placement.row + 1} / span ${placement.rowSpan}` : '';
+          window.WaferCadV2PanelChrome.prepareDesktop(panel, {
+            key,
+            label,
+            icon: registry.views.find((view) => view.key === key)?.icon,
+            maximized: docking.maximized === key,
+            draggable: docking.displayed.length > 1,
+          });
+          // Layout only: active scientific renderers retain their DOM and camera.
+          // Newly displayed views render via the existing adapter onShow hook.
+          if (placement) adapters.show(id, canvases);
+          else adapters.hide(id);
+        }
+        return;
+      }
+      delete canvases.dataset.desktopDocking;
+      canvases.style.gridTemplateColumns = '';
+      canvases.style.gridTemplateRows = '';
+      dockEmpty.hidden = true;
       const { mode, names } = selectedViews(info);
       stage.dataset.viewMode = mode;
       stage.dataset.splitLeft = state.splitViews[0];
@@ -246,14 +397,7 @@
           modeButton('overview'),
           viewDivider(),
           modeButton('single'),
-          registry.views
-            .filter(({ key }) => key !== 'section')
-            .map(({ key, label, icon }) =>
-              button(label, `view:${key}`, icon, {
-                'aria-pressed': String(mode === 'single' && state.view === key),
-                'data-help': `shell.view.${key}`,
-              }),
-            ),
+          narrow() ? [] : [...viewButtons.values()],
           viewDivider(),
           modeButton('split'),
         ),
@@ -261,10 +405,7 @@
           'div',
           { class: 'p-actions p-section-dock-actions' },
           narrow()
-            ? button('Section', 'mobile-section', 'section', {
-                'aria-pressed': String(state.view === 'section'),
-                'data-help': 'shell.section',
-              })
+            ? null
             : button('Section dock', 'section', 'section', {
                 'aria-pressed': String(state.section),
                 'data-help': 'shell.section',
@@ -279,6 +420,9 @@
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
+        panel.style.gridColumn = '';
+        panel.style.gridRow = '';
+        window.WaferCadV2PanelChrome?.restoreDesktop(panel, key);
         const maximizeButton = panel.querySelector(`[data-action="maximize:${key}"]`);
         if (maximizeButton) {
           const maximized = state.maximize === key;
@@ -333,7 +477,7 @@
       const name = info.selectedPanel || registry.primaryNav[0]?.panel;
       const mode = info.selectedSubpanel || registry.processModes[0];
       const editorHidden = Boolean(info.editorHidden);
-      navHost.hidden = editorHidden;
+      navHost.hidden = !narrow() && editorHidden;
       inspector.hidden = editorHidden || Boolean(info.emptyInspector);
       separator.hidden = inspector.hidden;
       emptyStrip.hidden = !info.emptyInspector || editorHidden;
@@ -426,20 +570,21 @@
       slots.get('topbar.project').textContent = getProjectName();
       slots.get('topbar.project').title = getProjectName();
       topbar.querySelector('.p-review-badge').textContent = info.badge || '';
-      const mobile = topbar.querySelector('.p-mobile-return');
-      if (mobile.dataset.pane !== state.mobile) {
-        mobile.replaceChildren(
+      if (standaloneMobileReturn && standaloneMobileReturn.dataset.pane !== state.mobile) {
+        standaloneMobileReturn.replaceChildren(
           button(
             state.mobile === 'edit' ? 'View results' : 'Edit workspace',
             state.mobile === 'edit' ? 'return-results' : 'show-editor',
             state.mobile === 'edit' ? 'back' : 'process',
           ),
         );
-        mobile.dataset.pane = state.mobile;
+        standaloneMobileReturn.dataset.pane = state.mobile;
       }
       renderNav(info);
       renderPanel(info);
       renderStage(info);
+      renderMobileNav();
+      syncKeyboard();
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
       renderVersion(info);
@@ -469,6 +614,9 @@
         ]),
       destroy: () => {
         adapters.destroy();
+        document.removeEventListener('focusin', syncKeyboard);
+        document.removeEventListener('focusout', syncKeyboard);
+        window.visualViewport?.removeEventListener('resize', syncKeyboard);
         tooltips?.destroy();
         overlays.destroy();
       },
