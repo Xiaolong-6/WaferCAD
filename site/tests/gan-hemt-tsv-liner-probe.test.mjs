@@ -4,9 +4,7 @@ import { buildGanMicrochannel } from '../../scripts/build-gan-hemt-microchannel-
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
 await loadGeometryKernel();
-const modelApi = await import('../model.js');
 const vectorApi = await import('../vector-geometry.js');
-const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 
@@ -21,50 +19,134 @@ function layerAt(model, point, z) {
   return segment?.layerId || null;
 }
 
-function depositConformal(model, mask, name, thickness) {
-  const op = { type: 'add', name, thickness, growth: 'conformal', face: 'front' };
-  const result =
-    applyAdvancedProcessOperation(model, op, mask, modelApi, vectorApi) ||
-    modelApi.applyOperation(model, { ...op, area: mask });
-  assert.equal(result?.changed, true, name + ': ' + (result?.error || 'no material change'));
-  return result.layerId;
-}
-
-test('TSV-focused conformal Ti/Cu probe preserves the coolant and open via cores', async () => {
+test('Production Cu-filled TSVs retain seed liners and open coolant network', async () => {
   const { project } = await buildGanMicrochannel();
-  const model = structuredClone(project.model);
-  // The 70 um square bore must be surrounded by a little exposed silicon:
-  // a mask exactly equal to the empty bore cannot seed a physical wall.
-  const tsvMask = vectorApi.unionGeometries(
-    tsvCenters.map(([x, y]) => vectorApi.rectMulti(90, 90, x, y)),
+  const model = project.model;
+  const oxide = model.layers.find(
+    (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
   );
-  const ti = depositConformal(model, tsvMask, 'TSV Ti seed probe 0.2 um', 0.2);
-  const cu = depositConformal(model, tsvMask, 'TSV Cu seed probe 0.5 um', 0.5);
+  const ti = model.layers.find((l) => l.name === 'TSV Ti conformal seed surrogate 0.2 um');
+  const cu = model.layers.find((l) => l.name === 'TSV Cu conformal seed surrogate 0.5 um');
+  assert.ok(oxide && ti && cu, 'Production build omitted local SiO2/Ti/Cu wall material');
   const heights = [-150, 50, 250, 450, 550];
   const seen = {};
   for (const [x, y] of tsvCenters) {
     for (const z of heights) {
-      assert.equal(layerAt(model, [x, y], z), null, 'Plating blocked TSV core at ' + [x, y, z]);
+      const fill = model.layers.find((l) => l.name === 'TSV Cu electrofill surrogate 35 um');
+      assert.ok(fill, 'No actual Cu fill layer');
+      assert.equal(layerAt(model, [x, y], z), fill.id, 'Cu core missing at ' + [x, y, z]);
       const observed = new Set();
       for (let offset = 33; offset <= 37.0001; offset += 0.05) {
         observed.add(layerAt(model, [x + offset, y], z));
       }
-      for (const [name, id] of [['Ti', ti], ['Cu', cu]]) {
+      for (const [name, id] of [
+        ['SiO2', oxide.id],
+        ['Ti', ti.id],
+        ['Cu', cu.id],
+      ]) {
         assert.ok(observed.has(id), name + ' wall film absent at ' + [x, y, z]);
       }
       seen[[x, y, z].join(',')] = [...observed].filter(Boolean).length;
     }
   }
+  // A fluid point is a 3D position, not an XY position: the lower feeder
+  // has silicon beneath the 200 um trench while the rear bore is through-open.
+  // Compare the exact material occupancy before and after plating and assert
+  // known fluid-path points remain empty.
   for (const side of [-1, 1]) {
-    for (const y of [side * 1450, side * 1200, side * 420]) {
-      for (const z of [-150, 100]) {
-        assert.equal(
-          layerAt(model, [0, y], z),
-          null,
-          'Conformal plating encroached on coolant at ' + [0, y, z],
-        );
-      }
+    const coolantPath = [
+      [0, side * 1450, -150],
+      [0, side * 1450, 100],
+      [0, side * 1200, 100],
+      [0, side * 420, 100],
+      [30, side * 395, 350],
+      [30, side * 395, 550],
+      [0, side * 425, 550],
+    ];
+    for (const [x, y, z] of coolantPath) {
+      assert.equal(
+        layerAt(model, [x, y], z),
+        null,
+        'TSV metal altered fluid-path material at ' + [x, y, z],
+      );
     }
   }
-  console.log('TSV conformal film probe passed:', JSON.stringify({ heightChecks: heights, sample: seen }));
+  console.log(
+    'TSV conformal film probe passed:',
+    JSON.stringify({ heightChecks: heights, sample: seen }),
+  );
+});
+
+test('Persisted Cu-filled TSV geometry is planarized without losing metal', async () => {
+  const { project } = await buildGanMicrochannel();
+  const model = project.model;
+  const fill = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
+  const seed = model.layers.find(
+    (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
+  );
+  assert.ok(fill && seed);
+  for (const [x, y] of tsvCenters) {
+    for (const z of [-150, 50, 250, 450, 550, 600]) {
+      assert.equal(layerAt(model, [x, y], z), fill.id);
+    }
+    assert.notEqual(layerAt(model, [x, y], 625), fill.id);
+    assert.equal(
+      layerAt(model, [x + 43, y], 600.75),
+      model.layers.find((l) => l.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)').id,
+      'Oxide top rim must sit between Si and Ti',
+    );
+    assert.equal(
+      layerAt(model, [x + 43, y], 602.15),
+      seed.id,
+      'Cu seed top rim must sit above the local oxide and Ti',
+    );
+  }
+});
+
+test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async () => {
+  const { project } = await buildGanMicrochannel();
+  const model = project.model;
+  const gsgPad = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  const gsgDie = model.layers.find(
+    (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
+  );
+  const copper = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
+  assert.ok(gsgPad && gsgDie && copper, 'Missing physical GSG die or Cu TSV materials');
+
+  // Fig. 2(f) shows wire bonds between the HEMT and the separate GSG pad
+  // chips. TSV copper supports distinct vertical interconnection / grounding.
+  // DO NOT require a fabricated direct GSG-to-TSV Au trace as a paper fact.
+  for (const side of [-1, 1]) {
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 706.95),
+      gsgPad.id,
+      'Illustrative GSG pad footprint is missing',
+    );
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 707.21),
+      null,
+      'The 0.5 um GSG pad footprint must not silently grow into a thicker structure',
+    );
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 650),
+      gsgDie.id,
+      'GSG chip must occupy a physical 100 um high substrate body',
+    );
+    for (const y of [-950, 950]) {
+      assert.equal(
+        layerAt(model, [side * 1450, y], 550),
+        copper.id,
+        'Actual TSV copper is missing inside the interposer',
+      );
+    }
+  }
+  const wireBondRecord = project.processRecipe.steps.find(
+    (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
+  );
+  assert.ok(wireBondRecord, 'Published HEMT-to-GSG gold wire bonding must remain documented');
+  assert.match(
+    wireBondRecord.params.note,
+    /True curved wires.*not geometric model features/,
+    'A recorded source operation must not be mistaken for fabricated wire geometry',
+  );
 });

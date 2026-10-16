@@ -18,7 +18,7 @@
       "width": 640,
       "height": 560,
       "bytes": 13990,
-      "sourceSha256": "b4d10ca1994ef3ee84ef7876266b292248e9a5dda852a525e8d58940a73984f6",
+      "sourceSha256": "f27dc06c0fb3fd83c8442d2e4af465f11ac6ca8710023aebea2d2b846fd4a819",
       "sha256": "ffe3ca8a0ed50bca0fe57ba79b85e5e008c768b935af534d01d35525317fed6a"
     },
     {
@@ -28,7 +28,7 @@
       "width": 640,
       "height": 560,
       "bytes": 6086,
-      "sourceSha256": "2834e54532af2c60b3820cc687867b743862517f726aebb3924f9915bfecd7fa",
+      "sourceSha256": "cb1671849bd21ea5e3d0b05fc27a4c51e23d9b04173c8bad6dbdc50a44073ef6",
       "sha256": "e55af70357de5e0866a694567f970e2dcfcbacb2a9e8e1aa08303a5976f71b44"
     },
     {
@@ -38,7 +38,7 @@
       "width": 640,
       "height": 560,
       "bytes": 4710,
-      "sourceSha256": "b8d3a2ff5b33ad5c58f79d22f5b75d0835689723f6b69e3c08db3bfe77281d90",
+      "sourceSha256": "a59270362a5e76f324a1e3411bd750d2b8ee867a3d2285df0cd65da0d13fc766",
       "sha256": "242ff1bb4b90582e08578d7dcaf5067d051f1d7dbf90f50c64ba1182c0327cb5"
     },
     {
@@ -47,9 +47,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 13304,
-      "sourceSha256": "a9d04459daf1953a8bca755f0dbc748a14eee57d05569c7a230dcaaaa3294a07",
-      "sha256": "92238e30c4811430fc77c011dd2532877f1744e9786486f9c20b09527c5f90ea"
+      "bytes": 14112,
+      "sourceSha256": "1c7180ea334d553b3031ee553134e85686cdbf7be9035a0964f76772bc0c7d4d",
+      "sha256": "46cb1c9a4984f57334ddaac5e23a4ed5a4b02ec9d164c8890196d89d6d320605"
     },
     {
       "id": "magic-1000-mos2-beol",
@@ -77,9 +77,9 @@
       "view": "three",
       "width": 640,
       "height": 560,
-      "bytes": 3910,
-      "sourceSha256": "a0e57594a26142cc9422703fc8d082959034b86d22faab79e6e71388d4e0eedf",
-      "sha256": "5d30030e5a14fe5011891aad0fcf7a7a2f2f27e8727d43a5526724a2a865d9c1"
+      "bytes": 4752,
+      "sourceSha256": "980c07f801f0e4ea4df8eea6777ffaa47d69de1eeb38f9a4d689d87b368ad006",
+      "sha256": "ac49ff3179f52ecd5c2228e01034bc37448681feac41b332edb2155bf8ecc160"
     }
   ]
 }
