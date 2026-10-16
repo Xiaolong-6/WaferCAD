@@ -23,10 +23,11 @@ export const SWX_SEM_PERIMETER_PROVENANCE = Object.freeze({
   outsideDeviceMaskIsFullDepthEtch: true,
 });
 
-const midpoint = (ring) => [
-  (ring[0][0] + ring[2][0]) / 2,
-  (ring[0][1] + ring[2][1]) / 2,
-];
+const midpoint = (ring) => {
+  const x = (ring[0][0] + ring[2][0]) / 2;
+  const y = (ring[0][1] + ring[2][1]) / 2;
+  return [x, y];
+};
 const entry = (name, point) => ({ name, point });
 
 export function createSwxSemSupportAudit(state = 'off') {
@@ -36,7 +37,9 @@ export function createSwxSemSupportAudit(state = 'off') {
   const supported = [
     entry('fixed comb left 6um handle', [-25, a.fixedBusYUm]),
     entry('fixed comb right 6um handle', [25, a.fixedBusYUm]),
-    ...pose.actuator.anchors.map((ring, i) => entry('folded-spring anchor ' + (i + 1), midpoint(ring))),
+    ...pose.actuator.anchors.map((ring, i) =>
+      entry('folded-spring anchor ' + (i + 1), midpoint(ring)),
+    ),
     ...pose.guides.guides.map((guide, i) =>
       entry('S7 structural-aligner anchor ' + (i + 1), midpoint(guide.pad)),
     ),
