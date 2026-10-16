@@ -120,8 +120,15 @@ export function createWorkstationRuntime(
     },
   });
   projectState.loadProjectSnapshot(project.data);
-  // Preview-only outlines make equal-material interfaces easier to inspect.
-  if (assemblyPreview) state.threeShowBorders = true;
+  // Display-only inspection policy: an inherited single-wafer Z Break
+  // compresses the receiver substrate and obscures actual bonded interfaces.
+  // Never change the persisted source project or physical model.
+  function useAssemblyInspectionSettings() {
+    if (!assemblyPreview) return;
+    state.threeShowBorders = true;
+    state.sectionCollapse = { enabled: false };
+  }
+  useAssemblyInspectionSettings();
   let maskBrowser = null;
   const selectedElement = (element) =>
     maskBrowser
@@ -281,7 +288,7 @@ export function createWorkstationRuntime(
     if (!active) throw new Error('Bond History preview is not active.');
     const projectAtStage = active.restoreIndex(index);
     if (!assemblyBondEditor) restore(projectAtStage);
-    state.threeShowBorders = true;
+    useAssemblyInspectionSettings();
     return projectAtStage;
   }
   function createAssemblyBondDraftSession(checkpointRecovery) {
@@ -292,7 +299,7 @@ export function createWorkstationRuntime(
       checkpointRecovery,
       applyVisibleProject: (next) => {
         restore(next);
-        state.threeShowBorders = true;
+        useAssemblyInspectionSettings();
         return true;
       },
       getVisibleModel: () => state.model,
