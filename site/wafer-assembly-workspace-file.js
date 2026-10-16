@@ -3,10 +3,7 @@
 // Source wafers occur once in the graph; active geometry is derived on import.
 import { MAX_PROJECT_FILE_BYTES, DOWNLOAD_URL_REVOKE_DELAY_MS } from './project-io.js';
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
-import {
-  assemblyVariantProject,
-  validateAssemblyVariantGraph,
-} from './wafer-assembly-variants.js';
+import { assemblyVariantProject, validateAssemblyVariantGraph } from './wafer-assembly-variants.js';
 
 export const ASSEMBLY_WORKSPACE_FORMAT = 'WaferCAD-assembly-workspace';
 export const ASSEMBLY_WORKSPACE_VERSION = 1;
@@ -15,7 +12,10 @@ export function parseAssemblyWorkspace(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Invalid Assembly Workspace container.');
   }
-  if (value.format !== ASSEMBLY_WORKSPACE_FORMAT || value.version !== ASSEMBLY_WORKSPACE_VERSION) {
+  if (
+    value.format !== ASSEMBLY_WORKSPACE_FORMAT ||
+    value.version !== ASSEMBLY_WORKSPACE_VERSION
+  ) {
     throw new Error('Unsupported Assembly Workspace format or version.');
   }
   if (

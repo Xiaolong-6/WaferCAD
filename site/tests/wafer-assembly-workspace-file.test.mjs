@@ -96,7 +96,9 @@ test('portable Workspace round-trips sources, Variants and Process cursors', asy
   const main = activateAssemblyVariant(graph, 'main');
   assert.equal(main.branches[0].postBondSteps.length, 2);
   assert.equal(main.branches[0].postBondCursor, 1);
-  assert.ok(assemblyVariantPostBondModel(main).layers.length > opened.project.model.layers.length);
+  assert.ok(
+    assemblyVariantPostBondModel(main).layers.length > opened.project.model.layers.length,
+  );
   assert.equal(serializeAssemblyWorkspace(graph).includes('waferAssemblyVariants'), false);
   await assert.rejects(
     () => readProjectFile(fileLike(text)),
@@ -123,7 +125,10 @@ test('corrupted Process Recipe, source, format or extra fields fail before impor
   invalidParent.variantGraph.branches[1].forkProcessIndex = 8;
   assert.throws(() => parseAssemblyWorkspace(invalidParent), /fork|checkpoint/i);
   const notContainer = fileLike(serializeProject(threeWafer()));
-  await assert.rejects(() => readAssemblyWorkspaceFile(notContainer), /not an Assembly Workspace/);
+  await assert.rejects(
+    () => readAssemblyWorkspaceFile(notContainer),
+    /not an Assembly Workspace/,
+  );
   await assert.rejects(
     () =>
       readAssemblyWorkspaceFile({

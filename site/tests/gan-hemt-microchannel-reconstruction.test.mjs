@@ -166,7 +166,7 @@ test('GSG independent die and contact geometry stays distinct from HEMT and TSV'
   }
 });
 
-test('Lian 2022 structure uses true stepped voids, a suspended die and replayable history', async () => {
+test('Lian 2022 stepped voids, suspended die and replayable history', async () => {
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
