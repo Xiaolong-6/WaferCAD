@@ -98,7 +98,8 @@ const CASES = [
   {
     id: 'three-tier-silicon-jlfets',
     file: 'three-tier-silicon-jlfets',
-    source: 'Lam et al. 2026, Nature Fig. 3; local three-tier junctionless Si device, not original GDS',
+    source:
+      'Lam et al. 2026, Nature Fig. 3; local three-tier junctionless Si device, not original GDS',
     cuts: [
       {
         id: 'three-tier-channel-to-pads',
@@ -109,23 +110,43 @@ const CASES = [
           {
             id: 'three-tier-gate-center',
             xy: [0, 0],
-            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
-              'T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate',
-              'T1 Gate metal', 'T2 Gate metal', 'T3 Gate metal'],
+            present: [
+              'T1 Si membrane',
+              'T2 Si membrane',
+              'T3 Si membrane',
+              'T1 HfO2 gate',
+              'T2 HfO2 gate',
+              'T3 HfO2 gate',
+              'T1 Gate metal',
+              'T2 Gate metal',
+              'T3 Gate metal',
+            ],
             absent: ['T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
           },
           {
             id: 'left-sd-pad',
             xy: [-575, 0],
-            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
-              'T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
+            present: [
+              'T1 Si membrane',
+              'T2 Si membrane',
+              'T3 Si membrane',
+              'T1 S/D metal',
+              'T2 S/D metal',
+              'T3 S/D metal',
+            ],
             absent: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
           },
           {
             id: 'right-sd-pad',
             xy: [575, 0],
-            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
-              'T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
+            present: [
+              'T1 Si membrane',
+              'T2 Si membrane',
+              'T3 Si membrane',
+              'T1 S/D metal',
+              'T2 S/D metal',
+              'T3 S/D metal',
+            ],
             absent: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
           },
         ],
@@ -135,19 +156,27 @@ const CASES = [
         a: [-80, 0],
         b: [80, 0],
         zFocus: { top: 250.08, bottom: -249.99 },
-        probes: [{ id: 'center', xy: [0, 0],
-          present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'] }],
+        probes: [
+          {
+            id: 'center',
+            xy: [0, 0],
+            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'],
+          },
+        ],
       },
       {
         id: 'conformal-gate-sidewall-detail',
         a: [-720, 0],
         b: [-670, 0],
         zFocus: { top: 250.08, bottom: -249.99 },
-        probes: [{
-          id: 'left-gate-sidewall', xy: [-700.005, 0],
-          present: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
-          absent: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'],
-        }],
+        probes: [
+          {
+            id: 'left-gate-sidewall',
+            xy: [-700.005, 0],
+            present: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
+            absent: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'],
+          },
+        ],
       },
     ],
   },
