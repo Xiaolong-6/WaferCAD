@@ -1,0 +1,54 @@
+name: Mobile Workspace Targeted Acceptance
+
+# Temporary branch-only visual/behavior gate for the architecture extraction.
+# It does not add work to unrelated PRs or Main.
+on:
+  push:
+    branches:
+      - refactor/mobile-workspace-controller-20261016
+    paths:
+      - .github/workflows/mobile-workspace-targeted.yml
+      - site/ui-v2/mobile-workspace-controller.js
+      - site/ui-v2/workstation-entry.js
+      - site/tests/mobile-workspace-controller.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-workspace-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  targeted:
+    name: Mobile state and production Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Mobile controller unit contracts
+        run: node --test site/tests/mobile-workspace-controller.test.mjs
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start production site
+        run: |
+          python3 -m http.server 4182 --bind 127.0.0.1 --directory site > "$RUNNER_TEMP/mobile-workspace-server.log" 2>&1 &
+      - name: Real mobile browser behavior and screenshots
+        run: npm run test:ui:mobile
+      - name: Save targeted visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-workspace-targeted-${{ github.sha }}
+          path: |
+            test-results/ui-v2-mobile/
+            ${{ runner.temp }}/mobile-workspace-server.log
+          if-no-files-found: ignore
+          retention-days: 7
