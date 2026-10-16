@@ -263,6 +263,37 @@ try {
       { name: 'quality-zoom', opacity: 0.5, borders: true, fast: false, zoom: 0.7 },
       ...(fixture.name === 'photodetector-blacksi-final-roi'
         ? [
+            ...(process.env.WAFERCAD_AUDIT_PERSPECTIVE === '1'
+              ? [
+                  {
+                    name: 'surface-cut-zbreak-perspective-opaque-borders',
+                    opacity: 1,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1600,
+                  },
+                  {
+                    name: 'surface-cut-zbreak-perspective-transparent-borders',
+                    opacity: 0.5,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1600,
+                  },
+                  {
+                    name: 'surface-cut-zbreak-perspective-transparent-no-borders',
+                    opacity: 0.5,
+                    borders: false,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1600,
+                  },
+                ]
+              : []),
             {
               name: 'surface-cut-zbreak-opaque-detail',
               opacity: 1,
@@ -364,7 +395,7 @@ try {
             : config.detail
               ? [2495, -140, fit.target[2]]
               : fit.target;
-          const distance = config.micro ? 14 : config.zBreak ? 110 : 40;
+          const distance = config.distance ?? (config.micro ? 14 : config.zBreak ? 110 : 40);
           const position = config.detail
             ? target.map((value, index) => value + (delta[index] / length) * distance)
             : fit.position.map(

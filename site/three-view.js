@@ -1966,6 +1966,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       adaptiveRough = false,
       planContours = false,
       dashed = false,
+      includeHidden = true,
       dashSize = 1,
       presentation = { kind: 'border' },
     } = {},
@@ -1998,7 +1999,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     trackZDisplayObject(edges);
     registerPresentationObject(edges, presentation);
     if (adaptiveRough) roughOwnedObjects.add(edges);
-    if (!dashed) {
+    if (!dashed && includeHidden) {
       addBorderPositions(positions, {
         order: order - 1,
         opacity,
@@ -2057,6 +2058,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
       ),
       planContours: true,
+      includeHidden: false,
       presentation: { kind: 'border' },
     });
   }
