@@ -15,6 +15,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { pointInMulti } from './vector-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -74,6 +75,7 @@ export function createThreeView({
   host,
   stats,
   getModel,
+  getAssemblyWires = () => [],
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
@@ -1045,6 +1047,7 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
+      assemblyWires: getAssemblyWires(),
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
   }
@@ -3388,7 +3391,37 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       }
 
-      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
+      // Real packaging tubes are project-level 3D assembly geometry, not
+      // extruded Kernel layers. Treat ROI conservatively: never show an
+      // entire floating bond outside its section crop.
+      let assemblyWireBuiltCount = 0;
+      for (const wire of getAssemblyWires() || []) {
+        const points = wire.points.map((xyz) => new THREE.Vector3(...xyz));
+        const curve = new THREE.CubicBezierCurve3(...points);
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
+        const material = new THREE.MeshStandardMaterial({
+          color: '#D8A83A',
+          metalness: 0.78,
+          roughness: 0.24,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = `Au bond wire / ${wire.id} (inferred)`;
+        mesh.userData.waferCadAssemblyWireId = wire.id;
+        group.add(mesh);
+        trackZDisplayObject(mesh);
+        assemblyWireBuiltCount++;
+      }
+      host.dataset.assemblyWireBuiltCount = String(assemblyWireBuiltCount);
+
+      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalBuiltCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
