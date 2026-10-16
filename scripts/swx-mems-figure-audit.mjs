@@ -99,7 +99,8 @@ const blockers = [
     sourceDimensionsPreserved: true,
     includedInCompactProcessMask: true,
     fullSourceS7SchematicTopologyVerified: false,
-    sourceEvidence: 'Supplement Fig. S7a shows folded structural-alignment beams; current guide geometry is a provisional single-centerline flexure with a terminal truss, not an authenticated reproduction.',
+    sourceEvidence:
+      'Supplement Fig. S7a shows folded structural-alignment beams; current guide geometry is a provisional single-centerline flexure with a terminal truss, not an authenticated reproduction.',
   },
 ];
 const compactExtent = prototype.off.candidateMaskFootprintUm;
