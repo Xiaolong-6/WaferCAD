@@ -54,7 +54,44 @@ try {
     );
     const target = view === 'section' ? '#sectionCanvas' : '#threeHost';
     if (view === 'section') {
-      await page.locator(target).waitFor({ state: 'visible', timeout: 120000 });
+      try {
+        await page.locator(target).waitFor({ state: 'visible', timeout: 15000 });
+      } catch (error) {
+        const diagnostics = await page.evaluate(() => {
+          const canvas = document.getElementById('sectionCanvas');
+          const ancestors = [];
+          for (let current = canvas; current; current = current.parentElement) {
+            const rect = current.getBoundingClientRect();
+            const style = getComputedStyle(current);
+            ancestors.push({
+              tag: current.tagName,
+              id: current.id,
+              className: typeof current.className === 'string' ? current.className : '',
+              hidden: current.hidden,
+              display: style.display,
+              visibility: style.visibility,
+              position: style.position,
+              width: rect.width,
+              height: rect.height,
+              dataset: { ...current.dataset },
+            });
+          }
+          return {
+            preview: document.body.dataset.previewMode,
+            ready: document.body.dataset.ready,
+            url: location.pathname + location.search,
+            ui: window.WaferCadV2Workstation?.snapshot().ui,
+            ancestors,
+          };
+        });
+        await writeFile(
+          new URL('section-visibility-diagnostic.json', evidenceDir),
+          JSON.stringify(diagnostics, null, 2),
+        );
+        await writeFile(new URL('section-visibility-diagnostic.png', evidenceDir), await page.screenshot());
+        console.error('Section preview visibility diagnostic:', JSON.stringify(diagnostics));
+        throw error;
+      }
       await page.waitForFunction(
         () =>
           document.getElementById('sectionCanvas')?.width > 100 &&
