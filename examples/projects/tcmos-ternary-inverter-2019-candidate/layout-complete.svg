@@ -1,0 +1,318 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1113" height="758" viewBox="0 0 1113 758">
+  <title>Symmetric CMOS layout</title>
+  <desc>Eight independent vector layers. Geometry is mirrored about x=560. ACTIVE is outline only. POLY extends three pixels past either side of Metal. CNT units share one square-and-X symbol.</desc>
+  <defs>
+    <pattern id="poly-hatch" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#ffb5b5" fill-opacity=".62" />
+      <path d="M-3 0L6 9 M0 -3L9 6" stroke="#ff626b" stroke-width=".85" stroke-opacity=".58" />
+    </pattern>
+    <pattern id="metal-legend-hatch" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#b5b5f3" />
+      <path d="M-3 6L6 -3 M0 9L9 0" stroke="#7067d7" stroke-width="1" />
+    </pattern>
+    <symbol id="cnt-unit" viewBox="-5 -5 10 10">
+      <rect x="-4.3" y="-4.3" width="8.6" height="8.6" fill="none" stroke="#88a17a" stroke-width=".85" />
+      <path d="M-4.3 -4.3L4.3 4.3 M-4.3 4.3L4.3 -4.3" fill="none" stroke="#88a17a" stroke-width=".85" />
+    </symbol>
+  </defs>
+  <g id="layer-METAL1" data-layer="METAL1">
+    <g fill="#b5b5f3" stroke="#9996cf" stroke-width="1" stroke-linejoin="miter">
+      <path id="metal-upper" d="M286 222L834 222L834 542L801.5 542L801.5 284L318.5 284L318.5 542L286 542Z" />
+      <path id="metal-inner" d="M363.5 313L756.5 313L756.5 553L780.5 553L780.5 610L724 610L724 376L396 376L396 610L339.5 610L339.5 553L363.5 553Z" />
+      <path id="metal-left" d="M19 313L241.5 313L241.5 553L265 553L265 610L208 610L208 376L74.5 376L74.5 561L172 561L172 663L431.5 663L431.5 561L495 561L495 718L19 718Z" />
+      <path id="metal-right" d="M878.5 313L1101 313L1101 718L625 718L625 561L688.5 561L688.5 663L948 663L948 561L1045.5 561L1045.5 376L912 376L912 610L855 610L855 553L878.5 553Z" />
+    </g>
+  </g>
+  <g id="layer-LVTN" fill="none" data-layer="LVTN" stroke="#d88c48" stroke-width="1.8">
+    <rect x="85.25" y="413.15" width="434" height="334.85" />
+  </g>
+  <g id="layer-LVTP" fill="none" data-layer="LVTP" stroke="#78e750" stroke-width="2">
+    <rect x="600.75" y="413.15" width="434" height="334.85" />
+  </g>
+  <g id="layer-HVTN" fill="none" data-layer="HVTN" stroke="#e25e9c" stroke-width="3.2">
+    <rect x="203.25" y="469.15" width="198" height="160.5" />
+  </g>
+  <g id="layer-HVTP" fill="none" data-layer="HVTP" stroke="#137e12" stroke-width="3.2">
+    <rect x="718.75" y="469.15" width="198" height="160.5" />
+  </g>
+  <g id="layer-ACTIVE" fill="none" stroke="#226c89" stroke-width="2.6" stroke-linejoin="miter" data-layer="ACTIVE">
+    <path id="active-left-outer" d="M114 560H178V657H425.5V560H493.5V719H114Z" />
+    <path id="active-right-outer" d="M114 560H178V657H425.5V560H493.5V719H114Z" transform="translate(1120 0) scale(-1 1)" />
+    <rect id="active-left-inner" x="208" y="548" width="188" height="62" />
+    <rect id="active-right-inner" x="724" y="548" width="188" height="62" />
+  </g>
+  <g id="layer-POLY" fill="url(#poly-hatch)" stroke="#ff303a" stroke-width="2.5" data-layer="POLY">
+    <rect id="poly-left" x="283" y="502.5" width="38.5" height="114.4" />
+    <rect id="poly-right" x="798.5" y="502.5" width="38.5" height="114.4" />
+  </g>
+  <g id="legend" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="#090909">
+    <g id="legend-ACTIVE">
+      <rect x="31" y="11" width="105" height="57" fill="#c4dce5" stroke="#137699" stroke-width="4" />
+      <text x="154" y="55">ACTIVE</text>
+    </g>
+    <g id="legend-POLY">
+      <rect x="30" y="89" width="110" height="60" fill="url(#poly-hatch)" stroke="#eb7278" stroke-width="2" />
+      <text x="154" y="134">POLY</text>
+    </g>
+    <g id="legend-LVTN">
+      <rect x="318" y="12" width="103" height="56" fill="none" stroke="#d3752b" stroke-width="4" />
+      <text x="434" y="55">LVTN</text>
+    </g>
+    <g id="legend-HVTN">
+      <rect x="318" y="92" width="103" height="55" fill="none" stroke="#e25e9c" stroke-width="4" />
+      <text x="434" y="134">HVTN</text>
+    </g>
+    <g id="legend-LVTP">
+      <rect x="582" y="12" width="102" height="56" fill="none" stroke="#76f143" stroke-width="4" />
+      <text x="695" y="55">LVTP</text>
+    </g>
+    <g id="legend-HVTP">
+      <rect x="582" y="92" width="102" height="55" fill="none" stroke="#127c10" stroke-width="4" />
+      <text x="695" y="134">HVTP</text>
+    </g>
+    <g id="legend-METAL1">
+      <rect x="838" y="85" width="109" height="68" fill="url(#metal-legend-hatch)" stroke="#6f62c3" stroke-width="2" />
+      <text x="954" y="134">METAL1</text>
+    </g>
+    <g id="legend-CNT">
+      <use href="#cnt-unit" x="840" y="13" width="10" height="10" />
+      <use href="#cnt-unit" x="840" y="36.5" width="10" height="10" />
+      <use href="#cnt-unit" x="840" y="60" width="10" height="10" />
+      <use href="#cnt-unit" x="863.5" y="13" width="10" height="10" />
+      <use href="#cnt-unit" x="863.5" y="36.5" width="10" height="10" />
+      <use href="#cnt-unit" x="863.5" y="60" width="10" height="10" />
+      <use href="#cnt-unit" x="887" y="13" width="10" height="10" />
+      <use href="#cnt-unit" x="887" y="36.5" width="10" height="10" />
+      <use href="#cnt-unit" x="887" y="60" width="10" height="10" />
+      <use href="#cnt-unit" x="910.5" y="13" width="10" height="10" />
+      <use href="#cnt-unit" x="910.5" y="36.5" width="10" height="10" />
+      <use href="#cnt-unit" x="910.5" y="60" width="10" height="10" />
+      <use href="#cnt-unit" x="934" y="13" width="10" height="10" />
+      <use href="#cnt-unit" x="934" y="36.5" width="10" height="10" />
+      <use href="#cnt-unit" x="934" y="60" width="10" height="10" />
+      <rect x="836" y="10" width="111" height="64" fill="none" stroke="#a7b79d" stroke-width="1" />
+      <text x="954" y="55">CNT</text>
+    </g>
+  </g>
+  <g id="layer-CNT" data-layer="CNT">
+    <use id="cnt-1" href="#cnt-unit" x="116.33" y="566.18" width="10" height="10" />
+    <use id="cnt-2" href="#cnt-unit" x="993.67" y="566.18" width="10" height="10" />
+    <use id="cnt-3" href="#cnt-unit" x="136.66" y="566.77" width="10" height="10" />
+    <use id="cnt-4" href="#cnt-unit" x="973.34" y="566.77" width="10" height="10" />
+    <use id="cnt-5" href="#cnt-unit" x="155.95" y="566.7" width="10" height="10" />
+    <use id="cnt-6" href="#cnt-unit" x="954.05" y="566.7" width="10" height="10" />
+    <use id="cnt-7" href="#cnt-unit" x="436.58" y="565.64" width="10" height="10" />
+    <use id="cnt-8" href="#cnt-unit" x="673.42" y="565.64" width="10" height="10" />
+    <use id="cnt-9" href="#cnt-unit" x="457.61" y="566.54" width="10" height="10" />
+    <use id="cnt-10" href="#cnt-unit" x="652.39" y="566.54" width="10" height="10" />
+    <use id="cnt-11" href="#cnt-unit" x="477.37" y="565.37" width="10" height="10" />
+    <use id="cnt-12" href="#cnt-unit" x="632.63" y="565.37" width="10" height="10" />
+    <use id="cnt-13" href="#cnt-unit" x="116.3" y="584.65" width="10" height="10" />
+    <use id="cnt-14" href="#cnt-unit" x="993.7" y="584.65" width="10" height="10" />
+    <use id="cnt-15" href="#cnt-unit" x="135.91" y="584.76" width="10" height="10" />
+    <use id="cnt-16" href="#cnt-unit" x="974.09" y="584.76" width="10" height="10" />
+    <use id="cnt-17" href="#cnt-unit" x="156.05" y="584.88" width="10" height="10" />
+    <use id="cnt-18" href="#cnt-unit" x="953.95" y="584.88" width="10" height="10" />
+    <use id="cnt-19" href="#cnt-unit" x="437.5" y="584.68" width="10" height="10" />
+    <use id="cnt-20" href="#cnt-unit" x="672.5" y="584.68" width="10" height="10" />
+    <use id="cnt-21" href="#cnt-unit" x="457.4" y="584.75" width="10" height="10" />
+    <use id="cnt-22" href="#cnt-unit" x="652.6" y="584.75" width="10" height="10" />
+    <use id="cnt-23" href="#cnt-unit" x="477.7" y="584.46" width="10" height="10" />
+    <use id="cnt-24" href="#cnt-unit" x="632.3" y="584.46" width="10" height="10" />
+    <use id="cnt-25" href="#cnt-unit" x="116.42" y="605.26" width="10" height="10" />
+    <use id="cnt-26" href="#cnt-unit" x="993.58" y="605.26" width="10" height="10" />
+    <use id="cnt-27" href="#cnt-unit" x="136.12" y="605.09" width="10" height="10" />
+    <use id="cnt-28" href="#cnt-unit" x="973.88" y="605.09" width="10" height="10" />
+    <use id="cnt-29" href="#cnt-unit" x="156.36" y="605.65" width="10" height="10" />
+    <use id="cnt-30" href="#cnt-unit" x="953.64" y="605.65" width="10" height="10" />
+    <use id="cnt-31" href="#cnt-unit" x="437.24" y="605.3" width="10" height="10" />
+    <use id="cnt-32" href="#cnt-unit" x="672.76" y="605.3" width="10" height="10" />
+    <use id="cnt-33" href="#cnt-unit" x="457.65" y="605.61" width="10" height="10" />
+    <use id="cnt-34" href="#cnt-unit" x="652.35" y="605.61" width="10" height="10" />
+    <use id="cnt-35" href="#cnt-unit" x="477.55" y="605.32" width="10" height="10" />
+    <use id="cnt-36" href="#cnt-unit" x="632.45" y="605.32" width="10" height="10" />
+    <use id="cnt-37" href="#cnt-unit" x="116.24" y="624.79" width="10" height="10" />
+    <use id="cnt-38" href="#cnt-unit" x="993.76" y="624.79" width="10" height="10" />
+    <use id="cnt-39" href="#cnt-unit" x="136.11" y="625.3" width="10" height="10" />
+    <use id="cnt-40" href="#cnt-unit" x="973.89" y="625.3" width="10" height="10" />
+    <use id="cnt-41" href="#cnt-unit" x="156.11" y="625.66" width="10" height="10" />
+    <use id="cnt-42" href="#cnt-unit" x="953.89" y="625.66" width="10" height="10" />
+    <use id="cnt-43" href="#cnt-unit" x="437.47" y="625.3" width="10" height="10" />
+    <use id="cnt-44" href="#cnt-unit" x="672.53" y="625.3" width="10" height="10" />
+    <use id="cnt-45" href="#cnt-unit" x="457.71" y="624.43" width="10" height="10" />
+    <use id="cnt-46" href="#cnt-unit" x="652.29" y="624.43" width="10" height="10" />
+    <use id="cnt-47" href="#cnt-unit" x="477.73" y="624.99" width="10" height="10" />
+    <use id="cnt-48" href="#cnt-unit" x="632.27" y="624.99" width="10" height="10" />
+    <use id="cnt-49" href="#cnt-unit" x="116.48" y="644.51" width="10" height="10" />
+    <use id="cnt-50" href="#cnt-unit" x="993.52" y="644.51" width="10" height="10" />
+    <use id="cnt-51" href="#cnt-unit" x="135.96" y="644.34" width="10" height="10" />
+    <use id="cnt-52" href="#cnt-unit" x="974.04" y="644.34" width="10" height="10" />
+    <use id="cnt-53" href="#cnt-unit" x="155.84" y="644.66" width="10" height="10" />
+    <use id="cnt-54" href="#cnt-unit" x="954.16" y="644.66" width="10" height="10" />
+    <use id="cnt-55" href="#cnt-unit" x="437.16" y="644.65" width="10" height="10" />
+    <use id="cnt-56" href="#cnt-unit" x="672.84" y="644.65" width="10" height="10" />
+    <use id="cnt-57" href="#cnt-unit" x="458.04" y="644.21" width="10" height="10" />
+    <use id="cnt-58" href="#cnt-unit" x="651.96" y="644.21" width="10" height="10" />
+    <use id="cnt-59" href="#cnt-unit" x="477.46" y="645.2" width="10" height="10" />
+    <use id="cnt-60" href="#cnt-unit" x="632.54" y="645.2" width="10" height="10" />
+    <use id="cnt-61" href="#cnt-unit" x="115.89" y="662.93" width="10" height="10" />
+    <use id="cnt-62" href="#cnt-unit" x="994.11" y="662.93" width="10" height="10" />
+    <use id="cnt-63" href="#cnt-unit" x="136.52" y="662.96" width="10" height="10" />
+    <use id="cnt-64" href="#cnt-unit" x="973.48" y="662.96" width="10" height="10" />
+    <use id="cnt-65" href="#cnt-unit" x="156.95" y="662.82" width="10" height="10" />
+    <use id="cnt-66" href="#cnt-unit" x="953.05" y="662.82" width="10" height="10" />
+    <use id="cnt-67" href="#cnt-unit" x="177.0" y="664.0" width="10" height="10" />
+    <use id="cnt-68" href="#cnt-unit" x="933.0" y="664.0" width="10" height="10" />
+    <use id="cnt-69" href="#cnt-unit" x="199.0" y="664.0" width="10" height="10" />
+    <use id="cnt-70" href="#cnt-unit" x="911.0" y="664.0" width="10" height="10" />
+    <use id="cnt-71" href="#cnt-unit" x="217.0" y="664.0" width="10" height="10" />
+    <use id="cnt-72" href="#cnt-unit" x="893.0" y="664.0" width="10" height="10" />
+    <use id="cnt-73" href="#cnt-unit" x="238.0" y="664.0" width="10" height="10" />
+    <use id="cnt-74" href="#cnt-unit" x="872.0" y="664.0" width="10" height="10" />
+    <use id="cnt-75" href="#cnt-unit" x="257.0" y="664.0" width="10" height="10" />
+    <use id="cnt-76" href="#cnt-unit" x="853.0" y="664.0" width="10" height="10" />
+    <use id="cnt-77" href="#cnt-unit" x="277.0" y="664.0" width="10" height="10" />
+    <use id="cnt-78" href="#cnt-unit" x="833.0" y="664.0" width="10" height="10" />
+    <use id="cnt-79" href="#cnt-unit" x="298.0" y="664.0" width="10" height="10" />
+    <use id="cnt-80" href="#cnt-unit" x="812.0" y="664.0" width="10" height="10" />
+    <use id="cnt-81" href="#cnt-unit" x="317.0" y="664.0" width="10" height="10" />
+    <use id="cnt-82" href="#cnt-unit" x="793.0" y="664.0" width="10" height="10" />
+    <use id="cnt-83" href="#cnt-unit" x="337.0" y="664.0" width="10" height="10" />
+    <use id="cnt-84" href="#cnt-unit" x="773.0" y="664.0" width="10" height="10" />
+    <use id="cnt-85" href="#cnt-unit" x="356.0" y="664.0" width="10" height="10" />
+    <use id="cnt-86" href="#cnt-unit" x="754.0" y="664.0" width="10" height="10" />
+    <use id="cnt-87" href="#cnt-unit" x="377.0" y="664.0" width="10" height="10" />
+    <use id="cnt-88" href="#cnt-unit" x="733.0" y="664.0" width="10" height="10" />
+    <use id="cnt-89" href="#cnt-unit" x="397.0" y="664.0" width="10" height="10" />
+    <use id="cnt-90" href="#cnt-unit" x="713.0" y="664.0" width="10" height="10" />
+    <use id="cnt-91" href="#cnt-unit" x="415.0" y="664.0" width="10" height="10" />
+    <use id="cnt-92" href="#cnt-unit" x="695.0" y="664.0" width="10" height="10" />
+    <use id="cnt-93" href="#cnt-unit" x="438.01" y="662.54" width="10" height="10" />
+    <use id="cnt-94" href="#cnt-unit" x="671.99" y="662.54" width="10" height="10" />
+    <use id="cnt-95" href="#cnt-unit" x="457.2" y="663.02" width="10" height="10" />
+    <use id="cnt-96" href="#cnt-unit" x="652.8" y="663.02" width="10" height="10" />
+    <use id="cnt-97" href="#cnt-unit" x="477.51" y="663.06" width="10" height="10" />
+    <use id="cnt-98" href="#cnt-unit" x="632.49" y="663.06" width="10" height="10" />
+    <use id="cnt-99" href="#cnt-unit" x="115.86" y="682.31" width="10" height="10" />
+    <use id="cnt-100" href="#cnt-unit" x="994.14" y="682.31" width="10" height="10" />
+    <use id="cnt-101" href="#cnt-unit" x="135.78" y="682.46" width="10" height="10" />
+    <use id="cnt-102" href="#cnt-unit" x="974.22" y="682.46" width="10" height="10" />
+    <use id="cnt-103" href="#cnt-unit" x="155.64" y="681.92" width="10" height="10" />
+    <use id="cnt-104" href="#cnt-unit" x="954.36" y="681.92" width="10" height="10" />
+    <use id="cnt-105" href="#cnt-unit" x="179.03" y="682.59" width="10" height="10" />
+    <use id="cnt-106" href="#cnt-unit" x="930.97" y="682.59" width="10" height="10" />
+    <use id="cnt-107" href="#cnt-unit" x="199.21" y="681.81" width="10" height="10" />
+    <use id="cnt-108" href="#cnt-unit" x="910.79" y="681.81" width="10" height="10" />
+    <use id="cnt-109" href="#cnt-unit" x="217.67" y="682.2" width="10" height="10" />
+    <use id="cnt-110" href="#cnt-unit" x="892.33" y="682.2" width="10" height="10" />
+    <use id="cnt-111" href="#cnt-unit" x="237.25" y="682.66" width="10" height="10" />
+    <use id="cnt-112" href="#cnt-unit" x="872.75" y="682.66" width="10" height="10" />
+    <use id="cnt-113" href="#cnt-unit" x="258.17" y="682.33" width="10" height="10" />
+    <use id="cnt-114" href="#cnt-unit" x="851.83" y="682.33" width="10" height="10" />
+    <use id="cnt-115" href="#cnt-unit" x="277.61" y="682.48" width="10" height="10" />
+    <use id="cnt-116" href="#cnt-unit" x="832.39" y="682.48" width="10" height="10" />
+    <use id="cnt-117" href="#cnt-unit" x="296.85" y="682.07" width="10" height="10" />
+    <use id="cnt-118" href="#cnt-unit" x="813.15" y="682.07" width="10" height="10" />
+    <use id="cnt-119" href="#cnt-unit" x="317.44" y="682.73" width="10" height="10" />
+    <use id="cnt-120" href="#cnt-unit" x="792.56" y="682.73" width="10" height="10" />
+    <use id="cnt-121" href="#cnt-unit" x="336.84" y="682.2" width="10" height="10" />
+    <use id="cnt-122" href="#cnt-unit" x="773.16" y="682.2" width="10" height="10" />
+    <use id="cnt-123" href="#cnt-unit" x="355.44" y="682.24" width="10" height="10" />
+    <use id="cnt-124" href="#cnt-unit" x="754.56" y="682.24" width="10" height="10" />
+    <use id="cnt-125" href="#cnt-unit" x="376.32" y="682.21" width="10" height="10" />
+    <use id="cnt-126" href="#cnt-unit" x="733.68" y="682.21" width="10" height="10" />
+    <use id="cnt-127" href="#cnt-unit" x="397.36" y="682.14" width="10" height="10" />
+    <use id="cnt-128" href="#cnt-unit" x="712.64" y="682.14" width="10" height="10" />
+    <use id="cnt-129" href="#cnt-unit" x="415.4" y="682.62" width="10" height="10" />
+    <use id="cnt-130" href="#cnt-unit" x="694.6" y="682.62" width="10" height="10" />
+    <use id="cnt-131" href="#cnt-unit" x="437.61" y="681.89" width="10" height="10" />
+    <use id="cnt-132" href="#cnt-unit" x="672.39" y="681.89" width="10" height="10" />
+    <use id="cnt-133" href="#cnt-unit" x="457.43" y="682.78" width="10" height="10" />
+    <use id="cnt-134" href="#cnt-unit" x="652.57" y="682.78" width="10" height="10" />
+    <use id="cnt-135" href="#cnt-unit" x="477.29" y="682.3" width="10" height="10" />
+    <use id="cnt-136" href="#cnt-unit" x="632.71" y="682.3" width="10" height="10" />
+    <use id="cnt-137" href="#cnt-unit" x="116.57" y="703.02" width="10" height="10" />
+    <use id="cnt-138" href="#cnt-unit" x="993.43" y="703.02" width="10" height="10" />
+    <use id="cnt-139" href="#cnt-unit" x="135.79" y="702.82" width="10" height="10" />
+    <use id="cnt-140" href="#cnt-unit" x="974.21" y="702.82" width="10" height="10" />
+    <use id="cnt-141" href="#cnt-unit" x="155.27" y="702.64" width="10" height="10" />
+    <use id="cnt-142" href="#cnt-unit" x="954.73" y="702.64" width="10" height="10" />
+    <use id="cnt-143" href="#cnt-unit" x="179.04" y="702.97" width="10" height="10" />
+    <use id="cnt-144" href="#cnt-unit" x="930.96" y="702.97" width="10" height="10" />
+    <use id="cnt-145" href="#cnt-unit" x="199.2" y="703.12" width="10" height="10" />
+    <use id="cnt-146" href="#cnt-unit" x="910.8" y="703.12" width="10" height="10" />
+    <use id="cnt-147" href="#cnt-unit" x="218.1" y="702.01" width="10" height="10" />
+    <use id="cnt-148" href="#cnt-unit" x="891.9" y="702.01" width="10" height="10" />
+    <use id="cnt-149" href="#cnt-unit" x="237.55" y="702.61" width="10" height="10" />
+    <use id="cnt-150" href="#cnt-unit" x="872.45" y="702.61" width="10" height="10" />
+    <use id="cnt-151" href="#cnt-unit" x="257.61" y="702.88" width="10" height="10" />
+    <use id="cnt-152" href="#cnt-unit" x="852.39" y="702.88" width="10" height="10" />
+    <use id="cnt-153" href="#cnt-unit" x="277.99" y="703.15" width="10" height="10" />
+    <use id="cnt-154" href="#cnt-unit" x="832.01" y="703.15" width="10" height="10" />
+    <use id="cnt-155" href="#cnt-unit" x="297.72" y="702.94" width="10" height="10" />
+    <use id="cnt-156" href="#cnt-unit" x="812.28" y="702.94" width="10" height="10" />
+    <use id="cnt-157" href="#cnt-unit" x="316.83" y="702.85" width="10" height="10" />
+    <use id="cnt-158" href="#cnt-unit" x="793.17" y="702.85" width="10" height="10" />
+    <use id="cnt-159" href="#cnt-unit" x="336.59" y="702.53" width="10" height="10" />
+    <use id="cnt-160" href="#cnt-unit" x="773.41" y="702.53" width="10" height="10" />
+    <use id="cnt-161" href="#cnt-unit" x="356.04" y="702.42" width="10" height="10" />
+    <use id="cnt-162" href="#cnt-unit" x="753.96" y="702.42" width="10" height="10" />
+    <use id="cnt-163" href="#cnt-unit" x="376.5" y="702.58" width="10" height="10" />
+    <use id="cnt-164" href="#cnt-unit" x="733.5" y="702.58" width="10" height="10" />
+    <use id="cnt-165" href="#cnt-unit" x="396.89" y="703.02" width="10" height="10" />
+    <use id="cnt-166" href="#cnt-unit" x="713.11" y="703.02" width="10" height="10" />
+    <use id="cnt-167" href="#cnt-unit" x="415.58" y="702.85" width="10" height="10" />
+    <use id="cnt-168" href="#cnt-unit" x="694.42" y="702.85" width="10" height="10" />
+    <use id="cnt-169" href="#cnt-unit" x="438.4" y="703.42" width="10" height="10" />
+    <use id="cnt-170" href="#cnt-unit" x="671.6" y="703.42" width="10" height="10" />
+    <use id="cnt-171" href="#cnt-unit" x="456.92" y="702.12" width="10" height="10" />
+    <use id="cnt-172" href="#cnt-unit" x="653.08" y="702.12" width="10" height="10" />
+    <use id="cnt-173" href="#cnt-unit" x="477.0" y="702.69" width="10" height="10" />
+    <use id="cnt-174" href="#cnt-unit" x="633.0" y="702.69" width="10" height="10" />
+    <use id="cnt-175" href="#cnt-unit" x="211.67" y="556.8" width="10" height="10" />
+    <use id="cnt-176" href="#cnt-unit" x="898.33" y="556.8" width="10" height="10" />
+    <use id="cnt-177" href="#cnt-unit" x="211.74" y="576.72" width="10" height="10" />
+    <use id="cnt-178" href="#cnt-unit" x="898.26" y="576.72" width="10" height="10" />
+    <use id="cnt-179" href="#cnt-unit" x="213.39" y="595.69" width="10" height="10" />
+    <use id="cnt-180" href="#cnt-unit" x="896.61" y="595.69" width="10" height="10" />
+    <use id="cnt-181" href="#cnt-unit" x="232.88" y="556.04" width="10" height="10" />
+    <use id="cnt-182" href="#cnt-unit" x="877.12" y="556.04" width="10" height="10" />
+    <use id="cnt-183" href="#cnt-unit" x="231.4" y="577.27" width="10" height="10" />
+    <use id="cnt-184" href="#cnt-unit" x="878.6" y="577.27" width="10" height="10" />
+    <use id="cnt-185" href="#cnt-unit" x="231.66" y="596.1" width="10" height="10" />
+    <use id="cnt-186" href="#cnt-unit" x="878.34" y="596.1" width="10" height="10" />
+    <use id="cnt-187" href="#cnt-unit" x="253.0" y="554.0" width="10" height="10" />
+    <use id="cnt-188" href="#cnt-unit" x="857.0" y="554.0" width="10" height="10" />
+    <use id="cnt-189" href="#cnt-unit" x="253.0" y="576.0" width="10" height="10" />
+    <use id="cnt-190" href="#cnt-unit" x="857.0" y="576.0" width="10" height="10" />
+    <use id="cnt-191" href="#cnt-unit" x="253.0" y="596.0" width="10" height="10" />
+    <use id="cnt-192" href="#cnt-unit" x="857.0" y="596.0" width="10" height="10" />
+    <use id="cnt-193" href="#cnt-unit" x="341.89" y="555.9" width="10" height="10" />
+    <use id="cnt-194" href="#cnt-unit" x="768.11" y="555.9" width="10" height="10" />
+    <use id="cnt-195" href="#cnt-unit" x="341.87" y="576.26" width="10" height="10" />
+    <use id="cnt-196" href="#cnt-unit" x="768.13" y="576.26" width="10" height="10" />
+    <use id="cnt-197" href="#cnt-unit" x="342.41" y="596.32" width="10" height="10" />
+    <use id="cnt-198" href="#cnt-unit" x="767.59" y="596.32" width="10" height="10" />
+    <use id="cnt-199" href="#cnt-unit" x="362.78" y="557.16" width="10" height="10" />
+    <use id="cnt-200" href="#cnt-unit" x="747.22" y="557.16" width="10" height="10" />
+    <use id="cnt-201" href="#cnt-unit" x="362.85" y="576.26" width="10" height="10" />
+    <use id="cnt-202" href="#cnt-unit" x="747.15" y="576.26" width="10" height="10" />
+    <use id="cnt-203" href="#cnt-unit" x="362.83" y="596.5" width="10" height="10" />
+    <use id="cnt-204" href="#cnt-unit" x="747.17" y="596.5" width="10" height="10" />
+    <use id="cnt-205" href="#cnt-unit" x="382.63" y="557.93" width="10" height="10" />
+    <use id="cnt-206" href="#cnt-unit" x="727.37" y="557.93" width="10" height="10" />
+    <use id="cnt-207" href="#cnt-unit" x="382.82" y="575.09" width="10" height="10" />
+    <use id="cnt-208" href="#cnt-unit" x="727.18" y="575.09" width="10" height="10" />
+    <use id="cnt-209" href="#cnt-unit" x="380.53" y="596.41" width="10" height="10" />
+    <use id="cnt-210" href="#cnt-unit" x="729.47" y="596.41" width="10" height="10" />
+    <use id="cnt-211" href="#cnt-unit" x="288.67" y="508.6" width="10" height="10" />
+    <use id="cnt-212" href="#cnt-unit" x="821.33" y="508.6" width="10" height="10" />
+    <use id="cnt-213" href="#cnt-unit" x="288.03" y="527.91" width="10" height="10" />
+    <use id="cnt-214" href="#cnt-unit" x="821.97" y="527.91" width="10" height="10" />
+    <use id="cnt-215" href="#cnt-unit" x="307.28" y="508.99" width="10" height="10" />
+    <use id="cnt-216" href="#cnt-unit" x="802.72" y="508.99" width="10" height="10" />
+    <use id="cnt-217" href="#cnt-unit" x="306.89" y="527.84" width="10" height="10" />
+    <use id="cnt-218" href="#cnt-unit" x="803.11" y="527.84" width="10" height="10" />
+  </g>
+</svg>
