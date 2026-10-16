@@ -139,7 +139,10 @@ test('eight paper provenance records match the actual published example catalog'
       assert.equal(entry.acceptance.status, 'open-paper-match');
       assert.equal(native.paperMatchVerified, false);
       assert.equal(native.originalPaperOverlay, false);
-      assert.match(native.runURL, /^https:\/\/github\.com\/Xiaolong-6\/WaferCAD\/actions\/runs\/\d+$/);
+      assert.match(
+        native.runURL,
+        /^https:\/\/github\.com\/Xiaolong-6\/WaferCAD\/actions\/runs\/\d+$/,
+      );
       assert.match(native.artifactURL, /\/artifacts\/\d+$/);
       assert.equal(native.manifestMember, 'manifest.json');
       assert.match(native.screenshotSha256, /^[0-9a-f]{64}$/);

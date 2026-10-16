@@ -126,7 +126,7 @@ two Section PNGs and the complete Z-slice manifest.
   Both renders are visible and nonempty. This is a scientific observation;
   it cannot establish whether the original author manufactured identical
   vias or whether the reconstructed mask/metal placement is insufficient.
-- This native screenshot now places the *second* power-via material probe
+- This native screenshot now places the _second_ power-via material probe
   on its own displayed Section, resolving the old off-section placement.
   The older Fig. 3 figure-cut evidence retains its original off-section
   classification; it has not been silently rewritten.
