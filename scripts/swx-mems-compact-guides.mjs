@@ -16,12 +16,13 @@ const rect = (x, y, w, h) => [
 ];
 
 export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
-  padCentersUm: [[-14, -50], [14, -50]],
+  padCentersUm: [[-14, -50], [17, -46]],
   padWidthUm: 6,
-  fixedBeamXUm: 11,
-  movingBeamXUm: 4,
-  trussAttachXUm: 3,
-  beamCenterYUm: -50,
+  // Move the right guide to a separately supported corridor above the
+  // moving optical taper, connecting its moving truss to the shuttle
+  // bridge outside the stationary pad rather than crossing the pad.
+  rightBridgeAttachUm: [7, -49.6],
+  interpolationSamples: 16,
   interpolationSamples: 16,
   paperAlignmentDimensions: true,
   validatedFEM: false,
@@ -35,25 +36,32 @@ export function createCompactSwxGuides(travelUm = 0) {
   const flexure = [];
   const guides = [];
   for (const side of [-1, 1]) {
-    const pad = rect(side * 14, options.beamCenterYUm, options.padWidthUm, options.padWidthUm);
+    const isLeft = side < 0;
+    const [px, py] = options.padCentersUm[isLeft ? 0 : 1];
+    const pad = rect(px, py, options.padWidthUm, options.padWidthUm);
     fixed.push(pad);
+    const fixedX = isLeft ? -11 : 14;
+    const movingX = fixedX + side * -source.structuralAlignerLengthUm;
+    const movingY = py + travelUm;
     const centerline = Array.from({ length: options.interpolationSamples + 1 }, (_, i) => {
       const t = i / options.interpolationSamples;
       const smooth = t * t * (3 - 2 * t);
       return [
-        side * (options.fixedBeamXUm - t * source.structuralAlignerLengthUm),
-        options.beamCenterYUm + travelUm * smooth,
+        fixedX + (movingX - fixedX) * t,
+        py + travelUm * smooth,
       ];
     });
     const beam = miteredPolyline(centerline, source.structuralAlignerBeamUm);
-    // The 1um truss overlays the moving end of each 0.1um guide. Its
-    // in-plane length is illustrative; source S7 specifies truss width.
-    const truss = rect(
-      side * (options.movingBeamXUm + options.trussAttachXUm) / 2,
-      options.beamCenterYUm + travelUm,
-      options.movingBeamXUm - options.trussAttachXUm + 0.2,
-      source.structuralAlignerTrussUm,
-    );
+    // Left guide reaches the movable reflector; right guide attaches
+    // to the separate, movable actuator bridge (not the fixed pad).
+    const truss = isLeft
+      ? rect(-3.5, movingY, 1.2, source.structuralAlignerTrussUm)
+      : rect(
+          options.rightBridgeAttachUm[0],
+          (movingY + options.rightBridgeAttachUm[1] + travelUm) / 2,
+          source.structuralAlignerTrussUm,
+          Math.abs(movingY - (options.rightBridgeAttachUm[1] + travelUm)) + 0.2,
+        );
     flexure.push(...beam, truss);
     guides.push({ side, pad, beam: beam[0], truss, centerline });
   }
