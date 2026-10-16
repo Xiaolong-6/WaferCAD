@@ -115,6 +115,7 @@ export function createSwxCompactProcessGeometry(state = 'off') {
       opticalRouting: source.opticalRouting,
       gratingGrooves: compactGratings.grooves,
       gratingGrooveProbes: compactGratings.probes,
+      guides: source.guides,
     },
     reconstructionStatus: 'isolated-compact-candidate',
   };
@@ -152,6 +153,12 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
     [-62, -45],
     [-55, -95],
     [55, -95],
+    ...createSwxCompactProcessGeometry('off').physicalGroups.guides.fixed.map(
+      (ring) => [
+        (ring[0][0] + ring[2][0]) / 2,
+        (ring[0][1] + ring[2][1]) / 2,
+      ],
+    ),
   ],
   assumptions: {
     ...SWX_ASSUMPTIONS,
@@ -161,7 +168,9 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
     sourceGratingGroovesImplemented: false,
     physicallyEtchedCandidateGratingGrooves: true,
     candidateGratings: SWX_COMPACT_GRATING_ASSUMPTIONS,
-    guidedMechanicalAlignersImplemented: false,
+    guidedMechanicalAlignersImplemented: true,
+    authorGuideAnchorCoordinatesVerified: false,
+    independentStructuralFEMValidated: false,
     originalGdsAvailable: false,
     independentFEMOrFDTDVerified: false,
   },
