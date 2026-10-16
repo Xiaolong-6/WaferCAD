@@ -74,9 +74,7 @@ try {
   assert.equal(await checkboxes.count(), 8, 'Hidden process-only masks leaked into File Mask');
   for (let i = 0; i < 8; i++) {
     const changed = await page.evaluate(() => {
-      const box = document.querySelector(
-        '#v2-maskLayerList input[type="checkbox"]:not(:checked)',
-      );
+      const box = document.querySelector('#v2-maskLayerList input[type="checkbox"]:not(:checked)');
       if (!box) return false;
       box.click();
       return true;

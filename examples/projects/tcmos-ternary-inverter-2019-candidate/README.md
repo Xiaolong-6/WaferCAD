@@ -185,6 +185,14 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 8-layer/232-polygon SVG File Mask export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
+**Mask review status (2026-10-16):** The user-uploaded SVG is the sole source
+for all eight exported File Mask layers (232 exact polygons). The independent
+real-Chromium Mask acceptance passed, including GDS (15,322 bytes) and OAS
+(5,390 bytes) binary export/re-import with matching eight-layer and polygon
+counts. No extra legacy process masks are exported. **User visual approval is
+still pending.** The old Recipe references five process-only layers not present
+in the SVG and fails its separate preflight; process/History compatibility,
+3D, Section, Welcome and PR merge are not accepted in this stage. Nothing
+in the mask-only acceptance should be interpreted as a physics simulation.
 
 Scientific visual acceptance still required: archive a close local pMOS Section and nMOS Section showing the respective gate, semiconductor body and intended body–drain interface, plus a corresponding focused 3D view. Include a wide-field context image for each crop, the exact Section endpoints and view/visibility settings, a legend identifying inferred geometry versus source-supported features, and a comparison with paper Fig. 1a/b and Supplementary Fig. 1. Expanded full-field screenshots alone cannot establish 130 nm junction correspondence. Do not present the 80–240 nm display band as a measured junction thickness or imply a calibrated dopant concentration/BTBT current. Keep this PR Draft, and do not add to Welcome or merge until current-head CI and these evidence gates are satisfied.

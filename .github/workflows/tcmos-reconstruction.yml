@@ -37,8 +37,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Print Mask script's Prettier differences (read only)
-        run: npx prettier scripts/tcmos-svg-mask-browser-acceptance.mjs | diff -u scripts/tcmos-svg-mask-browser-acceptance.mjs - || true
       - run: npx playwright install --with-deps chromium
       - name: Review approved SVG Mask without running legacy Recipe
         env:
