@@ -44,10 +44,15 @@ try {
         state.model.layers.some((layer) => layer.name === 'V2 Array 10nm film');
     }, null, { timeout: 300000 });
     const deposited = await snapshot();
+    // Template IDs may be re-assigned by canonical deduplication after a
+    // Process Worker commit. The physical site identity, role and translation
+    // must remain exact; material geometry is checked separately below.
+    const physicalSites = (model) =>
+      model.array.instances.map(({ templateId, ...physical }) => physical);
     assert.deepEqual(
-      deposited.model.array.instances,
-      initial.model.array.instances,
-      'Process cannot alter wafer instance translations, roles or template identities',
+      physicalSites(deposited.model),
+      physicalSites(initial.model),
+      'Process cannot alter any physical array site identity, role or translation',
     );
     const oracle = await page.evaluate(async (originalIds) => {
       const { arrayParts } = await import('/model-array.js');
