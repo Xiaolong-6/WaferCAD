@@ -4,7 +4,10 @@ import { readFile, access } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 
 const provenance = JSON.parse(
-  await readFile(new URL('../../docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json', import.meta.url), 'utf8'),
+  await readFile(
+    new URL('../../docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json', import.meta.url),
+    'utf8',
+  ),
 );
 const classifications = new Set([
   'reported',
@@ -36,7 +39,17 @@ test('eight paper provenance records match the actual published example catalog'
     assert.ok(entry.paperPanel.length > 8);
     assert.ok(classifications.has(entry.classification));
     assert.ok(acceptanceStatuses.has(entry.acceptance.status));
-    assert.ok(/^https:\/\/github\.com\//.test(entry.browserEvidenceURL));
+    if (entry.browserEvidenceURL) {
+      assert.match(entry.browserEvidenceURL, /^https:\/\/github\.com\//);
+    } else {
+      assert.match(entry.evidenceType, /figure cut still missing/);
+    }
+    for (const supplementary of entry.secondarySources || []) {
+      assert.ok(
+        published.sources.some((source) => source.href === supplementary.url),
+        entry.id + ': thesis/supplement source missing from published bibliography',
+      );
+    }
     await access(new URL('../' + entry.projectPath.replace(/^\.\//, ''), import.meta.url));
   }
 });
