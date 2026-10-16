@@ -16,12 +16,12 @@ const rect = (x, y, w, h) => [
 ];
 
 export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
-  padCentersUm: [[-14, -50], [17, -45]],
+  padCentersUm: [[-14, -50], [34, -45]],
   padWidthUm: 6,
-  // Move the right guide to a separately supported corridor above the
-  // moving optical taper, connecting its moving truss to the shuttle
-  // bridge outside the stationary pad rather than crossing the pad.
-  rightBridgeAttachUm: [7, -49.6],
+  // Place the right pad OUTSIDE the bridge's vertical sweep x=24um;
+  // a 7um flexure runs inward and contacts that moving bridge only
+  // at its free tip. This provisional support is not author GDS.
+  rightBridgeAttachUm: [24, -45],
   interpolationSamples: 16,
   interpolationSamples: 16,
   paperAlignmentDimensions: true,
@@ -40,7 +40,7 @@ export function createCompactSwxGuides(travelUm = 0) {
     const [px, py] = options.padCentersUm[isLeft ? 0 : 1];
     const pad = rect(px, py, options.padWidthUm, options.padWidthUm);
     fixed.push(pad);
-    const fixedX = isLeft ? -11 : 14;
+    const fixedX = isLeft ? -11 : 31;
     const movingX = fixedX + side * -source.structuralAlignerLengthUm;
     const movingY = py + travelUm;
     const centerline = Array.from({ length: options.interpolationSamples + 1 }, (_, i) => {
@@ -58,9 +58,9 @@ export function createCompactSwxGuides(travelUm = 0) {
       ? rect(-3.5, movingY, 1.2, source.structuralAlignerTrussUm)
       : rect(
           options.rightBridgeAttachUm[0],
-          (movingY + options.rightBridgeAttachUm[1] + travelUm) / 2,
+          movingY,
           source.structuralAlignerTrussUm,
-          Math.abs(movingY - (options.rightBridgeAttachUm[1] + travelUm)) + 0.2,
+          source.structuralAlignerTrussUm,
         );
     flexure.push(...beam, truss);
     guides.push({ side, pad, beam: beam[0], truss, centerline });
