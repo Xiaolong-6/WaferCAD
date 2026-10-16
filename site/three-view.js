@@ -1351,6 +1351,9 @@ export function createThreeView({
       const state = presentationState(descriptor, inspection),
         materials = Array.isArray(object.material) ? object.material : [object.material];
       object.visible = Boolean(state.visible);
+      // PR250 closeup diagnosis only: isolate one presentation family without
+      // changing any physical geometry, materials, or production defaults.
+      if (inspection.__auditHideKind === descriptor.kind) object.visible = false;
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
       if (object.isLineSegments && descriptor.kind === 'border') {
         object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
