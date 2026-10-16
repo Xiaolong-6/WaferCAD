@@ -350,8 +350,20 @@ export function createWorkstationRuntime(
       if (!assemblyBondEditor) {
         throw new Error('Post-Bond presentation requires an isolated Assembly draft owner.');
       }
-      // A derived view never becomes the canonical physical .wafercad model.
-      postBondPresentationModel = model ? structuredClone(model) : null;
+      // New post-Bond films are highlighted ONLY in the presentation model;
+      // source layer IDs, scientific material and saved Recipe colors remain
+      // untouched. Their actual physical Z dimensions are never exaggerated.
+      const baselineLayerIds = new Set(state.model.layers.map((layer) => layer.id));
+      postBondPresentationModel = model
+        ? {
+            ...structuredClone(model),
+            layers: model.layers.map((layer) =>
+              baselineLayerIds.has(layer.id)
+                ? structuredClone(layer)
+                : { ...structuredClone(layer), color: '#D253A0' },
+            ),
+          }
+        : null;
       originPresentationModel = null;
       invalidate('main', 'section', 'three');
     },
