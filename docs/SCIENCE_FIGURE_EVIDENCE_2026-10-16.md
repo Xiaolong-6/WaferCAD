@@ -78,3 +78,16 @@ ZIP, and the Section images were visually inspected independently.
 The M3D transfer, MAGIC interconnect and TiO₂ pillar scenes render, but
 published paper figure calibration and original author mask geometry
 are **still pending**. Chromium capture success is not an SEM match.
+
+## Section-alignment audit — off-section controls
+
+Independent XY-to-A–B line measurements on captured artifact
+[12045534988](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988)
+found **7 on-section probes and 3 off-section XY controls**:
+M3D second power via (10.6 µm away), MAGIC second interconnect control
+(8 µm away), and TiO₂ substrate control (1.1 µm away). These controls
+are still valid saved-material checks; **they cannot be cited as pixel
+evidence in those rendered A–B sections**. The provenance matrix records
+their real Section endpoints and XY samples, and the regression test
+independently recomputes each off-section distance. A matching Section
+for M3D's second power via remains a visual-acceptance follow-up.

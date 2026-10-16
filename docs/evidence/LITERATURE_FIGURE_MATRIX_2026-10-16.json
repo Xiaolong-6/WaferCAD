@@ -144,7 +144,31 @@
           "m3d-selfpowered-heterogeneous-ic-power-via-both-tiers-section.png",
           "m3d-selfpowered-heterogeneous-ic-data-via-transfer-section.png"
         ],
-        "originalPaperOverlay": false
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 3,
+          "onSectionProbes": 2,
+          "offSectionControlProbes": [
+            {
+              "cutId": "power-via-both-tiers",
+              "probeId": "second-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                5.3
+              ],
+              "offSectionDistanceUm": 10.6
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+        }
       }
     },
     {
@@ -170,7 +194,31 @@
           "magic-1000-mos2-beol-beol-four-metal-levels-section.png",
           "magic-1000-mos2-beol-mos2-gate-and-alox-section.png"
         ],
-        "originalPaperOverlay": false
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 4,
+          "onSectionProbes": 3,
+          "offSectionControlProbes": [
+            {
+              "cutId": "beol-four-metal-levels",
+              "probeId": "right-four-levels",
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                7,
+                4
+              ],
+              "offSectionDistanceUm": 8
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+        }
       }
     },
     {
@@ -223,7 +271,31 @@
           "tio2-metalens-four-unit-two-nanopillar-diameters-section.png",
           "tio2-metalens-four-unit-opposite-nanopillar-row-section.png"
         ],
-        "originalPaperOverlay": false
+        "originalPaperOverlay": false,
+        "probePlacementAudit": {
+          "physicalProbes": 3,
+          "onSectionProbes": 2,
+          "offSectionControlProbes": [
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "substrate-control",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                0,
+                0
+              ],
+              "offSectionDistanceUm": 1.1
+            }
+          ],
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+        }
       }
     }
   ]

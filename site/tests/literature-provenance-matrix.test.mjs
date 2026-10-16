@@ -67,6 +67,24 @@ test('eight paper provenance records match the actual published example catalog'
       assert.match(entry.evidenceType, /figure cut still missing/);
       assert.notEqual(entry.acceptance.status, 'accepted-paper-match');
     }
+    if (entry.captureEvidence?.probePlacementAudit) {
+      const audit = entry.captureEvidence.probePlacementAudit;
+      assert.equal(
+        audit.physicalProbes,
+        audit.onSectionProbes + audit.offSectionControlProbes.length,
+      );
+      for (const control of audit.offSectionControlProbes) {
+        const [ax, ay] = control.a;
+        const [bx, by] = control.b;
+        const [px, py] = control.xy;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const distance = Math.abs(dx * (py - ay) - dy * (px - ax)) / Math.hypot(dx, dy);
+        assert.ok(distance > 1e-6, control.probeId + ': falsely tagged off-section');
+        assert.ok(Math.abs(distance - control.offSectionDistanceUm) < 1e-9);
+        assert.equal(entry.captureEvidence.originalPaperOverlay, false);
+      }
+    }
     for (const supplementary of entry.secondarySources || []) {
       assert.ok(
         published.sources.some((source) => source.href === supplementary.url),
