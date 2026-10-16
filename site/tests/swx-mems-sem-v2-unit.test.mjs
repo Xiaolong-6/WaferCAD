@@ -44,8 +44,10 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
     assert.ok(layout.bounds.maxX >= 76);
     assert.equal(pose.springContours.length, 4);
     assert.equal(pose.lowerSpringCenterlines.length, 2);
+    assert.equal(pose.upperSpringCenterlines.length, 2);
     const [lowerLeft, lowerRight] = pose.lowerSpringCenterlines;
-    for (const path of [lowerLeft, lowerRight]) {
+    const [upperLeft, upperRight] = pose.upperSpringCenterlines;
+    for (const path of [lowerLeft, lowerRight, upperLeft, upperRight]) {
       for (const [start, finish, nominal] of [
         [0, 1, 30],
         [2, 3, 22],
@@ -56,10 +58,18 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
           state + ' lower folded spring lost its 30/22um parallel spans',
         );
       }
-      assert.equal(path[0][1], -99, 'Fixed anchor must not follow moving shuttle');
+    }
+    for (const path of [lowerLeft, lowerRight]) {
+      assert.equal(path[0][1], -99, 'Lower anchor must not move with shuttle');
+    }
+    for (const path of [upperLeft, upperRight]) {
+      assert.equal(path[0][1], -70, 'Upper anchor must not move with shuttle');
+      assert.ok(path.at(-1)[1] < path[0][1], 'Upper spring must fold toward comb');
     }
     assert.equal(lowerLeft[0][0], -49);
     assert.equal(lowerRight[0][0], 49);
+    assert.equal(upperLeft[0][0], -41);
+    assert.equal(upperRight[0][0], 41);
     assert.equal(pose.opticalFlexures.length, 2);
     assert.equal(pose.bridge.length, 2);
   }
@@ -75,17 +85,19 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
     for (let i = 0; i < 4; i++) {
       const own = pose.fixedActuator.at(-4 + i);
       assert.ok(contact([pose.springContours[i]], [own]) > 1e-4);
-      if (i % 2 === 0) {
-        const unrelatedFixed = pose.fixed.filter((ring) => ring !== own);
-        assert.ok(
-          contact([pose.springContours[i]], unrelatedFixed) < 1e-8,
-          state + ' new horizontal lower spring touches unrelated stationary Si',
-        );
-        assert.ok(
-          contact([pose.springContours[i]], pose.opticalFlexures) < 1e-8,
-          state + ' lower spring touches S6 optical flexure',
-        );
-      }
+      const unrelatedFixed = pose.fixed.filter((ring) => ring !== own);
+      assert.ok(
+        contact([pose.springContours[i]], unrelatedFixed) < 1e-8,
+        state + ' horizontal spring touches unrelated stationary Si',
+      );
+      assert.ok(
+        contact([pose.springContours[i]], pose.opticalFlexures) < 1e-8,
+        state + ' horizontal spring accidentally welds to S6 optical flexure',
+      );
+      assert.ok(
+        contact([own], pose.opticalFlexures) < 1e-8,
+        state + ' supported spring pad accidentally welds to S6',
+      );
       assert.ok(
         contact([pose.springContours[i]], pose.movableActuator) > 1e-4,
         state + ' folded spring ' + i + ' is disconnected from moving shuttle',

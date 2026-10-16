@@ -33,10 +33,10 @@ const newTerminalsUm = Object.freeze([
   [64, -77],
 ]);
 const electrodeCentersUm = Object.freeze([
-  [-46, -24],
+  [-41, -70],
   [-49, -99],
   [49, -99],
-  [46, -24],
+  [41, -70],
   [-41, -78],
   [41, -78],
 ]);
@@ -44,8 +44,8 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   sourceSEMAlignedMechanicalAxis: true,
   sourceFixedPortsOpposed: true,
   actuatorFrameTranslationYUm: -90,
-  upperSpringLateralityShiftUm: 30,
-  upperSpringShiftYUm: -86,
+  upperHorizontalAnchorXUm: 41,
+  upperHorizontalAnchorYUm: -70,
   lowerHorizontalAnchorXUm: 49,
   lowerHorizontalAnchorYUm: -99,
   lowerSpringBeamLongUm: SWX_REPORTED.foldedSpringLongBeamUm,
@@ -92,34 +92,42 @@ function semV2PhysicalPose(state) {
   const translateActuatorAnchor = (ring, index) => {
     const upper = index % 2 === 1;
     const side = index < 2 ? -1 : 1;
-    if (!upper) {
-      return rect(
-        side * SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm,
-        SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm,
-        8,
-        8,
-      );
-    }
-    return move(ring, side * 30, -86);
+    return rect(
+      side *
+        (upper
+          ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorXUm
+          : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm),
+      upper
+        ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorYUm
+        : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm,
+      8,
+      8,
+    );
   };
-  const lowerSpringCenterline = (side) => {
+  const horizontalSpringCenterline = (side, upper) => {
     const x = (value) => side * value;
-    const anchorY = SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm;
+    const anchorY = upper
+      ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorYUm
+      : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm;
+    const direction = upper ? -1 : 1;
     const long = SWX_REPORTED.foldedSpringLongBeamUm;
     const short = SWX_REPORTED.foldedSpringShortBeamUm;
     const pitch = SWX_REPORTED.foldedSpringClearanceUm + SWX_REPORTED.foldedSpringWidthUm;
-    const outerX = SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm;
-    // Source S7: 30um, 22um and 30um parallel horizontal runs, with
-    // exact 1.5um silicon-edge gap and a narrow 200nm beam.
+    const outerX = upper
+      ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorXUm
+      : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm;
+    // Both axial spring pairs have the source's 30/22/30um horizontal
+    // fold sections, 200nm beam and 1.5um edge clearance; upper is
+    // mirrored axially to bracket the stationary/moving comb.
     const path = [
       [x(outerX), anchorY],
       [x(outerX - long), anchorY],
-      [x(outerX - long), anchorY + pitch],
-      [x(outerX - long + short), anchorY + pitch],
-      [x(outerX - long + short), anchorY + 2 * pitch],
-      [x(outerX - 2 * long + short), anchorY + 2 * pitch],
-      [x(outerX - 2 * long + short), anchorY + 3 * pitch],
-      [x((SWX_REPORTED.shuttleWidthUm - 0.7) / 2), anchorY + 3 * pitch],
+      [x(outerX - long), anchorY + direction * pitch],
+      [x(outerX - long + short), anchorY + direction * pitch],
+      [x(outerX - long + short), anchorY + direction * 2 * pitch],
+      [x(outerX - 2 * long + short), anchorY + direction * 2 * pitch],
+      [x(outerX - 2 * long + short), anchorY + direction * 3 * pitch],
+      [x((SWX_REPORTED.shuttleWidthUm - 0.7) / 2), anchorY + direction * 3 * pitch],
     ];
     return path.map(([px, py], index) => [px, py + (travel * index) / (path.length - 1)]);
   };
@@ -128,30 +136,26 @@ function semV2PhysicalPose(state) {
     ...actuator.anchors.map(translateActuatorAnchor),
   ];
   const shuttle = actuator.shuttle.slice(0, -4).map((ring) => move(ring, 0, down));
-  for (const side of [-1, 1]) {
-    // Lower horizontal springs terminate directly on the moving shuttle
-    // rail. The old lower horizontal bridge is intentionally removed:
-    // leaving it behind would create a false disconnected Si feature.
-    const upperStation = { outerX: 46 + 3 * 1.7, y: -58 + travel };
-    shuttle.push(
-      strip(
-        [
-          [(side * (SWX_REPORTED.shuttleWidthUm - 0.7)) / 2, upperStation.y],
-          [side * upperStation.outerX, upperStation.y],
-        ],
-        0.45,
-      ),
-    );
-  }
+  // Both horizontal spring pairs meet the movable shuttle directly at
+  // its existing side rails. Remove the old long upper/lower moving
+  // crossbars; they artificially spanned the optical and spring corridors.
   const movableActuator = [
     ...actuator.banks.flatMap((bank) => bank.moving.map((p) => move(p, 0, down))),
     ...shuttle,
   ];
-  const lowerSpringCenterlines = [-1, 1].map(lowerSpringCenterline);
+  const lowerSpringCenterlines = [-1, 1].map((side) =>
+    horizontalSpringCenterline(side, false),
+  );
+  const upperSpringCenterlines = [-1, 1].map((side) =>
+    horizontalSpringCenterline(side, true),
+  );
   const springs = actuator.springContours.map((ring, index) => {
-    if (index % 2 === 1) return translateActuatorAnchor(ring, index);
     const side = index < 2 ? -1 : 1;
-    return miteredPolyline(lowerSpringCenterline(side), SWX_REPORTED.foldedSpringWidthUm)[0];
+    const upper = index % 2 === 1;
+    return miteredPolyline(
+      horizontalSpringCenterline(side, upper),
+      SWX_REPORTED.foldedSpringWidthUm,
+    )[0];
   });
   // The source SEM has opposing, inward-sloped fixed input/output guides,
   // not two vertical posts and a horizontal roof above the SWX. The
@@ -220,6 +224,7 @@ function semV2PhysicalPose(state) {
     movableActuator,
     springContours: springs,
     lowerSpringCenterlines,
+    upperSpringCenterlines,
     fixedRoutes,
     opticalFlexures,
     fixedPads,
@@ -323,9 +328,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('stationary left comb handle', [-25, -78]),
     add('stationary right comb handle', [25, -78]),
     add('lower left spring anchor', [-49, -99]),
-    add('upper left spring anchor', [-46, -24]),
+    add('upper left spring anchor', [-41, -70]),
     add('lower right spring anchor', [49, -99]),
-    add('upper right spring anchor', [46, -24]),
+    add('upper right spring anchor', [41, -70]),
     add('S7 left stationary anchor', [-14, -50]),
     add('S7 right stationary anchor', [34, -45]),
     ...newTerminalsUm.map((point, index) => add('terminal support ' + index, point)),
@@ -335,9 +340,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('left moving comb handle', [-25, -87.4 + travel]),
     add('right moving comb handle', [25, -87.4 + travel]),
     add('left lower folded spring', [-34, -99 + travel / 14]),
-    add('left upper folded spring', [-46, -40]),
+    add('left upper folded spring', [-30, -70]),
     add('right lower folded spring', [34, -99 + travel / 14]),
-    add('right upper folded spring', [46, -40]),
+    add('right upper folded spring', [30, -70]),
     add('stationary-but-suspended input guide', [-40, -14.75]),
     add('stationary-but-suspended output guide', [40, -14.75]),
     add('left moving S6 optical hairpin', [-58, -65 + travel]),
