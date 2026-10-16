@@ -280,7 +280,9 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
     throw new Error('Bond from a historical checkpoint requires an explicit new Variant.');
   }
   if (active.postBondSteps?.length) {
-    throw new Error('Further Bond after post-Bond Process requires a source-aware continuation boundary.');
+    throw new Error(
+      'Further Bond after post-Bond Process requires a source-aware continuation boundary.',
+    );
   }
   const receiver = materialize(graph, active, active.bonds.length);
   const prepared = prepareWaferBondTransaction(receiver, donorProject, request);
