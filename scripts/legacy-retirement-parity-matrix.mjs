@@ -9,20 +9,29 @@ export const CRITICAL_LEGACY_CONTRACTS = [
   {
     path: 'scripts/process-recipe-safety-regression.mjs',
     domain: 'Recipe drafts, templates, prefix replay and Stop',
-    native: ['scripts/v2/check-recipe-preflight-atomicity.mjs'],
+    native: [
+      'scripts/v2/check-recipe-preflight-atomicity.mjs',
+      'scripts/v2/check-recipe-prefix-stop-parity.mjs',
+    ],
     draftPrs: [268],
     gaps: [
       'template replacement/Recovery and Undo',
       'Code draft switching',
-      'full Run-to/Stop parity',
+      'Recipe Stop across all start modes, History paths and retry variants',
     ],
   },
   {
     path: 'scripts/process-transaction-ui-regression.mjs',
     domain: 'Worker Abort, rejection and rollback',
-    native: ['scripts/v2/check-recipe-preflight-atomicity.mjs'],
+    native: [
+      'scripts/v2/check-recipe-preflight-atomicity.mjs',
+      'scripts/v2/check-worker-fault-parity.mjs',
+    ],
     draftPrs: [265],
-    gaps: ['fault injection and late result', 'canonical Model/History/Variant retry equality'],
+    gaps: [
+      'all delayed-result, lease-loss and worker-crash interleavings',
+      'equivalence of every Legacy transactional fault matrix scenario',
+    ],
   },
   {
     path: 'scripts/history-regression.mjs',
