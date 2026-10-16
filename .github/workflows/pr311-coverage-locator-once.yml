@@ -1,4 +1,4 @@
-name: PR311 one-shot pre-noded persistence quantization contract
+name: PR311 clean Kernel full oxide science verification
 
 on:
   push:
@@ -23,22 +23,11 @@ jobs:
         run: |
           node --check site/model.js
           node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs
-      - name: Reproduce frozen full-front/back oxide on isolated Kernel
-        env:
-          WAFERCAD_CONFORMAL_DEBUG: '1'
+      - name: Verify original full front-back GaN oxide against clean Kernel
         run: |
           git fetch --quiet origin ceb953b313f6da7fa012b70d8c52075ea4c8e7d0
           git show ceb953b313f6da7fa012b70d8c52075ea4c8e7d0:scripts/build-gan-hemt-microchannel-example.mjs > scripts/build-gan-hemt-microchannel-example.mjs
-          set +e
-          node scripts/build-gan-hemt-microchannel-example.mjs > /tmp/gan-coverage.log 2>&1
-          outcome=$?
-          set -e
-          cat /tmp/gan-coverage.log
-          if [ "$outcome" -eq 0 ]; then
-            echo "Full oxide passed after Kernel patch; diagnose whether expected loss disappeared."
-          else
-            grep 'Conformal lost' /tmp/gan-coverage.log
-          fi
+          node scripts/build-gan-hemt-microchannel-example.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
