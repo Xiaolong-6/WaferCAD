@@ -13,7 +13,6 @@ import {
   canvasInkFraction,
 } from './test-helpers/ui.mjs';
 
-
 async function ensureThreeVisible(page) {
   if (await page.locator('#threeHost').isVisible()) return;
   for (const action of ['view:three', 'dock:view:three']) {
