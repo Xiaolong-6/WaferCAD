@@ -146,6 +146,12 @@ export function mountAssemblyBondDraftControls({
   processButton.textContent = 'Apply Process preview';
   const processCount = document.createElement('span');
   processCount.className = 'assembly-bond-post-process-count';
+  const processUndo = document.createElement('button');
+  processUndo.type = 'button';
+  processUndo.textContent = '← Process';
+  const processRedo = document.createElement('button');
+  processRedo.type = 'button';
+  processRedo.textContent = 'Process →';
   process.append(
     processTitle,
     processInfo,
@@ -155,6 +161,8 @@ export function mountAssemblyBondDraftControls({
     processFace,
     processButton,
     processCount,
+    processUndo,
+    processRedo,
   );
   panel.append(header, description, form, variants, process, status);
   root.append(panel);
@@ -174,8 +182,12 @@ export function mountAssemblyBondDraftControls({
     const graph = editor.exportVariantGraph();
     const activeBranch = graph.branches.find((branch) => branch.id === graph.activeBranchId);
     const processSteps = activeBranch?.postBondSteps?.length || 0;
-    processCount.textContent = `${processSteps} saved geometry steps`;
-    processButton.disabled = busy || !atHead || editor.maxIndex() < 1 || processSteps >= 16;
+    const processIndex = activeBranch?.postBondCursor ?? processSteps;
+    processCount.textContent = `Process ${processIndex} / ${processSteps} · full Recipe retained`;
+    processUndo.disabled = busy || !atHead || processIndex === 0;
+    processRedo.disabled = busy || !atHead || processIndex === processSteps;
+    processButton.disabled =
+      busy || !atHead || editor.maxIndex() < 1 || processSteps >= 16 || processIndex !== processSteps;
     processMaterial.disabled = processType.value !== 'deposit';
     apply.disabled = busy || !atHead || editor.maxIndex() >= 7;
     donorFile.disabled = busy || !atHead;
@@ -193,6 +205,30 @@ export function mountAssemblyBondDraftControls({
       status.textContent = 'Return to the Assembly HEAD before adding another donor.';
     }
   };
+
+  const navigateProcess = async (delta) => {
+    if (busy) return;
+    const { index, length, available } = editor.processTimeline();
+    const next = index + delta;
+    if (!available || next < 0 || next > length) return;
+    busy = true;
+    sync();
+    try {
+      await editor.restorePostBondStepDurable(next);
+      status.dataset.error = 'false';
+      status.textContent = `Restored Process ${next} / ${length}. Recipe HEAD retained.`;
+      onChanged();
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+      onChanged();
+    } finally {
+      busy = false;
+      sync();
+    }
+  };
+  processUndo.addEventListener('click', () => void navigateProcess(-1));
+  processRedo.addEventListener('click', () => void navigateProcess(1));
 
   processType.addEventListener('change', sync);
   processButton.addEventListener('click', async () => {
