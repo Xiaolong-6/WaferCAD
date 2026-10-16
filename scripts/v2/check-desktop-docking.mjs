@@ -67,7 +67,8 @@ async function assertDesktopShell(page) {
         workspace?.contains(document.querySelector('.p-status')),
       sidebarWidth: sidebar?.getBoundingClientRect().width,
       workspaceWidth: right?.width,
-      centered: right && nav ? Math.abs((right.left + right.right - nav.left - nav.right) / 2) : Infinity,
+      centered:
+        right && nav ? Math.abs((right.left + right.right - nav.left - nav.right) / 2) : Infinity,
       projectInSidebar: Boolean(sidebar?.querySelector('[data-slot="topbar.project"]')),
       outerOverflow: document.documentElement.scrollWidth - innerWidth,
     };
