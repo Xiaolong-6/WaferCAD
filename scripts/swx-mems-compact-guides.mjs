@@ -23,7 +23,6 @@ export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
   // at its free tip. This provisional support is not author GDS.
   rightBridgeAttachUm: [24, -45],
   interpolationSamples: 16,
-  interpolationSamples: 16,
   paperAlignmentDimensions: true,
   validatedFEM: false,
 });

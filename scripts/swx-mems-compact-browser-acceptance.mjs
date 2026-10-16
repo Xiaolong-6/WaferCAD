@@ -76,17 +76,15 @@ try {
       const expectedModel = state === 'off' ? source.model : onBranch.headState.model;
       await assertSameMaterialGeometry(expectedModel, loaded.model, { areaToleranceUm2: 0.01 });
       assert.equal(loaded.layout.elements.length, source.layout.elements.length);
-      await page.locator('.workstation-view-tabs').getByRole('button', {
-        name: 'Overview',
-        exact: true,
-      }).click();
+      await page.locator('[data-action="mode:overview"]').click();
       await waitForPaint(page);
       await page.screenshot({
         path: resolve(directory, 'compact-' + state + '-overview.png'),
         animations: 'disabled',
       });
 
-      await page.locator('.workstation-view-tabs > button[data-view="mask"]').click();
+      await page.locator('[data-action="mode:single"]').click();
+      await page.locator('[data-action="view:mask"]').click();
       await waitForPaint(page);
       await page.locator('#maskPanel').screenshot({
         path: resolve(directory, 'compact-' + state + '-mask.png'),
@@ -123,7 +121,7 @@ try {
       }
       await page.getByRole('button', { name: 'Close Export Mask' }).click();
       await page.locator('#maskExportSettings').waitFor({ state: 'hidden' });
-      await page.locator('.workstation-view-tabs > button[data-view="three"]').click();
+      await page.locator('[data-action="view:three"]').click();
       await page.waitForFunction(
         () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
         null,
@@ -230,7 +228,14 @@ try {
             { timeout: 120000 },
           );
         }
-        await page.locator('.workstation-view-tabs > button[data-view="three"]').click();
+        // Reopening can retain an open Section dock from the prior camera.
+        // Dismiss it for comparable OFF/ON 3D closeups.
+        const sectionDock = page.locator('[data-action="section"]');
+        if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
+          await sectionDock.click();
+        }
+        await page.locator('[data-action="mode:single"]').click();
+        await page.locator('[data-action="view:three"]').click();
         await page.waitForFunction(
           (expected) => {
             const snapshot = window.WaferCadV2Workstation.snapshot();
@@ -250,14 +255,21 @@ try {
           path: resolve(directory, 'compact-' + state + '-3d-' + view.name + '.png'),
         });
         if (view.name === 'grating') {
-          await page.locator('.workstation-view-tabs > button[data-view="section"]').click();
+          const sectionDock = page.locator('[data-action="section"]');
+          if ((await sectionDock.getAttribute('aria-pressed')) !== 'true') {
+            await sectionDock.click();
+          }
           await waitForPaint(page);
           await page.locator('#sectionPanel').screenshot({
             path: resolve(directory, 'compact-' + state + '-section-grating.png'),
           });
         }
       }
-      await page.locator('.workstation-view-tabs > button[data-view="section"]').click();
+      // Desktop Section is a dock, not a separate view tab.
+      const sectionDock = page.locator('[data-action="section"]');
+      if ((await sectionDock.getAttribute('aria-pressed')) !== 'true') {
+        await sectionDock.click();
+      }
       await waitForPaint(page);
       const section = page.locator('#sectionPanel');
       assert.ok(await section.isVisible(), 'BOX Section is hidden');
