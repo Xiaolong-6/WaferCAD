@@ -20,27 +20,29 @@ const validNumber = (value) => typeof value === 'number' && Number.isFinite(valu
  */
 export function auditDopantPhysicsEvidence(model) {
   const intents = model.dopantRegions || [];
-  if (
-    !Array.isArray(intents) ||
-    intents.some((intent) => intent?.profile?.kind !== 'qualitative-interval')
-  ) {
-    throw new TypeError('Dopant physics evidence requires supported qualitative-interval intents.');
+  const validIntents =
+    Array.isArray(intents) &&
+    intents.every((intent) => intent?.profile?.kind === 'qualitative-interval');
+  if (!validIntents) {
+    throw new TypeError('Expected qualitative-interval dopant physics evidence.');
   }
+  let schematicWellCount = 0;
+  for (const region of model.electricalRegions || []) {
+    if (String(region.name).toLowerCase().includes('well')) schematicWellCount += 1;
+  }
+  const qualitativeWellCount = intents.filter((intent) => intent.role === 'well').length;
   return {
     kind: 'qualitative-only-physics-evidence',
     qualitativeIntentCount: intents.length,
-    qualitativeWellIntentCount: intents.filter((intent) => intent.role === 'well').length,
-    schematicWellAnnotationCount: (model.electricalRegions || []).filter(
-      (region) => String(region.name).toLowerCase().includes('well'),
-    ).length,
+    qualitativeWellIntentCount: qualitativeWellCount,
+    schematicWellAnnotationCount: schematicWellCount,
     calibratedNetDopantProfileAvailable: false,
     quantifiedWellDoping: false,
     activatedJunctionProfileAvailable: false,
     physicalJunctionResolved: false,
     ohmicContactValidated: false,
     btbtCurrentComputed: false,
-    evidenceLimitation:
-      'Only qualitative mask/depth intervals and schematic electrical regions are stored.',
+    evidenceLimitation: 'Only qualitative mask/depth and schematic well markers are supported.',
   };
 }
 
