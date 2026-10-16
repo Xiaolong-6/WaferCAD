@@ -272,7 +272,8 @@ export function mountAssemblyBondDraftControls({
       if (direction === 'undo') await editor.undoWorkstationDurable();
       else await editor.redoWorkstationDurable();
       status.dataset.error = 'false';
-      status.textContent = `${direction === 'undo' ? 'Undid' : 'Redid'} ${kind} stage. Durable Assembly revision saved.`;
+      status.textContent =
+        `${direction === 'undo' ? 'Undid' : 'Redid'} ${kind} stage. Durable Assembly revision saved.`;
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';

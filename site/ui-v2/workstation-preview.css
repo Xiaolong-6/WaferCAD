@@ -240,6 +240,40 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   color: #586579;
 }
 
+/* One visible, source-aware History control for Bond and post-Bond Process. */
+.assembly-bond-workstation-history {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  margin: 12px 0 14px;
+}
+
+.assembly-bond-workstation-history > strong {
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-workstation-history-status {
+  min-width: 0;
+  color: #53637a;
+  font-size: 11px;
+}
+
+.assembly-bond-workstation-history button {
+  padding: 5px 9px;
+  border: 1px solid #b7c6d9;
+  border-radius: 7px;
+  background: #eaf0f9;
+  color: #263851;
+  font: inherit;
+  cursor: pointer;
+}
+
+.assembly-bond-workstation-history button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .assembly-bond-draft-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

@@ -305,7 +305,6 @@ test('rejected durable Process fork restores original Recipe cursor and physical
   assert.equal(h.revision(), revision);
 });
 
-
 test('unified Assembly undo/redo crosses Process and Bond boundaries with durable replay', async () => {
   const h = host();
   const original = h.session.fullProduct();
@@ -346,7 +345,11 @@ test('unified Assembly undo/redo crosses Process and Bond boundaries with durabl
   assert.deepEqual(h.session.postBondPreviewModel(), film.model);
   await h.session.redoWorkstationDurable();
   assert.deepEqual(h.session.postBondPreviewModel(), tip.model);
-  assert.deepEqual(h.session.exportVariantGraph(), graph, 'source/Recipe content is immutable across navigation');
+  assert.deepEqual(
+    h.session.exportVariantGraph(),
+    graph,
+    'source/Recipe content is immutable across navigation',
+  );
   assert.equal(h.revision(), baseRevision + 6, 'one confirmed graph revision per navigation');
   assert.equal(h.session.workstationHistoryNavigation().canRedo, false);
   assert.equal(await h.session.redoWorkstationDurable(), null, 'HEAD is a no-op without writes');
