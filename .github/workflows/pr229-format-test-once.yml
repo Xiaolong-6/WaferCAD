@@ -1,0 +1,35 @@
+name: PR229 one-time exact Prettier repair
+
+on:
+  push:
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths: [.github/workflows/pr229-format-test-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  format-gan-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Format exactly the new GSG mask geometry test
+        run: |
+          npx prettier --write site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+          npx prettier --check site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+          npx eslint site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - name: Commit formatted science test to PR branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(gan): apply repository Prettier to GSG scientific test"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
