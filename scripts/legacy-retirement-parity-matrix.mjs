@@ -76,8 +76,11 @@ export const CRITICAL_LEGACY_CONTRACTS = [
   {
     path: 'scripts/array-runtime-regression.mjs',
     domain: 'Array model science',
-    native: [],
-    gaps: ['full array material/History/ROI invariants'],
+    native: ['scripts/v2/check-array-625-science.mjs'],
+    gaps: [
+      'Array conformal/etch and ROI/scoped Worker mutations at every site',
+      '6400-site metalens, 3D instancing and GDS/OAS/GLB export equivalence',
+    ],
   },
   {
     path: 'scripts/array-renderer-regression.mjs',

@@ -51,8 +51,8 @@
       ]),
     );
     const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
-    const hideEditor = button('', 'hide-editor', 'close', {
-      'aria-label': 'Hide navigation and workflow editor',
+    const hideEditor = button('', 'hide-editor', 'back', {
+      'aria-label': 'Collapse workflow panel',
       'data-help': 'shell.navigation',
     });
     navHost.append(navLabel, ...navButtons.values(), hideEditor);
@@ -81,6 +81,27 @@
       'aria-pressed': 'false',
       'data-help': 'shell.section',
     });
+    // Desktop controls are separate from the stable contextual mobile dock.
+    const desktopOverview = button('Overview', 'dock:overview', null, {
+      'aria-pressed': 'false',
+      'data-help': 'shell.overview',
+    });
+    const desktopViewButtons = new Map(
+      registry.views.map(({ key, label, icon }) => [
+        key,
+        button(label, `dock:view:${key}`, icon, {
+          'aria-pressed': 'false',
+          'data-help': `shell.view.${key}`,
+        }),
+      ]),
+    );
+    const desktopViewbar = el(
+      'div',
+      { class: 'p-actions p-desktop-dock-actions' },
+      desktopOverview,
+      el('span', { class: 'p-viewbar-divider', 'aria-hidden': 'true' }),
+      ...desktopViewButtons.values(),
+    );
     const inspector = el('aside', { class: 'p-inspector', 'aria-label': 'Workflow editor' });
     const editorContent = el('div', { class: 'p-panel-content' });
     inspector.append(editorContent);
@@ -112,6 +133,13 @@
     const separator = divider(false);
     separator.dataset.help = 'shell.panel.resize';
     const canvases = el('div', { class: 'p-canvases' });
+    const dockEmpty = el(
+      'div',
+      { class: 'p-dock-empty', hidden: true },
+      el('p', {}, 'No views visible'),
+      button('Restore Overview', 'dock:overview', null),
+    );
+    canvases.append(dockEmpty);
     const viewbar = el('div', { class: 'p-viewbar' });
     const stage = el(
       'main',
@@ -285,6 +313,65 @@
       return { mode, names: [...new Set(names)] };
     }
     function renderStage(info) {
+      const docking = !narrow() ? info.desktopLayout : null;
+      if (docking) {
+        stage.dataset.viewMode = 'docking';
+        canvases.dataset.mode = 'docking';
+        canvases.dataset.desktopDocking = 'true';
+        canvases.dataset.maximized = String(Boolean(docking.maximized));
+        canvases.style.gridTemplateColumns = docking.columns
+          .map((value) => `minmax(0, ${value}fr)`)
+          .join(' ');
+        canvases.style.gridTemplateRows = docking.rows
+          .map((value) => `minmax(0, ${value}fr)`)
+          .join(' ');
+        desktopOverview.setAttribute('aria-pressed', String(docking.overviewPressed));
+        for (const [key, control] of desktopViewButtons)
+          control.setAttribute('aria-pressed', String(docking.highlighted.includes(key)));
+        viewbar.replaceChildren(
+          ...(state.editorHidden
+            ? [
+                el(
+                  'div',
+                  { class: 'p-actions' },
+                  button('Restore panel', 'expand-empty', 'process'),
+                ),
+              ]
+            : []),
+          desktopViewbar,
+        );
+        dockEmpty.hidden = docking.displayed.length > 0;
+        const placements = new Map(docking.placements.map((entry) => [entry.view, entry]));
+        for (const { key, label } of registry.views) {
+          const id = `view.${key}`;
+          const panel = adapters.prepare(id, canvases);
+          if (!panel) throw Error(`Missing view adapter ${id}`);
+          if (panel.parentNode !== canvases) canvases.append(panel);
+          const placement = placements.get(key);
+          panel.hidden = !placement;
+          panel.style.order = '';
+          panel.style.gridColumn = placement
+            ? `${placement.column + 1} / span ${placement.columnSpan}`
+            : '';
+          panel.style.gridRow = placement ? `${placement.row + 1} / span ${placement.rowSpan}` : '';
+          window.WaferCadV2PanelChrome.prepareDesktop(panel, {
+            key,
+            label,
+            icon: registry.views.find((view) => view.key === key)?.icon,
+            maximized: docking.maximized === key,
+            draggable: docking.displayed.length > 1,
+          });
+          // Layout only: active scientific renderers retain their DOM and camera.
+          // Newly displayed views render via the existing adapter onShow hook.
+          if (placement) adapters.show(id, canvases);
+          else adapters.hide(id);
+        }
+        return;
+      }
+      delete canvases.dataset.desktopDocking;
+      canvases.style.gridTemplateColumns = '';
+      canvases.style.gridTemplateRows = '';
+      dockEmpty.hidden = true;
       const { mode, names } = selectedViews(info);
       stage.dataset.viewMode = mode;
       stage.dataset.splitLeft = state.splitViews[0];
@@ -333,6 +420,9 @@
         if (panel.parentNode !== canvases) canvases.append(panel);
         panel.hidden = !visible;
         panel.style.order = String(visible ? names.indexOf(key) : 99);
+        panel.style.gridColumn = '';
+        panel.style.gridRow = '';
+        window.WaferCadV2PanelChrome?.restoreDesktop(panel, key);
         const maximizeButton = panel.querySelector(`[data-action="maximize:${key}"]`);
         if (maximizeButton) {
           const maximized = state.maximize === key;
