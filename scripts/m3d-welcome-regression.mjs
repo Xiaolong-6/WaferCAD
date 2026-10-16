@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { gotoWelcome, launchBrowser, newUiContext, observePageErrors } from './test-helpers/ui.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
 await mkdir('test-results/m3d/welcome', { recursive: true });
 const browser = await launchBrowser();
@@ -56,7 +57,7 @@ try {
   assert.equal(await page.locator('#snapshotList .history-step-wrap').count(), 36);
   assert.equal((await page.locator('#snapshotCount').textContent()).trim(), '36');
 
-  await page.locator('[data-action="view:three"]').click();
+  await selectScientificView(page, 'three', 1440);
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
