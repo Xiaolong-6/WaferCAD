@@ -189,10 +189,6 @@ jobs:
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
 
-      - name: Print PR250 exact Prettier proposal
-        if: ${{ needs.plan.outputs.renderer == 'true' && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
-        run: node_modules/.bin/prettier site/three-view.js | diff -u site/three-view.js - || true
-
       - name: Check rough cap, sidewall, and outline geometry contracts
         if: needs.plan.outputs.renderer == 'true'
         run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
