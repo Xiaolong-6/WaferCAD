@@ -127,7 +127,7 @@ function semV2PhysicalPose(state) {
   const opticalFlexures = hairpins.flatMap((route) => route.polygons);
   const fixedPads = newTerminalsUm.map(([x, y]) => rect(x, y, 12, 12));
   const bridge = [
-    strip([[0, -50 + travel], [0, -52 + travel]], 0.7),
+    strip([[0, -50 + travel], [0, -53.4 + travel]], 0.7),
     strip(
       [
         [0, -50 + travel],

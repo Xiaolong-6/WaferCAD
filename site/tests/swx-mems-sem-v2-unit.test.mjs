@@ -20,7 +20,7 @@ const centroid = (ring) => {
   ];
 };
 
-test('SEM v2 reconstructs a 2x2 unit with comb BELOW moving SWX and opposed fixed ports', () => {
+test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
   assert.equal(SWX_SEM_V2_ASSUMPTIONS.fullFidelityClaim, false);
   assert.equal(SWX_SEM_V2_ASSUMPTIONS.sourceAuthorGdsAvailable, false);
   for (const state of ['off', 'on']) {
@@ -36,7 +36,10 @@ test('SEM v2 reconstructs a 2x2 unit with comb BELOW moving SWX and opposed fixe
       pose.fixedPads.map(centroid),
       [[-70, -20], [70, -20], [-64, -77], [64, -77]],
     );
-    assert.equal(maskPolygons.get(1).length, pose.fixed.length + pose.movable.length + pose.flexure.length);
+    assert.equal(
+      maskPolygons.get(1).length,
+      pose.fixed.length + pose.movable.length + pose.flexure.length,
+    );
     assert.ok(layout.bounds.minY <= -124);
     assert.ok(layout.bounds.maxX >= 76);
     assert.equal(pose.springContours.length, 4);
