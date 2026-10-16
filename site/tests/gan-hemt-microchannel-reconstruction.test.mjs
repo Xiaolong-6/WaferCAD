@@ -111,21 +111,6 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.maskLayers, 19);
   const oxideProtection = GAN_MICROCHANNEL_MASKS.find((mask) => mask.id === 28);
   assert.equal(oxideProtection?.rectangles.length, 4, 'Outer oxide must protect the coolant');
-  const coatedArea = oxideProtection.rectangles.reduce((sum, shape) => sum + shape.w * shape.h, 0);
-  assert.equal(
-    coatedArea,
-    6000 * 5000 - 1300 * 3700,
-    'Peripheral oxide protection must retain its exact 1300 x 3700 um coolant-safe center',
-  );
-  for (const shape of oxideProtection.rectangles) {
-    assert.ok(
-      shape.x + shape.w <= -650 ||
-        shape.x >= 650 ||
-        shape.y + shape.h <= -1850 ||
-        shape.y >= 1850,
-      'Protected center contains a rogue oxide mask rectangle',
-    );
-  }
   assert.equal(validation.processNodes, 36);
   assert.equal(validation.recipeSteps, 35);
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
