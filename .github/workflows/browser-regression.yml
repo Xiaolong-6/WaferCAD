@@ -190,7 +190,7 @@ jobs:
         run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
 
       - name: Check explicit no-Worker rough fallback readiness
-        if: needs.plan.outputs.renderer == 'true'
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         env:
           WAFERCAD_AUDIT_FILTER: rect-stochastic-exposed
           WAFERCAD_AUDIT_NO_WORKER: '1'
@@ -199,7 +199,7 @@ jobs:
         run: node scripts/pr250-renderer-audit.mjs
 
       - name: Capture real photodetector rough ROI evidence
-        if: needs.plan.outputs.renderer == 'true'
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         env:
           WAFERCAD_AUDIT_PHOTODETECTOR: '1'
           WAFERCAD_AUDIT_PERSPECTIVE: ${{ github.event.pull_request.number == 250 && '1' || '0' }}
@@ -208,7 +208,7 @@ jobs:
         run: node scripts/pr250-renderer-audit.mjs
 
       - name: Upload targeted Photodetector ROI evidence
-        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' }}
+        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         uses: actions/upload-artifact@v6
         with:
           name: pr250-photodetector-${{ github.sha }}
@@ -217,7 +217,7 @@ jobs:
           retention-days: 3
 
       - name: Check rough boundary and depth visibility evidence
-        if: needs.plan.outputs.renderer == 'true'
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         env:
           WAFERCAD_AUDIT_ORACLE: '1'
           WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-audit
