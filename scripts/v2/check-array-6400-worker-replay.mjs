@@ -408,6 +408,10 @@ try {
         return () => 'full-mask-ui-' + ++n;
       })(),
     });
+    // A native History edit requires a real restorable predecessor Process node.
+    // Preserve the pristine 6400-site Base explicitly rather than disabling
+    // History's safety checks for the first deposited Step.
+    uiHistory.recordOperation({ kind: 'record', label: 'Pristine 6400-site Base' });
     const maskSteps = [
       {
         kind: 'add',
@@ -487,7 +491,7 @@ try {
       (name) => {
         const state = window.WaferCadV2Workstation.snapshot();
         return (
-          state.projectName === name && state.workflow.steps.length === 2 && !state.workflow.busy
+          state.projectName === name && state.workflow.steps.length === 3 && !state.workflow.busy
         );
       },
       uiSaved.name,
@@ -544,7 +548,7 @@ try {
       'Full-device-field edited Mask and selective successor Etch must use two real Workers',
     );
     const uiEdited = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
-    assert.equal(uiEdited.workflow.steps.length, 2);
+    assert.equal(uiEdited.workflow.steps.length, 3);
     assert.equal(uiEdited.workflow.branches.length, 1);
     const newParts = physicalSites(uiEdited.model);
     let replayDevices = 0;
