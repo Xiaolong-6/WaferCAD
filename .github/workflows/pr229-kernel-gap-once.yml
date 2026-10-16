@@ -1,0 +1,28 @@
+name: PR229 one-time floating gap Kernel contract
+
+on:
+  push:
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths: [.github/workflows/pr229-kernel-gap-once.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Targeted Prettier and ESLint
+        run: |
+          npx prettier --check site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
+          npx eslint site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
+      - name: Floating-gap and conformal topology science
+        run: |
+          node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs site/tests/process-topology.test.mjs site/tests/conformal-crack-repair.test.mjs
