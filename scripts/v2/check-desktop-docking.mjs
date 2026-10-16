@@ -217,9 +217,7 @@ try {
       await assertGrid(page, 1);
       assert.equal(await page.locator('#maskPanel').isVisible(), true);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus);
-      await page.waitForFunction(
-        () => document.querySelectorAll('.v2-dock-divider').length === 0,
-      );
+      await page.waitForFunction(() => document.querySelectorAll('.v2-dock-divider').length === 0);
       await page.locator('.p-nav [data-action="domain:mask"]').click();
       await assertGrid(page, 1);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Repeated Mask retains focus');
@@ -284,11 +282,14 @@ try {
           const section = document.querySelector('#sectionPanel').getBoundingClientRect();
           const splitters = [...document.querySelectorAll('.v2-dock-divider-columns')];
           const expected = [(main.right + mask.left) / 2, (three.right + section.left) / 2];
+          // A straight boundary across multiple rows is one continuous handle.
           return (
-            splitters.length === expected.length &&
-            splitters.every((handle, index) => {
+            splitters.length > 0 &&
+            splitters.every((handle) => {
               const rect = handle.getBoundingClientRect();
-              return Math.abs(rect.left + rect.width / 2 - expected[index]) <= 2;
+              return expected.every(
+                (boundary) => Math.abs(rect.left + rect.width / 2 - boundary) < 3,
+              );
             })
           );
         });
