@@ -39,7 +39,8 @@ export function auditDopantPhysicsEvidence(model) {
     physicalJunctionResolved: false,
     ohmicContactValidated: false,
     btbtCurrentComputed: false,
-    evidenceLimitation: 'Only qualitative mask/depth intervals and schematic electrical regions are stored.',
+    evidenceLimitation:
+      'Only qualitative mask/depth intervals and schematic electrical regions are stored.',
   };
 }
 
