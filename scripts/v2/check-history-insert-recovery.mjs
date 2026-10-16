@@ -201,11 +201,10 @@ try {
       { name: 'Insert D', thickness: 0.05 },
     ];
     const byId = new Map(committed.model.layers.map((layer) => [layer.id, layer.name]));
-    const region = committed.model.regions.find(
-      (item) =>
-        expected.every(({ name }) =>
-          item.stack.some((segment) => byId.get(segment.layerId) === name),
-        ),
+    const region = committed.model.regions.find((item) =>
+      expected.every(({ name }) =>
+        item.stack.some((segment) => byId.get(segment.layerId) === name),
+      ),
     );
     assert.ok(region, 'All five deposited materials must occupy the same physical region');
     const processSegments = region.stack.filter((segment) => segment.layerId !== 'base');
@@ -258,9 +257,7 @@ try {
     assert.deepEqual(reopenedInsertion.workflow.steps, committed.workflow.steps);
     assert.deepEqual(reopenedInsertion.workflow.branches, committed.workflow.branches);
     assert.deepEqual(errors, []);
-    console.log(
-      'V2_HISTORY_INSERT_SUCCESS: four Workers, physical Z, Recovery and reload PASS',
-    );
+    console.log('V2_HISTORY_INSERT_SUCCESS: four Workers, physical Z, Recovery and reload PASS');
     console.log('V2_HISTORY_INSERT_RECOVERY: Worker fault, exact rollback, Save/Reload PASS');
   } finally {
     await context.close();
