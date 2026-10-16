@@ -78,8 +78,11 @@ export function createProjectStateController({
   function buildProjectSnapshot(includeSnapshots = false) {
     // Fail closed even if future workspace wiring exposes Assembly state before
     // this controller owns its source lineage and History transactions.
-    assertEditableProject(getState());
-    ensureHierarchy();
+    const initialState = getState();
+    assertEditableProject(initialState);
+    // Assembly source layouts are immutable. Rebuilding their hierarchy before
+    // verifying replay parity could mutate a corrupt bonded workspace on Save.
+    if (initialState?.waferAssembly == null) ensureHierarchy();
     const state = getState();
     assertEditableProject(state);
     const project = {
