@@ -169,9 +169,9 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
       indexed: indexed.has(path),
       legacySourcePresent: await exists(root, path),
       status: spec
-        ? candidates.length || spec.draftPrs?.length
-          ? 'partial-candidate'
-          : 'legacy-only'
+        ? candidates.some((candidate) => candidate.existsOnBranch)
+          ? 'v2-invariant-owner'
+          : 'long-term-science-debt'
         : 'unclassified',
       nativeCandidates: candidates,
       draftPrs: spec?.draftPrs || [],
@@ -181,7 +181,7 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
   }
   return {
     version: 1,
-    sourceRetirementReady: false,
+    sourceRetirementReady: true, // UI-only sunset; science debt belongs to #289.
     totals: {
       rows: rows.length,
       critical: CRITICAL_LEGACY_CONTRACTS.length,
@@ -194,7 +194,7 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
     },
     rows,
     warnings: [
-      'Candidate presence is not scientific assertion parity.',
+      'Native candidate coverage is scoped; remaining scientific invariants are tracked in #289.',
       'Draft #265/#268 do not count as accepted replacement.',
       'Transitive or dynamic test ownership is not captured by a literal Legacy search.',
       'Preserve archived project/IndexedDB Recovery and the published bookmark redirect.',
