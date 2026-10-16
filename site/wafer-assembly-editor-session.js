@@ -67,9 +67,10 @@ export function createAssemblyBondEditorSession(
   if (variantGraph && !same(assemblyVariantProject(graph).model, initialProduct.model)) {
     throw new Error('Assembly Variant workspace differs from selected physical project.');
   }
-  let history = initialProduct.waferAssembly
-    ? createAssemblyBondHistorySession(initialProduct)
-    : null;
+  const activeBranch = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+  const graphHead = assemblyVariantProject(graph, graph.activeBranchId, activeBranch.bonds.length);
+  let history = graphHead.waferAssembly ? createAssemblyBondHistorySession(graphHead) : null;
+  history?.restoreIndex(activeBranch.cursor);
   const fullProduct = () => (history ? history.fullProduct() : assemblyVariantProject(graph));
   const currentProject = () => (history ? history.currentProject() : assemblyVariantProject(graph));
   const currentIndex = () => (history ? history.currentIndex() : 0);
