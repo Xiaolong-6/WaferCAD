@@ -18,7 +18,7 @@ const v = await import('../vector-geometry.js');
 test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', () => {
   const layout = tcmosLayout();
   assert.deepEqual(FIELD_UM, [14, 8]);
-  assert.equal(GATE_LENGTH_UM, 0.46875);
+  assert.equal(GATE_LENGTH_UM, 0.44);
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
   assert.equal(layout.combos.length, 13);
@@ -47,12 +47,12 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
 test('Fig.1b schematic masks retain nested inverted-U upper nets and dense body-tie rows', () => {
   const byId = (id) => TCMOS_MASKS.find((mask) => mask.id === id).rectangles;
   const [p, n] = byId(1);
-  assert.deepEqual(p, { x: -4.125, y: -0.625, w: 2.28125, h: 0.78125 });
-  assert.deepEqual(n, { x: 1.875, y: -0.625, w: 2.25, h: 0.78125 });
+  assert.deepEqual(p, { x: -4.11, y: -0.61, w: 2.2600000000000002, h: 0.78 });
+  assert.deepEqual(n, { x: 1.87, y: -0.61, w: 2.26, h: 0.78 });
   const [pHvt] = byId(4);
   const [nHvt] = byId(5);
-  assert.equal(pHvt.x + pHvt.w / 2, -2.953125);
-  assert.equal(nHvt.x + nHvt.w / 2, 3.015625);
+  assert.equal(pHvt.x + pHvt.w / 2, -2.955);
+  assert.equal(nHvt.x + nHvt.w / 2, 3.01);
   assert.ok(pHvt.y + pHvt.h > 0.7, 'HVTN encloses left POLY top');
   assert.ok(nHvt.y + nHvt.h > 0.7, 'HVTP encloses right POLY top');
   const byNet = (name) => TCMOS_METAL_NETS.find((net) => net.name === name).rectangles;
@@ -212,7 +212,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const overlaps = qualified.filter((overlap) => overlap.terminalId === terminal.id);
     assert.ok(overlaps.length, `${terminal.id} must intersect opposite-polarity body/HDD intents`);
     const union = v.unionGeometries(overlaps.map((overlap) => overlap.geom));
-    const expectedArea = terminal.id === 'nMOS-drain' ? 0.84375 * 0.78125 : 0.875 * 0.78125;
+    const expectedArea = ({ 'pMOS-source': 0.88, 'pMOS-drain': 0.88, 'nMOS-drain': 0.86, 'nMOS-source': 0.9 })[terminal.id] * 0.78;
     assert.ok(
       Math.abs(geometryArea(union) - expectedArea) < 1e-6,
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
@@ -243,8 +243,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const matching = audit.reduce((sum, item) => sum + item.matchingWellVolumeUm3, 0);
     const outside = audit.reduce((sum, item) => sum + item.outsideMatchingWellVolumeUm3, 0);
     const opposite = audit.reduce((sum, item) => sum + item.oppositeWellVolumeUm3, 0);
-    assert.ok(Math.abs(matching - (polarity === 'donor' ? 0.28515625 : 0.28125)) < 1e-9);
-    assert.ok(Math.abs(outside - (polarity === 'donor' ? 0.028466796875 : 0.0287109375)) < 1e-9);
+    assert.ok(Math.abs(matching - 0.282048) < 1e-9);
+    assert.ok(Math.abs(outside - (polarity === 'donor' ? 0.028808 : 0.029112)) < 1e-9);
     assert.ok(Math.abs(opposite) < 1e-12);
     const reported = validation.qualitativeJunctionEvidence.schematicWellBodyCoverage[polarity];
     assert.equal(reported.schematicWellPresent, true);
@@ -357,14 +357,14 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const metals = TCMOS_MASKS.find((mask) => mask.id === 11).rectangles;
   const contains = (r, x, y) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
   const nets = [
-    { name: 'VDD', point: [-3.75, -0.28125] },
-    { name: 'VOUT p-drain', point: [-2.21875, -0.28125] },
-    { name: 'VOUT n-drain', point: [2.21875, -0.28125] },
-    { name: 'GND', point: [3.78125, -0.28125] },
-    { name: 'VIN pMOS gate', point: [-2.96875, 0.46875] },
-    { name: 'VIN nMOS gate', point: [2.96875, 0.46875] },
-    { name: 'VDD pMOS body tie', point: [-4.28125, -1.375] },
-    { name: 'GND nMOS body tie', point: [1.6875, -1.375] },
+    { name: 'VDD', point: [-3.76, -0.28] },
+    { name: 'VOUT p-drain', point: [-2.2, -0.28] },
+    { name: 'VOUT n-drain', point: [2.2, -0.28] },
+    { name: 'GND', point: [3.78, -0.28] },
+    { name: 'VIN pMOS gate', point: [-2.98, 0.46] },
+    { name: 'VIN nMOS gate', point: [2.98, 0.46] },
+    { name: 'VDD pMOS body tie', point: [-4.28, -1.37] },
+    { name: 'GND nMOS body tie', point: [1.69, -1.37] },
   ];
   for (const {
     name,

@@ -15,7 +15,7 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 
 export const TCMOS_DOI = '10.1038/s41928-019-0272-8';
 export const FIELD_UM = [14, 8];
-export const GATE_LENGTH_UM = 0.46875;
+export const GATE_LENGTH_UM = 0.44;
 const BASE_THICKNESS_UM = 2;
 const FIXED_DATE = '2026-10-14T08:00:00.000Z';
 const CELL = 'TCMOS_130NM_LOCAL';
@@ -31,12 +31,12 @@ const rectanglePolygon = (r) => [
 // original 713 x 498 Fig. 1b image (SHA256 prefix f39c0b4562ab2eec).
 // It is a layout SCHEMATIC. All CAD µm values are for DISPLAY ONLY,
 // calculated with ONE common reference frame (359,365) px / 54px per µm,
-// snapped to a 1/32-µm exact geometry grid. No foundry GDS is implied.
+// snapped to a 0.01-µm grid (exact 1nm layout serialization). No foundry GDS is implied.
 export const FIG1B_PIXEL_FRAME = Object.freeze({
   width: 713, height: 498, origin: [359, 365],
-  pxPerIllustrativeUm: 54, gridPerUm: 32,
+  pxPerIllustrativeUm: 54, gridPerUm: 100,
 });
-const grid = (n) => Math.round(n * 32) / 32;
+const grid = (n) => Math.round(n * 100) / 100;
 const fig = (l, t, r, b) => {
   const x0 = grid((l - 359) / 54), x1 = grid((r - 359) / 54);
   const y0 = grid((365 - b) / 54), y1 = grid((365 - t) / 54);
@@ -101,17 +101,17 @@ export const TCMOS_MASKS = Object.freeze([
   { id:6,name:'POLY traced schematic widths (NOT 130nm gate measurement)',
     rectangles:[P_POLY,N_POLY] },
   { id:7,name:'P source/drain openings',
-    rectangles:[sd(P_ACTIVE.x,gateLeft-P_POLY.w/2-0.03125),
-      sd(gateLeft+P_POLY.w/2+0.03125,P_ACTIVE.x+P_ACTIVE.w)] },
+    rectangles:[sd(P_ACTIVE.x,gateLeft-P_POLY.w/2-0.03),
+      sd(gateLeft+P_POLY.w/2+0.03,P_ACTIVE.x+P_ACTIVE.w)] },
   { id:8,name:'N source/drain openings',
-    rectangles:[sd(N_ACTIVE.x,gateRight-N_POLY.w/2-0.03125),
-      sd(gateRight+N_POLY.w/2+0.03125,N_ACTIVE.x+N_ACTIVE.w)] },
+    rectangles:[sd(N_ACTIVE.x,gateRight-N_POLY.w/2-0.03),
+      sd(gateRight+N_POLY.w/2+0.03,N_ACTIVE.x+N_ACTIVE.w)] },
   { id:9,name:'Silicide exposed source/drain',
     rectangles:[
-      sd(P_ACTIVE.x,gateLeft-P_POLY.w/2-0.03125),
-      sd(gateLeft+P_POLY.w/2+0.03125,P_ACTIVE.x+P_ACTIVE.w),
-      sd(N_ACTIVE.x,gateRight-N_POLY.w/2-0.03125),
-      sd(gateRight+N_POLY.w/2+0.03125,N_ACTIVE.x+N_ACTIVE.w),
+      sd(P_ACTIVE.x,gateLeft-P_POLY.w/2-0.03),
+      sd(gateLeft+P_POLY.w/2+0.03,P_ACTIVE.x+P_ACTIVE.w),
+      sd(N_ACTIVE.x,gateRight-N_POLY.w/2-0.03),
+      sd(gateRight+N_POLY.w/2+0.03,N_ACTIVE.x+N_ACTIVE.w),
     ] },
   { id:10,name:'CNT measured S/D matrices, POLY contacts, U body arrays',
     rectangles:[
@@ -1020,8 +1020,8 @@ export async function buildTcmosInverter({
     }),
   );
   const contactSites = [
-    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-4.28125, -1.375] },
-    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [1.6875, -1.375] },
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-4.28, -1.37] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [1.69, -1.37] },
   ].map((site) => {
     const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
     const silicon = region?.stack.find((segment) => segment.layerId === 'base');
