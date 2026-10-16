@@ -90,9 +90,7 @@ test('SEM v2 real post-release support ownership is 12 fixed and 14 suspended si
     assert.equal(probes.released.length, 14);
     assert.equal(probes.outerIsolationTrenchVerified, false);
     assert.equal(probes.sourceHFUndercutFrontVerified, false);
-    assert.equal(
-      new Set([...probes.supported, ...probes.released].map((x) => x.name)).size,
-      26,
-    );
+    const names = [...probes.supported, ...probes.released].map((x) => x.name);
+    assert.equal(new Set(names).size, 26);
   }
 });
