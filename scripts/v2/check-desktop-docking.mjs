@@ -238,11 +238,21 @@ try {
         assert.equal(dividerAppearance.background, dividerAppearance.baselineBackground);
         await divider.waitFor({ state: 'visible' });
         const rect = await divider.boundingBox();
-        await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        // The row and column splitter handles cross at their centers. Grab
+        // an unambiguous quarter-point rather than the overlapping intersection.
+        const columnX = rect.x + rect.width / 2;
+        const columnY = rect.y + rect.height / 4;
+        assert.equal(
+          await page.evaluate(
+            ({ x, y }) => document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            { x: columnX, y: columnY },
+          ),
+          'columns',
+          'Pointer must actually hit the column resize handle',
+        );
+        await page.mouse.move(columnX, columnY);
         await page.mouse.down();
-        await page.mouse.move(rect.x + rect.width / 2 + 35, rect.y + rect.height / 2, {
-          steps: 5,
-        });
+        await page.mouse.move(columnX + 35, columnY, { steps: 5 });
         // Check the splitter WHILE the button is held, not only after release.
         // CSS grid tracks move immediately; absolute splitters must move too.
         const columnAlignment = await page.evaluate(() => {
@@ -290,11 +300,19 @@ try {
 
         const rowDivider = page.locator('.v2-dock-divider-rows').first();
         const rowRect = await rowDivider.boundingBox();
-        await page.mouse.move(rowRect.x + rowRect.width / 2, rowRect.y + rowRect.height / 2);
+        const rowX = rowRect.x + rowRect.width / 4;
+        const rowY = rowRect.y + rowRect.height / 2;
+        assert.equal(
+          await page.evaluate(
+            ({ x, y }) => document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            { x: rowX, y: rowY },
+          ),
+          'rows',
+          'Pointer must actually hit the row resize handle',
+        );
+        await page.mouse.move(rowX, rowY);
         await page.mouse.down();
-        await page.mouse.move(rowRect.x + rowRect.width / 2, rowRect.y + rowRect.height / 2 + 28, {
-          steps: 5,
-        });
+        await page.mouse.move(rowX, rowY + 28, { steps: 5 });
         const rowAlignment = await page.evaluate(() => {
           const rectOf = (id) => document.querySelector('#' + id + 'Panel').getBoundingClientRect();
           const main = rectOf('main');
