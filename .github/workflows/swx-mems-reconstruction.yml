@@ -9,6 +9,8 @@ on:
       - 'scripts/swx-mems-compact-process-geometry.mjs'
       - 'scripts/swx-mems-compact-gratings.mjs'
       - 'scripts/swx-mems-compact-bends.mjs'
+      - 'scripts/swx-mems-compact-guides.mjs'
+      - 'site/tests/swx-mems-compact-guides.test.mjs'
       - 'scripts/build-swx-mems-compact-candidate.mjs'
       - 'scripts/swx-mems-compact-browser-acceptance.mjs'
       - 'site/tests/swx-mems-compact-process.test.mjs'
@@ -47,6 +49,8 @@ jobs:
         run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
       - name: Compact optical/mechanical interface scientific contracts
         run: node --test site/tests/swx-mems-optomechanical-candidate.test.mjs
+      - name: S7 guide dimensions and known collision quarantine
+        run: node --test site/tests/swx-mems-compact-guides.test.mjs
       - name: Geometry and pose tests
         run: node --test site/tests/swx-mems-geometry.test.mjs
       - name: Quantify published figure layout discrepancies (advisory)
