@@ -237,6 +237,12 @@ try {
       null,
       { timeout: 60000 },
     );
+    // Model publication occurs before IndexedDB commit; wait for the durable
+    // operation completion UI, not just the in-memory Bond counter.
+    await page
+      .locator('.assembly-bond-draft-status')
+      .filter({ hasText: /Bonded D/ })
+      .waitFor();
     const alternate = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(alternate.assemblyPreview.sources, 3);
     assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
