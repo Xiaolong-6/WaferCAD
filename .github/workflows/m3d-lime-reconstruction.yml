@@ -50,16 +50,15 @@ jobs:
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       - name: Source-derived structural regression (before browser)
         run: node --test site/tests/m3d-lime-builder.test.mjs
-      - name: Commit validated PVD fixture and restore read-only CI in same commit
+      - name: Commit validated PVD fixture and targeted formatting
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/m3d-rram-cntfet-lime-20261014'
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
           git diff --check
-          git show 5ef0990e55488e8025cbceb2ac4c425d46c539c2:.github/workflows/m3d-lime-reconstruction.yml > .github/workflows/m3d-lime-reconstruction.yml
-          git add .github/workflows/m3d-lime-reconstruction.yml site/tests/m3d-lime-builder.test.mjs site/examples/m3d-lime-rram-cntfet.wafercad
+          git add site/tests/m3d-lime-builder.test.mjs site/examples/m3d-lime-rram-cntfet.wafercad
           git diff --cached --check
-          git -c user.name='WaferCAD fixture bot' -c user.email='actions@users.noreply.github.com' commit -m 'test(m3d-lime): persist exact PVD contact fixture and read-only CI'
+          git -c user.name='WaferCAD fixture bot' -c user.email='actions@users.noreply.github.com' commit -m 'test(m3d-lime): persist exact PVD contact fixture and formatting'
           git push origin "HEAD:refs/heads/${HEAD_REF}"
       - name: Check committed project matches source recipe
         run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
