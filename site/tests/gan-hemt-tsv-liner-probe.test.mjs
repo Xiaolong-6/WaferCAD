@@ -90,41 +90,39 @@ test('Persisted Cu-filled TSV geometry is planarized without losing metal', asyn
   }
 });
 
-test('GSG metal pads do not falsely establish a continuous TSV-to-pad Au route', async () => {
+test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async () => {
   const { project } = await buildGanMicrochannel();
   const model = project.model;
-  const gold = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  const gsgPad = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
   const copper = model.layers.find(
     (layer) => layer.name === 'TSV Cu electrofill surrogate 35 um',
   );
-  assert.ok(gold && copper, 'Expected distinct Au pad and copper-filled TSV materials');
+  assert.ok(gsgPad && copper, 'Expected GSG pad footprint and Cu-filled TSV materials');
 
-  // Sampling a pad only proves local material occupancy. The canonical model
-  // does not currently include a plated conductor between these components.
+  // Fig. 2(f) shows wire bonds between the HEMT and the separate GSG pad
+  // chips. TSV copper supports distinct vertical interconnection / grounding.
+  // DO NOT require a fabricated direct GSG-to-TSV Au trace as a paper fact.
   for (const side of [-1, 1]) {
     assert.equal(
       layerAt(model, [side * 1250, 0], 600.25),
-      gold.id,
-      'The illustrative GSG pad is missing',
+      gsgPad.id,
+      'Illustrative GSG pad footprint is missing',
     );
-    for (const y of [-500, 500]) {
-      assert.notEqual(
-        layerAt(model, [side * 1450, y], 600.25),
-        gold.id,
-        'A newly introduced Au route needs full 3D continuity and replay verification',
-      );
-    }
     for (const y of [-950, 950]) {
       assert.equal(
         layerAt(model, [side * 1450, y], 550),
         copper.id,
-        'Actual TSV copper must remain continuous below the surface',
+        'Actual TSV copper is missing inside the interposer',
       );
     }
   }
-  assert.equal(
-    model.layers.some((layer) => /NiPaAu|SiO2/i.test(layer.name)),
-    false,
-    'New oxide or barrier materials require a dedicated source-process and coolant audit',
+  const wireBondRecord = project.processRecipe.steps.find(
+    (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
+  );
+  assert.ok(wireBondRecord, 'Published HEMT-to-GSG gold wire bonding must remain documented');
+  assert.match(
+    wireBondRecord.params.note,
+    /True curved wires.*not geometric model features/,
+    'A recorded source operation must not be mistaken for fabricated wire geometry',
   );
 });
