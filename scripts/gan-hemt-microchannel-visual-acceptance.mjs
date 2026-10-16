@@ -497,8 +497,7 @@ try {
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
     sampledCentralAndPeripheralFrontBackOxideVerified:
-      geometry.missingGlobalFrontOxide.length === 0 &&
-      geometry.missingGlobalBackOxide.length === 0,
+      geometry.missingGlobalFrontOxide.length === 0 && geometry.missingGlobalBackOxide.length === 0,
     frontBackExposedOxideGeometryVerified:
       geometry.missingGlobalFrontOxide.length === 0 && geometry.missingGlobalBackOxide.length === 0,
     wholeOutsideSurfaceOxideVerified: false,
