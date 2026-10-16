@@ -62,26 +62,16 @@ try {
       mimeType: 'application/json',
       buffer: fixture,
     });
-    try {
-      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
-        timeout: 90000,
-      });
-    } catch (error) {
-      console.error('Assembly preview startup page errors:', errors);
-      try {
-        console.error(
-          'Assembly preview startup state:',
-          await page.evaluate(() => ({
-            ready: document.body.dataset.ready,
-            status: document.querySelector('.assembly-preview-file-picker [role="status"]')?.textContent,
-            title: document.title,
-            workbenchCount: document.querySelectorAll('.p-workbench').length,
-          })),
-        );
-      } catch (diagnosticError) {
-        console.error('Could not inspect failed Assembly startup:', diagnosticError.message);
-      }
-      throw error;
+    // Fail immediately on the application's own bootstrap error and include
+    // its visible message instead of burning 90 seconds on a ready timeout.
+    await page.waitForFunction(
+      () => window.WaferCadV2Workstation?.ready || document.body.dataset.ready === 'error',
+      null,
+      { timeout: 90000 },
+    );
+    const bootstrapErrors = await page.locator('#app-root [role="alert"]').allTextContents();
+    if (bootstrapErrors.length) {
+      throw new Error('Assembly preview bootstrap: ' + bootstrapErrors.join(' | '));
     }
     await waitForPaint(page);
 
