@@ -43,3 +43,17 @@ export function uniformRadialStairErrorBound(radius, slices) {
   const step = radius / slices;
   return Math.sqrt(step * (2 * radius - step));
 }
+
+// The existing production isotope release loop partitions *depth* (Z) into
+// equal slices, sampling the lateral radius at each depth-band midpoint.
+// The worst single-seed lateral error is the last half-band near depth R.
+// This is not the radial-slice bound above or a XeF2 process calibration.
+export function uniformDepthMidpointLateralErrorBound(radius, slices) {
+  nonnegative(radius, 'radius');
+  if (!Number.isSafeInteger(slices) || slices < 1) {
+    throw new RangeError('slices must be a positive integer');
+  }
+  if (radius === 0) return 0;
+  const halfStep = radius / (2 * slices);
+  return Math.sqrt(halfStep * (2 * radius - halfStep));
+}

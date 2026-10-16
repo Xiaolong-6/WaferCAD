@@ -4,6 +4,7 @@ import {
   isotropicOracleReaches,
   isotropicReleaseDepth,
   isotropicReleaseFrontZ,
+  uniformDepthMidpointLateralErrorBound,
   uniformRadialStairErrorBound,
 } from '../isotropic-release-oracle.js';
 
@@ -56,6 +57,28 @@ test('uniform 8-step release has explicit conservative bound; refinement converg
     const exactNearRim = isotropicReleaseDepth(radius, radius - step);
     assert.ok(Math.abs(exactNearRim - uniformRadialStairErrorBound(radius, n)) < 1e-12);
   }
+});
+
+test('production depth-band midpoint footprints have a separate lateral error bound', () => {
+  const radius = 36;
+  const slices = 8;
+  const bound = uniformDepthMidpointLateralErrorBound(radius, slices);
+  assert.ok(bound > 12 && bound < 13);
+  assert.ok(bound < uniformRadialStairErrorBound(radius, slices));
+  for (let i = 0; i < slices; i++) {
+    const d0 = (radius * i) / slices;
+    const d1 = (radius * (i + 1)) / slices;
+    const mid = (d0 + d1) / 2;
+    const footprint = isotropicReleaseDepth(radius, mid);
+    for (const edge of [d0, d1]) {
+      const exact = isotropicReleaseDepth(radius, edge);
+      assert.ok(Math.abs(exact - footprint) <= bound + 1e-12);
+    }
+  }
+  const sequence = [8, 16, 32, 64].map((n) =>
+    uniformDepthMidpointLateralErrorBound(radius, n),
+  );
+  assert.ok(sequence.every((value, i) => i === 0 || value < sequence[i - 1]));
 });
 
 test('invalid inputs fail rather than creating an unphysical etch envelope', () => {

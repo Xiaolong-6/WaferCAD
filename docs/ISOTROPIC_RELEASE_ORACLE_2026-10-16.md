@@ -17,6 +17,16 @@ convergence bound are **not** chemical XeF₂ calibration, a live-vs-saved
 Replay gate, or automatic proof that real samples have smooth spherical
 etch fronts.
 
+The shipped Kernel currently uses eight **uniform Z-depth bands** and chooses
+a lateral footprint at each band's midpoint. This differs from a uniform
+radial-distance staircase. The separate
+`uniformDepthMidpointLateralErrorBound` gives the maximum local lateral
+error of this single-seed midpoint approximation: for 36 µm and 8 depth
+bands, it is approximately **12.53 µm**. The 17.43 µm bound from uniform
+radial partitioning must not be attributed to the production algorithm.
+Neither value measures actual XeF₂ release accuracy or interface topology
+near multiple etch seeds.
+
 ## Kernel integration gates (not yet done)
 
 1. Derive real exposed seed geometry from topology and material selectivity,
