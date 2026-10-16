@@ -9,19 +9,24 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import { chooseAssemblyPreviewFile, mountAssemblyPreviewControls } from './assembly-preview.js';
 
 const { el } = window.WaferCadV2Components;
 try {
   window.WaferCadV2Icons.installSprite();
   const params = new URLSearchParams(window.location.search);
-  const readOnlyPreview = params.get('preview') === '1';
+  const assemblyPreview = params.get('assemblyPreview') === '1';
+  const readOnlyPreview = params.get('preview') === '1' || assemblyPreview;
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
-  const project = readOnlyPreview
-      ? await loadBundledProject(params.get('example'), undefined, { preview: true })
-      : await loadWorkstationProject(),
-    store = createWorkstationRuntime(project);
+  if (assemblyPreview) document.body.dataset.assemblyPreview = 'true';
+  const project = assemblyPreview
+      ? await chooseAssemblyPreviewFile(document.getElementById('app-root'))
+      : readOnlyPreview
+        ? await loadBundledProject(params.get('example'), undefined, { preview: true })
+        : await loadWorkstationProject(),
+    store = createWorkstationRuntime(project, { assemblyPreview });
   if (readOnlyPreview) {
     // Navigation is enabled from the first frame without activating editing tools.
     store.local.main.panEnabled = true;
@@ -292,6 +297,16 @@ try {
         counts: store.counters,
         ui: uiState,
         scientificUnchanged: geometryBefore === store.geometrySnapshot(),
+        ...(assemblyPreview
+          ? {
+              assemblyPreview: {
+                index: store.assemblyPreviewSession.currentIndex(),
+                bonds: store.assemblyPreviewSession.maxIndex(),
+                sources: project.data.waferAssembly.sources.length,
+                readOnly: true,
+              },
+            }
+          : {}),
         sharedIdentity:
           main.state.model === mask.state.model && main.state.model === store.state.model,
       }),
@@ -299,6 +314,26 @@ try {
   };
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
+  if (assemblyPreview) {
+    const session = store.assemblyPreviewSession;
+    mountAssemblyPreviewControls({
+      currentIndex: () => session.currentIndex(),
+      maxIndex: () => session.maxIndex(),
+      restoreIndex: (index) => {
+        store.restoreAssemblyStage(index);
+        workflow.refresh();
+      },
+      selectView: (view) => {
+        uiState.view = view;
+        uiState.mode = 'single';
+        uiState.section = false;
+        uiState.maximize = null;
+        render();
+      },
+      initialView,
+    });
+    status('Bonded Assembly loaded · inspection only; no editor or autosave.');
+  }
   if (readOnlyPreview && window.parent !== window) {
     window.addEventListener('message', (event) => {
       if (event.source !== window.parent || event.origin !== window.location.origin) return;
