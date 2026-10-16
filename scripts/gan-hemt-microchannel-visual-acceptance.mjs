@@ -302,8 +302,7 @@ try {
         (region) =>
           pointInMulti(point, region.geom) &&
           region.stack.some(
-            (segment) =>
-              segment.layerId === layerId && segment.z0 < z && segment.z1 > z,
+            (segment) => segment.layerId === layerId && segment.z0 < z && segment.z1 > z,
           ),
       );
     }
@@ -312,9 +311,7 @@ try {
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
-    const gsgPadCenters = [-1250, 1250].flatMap((x) =>
-      [-95, 0, 95].map((y) => [x, y]),
-    );
+    const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
     const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.25, ids.pad));
     const missingGsgDieCenters = [-1250, 1250]
@@ -414,8 +411,8 @@ try {
       return (
         state?.roi?.a?.[0] === -1600 &&
         state?.roi?.b?.[0] === 1600 &&
-        state?.model?.layers?.some((layer) =>
-          layer.name === 'GSG chip substrate surrogate (100 um inferred)',
+        state?.model?.layers?.some(
+          (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
         )
       );
     },

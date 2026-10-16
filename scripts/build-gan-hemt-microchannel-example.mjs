@@ -217,9 +217,7 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   {
     id: 20,
     name: 'Three inferred Au GSG contacts on each die',
-    rectangles: [-1250, 1250].flatMap((x) =>
-      [-95, 0, 95].map((y) => centered(160, 60, x, y)),
-    ),
+    rectangles: [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => centered(160, 60, x, y))),
   },
 ]);
 const byId = new Map(GAN_MICROCHANNEL_MASKS.map((mask) => [mask.id, mask]));
