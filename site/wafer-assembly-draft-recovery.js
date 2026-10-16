@@ -106,7 +106,6 @@ export function createAssemblyBondDraftRecovery({
     }
   }
 
-
   // Revision-checked, single-IDB-transaction publication. A record becomes
   // recoverable only after tx.oncomplete. Any write abort preserves the former
   // confirmed revision. No normal Workstation autosave data is touched.
