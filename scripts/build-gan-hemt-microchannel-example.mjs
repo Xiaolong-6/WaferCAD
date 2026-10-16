@@ -13,6 +13,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mjs';
+import { inferredAuWireBond, validateAssemblyWires } from '../site/assembly-wire-geometry.js';
 
 export const GAN_MICROCHANNEL_DOI = '10.1038/s41378-022-00462-3';
 const DATE = '2026-10-14T08:00:00.000Z';
@@ -874,9 +875,40 @@ export async function buildGanMicrochannel() {
     GAN_GSG_STACK.goldPadUm,
     20,
   );
+  // Real 3D packaging curves, separate from 2.5D process deposition.
+  // The publication reports HEMT-to-GSG Au wire bonding but does NOT provide
+  // bond count, ball positions, wire diameter, loop height or net mapping.
+  // Two explicit illustrative outer-contact loops have physically anchored
+  // ends. They are not a claim of signal/ground electrical net connectivity.
+  const sourceDrainMetal = model.layers.find(
+    (layer) => layer.name === 'Source/drain metal surrogate 0.2 um',
+  );
+  const gsgAuMetal = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  assert.ok(sourceDrainMetal && gsgAuMetal, 'Wire anchors require native metal contact layers');
+  const topMetalZ = (xy, layerId) => {
+    const matches = owner(xy).stack.filter((segment) => segment.layerId === layerId);
+    assert.equal(matches.length, 1, 'Wire endpoint has no unambiguous metal pad ' + xy);
+    return matches[0].z1;
+  };
+  root.assemblyWires = [-1, 1].map((side) => {
+    const source = [side * 225, 0];
+    const destination = [side * 1250, 0];
+    return inferredAuWireBond({
+      id: side < 0 ? 'hemt-to-left-gsg' : 'hemt-to-right-gsg',
+      from: [...source, topMetalZ(source, sourceDrainMetal.id)],
+      to: [...destination, topMetalZ(destination, gsgAuMetal.id)],
+      fromLayerId: sourceDrainMetal.id,
+      toLayerId: gsgAuMetal.id,
+      // Dimensions below are an example-level geometry assumption, not
+      // measurements from Fig. 2(f) or supplementary Fig. S-5.
+      riseUm: 190,
+      diameterUm: 12,
+    });
+  });
+  validateAssemblyWires(root.assemblyWires);
   record(
     'Au wire bonds to GSG and aluminum manifold assembly',
-    'Paper Fig. 2(e,f) and SI Fig. S-5: AuSn-bonded HEMT and two GSG chips, gold wires, aluminum enclosure and coolant fittings. True curved wires, full package and coolant flow are not geometric model features.',
+    'Paper Fig. 2(e,f) and SI Fig. S-5: two illustrative solid 3D Au wire loops now connect existing HEMT source/drain metal patches to separate GSG Au pads. Their endpoints, 12 um diameters and loop rises are INFERRED; wire count/net assignment, true weld metallurgy, electrical continuity, aluminum enclosure, sealing and coolant fittings are not modeled.',
   );
   record(
     'Experimental thermal operating point (metadata only)',
