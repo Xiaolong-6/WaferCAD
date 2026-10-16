@@ -93,8 +93,13 @@ async function comparePhysicalArray(expected, actual, label, sampleOnly = false)
     slabs += result.slabsChecked;
     maxMismatchUm2 = Math.max(maxMismatchUm2, result.maxMismatchAreaUm2);
   }
-  return { label, sites: expected.array.instances.length, pairs: checked.size,
-    slabs, maxMismatchUm2 };
+  return {
+    label,
+    sites: expected.array.instances.length,
+    pairs: checked.size,
+    slabs,
+    maxMismatchUm2,
+  };
 }
 
 const browser = await launchBrowser();
@@ -119,7 +124,10 @@ try {
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const before = await snapshot();
     assert.equal(before.model.array.instances.length, 6400);
-    assert.equal(before.model.array.instances.filter((site) => site.role === 'device').length, 4725);
+    assert.equal(
+      before.model.array.instances.filter((site) => site.role === 'device').length,
+      4725,
+    );
     assert.equal(before.model.array.templates.length, 49);
     assert.equal(before.layout.elements.length, 60232);
     assert.equal(before.processRecipe.steps.length, 9);
@@ -157,9 +165,10 @@ try {
       timeout: 30000,
     });
     await page.waitForFunction(
-      () => /^(Completed|Failed|Stopped):/.test(
-        document.getElementById('recipeRunSummary')?.textContent || '',
-      ),
+      () =>
+        /^(Completed|Failed|Stopped):/.test(
+          document.getElementById('recipeRunSummary')?.textContent || '',
+        ),
       null,
       { timeout: 900000, polling: 500 },
     );
@@ -169,8 +178,11 @@ try {
       progress: window.__metalensProgress || [],
     }));
     report.recipe = status;
-    assert.match(status.summary, /^Completed: 9\/9 steps committed/,
-      'Actual v2 Process Worker replay failed: ' + JSON.stringify(status));
+    assert.match(
+      status.summary,
+      /^Completed: 9\/9 steps committed/,
+      'Actual v2 Process Worker replay failed: ' + JSON.stringify(status),
+    );
     const after = await snapshot();
     assert.equal(after.workflow.steps.length, 9, 'Nine actual History commits required');
     assert.equal(after.workflow.branches.length, 1, 'Clear history must not archive a Variant');
@@ -229,16 +241,23 @@ try {
     const reopened = await snapshot();
     assert.deepEqual(reopened.model, after.model, 'Recovery changed replayed physical model');
     assert.deepEqual(reopened.workflow.steps, after.workflow.steps, 'Recovery lost History Steps');
-    assert.deepEqual(reopened.workflow.branches, after.workflow.branches, 'Recovery changed Variants');
+    assert.deepEqual(
+      reopened.workflow.branches,
+      after.workflow.branches,
+      'Recovery changed Variants',
+    );
     assert.deepEqual(errors, []);
     report.pass = true;
-    console.log('V2_METALENS_NINE_STEP_SCIENCE', JSON.stringify({
-      sites: 6400,
-      devices: 4725,
-      templates: report.final.pairs,
-      slabs: report.final.slabs,
-      intermediate: report.intermediate.length,
-    }));
+    console.log(
+      'V2_METALENS_NINE_STEP_SCIENCE',
+      JSON.stringify({
+        sites: 6400,
+        devices: 4725,
+        templates: report.final.pairs,
+        slabs: report.final.slabs,
+        intermediate: report.intermediate.length,
+      }),
+    );
   } finally {
     await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
     await context.close();
