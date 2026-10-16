@@ -92,17 +92,13 @@ function semV2PhysicalPose(state) {
   const translateActuatorAnchor = (ring, index) => {
     const upper = index % 2 === 1;
     const side = index < 2 ? -1 : 1;
-    return rect(
-      side *
-        (upper
-          ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorXUm
-          : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm),
-      upper
-        ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorYUm
-        : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm,
-      8,
-      8,
-    );
+    const anchorX = upper
+      ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorXUm
+      : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorXUm;
+    const anchorY = upper
+      ? SWX_SEM_V2_ASSUMPTIONS.upperHorizontalAnchorYUm
+      : SWX_SEM_V2_ASSUMPTIONS.lowerHorizontalAnchorYUm;
+    return rect(side * anchorX, anchorY, 8, 8);
   };
   const horizontalSpringCenterline = (side, upper) => {
     const x = (value) => side * value;
@@ -143,19 +139,14 @@ function semV2PhysicalPose(state) {
     ...actuator.banks.flatMap((bank) => bank.moving.map((p) => move(p, 0, down))),
     ...shuttle,
   ];
-  const lowerSpringCenterlines = [-1, 1].map((side) =>
-    horizontalSpringCenterline(side, false),
-  );
-  const upperSpringCenterlines = [-1, 1].map((side) =>
-    horizontalSpringCenterline(side, true),
-  );
-  const springs = actuator.springContours.map((ring, index) => {
+  const springCenterlines = actuator.springContours.map((ring, index) => {
     const side = index < 2 ? -1 : 1;
-    const upper = index % 2 === 1;
-    return miteredPolyline(
-      horizontalSpringCenterline(side, upper),
-      SWX_REPORTED.foldedSpringWidthUm,
-    )[0];
+    return horizontalSpringCenterline(side, index % 2 === 1);
+  });
+  const lowerSpringCenterlines = [springCenterlines[0], springCenterlines[2]];
+  const upperSpringCenterlines = [springCenterlines[1], springCenterlines[3]];
+  const springs = springCenterlines.map((centerline) => {
+    return miteredPolyline(centerline, SWX_REPORTED.foldedSpringWidthUm)[0];
   });
   // The source SEM has opposing, inward-sloped fixed input/output guides,
   // not two vertical posts and a horizontal roof above the SWX. The
