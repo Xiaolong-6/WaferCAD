@@ -3421,7 +3421,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       host.dataset.assemblyWireBuiltCount = String(assemblyWireBuiltCount);
 
-      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalBuiltCount);
+      host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
       recordVariantStage('annotations-complete');
