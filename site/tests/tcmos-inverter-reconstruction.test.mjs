@@ -66,8 +66,8 @@ test('Fig.1b schematic masks retain nested inverted-U upper nets and dense body-
   const voutCap = byNet('VOUT')[0];
   assert.ok(vinCap.y > voutCap.y + voutCap.h, 'VIN top bridge above VOUT U');
   assert.ok(voutCap.w > 4.4, 'VOUT shares both drain contacts across cells');
-  assert.equal(byNet('VDD').length, 8);
-  assert.equal(byNet('GND').length, 8);
+  assert.equal(byNet('VDD').length, 7);
+  assert.equal(byNet('GND').length, 7);
   assert.ok(byNet('VDD').at(-2).y < p.y, 'pMOS body U is below ACTIVE');
   assert.ok(byNet('GND').at(-2).y < n.y, 'nMOS body U is below ACTIVE');
   const cnt = byId(10);
@@ -98,6 +98,18 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
   assert.equal(evidence.physicalElectricalConnectivityVerified, false);
   assert.equal(evidence.ohmicContactsValidated, false);
   assert.equal(evidence.physicalJunctionResolved, false);
+  assert.equal(evidence.supplyBodyContinuityShownInSource, false);
+  assert.deepEqual(evidence.schematicMetalIslands, { VDD: 2, VOUT: 1, GND: 2, VIN: 1 });
+  // Source image contains a white gap at both lower outer rails.
+  const [vdd, , gnd] = TCMOS_METAL_NETS;
+  assert.ok(vdd.rectangles[4].x > vdd.rectangles[1].x + vdd.rectangles[1].w + 0.4);
+  assert.ok(gnd.rectangles[1].x > gnd.rectangles[6].x + gnd.rectangles[6].w + 0.4);
+  const fabricated = structuredClone(TCMOS_METAL_NETS);
+  fabricated[0].rectangles.splice(4, 0, { x: -5.63, y: -1.83, w: 0.44, h: 0.72 });
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, fabricated),
+    /unexpected extra metal routing/,
+  );
   assert.deepEqual(
     evidence.terminals.map(({ id, net }) => [id, net]),
     [

@@ -101,8 +101,8 @@ const gateExtra = [
   pixelCnt(527, 347, 6),
 ];
 const bodyContactStart = terminalPixels.length + extraContactPixels.length + gateExtra.length;
-// Four disjoint METAL1 networks retain the exact inverted-U silhouette,
-// upright-U body rail and broad source/drain contact pads seen in Fig.1b.
+// Four labeled METAL1 groups. VDD/GND each have two separate *drawn*
+// islands, with the source-image white gap preserved (not bridged).
 export const TCMOS_METAL_NETS = Object.freeze([
   {
     name: 'VDD',
@@ -111,9 +111,9 @@ export const TCMOS_METAL_NETS = Object.freeze([
       fig(18, 209, 55, 464),
       fig(139, 209, 159, 356),
       fig(137, 356, 176, 398),
-      fig(55, 425, 79, 464),
       ...bodyTapActive(198),
     ],
+    islands: [[0, 1, 2, 3], [4, 5, 6]],
   },
   {
     name: 'VOUT',
@@ -132,9 +132,9 @@ export const TCMOS_METAL_NETS = Object.freeze([
       fig(665, 209, 698, 464),
       fig(560, 209, 580, 356),
       fig(545, 356, 582, 398),
-      fig(640, 425, 665, 464),
       ...bodyTapActive(520),
     ],
+    islands: [[0, 1, 2, 3], [4, 5, 6]],
   },
   {
     name: 'VIN',
@@ -246,8 +246,8 @@ export const TCMOS_MASKS = Object.freeze([
 
 /**
  * Read-only CNT-to-METAL1 terminal provenance for the illustrative masks.
- * Fail closed on disconnected nets, shorts and ambiguous terminal assignments.
- * This geometry audit does not demonstrate physical conduction or ohmic contacts.
+ * Fail on unexpected disconnections, fabricated metal bridges, shorts and
+ * ambiguous terminals. Unshown electrical continuity is unverified.
  */
 export function auditTcmosTerminalNetProvenance(masks, metalNets) {
   const eps = 1e-12;
@@ -295,18 +295,35 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
     if (rectangles.some((r) => !validRect(r))) {
       fail(net.name + ': invalid routing');
     }
-    const visited = new Set([0]);
-    const queue = [0];
-    while (queue.length) {
-      const current = queue.shift();
-      for (let i = 0; i < rectangles.length; i++) {
-        if (!visited.has(i) && connected(rectangles[current], rectangles[i])) {
-          visited.add(i);
-          queue.push(i);
+    // Supply-side and body-U wires in Fig.1b do not meet in the drawing.
+    // Only these explicitly traced islands may be disjoint.
+    const supply = net.name === 'VDD' || net.name === 'GND';
+    const expected = supply ? [[0, 1, 2, 3], [4, 5, 6]] : [rectangles.map((_, i) => i)];
+    const groups = net.islands || [rectangles.map((_, i) => i)];
+    if (JSON.stringify(groups) !== JSON.stringify(expected))
+      fail(net.name + ': invalid schematic island partition');
+    if (rectangles.length !== expected.flat().length)
+      fail(net.name + ': unexpected extra metal routing');
+    for (const group of groups) {
+      const visited = new Set([group[0]]);
+      const queue = [group[0]];
+      while (queue.length) {
+        const current = queue.shift();
+        for (const i of group) {
+          if (!visited.has(i) && connected(rectangles[current], rectangles[i])) {
+            visited.add(i);
+            queue.push(i);
+          }
         }
       }
+      if (visited.size !== group.length) fail(net.name + ': disconnected routing');
     }
-    if (visited.size !== rectangles.length) fail(net.name + ': disconnected routing');
+    if (supply) {
+      for (const i of groups[0])
+        for (const j of groups[1])
+          if (connected(rectangles[i], rectangles[j]))
+            fail(net.name + ': invented source/body metal bridge');
+    }
   }
   for (let i = 0; i < metalNets.length; i++) {
     for (let j = i + 1; j < metalNets.length; j++) {
@@ -437,6 +454,8 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
     physicalElectricalConnectivityVerified: false,
     ohmicContactsValidated: false,
     physicalJunctionResolved: false,
+    supplyBodyContinuityShownInSource: false,
+    schematicMetalIslands: { VDD: 2, VOUT: 1, GND: 2, VIN: 1 },
     terminals,
   };
 }
