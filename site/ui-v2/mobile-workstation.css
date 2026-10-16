@@ -27,6 +27,13 @@
     display: none;
   }
 
+  /* Desktop sidebar/workspace hosts flatten in compact mode, preserving the
+     existing single-document mobile Edit and gesture-owned View behavior. */
+  body[data-workstation]:not([data-preview-mode]) .p-sidebar,
+  body[data-workstation]:not([data-preview-mode]) .p-workspace {
+    display: contents;
+  }
+
   body[data-workstation]:not([data-preview-mode]) .p-body {
     display: flex;
     flex-direction: column;
