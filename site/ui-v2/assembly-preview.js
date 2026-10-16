@@ -2,6 +2,41 @@
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 
+// Display-only source palette. Material identity and persisted layer colors
+// remain unchanged; it is the wafer of origin that is being highlighted.
+export const ASSEMBLY_ORIGIN_COLORS = [
+  '#91A5B8',
+  '#4C9CB3',
+  '#D2A05B',
+  '#9B86C6',
+  '#60A996',
+  '#D48291',
+  '#A4A354',
+  '#6C83C5',
+];
+
+export function assemblyPreviewOriginModel(model, assembly) {
+  if (!assembly?.bonds?.length) return model;
+  const origin = new Map();
+  for (const layer of assembly.sources[0]?.project?.model?.layers || []) {
+    origin.set(layer.id, 0);
+  }
+  for (const [index, bond] of assembly.bonds.entries()) {
+    for (const donorLayerId of Object.values(bond.donorLayerIds || {})) {
+      origin.set(donorLayerId, index + 1);
+    }
+  }
+  return {
+    ...model,
+    layers: (model.layers || []).map((layer) => {
+      const waferIndex = origin.get(layer.id);
+      return waferIndex == null
+        ? layer
+        : { ...layer, color: ASSEMBLY_ORIGIN_COLORS[waferIndex % ASSEMBLY_ORIGIN_COLORS.length] };
+    }),
+  };
+}
+
 /** Physical Z span across all material stacks; preview-only, no model changes. */
 export function assemblyPreviewZExtent(model) {
   let minZ = Infinity;
@@ -94,6 +129,7 @@ export function mountAssemblyPreviewControls({
   nav.setAttribute('aria-label', 'Read-only Assembly preview navigation');
   const title = document.createElement('strong');
   title.textContent = 'Assembly · Read-only';
+  title.title = 'Wafer-origin colors change the rendering only, not physical materials.';
   const backward = document.createElement('button');
   const forward = document.createElement('button');
   backward.type = forward.type = 'button';
