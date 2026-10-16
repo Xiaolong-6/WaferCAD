@@ -231,9 +231,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
   for (let i = 0; i < metalNets.length; i++) {
     for (let j = i + 1; j < metalNets.length; j++) {
       if (
-        metalNets[i].rectangles.some((a) =>
-          metalNets[j].rectangles.some((b) => connected(a, b)),
-        )
+        metalNets[i].rectangles.some((a) => metalNets[j].rectangles.some((b) => connected(a, b)))
       ) {
         fail('Metal1 short: ' + metalNets[i].name + ' / ' + metalNets[j].name);
       }
@@ -347,8 +345,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
   for (const device of ['pMOS', 'nMOS']) {
     const gate = byId[device + '-gate'].point[0];
     if (
-      (byId[device + '-source'].point[0] - gate) *
-        (byId[device + '-drain'].point[0] - gate) >=
+      (byId[device + '-source'].point[0] - gate) * (byId[device + '-drain'].point[0] - gate) >=
       0
     ) {
       fail(device + ': source and drain do not flank the gate');
@@ -1153,23 +1150,6 @@ async function main() {
     join(reports, tiltDemo ? 'tilt-demo-validation.json' : 'validation.json'),
     JSON.stringify(validation, null, 2) + '\n',
   );
-  // Temporary CI-only formatter evidence. Remove after correcting the exact diff.
-  if (process.env.GITHUB_ACTIONS && !tiltDemo) {
-    const { readFile } = await import('node:fs/promises');
-    const { spawnSync } = await import('node:child_process');
-    const prettier = await import('prettier');
-    const filename = fileURLToPath(import.meta.url);
-    const original = await readFile(filename, 'utf8');
-    const formatted = await prettier.format(original, {
-      ...(await prettier.resolveConfig(filename)),
-      filepath: filename,
-    });
-    const diff = spawnSync('diff', ['-u', filename, '-'], {
-      input: formatted,
-      encoding: 'utf8',
-    });
-    if (diff.status === 1) console.log('PRETTIER_DIFF_START\\n' + diff.stdout.slice(0, 24000) + '\\nPRETTIER_DIFF_END');
-  }
   console.log(
     JSON.stringify({
       pass: true,

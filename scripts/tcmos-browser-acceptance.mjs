@@ -44,14 +44,15 @@ const selectView = async (key) => {
 };
 const revealSectionDock = async () => {
   const dock = page.locator('#sectionPanel');
-  if (!(await dock.isVisible())) {
-    const legacy = page.locator('[data-action="section"]:visible');
-    if (await legacy.count()) {
-      await legacy.first().click();
-    } else {
-      // The current single-view shell exposes Section as a primary view tab.
-      await page.getByRole('button', { name: 'Section', exact: true }).first().click();
+  const sectionTab = page.getByRole('button', { name: 'Section', exact: true }).first();
+  if (await sectionTab.count()) {
+    // Overview also renders Section as a visible thumbnail: select the actual
+    // full-stage Section tab even when the thumbnail is already visible.
+    if ((await sectionTab.getAttribute('aria-pressed')) !== 'true') {
+      await sectionTab.click();
     }
+  } else if (!(await dock.isVisible())) {
+    await page.locator('[data-action="section"]:visible').first().click();
   }
   await dock.waitFor({ state: 'visible', timeout: 12000 });
   await waitForPaint(page);
