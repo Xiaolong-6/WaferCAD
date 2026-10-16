@@ -18,6 +18,7 @@ on:
       - site/tests/wafer-bonding-gan-two-wafer.test.mjs
       - site/tests/wafer-assembly-io.test.mjs
       - site/tests/wafer-assembly-editor-guard.test.mjs
+      - site/tests/wafer-assembly-state-owner.test.mjs
       - site/tests/project-geometry-storage.test.mjs
       - docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
       - .github/workflows/wafer-bonding.yml
@@ -42,8 +43,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Bond geometry scientific invariants
-        run: node --test site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bond-transaction.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs site/tests/project-geometry-storage.test.mjs site/tests/issue-13-settings-ui.test.mjs site/tests/wafer-assembly-editor-guard.test.mjs site/tests/project-controller-recovery.test.mjs
+        run: node --test site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bond-transaction.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs site/tests/project-geometry-storage.test.mjs site/tests/issue-13-settings-ui.test.mjs site/tests/wafer-assembly-editor-guard.test.mjs site/tests/wafer-assembly-state-owner.test.mjs site/tests/project-controller-recovery.test.mjs
       - name: Bond-specific lint and formatting
         run: |
-          npx eslint site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs
-          npx prettier --check site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
+          npx eslint site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/tests/wafer-assembly-state-owner.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs
+          npx prettier --check site/controllers/project-state-controller.js site/tests/wafer-assembly-editor-guard.test.mjs site/tests/wafer-assembly-state-owner.test.mjs site/workspace-persistence.js site/wafer-bonding.js site/wafer-assembly.js site/wafer-bond-transaction.js site/tests/wafer-bond-transaction.test.mjs site/project-schema.js site/project-io.js site/tests/wafer-bonding.test.mjs site/tests/wafer-assembly.test.mjs site/tests/wafer-bonding-gan-two-wafer.test.mjs site/tests/wafer-assembly-io.test.mjs docs/MULTI_WAFER_BONDING_DESIGN_2026-10-15.md
