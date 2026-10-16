@@ -78,3 +78,22 @@ test('rough preview without a prepared profile retains bounded deterministic sub
   assert.deepEqual(samples, sidewallBoundarySamples(part, { fallbackSegments: 8 }));
   assert.ok(samples.some((sample) => sample.upperZ > 2));
 });
+
+test('display-only anti-alias fallback matches rough cap without altering canonical morphology', () => {
+  const display = { ...appearance, displayRoughBlend: 0.12 };
+  const part = {
+    p: [0, 0],
+    q: [0.8, 0],
+    z0: 0,
+    z1: 2,
+    upperSurface: { appearance: display, profileNormal: 1 },
+  };
+  const samples = sidewallBoundarySamples(part, { fallbackSegments: 4 });
+  assert.equal(samples.length, 5);
+  const raw = roughProfileOffsetAtPoint(0, 0, appearance);
+  const { upperZ } = samples[0];
+  const center = appearance.polarity === 'normal' ? 0 : appearance.meanHeight;
+  const expected = 2 + center + 0.12 * (raw - center);
+  assert.ok(Math.abs(upperZ - expected) < 1e-12);
+  assert.equal(roughProfileOffsetAtPoint(0, 0, appearance), raw);
+});

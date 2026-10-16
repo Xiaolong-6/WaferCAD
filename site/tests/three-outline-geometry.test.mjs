@@ -7,7 +7,6 @@ import {
   ownedContourSegments,
   sectionCutContours,
   transparentInspectionContours,
-  unownedContourSegments,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
 import { boundaryProfileFromPositions } from '../rough-boundary-profile.js';
@@ -42,15 +41,6 @@ test('transparent outlines deduplicate owned segments without exposing tessellat
   assert.equal(result.buried.length, 4);
   assert.equal(contoursToPositions(result.buried).length, 24);
   assert.equal(ownedContourSegments(exterior).length, 1);
-  const cut = [
-    [0, 0, 1],
-    [4, 0, 1],
-  ];
-  assert.deepEqual(
-    unownedContourSegments([...exterior, cut], exterior),
-    [cut],
-    'a previously owned outline is never drawn twice',
-  );
 });
 
 test('buried rough perimeter follows the same deterministic profile as section sampling', () => {
@@ -239,4 +229,3 @@ test('ROI contour matching clips only overlapping spans and retains material jun
   );
   assert.ok(junction.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]));
 });
-

@@ -50,6 +50,7 @@ import {
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
   roughProfileOffsetAtPoint,
+  roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
   roughLod,
   roughVisualBoundsZ,
@@ -1567,7 +1568,18 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0, boundaryProfiles = null) {
+  function displaySurfaceProfile(surface, appearanceByCapIndex = null) {
+    if (surface?.appearance?.kind !== 'rough') return surface;
+    const appearance = appearanceByCapIndex?.get(surface.capIndex);
+    return appearance ? { ...surface, appearance } : surface;
+  }
+
+  function geometryFromSidewallParts(
+    parts,
+    displayTolerance = 0,
+    boundaryProfiles = null,
+    appearanceByCapIndex = null,
+  ) {
     const positions = [],
       normals = [],
       annotationDepths = [];
@@ -1590,13 +1602,18 @@ export function createThreeView({
         surface?.appearance?.kind === 'rough'
           ? z +
             (Number(surface.profileNormal) || 1) *
-              roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+              roughDisplayProfileOffsetAtPoint(point[0], point[1], surface.appearance)
           : z;
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
       : mergeCollinearSidewallParts(parts)) {
-      const p = part.p,
+      const samplePart = {
+          ...part,
+          lowerSurface: displaySurfaceProfile(part.lowerSurface, appearanceByCapIndex),
+          upperSurface: displaySurfaceProfile(part.upperSurface, appearanceByCapIndex),
+        },
+        p = part.p,
         q = part.q,
         dx = q[0] - p[0],
         dy = q[1] - p[1],
@@ -1627,7 +1644,7 @@ export function createThreeView({
         upperProfile = boundaryProfiles?.get(part.upperSurface?.capIndex),
         samples =
           lowerProfile || upperProfile
-            ? sidewallBoundarySamples(part, {
+            ? sidewallBoundarySamples(samplePart, {
                 lowerProfile,
                 upperProfile,
                 fallbackSegments: segments,
@@ -1636,8 +1653,8 @@ export function createThreeView({
                 const point = pointAt(index / segments);
                 return {
                   point,
-                  lowerZ: displacedZ(point, part.z0, part.lowerSurface),
-                  upperZ: displacedZ(point, part.z1, part.upperSurface),
+                  lowerZ: displacedZ(point, part.z0, samplePart.lowerSurface),
+                  upperZ: displacedZ(point, part.z1, samplePart.upperSurface),
                 };
               });
       for (let segment = 0; segment + 1 < samples.length; segment++) {
@@ -1995,7 +2012,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return edges;
   }
 
-  function rebuildInspectionContours(boundaryProfiles = null) {
+  function rebuildInspectionContours(boundaryProfiles = null, appearanceByCapIndex = null) {
     if (!physicalSurfacePlan) return;
     for (const object of [...presentationObjects]) {
       if (!object.userData?.waferCadPlanContours) continue;
@@ -2019,8 +2036,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // Only the cut face introduces new structural borders. Buried cap
       // perimeters are not exposed outlines: drawing them as solid black
       // produces false internal lines across translucent materials.
+      sectionSidewalls = plan.sidewalls.map((part) => ({
+        ...part,
+        lowerSurface: displaySurfaceProfile(part.lowerSurface, appearanceByCapIndex),
+        upperSurface: displaySurfaceProfile(part.upperSurface, appearanceByCapIndex),
+      })),
       sectionLines = unownedContourSegments(
-        sectionCutContours(plan.sidewalls, clip, { boundaryProfiles }),
+        sectionCutContours(sectionSidewalls, clip, { boundaryProfiles }),
         [...exposedBorders, ...roughBorders],
       ),
       model = getModel();
@@ -2040,6 +2062,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
 
   function installRoughBoundaryProfiles(boundaryProfiles) {
+    const appearanceByCapIndex = new Map();
+    for (const task of roughTasks) {
+      const index = physicalSurfacePlan?.caps?.indexOf(task.cap) ?? -1;
+      if (index >= 0 && task.visualAppearance?.kind === 'rough') {
+        appearanceByCapIndex.set(index, task.visualAppearance);
+      }
+    }
     let rebuilt = 0;
     for (const object of presentationObjects) {
       const previous = object.geometry,
@@ -2049,6 +2078,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         parts,
         previous.userData.waferCadSidewallTolerance || 0,
         boundaryProfiles,
+        appearanceByCapIndex,
       );
       previous.dispose();
       object.position.z = 0;
@@ -2061,7 +2091,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
-    rebuildInspectionContours(boundaryProfiles);
+    rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex);
   }
 
   function roughSceneRoiFraction(model, clip) {

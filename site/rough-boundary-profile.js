@@ -1,5 +1,5 @@
 import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
-import { roughProfileOffsetAtPoint } from './surface-rendering.js';
+import { roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
 
 // These are renderer coordinates, never canonical material geometry. Retain the
 // actual Float32 cap endpoints instead of evaluating another morphology curve.
@@ -99,7 +99,7 @@ export function sidewallBoundarySamples(
     surface?.appearance?.kind === 'rough'
       ? z +
         (Number(surface.profileNormal) || 1) *
-          roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+          roughDisplayProfileOffsetAtPoint(point[0], point[1], surface.appearance)
       : z;
   const result = [...samples]
     .sort((a, b) => (a[0] - b[0]) * (line.forward ? 1 : -1))

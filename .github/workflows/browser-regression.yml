@@ -185,6 +185,10 @@ jobs:
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
 
+      - name: Check rough cap, sidewall, and outline geometry contracts
+        if: needs.plan.outputs.renderer == 'true'
+        run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
+
       - name: Check explicit no-Worker rough fallback readiness
         if: needs.plan.outputs.renderer == 'true'
         env:
