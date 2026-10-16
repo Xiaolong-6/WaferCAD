@@ -16,6 +16,8 @@ import {
   forkAssemblyVariant,
   setAssemblyVariantCursor,
   validateAssemblyVariantGraph,
+  appendAssemblyVariantPostBondStep,
+  assemblyVariantPostBondModel,
 } from './wafer-assembly-variants.js';
 
 function same(left, right) {
@@ -243,6 +245,29 @@ export function createAssemblyBondEditorSession(
     }
   }
 
+  function postBondPreviewModel() {
+    if (currentIndex() !== maxIndex()) return structuredClone(currentProject().model);
+    const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+    if (!active?.postBondSteps?.length) return structuredClone(currentProject().model);
+    return assemblyVariantPostBondModel(graph);
+  }
+
+  function appendPostBondStep(input) {
+    assertReadable();
+    if (persistVariantGraph && !durableMutation) {
+      throw new Error('Post-Bond Process requires durable Variant publication.');
+    }
+    if (!visibleParity()) {
+      throw new Error('Post-Bond Process workspace material drift; operation refused.');
+    }
+    const derived = appendAssemblyVariantPostBondStep(graph, input);
+    graph = derived.graph;
+    revision++;
+    // The Workstation's canonical source-bound model stays untouched. The
+    // derived Process model is rendered as a presentation-only overlay.
+    return { model: structuredClone(derived.model), step: structuredClone(derived.step) };
+  }
+
   async function bond(donorProject, request) {
     assertReadable();
     if (currentIndex() !== maxIndex()) {
@@ -355,6 +380,9 @@ export function createAssemblyBondEditorSession(
     createVariantDurable: (id, name) => durableChange(() => createVariant(id, name)),
     switchVariantDurable: (id) => durableChange(() => switchVariant(id)),
     restoreIndexDurable: (index) => durableChange(() => restoreIndex(index)),
+    appendPostBondStep,
+    appendPostBondStepDurable: (input) => durableChange(() => appendPostBondStep(input)),
+    postBondPreviewModel,
     durableRevision: () => durableRevision,
     exportVariantGraph: () => structuredClone(graph),
     exportCompactHistory: () => (history ? history.exportCompactHistory() : null),
