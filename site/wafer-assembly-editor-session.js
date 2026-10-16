@@ -41,6 +41,8 @@ export function createAssemblyBondEditorSession(
     getVisibleModel,
     onCommit = () => {},
     variantGraph = null,
+    persistVariantGraph = null,
+    persistedRevision = 0,
   } = {},
 ) {
   if (typeof checkpointRecovery !== 'function') {
@@ -48,6 +50,12 @@ export function createAssemblyBondEditorSession(
   }
   if (typeof applyVisibleProject !== 'function' || typeof getVisibleModel !== 'function') {
     throw new Error('Assembly editor requires an observable workspace and rollback owner.');
+  }
+  if (persistVariantGraph != null && typeof persistVariantGraph !== 'function') {
+    throw new Error('Assembly editor requires a callable durable graph publisher.');
+  }
+  if (!Number.isSafeInteger(persistedRevision) || persistedRevision < 0) {
+    throw new Error('Invalid Assembly editor durable graph revision.');
   }
   // Index zero may be an independent receiver. Once bonded, this owner
   // handles its entire compact History and every subsequent donor.
@@ -67,15 +75,21 @@ export function createAssemblyBondEditorSession(
   const currentIndex = () => (history ? history.currentIndex() : 0);
   const maxIndex = () => (history ? history.maxIndex() : 0);
   let committing = false;
+  let publishing = false;
+  let durableMutation = false;
+  let durableRevision = persistedRevision;
   let revision = 0;
 
   const visibleParity = () => same(getVisibleModel(), currentProject().model);
   const assertReadable = () => {
-    if (committing) throw new Error('Bond transaction is in progress.');
+    if (committing || publishing) throw new Error('Bond transaction is in progress.');
   };
 
   function restoreIndex(index) {
     assertReadable();
+    if (persistVariantGraph && !durableMutation) {
+      throw new Error('Assembly cursor navigation requires durable publication.');
+    }
     if (!visibleParity()) throw new Error('Bond workspace material drift; navigation refused.');
     const prior = currentIndex();
     if (!history && index !== 0) {
@@ -122,6 +136,9 @@ export function createAssemblyBondEditorSession(
 
   function createVariant(id, name = '') {
     assertReadable();
+    if (persistVariantGraph && !durableMutation) {
+      throw new Error('Assembly Variant fork requires durable publication.');
+    }
     if (!visibleParity()) throw new Error('Bond workspace material drift; fork refused.');
     const candidate = forkAssemblyVariant(graph, {
       id,
@@ -142,6 +159,9 @@ export function createAssemblyBondEditorSession(
 
   function switchVariant(id) {
     assertReadable();
+    if (persistVariantGraph && !durableMutation) {
+      throw new Error('Assembly Variant switching requires durable publication.');
+    }
     if (!visibleParity()) throw new Error('Bond workspace material drift; switch refused.');
     const candidate = activateAssemblyVariant(graph, id);
     const project = assemblyVariantProject(candidate);
@@ -151,6 +171,74 @@ export function createAssemblyBondEditorSession(
     history = nextHistory;
     revision++;
     return structuredClone(project);
+  }
+
+  function captureOwner() {
+    return {
+      graph: structuredClone(graph),
+      index: currentIndex(),
+      revision,
+    };
+  }
+
+  function restoreOwner(snapshot) {
+    const restoredGraph = structuredClone(validateAssemblyVariantGraph(snapshot.graph));
+    const product = assemblyVariantProject(
+      restoredGraph,
+      restoredGraph.activeBranchId,
+      restoredGraph.branches.find((branch) => branch.id === restoredGraph.activeBranchId).bonds.length,
+    );
+    const restoredHistory = product.waferAssembly
+      ? createAssemblyBondHistorySession(product)
+      : null;
+    restoredHistory?.restoreIndex(snapshot.index);
+    const view = restoredHistory ? restoredHistory.currentProject() : product;
+    if (applyVisibleProject(structuredClone(view)) !== true) {
+      throw new Error('Assembly durable rollback could not restore the physical workspace.');
+    }
+    graph = restoredGraph;
+    history = restoredHistory;
+    revision = snapshot.revision;
+  }
+
+  async function publishOrRestore(before) {
+    if (!persistVariantGraph) return;
+    try {
+      const result = await persistVariantGraph(structuredClone(graph), durableRevision);
+      if (!result || result.revision !== durableRevision + 1) {
+        throw new Error('Assembly durable publisher did not confirm the next revision.');
+      }
+      durableRevision = result.revision;
+    } catch (error) {
+      try {
+        restoreOwner(before);
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [error, rollbackError],
+          'Assembly Recovery publish failed and workspace rollback was not confirmed.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async function durableChange(operation) {
+    assertReadable();
+    const before = captureOwner();
+    durableMutation = true;
+    let result;
+    try {
+      result = operation();
+    } finally {
+      durableMutation = false;
+    }
+    publishing = true;
+    try {
+      await publishOrRestore(before);
+      return result;
+    } finally {
+      publishing = false;
+    }
   }
 
   async function bond(donorProject, request) {
@@ -186,6 +274,7 @@ export function createAssemblyBondEditorSession(
       throw new Error('Bond Variant source registry differs from canonical prepared material.');
     }
     const expectedRevision = revision;
+    const beforeDurable = captureOwner();
     committing = true;
     try {
       const result = await commitWaferBondTransaction(prepared, {
@@ -235,6 +324,7 @@ export function createAssemblyBondEditorSession(
           return true;
         },
       });
+      await publishOrRestore(beforeDurable);
       return result;
     } finally {
       committing = false;
@@ -260,6 +350,10 @@ export function createAssemblyBondEditorSession(
       })),
     createVariant,
     switchVariant,
+    createVariantDurable: (id, name) => durableChange(() => createVariant(id, name)),
+    switchVariantDurable: (id) => durableChange(() => switchVariant(id)),
+    restoreIndexDurable: (index) => durableChange(() => restoreIndex(index)),
+    durableRevision: () => durableRevision,
     exportVariantGraph: () => structuredClone(graph),
     exportCompactHistory: () => (history ? history.exportCompactHistory() : null),
     restoreIndex,
