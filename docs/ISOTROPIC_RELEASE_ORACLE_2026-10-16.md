@@ -60,3 +60,21 @@ rejects nonpositive/infinite tolerances, exceeded work budgets and
 numerically degenerate band partitions. The current Kernel's material
 selectivity, XY Boolean clip, runtime cost, save/replay and radial SEM
 correspondence are intentionally unchanged and remain integration gates.
+
+
+## Exposed-seed operation-plan boundary (not enabled in Process)
+
+`planSelectiveIsotropicRelease` now accepts an explicitly exposed
+material seed (`layerId`, `seedZ`, `face`) from a future material-topology
+owner. It refuses unsupported target materials and hidden seeds, then emits
+a deterministic set of Front/Back physical removal Z intervals and the
+corresponding lateral geometry extent for every adaptive depth band.
+It enforces an independent maximum-work budget (128 depth bands by default).
+
+This JSON-like band plan is compatible with the existing concept of
+`applyIsotropicEtch` seed groups and `removeLayerInterval`, but does not
+modify a model. Most importantly, it does **not** implement
+`difference/union/intersection` for the released XY footprint, reject
+colliding undercuts between seed islands, or turn this into a selectable
+new Recipe command. Every required production integration remains gated by
+targeted scientific topology, History/Recovery, and Chromium visual tests.

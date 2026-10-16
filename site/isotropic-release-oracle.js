@@ -102,3 +102,48 @@ export function adaptiveReleaseDepthBands({ radius, maxLateralErrorUm, maxBands 
   }
   return bands;
 }
+
+/**
+ * Convert one physically exposed seed into exact Z-band removal requests.
+ * This is an opt-in PREVIEW, not the Process Kernel's mutating etch path.
+ * The kernel must independently solve protected-domain XY Boolean bands,
+ * overlapping seeds, material selectivity and transaction semantics.
+ */
+export function planSelectiveIsotropicRelease({
+  seedLayerId,
+  seedZ,
+  face,
+  targetLayerIds,
+  radius,
+  maxLateralErrorUm,
+  maxBands = 128,
+  isExposed,
+}) {
+  if (typeof seedLayerId !== 'string' || !seedLayerId.length) {
+    throw new RangeError('Missing exposed seed layer');
+  }
+  if (!Array.isArray(targetLayerIds) || !targetLayerIds.includes(seedLayerId)) {
+    throw new RangeError('Isotropic seed must belong to selected target material');
+  }
+  if (isExposed !== true) {
+    throw new RangeError('Isotropic seed must be physically exposed');
+  }
+  if (!Number.isFinite(seedZ) || !['front', 'back'].includes(face)) {
+    throw new RangeError('Invalid physical seed Z or face');
+  }
+  const bands = adaptiveReleaseDepthBands({ radius, maxLateralErrorUm, maxBands });
+  return {
+    kind: 'wafercad-selective-isotropic-plan-v1',
+    seedLayerId,
+    seedZ,
+    face,
+    targetLayerIds: [...new Set(targetLayerIds)],
+    maxLateralErrorUm,
+    bands: bands.map((band) => ({
+      z0: face === 'front' ? seedZ - band.depth1 : seedZ + band.depth0,
+      z1: face === 'front' ? seedZ - band.depth0 : seedZ + band.depth1,
+      lateralRadius: band.lateralRadius,
+      maxLateralErrorUm: band.maxLateralErrorUm,
+    })),
+  };
+}

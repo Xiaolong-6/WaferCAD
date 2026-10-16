@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   adaptiveReleaseDepthBands,
+  planSelectiveIsotropicRelease,
   isotropicOracleReaches,
   isotropicReleaseDepth,
   isotropicReleaseFrontZ,
@@ -126,4 +127,61 @@ test('adaptive front accuracy is monotone and fails closed on band budget', () =
     () => adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: 0.5, maxBands: 0 }),
     RangeError,
   );
+});
+
+test('selective exposed seed plans preserve Front/Back Z bands and material targets', () => {
+  const params = {
+    seedLayerId: 'base',
+    seedZ: 10,
+    targetLayerIds: ['base'],
+    isExposed: true,
+    radius: 36,
+    maxLateralErrorUm: 0.5,
+  };
+  const front = planSelectiveIsotropicRelease({ ...params, face: 'front' });
+  const back = planSelectiveIsotropicRelease({ ...params, face: 'back' });
+  assert.equal(front.bands.length, 36);
+  assert.equal(back.bands.length, 36);
+  assert.deepEqual(front.targetLayerIds, ['base']);
+  assert.equal(front.bands[0].z1, params.seedZ);
+  assert.equal(front.bands.at(-1).z0, params.seedZ - params.radius);
+  assert.equal(back.bands[0].z0, params.seedZ);
+  assert.equal(back.bands.at(-1).z1, params.seedZ + params.radius);
+  for (let i = 0; i < front.bands.length; i++) {
+    const upper = front.bands[i];
+    const lower = back.bands[i];
+    assert.ok(upper.z1 > upper.z0);
+    assert.ok(lower.z1 > lower.z0);
+    assert.ok(Math.abs(upper.z0 + lower.z1 - 2 * params.seedZ) < 1e-12);
+    assert.ok(Math.abs(upper.z1 + lower.z0 - 2 * params.seedZ) < 1e-12);
+    if (i > 0) {
+      assert.ok(Math.abs(front.bands[i - 1].z0 - upper.z1) < 1e-12);
+      assert.ok(Math.abs(back.bands[i - 1].z1 - lower.z0) < 1e-12);
+    }
+  }
+});
+
+test('selective seed planning rejects hidden, unselected or excessive work', () => {
+  const valid = {
+    seedLayerId: 'base', seedZ: 0, face: 'front',
+    targetLayerIds: ['base'], isExposed: true,
+    radius: 36, maxLateralErrorUm: 0.5,
+  };
+  assert.throws(
+    () => planSelectiveIsotropicRelease({ ...valid, isExposed: false }),
+    /physically exposed/,
+  );
+  assert.throws(
+    () => planSelectiveIsotropicRelease({ ...valid, targetLayerIds: ['oxide'] }),
+    /selected target/,
+  );
+  assert.throws(
+    () => planSelectiveIsotropicRelease({ ...valid, maxBands: 8 }),
+    /band budget/,
+  );
+  assert.throws(
+    () => planSelectiveIsotropicRelease({ ...valid, face: 'both' }),
+    /Invalid physical/,
+  );
+  assert.deepEqual(planSelectiveIsotropicRelease({ ...valid, radius: 0 }).bands, []);
 });
