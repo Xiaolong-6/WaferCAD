@@ -51,7 +51,7 @@ export function serializeAssemblyWorkspace(graph, maxBytes = MAX_PROJECT_FILE_BY
 }
 
 export async function readAssemblyWorkspaceFile(file) {
-  if (!file || !/\\.wafercad$/i.test(file.name || '')) {
+  if (!file || !/\.wafercad$/i.test(file.name || '')) {
     throw new Error('Select an Assembly Workspace .wafercad file.');
   }
   if (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_PROJECT_FILE_BYTES) {

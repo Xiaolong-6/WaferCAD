@@ -507,7 +507,7 @@ try {
       const workspaceDownload = processTab.waitForEvent('download', { timeout: 30000 });
       await processTab.getByRole('button', { name: 'Export Assembly .wafercad' }).click();
       const workspaceFile = await workspaceDownload;
-      assert.match(workspaceFile.suggestedFilename(), /\\.wafercad$/);
+      assert.match(workspaceFile.suggestedFilename(), /\.wafercad$/);
       const workspaceBytes = await readFile(await workspaceFile.path());
       const workspace = await readAssemblyWorkspaceFile({
         name: workspaceFile.suggestedFilename(),
