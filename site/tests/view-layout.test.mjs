@@ -92,6 +92,29 @@ test('maximize restores prior exact composition, including custom tracks', () =>
   assert.equal(apply(state, 'MAXIMIZE', { view: 'unknown' }), state);
 });
 
+test('workflow Mask focus is an ephemeral projection over the exact user layout', () => {
+  let state = createDesktopLayout();
+  state = apply(state, 'APPLY_PRESET', { preset: 'four-right' });
+  state = apply(state, 'SET_RATIOS', { axis: 'columns', values: [0.35, 0.65] });
+  state = apply(state, 'SWAP', { a: 'main', b: 'section' });
+  state = apply(state, 'CLOSE_VIEW', { view: 'mask' });
+  state = apply(state, 'APPLY_PRESET', { preset: 'three-columns' });
+  state = apply(state, 'MAXIMIZE', { view: 'three' });
+  const original = structuredClone(state);
+  const saved = projectDesktopLayout(state);
+  assert.deepEqual(saved.displayed, ['three']);
+  assert.equal(state.visible.includes('mask'), false);
+  const focused = projectDesktopLayout(state, 'mask');
+  assert.deepEqual(focused.displayed, ['mask']);
+  assert.deepEqual(focused.highlighted, ['mask']);
+  assert.equal(focused.maximized, 'mask');
+  assert.equal(focused.preset, 'one-full');
+  assert.equal(focused.overviewPressed, false);
+  assert.deepEqual(state, original, 'temporary focus cannot modify user preferences');
+  assert.deepEqual(projectDesktopLayout(state), saved, 'restore projects the original layout');
+  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'mask' }), state, 'no persistent focus action');
+});
+
 test('a view hidden by maximize is not accidentally closed by a highlighted view button', () => {
   let state = createDesktopLayout();
   state = apply(state, 'MAXIMIZE', { view: 'main' });
