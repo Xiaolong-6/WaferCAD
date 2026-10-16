@@ -169,6 +169,7 @@ try {
           await restore.locator('.wc-icon').evaluate((node) => getComputedStyle(node).width),
           '17px',
         );
+        await page.screenshot({ path: resolve(output, 'restore-panel-1440.png') });
         await restore.click();
         await assertDesktopShell(page);
         await assertGrid(page, 4);
