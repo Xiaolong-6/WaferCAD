@@ -188,6 +188,7 @@ try {
 
     // Choice 1: retain the detached tab's state. Its displaced saved counterpart
     // must survive in Recovery before the new owner overwrites current.
+    await page.locator('[data-action="domain:project"]').click();
     await page.locator('#workspaceTakeOverBtn').click();
     await page
       .locator('.v2-workflow-dialog-actions')
@@ -202,7 +203,11 @@ try {
       { timeout: 120000 },
     );
     const acceptedDetached = await snapshot();
-    assert.deepEqual(acceptedDetached.model, detached.model, 'Use this tab retains detached geometry');
+    assert.deepEqual(
+      acceptedDetached.model,
+      detached.model,
+      'Use this tab retains detached geometry',
+    );
     assert.deepEqual(
       acceptedDetached.workflow.steps,
       detached.workflow.steps,
@@ -238,11 +243,14 @@ try {
     // Choice 2: this former owner still has its own process graph. Modify it
     // again while read-only, then explicitly load the latest saved state.
     await deposit('Read-only process E', competitor);
-    const discardCandidate = await competitor.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    const discardCandidate = await competitor.evaluate(() =>
+      window.WaferCadV2Workstation.snapshot(),
+    );
     assert.equal(discardCandidate.workflow.dirty, true);
     assert.equal(discardCandidate.workflow.steps.length, baseline.workflow.steps.length + 2);
     assert.ok(discardCandidate.model.layers.some((layer) => layer.name === 'Owner process C'));
     assert.ok(discardCandidate.model.layers.some((layer) => layer.name === 'Read-only process E'));
+    await competitor.locator('[data-action="domain:project"]').click();
     await competitor.locator('#workspaceTakeOverBtn').click();
     await competitor
       .locator('.v2-workflow-dialog-actions')
@@ -281,7 +289,11 @@ try {
     const finalStored = await competitor.evaluate(async () =>
       (await import('/workspace-persistence.js')).loadWorkspaceState(),
     );
-    assert.deepEqual(finalStored.model, detached.model, 'Reconciled current DB keeps intended state');
+    assert.deepEqual(
+      finalStored.model,
+      detached.model,
+      'Reconciled current DB keeps intended state',
+    );
     assert.deepEqual(
       finalStored.snapshotBranches,
       acceptedStored.snapshotBranches,
