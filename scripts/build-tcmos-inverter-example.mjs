@@ -22,12 +22,6 @@ const FIXED_DATE = '2026-10-14T08:00:00.000Z';
 const CELL = 'TCMOS_130NM_LOCAL';
 const copy = (value) => structuredClone(value);
 const rect = (x, y, w, h) => ({ x, y, w, h });
-const rectanglePolygon = (r) => [
-  [r.x, r.y],
-  [r.x + r.w, r.y],
-  [r.x + r.w, r.y + r.h],
-  [r.x, r.y + r.h],
-];
 // All the coordinates below are traced in PIXELS from the user-supplied
 // original 713 x 498 Fig. 1b image (SHA256 prefix f39c0b4562ab2eec).
 // It is a layout SCHEMATIC. All CAD µm values are for DISPLAY ONLY,
