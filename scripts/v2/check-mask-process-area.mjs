@@ -1,6 +1,11 @@
 // Scientific invariant: Process/Mask ROI applies only within the selected physical footprint.
 import assert from 'node:assert/strict';
-import { launchBrowser, newUiPage, showWorkstationView, waitForPaint } from '../test-helpers/ui.mjs';
+import {
+  launchBrowser,
+  newUiPage,
+  showWorkstationView,
+  waitForPaint,
+} from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const browser = await launchBrowser();
