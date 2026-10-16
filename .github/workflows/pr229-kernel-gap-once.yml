@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/pr229-kernel-gap-once.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   science:
@@ -21,8 +21,18 @@ jobs:
       - run: npm ci
       - name: Targeted Prettier and ESLint
         run: |
+          npx prettier --write site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
           npx prettier --check site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
           npx eslint site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
       - name: Floating-gap and conformal topology science
         run: |
           node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs site/tests/process-topology.test.mjs site/tests/conformal-crack-repair.test.mjs
+      - name: Commit only verified formatting on the PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(kernel): format connected-conformal-span science fix"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
