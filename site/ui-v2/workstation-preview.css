@@ -154,6 +154,12 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   font-variant-numeric: tabular-nums;
 }
 
+.assembly-preview-origin-note {
+  color: #57677a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .assembly-preview-views {
   display: flex;
   gap: 4px;
@@ -168,6 +174,10 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   }
 
   .assembly-preview-controls > strong {
+    display: none;
+  }
+
+  .assembly-preview-origin-note {
     display: none;
   }
 }
