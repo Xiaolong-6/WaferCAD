@@ -71,7 +71,7 @@ test('Bond commit writes Recovery first, then one canonical History step, withou
   assert.equal(host.controller.maxIndex(), 2);
   assert.equal(host.controller.currentIndex(), 2);
   assert.equal(host.controller.fullProduct().waferAssembly.sources.length, 3);
-  assert.deepEqual(host.getVisible().model, result.model);
+  assert.deepEqual(host.getVisible().model, result.project.model);
   assert.equal(host.controller.fullProduct().snapshots, undefined);
   const compact = host.controller.exportCompactHistory();
   assert.equal(compact.branchState.nodes.length, 2);
