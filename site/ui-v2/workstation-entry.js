@@ -17,6 +17,7 @@ import {
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
+import { createWorkstationRenderScheduler } from './workstation-render-scheduler.js';
 import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
 
 const { el } = window.WaferCadV2Components;
@@ -114,12 +115,12 @@ try {
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   let desktopResizer = null;
-  const render = () => {
-    if (starting) return;
-    shell.render();
-    store.renderAll();
-    requestAnimationFrame(() => desktopResizer?.refresh());
-  };
+  const render = createWorkstationRenderScheduler({
+    isStarting: () => starting,
+    renderShell: () => shell.render(),
+    invalidateScientific: () => store.renderAll(),
+    scheduleLayout: () => requestAnimationFrame(() => desktopResizer?.refresh()),
+  });
   // View-specific, nonmodal floating editors are transient UI, not model state.
   // Dismissing them when their view is hidden prevents stale Mask/Section
   // dialogs from intercepting the desktop workflow navigation.
@@ -247,7 +248,9 @@ try {
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
     if (mobileWorkspace.handleAction(action)) {
-      render();
+      // Each newly visible view is painted by its existing adapter onShow.
+      // Navigation does not mutate scientific geometry or require four-view invalidation.
+      render({ scientific: false });
       return;
     }
     if (action.startsWith('domain:')) {
