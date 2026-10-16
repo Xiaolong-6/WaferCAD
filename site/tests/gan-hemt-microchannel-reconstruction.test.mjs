@@ -289,9 +289,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     false,
     '2DEG is an electronic state rather than a physically deposited solid',
   );
-  const oxideBookmark = project.snapshots.find((s) =>
-    s.name.startsWith('03a TSV local SiO2'),
-  );
+  const oxideBookmark = project.snapshots.find((s) => s.name.startsWith('03a TSV local SiO2'));
   assert.ok(oxideBookmark, 'Physical local TSV oxide needs a saved pre-metallization state');
   const oxideLayer = project.model.layers.find(
     (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',

@@ -312,8 +312,8 @@ try {
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
-    const missingLocalOxideRims = viaCenters.filter(([x, y]) =>
-      !hasLayer([x + 43, y], 600.25, ids.oxide),
+    const missingLocalOxideRims = viaCenters.filter(
+      ([x, y]) => !hasLayer([x + 43, y], 600.25, ids.oxide),
     );
     const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');

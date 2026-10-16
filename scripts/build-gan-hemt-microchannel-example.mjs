@@ -837,8 +837,13 @@ export async function buildGanMicrochannel() {
   assert.ok(copperZtops.length > 0);
   assert.ok(
     copperZtops.every(
-      (z) => z <= 600 + GAN_TSV_LINER.inferredLocalSiO2Um +
-        GAN_TSV_LINER.titaniumUm + GAN_TSV_LINER.copperUm + 0.000001,
+      (z) =>
+        z <=
+        600 +
+          GAN_TSV_LINER.inferredLocalSiO2Um +
+          GAN_TSV_LINER.titaniumUm +
+          GAN_TSV_LINER.copperUm +
+          0.000001,
     ),
     'Unremoved Cu overburden above TSV',
   );
