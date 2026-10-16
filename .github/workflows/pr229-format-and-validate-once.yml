@@ -1,0 +1,77 @@
+name: PR229 temporary format and focused verification
+
+on:
+  push:
+    branches:
+      - feat/example-gan-hemt-microchannel-20261014
+    paths:
+      - .github/workflows/pr229-format-and-validate-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Format only the changed science files
+        run: |
+          npx prettier --write \
+            site/tests/gan-hemt-microchannel-reconstruction.test.mjs \
+            site/tests/gan-hemt-tsv-liner-probe.test.mjs \
+            docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+          npx prettier --check \
+            scripts/build-gan-hemt-microchannel-example.mjs \
+            site/tests/gan-hemt-microchannel-reconstruction.test.mjs \
+            site/tests/gan-hemt-tsv-liner-probe.test.mjs \
+            docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+      - name: Commit formatting on PR branch (never Main)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            site/tests/gan-hemt-microchannel-reconstruction.test.mjs \
+            site/tests/gan-hemt-tsv-liner-probe.test.mjs \
+            docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+          if ! git diff --cached --quiet; then
+            git commit -m "style(gan): apply locked Prettier to scoped scientific files"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
+      - name: Verify targeted lint
+        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+      - name: Check focused Kernel and project replay
+        run: |
+          node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+          node scripts/build-gan-hemt-microchannel-example.mjs
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - name: Set up browser
+        run: npx playwright install --with-deps chromium
+      - name: Start WaferCAD server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/pr229-ui.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/pr229-ui.log
+          exit 1
+      - name: Capture actual GaN browser views
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Check canonical geometry assets unchanged
+        run: git diff --exit-code -- site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr229-temporary-browser-evidence
+          path: test-results/gan-microchannel/visual/
+          if-no-files-found: warn
