@@ -48,6 +48,7 @@
     plus: 'M8 2v12 M2 8h12',
     minus: 'M2 8h12',
     back: 'M7 2L1 8l6 6 M1 8h14',
+    switchMode: 'M10 1l4 3-4 3 M14 4H2 M6 9l-4 3 4 3 M2 12h12',
     undo: 'M5 2L1 6l4 4 M1 6h8a4 4 0 0 1 0 8',
     redo: 'M11 2l4 4-4 4 M15 6H7a4 4 0 0 0 0 8',
     close: 'M3 3l10 10 M13 3L3 13',
