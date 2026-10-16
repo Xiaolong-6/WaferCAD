@@ -4,7 +4,8 @@ import { createProjectStateController } from '../controllers/project-state-contr
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
-import { createModel } from '../model.js';
+import { createModel, modelBoundsZ } from '../model.js';
+import { defaultSectionCollapseForModel } from '../section-z-collapse.js';
 import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
@@ -126,7 +127,10 @@ export function createWorkstationRuntime(
   function useAssemblyInspectionSettings() {
     if (!assemblyPreview) return;
     state.threeShowBorders = true;
-    state.sectionCollapse = { enabled: false };
+    state.sectionCollapse = {
+      ...defaultSectionCollapseForModel(state.model, modelBoundsZ(state.model)),
+      enabled: false,
+    };
   }
   useAssemblyInspectionSettings();
   let maskBrowser = null;
