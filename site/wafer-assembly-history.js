@@ -102,6 +102,8 @@ export function assemblyBondHistoryTimeline(project) {
   return {
     initial: 0,
     head: waferAssembly.bonds.length,
-    steps: waferAssembly.bonds.map((_, index) => stepFromValidatedLineage(waferAssembly, index + 1)),
+    steps: waferAssembly.bonds.map((_, index) =>
+      stepFromValidatedLineage(waferAssembly, index + 1),
+    ),
   };
 }
