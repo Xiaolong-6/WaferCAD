@@ -1,0 +1,131 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
+
+await loadGeometryKernel();
+const { createModel } = await import('../model.js');
+const { migrateProjectFile } = await import('../project-schema.js');
+const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject } =
+  await import('../wafer-assembly.js');
+const {
+  createAssemblyVariantGraph,
+  validateAssemblyVariantGraph,
+  assemblyVariantProject,
+  setAssemblyVariantCursor,
+  forkAssemblyVariant,
+  activateAssemblyVariant,
+  appendAssemblyVariantBond,
+} = await import('../wafer-assembly-variants.js');
+const { readProjectFile, serializeProject } = await import('../project-io.js');
+
+function wafer(name, thickness = 400) {
+  const model = createModel({ shape: 'rect', width: 100, height: 80, thickness });
+  const project = migrateProjectFile(
+    projectForBenchmark({ model, section: { a: [-40, 0], b: [40, 0] } }),
+  );
+  project.name = name;
+  return project;
+}
+function bonded() {
+  const a = createWaferAssembly(wafer('receiver A'), 'A');
+  const b = appendWaferToAssembly(a, wafer('donor B'), { donorId: 'B' });
+  const c = appendWaferToAssembly(b.assembly, wafer('donor C'), { donorId: 'C' });
+  return createBondedAssemblyProject(c.assembly);
+}
+
+test('shared registry retains one A/B and distinct C/D when forking historical A+B', () => {
+  const original = bonded();
+  const initial = createAssemblyVariantGraph(original);
+  const historic = setAssemblyVariantCursor(initial, 1);
+  const forked = forkAssemblyVariant(historic, { id: 'alt', name: 'Donor D alternative' });
+  assert.equal(forked.activeBranchId, 'alt');
+  assert.deepEqual(forked.branches[1].sourceRefs, [0, 1]);
+  assert.equal(forked.branches[1].forkIndex, 1);
+  const result = appendAssemblyVariantBond(forked, wafer('donor D'), { donorId: 'D' });
+  assert.equal(result.graph.sources.length, 4);
+  assert.equal(result.graph.branches.length, 2);
+  assert.deepEqual(result.graph.branches[0].sourceRefs, [0, 1, 2]);
+  assert.deepEqual(result.graph.branches[1].sourceRefs, [0, 1, 3]);
+  assert.equal(result.graph.branches[0].bonds.at(-1).donorId, 'C');
+  assert.equal(result.graph.branches[1].bonds.at(-1).donorId, 'D');
+  assert.equal(result.project.waferAssembly.sources[2].id, 'D');
+  assert.equal(assemblyVariantProject(result.graph, 'main', 2).waferAssembly.sources[2].id, 'C');
+  assert.equal(assemblyVariantProject(result.graph, 'alt', 2).waferAssembly.sources[2].id, 'D');
+  assert.deepEqual(original.model, assemblyVariantProject(result.graph, 'main', 2).model);
+  assert.equal(JSON.stringify(result.graph).match(/"name":"receiver A"/g)?.length, 1);
+});
+
+test('Variant switching preserves independent models, donor provenance and source Projects', () => {
+  const root = createAssemblyVariantGraph(bonded());
+  const branch = forkAssemblyVariant(setAssemblyVariantCursor(root, 1), { id: 'alt' });
+  const alternate = appendAssemblyVariantBond(branch, wafer('donor D', 350), {
+    donorId: 'D',
+    dx: 10,
+  });
+  const primary = activateAssemblyVariant(alternate.graph, 'main');
+  assert.equal(primary.branches[0].cursor, 2);
+  assert.deepEqual(assemblyVariantProject(primary).model, bonded().model);
+  const second = activateAssemblyVariant(primary, 'alt');
+  assert.deepEqual(assemblyVariantProject(second).model, alternate.project.model);
+  assert.equal(assemblyVariantProject(second, 'alt', 1).waferAssembly.bonds.length, 1);
+  assert.equal(assemblyVariantProject(second, 'alt', 0).waferAssembly, undefined);
+  assert.equal(second.sources.length, 4, 'branch switching must not add duplicate A/B donors');
+});
+
+test('Variant graph can be serialized, revalidated and each branch exported as canonical v15 .wafercad', async () => {
+  const root = createAssemblyVariantGraph(bonded());
+  const forked = forkAssemblyVariant(setAssemblyVariantCursor(root, 1), { id: 'alt' });
+  const edited = appendAssemblyVariantBond(forked, wafer('donor D'), { donorId: 'D' });
+  const encoded = JSON.stringify(edited.graph);
+  const restored = validateAssemblyVariantGraph(JSON.parse(encoded));
+  assert.deepEqual(restored, edited.graph);
+  for (const branchId of ['main', 'alt']) {
+    const project = assemblyVariantProject(restored, branchId, 2);
+    const text = serializeProject(project);
+    const reloaded = await readProjectFile({
+      size: Buffer.byteLength(text),
+      text: async () => text,
+    });
+    assert.deepEqual(reloaded.model, project.model);
+    assert.deepEqual(reloaded.waferAssembly, project.waferAssembly);
+  }
+});
+
+test('source registry refuses forged byte records, referenced donor aliases and tampered contact area', () => {
+  const root = createAssemblyVariantGraph(bonded());
+  const tamper = (mutate, pattern) => {
+    const bad = structuredClone(root);
+    mutate(bad);
+    assert.throws(() => validateAssemblyVariantGraph(bad), pattern);
+  };
+  tamper((graph) => (graph.sources[1].bytes += 1), /provenance mismatch/);
+  tamper((graph) => (graph.branches[0].sourceRefs[2] = 1), /unique, shared receiver/);
+  tamper((graph) => (graph.branches[0].bonds[1].contactAreaUm2 += 1), /replay differs/);
+  tamper((graph) => (graph.activeBranchId = 'missing'), /active branch/);
+  tamper((graph) => graph.sources.push(structuredClone(graph.sources[1])), /Duplicate .* registry source/);
+});
+
+test('fork must preserve immutable original Bond prefix and reject invalid branch operations', () => {
+  const initial = createAssemblyVariantGraph(bonded());
+  assert.throws(() => forkAssemblyVariant(initial, { id: 'new' }), /historical Bond/);
+  assert.throws(
+    () => appendAssemblyVariantBond(setAssemblyVariantCursor(initial, 1), wafer('D'), { donorId: 'D' }),
+    /explicit new Variant/,
+  );
+  const forked = forkAssemblyVariant(setAssemblyVariantCursor(initial, 1), { id: 'alt' });
+  assert.throws(() => forkAssemblyVariant(forked, { id: 'alt' }), /unique, valid/);
+  assert.throws(() => activateAssemblyVariant(forked, 'unknown'), /does not exist/);
+  const mismatched = structuredClone(forked);
+  mismatched.branches[1].bonds[0].spec.dx = 21;
+  assert.throws(() => validateAssemblyVariantGraph(mismatched), /replay differs|immutable parent Bond prefix/);
+});
+
+test('standalone receiver may populate one shared source registry before its first Bond', () => {
+  const graph = createAssemblyVariantGraph(wafer('standalone receiver'));
+  assert.equal(graph.sources.length, 1);
+  assert.deepEqual(graph.branches[0].bonds, []);
+  const added = appendAssemblyVariantBond(graph, wafer('donor B'), { donorId: 'B' });
+  assert.equal(added.project.waferAssembly.sources.length, 2);
+  assert.equal(added.graph.sources.length, 2);
+  assert.equal(added.graph.branches[0].cursor, 1);
+});
