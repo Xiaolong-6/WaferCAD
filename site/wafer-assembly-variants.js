@@ -190,9 +190,7 @@ export function validateAssemblyVariantGraph(graph) {
         ) {
           throw new Error('Invalid Assembly Variant Process fork checkpoint.');
         }
-        if (
-          JSON.stringify(steps.slice(0, index)) !== JSON.stringify(parentSteps.slice(0, index))
-        ) {
+        if (JSON.stringify(steps.slice(0, index)) !== JSON.stringify(parentSteps.slice(0, index))) {
           throw new Error('Assembly Variant fork must retain immutable parent Process prefix.');
         }
       }
