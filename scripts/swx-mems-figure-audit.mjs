@@ -10,6 +10,7 @@ import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 import { createSwxFootprintScopeAudit } from './swx-mems-footprint-scope.mjs';
 import { auditCompactSpringAxialRegistration } from './swx-mems-spring-axial-audit.mjs';
 import { createSwxSemSupportAudit } from './swx-mems-sem-support-audit.mjs';
+import { auditSwxSemRegistration } from './swx-mems-sem-registration.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -66,6 +67,7 @@ for (const state of ['off', 'on']) {
     foldedSpringContours: p.actuator.springContours.length,
     s8SpringAxialRegistration: auditCompactSpringAxialRegistration(state),
     semSupportOwnership: createSwxSemSupportAudit(state),
+    semRegisteredUnitLayout: auditSwxSemRegistration(state),
     s8ShuttleDiagonals: p.actuator.shuttleDiagonals.length,
     s8ShuttleTriangularOpenCellProbes: p.actuator.triangularApertureProbes.length,
     s8TriangularPerforationSourceSpacingVerified: false,
@@ -152,6 +154,22 @@ blockers.push({
   physicalReleaseOwnershipContractPresent: true,
   sourcePerimeterEtchDepthVerified: false,
 });
+const semRegistration = prototype.off.semRegisteredUnitLayout;
+if (!semRegistration.semRegistrationAccepted) {
+  blockers.push({
+    id: 'p0-single-unit-sem-axial-and-port-layout',
+    kind: 'source-topology-blocking',
+    sourceFigure: semRegistration.source.figure,
+    semMovingSwxToCombUmApprox: semRegistration.semMovingSwxToCombUmApprox,
+    sourceSignedAxialOffsetUmApprox: semRegistration.sourceSignedAxialOffsetUmApprox,
+    candidateSignedAxialOffsetUm: semRegistration.candidateSignedAxialOffsetUm,
+    candidateFixedOpticalTerminalCentersUm:
+      semRegistration.candidateFixedOpticalTerminalCentersUm,
+    issues: semRegistration.hardBlockers,
+    note: 'Measured SEM shows moving SWT with comb below it and two laterally opposed fixed upper optical leads. Current actuator sits on the opposite axial side and both fixed terminal pads are left. The long x=24um mechanical detour cannot be source-matched by repainting the perimeter or moving external pads alone. Co-design the SWX-to-shuttle frame, two fixed optical leads, S6 returns and supported terminals before source visual acceptance.',
+    registrationAccepted: false,
+  });
+}
 const compactExtent = prototype.off.candidateMaskFootprintUm;
 if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[index])) {
   blockers.push({

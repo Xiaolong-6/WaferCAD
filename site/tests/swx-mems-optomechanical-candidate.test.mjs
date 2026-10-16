@@ -8,6 +8,7 @@ import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
 import { SWX_COMPACT_ASSUMPTIONS } from '../../scripts/swx-mems-actuator-candidate.mjs';
 import { filletPolyline } from '../../scripts/swx-mems-compact-bends.mjs';
 import { createSwxFootprintScopeAudit } from '../../scripts/swx-mems-footprint-scope.mjs';
+import { auditSwxSemRegistration } from '../../scripts/swx-mems-sem-registration.mjs';
 
 const approx = (a, b, tolerance = 1e-10) =>
   assert.ok(Math.abs(a - b) < tolerance, a + ' differs from ' + b);
@@ -16,6 +17,25 @@ const polygonBound = (ring) => {
   const ys = ring.map(([, y]) => y);
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 };
+
+test('P0 SEM source orientation and fixed-port sidedness block current single-unit acceptance', () => {
+  for (const state of ['off', 'on']) {
+    const audit = auditSwxSemRegistration(state);
+    assert.equal(audit.semRegistrationAccepted, false);
+    assert.ok(
+      audit.candidateSignedAxialOffsetUm > 0,
+      'Unreconstructed compact actuator remains on the wrong axial side of SWX',
+    );
+    assert.ok(audit.sourceSignedAxialOffsetUmApprox < 0);
+    assert.equal(audit.fixedPortsBothOnLeft, true);
+    assert.ok(audit.hardBlockers.includes('actuator-on-wrong-side-of-moving-swx'));
+    assert.ok(audit.hardBlockers.includes('fixed-optical-ports-on-one-side'));
+    assert.equal(audit.source.originalAuthorGdsAvailable, false);
+    // NO scientific distance tolerance is taken from this SEM pixel estimate.
+    assert.ok(audit.semMovingSwxToCombUmApprox > 20);
+    assert.ok(audit.semMovingSwxToCombUmApprox < 50);
+  }
+});
 
 test('compact optical-to-actuator candidate keeps canonical SWT gaps and correct +Y travel', () => {
   const off = createSwxOptomechanicalCandidate('off');
