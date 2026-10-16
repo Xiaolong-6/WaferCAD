@@ -148,7 +148,15 @@ try {
     null,
     { timeout: 120000 },
   );
-  await page.locator('[data-action="view:three"]').click();
+  // The desktop dock may already show 3D; single-view controls are hidden there.
+  // Never toggle an already-visible dock panel off just to satisfy this audit.
+  if (!(await page.locator('#threeHost').isVisible())) {
+    const single = page.locator('[data-action="view:three"]:visible');
+    const dock = page.locator('[data-action="dock:view:three"]:visible');
+    if (await single.count()) await single.click();
+    else if (await dock.count()) await dock.click();
+    else throw new Error('No accessible 3D view selector in the active workstation layout.');
+  }
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,

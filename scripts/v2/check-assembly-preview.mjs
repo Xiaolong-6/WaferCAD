@@ -62,9 +62,27 @@ try {
       mimeType: 'application/json',
       buffer: fixture,
     });
-    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
-      timeout: 90000,
-    });
+    try {
+      await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 90000,
+      });
+    } catch (error) {
+      console.error('Assembly preview startup page errors:', errors);
+      try {
+        console.error(
+          'Assembly preview startup state:',
+          await page.evaluate(() => ({
+            ready: document.body.dataset.ready,
+            status: document.querySelector('.assembly-preview-file-picker [role="status"]')?.textContent,
+            title: document.title,
+            workbenchCount: document.querySelectorAll('.p-workbench').length,
+          })),
+        );
+      } catch (diagnosticError) {
+        console.error('Could not inspect failed Assembly startup:', diagnosticError.message);
+      }
+      throw error;
+    }
     await waitForPaint(page);
 
     const baseState = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
