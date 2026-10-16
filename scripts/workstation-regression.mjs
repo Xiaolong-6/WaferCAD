@@ -92,7 +92,14 @@ assert.equal(
   (await photodetectorCard.locator('h3').textContent()).trim(),
   'Photodetectors with nanopatterns',
 );
-assert.equal(await photodetectorCard.locator('.welcome-example-sources a').count(), 2);
+const photodetectorSources = photodetectorCard.locator('.welcome-example-sources a');
+assert.equal(await photodetectorSources.count(), 3);
+assert.ok(
+  (await photodetectorSources.evaluateAll((anchors) => anchors.map((anchor) => anchor.href))).some(
+    (href) => href.startsWith('https://urn.fi/URN:ISBN:978-952-64-2900-7'),
+  ),
+  'Ge Fig. 15 must cite the 2026 thesis independently of the 2025 journal',
+);
 assert.equal(await photodetectorCard.locator('.welcome-example-meta').count(), 0);
 assert.doesNotMatch(
   await photodetectorCard.textContent(),

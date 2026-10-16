@@ -92,10 +92,21 @@ test('M3D v2 masks keep published channels and corrected electrical landings', a
       'each 5 x 5 um power via needs a full Pt landing',
     );
   }
-  for (const opening of openings.slice(2)) {
+  assert.equal(openings.length, 12, 'Two power contacts plus ten gate/contact openings');
+  for (const opening of openings.slice(2, -2)) {
     assert.ok(
       gates.some((gateRect) => contains(gateRect, opening)),
       'HfO2 gate-pad openings must stay inside gate metal',
+    );
+  }
+  for (const opening of openings.slice(-2)) {
+    assert.ok(
+      vias.some((viaRect) => contains(viaRect, opening)),
+      'HfO2 power-via opening must land entirely inside the first Ti via',
+    );
+    assert.ok(
+      tier3Vias.some((viaRect) => contains(viaRect, opening)),
+      'HfO2 power-via opening must overlap the upper power via',
     );
   }
   for (const channel of [...wseChannels, ...mosChannels]) {

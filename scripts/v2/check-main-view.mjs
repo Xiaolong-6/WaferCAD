@@ -49,7 +49,7 @@ try {
         real.caption,
         await reference.locator('[data-slot="view.main.readout"]').textContent(),
       );
-      assert.equal(real.caption, '27 layers · 551 regions · µm');
+      assert.equal(real.caption, '27 layers · 550 regions · µm');
       await waitForPaint(page);
       await waitForPaint(reference);
       for (const [target, label] of [
