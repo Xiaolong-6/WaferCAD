@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           failure=0
-          for file in site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md; do
+          for file in site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs; do
             diff -u "$file" <(npx prettier "$file") || failure=1
           done
           exit "$failure"
