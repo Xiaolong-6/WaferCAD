@@ -108,14 +108,15 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 18);
+  assert.equal(validation.maskLayers, 19);
   assert.equal(
     GAN_MICROCHANNEL_MASKS.some((mask) => mask.id === 28),
     false,
     'Temporary partial-oxide protection mask must not ship in the full-exposure example',
   );
-  assert.equal(validation.processNodes, 40);
-  assert.equal(validation.recipeSteps, 39);
+  assert.equal(validation.processNodes, 44);
+  assert.equal(validation.recipeSteps, 43);
+  assert.equal(validation.checks.twoFaceAuAndCuTsvNiPaAuCompositeFinish, true);
   assert.equal(validation.checks.actualDoubleSidedTiCuSputteredMaterials, true);
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
   assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
@@ -143,6 +144,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     (step) =>
       step.command === 'etch' && step.params.target === 'TSV Cu electrofill surrogate 35 um',
   );
+  const auFrontIndex = depositIndex('Interposer front Au plate 0.5 um (inferred)');
+  const auBackIndex = depositIndex('Interposer back Au plate 0.5 um (inferred)');
+  const npaFrontIndex = depositIndex('TSV front NiPaAu composite 0.5 um (inferred)');
+  const npaBackIndex = depositIndex('TSV back NiPaAu composite 0.5 um (inferred)');
   const solderIndex = depositIndex('AuSn perimeter solder (5 um surrogate)');
   const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');
   const gsgSolderIndex = depositIndex('GSG AuSn solder supports 5 um (inferred)');
@@ -161,6 +166,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       cuSeedIndex,
       cuFillIndex,
       cuPlanarizationIndex,
+      auFrontIndex,
+      auBackIndex,
+      npaFrontIndex,
+      npaBackIndex,
       solderIndex,
       gsgSolderIndex,
       sicIndex,
@@ -181,7 +190,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       tiSeedIndex < cuSeedIndex &&
       cuSeedIndex < cuFillIndex &&
       cuFillIndex < cuPlanarizationIndex &&
-      cuPlanarizationIndex < solderIndex &&
+      cuPlanarizationIndex < auFrontIndex &&
+      auFrontIndex < auBackIndex &&
+      auBackIndex < npaFrontIndex &&
+      npaFrontIndex < npaBackIndex &&
+      npaBackIndex < solderIndex &&
       solderIndex < gsgSolderIndex &&
       gsgSolderIndex < sicIndex &&
       sicIndex < gsgDieIndex &&
@@ -447,10 +460,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   ).id;
   const sic = channel.find((segment) => segment.layerId === sicId);
   assert.ok(sic, 'GaN-on-SiC chip is not positioned over channel');
-  assert.equal(sic.z0, 606.2, 'AuSn bond stand-off must set the SiC backside at z=606.2');
+  assert.equal(sic.z0, 606.7, 'AuSn bond stand-off must set the SiC backside at z=606.7');
   assert.equal(sic.z1 - sic.z0, 99);
   assert.equal(
-    solidAt(project.model, [30, 0], 606.19),
+    solidAt(project.model, [30, 0], 606.69),
     false,
     'Cooling liquid must contact exposed SiC bottom face',
   );

@@ -138,6 +138,10 @@ export const GAN_TSV_LINER = Object.freeze({
   titaniumUm: 0.2,
   copperUm: 0.5,
   inferredFullCuFillUm: 35,
+  // The following thicknesses and TSV-cap mask are inferred, NOT in paper.
+  inferredAuPlateUm: 0.5,
+  inferredNiPaAuUm: 0.5,
+  inferredFinishCapWidthUm: 50,
 });
 const tsvCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
 const gateFingers = Array.from({ length: 10 }, (_, i) => centered(0.5, 300, (i - 4.5) * 30));
@@ -186,6 +190,13 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     name: 'Four local oxide/Ti/Cu coating windows with exposed TSV silicon rim',
     rectangles: tsvCenters.map(([x, y]) =>
       centered(GAN_TSV_LINER.localMaskWindow, GAN_TSV_LINER.localMaskWindow, x, y),
+    ),
+  },
+  {
+    id: 29,
+    name: 'Inferred NiPaAu caps inside four Cu TSV terminal cores',
+    rectangles: tsvCenters.map(([x, y]) =>
+      centered(GAN_TSV_LINER.inferredFinishCapWidthUm, GAN_TSV_LINER.inferredFinishCapWidthUm, x, y),
     ),
   },
   {
@@ -448,6 +459,11 @@ export async function buildGanMicrochannel() {
       const depositedSi = model.layers.find((layer) => layer.id === result.layerId);
       assert.ok(depositedSi, 'New Si bridge layer is missing');
       depositedSi.color = GAN_SILICON_COLOR;
+    }
+    if (command === 'deposit' && /(?:Au plate|NiPaAu composite)/.test(params.material)) {
+      const finish = model.layers.find((layer) => layer.id === result.layerId);
+      assert.ok(finish, 'Au or composite NiPaAu did not create a material layer');
+      finish.color = params.material.includes('NiPaAu') ? '#B4A78B' : '#D8A83A';
     }
     if (command === 'deposit' && params.material.startsWith('GSG ')) {
       const layer = model.layers.find((candidate) => candidate.id === result.layerId);
@@ -745,9 +761,30 @@ export async function buildGanMicrochannel() {
     'TSV Cu electrofill surrogate 35 um',
   );
   bookmark('03c Cu-filled TSV columns / after inferred planarization');
+  // Both-face Au plating is explicitly reported, thickness is NOT.
+  for (const face of ['front', 'back']) {
+    process('Inferred Au plating on ' + face, 'deposit', {
+      material: 'Interposer ' + face + ' Au plate 0.5 um (inferred)',
+      thickness: GAN_TSV_LINER.inferredAuPlateUm,
+      coverage: 'direct',
+      face,
+    });
+  }
+  // The paper names NiPaAu finishing on copper TSVs but reports neither
+  // component thicknesses nor masks. One composite *inferred* material is
+  // capped strictly within the real Cu-filled via; no invented sublayers.
+  for (const face of ['front', 'back']) {
+    process('Inferred NiPaAu TSV terminal cap on ' + face, 'deposit', {
+      material: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
+      thickness: GAN_TSV_LINER.inferredNiPaAuUm,
+      coverage: 'direct',
+      face,
+    }, 29);
+  }
+  bookmark('03d Double-sided plated Au and composite NiPaAu at TSV terminals');
   record(
-    'Electrical TSV and chip wiring finishing steps (metadata only)',
-    'Paper Fig. 2(c,d): unmasked front/back exposed-surface SiO2 plus local TSV oxide precede physical double-sided directional Ti (200 nm) / Cu (500 nm) sputter and idealized deep-TSV seed/core fill. Full thermal growth, dielectric isolation, sputter step coverage, Au/NiPaAu finishing and circuit connectivity remain UNVERIFIED.',
+    'Unverified TSV electrical quality and remaining wiring (metadata only)',
+    'Paper Fig. 2(c,d): unmasked front/back exposed-surface SiO2 plus local TSV oxide precede physical double-sided directional Ti (200 nm) / Cu (500 nm) sputter and idealized deep-TSV seed/core fill. Full thermal growth, dielectric isolation, sputter step coverage, Au plating and composite TSV NiPaAu cap *geometry* are now modeled using INFERRED thicknesses and mask. Exact Ni/Pd/Au sublayers, plating chemistry and circuit connectivity remain UNVERIFIED.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -890,6 +927,27 @@ export async function buildGanMicrochannel() {
   }
   for (const y of [-GAN_LOWER_FEED.portOffsetY, GAN_LOWER_FEED.portOffsetY]) {
     assert.equal(materialAt([0, y], -150), false, 'Global SiO2 sealed a rear coolant port');
+  }
+  // Verify real front/back Au and inner TSV NiPaAu solids; appearance alone
+  // cannot satisfy these scientific occupancy/thickness contracts.
+  for (const [face, auZ, capZ] of [
+    ['front', 601.45, 603.15],
+    ['back', -201.45, -201.95],
+  ]) {
+    const gold = model.layers.find((layer) => layer.name === 'Interposer ' + face + ' Au plate 0.5 um (inferred)');
+    const cap = model.layers.find((layer) => layer.name === 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)');
+    assert.ok(gold && cap, 'Missing physical plating/TSV cap on ' + face);
+    assert.ok(owner([2000, 0]).stack.some((seg) =>
+      seg.layerId === gold.id && seg.z0 < auZ && seg.z1 > auZ &&
+      Math.abs(seg.z1 - seg.z0 - GAN_TSV_LINER.inferredAuPlateUm) < 1e-8
+    ), 'Au plating thickness or occupancy is wrong on ' + face);
+    for (const [x, y] of tsvCenters) {
+      assert.ok(owner([x, y]).stack.some((seg) =>
+        seg.layerId === cap.id && seg.z0 < capZ && seg.z1 > capZ &&
+        Math.abs(seg.z1 - seg.z0 - GAN_TSV_LINER.inferredNiPaAuUm) < 1e-8
+      ), 'TSV terminal composite missing at ' + [face, x, y]);
+    }
+    assert.equal(owner([2200, 0]).stack.some((seg) => seg.layerId === cap.id), false);
   }
   // Occupancy checks for *separate* front and back metal material solids.
   for (const [face, tiZ, cuZ] of [
@@ -1038,9 +1096,9 @@ export async function buildGanMicrochannel() {
   );
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
-  assert.equal(cooledSegments[0].z0, 606.2, 'Unexpected SiC/AuSn stand-off');
+  assert.equal(cooledSegments[0].z0, 606.7, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
-  assert.equal(materialAt([30, 0], 606.19), false, 'SiC backside is coolant-obstructed');
+  assert.equal(materialAt([30, 0], 606.69), false, 'SiC backside is coolant-obstructed');
   const gsgDie = model.layers.find(
     (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
   );
@@ -1051,9 +1109,9 @@ export async function buildGanMicrochannel() {
   assert.ok(gsgDie && gsgSolder && gsgPad, 'Missing one or more physical GSG assembly layers');
   for (const x of [-1250, 1250]) {
     for (const [layerId, z0, z1] of [
-      [gsgSolder.id, 601.2, 606.2],
-      [gsgDie.id, 606.2, 706.2],
-      [gsgPad.id, 706.2, 706.7],
+      [gsgSolder.id, 601.7, 606.7],
+      [gsgDie.id, 606.7, 706.7],
+      [gsgPad.id, 706.7, 707.2],
     ]) {
       assert.ok(
         owner([x, 0]).stack.some(
@@ -1126,6 +1184,7 @@ export async function buildGanMicrochannel() {
       localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage: true,
       frontBackExteriorSiO2WithUnsealedCoolant: true,
       actualDoubleSidedTiCuSputteredMaterials: true,
+      twoFaceAuAndCuTsvNiPaAuCompositeFinish: true,
       twoInferredGsgDieBodiesAndPadsAreRealGeometry: true,
     },
     checkpoints,
