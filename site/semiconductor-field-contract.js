@@ -21,9 +21,9 @@ function validateAxis(values, name) {
   }
   for (let index = 0; index < values.length; index++) {
     if (!finite(values[index])) fail(name + ' requires finite coordinates.');
-    if (index && (!finite(values[index] - values[index - 1]) ||
-      values[index] <= values[index - 1])) {
-      fail(name + ' must be strictly increasing.');
+    if (index > 0) {
+      const spacing = values[index] - values[index - 1];
+      if (!finite(spacing) || spacing <= 0) fail(name + ' must be strictly increasing.');
     }
   }
 }
@@ -81,13 +81,7 @@ export function validateNetDopantCrossSection(slice) {
   if (nx * nz > MAX_NODES) fail('cross-section exceeds the node budget.');
   validateGrid(slice.donorsCm3, 'donorsCm3', nx, nz, (v) => finite(v) && v >= 0);
   validateGrid(slice.acceptorsCm3, 'acceptorsCm3', nx, nz, (v) => finite(v) && v >= 0);
-  validateGrid(
-    slice.hostLayerIds,
-    'hostLayerIds',
-    nx,
-    nz,
-    (v) => v === null || validId(v),
-  );
+  validateGrid(slice.hostLayerIds, 'hostLayerIds', nx, nz, (v) => v === null || validId(v));
   let semiconductorNodes = 0;
   for (let iz = 0; iz < nz; iz++) {
     for (let ix = 0; ix < nx; ix++) {
@@ -120,20 +114,21 @@ export function findSampledNetDopantSignCrossings(slice) {
   const summary = validateNetDopantCrossSection(slice);
   const crossings = [];
   let zeroSamples = 0;
-  const signValue = (ix, iz) => slice.donorsCm3[iz][ix] - slice.acceptorsCm3[iz][ix];
+  const netAt = (ix, iz) => slice.donorsCm3[iz][ix] - slice.acceptorsCm3[iz][ix];
   for (let iz = 0; iz < summary.nz; iz++) {
     for (let ix = 0; ix < summary.nx; ix++) {
       const hostLayerId = slice.hostLayerIds[iz][ix];
       if (hostLayerId === null) continue;
-      const a = signValue(ix, iz);
+      const a = netAt(ix, iz);
       if (a === 0) zeroSamples++;
-      for (const [axis, nx, nz] of [
+      const adjacent = [
         ['x', ix + 1, iz],
         ['z', ix, iz + 1],
-      ]) {
+      ];
+      for (const [axis, nx, nz] of adjacent) {
         if (nx >= summary.nx || nz >= summary.nz) continue;
         if (slice.hostLayerIds[nz][nx] !== hostLayerId) continue;
-        const b = signValue(nx, nz);
+        const b = netAt(nx, nz);
         if (!((a < 0 && b > 0) || (a > 0 && b < 0))) continue;
         const magnitude = Math.max(Math.abs(a), Math.abs(b));
         const left = Math.abs(a) / magnitude;
@@ -187,14 +182,18 @@ export function validatePoissonCrossSectionInput(problem) {
   }
   validateExactKeys(problem.dirichletVolt, ['left', 'right', 'bottom', 'top'], 'Dirichlet');
   const bc = problem.dirichletVolt;
-  for (const [edge, length] of [
+  const edgeSizes = [
     ['left', slice.nz],
     ['right', slice.nz],
     ['bottom', slice.nx],
     ['top', slice.nx],
-  ]) {
-    if (!Array.isArray(bc[edge]) || bc[edge].length !== length ||
-      bc[edge].some((value) => !finite(value))) {
+  ];
+  for (const [edge, length] of edgeSizes) {
+    const samples = bc[edge];
+    if (!Array.isArray(samples) || samples.length !== length) {
+      fail(edge + ' Dirichlet boundary has invalid samples.');
+    }
+    if (samples.some((value) => !finite(value))) {
       fail(edge + ' Dirichlet boundary has invalid samples.');
     }
   }

@@ -72,16 +72,36 @@ test('host discontinuities suppress crossing through oxide or dissimilar materia
 
 test('unverified grid input rejects malformed units, geometry and fabricated calibration', () => {
   const changes = [
-    (v) => { v.units.concentration = 'm^-3'; },
-    (v) => { v.xUm = [1, 0, -1]; },
-    (v) => { v.zUm = [0, 0]; },
-    (v) => { v.donorsCm3[0][0] = -1; },
-    (v) => { v.acceptorsCm3[0][0] = Infinity; },
-    (v) => { v.donorsCm3[0].pop(); },
-    (v) => { v.hostLayerIds[0][0] = null; },
-    (v) => { v.provenance.kind = 'certified'; },
-    (v) => { v.provenance.calibrated = true; },
-    (v) => { v.calibrated = true; },
+    (v) => {
+      v.units.concentration = 'm^-3';
+    },
+    (v) => {
+      v.xUm = [1, 0, -1];
+    },
+    (v) => {
+      v.zUm = [0, 0];
+    },
+    (v) => {
+      v.donorsCm3[0][0] = -1;
+    },
+    (v) => {
+      v.acceptorsCm3[0][0] = Infinity;
+    },
+    (v) => {
+      v.donorsCm3[0].pop();
+    },
+    (v) => {
+      v.hostLayerIds[0][0] = null;
+    },
+    (v) => {
+      v.provenance.kind = 'certified';
+    },
+    (v) => {
+      v.provenance.calibrated = true;
+    },
+    (v) => {
+      v.calibrated = true;
+    },
   ];
   for (const corrupt of changes) {
     const input = fixture();
@@ -117,12 +137,24 @@ test('Poisson boundary interface validates input but refuses to claim a potentia
   assert.deepEqual(problem, original);
 
   for (const corrupt of [
-    (v) => { v.relativePermittivity[0][0] = 0; },
-    (v) => { v.relativePermittivity[1][0] = NaN; },
-    (v) => { v.temperatureKelvin = 0; },
-    (v) => { v.dirichletVolt.top.pop(); },
-    (v) => { v.dirichletVolt.bottom[0] = 1; },
-    (v) => { delete v.dirichletVolt.right; },
+    (v) => {
+      v.relativePermittivity[0][0] = 0;
+    },
+    (v) => {
+      v.relativePermittivity[1][0] = NaN;
+    },
+    (v) => {
+      v.temperatureKelvin = 0;
+    },
+    (v) => {
+      v.dirichletVolt.top.pop();
+    },
+    (v) => {
+      v.dirichletVolt.bottom[0] = 1;
+    },
+    (v) => {
+      delete v.dirichletVolt.right;
+    },
   ]) {
     const invalid = structuredClone(problem);
     corrupt(invalid);
