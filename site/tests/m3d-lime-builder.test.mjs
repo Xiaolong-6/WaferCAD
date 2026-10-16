@@ -416,9 +416,10 @@ test('CNTFET paper Methods source-to-drain isolation order', async () => {
   assert.equal(steps.length, 46);
   assert.equal(project.snapshotBranches.nodes.length, 47);
   assert.ok(
-    project.snapshotBranches.nodes.some((node) =>
-      node.operation?.kind === 'record' &&
-      node.operation.label.includes('O2 plasma-pattern CNT channel'),
+    project.snapshotBranches.nodes.some(
+      (node) =>
+        node.operation?.kind === 'record' &&
+        node.operation.label.includes('O2 plasma-pattern CNT channel'),
     ),
     'History must record post-contact CNT channel isolation',
   );
