@@ -178,7 +178,10 @@ try {
     // Fork A+B into a physically independent D alternative, keeping C on Main.
     await page.getByRole('button', { name: '← Bond' }).click();
     await page.getByRole('button', { name: 'Fork from current Bond' }).click();
-    await page.locator('.assembly-bond-variants').getByLabel('Bond Variant').selectOption('variant-1');
+    await page
+      .locator('.assembly-bond-variants')
+      .getByLabel('Bond Variant')
+      .selectOption('variant-1');
     await page.locator('.assembly-bond-draft-form input[name="donorId"]').fill('D');
     await page.getByLabel('Select independent donor wafer').setInputFiles({
       name: 'donor-d.wafercad',
@@ -207,7 +210,10 @@ try {
     const graph = JSON.parse(graphBytes.toString('utf8'));
     assert.equal(graph.sources.length, 4);
     assert.equal(graph.branches.length, 2);
-    assert.deepEqual(graph.branches.map((b) => b.bonds.at(-1).donorId), ['C', 'D']);
+    assert.deepEqual(
+      graph.branches.map((b) => b.bonds.at(-1).donorId),
+      ['C', 'D'],
+    );
     assert.deepEqual(graph.branches[0].sourceRefs, [0, 1, 2]);
     assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
 
