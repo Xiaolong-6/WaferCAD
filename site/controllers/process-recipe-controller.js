@@ -838,8 +838,11 @@ export function createProcessRecipeController({
         bindSelect('Coverage', 'coverage', [
           { value: 'direct', label: 'Directional' },
           { value: 'conformal', label: 'Conformal' },
+          { value: 'pvd-step', label: 'PVD step (idealized)' },
           { value: 'transfer', label: 'Transfer / Laminate' },
         ]);
+        if (p.coverage === 'pvd-step')
+          bindText('PVD step fraction', 'stepCoverageFraction', p.stepCoverageFraction);
         if (p.coverage === 'transfer') {
           bindSelect('Placement', 'placement', [
             { value: 'follow', label: 'Follow surface' },
@@ -1375,6 +1378,9 @@ export function createProcessRecipeController({
       if (step.command === 'deposit') {
         $('operationType').value = 'add';
         $('growthMode').value = p.coverage || 'direct';
+        if (p.coverage === 'pvd-step' && $('pvdStepFraction')) {
+          $('pvdStepFraction').value = String(p.stepCoverageFraction);
+        }
         $('layerName').value = p.material;
         setThickness(p.thicknessUm);
         updateOperationUI();
@@ -1655,6 +1661,7 @@ export function createProcessRecipeController({
           material: p.name || operation.name,
           thickness: Number(p.thickness),
           coverage: p.growth || 'direct',
+          ...(p.growth === 'pvd-step' ? { stepCoverageFraction: p.stepCoverageFraction } : {}),
           placement: p.transferMode || operation.transferMode || 'follow',
           ...common,
         },

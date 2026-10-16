@@ -227,6 +227,9 @@ export function createWorkspaceSessionController({
     takeOver,
     canWrite: () => writable,
     hasWriteLease,
+    // Revalidate the original owner after a long main-thread task delayed the
+    // renewal timer. Never acquire ownership for a read-only tab.
+    refreshOwnedLease: () => writable && refreshOwnership(),
     tabId: resolvedTabId,
   };
 }

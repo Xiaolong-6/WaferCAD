@@ -1231,7 +1231,7 @@ processRecipeController = createProcessRecipeController({
   updateOperationUI,
   renderAll,
   renderSnapshots,
-  resetToBase: (recipeBase) => baseControls.applyBase({ recipeBase }),
+  resetToBase: (recipeBase) => baseControls.applyBase({ recipeBase, preserveSection: true }),
   checkpointWorkspace,
   confirmContinue: () =>
     confirmationDialog.confirm({
@@ -1280,6 +1280,7 @@ workspaceViewController = createWorkspaceViewController({
 
 const baseControls = createBaseControlsController({
   getModel: () => model,
+  getSection: () => section,
   setModel: (value) => {
     model = value;
     markProjectDirty();
