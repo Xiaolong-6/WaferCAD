@@ -163,10 +163,23 @@ export function createAssemblyBondEditorSession(
     if (!visibleParity()) throw new Error('Bond workspace material drift; commit refused.');
     // Preflight first. No IndexedDB writer or UI mutation is needed for bad input.
     const previous = fullProduct();
-    const prepared = prepareWaferBondTransaction(previous, donorProject, request);
-    const nextGraph = previous.waferAssembly
-      ? appendAssemblyVariantBond(graph, donorProject, request).graph
-      : createAssemblyVariantGraph(prepared.project);
+    const firstStandalone = !previous.waferAssembly && graph.branches.length === 1;
+    if (
+      !previous.waferAssembly &&
+      !firstStandalone &&
+      request.receiverId != null &&
+      request.receiverId !== graph.sources[0].id
+    ) {
+      throw new Error('Assembly Variant receiver ID must match its original source identity.');
+    }
+    const effectiveRequest =
+      !previous.waferAssembly && !firstStandalone
+        ? { ...request, receiverId: graph.sources[0].id }
+        : request;
+    const prepared = prepareWaferBondTransaction(previous, donorProject, effectiveRequest);
+    const nextGraph = firstStandalone
+      ? createAssemblyVariantGraph(prepared.project)
+      : appendAssemblyVariantBond(graph, donorProject, effectiveRequest).graph;
     const graphProduct = assemblyVariantProject(nextGraph);
     if (
       !same(graphProduct.model, prepared.project.model) ||
