@@ -12,8 +12,12 @@ import {
 } from './wafer-assembly.js';
 import { prepareWaferBondTransaction } from './wafer-bond-transaction.js';
 import { validateProjectFile } from './project-schema.js';
+import {
+  appendPostBondGeometryStep,
+  replayPostBondGeometry,
+} from './wafer-assembly-postbond-process.js';
 
-export const ASSEMBLY_VARIANTS_VERSION = 1;
+export const ASSEMBLY_VARIANTS_VERSION = 2;
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 
 function requireIndex(value, length, field) {
@@ -50,7 +54,7 @@ function materialize(graph, branch, index) {
 
 export function validateAssemblyVariantGraph(graph) {
   assertPlain(graph, 'graph');
-  if (graph.version !== ASSEMBLY_VARIANTS_VERSION) {
+  if (graph.version !== 1 && graph.version !== ASSEMBLY_VARIANTS_VERSION) {
     throw new Error('Unsupported Assembly Variant graph version.');
   }
   if (!Array.isArray(graph.sources) || !graph.sources.length || graph.sources.length > 64) {
@@ -129,7 +133,19 @@ export function validateAssemblyVariantGraph(graph) {
     ) {
       throw new Error('Invalid Assembly Variant parent reference.');
     }
-    materialize(graph, branch, branch.bonds.length); // strict geometrical replay
+    const baseline = materialize(graph, branch, branch.bonds.length); // strict Bond replay
+    if (branch.postBondSteps !== undefined) {
+      if (graph.version === 1 && branch.postBondSteps.length) {
+        throw new Error('Post-Bond geometry requires Assembly Variant format v2.');
+      }
+      if (branch.postBondSteps.length > 0 && branch.bonds.length < 1) {
+        throw new Error('Post-Bond Recipe requires at least one canonical Bond.');
+      }
+      if (!Array.isArray(branch.postBondSteps)) {
+        throw new Error('Invalid source-aware post-Bond Recipe record.');
+      }
+      if (branch.postBondSteps.length) replayPostBondGeometry(baseline, branch.postBondSteps);
+    }
   }
   if (graph.branches[0].id !== 'main' || graph.branches[0].parentId != null) {
     throw new Error('Assembly Variant graph must have a root Main branch.');
@@ -191,6 +207,7 @@ export function createAssemblyVariantGraph(product) {
         forkIndex: 0,
         sourceRefs: source.sources.map((_, index) => index),
         bonds: structuredClone(source.bonds),
+        postBondSteps: [],
         cursor: source.bonds.length,
       },
     ],
@@ -237,6 +254,7 @@ export function forkAssemblyVariant(graph, { id, name, atIndex } = {}) {
     forkIndex: index,
     sourceRefs: active.sourceRefs.slice(0, index + 1),
     bonds: active.bonds.slice(0, index),
+    postBondSteps: [],
     cursor: index,
   });
   next.activeBranchId = id;
@@ -261,6 +279,9 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
   if (active.cursor !== active.bonds.length) {
     throw new Error('Bond from a historical checkpoint requires an explicit new Variant.');
   }
+  if (active.postBondSteps?.length) {
+    throw new Error('Further Bond after post-Bond Process requires a source-aware continuation boundary.');
+  }
   const receiver = materialize(graph, active, active.bonds.length);
   const prepared = prepareWaferBondTransaction(receiver, donorProject, request);
   const appended = prepared.project.waferAssembly;
@@ -282,4 +303,37 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
     throw new Error('Assembly Variant commit failed deterministic model parity.');
   }
   return { graph: next, project, operation: prepared.operation };
+}
+
+/**
+ * Replay a derived post-Bond Process model for the active or selected Variant.
+ * Only the Model returned here is processed; the portable v15 source Assembly
+ * remains canonical and unchanged. Historical Bond checkpoints show baseline
+ * geometry until their full Bond HEAD is active.
+ */
+export function assemblyVariantPostBondModel(graph, branchId = graph?.activeBranchId) {
+  validateAssemblyVariantGraph(graph);
+  const branch = graph.branches.find((entry) => entry.id === branchId);
+  if (!branch) throw new Error('Post-Bond Variant branch does not exist.');
+  const baseline = materialize(graph, branch, branch.bonds.length);
+  return replayPostBondGeometry(baseline, branch.postBondSteps || []).model;
+}
+
+export function appendAssemblyVariantPostBondStep(graph, recipeStep) {
+  validateAssemblyVariantGraph(graph);
+  const branch = graph.branches.find((entry) => entry.id === graph.activeBranchId);
+  if (!branch || branch.bonds.length < 1 || branch.cursor !== branch.bonds.length) {
+    throw new Error('Post-Bond Process requires a completed Bond Variant HEAD.');
+  }
+  const base = materialize(graph, branch, branch.bonds.length);
+  const result = appendPostBondGeometryStep(base, branch.postBondSteps || [], recipeStep);
+  const next = structuredClone(graph);
+  next.version = ASSEMBLY_VARIANTS_VERSION;
+  const target = next.branches.find((entry) => entry.id === graph.activeBranchId);
+  target.postBondSteps = result.steps;
+  validateAssemblyVariantGraph(next);
+  if (!sameCanonicalModel(assemblyVariantPostBondModel(next), result.model)) {
+    throw new Error('Post-Bond Variant replay changed its final material.');
+  }
+  return { graph: next, model: result.model, step: result.steps.at(-1) };
 }
