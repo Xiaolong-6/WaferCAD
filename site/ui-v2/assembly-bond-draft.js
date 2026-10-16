@@ -187,7 +187,11 @@ export function mountAssemblyBondDraftControls({
     processUndo.disabled = busy || !atHead || processIndex === 0;
     processRedo.disabled = busy || !atHead || processIndex === processSteps;
     processButton.disabled =
-      busy || !atHead || editor.maxIndex() < 1 || processSteps >= 16 || processIndex !== processSteps;
+      busy ||
+      !atHead ||
+      editor.maxIndex() < 1 ||
+      processSteps >= 16 ||
+      processIndex !== processSteps;
     processMaterial.disabled = processType.value !== 'deposit';
     apply.disabled = busy || !atHead || editor.maxIndex() >= 7;
     donorFile.disabled = busy || !atHead;
