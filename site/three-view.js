@@ -49,7 +49,6 @@ import {
   roughDisplayHeightBlend,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
-  roughProfileOffsetAtPoint,
   roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
   roughLod,
