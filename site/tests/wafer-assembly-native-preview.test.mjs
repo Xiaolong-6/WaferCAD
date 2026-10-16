@@ -9,7 +9,8 @@ const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject 
   await import('../wafer-assembly.js');
 const { serializeProject, MAX_PROJECT_FILE_BYTES } = await import('../project-io.js');
 const { createWorkstationRuntime } = await import('../ui-v2/workstation-runtime.js');
-const { readAssemblyPreviewFile } = await import('../ui-v2/assembly-preview.js');
+const { readAssemblyPreviewFile, assemblyPreviewZExtent } =
+  await import('../ui-v2/assembly-preview.js');
 
 function wafer(name) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
@@ -75,6 +76,8 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   );
   assert.equal(store.assemblyPreviewSession.currentIndex(), 2);
   assert.deepEqual(store.state.model, original.model);
+  assert.equal(store.state.threeShowBorders, true);
+  assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 1200);
   const main = store.viewState('main');
   const mask = store.viewState('mask');
   const section = store.viewState('section');
@@ -86,12 +89,16 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   const first = store.restoreAssemblyStage(1);
   assert.equal(first.waferAssembly.sources.length, 2);
   assert.deepEqual(store.state.model, first.model);
+  assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 800);
+  assert.equal(store.state.threeShowBorders, true);
   assert.equal(main.model, mask.model);
   assert.equal(main.model, three.model);
 
   const receiver = store.restoreAssemblyStage(0);
   assert.equal(receiver.waferAssembly, undefined);
   assert.deepEqual(store.state.model, original.waferAssembly.sources[0].project.model);
+  assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 400);
+  assert.equal(store.state.threeShowBorders, true);
 
   const back = store.restoreAssemblyStage(2);
   assert.deepEqual(store.state.model, back.model);
@@ -117,5 +124,13 @@ test('native v2 ordinary workstation still refuses bonded files without preview 
         { assemblyPreview: true },
       ),
     /requires verified Assembly provenance/,
+  );
+});
+
+test('Assembly preview Z extent never invents dimensions for missing physical material', () => {
+  assert.throws(() => assemblyPreviewZExtent({ regions: [] }), /physical Z extent/);
+  assert.throws(
+    () => assemblyPreviewZExtent({ regions: [{ stack: [{ z0: 0, z1: 0 }] }] }),
+    /physical Z extent/,
   );
 });
