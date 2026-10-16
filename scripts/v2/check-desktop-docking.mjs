@@ -254,6 +254,13 @@ try {
           const handles = [...document.querySelectorAll('.v2-dock-divider-columns')];
           return {
             expected: [(main.right + mask.left) / 2, (three.right + section.left) / 2],
+            gridColumns: document.querySelector('.p-canvases').style.gridTemplateColumns,
+            savedTracks: window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid'],
+            handles: handles.map((handle) => ({
+              left: handle.style.left,
+              axis: handle.dataset.dockAxis,
+              index: handle.dataset.dockIndex,
+            })),
             observed: handles.map((handle) => {
               const r = handle.getBoundingClientRect();
               return r.left + r.width / 2;
@@ -265,11 +272,15 @@ try {
           for (const boundary of columnAlignment.expected)
             assert.ok(Math.abs(position - boundary) < 3, 'Column splitter must follow live Grid boundary');
         }
+        await page.screenshot({ path: resolve(output, 'divider-mid-drag-columns.png') });
+        console.log('Live column splitter measurement', JSON.stringify({
+          initial: rect.x + rect.width / 2,
+          ...columnAlignment,
+        }));
         assert.ok(
           columnAlignment.observed[0] > rect.x + rect.width / 2 + 12,
           'Column splitter visibly moves during drag',
         );
-        await page.screenshot({ path: resolve(output, 'divider-mid-drag-columns.png') });
         await page.mouse.up();
         await page.waitForFunction(() =>
           Boolean(window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid']),
