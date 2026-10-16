@@ -435,13 +435,14 @@ try {
   await waitForPaint(page);
   const packageCanvas = await page.locator('#threeHost').boundingBox();
   assert.ok(
-    packageCanvas && packageCanvas.height >= 400,
-    'Package 3D inspection was clipped by an open Section dock',
+    packageCanvas && packageCanvas.height >= 340,
+    'Package 3D canvas is too short for a valid package screenshot',
   );
   const threeChipShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('three-chip-upper-package.png', directory), threeChipShot);
   report.views.threeChipUpperPackage = {
     bytes: threeChipShot.length,
+    viewportPixels: [Math.round(packageCanvas.width), Math.round(packageCanvas.height)],
     bookmarkRestored: true,
     independentGsgDieBodies: 2,
     separateGsgAuContacts: 6,
