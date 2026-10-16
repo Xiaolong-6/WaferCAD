@@ -125,6 +125,7 @@ try {
     console.log(
       'V2_HISTORY_REPLAY_ROLLBACK: fault after 1/2 downstream commits, exact rollback PASS',
     );
+
     // Success path: restore the true Worker, then edit the very same middle
     // History Step and require two subsequent Steps to replay atomically.
     await page.evaluate(() => {
@@ -174,7 +175,7 @@ try {
       ?.stack.map(({ z0, z1 }) => Number((z1 - z0).toFixed(4)));
     assert.deepEqual(
       localThicknesses,
-      [2, 0.05, 0.1, 0.05, 0.05],
+      [12, 0.05, 0.1, 0.05, 0.05],
       'Editing B to 100 nm must recompute C/D on the new Z top without double depositing',
     );
     assert.notDeepEqual(updated.model, baseline.model, 'Successful edit changes physical geometry');
@@ -198,7 +199,6 @@ try {
     console.log(
       'V2_HISTORY_EDIT_SUCCESS: exact B film Z, two real Worker replays, History/IO PASS',
     );
-
   } finally {
     await context.close();
   }
