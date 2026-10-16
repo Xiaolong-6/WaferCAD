@@ -239,3 +239,20 @@ test('stacked silicon slabs share no black line, but silicon-oxide does', () => 
   const oxide = { ...upper, layerId: 'oxide' };
   assert.equal(sectionCutContours([lower, oxide], [square]).some(seam), true);
 });
+
+test('same silicon slab seam is clipped to its actual uncovered XY span', () => {
+  const lower = { p: [0, 0], q: [4, 0], z0: 0, z1: 1, layerId: 'base' };
+  const upper = { ...lower, p: [0, 0], q: [2, 0], z0: 1, z1: 2 };
+  const lines = sectionCutContours([lower, upper], [square]);
+  const seam = lines.filter(([a, b]) => a[2] === 1 && b[2] === 1);
+  assert.equal(seam.length, 1, 'only the exposed material step remains');
+  assert.deepEqual(seam[0].map((p) => p[0]), [2, 4]);
+
+  const splitUpper = [upper, { ...upper, p: [2, 0], q: [4, 0] }];
+  const continuous = sectionCutContours([lower, ...splitUpper], [square]);
+  assert.equal(
+    continuous.some(([a, b]) => a[2] === 1 && b[2] === 1),
+    false,
+    'different XY subdivisions of the same silicon still have no seam',
+  );
+});

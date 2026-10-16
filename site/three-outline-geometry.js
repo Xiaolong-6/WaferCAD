@@ -1,5 +1,6 @@
 import { roughProfileOffsetAtPoint } from './surface-rendering.js';
 import { sidewallBoundarySamples } from './rough-boundary-profile.js';
+import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
 
 // Presentation-only contour ownership for transparent 3D inspection.
 // Never derive contour lines from triangle edges: LOD boundaries are not physical interfaces.
@@ -221,10 +222,56 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
     if (!adjacentFaces.has(key)) adjacentFaces.set(key, new Set());
     adjacentFaces.get(key).add(face);
   }
-  for (const { line, layerId } of horizontal) {
+  // Different Z slabs can have different XY subdivisions. Remove only the
+  // *overlapping* section-line span when both sides belong to the same layer.
+  // A real exposed step stays outlined on its uncovered remainder.
+  const planarSupport = ({ line, layerId }) => {
+    if (layerId == null || Math.abs(line[0][2] - line[1][2]) > 1e-9) return null;
+    const axis = canonicalLineInterval(...line);
+    if (!axis) return null;
+    return {
+      axis,
+      key: `${layerId}|${Number(line[0][2]).toPrecision(10)}|${lineIntervalKey(axis, 10)}`,
+    };
+  };
+  const planar = horizontal.map((item) => ({ ...item, support: planarSupport(item) }));
+  const bySupport = new Map();
+  for (const item of planar) {
+    if (!item.support) continue;
+    if (!bySupport.has(item.support.key)) bySupport.set(item.support.key, []);
+    bySupport.get(item.support.key).push(item);
+  }
+  for (const { line, layerId, face, support } of planar) {
     const key = layerId == null ? null : `${layerId}|${segmentKey(...line)}`;
     if (key && adjacentFaces.get(key)?.size === 2) continue;
-    result.push(line);
+    if (!support) {
+      result.push(line);
+      continue;
+    }
+    const axis = support.axis;
+    let remaining = [[axis.t0, axis.t1]];
+    for (const other of bySupport.get(support.key) || []) {
+      if (other.face === face) continue;
+      const from = other.support.axis.t0;
+      const to = other.support.axis.t1;
+      remaining = remaining.flatMap(([start, end]) => {
+        if (to <= start + 1e-8 || from >= end - 1e-8) return [[start, end]];
+        const pieces = [];
+        if (from > start + 1e-8) pieces.push([start, Math.min(end, from)]);
+        if (to < end - 1e-8) pieces.push([Math.max(start, to), end]);
+        return pieces;
+      });
+      if (!remaining.length) break;
+    }
+    const aT = axis.ux * line[0][0] + axis.uy * line[0][1];
+    const bT = axis.ux * line[1][0] + axis.uy * line[1][1];
+    const pointAt = (t) => {
+      const fraction = (t - aT) / (bT - aT);
+      return line[0].map((value, i) => value + (line[1][i] - value) * fraction);
+    };
+    for (const [start, end] of remaining) {
+      if (end - start > 1e-8) result.push([pointAt(start), pointAt(end)]);
+    }
   }
   for (const candidates of verticals.values()) {
     // Equal material spans meeting on one straight cut are artificial wall
