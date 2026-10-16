@@ -138,7 +138,13 @@
     min-width: 8px;
     border: 0;
     padding: 0;
-    background: linear-gradient(to right, transparent 3px, var(--wc-border) 3px, var(--wc-border) 4px, transparent 4px);
+    background: linear-gradient(
+      to right,
+      transparent 3px,
+      var(--wc-border) 3px,
+      var(--wc-border) 4px,
+      transparent 4px
+    );
     cursor: col-resize;
     touch-action: none;
   }
@@ -148,7 +154,13 @@
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-divider:is(:hover, :focus-visible) {
-    background: linear-gradient(to right, transparent 3px, var(--wc-accent) 3px, var(--wc-accent) 4px, transparent 4px);
+    background: linear-gradient(
+      to right,
+      transparent 3px,
+      var(--wc-accent) 3px,
+      var(--wc-accent) 4px,
+      transparent 4px
+    );
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-workspace {
