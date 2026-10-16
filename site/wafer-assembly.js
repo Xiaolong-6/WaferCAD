@@ -196,7 +196,7 @@ export function createBondedAssemblyProject(assembly) {
   return project;
 }
 
-function sameCanonicalModel(a, b) {
+export function sameCanonicalModel(a, b) {
   const pending = [[a, b]];
   while (pending.length) {
     const [left, right] = pending.pop();
