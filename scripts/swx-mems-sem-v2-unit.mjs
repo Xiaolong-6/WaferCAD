@@ -48,6 +48,7 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   upperSpringShiftYUm: -86,
   sourceAuthorGdsAvailable: false,
   fullFidelityClaim: false,
+  fixedLeadIllustrativeFilletRadiusUm: 6,
   fixedTerminalCentersUm: newTerminalsUm,
   electrodeCentersUm,
   fieldUm: [160, 260],
@@ -116,23 +117,26 @@ function semV2PhysicalPose(state) {
     ...shuttle,
   ];
   const springs = actuator.springContours.map(translateActuatorAnchor);
+  // The source SEM has opposing, inward-sloped fixed input/output guides,
+  // not two vertical posts and a horizontal roof above the SWX. The
+  // intermediate XY and 6um fillet radius are illustrative placements:
+  // do NOT treat them as author GDS or a reported bend-radius constant.
+  const fixedLead = (points) =>
+    strip(
+      filletPolyline(points, SWX_SEM_V2_ASSUMPTIONS.fixedLeadIllustrativeFilletRadiusUm).points,
+      0.4,
+    );
   const fixedRoutes = [
-    strip(
-      [
-        [-22, -35],
-        [-22, -15],
-        [-70, -20],
-      ],
-      0.4,
-    ),
-    strip(
-      [
-        [21, -35],
-        [21, -15],
-        [70, -20],
-      ],
-      0.4,
-    ),
+    fixedLead([
+      [-22, -35],
+      [-30, -13],
+      [-70, -20],
+    ]),
+    fixedLead([
+      [21, -35],
+      [30, -13],
+      [70, -20],
+    ]),
   ];
   const hairpins = [-1, 1].map((side) => newHairpin(side, travel));
   const opticalFlexures = hairpins.flatMap((route) => route.polygons);
@@ -297,8 +301,8 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('left upper folded spring', [-46, -40]),
     add('right lower folded spring', [6, -110]),
     add('right upper folded spring', [46, -40]),
-    add('stationary-but-suspended input guide', [-40, -16.875]),
-    add('stationary-but-suspended output guide', [40, -16.875]),
+    add('stationary-but-suspended input guide', [-40, -14.75]),
+    add('stationary-but-suspended output guide', [40, -14.75]),
     add('left moving S6 optical hairpin', [-58, -65 + travel]),
     add('right moving S6 optical hairpin', [58, -65 + travel]),
     add('left S7 narrow aligner beam', [-7.5, -50 + travel / 2]),

@@ -65,6 +65,14 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
     }
     for (let i = 0; i < 2; i++) {
       assert.ok(
+        pose.fixedRoutes[i].length > 16,
+        state + ' fixed input/output must have a smooth bent guide, not an L-shaped post',
+      );
+      assert.ok(
+        contact([pose.fixedRoutes[i]], pose.opticalFlexures) < 1e-8,
+        state + ' fixed optical lead is shorted to a moving S6 waveguide',
+      );
+      assert.ok(
         contact([pose.fixedRoutes[i]], [pose.fixedPads[i]]) > 1e-4,
         state + ' stationary optical feed ' + i + ' missing pad contact',
       );
