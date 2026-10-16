@@ -201,7 +201,10 @@ try {
     assert.equal(alternate.assemblyPreview.sources, 3);
     assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
     assert.notDeepEqual(alternate.model, committed.model);
-    assert.match(await page.locator('.assembly-bond-draft-status').textContent(), /Export all Variants/);
+    assert.match(
+      await page.locator('.assembly-bond-draft-status').textContent(),
+      /Export all Variants/,
+    );
     await page.locator('.assembly-preview-views [data-view="three"]').click();
     await waitForPaint(page);
     await page.screenshot({ path: resolve(output, 'variant-d-alternative.png') });
@@ -252,7 +255,10 @@ try {
       assert.equal(sidecarView.assemblyPreview.bonds, 2);
       assert.match(await sidecarTab.locator('.assembly-preview-stage').textContent(), /Z 1150 µm/);
       await sidecarTab.locator('.assembly-bond-draft-tools summary').click();
-      assert.equal(await sidecarTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(), 2);
+      assert.equal(
+        await sidecarTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(),
+        2,
+      );
       await sidecarTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
       assert.deepEqual(
         (await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
