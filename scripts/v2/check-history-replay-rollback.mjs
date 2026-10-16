@@ -64,6 +64,7 @@ try {
 
     await page.evaluate(() => {
       const nativePost = Worker.prototype.postMessage;
+      window.__historyReplayNativePost = nativePost;
       window.__historyReplayFault = { requests: 0, injected: 0 };
       Worker.prototype.postMessage = function (request, ...rest) {
         if (request?.params && request?.model) {
@@ -124,6 +125,80 @@ try {
     console.log(
       'V2_HISTORY_REPLAY_ROLLBACK: fault after 1/2 downstream commits, exact rollback PASS',
     );
+    // Success path: restore the true Worker, then edit the very same middle
+    // History Step and require two subsequent Steps to replay atomically.
+    await page.evaluate(() => {
+      Worker.prototype.postMessage = window.__historyReplayNativePost;
+      window.__historySuccess = { requests: 0 };
+      const post = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function (request, ...rest) {
+        if (request?.params && request?.model) window.__historySuccess.requests++;
+        return Reflect.apply(post, this, [request, ...rest]);
+      };
+    });
+    await page.locator('[data-action="domain:history"]').click();
+    const replacement = page.locator('.history-step-wrap', { hasText: names[1] }).first();
+    await replacement.locator('.snapshot-more-trigger').click();
+    await replacement.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
+    await page.waitForFunction(
+      () => document.querySelector('#layerName')?.value === 'Rollback B',
+      null,
+      { timeout: 30000 },
+    );
+    await page.locator('#operationThickness').fill('0.1');
+    await page.locator('#layerName').fill('Rollback B edited');
+    await page.locator('#applyOperationBtn').evaluate((button) => button.click());
+    await page.getByRole('button', { name: 'Replace & replay later Steps', exact: true }).click();
+    await page.waitForFunction(
+      () =>
+        /Replayed 2 later Steps/.test(
+          document.querySelector('[data-slot="status.message"]')?.textContent || '',
+        ) && !window.WaferCadV2Workstation.snapshot().workflow.busy,
+      null,
+      { timeout: 120000 },
+    );
+    assert.equal(
+      await page.evaluate(() => window.__historySuccess.requests),
+      3,
+      'Edited Step and two downstream Steps must each execute through the actual Worker',
+    );
+    const updated = await snapshot();
+    assert.equal(updated.workflow.steps.length, 4, 'Replacing a Step retains process length');
+    assert.equal(updated.workflow.branches.length, 1, 'Current Variant rewrite stays on Main');
+    assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback B edited'));
+    assert.equal(updated.model.layers.some((layer) => layer.name === 'Rollback B'), false);
+    assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback C'));
+    assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback D'));
+    const localThicknesses = updated.model.regions
+      .find((region) => region.stack.length === 5)
+      ?.stack.map(({ z0, z1 }) => Number((z1 - z0).toFixed(4)));
+    assert.deepEqual(
+      localThicknesses,
+      [2, 0.05, 0.1, 0.05, 0.05],
+      'Editing B to 100 nm must recompute C/D on the new Z top without double depositing',
+    );
+    assert.notDeepEqual(updated.model, baseline.model, 'Successful edit changes physical geometry');
+
+    await page.locator('[data-action="domain:project"]').click();
+    await page.locator('#saveProjectBtn').click();
+    await page.waitForFunction(
+      () => /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
+      null,
+      { timeout: 120000 },
+    );
+    await page.goto(base + '/app.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 120000,
+    });
+    const reopened = await snapshot();
+    assert.deepEqual(reopened.model, updated.model, 'Successful edit must survive Save/Reload');
+    assert.deepEqual(reopened.workflow.steps, updated.workflow.steps);
+    assert.deepEqual(reopened.workflow.branches, updated.workflow.branches);
+    assert.deepEqual(errors, []);
+    console.log(
+      'V2_HISTORY_EDIT_SUCCESS: exact B film Z, two real Worker replays, History/IO PASS',
+    );
+
   } finally {
     await context.close();
   }
