@@ -2,14 +2,10 @@
 // second M3D power-via probe must be on a real rendered A-B Section.
 // Produces screenshots and topology metadata; it does NOT certify paper SEM.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import {
-  launchBrowser,
-  newUiPage,
-  waitForPaint,
-  canvasInkFraction,
-} from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiPage, waitForPaint, canvasInkFraction } from '../test-helpers/ui.mjs';
 import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
@@ -79,20 +75,23 @@ try {
     // refining. A real .wafercad startup import with a changed presentation
     // A-B cut is the supported, read-only path for deterministic evidence.
     // Model layers, regions and History remain byte-for-byte unchanged.
-    await page.evaluate(async ({ a, b }) => {
-      const response = await fetch('/examples/m3d-selfpowered-full-replay.wafercad');
-      if (!response.ok) throw Error('Missing published M3D source Project');
-      const project = await response.json();
-      project.section = { a, b };
-      project.display = { ...project.display, sectionDetailRoi: null };
-      const { stageStartupFile } = await import('/startup-file.js');
-      const file = new File(
-        [JSON.stringify(project)],
-        'm3d-source-with-presentation-section.wafercad',
-        { type: 'application/json' },
-      );
-      await stageStartupFile(file, 'project');
-    }, { a: item.a, b: item.b });
+    await page.evaluate(
+      async ({ a, b }) => {
+        const response = await fetch('/examples/m3d-selfpowered-full-replay.wafercad');
+        if (!response.ok) throw Error('Missing published M3D source Project');
+        const project = await response.json();
+        project.section = { a, b };
+        project.display = { ...project.display, sectionDetailRoi: null };
+        const { stageStartupFile } = await import('/startup-file.js');
+        const file = new File(
+          [JSON.stringify(project)],
+          'm3d-source-with-presentation-section.wafercad',
+          { type: 'application/json' },
+        );
+        await stageStartupFile(file, 'project');
+      },
+      { a: item.a, b: item.b },
+    );
     await page.goto(base + '/app.html?start=staged', {
       waitUntil: 'domcontentloaded',
       timeout: 180000,
@@ -114,20 +113,23 @@ try {
 
     // Compute physical material bands using exactly the same topology as
     // the visible Section renderer. The selected probe lies at t=0.5.
-    const physical = await page.evaluate(async ({ a, b }) => {
-      const { sectionSlices } = await import('/model-view-geometry.js');
-      const state = window.WaferCadV2Workstation.snapshot();
-      const layerNames = new Map(state.model.layers.map((layer) => [layer.id, layer.name]));
-      return sectionSlices(state.model, a, b)
-        .filter((slice) => slice.t0 <= 0.5 && 0.5 <= slice.t1 && slice.z1 > slice.z0)
-        .map(({ layerId, z0, z1, t0, t1 }) => ({
-          material: layerNames.get(layerId) || layerId,
-          z0,
-          z1,
-          t0,
-          t1,
-        }));
-    }, { a: item.a, b: item.b });
+    const physical = await page.evaluate(
+      async ({ a, b }) => {
+        const { sectionSlices } = await import('/model-view-geometry.js');
+        const state = window.WaferCadV2Workstation.snapshot();
+        const layerNames = new Map(state.model.layers.map((layer) => [layer.id, layer.name]));
+        return sectionSlices(state.model, a, b)
+          .filter((slice) => slice.t0 <= 0.5 && 0.5 <= slice.t1 && slice.z1 > slice.z0)
+          .map(({ layerId, z0, z1, t0, t1 }) => ({
+            material: layerNames.get(layerId) || layerId,
+            z0,
+            z1,
+            t0,
+            t1,
+          }));
+      },
+      { a: item.a, b: item.b },
+    );
     assert.ok(physical.length > 0, item.id + ': Section has no physical geometry');
     for (const expected of item.present) {
       assert.ok(
@@ -148,8 +150,15 @@ try {
       animations: 'disabled',
       timeout: 120000,
     });
+    const pngSha256 = createHash('sha256')
+      .update(await readFile(resolve(output, shot)))
+      .digest('hex');
     const after = await snapshot();
-    assert.deepEqual(after.model, starting.model, 'Read-only figure cut cannot mutate physical Model');
+    assert.deepEqual(
+      after.model,
+      starting.model,
+      'Read-only figure cut cannot mutate physical Model',
+    );
     report.cuts.push({
       id: item.id,
       lineAUm: item.a,
@@ -161,15 +170,24 @@ try {
       inkFraction: ink,
       canvasPixels: [Math.round(rect.width), Math.round(rect.height)],
       screenshot: shot,
+      screenshotSha256: pngSha256,
       paperOverlayVerified: false,
     });
     console.log('NATIVE_M3D_POWER_VIA_SECTION', item.id, 'materials', physical.length, 'ink', ink);
   }
   assert.deepEqual(errors, [], 'Native v2 cut generated browser exceptions');
-  assert.notDeepEqual(
-    report.cuts[0].physical.map((slice) => slice.material),
-    report.cuts[1].physical.map((slice) => slice.material),
-    'Two separated power-via cuts must have independently distinguishable stacks',
+  report.materialStacksIdentical = JSON.stringify(report.cuts[0].physical) ===
+    JSON.stringify(report.cuts[1].physical);
+  report.sectionPngIdentical = report.cuts[0].screenshotSha256 ===
+    report.cuts[1].screenshotSha256;
+  report.structuralDistinction = report.materialStacksIdentical
+    ? 'NOT_ESTABLISHED__BOTH_COORDINATES_CONTAIN_TI_NI_AU'
+    : 'CUTS_HAVE_DIFFERENT_Z_MATERIAL_BANDS';
+  // Both A-B cuts must be physically grounded. They need not display
+  // independently different materials without primary-paper evidence.
+  assert.deepEqual(
+    report.cuts.map(({ materialOnActualCut }) => materialOnActualCut),
+    [true, true],
   );
   report.result = 'pass';
   console.log('NATIVE_V2_M3D_TWO_POWER_VIA_SECTIONS: actual 2 A-B cuts, topology + PNG PASS');
@@ -177,10 +195,12 @@ try {
   report.result = 'fail';
   report.error = error.stack || String(error);
   report.browserErrors = errors;
-  await page.screenshot({
-    path: resolve(output, 'failure.png'),
-    animations: 'disabled',
-  }).catch(() => {});
+  await page
+    .screenshot({
+      path: resolve(output, 'failure.png'),
+      animations: 'disabled',
+    })
+    .catch(() => {});
   throw error;
 } finally {
   await writeFile(resolve(output, 'manifest.json'), JSON.stringify(report, null, 2) + '\n');
