@@ -1,0 +1,132 @@
+{
+  "schema": "wafercad-literature-figure-provenance-v1",
+  "issue": 241,
+  "generatedForMain": "41ad3d3715c5b1113ff98620b3b48bbdaa41d099",
+  "acceptanceLegend": {
+    "open-paper-match": "Canonical/surrogate model may be validated, but paper-figure visual fidelity is not certified",
+    "accepted-paper-match": "Requires original scaled image, matching device/cut and quantitative evidence",
+    "blocked-source": "Original panel/author geometry or calibration absent"
+  },
+  "entries": [
+    {
+      "id": "photodetector-literature",
+      "projectPath": "./examples/photodetector-literature-examples.wafercad",
+      "sourceURL": "https://doi.org/10.1021/acsphotonics.2c01984",
+      "paperPanel": "Fig. 1a Black-Si FINAL/QA; Ge A/B requires separate thesis Fig. 15a/b",
+      "classification": "derived",
+      "claim": "50 nm active-area Al2O3 preserved in FINAL; destructive QA removes it",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "perc-point-contact-solar-cell",
+      "projectPath": "./examples/perc-solar-cells-point-contacts.wafercad",
+      "sourceURL": "https://doi.org/10.1063/1.101596",
+      "paperPanel": "Fig. 1 contacts schematic",
+      "classification": "assumed",
+      "claim": "100 rear openings on 2 mm reconstruction pitch; author GDS not available",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "fully-textured-perovskite-silicon-tandem",
+      "projectPath": "./examples/fully-textured-perovskite-silicon-tandem.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41563-018-0115-4",
+      "paperPanel": "Fig. 1; Supplementary Figs. S2d-i, S3a-e",
+      "classification": "display-only",
+      "claim": "3D pyramid and nominal conformal appearance; canonical Si remains planar",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "suspended-silica-microdisk",
+      "projectPath": "./examples/suspended-silica-microdisks.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-018-08038-4",
+      "paperPanel": "Fig. 2a (SEM of similar device); Methods fabrication",
+      "classification": "assumed",
+      "claim": "36 um eight-slice isotropic release radius not paper-measured",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "m3d-selfpowered-heterogeneous-ic",
+      "projectPath": "./examples/m3d-selfpowered-full-replay.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41928-026-01624-1",
+      "paperPanel": "specific paper-to-Section panel not yet established",
+      "classification": "unreported",
+      "claim": "reconstructed power vias physically contact; inferred routing lacks original author mask",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "magic-1000-mos2-beol",
+      "projectPath": "./examples/magic-1000-mos2-beol.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41928-026-01641-0",
+      "paperPanel": "Fig. 1e/f local circuit/cross-section target",
+      "classification": "assumed",
+      "claim": "40x24 um local interconnect surrogate, not 1433-transistor author GDS",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "three-tier-silicon-jlfets",
+      "projectPath": "./examples/three-tier-silicon-jlfets-full-wafer.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41586-026-10496-6",
+      "paperPanel": "Figs. 1-2 physical layers; Fig. 3 wafer-scale statistics, not section",
+      "classification": "derived",
+      "claim": "three Si tiers and 625-site array; 91/100 nm local ILD is assumed",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    },
+    {
+      "id": "tio2-metalens-four-unit",
+      "projectPath": "./examples/tio2-metalens-full-array.wafercad",
+      "sourceURL": "https://doi.org/10.1038/s41467-021-25797-9",
+      "paperPanel": "Figs. 2-3; Supplementary Note 4",
+      "classification": "assumed",
+      "claim": "4725-site demonstration grid; original author GDS/optical phase not validated",
+      "acceptance": {
+        "status": "open-paper-match",
+        "calibratedScale": false,
+        "quantitativeOverlay": false
+      },
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38868917724",
+      "evidenceType": "actual Chromium capture and source-model material-owner probes; not source-SEM overlay"
+    }
+  ]
+}
