@@ -155,6 +155,12 @@ try {
         { name: 'swt', position: [19, -71, topZ + 38], target: [0, -48, topZ], fov: 43 },
         { name: 'springs', position: [12, 62, topZ + 53], target: [0, 25, topZ], fov: 47 },
         {
+          name: 's7-guides',
+          position: [34, -60, topZ + 94],
+          target: [10, -48, topZ],
+          fov: 44,
+        },
+        {
           name: 'grating',
           position: [-52, -39, topZ + 37],
           target: [-62, -26, topZ],
