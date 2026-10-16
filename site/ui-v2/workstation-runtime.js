@@ -112,6 +112,8 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
     },
   });
   projectState.loadProjectSnapshot(project.data);
+  // Preview-only outlines make equal-material interfaces easier to inspect.
+  if (assemblyPreview) state.threeShowBorders = true;
   let maskBrowser = null;
   const selectedElement = (element) =>
     maskBrowser
@@ -247,6 +249,8 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
     if (!assemblyPreviewSession) throw new Error('Bond History preview is not active.');
     const projectAtStage = assemblyPreviewSession.restoreIndex(index);
     restore(projectAtStage);
+    // Stage reload restores source display settings; keep inspection outlines on.
+    state.threeShowBorders = true;
     return projectAtStage;
   }
   return {
