@@ -1,0 +1,59 @@
+name: PR229 one-shot 3D Au renderer startup diagnostic
+
+on:
+  push:
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths: [.github/workflows/pr229-three-debug-once.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run local preview server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/pr229-three.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/pr229-three.log
+          exit 1
+      - name: Capture actual page errors and 3D build status
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: |
+          node --input-type=module <<'EOF'
+          import {chromium} from 'playwright';
+          import {baseUrl,installPinnedThreeRoute} from './scripts/test-helpers/ui.mjs';
+          const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
+          const ctx=await browser.newContext({viewport:{width:1000,height:640}});
+          await installPinnedThreeRoute(ctx);
+          const page=await ctx.newPage();
+          const logs=[];
+          page.on('pageerror', e=>logs.push('pageerror '+String(e)));
+          page.on('console',m=>{if(m.type()==='error'||m.type()==='warning')logs.push('console '+m.type()+' '+m.text().slice(0,300));});
+          page.on('requestfailed',r=>logs.push('failed '+r.url()+' '+r.failure()?.errorText));
+          await page.goto(baseUrl+'/app.html?preview=1&example=gan-hemt-microchannel-2022&view=three',{waitUntil:'domcontentloaded',timeout:30000});
+          let state='timeout';
+          try {
+            await page.waitForFunction(()=>document.body.dataset.ready==='true' && window.WaferCadV2Workstation?.ready,{},{timeout:60000});
+            await page.waitForFunction(()=>document.getElementById('threeHost')?.dataset.renderState==='ready',{},{timeout:60000});
+            state='ready';
+          } catch(e){logs.push('wait '+String(e));}
+          const status=await page.evaluate(()=>({body:{...document.body.dataset},host:{...document.getElementById('threeHost')?.dataset},global:!!window.WaferCadV2Workstation,appError:document.querySelector('#startupError')?.textContent||'',text:document.body.innerText.slice(0,500)}));
+          console.log('THREE_DIAGNOSTIC',JSON.stringify({state,status,logs}));
+          await page.screenshot({path:'/tmp/pr229-three-debug.png',timeout:20000}).catch(e=>console.log('SCREENSHOT_ERROR',String(e)));
+          await browser.close();
+          if(state!=='ready')process.exitCode=1;
+          EOF
