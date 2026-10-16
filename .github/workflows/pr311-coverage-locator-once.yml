@@ -1,4 +1,4 @@
-name: PR311 one-shot GaN coverage sliver locator
+name: PR311 one-shot conformal stage-by-stage XY owner diagnostic
 
 on:
   push:
@@ -24,6 +24,8 @@ jobs:
           node --check site/model.js
           node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs
       - name: Reproduce frozen full-front/back oxide on isolated Kernel
+        env:
+          WAFERCAD_CONFORMAL_DEBUG: '1'
         run: |
           git fetch --quiet origin ceb953b313f6da7fa012b70d8c52075ea4c8e7d0
           git show ceb953b313f6da7fa012b70d8c52075ea4c8e7d0:scripts/build-gan-hemt-microchannel-example.mjs > scripts/build-gan-hemt-microchannel-example.mjs
