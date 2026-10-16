@@ -418,7 +418,7 @@ try {
       );
       await processTab
         .locator('.assembly-bond-post-process-count')
-        .filter({ hasText: /1 saved geometry steps/ })
+        .filter({ hasText: /Process 1 \/ 1/ })
         .waitFor();
       const processBaseline = await processTab.evaluate(() =>
         window.WaferCadV2Workstation.snapshot(),
@@ -430,12 +430,43 @@ try {
       await processTab.locator('.assembly-preview-views [data-view="section"]').click();
       await waitForPaint(processTab);
       await processTab.screenshot({ path: resolve(output, 'postbond-deposit-section.png') });
+      // Same Recipe: deposit 1.8 µm, then directional etch 0.5 µm.
+      await processTab
+        .getByLabel('Post-Bond Process operation')
+        .selectOption('etch');
+      await processTab.getByLabel('Post-Bond Process thickness µm').fill('0.5');
+      await processTab.getByRole('button', { name: 'Apply Process preview' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
+      );
+      await processTab
+        .locator('.assembly-bond-post-process-count')
+        .filter({ hasText: /Process 2 \/ 2/ })
+        .waitFor();
+      await processTab.getByRole('button', { name: '← Process' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
+      );
+      await processTab
+        .locator('.assembly-bond-post-process-count')
+        .filter({ hasText: /Process 1 \/ 2/ })
+        .waitFor();
+      assert.equal(await processTab.getByRole('button', { name: 'Apply Process preview' }).isDisabled(), true);
+      await processTab.getByRole('button', { name: '← Process' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1200 µm'),
+      );
+      await processTab.getByRole('button', { name: 'Process →' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
+      );
       const afterProcessDownload = processTab.waitForEvent('download', { timeout: 30000 });
       await processTab.getByRole('button', { name: 'Export all Variants' }).click();
       const savedProcessFile = await afterProcessDownload;
       const savedProcessBytes = await readFile(await savedProcessFile.path());
       const savedGraph = JSON.parse(savedProcessBytes.toString('utf8'));
-      assert.equal(savedGraph.branches[0].postBondSteps.length, 1);
+      assert.equal(savedGraph.branches[0].postBondSteps.length, 2);
+      assert.equal(savedGraph.branches[0].postBondCursor, 1);
       assert.equal(savedGraph.branches[1].postBondSteps.length, 0);
 
       const restoredProcessTab = await context.newPage();
@@ -456,6 +487,14 @@ try {
           /Z 1201.8 µm/,
         );
         await restoredProcessTab.locator('.assembly-bond-draft-tools summary').click();
+        assert.match(
+          await restoredProcessTab.locator('.assembly-bond-post-process-count').textContent(),
+          /Process 1 \/ 2/,
+        );
+        await restoredProcessTab.getByRole('button', { name: 'Process →' }).click();
+        await restoredProcessTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
+        );
         await restoredProcessTab
           .getByLabel('Bond Variant', { exact: true })
           .selectOption('variant-1');
