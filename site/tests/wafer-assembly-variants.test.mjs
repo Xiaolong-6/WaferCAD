@@ -314,7 +314,7 @@ test('Process-stage fork preserves the selected Recipe prefix and diverges witho
   });
   assert.equal(alternate.branches.length, 2);
   assert.equal(alternate.sources.length, base.sources.length);
-  assert.equal(alternate.branches[1].forkIndex, 1);
+  assert.equal(alternate.branches[1].forkIndex, 2);
   assert.equal(alternate.branches[1].forkProcessIndex, 1);
   assert.deepEqual(alternate.branches[1].postBondSteps, first.graph.branches[0].postBondSteps);
   assert.equal(alternate.branches[0].postBondSteps.length, 2);
@@ -324,7 +324,7 @@ test('Process-stage fork preserves the selected Recipe prefix and diverges witho
     command: 'deposit',
     params: { material: 'Al', thicknessUm: 0.4, face: 'front' },
   });
-  assert.equal(deviated.graph.sources.length, 2);
+  assert.equal(deviated.graph.sources.length, 3);
   assert.equal(deviated.graph.branches[0].postBondSteps.length, 2);
   assert.equal(deviated.graph.branches[1].postBondSteps.length, 2);
   assert.equal(deviated.graph.branches[1].forkProcessIndex, 1);
@@ -376,7 +376,7 @@ test('Process-fork ancestry, checkpoint and immutable stage prefix fail closed o
   invalid((g) => { g.branches[1].forkProcessIndex = 2; }, /Process fork checkpoint/);
   invalid((g) => { g.branches[1].forkProcessIndex = -1; }, /Process fork checkpoint/);
   invalid((g) => { g.branches[1].forkIndex = 0; }, /Process fork checkpoint/);
-  invalid((g) => { g.branches[1].postBondSteps = []; }, /Process fork checkpoint/);
+  invalid((g) => { g.branches[1].postBondSteps = []; g.branches[1].postBondCursor = 0; }, /Process fork checkpoint/);
   invalid((g) => { g.branches[1].parentId = null; }, /Root Assembly Variant|source registry/);
   invalid((g) => { g.branches[1].postBondSteps[0].modelFingerprint = 'bad'; }, /checksum differs/);
   invalid((g) => { g.version = 1; }, /Process fork checkpoint|format v2/);
