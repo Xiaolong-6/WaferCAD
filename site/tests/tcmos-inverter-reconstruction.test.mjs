@@ -38,10 +38,44 @@ test('TCMOS mask encodes an illustrative 0.13 µm gate at the reported 130 nm fo
   assert.equal(gates[0].h, gates[1].h);
   assert.equal(gates.length, 2, 'Fig.1b has two separate POLY gates connected at METAL1');
   assert.equal(TCMOS_MASKS.find((m) => m.id === 1).rectangles.length, 8);
-  assert.equal(TCMOS_MASKS.find((m) => m.id === 10).rectangles.length, 38);
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 10).rectangles.length, 86);
   assert.equal(TCMOS_MASKS.find((m) => m.id === 12).rectangles.length, 1);
   assert.equal(TCMOS_MASKS.find((m) => m.id === 13).rectangles.length, 1);
   assert.equal(TCMOS_DOI, '10.1038/s41928-019-0272-8');
+});
+
+test('Fig.1b schematic masks retain nested inverted-U upper nets and dense body-tie rows', () => {
+  const byId = (id) => TCMOS_MASKS.find((mask) => mask.id === id).rectangles;
+  const [p, n] = byId(1);
+  assert.deepEqual(p, { x: -4.12, y: -0.36, w: 2.24, h: 0.72 });
+  assert.deepEqual(n, { x: 1.88, y: -0.36, w: 2.24, h: 0.72 });
+  const [pHvt] = byId(4);
+  const [nHvt] = byId(5);
+  assert.equal(pHvt.x + pHvt.w / 2, -3);
+  assert.equal(nHvt.x + nHvt.w / 2, 3);
+  assert.ok(pHvt.y + pHvt.h > 0.7, 'HVTN encloses left POLY top');
+  assert.ok(nHvt.y + nHvt.h > 0.7, 'HVTP encloses right POLY top');
+  const byNet = (name) => TCMOS_METAL_NETS.find((net) => net.name === name).rectangles;
+  const vinCap = byNet('VIN')[2];
+  const voutCap = byNet('VOUT')[0];
+  assert.ok(vinCap.y > voutCap.y + voutCap.h, 'VIN top bridge above VOUT U');
+  assert.ok(voutCap.w > 4.4, 'VOUT shares both drain contacts across cells');
+  assert.equal(byNet('VDD').length, 6);
+  assert.equal(byNet('GND').length, 6);
+  assert.ok(byNet('VDD')[0].y < p.y, 'pMOS body U is below ACTIVE');
+  assert.ok(byNet('GND')[0].y < n.y, 'nMOS body U is below ACTIVE');
+  const cnt = byId(10);
+  assert.equal(cnt.length, 86);
+  for (const contact of cnt) {
+    assert.ok(contact.w > 0 && contact.h > 0);
+  }
+  // A negative test for a disconnected terminal remains required.
+  const disconnected = structuredClone(TCMOS_METAL_NETS);
+  disconnected[3].rectangles.pop();
+  assert.throws(
+    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, disconnected),
+    /disconnected routing/,
+  );
 });
 
 test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad body ties', () => {
@@ -93,7 +127,7 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
     /missing or ambiguous Metal1 owner/,
   );
   const invalidWellTie = structuredClone(TCMOS_MASKS);
-  invalidWellTie.find(({ id }) => id === 10).rectangles[18].x += 0.8;
+  invalidWellTie.find(({ id }) => id === 10).rectangles[6].y += 2;
   assert.throws(
     () => auditTcmosTerminalNetProvenance(invalidWellTie, TCMOS_METAL_NETS),
     /incorrect device footprint/,
@@ -153,11 +187,11 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const { geometryArea } = await import('../model.js');
   const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
   assert.ok(
-    qualitativeOverlaps.some((overlap) => v.pointInMulti([-1.66, 0], overlap.geom)),
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([-2.05, 0], overlap.geom)),
     'pMOS body and drain doping masks must qualitatively overlap',
   );
   assert.ok(
-    qualitativeOverlaps.some((overlap) => v.pointInMulti([1.66, 0], overlap.geom)),
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([2.05, 0], overlap.geom)),
     'nMOS body and drain doping masks must qualitatively overlap',
   );
   // The input source/drain masks are shared. Identifying the VOUT-side drain
@@ -178,7 +212,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const overlaps = qualified.filter((overlap) => overlap.terminalId === terminal.id);
     assert.ok(overlaps.length, `${terminal.id} must intersect opposite-polarity body/HDD intents`);
     const union = v.unionGeometries(overlaps.map((overlap) => overlap.geom));
-    const expectedArea = terminal.kind === 'source' ? 1.287 : 1.703;
+    const expectedArea = 1.03 * 0.72;
     assert.ok(
       Math.abs(geometryArea(union) - expectedArea) < 1e-6,
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
@@ -209,8 +243,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const matching = audit.reduce((sum, item) => sum + item.matchingWellVolumeUm3, 0);
     const outside = audit.reduce((sum, item) => sum + item.outsideMatchingWellVolumeUm3, 0);
     const opposite = audit.reduce((sum, item) => sum + item.oppositeWellVolumeUm3, 0);
-    assert.ok(Math.abs(matching - 0.51584) < 1e-9);
-    assert.ok(Math.abs(outside - 0.01364) < 1e-9);
+    assert.ok(Math.abs(matching - 0.258048) < 1e-9);
+    assert.ok(Math.abs(outside - 0.022272) < 1e-9);
     assert.ok(Math.abs(opposite) < 1e-12);
     const reported = validation.qualitativeJunctionEvidence.schematicWellBodyCoverage[polarity];
     assert.equal(reported.schematicWellPresent, true);
@@ -317,14 +351,14 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const metals = TCMOS_MASKS.find((mask) => mask.id === 11).rectangles;
   const contains = (r, x, y) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
   const nets = [
-    { name: 'VDD', point: [-4.34, 0] },
-    { name: 'VOUT p-drain', point: [-1.66, 0] },
-    { name: 'VOUT n-drain', point: [1.66, 0] },
-    { name: 'GND', point: [4.34, 0] },
-    { name: 'VIN pMOS gate', point: [-3, 1.15] },
-    { name: 'VIN nMOS gate', point: [3, 1.15] },
-    { name: 'VDD pMOS body tie', point: [-5.35, -0.85] },
-    { name: 'GND nMOS body tie', point: [5.35, -0.85] },
+    { name: 'VDD', point: [-3.95, 0] },
+    { name: 'VOUT p-drain', point: [-2.05, 0] },
+    { name: 'VOUT n-drain', point: [2.05, 0] },
+    { name: 'GND', point: [3.95, 0] },
+    { name: 'VIN pMOS gate', point: [-3, 0.75] },
+    { name: 'VIN nMOS gate', point: [3, 0.75] },
+    { name: 'VDD pMOS body tie', point: [-5.04, -0.80] },
+    { name: 'GND nMOS body tie', point: [5.04, -0.80] },
   ];
   for (const {
     name,
