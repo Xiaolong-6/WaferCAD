@@ -381,6 +381,88 @@ try {
       await committedTab.close();
     }
 
+    // Post-Bond geometry is stored only in the source-aware Variant sidecar.
+    // Confirm a derived 1.8 µm Deposit appears in real 3D/Section, while the
+    // physically canonical v15 bonded baseline remains unchanged.
+    const processTab = await context.newPage();
+    try {
+      const processErrors = observePageErrors(processTab);
+      await processTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await processTab.waitForFunction(
+        () => Boolean(document.querySelector(`option[value="workspace:${originalWorkspaceId}"]`)),
+        null,
+        { timeout: 20000 },
+      );
+      await processTab
+        .getByLabel('Assembly Bond Recovery checkpoint')
+        .selectOption(`workspace:${originalWorkspaceId}`);
+      await processTab.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
+      await processTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 90000,
+      });
+      await processTab.locator('.assembly-bond-draft-tools summary').click();
+      await processTab.getByLabel('Post-Bond Process material').fill('SiO2');
+      await processTab.getByLabel('Post-Bond Process thickness µm').fill('1.8');
+      await processTab.getByRole('button', { name: 'Apply Process preview' }).click();
+      await processTab.waitForFunction(() =>
+        document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
+      );
+      assert.match(
+        await processTab.locator('.assembly-bond-post-process-count').textContent(),
+        /1 saved geometry steps/,
+      );
+      const processBaseline = await processTab.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.deepEqual(processBaseline.model, committed.model);
+      await processTab.locator('.assembly-preview-views [data-view="three"]').click();
+      await waitForPaint(processTab);
+      await processTab.screenshot({ path: resolve(output, 'postbond-deposit-three.png') });
+      await processTab.locator('.assembly-preview-views [data-view="section"]').click();
+      await waitForPaint(processTab);
+      await processTab.screenshot({ path: resolve(output, 'postbond-deposit-section.png') });
+      const afterProcessDownload = processTab.waitForEvent('download', { timeout: 30000 });
+      await processTab.getByRole('button', { name: 'Export all Variants' }).click();
+      const savedProcessFile = await afterProcessDownload;
+      const savedProcessBytes = await readFile(await savedProcessFile.path());
+      const savedGraph = JSON.parse(savedProcessBytes.toString('utf8'));
+      assert.equal(savedGraph.branches[0].postBondSteps.length, 1);
+      assert.equal(savedGraph.branches[1].postBondSteps.length, 0);
+
+      const restoredProcessTab = await context.newPage();
+      try {
+        await restoredProcessTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await restoredProcessTab.getByLabel('Open bonded Assembly project').setInputFiles({
+          name: 'postbond.wafercad-variants.json',
+          mimeType: 'application/json',
+          buffer: savedProcessBytes,
+        });
+        await restoredProcessTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+          timeout: 90000,
+        });
+        assert.match(
+          await restoredProcessTab.locator('.assembly-preview-stage').textContent(),
+          /Z 1201.8 µm/,
+        );
+        await restoredProcessTab.locator('.assembly-bond-draft-tools summary').click();
+        await restoredProcessTab.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
+        await restoredProcessTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1150 µm'),
+        );
+        assert.deepEqual(
+          (await restoredProcessTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
+          alternate.model,
+        );
+      } finally {
+        await restoredProcessTab.close();
+      }
+      assert.deepEqual(processErrors, []);
+    } finally {
+      await processTab.close();
+    }
+
     assert.deepEqual(errors, [], 'No uncaught page errors during transaction or export');
     console.log('Native Assembly Bond draft: donor C, durable Recovery, Undo/Redo, export = OK');
     console.log('Native Bond Variants: fork C/D, Main switch, sidecar reload = OK');
