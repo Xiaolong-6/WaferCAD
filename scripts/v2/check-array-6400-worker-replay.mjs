@@ -6,8 +6,7 @@ import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
 await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../../site/model.js');
-const { createRectangularGridArrayModel } =
-  await import('../../site/model-array-construction.js');
+const { createRectangularGridArrayModel } = await import('../../site/model-array-construction.js');
 const { migrateProjectFile, validateProjectFile } = await import('../../site/project-schema.js');
 const { serializeProject, readProjectFile } = await import('../../site/project-io.js');
 const { rectMulti } = await import('../../site/vector-geometry.js');
@@ -50,7 +49,13 @@ const operations = [
   {
     kind: 'add',
     label: 'Masked 10 nm deposit',
-    params: { type: 'add', name: 'Worker replay 10nm', face: 'front', growth: 'direct', thickness: 0.01 },
+    params: {
+      type: 'add',
+      name: 'Worker replay 10nm',
+      face: 'front',
+      growth: 'direct',
+      thickness: 0.01,
+    },
     footprint: rectMulti(0.2, 0.2, 0.1875, 0.1875),
   },
   {
@@ -126,67 +131,70 @@ try {
       timeout: 120000,
     });
 
-    const replayed = await page.evaluate(async ({ seedModel, storedNodes }) => {
-      // Each request creates a real, separately isolated browser Worker.
-      // Parameters and area are reconstructed solely from persisted Step state.
-      let model = seedModel;
-      const resultLog = [];
-      for (const node of storedNodes) {
-        const descriptor = node.operation.replay;
-        const mask = descriptor.maskContext;
-        const layers = new Set(mask.layerKeys);
-        const elements = node.state.layout.elements
-          .filter(
-            (element) =>
-              element.sourceCell === mask.cell &&
-              layers.has(element.layer + '|' + element.datatype),
-          )
-          .map(({ kind, width, points }) => ({ kind, width, points }));
-        if (elements.length !== 1) throw Error('History did not restore its Mask elements');
-        const output = await new Promise((resolve, reject) => {
-          const worker = new Worker('/process-worker.js');
-          const timeout = setTimeout(() => {
-            worker.terminate();
-            reject(Error('6400-site production Worker did not finish'));
-          }, 120000);
-          worker.onmessage = ({ data }) => {
-            if (data?.id !== 1 || data.type === 'progress') return;
-            clearTimeout(timeout);
-            worker.terminate();
-            if (data.type === 'error' || data.rejected) {
-              reject(Error(data.message || data.error || 'Worker rejected the process'));
-            } else {
-              resolve(data);
-            }
-          };
-          worker.onerror = (error) => {
-            clearTimeout(timeout);
-            worker.terminate();
-            reject(Error(error.message || 'Worker crashed'));
-          };
-          worker.postMessage({
-            id: 1,
-            model,
-            params: descriptor.params,
-            areaRequest: {
-              mode: descriptor.areaMode,
-              maskSourceMode: mask.sourceMode,
-              maskTransform: mask.transform,
-              maskRoi: mask.roi,
-              elements,
-            },
+    const replayed = await page.evaluate(
+      async ({ seedModel, storedNodes }) => {
+        // Each request creates a real, separately isolated browser Worker.
+        // Parameters and area are reconstructed solely from persisted Step state.
+        let model = seedModel;
+        const resultLog = [];
+        for (const node of storedNodes) {
+          const descriptor = node.operation.replay;
+          const mask = descriptor.maskContext;
+          const layers = new Set(mask.layerKeys);
+          const elements = node.state.layout.elements
+            .filter(
+              (element) =>
+                element.sourceCell === mask.cell &&
+                layers.has(element.layer + '|' + element.datatype),
+            )
+            .map(({ kind, width, points }) => ({ kind, width, points }));
+          if (elements.length !== 1) throw Error('History did not restore its Mask elements');
+          const output = await new Promise((resolve, reject) => {
+            const worker = new Worker('/process-worker.js');
+            const timeout = setTimeout(() => {
+              worker.terminate();
+              reject(Error('6400-site production Worker did not finish'));
+            }, 120000);
+            worker.onmessage = ({ data }) => {
+              if (data?.id !== 1 || data.type === 'progress') return;
+              clearTimeout(timeout);
+              worker.terminate();
+              if (data.type === 'error' || data.rejected) {
+                reject(Error(data.message || data.error || 'Worker rejected the process'));
+              } else {
+                resolve(data);
+              }
+            };
+            worker.onerror = (error) => {
+              clearTimeout(timeout);
+              worker.terminate();
+              reject(Error(error.message || 'Worker crashed'));
+            };
+            worker.postMessage({
+              id: 1,
+              model,
+              params: descriptor.params,
+              areaRequest: {
+                mode: descriptor.areaMode,
+                maskSourceMode: mask.sourceMode,
+                maskTransform: mask.transform,
+                maskRoi: mask.roi,
+                elements,
+              },
+            });
           });
-        });
-        if (!output.validated || !output.result?.changed)
-          throw Error('Worker must validate and modify one physical site');
-        resultLog.push({
-          instances: output.model.array.instances.length,
-          changed: output.result.arrayChangedInstances,
-        });
-        model = output.model;
-      }
-      return { model, resultLog };
-    }, { seedModel: seed, storedNodes: nodes });
+          if (!output.validated || !output.result?.changed)
+            throw Error('Worker must validate and modify one physical site');
+          resultLog.push({
+            instances: output.model.array.instances.length,
+            changed: output.result.arrayChangedInstances,
+          });
+          model = output.model;
+        }
+        return { model, resultLog };
+      },
+      { seedModel: seed, storedNodes: nodes },
+    );
     assert.deepEqual(
       replayed.model,
       loaded.model,
