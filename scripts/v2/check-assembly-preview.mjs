@@ -45,7 +45,11 @@ try {
     assert.equal(await page.locator('.p-workbench').count(), 0);
     assert.equal(await page.locator('.assembly-preview-file-picker').isVisible(), true);
 
-    await input.setInputFiles({ name: 'standalone.wafercad', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(wafer('Unbonded'))) });
+    await input.setInputFiles({
+      name: 'standalone.wafercad',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(wafer('Unbonded'))),
+    });
     await page.locator('.assembly-preview-file-picker [data-error="true"]').waitFor();
     assert.match(
       await page.locator('.assembly-preview-file-picker [role="status"]').textContent(),
@@ -81,7 +85,10 @@ try {
       section: '#sectionCanvas',
     };
     for (const index of [2, 1, 0]) {
-      while (Number(await page.locator('.assembly-preview-controls').getAttribute('data-bond-index')) > index) {
+      while (
+        Number(await page.locator('.assembly-preview-controls').getAttribute('data-bond-index')) >
+        index
+      ) {
         await page.getByRole('button', { name: '← Bond' }).click();
       }
       const state = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
