@@ -496,6 +496,63 @@ try {
         await restoredProcessTab.waitForFunction(() =>
           document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
         );
+        // Branch from Process 1/2 without deleting Main's later Etch step.
+        await restoredProcessTab.getByRole('button', { name: '← Process' }).click();
+        await restoredProcessTab
+          .locator('.assembly-bond-post-process-count')
+          .filter({ hasText: /Process 1 \/ 2/ })
+          .waitFor();
+        await restoredProcessTab.getByRole('button', { name: 'Fork Process Variant' }).click();
+        await restoredProcessTab
+          .getByLabel('Bond Variant', { exact: true })
+          .locator('option')
+          .filter({ hasText: /variant-2/ })
+          .waitFor();
+        await restoredProcessTab.getByLabel('Post-Bond Process operation').selectOption('deposit');
+        await restoredProcessTab.getByLabel('Post-Bond Process material').fill('Al');
+        await restoredProcessTab.getByLabel('Post-Bond Process thickness µm').fill('0.4');
+        await restoredProcessTab.getByRole('button', { name: 'Apply Process preview' }).click();
+        await restoredProcessTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1202.2 µm'),
+        );
+        await restoredProcessTab
+          .locator('.assembly-bond-post-process-count')
+          .filter({ hasText: /Process 2 \/ 2/ })
+          .waitFor();
+        await restoredProcessTab.locator('.assembly-preview-views [data-view="three"]').click();
+        await waitForPaint(restoredProcessTab);
+        await restoredProcessTab.screenshot({
+          path: resolve(output, 'process-variant-alternative-three.png'),
+        });
+        await restoredProcessTab.locator('.assembly-preview-views [data-view="section"]').click();
+        await waitForPaint(restoredProcessTab);
+        await restoredProcessTab.screenshot({
+          path: resolve(output, 'process-variant-alternative-section.png'),
+        });
+        const processForkDownload = restoredProcessTab.waitForEvent('download', {
+          timeout: 30000,
+        });
+        await restoredProcessTab.getByRole('button', { name: 'Export all Variants' }).click();
+        const processForkFile = await processForkDownload;
+        const processForkGraph = JSON.parse(
+          (await readFile(await processForkFile.path())).toString('utf8'),
+        );
+        assert.equal(processForkGraph.sources.length, 4);
+        assert.equal(processForkGraph.branches.length, 3);
+        assert.equal(processForkGraph.branches[2].forkProcessIndex, 1);
+        assert.equal(processForkGraph.branches[0].postBondSteps.length, 2);
+        assert.equal(processForkGraph.branches[2].postBondSteps.length, 2);
+        assert.equal(processForkGraph.branches[2].postBondSteps[1].params.material, 'Al');
+        await restoredProcessTab
+          .getByLabel('Bond Variant', { exact: true })
+          .selectOption('main');
+        await restoredProcessTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
+        );
+        await restoredProcessTab.getByRole('button', { name: 'Process →' }).click();
+        await restoredProcessTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
+        );
         await restoredProcessTab
           .getByLabel('Bond Variant', { exact: true })
           .selectOption('variant-1');
