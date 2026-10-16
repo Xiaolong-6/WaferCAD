@@ -29,6 +29,9 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify History test formatting with exact diff
+        shell: bash
+        run: npx prettier scripts/v2/check-history-replay-rollback.mjs | diff -u scripts/v2/check-history-replay-rollback.mjs -
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash
