@@ -1,4 +1,4 @@
-name: PR229 final unmasked oxide and retired fallback mask acceptance
+name: PR229 final full oxide mask/replay/Chromium acceptance
 
 on:
   push:
