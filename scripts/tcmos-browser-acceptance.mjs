@@ -375,6 +375,14 @@ try {
     { timeout: 120000 },
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
+  // Final Fig.1b acceptance uses a real, enlarged Mask canvas; the
+  // committed File Mask may be compared with the author's schematic, never
+  // a hand-drawn surrogate screenshot.
+  await selectView('mask');
+  const fullMaskExpanded = await requireLargeView('mask');
+  await page.locator('#maskCanvas').waitFor({ state: 'visible', timeout: 12000 });
+  await page.screenshot({ path: resolve(dir, 'tcmos-fig1b-mask-expanded.png') });
+  await restoreLargeView('mask', fullMaskExpanded);
   // Expand a docked thumbnail only when required; both full-stage screenshots
   // must prove adequate physical panel bounds before acceptance.
   await revealSectionDock();
