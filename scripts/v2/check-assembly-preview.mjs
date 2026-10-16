@@ -73,6 +73,7 @@ try {
     assert.equal(baseState.assemblyPreview.bonds, 2);
     assert.equal(baseState.assemblyPreview.sources, 3);
     assert.equal(baseState.threeDisplay.borders, true, 'Preview 3D displays layer outlines');
+    assert.equal(baseState.sectionCollapse.enabled, false);
     assert.ok(
       baseState.assemblyPreview.originDisplayColors.length >= 3,
       'Each wafer origin should be visually distinguishable in 3D',
@@ -105,6 +106,7 @@ try {
         new RegExp(`Z ${expectedThickness} µm`),
       );
       assert.equal(state.threeDisplay.borders, true);
+      assert.equal(state.sectionCollapse.enabled, false);
       assert.equal(state.sharedIdentity, true);
       assert.equal(state.workflow.writable, false);
       if (index === 0) {
