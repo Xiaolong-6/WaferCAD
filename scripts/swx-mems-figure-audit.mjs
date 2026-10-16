@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { createSwxGeometry, SWX_REPORTED } from './swx-mems-geometry.mjs';
 import { createSwxOptomechanicalCandidate } from './swx-mems-optomechanical-candidate.mjs';
 import { createSwxCompactProcessGeometry } from './swx-mems-compact-process-geometry.mjs';
+import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -69,7 +70,11 @@ for (const state of ['off', 'on']) {
       'illustrative optical pads and routing may lie outside published switch-only envelope',
     candidateShallowGratingGrooves: compactMask.physicalGroups.gratingGrooves.length,
     reportedGratingPitchVerified: false,
-    movingOpticalBendRadiiUm: p.opticalRouting.movingCenterlines.map((line) => line.radiusUm),
+    movingOpticalBendRadiiUm: p.opticalRouting.movingCenterlines.map((line) =>
+      line.halfTurns.map((arc) => arc.radiusUm),
+    ),
+    halfTurnsPerOpticalLeg: p.opticalRouting.movingCenterlines.map((line) => line.halfTurns.length),
+    s7GuidesIntegrated: false,
     opticalBendWaypointSourceVerified: false,
     completeFabricationHistoryVerified: false,
     fullWaferCADRendererAccepted: false,
@@ -80,7 +85,16 @@ const axialSeparation = poses.off.bankAxialCenterSeparationUm;
 // Heuristic review trigger, NOT a tolerance from the paper: adjacent banks
 // displaced by over two complete finger lengths cannot be called co-located.
 const illustrativeTriggerUm = 2 * SWX_REPORTED.combFingerLengthUm;
-const blockers = [];
+const blockers = [
+  {
+    id: 'compact-s7-guided-aligner-bridge-short',
+    kind: 'unqualified-fixed-moving-silicon-contact',
+    note: 'S7-size guide candidate is quarantined: its right-side stationary pad overlaps the existing suspended SWT-to-shuttle mechanical bridge in both OFF and ON. Reroute the bridge or anchored guide without shortening the reported 7um/100nm beam.',
+    guideAnchorsUm: SWX_COMPACT_GUIDE_ASSUMPTIONS.padCentersUm,
+    sourceDimensionsPreserved: true,
+    includedInCompactProcessMask: false,
+  },
+];
 const compactExtent = prototype.off.candidateMaskFootprintUm;
 if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[index])) {
   blockers.push({
