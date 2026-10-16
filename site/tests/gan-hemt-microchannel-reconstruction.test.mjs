@@ -104,6 +104,37 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(GAN_GSG_STACK.substrateThicknessUm, 100);
 });
 
+test('GSG independent die and contact geometry stays distinct from HEMT and TSV', () => {
+  const masks = new Map(GAN_MICROCHANNEL_MASKS.map((mask) => [mask.id, mask]));
+  const gsgDie = masks.get(26).rectangles;
+  const gsgSolder = masks.get(27).rectangles;
+  const gsgPads = masks.get(20).rectangles;
+  const hemt = masks.get(16).rectangles[0];
+  const tsv = masks.get(14).rectangles;
+  const contains = (outer, inner) =>
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.w <= outer.x + outer.w &&
+    inner.y + inner.h <= outer.y + outer.h;
+  const overlaps = (a, b) =>
+    a.x < b.x + b.w &&
+    b.x < a.x + a.w &&
+    a.y < b.y + b.h &&
+    b.y < a.y + a.h;
+  assert.equal(gsgDie.length, 2);
+  assert.equal(gsgSolder.length, 2);
+  assert.equal(gsgPads.length, 6);
+  for (let i = 0; i < gsgDie.length; i++) {
+    assert.ok(contains(gsgDie[i], gsgSolder[i]), 'AuSn must support its own GSG die');
+    assert.ok(!overlaps(gsgDie[i], hemt), 'A separate GSG chip must not merge with HEMT');
+    assert.ok(!gsgDie.some((other, j) => j !== i && overlaps(other, gsgDie[i])));
+    const ownedPads = gsgPads.filter((pad) => contains(gsgDie[i], pad));
+    assert.equal(ownedPads.length, 3, 'Each GSG chip must own exactly three Au pads');
+    assert.ok(ownedPads.every((pad) => !tsv.some((via) => overlaps(pad, via))),
+      'GSG pad-to-TSV surface routing is not modeled and cannot be presumed');
+  }
+});
+
 test('Lian 2022 structure uses true stepped voids, a suspended die and replayable history', async () => {
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
