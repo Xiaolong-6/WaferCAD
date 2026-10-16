@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFile, access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 
 const provenance = JSON.parse(
@@ -17,11 +17,7 @@ const classifications = new Set([
   'unsupported',
   'unreported',
 ]);
-const acceptanceStatuses = new Set([
-  'open-paper-match',
-  'accepted-paper-match',
-  'blocked-source',
-]);
+const acceptanceStatuses = new Set(['open-paper-match', 'accepted-paper-match', 'blocked-source']);
 
 test('eight paper provenance records match the actual published example catalog', async () => {
   assert.equal(provenance.schema, 'wafercad-literature-figure-provenance-v1');
@@ -43,6 +39,7 @@ test('eight paper provenance records match the actual published example catalog'
       assert.match(entry.browserEvidenceURL, /^https:\/\/github\.com\//);
     } else {
       assert.match(entry.evidenceType, /figure cut still missing/);
+      assert.notEqual(entry.acceptance.status, 'accepted-paper-match');
     }
     for (const supplementary of entry.secondarySources || []) {
       assert.ok(
