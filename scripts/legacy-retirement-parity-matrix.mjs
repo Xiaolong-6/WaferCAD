@@ -48,10 +48,11 @@ export const CRITICAL_LEGACY_CONTRACTS = [
       'scripts/v2/check-recovery-restore-parity.mjs',
       'scripts/v2/check-recovery-failure-atomicity.mjs',
       'scripts/v2/check-recovery-lease-loss.mjs',
+      'scripts/v2/check-recovery-two-tab-takeover.mjs',
     ],
     gaps: [
       'IndexedDB corruption, secondary rollback failure and migration fault cases',
-      'real multi-tab takeover reconciliation and unavailable-storage recovery',
+      'divergent-editor two-tab takeover reconciliation and unavailable-storage recovery',
     ],
   },
   {
