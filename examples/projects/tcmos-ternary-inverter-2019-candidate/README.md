@@ -57,7 +57,6 @@ Generic external profile import/rendering is **not shipped by PR #225**; it is
 tracked as a potential independent visualization task only when an actual
 external dataset and desired presentation are defined.
 
-
 ### Fig. 1b mask redraw (2026-10-16)
 
 The updated layout follows the supplied paper image's **visual topology** rather than
