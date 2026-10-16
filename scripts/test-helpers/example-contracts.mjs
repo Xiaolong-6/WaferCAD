@@ -150,6 +150,50 @@ export function assertNativeFig3Contract(project, pointInMulti) {
       `T${tier} isolation outside the active mask`,
     );
   }
+  // The two SOG/CMP interfaces are local engineered geometry, not a
+  // figure-measured 90 nm inter-tier distance. Assert actual adjacency at
+  // the gate and both contacts, so a hidden metal/ILD/Si gap cannot pass.
+  for (const [point, isPad] of [
+    [[0, 0], false],
+    [[-575, 0], true],
+    [[575, 0], true],
+  ]) {
+    const stack = ownerAt(point).stack;
+    const at = (name) => {
+      const interval = stack.find((segment) => names.get(segment.layerId) === name);
+      assert.ok(interval, `Missing ${name} at ${point}`);
+      return interval;
+    };
+    const receiver = at('Receiver SiO2 - 100 nm assumed');
+    assert.ok(
+      Math.abs(receiver.z1 - at('T1 Si membrane').z0) < 1e-9,
+      `Receiver oxide must support T1 Si at ${point}`,
+    );
+    for (const tier of [1, 2]) {
+      const lowerMetal = at(`T${tier} ${isPad ? 'S/D' : 'Gate'} metal`);
+      const liner = at(`ILD${tier} HfO2 liner`);
+      const sog = at(`ILD${tier} SOG overfill`);
+      const upperSi = at(`T${tier + 1} Si membrane`);
+      for (const [before, after] of [
+        [lowerMetal, liner],
+        [liner, sog],
+        [sog, upperSi],
+      ]) {
+        assert.ok(
+          Math.abs(before.z1 - after.z0) < 1e-9,
+          `T${tier}->T${tier + 1} ILD has a gap or overlap at ${point}`,
+        );
+      }
+      assert.ok(Math.abs(liner.z1 - liner.z0 - 0.02) < 1e-9);
+      // This 91/100 nm location-dependent surrogate is not a measured
+      // Lam Fig. 3 spacing. Only preserve our recorded SOG/CMP geometry.
+      const expectedGap = isPad ? 0.1 : 0.091;
+      assert.ok(
+        Math.abs(upperSi.z0 - lowerMetal.z1 - expectedGap) < 1e-9,
+        `Wrong engineered inter-tier spacing at ${point}, tier ${tier}`,
+      );
+    }
+  }
   for (const tier of [1, 2]) {
     const liner = nodes.find((node) => node.operation?.name === `ILD${tier} HfO2 liner`);
     assert.equal(liner?.operation.growth, 'conformal', `ILD${tier} native liner`);

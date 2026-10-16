@@ -32,8 +32,8 @@ test('Wiki examples cover exactly the published Welcome project families and the
     );
     for (const source of example.sources || []) {
       assert.ok(
-        row.includes(source.doi),
-        `${example.id}: Welcome DOI ${source.doi} missing from Wiki entry`,
+        row.includes(source.doi || source.href),
+        `${example.id}: Welcome source ${source.doi || source.href} missing from Wiki entry`,
       );
     }
   }

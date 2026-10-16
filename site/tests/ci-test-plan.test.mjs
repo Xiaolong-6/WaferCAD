@@ -247,3 +247,58 @@ test('manual/full release selects all scientific gates and fails closed on unkno
   assert.deepEqual(buildCiTestPlan(['site/process-face-execution.js']).suites.process, true);
   assert.deepEqual(buildCiTestPlan(['site/process-numerical-contract.js']).suites.process, true);
 });
+
+test('example prose changes do not select the scientific example replay', () => {
+  for (const path of ['examples/projects/README.md', 'examples/projects/PROVENANCE.md']) {
+    assert.deepEqual(enabled(buildCiTestPlan([path])), ['smoke']);
+  }
+  assert.equal(buildCiTestPlan(['examples/projects/device.wafercad']).suites.examples, true);
+});
+
+test('adding only the visual preview npm command selects the small smoke gate', () => {
+  const packageBefore = {
+    scripts: { test: 'node --test site/tests/*.test.mjs' },
+    devDependencies: { playwright: '1.55.1' },
+  };
+  const packageAfter = {
+    ...packageBefore,
+    scripts: {
+      ...packageBefore.scripts,
+      'preview:visual': 'node scripts/v2/capture-visual-first.mjs',
+    },
+  };
+  const plan = buildCiTestPlan(['package.json'], { packageBefore, packageAfter });
+  assert.equal(plan.full, false);
+  assert.deepEqual(enabled(plan), ['smoke']);
+  assert.deepEqual(plan.release, { main_mask: false, klayout: false, recipe: false });
+});
+
+test('dependency, test command and unknown package changes are fail-closed', () => {
+  const packageBefore = { scripts: { test: 'node --test site/tests/*.test.mjs' } };
+  const cases = [
+    { scripts: { test: 'node --test changed.test.mjs' } },
+    {
+      scripts: { ...packageBefore.scripts, 'test:ui': 'node run.mjs' },
+    },
+    {
+      scripts: { ...packageBefore.scripts },
+      dependencies: { three: '0.2.0' },
+    },
+  ];
+  for (const packageAfter of cases) {
+    const plan = buildCiTestPlan(['package.json'], { packageBefore, packageAfter });
+    assert.equal(plan.full, true);
+    assert.ok(Object.values(plan.release).every(Boolean));
+  }
+  assert.equal(buildCiTestPlan(['package.json']).full, true);
+  assert.equal(buildCiTestPlan(['package-lock.json']).full, true);
+});
+
+test('scientific geometry, transaction and release owners remain selected', () => {
+  assert.equal(buildCiTestPlan(['site/process-recipe.js']).release.recipe, true);
+  assert.equal(buildCiTestPlan(['site/process-worker.js']).suites.process, true);
+  assert.equal(buildCiTestPlan(['site/history-transaction.js']).suites.history, true);
+  assert.equal(buildCiTestPlan(['site/project-io.js']).suites.persistence, true);
+  assert.equal(buildCiTestPlan(['site/ui-v2/main-view.js']).release.main_mask, true);
+  assert.equal(buildCiTestPlan(['site/gds.js']).release.klayout, true);
+});

@@ -6,6 +6,7 @@ export function createProcessTaskController({
   const $ = (id) => root.getElementById(id);
   let active = null,
     sequence = 0;
+  const abortListeners = new Set();
   let idleProcessWorker = null,
     idleTimer = null;
   function discardIdleWorker() {
@@ -65,11 +66,19 @@ export function createProcessTaskController({
   }
 
   function abort() {
-    if (!active || active.abortable === false) return;
+    if (!active || active.abortable === false || active.abortController.signal.aborted) return;
     const task = active;
     task.abortController.abort();
+    // Notify transaction owners synchronously before the aborted Worker settles.
+    // Recipe must stop the whole sequence, not treat a cancelled Step as failure.
+    for (const listener of abortListeners) listener();
     task.abortCurrent?.();
     status(task.abortMessage, 'warning');
+  }
+
+  function onAbort(listener) {
+    abortListeners.add(listener);
+    return () => abortListeners.delete(listener);
   }
 
   function runChildWorker(task, workerPath, payload, { transfer = [], stagePrefix = '' } = {}) {
@@ -262,6 +271,7 @@ export function createProcessTaskController({
     runTask,
     runWorker,
     abort,
+    onAbort,
     isBusy: () => Boolean(active),
     dispose: discardIdleWorker,
   };

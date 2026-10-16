@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-review-interactions');
 await mkdir(output, { recursive: true });
@@ -34,7 +35,7 @@ try {
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       const initial = await snapshot();
       assert.equal(initial.ui.mode, width >= 1121 ? 'overview' : 'single');
-      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       const layers = page.locator('#sectionPanel [data-action="legend"]');
       const commandLayers = async () => {
@@ -49,7 +50,7 @@ try {
       assert.equal(await page.locator('#layerLegend').isVisible(), false);
       await page.reload();
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
-      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       assert.equal(await layers.getAttribute('aria-pressed'), 'false');
       assert.equal(await page.locator('#layerLegend').isVisible(), false);
@@ -57,7 +58,7 @@ try {
       await commandLayers();
       await page.reload();
       await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
-      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
+      await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       assert.equal(await layers.getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#layerLegend').isVisible(), true);
@@ -155,8 +156,8 @@ try {
   try {
     await page.goto(`${base}/app.html?start=example&example=jlfet`);
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready);
-    await page.locator('[data-action="view:main"]').click();
-    await page.locator('[data-action="maximize:section"]').click();
+    await selectScientificView(page, 'main', 1440);
+    await selectScientificView(page, 'section', 1440);
     const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const initial = await snapshot();
     const item = initial.model.electricalRegions[0];

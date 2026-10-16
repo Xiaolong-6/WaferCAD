@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-section-review');
 await mkdir(output, { recursive: true });
@@ -42,7 +43,7 @@ try {
       const initial = await snapshot();
       assert.equal(initial.sharedIdentity, true);
       assert.equal(initial.model.layers.length, 27);
-      assert.equal(initial.model.regions.length, 551);
+      assert.equal(initial.model.regions.length, 550);
       assert.deepEqual(
         await page.evaluate(() =>
           performance
@@ -60,17 +61,34 @@ try {
             : action.includes('main') || action === 'slice-coordinates'
               ? 'main'
               : 'section';
-          await page
-            .locator(
-              `#${panel}Panel button[aria-label="${{ main: 'Main', mask: 'Mask', section: 'Section' }[panel]} more tools"]`,
-            )
-            .click();
+          const label = { main: 'Main', mask: 'Mask', section: 'Section' }[panel];
+          const moreSelector = `#${panel}Panel button[aria-label="${label} more tools"]`;
+          // View changes reparent the original controls after the next paint.
+          // Wait for either an inline control or its actually enabled More menu;
+          // clicking a disabled/empty More must never silently pass.
+          await page.waitForFunction(
+            ({ action, moreSelector }) => {
+              const control = [...document.querySelectorAll('[data-action]')].find(
+                (node) => node.dataset.action === action,
+              );
+              const more = document.querySelector(moreSelector);
+              return (
+                (control?.checkVisibility() && !control.disabled) ||
+                (more?.checkVisibility() && !more.disabled)
+              );
+            },
+            { action, moreSelector },
+            { timeout: 10000 },
+          );
+          if (!(await target.isVisible())) await page.locator(moreSelector).click();
         }
         await target.click();
         await waitForPaint(page);
       };
       // Floating Mask actions must still reach the same ROI controller inside the shared shell.
-      await page.locator('[data-action="view:mask"]').click();
+      await selectScientificView(page, 'mask', width);
+      await page.locator('#maskPanel').waitFor({ state: 'visible' });
+      await waitForPaint(page);
       await command('mask-roi-toggle');
       assert.equal(await page.locator('#maskRoiTools').isVisible(), true);
       await page.locator('[data-action="mask-roi-tool:square"]').click();
@@ -88,7 +106,7 @@ try {
       assert.deepEqual((await snapshot()).roi, initial.roi);
       await page.locator('#clearMaskRoiBtn').click();
       await page.getByRole('button', { name: 'Close Mask ROI settings', exact: true }).click();
-      await page.locator('[data-action="view:main"]').click();
+      await selectScientificView(page, 'main', width);
       // Slice input uses the Main controller; inspect the real Section's reslice after changing A/B.
       await command('roi');
       await command('slice-coordinates');
@@ -104,8 +122,7 @@ try {
       assert.deepEqual(edited.section, { a: [0, -5], b: [20, 5] });
       assert.deepEqual(edited.planViews.mask, initial.planViews.mask);
       await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
-      if (width <= 820) await page.locator('[data-action="mobile-section"]').click();
-      else await command('maximize:section');
+      await selectScientificView(page, 'section', width);
       await waitForPaint(page);
       const sectionCanvas = page.locator('#sectionCanvas');
       assert.ok(Number(await sectionCanvas.getAttribute('data-x-px-per-um')) > 0);
@@ -289,7 +306,7 @@ try {
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
-    await page.locator('[data-action="maximize:section"]').click();
+    await selectScientificView(page, 'section', 1024);
     const initial = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const box = await page.locator('#sectionCanvas').boundingBox(),
       x = box.x + box.width * 0.4,

@@ -7,6 +7,7 @@ on:
       - "scripts/fig3-full-replay-acceptance.mjs"
       - "scripts/test-helpers/**"
       - "site/**"
+      - "!site/tests/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/native-fig3-full-replay.yml"

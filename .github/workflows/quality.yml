@@ -30,6 +30,17 @@ jobs:
       - name: Install development tools
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Lint, formatting, generated documentation and Node tests
-        run: npm run check
+      # Keep the stable Quality job/check name for branch protection. Drafts run
+      # the structural fast gate; complete Node coverage returns at final review.
+      - name: Draft lint, formatting and generated-document contracts
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          npm run lint
+          npm run format:check
+          npm run docs:check
+          node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs
 
+      - name: Final lint, formatting, generated documentation and Node tests
+        if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+        run: npm run check
