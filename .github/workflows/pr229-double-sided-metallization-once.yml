@@ -1,0 +1,65 @@
+name: PR229 one-shot dual-face TiCu native metal and science
+
+on:
+  push:
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths: [.github/workflows/pr229-double-sided-metallization-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  metal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Scoped format and lint
+        run: |
+          npx prettier --write scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+          npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Rebuild canonical .wafercad and Welcome Preview
+        run: |
+          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+      - name: Targeted full native Recipe replay, GaN coolant and TSV science
+        run: |
+          node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - name: Real Chromium Workstation
+        run: |
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/pr229-metal-server.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/pr229-metal-server.log
+          exit 1
+      - name: Chromium metal/oxide XY-Z samples and physical screenshots
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Rebuild this Welcome thumbnail
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Commit only tested source and model assets to this PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/build-gan-hemt-microchannel-example.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json
+          if ! git diff --cached --quiet; then
+            git commit -m "build(gan): persist double-sided TiCu materials and rebuilt scientific asset"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr229-dual-face-ti-cu-physical-evidence
+          path: test-results/gan-microchannel/visual/
+          if-no-files-found: warn
