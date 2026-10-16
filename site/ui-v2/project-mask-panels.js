@@ -68,6 +68,18 @@ export function createProjectMaskPanels({
   );
   projectHost.append(
     el(
+      'a',
+      {
+        class: 'wc-button p-mobile-welcome-link',
+        href: './index.html',
+        'aria-label': 'Back to Welcome',
+        'data-size': 'sm',
+        'data-variant': 'ghost',
+      },
+      window.WaferCadV2Icons.icon('back'),
+      'Back to Welcome',
+    ),
+    el(
       'div',
       { class: 'p-actions' },
       hook('newProjectBtn', button('New', null, 'plus', { 'data-variant': 'ghost' })),
@@ -283,6 +295,11 @@ export function createProjectMaskPanels({
     state.hoveredLayerKey = null;
     browser.invalidateScope();
     state.selectedLayerKeys = new Set(browser.globalLayers().map((item) => item.key));
+    // A worker can finish while the Mask domain remains selected. An ordinary
+    // view refresh does not necessarily re-run the editor adapter's onShow.
+    // Reconcile its cell/layer controls immediately with the imported layout.
+    browser.renderCellTree();
+    browser.renderMaskList();
     state.maskSourceMode = 'file';
     state.maskTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     state.planViews.mask = { zoom: 1, panX: 0, panY: 0 };
@@ -389,7 +406,7 @@ export function createProjectMaskPanels({
       );
       if (result?.error) throw Error(result.error);
       if (!result?.project) return null;
-      return projectState.readProjectSnapshot(new Blob([JSON.stringify(result.project)]));
+      return projectState.readWorkerValidatedProjectSnapshotAsync(result.project);
     },
     exportProjectFileTask: async (project, filename) => {
       const result = await task.runWorker(

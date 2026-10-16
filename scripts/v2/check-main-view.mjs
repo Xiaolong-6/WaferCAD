@@ -49,7 +49,7 @@ try {
         real.caption,
         await reference.locator('[data-slot="view.main.readout"]').textContent(),
       );
-      assert.equal(real.caption, '27 layers · 551 regions · µm');
+      assert.equal(real.caption, '27 layers · 550 regions · µm');
       await waitForPaint(page);
       await waitForPaint(reference);
       for (const [target, label] of [
@@ -87,6 +87,24 @@ try {
       assert.deepEqual(values.duplicateIds, []);
       assert.equal(values.legacyPanels, 0);
       assert.equal(values.canvasCount, 1);
+      if (values.overflow > 0) {
+        const offenders = await page.evaluate(() =>
+          [...document.querySelectorAll('body *')]
+            .filter((node) => {
+              const box = node.getBoundingClientRect();
+              return box.width > 0 && box.right > innerWidth + 2;
+            })
+            .slice(0, 12)
+            .map((node) => ({
+              tag: node.tagName,
+              id: node.id,
+              className: String(node.className).slice(0, 90),
+              right: Math.round(node.getBoundingClientRect().right),
+              width: Math.round(node.getBoundingClientRect().width),
+            })),
+        );
+        console.error(`Main ${width}px horizontal overflow diagnostic`, offenders);
+      }
       assert.equal(values.overflow, 0);
       assert.equal(values.headerOverflow, 0);
       assert.deepEqual(values.labels, ['', '', '', '']);
@@ -120,6 +138,9 @@ try {
       const before = await page.evaluate(() => window.WaferCadV2Main.snapshot());
       const panButton = page.locator('[data-action="tool:pan:main"]');
       const zoomButton = page.locator('[data-action="tool:zoom:main"]');
+      assert.equal(await zoomButton.getAttribute('aria-pressed'), 'true', 'Default 2D Zoom');
+      await zoomButton.click();
+      assert.equal(await zoomButton.getAttribute('aria-pressed'), 'false');
       const dragPan = () =>
         drag(
           box.x + box.width * 0.2,

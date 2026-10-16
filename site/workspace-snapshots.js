@@ -1,7 +1,17 @@
 import { historyOperationAreaLabel, historyOperationLabel } from './history-operation-label.js';
 import { equalStatePairs, stateValuesEqual } from './state-equality.js';
 
+// A validation batch must yield to the browser independently of clone-slice budgeting.
+const VALIDATION_BATCH_YIELD = Symbol('history-validation-batch');
+
 function clone(value) {
+  // Importing a long History clones many state fields. Immutable scalars do
+  // not need structuredClone; objects still require independent deep copies.
+  // Unsupported values (functions, symbols) must keep throwing DataCloneError.
+  if (value === null) return value;
+  const kind = typeof value;
+  if (kind === 'number' || kind === 'string' || kind === 'boolean') return value;
+  if (kind === 'undefined' || kind === 'bigint') return value;
   return structuredClone(value);
 }
 
@@ -56,7 +66,7 @@ function createStateCloner() {
     return stored;
   }
 
-  return function cloneState(value) {
+  function cloneState(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return clone(value);
     const state = {};
     for (const [key, item] of Object.entries(value)) {
@@ -65,7 +75,23 @@ function createStateCloner() {
       else state[key] = clone(item);
     }
     return state;
+  }
+
+  // Only the privately staged History importer uses this cooperative version.
+  // A large model/layout is still cloned atomically, but independent fields
+  // can yield before another costly clone. No partially copied state escapes.
+  cloneState.cooperative = function* (value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return clone(value);
+    const state = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (key === 'layout') state.layout = cloneLayout(item);
+      else if (key === 'model') state.model = cloneModel(item);
+      else state[key] = clone(item);
+      yield;
+    }
+    return state;
   };
+  return cloneState;
 }
 
 function cleanName(value) {
@@ -184,6 +210,7 @@ export function createSnapshotManager({
   restore,
   validateState = () => true,
   validateStates = null,
+  cooperativeValidateStates = false,
   now = () => new Date(),
   idFactory = () => `snapshot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   branchIdFactory = () =>
@@ -205,7 +232,16 @@ export function createSnapshotManager({
   let cursorSnapshotId = null;
   let cursorBaselineState = null;
   let cursorDetachedFromHead = false;
+  // A later import/clear supersedes any previous cooperative importer whose
+  // private staging is still yielding to the event loop.
+  let importGeneration = 0;
   const cloneState = createStateCloner();
+  let indexedHistoryNodes = null;
+  let indexedNodeCount = -1;
+  let historyNodesById = new Map();
+  // Internally owned checkpoints are immutable. Cache the expensive geometric
+  // equivalence for an unchanged milestone/node pair, but not mutable labels.
+  const legacyStatusByRecord = new WeakMap();
 
   function branchById(id) {
     return branches.find((branch) => branch.id === id) || null;
@@ -216,7 +252,20 @@ export function createSnapshotManager({
   }
 
   function nodeById(id) {
-    return historyNodes.find((node) => node.id === id) || null;
+    if (!id) return null;
+    // History IDs do not change in place. Nodes are only appended, or the
+    // array is replaced during truncation, deletion, clear and import.
+    // Rebuild on either change so ordinary History rendering and ancestor
+    // traversal are linear overall rather than repeated array scans.
+    if (indexedHistoryNodes !== historyNodes || indexedNodeCount !== historyNodes.length) {
+      historyNodesById = new Map();
+      for (const node of historyNodes) {
+        if (!historyNodesById.has(node.id)) historyNodesById.set(node.id, node);
+      }
+      indexedHistoryNodes = historyNodes;
+      indexedNodeCount = historyNodes.length;
+    }
+    return historyNodesById.get(id) || null;
   }
 
   function stateWithOperationMaskContext(state, operation) {
@@ -245,10 +294,24 @@ export function createSnapshotManager({
   }
 
   function list() {
-    const pairs = records.map((record) => {
-      const state = nodeById(record.historyNodeId)?.state;
-      return state && record.state ? [record.state, state] : [null, null];
-    });
+    const pairs = [];
+    const pending = [];
+    const legacy = new Array(records.length);
+    for (const [index, record] of records.entries()) {
+      const nodeState = nodeById(record.historyNodeId)?.state || null;
+      const cached = legacyStatusByRecord.get(record);
+      if (
+        cached &&
+        cached.historyNodeId === record.historyNodeId &&
+        cached.recordState === record.state &&
+        cached.nodeState === nodeState
+      ) {
+        legacy[index] = cached.value;
+        continue;
+      }
+      pairs.push(nodeState && record.state ? [record.state, nodeState] : [null, null]);
+      pending.push({ index, record, nodeState });
+    }
     let matches;
     try {
       matches = equalStatePairs(pairs);
@@ -261,6 +324,17 @@ export function createSnapshotManager({
         }
       });
     }
+    for (let index = 0; index < pending.length; index++) {
+      const { index: recordIndex, record, nodeState } = pending[index];
+      const value = !matches[index];
+      legacy[recordIndex] = value;
+      legacyStatusByRecord.set(record, {
+        historyNodeId: record.historyNodeId,
+        recordState: record.state,
+        nodeState,
+        value,
+      });
+    }
     return records.map(({ id, name, createdAt, branchId, parentId, historyNodeId }, index) => {
       return {
         id,
@@ -269,7 +343,7 @@ export function createSnapshotManager({
         branchId,
         parentId,
         historyNodeId,
-        legacyCheckpoint: !matches[index],
+        legacyCheckpoint: legacy[index],
       };
     });
   }
@@ -1225,6 +1299,44 @@ export function createSnapshotManager({
     return true;
   }
 
+  // Autosave must not run the full polygon-boolean schema validator on the UI
+  // thread. Validate the detached candidate in a worker, then atomically
+  // commit only while branch, cursor and *all* captured state remain unchanged.
+  // Interactive snapshot actions keep the existing synchronous validation.
+  async function syncActiveHeadStateAsync(validateCandidate) {
+    const branch = branchById(activeBranchId);
+    if (!branch || !isCursorAtBranchHead()) return 'skipped';
+    const branchId = activeBranchId,
+      cursorId = cursorNodeId,
+      snapshotId = cursorSnapshotId,
+      headNodeId = branch.headNodeId,
+      state = cloneState(capture());
+    if (!(await validateCandidate(state))) return 'rejected';
+    if (
+      branchById(branchId) !== branch ||
+      activeBranchId !== branchId ||
+      cursorNodeId !== cursorId ||
+      cursorSnapshotId !== snapshotId ||
+      branch.headNodeId !== headNodeId ||
+      !isCursorAtBranchHead() ||
+      !stateValuesEqual(capture(), state)
+    ) {
+      return 'stale';
+    }
+    const headNode = headNodeId ? nodeById(headNodeId) : null;
+    const processRevision = Number(state?.model?.processRevision);
+    if (
+      headNode &&
+      (!Number.isInteger(processRevision) || processRevision !== headNode.processRevision)
+    ) {
+      return 'skipped';
+    }
+    branch.headState = state;
+    cursorBaselineState = cloneState(state);
+    cursorDetachedFromHead = false;
+    return 'updated';
+  }
+
   function parentBranchId(branch) {
     if (!branch || branch.id === MAIN_SNAPSHOT_BRANCH_ID) return null;
     const explicit = branchById(branch.parentBranchId)?.id || null;
@@ -1427,6 +1539,7 @@ export function createSnapshotManager({
   }
 
   function clear() {
+    importGeneration++;
     records = [];
     branches = [defaultMainBranch()];
     historyNodes = [];
@@ -1441,7 +1554,11 @@ export function createSnapshotManager({
     return clone(records);
   }
 
-  function exportBranchState() {
+  // Transfer-only view: do not mutate or expose this to UI consumers. The
+  // autosave caller must hand it immediately to Worker.postMessage(), which
+  // synchronously structured-clones the entire candidate before returning.
+  // Normal export APIs retain their independent-copy contract.
+  function exportForWorkerStorage() {
     const exportedNodes = historyNodes.map((node) => {
       const state = stateForProcessNode(node);
       return {
@@ -1450,17 +1567,31 @@ export function createSnapshotManager({
       };
     });
     const fullyRestorable = exportedNodes.every((node) => Boolean(node.state));
-    return clone({
-      version: fullyRestorable ? 3 : 2,
-      activeBranchId,
-      cursorNodeId,
-      cursorSnapshotId,
-      branches,
-      nodes: exportedNodes,
-    });
+    return {
+      snapshots: records,
+      snapshotBranches: {
+        version: fullyRestorable ? 3 : 2,
+        activeBranchId,
+        cursorNodeId,
+        cursorSnapshotId,
+        branches,
+        nodes: exportedNodes,
+      },
+    };
   }
 
-  function importRecords(value, branchState = null) {
+  function exportBranchState() {
+    return clone(exportForWorkerStorage().snapshotBranches);
+  }
+
+  // Keep staged History data private until all copies and lineage repairs finish.
+  // Both synchronous callers and cooperative startup use this same importer.
+  function* stageImportedRecords(
+    value,
+    branchState = null,
+    beforeCommit = null,
+    cooperative = false,
+  ) {
     if (!Array.isArray(value)) {
       clear();
       return 0;
@@ -1473,8 +1604,50 @@ export function createSnapshotManager({
         (branch) => branch?.headState,
       ),
     ].filter((state) => state && typeof state === 'object');
-    const validStates =
-      typeof validateStates === 'function' && validateStates(states) ? new WeakSet(states) : null;
+    const validationStart = performance.now();
+    let validStates = null;
+    let validationBatchCount = 0;
+    let validationActiveMs = 0;
+    if (typeof validateStates === 'function') {
+      let valid = true;
+      // Only the opt-in progressive importer may split the independent
+      // snapshot validations. The public synchronous contract is unchanged.
+      if (cooperative && cooperativeValidateStates) {
+        const validationBatchSize = 2;
+        // The same state may appear in milestones, process nodes and branch
+        // heads. validateStates consumes each attestation once; do not feed
+        // repeated references into different validation batches.
+        const uniqueStates = [...new Set(states)];
+        for (let start = 0; start < uniqueStates.length; start += validationBatchSize) {
+          const began = performance.now();
+          const batchIsValid = validateStates(
+            uniqueStates.slice(start, start + validationBatchSize),
+          );
+          validationActiveMs += performance.now() - began;
+          validationBatchCount++;
+          // Consume the complete attestation, even after a failed batch.
+          // The legacy full-array validator likewise checked every state
+          // before falling back to strict individual project validation.
+          if (!batchIsValid) valid = false;
+          yield VALIDATION_BATCH_YIELD;
+        }
+      } else {
+        const began = performance.now();
+        valid = validateStates(states);
+        validationActiveMs += performance.now() - began;
+        validationBatchCount = 1;
+      }
+      if (valid) validStates = new WeakSet(states);
+    }
+    performance.measure('wafercad:history:validation', {
+      start: validationStart,
+      end: performance.now(),
+      detail: {
+        states: states.length,
+        batches: validationBatchCount,
+        activeMs: validationActiveMs,
+      },
+    });
     const isValid = (state) => (validStates ? validStates.has(state) : validateState(state));
 
     const seen = new Set();
@@ -1504,9 +1677,10 @@ export function createSnapshotManager({
         parentId: typeof raw.parentId === 'string' && raw.parentId ? raw.parentId : null,
         historyNodeId:
           typeof raw.historyNodeId === 'string' && raw.historyNodeId ? raw.historyNodeId : null,
-        state: cloneState(raw.state),
+        state: yield* cloneState.cooperative(raw.state),
       });
       seen.add(raw.id);
+      yield;
     }
 
     const importedNodes = [];
@@ -1536,9 +1710,10 @@ export function createSnapshotManager({
           createdAt,
           processRevision: Number.isInteger(raw.processRevision) ? raw.processRevision : 0,
           operation: raw.operation && typeof raw.operation === 'object' ? clone(raw.operation) : {},
-          state: raw.state && isValid(raw.state) ? cloneState(raw.state) : null,
+          state: raw.state && isValid(raw.state) ? yield* cloneState.cooperative(raw.state) : null,
         });
         nodeIds.add(raw.id);
+        yield;
       }
     }
 
@@ -1567,7 +1742,9 @@ export function createSnapshotManager({
           ? new Date(raw.createdAt).toISOString()
           : new Date(0).toISOString();
         const headState =
-          raw.headState && isValid(raw.headState) ? cloneState(raw.headState) : null;
+          raw.headState && isValid(raw.headState)
+            ? yield* cloneState.cooperative(raw.headState)
+            : null;
         importedBranches.push({
           id: raw.id,
           name: cleanName(raw.name) || (raw.id === MAIN_SNAPSHOT_BRANCH_ID ? 'Main' : raw.id),
@@ -1596,6 +1773,7 @@ export function createSnapshotManager({
           createdAt,
         });
         branchIds.add(raw.id);
+        yield;
       }
     }
 
@@ -1671,6 +1849,9 @@ export function createSnapshotManager({
       }
     }
 
+    // Adopt the matching model at the same synchronous publication boundary.
+    // Never expose a new live model with the old History while yielding.
+    if (beforeCommit) beforeCommit();
     records = next;
     historyNodes = importedNodes;
     branches = importedBranches.slice(0, maxBranches);
@@ -1730,6 +1911,63 @@ export function createSnapshotManager({
     return records.length;
   }
 
+  // Legacy callers retain the exact synchronous contract.
+  function importRecords(value, branchState = null) {
+    importGeneration++;
+    const steps = stageImportedRecords(value, branchState);
+    for (let result = steps.next(); ; result = steps.next()) {
+      if (result.done) return result.value;
+    }
+  }
+
+  // Large History imports can otherwise monopolize the UI thread for seconds.
+  // Yield only during private staging. All shared History state is committed
+  // synchronously after the final yield, preserving atomic visibility.
+  async function importRecordsAsync(value, branchState = null, { signal, beforeCommit } = {}) {
+    const generation = ++importGeneration;
+    const steps = stageImportedRecords(value, branchState, beforeCommit, true);
+    const importStart = performance.now();
+    let activeMs = 0;
+    let yieldCount = 0;
+    let sliceStart = performance.now();
+    let processed = 0;
+    for (;;) {
+      if (signal?.aborted || generation !== importGeneration) {
+        steps.return();
+        throw Object.assign(new Error('History import aborted or superseded.'), {
+          name: 'AbortError',
+        });
+      }
+      const stepStart = performance.now();
+      const result = steps.next();
+      activeMs += performance.now() - stepStart;
+      if (result.done) {
+        performance.measure('wafercad:history:import-active', {
+          start: importStart,
+          end: importStart + activeMs,
+          detail: { yields: yieldCount },
+        });
+        performance.measure('wafercad:history:import-wall', {
+          start: importStart,
+          end: performance.now(),
+          detail: { yields: yieldCount },
+        });
+        return result.value;
+      }
+      processed++;
+      if (
+        result.value === VALIDATION_BATCH_YIELD ||
+        processed >= 8 ||
+        performance.now() - sliceStart >= 12
+      ) {
+        yieldCount++;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        sliceStart = performance.now();
+        processed = 0;
+      }
+    }
+  }
+
   return {
     list,
     listHistory,
@@ -1766,10 +2004,14 @@ export function createSnapshotManager({
     restoreProcessNode,
     hasHistoricalWorkingEdits,
     syncActiveHeadState,
+    syncActiveHeadStateAsync,
+    validateHeadState: validateState,
     rebuildMainBase,
     clear,
     exportRecords,
     exportBranchState,
+    exportForWorkerStorage,
     importRecords,
+    importRecordsAsync,
   };
 }

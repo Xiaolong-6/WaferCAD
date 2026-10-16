@@ -86,10 +86,10 @@ export function createWorkstationRuntime(project) {
     drawOpen: false,
   };
   const local = {
-    main: { panEnabled: true, zoomEnabled: false, tool: 'none', sectionEditEnabled: false },
-    mask: { panEnabled: true, zoomEnabled: false },
-    section: { panEnabled: false, zoomEnabled: false },
-    three: { mode: 'rotate', zoomEnabled: false },
+    main: { panEnabled: true, zoomEnabled: true, tool: 'none', sectionEditEnabled: false },
+    mask: { panEnabled: true, zoomEnabled: true },
+    section: { panEnabled: true, zoomEnabled: true },
+    three: { mode: 'rotate', zoomEnabled: true },
   };
   let history = null;
   let restoreListener = () => {};
@@ -98,8 +98,9 @@ export function createWorkstationRuntime(project) {
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
     getSnapshotRecords: () => history?.exportRecords() || [],
-    getSnapshotBranchState: () => {
-      history?.syncActiveHeadState();
+    getWorkerSnapshotHistory: () => history?.exportForWorkerStorage() || null,
+    getSnapshotBranchState: ({ skipSync = false } = {}) => {
+      if (!skipSync) history?.syncActiveHeadState();
       return history?.exportBranchState() || null;
     },
     setSectionEditEnabled: (value) => {
@@ -233,6 +234,7 @@ export function createWorkstationRuntime(project) {
     restore,
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
+    cooperativeValidateStates: true,
   });
   history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
   return {

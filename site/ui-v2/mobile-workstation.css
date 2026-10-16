@@ -1,78 +1,243 @@
-/* Production-only compact layout. M2/mock preview keeps its approved shell geometry.
-   One viewport-bound pane owns vertical scrolling; scientific hosts stay mounted. */
+/* Production compact-layout contract.
+   Edit owns the document scroll; View owns scientific canvas gestures.
+   Only modal dialogs, code inputs and scientific controls may scroll locally.
+   The M2 reference/embedded preview is intentionally excluded. */
 @media (max-width: 820px) {
-  body[data-workstation] {
-    overflow: hidden;
+  body[data-workstation]:not([data-preview-mode]) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+    /* Keep browser scroll anchoring from overriding per-domain restoration
+       while a hidden View/Inspector subtree changes document height. */
+    overflow-anchor: none;
   }
 
-  body[data-workstation] .p-workbench {
-    height: calc(100dvh - 2 * var(--wc-space-2));
+  body[data-workstation]:not([data-preview-mode]) .p-workbench {
+    --p-mobile-dock-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    height: auto;
     min-height: 0;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    overflow: hidden;
+    margin: 0;
+    grid-template-rows: auto auto auto;
+    overflow: visible;
   }
 
-  body[data-workstation] .p-topbar {
-    position: relative;
-    top: auto;
-    z-index: var(--wc-z-toolbar);
+  /* A single contextual bottom dock replaces the old brand / switcher /
+     viewbar stack. Project title remains available in Project and document title. */
+  body[data-workstation]:not([data-preview-mode]) .p-topbar {
+    display: none;
   }
 
-  body[data-workstation] .p-body {
+  /* Desktop sidebar/workspace hosts flatten in compact mode, preserving the
+     existing single-document mobile Edit and gesture-owned View behavior. */
+  body[data-workstation]:not([data-preview-mode]) .p-sidebar,
+  body[data-workstation]:not([data-preview-mode]) .p-workspace {
+    display: contents;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
-  body[data-workstation] .p-nav {
-    flex: 0 0 auto;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-  }
-
-  /* Mobile buttons must remain true 44px hit targets even when the browser
-     reports pointer:fine while touch emulation or hybrid hardware is active. */
-  body[data-workstation] .p-nav > .wc-button,
-  body[data-workstation] .p-mobile-return > .wc-button,
-  body[data-workstation] .p-viewbar .wc-button {
-    min-width: 44px;
+  /* Project is the one mobile Edit tab providing a route back to Welcome. */
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    [data-slot='panel.project']
+    .p-mobile-welcome-link {
+    display: inline-flex;
+    align-self: flex-start;
     min-height: 44px;
   }
 
-  body[data-workstation] .p-inspector {
+  /* Fixed dock is outside scrolling document flow, with a reserved safe area.
+     The same .p-nav host owns Workspaces in Edit and Views in View. */
+  body[data-workstation]:not([data-preview-mode]) .p-nav {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    height: var(--p-mobile-dock-height);
+    box-sizing: border-box;
+    display: grid;
+    /* The left action switches modes; the remaining four columns are tabs. */
+    grid-template-columns: 64px repeat(4, minmax(0, 1fr));
+    align-items: start;
+    gap: 6px;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    background: var(--wc-surface);
+    border: 0;
+    border-top: 1px solid var(--wc-border);
+    z-index: var(--wc-z-toolbar);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: 51px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 0;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    border: 0;
+    border-radius: var(--wc-radius-sm);
+  }
+
+  /* The persistent neutral switch is not part of the selectable tab group. */
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button:first-child {
+    position: relative;
+    background: color-mix(in srgb, var(--wc-page) 85%, var(--wc-border));
+    border: 1px solid var(--wc-border);
+    border-radius: var(--wc-radius-md);
+    color: var(--wc-text);
+    font-weight: 600;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button:first-child::after {
+    content: '';
+    position: absolute;
+    inset: 9px -7px 9px auto;
+    width: 1px;
+    background: var(--wc-border);
+    pointer-events: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button .wc-icon {
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button[aria-pressed='true'] {
+    background: var(--wc-accent-tint);
+    color: var(--wc-accent-active);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-viewbar {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] {
+    padding-bottom: var(--p-mobile-dock-height);
+  }
+
+  /* Software keyboard reduces visualViewport but not the document viewport.
+     Hide the dock only while the keyboard is actually open. */
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-keyboard='open'] .p-nav {
+    display: none;
+  }
+
+  /* Edit is one vertically flowing document. The scientific view remains
+     mounted but hidden; the inspector and domain content size naturally. */
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] .p-inspector {
     order: 2;
-    flex: 1 1 0;
-    min-height: 0;
+    display: flex;
+    flex: none;
     height: auto;
     max-height: none;
-    overflow: hidden;
+    min-height: 0;
+    overflow: visible;
+    border: 0;
     scroll-margin-top: 0;
   }
 
-  body[data-workstation] .p-panel-content {
-    overscroll-behavior-y: contain;
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    .p-panel-content {
+    flex: none;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    overscroll-behavior-y: auto;
   }
 
-  body[data-workstation] .p-stage {
+  /* History/Recipe/Code previously built viewport-bounded subtrees.
+     Flatten their sizing on mobile Edit, without changing desktop owners. */
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    :is(
+      .v2-panel-host,
+      .v2-panel-subhost,
+      [data-slot-content],
+      .p-history-workspace,
+      .v2-recipe-inline,
+      .p-code-workspace
+    ) {
+    flex: none;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    :is(.p-history-scroll, #recipeStepsPane:not([hidden]), #recipeCodePane:not([hidden])) {
+    flex: none;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  body[data-workstation]:not([data-preview-mode])
+    .p-workbench[data-mobile='edit']
+    :is(.p-code-editor, .recipe-code-editor) {
+    flex: none;
+    height: auto;
+    min-height: 240px;
+  }
+
+  /* View is the only full-height mode: gestures stay inside the scientific
+     hosts (2D Pan/Zoom; 3D Orbit/Zoom), never a document-level swipe. */
+  body[data-workstation]:not([data-preview-mode]):has(.p-workbench[data-mobile='view']) {
+    overflow-y: hidden;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] {
+    height: calc(100dvh - var(--p-mobile-dock-height));
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-body {
+    overflow: hidden;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-stage {
     order: 2;
     flex: 1 1 0;
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overflow: hidden;
   }
 
-  body[data-workstation] .p-canvases {
-    min-height: max(300px, calc(100dvh - 190px));
-    flex: 1 0 auto;
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-canvases {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
   }
 
-  body[data-workstation] .p-view {
-    min-height: min(320px, 52dvh);
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-view {
+    min-height: 0;
   }
 
-  body[data-workstation] .p-workbench[data-mobile='edit'] .p-stage,
-  body[data-workstation] .p-workbench[data-mobile='view'] .p-nav,
-  body[data-workstation] .p-workbench[data-mobile='view'] .p-inspector {
+  /* Static status belongs at the end of the Edit document; View gets
+     maximum uninterrupted canvas area. No fixed footer in either mode. */
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-status,
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] .p-stage,
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='view'] .p-inspector {
     display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-mobile='edit'] .p-status {
+    position: static;
   }
 }

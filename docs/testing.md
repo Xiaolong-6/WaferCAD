@@ -2,6 +2,16 @@
 
 WaferCAD browser tests are split by intent. New coverage should go into the narrowest suite that owns the behavior instead of extending one long stateful scenario.
 
+## Repository ownership and layout
+
+- `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
+- `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
+- `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
+- `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
+- `site/examples/`: released Welcome projects, previews and thumbnails. `examples/projects/`: authoring candidates, reconstruction source inputs, project provenance and non-published research fixtures. A byte-identical source/release copy is not deletable until its scripts, workflow paths and reconstruction ownership are proven independent.
+
+**Structure migration gate:** inventory import paths, npm/globs, workflow `paths` filters and documentation links; move one owner at a time; run owning Node/CI selectors and scientifically relevant fixtures. No broad restructure for cosmetic directory symmetry. Do not store transient CI reports under tracked fixture directories.
+
 ## Test tiers
 
 | Tier                        | Entry point                   | Purpose                                                                                                                  | Expected style                                                   |
@@ -15,6 +25,13 @@ WaferCAD browser tests are split by intent. New coverage should go into the narr
 | Resilience regression       | `npm run test:ui:resilience`  | Missing Three.js CDN and unavailable WebGL behavior                                                                      | Explicit degraded-mode diagnostics while 2D remains usable       |
 | Bundled examples            | `npm run test:ui:examples`    | Literature/example structural contracts and restore behavior                                                             | Example-specific geometry/render invariants                      |
 | Product/visual review       | `npm run test:ui:product`     | Responsive layouts, interaction quality, renderer diagnostics, and review screenshots                                    | Multiple viewports; deterministic renderer inputs in CI          |
+
+The resilience owner `scripts/resilience-regression.mjs` now starts the production
+**v2** Workstation. It independently simulates a missing Three.js CDN and a
+WebGL context allocation failure, requires a visible 3D unavailability
+diagnostic, then proves that Main, Mask, Section and a real Process Worker
+operation still function. It does not route through the Legacy test adapter,
+and replaces the equivalent old-UI degraded renderer scenarios.
 
 The focused real-worker fault acceptance in `scripts/process-transaction-ui-regression.mjs` checks rejection and Abort against actual Model/History exports; it is invoked from Recipe safety CI. Node controller fault injection additionally checks worker cancellation/late results and failed History rollback without pretending to be real IndexedDB or browser reload.
 
@@ -33,6 +50,58 @@ Use the smallest group that matches the change:
 
 These commands assume WaferCAD is already served at `WAFERCAD_URL` or the default `http://127.0.0.1:4173`.
 
+### Published Legacy URL policy
+
+`app-legacy.html` remains available in the Git source tree for legacy-only
+scientific regression tests. In the staged Pages artifact its public URL
+serves only a same-origin redirect to the v2 `app.html`, preserving query
+and fragment. `app.js` and `workstation.css` are not published.
+`site/tests/pages-artifact.test.mjs` and
+`scripts/smoke-pages-artifact.mjs` enforce the production artifact
+boundary and verify that the deployed Worker-backed app still boots.
+This does **not** remove the old editor's test source or change historical
+project-format and Recovery compatibility.
+
+### M3D Welcome and 3D Border v2 ownership
+
+`scripts/m3d-welcome-regression.mjs` runs against the production v2
+Workstation, verifies the Welcome thumbnail and full project handoff,
+36 real History Steps, 27 stage bookmarks, an initialized 3D view and
+reversible Border selection without model mutation. The targeted
+`m3d-example-integration.yml` gate runs on relevant `main` PR changes.
+The full legacy M3D process/geometry/export acceptance remains available
+through manual workflow dispatch until those separate scientific contracts
+are migrated. This is an incremental test-owner transfer, not a reason
+to delete `site/app-legacy.html` from the test source tree.
+
+### MAGIC-1000 Section/3D preview
+
+`scripts/magic1000-visual-acceptance.mjs` now opens the production v2
+read-only Example preview and verifies Section raster content and initialized
+3D without workspace writer ownership. The default run saves WebP evidence
+and a JSON report to `test-results/magic1000/`, leaving committed thumbnails
+unchanged. Regenerate the repository thumbnail only with the explicit
+`--write-thumbnail` flag and visual review. The formerly obsolete
+`magic1000-candidate.yml` is now a read-only PR/manual browser gate rather
+than a branch-specific workflow with permission to push generated files.
+Scientific geometry and Recipe replay remain governed by separate tests.
+
+### KLayout v2 Mask-to-Process bridge
+
+`scripts/v2/check-klayout-mask-process.mjs` imports the pinned GDS hierarchy
+and OASIS rectangles sample in the real production v2 Workstation. It
+checks nonempty rendered Mask, selected imported layers, unchanged Base model
+before fabrication, then runs a masked Deposit through the real Process
+Worker, verifies the new physical layer and History Step, and retains the
+layout geometry. This browser gate is included in
+`.github/workflows/klayout-compat.yml` and saves evidence in
+`test-results/klayout-v2/`.
+
+The external KLayout parser/export corpus and the full historical Legacy
+UI corpus remain active as separate owners. This focused v2 bridge is a
+progressive ownership transfer and does not yet authorize removing
+`scripts/klayout-ui-compat.mjs` or the Legacy scientific DOM.
+
 ### Legacy project compatibility before UI retirement
 
 The old UI must not be deleted until the v2 Workstation can independently
@@ -49,6 +118,26 @@ approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
 preview is now v2-only, but former Legacy-only scientific owners must still be
 migrated without losing scenario ownership.
 
+### Production desktop docking ownership
+
+The production Workstation's desktop-only (821px and wider) view layout is owned by
+`site/ui-v2/view-layout-model.js` and `view-layout-templates.js`.
+`site/tests/view-layout.test.mjs` covers pure visibility, ordered slots,
+maximize/restore, Snap and preference invariants. After starting the v2
+browser server, `npm run test:ui:docking` checks real Chromium 1440/1024/821px
+Grid geometry, all four-/three-view presets, titlebar Snap exchange,
+split-resize handles, Panel/Canvas identity, scientific-model invariance,
+and the unchanged 390px compact navigation. During resize, the browser test
+holds the pointer down and checks that both column and row divider centers
+follow the actual Grid pane edges; use quarter-point grips to avoid the
+row/column crossing. It saves `divider-mid-drag-columns.png` and
+`divider-mid-drag-rows.png` before pointer release, and confirms the final
+ratio is committed afterward. It writes screenshot evidence to
+`test-results/ui-v2-desktop-docking/`. The final
+Main/Mask/Mobile targeted CI owner invokes it; Draft visual iterations should
+prefer the direct command rather than the full browser matrix.
+No temporary standalone workflow is required after the initial screenshot acceptance.
+
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
@@ -57,9 +146,18 @@ on-demand four-view preview renders the small final-stage project through v2,
 never acquires the writer lease, and does not change the saved-workspace marker.
 It has no `start` intent, autosave or Recovery side effects. Full examples
 continue to open through the ordinary v2 Project route.
-`scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
-opening the optional Legacy URL, exact cross-interface recovery, and concurrent
-Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
+`scripts/v2/check-cross-ui-recovery.mjs` retains its historical CI entry
+name while exercising the production v2 Workstation only: complete 47-Step and
+seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
+competing v2 writer exclusion, protected unload, and Recovery after replacement.
+The original executable Legacy↔v2 browser handoff test remains independently
+available in `scripts/v2/check-legacy-cross-ui-recovery.mjs` and runs under
+`legacy-cross-ui-retirement.yml` when either writer implementation changes,
+or by manual dispatch. This separate gate must be retired only after all
+cross-interface storage contracts have a verified replacement.
+Historical pre-v2 project decoding and compatibility remain separately owned
+by `check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
+The Workstation footer shows the deployed commit
 from `build-info.json` (or `commit local` in local development).
 Existing scientific/controller suites retain their Legacy DOM assertions at
 `app-legacy.html`. Suites that start through Welcome explicitly use
@@ -114,7 +212,7 @@ WAFERCAD_THREE_DIR="$PWD/node_modules/three" \
   node scripts/v2/check-three-export-abort.mjs
 ```
 
-The first checker covers four widths, touch, Main ROI/Section linkage, unchanged model, PNG 3× and GLB metres. The second uses the complete 27-layer/551-region M3D model, real GLB work and task-panel Abort, requiring no download, unchanged model/ROI and a released task. Only its camera comparison allows the user-approved maximum numerical error of `1e-9`; existing `0.25 px` geometry assertions remain unchanged. A tiny clipped export may complete before an Abort click and cannot establish cancellation. `check-three-view.mjs` still defaults to complete M3D for full-model diagnostics when no example is supplied.
+The first checker covers four widths, touch, Main ROI/Section linkage, unchanged model, PNG 3× and GLB metres. The second uses the complete 27-layer/550-region M3D model, real GLB work and task-panel Abort, requiring no download, unchanged model/ROI and a released task. Only its camera comparison allows the user-approved maximum numerical error of `1e-9`; existing `0.25 px` geometry assertions remain unchanged. A tiny clipped export may complete before an Abort click and cannot establish cancellation. `check-three-view.mjs` still defaults to complete M3D for full-model diagnostics when no example is supplied.
 
 Final captures also require visible colored material pixels in the compositor PNG, canvas/host agreement and screenshot-time layout stability within 0.25 px. Four-width checks use full-page capture. Touch uses an actual viewport capture, requires the entire 3D canvas to fit, and preserves coarse-pointer emulation: Chromium 140 full-page `captureBeyondViewport` switches the emulated pointer to fine. Capture dimensions and pointer diagnostics are saved beside each PNG as `.visibility.json`; the portable report includes the same data and material-pixel count. This does not replace scientific model/geometry assertions or human visual acceptance.
 

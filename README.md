@@ -11,9 +11,9 @@ Its core question is practical: **given this mask and this sequence of process s
 - [Open the default Workstation (UI v2)](https://xiaolong-6.github.io/WaferCAD/app.html) — the released four-view workspace.
 - [Start with a blank project](https://xiaolong-6.github.io/WaferCAD/app.html?start=empty) — intentionally create a new Base; ordinary opening of the Workstation may instead restore existing browser state.
 
-The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The optional Legacy URL remains available for compatibility, but is not linked from the Workstation. Save or export your project before opening it directly.
+The Workstation footer links the deployed short commit SHA to its GitHub commit (full SHA on hover); local builds show non-clickable `commit local`. The historical `app-legacy.html` URL redirects to the current v2 Workstation in published Pages; no separate Legacy editor is shipped. Existing `.wafercad` project files and browser Recovery remain supported.
 
-The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
+The Welcome page also offers **eight shipped example projects**, each with its own Mask, structure, and process/History context. The v2 Workstation is the default application since the [M5-Lite release](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md).
 
 ## Your first five steps
 
@@ -114,7 +114,7 @@ Rebuilding Base after Process edits requires an explicit History decision: keep 
 
 ## Repository layout
 
-- `site/` — browser application source, including `app.html` (default UI v2), `app-legacy.html` (Welcome preview and compatibility), eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`, omitting developer-only UI previews and tests.
+- `site/` — browser application source, including `app.html` (default UI v2), the retained Legacy test entry `app-legacy.html`, eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`: the published Legacy URL is only a redirect; old editor JS/CSS, developer prototypes, and tests are excluded. Welcome previews run on read-only v2.
 - `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
 - `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
 - `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts
@@ -149,4 +149,4 @@ WaferCAD is released under the MIT License. See `LICENSE`.
 
 ### Product verification
 
-The historical [interaction and visual regression report](docs/archive/PRODUCT_REVIEW.md) records wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser artifacts at its tested revision. For the released v2 startup/Legacy behavior and verification boundaries, consult the [M5-Lite handoff](docs/ui-v2/M5_LITE_HANDOFF_2026-10-12.md). [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits. [Process Geometry Kernel v2](docs/PROCESS_GEOMETRY_KERNEL_V2.md) defines the shared topology contract used by Process, Section, and 3D.
+The historical [interaction and visual regression report](docs/archive/PRODUCT_REVIEW.md) records wide, intermediate and phone layouts, actual A/B/ROI editing and generated browser artifacts at its tested revision. For the released v2 startup/Legacy behavior and verification boundaries, consult the [M5-Lite handoff](docs/archive/ui-v2/M5_LITE_HANDOFF_2026-10-12.md). [Process benchmarks](docs/PROCESS_BENCHMARKS.md) specify and test the current 2.5D Directional/Conformal/Etch semantics and their limits. [Process Geometry Kernel v2](docs/PROCESS_GEOMETRY_KERNEL_V2.md) defines the shared topology contract used by Process, Section, and 3D.

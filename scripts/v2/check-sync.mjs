@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 import { PROJECT_LENGTH_QUANTUM_UM, readProjectFile } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
@@ -85,13 +86,7 @@ try {
       const view = async (key) => {
         const returnResults = page.locator('[data-action="return-results"]:visible').first();
         if (await returnResults.isVisible()) await returnResults.click();
-        if (key === 'section') {
-          if (await page.locator('[data-action="mobile-section"]').isVisible())
-            await page.locator('[data-action="mobile-section"]').click();
-          else if (!(await page.locator('#sectionPanel').isVisible()))
-            await page.locator('[data-action="section"]').click();
-        } else await page.locator(`[data-action="view:${key}"]`).click();
-        await waitForPaint(page);
+        await selectScientificView(page, key, width);
       };
       await panel('process');
       await page.locator('[data-action="process-mode:code"]').click();
@@ -106,8 +101,13 @@ try {
           'The Code layout must not override its hidden Process ancestor',
         );
         if (domain === 'mask') {
-          assert.equal((await snap()).ui.maximize, 'mask');
-          assert.equal((await snap()).ui.view, 'mask');
+          const maskNavigation = (await snap()).ui;
+          assert.equal(
+            width > 820 ? maskNavigation.desktopLayout.maximized : maskNavigation.maximize,
+            'mask',
+            'Mask workflow navigation focuses the corresponding scientific view',
+          );
+          assert.equal(maskNavigation.view, 'mask');
         }
       }
       const historyScroll = page.locator('#snapshotList');
@@ -119,10 +119,27 @@ try {
         client: node.clientHeight,
         scroll: node.scrollHeight,
       }));
-      assert.ok(historyBounds.client > 0 && historyBounds.scroll > historyBounds.client);
-      await historyScroll.hover();
-      await page.mouse.wheel(0, 500);
-      await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      assert.ok(historyBounds.client > 0);
+      if (width <= 820) {
+        const documentRange = await page.evaluate(
+          () => document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight,
+        );
+        assert.ok(documentRange > 0, 'Mobile History expands the document scroll');
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await historyScroll.hover();
+        await page.mouse.wheel(0, 500);
+        await page.waitForFunction(() => document.scrollingElement.scrollTop > 0);
+        assert.equal(
+          await historyScroll.evaluate((node) => getComputedStyle(node).overflowY),
+          'visible',
+          'History must not own a second mobile vertical scroller',
+        );
+      } else {
+        assert.ok(historyBounds.scroll > historyBounds.client);
+        await historyScroll.hover();
+        await page.mouse.wheel(0, 500);
+        await page.waitForFunction(() => document.getElementById('snapshotList').scrollTop > 0);
+      }
       await page.setViewportSize({ width, height: 960 });
       await panel('process');
       await page.locator('[data-action="process-mode:code"]').click();
@@ -589,13 +606,15 @@ try {
         );
       }
       await view('main');
-      if (await page.locator('[data-action="mode:split"]').isVisible()) {
-        await page.locator('[data-action="mode:split"]').click();
-        await page
-          .getByRole('combobox', { name: 'Right Split view', exact: true })
-          .selectOption('three');
-        await page.locator('[data-action="mode:overview"]').click();
+      if (width > 820) {
+        await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
         assert.equal((await snap()).sharedIdentity, true);
+        assert.deepEqual((await snap()).ui.desktopLayout.visible, [
+          'main',
+          'mask',
+          'three',
+          'section',
+        ]);
       }
       await waitForPaint(page);
       const layout = await page.evaluate(() => {

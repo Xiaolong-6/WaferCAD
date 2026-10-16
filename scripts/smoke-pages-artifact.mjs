@@ -68,6 +68,84 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.welcomeReady === 'true');
   assert.equal(await page.locator('#welcomeScreen').isVisible(), true);
 
+  // Old bookmarked URLs must reach v2 while the retired editor scripts remain
+  // absent from the production artifact (legacy tests still run from Git).
+  const retired = await readFile(resolve(root, 'app-legacy.html'), 'utf8');
+  assert.ok(retired.includes("location.replace('./app.html'"));
+  assert.doesNotMatch(retired, /workstation-boot|app\.js|workstation\.css/);
+  assert.equal((await page.request.get(base + '/app.js')).status(), 404);
+  assert.equal((await page.request.get(base + '/workstation.css')).status(), 404);
+  await open('/app-legacy.html?legacy_redirect_probe=1');
+  await page.waitForURL(
+    (url) =>
+      url.pathname.endsWith('/WaferCAD/app.html') &&
+      url.searchParams.get('legacy_redirect_probe') === '1',
+  );
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
+  assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+
+  // Verify that the tiny Legacy bookmark shim forwards the entire URL intent.
+  // The published page must never load a second executable Legacy editor.
+  await open('/app-legacy.html?start=empty&view=main#old-empty-bookmark');
+  await page.waitForURL(
+    (url) =>
+      url.pathname.endsWith('/WaferCAD/app.html') &&
+      url.searchParams.get('start') === 'empty' &&
+      url.searchParams.get('view') === 'main' &&
+      url.hash === '#old-empty-bookmark',
+  );
+  await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+    timeout: 120000,
+  });
+  assert.equal(
+    (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model.layers.length,
+    1,
+    'Retired empty bookmark must resolve to the current v2 model',
+  );
+
+  await open(
+    '/app-legacy.html?start=example&example=photodetector-literature&view=mask#old-example-bookmark',
+  );
+  await page.waitForURL(
+    (url) =>
+      url.pathname.endsWith('/WaferCAD/app.html') &&
+      url.searchParams.get('start') === 'example' &&
+      url.searchParams.get('example') === 'photodetector-literature' &&
+      url.searchParams.get('view') === 'mask' &&
+      url.hash === '#old-example-bookmark',
+  );
+  await page.waitForFunction(
+    () =>
+      window.WaferCadV2Workstation?.ready &&
+      window.WaferCadV2Workstation.snapshot().model.layers.length > 1,
+    null,
+    { timeout: 120000 },
+  );
+  assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+
+  // A legacy preview bookmark routes into the v2 read-only rendering mode:
+  // it may display material geometry but cannot obtain the writer lease.
+  await open(
+    '/app-legacy.html?preview=1&example=photodetector-literature&view=section#old-preview-bookmark',
+  );
+  await page.waitForURL(
+    (url) =>
+      url.pathname.endsWith('/WaferCAD/app.html') &&
+      url.searchParams.get('preview') === '1' &&
+      url.searchParams.get('example') === 'photodetector-literature' &&
+      url.searchParams.get('view') === 'section' &&
+      url.hash === '#old-preview-bookmark',
+  );
+  await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+    timeout: 120000,
+  });
+  const previewState = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+  assert.ok(previewState.model.layers.length > 1, 'Retired preview links retain real geometry');
+  assert.equal(previewState.workflow.writable, false, 'Retired preview link has no writer lease');
+  assert.equal(await page.locator('.p-inspector').isVisible(), false);
+
   await open('/app.html?start=empty');
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
     timeout: 120000,

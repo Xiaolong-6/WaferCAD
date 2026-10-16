@@ -9,6 +9,7 @@ on:
       - 'site/app.html'
       - 'site/ui-v2/**'
       - 'scripts/v2/**'
+      - '!scripts/v2/capture-visual-first.mjs'
       - 'scripts/test-helpers/ui.mjs'
       - 'package-lock.json'
       - '.github/workflows/ui-v2-three.yml'
@@ -23,6 +24,8 @@ concurrency:
 jobs:
   three:
     name: Small-model 3D gestures and full-model GLB Abort
+    # Full 3D gestures/export matrix waits for final review; Draft gets real frames.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

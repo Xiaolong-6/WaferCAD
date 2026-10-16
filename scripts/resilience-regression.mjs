@@ -1,99 +1,129 @@
+// Production v2 degraded-mode contract. Legacy's old DOM test owner is retired:
+// Three.js or WebGL failure must never make the process editor or 2D views unusable.
 import assert from 'node:assert/strict';
 import {
+  assertNoPageErrors,
   baseUrl,
   launchBrowser,
-  newLegacyUiContext as newUiContext,
+  newUiContext,
   observePageErrors,
 } from './test-helpers/ui.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
-// Core editor must still boot when the external Three.js CDN is unavailable.
-const degradedBrowser = await launchBrowser();
+const appUrl = `${baseUrl.replace(/\/$/, '')}/app.html?start=empty`;
+const browser = await launchBrowser();
+
+async function openV2(context) {
+  const page = await context.newPage();
+  const errors = observePageErrors(page);
+  await page.goto(appUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+    timeout: 120000,
+  });
+  assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+  assert.equal(
+    await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model.layers.length),
+    1,
+  );
+  return { page, errors };
+}
+
+async function checkTwoDimensionalEditing(page) {
+  // A functioning canvas alone does not establish usability: exercise the real
+  // Process Worker and History mutation after a degraded 3D initialization.
+  for (const [view, panel] of [
+    ['main', '#mainPanel'],
+    ['mask', '#maskPanel'],
+  ]) {
+    await selectScientificView(page, view, 1440);
+    await page.locator(panel).waitFor({ state: 'visible', timeout: 30000 });
+  }
+  await selectScientificView(page, 'section', 1440);
+  const section = page.locator('#sectionPanel');
+  await section.waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('[data-action="domain:process"]').click();
+  await page.locator('#operationType').selectOption('add');
+  await page.locator('#operationArea').selectOption('full');
+  await page.locator('#layerName').fill('Degraded render film');
+  await page.locator('#operationThickness').fill('0.25');
+  await page.locator('#applyOperationBtn').click();
+  await page.waitForFunction(
+    () => {
+      const snapshot = window.WaferCadV2Workstation.snapshot();
+      return snapshot.workflow.steps.length === 1 && !snapshot.workflow.busy;
+    },
+    null,
+    { timeout: 120000 },
+  );
+  const model = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model);
+  assert.ok(model.layers.some((layer) => layer.name === 'Degraded render film'));
+}
+
 try {
-  const degradedContext = await degradedBrowser.newContext({
-    viewport: { width: 1100, height: 760 },
+  // A missing Three.js CDN should affect only the on-demand 3D view.
+  const unavailableContext = await newUiContext(browser, {
+    viewport: { width: 1440, height: 900 },
   });
-  let blockedThreeRequests = 0;
-  await degradedContext.route('https://cdn.jsdelivr.net/**', (route) => {
-    blockedThreeRequests++;
-    return route.fulfill({ status: 503, body: '' });
-  });
-  const degraded = await degradedContext.newPage();
-  const degradedErrors = observePageErrors(degraded);
-  await degraded.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 30000,
-  });
-  await degraded.waitForFunction(
-    () =>
-      (document.getElementById('statusText')?.textContent || '') ===
-      'Ready. Create a base or import a layout.',
+  await unavailableContext.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ status: 503, body: 'CDN unavailable' }),
+  );
+  const { page: unavailable, errors: dependencyErrors } = await openV2(unavailableContext);
+  await selectScientificView(unavailable, 'three', 1440);
+  await unavailable.waitForFunction(
+    () => document.querySelector('#threeHost')?.dataset.threeUnavailableReason === 'dependency',
     null,
     { timeout: 30000 },
   );
-  assert.ok(blockedThreeRequests > 0);
   assert.equal(
-    (await degraded.locator('#threeStats').textContent()).trim(),
+    (await unavailable.locator('#threeStats').textContent()).trim(),
     'dependency unavailable',
   );
   assert.match(
-    await degraded.locator('#threeHost').textContent(),
+    await unavailable.locator('#threeHost').textContent(),
     /Three\.js resources could not be loaded/,
   );
-  assert.equal(await degraded.locator('#mainCanvas').count(), 1);
-  assert.equal(await degraded.locator('#maskCanvas').count(), 1);
-  assert.deepEqual(degradedErrors, []);
-  await degradedContext.close();
+  assert.equal(await unavailable.locator('#threeHost').getAttribute('data-render-error'), null);
+  await checkTwoDimensionalEditing(unavailable);
+  assertNoPageErrors(dependencyErrors, 'Missing CDN must not break the v2 editor');
+  await unavailableContext.close();
 
-  // A browser/environment that loads Three.js but cannot create WebGL must leave
-  // the 2D editor usable and replace the loading state with an explicit diagnosis.
-  const noWebGlContext = await newUiContext(degradedBrowser, {
-    viewport: { width: 1100, height: 760 },
+  // Three.js exists, but the browser deliberately cannot allocate a WebGL context.
+  const webglContext = await newUiContext(browser, {
+    viewport: { width: 1440, height: 900 },
   });
-  await noWebGlContext.addInitScript(() => {
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function getContext(type, ...args) {
+  await webglContext.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function withoutWebGL(type, ...args) {
       if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null;
-      return originalGetContext.call(this, type, ...args);
+      return original.call(this, type, ...args);
     };
   });
-  const noWebGl = await noWebGlContext.newPage();
-  const noWebGlErrors = observePageErrors(noWebGl);
-  await noWebGl.goto(`${baseUrl.replace(/\/$/, '')}/app-legacy.html`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 30000,
-  });
-  await noWebGl.waitForFunction(
-    () =>
-      (document.getElementById('statusText')?.textContent || '') ===
-      'Ready. Create a base or import a layout.',
-    null,
-    { timeout: 30000 },
-  );
-  await noWebGl.waitForFunction(
-    () => (document.getElementById('threeStats')?.textContent || '').trim() === 'WebGL unavailable',
+  const { page: unavailableWebGL, errors: webglErrors } = await openV2(webglContext);
+  await selectScientificView(unavailableWebGL, 'three', 1440);
+  await unavailableWebGL.waitForFunction(
+    () => document.querySelector('#threeHost')?.dataset.threeUnavailableReason === 'webgl',
     null,
     { timeout: 30000 },
   );
   assert.equal(
-    await noWebGl.locator('#threeHost').getAttribute('data-three-unavailable-reason'),
-    'webgl',
+    (await unavailableWebGL.locator('#threeStats').textContent()).trim(),
+    'WebGL unavailable',
   );
   assert.match(
-    await noWebGl.locator('#threeHost').textContent(),
+    await unavailableWebGL.locator('#threeHost').textContent(),
     /could not create a WebGL context/,
   );
   assert.equal(
-    await noWebGl
+    await unavailableWebGL
       .locator('#threeHost')
       .evaluate((node) => node.classList.contains('three-loading')),
     false,
   );
-  assert.equal(await noWebGl.locator('#mainCanvas').count(), 1);
-  assert.equal(await noWebGl.locator('#maskCanvas').count(), 1);
-  assert.deepEqual(noWebGlErrors, []);
-  await noWebGlContext.close();
+  await checkTwoDimensionalEditing(unavailableWebGL);
+  assertNoPageErrors(webglErrors, 'Unavailable WebGL must not break the v2 editor');
+  await webglContext.close();
 } finally {
-  await degradedBrowser.close();
+  await browser.close();
 }
 
-console.log('WaferCAD resilience regression: OK');
+console.log('WaferCAD v2 resilience regression: CDN/WebGL failure and real 2D Process PASS');

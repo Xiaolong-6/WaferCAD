@@ -28,7 +28,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   const units = createDisplayUnits(() => state);
   const { input, choice, pair, textarea } = createInspectionFields({ hook, units });
   const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
-  const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
+  const expectedHash = '473c1ed296d417db6f9ba1e49eb56cc955efb8ad3257063c65ed81aada8bea0e';
   let state,
     shell,
     overlays,
@@ -332,6 +332,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     });
   }
   function buildMask() {
+    const preview = workstation?.readOnlyPreview === true;
     const tools = toolbar(
       'Mask',
       [
@@ -366,83 +367,84 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       helpKey: 'mask.draw',
       enabled: () => state.maskSourceMode === 'draw',
     }));
-    strip = createFloatingStrip({
-      id: 'maskDrawTools',
-      label: 'Mask drawing tools',
-      groups: [
-        descriptors.slice(0, 1),
-        descriptors.slice(1),
-        [
-          {
-            label: 'Delete selected',
-            action: 'draw-delete',
-            helpKey: 'mask.draw.delete',
-            glyph: 'delete',
-            enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
-          },
-          {
-            label: 'Clear Draw shapes',
-            action: 'draw-clear',
-            helpKey: 'mask.draw.clear',
-            glyph: 'clear',
-            enabled: () => state.maskSourceMode === 'draw' && state.drawMask.shapes.length > 0,
-          },
+    if (!preview) {
+      strip = createFloatingStrip({
+        id: 'maskDrawTools',
+        label: 'Mask drawing tools',
+        groups: [
+          descriptors.slice(0, 1),
+          descriptors.slice(1),
+          [
+            {
+              label: 'Delete selected',
+              action: 'draw-delete',
+              helpKey: 'mask.draw.delete',
+              glyph: 'delete',
+              enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
+            },
+            {
+              label: 'Clear Draw shapes',
+              action: 'draw-clear',
+              helpKey: 'mask.draw.clear',
+              glyph: 'clear',
+              enabled: () => state.maskSourceMode === 'draw' && state.drawMask.shapes.length > 0,
+            },
+          ],
         ],
-      ],
-      settings: {
-        label: 'Draw settings',
-        action: 'draw-settings',
-        helpKey: 'mask.draw.settings',
-        glyph: 'settings',
-        enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
-      },
-      owner: () => document.querySelector('[data-action="draw-toggle"]'),
-    });
-    roiStrip = createFloatingStrip({
-      id: 'maskRoiTools',
-      label: 'Mask ROI tools',
-      groups: [
-        [
-          {
-            key: 'select',
-            label: 'Select',
-            glyph: 'select',
-            action: 'mask-roi-tool:select',
-            helpKey: 'mask.roi',
-          },
+        settings: {
+          label: 'Draw settings',
+          action: 'draw-settings',
+          helpKey: 'mask.draw.settings',
+          glyph: 'settings',
+          enabled: () => state.maskSourceMode === 'draw' && Boolean(state.drawUi?.selected),
+        },
+        owner: () => document.querySelector('[data-action="draw-toggle"]'),
+      });
+      roiStrip = createFloatingStrip({
+        id: 'maskRoiTools',
+        label: 'Mask ROI tools',
+        groups: [
+          [
+            {
+              key: 'select',
+              label: 'Select',
+              glyph: 'select',
+              action: 'mask-roi-tool:select',
+              helpKey: 'mask.roi',
+            },
+          ],
+          [
+            {
+              key: 'square',
+              label: 'Square',
+              glyph: 'rectangle',
+              action: 'mask-roi-tool:square',
+              helpKey: 'mask.roi',
+            },
+            {
+              key: 'circle',
+              label: 'Circle',
+              glyph: 'circle',
+              action: 'mask-roi-tool:circle',
+              helpKey: 'mask.roi',
+            },
+          ],
         ],
-        [
-          {
-            key: 'square',
-            label: 'Square',
-            glyph: 'rectangle',
-            action: 'mask-roi-tool:square',
-            helpKey: 'mask.roi',
-          },
-          {
-            key: 'circle',
-            label: 'Circle',
-            glyph: 'circle',
-            action: 'mask-roi-tool:circle',
-            helpKey: 'mask.roi',
-          },
-        ],
-      ],
-      settings: {
-        label: 'ROI settings',
-        action: 'mask-roi-settings',
-        glyph: 'settings',
-        helpKey: 'mask.roi.settings',
-      },
-      toolAttribute: 'data-mask-roi-tool',
-      owner: () => document.querySelector('#maskPanel [data-action="mask-roi-toggle"]'),
-    });
+        settings: {
+          label: 'ROI settings',
+          action: 'mask-roi-settings',
+          glyph: 'settings',
+          helpKey: 'mask.roi.settings',
+        },
+        toolAttribute: 'data-mask-roi-tool',
+        owner: () => document.querySelector('#maskPanel [data-action="mask-roi-toggle"]'),
+      });
+    }
     const stage = el(
       'div',
       { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' },
       hook('maskCanvas', el('canvas', { 'aria-label': 'Mask scientific plan', tabindex: 0 })),
-      strip.node,
-      roiStrip.node,
+      ...(strip && roiStrip ? [strip.node, roiStrip.node] : []),
       hook('maskCoords', el('span', { class: 'p-scale' }, 'µm')),
     );
     return window
@@ -497,7 +499,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       maskRoiDraft: null,
       drawOpen: false,
       panEnabled: true,
-      zoomEnabled: false,
+      zoomEnabled: true,
       planViews: { mask: { zoom: 1, panX: 0, panY: 0 } },
     };
     modelBefore = JSON.stringify(state.model);
@@ -542,6 +544,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     runtime = createMaskRuntime({
       state,
       root,
+      readOnly: Boolean(workstation?.readOnlyPreview),
       onChange: sync,
       onEditorSync: editorSync,
       onRoiSync: roiSync,
@@ -556,6 +559,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     new ResizeObserver(() => runtime.render()).observe(hooks.get('maskCanvas'));
     roiSync(state.maskRoi);
     document.addEventListener('click', async (event) => {
+      if (workstation?.readOnlyPreview) return;
       const trigger = event.target.closest('button[data-action]');
       if (!trigger || trigger.disabled) return;
       if (

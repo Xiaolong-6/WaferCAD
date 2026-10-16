@@ -20,6 +20,7 @@ export function createMainRuntime({
   status,
   onRoiSync,
   claimPopover,
+  readOnly = false,
   root = document,
 }) {
   let renderer, main, roi, slice, editor, squareStart;
@@ -45,6 +46,8 @@ export function createMainRuntime({
   const plan = createPlanViewController({
     getModel: () => state.model,
     getPlanViews: () => state.planViews,
+    getViewportMargin: (_kind, width, height) =>
+      readOnly ? Math.max(8, Math.round(Math.min(width, height) * 0.08)) : 34,
     formatXY: units.format,
     xyToDisplay: units.toDisplay,
     xyFromDisplay: units.parse,
@@ -74,7 +77,8 @@ export function createMainRuntime({
     setSection,
     getActiveFace,
     getSectionCreateMode: () => state.sectionEditEnabled,
-    isRoiDrawing: () => Boolean(state.roiTool) || (!state.panEnabled && state.tool === 'none'),
+    isRoiDrawing: () =>
+      !readOnly && (Boolean(state.roiTool) || (!state.panEnabled && state.tool === 'none')),
     isZoomEnabled: () => state.zoomEnabled,
     completeSectionCreate: () => {
       slice.completeCreate();
@@ -128,7 +132,10 @@ export function createMainRuntime({
     },
     getActiveFace,
     isInteractionBlocked: () =>
-      state.panEnabled || !['select', 'roi'].includes(state.tool) || state.sectionEditEnabled,
+      readOnly ||
+      state.panEnabled ||
+      !['select', 'roi'].includes(state.tool) ||
+      state.sectionEditEnabled,
     ...plan,
     ...lengths,
     closeSliceControls: () => slice.setCreateMode(false),
@@ -169,7 +176,7 @@ export function createMainRuntime({
       plan.zoomPlanView('main', canvas, factor, x, y, state.activeFace === 'back'),
   });
   main.bind();
-  roi.bind({ mainOnly: true });
+  if (!readOnly) roi.bind({ mainOnly: true });
   main.setPanMode(state.panEnabled);
   renderMain();
   const exporter = createExportController({ root, getState: () => state, ...plan, status });

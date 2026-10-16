@@ -12,7 +12,7 @@ import { modelInventoryCount } from './view-kit/model-inventory.js';
 export async function createMainView({ project, sharedState, workstation, renderModel } = {}) {
   const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
   const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
-  const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
+  const expectedHash = '473c1ed296d417db6f9ba1e49eb56cc955efb8ad3257063c65ed81aada8bea0e';
   const hooks = new Map();
   const hook = (id, node) => {
     node.id = id;
@@ -325,6 +325,8 @@ export async function createMainView({ project, sharedState, workstation, render
     );
   }
   function buildMain() {
+    // Preserve controller hooks without mounting editable ROI tools in preview.
+    const roiTools = buildRoiTools();
     const common = [
       hook(
         'mainZoomFit',
@@ -392,7 +394,7 @@ export async function createMainView({ project, sharedState, workstation, render
       'div',
       { class: 'p-science v2-main-stage v2-plan-stage', 'data-v2-stage-host': '' },
       hook('mainCanvas', el('canvas', { 'aria-label': 'Main scientific plan', tabindex: 0 })),
-      buildRoiTools(),
+      ...(workstation?.readOnlyPreview ? [] : [roiTools]),
       hook(
         'mainCoords',
         el('span', { class: 'p-scale' }, `${state.model.width} × ${state.model.height} µm`),
@@ -447,6 +449,7 @@ export async function createMainView({ project, sharedState, workstation, render
     for (const id of ['sectionAx', 'sectionAy', 'sectionBx', 'sectionBy'])
       hooks.get(id).onchange = () => runtime.slice.updateFromInputs();
     document.addEventListener('click', async (event) => {
+      if (workstation?.readOnlyPreview) return;
       const trigger = event.target.closest('button[data-action]');
       if (!trigger || trigger.disabled) return;
       if (workstation && !trigger.closest('#mainPanel, .v2-main-floating')) return;
@@ -523,7 +526,7 @@ export async function createMainView({ project, sharedState, workstation, render
       sectionEditEnabled: false,
       tool: 'none',
       panEnabled: true,
-      zoomEnabled: false,
+      zoomEnabled: true,
       planViews: { main: { zoom: 1, panX: 0, panY: 0 } },
     };
     modelBefore = JSON.stringify(state.model);
@@ -571,6 +574,7 @@ export async function createMainView({ project, sharedState, workstation, render
       state,
       renderModel,
       root,
+      readOnly: Boolean(workstation?.readOnlyPreview),
       onChange: sync,
       status: (value) => {
         message = value;

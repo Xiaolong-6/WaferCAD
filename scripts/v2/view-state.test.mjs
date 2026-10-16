@@ -58,8 +58,17 @@ test('denied or malformed storage leaves the shell usable', () => {
     'three',
   ]);
 });
-test('coarse small screens retain the legacy compact contract', () => {
-  const win = { innerWidth: 1024, screen: { width: 390 }, matchMedia: () => ({ matches: true }) };
-  assert.equal(state.compact(win), true);
-  assert.equal(state.preferredMode(state.viewportWidth(win), 'split'), 'main');
+test('mobile layout breakpoint tracks CSS viewport width, not pointer or screen metadata', () => {
+  const hybrid = {
+    innerWidth: 1024,
+    screen: { width: 390 },
+    matchMedia: () => ({ matches: true }),
+  };
+  assert.equal(state.compact(hybrid), false);
+  assert.equal(state.preferredMode(state.viewportWidth(hybrid), 'split'), 'split');
+  hybrid.innerWidth = 820;
+  assert.equal(state.compact(hybrid), true);
+  assert.equal(state.preferredMode(state.viewportWidth(hybrid), 'split'), 'main');
+  hybrid.innerWidth = 821;
+  assert.equal(state.compact(hybrid), false);
 });

@@ -22,6 +22,9 @@ const out = new URL(
 );
 const reportPath = new URL('../test-results/magic1000/visual-acceptance.json', import.meta.url);
 const views = {};
+const writeThumbnail = process.argv.includes('--write-thumbnail');
+const evidenceDir = new URL('../test-results/magic1000/', import.meta.url);
+await mkdir(evidenceDir, { recursive: true });
 try {
   for (const view of ['section', 'three']) {
     const context = await browser.newContext({
@@ -31,19 +34,31 @@ try {
     await installPinnedThreeRoute(context);
     const page = await context.newPage();
     const errors = observePageErrors(page);
-    await page.goto(
-      baseUrl +
-        '/app-legacy.html?preview=1&start=example&example=magic-1000-mos2-beol&view=' +
-        view,
-      { waitUntil: 'domcontentloaded', timeout: 120000 },
-    );
+    await page.goto(baseUrl + '/app.html?preview=1&example=magic-1000-mos2-beol&view=' + view, {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000,
+    });
     await page.waitForFunction(
-      () => document.getElementById('statusText')?.textContent.startsWith('Opened'),
-      null,
+      (selectedView) => {
+        const instance = window.WaferCadV2Workstation;
+        if (document.body.dataset.ready !== 'true' || !instance?.ready) return false;
+        const state = instance.snapshot();
+        return (
+          state.source.endsWith('examples/previews/magic-1000-mos2-beol.wafercad') &&
+          state.ui.view === selectedView &&
+          state.workflow.writable === false
+        );
+      },
+      view,
       { timeout: 120000 },
     );
     const target = view === 'section' ? '#sectionCanvas' : '#threeHost';
     if (view === 'section') {
+      assert.equal(
+        await page.locator('.p-workspace').count(),
+        0,
+        'Read-only preview must use its original standalone shell, not production desktop geometry',
+      );
       await page.locator(target).waitFor({ state: 'visible', timeout: 120000 });
       await page.waitForFunction(
         () =>
@@ -75,12 +90,12 @@ try {
         return Array.from(new Uint8Array(await result.arrayBuffer()));
       }, Array.from(png)),
     );
-    if (view === 'section') await writeFile(out, webp);
+    await writeFile(new URL(view + '.webp', evidenceDir), webp);
+    if (view === 'section' && writeThumbnail) await writeFile(out, webp);
     views[view] = { width: 920, height: 600, inkFraction: ink, bytes: webp.length };
     assert.deepEqual(errors, [], view + ' browser errors');
     await context.close();
   }
-  await mkdir(new URL('../test-results/magic1000/', import.meta.url), { recursive: true });
   await writeFile(
     reportPath,
     JSON.stringify(
@@ -88,7 +103,9 @@ try {
         pass: true,
         source: 'MAGIC-1000 paper-derived local reconstruction',
         views,
-        note: 'Screenshots prove browser rendering; comparison to Fig. 1e/f still requires human visual audit.',
+        ui: 'production v2 read-only preview',
+        wrotePublishedThumbnail: writeThumbnail,
+        note: 'Browser rendering established; comparison to Fig. 1e/f still requires human visual audit.',
       },
       null,
       2,

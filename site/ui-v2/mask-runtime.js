@@ -19,6 +19,7 @@ export function createMaskRuntime({
   status,
   confirmAction,
   selectedMaskElement,
+  readOnly = false,
 }) {
   let renderer,
     draw,
@@ -69,6 +70,9 @@ export function createMaskRuntime({
     getMaskSourceMode: () => state.maskSourceMode,
     getDrawMask: () => state.drawMask,
     getPlanViews: () => state.planViews,
+    fitMaskToContent: readOnly,
+    getViewportMargin: (_kind, width, height) =>
+      readOnly ? Math.max(8, Math.round(Math.min(width, height) * 0.08)) : 34,
     maskPoint,
     formatXY: units.format,
     xyToDisplay: units.toDisplay,
@@ -92,7 +96,8 @@ export function createMaskRuntime({
     renderMask,
     status,
     confirmAction,
-    isInteractionBlocked: () => state.panEnabled || Boolean(state.maskRoiTool) || !state.drawOpen,
+    isInteractionBlocked: () =>
+      readOnly || state.panEnabled || Boolean(state.maskRoiTool) || !state.drawOpen,
     onUiSync: (value) => {
       state.drawUi = value;
       onChange();
@@ -150,8 +155,10 @@ export function createMaskRuntime({
     panBy: (dx, dy) => plan.panPlanView('mask', dx, dy),
     zoomAt: (factor, x, y) => plan.zoomPlanView('mask', canvas, factor, x, y),
   });
-  draw.bind();
-  roi.bind();
+  if (!readOnly) {
+    draw.bind();
+    roi.bind();
+  }
   const alignment = createMaskImportController({
     root,
     getMaskTransform: () => state.maskTransform,

@@ -139,6 +139,8 @@ try {
         [box.x + box.width * 0.25, box.y + box.height * 0.7],
         [box.x + box.width * 0.25 + 24, box.y + box.height * 0.7 + 16],
       ];
+      assert.equal((await snapshot()).zoomEnabled, true);
+      await page.locator('[data-action="tool:zoom:mask"]').click();
       await drag(...nav);
       let current = await snapshot();
       assert.ok(Math.abs(current.plan.panX - 24) < 0.01, 'Mask pan moves 24 px in X');

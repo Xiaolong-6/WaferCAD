@@ -49,6 +49,378 @@ test('snapshot records are immutable checkpoints and can be renamed/restored/del
   assert.equal(manager.list().length, 0);
 });
 
+test('snapshot clone preserves scalar semantics, isolates objects and rejects unsupported values', () => {
+  let source = {
+    negativeZero: -0,
+    notANumber: NaN,
+    infinity: Infinity,
+    optional: undefined,
+    count: 20n,
+    nested: { values: [1, 2] },
+  };
+  let restored = null;
+  let id = 0;
+  const manager = createSnapshotManager({
+    capture: () => source,
+    restore: (state) => {
+      restored = state;
+    },
+    validateState: () => true,
+    idFactory: () => `scalar-${++id}`,
+  });
+
+  const saved = manager.create();
+  source.nested.values.push(3);
+  assert.equal(manager.restore(saved.id), true);
+  assert.equal(Object.is(restored.negativeZero, -0), true);
+  assert.equal(Number.isNaN(restored.notANumber), true);
+  assert.equal(restored.infinity, Infinity);
+  assert.equal(Object.hasOwn(restored, 'optional'), true);
+  assert.equal(restored.optional, undefined);
+  assert.equal(restored.count, 20n);
+  assert.deepEqual(restored.nested.values, [1, 2]);
+
+  source = { ...source, unsupported: Symbol('no-clone') };
+  assert.throws(() => manager.create('reject unsupported'), /could not be cloned/);
+});
+
+test('cooperative History import yields without exposing partial lineage and rejects abort', async () => {
+  let live = { model: { revision: 1, processRevision: 0, layers: [] } };
+  let nextId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    idFactory: () => `before-${++nextId}`,
+  });
+  manager.create('Before import');
+  const nodes = Array.from({ length: 48 }, (_, index) => ({
+    id: `node-${index}`,
+    branchId: 'main',
+    parentId: index ? `node-${index - 1}` : null,
+    createdAt: '2026-10-14T00:00:00.000Z',
+    processRevision: index + 1,
+    operation: { kind: 'add' },
+    state: { model: { revision: index + 2, processRevision: index + 1, layers: [] } },
+  }));
+  const source = {
+    version: 3,
+    activeBranchId: 'main',
+    cursorNodeId: 'node-47',
+    cursorSnapshotId: null,
+    nodes,
+    branches: [
+      {
+        id: 'main',
+        name: 'Main',
+        headNodeId: 'node-47',
+        headState: nodes[47].state,
+        createdAt: '2026-10-14T00:00:00.000Z',
+      },
+    ],
+  };
+
+  let adopted = 0;
+  const adoptModel = () => {
+    adopted++;
+    live = structuredClone(nodes[47].state);
+  };
+  const abort = new AbortController();
+  const stopped = manager.importRecordsAsync([], source, {
+    signal: abort.signal,
+    beforeCommit: adoptModel,
+  });
+  assert.equal(manager.list()[0].name, 'Before import');
+  assert.equal(manager.listHistory().length, 0);
+  abort.abort();
+  await assert.rejects(stopped, { name: 'AbortError' });
+  assert.equal(manager.list()[0].name, 'Before import');
+  assert.equal(manager.listHistory().length, 0);
+  assert.equal(adopted, 0, 'Aborted import cannot adopt a new model.');
+
+  const pending = manager.importRecordsAsync([], source, { beforeCommit: adoptModel });
+  assert.equal(manager.listHistory().length, 0, 'History cannot publish while cloning.');
+  assert.equal(live.model.processRevision, 0, 'Old model remains active until commit.');
+  await pending;
+  assert.equal(adopted, 1);
+  assert.equal(manager.currentPosition().atHead, true);
+  assert.equal(manager.list().length, 0);
+  assert.equal(manager.listHistory().length, 48);
+  assert.equal(manager.listHistory()[47].parentId, 'node-46');
+  const exported = manager.exportBranchState();
+  const synchronous = createSnapshotManager({
+    capture: () => live,
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+  });
+  synchronous.importRecords([], source);
+  assert.deepEqual(exported, synchronous.exportBranchState());
+});
+
+test('opt-in History state validation yields in independent batches and stays atomic', async () => {
+  const validatedGroups = [];
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    id: `batch-${index}`,
+    name: `State ${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: index }, view: { zoom: index + 0.0000004 } },
+  }));
+  const options = {
+    capture: () => ({ model: { processRevision: 0 } }),
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    validateStates: (states) => {
+      validatedGroups.push(states.map((state) => state.model.processRevision));
+      return states.every((state) => Number.isInteger(state?.model?.processRevision));
+    },
+    cooperativeValidateStates: true,
+  };
+  const manager = createSnapshotManager(options);
+  const pending = manager.importRecordsAsync(records);
+  assert.deepEqual(validatedGroups, [[0, 1]]);
+  assert.equal(manager.list().length, 0, 'No validated batch can publish History early');
+  await pending;
+  assert.deepEqual(validatedGroups, [[0, 1], [2, 3], [4]]);
+  assert.equal(manager.list().length, 5);
+
+  const synchronousGroups = [];
+  const synchronous = createSnapshotManager({
+    ...options,
+    validateStates: (states) => {
+      synchronousGroups.push(states.length);
+      return states.every((state) => Number.isInteger(state?.model?.processRevision));
+    },
+  });
+  synchronous.importRecords(records);
+  assert.deepEqual(synchronousGroups, [5], 'The synchronous API keeps single-batch validation');
+  assert.deepEqual(manager.exportRecords(), synchronous.exportRecords());
+  records[0].state.view.zoom = 99;
+  assert.equal(manager.exportRecords()[0].state.view.zoom, 0.0000004);
+});
+
+test('repeated History state references validate once across cooperative batches', async () => {
+  const shared = { model: { processRevision: 2 } };
+  const independent = { model: { processRevision: 3 } };
+  const records = [shared, independent, shared, independent, shared].map((state, index) => ({
+    id: `reference-${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state,
+  }));
+  const groups = [];
+  const manager = createSnapshotManager({
+    capture: () => ({}),
+    restore: () => {},
+    validateState: () => true,
+    validateStates: (states) => {
+      groups.push(states);
+      return true;
+    },
+    cooperativeValidateStates: true,
+  });
+  await manager.importRecordsAsync(records);
+  assert.equal(groups.length, 1, 'Repeated identities must not consume attestation twice');
+  assert.deepEqual(groups[0], [shared, independent]);
+  assert.equal(manager.list().length, 5);
+});
+
+test('a failed cooperative validation batch still consumes remaining attestation groups', async () => {
+  const visited = [];
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    id: `candidate-${index}`,
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: index } },
+  }));
+  const validateState = (state) => state?.model?.processRevision !== 2;
+  const validateStates = (states) => {
+    visited.push(states.map((state) => state.model.processRevision));
+    return states.every(validateState);
+  };
+  const opts = {
+    capture: () => ({}),
+    restore: () => {},
+    validateState,
+    validateStates,
+    cooperativeValidateStates: true,
+  };
+  const asyncManager = createSnapshotManager(opts);
+  await asyncManager.importRecordsAsync(records);
+  assert.deepEqual(visited, [[0, 1], [2, 3], [4]]);
+  const syncManager = createSnapshotManager({
+    ...opts,
+    validateStates: (states) => states.every(validateState),
+  });
+  syncManager.importRecords(records);
+  assert.deepEqual(asyncManager.exportRecords(), syncManager.exportRecords());
+  assert.deepEqual(
+    asyncManager.list().map((record) => record.id),
+    ['candidate-0', 'candidate-1', 'candidate-3', 'candidate-4'],
+  );
+});
+
+test('abort during cooperative validation keeps previous History and skips publication', async () => {
+  const before = {
+    id: 'previous',
+    name: 'Previous',
+    createdAt: '2026-10-15T00:00:00.000Z',
+    state: { model: { processRevision: 0 } },
+  };
+  const manager = createSnapshotManager({
+    capture: () => before.state,
+    restore: () => {},
+    validateState: () => true,
+    validateStates: () => true,
+    cooperativeValidateStates: true,
+  });
+  manager.importRecords([before]);
+  const imported = Array.from({ length: 5 }, (_, index) => ({
+    ...before,
+    id: `after-${index}`,
+  }));
+  const abort = new AbortController();
+  const pending = manager.importRecordsAsync(imported, null, { signal: abort.signal });
+  assert.equal(manager.list()[0].id, 'previous');
+  abort.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.deepEqual(
+    manager.list().map((item) => item.id),
+    ['previous'],
+  );
+});
+
+test('one wide imported History state yields before publication and preserves exact copies', async () => {
+  const sourceState = {
+    model: { revision: 1, processRevision: 0, regions: [{ geometry: [[0.0000004, 8]] }] },
+    layout: {
+      name: 'mask',
+      root: 'TOP',
+      elements: [
+        {
+          points: [
+            [0, 0],
+            [0.5, 0.5],
+          ],
+        },
+      ],
+      linework: [],
+      combos: [],
+      hierarchy: {},
+      units: { xy: 'µm' },
+    },
+  };
+  for (let index = 0; index < 36; index++) {
+    sourceState[`view${index}`] = { zoom: index, pan: [-index, index + 0.0000002] };
+  }
+  const saved = {
+    id: 'wide-state',
+    name: 'After long process',
+    createdAt: '2026-10-15T00:00:00.000Z',
+    branchId: 'main',
+    state: sourceState,
+  };
+  let adopted = 0;
+  const manager = createSnapshotManager({
+    capture: () => ({ model: { revision: 0, processRevision: 0 } }),
+    restore: () => {},
+    validateState: () => true,
+  });
+  const abort = new AbortController();
+  const interrupted = manager.importRecordsAsync([saved], null, {
+    signal: abort.signal,
+    beforeCommit: () => {
+      adopted++;
+    },
+  });
+  assert.equal(manager.list().length, 0, 'No partial wide state is published during cloning');
+  abort.abort();
+  await assert.rejects(interrupted, { name: 'AbortError' });
+  assert.equal(manager.list().length, 0);
+  assert.equal(adopted, 0);
+
+  const completed = manager.importRecordsAsync([saved], null, {
+    beforeCommit: () => {
+      adopted++;
+    },
+  });
+  assert.equal(manager.list().length, 0, 'Pending cooperative import remains private');
+  await completed;
+  assert.equal(adopted, 1);
+  const synchronous = createSnapshotManager({
+    capture: () => ({ model: { revision: 0, processRevision: 0 } }),
+    restore: () => {},
+    validateState: () => true,
+  });
+  synchronous.importRecords([saved]);
+  assert.deepEqual(manager.exportRecords(), synchronous.exportRecords());
+  assert.deepEqual(manager.exportRecords()[0].state, sourceState);
+
+  sourceState.view0.pan[0] = 999;
+  sourceState.model.regions[0].geometry[0][0] = 999;
+  assert.equal(Object.is(manager.exportRecords()[0].state.view0.pan[0], -0), true);
+  assert.equal(manager.exportRecords()[0].state.model.regions[0].geometry[0][0], 0.0000004);
+});
+
+test('later imports and Clear prevent stale cooperative History publication', async () => {
+  const live = { model: { revision: 1, processRevision: 0, layers: [] } };
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: () => {},
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+  });
+  const history = (prefix, count) => {
+    const nodes = Array.from({ length: count }, (_, index) => ({
+      id: `${prefix}-${index}`,
+      branchId: 'main',
+      parentId: index ? `${prefix}-${index - 1}` : null,
+      createdAt: '2026-10-14T00:00:00.000Z',
+      processRevision: index + 1,
+      operation: { kind: 'add' },
+      state: { model: { revision: index + 2, processRevision: index + 1, layers: [] } },
+    }));
+    return {
+      version: 3,
+      activeBranchId: 'main',
+      cursorNodeId: `${prefix}-${count - 1}`,
+      cursorSnapshotId: null,
+      nodes,
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          headNodeId: `${prefix}-${count - 1}`,
+          headState: nodes.at(-1).state,
+          createdAt: '2026-10-14T00:00:00.000Z',
+        },
+      ],
+    };
+  };
+
+  let firstCommitted = false;
+  const first = manager.importRecordsAsync([], history('stale', 48), {
+    beforeCommit: () => {
+      firstCommitted = true;
+    },
+  });
+  const latest = manager.importRecordsAsync([], history('latest', 24));
+  await assert.rejects(first, { name: 'AbortError' });
+  await latest;
+  assert.equal(firstCommitted, false);
+  assert.equal(manager.listHistory().length, 24);
+  assert.equal(manager.listHistory().at(-1).id, 'latest-23');
+
+  const supersededBySync = manager.importRecordsAsync([], history('async', 48));
+  manager.importRecords([], history('sync', 3));
+  await assert.rejects(supersededBySync, { name: 'AbortError' });
+  assert.equal(manager.listHistory().at(-1).id, 'sync-2');
+
+  const supersededByClear = manager.importRecordsAsync([], history('cleared', 48));
+  manager.clear();
+  await assert.rejects(supersededByClear, { name: 'AbortError' });
+  assert.equal(manager.listHistory().length, 0);
+  assert.equal(manager.list().length, 0);
+});
+
 test('snapshot import rejects invalid and duplicate records', () => {
   const manager = createSnapshotManager({
     capture: () => ({ value: 0 }),
@@ -273,6 +645,40 @@ test('snapshot branch state round-trips and legacy snapshots become a linear Mai
   assert.equal(legacyRecords.find((record) => record.id === 'new').parentId, 'old');
   assert.equal(legacy.activeBranch().id, 'main');
   assert.equal(legacy.activeBranch().headSnapshotId, 'new');
+});
+
+test('milestone legacy classification refreshes after History import and does not cache names', () => {
+  let live = { model: { processRevision: 0 }, value: 'base' };
+  let snapshotId = 0;
+  let nodeId = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: (state) => Number.isInteger(state?.model?.processRevision),
+    idFactory: () => `milestone-${++snapshotId}`,
+    nodeIdFactory: () => `process-${++nodeId}`,
+  });
+
+  live = { model: { processRevision: 1 }, value: 'deposited' };
+  manager.recordOperation({ kind: 'add', label: 'Deposit' });
+  const milestone = manager.create('Original');
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
+  assert.equal(manager.rename(milestone.id, 'Renamed'), true);
+  assert.equal(manager.list()[0].name, 'Renamed');
+
+  const originalRecords = manager.exportRecords();
+  const history = manager.exportBranchState();
+  const legacyRecords = structuredClone(originalRecords);
+  legacyRecords[0].state.value = 'different';
+  manager.importRecords(legacyRecords, history);
+  assert.equal(manager.list()[0].legacyCheckpoint, true);
+  assert.equal(manager.list()[0].legacyCheckpoint, true);
+
+  manager.importRecords(originalRecords, history);
+  assert.equal(manager.list()[0].legacyCheckpoint, false);
 });
 
 test('branch origin milestones are protected and deleting a leaf variant keeps its origin', () => {
@@ -2344,4 +2750,68 @@ test('historical report reader yields isolated state without restoring or editin
   assert.equal(live.model.processRevision, 2);
   assert.deepEqual(manager.currentPosition(), cursor);
   assert.equal(manager.listHistory().length, 2);
+});
+
+test('History ID index survives append, clear and imported lineage replacement', () => {
+  let live = { model: { processRevision: 0, revision: 1, layers: [] } };
+  let sequence = 0;
+  const manager = createSnapshotManager({
+    capture: () => live,
+    restore: (state) => {
+      live = state;
+    },
+    validateState: () => true,
+    nodeIdFactory: () => `indexed-node-${++sequence}`,
+  });
+
+  // Exercises the large-History path with parent lookups and per-step labels.
+  for (let i = 1; i <= 256; i++) {
+    live = { model: { processRevision: i, revision: i + 1, layers: [] } };
+    manager.recordOperation({ kind: 'record' });
+  }
+  const before = manager.listHistory();
+  assert.equal(before.length, 256);
+  assert.equal(before[0].id, 'indexed-node-1');
+  assert.equal(before[255].id, 'indexed-node-256');
+  assert.equal(before[255].parentId, 'indexed-node-255');
+
+  // The cached index must not retain cleared nodes or a previous import.
+  manager.clear();
+  assert.deepEqual(manager.listHistory(), []);
+  const importedState = { model: { processRevision: 3, revision: 4, layers: [] } };
+  assert.equal(
+    manager.importRecords([], {
+      version: 3,
+      activeBranchId: 'main',
+      cursorNodeId: 'imported-node',
+      cursorSnapshotId: null,
+      nodes: [
+        {
+          id: 'imported-node',
+          branchId: 'main',
+          parentId: null,
+          createdAt: '2026-10-13T00:00:00.000Z',
+          processRevision: 3,
+          operation: { kind: 'record' },
+          state: importedState,
+        },
+      ],
+      branches: [
+        {
+          id: 'main',
+          name: 'Main',
+          headNodeId: 'imported-node',
+          headState: importedState,
+          createdAt: '1970-01-01T00:00:00.000Z',
+        },
+      ],
+    }),
+    0,
+  );
+  assert.deepEqual(
+    manager.listHistory().map((item) => item.id),
+    ['imported-node'],
+  );
+  assert.equal(manager.restoreProcessNode('indexed-node-256'), false);
+  assert.equal(manager.restoreProcessNode('imported-node'), true);
 });
