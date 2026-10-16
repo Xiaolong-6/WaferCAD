@@ -90,7 +90,7 @@ try {
       assert.equal(loadedStyle.loaded, true, 'Compact Workstation stylesheet is loaded');
       assert.equal(
         new URL(loadedStyle.href).searchParams.get('v'),
-        '20261015-249-bottom-dock',
+        '20261016-mobile-switch-a',
         'Compact stylesheet uses the expected cache key',
       );
       assert.equal(loadedStyle.headerDisplay, 'none', 'Redundant mobile topbar is removed');
@@ -229,6 +229,18 @@ try {
         'Edit dock contains exactly five contextual actions',
       );
       assert.ok(dock.navScrollWidth <= dock.navClientWidth + 1, 'No horizontal nav scrolling');
+      assert.ok(Math.abs(dock.buttons[0].width - 64) <= 1, 'Mode switch has a fixed width');
+      const tabWidths = dock.buttons.slice(1).map((item) => item.width);
+      assert.ok(Math.max(...tabWidths) - Math.min(...tabWidths) <= 1, 'Four tabs are equal width');
+      assert.ok(
+        dock.buttons[1].left >= dock.buttons[0].right + 5,
+        'Mode switch is visually separated from the tabs',
+      );
+      assert.equal(
+        await nav.locator('button:first-child use').getAttribute('href'),
+        '#p-icon-switchMode',
+        'The mode action uses the bidirectional switch icon',
+      );
       for (const item of dock.buttons) {
         assert.ok(Math.abs(item.top - dock.buttons[0].top) <= 1, 'Single bottom row');
         assert.ok(item.width >= 44 && item.height >= 44, 'Every dock item is touch-sized');
