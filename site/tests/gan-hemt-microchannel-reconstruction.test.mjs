@@ -14,11 +14,13 @@ import {
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { inferredAuWireBond, validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
 const { readProjectFile } = await import('../project-io.js');
+const { createProjectStateController } = await import('../controllers/project-state-controller.js');
 
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { collectMaskExportElements, serializeGDS, serializeOASIS } =
@@ -33,6 +35,36 @@ function stackAt(model, xy) {
 function solidAt(model, xy, z) {
   return stackAt(model, xy).some((segment) => segment.z0 < z && segment.z1 > z);
 }
+
+test('3D Au packaging primitive rejects invalid geometry before project import', () => {
+  const valid = inferredAuWireBond({
+    id: 'contact-a-to-b',
+    from: [0, 0, 707],
+    to: [1000, 0, 707.2],
+    fromLayerId: 'layer-1',
+    toLayerId: 'layer-2',
+  });
+  assert.equal(validateAssemblyWires([valid]).length, 1);
+  assert.throws(() => validateAssemblyWires([valid, valid]), /unique/);
+  assert.throws(
+    () => validateAssemblyWires([{ ...valid, diameterUm: Number.NaN }]),
+    /diameter/,
+  );
+  assert.throws(
+    () => validateAssemblyWires([{ ...valid, points: valid.points.slice(0, 3) }]),
+    /four finite/,
+  );
+  assert.throws(
+    () =>
+      validateAssemblyWires([
+        {
+          ...valid,
+          points: [valid.points[0], valid.points[0], valid.points[2], valid.points[3]],
+        },
+      ]),
+    /rise/,
+  );
+});
 
 test('Lian 2022 derived mask values distinguish reported from inferred geometry', () => {
   assert.equal(GAN_MICROCHANNEL_DOI, '10.1038/s41378-022-00462-3');
@@ -104,6 +136,36 @@ test('Lian 2022 derived mask values distinguish reported from inferred geometry'
   assert.equal(GAN_GSG_STACK.substrateThicknessUm, 100);
 });
 
+test('GSG independent die and contact geometry stays distinct from HEMT and TSV', () => {
+  const masks = new Map(GAN_MICROCHANNEL_MASKS.map((mask) => [mask.id, mask]));
+  const gsgDie = masks.get(26).rectangles;
+  const gsgSolder = masks.get(27).rectangles;
+  const gsgPads = masks.get(20).rectangles;
+  const hemt = masks.get(16).rectangles[0];
+  const tsv = masks.get(14).rectangles;
+  const contains = (outer, inner) =>
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.w <= outer.x + outer.w &&
+    inner.y + inner.h <= outer.y + outer.h;
+  const overlaps = (a, b) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  assert.equal(gsgDie.length, 2);
+  assert.equal(gsgSolder.length, 2);
+  assert.equal(gsgPads.length, 6);
+  for (let i = 0; i < gsgDie.length; i++) {
+    assert.ok(contains(gsgDie[i], gsgSolder[i]), 'AuSn must support its own GSG die');
+    assert.ok(!overlaps(gsgDie[i], hemt), 'A separate GSG chip must not merge with HEMT');
+    assert.ok(!gsgDie.some((other, j) => j !== i && overlaps(other, gsgDie[i])));
+    const ownedPads = gsgPads.filter((pad) => contains(gsgDie[i], pad));
+    assert.equal(ownedPads.length, 3, 'Each GSG chip must own exactly three Au pads');
+    assert.ok(
+      ownedPads.every((pad) => !tsv.some((via) => overlaps(pad, via))),
+      'GSG pad-to-TSV surface routing is not modeled and cannot be presumed',
+    );
+  }
+});
+
 test('Lian 2022 structure uses true stepped voids, a suspended die and replayable history', async () => {
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
@@ -121,6 +183,72 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
   assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
   assert.equal(validation.checks.twoInferredGsgDieBodiesAndPadsAreRealGeometry, true);
+  assert.equal(project.assemblyWires?.length, 2, 'Integrated example must have real Au loops');
+  validateAssemblyWires(project.assemblyWires);
+  const allWireIds = new Set();
+  for (const wire of project.assemblyWires) {
+    assert.equal(wire.material, 'Au');
+    assert.equal(wire.source, 'inferred');
+    assert.equal(wire.diameterUm, 12);
+    assert.ok(!allWireIds.has(wire.id), 'Each Au loop requires a stable unique id');
+    allWireIds.add(wire.id);
+    const [source, leftControl, rightControl, destination] = wire.points;
+    const anchors = [source, destination];
+    for (const [index, point] of anchors.entries()) {
+      const segments = stackAt(project.model, point.slice(0, 2));
+      const metal = segments.find((segment) => segment.layerId === wire.contactLayerIds[index]);
+      assert.ok(metal, 'Au bond endpoint is not owned by an existing metal pad');
+      assert.ok(Math.abs(metal.z1 - point[2]) < 1e-8, 'Wire must touch the top metal face');
+    }
+    assert.ok(leftControl[2] > source[2] + 100, 'Loop fails to rise from HEMT metal');
+    assert.ok(rightControl[2] > destination[2] + 100, 'Loop fails to rise from GSG metal');
+    assert.ok(Math.abs(source[0]) === 225 && Math.abs(destination[0]) === 1250);
+    assert.equal(Math.sign(source[0]), Math.sign(destination[0]));
+    assert.equal(source[1], 0);
+    assert.equal(destination[1], 0);
+  }
+  const reopenedAssembly = await readProjectFile({
+    size: Buffer.byteLength(json),
+    text: async () => json,
+  });
+  assert.deepEqual(
+    reopenedAssembly.assemblyWires,
+    project.assemblyWires,
+    'Actual 3D Au bond geometry must survive save/reload',
+  );
+  // The real workstation maps project fields explicitly; an annotation
+  // preserved in the JSON but dropped by this adapter would render no wires.
+  // Restoring a pre-assembly Step must also clear any previous package tubes.
+  const workstationState = {};
+  const projectController = createProjectStateController({
+    ensureHierarchy: () => {},
+    getState: () => workstationState,
+    applyState: (values) => Object.assign(workstationState, values),
+    setSectionEditEnabled: () => {},
+  });
+  projectController.loadProjectSnapshot(project);
+  assert.deepEqual(workstationState.assemblyWires, project.assemblyWires);
+  assert.deepEqual(projectController.buildProjectSnapshot().assemblyWires, project.assemblyWires);
+  const earlyStep = project.snapshotBranches.nodes.find((node) =>
+    node.operation?.label?.includes('Lower chamber'),
+  );
+  assert.ok(earlyStep && !earlyStep.state.assemblyWires?.length);
+  projectController.loadProjectSnapshot(earlyStep.state);
+  assert.deepEqual(workstationState.assemblyWires, [], 'Old History must not retain future wires');
+  assert.equal(projectController.buildProjectSnapshot().assemblyWires, undefined);
+  projectController.loadProjectSnapshot(project);
+  assert.equal(workstationState.assemblyWires.length, 2);
+  projectController.resetProjectState();
+  assert.deepEqual(workstationState.assemblyWires, [], 'New empty projects must clear wires');
+
+  for (const name of ['06 Integrated GaN HEMT', '07 HEMT and dual GSG']) {
+    const inspectionBookmark = project.snapshots.find((snapshot) => snapshot.name.startsWith(name));
+    assert.ok(
+      inspectionBookmark?.state.assemblyWires?.length === 2,
+      'Final inspection Bookmarks must retain both Au wire solids',
+    );
+  }
+
   // Candidate process-order contract: source paper distinguishes metalized
   // TSVs from HEMT-to-GSG Au wire bonds. Do not turn a metadata-only assembly
   // record into an assertion of physical electrical connectivity.

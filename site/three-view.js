@@ -8,7 +8,6 @@ import {
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
-import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
   annotationInspectionCutSegments,
@@ -16,9 +15,7 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
-import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
-import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
-import { clipBorderPositions } from './renderer-border-position-clip.js';
+import { pointInMulti } from './vector-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -78,6 +75,7 @@ export function createThreeView({
   host,
   stats,
   getModel,
+  getAssemblyWires = () => [],
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
@@ -102,7 +100,6 @@ export function createThreeView({
   let frame = null;
   let interacting = false;
   let rendering = false;
-  let activeSurfaceAbort = null;
   let lastLodSignature = null;
   let roughMeshes = [];
   let roughTasks = [];
@@ -524,7 +521,37 @@ export function createThreeView({
   }
 
   function displayBorderPositions(positions, state = currentZDisplay) {
-    return clipBorderPositions(positions, state);
+    if (!state || !positions?.length) return positions || [];
+    const out = [],
+      lerpPoint = (a, b, t) => [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+      ];
+
+    for (let index = 0; index + 5 < positions.length; index += 6) {
+      const a = [positions[index], positions[index + 1], positions[index + 2]],
+        b = [positions[index + 3], positions[index + 4], positions[index + 5]],
+        dz = b[2] - a[2],
+        cuts = [0, 1];
+
+      if (Math.abs(dz) > 1e-12) {
+        for (const boundary of [state.bottom, state.top]) {
+          const t = (boundary - a[2]) / dz;
+          if (t > 0 && t < 1) cuts.push(t);
+        }
+      }
+
+      cuts.sort((left, right) => left - right);
+      for (let part = 0; part < cuts.length - 1; part++) {
+        const t0 = cuts[part],
+          t1 = cuts[part + 1],
+          middleZ = a[2] + dz * ((t0 + t1) / 2);
+        if (!zIsVisible(middleZ, state)) continue;
+        out.push(...lerpPoint(a, b, t0), ...lerpPoint(a, b, t1));
+      }
+    }
+    return out;
   }
 
   function visibleBounds(model, clip) {
@@ -809,10 +836,7 @@ export function createThreeView({
   }
 
   async function yieldSceneAssembly() {
-    // Yield to Main/Mask/Section painting and input without submitting an
-    // incomplete 3D scene to WebGL. A redraw per assembly slice can dominate
-    // software-GPU startup; the last completed canvas remains visible.
-    // Final scene commit, camera interaction and resize still schedule frames.
+    scheduleFrame();
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
@@ -1023,6 +1047,7 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
+      assemblyWires: getAssemblyWires(),
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
   }
@@ -1517,15 +1542,26 @@ export function createThreeView({
       normals = [],
       annotationDepths = [];
 
-    const displacedZ = (point, z, surface) =>
-      surface?.appearance?.kind === 'rough'
-        ? z +
-          (Number(surface.profileNormal) || 1) *
-            roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
-        : z;
-    // This synchronous geometry phase runs under one fixed render policy.
-    // Resolve quality budgets once rather than for every physical sidewall.
-    const policy = renderPolicy(false);
+    const triangle = (a, b, c, depths = null) => {
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+          ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+          normal = [
+            ab[1] * ac[2] - ab[2] * ac[1],
+            ab[2] * ac[0] - ab[0] * ac[2],
+            ab[0] * ac[1] - ab[1] * ac[0],
+          ],
+          magnitude = Math.hypot(...normal) || 1,
+          unit = normal.map((value) => value / magnitude);
+        positions.push(...a, ...b, ...c);
+        normals.push(...unit, ...unit, ...unit);
+        if (depths) annotationDepths.push(...depths);
+      },
+      displacedZ = (point, z, surface) =>
+        surface?.appearance?.kind === 'rough'
+          ? z +
+            (Number(surface.profileNormal) || 1) *
+              roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+          : z;
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
@@ -1542,9 +1578,15 @@ export function createThreeView({
           .map((surface) => Number(surface?.appearance?.featureSize))
           .filter((value) => Number.isFinite(value) && value > 0),
         targetStep = featureSizes.length
-          ? Math.max(1e-6, Math.min(...featureSizes) / (4 * Math.sqrt(policy.roughnessDetail)))
+          ? Math.max(
+              1e-6,
+              Math.min(...featureSizes) / (4 * Math.sqrt(renderPolicy(false).roughnessDetail)),
+            )
           : length,
-        segments = Math.max(1, Math.min(policy.sidewallSegments, Math.ceil(length / targetStep))),
+        segments = Math.max(
+          1,
+          Math.min(renderPolicy(false).sidewallSegments, Math.ceil(length / targetStep)),
+        ),
         pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
         hasDepth =
           Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),
@@ -1562,24 +1604,8 @@ export function createThreeView({
           upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
-        appendSidewallTriangle(
-          positions,
-          normals,
-          annotationDepths,
-          lower0,
-          lower1,
-          upper1,
-          firstDepths,
-        );
-        appendSidewallTriangle(
-          positions,
-          normals,
-          annotationDepths,
-          lower0,
-          upper1,
-          upper0,
-          secondDepths,
-        );
+        triangle(lower0, lower1, upper1, firstDepths);
+        triangle(lower0, upper1, upper0, secondDepths);
       }
     }
 
@@ -2545,7 +2571,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (!ready) return;
     if (rendering) {
       pendingRender = true;
-      activeSurfaceAbort?.abort();
       return;
     }
     const model = getModel();
@@ -2621,9 +2646,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
     buildStageStartedAt = performance.now();
     recordVariantStage('begin');
     try {
-      // Keep the previous complete scene visible while exact topology is
-      // built off-thread. Do not dispose it until a usable plan is available.
+      if (!variantBuild) disposeGroup();
       syncRenderPolicy();
+      applyZDisplayState(model);
 
       const materialState = inspectionMaterialState(inspection.opacity),
         opacity = materialState.opacity,
@@ -2631,29 +2656,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         plan =
           variantBuild && physicalSurfacePlan
             ? physicalSurfacePlan
-            : await (async () => {
-                const controller = new AbortController();
-                activeSurfaceAbort = controller;
-                try {
-                  return await buildRenderSurfacePlanAsync(model, clip, {
-                    signal: controller.signal,
-                  });
-                } finally {
-                  if (activeSurfaceAbort === controller) activeSurfaceAbort = null;
-                }
-              })();
-      if (!variantBuild && pendingRender) {
-        // While exact topology was built in the worker, a newer request may
-        // have superseded the model/ROI. Never commit that stale scene.
-        const superseded = new Error('Superseded during background surface ownership');
-        superseded.name = 'SceneVariantSuperseded';
-        throw superseded;
-      }
-      if (!variantBuild) {
-        disposeGroup();
-        physicalSurfacePlan = plan;
-      }
-      applyZDisplayState(model);
+            : buildRenderSurfacePlan(model, clip);
+      if (!variantBuild) physicalSurfacePlan = plan;
       // Far-array presentation LOD is quantized by projected pixel footprint
       // and restored at zoom/ROI/Quality transitions. Physical geometry and
       // GLB export remain independent of these presentation-only meshes.
@@ -2670,14 +2674,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         sidewalls = new Map(),
         rendererTopologyAt = performance.now();
 
-      const polygonCount = plan.caps.reduce((sum, cap) => sum + (cap.polys?.length || 0), 0);
-      const cooperativeAssembly = shouldYieldDuringSceneAssembly({
-        polygonCount,
-        arrayInstances: Number(plan.arrayInstances || 0),
-        capCount: plan.caps.length,
-        sidewallCount: plan.sidewalls.length,
-        annotationCount: (model.implants?.length || 0) + (model.electricalRegions?.length || 0),
-      });
+      const cooperativeAssembly = Number(plan.arrayInstances || 0) >= 64;
       let sceneAssemblyYields = 0,
         nextAssemblyYieldAt = performance.now() + 8;
       const cancelSupersededVariant = () => {
@@ -2791,31 +2788,24 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (!state.transparent) {
           const planes = new Map();
           for (const part of visibleCaps) {
-            await maybeYieldAssembly();
             const key = `${Number(part.z).toPrecision(15)}|${part.normal}`;
             if (!planes.has(key)) {
               planes.set(key, { z: part.z, normal: part.normal, polys: [] });
             }
             planes.get(key).polys.push(...(part.polys || []));
           }
-          const preparedPlanes = [];
-          for (const plane of planes.values()) {
-            await maybeYieldAssembly();
-            preparedPlanes.push({
+          const preparedPlanes = [...planes.values()].map((plane) => ({
               ...plane,
               instances: translatedPolygonInstanceGroups(plane.polys, { minInstances: 8 }),
-            });
-          }
-          const totalInstances = preparedPlanes.reduce(
-            (sum, plane) => sum + plane.instances.instanceCount,
-            0,
-          );
+            })),
+            totalInstances = preparedPlanes.reduce(
+              (sum, plane) => sum + plane.instances.instanceCount,
+              0,
+            );
 
           if (totalInstances > 0) {
             for (const plane of preparedPlanes) {
-              await maybeYieldAssembly();
               for (const instances of plane.instances.groups) {
-                await maybeYieldAssembly();
                 const geometry = geometryFromSolid({
                     slabs: [],
                     caps: [
@@ -2969,7 +2959,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
           const instances = translatedSidewallInstanceGroups(visibleParts, { minInstances: 8 });
           if (instances.instanceCount > 0) {
             for (const groupInstances of instances.groups) {
-              await maybeYieldAssembly();
               const geometry = geometryFromSidewallParts([groupInstances.template]),
                 presentation = presentationFor(bucket.part, bucket.part.buried ? 11 : 0),
                 material = createSurfaceMaterial(
@@ -3092,7 +3081,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.arrayNeighborhoods = String(plan.arrayNeighborhoods || 0);
 
       for (const implant of arrayAnnotations(implantSolids)) {
-        await maybeYieldAssembly();
         const inspectionSegments = annotationInspectionCutSegments(implant, clip),
           outerNormal = implant.face === 'front' ? 1 : -1,
           appearance =
@@ -3271,7 +3259,6 @@ diffuseColor.a *= waferCadAlphaScale;`,
         electricalRegionSurfaceCount = 0,
         electricalFarLodBodyCount = 0;
       for (const electrical of arrayAnnotations(electricalRegionSolids)) {
-        await maybeYieldAssembly();
         const outerNormal = electrical.face === 'front' ? 1 : -1,
           appearance =
             electrical.surfaceAppearance?.kind === 'rough' ? electrical.surfaceAppearance : null,
@@ -3404,6 +3391,36 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       }
 
+      // Real packaging tubes are project-level 3D assembly geometry, not
+      // extruded Kernel layers. Treat ROI conservatively: never show an
+      // entire floating bond outside its section crop.
+      let assemblyWireBuiltCount = 0;
+      for (const wire of getAssemblyWires() || []) {
+        const points = wire.points.map((xyz) => new THREE.Vector3(...xyz));
+        const curve = new THREE.CubicBezierCurve3(...points);
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
+        const material = new THREE.MeshStandardMaterial({
+          color: '#D8A83A',
+          metalness: 0.78,
+          roughness: 0.24,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = `Au bond wire / ${wire.id} (inferred)`;
+        mesh.userData.waferCadAssemblyWireId = wire.id;
+        group.add(mesh);
+        trackZDisplayObject(mesh);
+        assemblyWireBuiltCount++;
+      }
+      host.dataset.assemblyWireBuiltCount = String(assemblyWireBuiltCount);
+
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
@@ -3443,7 +3460,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     } catch (error) {
       rebuildAborted = true;
-      const superseded = error?.name === 'SceneVariantSuperseded' || error?.name === 'AbortError';
+      const superseded = error?.name === 'SceneVariantSuperseded';
       if (previousVariantGroup) {
         // Never strand the viewport with a partially constructed, hidden group.
         const failedGroup = group;
@@ -3807,6 +3824,38 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
+      // glTF contains the same true 3D packaging tubes as the workstation,
+      // in physical micrometres before the group-wide 1e-6 metre conversion.
+      // These explicit meshes must never be inferred from a screenshot.
+      for (const wire of getAssemblyWires() || []) {
+        throwIfAborted();
+        const curve = new THREE.CubicBezierCurve3(
+          ...wire.points.map((point) => new THREE.Vector3(...point)),
+        );
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
+        const material = new THREE.MeshStandardMaterial({
+          color: '#D8A83A',
+          metalness: 0.78,
+          roughness: 0.24,
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = `Au wire bond / ${wire.id} (inferred)`;
+        mesh.userData.wafercadAssemblyWireId = wire.id;
+        mesh.userData.wafercadMaterial = wire.material;
+        mesh.userData.wafercadDiameterUm = wire.diameterUm;
+        mesh.userData.wafercadContactLayerIds = wire.contactLayerIds;
+        mesh.userData.wafercadSource = wire.source;
+        exportGroup.add(mesh);
+        disposable.push(mesh);
+      }
       await yieldToUi();
       reportProgress(0.91, 'Encoding GLB');
       const exporter = new GLTFExporter();
