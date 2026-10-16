@@ -2,15 +2,13 @@
 
 ## Folder ownership and compatibility
 
-| Folder | Document owner | Rule |
-| --- | --- | --- |
-| `docs/` | Stable root entrypoints: Architecture, Development, CI, Testing, Usage and documentation governance | Preserve existing links when migrating; old filenames can remain redirect pages. |
-| `docs/science/` | Current process, geometry, annotation and numerical contracts | Validate against the Kernel and scientific invariants. |
-| `docs/examples/` | Published example provenance, paper assumptions and device-specific evidence | Distinguish source-derived facts from illustrative values and dated checks. |
-| `docs/ui-v2/` | UI contracts, architecture notes and clearly dated implementation stages | Follow latest production code; do not treat older PR evidence as current gates. |
-| `docs/wiki/` | Public user manual (flat pages) and generated SVG guide assets | Wiki sync copies `docs/wiki/*.md` from Main; do not nest managed pages. |
-| `docs/archive/` | Dated, frozen historical reviews and handoff evidence | Retain original data, avoid reinterpreting historical validation. |
-| `docs/review/` | Existing visual evidence files | Preserve URLs and provenance; not live UI snapshots by default. |
+- `docs/` owns stable entrypoints, engineering conventions and compatibility links.
+- `docs/science/` owns current process, geometry, annotation and numerical contracts.
+- `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
+- `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
+- `docs/wiki/` stays flat for the Main-only GitHub Wiki publisher, with its SVG assets under `assets/`.
+- `docs/archive/` owns frozen historical audits; old data and dates remain unchanged.
+- `docs/review/` contains retained historical visual evidence and does not certify current UI.
 
 When relocating an already published Markdown document, retain its old URL as a short compatibility page, including its original heading anchors where feasible. Point navigation to the single canonical destination. Update or preserve repository-relative links and run the focused documentation check. Do not duplicate the full text across active folders or delete scientific provenance for cosmetic tidiness.
 
