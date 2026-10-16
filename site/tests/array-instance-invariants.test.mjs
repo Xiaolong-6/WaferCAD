@@ -70,7 +70,11 @@ test('625-site canonical Process keeps buried Z, selective ROI and Save/Reload e
   const coated = new Map(arrayParts(model).map((part) => [part.id, stackAtCenter(part)]));
   assert.equal(coated.size, 625);
   for (const [id, stack] of coated) {
-    assert.deepEqual(stack.filter((s) => s[0] === 'base'), baseline.get(id), id);
+    assert.deepEqual(
+      stack.filter((s) => s[0] === 'base'),
+      baseline.get(id),
+      id,
+    );
     assert.deepEqual(
       stack.filter((s) => s[0] === direct.layerId),
       [[direct.layerId, 1, 1.01, null]],
