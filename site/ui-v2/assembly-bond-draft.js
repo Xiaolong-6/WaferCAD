@@ -186,8 +186,10 @@ export function mountAssemblyBondDraftControls({
   const sync = () => {
     const all = editor.listVariants();
     const navigation = editor.workstationHistoryNavigation();
-    timelineStatus.textContent =
-      `Bond ${navigation.bondIndex} / ${navigation.bondLength} · Process ${navigation.processIndex} / ${navigation.processLength}`;
+    timelineStatus.textContent = [
+      `Bond ${navigation.bondIndex} / ${navigation.bondLength}`,
+      `Process ${navigation.processIndex} / ${navigation.processLength}`,
+    ].join(' · ');
     undoAssembly.disabled = busy || !navigation.canUndo;
     redoAssembly.disabled = busy || !navigation.canRedo;
     undoAssembly.title = navigation.undoKind
@@ -272,8 +274,8 @@ export function mountAssemblyBondDraftControls({
       if (direction === 'undo') await editor.undoWorkstationDurable();
       else await editor.redoWorkstationDurable();
       status.dataset.error = 'false';
-      status.textContent =
-        `${direction === 'undo' ? 'Undid' : 'Redid'} ${kind} stage. Durable Assembly revision saved.`;
+      const verb = direction === 'undo' ? 'Undid' : 'Redid';
+      status.textContent = `${verb} ${kind} stage. Durable Assembly revision saved.`;
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';
