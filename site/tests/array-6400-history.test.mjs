@@ -7,6 +7,7 @@ await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../model.js');
 const { createRectangularGridArrayModel } = await import('../model-array-construction.js');
 const { arrayParts } = await import('../model-array.js');
+const { applyArrayOperation } = await import('../model-array-process.js');
 const { readProjectFile, serializeProject } = await import('../project-io.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
@@ -51,6 +52,38 @@ test('6400-site sparse Process, History and Variant remain isolated', async () =
   assert.equal(initialSites.filter((site) => site.role === 'device').length, 4725);
   assert.equal(initialSites.filter((site) => site.role === 'background').length, 1675);
   const initial = structuredClone(initialModel);
+
+  // A failure after an earlier cell changed its temporary working set must
+  // never commit any partial array templates, layers or instance mutations.
+  const failedModel = structuredClone(initial);
+  const failedBaseline = structuredClone(failedModel);
+  let attemptedWorkingSets = 0;
+  assert.throws(
+    () =>
+      applyArrayOperation(
+        failedModel,
+        {
+          type: 'add',
+          name: 'Fault-injected 10 nm film',
+          thickness: 0.01,
+          face: 'front',
+          growth: 'direct',
+          area: rectMulti(0.5, 0.2, 0, 0.1875),
+        },
+        (candidate, params) => {
+          attemptedWorkingSets++;
+          if (attemptedWorkingSets === 2)
+            throw new Error('injected second-site Kernel failure');
+          const result = applyOperation(candidate, params);
+          assert.equal(result.changed, true, result.error);
+          return result;
+        },
+      ),
+    /injected second-site Kernel failure/,
+  );
+  assert.equal(attemptedWorkingSets, 2, 'Failure occurs after one real successful working set');
+  assert.deepEqual(failedModel, failedBaseline, 'A failed multi-site Apply must commit nothing');
+
   let live = migrateProjectFile(
     projectForBenchmark({
       model: initialModel,
