@@ -229,14 +229,16 @@ function componentwiseUnion(operation, geometries) {
   return canonicalizeBooleanGeometry(out.flatMap((piece) => piece));
 }
 
-export function booleanWithQuantizedRetry(operationName, geometries) {
+// Internal fast path for geometry that has already been deep-normalized.
+// Callers must own the input arrays: the kernel may inspect/mutate its input,
+// and an untrusted original geometry must still use booleanWithQuantizedRetry.
+// The exact Boolean, fallback grids and result normalization are unchanged.
+export function booleanWithNormalizedRetry(operationName, normalized) {
   const kernel = polygonKernel(),
     operation = kernel?.[operationName];
   if (typeof operation !== 'function') {
     throw new Error(`polygon-clipping does not provide ${operationName}().`);
   }
-
-  const normalized = geometries.map(normalizeMulti);
   try {
     return normalizeMulti(operation(...normalized));
   } catch (initialError) {
@@ -263,15 +265,32 @@ export function booleanWithQuantizedRetry(operationName, geometries) {
   }
 }
 
+export function booleanWithQuantizedRetry(operationName, geometries) {
+  return booleanWithNormalizedRetry(operationName, geometries.map(normalizeMulti));
+}
+
 export function robustIntersection(a, b) {
+  // A provably separated pair cannot produce intersection geometry. Avoid
+  // normalizing thousands of input vertices or entering the Martinez sweep
+  // in this frequent no-hit path. Ambiguous/invalid boxes and EPS-near
+  // boundaries still use the original exact Boolean and retry policy.
+  if (Array.isArray(a) && Array.isArray(b)) {
+    try {
+      const aBounds = geometryBounds(a),
+        bBounds = geometryBounds(b);
+      if (aBounds && bBounds && !boundsMayOverlap(aBounds, bBounds)) return [];
+    } catch {
+      // Malformed legacy input must follow its existing normalization path.
+    }
+  }
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
-  return aa.length && bb.length ? booleanWithQuantizedRetry('intersection', [aa, bb]) : [];
+  return aa.length && bb.length ? booleanWithNormalizedRetry('intersection', [aa, bb]) : [];
 }
 
 export function robustDifference(a, b) {
   const aa = normalizeMulti(a),
     bb = normalizeMulti(b);
   if (!aa.length) return [];
-  return bb.length ? booleanWithQuantizedRetry('difference', [aa, bb]) : structuredClone(aa);
+  return bb.length ? booleanWithNormalizedRetry('difference', [aa, bb]) : structuredClone(aa);
 }

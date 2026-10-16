@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           failures=0
-          for script in check-physical-process-units check-startup-shell check-startup check-welcome-preview-isolation check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
+          for script in check-physical-process-units check-startup-shell check-progressive-quality check-startup check-welcome-preview-isolation check-cross-ui-recovery check-sync check-manual-both check-report-export check-review-interactions check-m4-projects check-m2-live-parity; do
             echo "::group::${script}"
             if ! node "scripts/v2/${script}.mjs"; then
               echo "::error::UI v2 regression failed: ${script}"

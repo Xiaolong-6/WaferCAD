@@ -23,18 +23,42 @@ function openRing(ring) {
   return points;
 }
 
-function ringKey(points, quantum) {
+// Booth's minimum cyclic rotation on delimiter-terminated tokens. Comparing
+// token + ';' is essential: raw token order can differ from the order of the
+// joined signature when one numeric token is a prefix of another.
+function minimalRingRotation(tokens) {
+  const length = tokens.length;
+  if (!length) return '';
+  const units = tokens.map((token) => `${token};`);
+  let left = 0,
+    right = 1,
+    offset = 0;
+  while (left < length && right < length && offset < length) {
+    const a = units[(left + offset) % length],
+      b = units[(right + offset) % length];
+    if (a === b) {
+      offset++;
+      continue;
+    }
+    if (a > b) {
+      left += offset + 1;
+      if (left <= right) left = right + 1;
+    } else {
+      right += offset + 1;
+      if (right <= left) right = left + 1;
+    }
+    offset = 0;
+  }
+  const start = Math.min(left, right) % length;
+  return tokens.slice(start).concat(tokens.slice(0, start)).join(';');
+}
+
+export function ringKey(points, quantum) {
   if (!points.length) return '';
   const tokens = points.map(([x, y]) => `${snap(x, quantum)},${snap(y, quantum)}`);
-  const candidates = [];
-  for (const source of [tokens, [...tokens].reverse()]) {
-    for (let offset = 0; offset < source.length; offset++) {
-      const rotated = source.slice(offset).concat(source.slice(0, offset));
-      candidates.push(rotated.join(';'));
-    }
-  }
-  candidates.sort();
-  return candidates[0];
+  const forward = minimalRingRotation(tokens),
+    reverse = minimalRingRotation([...tokens].reverse());
+  return forward <= reverse ? forward : reverse;
 }
 
 function polygonBounds(poly) {
@@ -133,6 +157,31 @@ export function translatedSidewallInstanceGroups(
   const threshold = Math.max(2, Math.floor(Number(minInstances) || 8)),
     buckets = new Map(),
     leftovers = [];
+  // Per-call, bounded memo: the snap is pure and quantum fixed. Real wafer
+  // arrays reuse XY positions, edge deltas, and Z spans across many sidewalls.
+  const snapped = new Map();
+  let checked = 0;
+  let hits = 0;
+  let memoEnabled = true;
+  const reuseSnap = (value) => {
+    if (!memoEnabled) return snap(value, quantum);
+    // Stop paying lookup costs on high-cardinality non-array meshes.
+    // Only the work strategy changes; snap() itself remains authoritative.
+    checked++;
+    if (checked === 4096 && hits * 100 < checked * 45) {
+      memoEnabled = false;
+      snapped.clear();
+      return snap(value, quantum);
+    }
+    const key = Number(value);
+    if (snapped.has(key)) {
+      hits++;
+      return snapped.get(key);
+    }
+    const quantized = snap(value, quantum);
+    if (snapped.size < 2048) snapped.set(key, quantized);
+    return quantized;
+  };
 
   for (const part of parts || []) {
     const p = part?.p,
@@ -153,12 +202,12 @@ export function translatedSidewallInstanceGroups(
       continue;
     }
 
-    const tx = snap(p[0], quantum),
-      ty = snap(p[1], quantum),
-      dx = snap(Number(q[0]) - Number(p[0]), quantum),
-      dy = snap(Number(q[1]) - Number(p[1]), quantum),
-      localZ0 = snap(z0, quantum),
-      localZ1 = snap(z1, quantum);
+    const tx = reuseSnap(p[0]),
+      ty = reuseSnap(p[1]),
+      dx = reuseSnap(Number(q[0]) - Number(p[0])),
+      dy = reuseSnap(Number(q[1]) - Number(p[1])),
+      localZ0 = reuseSnap(z0),
+      localZ1 = reuseSnap(z1);
     if (Math.hypot(dx, dy) <= 1e-12 || Math.abs(localZ1 - localZ0) <= 1e-12) {
       leftovers.push(part);
       continue;

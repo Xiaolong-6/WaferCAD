@@ -120,11 +120,21 @@ try {
       .click();
     await page.waitForFunction(
       () =>
-        /Restored local recovery checkpoint/.test(
+        /Restored local recovery checkpoint|Recovery restore failed/.test(
           document.querySelector('[data-slot="status.message"]')?.textContent || '',
         ),
       null,
       { timeout: 120000 },
+    );
+    const restoreDiagnostic = await page.evaluate(() => ({
+      status: document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      saveStatus: document.querySelector('#workspaceSaveStatus')?.textContent || '',
+      retryReason: document.querySelector('.workspace')?.dataset.autosaveRetryReason || null,
+    }));
+    assert.match(
+      restoreDiagnostic.status,
+      /Restored local recovery checkpoint/,
+      'Restore must complete before snapshot comparison: ' + JSON.stringify(restoreDiagnostic),
     );
 
     const restored = await snapshot();

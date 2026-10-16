@@ -50,6 +50,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Process Report Export](REPORT_EXPORT.md) — portable offline HTML/Markdown ZIP, complete History ledger, export limits and accepted capture boundaries.
 - [Report historical keyframes](REPORT_KEYFRAMES.md) — saved-state Section SVG provenance, keyframe budgets, failure reporting and planned extensions.
 - [UI v2 DOM contract](ui-v2/CONTRACT.md) — revision-specific generated inventory; do not mistake legacy selector evidence for current UI.
+- [Progressive Workstation startup (P1)](ui-v2/PROGRESSIVE_STARTUP_2026-10-13.md) — UI/view first-frame lifecycle, transient 3D preview, cooperative scheduling and hardware acceptance limits.
 - [Production Workstation edge-to-edge viewport — 2026-10-15](ui-v2/EDGE_TO_EDGE_WORKSTATION_2026-10-15.md) — full-viewport shell, mobile scroll preservation and browser regression handoff.
 - [Desktop View Docking reconstruction — 2026-10-15](ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md) — desktop-only view state, Snap templates, stable scientific panels and required acceptance gates.
 

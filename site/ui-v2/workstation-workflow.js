@@ -956,7 +956,10 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     workspaceSession: session,
     status,
     buildProjectSnapshot: projectState.buildProjectSnapshot,
+    progressiveHistoryValidation: true,
+    progressiveWorkspaceRestore: true,
     loadProjectSnapshot: domain.load,
+    cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshotAsync,
     snapshotManager: history,
     syncBaseControls: domain.syncBaseControls,
     syncTransformInputs: domain.importer.syncTransformInputs,
@@ -977,8 +980,11 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
             params.get('example') || 'photodetector-literature',
             domain.bindings.readProjectFileTask,
           );
-          domain.load(bundled.data);
-          history.importRecords(bundled.data.snapshots || [], bundled.data.snapshotBranches);
+          await history.importRecordsAsync(
+            bundled.data.snapshots || [],
+            bundled.data.snapshotBranches,
+            { beforeCommit: () => domain.load(bundled.data) },
+          );
           store.project.source = bundled.source;
           store.project.hash = bundled.hash;
         } else if (intent === 'staged') {
@@ -998,8 +1004,9 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
           } else if (pending.kind === 'project') {
             const imported = await domain.bindings.readProjectFileTask(pending.file);
             if (!imported) throw Error('The staged project could not be read.');
-            domain.load(imported);
-            history.importRecords(imported.snapshots || [], imported.snapshotBranches);
+            await history.importRecordsAsync(imported.snapshots || [], imported.snapshotBranches, {
+              beforeCommit: () => domain.load(imported),
+            });
           } else {
             throw Error('The staged file type is unsupported.');
           }

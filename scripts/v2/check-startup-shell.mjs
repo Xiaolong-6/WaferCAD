@@ -32,6 +32,37 @@ try {
   const context = await browser.newContext({ viewport: { width: 1700, height: 960 } });
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
+  // Capture the real paint ordering, not just the two readiness flags.
+  await page.addInitScript(() => {
+    const order = [];
+    window.__firstStartupPaintOrder = order;
+    let planarSeen = false;
+    let threeSeen = false;
+    new window.MutationObserver(() => {
+      if (
+        !planarSeen &&
+        ['main', 'mask', 'section'].some(
+          (key) =>
+            document.querySelector(`.p-view[data-view="${key}"]`)?.dataset.viewLoad === 'ready',
+        )
+      ) {
+        planarSeen = true;
+        order.push('planar');
+      }
+      if (
+        !threeSeen &&
+        Number(document.getElementById('threeHost')?.dataset.rendererFrameSerial || 0) > 0
+      ) {
+        threeSeen = true;
+        order.push('three');
+      }
+    }).observe(document, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ['data-view-load', 'data-renderer-frame-serial'],
+    });
+  });
   let releaseAsset;
   let markRequested;
   const requested = new Promise((resolve) => {
@@ -66,7 +97,7 @@ try {
     } finally {
       clearTimeout(requestTimeout);
     }
-    await page.waitForSelector('.p-workbench[data-boot="loading"]');
+    await page.waitForSelector('.p-workbench[data-boot="project"]');
     assert.equal(await page.locator('body').getAttribute('data-ready'), 'false');
     assert.equal(
       await page.locator('.p-nav [data-action^="domain:"]').count(),
@@ -80,9 +111,11 @@ try {
     );
     assert.equal(
       await page.locator('.p-canvases').evaluate((node) => getComputedStyle(node).visibility),
-      'hidden',
-      'Default wafer and unordered Section/3D canvases must never flash',
+      'visible',
+      'The stable four-view grid remains visible during project import',
     );
+    assert.equal(await page.locator('.p-view[data-view-load="pending"]').count(), 4);
+    assert.equal(await page.locator('.p-workbench').getAttribute('data-project-ready'), 'false');
     const before = await dimensions(page);
     assert.ok(
       Math.abs(before.editorWidth - expectedPanelWidth(1700)) < 2,
@@ -93,6 +126,20 @@ try {
       timeout: 120000,
     });
     assert.equal(await page.locator('.p-workbench').getAttribute('data-boot'), 'ready');
+    await page.waitForFunction(
+      () =>
+        ['main', 'mask', 'section'].every(
+          (key) => window.WaferCadV2Workstation.startup().views[key] === 'ready',
+        ),
+      null,
+      { timeout: 120000 },
+    );
+    assert.equal(await page.locator('.p-workbench').getAttribute('data-first-frame-ready'), 'true');
+    assert.equal(
+      (await page.evaluate(() => window.__firstStartupPaintOrder))[0],
+      'planar',
+      'An overview must paint a visible planar view before the first 3D WebGL frame',
+    );
     const after = await dimensions(page);
     assert.ok(Math.abs(after.editorWidth - before.editorWidth) < 2);
     assert.ok(Math.abs(after.stageX - before.stageX) < 2);

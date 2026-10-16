@@ -98,8 +98,9 @@ export function createWorkstationRuntime(project) {
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
     getSnapshotRecords: () => history?.exportRecords() || [],
-    getSnapshotBranchState: () => {
-      history?.syncActiveHeadState();
+    getWorkerSnapshotHistory: () => history?.exportForWorkerStorage() || null,
+    getSnapshotBranchState: ({ skipSync = false } = {}) => {
+      if (!skipSync) history?.syncActiveHeadState();
       return history?.exportBranchState() || null;
     },
     setSectionEditEnabled: (value) => {
@@ -233,6 +234,7 @@ export function createWorkstationRuntime(project) {
     restore,
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
+    cooperativeValidateStates: true,
   });
   history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
   return {
