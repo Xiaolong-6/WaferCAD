@@ -115,10 +115,7 @@ export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn 
     const startIndex = points.length - 1;
     for (let i = 1; i <= samplesPerHalfTurn; i++) {
       const angle = Math.PI / 2 + (sweep * i) / samplesPerHalfTurn;
-      points.push([
-        center[0] + radius * Math.cos(angle),
-        center[1] + radius * Math.sin(angle),
-      ]);
+      points.push([center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)]);
     }
     arcs.push({
       kind,
