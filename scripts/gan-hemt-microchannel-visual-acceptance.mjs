@@ -420,12 +420,24 @@ try {
     { timeout: 120000 },
   );
   await page.locator('[data-action="view:three"]').click();
+  // The TSV inspection just enabled the Section dock, halving the remaining
+  // 3D canvas and visually clipping the rightmost GSG die. Reclaim the dock
+  // before judging the complete package footprint in the real renderer.
+  const packageSectionDock = page.locator('[data-action="section"]').first();
+  if ((await packageSectionDock.getAttribute('aria-pressed')) === 'true') {
+    await packageSectionDock.click();
+  }
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
     { timeout: 120000 },
   );
   await waitForPaint(page);
+  const packageCanvas = await page.locator('#threeHost').boundingBox();
+  assert.ok(
+    packageCanvas && packageCanvas.height >= 400,
+    'Package 3D inspection was clipped by an open Section dock',
+  );
   const threeChipShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('three-chip-upper-package.png', directory), threeChipShot);
   report.views.threeChipUpperPackage = {
