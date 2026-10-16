@@ -217,6 +217,8 @@ try {
       await assertGrid(page, 1);
       assert.equal(await page.locator('#maskPanel').isVisible(), true);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus);
+      if (width === 1440)
+        await page.screenshot({ path: resolve(output, 'mask-workflow-temporary-focus.png') });
       await page.waitForFunction(() => document.querySelectorAll('.v2-dock-divider').length === 0);
       await page.locator('.p-nav [data-action="domain:mask"]').click();
       await assertGrid(page, 1);
@@ -224,6 +226,8 @@ try {
       await page.locator('#maskPanel [data-action="maximize:mask"]').click();
       await assertGrid(page, 3);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Restore preserves hidden Mask');
+      if (width === 1440)
+        await page.screenshot({ path: resolve(output, 'mask-workflow-restored-layout.png') });
       assert.equal(
         await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1')),
         storedBeforeFocus,
@@ -233,7 +237,11 @@ try {
       await assertGrid(page, 1);
       await page.locator('.p-nav [data-action="domain:process"]').click();
       await assertGrid(page, 3);
-      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Process tab ends temporary focus');
+      assert.deepEqual(
+        await layoutState(page),
+        layoutBeforeFocus,
+        'Process tab ends temporary focus',
+      );
       await page.locator('#threePanel [data-action="maximize:three"]').click();
       await assertGrid(page, 1);
       const priorMaximizedLayout = await layoutState(page);
