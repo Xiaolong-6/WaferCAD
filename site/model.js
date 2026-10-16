@@ -912,9 +912,12 @@ function applyConformalMaterialWalls(
       continue;
     }
 
-    // Derive both halves from the same band. Subtracting the already clipped
-    // target can retry on a different grid and leave two owners at one wall.
-    const rest = difference(region.geom, band);
+    // Partition this original owner using the *same intersected* target
+    // geometry for the sidewall and its complement. Re-differencing against
+    // the untrimmed band can disagree with the snapped intersection at thin
+    // curved contours and silently drop part of the original XY owner.
+    // Both outputs remain subsets of region.geom; no physical void is healed.
+    const rest = difference(region.geom, target.geom);
     if (!isEmpty(rest)) next.push({ id: region.id, geom: rest, stack });
     if (!isEmpty(target.geom)) {
       next.push({
