@@ -61,11 +61,11 @@
     if (production) topbar.append(hideEditor);
     // Mobile uses this exact navigation host as a fixed bottom dock. Reparent
     // stable buttons instead of creating duplicate actions or domain adapters.
-    const mobileEdit = button('Edit', 'show-editor', 'process', {
+    const mobileEdit = button('Edit', 'show-editor', 'switchMode', {
       'aria-label': 'Edit workspace',
       'data-help': 'shell.navigation',
     });
-    const mobileView = button('View', 'return-results', 'back', {
+    const mobileView = button('View', 'return-results', 'switchMode', {
       'aria-label': 'View results',
       'data-help': 'shell.navigation',
     });
