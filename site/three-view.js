@@ -1146,7 +1146,9 @@ export function createThreeView({
         };
       case 'implant-cut':
         return {
-          visible: inspection.__auditHideImplantFaces !== true,
+          visible:
+            inspection.__auditHideImplantFaces !== true &&
+            inspection.__auditHideImplantCut !== true,
           materialState: alwaysTransparent(
             opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
           ),
@@ -1154,13 +1156,19 @@ export function createThreeView({
         };
       case 'implant-internal':
         return {
-          visible: transparent && inspection.__auditHideImplantFaces !== true,
+          visible:
+            transparent &&
+            inspection.__auditHideImplantFaces !== true &&
+            inspection.__auditHideImplantVolume !== true,
           materialState: alwaysTransparent(opacity * 0.18),
           transparentSort: true,
         };
       case 'implant-depth':
         return {
-          visible: transparent && inspection.__auditHideImplantFaces !== true,
+          visible:
+            transparent &&
+            inspection.__auditHideImplantFaces !== true &&
+            inspection.__auditHideImplantVolume !== true,
           materialState: alwaysTransparent(opacity * 0.24),
           transparentSort: true,
         };
@@ -1168,6 +1176,7 @@ export function createThreeView({
         return {
           visible:
             inspection.__auditHideImplantFaces !== true &&
+            inspection.__auditHideImplantSurface !== true &&
             (transparent || Boolean(descriptor?.exposed)),
           materialState: alwaysTransparent(opacity * 0.3),
           transparentSort: true,

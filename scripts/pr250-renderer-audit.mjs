@@ -306,6 +306,43 @@ try {
               __auditHideImplantFaces: true,
             },
             {
+              name: 'surface-cut-zbreak-no-implant-surface-audit',
+              opacity: 0.5,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+              __auditHideImplantSurface: true,
+            },
+            {
+              name: 'surface-cut-zbreak-no-implant-volume-audit',
+              opacity: 0.5,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+              __auditHideImplantVolume: true,
+            },
+            {
+              name: 'surface-cut-zbreak-no-implant-cut-audit',
+              opacity: 0.5,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+              __auditHideImplantCut: true,
+            },
+            {
+              name: 'surface-cut-zbreak-implant-cut-only-audit',
+              opacity: 0.5,
+              borders: false,
+              fast: false,
+              detail: true,
+              zBreak: true,
+              __auditHideImplantSurface: true,
+              __auditHideImplantVolume: true,
+            },
+            {
               name: 'surface-cut-zbreak-no-overlays-audit',
               opacity: 0.5,
               borders: false,
@@ -365,6 +402,9 @@ try {
         async ({ config, fit }) => {
           window.inspection.__auditHideMaterialInterfaces = false;
           window.inspection.__auditHideImplantFaces = false;
+          window.inspection.__auditHideImplantSurface = false;
+          window.inspection.__auditHideImplantVolume = false;
+          window.inspection.__auditHideImplantCut = false;
           Object.assign(window.inspection, config);
           // Use the existing 3D Z Break display-only transform to pull the
           // active Black-Si surface away from the 350 um base. Front/Back
