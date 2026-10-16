@@ -22,6 +22,19 @@ const acceptanceStatuses = new Set(['open-paper-match', 'accepted-paper-match', 
 test('eight paper provenance records match the actual published example catalog', async () => {
   assert.equal(provenance.schema, 'wafercad-literature-figure-provenance-v1');
   assert.equal(provenance.issue, 241);
+  // Three new family-specific Chromium cuts are real saved artifacts,
+  // but remain deliberately unaccepted as paper-SEM quantitative overlays.
+  const newFamilies = [
+    'm3d-selfpowered-heterogeneous-ic',
+    'magic-1000-mos2-beol',
+    'tio2-metalens-four-unit',
+  ];
+  for (const id of newFamilies) {
+    const entry = provenance.entries.find((item) => item.id === id);
+    assert.equal(entry.captureEvidence.capturedMembers.length, 2);
+    assert.equal(entry.acceptance.status, 'open-paper-match');
+    assert.equal(entry.captureEvidence.originalPaperOverlay, false);
+  }
   const ids = provenance.entries.map((entry) => entry.id);
   assert.equal(ids.length, new Set(ids).size, 'Duplicate provenance entry');
   assert.deepEqual(

@@ -66,3 +66,15 @@ These cases are not yet published screenshot evidence: the register
 retains `captureEvidence: null` for all three until an actual browser
 artifact is generated and independently inspected. The four-atom fixture
 is a local proxy, not the 4,725-site optimized author lens/GDS.
+
+## October 16 — three newly captured family-specific sections
+
+The read-only Chromium run [38900945041](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041)
+produced [artifact 12045534988](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988):
+**six Section PNGs** plus Main/Mask/3D screenshots and one physical-probe
+`figure-cut-manifest.json`, for M3D, MAGIC-1000 and TiO₂ metalens.
+Every exact PNG member listed in the matrix has been confirmed in the
+ZIP, and the Section images were visually inspected independently.
+The M3D transfer, MAGIC interconnect and TiO₂ pillar scenes render, but
+published paper figure calibration and original author mask geometry
+are **still pending**. Chromium capture success is not an SEM match.

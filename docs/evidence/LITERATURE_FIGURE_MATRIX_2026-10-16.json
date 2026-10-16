@@ -133,9 +133,19 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
-      "captureEvidence": null
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "m3d-selfpowered-heterogeneous-ic-power-via-both-tiers-section.png",
+          "m3d-selfpowered-heterogeneous-ic-data-via-transfer-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "magic-1000-mos2-beol",
@@ -149,9 +159,19 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
-      "captureEvidence": null
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "magic-1000-mos2-beol-beol-four-metal-levels-section.png",
+          "magic-1000-mos2-beol-mos2-gate-and-alox-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     },
     {
       "id": "three-tier-silicon-jlfets",
@@ -192,9 +212,19 @@
         "calibratedScale": false,
         "quantitativeOverlay": false
       },
-      "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing",
-      "captureEvidence": null
+      "browserEvidenceURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+      "evidenceType": "actual Chromium canonical-section captures and saved material probes; original publication scale/SEM overlay remains unverified",
+      "captureEvidence": {
+        "kind": "actual-chromium-project-capture",
+        "runURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041",
+        "artifactURL": "https://github.com/Xiaolong-6/WaferCAD/actions/runs/38900945041/artifacts/12045534988",
+        "manifestMember": "figure-cut-manifest.json",
+        "capturedMembers": [
+          "tio2-metalens-four-unit-two-nanopillar-diameters-section.png",
+          "tio2-metalens-four-unit-opposite-nanopillar-row-section.png"
+        ],
+        "originalPaperOverlay": false
+      }
     }
   ]
 }
