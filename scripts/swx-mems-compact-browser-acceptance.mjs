@@ -20,8 +20,8 @@ const source = await readProjectFile(new Blob([await readFile(filename)]));
 assert.equal(source.snapshotBranches.branches.length, 2);
 assert.equal(
   source.layout.elements.length,
-  178,
-  'Compact mask contains four gratings and two single-beam S7 guide candidates',
+  188,
+  'Compact mask contains four gratings, two single-beam S7 guides and open triangular shuttle cells',
 );
 const browser = await launchBrowser();
 const report = { browser: browser.version(), cases: [] };

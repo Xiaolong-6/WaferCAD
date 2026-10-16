@@ -62,6 +62,9 @@ for (const state of ['off', 'on']) {
     combCellsPerBank: p.actuator.banks.map((bank) => bank.stationary.length - 1),
     bankAxialCenterSeparationUm: Math.abs(left.y - right.y),
     foldedSpringContours: p.actuator.springContours.length,
+    s8ShuttleDiagonals: p.actuator.shuttleDiagonals.length,
+    s8ShuttleTriangularOpenCellProbes: p.actuator.triangularApertureProbes.length,
+    s8TriangularPerforationSourceSpacingVerified: false,
     fixedOpticalRoutes: p.opticalRouting.fixed.length,
     compliantOpticalRoutes: p.opticalRouting.movingSpringWaveguides.length,
     supportedOpticalPads: p.opticalRouting.supportedPads.length,
@@ -116,9 +119,10 @@ const blockers = [
 blockers.push({
   id: 's8-shuttle-perforation-and-spring-registration',
   kind: 'source-figure-topology-unverified',
-  note: 'Article Fig. 1c depicts triangular shuttle perforations and two folded-spring pairs alongside the shuttle; the compact candidate uses an illustrative rectangular-rung ladder and inferred spring-anchor placement. Do not call mechanical source fidelity accepted without topology and layout reconciliation.',
+  note: 'Article Fig. 1c depicts triangular shuttle perforations and two folded-spring pairs alongside the shuttle; the compact candidate now adds alternating diagonal braces to yield open triangle-cell topology. Brace width/pitch, original triangular contours and spring-anchor registration remain inferred. Do not claim original GDS or FEM equivalence.',
   sourceFigure: 'article Fig. 1c / Supplement Fig. S8a',
   perforationPatternVerified: false,
+  illustrativeTriangularAperturesImplemented: true,
   foldedSpringAnchorRegistrationVerified: false,
 });
 const compactExtent = prototype.off.candidateMaskFootprintUm;

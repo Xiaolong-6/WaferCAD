@@ -53,6 +53,24 @@ test('40 finger pairs preserve 300nm gap and 200nm plus travel axial overlap', (
   }
 });
 
+test('S8 shuttle contains two open triangular cells between each alternate diagonal rib', async () => {
+  const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
+  await loadGeometryKernel();
+  const v = await import('../vector-geometry.js');
+  for (const state of ['off', 'on']) {
+    const pose = createCompactSwxActuator(state);
+    assert.equal(pose.shuttleDiagonals.length, 10);
+    assert.equal(pose.triangularApertureProbes.length, 20);
+    const silicon = v.unionGeometries(pose.shuttle.map((ring) => [[[...ring, ring[0]]]]));
+    for (const point of pose.triangularApertureProbes) {
+      assert.ok(
+        silicon.every((polygon) => !v.pointInMulti(point, [polygon])),
+        state + ' expected open triangular shuttle aperture at ' + point.join(','),
+      );
+    }
+  }
+});
+
 test('compact spring anchors stay fixed and springs move only at shuttle ends', () => {
   const off = createCompactSwxActuator('off');
   const on = createCompactSwxActuator('on');

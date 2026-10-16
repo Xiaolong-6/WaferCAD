@@ -1,7 +1,8 @@
 /**
  * Compact Fig. 1c / Supplement S8 ACTUATOR SUBASSEMBLY, in physical um.
- * This is a candidate only; do not use for the manufacturing Recipe until
- * the optical SWX, guided aligners, and BOX release are integrated and checked.
+ * Triangular shuttle apertures are represented by explicit positive silicon
+ * diagonal ribs. Their 4um spacing/450nm brace width remain assumptions.
+ * This is still not the authors' GDS, FEM or an accepted public example.
  */
 import { SWX_REPORTED, miteredPolyline } from './swx-mems-geometry.mjs';
 
@@ -52,8 +53,32 @@ export function createCompactSwxActuator(state = 'off') {
     strip([-railX, a.shuttleExtentYUm[0] + travel], [-railX, a.shuttleExtentYUm[1] + travel], 0.7),
     strip([railX, a.shuttleExtentYUm[0] + travel], [railX, a.shuttleExtentYUm[1] + travel], 0.7),
   ];
+  const crossbarsYUm = [];
+  const shuttleDiagonals = [];
+  const triangularApertureProbes = [];
   for (let y = a.shuttleExtentYUm[0] + 1; y < a.shuttleExtentYUm[1]; y += 4) {
+    crossbarsYUm.push(y);
     shuttle.push(strip([-railX, y + travel], [railX, y + travel], 0.45));
+  }
+  // Fig. 1c depicts triangular lightening openings in the perforated
+  // shuttle. Alternate slender Si diagonal ribs between crossbars so the
+  // positive Si mask contains TWO open triangular cells per 4um interval.
+  // Actual source perforation dimensions/period are not published; this
+  // is a topology-oriented surrogate, not the author's exact design.
+  for (let i = 0; i < crossbarsYUm.length - 1; i++) {
+    const y = crossbarsYUm[i];
+    const direction = i % 2 === 0 ? 1 : -1;
+    const brace = strip(
+      [-direction * railX, y + travel],
+      [direction * railX, crossbarsYUm[i + 1] + travel],
+      0.45,
+    );
+    shuttleDiagonals.push(brace);
+    triangularApertureProbes.push(
+      [0, y + 1 + travel],
+      [0, y + 3 + travel],
+    );
+    shuttle.push(brace);
   }
   for (const side of [-1, 1]) {
     const stationary = [rect(side * 26, a.fixedBusYUm, 37.5, p.fixedCombHandleUm)];
@@ -118,6 +143,8 @@ export function createCompactSwxActuator(state = 'off') {
     movable,
     flexure,
     shuttle,
+    shuttleDiagonals,
+    triangularApertureProbes,
     springContours,
     anchors,
     banks,

@@ -36,8 +36,9 @@ test('compact process retains all canonical mask layers within its true field', 
     assert.equal(source.physicalGroups.guides.guides.length, 2);
     assert.equal(source.physicalGroups.guides.fixed.length, 2);
     assert.equal(source.physicalGroups.guides.flexure.length, 4);
-    assert.equal(source.layout.elements.length, 178);
+    assert.equal(source.layout.elements.length, 188);
     assert.equal(source.physicalGroups.actuator.banks.length, 2);
+    assert.equal(source.physicalGroups.actuator.shuttleDiagonals.length, 10);
     assert.equal(source.physicalGroups.actuator.springContours.length, 4);
     assert.equal(source.reconstructionStatus, 'isolated-compact-candidate');
   }
