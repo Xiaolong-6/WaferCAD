@@ -21,7 +21,7 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 | HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm as structural surrogate |
 | HEMT active region                   | 303 × 393 µm                                       | Mask dimension                                                  |
 | Gate fingers                         | Ten, each 0.5 µm gate length and 300 µm gate width | Ten 0.5 × 300 µm mask rectangles                                |
-| Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Source Record step only                                         |
+| Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Native idealized Ti/Cu conformal geometry; Au routing unmodeled |
 | Water and measured operating point   | 3 mL/min; ~7.5 V, 0.8 A; 93.8 °C maximum           | Metadata only, never predicted                                  |
 
 The abstract uses "pitch" for the 30 µm microchannel parameter while the main design text specifies width/spacing. We use separate 30 µm width and 30 µm spacing (60 µm centerline period) and disclose this interpretation.
@@ -37,7 +37,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 5. Two 100 × 60 µm **rear coolant inlet/outlet** apertures, at inferred Y = ±1450 µm, are opened from Back through the remaining 200 µm substrate into the continuous lower chamber. Two inferred 110 × 1100 µm bottom feeder trenches (Mask 23) connect these remote ports at Y = ±1450 µm to the reported-size central bottom cavity by **edge contact at Y = ±450 µm** (no overlapping second etch into the lower Si); the corridor coordinates are engineering assumptions, not paper dimensions. They represent the bottom ports in article Fig. 2(i); sizes and placement are inferred. This makes a real interconnected empty coolant domain, but pressure loss and the packaging manifold are not modeled.
 6. Four 70 × 70 µm square through-bores approximate TSV locations. Two native conformal processes now produce idealized **200 nm Ti** and **500 nm Cu** seed films along each TSV wall. Mask 25 covers a 90 × 90 µm local window to include the exposed Si rim and the empty bore. Both thicknesses match the article's stated Ti/Cu films, but uniform coverage through an 800 µm-deep via is an **idealization**. The generator also builds an **inferred 35 µm conformal Cu electrofill surrogate** with real Cu-filled cores. The 35 µm value is a geometric closure amount for 70 µm square holes, not a reported plating thickness. A following idealized Cu-targeted directional etch removes the artificial 35 µm cap overburden from the top surface, leaving the Cu-filled columns up to approximately Z = 600.7 µm. This is a geometrical CMP surrogate without abrasive/polish chemistry, surface roughness, or planarization nonuniformity. Actual electroplating kinetics, void-free material quality, oxide insulation, NiPaAu, Au routing and electrical conductivity are **not** simulated.
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
-8. The Fig. 1(a) upper device now includes a **25 nm AlGaN barrier** above the inferred 1 µm GaN buffer and a **150 nm SiN isolation/passivation frame** outside the 303 × 393 µm active window (Mask 24). **Neither AlGaN nor SiN thickness is given in the source**, so both are physically scaled illustrative assumptions, not measured reconstruction. The 2DEG is recorded as an _electronic interface_, not invented as a separate solid material. Gate/source/drain metals (0.2 µm), GSG pads and routes remain schematic, without ohmic contact or device transport simulation.
+8. The Fig. 1(a) upper device now includes a **25 nm AlGaN barrier** above the inferred 1 µm GaN buffer and a **150 nm SiN isolation/passivation frame** outside the 303 × 393 µm active window (Mask 24). **Neither AlGaN nor SiN thickness is given in the source**, so both are physically scaled illustrative assumptions, not measured reconstruction. The 2DEG is recorded as an _electronic interface_, not invented as a separate solid material. Gate/source/drain metals (0.2 µm) and GSG pads are schematic; complete Au routing between GSG pads, TSV columns and device contacts is not modeled. Ohmic contacts and device transport remain unverified.
 9. Gold wire loops, polymer sealing, aluminum manifold, flow, heat transfer and device electrical performance are out of scope. **The coolant remains a true void, not a solid film**.
 
 ## Screenshot audit: visual semantics versus physical topology
@@ -77,7 +77,7 @@ Every inferred element must remain labeled as an assumption; do not promote it t
 
 ## Diversion manifold topology verification
 
-The manifold was reconstructed from the _layout topology_ shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The generated project contains **23 Recipe operations**, **24 History nodes** and **14 mask layers**. Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
+The manifold was reconstructed from the _layout topology_ shown in Fig. 1(c) and the curved fan-out appearance photographed in Fig. 2(h). The new Mask **22** is a separate process-editable layer, containing six curved branches at the inlet, six at the outlet, and one central collecting throat per side. The current generator and reconstruction contract expect **30 Recipe operations**, **31 History nodes** and **16 mask layers** (including the later TSV metal-fill and HEMT processes). Straight-channel width and spacing remain the paper-reported 30 µm/30 µm; branch width, path bends and two throat footprints are inferred because the original mask file was not published.
 
 A structural connectivity invariant interpolates points along real 3D _empty space_: it follows each of the two Back DRIE ports through the stepped lower chambers into its top-cap throat, then follows all six curved arms into the corresponding straight channel. All 12 side-to-channel paths must be free of material, and neighboring Si ribs must remain solid. This is stronger than testing that the inlet/outlet bores or masks merely overlap in 2D.
 
@@ -112,18 +112,16 @@ insufficient for a scientific reconstruction.
 
 The default build writes the candidate project under test-results/gan-microchannel, together with a validation report. The --write-repo switch updates site/examples; the candidate is already registered in the feature-branch Welcome catalog. Registration does not imply scientific approval or production deployment.
 
-The dedicated test checks real four-level cavity Z gaps, two separated remote backside ports and lower feeder routes, source-reported gate/chip masks, open TSV bores, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
+The dedicated test checks real four-level cavity Z gaps, two separated remote backside ports and lower feeder routes, source-reported gate/chip masks, idealized Ti/Cu-lined and Cu-filled TSV columns, Save/Reload, and GDSII/OASIS export. The generator also validates the live model after each process, the project schema, and Recipe preflight.
 
 ## Verification and release boundary
 
-The candidate has passed the following **geometry-surrogate** acceptance checks on
-`86dd56d` (GitHub Actions run 38580570948):
+The following checks have **historical, commit-specific evidence**, including the original geometry run `38580570948` at `86dd56d` and later TSV-focused science run [38738607990](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38738607990) for the Cu-filled surrogate. They do **not** establish current-HEAD CI or final paper-level visual acceptance:
 
 - [x] Full Kernel build and model-schema validation without process errors.
 - [x] Project Save/Reload and Recipe Run All from Base; identical final material
       occupancy for 11 materials and 12 Z slabs (maximum mismatched XY area: 0 µm²).
-- [x] Canonical four-level empty cavities, four unfilled TSV bores, backside port
-      openings and exposed SiC backside checked against solid/void occupancy invariants.
+- [x] Canonical four-level empty cavities and remote backside ports, four idealized Ti/Cu-lined and Cu-filled TSV columns, open coolant paths and exposed SiC backside checked against material occupancy and void-connectivity invariants in the relevant focused runs.
 - [x] Editable Mask and History preserved; GDSII/OASIS export and source/inferred
       dimensions checked in dedicated tests.
 - [x] Real Chromium Main, Mask, 3D and Section screenshots, visual readout and
@@ -139,11 +137,16 @@ The candidate has passed the following **geometry-surrogate** acceptance checks 
 - [ ] **Original hydraulic mask and uniformity:** precise author diversion contours, pressure drop, turbulence/laminar regime and uniformity of parallel-channel flow remain **unverified**.
 - [ ] **Native wafer assembly:** two independently etched 400 µm Si wafers cannot
       yet be aligned and directly bonded as a single Kernel process step.
-- [ ] **Electrical, thermal and packaging validation:** plated conductive TSVs,
-      full Au wire bonds, hermetic seals, CFD, heat-transfer and HEMT IV performance
-      are outside this example's scope.
+- [ ] **Electrical, thermal and packaging validation:** idealized Cu-filled TSV geometry exists, but via-to-pad Au wiring, oxide isolation, real plating quality, electrical continuity, full Au wire bonds, hermetic seals, CFD, heat transfer and HEMT IV performance remain unverified or absent.
 - [ ] **Author layout parity:** original GDS and several exact intermediate
       channel masks are unavailable. Do not label inferred patterns as originals.
+
+### Current integration and evidence gate
+
+- The branch remains **Draft**. GitHub's exact PR HEAD, mergeability and required CI checks must be re-verified after each documentation or asset update; a passed older focused run is never evidence that a new HEAD is green.
+- Inspect **actual rendered Chromium evidence** independently for three physically different scales/cut planes: longitudinal coolant ports/manifold, transverse Cu-filled TSVs, and the locally magnified HEMT with a thickness legend. A combined Fig. 1(a)-style view must not imply a single co-planar cross-section or scale 25 nm / 150 nm films up to false thicknesses.
+- A final paper comparison must explicitly note the absent wafer-to-wafer direct bond, missing Au/TSV-to-pad electrical routes, absent original GDS, inferred dimensions and no thermal/CFD/electrical validation. Passing geometry and replay checks alone does not close these scientific gates.
+- Reconcile with contemporary Main in a controlled integration branch and run the necessary targeted scientific/visual checks before broader release Quality. Do not merge or deploy without explicit approval.
 
 ### Figure review
 
@@ -154,7 +157,6 @@ diversions follow the _topological pattern_ in Fig. 1(c) and Fig. 2(h) but
 are not digitized exact original masks. Both views are structural checks,
 not dimensional image-matching or a proof of complete flow equivalence.
 
-A reusable `Bond / Attach Structure` Kernel operator would be required for
-genuine two-wafer process reconstruction. This candidate is suitable for
+Native two-wafer reconstruction needs independently processed wafer models plus a validated bond/attach operation; this example implements neither a real bonded interface nor a second independently modeled wafer. This candidate is suitable for
 review **as a labeled geometric surrogate only**. No thermal or fluid-transport
 simulation is implied.
