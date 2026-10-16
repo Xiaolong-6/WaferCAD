@@ -34,17 +34,24 @@ const panel = async (key) => {
 // directly; earlier shells use view:* actions and an independent Section dock.
 // Use actual visible navigation controls, never synthetic state changes.
 const selectView = async (key) => {
-  const legacy = page.locator(`[data-action="view:${key}"]:visible`);
-  if (await legacy.count()) {
-    await legacy.first().click();
+  const desktop = page.locator(`[data-action="dock:view:${key}"]:visible`).first();
+  const legacy = page.locator(`[data-action="view:${key}"]:visible`).first();
+  if (await desktop.count()) {
+    if ((await desktop.getAttribute('aria-pressed')) !== 'true') await desktop.click();
+  } else if (await legacy.count()) {
+    await legacy.click();
   } else {
     const label = key === 'three' ? '3D' : 'Main';
     await page.getByRole('button', { name: label, exact: true }).first().click();
   }
+  await waitForPaint(page);
 };
 const revealSectionDock = async () => {
   const dock = page.locator('#sectionPanel');
-  if (!(await dock.isVisible())) {
+  const desktop = page.locator('[data-action="dock:view:section"]:visible').first();
+  if (await desktop.count()) {
+    if ((await desktop.getAttribute('aria-pressed')) !== 'true') await desktop.click();
+  } else if (!(await dock.isVisible())) {
     const oldDock = page.locator('[data-action="section"]:visible');
     if (await oldDock.count()) {
       await oldDock.first().click();
