@@ -1,4 +1,4 @@
-name: PR229 exact formatted wire science and Chromium closure
+name: PR229 repaired 3D Au wires final Chromium science
 
 on:
   push:
