@@ -75,9 +75,7 @@ test('production depth-band midpoint footprints have a separate lateral error bo
       assert.ok(Math.abs(exact - footprint) <= bound + 1e-12);
     }
   }
-  const sequence = [8, 16, 32, 64].map((n) =>
-    uniformDepthMidpointLateralErrorBound(radius, n),
-  );
+  const sequence = [8, 16, 32, 64].map((n) => uniformDepthMidpointLateralErrorBound(radius, n));
   assert.ok(sequence.every((value, i) => i === 0 || value < sequence[i - 1]));
 });
 
