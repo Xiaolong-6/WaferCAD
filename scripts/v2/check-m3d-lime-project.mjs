@@ -824,6 +824,70 @@ try {
   );
   assert.deepEqual(afterLocalCameras.roi, beforeLocalCameras.roi);
   assert.deepEqual(afterLocalCameras.section, beforeLocalCameras.section);
+  // The wide saved ROI can still leave long contact strips spanning the entire
+  // viewport, even after strong zoom. Inspect a physically clipped 6x3um local
+  // neighborhood through the actual Main ROI editor, then restore the saved ROI.
+  // This is view-only: do not apply Process, edit masks or alter the fixture.
+  const editInspectionRoi = async ({ centerXUm, centerYUm, widthUm, heightUm }) => {
+    await showAndVerifyView('main');
+    const roiControl = page.locator('#mainPanel [data-action="roi"]');
+    if ((await roiControl.getAttribute('aria-pressed')) !== 'true') await roiControl.click();
+    await page.locator('#mainPanel [data-action="settings:main"]').click();
+    const editor = page.locator('#mainRoiSettings');
+    assert.ok(await editor.isVisible(), 'Real Main ROI editor must open for local 3D inspection');
+    await editor.locator('#roiAnchorSelect').selectOption('center');
+    await editor.locator('#roiShapeSelect').selectOption('rect');
+    await editor.locator('#roiX').fill(String(centerXUm));
+    await editor.locator('#roiY').fill(String(centerYUm));
+    await editor.locator('#roiWidth').fill(String(widthUm));
+    await editor.locator('#roiHeight').fill(String(heightUm));
+    await editor.getByRole('button', { name: 'Apply', exact: true }).click();
+    await editor.getByRole('button', { name: 'Close Main ROI settings' }).click();
+    await roiControl.click();
+    await waitForPaint(page);
+  };
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
+  await editInspectionRoi({ centerXUm: -39.5, centerYUm: -24, widthUm: 6, heightUm: 3 });
+  const clippedRoi = (await snapshot()).roi;
+  assert.deepEqual(clippedRoi, {
+    type: 'rect',
+    a: [-42.5, -25.5],
+    b: [-36.5, -22.5],
+  });
+  await showAndVerifyView('three');
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await page.locator('#threePanel [data-action="fit:three"]').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const localRoiCamera = (await snapshot()).threeCamera;
+  const localRoiCapture = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-clipped-cntfet-pd-rram.png'),
+  );
+  assert.ok(localRoiCapture.coloredPixels > 1000, 'Clipped local 3D evidence is empty');
+  report.threeLocalRoiEvidence = {
+    roi: clippedRoi,
+    camera: localRoiCamera,
+    coloredPixels: localRoiCapture.coloredPixels,
+    canvas: localRoiCapture.canvas,
+    note: 'Local view clipped by genuine Main ROI editor; inspection only, not author GDS',
+  };
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
+  const savedRoi = beforeCutaway.roi;
+  assert.equal(savedRoi?.type, 'rect', 'Original inspection ROI must be rectangular');
+  await editInspectionRoi({
+    centerXUm: (savedRoi.a[0] + savedRoi.b[0]) / 2,
+    centerYUm: (savedRoi.a[1] + savedRoi.b[1]) / 2,
+    widthUm: savedRoi.b[0] - savedRoi.a[0],
+    heightUm: savedRoi.b[1] - savedRoi.a[1],
+  });
+  assert.deepEqual((await snapshot()).roi, savedRoi, 'Inspection must restore original Main ROI');
   // The camera is display state. The existing acceptance already uses actual
   // orbit/wheel gestures; only material and ROI/Section scientific state is
   // required to roundtrip byte-for-byte.
