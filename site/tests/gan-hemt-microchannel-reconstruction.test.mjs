@@ -55,7 +55,13 @@ test('3D Au packaging primitive rejects invalid geometry before project import',
     /four finite/,
   );
   assert.throws(
-    () => validateAssemblyWires([{ ...valid, points: [valid.points[0], valid.points[0], valid.points[2], valid.points[3]] }]),
+    () =>
+      validateAssemblyWires([
+        {
+          ...valid,
+          points: [valid.points[0], valid.points[0], valid.points[2], valid.points[3]],
+        },
+      ]),
     /rise/,
   );
 });
