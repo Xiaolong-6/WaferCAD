@@ -1,7 +1,7 @@
 /**
  * True circular tangent fillets for compact SWX optical centerlines.
- * The 3/5um radii are paper-reported; the waypoint locations and which
- * optical leg uses each radius are reconstruction assumptions, not author GDS.
+ * R1=5um is the near-reflector transition and the two U-returns use R2=3um,
+ * as marked in Supplement Fig. S6a. Waypoint XY remains illustrative.
  * A failed fit is rejected explicitly instead of shrinking R to hide errors.
  */
 export function filletPolyline(points, radius, segmentsPerTurn = 12) {
@@ -73,13 +73,18 @@ export function filletPolyline(points, radius, segmentsPerTurn = 12) {
 }
 
 /**
- * Source S6 topology: EACH moving spring waveguide has two 180-degree
- * return bends, with R1=5um and R2=3um, plus a tangent 90-degree approach
- * to its stationary anchor. The source does not supply exact placement.
+ * Reconstruction of the labeled *topology* in Hu et al., Supplement Fig. S6a:
+ * - R1 = 5 um: rounded transition from diagonal reflector lead to upper run.
+ * - Two 180-degree U returns, BOTH with R2 = 3 um (two 2R2 markers).
+ * - L = 15 um: the outgoing lower horizontal run toward the mode converter.
  *
- * A 0.885um ON displacement moves the free-side hairpins as one idealized
- * pose while extending their final straight leg toward the fixed endpoint.
- * This is a kinematic layout, not an FEM prediction of local strain.
+ * The figure specifies these radii, not the absolute anchor or junction XY.
+ * These waypoints are explicit illustrative placement assumptions, NOT author
+ * GDS, not a strain/deformation model, and not an optical FDTD simulation.
+ *
+ * ON translates the unsupported waveguide centerline along +Y while keeping
+ * its mode-converter terminal fixed. The resulting last straight tilts slightly;
+ * its horizontal projection, and the OFF-state geometric straight, remain 15um.
  */
 export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn = 24 }) {
   if (side !== -1 && side !== 1) throw new Error('Optical hairpin side must be -1 or +1');
@@ -90,14 +95,37 @@ export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn 
   const y = (value) => value + travelUm;
   const x = (value) => side * value;
   const start = [side < 0 ? -22 : 21, y(-61)];
-  const points = [start, [x(39), y(-61)]];
-  const arcs = [];
-  const appendArc = (center, radius, a0, sweep, kind) => {
-    const count = Math.max(6, Math.round((samplesPerHalfTurn * Math.abs(sweep)) / Math.PI));
+
+  // Smooth R1 transition where the diagonal SWX lead enters the upper run.
+  // This is the R1 arrow in Fig. S6a, NOT the radius of the first U-return.
+  const entry = filletPolyline([start, [x(36), y(-83)], [x(49), y(-83)]], 5, 16);
+  const points = [...entry.points];
+  const arcs = entry.arcs.map((arc) => ({
+    kind: 'reflector-transition-R1',
+    radiusUm: arc.radiusUm,
+    center: arc.center,
+    startIndex: arc.firstArcIndex,
+    endIndex: arc.lastArcIndex,
+    sweepRad:
+      Math.atan2(
+        points[arc.lastArcIndex][1] - arc.center[1],
+        points[arc.lastArcIndex][0] - arc.center[0],
+      ) -
+      Math.atan2(
+        points[arc.firstArcIndex][1] - arc.center[1],
+        points[arc.firstArcIndex][0] - arc.center[0],
+      ),
+  }));
+
+  const appendReturn = (center, sweep, kind) => {
+    const radius = 3;
     const startIndex = points.length - 1;
-    for (let i = 1; i <= count; i++) {
-      const angle = a0 + (sweep * i) / count;
-      points.push([center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)]);
+    for (let i = 1; i <= samplesPerHalfTurn; i++) {
+      const angle = Math.PI / 2 + (sweep * i) / samplesPerHalfTurn;
+      points.push([
+        center[0] + radius * Math.cos(angle),
+        center[1] + radius * Math.sin(angle),
+      ]);
     }
     arcs.push({
       kind,
@@ -108,17 +136,21 @@ export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn 
       sweepRad: sweep,
     });
   };
-  appendArc([x(39), y(-66)], 5, Math.PI / 2, side * -Math.PI, 'first-180');
-  points.push([x(29), y(-71)]);
-  appendArc([x(29), y(-74)], 3, Math.PI / 2, side * Math.PI, 'second-180');
-  points.push([x(50), y(-77)]);
-  appendArc([x(50), y(-82)], 5, Math.PI / 2, (side * -Math.PI) / 2, 'terminal-90');
+
+  appendReturn([x(49), y(-86)], side * -Math.PI, 'outer-return-R2');
+  points.push([x(40), y(-89)]);
+  appendReturn([x(40), y(-92)], side * Math.PI, 'inner-return-R2');
+
+  const terminalRunStart = [x(40), y(-95)];
   const stationaryEnd = [x(55), -95];
   points.push(stationaryEnd);
   return {
     points,
     arcs,
-    halfTurns: arcs.filter(({ sweepRad }) => Math.abs(Math.abs(sweepRad) - Math.PI) < 1e-12),
+    transition: arcs[0],
+    halfTurns: arcs.slice(1),
+    terminalRunStart,
+    nominalTerminalStraightLUm: 15,
     stationaryEnd,
     movingStart: start,
     travelUm,

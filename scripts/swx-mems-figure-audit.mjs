@@ -75,6 +75,13 @@ for (const state of ['off', 'on']) {
     movingOpticalBendRadiiUm: p.opticalRouting.movingCenterlines.map((line) =>
       line.halfTurns.map((arc) => arc.radiusUm),
     ),
+    opticalR1TransitionRadiiUm: p.opticalRouting.movingCenterlines.map(
+      (line) => line.transition.radiusUm,
+    ),
+    nominalS6StraightLUm: p.opticalRouting.movingCenterlines.map(
+      (line) => line.nominalTerminalStraightLUm,
+    ),
+    s6WaypointRegistrationSourceVerified: false,
     halfTurnsPerOpticalLeg: p.opticalRouting.movingCenterlines.map((line) => line.halfTurns.length),
     s7GuidesIntegrated: true,
     s7GuidesOriginalAnchorRegistrationVerified: false,

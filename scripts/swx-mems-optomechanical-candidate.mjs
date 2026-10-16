@@ -63,9 +63,9 @@ function makeOpticalRouting(travel) {
       coreWidth,
     ),
   ];
-  // In source S6 BOTH waveguides have TWO 180-degree turns, R1=5um and
-  // R2=3um. Assigning one radius to each waveguide was geometrically
-  // valid but scientifically incorrect; model the paper topology here.
+  // Supplement Fig. S6a: BOTH moving waveguides have two R2=3um U-turns,
+  // with a separate near-reflector R1=5um transition and L=15um terminal run.
+  // The absolute path coordinates are inferred, not the author's GDS.
   const movingCenterlines = [-1, 1].map((side) =>
     createSwxDoubleHairpin({ side, travelUm: travel }),
   );
@@ -122,7 +122,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
     guides,
     integrationStatus: 'optical-four-port-routing-candidate-no-wafercad-project',
     unresolved: [
-      'Both moving optical legs carry S6 5/3um semicircles; placement, elastic deformation and FDTD losses remain unverified',
+      'Both moving optical legs include two R2=3um semicircles, R1=5um transitions and L=15um nominal terminal straights; placement, elastic deformation and FDTD remain unverified',
       'Shallow grating groove masks are illustrative; source pitch and coupling efficiency unverified',
       'S7-sized guides now isolated from fixed/moving shorts; source placement and FEM stiffness unverified',
       'BOX undercut, electrode insulation and complete process History need new verification',

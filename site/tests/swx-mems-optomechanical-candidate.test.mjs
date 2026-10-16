@@ -160,7 +160,7 @@ test('each optical port terminates at the correct fixed/moving node', async () =
   }
 });
 
-test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree bends', () => {
+test('S6 labeled geometry: R1=5um transition, two R2=3um U-returns and L=15um', () => {
   for (const state of ['off', 'on']) {
     const pose = createSwxOptomechanicalCandidate(state);
     const centerlines = pose.opticalRouting.movingCenterlines;
@@ -169,9 +169,25 @@ test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree 
       assert.equal(path.halfTurns.length, 2, 'Each waveguide needs two 180deg bends, not one');
       assert.deepEqual(
         path.halfTurns.map(({ radiusUm }) => radiusUm),
-        SWX_REPORTED.meanderRadiiUm,
+        [SWX_REPORTED.meanderRadiiUm[1], SWX_REPORTED.meanderRadiiUm[1]],
+        'Two 2R2 labels mean both U-bends have the R2 radius',
       );
-      assert.equal(path.arcs.length, 3, 'Two U-bends plus one tangent terminal approach');
+      assert.equal(path.arcs.length, 3, 'R1 transition followed by two R2 returns');
+      assert.equal(path.transition.kind, 'reflector-transition-R1');
+      approx(path.transition.radiusUm, SWX_REPORTED.meanderRadiiUm[0]);
+      assert.ok(
+        Math.abs(path.transition.sweepRad) > Math.PI / 4 &&
+          Math.abs(path.transition.sweepRad) < Math.PI / 2,
+        'Source R1 transition must be a smooth partial turn, not a U-bend',
+      );
+      assert.equal(path.arcs[1].kind, 'outer-return-R2');
+      assert.equal(path.arcs[2].kind, 'inner-return-R2');
+      assert.equal(path.nominalTerminalStraightLUm, 15);
+      approx(
+        Math.abs(path.stationaryEnd[0] - path.terminalRunStart[0]),
+        15,
+      );
+      approx(path.stationaryEnd[1], -95);
       assert.ok(path.arcs.every((arc) => Number.isFinite(arc.sweepRad)));
       for (const arc of path.arcs) {
         for (let index = arc.startIndex; index <= arc.endIndex; index++) {
@@ -184,6 +200,7 @@ test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree 
       }
       assert.equal(path.motionModel, 'kinematic_extension_of_terminal_straight_not_FEM');
       approx(path.movingStart[1], -61 + pose.travelUm);
+      approx(path.terminalRunStart[1], -95 + pose.travelUm);
       approx(path.stationaryEnd[1], -95);
       assert.deepEqual(path.points.at(-1), path.stationaryEnd);
       assert.equal(path.placementSource, 'illustrative_S6_topology_not_authors_GDS');
