@@ -334,9 +334,9 @@ test('Process-stage fork preserves the selected Recipe prefix and diverges witho
     first.model,
   );
   assert.deepEqual(
-    assemblyVariantPostBondModel(setAssemblyVariantPostBondCursor(
-      activateAssemblyVariant(deviated.graph, 'main'), 2,
-    )),
+    assemblyVariantPostBondModel(
+      setAssemblyVariantPostBondCursor(activateAssemblyVariant(deviated.graph, 'main'), 2),
+    ),
     main.model,
   );
   assert.deepEqual(
@@ -344,7 +344,12 @@ test('Process-stage fork preserves the selected Recipe prefix and diverges witho
     deviated.model,
   );
   assert.throws(
-    () => appendAssemblyVariantBond(forkAssemblyProcessVariant(undone, { id: 'no-bond', atProcessIndex: 0 }), wafer('later'), { donorId: 'X' }),
+    () =>
+      appendAssemblyVariantBond(
+        forkAssemblyProcessVariant(undone, { id: 'no-bond', atProcessIndex: 0 }),
+        wafer('later'),
+        { donorId: 'X' },
+      ),
     /Further Bond after post-Bond Process/,
   );
 });
@@ -373,11 +378,26 @@ test('Process-fork ancestry, checkpoint and immutable stage prefix fail closed o
     change(copy);
     assert.throws(() => validateAssemblyVariantGraph(copy), pattern);
   };
-  invalid((g) => { g.branches[1].forkProcessIndex = 2; }, /Process fork checkpoint/);
-  invalid((g) => { g.branches[1].forkProcessIndex = -1; }, /Process fork checkpoint/);
-  invalid((g) => { g.branches[1].forkIndex = 0; }, /Process fork checkpoint/);
-  invalid((g) => { g.branches[1].postBondSteps = []; g.branches[1].postBondCursor = 0; }, /Process fork checkpoint/);
-  invalid((g) => { g.branches[1].parentId = null; }, /Root Assembly Variant|source registry/);
-  invalid((g) => { g.branches[1].postBondSteps[0].modelFingerprint = 'bad'; }, /checksum differs/);
-  invalid((g) => { g.version = 1; }, /Process fork checkpoint|format v2/);
+  invalid((g) => {
+    g.branches[1].forkProcessIndex = 2;
+  }, /Process fork checkpoint/);
+  invalid((g) => {
+    g.branches[1].forkProcessIndex = -1;
+  }, /Process fork checkpoint/);
+  invalid((g) => {
+    g.branches[1].forkIndex = 0;
+  }, /Process fork checkpoint/);
+  invalid((g) => {
+    g.branches[1].postBondSteps = [];
+    g.branches[1].postBondCursor = 0;
+  }, /Process fork checkpoint/);
+  invalid((g) => {
+    g.branches[1].parentId = null;
+  }, /Root Assembly Variant|source registry/);
+  invalid((g) => {
+    g.branches[1].postBondSteps[0].modelFingerprint = 'bad';
+  }, /checksum differs/);
+  invalid((g) => {
+    g.version = 1;
+  }, /Process fork checkpoint|format v2/);
 });
