@@ -1,4 +1,4 @@
-name: PR229 one-time complete exposed SiO2 scientific acceptance
+name: PR229 final unmasked oxide and retired fallback mask acceptance
 
 on:
   push:
