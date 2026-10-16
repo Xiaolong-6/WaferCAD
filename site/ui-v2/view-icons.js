@@ -9,6 +9,10 @@
     grip: 'M5 3h.01 M11 3h.01 M5 8h.01 M11 8h.01 M5 13h.01 M11 13h.01',
     code: 'M5 3L1 8l4 5 M11 3l4 5-4 5 M9 2L7 14',
     project: 'M2 4h5l2 2h5v8H2Z M2 4V2h5l2 2',
+    // Desktop navigation chrome follows the accepted minimal Shell prototype.
+    sidebarCollapse:
+      'M3 2.5h10a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z M6 2.5v11 M11 6l-2 2 2 2',
+    overview: 'M2 2h5v5H2Z M9 2h5v5H9Z M2 9h5v5H2Z M9 9h5v5H9Z',
     mask: 'M2 2h12v12H2Z M5 5h6v6H5Z',
     select: 'M3 2v11l3-3 2 4 2-1-2-4h4Z',
     rectangle: 'M2 3h12v10H2Z',
