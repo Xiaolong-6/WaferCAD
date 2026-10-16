@@ -42,7 +42,7 @@ independent interpretation of any mismatch.
 ## Acceptance escalation: independently reproducible paper match
 
 The `accepted-paper-match` state is deliberately unused for all eight
-families. The fail-closed metadata contract requires, *before* this status
+families. The fail-closed metadata contract requires, _before_ this status
 can be assigned:
 
 - A specific original **paper panel** identified in the source citation,
@@ -57,7 +57,7 @@ can be assigned:
   never be labeled accepted.
 
 `node --test site/tests/literature-provenance-matrix.test.mjs` includes
-synthetic positive/negative *schema* fixtures to test these requirements.
+synthetic positive/negative _schema_ fixtures to test these requirements.
 Those synthetic fixtures provide **zero evidence** of actual image
 correspondence. The scientific reviewer still must independently verify the
 paper image, calibration, saved material owner, exact cut and numerical
