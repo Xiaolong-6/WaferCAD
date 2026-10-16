@@ -4,6 +4,28 @@
 startup-shell and inspector-width correction in PR #187. Keep the P1 PR in Draft
 until the browser gates and any necessary physical-GPU review are complete.
 
+## Current acceptance decision (16 October 2026)
+
+The user approved a **1,000 ms inclusive responsiveness ceiling** for PR #188,
+replacing the earlier assistant-proposed 500 ms target. Both of these must
+hold **for each** real-device M3D first load and saved-Quality recovery:
+
+- Maximum observed main-thread Long Task **<= 1,000 ms**.
+- Maximum observed trusted input queue-delay estimate **<= 1,000 ms**,
+  with input observed during loading. Main-thread input/Orbit/Zoom verification
+  must still succeed.
+
+Scientific integrity, exact model hash and layer-count continuity, History
+and Recovery transaction safety, correct Fast-to-Quality restoration, stable
+final screenshots and verified physical GPU identity remain independently
+mandatory. No existing scientific tolerance or assertion is relaxed.
+
+Existing references to 500 ms elsewhere in this document describe **historical
+acceptance targets, diagnostic counters or past samples**, not the current
+release gate. A software-Chromium pass cannot certify physical RTX/iGPU
+responsiveness; do not merge until the updated gate and all required visual,
+science and recovery checks pass and the user explicitly approves Merge.
+
 ## Ownership and commit boundaries
 
 - **Shell ready:** the navigation, final four-view grid, slots and adapters are

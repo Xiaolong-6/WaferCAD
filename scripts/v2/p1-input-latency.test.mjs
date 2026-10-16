@@ -42,11 +42,16 @@ test('a responsive hardware sample requires actual trusted loading-phase input',
   });
 });
 
-test('500 ms input threshold fails closed with no samples or delayed input', () => {
-  const result = summarizeHardwareInput([event('loading', 501), event('ready', 9)]);
-  assert.equal(result.responsive, false);
-  assert.equal(result.worstLoadingQueueMs, 501);
-  assert.equal(result.overLimitCount, 1);
+test('1000 ms accepted boundary requires trusted loading input and fails above limit', () => {
+  const accepted = summarizeHardwareInput([event('loading', 1000), event('ready', 999)]);
+  assert.equal(accepted.responsive, true);
+  assert.equal(accepted.worstQueueMs, 1000);
+  assert.equal(accepted.overLimitCount, 0);
+  const rejected = summarizeHardwareInput([event('loading', 1001), event('ready', 9)]);
+  assert.equal(rejected.responsive, false);
+  assert.equal(rejected.worstLoadingQueueMs, 1001);
+  assert.equal(rejected.overLimitCount, 1);
+  assert.equal(summarizeHardwareInput([]).responsive, false);
 });
 
 test('real Orbit/Pan/Zoom camera evidence needs finite three-vector change', () => {

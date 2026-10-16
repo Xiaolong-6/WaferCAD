@@ -2,7 +2,9 @@
 // Event.timeStamp and performance.now() share a clock in supported Chrome.
 // The resulting delay is an input-dispatch estimate, not a compositor latency
 // or proof that the camera gesture has painted.
-export const INPUT_QUEUE_LIMIT_MS = 500;
+// User-approved P1 responsiveness acceptance for both trusted input and Long Tasks.
+// The legacy 500 ms counters remain diagnostic; they do not define the gate.
+export const INPUT_QUEUE_LIMIT_MS = 1000;
 const VALID_PHASES = new Set(['loading', 'coarse', 'refining', 'ready']);
 
 export function summarizeHardwareInput(samples, limitMs = INPUT_QUEUE_LIMIT_MS) {

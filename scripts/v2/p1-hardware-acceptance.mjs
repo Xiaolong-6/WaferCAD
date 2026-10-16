@@ -14,6 +14,7 @@ import {
 } from './p1-scientific-model-evidence.mjs';
 import {
   summarizeHardwareInput,
+  INPUT_QUEUE_LIMIT_MS,
   threeCameraGestureChanged,
   threeCameraZoomChanged,
 } from './p1-input-latency.mjs';
@@ -22,7 +23,7 @@ const port = Number(process.env.WAFERCAD_HW_PORT || 4288);
 const base = `http://127.0.0.1:${port}`;
 const timeout = Number(process.env.WAFERCAD_HW_TIMEOUT_MS || 300000);
 const profiling = process.argv.includes('--profile');
-const RESPONSIVENESS_LONG_TASK_LIMIT_MS = 500;
+const RESPONSIVENESS_LONG_TASK_LIMIT_MS = INPUT_QUEUE_LIMIT_MS;
 const output = join('test-results', 'p1-hardware');
 const HARNESS_VERSION = 'p1-hardware-cpu-profiler-v4';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -41,6 +42,7 @@ const report = {
   cpuProfileCollected: false,
   cpuProfiles: {},
   profiling,
+  responsivenessLimitMs: RESPONSIVENESS_LONG_TASK_LIMIT_MS,
 };
 // A previous successful report must never be mistaken for evidence from a failed rerun.
 await rm(output, { recursive: true, force: true });
@@ -468,7 +470,7 @@ try {
   for (const [label, sample] of Object.entries(report.cases)) {
     if (sample.input && !sample.input.responsive) {
       report.validationFailures.push(
-        `${label}: input queue samples missing or over 500 ms (${sample.input.worstQueueMs}ms)`,
+        `${label}: input queue samples missing or over ${INPUT_QUEUE_LIMIT_MS} ms (${sample.input.worstQueueMs}ms)`,
       );
     }
   }
