@@ -1,4 +1,4 @@
-name: PR229 one-time floating gap Kernel contract
+name: PR229 full exposed oxide Kernel and 3D coolant acceptance
 
 on:
   push:
@@ -27,12 +27,43 @@ jobs:
       - name: Floating-gap and conformal topology science
         run: |
           node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs site/tests/process-topology.test.mjs site/tests/conformal-crack-repair.test.mjs
+      - name: Regenerate actual full project and Preview
+        run: |
+          node scripts/build-gan-hemt-microchannel-example.mjs --write-repo
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022 --write
+      - name: Full native GaN Recipe/recovery and TSV geometry
+        run: |
+          node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - name: Launch real Chromium and verify coolant and package
+        run: |
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/gan306.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/gan306.log
+          exit 1
+      - name: Browser XY/Z material evidence and screenshots
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Regenerate paper reconstruction thumbnail
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr229-full-front-back-oxide-geometry-evidence
+          path: test-results/gan-microchannel/visual/
+          if-no-files-found: warn
       - name: Commit only verified formatting on the PR branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs
+          git add site/model.js site/process-topology.js site/tests/conformal-floating-gap.test.mjs scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/examples/gan-hemt-microchannel-2022.wafercad site/examples/previews/gan-hemt-microchannel-2022.wafercad site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp tests/fixtures/project-io/example-thumbnails.json
           if ! git diff --cached --quiet; then
-            git commit -m "style(kernel): format connected-conformal-span science fix"
+            git commit -m "build(gan): validate full exposed oxide with connected-wall Kernel"
             git push origin HEAD:"$GITHUB_REF_NAME"
           fi
