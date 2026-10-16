@@ -72,6 +72,8 @@ try {
     assert.equal(baseState.assemblyPreview.index, 2);
     assert.equal(baseState.assemblyPreview.bonds, 2);
     assert.equal(baseState.assemblyPreview.sources, 3);
+    assert.equal(baseState.threeDisplay.borders, true, 'Preview 3D displays layer outlines');
+    assert.match(await page.locator('.assembly-preview-stage').textContent(), /Z 1200 µm/);
     assert.equal(baseState.sharedIdentity, true);
     assert.equal(baseState.workflow.writable, false, 'Preview cannot acquire a writer lease');
     assert.equal(await page.locator('.p-inspector').isVisible(), false);
@@ -93,6 +95,12 @@ try {
       }
       const state = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       assert.equal(state.assemblyPreview.index, index);
+      const expectedThickness = [400, 800, 1200][index];
+      assert.match(
+        await page.locator('.assembly-preview-stage').textContent(),
+        new RegExp(`Z ${expectedThickness} µm`),
+      );
+      assert.equal(state.threeDisplay.borders, true);
       assert.equal(state.sharedIdentity, true);
       assert.equal(state.workflow.writable, false);
       if (index === 0) {
