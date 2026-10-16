@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 3
+          fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -46,18 +46,16 @@ jobs:
       - name: Generate real Kernel example and validate project I/O
         run: node scripts/build-m3d-lime-example.mjs --write-repo
       # One-time source-order fixture regeneration on the PR feature branch.
-      # Guarded by a marker and exact repository/branch; the bot commit removes
-      # the marker and restores this workflow to its original contents.
+      # Guarded by a marker and exact repository/branch. Bot updates only the
+      # generated fixture and marker; GitHub connector restores workflow later.
       - name: Commit regenerated Methods-order project once
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/m3d-rram-cntfet-lime-20261014'
         shell: bash
         run: |
           test -f .github/m3d-lime-regenerate-once || exit 0
           git diff --quiet -- site/examples/m3d-lime-rram-cntfet.wafercad && { echo 'Expected source-order fixture change absent'; exit 1; }
-          git show HEAD~2:.github/workflows/m3d-lime-reconstruction.yml > .github/workflows/m3d-lime-reconstruction.yml
-          ./node_modules/.bin/prettier --write site/tests/m3d-lime-builder.test.mjs
           rm .github/m3d-lime-regenerate-once
-          git add site/examples/m3d-lime-rram-cntfet.wafercad site/tests/m3d-lime-builder.test.mjs .github/workflows/m3d-lime-reconstruction.yml .github/m3d-lime-regenerate-once
+          git add site/examples/m3d-lime-rram-cntfet.wafercad .github/m3d-lime-regenerate-once
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(m3d-lime): sync generated fixture with Methods order'
           git push origin HEAD:refs/heads/feat/m3d-rram-cntfet-lime-20261014
           echo 'Generated fixture synchronized; PR HEAD has advanced.'
