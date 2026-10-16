@@ -226,10 +226,10 @@ try {
   // Capture the physical top-device Section before reclaiming the dock.
   const hemtSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('hemt-active-section.png', directory), hemtSectionShot);
-  const sectionDock = page.locator('[data-action="section"]').first();
-  if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
-    await sectionDock.click();
-  }
+  // Desktop overview has no legacy Section toggle. Maximize the already
+  // mounted 3D panel rather than clicking a hidden mobile-only control.
+  const threeMaximize = page.locator('[data-action="maximize:three"]:visible').first();
+  if (await threeMaximize.count()) await threeMaximize.click();
   await waitForPaint(page);
   const hemtShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('hemt-active.png', directory), hemtShot);
@@ -239,7 +239,7 @@ try {
     sectionBytes: hemtSectionShot.length,
     savedActiveSectionRestored: true,
     physicalAlGaNAndSiNPresent: true,
-    screenshotScope: 'expanded 3D host',
+    screenshotScope: '3D host (maximized when offered)',
   };
   assert.deepEqual(historyErrors, [], 'HEMT Bookmark inspection emitted browser errors');
   await context.close();

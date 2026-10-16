@@ -39,6 +39,11 @@ try {
   });
   try {
     const errors = observePageErrors(page);
+    page.on('console', (message) => {
+      if (message.type() === 'error') {
+        console.error('[Assembly browser console]', message.text());
+      }
+    });
     await page.goto(`${base}/app.html?assemblyPreview=1`, { waitUntil: 'domcontentloaded' });
     const input = page.getByLabel('Open bonded Assembly project');
     await input.waitFor({ state: 'visible', timeout: 15000 });
