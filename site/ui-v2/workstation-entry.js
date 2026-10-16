@@ -18,6 +18,7 @@ import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
 import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
+import { createMobileViewportController } from './mobile-viewport-controller.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -110,6 +111,14 @@ try {
       versionCommit: commitSha,
     }),
   });
+  const mobileViewport = readOnlyPreview
+    ? null
+    : createMobileViewportController({
+        root: shell.getRoot(),
+        state: uiState,
+        compact: () => window.WaferCadV2ViewState.compact(window),
+      });
+  window.addEventListener('pagehide', () => mobileViewport?.destroy(), { once: true });
   shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
@@ -117,6 +126,7 @@ try {
   const render = () => {
     if (starting) return;
     shell.render();
+    mobileViewport?.update();
     store.renderAll();
     requestAnimationFrame(() => desktopResizer?.refresh());
   };
