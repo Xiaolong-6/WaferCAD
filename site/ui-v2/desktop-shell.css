@@ -58,16 +58,31 @@
     max-width: 100%;
   }
 
+  /* The prototype's panel-and-chevron glyph replaces the generic back arrow. */
   body[data-workstation]:not([data-preview-mode]) .p-topbar [data-action='hide-editor'] {
     grid-column: 2;
     grid-row: 1 / 3;
     align-self: center;
-    padding: 4px;
-    min-width: 28px;
-    min-height: 28px;
-    background: transparent;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
     border: 0;
-    color: var(--wc-muted);
+    border-radius: 7px;
+    background: transparent;
+    color: #708498;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar [data-action='hide-editor'] .wc-icon {
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.7;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar [data-action='hide-editor']:hover {
+    border-color: transparent;
+    background: #e7edf3;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-review-badge:empty {
@@ -193,7 +208,7 @@
     grid-column: 2;
     grid-row: 1;
     justify-self: center;
-    gap: 4px;
+    gap: 7px;
     max-width: 100%;
     overflow-x: auto;
   }
@@ -208,9 +223,47 @@
     display: none;
   }
 
+  /* One frameless row: 36px mock controls, clear icons and a pale active tint. */
   body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions button {
+    flex: 0 0 auto;
+    min-width: 72px;
+    height: 36px;
+    min-height: 36px;
+    gap: 7px;
+    padding: 0 11px;
     border: 0;
-    border-radius: 6px;
+    border-radius: 8px;
+    background: transparent;
+    color: #62778a;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions button .wc-icon {
+    width: 15px;
+    height: 15px;
+    stroke-width: 1.8;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions button:hover {
+    border-color: transparent;
+    background: #e5ebf0;
+  }
+
+  body[data-workstation]:not([data-preview-mode])
+    .p-desktop-dock-actions button[aria-pressed='true'] {
+    background: #edf3f9;
+    color: #255f91;
+    box-shadow: none;
+  }
+
+  /* Overview is the primary selected tab when every scientific view is visible. */
+  body[data-workstation]:not([data-preview-mode])
+    .p-desktop-dock-actions:has([data-action='dock:overview'][aria-pressed='true'])
+    button[data-action^='dock:view:'][aria-pressed='true'] {
+    background: transparent;
+    color: #62778a;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-canvases {
