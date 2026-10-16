@@ -43,9 +43,7 @@ export function squarePyramidSample(
     : ax > ay
       ? [gradScale * Math.sign(dx), 0]
       : [0, gradScale * Math.sign(dy)];
-  const norm = gradient
-    ? Math.hypot(gradient[0], gradient[1], 1)
-    : null;
+  const norm = gradient ? Math.hypot(gradient[0], gradient[1], 1) : null;
   const normal = gradient
     ? face === 'front'
       ? [-gradient[0] / norm, -gradient[1] / norm, 1 / norm]

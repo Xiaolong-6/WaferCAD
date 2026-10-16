@@ -60,5 +60,8 @@ test('invalid parameters fail closed', () => {
   assert.throws(() => squarePyramidSample(0, 0, { ...args, height: 0 }), RangeError);
   assert.throws(() => squarePyramidSample(0, 0, { ...args, pitch: NaN }), RangeError);
   assert.throws(() => squarePyramidSample(0, 0, { ...args, face: 'both' }), RangeError);
-  assert.throws(() => facetNormalFilmVerticalSeparation({ gradient: [0, 0] }, 0.01), RangeError);
+  assert.throws(
+    () => facetNormalFilmVerticalSeparation({ gradient: [0, 0] }, 0.01),
+    RangeError,
+  );
 });

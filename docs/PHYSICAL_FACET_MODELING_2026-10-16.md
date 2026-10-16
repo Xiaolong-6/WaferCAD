@@ -23,6 +23,7 @@ at the apex/crease. `facetNormalFilmVerticalSeparation` is valid only for a
 operator across apexes, valleys, steps or mask boundaries.
 
 A complete opt-in Kernel design must resolve:
+
 1. Region/triangle XY ownership and deterministic interface IDs, including
    neighboring tile seams and shared front/back normal orientation.
 2. Offset surface intersections and multi-material contact at convex ridges,
@@ -38,8 +39,7 @@ A complete opt-in Kernel design must resolve:
 
 ## Verification
 
-Targeted pure-oracle check:
-`node --test site/tests/physical-facet-math.test.mjs`.
+Targeted pure-oracle check: `node --test site/tests/physical-facet-math.test.mjs`.
 
 This tests analytic height, symmetry, gradients, normal-thickness relation,
 relief volume and fail-closed undefined normals. It **does not certify**
