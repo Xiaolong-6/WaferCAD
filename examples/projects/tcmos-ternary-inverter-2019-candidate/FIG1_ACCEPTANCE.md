@@ -1,3 +1,5 @@
+**Mask approval gate (2026-10-16):** The uploaded `layout-complete.svg` is the authoritative visual and polygon source. Eight SVG layers represent 232 precise paths/rectangles/CNT footprints, plus 16 legacy auxiliary process-layer rectangles in the CAD File Mask (248 total, 13 layers). Earlier pixel/raster and Metal strap reconstructions are superseded. The process Recipe is not yet synchronized and current Run All stops at Step 13: **Mask approval is pending; process and final PR acceptance are NOT passed.**
+
 # Fig. 1a/1b scientific and visual acceptance — T-CMOS candidate
 
 **Scope: paper process flow, Mask/layout, and 3D/Section structural reconstruction only.** Qualified illustrative geometry is the acceptance target. Semiconductor-device physics is not part of WaferCAD or PR #225.
