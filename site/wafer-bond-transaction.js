@@ -95,6 +95,28 @@ export function prepareWaferBondTransaction(receiverProject, donorProject, reque
   };
 }
 
+
+/**
+ * Deterministically recompute a Bond History operation from independently
+ * preserved source projects. The History record never carries mutable donor
+ * model objects; the caller resolves the donor from canonical Assembly lineage.
+ */
+export function replayWaferBondTransaction(receiverProject, donorProject, operation) {
+  if (operation?.kind !== 'bond' || !operation.spec || !operation.donorId) {
+    throw new Error('Bond History replay requires a recorded Bond specification.');
+  }
+  if (operation.spec.donorId !== operation.donorId) {
+    throw new Error('Bond History donor ID does not match its recorded specification.');
+  }
+  const recomputed = prepareWaferBondTransaction(receiverProject, donorProject, operation.spec);
+  for (const key of ['donorId', 'spec', 'contactAreaUm2', 'donorLayerIds']) {
+    if (JSON.stringify(operation[key]) !== JSON.stringify(recomputed.operation[key])) {
+      throw new Error(`Bond History replay has mismatched ${key} provenance.`);
+    }
+  }
+  return recomputed;
+}
+
 function requireCallback(host, name) {
   if (typeof host?.[name] !== 'function') {
     throw new Error(`Bond commit requires host.${name}().`);
