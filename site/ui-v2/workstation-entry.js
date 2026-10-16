@@ -26,10 +26,13 @@ try {
   const readOnlyPreview = params.get('preview') === '1' || assemblyPreview;
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
+  const assemblyDraftRecovery = assemblyEdit ? createAssemblyBondDraftRecovery() : null;
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
   if (assemblyPreview) document.body.dataset.assemblyPreview = 'true';
   const project = assemblyPreview
-      ? await chooseAssemblyPreviewFile(document.getElementById('app-root'))
+      ? await chooseAssemblyPreviewFile(document.getElementById('app-root'), {
+          recovery: assemblyDraftRecovery,
+        })
       : readOnlyPreview
         ? await loadBundledProject(params.get('example'), undefined, { preview: true })
         : await loadWorkstationProject(),
@@ -325,10 +328,9 @@ try {
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
   if (assemblyPreview) {
-    const draftRecovery = assemblyEdit ? createAssemblyBondDraftRecovery() : null;
     const draftEditor = assemblyEdit
       ? store.createAssemblyBondDraftSession(async (value, reason) => {
-          await draftRecovery.checkpoint(value, reason);
+          await assemblyDraftRecovery.checkpoint(value, reason);
           return true;
         })
       : null;
