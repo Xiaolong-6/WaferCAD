@@ -167,7 +167,7 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 
 ## Unresolved published-Methods process-order audit (October 16, 2026)
 
-These source discrepancies are **open process-fidelity defects**, independent of
+These process-order audit items are tracked independently of
 the existing geometric, History and Chromium checks. The relevant source is
 [Li et al. 2023, Methods, Fabrication of the M3D-LIME Chip](https://pmc.ncbi.nlm.nih.gov/articles/PMC10628152/).
 
@@ -175,12 +175,13 @@ the existing geometric, History and Chromium checks. The relevant source is
   the CNT, patterns Ti 1 nm / Pd 45 nm source/drain contacts, and **only then**
   lithographically patterns the CNT channel using O₂ plasma, before 10 nm Y
   deposition and oxidation. The current 46-step Builder combines PCz cleaning
-  and O₂ patterning in the non-geometric `recipe-step-26`, **ahead** of
-  source/drain `recipe-step-27` through `recipe-step-30`. The sequence must
-  be corrected in the editable Recipe and every associated History state as
-  well as the deterministic committed `.wafercad`. The CNT currently appears
-  at its final Mask footprint immediately after transfer; an intermediate
-  blanket CNT film and its physical O₂ removal are **not** represented.
+  and O₂ patterning previously in `recipe-step-26`; this defect is corrected:
+  step 26 records post-transfer PCz cleaning only, steps 27–30 form Ti/Pd
+  contacts, and step 31 records **O₂ channel isolation followed by Y deposition
+  and oxidation**. The CNT appears at its final Mask footprint immediately
+  after transfer; an intermediate blanket film and physical O₂ removal remain
+  **unmodeled**. Grouping these two consecutive non-geometric operations in
+  one Record preserves the 46-step Recipe and History node count.
 - **Analog CIM passivation CMP order:** The paper deposits 400 nm PECVD SiO₂,
   patterns F-RIE contact openings, fills the TE contacts with W, and then
   performs CMP. The Builder inserts an additional pre-via CMP at

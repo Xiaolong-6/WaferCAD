@@ -534,9 +534,9 @@ export async function buildM3DLime() {
     'transfer',
   );
   record(
-    'PCz removal, solvent wash and CNT channel O2 plasma pattern',
+    'Remove residual PCz and solvent-clean transferred CNT before Ti/Pd contacts',
     'clean',
-    'Wet transfer and oxygen-plasma channel isolation; individual nanotubes and PCz are not resolved in this geometric model.',
+    'Remove polymer residues after wet CNT transfer. CNT is modeled at its final Mask footprint; O2 plasma channel isolation is separately recorded after Ti/Pd contacts.',
   );
   bookmark('04 CNT channels over back gates');
   deposit('Evaporate Ti source adhesion 1nm', 'CNT source Ti 1nm', 0.001, 17);
@@ -557,9 +557,9 @@ export async function buildM3DLime() {
 
   // Y 10nm converts in air to Y2O3; an explicit geometry surrogate, no oxidation solver.
   record(
-    'Evaporate 10nm Y / oxidize in air at 250C',
+    'O2 plasma-pattern CNT channel; deposit Y 10nm and oxidize in air at 250C',
     'oxidation',
-    'Y2O3 layer geometry uses a 10nm thickness surrogate; post-oxidation thickness was not reported.',
+    'After Ti/Pd source/drain deposition, O2 plasma isolates CNT channel before 10nm Y evaporation and air oxidation at 250C. The Y2O3 geometry is a 10nm surrogate, not a measured grown-oxide thickness.',
   );
   deposit('Y2O3 interface layer 10nm geometric surrogate', 'Y2O3 interface SURROGATE 10nm', 0.01);
   deposit(

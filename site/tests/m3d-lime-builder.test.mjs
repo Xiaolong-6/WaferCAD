@@ -390,3 +390,36 @@ test('sampled 3-tier cut is physically ordered through both analog CIM and digit
   assert.equal(project.section.b[1], -24);
   assert.equal(validation.representedCellCounts.tcamCells, 5);
 });
+
+test('CNTFET paper Methods source-to-drain isolation order', async () => {
+  const { project } = await verifiedFixture();
+  const steps = project.processRecipe.steps;
+  const labels = steps.map((step) => String(step.params.label || step.params.material || ''));
+  const index = (label) => labels.findIndex((item) => item.includes(label));
+  const stages = [
+    'Remove residual PCz',
+    'CNT source Ti 1nm',
+    'CNT source Pd 45nm',
+    'CNT drain Ti 1nm',
+    'CNT drain Pd 45nm',
+    'O2 plasma-pattern CNT channel',
+    'Y2O3 interface SURROGATE 10nm',
+  ];
+  const positions = stages.map(index);
+  assert.deepEqual(
+    positions,
+    [25, 26, 27, 28, 29, 30, 31],
+    'Li et al. Methods requires O2 CNT patterning after Ti/Pd source/drain and before Y oxidation',
+  );
+  assert.equal(steps[25].command, 'record');
+  assert.equal(steps[30].command, 'record');
+  assert.equal(steps.length, 46);
+  assert.equal(project.snapshotBranches.nodes.length, 47);
+  assert.ok(
+    project.snapshotBranches.nodes.some((node) =>
+      node.operation?.kind === 'record' &&
+      node.operation.label.includes('O2 plasma-pattern CNT channel'),
+    ),
+    'History must record post-contact CNT channel isolation',
+  );
+});
