@@ -31,6 +31,8 @@ See [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for
 
 `site/` is separately deployed through the existing Pages workflow when site assets change. The wiki is not updated from a feature branch: merge to main first.
 
+The change-coverage warning includes the production v2 Workstation shell, desktop docking, compact navigation and selected public controllers as well as the older source owners. It is **heuristic only**: a matching Wiki edit suppresses the warning, and a silent result cannot prove that screenshots, navigation instructions or scientific descriptions still match the implementation. Review those against the current production UI before acceptance.
+
 ## GitHub prerequisites (one-time setup)
 
 1. In repository **Settings → Features**, ensure **Wikis** is enabled.
