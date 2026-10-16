@@ -320,3 +320,34 @@ The experimental editor still uses `.wafercad-variants.json` to persist
 derived Process provenance, while a normal `.wafercad` export represents
 only the canonical Bond baseline. Do not merge or deploy without the user's
 explicit approval and final required gates.
+
+
+## October 16 — unified Assembly History transaction boundary
+
+The opt-in Bond editor exposes a single source-aware Undo/Redo entry spanning
+both the Bond cursor and the post-Bond Process cursor. Undo exhausts Process
+stages before moving to the prior Bond; redo restores Bond stages before
+replaying Process stages. Both operations publish exactly one revision-checked
+Assembly Variant graph transaction and roll back the visible model and cursor
+if publication fails. Navigating at an endpoint is a no-op and must not
+consume a graph revision.
+
+This control is backed by `createAssemblyBondEditorSession`, not by ordinary
+Workstation `SnapshotManager`. The two controllers cannot write the same
+v15 provenance. Ordinary single-wafer autosave remains disabled in the opt-in
+Bond editor; pre-Bond Recovery checkpoints and the versioned Variant graph
+remain the only supported durable owner of Assembly edits.
+
+Targeted science now explicitly tests the full six-step navigation sequence
+from **A+B+C + Deposit + Etch** back through both Process steps and the
+third Bond, then forward to the exact original Recipe graph and material.
+It also asserts failed durable publication cannot advance the process
+cursor. The real Chromium acceptance exercises the same boundary and
+captures the visible History controls.
+
+**Scope limitation:** This is still the experimental
+`app.html?assemblyPreview=1&bondEdit=1` entry. Masked/ROI and conformal
+post-Bond Process, normal Workstation project editing, production `.wafercad`
+transport of post-Bond Recipe, complete Quality and deployment acceptance
+remain separate gates. A normal `.wafercad` export remains the Bond
+baseline; the Variant sidecar is required for derived Process provenance.
