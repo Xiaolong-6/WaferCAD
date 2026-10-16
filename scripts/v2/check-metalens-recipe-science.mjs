@@ -43,43 +43,25 @@ function placements(model) {
   return model.array.instances.map(({ id, role, x, y }) => [id, role, x, y]);
 }
 
-function representatives(model) {
-  const selected = new Map();
-  for (const site of model.array.instances) {
-    const template = site.templateId;
-    const family =
-      template === 'background'
-        ? 'background'
-        : template.startsWith('bipolar-')
-          ? 'bipolar'
-          : template.split('-')[0];
-    if (!selected.has(family)) selected.set(family, site);
-  }
-  assert.deepEqual([...selected.keys()].sort(), [
-    'background',
-    'bipolar',
-    'circle',
-    'ring',
-    'square',
-  ]);
-  return [...selected.values()];
-}
-
-async function comparePhysicalArray(expected, actual, label, sampleOnly = false) {
+async function comparePhysicalArray(expected, actual, label) {
   assert.equal(actual.kernel, 'vector-2.5d-array-v1');
   assert.deepEqual(placements(actual), placements(expected), label + ': canonical 6400 XY/roles');
   const oldTemplates = new Map(expected.array.templates.map((part) => [part.id, part.model]));
   const newTemplates = new Map(actual.array.templates.map((part) => [part.id, part.model]));
   const newSites = new Map(actual.array.instances.map((site) => [site.id, site]));
   const checked = new Set();
+  const coveredOriginalTemplates = new Set();
+  const coveredRebuiltTemplates = new Set();
   let slabs = 0;
   let maxMismatchUm2 = 0;
-  for (const site of sampleOnly ? representatives(expected) : expected.array.instances) {
+  for (const site of expected.array.instances) {
     const next = newSites.get(site.id);
     assert.ok(next, label + ': missing physical site ' + site.id);
     const key = site.templateId + '|' + next.templateId;
     if (checked.has(key)) continue;
     checked.add(key);
+    coveredOriginalTemplates.add(site.templateId);
+    coveredRebuiltTemplates.add(next.templateId);
     const original = oldTemplates.get(site.templateId);
     const rebuilt = newTemplates.get(next.templateId);
     assert.ok(original && rebuilt, label + ': missing physical template ' + key);
@@ -93,10 +75,22 @@ async function comparePhysicalArray(expected, actual, label, sampleOnly = false)
     slabs += result.slabsChecked;
     maxMismatchUm2 = Math.max(maxMismatchUm2, result.maxMismatchAreaUm2);
   }
+  assert.equal(
+    coveredOriginalTemplates.size,
+    oldTemplates.size,
+    label + ': every reference process template must be checked',
+  );
+  assert.equal(
+    coveredRebuiltTemplates.size,
+    newTemplates.size,
+    label + ': every rebuilt process template must be checked',
+  );
   return {
     label,
     sites: expected.array.instances.length,
     pairs: checked.size,
+    originalTemplates: coveredOriginalTemplates.size,
+    rebuiltTemplates: coveredRebuiltTemplates.size,
     slabs,
     maxMismatchUm2,
   };
@@ -221,7 +215,10 @@ try {
         baseline[index].state.model,
         history[index].state.model,
         'step-' + (index + 1),
-        true,
+      );
+      assert.ok(
+        result.pairs >= 49,
+        'Every one of the 49 published source templates must be covered at Step ' + (index + 1),
       );
       report.intermediate.push(result);
       console.log('V2_METALENS_STAGE', JSON.stringify(result));
