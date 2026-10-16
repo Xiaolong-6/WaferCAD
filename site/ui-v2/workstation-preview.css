@@ -72,3 +72,98 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   height: auto;
   min-height: 24px;
 }
+
+/* Experimental v15 Assembly inspection is isolated from the writer lease.
+   The real Main/Mask/3D/Section canvases remain reusable and interactive. */
+.assembly-preview-file-picker {
+  box-sizing: border-box;
+  max-width: 540px;
+  margin: min(18vh, 140px) auto;
+  padding: 28px;
+  border: 1px solid var(--border, #cdd4df);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  color: var(--text, #20242b);
+  font: 15px/1.5 system-ui, sans-serif;
+}
+
+.assembly-preview-file-picker h1 {
+  margin: 0 0 12px;
+  font-size: 23px;
+}
+
+.assembly-preview-file-picker input {
+  display: block;
+  max-width: 100%;
+  margin-top: 20px;
+}
+
+.assembly-preview-file-picker [data-error='true'] {
+  color: #a22a2a;
+}
+
+.assembly-preview-controls {
+  position: fixed;
+  z-index: 120;
+  inset: auto 16px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin: 0 auto;
+  padding: 9px 13px;
+  border: 1px solid #cad2db;
+  border-radius: 14px;
+  background: rgba(250, 252, 255, 0.96);
+  box-shadow: 0 8px 28px rgba(20, 32, 46, 0.15);
+  color: #202d3e;
+  font: 12px/1.4 system-ui, sans-serif;
+}
+
+.assembly-preview-controls button {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid #d0d8e2;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.assembly-preview-controls button[aria-pressed='true'] {
+  border-color: #537bb0;
+  background: #e8effa;
+}
+
+.assembly-preview-controls button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.assembly-preview-stage {
+  min-width: 100px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.assembly-preview-views {
+  display: flex;
+  gap: 4px;
+}
+
+@media (max-width: 560px) {
+  .assembly-preview-controls {
+    inset: auto 8px 8px;
+    max-width: calc(100vw - 16px);
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .assembly-preview-controls > strong {
+    display: none;
+  }
+}
