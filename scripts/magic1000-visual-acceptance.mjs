@@ -54,6 +54,11 @@ try {
     );
     const target = view === 'section' ? '#sectionCanvas' : '#threeHost';
     if (view === 'section') {
+      assert.equal(
+        await page.locator('.p-workspace').count(),
+        0,
+        'Read-only preview must use its original standalone shell, not production desktop geometry',
+      );
       await page.locator(target).waitFor({ state: 'visible', timeout: 120000 });
       await page.waitForFunction(
         () =>
