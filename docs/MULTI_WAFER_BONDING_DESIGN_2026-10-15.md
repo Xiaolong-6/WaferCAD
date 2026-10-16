@@ -281,3 +281,42 @@ Scientific invariants include source immutability, Worker-equivalent
 full-face replay, split C/D branches, corrupted checksum rejection,
 persistence/failed-write rollback, and sidecar reload. This is a
 **scoped experimental milestone**, not full PR or Main release acceptance.
+
+## October 16 — Process-stage Variant forks and persistent Recipe history
+
+The experimental source-aware editor can fork from either a historical **Bond**
+checkpoint or an undone **post-Bond Process** checkpoint. For the latter, each
+new Variant stores the identical source IDs, complete Bond chain, the selected
+immutable Process Recipe prefix and explicit `forkProcessIndex` ancestry. Its
+later Process operations diverge independently. The parent retains every
+step, and both branches replay from the unchanged canonical v15 source stack.
+The shared source registry is never duplicated.
+
+Post-Bond Recipe Undo/Redo uses `postBondCursor` without truncating the
+Recipe HEAD. Forking at a historical Process cursor creates an independent
+branch with that cursor promoted to its new HEAD; appending from an undone
+cursor without an explicit Variant still **fails closed**. Validation refuses
+corrupt contact/Bond prefixes, altered Process checksums, missing Process-fork
+metadata, tampered fork indices and changed parent Process prefixes. Branch
+fork/switch/step operations use the same durable revision-controlled IndexedDB
+writer and rollback contract as the existing Bond transaction owner.
+
+**Scoped acceptance:** [143/143 scientific and transaction tests, ESLint and
+Prettier](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38904399799);
+[final actual Chromium acceptance](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38904486031)
+with 19 screenshots. The browser verified independent outcomes after
+**A+B+C** (1200 µm bonded base): Deposit 1.8 µm, then Etch 0.5 µm
+(Main 1201.3 µm), while a Process fork from the Deposit-only checkpoint
+appends a further 0.4 µm Al film (1202.2 µm). An existing alternative
+A+B+D wafer remains **1150 µm**. Physical Z, sidecar export, pristine
+source provenance, and all branch switches are checked. The artificial
+high-contrast highlight is renderer-only; no physical dimensions are changed.
+
+**Remaining boundary:** ordinary writable Workstation integration, shared
+global Recipe/Worker/History ownership, explicit post-Bond Mask/ROI and
+conformal process semantics, mobile visual acceptance, complete Quality and
+full browser regression are **not** completed by this scoped milestone.
+The experimental editor still uses `.wafercad-variants.json` to persist
+derived Process provenance, while a normal `.wafercad` export represents
+only the canonical Bond baseline. Do not merge or deploy without the user's
+explicit approval and final required gates.
