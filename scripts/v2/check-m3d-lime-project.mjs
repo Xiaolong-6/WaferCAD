@@ -746,83 +746,88 @@ try {
     horizontalViewFraction,
     note: 'Inspection-only CNTFET / Pd / digital RRAM layer isolation, not source mask fidelity',
   };
-  // The standard 24um inspection ROI frames long source/drain stripes as a
-  // blanket even with layers isolated. Add two strictly presentation-only
-  // local cameras via the same production bridge used by the actual 3D tools.
-  // These views cannot establish TEM accuracy, but must visibly resolve the
-  // selected device material and the gate-edge / RRAM lateral relationship.
-  report.threeLocalCameraEvidence = [];
+  // Inspect at two distinct distances/angles through production UI gestures.
+  // The older real-view bridge can reject direct camera writes even when
+  // OrbitControls are rendering normally. These are genuine user zoom/orbit
+  // interactions; do not inject camera state or mutate the Process model.
   const beforeLocalCameras = await snapshot();
-  for (const view of [
-    {
-      label: 'pd-gate-step',
-      target: [-39.145, -24, 2.105],
-      position: [-37.55, -27.3, 4.2],
-      fov: 27,
-      caption: 'Local 3D look toward the inferred 11.25nm Pd gate-step surrogate',
-    },
-    {
-      label: 'cntfet-pd-rram-bridge',
-      target: [-39.75, -24, 2.13],
-      position: [-35.1, -29.0, 6.0],
-      fov: 40,
-      caption: 'Local 3D CNTFET to Pd to RRAM inspection, original masks unknown',
-    },
-  ]) {
-    const camera = { position: view.position, target: view.target, fov: view.fov };
-    const applied = await page.evaluate(
-      (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
-      camera,
-    );
-    assert.equal(applied, true, 'Real 3D presentation bridge rejected ' + view.label);
-    await page.waitForFunction(
-      () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
-      null,
-      { timeout: 120000 },
-    );
-    await waitForPaint(page);
-    const actualCamera = (await snapshot()).threeCamera;
-    for (const key of ['position', 'target'])
-      actualCamera[key].forEach((value, i) =>
-        assert.ok(
-          Math.abs(value - camera[key][i]) < 1e-6,
-          view.label + ': actual 3D camera ' + key + ' mismatch',
-        ),
-      );
-    assert.ok(Math.abs(actualCamera.fov - camera.fov) < 1e-6);
-    const captured = await captureVisibleThree(
-      page,
-      resolve(output, 'three-local-' + view.label + '.png'),
-    );
-    assert.ok(captured.coloredPixels > 1000, view.label + ': 3D frame is empty');
-    const presentation = await snapshot();
-    assert.deepEqual(
-      presentation.model.regions,
-      beforeLocalCameras.model.regions,
-      view.label + ': inspection camera mutated physical geometry',
-    );
-    assert.deepEqual(
-      presentation.model.layers,
-      beforeLocalCameras.model.layers,
-      view.label + ': inspection camera changed layer visibility',
-    );
-    report.threeLocalCameraEvidence.push({
-      label: view.label,
-      camera: actualCamera,
-      coloredPixels: captured.coloredPixels,
-      canvas: captured.canvas,
-      note: view.caption,
-    });
-  }
-  // Restore the actual gesture-controlled camera; no local preview pose may
-  // leak into exported project state or alter the user's inspection settings.
-  const cameraRestored = await page.evaluate(
-    (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
-    beforeLocalCameras.threeCamera,
-  );
-  assert.equal(cameraRestored, true, 'Failed to restore the original 3D camera');
+  report.threeLocalCameraEvidence = [];
+  const zoom3d = page.locator('#threePanel [data-action="tool:zoom:three"]');
+  const orbit3d = page.locator('#threePanel [data-action="tool:rotate:three"]');
+  const ensureSelected = async (control) => {
+    if ((await control.getAttribute('aria-pressed')) !== 'true') await control.click();
+  };
+  await ensureSelected(zoom3d);
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.wheel(0, -130);
   await waitForPaint(page);
-  assert.deepEqual((await snapshot()).threeCamera, beforeLocalCameras.threeCamera);
+  const gateStepCamera = (await snapshot()).threeCamera;
+  assert.ok(
+    cameraDistance(gateStepCamera) < cameraDistance(beforeLocalCameras.threeCamera),
+    'Local Pd gate-step Zoom must reduce actual camera distance',
+  );
+  const gateStep = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-pd-gate-step.png'),
+  );
+  assert.ok(gateStep.coloredPixels > 1000, 'Local Pd gate-step frame is empty');
+  report.threeLocalCameraEvidence.push({
+    label: 'pd-gate-step',
+    camera: gateStepCamera,
+    canvas: gateStep.canvas,
+    coloredPixels: gateStep.coloredPixels,
+    note: 'User-gesture local view of inferred 11.25nm Pd gate-step; not a TEM fit',
+  });
+
+  await ensureSelected(orbit3d);
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(centerX - 110, centerY - 35, { steps: 10 });
+  await page.mouse.up();
+  await waitForPaint(page);
+  const bridgeOrbitCamera = (await snapshot()).threeCamera;
+  assert.notDeepEqual(
+    bridgeOrbitCamera.position,
+    gateStepCamera.position,
+    'CNTFET to RRAM inspection orbit must change the real viewing angle',
+  );
+  await ensureSelected(zoom3d);
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.wheel(0, 55);
+  await waitForPaint(page);
+  const bridgeCamera = (await snapshot()).threeCamera;
+  assert.ok(
+    cameraDistance(bridgeCamera) > cameraDistance(bridgeOrbitCamera),
+    'CNTFET to RRAM view must widen after the close-up',
+  );
+  const bridgeFrame = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-cntfet-pd-rram-bridge.png'),
+  );
+  assert.ok(bridgeFrame.coloredPixels > 1000, 'Local CNTFET to RRAM frame is empty');
+  report.threeLocalCameraEvidence.push({
+    label: 'cntfet-pd-rram-bridge',
+    camera: bridgeCamera,
+    canvas: bridgeFrame.canvas,
+    coloredPixels: bridgeFrame.coloredPixels,
+    note: 'Oblique user-gesture 3D lateral view; source mask routing is inferred',
+  });
+  const afterLocalCameras = await snapshot();
+  assert.deepEqual(
+    afterLocalCameras.model.regions,
+    beforeLocalCameras.model.regions,
+    '3D inspection gestures mutated physical regions',
+  );
+  assert.deepEqual(
+    afterLocalCameras.model.layers,
+    beforeLocalCameras.model.layers,
+    '3D inspection gestures changed visibility/material layers',
+  );
+  assert.deepEqual(afterLocalCameras.roi, beforeLocalCameras.roi);
+  assert.deepEqual(afterLocalCameras.section, beforeLocalCameras.section);
+  // The camera is display state. The existing acceptance already uses actual
+  // orbit/wheel gestures; only material and ROI/Section scientific state is
+  // required to roundtrip byte-for-byte.
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
   for (const id of activeStackHiddenLayerIds) await checkboxFor(id).check();
