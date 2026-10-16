@@ -70,9 +70,15 @@ export async function loadBundledProject(
   return { source: path, hash, data };
 }
 
-export function createWorkstationRuntime(project, { assemblyPreview = false } = {}) {
-  if (assemblyPreview && !project?.data?.waferAssembly) {
+export function createWorkstationRuntime(
+  project,
+  { assemblyPreview = false, firstBondDraft = false } = {},
+) {
+  if (assemblyPreview && !project?.data?.waferAssembly && !firstBondDraft) {
     throw new Error('Assembly preview requires verified Assembly provenance.');
+  }
+  if (firstBondDraft && (!assemblyPreview || project?.data?.waferAssembly)) {
+    throw new Error('First-Bond draft requires an independent source and preview mode.');
   }
   let sectionLayersVisible = true;
   try {
@@ -259,8 +265,13 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
   });
-  history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
-  let assemblyPreviewSession = assemblyPreview
+  // In Assembly mode, the source-aware owner alone controls Bond navigation.
+  // Ordinary snapshotManager cannot ingest an Assembly or copy donor provenance.
+  history.importRecords(
+    assemblyPreview ? [] : project.data.snapshots || [],
+    assemblyPreview ? null : project.data.snapshotBranches,
+  );
+  let assemblyPreviewSession = assemblyPreview && project.data.waferAssembly
     ? createAssemblyBondHistorySession(project.data)
     : null;
   let assemblyBondEditor = null;
@@ -273,7 +284,7 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
     return projectAtStage;
   }
   function createAssemblyBondDraftSession(checkpointRecovery) {
-    if (!assemblyPreviewSession || assemblyBondEditor) {
+    if ((!assemblyPreviewSession && !firstBondDraft) || assemblyBondEditor) {
       throw new Error('Bond draft editor requires one isolated Assembly preview.');
     }
     assemblyBondEditor = createAssemblyBondEditorSession(project.data, {
