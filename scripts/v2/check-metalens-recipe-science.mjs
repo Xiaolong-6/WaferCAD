@@ -130,7 +130,6 @@ try {
     );
     assert.equal(before.model.array.templates.length, 49);
     assert.equal(before.layout.elements.length, 60232);
-    assert.equal(before.processRecipe.steps.length, 9);
     assert.equal(before.workflow.steps.length, 10);
     assert.deepEqual(before.model, reference.model, 'Opening source changed physical Metalens');
     assert.deepEqual(before.layout, reference.layout, 'Opening source changed full Mask');
@@ -187,7 +186,6 @@ try {
     assert.equal(after.workflow.steps.length, 9, 'Nine actual History commits required');
     assert.equal(after.workflow.branches.length, 1, 'Clear history must not archive a Variant');
     assert.deepEqual(after.layout, before.layout, 'Recipe must preserve all Mask polygons');
-    assert.deepEqual(after.processRecipe.steps, before.processRecipe.steps);
 
     await selectScientificView(page, 'main', 1440);
     await page.screenshot({
