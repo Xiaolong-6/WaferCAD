@@ -317,12 +317,14 @@ try {
     const missingLocalOxideRims = viaCenters.filter(
       ([x, y]) => !hasLayer([x + 43, y], 600.75, ids.oxide),
     );
-    const missingGlobalFrontOxide = [[2000, 0], [2500, 1800]].filter(
-      (xy) => !hasLayer(xy, 600.25, ids.globalFront),
-    );
-    const missingGlobalBackOxide = [[2000, 0], [2500, 1800]].filter(
-      (xy) => !hasLayer(xy, -200.25, ids.globalBack),
-    );
+    const missingGlobalFrontOxide = [
+      [2000, 0],
+      [2500, 1800],
+    ].filter((xy) => !hasLayer(xy, 600.25, ids.globalFront));
+    const missingGlobalBackOxide = [
+      [2000, 0],
+      [2500, 1800],
+    ].filter((xy) => !hasLayer(xy, -200.25, ids.globalBack));
     const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
     const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.75, ids.pad));
@@ -490,8 +492,7 @@ try {
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
     frontBackExposedOxideGeometryVerified:
-      geometry.missingGlobalFrontOxide.length === 0 &&
-      geometry.missingGlobalBackOxide.length === 0,
+      geometry.missingGlobalFrontOxide.length === 0 && geometry.missingGlobalBackOxide.length === 0,
     wholeOutsideSurfaceOxideVerified: false,
     oxideInsulationScientificVerification: false,
     electricalContinuityVerified: false,
