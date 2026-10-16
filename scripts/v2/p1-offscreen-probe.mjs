@@ -71,7 +71,8 @@ try {
       const firstCorrect = JSON.stringify(result.firstPixel) === '[255,0,0,255]';
       const resizedCorrect = JSON.stringify(result.resizedPixel) === '[0,255,0,255]';
       const pixelReadbackPassed = firstCorrect && resizedCorrect;
-      const failureReason = result.error || (pixelReadbackPassed ? null : 'Pixel readback mismatch');
+      const failureReason =
+        result.error || (pixelReadbackPassed ? null : 'Pixel readback mismatch');
       return {
         supported: pixelReadbackPassed && !result.error,
         reason: failureReason,
