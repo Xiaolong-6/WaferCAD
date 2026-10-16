@@ -64,10 +64,7 @@ test('native v2 Assembly loader rejects unsafe files without overwriting a works
 
   const corrupted = structuredClone(original);
   corrupted.waferAssembly.sources[1].bytes += 1;
-  await assert.rejects(
-    () => readAssemblyPreviewFile(fileLike(JSON.stringify(corrupted))),
-    /bytes/,
-  );
+  await assert.rejects(() => readAssemblyPreviewFile(fileLike(JSON.stringify(corrupted))), /bytes/);
 });
 
 test('real native v2 runtime renders one shared physical model for each read-only Bond stage', () => {
@@ -115,7 +112,10 @@ test('native v2 ordinary workstation still refuses bonded files without preview 
   );
   assert.throws(
     () =>
-      createWorkstationRuntime({ source: 'standalone', data: wafer('A') }, { assemblyPreview: true }),
+      createWorkstationRuntime(
+        { source: 'standalone', data: wafer('A') },
+        { assemblyPreview: true },
+      ),
     /requires verified Assembly provenance/,
   );
 });
