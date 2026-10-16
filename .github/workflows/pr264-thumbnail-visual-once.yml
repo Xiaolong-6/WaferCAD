@@ -5,6 +5,11 @@ on:
     branches: [feat/example-gan-hemt-microchannel-20261014]
     paths:
       - .github/workflows/pr264-thumbnail-visual-once.yml
+      - site/three-view.js
+      - site/ui-v2/three-view.js
+      - site/ui-v2/workstation-entry.js
+      - scripts/build-example-thumbnails.mjs
+      - scripts/gan-hemt-microchannel-visual-acceptance.mjs
 permissions:
   contents: read
 jobs:

@@ -80,6 +80,7 @@ export function createThreeView({
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
   onViewChanged = () => {},
+  onFrameRendered = () => {},
 } = {}) {
   if (!host) throw new TypeError('3D host is required.');
   if (!stats) throw new TypeError('3D stats host is required.');
@@ -831,6 +832,9 @@ export function createThreeView({
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
+      // A physical WebGL frame (not a pending host) is the readiness boundary
+      // for the progressive Workstation view. Signal after renderer.render.
+      onFrameRendered();
       if (interacting || changed) scheduleFrame();
     });
   }

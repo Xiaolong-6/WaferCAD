@@ -2,7 +2,7 @@
 import { createThreeView } from '../three-view.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 
-export function createWorkstationThreeView({ store, workstation }) {
+export function createWorkstationThreeView({ store, workstation, onFirstFrame = () => {} }) {
   const { el, button, toolbar } = window.WaferCadV2Components;
   const state = store.state;
   const local = store.local.three;
@@ -72,6 +72,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       fast: state.threeFastMode,
     }),
     getZCollapse: () => state.sectionCollapse,
+    onFrameRendered: onFirstFrame,
     onViewChanged: (camera) => {
       state.threeCamera = camera;
       workstation.changed('three');
