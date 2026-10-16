@@ -72,7 +72,10 @@ export async function readAssemblyPreviewFile(file, readProject = readProjectFil
   return { source: file.name, hash: '', data };
 }
 
-export function chooseAssemblyPreviewFile(root, { load = readAssemblyPreviewFile } = {}) {
+export function chooseAssemblyPreviewFile(
+  root,
+  { load = readAssemblyPreviewFile, recovery = null } = {},
+) {
   if (!root || typeof root.replaceChildren !== 'function') {
     throw new Error('Assembly preview requires a document root.');
   }
@@ -91,10 +94,62 @@ export function chooseAssemblyPreviewFile(root, { load = readAssemblyPreviewFile
   const panel = document.createElement('section');
   panel.className = 'assembly-preview-file-picker';
   panel.append(title, description, input, status);
+  const recoveryControls = recovery ? document.createElement('div') : null;
+  let recoverySelect = null;
+  let recoveryButton = null;
+  if (recoveryControls) {
+    recoveryControls.className = 'assembly-preview-recovery';
+    recoverySelect = document.createElement('select');
+    recoverySelect.setAttribute('aria-label', 'Assembly Bond Recovery checkpoint');
+    recoveryButton = document.createElement('button');
+    recoveryButton.type = 'button';
+    recoveryButton.textContent = 'Restore pre-Bond checkpoint';
+    recoverySelect.disabled = true;
+    recoveryButton.disabled = true;
+    recoveryControls.append(recoverySelect, recoveryButton);
+    panel.append(recoveryControls);
+  }
   root.replaceChildren(panel);
+  if (recoveryControls) {
+    void recovery
+      .list()
+      .then((records) => {
+        for (const record of records) {
+          const option = document.createElement('option');
+          option.value = record.key;
+          option.textContent = `${record.updatedAt} · ${record.sourceCount} source wafers`;
+          recoverySelect.append(option);
+        }
+        recoverySelect.disabled = records.length === 0;
+        recoveryButton.disabled = records.length === 0;
+      })
+      .catch((error) => {
+        status.dataset.error = 'true';
+        status.textContent = `Could not list Assembly Recovery: ${error.message}`;
+      });
+  }
 
   return new Promise((resolve) => {
     let opening = false;
+    if (recoveryButton) {
+      recoveryButton.addEventListener('click', async () => {
+        if (opening || recoveryButton.disabled || !recoverySelect.value) return;
+        opening = true;
+        recoveryButton.disabled = true;
+        status.dataset.error = 'false';
+        status.textContent = 'Validating durable pre-Bond Recovery…';
+        try {
+          const recovered = await recovery.load(recoverySelect.value);
+          resolve({ source: 'assembly-recovery', hash: '', data: recovered });
+        } catch (error) {
+          status.dataset.error = 'true';
+          status.textContent = error?.message || String(error);
+        } finally {
+          opening = false;
+          recoveryButton.disabled = false;
+        }
+      });
+    }
     input.addEventListener('change', async () => {
       if (opening || !input.files?.length) return;
       opening = true;
