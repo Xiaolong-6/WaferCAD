@@ -299,3 +299,95 @@ test('first Bond recovery refusal leaves standalone source unchanged and does no
   assert.deepEqual(visible, receiver);
   assert.equal(session.maxIndex(), 0);
 });
+
+test('source-aware Variant fork from A+B preserves both C and D histories and physical material', async () => {
+  const host = fixture();
+  const original = host.controller.fullProduct();
+  await host.controller.bond(source('Donor C'), { donorId: 'C' });
+  const mainHead = host.controller.fullProduct();
+  host.controller.undo();
+  assert.equal(host.controller.currentIndex(), 1);
+  const forked = host.controller.createVariant('alt', 'Alternate Donor D');
+  assert.equal(forked.id, 'alt');
+  assert.equal(host.controller.currentIndex(), 1);
+  assert.equal(host.controller.maxIndex(), 1);
+  await host.controller.bond(source('Donor D'), { donorId: 'D' });
+  const altHead = host.controller.fullProduct();
+  assert.equal(altHead.waferAssembly.sources[2].id, 'D');
+  const graph = host.controller.exportVariantGraph();
+  assert.equal(graph.sources.length, 4);
+  assert.equal(graph.branches.length, 2);
+  assert.deepEqual(graph.branches[0].sourceRefs, [0, 1, 2]);
+  assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
+  assert.deepEqual(host.controller.listVariants().map((b) => [b.id, b.active]), [
+    ['main', false],
+    ['alt', true],
+  ]);
+  const primary = host.controller.switchVariant('main');
+  assert.deepEqual(primary.model, mainHead.model);
+  assert.deepEqual(host.getVisible().model, mainHead.model);
+  assert.equal(host.controller.currentIndex(), 2);
+  assert.equal(host.controller.listHistory().at(-1).operation.donorId, 'C');
+  const alternate = host.controller.switchVariant('alt');
+  assert.deepEqual(alternate.model, altHead.model);
+  assert.equal(host.controller.listHistory().at(-1).operation.donorId, 'D');
+  assert.deepEqual(original.model, initial().model);
+});
+
+test('forking zero-stage receiver preserves source provenance and never exposes original bonded product', async () => {
+  const host = fixture();
+  host.controller.restoreIndex(0);
+  host.controller.createVariant('new-root', 'Different first donor');
+  assert.equal(host.controller.fullProduct().waferAssembly, undefined);
+  assert.deepEqual(host.getVisible().model, initial().waferAssembly.sources[0].project.model);
+  await host.controller.bond(source('New first donor'), { donorId: 'E' });
+  assert.equal(host.controller.fullProduct().waferAssembly.sources[1].id, 'E');
+  const main = host.controller.switchVariant('main');
+  assert.deepEqual(main.model, initial().model);
+});
+
+test('Variant switch apply rejection restores the original visible state and branch selection', async () => {
+  let failure = false;
+  const host = fixture({
+    apply: () => {
+      if (failure) {
+        failure = false;
+        return false;
+      }
+      return true;
+    },
+  });
+  await host.controller.bond(source('Donor C'), { donorId: 'C' });
+  host.controller.undo();
+  host.controller.createVariant('alt');
+  await host.controller.bond(source('Donor D'), { donorId: 'D' });
+  const previous = host.controller.fullProduct();
+  failure = true;
+  assert.throws(() => host.controller.switchVariant('main'), /switch was rejected/);
+  assert.equal(host.controller.listVariants().find((b) => b.active).id, 'alt');
+  assert.deepEqual(host.getVisible().model, previous.model);
+  assert.deepEqual(host.controller.fullProduct(), previous);
+});
+
+test('failed Bond on alternate branch does not leak its donor or modify Main', async () => {
+  let rejectCommit = false;
+  const host = fixture({
+    commit: () => {
+      if (rejectCommit) throw new Error('Variant commit interrupted');
+    },
+  });
+  await host.controller.bond(source('Donor C'), { donorId: 'C' });
+  const primary = host.controller.fullProduct();
+  host.controller.undo();
+  host.controller.createVariant('alt');
+  rejectCommit = true;
+  await assert.rejects(
+    () => host.controller.bond(source('Donor D'), { donorId: 'D' }),
+    /Variant commit interrupted/,
+  );
+  const graph = host.controller.exportVariantGraph();
+  assert.equal(graph.sources.length, 3);
+  assert.equal(graph.branches[1].bonds.length, 1);
+  assert.equal(host.controller.maxIndex(), 1);
+  assert.deepEqual(host.controller.switchVariant('main').model, primary.model);
+});
