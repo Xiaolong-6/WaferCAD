@@ -1,0 +1,245 @@
+/* Production desktop shell. The M2 reference layouts are intentionally owned by
+   workstation-v2.css; scientific view/window geometry belongs to view-layout.css.
+   One sidebar, one workspace, one primary divider. */
+@media (min-width: 821px) {
+  body[data-workstation]:not([data-preview-mode]) .p-workbench {
+    --p-panel: clamp(300px, 21vw, 390px);
+    --p-divider-size: 8px;
+    display: block;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-body {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: var(--p-panel) var(--p-divider-size) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-sidebar {
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--wc-subtle);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar {
+    flex: none;
+    min-height: 66px;
+    padding: 12px 12px 8px 16px;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-brand {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 2px 0;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-project-title {
+    font-size: 11px;
+    color: var(--wc-muted);
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-topbar [data-action='hide-editor'] {
+    flex: none;
+    margin-left: auto;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    background: transparent;
+    border: 0;
+    color: var(--wc-muted);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-review-badge:empty {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav {
+    display: flex;
+    flex: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 3px;
+    min-width: 0;
+    overflow: visible;
+    padding: 0 10px 8px;
+    border: 0;
+    background: transparent;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav-label {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav button[data-action^='domain:'] {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    min-height: 32px;
+    padding: 6px 2px;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--wc-radius-sm);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav button[aria-pressed='true'] {
+    border-color: transparent;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-inspector {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-panel-content {
+    padding: 8px 14px 16px;
+    gap: 12px;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-panel-head {
+    border-bottom: 0;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-empty-strip {
+    flex: none;
+    border: 0;
+  }
+
+  /* An 8px accessible hit area surrounds a single quiet vertical line. */
+  body[data-workstation]:not([data-preview-mode]) .p-divider {
+    grid-column: 2;
+    grid-row: 1;
+    width: 8px;
+    min-width: 8px;
+    border: 0;
+    padding: 0;
+    background: linear-gradient(to right, transparent 3px, var(--wc-border) 3px, var(--wc-border) 4px, transparent 4px);
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-divider::after {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-divider:is(:hover, :focus-visible) {
+    background: linear-gradient(to right, transparent 3px, var(--wc-accent) 3px, var(--wc-accent) 4px, transparent 4px);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workspace {
+    grid-column: 3;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--wc-surface);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-stage {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    grid-column: auto;
+    grid-row: auto;
+    background: var(--wc-surface);
+  }
+
+  /* This group is centered in the WORKSPACE, not between asymmetric actions. */
+  body[data-workstation]:not([data-preview-mode]) .p-viewbar {
+    flex: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px;
+    min-height: 54px;
+    padding: 8px 12px;
+    border: 0;
+    background: transparent;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    gap: 4px;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  body[data-workstation]:not([data-preview-mode])
+    .p-viewbar > .p-actions:not(.p-desktop-dock-actions) {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-viewbar-divider {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-desktop-dock-actions button {
+    border: 0;
+    border-radius: 6px;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-canvases {
+    min-height: 0;
+    gap: 8px;
+    padding: 5px 10px 10px;
+    background: var(--wc-page);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-view {
+    border: 0;
+    border-radius: 6px;
+    background: var(--wc-surface);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-view .p-panel-head {
+    border: 0;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-viewbar,
+  body[data-workstation]:not([data-preview-mode]) .p-view .p-toolbar {
+    box-shadow: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-status {
+    min-height: 24px;
+    padding: 3px 10px;
+    border: 0;
+    background: var(--wc-surface);
+  }
+
+  /* Hiding the editor enlarges the real workspace, without moving canvases. */
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-hidden='true'] .p-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-hidden='true'] .p-sidebar {
+    display: none;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-workbench[data-hidden='true'] .p-workspace {
+    grid-column: 1;
+  }
+}
