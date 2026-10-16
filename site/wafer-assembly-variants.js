@@ -144,6 +144,14 @@ export function validateAssemblyVariantGraph(graph) {
       if (branch.postBondSteps.length > 0 && branch.bonds.length < 1) {
         throw new Error('Post-Bond Recipe requires at least one canonical Bond.');
       }
+      if (
+        branch.postBondCursor !== undefined &&
+        (!Number.isSafeInteger(branch.postBondCursor) ||
+          branch.postBondCursor < 0 ||
+          branch.postBondCursor > branch.postBondSteps.length)
+      ) {
+        throw new Error('Post-Bond Process cursor is outside its Recipe timeline.');
+      }
       if (branch.postBondSteps.length) replayPostBondGeometry(baseline, branch.postBondSteps);
     }
   }
@@ -208,6 +216,7 @@ export function createAssemblyVariantGraph(product) {
         sourceRefs: source.sources.map((_, index) => index),
         bonds: structuredClone(source.bonds),
         postBondSteps: [],
+        postBondCursor: 0,
         cursor: source.bonds.length,
       },
     ],
@@ -255,6 +264,7 @@ export function forkAssemblyVariant(graph, { id, name, atIndex } = {}) {
     sourceRefs: active.sourceRefs.slice(0, index + 1),
     bonds: active.bonds.slice(0, index),
     postBondSteps: [],
+    postBondCursor: 0,
     cursor: index,
   });
   next.activeBranchId = id;
@@ -318,7 +328,9 @@ export function assemblyVariantPostBondModel(graph, branchId = graph?.activeBran
   const branch = graph.branches.find((entry) => entry.id === branchId);
   if (!branch) throw new Error('Post-Bond Variant branch does not exist.');
   const baseline = materialize(graph, branch, branch.bonds.length);
-  return replayPostBondGeometry(baseline, branch.postBondSteps || []).model;
+  const steps = branch.postBondSteps || [];
+  const index = branch.postBondCursor ?? steps.length;
+  return replayPostBondGeometry(baseline, steps.slice(0, index)).model;
 }
 
 export function appendAssemblyVariantPostBondStep(graph, recipeStep) {
@@ -327,15 +339,42 @@ export function appendAssemblyVariantPostBondStep(graph, recipeStep) {
   if (!branch || branch.bonds.length < 1 || branch.cursor !== branch.bonds.length) {
     throw new Error('Post-Bond Process requires a completed Bond Variant HEAD.');
   }
+  const steps = branch.postBondSteps || [];
+  if ((branch.postBondCursor ?? steps.length) !== steps.length) {
+    throw new Error('Post-Bond Process from historical Recipe requires a new Variant.');
+  }
   const base = materialize(graph, branch, branch.bonds.length);
-  const result = appendPostBondGeometryStep(base, branch.postBondSteps || [], recipeStep);
+  const result = appendPostBondGeometryStep(base, steps, recipeStep);
   const next = structuredClone(graph);
   next.version = ASSEMBLY_VARIANTS_VERSION;
   const target = next.branches.find((entry) => entry.id === graph.activeBranchId);
   target.postBondSteps = result.steps;
+  target.postBondCursor = result.steps.length;
   validateAssemblyVariantGraph(next);
   if (!sameCanonicalModel(assemblyVariantPostBondModel(next), result.model)) {
     throw new Error('Post-Bond Variant replay changed its final material.');
   }
   return { graph: next, model: result.model, step: result.steps.at(-1) };
+}
+
+/**
+ * Move the Process-only History cursor without truncating its Recipe HEAD.
+ * The active Variant's original Bond stages and source projects stay intact.
+ * Older v2 sidecars without a cursor are interpreted at the Recipe HEAD.
+ */
+export function setAssemblyVariantPostBondCursor(graph, index) {
+  validateAssemblyVariantGraph(graph);
+  const current = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+  const length = current.postBondSteps?.length || 0;
+  if (current.cursor !== current.bonds.length) {
+    throw new Error('Post-Bond Process navigation requires the completed Bond HEAD.');
+  }
+  if (!Number.isSafeInteger(index) || index < 0 || index > length) {
+    throw new Error('Post-Bond Process cursor is outside its Recipe timeline.');
+  }
+  const next = structuredClone(graph);
+  next.version = ASSEMBLY_VARIANTS_VERSION;
+  next.branches.find((branch) => branch.id === graph.activeBranchId).postBondCursor = index;
+  validateAssemblyVariantGraph(next);
+  return next;
 }
