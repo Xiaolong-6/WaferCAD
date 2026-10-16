@@ -27,6 +27,12 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Record Prettier diff for local source correction (temporary diagnostic)
+        shell: bash
+        run: |
+          npx prettier --write scripts/swx-benes64-network.mjs scripts/swx-benes64-browser-acceptance.mjs site/tests/swx-benes64-network.test.mjs
+          mkdir -p test-results/swx-benes64
+          git diff -- scripts/swx-benes64-network.mjs scripts/swx-benes64-browser-acceptance.mjs site/tests/swx-benes64-network.test.mjs > test-results/swx-benes64/prettier.patch
       - name: Verify 352-switch/1824-crossing Benes topology
         run: node --test site/tests/swx-benes64-network.test.mjs
       - name: Build full array WaferCAD project and validate roundtrip
