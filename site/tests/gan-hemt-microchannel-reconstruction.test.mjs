@@ -108,15 +108,15 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const { project, json, validation } = await buildGanMicrochannel();
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
-  assert.equal(validation.maskLayers, 19);
+  assert.equal(validation.maskLayers, 18);
   assert.equal(
     GAN_MICROCHANNEL_MASKS.some((mask) => mask.id === 28),
     false,
     'Temporary partial-oxide protection mask must not ship in the full-exposure example',
   );
-  assert.equal(validation.processNodes, 44);
-  assert.equal(validation.recipeSteps, 43);
-  assert.equal(validation.checks.twoFaceAuAndCuTsvNiPaAuCompositeFinish, true);
+  assert.equal(validation.processNodes, 42);
+  assert.equal(validation.recipeSteps, 41);
+  assert.equal(validation.checks.inferredTwoFaceAuPlatingGeometryWithUnblockedCoolant, true);
   assert.equal(validation.checks.actualDoubleSidedTiCuSputteredMaterials, true);
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
   assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
@@ -144,10 +144,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     (step) =>
       step.command === 'etch' && step.params.target === 'TSV Cu electrofill surrogate 35 um',
   );
-  const auFrontIndex = depositIndex('Interposer front Au plate 0.5 um (inferred)');
-  const auBackIndex = depositIndex('Interposer back Au plate 0.5 um (inferred)');
-  const npaFrontIndex = depositIndex('TSV front NiPaAu composite 0.5 um (inferred)');
-  const npaBackIndex = depositIndex('TSV back NiPaAu composite 0.5 um (inferred)');
+  const frontAuIndex = depositIndex('Interposer front Au plate 0.5 um (inferred)');
+  const backAuIndex = depositIndex('Interposer back Au plate 0.5 um (inferred)');
   const solderIndex = depositIndex('AuSn perimeter solder (5 um surrogate)');
   const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');
   const gsgSolderIndex = depositIndex('GSG AuSn solder supports 5 um (inferred)');
@@ -166,10 +164,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       cuSeedIndex,
       cuFillIndex,
       cuPlanarizationIndex,
-      auFrontIndex,
-      auBackIndex,
-      npaFrontIndex,
-      npaBackIndex,
+      frontAuIndex,
+      backAuIndex,
       solderIndex,
       gsgSolderIndex,
       sicIndex,
@@ -190,11 +186,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
       tiSeedIndex < cuSeedIndex &&
       cuSeedIndex < cuFillIndex &&
       cuFillIndex < cuPlanarizationIndex &&
-      cuPlanarizationIndex < auFrontIndex &&
-      auFrontIndex < auBackIndex &&
-      auBackIndex < npaFrontIndex &&
-      npaFrontIndex < npaBackIndex &&
-      npaBackIndex < solderIndex &&
+      cuPlanarizationIndex < frontAuIndex &&
+      frontAuIndex < backAuIndex &&
+      backAuIndex < solderIndex &&
       solderIndex < gsgSolderIndex &&
       gsgSolderIndex < sicIndex &&
       sicIndex < gsgDieIndex &&

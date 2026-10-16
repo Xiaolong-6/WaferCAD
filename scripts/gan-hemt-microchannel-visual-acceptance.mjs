@@ -317,18 +317,15 @@ try {
       { name: 'Interposer front Cu sputter 0.5 um', z: 601.0 },
       { name: 'Interposer back Cu sputter 0.5 um', z: -201.0 },
     ].filter(({ name, z }) => !hasLayer([2000, 0], z, byName.get(name)));
-    const missingAuAndNiPaAu = [
-      ...['front', 'back'].map((face) => ({
-        name: 'Interposer ' + face + ' Au plate 0.5 um (inferred)',
-        xy: [2000, 0], z: face === 'front' ? 601.45 : -201.45,
-      })),
-      ...['front', 'back'].flatMap((face) =>
-        viaCenters.map((xy) => ({
-          name: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
-          xy, z: face === 'front' ? 603.15 : -201.95,
-        })),
+    const missingFaceAu = [
+      { face: 'front', z: 601.45 },
+      { face: 'back', z: -201.45 },
+    ].filter(({ face, z }) =>
+      !hasLayer(
+        [2000, 0], z,
+        byName.get('Interposer ' + face + ' Au plate 0.5 um (inferred)'),
       ),
-    ].filter(({ name, xy, z }) => !hasLayer(xy, z, byName.get(name)));
+    );
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
@@ -365,7 +362,7 @@ try {
       gsgGoldSamples: gsgPadCenters.length,
       missingCuCore,
       missingDoubleSidedMetal,
-      missingAuAndNiPaAu,
+      missingFaceAu,
       missingLocalOxideRims,
       missingGlobalFrontOxide,
       missingGlobalBackOxide,
@@ -380,7 +377,7 @@ try {
   assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
   assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
   assert.deepEqual(geometry.missingDoubleSidedMetal, [], 'Front/back sputtered metal missing');
-  assert.deepEqual(geometry.missingAuAndNiPaAu, [], 'Missing Au or TSV NiPaAu physical material');
+  assert.deepEqual(geometry.missingFaceAu, [], 'Source-driven front/back Au plating missing');
   assert.deepEqual(
     geometry.missingLocalOxideRims,
     [],
@@ -518,7 +515,7 @@ try {
     hemtBacksideViaMetallizationModeled: false,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     doubleSidedTiCuGeometryVerified: geometry.missingDoubleSidedMetal.length === 0,
-    inferredAuAndNiPaAuGeometryVerified: geometry.missingAuAndNiPaAu.length === 0,
+    inferredTwoFaceAuPlatingVerified: geometry.missingFaceAu.length === 0,
     localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
     sampledCentralAndPeripheralFrontBackOxideVerified:
       geometry.missingGlobalFrontOxide.length === 0 && geometry.missingGlobalBackOxide.length === 0,
