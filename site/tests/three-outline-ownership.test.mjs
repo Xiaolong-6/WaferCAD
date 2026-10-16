@@ -14,7 +14,17 @@ test('one physical rough edge owns one outline, even with reversed cut segments'
 });
 
 test('overlapping silicon slab segments preserve only real exterior edges', () => {
-  const clip = [[[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]]];
+  const clip = [
+    [
+      [
+        [0, 0],
+        [4, 0],
+        [4, 4],
+        [0, 4],
+        [0, 0],
+      ],
+    ],
+  ];
   const lower = { p: [0, 0], q: [4, 0], z0: 0, z1: 1, layerId: 'base' };
   const upper = { ...lower, p: [0, 0], q: [2, 0], z0: 1, z1: 2 };
   const atSeam = ([a, b]) => a[2] === 1 && b[2] === 1;
