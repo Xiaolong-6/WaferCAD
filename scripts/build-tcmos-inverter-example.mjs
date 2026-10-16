@@ -47,18 +47,20 @@ function bodyTapActive(cx) {
 }
 function bodyTapContacts(cx) {
   const contacts = [];
-  // Dense bottom U: two rows, 15 sites per row. The schematic indicates
+  // Dense bottom U: two rows, 17 sites per row. The schematic indicates
   // a dense array; pitch and contact sizes below are not foundry dimensions.
   for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 15; col++) {
-      const x = cx - 1.92 + col * (3.84 / 14);
-      const y = -1.17 + row * 0.14;
-      contacts.push(rect(x - 0.055, y - 0.055, 0.11, 0.11));
+    for (let col = 0; col < 17; col++) {
+      // Quarter-micron positions prevent sub-grid floating-point slivers
+      // during independent Recipe/History geometry reconstruction.
+      const x = cx - 2 + col * 0.25;
+      const y = row === 0 ? -1.1875 : -1;
+      contacts.push(rect(x - 0.0625, y - 0.0625, 0.125, 0.125));
     }
   }
-  for (const x of [cx - 2.04, cx + 2.04]) {
-    for (const y of [-0.80, -0.55, -0.30, -0.05, 0.20]) {
-      contacts.push(rect(x - 0.055, y - 0.055, 0.11, 0.11));
+  for (const x of [cx - 2, cx + 2]) {
+    for (const y of [-0.75, -0.5, -0.25, 0, 0.25]) {
+      contacts.push(rect(x - 0.0625, y - 0.0625, 0.125, 0.125));
     }
   }
   return contacts;
@@ -316,7 +318,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       id: 'pMOS-well-tie',
       device: 'pMOS',
       kind: 'well-tie',
-      cnt: 7,
+      cnt: 8,
       mask: 2,
       net: 'VDD',
     },
@@ -324,7 +326,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       id: 'nMOS-well-tie',
       device: 'nMOS',
       kind: 'well-tie',
-      cnt: 7 + bodyTapContacts(-3).length,
+      cnt: 8 + bodyTapContacts(-3).length,
       mask: 3,
       net: 'GND',
     },
