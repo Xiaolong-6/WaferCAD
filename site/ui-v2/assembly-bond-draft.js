@@ -110,8 +110,9 @@ export function mountAssemblyBondDraftControls({
   processTitle.textContent = 'Post-Bond Process · geometric preview';
   const processInfo = document.createElement('p');
   processInfo.textContent =
-    'Supported: full-face directional Deposit or Etch. This is source-bound geometry only. ' +
-    'Export all Variants to preserve the Process steps; .wafercad exports Bond baseline only.';
+    'Supported: full-face directional Deposit or Etch. New films are pink for display only ' +
+    '(physical thickness unchanged). Export all Variants to retain Process steps; ' +
+    '.wafercad exports Bond baseline only.';
   const processType = document.createElement('select');
   processType.setAttribute('aria-label', 'Post-Bond Process operation');
   for (const [value, label] of [
