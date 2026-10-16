@@ -33,7 +33,10 @@ export function squarePyramidSample(
   const z = planeZ + sign * relief;
   // At the four triangular patch joins (and the apex) a unique analytic
   // normal does not exist. Callers must not invent a film direction there.
-  const crease = Math.abs(ax - ay) <= pitch * 1e-12;
+  const crease =
+    Math.abs(ax - ay) <= pitch * 1e-12 ||
+    Math.abs(ax - pitch / 2) <= pitch * 1e-12 ||
+    Math.abs(ay - pitch / 2) <= pitch * 1e-12;
   const gradScale = (-sign * 2 * height) / pitch;
   const gradient = crease
     ? null
