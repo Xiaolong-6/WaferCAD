@@ -10,6 +10,8 @@
 
 ## How the workspace fits together
 
+On desktop, use the left workflow sidebar to edit the project and the centered controls above the right workspace to show **Overview**, **Main**, **Mask**, **3D** or **Section**. On mobile/compact screens, the fixed bottom bar switches between **Edit** and **View**, with contextual tabs for each mode; the Welcome return link is under **Project** in Edit mode.
+
 - **Project:** Select **New**, **Open**, **Save**, **Export** and **Recovery**. Under **Display**, choose the **XYZ unit** before typing dimensions.
 - **Base:** In **Project → Base**, choose **Rectangle** or **Circle**, enter width/height/diameter and thickness, then click **Rebuild Base**. The legacy button is **Apply base**. Base is a generic starting geometry; its default layer is labeled **Base**.
 - **Mask:** switch the Mask source from **File** to **Draw**, select **Rect** on the Mask canvas toolbar and drag a rectangle. No GDS/OAS file is required for the first tutorial.

@@ -2,7 +2,7 @@
 
 ## Workspace navigation
 
-The title bar contains the project name and five primary view choices: **Overview** (Main, Mask and 3D together), **Main**, **Mask**, **3D**, and **Split** (two selectable side-by-side views). The Section A–B dock remains below the primary view. On narrow screens the view choices can scroll horizontally in the title bar; they do not add a second header row. The active button indicates the current layout, so no separate layout-description label is shown.
+On desktop (821 px and wider), the production Workstation uses a left **workflow sidebar** and a right **scientific workspace**, separated by a resizable divider. The project title and Project/Mask/Process/History navigation live in the sidebar. The workspace toolbar is centered above the scientific views: **Overview** restores Main, Mask, 3D and Section together, and the four individual view controls manage visibility. You can collapse or restore the sidebar without changing geometry. On compact screens (820 px or narrower), the title bar is hidden: a fixed bottom navigation bar switches between **Edit** and **View**, with contextual workflow/view choices. The return to Welcome is under **Project** in compact Edit mode.
 
 ## 1. Create the base
 
@@ -151,7 +151,7 @@ The **ROI** control also lives in Main. Existing ROI geometry remains movable/re
 
 Double-click **Main** or **Mask** to fit that 2D view. **Fit** in 3D frames the active ROI when one exists, otherwise it frames the full model.
 
-On desktop landscape layouts, the workspace is arranged as **Main / Mask / Function** on the first row and **3D / Section** on the second row. The original panel proportions are retained. At widths up to 900 px, the existing three-row layout remains **Function/3D**, **Main/Mask**, then **Section**.
+Desktop view composition is managed independently of the workflow sidebar: **Overview** starts from a four-view composition, while the Main, Mask, 3D and Section controls allow individual views to be shown or hidden. Desktop docking can rearrange panels without changing the physical project. Compact mode uses its own Edit/View presentation rather than the former fixed three-row grid. The breakpoint between these production layouts is **820/821 px**.
 
 Each scientific view has **Max**. It expands Main, Mask, 3D, or Section to the available browser workspace without opening a new window; the button changes to **Restore**, and Escape also restores the normal layout.
 
