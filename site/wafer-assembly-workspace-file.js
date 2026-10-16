@@ -12,10 +12,7 @@ export function parseAssemblyWorkspace(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Invalid Assembly Workspace container.');
   }
-  if (
-    value.format !== ASSEMBLY_WORKSPACE_FORMAT ||
-    value.version !== ASSEMBLY_WORKSPACE_VERSION
-  ) {
+  if (value.format !== ASSEMBLY_WORKSPACE_FORMAT || value.version !== ASSEMBLY_WORKSPACE_VERSION) {
     throw new Error('Unsupported Assembly Workspace format or version.');
   }
   if (

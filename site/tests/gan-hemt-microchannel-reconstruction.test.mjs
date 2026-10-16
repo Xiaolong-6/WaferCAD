@@ -46,10 +46,7 @@ test('3D Au packaging primitive rejects invalid geometry before project import',
   });
   assert.equal(validateAssemblyWires([valid]).length, 1);
   assert.throws(() => validateAssemblyWires([valid, valid]), /unique/);
-  assert.throws(
-    () => validateAssemblyWires([{ ...valid, diameterUm: Number.NaN }]),
-    /diameter/,
-  );
+  assert.throws(() => validateAssemblyWires([{ ...valid, diameterUm: Number.NaN }]), /diameter/);
   assert.throws(
     () => validateAssemblyWires([{ ...valid, points: valid.points.slice(0, 3) }]),
     /four finite/,
