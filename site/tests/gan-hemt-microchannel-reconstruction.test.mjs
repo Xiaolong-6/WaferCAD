@@ -16,6 +16,7 @@ import {
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
+import { createProjectStateController } from '../controllers/project-state-controller.js';
 
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
@@ -185,6 +186,31 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     project.assemblyWires,
     'Actual 3D Au bond geometry must survive save/reload',
   );
+  // The real workstation maps project fields explicitly; an annotation
+  // preserved in the JSON but dropped by this adapter would render no wires.
+  // Restoring a pre-assembly Step must also clear any previous package tubes.
+  const workstationState = {};
+  const projectController = createProjectStateController({
+    ensureHierarchy: () => {},
+    getState: () => workstationState,
+    applyState: (values) => Object.assign(workstationState, values),
+    setSectionEditEnabled: () => {},
+  });
+  projectController.loadProjectSnapshot(project);
+  assert.deepEqual(workstationState.assemblyWires, project.assemblyWires);
+  assert.deepEqual(projectController.buildProjectSnapshot().assemblyWires, project.assemblyWires);
+  const earlyStep = project.snapshotBranches.nodes.find((node) =>
+    node.operation?.label?.includes('Lower chamber'),
+  );
+  assert.ok(earlyStep && !earlyStep.state.assemblyWires?.length);
+  projectController.loadProjectSnapshot(earlyStep.state);
+  assert.deepEqual(workstationState.assemblyWires, [], 'Old History must not retain future wires');
+  assert.equal(projectController.buildProjectSnapshot().assemblyWires, undefined);
+  projectController.loadProjectSnapshot(project);
+  assert.equal(workstationState.assemblyWires.length, 2);
+  projectController.resetProjectState();
+  assert.deepEqual(workstationState.assemblyWires, [], 'New empty projects must clear wires');
+
   for (const name of ['06 Integrated GaN HEMT', '07 HEMT and dual GSG']) {
     const inspectionBookmark = project.snapshots.find((snapshot) => snapshot.name.startsWith(name));
     assert.ok(inspectionBookmark?.state.assemblyWires?.length === 2,
