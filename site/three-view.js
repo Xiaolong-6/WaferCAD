@@ -5,7 +5,10 @@ import {
   electricalDisplaySolidForLod,
   transparentArrayPresentationLod,
 } from './transparent-array-lod.js';
-import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
+import {
+  canRenderPlanarCapInSinglePass,
+  canRenderRoughExteriorCapInSinglePass,
+} from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
@@ -1730,6 +1733,12 @@ export function createThreeView({
           materialState,
           appearance,
           presentation,
+        }) ||
+        canRenderRoughExteriorCapInSinglePass({
+          transparentScene: presentationMode() === 'transparent',
+          materialState,
+          appearance,
+          presentation,
         })
       ) {
         material.forceSinglePass = true;
@@ -2241,7 +2250,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ? createAnnotationGradientMaterial(task.implant, task.state, {
             roughness: cap.appearance ? 0.84 : 0.72,
           })
-        : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
+        : createSurfaceMaterial(
+            task.layer,
+            task.state,
+            task.visualAppearance || cap.appearance,
+            { ...task.presentation, roughCap: task.kind === 'material' },
+          );
       if (geometry.userData.roughGpuDisplacement && !task.implant) {
         decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
@@ -2545,7 +2559,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ? createAnnotationGradientMaterial(task.implant, task.state, {
               roughness: cap.appearance ? 0.84 : 0.72,
             })
-          : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
+          : createSurfaceMaterial(
+            task.layer,
+            task.state,
+            task.visualAppearance || cap.appearance,
+            { ...task.presentation, roughCap: task.kind === 'material' },
+          );
         if (geometry.userData.roughGpuDisplacement && !task.implant) {
           decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
