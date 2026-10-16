@@ -99,13 +99,20 @@ export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn 
       const angle = a0 + (sweep * i) / count;
       points.push([center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)]);
     }
-    arcs.push({ kind, radiusUm: radius, center, startIndex, endIndex: points.length - 1, sweepRad: sweep });
+    arcs.push({
+      kind,
+      radiusUm: radius,
+      center,
+      startIndex,
+      endIndex: points.length - 1,
+      sweepRad: sweep,
+    });
   };
   appendArc([x(39), y(-66)], 5, Math.PI / 2, side * -Math.PI, 'first-180');
   points.push([x(29), y(-71)]);
   appendArc([x(29), y(-74)], 3, Math.PI / 2, side * Math.PI, 'second-180');
   points.push([x(50), y(-77)]);
-  appendArc([x(50), y(-82)], 5, Math.PI / 2, side * -Math.PI / 2, 'terminal-90');
+  appendArc([x(50), y(-82)], 5, Math.PI / 2, (side * -Math.PI) / 2, 'terminal-90');
   const stationaryEnd = [x(55), -95];
   points.push(stationaryEnd);
   return {

@@ -16,7 +16,10 @@ const rect = (x, y, w, h) => [
 ];
 
 export const SWX_COMPACT_GUIDE_ASSUMPTIONS = Object.freeze({
-  padCentersUm: [[-14, -50], [34, -45]],
+  padCentersUm: [
+    [-14, -50],
+    [34, -45],
+  ],
   padWidthUm: 6,
   // Place the right pad OUTSIDE the bridge's vertical sweep x=24um;
   // a 7um flexure runs inward and contacts that moving bridge only
@@ -45,10 +48,7 @@ export function createCompactSwxGuides(travelUm = 0) {
     const centerline = Array.from({ length: options.interpolationSamples + 1 }, (_, i) => {
       const t = i / options.interpolationSamples;
       const smooth = t * t * (3 - 2 * t);
-      return [
-        fixedX + (movingX - fixedX) * t,
-        py + travelUm * smooth,
-      ];
+      return [fixedX + (movingX - fixedX) * t, py + travelUm * smooth];
     });
     const beam = miteredPolyline(centerline, source.structuralAlignerBeamUm);
     // Left guide reaches the movable reflector; right guide attaches

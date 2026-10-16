@@ -18,7 +18,8 @@ test('S7 isolated guide candidates preserve the measured beam/truss dimensions',
   assert.equal(SWX_REPORTED.structuralAlignerTrussUm, 1);
   assert.deepEqual(off.fixed, on.fixed, 'BOX-supported guide anchors cannot move');
   for (let i = 0; i < 2; i++) {
-    const a = off.guides[i], b = on.guides[i];
+    const a = off.guides[i],
+      b = on.guides[i];
     assert.equal(a.centerline.length, 17);
     assert.deepEqual(a.centerline[0], b.centerline[0]);
     assert.ok(Math.abs(b.centerline.at(-1)[1] - a.centerline.at(-1)[1] - on.travelUm) < 1e-10);
@@ -34,8 +35,7 @@ test('S7 guide anchor/beam separation and intended attachment survive both poses
   const vector = await import('../vector-geometry.js');
   const { geometryArea } = await import('../model.js');
   const union = (polys) => vector.unionGeometries(polys.map((ring) => [[[...ring, ring[0]]]]));
-  const overlapArea = (left, right) =>
-    geometryArea(vector.intersection(union(left), union(right)));
+  const overlapArea = (left, right) => geometryArea(vector.intersection(union(left), union(right)));
   for (const state of ['off', 'on']) {
     const model = createSwxOptomechanicalCandidate(state);
     const aligned = model.guides;

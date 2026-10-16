@@ -166,7 +166,10 @@ test('S6 double-hairpin topology: BOTH moving legs carry 5um and 3um 180-degree 
     assert.equal(centerlines.length, 2);
     for (const [leg, path] of centerlines.entries()) {
       assert.equal(path.halfTurns.length, 2, 'Each waveguide needs two 180deg bends, not one');
-      assert.deepEqual(path.halfTurns.map(({ radiusUm }) => radiusUm), SWX_REPORTED.meanderRadiiUm);
+      assert.deepEqual(
+        path.halfTurns.map(({ radiusUm }) => radiusUm),
+        SWX_REPORTED.meanderRadiiUm,
+      );
       assert.equal(path.arcs.length, 3, 'Two U-bends plus one tangent terminal approach');
       assert.ok(path.arcs.every((arc) => Number.isFinite(arc.sweepRad)));
       for (const arc of path.arcs) {
