@@ -241,13 +241,45 @@ test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps'
         y0: Math.min(...element.points.map((point) => point[1])),
         y1: Math.max(...element.points.map((point) => point[1])),
       }));
+  const gates = rects(15);
   const channels = rects(16);
   const rram = rects(19);
+  assert.equal(gates.length, 14);
   assert.equal(channels.length, 14);
   assert.equal(rram.length, 14);
   const samples = 72;
   for (let cell = 0; cell < channels.length; cell++) {
     const y = (channels[cell].y0 + channels[cell].y1) / 2;
+    const gateEdgeX = gates[cell].x1;
+    // Uniform 72-point sampling can jump over the 10 nm oxide wall and
+    // falsely pass an open contact. Probe inside and across the wall for
+    // *every* cell, including all buffer/TCAM instances with shared owners.
+    const seamX = [gateEdgeX - 0.005, gateEdgeX + 0.005, gateEdgeX + 0.015];
+    const seamPd = seamX.map((x) => {
+      const region = project.model.regions.find((item) => pointInMulti([x, y], item.geom));
+      const segment = region?.stack.find((part) => part.layerId === pd.id);
+      assert.ok(segment, 'Pd missing at physical gate edge cell ' + cell + ', X=' + x);
+      return segment;
+    });
+    assert.ok(
+      Math.abs((seamPd[1].z1 - seamPd[1].z0) - 0.01125) < 1e-9,
+      'The explicitly inferred 11.25nm PVD wall bridge is absent at cell ' + cell,
+    );
+    for (let edge = 0; edge < 2; edge++) {
+      const overlap =
+        Math.min(seamPd[edge].z1, seamPd[edge + 1].z1) -
+        Math.max(seamPd[edge].z0, seamPd[edge + 1].z0);
+      assert.ok(
+        overlap > 0.01,
+        'Physical gate-edge Pd bridge overlap must exceed 10nm: cell ' +
+          cell +
+          ', edge ' +
+          edge +
+          ', observed ' +
+          (overlap * 1000).toFixed(3) +
+          'nm',
+      );
+    }
     const startX = channels[cell].x1 - 0.07;
     const endX = (rram[cell].x0 + rram[cell].x1) / 2;
     let previous = null;
