@@ -9,6 +9,7 @@ import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
 import { createAssemblyBondHistorySession } from '../wafer-assembly-history-session.js';
+import { assemblyPreviewOriginModel } from './assembly-preview.js';
 
 export async function loadWorkstationProject() {
   const model = createModel();
@@ -130,8 +131,24 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
   let renameFocus = null,
     presentationModel = null,
     presentationSource = null,
-    presentationRevision = null;
+    presentationRevision = null,
+    originPresentationModel = null,
+    originPresentationSource = null,
+    originPresentationAssembly = null;
   function renderModel() {
+    if (assemblyPreview && state.waferAssembly) {
+      if (
+        originPresentationModel &&
+        originPresentationSource === state.model &&
+        originPresentationAssembly === state.waferAssembly
+      ) {
+        return originPresentationModel;
+      }
+      originPresentationSource = state.model;
+      originPresentationAssembly = state.waferAssembly;
+      originPresentationModel = assemblyPreviewOriginModel(state.model, state.waferAssembly);
+      return originPresentationModel;
+    }
     if (!renameFocus) return state.model;
     if (
       presentationSource === state.model &&
