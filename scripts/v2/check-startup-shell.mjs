@@ -6,10 +6,6 @@ const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const browser = await launchBrowser();
 const errors = [];
 
-function expectedPanelWidth(width) {
-  return Math.min(460, Math.max(320, width * 0.27));
-}
-
 async function dimensions(page) {
   return page.evaluate(() => {
     const editor = document.querySelector('.p-inspector');
@@ -17,6 +13,8 @@ async function dimensions(page) {
     const views = [...document.querySelectorAll('.p-canvases > .p-view:not([hidden])')];
     return {
       editorWidth: editor.getBoundingClientRect().width,
+      sidebarWidth: document.querySelector('.p-sidebar')?.getBoundingClientRect().width ?? 0,
+      sidebarX: document.querySelector('.p-sidebar')?.getBoundingClientRect().x ?? -1,
       stageX: stage.getBoundingClientRect().x,
       stageWidth: stage.getBoundingClientRect().width,
       views: views
@@ -118,8 +116,16 @@ try {
     assert.equal(await page.locator('.p-workbench').getAttribute('data-project-ready'), 'false');
     const before = await dimensions(page);
     assert.ok(
-      Math.abs(before.editorWidth - expectedPanelWidth(1700)) < 2,
-      'Startup layout reserves the new editor width',
+      before.sidebarWidth >= 300 && before.sidebarWidth <= 390,
+      'Startup keeps the approved fixed-range desktop sidebar width',
+    );
+    assert.ok(
+      Math.abs(before.editorWidth - before.sidebarWidth) <= 2,
+      'Editor fills the sidebar without reserving an obsolete M2 column',
+    );
+    assert.ok(
+      Math.abs(before.sidebarX) <= 1 && before.stageX >= before.sidebarWidth,
+      'Scientific workspace begins after the sidebar',
     );
     releaseAsset();
     await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
