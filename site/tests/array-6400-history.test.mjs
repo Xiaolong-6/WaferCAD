@@ -112,7 +112,10 @@ test('6400-site sparse Process, History and Variant remain isolated', async () =
   assert.deepEqual(siteStack(etchedSite), [['base', -1, 1, null]]);
   assert.deepEqual(
     siteStack(etchedSite, [-0.075, -0.075]),
-    [['base', -1, 1, null], [applied.layerId, 1, 1.01, null]],
+    [
+      ['base', -1, 1, null],
+      [applied.layerId, 1, 1.01, null],
+    ],
     'Film must survive outside the inner Etch footprint',
   );
 
