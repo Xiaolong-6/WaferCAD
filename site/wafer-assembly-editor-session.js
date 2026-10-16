@@ -18,6 +18,7 @@ import {
   validateAssemblyVariantGraph,
   appendAssemblyVariantPostBondStep,
   assemblyVariantPostBondModel,
+  setAssemblyVariantPostBondCursor,
 } from './wafer-assembly-variants.js';
 
 function same(left, right) {
@@ -249,6 +250,7 @@ export function createAssemblyBondEditorSession(
     if (currentIndex() !== maxIndex()) return null;
     const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
     if (!active?.postBondSteps?.length) return null;
+    if ((active.postBondCursor ?? active.postBondSteps.length) === 0) return null;
     return assemblyVariantPostBondModel(graph);
   }
 
@@ -266,6 +268,30 @@ export function createAssemblyBondEditorSession(
     // The Workstation's canonical source-bound model stays untouched. The
     // derived Process model is rendered as a presentation-only overlay.
     return { model: structuredClone(derived.model), step: structuredClone(derived.step) };
+  }
+
+  function processTimeline() {
+    const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+    const length = active.postBondSteps?.length || 0;
+    return {
+      index: active.postBondCursor ?? length,
+      length,
+      available: currentIndex() === maxIndex(),
+    };
+  }
+
+  function restorePostBondStep(index) {
+    assertReadable();
+    if (persistVariantGraph && !durableMutation) {
+      throw new Error('Post-Bond Process navigation requires durable publication.');
+    }
+    if (!visibleParity()) {
+      throw new Error('Post-Bond Process workspace material drift; navigation refused.');
+    }
+    const candidate = setAssemblyVariantPostBondCursor(graph, index);
+    graph = candidate;
+    revision++;
+    return postBondPreviewModel();
   }
 
   async function bond(donorProject, request) {
@@ -382,6 +408,8 @@ export function createAssemblyBondEditorSession(
     restoreIndexDurable: (index) => durableChange(() => restoreIndex(index)),
     appendPostBondStep,
     appendPostBondStepDurable: (input) => durableChange(() => appendPostBondStep(input)),
+    restorePostBondStepDurable: (index) => durableChange(() => restorePostBondStep(index)),
+    processTimeline,
     postBondPreviewModel,
     durableRevision: () => durableRevision,
     exportVariantGraph: () => structuredClone(graph),
