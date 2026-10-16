@@ -7,6 +7,8 @@ import {
   createBondedAssemblyProject,
   validateBondedAssemblyProject,
   WAFER_ASSEMBLY_VERSION,
+  MAX_ASSEMBLY_TOTAL_BYTES,
+  sameCanonicalModel,
 } from './wafer-assembly.js';
 import { prepareWaferBondTransaction } from './wafer-bond-transaction.js';
 import { validateProjectFile } from './project-schema.js';
@@ -58,6 +60,7 @@ export function validateAssemblyVariantGraph(graph) {
     throw new Error('Assembly Variant graph must contain 1–32 branches.');
   }
   const sourceIDs = new Set();
+  let totalSourceBytes = 0;
   for (const source of graph.sources) {
     assertPlain(source, 'source');
     if (typeof source.id !== 'string' || !ID_PATTERN.test(source.id)) {
@@ -73,6 +76,10 @@ export function validateAssemblyVariantGraph(graph) {
     const bytes = new TextEncoder().encode(JSON.stringify(source.project)).byteLength;
     if (source.bytes !== bytes) {
       throw new Error('Assembly Variant source byte provenance mismatch.');
+    }
+    totalSourceBytes += bytes;
+    if (totalSourceBytes > MAX_ASSEMBLY_TOTAL_BYTES) {
+      throw new Error('Assembly Variant registry exceeds the shared 64 MiB source limit.');
     }
     const identity = JSON.stringify(source);
     if (sourceIDs.has(identity)) {
@@ -127,6 +134,19 @@ export function validateAssemblyVariantGraph(graph) {
       ) {
         throw new Error('Assembly Variant fork must retain its immutable parent Bond prefix.');
       }
+    }
+  }
+  // Cyclic parent metadata is not a valid branch topology even when the
+  // physical source prefixes happen to match.
+  for (const branch of graph.branches) {
+    const seen = new Set();
+    let candidate = branch;
+    while (candidate?.parentId != null) {
+      if (seen.has(candidate.id)) {
+        throw new Error('Assembly Variant parent graph contains a cycle.');
+      }
+      seen.add(candidate.id);
+      candidate = graph.branches.find((item) => item.id === candidate.parentId);
     }
   }
   if (!branchIds.has(graph.activeBranchId)) {
@@ -246,32 +266,9 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
   target.cursor = target.bonds.length;
   validateAssemblyVariantGraph(next);
   const project = materialize(next, target, target.cursor);
-  if (!sameModel(project.model, prepared.project.model)) {
+  if (!sameCanonicalModel(project.model, prepared.project.model)) {
     throw new Error('Assembly Variant commit failed deterministic model parity.');
   }
   return { graph: next, project, operation: prepared.operation };
 }
 
-function sameModel(a, b) {
-  // This comparison is exact and independent of incidental object key order.
-  const stack = [[a, b]];
-  while (stack.length) {
-    const [left, right] = stack.pop();
-    if (Object.is(left, right)) continue;
-    if (typeof left !== typeof right || left === null || right === null) return false;
-    if (typeof left !== 'object') return false;
-    if (Array.isArray(left) !== Array.isArray(right)) return false;
-    if (Array.isArray(left)) {
-      if (left.length !== right.length) return false;
-      for (let i = 0; i < left.length; i++) stack.push([left[i], right[i]]);
-    } else {
-      const keys = Object.keys(left);
-      if (keys.length !== Object.keys(right).length) return false;
-      for (const key of keys) {
-        if (!Object.hasOwn(right, key)) return false;
-        stack.push([left[key], right[key]]);
-      }
-    }
-  }
-  return true;
-}
