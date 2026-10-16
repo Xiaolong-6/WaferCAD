@@ -97,6 +97,7 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
 
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
+const verifyHistoryParity = process.argv.includes('--history-parity');
 const requestedVariant =
   process.argv.find((arg) => arg.startsWith('--variant='))?.slice(10) || null;
 const only = process.argv.find((arg) => arg.startsWith('--id='))?.slice(5);
@@ -285,6 +286,68 @@ try {
           `${example.id}: Step ${index + 1} changed physical length ${expected} to ${actual}`,
         );
       }
+      if (verifyHistoryParity) {
+        if (sourceProject.model.array || exported.model.array) {
+          throw new Error('Intermediate-history parity requires a scalar material model');
+        }
+        const savedNodes = new Map(
+          sourceProject.snapshotBranches.nodes.map((node) => [node.id, node]),
+        );
+        const mismatches = [];
+        const comparisons = [];
+        for (const [index, step] of processSteps.entries()) {
+          const sourceNodeId = step.id.startsWith('recipe-') ? step.id.slice(7) : '';
+          const sourceNode = savedNodes.get(sourceNodeId);
+          const rebuiltNode = replayNodes[index];
+          assert.ok(sourceNode?.state?.model, `Unresolved saved History model at ${step.id}`);
+          assert.ok(
+            rebuiltNode?.state?.model,
+            `Unresolved replay History model at Step ${index + 1}`,
+          );
+          try {
+            const result = await assertSameMaterialGeometry(
+              sourceNode.state.model,
+              rebuiltNode.state.model,
+              { allowRepeatedNames: true, xyQuantumUm: 1e-4, maxQuantizedAreaUm2: 25 },
+            );
+            comparisons.push({
+              step: index + 1,
+              command: step.command,
+              sourceNodeId,
+              slabsChecked: result.slabsChecked,
+              maxMismatchAreaUm2: result.maxMismatchAreaUm2,
+            });
+          } catch (error) {
+            mismatches.push({
+              step: index + 1,
+              command: step.command,
+              sourceNodeId,
+              reason: String(error.message),
+            });
+          }
+        }
+        await mkdir('test-results/example-recipe-runall', { recursive: true });
+        const historyReport = {
+          example: example.id,
+          variant: requestedVariant,
+          steps: processSteps.length,
+          verified: comparisons.length,
+          comparisons,
+          mismatches,
+        };
+        await writeFile(
+          `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-history-parity.json`,
+          JSON.stringify(historyReport, null, 2) + '\n',
+        );
+        console.log(
+          `${example.id}: intermediate History XY/Z: ${comparisons.length}/${processSteps.length} steps matched, ${mismatches.length} discrepancies`,
+        );
+        assert.equal(
+          mismatches.length,
+          0,
+          `${example.id}: intermediate scientific History parity failed: ${JSON.stringify(mismatches.slice(0, 5))}`,
+        );
+      }
       assert.ok(
         exported.model.layers.length > 1,
         `${example.id}: Kernel replay left only the Base substrate`,
@@ -311,15 +374,46 @@ try {
           `${example.id}: rebuilt wafer array site count differs`,
         );
       }
-      // MAGIC-1000 requires stricter scientific acceptance than matching
-      // material labels/counts. Compare 2.5D physical material occupancy:
-      // exact XY polygons, per material, for every distinct Z slab.
-      const geometryComparison =
-        example.id === 'magic-1000-mos2-beol'
-          ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-          : example.id === 'tio2-metalens-four-unit'
-            ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-            : null;
+      // Every scalar literature example must match the saved material's XY
+      // footprint on every Z slab; layer labels and History counts alone
+      // cannot detect lost contacts, nanometre films or release voids.
+      // Both-face creates distinct layer IDs sharing a material name. Their
+      // material-class occupancy is compared across both physical Z faces.
+      let geometryComparison;
+      try {
+        geometryComparison =
+          example.id === 'magic-1000-mos2-beol'
+            ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
+            : example.id === 'tio2-metalens-four-unit'
+              ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+              : sourceProject.model.array
+                ? null
+                : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
+                    allowRepeatedNames: true,
+                    xyQuantumUm: 1e-4,
+                    maxQuantizedAreaUm2: 25,
+                  });
+      } catch (error) {
+        // A completed Recipe with different XY/Z occupancy is a scientific
+        // mismatch. Preserve both physical models for diagnosis; never
+        // silence the failure or silently replace the paper-derived asset.
+        if (!sourceProject.model.array && !exported.model.array) {
+          await mkdir('test-results/example-recipe-runall', { recursive: true });
+          await writeFile(
+            `test-results/example-recipe-runall/${example.id}${requestedVariant ? '-' + requestedVariant : ''}-geometry-mismatch.json`,
+            JSON.stringify(
+              {
+                message: String(error.message),
+                source: sourceProject.model,
+                rebuilt: exported.model,
+              },
+              null,
+              2,
+            ) + '\n',
+          );
+        }
+        throw error;
+      }
       if (geometryComparison) {
         console.log(
           `${example.id}: strict XY/Z geometry parity verified: ${geometryComparison.materialCount} materials, ${geometryComparison.slabsChecked} material-Z slabs, largest mismatched XY area ${geometryComparison.maxMismatchAreaUm2} um2`,
