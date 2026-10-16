@@ -295,13 +295,14 @@ export function createWorkstationRuntime(
     useAssemblyInspectionSettings();
     return projectAtStage;
   }
-  function createAssemblyBondDraftSession(checkpointRecovery) {
+  function createAssemblyBondDraftSession(checkpointRecovery, durability = {}) {
     if ((!assemblyPreviewSession && !firstBondDraft) || assemblyBondEditor) {
       throw new Error('Bond draft editor requires one isolated Assembly preview.');
     }
     assemblyBondEditor = createAssemblyBondEditorSession(project.data, {
       checkpointRecovery,
       variantGraph: project.variantGraph ?? null,
+      ...durability,
       applyVisibleProject: (next) => {
         restore(next);
         useAssemblyInspectionSettings();
@@ -317,6 +318,12 @@ export function createWorkstationRuntime(
     },
     createAssemblyBondDraftSession,
     restoreAssemblyStage,
+    restoreAssemblyStageDurable: async (index) => {
+      if (!assemblyBondEditor) return restoreAssemblyStage(index);
+      const restored = await assemblyBondEditor.restoreIndexDurable(index);
+      useAssemblyInspectionSettings();
+      return restored;
+    },
     state,
     local,
     project,
