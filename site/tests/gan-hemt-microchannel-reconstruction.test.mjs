@@ -130,8 +130,10 @@ test('GSG independent die and contact geometry stays distinct from HEMT and TSV'
     assert.ok(!gsgDie.some((other, j) => j !== i && overlaps(other, gsgDie[i])));
     const ownedPads = gsgPads.filter((pad) => contains(gsgDie[i], pad));
     assert.equal(ownedPads.length, 3, 'Each GSG chip must own exactly three Au pads');
-    assert.ok(ownedPads.every((pad) => !tsv.some((via) => overlaps(pad, via))),
-      'GSG pad-to-TSV surface routing is not modeled and cannot be presumed');
+    assert.ok(
+      ownedPads.every((pad) => !tsv.some((via) => overlaps(pad, via))),
+      'GSG pad-to-TSV surface routing is not modeled and cannot be presumed',
+    );
   }
 });
 
