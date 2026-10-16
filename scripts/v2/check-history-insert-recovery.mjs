@@ -138,6 +138,127 @@ try {
     assert.deepEqual(reloaded.model, original.model, 'Reload preserves original physical geometry');
     assert.deepEqual(reloaded.workflow.steps, original.workflow.steps);
     assert.deepEqual(reloaded.workflow.branches, original.workflow.branches);
+    // #289: a successful insertion must re-run the *actual* later Steps through
+    // the production Worker and produce a physically continuous, ordered stack.
+    await page.locator('[data-action="domain:history"]').click();
+    const insertTarget = page
+      .locator('.history-step-wrap', {
+        has: page.locator('.process-history-body strong', { hasText: 'Deposit Insert B' }),
+      })
+      .first();
+    await insertTarget.locator('.snapshot-more-trigger').click();
+    await insertTarget.locator('.snapshot-more-popover button', { hasText: 'Insert before' }).click();
+    await page.getByRole('button', { name: 'Update current Variant', exact: true }).click();
+    await page.waitForFunction(
+      () => /Insert Step/.test(document.querySelector('#applyOperationBtn')?.textContent || ''),
+      null,
+      { timeout: 30000 },
+    );
+    await page.locator('#operationType').selectOption('add');
+    await page.locator('#operationArea').selectOption('full');
+    await page.locator('#growthMode').selectOption('direct');
+    await page.locator('#operationThickness').fill('0.03');
+    await page.locator('#layerName').fill('Inserted verified X');
+
+    await page.evaluate(() => {
+      const nativePost = Worker.prototype.postMessage;
+      window.__successfulInsertWorkers = 0;
+      Worker.prototype.postMessage = function (request, ...args) {
+        if (request?.params && request?.model) window.__successfulInsertWorkers++;
+        return Reflect.apply(nativePost, this, [request, ...args]);
+      };
+    });
+    await page.locator('#applyOperationBtn').evaluate((button) => button.click());
+    await page.waitForFunction(
+      () => {
+        const state = window.WaferCadV2Workstation.snapshot();
+        return (
+          !state.workflow.busy &&
+          state.workflow.steps.length === 5 &&
+          state.model.layers.some((layer) => layer.name === 'Inserted verified X') &&
+          state.model.layers.some((layer) => layer.name === 'Insert D')
+        );
+      },
+      null,
+      { timeout: 120000 },
+    );
+    assert.equal(
+      await page.evaluate(() => window.__successfulInsertWorkers),
+      4,
+      'One inserted Step and three later Steps must reach the real Process Worker',
+    );
+
+    const committed = await snapshot();
+    assert.equal(committed.workflow.steps.length, 5, 'Inserted Step extends exact History');
+    assert.equal(committed.workflow.branches.length, 1, 'Update current Variant does not fork');
+    const expected = [
+      { name: 'Insert A', thickness: 0.05 },
+      { name: 'Inserted verified X', thickness: 0.03 },
+      { name: 'Insert B', thickness: 0.05 },
+      { name: 'Insert C', thickness: 0.05 },
+      { name: 'Insert D', thickness: 0.05 },
+    ];
+    const byId = new Map(committed.model.layers.map((layer) => [layer.id, layer.name]));
+    const region = committed.model.regions.find(
+      (item) =>
+        expected.every(({ name }) =>
+          item.stack.some((segment) => byId.get(segment.layerId) === name),
+        ),
+    );
+    assert.ok(region, 'All five deposited materials must occupy the same physical region');
+    const processSegments = region.stack.filter((segment) => segment.layerId !== 'base');
+    assert.deepEqual(
+      processSegments.map((segment) => byId.get(segment.layerId)),
+      expected.map((entry) => entry.name),
+      'Full-coverage Z stack must follow the inserted History order',
+    );
+    const substrateTop = region.stack.find((segment) => segment.layerId === 'base').z1;
+    let nextZ = substrateTop;
+    for (const [index, entry] of expected.entries()) {
+      const segment = processSegments[index];
+      assert.ok(
+        Math.abs(segment.z0 - nextZ) <= 1e-10,
+        entry.name + ' must contact the preceding top face without a gap or overlap',
+      );
+      assert.ok(
+        Math.abs(segment.z1 - segment.z0 - entry.thickness) <= 1e-10,
+        entry.name + ' must retain its exact physical deposition thickness',
+      );
+      nextZ = segment.z1;
+    }
+    assert.equal(committed.model.processRevision, original.model.processRevision + 1);
+
+    // The pre-insertion checkpoint must protect the old 4-Step branch, while
+    // Save/Reload must preserve the newly committed physical Z and History.
+    const recoveredOriginal = await page.evaluate(async () => {
+      const storage = await import('/workspace-persistence.js');
+      for (const item of await storage.listWorkspaceRecoveryPoints()) {
+        if (item.reason !== 'pre-history-step-insert') continue;
+        const saved = await storage.loadWorkspaceRecoveryPoint(item.key);
+        if (saved?.model?.processRevision === 4) return saved.model;
+      }
+      return null;
+    });
+    assert.deepEqual(recoveredOriginal, original.model, 'Old geometry survives in Recovery');
+    await page.locator('[data-action="domain:project"]').click();
+    await page.locator('#saveProjectBtn').click();
+    await page.waitForFunction(
+      () => /Saved/.test(document.querySelector('[data-slot="status.message"]')?.textContent || ''),
+      null,
+      { timeout: 30000 },
+    );
+    await page.goto(base + '/app.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 120000,
+    });
+    const reopenedInsertion = await snapshot();
+    assert.deepEqual(reopenedInsertion.model, committed.model);
+    assert.deepEqual(reopenedInsertion.workflow.steps, committed.workflow.steps);
+    assert.deepEqual(reopenedInsertion.workflow.branches, committed.workflow.branches);
+    assert.deepEqual(errors, []);
+    console.log(
+      'V2_HISTORY_INSERT_SUCCESS: 4 Worker requests, physical Z stack, Recovery and Save/Reload PASS',
+    );
     console.log('V2_HISTORY_INSERT_RECOVERY: Worker fault, exact rollback, Save/Reload PASS');
   } finally {
     await context.close();
