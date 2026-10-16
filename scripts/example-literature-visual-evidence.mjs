@@ -608,6 +608,12 @@ try {
         assert.equal(source.model.electricalRegions.length, item.expected.electrical);
       }
       const examples = [];
+      const largeSource = item.id === 'm3d-selfpowered-heterogeneous-ic';
+      if (largeSource) {
+        // Expanded mixed raw/delta polygons are significantly heavier than
+        // the scalar examples, but still require an explicit bounded import.
+        page.setDefaultTimeout(90000);
+      }
       for (const cut of item.cuts) {
         // Saved presentation preferences may open a Detail ROI overlay that
         // obscures the scientific cut. Keep the underlying geometry intact.
@@ -627,7 +633,18 @@ try {
           section: { a: cut.a, b: cut.b },
         };
         const probes = evaluateProbes(source, cut.probes);
-        await loadProject(page, project, item.id + '-' + cut.id);
+        const loadStarted = Date.now();
+        try {
+          await loadProject(page, project, item.id + '-' + cut.id);
+        } catch (error) {
+          const status = await page.locator('#statusText').textContent().catch(() => 'unavailable');
+          const diagnostic = join(output, item.id + '-' + cut.id + '-import-failure.png');
+          await page.screenshot({ path: diagnostic }).catch(() => {});
+          throw new Error(
+            item.id + ': project import incomplete; status=' + status + '; ' + error.message,
+          );
+        }
+        const loadMs = Date.now() - loadStarted;
         // Section is a separate dock, not a primary view tab (Main/Mask/3D).
         const sectionPanel = page.locator('#sectionPanel');
         await sectionPanel.waitFor({ state: 'visible' });
@@ -691,6 +708,7 @@ try {
           a: cut.a,
           b: cut.b,
           sectionInk,
+          loadMs,
           zFocus: cut.zFocus || null,
           physicalProbes: probes,
           detailEvidence,

@@ -32,7 +32,7 @@ jobs:
             curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
             sleep 1
           done
-          for id in m3d-selfpowered-heterogeneous-ic magic-1000-mos2-beol tio2-metalens-four-unit; do
+          for id in magic-1000-mos2-beol tio2-metalens-four-unit m3d-selfpowered-heterogeneous-ic; do
             echo "::group::FIGURE_CASE ${id}"
             node scripts/example-literature-visual-evidence.mjs "--id=${id}"
             echo "::endgroup::"
