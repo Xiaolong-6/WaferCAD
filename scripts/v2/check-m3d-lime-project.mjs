@@ -746,6 +746,83 @@ try {
     horizontalViewFraction,
     note: 'Inspection-only CNTFET / Pd / digital RRAM layer isolation, not source mask fidelity',
   };
+  // The standard 24um inspection ROI frames long source/drain stripes as a
+  // blanket even with layers isolated. Add two strictly presentation-only
+  // local cameras via the same production bridge used by the actual 3D tools.
+  // These views cannot establish TEM accuracy, but must visibly resolve the
+  // selected device material and the gate-edge / RRAM lateral relationship.
+  report.threeLocalCameraEvidence = [];
+  const beforeLocalCameras = await snapshot();
+  for (const view of [
+    {
+      label: 'pd-gate-step',
+      target: [-39.145, -24, 2.105],
+      position: [-37.55, -27.3, 4.2],
+      fov: 27,
+      caption: 'Local 3D look toward the inferred 11.25nm Pd gate-step surrogate',
+    },
+    {
+      label: 'cntfet-pd-rram-bridge',
+      target: [-39.75, -24, 2.13],
+      position: [-35.1, -29.0, 6.0],
+      fov: 40,
+      caption: 'Local 3D CNTFET to Pd to RRAM inspection, original masks unknown',
+    },
+  ]) {
+    const camera = { position: view.position, target: view.target, fov: view.fov };
+    const applied = await page.evaluate(
+      (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
+      camera,
+    );
+    assert.equal(applied, true, 'Real 3D presentation bridge rejected ' + view.label);
+    await page.waitForFunction(
+      () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+      null,
+      { timeout: 120000 },
+    );
+    await waitForPaint(page);
+    const actualCamera = (await snapshot()).threeCamera;
+    for (const key of ['position', 'target'])
+      actualCamera[key].forEach((value, i) =>
+        assert.ok(
+          Math.abs(value - camera[key][i]) < 1e-6,
+          view.label + ': actual 3D camera ' + key + ' mismatch',
+        ),
+      );
+    assert.ok(Math.abs(actualCamera.fov - camera.fov) < 1e-6);
+    const captured = await captureVisibleThree(
+      page,
+      resolve(output, 'three-local-' + view.label + '.png'),
+    );
+    assert.ok(captured.coloredPixels > 1000, view.label + ': 3D frame is empty');
+    const presentation = await snapshot();
+    assert.deepEqual(
+      presentation.model.regions,
+      beforeLocalCameras.model.regions,
+      view.label + ': inspection camera mutated physical geometry',
+    );
+    assert.deepEqual(
+      presentation.model.layers,
+      beforeLocalCameras.model.layers,
+      view.label + ': inspection camera changed layer visibility',
+    );
+    report.threeLocalCameraEvidence.push({
+      label: view.label,
+      camera: actualCamera,
+      coloredPixels: captured.coloredPixels,
+      canvas: captured.canvas,
+      note: view.caption,
+    });
+  }
+  // Restore the actual gesture-controlled camera; no local preview pose may
+  // leak into exported project state or alter the user's inspection settings.
+  const cameraRestored = await page.evaluate(
+    (value) => window.WaferCadV2RealBridge?.setThreeCamera?.(value) === true,
+    beforeLocalCameras.threeCamera,
+  );
+  assert.equal(cameraRestored, true, 'Failed to restore the original 3D camera');
+  await waitForPaint(page);
+  assert.deepEqual((await snapshot()).threeCamera, beforeLocalCameras.threeCamera);
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
   for (const id of activeStackHiddenLayerIds) await checkboxFor(id).check();
