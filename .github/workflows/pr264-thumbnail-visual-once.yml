@@ -1,0 +1,48 @@
+name: PR264 GaN wire visual-first candidate (read-only)
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths:
+      - .github/workflows/pr264-thumbnail-visual-once.yml
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Serve inspected latest source
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site >/tmp/wafercad-wire-visual.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/wafercad-wire-visual.log
+          exit 1
+      - name: Render candidate thumbnail using real Chromium
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Inspect explicit 3D wire tube rendering and bookmarks
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Upload candidate and actual screenshots without changing repository
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr264-gan-wire-visual-candidate
+          path: |
+            site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp
+            tests/fixtures/project-io/example-thumbnails.json
+            test-results/gan-microchannel/visual/
+          if-no-files-found: error
