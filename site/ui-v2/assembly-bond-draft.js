@@ -21,7 +21,10 @@ export function mountAssemblyBondDraftControls({
   const form = document.createElement('form');
   form.className = 'assembly-bond-draft-form';
   const controls = [
-    ['donorId', 'Donor ID', 'text', 'C'],
+    ...(editor.fullProduct().waferAssembly
+      ? []
+      : [['receiverId', 'Receiver ID', 'text', 'A']]),
+    ['donorId', 'Donor ID', 'text', editor.fullProduct().waferAssembly ? 'C' : 'B'],
     ['dx', 'X offset (µm)', 'number', '0'],
     ['dy', 'Y offset (µm)', 'number', '0'],
     ['rotationDeg', 'Rotation (°)', 'number', '0'],
@@ -35,7 +38,7 @@ export function mountAssemblyBondDraftControls({
     input.type = type;
     input.value = value;
     if (type === 'number') input.step = 'any';
-    if (name === 'donorId') {
+    if (name === 'donorId' || name === 'receiverId') {
       input.maxLength = 64;
       input.required = true;
       input.pattern = '[A-Za-z0-9][A-Za-z0-9_.-]{0,63}';
@@ -116,6 +119,9 @@ export function mountAssemblyBondDraftControls({
       }
       const request = {
         donorId: fields.get('donorId').value.trim(),
+        ...(fields.has('receiverId')
+          ? { receiverId: fields.get('receiverId').value.trim() }
+          : {}),
         dx: Number(fields.get('dx').value),
         dy: Number(fields.get('dy').value),
         rotationDeg: Number(fields.get('rotationDeg').value),
