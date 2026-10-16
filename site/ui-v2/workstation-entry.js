@@ -265,12 +265,9 @@ try {
     if (mobileWorkspace.handleAction(action)) {
       // Main/Mask adapters do not repaint in onShow; refresh only the view
       // that becomes visible, never all four scientific views.
-      const visibleView =
-        uiState.mobile === 'view' &&
-        (previousMobile !== 'view' || previousView !== uiState.view)
-          ? uiState.view
-          : null;
-      render(visibleView ? { scientificView: visibleView } : { scientific: false });
+      if (uiState.mobile === 'view' && (previousMobile !== 'view' || previousView !== uiState.view))
+        render({ scientificView: uiState.view });
+      else render({ scientific: false });
       return;
     }
     if (action.startsWith('domain:')) {
