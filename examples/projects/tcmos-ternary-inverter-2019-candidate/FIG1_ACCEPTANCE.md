@@ -1,4 +1,4 @@
-**Mask approval gate (2026-10-16):** The uploaded `layout-complete.svg` is the authoritative visual and polygon source. Eight SVG layers represent 232 precise paths/rectangles/CNT footprints, plus 16 legacy auxiliary process-layer rectangles in the CAD File Mask (248 total, 13 layers). Earlier pixel/raster and Metal strap reconstructions are superseded. The process Recipe is not yet synchronized and current Run All stops at Step 13: **Mask approval is pending; process and final PR acceptance are NOT passed.**
+**Mask approval gate (2026-10-16):** The uploaded `layout-complete.svg` is the authoritative visual and polygon source. Eight SVG layers represent 232 precise paths/rectangles/CNT footprints, and the CAD File Mask exports exactly those 8 layers/232 shapes. The five old process-only mask layers remain internal to the Recipe and are excluded from File Mask/GDS/OAS. Earlier pixel/raster and Metal strap reconstructions are superseded. The process Recipe is not yet synchronized and current Run All stops at Step 13: **Mask approval is pending; process and final PR acceptance are NOT passed.**
 
 # Fig. 1a/1b scientific and visual acceptance — T-CMOS candidate
 
@@ -53,7 +53,7 @@ original illustration's outline-only labels.
 | LVTN / LVTP and HVTN / HVTP labels   | Left HVTN pMOS / right HVTP nMOS correct; LVTN/LVTP are reference-only masks, not T-CMOS process doping | Naming and branch intent pass.                                                                        |
 | Two POLY gates and contacts          | Model assigns 0.44 µm pixel-measured illustrative gate bands and separate CNT contacts                  | Model-internal geometry pass, **not foundry-dimension pass**.                                         |
 | VDD, VOUT, GND, VIN                  | Four separate METAL1 net footprints; VOUT joins both drains, VIN both gates                             | Model-internal topology pass.                                                                         |
-| Polygon counts and serialization     | Fig. 1b redrawing now uses 13 layers and 196 Mask elements                                              | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
+| Polygon counts and serialization     | Fig. 1b redrawing now uses 8 layers and 232 SVG Mask elements                                              | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
 | Exact physical layout dimensions     | Paper does not disclose the complete foundry GDS or mask coordinates                                    | Unverifiable; candidate is a reconstructed layout, **not a digitized foundry mask**.                  |
 
 ## Browser screenshots inspected

@@ -6,9 +6,9 @@ directly from its vertices and symbol coordinates (viewBox 1113×758,
 mirror axis x=560) using `scripts/tcmos-svg-mask.mjs`. The SVG contains
 four complete METAL1 polygons, four ACTIVE shapes, two POLY bars,
 four LVT/HVT windows, and **218 square CNT geometries**:
-**232 exact SVG visible polygons**. The other five auxiliary
-process-only layers remain present; the File Mask has **13 layers and
-248 elements** in this review revision.
+**232 exact SVG polygons**. The File Mask now contains **only these eight
+layers and 232 elements**. Five legacy process masks remain internal to
+the old Recipe and are explicitly excluded from File Mask/GDS/OAS export.
 
 The SVG paths supersede every previously inferred metal strap, image crop
 measurement, and approximated CNT placement. The micrometre conversion
@@ -36,7 +36,7 @@ Status: **candidate generator, not yet a shipped Welcome Example**.
 
 ## Intended reconstruction and provenance
 
-Reconstruct a representative 130 nm T-CMOS inverter on silicon, with ACTIVE/STI, NWELL/PWELL, HVTP/HVTN, POLY, source/drain annotations, CNT and METAL1. Retain an exportable 13-layer File Mask (including two reference-only LVT windows), complete Recipe, History nodes, stage bookmarks and a final geometry model.
+Reconstruct a representative 130 nm T-CMOS inverter on silicon, with ACTIVE/STI, NWELL/PWELL, HVTP/HVTN, POLY, source/drain annotations, CNT and METAL1. Retain an exportable 8-layer SVG-authoritative File Mask (including two reference-only LVT windows), complete Recipe, History nodes, stage bookmarks and a final geometry model.
 
 The key published mechanism is the **highly doped body-to-drain tunnel junction**, obtained using a modified HVT body-implant mask. The Methods specify BF2+ for the nMOS device and As+ for the pMOS device, plus RTA; calibrated depth, energy, dose, mask coordinates and full GDS are unavailable.
 
@@ -104,7 +104,7 @@ treating the old 14 × 8 µm illustrative Mask as foundry data:
   the figure's apparent number of CNT symbols are illustrative.
 - HVTN (left)/HVTP (right) frame the relevant ACTIVE/gate regions. LVTN/LVTP
   are reference outline masks only and are not executed as T-CMOS LVT steps.
-- **13 layers and 248 layout polygons (current SVG File Mask)** export through the same File Mask as
+- **8 layers and 232 layout polygons (SVG File Mask)** export through the same File Mask as
   GDS/OAS. The canonical .wafercad, full process History, both Variants,
   recipe replay, and browser screenshots all derive from this same Mask.
 
@@ -185,6 +185,6 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/248-polygon SVG File Mask export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
+Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 8-layer/232-polygon SVG File Mask export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
 
 Scientific visual acceptance still required: archive a close local pMOS Section and nMOS Section showing the respective gate, semiconductor body and intended body–drain interface, plus a corresponding focused 3D view. Include a wide-field context image for each crop, the exact Section endpoints and view/visibility settings, a legend identifying inferred geometry versus source-supported features, and a comparison with paper Fig. 1a/b and Supplementary Fig. 1. Expanded full-field screenshots alone cannot establish 130 nm junction correspondence. Do not present the 80–240 nm display band as a measured junction thickness or imply a calibrated dopant concentration/BTBT current. Keep this PR Draft, and do not add to Welcome or merge until current-head CI and these evidence gates are satisfied.

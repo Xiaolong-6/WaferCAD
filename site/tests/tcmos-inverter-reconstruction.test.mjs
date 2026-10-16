@@ -44,13 +44,17 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
   assert.equal(GATE_LENGTH_UM, 0.44);
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
-  assert.equal(layout.combos.length, 13);
+  assert.equal(layout.combos.length, 8, 'SVG alone owns all exported Mask layers');
   const vectorLayers = readTcmosReferenceMask();
-  const visible = new Set(vectorLayers.map(({ layer }) => layer));
-  const auxiliary = TCMOS_MASKS.filter(({ id }) => !visible.has(id));
-  assert.equal(
-    layout.elements.length,
-    232 + auxiliary.reduce((n, group) => n + group.rectangles.length, 0),
+  assert.equal(layout.elements.length, 232);
+  assert.deepEqual(
+    layout.combos.map(({ layer }) => layer),
+    vectorLayers.map(({ layer }) => layer),
+  );
+  assert.deepEqual(
+    [...new Set(layout.elements.map(({ layer }) => layer))].sort((a, b) => a - b),
+    [1, 4, 5, 6, 10, 11, 12, 13],
+    'no legacy process-only mask layers may leak into File Mask',
   );
   for (const group of vectorLayers) {
     assert.deepEqual(

@@ -475,43 +475,32 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 
 export function tcmosLayout() {
-  // The approved SVG is authoritative for all eight user-visible Mask
-  // layers. Auxiliary process-only layers stay intact until the Mask gate
-  // has been approved. Do not substitute the old raster approximations.
+  // The user's SVG is the complete File Mask source of truth: exactly
+  // eight layers and 232 polygons. Do not include five legacy, hidden
+  // process-only layers in the File Mask or its GDS/OAS exports.
+  // Old Recipe source masks are separate and remain frozen for Mask review.
   const traced = readTcmosReferenceMask();
-  const visibleLayers = new Set(traced.map(({ layer }) => layer));
-  const elements = [
-    ...traced.flatMap(({ layer, datatype, shapes }) =>
-      shapes.map(({ points }) => ({
-        kind: 'polygon',
-        sourceCell: CELL,
-        layer,
-        datatype,
-        points,
-      })),
-    ),
-    ...TCMOS_MASKS.filter(({ id }) => !visibleLayers.has(id)).flatMap((mask) =>
-      mask.rectangles.map((r) => ({
-        kind: 'polygon',
-        sourceCell: CELL,
-        layer: mask.id,
-        datatype: 0,
-        points: rectanglePolygon(r),
-      })),
-    ),
-  ];
+  const elements = traced.flatMap(({ layer, datatype, shapes }) =>
+    shapes.map(({ points }) => ({
+      kind: 'polygon',
+      sourceCell: CELL,
+      layer,
+      datatype,
+      points,
+    })),
+  );
   return {
     name: 'T-CMOS 130nm representative inverter; reconstructed masks, not foundry GDS',
     root: CELL,
     elements,
     linework: [],
     hierarchy: {},
-    combos: TCMOS_MASKS.map((mask) => ({
-      key: CELL + '|' + mask.id + '|0',
+    combos: traced.map(({ layer, shapes }) => ({
+      key: CELL + '|' + layer + '|0',
       cell: CELL,
-      layer: mask.id,
+      layer,
       datatype: 0,
-      count: elements.filter((element) => element.layer === mask.id).length,
+      count: shapes.length,
     })),
     bounds: {
       minX: -7,
@@ -1210,7 +1199,7 @@ export async function buildTcmosInverter({
     tiltSourceReported: false,
     processVariant: mode,
     availableVariants: project.snapshotBranches.branches.map((item) => item.id),
-    maskLayers: TCMOS_MASKS.length,
+    maskLayers: project.layout.combos.length,
     processNodes: nodes.length,
     recipeSteps: steps.length,
     bookmarks: bookmarks.length,

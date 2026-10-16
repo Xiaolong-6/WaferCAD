@@ -186,9 +186,9 @@ try {
     { timeout: 120000 },
   );
 
-  // The first-open overlay intentionally selects eight visually useful layers.
-  // For manufacturing-layout interchange, explicitly select the complete 13-layer
-  // File Mask and prove no hidden NWELL/PWELL/S-D/silicide layers are omitted.
+  // SVG-authoritative File Mask: exactly eight visible/exportable layers.
+  // Legacy NWELL/PWELL/S-D/silicide masks are process-only; they must not
+  // leak into the user's approved Mask or binary GDS/OAS exports.
   await panel('mask');
   const maskLayerBoxes = page.locator('#v2-maskLayerList input[type="checkbox"]');
   assert.equal(await maskLayerBoxes.count(), expected.layout.combos.length);
