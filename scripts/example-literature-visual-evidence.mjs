@@ -99,7 +99,7 @@ const CASES = [
     id: 'three-tier-silicon-jlfets',
     file: 'three-tier-silicon-jlfets',
     source:
-      'Lam et al. 2026, Nature Fig. 3; local three-tier junctionless Si device, not original GDS',
+      'Lam et al. 2026, Figs. 1–2 structure; Fig. 3 wafer-scale tier maps, not author GDS',
     cuts: [
       {
         id: 'three-tier-channel-to-pads',
