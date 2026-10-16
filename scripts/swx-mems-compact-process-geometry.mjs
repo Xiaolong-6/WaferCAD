@@ -13,6 +13,7 @@ import {
   SWX_INTERFACE_ASSUMPTIONS,
 } from './swx-mems-optomechanical-candidate.mjs';
 import { SWX_COMPACT_ASSUMPTIONS } from './swx-mems-actuator-candidate.mjs';
+import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 import {
   SWX_COMPACT_GRATING_ASSUMPTIONS,
   createCompactGratingGrooves,
@@ -153,12 +154,7 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
     [-62, -45],
     [-55, -95],
     [55, -95],
-    ...createSwxCompactProcessGeometry('off').physicalGroups.guides.fixed.map(
-      (ring) => [
-        (ring[0][0] + ring[2][0]) / 2,
-        (ring[0][1] + ring[2][1]) / 2,
-      ],
-    ),
+    ...SWX_COMPACT_GUIDE_ASSUMPTIONS.padCentersUm,
   ],
   assumptions: {
     ...SWX_ASSUMPTIONS,
