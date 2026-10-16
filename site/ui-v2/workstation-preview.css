@@ -104,6 +104,33 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   color: #a22a2a;
 }
 
+.assembly-preview-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.assembly-preview-recovery select {
+  flex: 1;
+  min-width: 120px;
+  max-width: 100%;
+}
+
+.assembly-preview-recovery button,
+.assembly-preview-recovery select {
+  padding: 7px;
+  border: 1px solid #bac7d6;
+  border-radius: 8px;
+  background: #fff;
+  color: #293c54;
+  font: inherit;
+}
+
+.assembly-preview-recovery :disabled {
+  opacity: 0.52;
+}
+
 .assembly-preview-controls {
   position: fixed;
   z-index: 120;
