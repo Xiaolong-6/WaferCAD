@@ -24,40 +24,6 @@ permissions:
   contents: read
 
 jobs:
-  one-time-fixture:
-    name: One-time 2x2 gate CNT fixture sync
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 225
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Rebuild project and format Mask code
-        run: |
-          node scripts/build-tcmos-inverter-example.mjs
-          cp test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
-          npx prettier --write scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs
-      - name: Commit regenerated Mask fixture to PR branch only
-        env:
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
-          if git diff --cached --quiet; then
-            echo "No changes"
-          else
-            git commit -m "chore(tcmos-mask): sync measured gate CNT fixture"
-            git push origin "HEAD:${PR_BRANCH}"
-          fi
-
   paper-geometry:
     name: T-CMOS kernel, Recipe and storage
     runs-on: ubuntu-latest
