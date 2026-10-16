@@ -647,6 +647,24 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
       geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
     }));
 
+  const debugCanonical =
+    operation === 'Conformal' &&
+    typeof process !== 'undefined' &&
+    process.env?.WAFERCAD_CONFORMAL_DEBUG === '1';
+  const priorVoids = debugCanonical ? uncoveredGeometryRaw({ ...model, regions }) : null;
+  const probe = (phase, value) => {
+    if (!debugCanonical) return;
+    const missing = verifiedConformalCoverageLoss({ ...model, regions: value }, priorVoids);
+    console.error('CONFORMAL_CANON_DIAGNOSTIC ' + JSON.stringify({
+      phase,
+      area: geometryArea(missing),
+      polygons: missing.length,
+      firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
+    }));
+  };
+  probe('canonical', canonical);
+  probe('first-snap', snapped);
+
   // Runtime geometry is checked before snapping. Any overlap in this second
   // pass is therefore introduced only by the 0.1 nm persistence grid and can
   // be deterministically assigned without masking a real kernel overlap.
@@ -658,16 +676,20 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
         geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
       }))
       .filter((region) => !isEmpty(region.geom));
-  // A final ownership pass removes any persistence-grid sliver that noding +
-  // rounding can reintroduce. Do not snap again here: another snap can recreate
-  // the same overlap. The serializer will quantize stable coordinates on export.
-  // Genuine overlaps above overlapTolerance still reject before assignment.
-  return partitionProcessRegions(stored, overlapTolerance, operation)
+  probe('post-overlap-partition', partitioned);
+  probe('post-edge-noding', noded);
+  probe('second-snap', stored);
+  // Genuine overlaps above overlapTolerance must still reject before assignment.
+  const finalPartition = partitionProcessRegions(stored, overlapTolerance, operation);
+  probe('final-overlap-partition', finalPartition);
+  const finalized = finalPartition
     .map((region) => ({
       ...region,
       geom: dropPersistenceDegeneratePolygons(region.geom),
     }))
     .filter((region) => !isEmpty(region.geom));
+  probe('post-degenerate-filter', finalized);
+  return finalized;
 }
 
 function stackKey(stack) {
