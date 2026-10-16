@@ -224,6 +224,14 @@ try {
       inspectionEdge: 'left',
       thicknessUm: 0.01,
     },
+    {
+      label: 'cntfet-pd-gate-step',
+      material: 'CNT drain Pd 45nm',
+      physicalXUm: -39.145,
+      inspectionXUm: -39.145,
+      inspectionMaskLayer: 18,
+      thicknessUm: 0.01125,
+    },
   ]) {
     const layer = expected.model.layers.find((item) => item.name === target.material);
     assert.ok(layer, target.material + ': source layer missing');
@@ -256,7 +264,8 @@ try {
     assert.ok(sourceMask, target.material + ': inferred inspection mask is missing');
     const maskXs = sourceMask.points.map((point) => point[0]);
     const inspectionXUm =
-      target.inspectionEdge === 'left' ? Math.min(...maskXs) : Math.max(...maskXs);
+      target.inspectionXUm ??
+      (target.inspectionEdge === 'left' ? Math.min(...maskXs) : Math.max(...maskXs));
     // Confirm a real lateral structure change on the model, rather than
     // treating a Mask edge or a successful screenshot as morphology evidence.
     const stacksAt = (x) =>
