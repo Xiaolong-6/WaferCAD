@@ -1,0 +1,60 @@
+name: Desktop Shell targeted browser acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'site/ui-v2/desktop-shell.css'
+      - 'site/ui-v2/workstation-v2.js'
+      - 'site/ui-v2/mobile-workstation.css'
+      - 'site/app.html'
+      - 'scripts/v2/check-desktop-docking.mjs'
+      - '.github/workflows/desktop-shell-targeted.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-shell-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromium:
+    name: Desktop docking and mobile shell
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Verify stable desktop hosts and four-view window interactions
+        run: |
+          WAFERCAD_V2_PORT=4182 node scripts/v2/serve-v2.mjs >/tmp/wafercad-shell-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4182/app.html >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          npm run test:ui:docking
+      - name: Save actual Chromium evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: desktop-shell-${{ github.sha }}
+          path: test-results/ui-v2-desktop-docking/
+          retention-days: 7
+          if-no-files-found: warn
