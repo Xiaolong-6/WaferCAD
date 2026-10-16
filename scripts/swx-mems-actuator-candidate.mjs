@@ -74,10 +74,7 @@ export function createCompactSwxActuator(state = 'off') {
       0.45,
     );
     shuttleDiagonals.push(brace);
-    triangularApertureProbes.push(
-      [0, y + 1 + travel],
-      [0, y + 3 + travel],
-    );
+    triangularApertureProbes.push([0, y + 1 + travel], [0, y + 3 + travel]);
     shuttle.push(brace);
   }
   for (const side of [-1, 1]) {
