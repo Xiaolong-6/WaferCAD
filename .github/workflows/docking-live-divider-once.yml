@@ -1,4 +1,4 @@
-# Diagnostic rerun: capture in-flight grid and handle coordinates before movement assertion.
+# Targeted rerun: test genuine column/row handle hit targets away from their crossing.
 name: Docking Live Divider Visual Check
 
 on:
