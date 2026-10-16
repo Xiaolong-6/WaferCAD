@@ -196,7 +196,12 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     id: 29,
     name: 'Inferred NiPaAu caps inside four Cu TSV terminal cores',
     rectangles: tsvCenters.map(([x, y]) =>
-      centered(GAN_TSV_LINER.inferredFinishCapWidthUm, GAN_TSV_LINER.inferredFinishCapWidthUm, x, y),
+      centered(
+        GAN_TSV_LINER.inferredFinishCapWidthUm,
+        GAN_TSV_LINER.inferredFinishCapWidthUm,
+        x,
+        y,
+      ),
     ),
   },
   {
@@ -774,15 +779,20 @@ export async function buildGanMicrochannel() {
   // component thicknesses nor masks. One composite *inferred* material is
   // capped strictly within the real Cu-filled via; no invented sublayers.
   for (const face of ['front', 'back']) {
-    process('Inferred NiPaAu TSV terminal cap on ' + face, 'deposit', {
-      material: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
-      thickness: GAN_TSV_LINER.inferredNiPaAuUm,
-      // A Cu-filled TSV with native conformal closure has no eligible flat
-      // top-face owner; the real exposed metal is a conformal boundary.
-      // Attempt a conformal coating of the *Cu-only inner terminal mask*.
-      coverage: 'conformal',
-      face,
-    }, 29);
+    process(
+      'Inferred NiPaAu TSV terminal cap on ' + face,
+      'deposit',
+      {
+        material: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
+        thickness: GAN_TSV_LINER.inferredNiPaAuUm,
+        // A Cu-filled TSV with native conformal closure has no eligible flat
+        // top-face owner; the real exposed metal is a conformal boundary.
+        // Attempt a conformal coating of the *Cu-only inner terminal mask*.
+        coverage: 'conformal',
+        face,
+      },
+      29,
+    );
   }
   bookmark('03d Double-sided plated Au and composite NiPaAu at TSV terminals');
   record(
@@ -941,13 +951,23 @@ export async function buildGanMicrochannel() {
     ['front', 601.45, 602.65],
     ['back', -201.45, -201.45],
   ]) {
-    const gold = model.layers.find((layer) => layer.name === 'Interposer ' + face + ' Au plate 0.5 um (inferred)');
-    const cap = model.layers.find((layer) => layer.name === 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)');
+    const gold = model.layers.find(
+      (layer) => layer.name === 'Interposer ' + face + ' Au plate 0.5 um (inferred)',
+    );
+    const cap = model.layers.find(
+      (layer) => layer.name === 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
+    );
     assert.ok(gold && cap, 'Missing physical plating/TSV cap on ' + face);
-    assert.ok(owner([2000, 0]).stack.some((seg) =>
-      seg.layerId === gold.id && seg.z0 < auZ && seg.z1 > auZ &&
-      Math.abs(seg.z1 - seg.z0 - GAN_TSV_LINER.inferredAuPlateUm) < 1e-8
-    ), 'Au plating thickness or occupancy is wrong on ' + face);
+    assert.ok(
+      owner([2000, 0]).stack.some(
+        (seg) =>
+          seg.layerId === gold.id &&
+          seg.z0 < auZ &&
+          seg.z1 > auZ &&
+          Math.abs(seg.z1 - seg.z0 - GAN_TSV_LINER.inferredAuPlateUm) < 1e-8,
+      ),
+      'Au plating thickness or occupancy is wrong on ' + face,
+    );
     for (const [x, y] of tsvCenters) {
       const segments = owner([x, y]).stack;
       const cu = segments.find((seg) => seg.layerId === copperTerminalLayer.id);
@@ -958,14 +978,15 @@ export async function buildGanMicrochannel() {
           film.z0 < capZ &&
           film.z1 > capZ &&
           Math.abs(film.z1 - film.z0 - GAN_TSV_LINER.inferredNiPaAuUm) < 1e-8 &&
-          (face === 'front'
-            ? Math.abs(film.z0 - cu.z1) < 1e-8
-            : Math.abs(film.z1 - cu.z0) < 1e-8),
+          (face === 'front' ? Math.abs(film.z0 - cu.z1) < 1e-8 : Math.abs(film.z1 - cu.z0) < 1e-8),
         'TSV cap must contact actual Cu end and have 0.5 um inferred thickness: ' +
-          JSON.stringify({face, xy: [x, y], cu, film}),
+          JSON.stringify({ face, xy: [x, y], cu, film }),
       );
     }
-    assert.equal(owner([2200, 0]).stack.some((seg) => seg.layerId === cap.id), false);
+    assert.equal(
+      owner([2200, 0]).stack.some((seg) => seg.layerId === cap.id),
+      false,
+    );
   }
   // Occupancy checks for *separate* front and back metal material solids.
   for (const [face, tiZ, cuZ] of [

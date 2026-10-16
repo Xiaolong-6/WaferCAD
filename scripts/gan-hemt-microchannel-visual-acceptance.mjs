@@ -320,12 +320,14 @@ try {
     const missingAuAndNiPaAu = [
       ...['front', 'back'].map((face) => ({
         name: 'Interposer ' + face + ' Au plate 0.5 um (inferred)',
-        xy: [2000, 0], z: face === 'front' ? 601.45 : -201.45,
+        xy: [2000, 0],
+        z: face === 'front' ? 601.45 : -201.45,
       })),
       ...['front', 'back'].flatMap((face) =>
         viaCenters.map((xy) => ({
           name: 'TSV ' + face + ' NiPaAu composite 0.5 um (inferred)',
-          xy, z: face === 'front' ? 602.65 : -201.45,
+          xy,
+          z: face === 'front' ? 602.65 : -201.45,
         })),
       ),
     ].filter(({ name, xy, z }) => !hasLayer(xy, z, byName.get(name)));
