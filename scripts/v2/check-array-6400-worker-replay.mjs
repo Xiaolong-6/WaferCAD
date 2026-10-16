@@ -357,6 +357,33 @@ try {
     }
     assert.equal(verifiedDevices, 4725);
     assert.equal(verifiedBackground, 1675);
+    // #319: whole-array integrated material volume, not only sampled Z stacks.
+    // Each of 4725 cells deposits 0.2² × 0.01 µm³ and retains
+    // (0.2² − 0.1²) × 0.01 µm³ after the selective center Etch.
+    const { geometryArea } = await import('../../site/model.js');
+    const volume = (parts) =>
+      parts.reduce(
+        (sum, site) =>
+          sum +
+          site.model.regions.reduce(
+            (acc, region) =>
+              acc +
+              geometryArea(region.geom) *
+                region.stack
+                  .filter((segment) => segment.layerId === fullMask.filmId)
+                  .reduce((height, segment) => height + segment.z1 - segment.z0, 0),
+            0,
+          ),
+        0,
+      );
+    assert.ok(
+      Math.abs(volume(addedParts) - 1.89) <= 1e-10,
+      'Full 4725-device masked deposition must preserve analytical film volume',
+    );
+    assert.ok(
+      Math.abs(volume(etchedParts) - 1.4175) <= 1e-10,
+      'Full 4725-device selective Etch must preserve analytical remaining film volume',
+    );
     const fullProject = migrateProjectFile(
       projectForBenchmark({
         model: fullMask.etched,

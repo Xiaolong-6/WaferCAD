@@ -208,6 +208,50 @@ try {
       'Inserted 25 nm layer must shift subsequent Z stacks without loss or duplication',
     );
     assert.notDeepEqual(inserted.model, original.model);
+    // #318: verify each Z boundary rather than hiding gaps/overlaps by rounding.
+    const expectedLayers = [
+      { name: 'Insert A', thickness: 0.05 },
+      { name: 'Inserted Y', thickness: 0.025 },
+      { name: 'Insert B', thickness: 0.05 },
+      { name: 'Insert C', thickness: 0.05 },
+      { name: 'Insert D', thickness: 0.05 },
+    ];
+    const layerNames = new Map(inserted.model.layers.map(({ id, name }) => [id, name]));
+    const physicalStack = inserted.model.regions.find((region) =>
+      expectedLayers.every(({ name }) =>
+        region.stack.some((segment) => layerNames.get(segment.layerId) === name),
+      ),
+    )?.stack;
+    assert.ok(physicalStack, 'Every successfully replayed film must occupy the same region');
+    const films = physicalStack.filter((segment) => segment.layerId !== 'base');
+    assert.deepEqual(
+      films.map((segment) => layerNames.get(segment.layerId)),
+      expectedLayers.map(({ name }) => name),
+      'Inserted and replayed films must follow exact chronological physical order',
+    );
+    let nextZ = physicalStack.find((segment) => segment.layerId === 'base').z1;
+    for (const [index, film] of expectedLayers.entries()) {
+      const segment = films[index];
+      assert.ok(Math.abs(segment.z0 - nextZ) <= 1e-10, film.name + ' must start at preceding top Z');
+      assert.ok(
+        Math.abs(segment.z1 - segment.z0 - film.thickness) <= 1e-10,
+        film.name + ' must retain its physical thickness without rounding',
+      );
+      nextZ = segment.z1;
+    }
+
+    // Confirm the protective checkpoint stores the entire original four-Step
+    // physical model, not merely the presence of a Recovery selector row.
+    const beforeInsertion = await page.evaluate(async () => {
+      const storage = await import('/workspace-persistence.js');
+      for (const item of await storage.listWorkspaceRecoveryPoints()) {
+        if (item.reason !== 'pre-history-step-insert') continue;
+        const saved = await storage.loadWorkspaceRecoveryPoint(item.key);
+        if (saved?.model?.processRevision === 4) return saved.model;
+      }
+      return null;
+    });
+    assert.deepEqual(beforeInsertion, original.model, 'Recovery protects exact pre-insert geometry');
 
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#saveProjectBtn').click();
