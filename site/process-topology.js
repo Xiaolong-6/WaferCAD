@@ -61,6 +61,27 @@ function clippedRegionGeometry(region, clip) {
   return isEmpty(geom) ? [] : geom;
 }
 
+// A region may contain disconnected vertical material islands separated by
+// real voids. Conformal sidewall geometry can only follow the SOLID connected
+// to its exposed surface, not the full enclosing stack from bottom to top.
+function exposedConnectedSolidLimit(stack, face) {
+  if (!stack?.length) return null;
+  if (face === 'front') {
+    let limit = stack.at(-1).z0;
+    for (let i = stack.length - 2; i >= 0; i--) {
+      if (stack[i].z1 < limit - TOPOLOGY_EPSILON_UM) break;
+      limit = Math.min(limit, stack[i].z0);
+    }
+    return limit;
+  }
+  let limit = stack[0].z1;
+  for (let i = 1; i < stack.length; i++) {
+    if (stack[i].z0 > limit + TOPOLOGY_EPSILON_UM) break;
+    limit = Math.max(limit, stack[i].z1);
+  }
+  return limit;
+}
+
 export function regionSurfaceFaces(model, { face = 'front', clip = null } = {}) {
   const out = [];
   for (const region of model?.regions || []) {
@@ -74,6 +95,7 @@ export function regionSurfaceFaces(model, { face = 'front', clip = null } = {}) 
       layerId: segment.layerId,
       z: face === 'front' ? segment.z1 : segment.z0,
       oppositeZ: face === 'front' ? region.stack[0].z0 : region.stack.at(-1).z1,
+      connectedZ: exposedConnectedSolidLimit(region.stack, face),
       face,
       geom,
       appearance: cloneAppearance(stackSurfaceAppearance(segment, face)),
@@ -94,6 +116,7 @@ export function exposedSurfaceGroups(
       patch.layerId,
       patch.z,
       preserveOppositeZ ? patch.oppositeZ : null,
+      preserveOppositeZ ? patch.connectedZ : null,
       patch.appearance || null,
     ]);
     if (!groups.has(key)) {
@@ -102,6 +125,7 @@ export function exposedSurfaceGroups(
         layerId: patch.layerId,
         z: patch.z,
         oppositeZ: patch.oppositeZ,
+        connectedZ: patch.connectedZ,
         face,
         appearance: cloneAppearance(patch.appearance),
         geoms: [],

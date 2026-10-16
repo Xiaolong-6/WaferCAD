@@ -3,7 +3,7 @@ import { readProjectFile } from '../project-io.js';
 import { createProjectStateController } from '../controllers/project-state-controller.js';
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
-import { createSnapshotManager } from '../workspace-snapshots.js';
+import { createWorkstationHistoryOwner } from './workstation-history-owner.js';
 import { createModel, modelBoundsZ } from '../model.js';
 import { defaultSectionCollapseForModel } from '../section-z-collapse.js';
 import { createEmptyLayout } from '../controllers/project-state-controller.js';
@@ -275,7 +275,8 @@ export function createWorkstationRuntime(
     restoreListener();
     invalidate('main', 'mask', 'section', 'three');
   }
-  history = createSnapshotManager({
+  history = createWorkstationHistoryOwner({
+    assemblyWorkspace: assemblyPreview,
     capture: () => projectState.buildProjectSnapshot(false),
     restore,
     validateState: projectState.isValidSnapshotState,
