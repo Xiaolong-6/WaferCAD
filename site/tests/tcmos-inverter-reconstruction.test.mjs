@@ -44,7 +44,6 @@ test('TCMOS mask encodes an illustrative 0.13 µm gate at the reported 130 nm fo
   assert.equal(TCMOS_DOI, '10.1038/s41928-019-0272-8');
 });
 
-
 test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad body ties', () => {
   const evidence = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
   assert.equal(evidence.kind, 'illustrative-layout-terminal-net-provenance');
@@ -110,7 +109,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(validation.pass, true);
   assert.equal(validation.measuredGateLengthSourceReported, false);
   assert.equal(validation.terminalNetProvenance.terminals.length, 8);
-  assert.equal(validation.terminalNetProvenance.physicalElectricalConnectivityVerified, false);
+  assert.equal(
+    validation.terminalNetProvenance.physicalElectricalConnectivityVerified,
+    false,
+  );
   assert.deepEqual(validation.availableVariants, ['main', 'conventional-cmos']);
   assert.equal(project.layout.elements.length > 0, true);
   assert.equal(project.processRecipe.steps.length, validation.recipeSteps);
