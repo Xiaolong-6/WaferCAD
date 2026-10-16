@@ -92,6 +92,29 @@ test('maximize restores prior exact composition, including custom tracks', () =>
   assert.equal(apply(state, 'MAXIMIZE', { view: 'unknown' }), state);
 });
 
+test('workflow Mask focus is an ephemeral projection over the exact user layout', () => {
+  let state = createDesktopLayout();
+  state = apply(state, 'APPLY_PRESET', { preset: 'four-right' });
+  state = apply(state, 'SET_RATIOS', { axis: 'columns', values: [0.35, 0.65] });
+  state = apply(state, 'SWAP', { a: 'main', b: 'section' });
+  state = apply(state, 'CLOSE_VIEW', { view: 'mask' });
+  state = apply(state, 'APPLY_PRESET', { preset: 'three-columns' });
+  state = apply(state, 'MAXIMIZE', { view: 'three' });
+  const original = structuredClone(state);
+  const saved = projectDesktopLayout(state);
+  assert.deepEqual(saved.displayed, ['three']);
+  assert.equal(state.visible.includes('mask'), false);
+  const focused = projectDesktopLayout(state, 'mask');
+  assert.deepEqual(focused.displayed, ['mask']);
+  assert.deepEqual(focused.highlighted, ['mask']);
+  assert.equal(focused.maximized, 'mask');
+  assert.equal(focused.preset, 'one-full');
+  assert.equal(focused.overviewPressed, false);
+  assert.deepEqual(state, original, 'temporary focus cannot modify user preferences');
+  assert.deepEqual(projectDesktopLayout(state), saved, 'restore projects the original layout');
+  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'mask' }), state, 'no persistent focus action');
+});
+
 test('a view hidden by maximize is not accidentally closed by a highlighted view button', () => {
   let state = createDesktopLayout();
   state = apply(state, 'MAXIMIZE', { view: 'main' });
@@ -266,18 +289,20 @@ test('atomic snap places dragged view in a chosen grid cell and rejects invalid 
   );
 });
 
-test('workflow Mask focus atomically reopens and maximizes without toggling restore', () => {
+test('workflow Mask focus shows a closed view without opening it in the user layout', () => {
   const original = createDesktopLayout();
-  let state = apply(original, 'CLOSE_VIEW', { view: 'mask' });
+  const state = apply(original, 'CLOSE_VIEW', { view: 'mask' });
+  const before = structuredClone(state);
   assert.equal(state.visible.includes('mask'), false);
-  state = apply(state, 'FOCUS_VIEW', { view: 'mask' });
-  assert.equal(state.visible.includes('mask'), true);
-  assert.equal(state.maximized, 'mask');
-  assert.deepEqual(displayedViews(state), ['mask']);
-  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'mask' }), state);
-  assert.equal(apply(state, 'FOCUS_VIEW', { view: 'unknown' }), state);
-  const restored = apply(state, 'RESTORE');
-  assert.equal(restored.maximized, null);
-  assert.equal(restored.visible.includes('mask'), true);
+  const focused = projectDesktopLayout(state, 'mask');
+  assert.equal(focused.maximized, 'mask');
+  assert.deepEqual(focused.displayed, ['mask']);
+  assert.deepEqual(projectDesktopLayout(state, 'mask'), focused, 'repeated navigation is stable');
+  assert.deepEqual(
+    projectDesktopLayout(state).displayed,
+    ['main', 'three', 'section'],
+    'restoring recovers exactly the original visible views',
+  );
+  assert.deepEqual(state, before, 'user layout remains immutable');
   assert.deepEqual(original, createDesktopLayout());
 });

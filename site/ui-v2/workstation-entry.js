@@ -17,6 +17,11 @@ import {
 import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
+import { createProgressiveStartup } from './progressive-startup.js';
+import { createFirstFrameThreeGate } from './first-frame-three-gate.js';
+import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
+import { createMobileViewportController } from './mobile-viewport-controller.js';
+import { createWorkstationRenderScheduler } from './workstation-render-scheduler.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -72,6 +77,7 @@ try {
     mobile: 'view',
     splitViews: ['main', 'mask'],
     desktopLayout: readOnlyPreview ? null : loadDesktopLayout(desktopPreferences),
+    temporaryFocus: null,
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
@@ -98,7 +104,9 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
-      desktopLayout: readOnlyPreview ? null : projectDesktopLayout(uiState.desktopLayout),
+      desktopLayout: readOnlyPreview
+        ? null
+        : projectDesktopLayout(uiState.desktopLayout, uiState.temporaryFocus),
       // Compact visibility has exactly one owner: mobile = view | edit.
       editorHidden: window.WaferCadV2ViewState.compact(window)
         ? uiState.mobile !== 'edit'
@@ -109,16 +117,41 @@ try {
       versionCommit: commitSha,
     }),
   });
+  let mobileViewport = null;
+  if (!readOnlyPreview) {
+    mobileViewport = createMobileViewportController({
+      root: shell.getRoot(),
+      state: uiState,
+      compact: () => window.WaferCadV2ViewState.compact(window),
+    });
+  }
+  window.addEventListener('pagehide', () => mobileViewport?.destroy(), { once: true });
   shell.getRoot().dataset.boot = 'loading';
+  const progressive = createProgressiveStartup({
+    onChange: (snapshot) => {
+      const root = shell.getRoot();
+      root.dataset.shellReady = String(snapshot.shell === 'ready');
+      root.dataset.projectReady = String(snapshot.project === 'ready');
+      root.dataset.firstFrameReady = String(snapshot.firstFrame === 'ready');
+      for (const [key, stage] of Object.entries(snapshot.views)) {
+        const panel = store.views.get(key)?.panel;
+        if (panel) panel.dataset.viewLoad = stage;
+      }
+    },
+  });
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   let desktopResizer = null;
-  const render = () => {
-    if (starting) return;
-    shell.render();
-    store.renderAll();
-    requestAnimationFrame(() => desktopResizer?.refresh());
-  };
+  const render = createWorkstationRenderScheduler({
+    isStarting: () => starting,
+    renderShell: () => {
+      shell.render();
+      mobileViewport?.update();
+    },
+    invalidateScientific: () => store.renderAll(),
+    invalidateVisibleView: (key) => store.invalidate(key),
+    scheduleLayout: () => requestAnimationFrame(() => desktopResizer?.refresh()),
+  });
   // View-specific, nonmodal floating editors are transient UI, not model state.
   // Dismissing them when their view is hidden prevents stale Mask/Section
   // dialogs from intercepting the desktop workflow navigation.
@@ -126,11 +159,27 @@ try {
   // Layout changes repaint only Shell/element sizing. Scientific invalidation
   // remains owned by the existing model scheduler and canvas ResizeObservers.
   const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
+  const setTemporaryFocus = (view) => {
+    const next = desktopDockingActive() && view === 'mask' ? 'mask' : null;
+    if (next === uiState.temporaryFocus) return false;
+    if (uiState.temporaryFocus) floatingManagers.get(uiState.temporaryFocus)?.closeFloatings();
+    uiState.temporaryFocus = next;
+    return true;
+  };
   const changeDesktopLayout = (action) => {
     if (!desktopDockingActive()) return;
+    // Direct docking actions are user intent. Drop any workflow-only focus
+    // before applying them to the persisted user layout.
+    const clearedFocus = setTemporaryFocus(null);
     const previous = uiState.desktopLayout;
     const next = reduceDesktopLayout(previous, action);
-    if (next === previous) return;
+    if (next === previous) {
+      if (clearedFocus && !starting) {
+        shell.render();
+        requestAnimationFrame(() => desktopResizer?.refresh());
+      }
+      return;
+    }
     if (previous.maximized && previous.maximized !== next.maximized)
       floatingManagers.get(previous.maximized)?.closeFloatings();
     for (const view of previous.visible) {
@@ -157,7 +206,9 @@ try {
         root: shell.getRoot(),
         getState: () => uiState.desktopLayout,
         dispatch: changeDesktopLayout,
-        enabled: desktopDockingActive,
+        // Focus is a single-view projection; never show splitters from the
+        // underlying multi-view user layout while it is active.
+        enabled: () => desktopDockingActive() && !uiState.temporaryFocus,
       });
   window.addEventListener(
     'pagehide',
@@ -178,6 +229,7 @@ try {
     uiState,
     render,
     status,
+    progressive,
     changed: store.changed,
     selectedMaskElement: store.selectedElement,
     mount: (panel) => document.querySelector('.p-canvases').append(panel),
@@ -212,12 +264,46 @@ try {
   store.views.set('section', section);
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
+  // In overview, let a visible 2D scientific canvas present before expensive
+  // WebGL initialization/scene work. All 3D requests, including onShow, pass
+  // through the same one-time gate. 3D-only layouts release it immediately.
+  const firstThreeFrame = createFirstFrameThreeGate(three.runtime.render);
+  three.runtime.render = () => firstThreeFrame.request();
+  const hasVisiblePlanarView = () =>
+    ['main', 'mask', 'section'].some((key) => {
+      const panel = store.views.get(key)?.panel;
+      return panel && !panel.hidden && panel.getClientRects().length > 0;
+    });
+  // Non-WebGL canvases can become visible after their own completed paint.
+  // Hidden Single-mode panels remain pending until their first visible render.
+  for (const key of ['main', 'mask', 'section']) {
+    const view = store.views.get(key);
+    const originalRender = view.runtime.render;
+    view.runtime.render = (...args) => {
+      const result = originalRender(...args);
+      if (progressive.snapshot().project === 'ready') {
+        requestAnimationFrame(() => {
+          if (!view.panel.hidden && view.panel.getClientRects().length) {
+            progressive.viewFrame(key);
+            firstThreeFrame.release();
+          }
+        });
+      }
+      return result;
+    };
+  }
+  progressive.shellReady();
   adapters.register('view.three', {
     mount: (host) => {
       host.append(three.panel);
       return three.panel;
     },
-    onShow: three.runtime.render,
+    onShow: () => {
+      if (!starting) {
+        if (!hasVisiblePlanarView()) firstThreeFrame.release();
+        three.runtime.render();
+      }
+    },
     onHide() {},
     destroy() {},
   });
@@ -230,46 +316,43 @@ try {
     onHide() {},
     destroy() {},
   });
-  // Mobile Edit has one document scroller. Remember its offset per domain
-  // instead of saving scrollTop on the desktop-only inspector subtree.
-  // Pane transitions keep all scientific hosts and unsaved form drafts mounted.
-  const mobileDocumentScroll = new Map();
-  let mobileTransitionSerial = 0;
+  const mobileWorkspace = createMobileWorkspaceController({
+    state: uiState,
+    compact: () => window.WaferCadV2ViewState.compact(window),
+  });
   const selectPane = (pane, domain = uiState.domain) => {
-    const compact = window.WaferCadV2ViewState.compact(window);
-    if (compact && uiState.mobile === 'edit') {
-      mobileDocumentScroll.set(uiState.domain, document.scrollingElement?.scrollTop || 0);
-    }
+    if (mobileWorkspace.selectPane(pane, domain)) return;
     uiState.domain = domain;
     uiState.mobile = pane;
-    if (!compact) {
-      uiState.editorHidden = pane === 'view';
-      return;
-    }
-    const destination = pane === 'edit' ? mobileDocumentScroll.get(domain) || 0 : 0;
-    const serial = ++mobileTransitionSerial;
-    requestAnimationFrame(() => {
-      if (serial !== mobileTransitionSerial) return;
-      // Reapply after the new pane's adapters complete layout. One frame can
-      // clamp the offset against the previous (shorter) View document.
-      requestAnimationFrame(() => {
-        if (serial === mobileTransitionSerial) window.scrollTo(0, destination);
-      });
-    });
+    uiState.editorHidden = pane === 'view';
   };
+  window.addEventListener('pagehide', mobileWorkspace.destroy, { once: true });
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
+    const previousMobile = uiState.mobile;
+    const previousView = uiState.view;
+    if (mobileWorkspace.handleAction(action)) {
+      // Main/Mask adapters do not repaint in onShow; refresh only the view
+      // that becomes visible, never all four scientific views.
+      if (uiState.mobile !== 'view') {
+        render({ scientific: false });
+      } else if (previousMobile !== 'view' || previousView !== uiState.view) {
+        render({ scientificView: uiState.view });
+      } else {
+        render({ scientific: false });
+      }
+      return;
+    }
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
-      // Compact navigation keeps its prior single-view behavior; desktop
-      // workflow Mask explicitly opens/maximizes the real Mask docked panel.
+      // Workflow Mask temporarily presents a full-size Mask, leaving the
+      // user's dock visibility, ordering, track ratios and maximize untouched.
       uiState.maximize = !desktopDockingActive() && domain === 'mask' ? 'mask' : null;
       if (domain === 'mask') uiState.view = 'mask';
+      setTemporaryFocus(domain === 'mask' ? 'mask' : null);
       selectPane('edit', domain);
-      if (domain === 'mask' && desktopDockingActive())
-        changeDesktopLayout({ type: 'FOCUS_VIEW', view: 'mask' });
       render();
     } else if (action === 'dock:overview') {
       changeDesktopLayout({ type: 'RESET_OVERVIEW' });
@@ -295,7 +378,12 @@ try {
       render();
     } else if (action.startsWith('maximize:')) {
       const key = action.split(':')[1];
-      if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
+      if (desktopDockingActive() && uiState.temporaryFocus === key) {
+        // Restore the exact pre-focus composition, even when Mask was closed
+        // or another view had previously been maximized.
+        setTemporaryFocus(null);
+        render({ scientific: false });
+      } else if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
       else {
         uiState.maximize = uiState.maximize === key ? null : key;
         render();
@@ -303,6 +391,7 @@ try {
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
+      setTemporaryFocus(null);
       selectPane('view');
       render();
     } else if (action === 'show-editor' || action === 'expand-empty') {
@@ -318,18 +407,24 @@ try {
     const width = window.innerWidth;
     const compact = window.WaferCadV2ViewState.compact(window);
     if (width === previousWidth && compact === previousCompact) return;
+    if (compact !== previousCompact) mobileWorkspace.cancelPendingScroll();
+    if (compact) setTemporaryFocus(null);
     previousWidth = width;
     previousCompact = compact;
     render();
   });
-  // Keep the incomplete Shell covered until the restored project is ready.
-  // The initial workflow.refresh() applies panel ownership and view order.
+  // Build the final navigation/grid while restored project data is protected.
+  shell.render();
+  shell.getRoot().dataset.boot = 'project';
   await workflow.start();
+  progressive.projectReady();
   starting = false;
   if (message === 'Opening workspace…') status('Ready');
   workflow.refresh();
   store.start();
   requestAnimationFrame(() => desktopResizer?.refresh());
+  if (!hasVisiblePlanarView()) firstThreeFrame.release();
+  setTimeout(() => firstThreeFrame.release(), 2500);
   workspaceBody.inert = false;
   // Pages stamps this file at publication; local servers may have no build metadata.
   // Read it without caching so the footer identifies the deployed revision.
@@ -345,6 +440,7 @@ try {
     .catch(() => {});
   window.WaferCadV2Workstation = {
     ready: true,
+    startup: () => progressive.snapshot(),
     snapshot: () =>
       structuredClone({
         source: project.source,

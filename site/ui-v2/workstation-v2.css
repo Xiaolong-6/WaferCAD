@@ -369,6 +369,46 @@ body[data-workstation] .p-workbench {
 .p-workbench[data-boot='loading'] .p-stage::after {
   content: 'Preparing views…';
 }
+/* P1: keep the finalized navigation and view grid visible while the project
+   worker restores state. No pre-restore forms or temporary Base may leak. */
+.p-workbench[data-boot='project'] .p-panel-content {
+  visibility: hidden;
+}
+.p-workbench[data-boot='project'] .p-inspector {
+  position: relative;
+}
+.p-workbench[data-boot='project'] .p-inspector::after {
+  content: 'Opening project…';
+  position: absolute;
+  inset: var(--wc-space-2);
+  display: grid;
+  place-items: center;
+  color: var(--wc-muted);
+  background: var(--wc-subtle);
+  pointer-events: none;
+}
+.p-view[data-view-load='pending'] {
+  position: relative;
+}
+.p-view[data-view-load='pending']::after {
+  content: 'Preparing view…';
+  position: absolute;
+  inset: 40px 0 0;
+  display: grid;
+  place-items: center;
+  color: var(--wc-muted);
+  background: var(--wc-page);
+  pointer-events: auto;
+}
+.p-workbench[data-boot='project'] .p-view[data-view-load='pending']::after {
+  content: 'Waiting for project…';
+}
+.p-view[data-view-load='refining'] .p-view-head::after {
+  content: 'Refining';
+  color: var(--wc-muted);
+  font-size: var(--wc-font-aux);
+  margin-left: auto;
+}
 .p-topbar {
   display: flex;
   gap: var(--wc-space-3);
