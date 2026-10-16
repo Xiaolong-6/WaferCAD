@@ -232,6 +232,43 @@ try {
       'Closing Section Layers must expose more real scientific canvas area',
     );
 
+  // PNG byte count is an encoding/entropy metric, not a material-visibility
+  // criterion. Inspect real canvas pixels instead: flat yet valid scientific
+  // films compress to very small PNGs, especially when Layers is hidden.
+  const captureScientificSectionCanvas = async (filename) => {
+    const materialPixels = await sectionCanvas.evaluate((canvas) => {
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) return { coloredSamples: 0, distinctMaterialColors: 0 };
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const strideX = Math.max(1, Math.floor(canvas.width / 64));
+      const strideY = Math.max(1, Math.floor(canvas.height / 64));
+      const colors = new Set();
+      let coloredSamples = 0;
+      for (let y = 0; y < canvas.height; y += strideY) {
+        for (let x = 0; x < canvas.width; x += strideX) {
+          const index = (y * canvas.width + x) * 4;
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const low = Math.min(red, green, blue);
+          const high = Math.max(red, green, blue);
+          if (pixels[index + 3] && low > 20 && high < 248 && high - low > 15) {
+            coloredSamples++;
+            colors.add(red + ',' + green + ',' + blue);
+          }
+        }
+      }
+      return { coloredSamples, distinctMaterialColors: colors.size };
+    });
+    assert.ok(
+      materialPixels.coloredSamples > 200 && materialPixels.distinctMaterialColors >= 4,
+      'Scientific-only Section capture does not show distinct material films',
+    );
+    const png = await sectionCanvas.screenshot({ path: filename, animations: 'disabled' });
+    assert.ok(png.length > 1000, 'Scientific-only Section PNG encoding failed');
+    return { ...materialPixels, screenshotBytes: png.length };
+  };
+
   report.nanoSectionEvidence = [];
   for (const target of [
     {
@@ -395,11 +432,9 @@ try {
     assert.ok(png.length > 8000, 'Nanoscale Section evidence is unexpectedly small');
     // Canvas-only output is an unmodified Chromium raster of the real Section.
     // Keep the complete panel image too, for reproducible UI/scale evidence.
-    const canvasPng = await sectionCanvas.screenshot({
-      path: resolve(output, 'section-' + target.label + '-nanoscale-canvas.png'),
-      animations: 'disabled',
-    });
-    assert.ok(canvasPng.length > 8000, 'Scientific-only Section crop is empty');
+    const canvasEvidence = await captureScientificSectionCanvas(
+      resolve(output, 'section-' + target.label + '-nanoscale-canvas.png'),
+    );
     report.nanoSectionEvidence.push({
       material: target.material,
       physicalXUm: target.physicalXUm,
@@ -410,7 +445,8 @@ try {
       projectedFilmPixels: evidence.zPxPerUm * actualThicknessUm,
       ...evidence,
       screenshotBytes: png.length,
-      canvasOnlyScreenshotBytes: canvasPng.length,
+      canvasOnlyScreenshotBytes: canvasEvidence.screenshotBytes,
+      canvasMaterialPixels: canvasEvidence,
       layersHiddenForInspection:
         (await sectionLegendToggle.getAttribute('aria-pressed')) !== 'true',
     });
@@ -589,11 +625,9 @@ try {
     animations: 'disabled',
   });
   assert.ok(midPng.length > 8000, 'Mid-scale bridge Section evidence is unexpectedly small');
-  const midCanvasPng = await sectionCanvas.screenshot({
-    path: resolve(output, 'section-cntfet-digital-rram-bridge-canvas.png'),
-    animations: 'disabled',
-  });
-  assert.ok(midCanvasPng.length > 8000, 'Scientific-only bridge image is empty');
+  const midCanvasEvidence = await captureScientificSectionCanvas(
+    resolve(output, 'section-cntfet-digital-rram-bridge-canvas.png'),
+  );
   report.middleSectionEvidence = {
     channelMask,
     pdMask,
@@ -603,7 +637,8 @@ try {
     inspectionXUm,
     inspectionZUm,
     screenshotBytes: midPng.length,
-    canvasOnlyScreenshotBytes: midCanvasPng.length,
+    canvasOnlyScreenshotBytes: midCanvasEvidence.screenshotBytes,
+    canvasMaterialPixels: midCanvasEvidence,
     ...midEvidence,
     note: 'Physical Section of modeled Pd bridge; mask positions and electrical routing are inferred',
   };
