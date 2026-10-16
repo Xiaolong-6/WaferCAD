@@ -69,7 +69,10 @@ export async function readAssemblyWorkspaceFile(file) {
   return parseAssemblyWorkspace(parsed);
 }
 
-export function downloadAssemblyWorkspace(graph, filename = 'wafercad-assembly-workspace.wafercad') {
+export function downloadAssemblyWorkspace(
+  graph,
+  filename = 'wafercad-assembly-workspace.wafercad',
+) {
   const text = serializeAssemblyWorkspace(graph);
   const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

@@ -527,11 +527,9 @@ try {
           mimeType: 'application/json',
           buffer: workspaceBytes,
         });
-        await nativeTab.waitForFunction(
-          () => window.WaferCadV2Workstation?.ready,
-          null,
-          { timeout: 90000 },
-        );
+        await nativeTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+          timeout: 90000,
+        });
         await nativeTab.locator('.assembly-bond-draft-tools summary').click();
         await nativeTab
           .locator('.assembly-bond-post-process-count')

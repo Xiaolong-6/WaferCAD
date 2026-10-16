@@ -17,7 +17,8 @@ export function mountAssemblyBondDraftControls({
   const description = document.createElement('p');
   description.textContent =
     'Sources remain independent and each Bond has a durable pre-Bond Recovery checkpoint. ' +
-    'Autosave is disabled: export the complete Assembly Workspace .wafercad to preserve every Bond, Process, source and Variant.';
+    'Autosave is disabled: export the complete Assembly Workspace .wafercad to preserve ' +
+    'every Bond, Process, source and Variant.';
 
   const form = document.createElement('form');
   form.className = 'assembly-bond-draft-form';
@@ -312,7 +313,8 @@ export function mountAssemblyBondDraftControls({
         },
       };
       await editor.appendPostBondStepDurable(input);
-      status.textContent = 'Post-Bond Process saved. Export Assembly .wafercad to retain the full timeline.';
+      status.textContent =
+        'Post-Bond Process saved. Export Assembly .wafercad to retain the full timeline.';
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';

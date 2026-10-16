@@ -1,6 +1,9 @@
 // Isolated v15 Assembly preview: no normal editor import and no writer lease.
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
-import { ASSEMBLY_WORKSPACE_FORMAT, parseAssemblyWorkspace } from '../wafer-assembly-workspace-file.js';
+import {
+  ASSEMBLY_WORKSPACE_FORMAT,
+  parseAssemblyWorkspace,
+} from '../wafer-assembly-workspace-file.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 import { validateProjectFile } from '../project-schema.js';
 import {
@@ -132,8 +135,10 @@ export function chooseAssemblyPreviewFile(
   title.textContent = allowStandalone ? 'Assembly · Direct Bond draft' : 'Assembly Preview';
   const description = document.createElement('p');
   description.textContent = allowStandalone
-    ? 'Open a wafer, a complete Assembly Workspace .wafercad, a Bond baseline, or an older Variants sidecar. All source Recipes and branch geometry are validated before editing.'
-    : 'Inspect a bonded .wafercad baseline or full Assembly Workspace with its original wafers. Read-only: no edits, workspace takeover, or autosave.';
+    ? 'Open a wafer, a complete Assembly Workspace .wafercad, a Bond baseline, or an older ' +
+      'Variants sidecar. All source Recipes and branch geometry are validated before editing.'
+    : 'Inspect a bonded .wafercad baseline or full Assembly Workspace with its original wafers. ' +
+      'Read-only: no edits, workspace takeover, or autosave.';
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = allowStandalone ? '.wafercad,.wafercad-variants.json' : '.wafercad';

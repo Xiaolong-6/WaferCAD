@@ -69,7 +69,7 @@ function recipeGraph() {
   return updated.graph;
 }
 
-test('portable .wafercad holds exact shared sources, all Variants and Process cursors', async () => {
+test('portable Workspace round-trips sources, Variants and Process cursors', async () => {
   const graph = recipeGraph();
   const text = serializeAssemblyWorkspace(graph);
   const decoded = JSON.parse(text);
@@ -80,15 +80,23 @@ test('portable .wafercad holds exact shared sources, all Variants and Process cu
   const opened = await readAssemblyWorkspaceFile(fileLike(text));
   assert.deepEqual(opened.graph, graph);
   assert.deepEqual(parseAssemblyWorkspace(decoded), opened);
-  const native = await readAssemblyPreviewFile(fileLike(text), undefined, { allowStandalone: true });
+  const native = await readAssemblyPreviewFile(fileLike(text), undefined, {
+    allowStandalone: true,
+  });
   assert.deepEqual(native.variantGraph, graph);
   assert.deepEqual(native.data, opened.project);
-  assert.deepEqual(native.data.waferAssembly.sources[0].project.model, graph.sources[0].project.model);
-  assert.deepEqual(assemblyVariantPostBondModel(native.variantGraph), assemblyVariantPostBondModel(graph));
+  assert.deepEqual(
+    native.data.waferAssembly.sources[0].project.model,
+    graph.sources[0].project.model,
+  );
+  assert.deepEqual(
+    assemblyVariantPostBondModel(native.variantGraph),
+    assemblyVariantPostBondModel(graph),
+  );
   const main = activateAssemblyVariant(graph, 'main');
   assert.equal(main.branches[0].postBondSteps.length, 2);
   assert.equal(main.branches[0].postBondCursor, 1);
-  assert.equal(assemblyVariantPostBondModel(main).layers.length > opened.project.model.layers.length, true);
+  assert.ok(assemblyVariantPostBondModel(main).layers.length > opened.project.model.layers.length);
   assert.equal(serializeAssemblyWorkspace(graph).includes('waferAssemblyVariants'), false);
   await assert.rejects(
     () => readProjectFile(fileLike(text)),
@@ -128,7 +136,7 @@ test('corrupted Process Recipe, source, format or extra fields fail before impor
   assert.throws(() => serializeAssemblyWorkspace(graph, 64), /size limit/);
 });
 
-test('legacy v15 Bond-only and Variant sidecar remain readable alongside native workspace', async () => {
+test('legacy Bond-only files and Variant sidecars remain readable', async () => {
   const plain = threeWafer();
   const loaded = await readAssemblyPreviewFile(fileLike(serializeProject(plain)));
   assert.deepEqual(loaded.data.model, plain.model);
@@ -150,7 +158,9 @@ test('unbonded source graph is editable only through explicit Assembly draft opt
   const graph = createAssemblyVariantGraph(wafer('receiver'));
   const text = serializeAssemblyWorkspace(graph);
   await assert.rejects(() => readAssemblyPreviewFile(fileLike(text)), /at least one Bond/);
-  const loaded = await readAssemblyPreviewFile(fileLike(text), undefined, { allowStandalone: true });
+  const loaded = await readAssemblyPreviewFile(fileLike(text), undefined, {
+    allowStandalone: true,
+  });
   assert.equal(loaded.data.waferAssembly, undefined);
   assert.equal(loaded.variantGraph.branches[0].bonds.length, 0);
 });
