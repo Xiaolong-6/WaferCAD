@@ -304,3 +304,25 @@ test('native editor reopens complete source-shared Variant sidecar with C and D 
     /provenance mismatch/,
   );
 });
+
+test('native runtime restores a committed historical cursor without truncating its full Variant HEAD', async () => {
+  const original = bonded();
+  const full = createWorkstationRuntime(
+    { source: 'three.wafercad', hash: '', data: original },
+    { assemblyPreview: true },
+  );
+  const owner = full.createAssemblyBondDraftSession(async () => true);
+  owner.restoreIndex(1);
+  const graph = owner.exportVariantGraph();
+  const historical = owner.currentProject();
+  const reopened = createWorkstationRuntime(
+    { source: 'assembly-committed-recovery', hash: '', data: historical, variantGraph: graph },
+    { assemblyPreview: true },
+  );
+  const restored = reopened.createAssemblyBondDraftSession(async () => true);
+  assert.equal(restored.currentIndex(), 1);
+  assert.equal(restored.maxIndex(), 2);
+  assert.deepEqual(reopened.state.model, historical.model);
+  assert.deepEqual(restored.restoreIndex(2).model, original.model);
+  assert.equal(restored.exportVariantGraph().branches[0].bonds.length, 2);
+});
