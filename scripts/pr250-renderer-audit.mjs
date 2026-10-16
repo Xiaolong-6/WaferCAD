@@ -292,6 +292,36 @@ try {
                     zBreak: true,
                     distance: 1600,
                   },
+                  {
+                    name: 'surface-cut-zbreak-mid-opaque-borders',
+                    opacity: 1,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1000,
+                    targetXY: [2240, -150],
+                  },
+                  {
+                    name: 'surface-cut-zbreak-mid-transparent-borders',
+                    opacity: 0.5,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1000,
+                    targetXY: [2240, -150],
+                  },
+                  {
+                    name: 'surface-cut-zbreak-mid-transparent-no-borders',
+                    opacity: 0.5,
+                    borders: false,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 1000,
+                    targetXY: [2240, -150],
+                  },
                 ]
               : []),
             {
@@ -391,7 +421,11 @@ try {
             ? ((c.top + c.bottom) / 2 + (upperSurfaceZ - c.top) * c.frontScale) * displayScale
             : fit.target[2];
           const target = config.zBreak
-            ? [config.micro ? 2495 : 2400, 0, focusedZ]
+            ? [
+                config.targetXY?.[0] ?? (config.micro ? 2495 : 2400),
+                config.targetXY?.[1] ?? 0,
+                focusedZ,
+              ]
             : config.detail
               ? [2495, -140, fit.target[2]]
               : fit.target;
