@@ -178,12 +178,13 @@ export function mountAssemblyPreviewControls({
   restoreIndex,
   selectView,
   initialView = 'three',
+  editableBondDraft = false,
 }) {
   const nav = document.createElement('nav');
   nav.className = 'assembly-preview-controls';
   nav.setAttribute('aria-label', 'Read-only Assembly preview navigation');
   const title = document.createElement('strong');
-  title.textContent = 'Assembly · Read-only';
+  title.textContent = editableBondDraft ? 'Assembly · Bond draft' : 'Assembly · Read-only';
   title.title = 'Wafer-origin colors change the rendering only, not physical materials.';
   const backward = document.createElement('button');
   const forward = document.createElement('button');
