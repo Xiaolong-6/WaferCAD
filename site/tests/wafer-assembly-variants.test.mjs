@@ -15,6 +15,8 @@ const {
   forkAssemblyVariant,
   activateAssemblyVariant,
   appendAssemblyVariantBond,
+  appendAssemblyVariantPostBondStep,
+  assemblyVariantPostBondModel,
 } = await import('../wafer-assembly-variants.js');
 const { readProjectFile, serializeProject } = await import('../project-io.js');
 
@@ -135,4 +137,100 @@ test('standalone receiver may populate one shared source registry before its fir
   assert.equal(added.project.waferAssembly.sources.length, 2);
   assert.equal(added.graph.sources.length, 2);
   assert.equal(added.graph.branches[0].cursor, 1);
+});
+
+test('post-Bond Recipe stays on one Variant and never contaminates independent source wafers', () => {
+  const initial = createAssemblyVariantGraph(bonded());
+  const sourceBefore = structuredClone(initial.sources);
+  const baselineModel = assemblyVariantProject(initial).model;
+  const processed = appendAssemblyVariantPostBondStep(initial, {
+    command: 'deposit',
+    params: {
+      material: 'SiO2',
+      thicknessUm: 1.8,
+      face: 'front',
+      area: 'full',
+      coverage: 'direct',
+    },
+  });
+  assert.equal(processed.graph.version, 2);
+  assert.equal(processed.graph.branches[0].postBondSteps.length, 1);
+  assert.deepEqual(processed.graph.sources, sourceBefore);
+  assert.deepEqual(assemblyVariantProject(processed.graph).model, baselineModel);
+  assert.notDeepEqual(assemblyVariantPostBondModel(processed.graph), baselineModel);
+  assert.deepEqual(assemblyVariantPostBondModel(processed.graph), processed.model);
+  assert.equal(JSON.stringify(processed.graph).includes('modelFingerprint'), true);
+  assert.equal(JSON.stringify(processed.graph.branches[0].postBondSteps).includes('regions'), false);
+  assert.throws(
+    () => appendAssemblyVariantBond(processed.graph, wafer('Donor E'), { donorId: 'E' }),
+    /Further Bond after post-Bond Process/,
+  );
+  const encoded = structuredClone(JSON.parse(JSON.stringify(processed.graph)));
+  assert.deepEqual(assemblyVariantPostBondModel(encoded), processed.model);
+  const forged = structuredClone(encoded);
+  forged.branches[0].postBondSteps[0].modelFingerprint = '00000000';
+  assert.throws(() => validateAssemblyVariantGraph(forged), /checksum differs/);
+});
+
+test('post-Bond Process is branch-local: C can receive a film while D remains unprocessed', () => {
+  const initial = createAssemblyVariantGraph(bonded());
+  const forked = forkAssemblyVariant(setAssemblyVariantCursor(initial, 1), { id: 'alt' });
+  const alternative = appendAssemblyVariantBond(forked, wafer('Donor D', 350), {
+    donorId: 'D',
+    dx: 10,
+  });
+  const before = structuredClone(alternative.graph);
+  const processed = appendAssemblyVariantPostBondStep(
+    activateAssemblyVariant(alternative.graph, 'main'),
+    { command: 'deposit', params: { material: 'Oxide', thicknessUm: 2, face: 'front' } },
+  );
+  assert.deepEqual(processed.graph.sources, before.sources);
+  assert.equal(processed.graph.branches[0].postBondSteps.length, 1);
+  assert.deepEqual(processed.graph.branches[1].postBondSteps, []);
+  assert.deepEqual(assemblyVariantPostBondModel(processed.graph, 'alt'), alternative.project.model);
+  assert.equal(assemblyVariantProject(processed.graph, 'main').waferAssembly.bonds.length, 2);
+  assert.equal(assemblyVariantProject(processed.graph, 'alt').waferAssembly.bonds.length, 2);
+  const switched = activateAssemblyVariant(processed.graph, 'alt');
+  assert.deepEqual(assemblyVariantPostBondModel(switched), alternative.project.model);
+});
+
+test('legacy sidecar v1 remains readable, but post-Bond operations require explicit v2 record', () => {
+  const legacy = createAssemblyVariantGraph(bonded());
+  legacy.version = 1;
+  delete legacy.branches[0].postBondSteps;
+  assert.deepEqual(validateAssemblyVariantGraph(legacy), legacy);
+  assert.deepEqual(assemblyVariantPostBondModel(legacy), assemblyVariantProject(legacy).model);
+  const illegal = structuredClone(legacy);
+  illegal.branches[0].postBondSteps = [{ command: 'deposit' }];
+  assert.throws(() => validateAssemblyVariantGraph(illegal), /format v2/);
+  const processed = appendAssemblyVariantPostBondStep(legacy, {
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1, face: 'back' },
+  });
+  assert.equal(processed.graph.version, 2);
+  assert.equal(processed.graph.branches[0].postBondSteps.length, 1);
+});
+
+test('post-Bond operations reject a standalone or historical receiver and corrupted step storage', () => {
+  const initial = createAssemblyVariantGraph(bonded());
+  assert.throws(
+    () =>
+      appendAssemblyVariantPostBondStep(setAssemblyVariantCursor(initial, 1), {
+        command: 'deposit',
+        params: { material: 'oxide', thicknessUm: 1, face: 'front' },
+      }),
+    /completed Bond Variant HEAD/,
+  );
+  const standalone = createAssemblyVariantGraph(wafer('Unbonded'));
+  assert.throws(
+    () =>
+      appendAssemblyVariantPostBondStep(standalone, {
+        command: 'deposit',
+        params: { material: 'oxide', thicknessUm: 1, face: 'front' },
+      }),
+    /completed Bond Variant HEAD/,
+  );
+  const forged = structuredClone(initial);
+  forged.branches[0].postBondSteps = 'not-an-array';
+  assert.throws(() => validateAssemblyVariantGraph(forged), /step array|Recipe record/);
 });
