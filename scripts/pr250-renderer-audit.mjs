@@ -357,6 +357,24 @@ try {
                       targetXY: [2240, -150],
                     },
                   ]),
+                  // Temporary PR250 isolation captures: do not remove real
+                  // scientific interfaces in the final product Renderer.
+                  ...[
+                    'implant-surface',
+                    'implant-cut',
+                    'implant-internal',
+                    'material-interface',
+                  ].map((auditHiddenKind) => ({
+                    name: `surface-cut-zbreak-roi-edge-85-isolate-${auditHiddenKind}`,
+                    opacity: 1,
+                    borders: true,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    distance: 85,
+                    targetXY: [2240, -150],
+                    auditHiddenKind,
+                  })),
                 ]
               : []),
             {
@@ -432,6 +450,7 @@ try {
       await page.evaluate(
         async ({ config, fit }) => {
           Object.assign(window.inspection, config);
+          window.inspection.__auditHideKind = config.auditHiddenKind || null;
           // Use the existing 3D Z Break display-only transform to pull the
           // active Black-Si surface away from the 350 um base. Front/Back
           // scales do NOT modify the canonical layer z coordinates.
