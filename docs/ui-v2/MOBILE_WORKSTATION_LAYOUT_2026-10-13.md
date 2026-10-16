@@ -7,8 +7,11 @@ persistent camera coordinates, or the scientific DOM hosts.
 
 ## Architectural ownership
 
-- `workstation-entry.js` owns `uiState.mobile = 'view' | 'edit'`, domain changes,
-  and **per-domain document scroll position** when moving between modes.
+- `mobile-workspace-controller.js` owns production compact View/Edit navigation transitions,
+  Mask-to-view coupling, cancellation of pending scroll restoration, and **per-domain
+  document scroll positions**. It does not own desktop docking, scientific gestures,
+  or business-model state. `workstation-entry.js` composes the controller and retains
+  desktop-specific action routing.
 - `workstation-v2.js` owns the stable Shell and scientific/domain adapter hosts.
 - `mobile-workstation.css` is the **only owner of compact pane sizing, scrolling
   and chrome positioning**. `workstation-v2.css` keeps shared visual presentation,
