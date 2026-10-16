@@ -18,6 +18,8 @@ import { loadDesktopLayout, saveDesktopLayout } from './view-layout-storage.js';
 import { createDesktopDockingController } from './view-docking-controller.js';
 import { createDesktopLayoutResizer } from './view-layout-resizer.js';
 import { createMobileWorkspaceController } from './mobile-workspace-controller.js';
+import { createMobileViewportController } from './mobile-viewport-controller.js';
+import { createWorkstationRenderScheduler } from './workstation-render-scheduler.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -110,16 +112,27 @@ try {
       versionCommit: commitSha,
     }),
   });
+  const mobileViewport = readOnlyPreview
+    ? null
+    : createMobileViewportController({
+        root: shell.getRoot(),
+        state: uiState,
+        compact: () => window.WaferCadV2ViewState.compact(window),
+      });
+  window.addEventListener('pagehide', () => mobileViewport?.destroy(), { once: true });
   shell.getRoot().dataset.boot = 'loading';
   const workspaceBody = document.querySelector('.p-body');
   workspaceBody.inert = true;
   let desktopResizer = null;
-  const render = () => {
-    if (starting) return;
-    shell.render();
-    store.renderAll();
-    requestAnimationFrame(() => desktopResizer?.refresh());
-  };
+  const render = createWorkstationRenderScheduler({
+    isStarting: () => starting,
+    renderShell: () => {
+      shell.render();
+      mobileViewport?.update();
+    },
+    invalidateScientific: () => store.renderAll(),
+    scheduleLayout: () => requestAnimationFrame(() => desktopResizer?.refresh()),
+  });
   // View-specific, nonmodal floating editors are transient UI, not model state.
   // Dismissing them when their view is hidden prevents stale Mask/Section
   // dialogs from intercepting the desktop workflow navigation.
@@ -247,7 +260,8 @@ try {
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
     if (mobileWorkspace.handleAction(action)) {
-      render();
+      // Stable adapters paint newly visible views. Navigation does not alter the model.
+      render({ scientific: false });
       return;
     }
     if (action.startsWith('domain:')) {
