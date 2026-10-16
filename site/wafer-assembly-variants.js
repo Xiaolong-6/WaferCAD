@@ -159,6 +159,9 @@ export function validateAssemblyVariantGraph(graph) {
     throw new Error('Assembly Variant graph must have a root Main branch.');
   }
   for (const branch of graph.branches) {
+    if (branch.parentId === null && branch.forkProcessIndex !== undefined) {
+      throw new Error('Root Assembly Variant cannot contain a Process fork checkpoint.');
+    }
     if (branch.parentId != null) {
       const parent = graph.branches.find((candidate) => candidate.id === branch.parentId);
       if (!parent || parent === branch || branch.forkIndex > parent.bonds.length) {
@@ -171,6 +174,27 @@ export function validateAssemblyVariantGraph(graph) {
           JSON.stringify(parent.bonds.slice(0, branch.forkIndex))
       ) {
         throw new Error('Assembly Variant fork must retain its immutable parent Bond prefix.');
+      }
+      if (branch.forkProcessIndex !== undefined) {
+        const index = branch.forkProcessIndex;
+        const parentSteps = parent.postBondSteps || [];
+        const steps = branch.postBondSteps || [];
+        if (
+          graph.version !== ASSEMBLY_VARIANTS_VERSION ||
+          !Number.isSafeInteger(index) ||
+          index < 0 ||
+          index >= parentSteps.length ||
+          index > steps.length ||
+          branch.forkIndex !== parent.bonds.length ||
+          branch.bonds.length !== parent.bonds.length
+        ) {
+          throw new Error('Invalid Assembly Variant Process fork checkpoint.');
+        }
+        if (
+          JSON.stringify(steps.slice(0, index)) !== JSON.stringify(parentSteps.slice(0, index))
+        ) {
+          throw new Error('Assembly Variant fork must retain immutable parent Process prefix.');
+        }
       }
     }
   }
@@ -272,6 +296,44 @@ export function forkAssemblyVariant(graph, { id, name, atIndex } = {}) {
   return next;
 }
 
+/**
+ * Fork an independent Process continuation at an undone Recipe stage.
+ * The shared wafer source pool, complete Bond lineage and the selected
+ * immutable Process prefix remain unchanged. Only future steps diverge.
+ */
+export function forkAssemblyProcessVariant(graph, { id, name, atProcessIndex } = {}) {
+  validateAssemblyVariantGraph(graph);
+  if (typeof id !== 'string' || !ID_PATTERN.test(id) || graph.branches.some((b) => b.id === id)) {
+    throw new Error('Assembly Process Variant requires a unique, valid branch ID.');
+  }
+  const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+  const stages = active.postBondSteps || [];
+  const index = atProcessIndex ?? active.postBondCursor ?? stages.length;
+  if (active.cursor !== active.bonds.length || active.bonds.length === 0) {
+    throw new Error('Assembly Process Variant fork requires a completed Bond HEAD.');
+  }
+  if (!Number.isSafeInteger(index) || index < 0 || index >= stages.length) {
+    throw new Error('Assembly Process Variant fork requires a historical Process checkpoint.');
+  }
+  const next = structuredClone(graph);
+  next.version = ASSEMBLY_VARIANTS_VERSION;
+  next.branches.push({
+    id,
+    name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 120) : id,
+    parentId: active.id,
+    forkIndex: active.bonds.length,
+    forkProcessIndex: index,
+    sourceRefs: structuredClone(active.sourceRefs),
+    bonds: structuredClone(active.bonds),
+    postBondSteps: structuredClone(stages.slice(0, index)),
+    postBondCursor: index,
+    cursor: active.bonds.length,
+  });
+  next.activeBranchId = id;
+  validateAssemblyVariantGraph(next);
+  return next;
+}
+
 export function activateAssemblyVariant(graph, branchId) {
   validateAssemblyVariantGraph(graph);
   const branch = graph.branches.find((item) => item.id === branchId);
@@ -289,7 +351,7 @@ export function appendAssemblyVariantBond(graph, donorProject, request) {
   if (active.cursor !== active.bonds.length) {
     throw new Error('Bond from a historical checkpoint requires an explicit new Variant.');
   }
-  if (active.postBondSteps?.length) {
+  if (active.postBondSteps?.length || active.forkProcessIndex !== undefined) {
     throw new Error(
       'Further Bond after post-Bond Process requires a source-aware continuation boundary.',
     );
