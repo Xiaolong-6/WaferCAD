@@ -167,7 +167,41 @@
               "offSectionDistanceUm": 10.6
             }
           ],
-          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "power-via-both-tiers",
+              "probeId": "first-power-via",
+              "a": [
+                12,
+                -5.3
+              ],
+              "b": [
+                20,
+                -5.3
+              ],
+              "xy": [
+                16,
+                -5.3
+              ]
+            },
+            {
+              "cutId": "data-via-transfer",
+              "probeId": "data-via-contact",
+              "a": [
+                12,
+                0
+              ],
+              "b": [
+                20,
+                0
+              ],
+              "xy": [
+                16,
+                0
+              ]
+            }
+          ]
         }
       }
     },
@@ -217,7 +251,57 @@
               "offSectionDistanceUm": 8
             }
           ],
-          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "beol-four-metal-levels",
+              "probeId": "left-four-levels",
+              "a": [
+                -10,
+                -4
+              ],
+              "b": [
+                10,
+                -4
+              ],
+              "xy": [
+                -7,
+                -4
+              ]
+            },
+            {
+              "cutId": "mos2-gate-and-alox",
+              "probeId": "enhancement-gate",
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                7,
+                4
+              ]
+            },
+            {
+              "cutId": "mos2-gate-and-alox",
+              "probeId": "depletion-surrogate",
+              "a": [
+                -10,
+                4
+              ],
+              "b": [
+                10,
+                4
+              ],
+              "xy": [
+                -7,
+                4
+              ]
+            }
+          ]
         }
       }
     },
@@ -294,7 +378,41 @@
               "offSectionDistanceUm": 1.1
             }
           ],
-          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section"
+          "note": "Off-section XY controls verify saved material stacks but are NOT visual evidence of the displayed A-B section",
+          "onSectionControls": [
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "negative-x-annular-pillar",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                -1.2,
+                1.1
+              ]
+            },
+            {
+              "cutId": "two-nanopillar-diameters",
+              "probeId": "positive-x-pillar",
+              "a": [
+                -2.3,
+                1.1
+              ],
+              "b": [
+                2.3,
+                1.1
+              ],
+              "xy": [
+                1.1,
+                1.1
+              ]
+            }
+          ]
         }
       }
     }

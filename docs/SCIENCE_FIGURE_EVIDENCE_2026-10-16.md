@@ -100,7 +100,10 @@ found **7 on-section probes and 3 off-section XY controls**:
 M3D second power via (10.6 µm away), MAGIC second interconnect control
 (8 µm away), and TiO₂ substrate control (1.1 µm away). These controls
 are still valid saved-material checks; **they cannot be cited as pixel
-evidence in those rendered A–B sections**. The provenance matrix records
-their real Section endpoints and XY samples, and the regression test
-independently recomputes each off-section distance. A matching Section
-for M3D's second power via remains a visual-acceptance follow-up.
+evidence in those rendered A–B sections**. All **7 on-section probes**
+now have independent recorded XY samples and actual A–B endpoints; the
+metadata regression verifies both perpendicular distance and the finite
+segment projection, rejecting material points on the extension beyond A or B.
+The regression also recomputes each off-section control's distance.
+A matching Section for M3D's second power via remains a
+visual-acceptance follow-up.

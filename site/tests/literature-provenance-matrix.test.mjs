@@ -139,6 +139,34 @@ test('eight paper provenance records match the actual published example catalog'
         audit.physicalProbes,
         audit.onSectionProbes + audit.offSectionControlProbes.length,
       );
+      assert.equal(
+        audit.onSectionProbes,
+        audit.onSectionControls.length,
+        'Every on-section material probe needs auditable XY and A-B endpoints',
+      );
+      const identifiers = new Set();
+      for (const control of audit.onSectionControls) {
+        const key = control.cutId + ':' + control.probeId;
+        assert.equal(identifiers.has(key), false, 'Duplicate figure-cut probe ' + key);
+        identifiers.add(key);
+        const [ax, ay] = control.a;
+        const [bx, by] = control.b;
+        const [px, py] = control.xy;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const lengthSquared = dx * dx + dy * dy;
+        assert.ok(lengthSquared > 0, key + ': degenerate Section A-B');
+        const projection = ((px - ax) * dx + (py - ay) * dy) / lengthSquared;
+        const perpendicular = Math.abs(dx * (py - ay) - dy * (px - ax));
+        assert.ok(
+          perpendicular <= 1e-9 * Math.sqrt(lengthSquared),
+          key + ': material probe does not lie on the pictured A-B Section',
+        );
+        assert.ok(
+          projection >= -1e-9 && projection <= 1 + 1e-9,
+          key + ': probe lies beyond the actual A-B segment',
+        );
+      }
       for (const control of audit.offSectionControlProbes) {
         const [ax, ay] = control.a;
         const [bx, by] = control.b;
