@@ -13,8 +13,20 @@ import sys
 import klayout.db as kdb
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "test-results/swx-mems")
-CANDIDATE = len(sys.argv) > 2 and sys.argv[2] == "compact"
-PROJECT = ROOT / ("swx-compact-candidate.wafercad" if CANDIDATE else "swx-photonic-mems.wafercad")
+MODE = sys.argv[2] if len(sys.argv) > 2 else "canonical"
+assert MODE in ("canonical", "compact", "sem-v2"), f"Unsupported SWX verification mode {MODE}"
+CANDIDATE = MODE == "compact"
+PROJECT_NAME = {
+    "canonical": "swx-photonic-mems.wafercad",
+    "compact": "swx-compact-candidate.wafercad",
+    "sem-v2": "swx-sem-v2-unit.wafercad",
+}
+EXPORT_PREFIX = {
+    "canonical": "swx",
+    "compact": "compact",
+    "sem-v2": "sem-v2",
+}
+PROJECT = ROOT / PROJECT_NAME[MODE]
 BROWSER = ROOT / "browser"
 REPORT = ROOT / "klayout-independent-verification.json"
 GDS_DBU_UM = 0.0001
@@ -93,7 +105,7 @@ results = []
 baseline_by_format = {}
 for state in ("off", "on"):
     for extension in ("gds", "oas"):
-        filename = BROWSER / f"{'compact' if CANDIDATE else 'swx'}-{state}.{extension}"
+        filename = BROWSER / f"{EXPORT_PREFIX[MODE]}-{state}.{extension}"
         assert filename.is_file(), f"Missing actual browser export: {filename}"
         top_name, dbu, actual = exported_regions(filename)
         expected = canonical_regions(dbu)
@@ -136,6 +148,7 @@ summary = {
     "pass": True,
     "engine": "KLayout 0.30.12 Python database API",
     "candidate_mode": CANDIDATE,
+    "verification_mode": MODE,
     "source": str(PROJECT),
     "source_root": source["root"],
     "source_polygons": len(source["elements"]),
