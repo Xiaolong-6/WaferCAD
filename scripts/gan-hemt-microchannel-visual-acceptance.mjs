@@ -170,10 +170,15 @@ try {
   assert.equal(inspection.hasAttachedSiC, false, 'Pre-assembly manifold is obscured by the die');
   const manifoldShot = await page.screenshot({ type: 'png' });
   await writeFile(new URL('preassembly-manifold.png', directory), manifoldShot);
+  // Keep a separate model-only crop: the full-page capture is dominated by
+  // History and Section panels, making the two diversion bends hard to judge.
+  const manifoldDetail = await page.locator('#threeHost').screenshot({ type: 'png' });
+  await writeFile(new URL('preassembly-manifold-threehost.png', directory), manifoldDetail);
   assert.deepEqual(historyErrors, [], 'Restoring a Bookmark emitted browser errors');
   report.views.preassemblyManifold = {
     viewport: [1000, 640],
     bytes: manifoldShot.length,
+    detailBytes: manifoldDetail.length,
     renderState: await page.locator('#threeHost').getAttribute('data-render-state'),
     savedRoiAndSectionRestored: true,
     attachedSiCPresent: false,
@@ -276,18 +281,66 @@ try {
   }
   await page.locator('#sectionCanvas').waitFor({ state: 'visible', timeout: 120000 });
   await waitForPaint(page);
-  const model = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model);
-  const tsvMaterials = [
-    'TSV Ti conformal seed surrogate 0.2 um',
-    'TSV Cu conformal seed surrogate 0.5 um',
-    'TSV Cu electrofill surrogate 35 um',
-  ];
-  for (const name of tsvMaterials) {
-    assert.ok(
-      model.layers.some((layer) => layer.name === name),
-      'Loaded browser project lacks physical TSV material: ' + name,
+  // Audit actual XY/Z material occupancy from the persisted browser project,
+  // not only material layer names or colors. A metallic-looking cylinder can
+  // still be an unfilled via; a colored pad is not an electrical net.
+  const geometry = await page.evaluate(async () => {
+    const { pointInMulti } = await import('./vector-geometry.js');
+    const model = window.WaferCadV2Workstation.snapshot().model;
+    const byName = new Map(model.layers.map((layer) => [layer.name, layer.id]));
+    const names = {
+      ti: 'TSV Ti conformal seed surrogate 0.2 um',
+      cu: 'TSV Cu conformal seed surrogate 0.5 um',
+      fill: 'TSV Cu electrofill surrogate 35 um',
+      pad: 'GSG Au pads surrogate 0.5 um',
+    };
+    const ids = Object.fromEntries(
+      Object.entries(names).map(([key, name]) => [key, byName.get(name) || null]),
     );
-  }
+    function hasLayer(point, z, layerId) {
+      return model.regions.some(
+        (region) =>
+          pointInMulti(point, region.geom) &&
+          region.stack.some(
+            (segment) =>
+              segment.layerId === layerId && segment.z0 < z && segment.z1 > z,
+          ),
+      );
+    }
+    const viaCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
+    const viaZ = [-150, -50, 50, 150, 250, 350, 450, 550];
+    const missingCuCore = viaCenters.flatMap(([x, y]) =>
+      viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
+    );
+    const gsgPadCenters = [-1250, 1250].map((x) => [x, 0]);
+    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 600.25, ids.pad));
+    // These two unmetalized positions separate representative TSVs from
+    // their nearby GSG pads. They demonstrate a known missing *route* without
+    // pretending that a point sample proves complete electrical isolation.
+    const unmodeledRoutePoints = [-1450, 1450].map((x) => [x, -500]);
+    const unexpectedlyMetallizedRoutePoints = unmodeledRoutePoints.filter((xy) =>
+      hasLayer(xy, 600.25, ids.pad),
+    );
+    return {
+      materialLayerIdsFound: Object.values(ids).every(Boolean),
+      viaCoreSamples: viaCenters.length * viaZ.length,
+      missingCuCore,
+      missingGsgPads,
+      unmodeledRoutePoints,
+      unexpectedlyMetallizedRoutePoints,
+      missingSourceProcessMaterials: ['SiO2', 'NiPaAu'].filter(
+        (name) => !model.layers.some((layer) => layer.name.includes(name)),
+      ),
+    };
+  });
+  assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
+  assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
+  assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG pads are absent');
+  assert.deepEqual(
+    geometry.unexpectedlyMetallizedRoutePoints,
+    [],
+    'Previously absent Au routing changed; re-audit Fig. 1(a) connectivity',
+  );
   const tsvSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('tsv-transverse-section.png', directory), tsvSectionShot);
 
@@ -320,7 +373,10 @@ try {
     detailSectionZoom: sectionZoom,
     plane: 'Y = 950 um; X = -1800 to 1800 um',
     distinctFromCoolantSection: true,
-    copperFilledGeometry: true,
+    copperFilledGeometry: geometry.missingCuCore.length === 0,
+    copperCoreOccupancySamples: geometry.viaCoreSamples,
+    unmodeledAuRouteProbePoints: geometry.unmodeledRoutePoints,
+    missingSourceProcessMaterials: geometry.missingSourceProcessMaterials,
     physicalSeedThicknessUm: { Ti: 0.2, Cu: 0.5 },
     inferredCuFillUm: 35,
     electricalContactContinuityVerified: false,
@@ -329,9 +385,22 @@ try {
   assert.deepEqual(historyErrors, [], 'TSV inspection emitted browser errors');
   await context.close();
 
+  // pass applies strictly to rendering, saved-state restoration and sampled
+  // material geometry. A nonempty screenshot does not pass the paper comparison.
   report.pass = true;
+  report.passScope = 'render, bookmark restore and explicit material occupancy only';
+  report.scientificFigureAcceptance = {
+    status: 'open',
+    reference: 'Lian et al. (2022), Fig. 1(a), Fig. 2(c-f), DOI 10.1038/s41378-022-00462-3',
+    verifiedIdealizedCopperCoreSamples: geometry.viaCoreSamples,
+    trueDualWaferBondModeled: false,
+    completeAuNiPaAuTSVToChipRoutingModeled: false,
+    oxideInsulationModeled: !geometry.missingSourceProcessMaterials.includes('SiO2'),
+    electricalContinuityVerified: false,
+    fig1aContourAndAppearanceVerified: false,
+  };
   report.note =
-    'Four final views, separate coolant/TSV sections, fluid Bookmark and HEMT device Bookmark have real-browser captures. TSV Ti/Cu/Cu-fill geometry is verified, but metallurgical/electrical contact and source-figure parity remain unverified.';
+    'Captured separate real coolant, TSV and HEMT views. Cu cores have actual XY/Z occupancy; sampled Au routing gaps and source-process omissions remain explicit. Browser smoke pass does not constitute Fig. 1(a) scientific visual acceptance.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',
