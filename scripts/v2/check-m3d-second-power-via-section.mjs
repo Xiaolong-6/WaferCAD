@@ -75,28 +75,42 @@ try {
   report.originalModelLayerIds = starting.model.layers.map((layer) => layer.id);
 
   for (const item of cases) {
-    await selectScientificView(page, 'main', 1560);
-    const coords = page.locator('[data-action="slice-coordinates"]');
-    if (!(await coords.isVisible()))
-      await page.locator('#mainPanel button[aria-label$="more tools"]').click();
-    await coords.click();
-    for (const [field, value] of [
-      ['sectionAx', item.a[0]],
-      ['sectionAy', item.a[1]],
-      ['sectionBx', item.b[0]],
-      ['sectionBy', item.b[1]],
-    ]) {
-      await page.locator('#' + field).fill(String(value));
-      await page.locator('#' + field).press('Tab');
-    }
+    // The large M3D document disables Main overflow controls while
+    // refining. A real .wafercad startup import with a changed presentation
+    // A-B cut is the supported, read-only path for deterministic evidence.
+    // Model layers, regions and History remain byte-for-byte unchanged.
+    await page.evaluate(async ({ a, b }) => {
+      const response = await fetch('/examples/m3d-selfpowered-full-replay.wafercad');
+      if (!response.ok) throw Error('Missing published M3D source Project');
+      const project = await response.json();
+      project.section = { a, b };
+      project.display = { ...project.display, sectionDetailRoi: null };
+      const { stageStartupFile } = await import('/startup-file.js');
+      const file = new File(
+        [JSON.stringify(project)],
+        'm3d-source-with-presentation-section.wafercad',
+        { type: 'application/json' },
+      );
+      await stageStartupFile(file, 'project');
+    }, { a: item.a, b: item.b });
+    await page.goto(base + '/app.html?start=staged', {
+      waitUntil: 'domcontentloaded',
+      timeout: 180000,
+    });
+    await page.waitForFunction(
+      () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
+      null,
+      { timeout: 180000 },
+    );
     const section = (await snapshot()).section;
     assert.deepEqual(
       section,
       { a: item.a, b: item.b },
-      'Native v2 UI Section A-B must match the material probe coordinate',
+      'Native v2 Project import must honor the actual saved physical A-B line',
     );
-    await page.getByRole('button', { name: 'Close Section line', exact: true }).click();
-    await selectScientificView(page, 'section', 1560);
+    if (!(await page.locator('#sectionPanel').isVisible())) {
+      await selectScientificView(page, 'section', 1560);
+    }
 
     // Compute physical material bands using exactly the same topology as
     // the visible Section renderer. The selected probe lies at t=0.5.
