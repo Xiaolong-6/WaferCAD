@@ -72,8 +72,7 @@ test('6400-site sparse Process, History and Variant remain isolated', async () =
         },
         (candidate, params) => {
           attemptedWorkingSets++;
-          if (attemptedWorkingSets === 2)
-            throw new Error('injected second-site Kernel failure');
+          if (attemptedWorkingSets === 2) throw new Error('injected second-site Kernel failure');
           const result = applyOperation(candidate, params);
           assert.equal(result.changed, true, result.error);
           return result;
