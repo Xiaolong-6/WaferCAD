@@ -7,6 +7,7 @@
  * Kernel results alone cannot validate orientation or overall placement.
  */
 import { createSwxOptomechanicalCandidate } from './swx-mems-optomechanical-candidate.mjs';
+import { SWX_REPORTED } from './swx-mems-geometry.mjs';
 
 export const SOURCE_SEM_REGISTER = Object.freeze({
   doi: '10.1038/s41467-024-55528-9',
@@ -61,8 +62,7 @@ export function auditSwxSemRegistration(state = 'off') {
   const fixedPortsLateralOpposed = flanks(fixedPorts.map(([x]) => x));
   const movingPortsLateralOpposed = flanks(movingPorts.map(([x]) => x));
   const measuredBridge = bounds(pose.mechanicalBridge);
-  const movingBridgeExternalToShuttle =
-    measuredBridge.maxX > pose.actuator.banks[0].moving[0][1][0] / -2;
+  const movingBridgeExternalToShuttle = measuredBridge.maxX > SWX_REPORTED.shuttleWidthUm / 2;
   // The explicit source contract is: comb BELOW moving SWX, fixed optical
   // endpoints on BOTH lateral sides, and moving endpoints on BOTH sides.
   // The existing positive Si mask violates the first two unambiguously.
