@@ -254,3 +254,44 @@ test('editable native v2 refuses the standalone source without a first-Bond opt-
     /First-Bond draft requires/,
   );
 });
+
+test('native editor reopens complete source-shared Variant sidecar with C and D as distinct branches', async () => {
+  const original = bonded();
+  const runtime = createWorkstationRuntime(
+    { source: 'three.wafercad', hash: '', data: original },
+    { assemblyPreview: true },
+  );
+  const session = runtime.createAssemblyBondDraftSession(async () => true);
+  session.restoreIndex(1);
+  session.createVariant('alt', 'Alternate D');
+  const changed = await session.bond(wafer('donor D', 350), { donorId: 'D' });
+  const graph = session.exportVariantGraph();
+  const bytes = JSON.stringify(graph);
+  const file = { name: 'graph.wafercad-variants.json', size: Buffer.byteLength(bytes), text: async () => bytes };
+  const reopened = await readAssemblyPreviewFile(file, undefined, { allowStandalone: true });
+  assert.equal(reopened.variantGraph.sources.length, 4);
+  assert.equal(reopened.variantGraph.branches.length, 2);
+  assert.deepEqual(reopened.data.model, changed.project.model);
+  const active = createWorkstationRuntime(reopened, { assemblyPreview: true });
+  const restored = active.createAssemblyBondDraftSession(async () => true);
+  assert.deepEqual(restored.listVariants().map((variant) => variant.id), ['main', 'alt']);
+  assert.deepEqual(restored.fullProduct().model, changed.project.model);
+  assert.deepEqual(restored.switchVariant('main').model, original.model);
+  assert.deepEqual(restored.switchVariant('alt').model, changed.project.model);
+  assert.equal(active.history.listHistory().length, 0, 'normal History remains untouched');
+  await assert.rejects(
+    () => readAssemblyPreviewFile(file),
+    /Select a .wafercad Assembly project/,
+  );
+  const forged = structuredClone(graph);
+  forged.sources[1].bytes += 1;
+  const evil = JSON.stringify(forged);
+  await assert.rejects(
+    () => readAssemblyPreviewFile(
+      { name: 'forged.wafercad-variants.json', size: Buffer.byteLength(evil), text: async () => evil },
+      undefined,
+      { allowStandalone: true },
+    ),
+    /provenance mismatch/,
+  );
+});
