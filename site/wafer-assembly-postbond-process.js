@@ -46,7 +46,9 @@ export function normalizePostBondGeometryStep(input) {
   const normalized = normalizeProcessRecipe({ steps: [input] }).steps[0];
   const { command, params } = normalized;
   if (command !== 'deposit' && command !== 'etch') {
-    throw new Error('Post-Bond Recipe currently supports only Deposit and directional Etch geometry.');
+    throw new Error(
+      'Post-Bond Recipe currently supports only Deposit and directional Etch geometry.',
+    );
   }
   if (params.area !== 'full' || params.mask != null) {
     throw new Error('Post-Bond masked/ROI processing is not yet validated; use full-face area.');
@@ -134,13 +136,16 @@ export function replayPostBondGeometry(project, recorded = []) {
     const expected = normalizePostBondGeometryStep(record);
     if (
       Object.keys(record).sort().join('|') !== 'command|modelFingerprint|params' ||
-      JSON.stringify(expected) !== JSON.stringify({ command: record.command, params: record.params })
+      JSON.stringify(expected) !==
+        JSON.stringify({ command: record.command, params: record.params })
     ) {
       throw new Error('Post-Bond Recipe step differs from its canonical geometry parameters.');
     }
     model = computeStep(model, expected);
     if (record.modelFingerprint !== modelFingerprint(model)) {
-      throw new Error(`Post-Bond Recipe step ${index + 1} material checksum differs from Worker-compatible replay.`);
+      throw new Error(
+        `Post-Bond Recipe step ${index + 1} material checksum differs from Worker-compatible replay.`,
+      );
     }
     stages.push({ index: index + 1, fingerprint: record.modelFingerprint });
   }
