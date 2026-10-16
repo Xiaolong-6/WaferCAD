@@ -1,5 +1,17 @@
 # Documentation architecture and maintenance
 
+## Folder ownership and compatibility
+
+- `docs/` owns stable entrypoints, engineering conventions and compatibility links.
+- `docs/science/` owns current process, geometry, annotation and numerical contracts.
+- `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
+- `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
+- `docs/wiki/` stays flat for the Main-only GitHub Wiki publisher, with its SVG assets under `assets/`.
+- `docs/archive/` owns frozen historical audits; old data and dates remain unchanged.
+- `docs/review/` contains retained historical visual evidence and does not certify current UI.
+
+When relocating an already published Markdown document, retain its old URL as a short compatibility page, including its original heading anchors where feasible. Point navigation to the single canonical destination. Update or preserve repository-relative links and run the focused documentation check. Do not duplicate the full text across active folders or delete scientific provenance for cosmetic tidiness.
+
 ## Authority and readers
 
 **Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
@@ -12,6 +24,8 @@
 | Engineering contracts      | Architecture, Development, Testing, CI and the scientific/interchange documents linked from the map | Own module boundaries, invariants and acceptance. Update the owning contract when behavior changes.                                                                     |
 | Forward plans              | Renderer transparency roadmap                                                                       | Label measured evidence, proposals and open acceptance separately; a proposed feature is not a current contract.                                                        |
 | Revision-specific evidence | [Archive index](archive/README.md)                                                                  | Preserve dates, SHAs, environments and original results. Add a status/provenance banner rather than rewriting old measurements as current.                              |
+
+PR descriptions own **current per-change status** (scope, validation and remaining work); PR comments own **dated diagnostic and review evidence**. Keep routine red/green CI reports, screenshots and handoffs there, not as new tracked Markdown. A repository file is justified for a cross-PR contract, scientific source/assumption, fixture reproduction, release/runbook obligation or reusable engineering decision. Before closing a PR, promote durable conclusions into its existing owning document and leave the supporting PR/CI link there when useful.
 
 The implementation and meaningful regression tests establish shipped behavior. When a document disagrees with them, investigate and reconcile the owning contract; do not silently relax a test to agree with prose. A screenshot, chat or ignored artifact is supporting evidence, not a portable source of truth. Third-party research snapshots are not continuously verified vendor capability catalogs.
 
@@ -42,7 +56,7 @@ flowchart LR
 - Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
 - `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
-- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
+- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Relevant documentation PRs run focused Process Guide, Wiki and navigation Node tests in a read-only workflow; only the separate Main push workflow may publish Wiki content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
 ## Change workflow
 
@@ -50,9 +64,9 @@ flowchart LR
 2. Check the current implementation and relevant tests; preserve inferred-versus-source-reported scientific provenance.
 3. Update authored pages, regenerate only derived content, and keep previous evidence revision-specific.
 4. Use repository-relative source paths in handoffs. Remove or anonymize local home directories, personal workstation paths, authentication headers and tokens from logs and screenshots before committing; never rewrite third-party license attribution.
-5. Add or update the map/archive link for a new document. All Markdown under `docs/` must be reachable through `docs/README.md` or its lifecycle/archive indices. Relocate completed or superseded revision-specific records to `docs/archive/`, removing the obsolete paths and updating internal links to the archive without changing historical test claims.
+5. Add or update the map/archive link for a new **durable** document. All Markdown under `docs/` must be reachable through `docs/README.md` or its lifecycle/archive indices. Relocate **already committed** completed/superseded records to `docs/archive/` with valid relative links; do not commit fresh one-off reports just to archive them. Keep scientific provenance and referenced evidence discoverable. Do not rewrite historical results as current acceptance.
 6. Run `npm run docs:check`, `npm run format:check`, and the focused documentation/guide tests. Code changes still require the checks owned by [Testing](testing.md).
-7. Record the audited product SHA, exact commands/results and limits in a dated handoff. Publish under the user's existing authorization and verify the remote revision; main publication is not proof that deployment finished.
+7. Record the audited product SHA, exact commands/results and limits in the PR description, plus discrete evidence in PR comments/artifacts. Before final acceptance, consolidate any lasting decision into the owning repository document. Publish under the user's existing authorization and verify the remote revision; main publication is not proof that deployment finished.
 
 ## Automated checks and their limits
 

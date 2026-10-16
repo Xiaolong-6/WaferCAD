@@ -708,6 +708,27 @@ for (const spec of [
 }
 closeStage('21_Via2_Fill');
 
+// A physical material owner must provide an uninterrupted metal-metal landing.
+// The 10 nm HfO2 gate dielectric must not remain between tier-1 Ti power
+// vias and their tier-3 Ti/Ni/Au successors. This is a geometry contract,
+// not a predictive ohmic-contact or resistance model.
+const lowerPowerVia = targetLayer(model, 'M3D Ti power via 120nm');
+const upperPowerVia = targetLayer(model, 'M3D via2 Ti 2nm');
+for (const point of [
+  [16, -5.3],
+  [16, 5.3],
+]) {
+  const owner = model.regions.find((region) => pointInMulti(point, region.geom));
+  assert.ok(owner, 'Power-via metal owner missing at ' + point);
+  const below = owner.stack.find((segment) => segment.layerId === lowerPowerVia.id);
+  const above = owner.stack.find((segment) => segment.layerId === upperPowerVia.id);
+  assert.ok(below && above, 'Power-via contact metal missing at ' + point);
+  assert.ok(
+    Math.abs(below.z1 - above.z0) < 1e-9,
+    'Electrical power via is physically blocked by an interposed dielectric at ' + point,
+  );
+}
+
 applyStep('22_Graphene_Transfer', {
   type: 'add',
   label: 'Transfer graphene using Follow surface',

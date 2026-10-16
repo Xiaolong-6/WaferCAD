@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/ui-v2-three-export-abort');
@@ -32,8 +33,8 @@ try {
     const initial = await snapshot();
     assert.equal(initial.sharedIdentity, true);
     assert.equal(initial.model.layers.length, 27);
-    assert.equal(initial.model.regions.length, 551);
-    await page.locator('[data-action="view:three"]').click();
+    assert.equal(initial.model.regions.length, 550);
+    await selectScientificView(page, 'three', 1024);
     await page.waitForFunction(
       () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
       null,
@@ -43,7 +44,10 @@ try {
     const downloads = [];
     const onDownload = (d) => downloads.push(d.suggestedFilename());
     page.on('download', onDownload);
-    await page.locator('[data-action="three-export-menu"]').click();
+    const exportControl = page.locator('[data-action="three-export-menu"]');
+    if (!(await exportControl.isVisible()))
+      await page.getByRole('button', { name: '3D more tools', exact: true }).click();
+    await exportControl.click();
     await page.locator('[data-action="export:three:glb"]').click();
     await page.locator('#processTaskDialog').waitFor({ state: 'visible' });
     assert.equal(await page.locator('[data-action="three-export-menu"]').isDisabled(), true);

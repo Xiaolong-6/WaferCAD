@@ -34,48 +34,129 @@ export function createProjectStateController({
   applyState,
   getSnapshotRecords = () => [],
   getSnapshotBranchState = () => null,
+  getWorkerSnapshotHistory = () => null,
   syncDisplayControls = () => {},
   setSectionEditEnabled,
   // This reader must validate the entire migrated project before returning it.
   // The app supplies the strict import worker; non-worker callers use project IO.
   readValidatedFile = readProjectFile,
-  // Opt-in for the future source-aware workspace adapter, not the ordinary UI.
+  yieldHistoryAttestation = () => new Promise((resolve) => globalThis.setTimeout(resolve, 0)),
   enableAssemblyWorkspace = false,
 }) {
   let importedStates = new WeakMap();
+  let attestationGeneration = 0;
 
-  // Do not hand v15 Assembly projects to the ordinary single-wafer editor:
-  // its workspace-state lifecycle currently has no canonical Assembly owner.
-  // Importing would silently discard source/History lineage on the next Save.
-  // Keep the file untouched until a transactional Bond workspace is connected.
+  // Assembly products must not be passed to the generic single-wafer editor.
   function assertEditableProject(project, { completeProject = false } = {}) {
     if (project?.waferAssembly == null) return;
     if (!enableAssemblyWorkspace) {
-      throw new Error(
-        'This bonded Assembly project requires the multi-wafer editor, which is not enabled yet. The source file was not modified.',
-      );
+      throw new Error('This bonded Assembly requires the multi-wafer editor. The source file was not modified.');
     }
     if (completeProject) validateBondedAssemblyProject(project);
   }
 
-  async function readProjectSnapshot(file) {
-    const project = await readValidatedFile(file);
-    if (!project) return project;
-    assertEditableProject(project, { completeProject: true });
-    importedStates = new WeakMap();
-    const states = [
+  function importedSnapshotStateRefs(project) {
+    if (!project) return [];
+    return [
       ...(project.snapshots || []).map((record) => record.state),
       ...(project.snapshotBranches?.nodes || []).map((node) => node.state),
       ...(project.snapshotBranches?.branches || []).map((branch) => branch.headState),
     ].filter((state) => state && typeof state === 'object');
+  }
+
+  function cacheImportedSnapshotStates(project) {
+    attestationGeneration++;
+    importedStates = new WeakMap();
+    if (!project) return project;
+    const states = importedSnapshotStateRefs(project);
+    // The synchronous API preserves its old single graph clone, including
+    // sharing between states. Async startup imports use the bounded path below.
+    const cloneStart = performance.now();
     const copies = structuredClone(states);
+    performance.measure('wafercad:history:attestation-clone', {
+      start: cloneStart,
+      end: performance.now(),
+      detail: { states: states.length },
+    });
     for (let index = 0; index < states.length; index++) {
       importedStates.set(states[index], copies[index]);
     }
     return project;
   }
 
-  function buildProjectSnapshot(includeSnapshots = false) {
+  async function cacheImportedSnapshotStatesAsync(project) {
+    const generation = ++attestationGeneration;
+    const staged = new WeakMap();
+    if (!project) {
+      importedStates = staged;
+      return project;
+    }
+    const states = importedSnapshotStateRefs(project);
+    // A snapshot can also be the HEAD of one or more branches or a process
+    // node. Attesting it repeatedly wastes deep clones and GC, especially
+    // when an identity recurs on opposite sides of a batch boundary.
+    // Deduplicate by object identity only; distinct but equal states remain
+    // independently copied and checked for later mutation.
+    const uniqueStates = [...new Set(states)];
+    const started = performance.now();
+    let activeCloneMs = 0;
+    // Clone adjacent unique states as one graph to preserve aliasing within
+    // each batch. No staged attestation is published until every batch succeeds.
+    const batchSize = 4;
+    for (let start = 0; start < uniqueStates.length; start += batchSize) {
+      if (generation !== attestationGeneration) {
+        throw new DOMException('Superseded History attestation', 'AbortError');
+      }
+      const began = performance.now();
+      const batch = structuredClone(uniqueStates.slice(start, start + batchSize));
+      activeCloneMs += performance.now() - began;
+      for (let index = 0; index < batch.length; index++) {
+        staged.set(uniqueStates[start + index], batch[index]);
+      }
+      if (start + batchSize < uniqueStates.length) await yieldHistoryAttestation();
+    }
+    if (generation !== attestationGeneration) {
+      throw new DOMException('Superseded History attestation', 'AbortError');
+    }
+    performance.measure('wafercad:history:attestation-clone', {
+      start: started,
+      end: performance.now(),
+      detail: {
+        states: states.length,
+        uniqueStates: uniqueStates.length,
+        reusedReferences: states.length - uniqueStates.length,
+        batches: Math.ceil(uniqueStates.length / batchSize),
+        activeCloneMs,
+      },
+    });
+    importedStates = staged;
+    return project;
+  }
+
+  async function readProjectSnapshot(file) {
+    const project = await readValidatedFile(file);
+    assertEditableProject(project, { completeProject: true });
+    return cacheImportedSnapshotStatesAsync(project);
+  }
+
+  // Only call with project-worker.js output: that Worker already expanded,
+  // migrated and strictly validated the project before posting its result.
+  function readWorkerValidatedProjectSnapshot(project) {
+    assertEditableProject(project, { completeProject: true });
+    return cacheImportedSnapshotStates(project);
+  }
+
+  // Preferred in progressive startup: yield between private attestation
+  // batches while retaining strict before/after snapshot equality checks.
+  function readWorkerValidatedProjectSnapshotAsync(project) {
+    assertEditableProject(project, { completeProject: true });
+    return cacheImportedSnapshotStatesAsync(project);
+  }
+
+  function buildProjectSnapshot(
+    includeSnapshots = false,
+    { skipHistoryHeadSync = false, workerStorage = false } = {},
+  ) {
     // Fail closed even if future workspace wiring exposes Assembly state before
     // this controller owns its source lineage and History transactions.
     const initialState = getState();
@@ -134,16 +215,29 @@ export function createProjectStateController({
 
     if (includeSnapshots) {
       project.name = state.projectName;
-      const records = getSnapshotRecords();
-      const snapshotBranches = getSnapshotBranchState();
+      // Only the async autosave path can request borrowed History references.
+      // It immediately posts this object to a Worker (a synchronous clone);
+      // regular exports always remain independently cloned.
+      const workerHistory =
+        workerStorage && skipHistoryHeadSync ? getWorkerSnapshotHistory() : null;
       if (state.waferAssembly != null) {
-        // Product History needs first-class Bond references; ordinary History
-        // records cannot safely own a bonded source graph or embed it again.
-        if (records.length || snapshotBranches) {
+        // Product History cannot contain generic full model snapshots. Preserve
+        // the single Assembly/Variant History owner until the formal adapter exists.
+        const records = workerHistory?.snapshots || getSnapshotRecords();
+        const branches =
+          workerHistory?.snapshotBranches ||
+          getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
+        if (records.length || branches) {
           throw new Error('Bonded Assembly product History is not yet supported.');
         }
+      } else if (workerHistory) {
+        project.snapshots = workerHistory.snapshots;
+        if (workerHistory.snapshotBranches) {
+          project.snapshotBranches = workerHistory.snapshotBranches;
+        }
       } else {
-        project.snapshots = records;
+        project.snapshots = getSnapshotRecords();
+        const snapshotBranches = getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
         if (snapshotBranches) project.snapshotBranches = snapshotBranches;
       }
     }
@@ -317,6 +411,8 @@ export function createProjectStateController({
 
   return {
     readProjectSnapshot,
+    readWorkerValidatedProjectSnapshot,
+    readWorkerValidatedProjectSnapshotAsync,
     buildProjectSnapshot,
     loadProjectSnapshot,
     resetProjectState,

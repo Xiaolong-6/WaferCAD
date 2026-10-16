@@ -12,7 +12,7 @@ Build from an empty SOI model. Save every named snapshot. Do not change WaferCAD
 8. `07_Power_Via_Fill`: 120 nm Ti.
 9. `08_Back_Gates`: `M3D_M06_local_back_gate.svg`; 2 nm Ti / 18 nm Pt.
 10. `09_HfO2`: blanket 10 nm HfO₂, Conformal.
-11. `10_HfO2_Open`: `M3D_M07_HfO2_open.svg`; selective HfO₂ opening.
+11. `10_HfO2_Open`: `M3D_M07_HfO2_open.svg`; selective HfO₂ openings over gates **and both tier-1 Ti power via landings** (two inferred 4.5 × 4.5 µm apertures within 5 × 5 µm contacts).
 12. `11_WSe2_Transfer`: bilayer WSe₂, **Transfer / Laminate → Follow surface**, zero gap.
 13. `12_WSe2_Pattern`: retain `M3D_M08_WSe2_channel.svg`; 0.2 × 0.5 µm channels.
 14. `13_WSe2_SD`: `M3D_M09_WSe2_SD.svg`; 10 nm Pd / 30 nm Pt.
@@ -29,5 +29,7 @@ Build from an empty SOI model. Save every named snapshot. Do not change WaferCAD
 25. `24_Graphene_SD`: `M3D_M15_graphene_SD_via_connect.svg`; 2 nm Ti / 28 nm Ni / 30 nm Au.
 26. `25_Final_Al2O3`: blanket 70 nm Al₂O₃, Conformal.
 27. `26_Final_Sensing_Windows`: `M3D_M16_final_cap_open_sensing_windows.svg`; selectively open final Al₂O₃ only.
+
+At `21_Via2_Fill`, the upper Ti via must physically touch the first Ti power via at both (16, −5.3) and (16, +5.3) µm. No intervening HfO₂ is permitted; the central MoS₂ bridge→via2 data landing at (16, 0) µm must also be continuous. This is a geometric conduction-path contract, not a contact-resistance calculation.
 
 After every geometry step inspect Main, Section and 3D. Stop and record a bug if Transfer leaves a supported-surface air gap, Follow-surface Transfer creates film inside a true void, Conformal throws a polygon/output-ring error, a via crosses its dielectric stop, closed solids receive internal conformal material, or Section/3D disagree on Z order.

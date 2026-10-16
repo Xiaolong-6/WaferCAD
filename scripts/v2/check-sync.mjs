@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 import { PROJECT_LENGTH_QUANTUM_UM, readProjectFile } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
@@ -85,18 +86,17 @@ try {
       const view = async (key) => {
         const returnResults = page.locator('[data-action="return-results"]:visible').first();
         if (await returnResults.isVisible()) await returnResults.click();
-        if (key === 'section') {
-          if (await page.locator('[data-action="mobile-section"]').isVisible())
-            await page.locator('[data-action="mobile-section"]').click();
-          else if (!(await page.locator('#sectionPanel').isVisible()))
-            await page.locator('[data-action="section"]').click();
-        } else await page.locator(`[data-action="view:${key}"]`).click();
-        await waitForPaint(page);
+        await selectScientificView(page, key, width);
       };
       await panel('process');
       await page.locator('[data-action="process-mode:code"]').click();
       const originalCode = await page.locator('#recipeCodeEditor').inputValue();
       await page.locator('#recipeCodeEditor').fill('// retained draft');
+      const userDesktopLayout = width > 820 ? (await snap()).ui.desktopLayout : null;
+      const storedDesktopLayout =
+        width > 820
+          ? await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1'))
+          : null;
       for (const domain of ['project', 'mask', 'history']) {
         await panel(domain);
         assert.equal(await page.locator('#recipeCodeEditor').isVisible(), false);
@@ -106,8 +106,38 @@ try {
           'The Code layout must not override its hidden Process ancestor',
         );
         if (domain === 'mask') {
-          assert.equal((await snap()).ui.maximize, 'mask');
-          assert.equal((await snap()).ui.view, 'mask');
+          const maskNavigation = (await snap()).ui;
+          if (width > 820) {
+            assert.equal(maskNavigation.temporaryFocus, 'mask', 'Desktop Mask focus is transient');
+            assert.deepEqual(
+              maskNavigation.desktopLayout,
+              userDesktopLayout,
+              'Desktop Mask focus must preserve the entire user dock layout',
+            );
+            assert.equal(await page.locator('#maskPanel').isVisible(), true);
+            assert.equal(
+              await page.locator('.p-canvases .p-view:not([hidden])').count(),
+              1,
+              'Only Mask is displayed during temporary desktop focus',
+            );
+            assert.equal(
+              await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1')),
+              storedDesktopLayout,
+              'Temporary Mask focus must not persist a layout change',
+            );
+          } else {
+            assert.equal(maskNavigation.maximize, 'mask', 'Compact Mask view is maximized');
+          }
+          assert.equal(maskNavigation.view, 'mask');
+        }
+        if (domain === 'history' && width > 820) {
+          const afterHistory = (await snap()).ui;
+          assert.equal(afterHistory.temporaryFocus, null, 'History exits temporary Mask focus');
+          assert.deepEqual(
+            afterHistory.desktopLayout,
+            userDesktopLayout,
+            'History restores the exact user dock layout',
+          );
         }
       }
       const historyScroll = page.locator('#snapshotList');
@@ -606,13 +636,15 @@ try {
         );
       }
       await view('main');
-      if (await page.locator('[data-action="mode:split"]').isVisible()) {
-        await page.locator('[data-action="mode:split"]').click();
-        await page
-          .getByRole('combobox', { name: 'Right Split view', exact: true })
-          .selectOption('three');
-        await page.locator('[data-action="mode:overview"]').click();
+      if (width > 820) {
+        await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
         assert.equal((await snap()).sharedIdentity, true);
+        assert.deepEqual((await snap()).ui.desktopLayout.visible, [
+          'main',
+          'mask',
+          'three',
+          'section',
+        ]);
       }
       await waitForPaint(page);
       const layout = await page.evaluate(() => {

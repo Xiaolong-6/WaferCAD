@@ -1,0 +1,31 @@
+name: Legacy retirement parity matrix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/legacy-retirement-owner-audit.mjs'
+      - 'scripts/legacy-retirement-parity-matrix.mjs'
+      - 'site/tests/legacy-retirement-owner-audit.test.mjs'
+      - 'site/tests/legacy-retirement-parity-matrix.test.mjs'
+      - '.github/workflows/legacy-retirement-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-retirement-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ownership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Verify explicit owners and remaining scientific parity gaps
+        run: node --test site/tests/legacy-retirement-owner-audit.test.mjs site/tests/legacy-retirement-parity-matrix.test.mjs

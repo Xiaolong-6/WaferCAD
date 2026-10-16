@@ -1,5 +1,8 @@
 import { expandProjectStorage, prepareProjectForWorkspaceStorage } from './project-io.js';
-import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import {
+  migrateProjectFile,
+  validateProjectFile,
+} from './project-schema.js';
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
@@ -215,10 +218,11 @@ export async function loadWorkspaceRecoveryPoint(key) {
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(key));
     await done;
     if (!record?.project) return null;
-    const project = structuredClone(record.project);
+    // IndexedDB.get() already returns a detached structured clone. Do not
+    // duplicate the whole geometry/History graph before in-memory migration.
+    const project = record.project;
     expandProjectStorage(project);
-    const migrated = validateProjectFile(migrateProjectFile(project));
-    return validateBondedAssemblyProject(migrated);
+    return validateProjectFile(migrateProjectFile(project));
   } finally {
     database.close();
   }
@@ -245,8 +249,8 @@ export async function clearWorkspaceRecoveryPoints() {
   }
 }
 
-// Legacy non-Assembly v14 projects remain v14 even when the runtime supports
-// opt-in v15 Assembly. A Recovery checkpoint is needed only for real migration.
+// For normal v14 files, understanding opt-in v15 Assembly must not
+// create needless migration Recovery snapshots on every startup.
 export function requiresWorkspaceMigrationCheckpoint(rawVersion, migratedVersion) {
   return (
     Number.isInteger(rawVersion) &&
@@ -256,7 +260,9 @@ export function requiresWorkspaceMigrationCheckpoint(rawVersion, migratedVersion
   );
 }
 
-export async function loadWorkspaceState() {
+// Called by the restore worker. Keep migration, validation and its mandatory
+// pre-migration Recovery checkpoint within this existing transactional owner.
+export async function loadWorkspaceStateDirect() {
   const database = await openDatabase();
   let record = null;
   let metadata = null;
@@ -273,14 +279,13 @@ export async function loadWorkspaceState() {
   }
 
   if (!record?.project) return null;
-  const project = structuredClone(record.project);
+  // IndexedDB.get() already returns a detached structured clone. Do not
+  // duplicate the whole geometry/History graph before in-memory migration.
+  const project = record.project;
   expandProjectStorage(project);
   const rawVersion = Number(project.version) || 1,
     migrated = validateProjectFile(migrateProjectFile(project));
   validateBondedAssemblyProject(migrated);
-  // Only checkpoint an actual migrated version. A legacy v14 workspace that
-  // does not contain an Assembly must not create a new checkpoint on every
-  // startup merely because the runtime also understands opt-in v15 files.
   if (requiresWorkspaceMigrationCheckpoint(rawVersion, migrated.version)) {
     await createWorkspaceRecoveryCheckpoint(migrated, {
       appCommit: metadata?.appCommit,
@@ -288,6 +293,42 @@ export async function loadWorkspaceState() {
     });
   }
   return migrated;
+}
+
+// Only one validated project is posted back to the UI. IndexedDB reads,
+// geometry dictionary expansion and strict schema checks run in the worker.
+// Older environments without Worker retain the exact synchronous fallback.
+export async function loadWorkspaceState({ background = false } = {}) {
+  if (!background || typeof globalThis.Worker !== 'function') return loadWorkspaceStateDirect();
+  return new Promise((resolve, reject) => {
+    let worker;
+    let settled = false;
+    const finish = (error, project) => {
+      if (settled) return;
+      settled = true;
+      worker?.terminate();
+      if (error) reject(error);
+      else resolve(project);
+    };
+    try {
+      const url = new URL('./workspace-restore-worker.js', import.meta.url);
+      url.search = new URL(import.meta.url).search;
+      worker = new globalThis.Worker(url);
+      worker.onmessage = ({ data }) => {
+        if (data?.id !== 1) return;
+        if (data.type === 'done') finish(null, data.project ?? null);
+        else if (data.type === 'error')
+          finish(new Error(data.message || 'Workspace restore failed.'));
+      };
+      worker.onerror = (event) =>
+        finish(new Error(event.message || 'Workspace restore worker failed.'));
+      worker.onmessageerror = () =>
+        finish(new Error('Workspace restore worker returned unreadable data.'));
+      worker.postMessage({ id: 1, action: 'load-current' });
+    } catch (error) {
+      finish(error);
+    }
+  });
 }
 
 export async function clearWorkspaceState() {

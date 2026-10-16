@@ -196,3 +196,37 @@ test('validated process workers survive idle inspection and abort discards the r
     globalThis.Worker = originalWorker;
   }
 });
+
+test('Abort notifies transaction owner before settling, including programmatic abort', async () => {
+  const controller = createProcessTaskController({ root: fakeRoot(), status: () => {} });
+  const observed = [];
+  const unsubscribe = controller.onAbort(() => {
+    observed.push({ active: controller.isBusy(), source: 'subscription' });
+  });
+
+  const launchPending = () =>
+    controller.runTask(
+      ({ signal }) =>
+        new Promise((resolve) => {
+          signal.addEventListener('abort', () => resolve({ aborted: true }), { once: true });
+        }),
+    );
+
+  try {
+    const first = launchPending();
+    controller.abort();
+    controller.abort(); // Double-click / duplicate cancellation is idempotent.
+    assert.deepEqual(await first, { aborted: true });
+    assert.deepEqual(observed, [{ active: true, source: 'subscription' }]);
+    assert.equal(controller.isBusy(), false);
+
+    unsubscribe();
+    const second = launchPending();
+    controller.abort();
+    assert.deepEqual(await second, { aborted: true });
+    assert.equal(observed.length, 1, 'Unsubscribed Recipe owner receives no later task abort');
+    assert.equal(controller.isBusy(), false);
+  } finally {
+    controller.dispose();
+  }
+});

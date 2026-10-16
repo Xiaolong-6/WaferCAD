@@ -112,8 +112,9 @@ export function createWorkstationRuntime(
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
     getSnapshotRecords: () => history?.exportRecords() || [],
-    getSnapshotBranchState: () => {
-      history?.syncActiveHeadState();
+    getWorkerSnapshotHistory: () => history?.exportForWorkerStorage() || null,
+    getSnapshotBranchState: ({ skipSync = false } = {}) => {
+      if (!skipSync) history?.syncActiveHeadState();
       return history?.exportBranchState() || null;
     },
     setSectionEditEnabled: (value) => {
@@ -279,6 +280,7 @@ export function createWorkstationRuntime(
     restore,
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
+    cooperativeValidateStates: true,
   });
   // In Assembly mode, the source-aware owner alone controls Bond navigation.
   // Ordinary snapshotManager cannot ingest an Assembly or copy donor provenance.
