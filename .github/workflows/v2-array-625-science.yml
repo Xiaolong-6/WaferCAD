@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/v2/check-array-625-science.mjs'
+      - 'site/tests/array-instance-invariants.test.mjs'
       - 'site/model-array.js'
       - 'site/model-array-process.js'
       - '.github/workflows/v2-array-625-science.yml'
@@ -28,6 +29,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify canonical 625-site Process and 6400-site IO science
+        run: node --test site/tests/array-instance-invariants.test.mjs
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash
