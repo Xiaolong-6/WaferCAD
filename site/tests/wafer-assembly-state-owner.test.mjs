@@ -73,7 +73,7 @@ test('opt-in Assembly state owner preserves donor Recipe/History through workspa
   const live = host.getLive();
   assert.equal(live.waferAssembly.sources.length, 2);
   assert.equal(live.waferAssembly.sources[0].project.snapshots.length, 1);
-  assert.equal(live.waferAssembly.sources[1].project.processRecipe.name, 'Blank');
+  assert.equal(live.waferAssembly.sources[1].project.processRecipe.name, 'Process Recipe');
 
   const rebuilt = host.controller.buildProjectSnapshot(true);
   validateBondedAssemblyProject(rebuilt);
