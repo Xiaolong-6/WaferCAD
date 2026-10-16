@@ -87,6 +87,8 @@ Dated implementation plans and handoffs preserve the status of their original re
 - [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) — figure provenance, text corrections, and manual gates.
 - [Documentation lifecycle audit](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md) — full Markdown inventory classification, retained work and archival decisions.
 
+- [Historical UI review images](review/README.md) — five dated screenshots preserved with their original product-review evidence.
+
 ## Historical documents
 
 Use the [archive index](archive/README.md) for original plans, previous UI milestones, one-off audits and historical release evidence. The 2026-10-15 classification archived four more revision-specific records (site publication/symbol audits and UI v2 sync/release handoffs); their original claims are unchanged. The 2026-10-12 pass relocated **68** completed/superseded documents; the [2026-10-13 closeout](HANDOFF_STATUS_2026-10-13.md) archives additional pre-release records and handoff attachments to `docs/archive/`; obsolete paths were deleted and internal links were updated. Other dated sources still referenced for scientific provenance or unresolved work are explicitly labeled in the [lifecycle inventory](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md). Do not use an old acceptance result as evidence that current `main` passed a gate.
