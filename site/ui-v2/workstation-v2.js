@@ -351,7 +351,7 @@
             ? [
                 el(
                   'div',
-                  { class: 'p-actions' },
+                  { class: 'p-actions p-restore-panel-actions' },
                   button('Restore panel', 'expand-empty', 'process'),
                 ),
               ]
