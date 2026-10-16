@@ -165,15 +165,28 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 - Recipe **Rebuild Base → Run All** now retains a valid pre-existing physical Section A–B (including the paper-aligned local slice); the UI v2 and legacy Base controllers share this policy, while a manual Base change or an out-of-bounds Section still selects a centered default. Browser-level persistence is a required CI assertion.
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
 
-
 ## Paper-figure visual evidence boundary (October 2026)
 
-| Original evidence | Source-constrained statement | Browser artifact and physical gate | Limit |
-| --- | --- | --- | --- |
-| Fig. 1b, three-tier TEM, 1 µm scale bar | CMOS / analog-CIM / CNTFET–digital-RRAM tiers exist in vertical order | `three-tier-before-runall.png`, `section-local-before-runall.png`, complete 46-step replay | Foundry FEOL, exact ILDs and 2→3 tier ILVs are not reconstructed from TEM pixels; source explicitly omits those ILVs |
-| Fig. 2c, analog RRAM TEM, 20 nm scale bar | TiN / HfAlOₓ (8 nm) / TaOₓ (45 nm) / TiN | `section-analog-rram-nanoscale-canvas.png` and matching full-panel capture; check actual material IDs, Z span, X:Z physical scale and lateral Mask transition | Model surfaces are piecewise ideal, not measured TEM roughness or inferred lithography width |
-| Fig. 2d, digital RRAM TEM, 20 nm scale bar | Pd / TaOₓ (20 nm) / Ta₂O₅ (10 nm) / Pt | `section-digital-rram-nanoscale-canvas.png`, independent XY/Z stack checks | No claim that ideal geometry reproduces the fabricated interface contours |
-| Supplementary Fig. 6a, CNTFET with adjacent RRAM | RRAM is separated from the active CNT channel and lands on the Pd drain | `section-cntfet-pd-gate-step-nanoscale-canvas.png`, `section-cntfet-digital-rram-bridge-canvas.png` and 14-site Pd continuity checks | 0.45 µm lateral separation, mask footprints and 25% evaporation sidewall coverage are uncalibrated reconstruction assumptions |
+- **Fig. 1b — three-tier TEM, 1 µm scale bar.** The source shows CMOS,
+  analog-CIM and CNTFET–digital-RRAM tiers in vertical sequence. Browser evidence:
+  `three-tier-before-runall.png`, `section-local-before-runall.png`, and complete
+  46-step replay. Foundry FEOL, dielectric interfaces and tier-2-to-3 ILVs
+  cannot be inferred from this TEM; the source explicitly omits those ILVs.
+- **Fig. 2c — analog RRAM TEM, 20 nm scale bar.** Source stack:
+  TiN / HfAlOₓ (8 nm) / TaOₓ (45 nm) / TiN. Browser evidence:
+  `section-analog-rram-nanoscale-canvas.png` plus the original panel capture,
+  checked material IDs, Z thickness, physical X:Z scale and lateral mask edge.
+  Model boundaries are piecewise ideal rather than measured TEM contours.
+- **Fig. 2d — digital RRAM TEM, 20 nm scale bar.** Source stack:
+  Pd / TaOₓ (20 nm) / Ta₂O₅ (10 nm) / Pt. Browser evidence:
+  `section-digital-rram-nanoscale-canvas.png` and independent model XY/Z probes.
+  Idealized layer interfaces do not establish fabricated TEM contour fidelity.
+- **Supplementary Fig. 6a — CNTFET beside digital RRAM.** The RRAM island
+  is separated from the active CNT and lands on the Pd drain. Browser evidence:
+  `section-cntfet-pd-gate-step-nanoscale-canvas.png`,
+  `section-cntfet-digital-rram-bridge-canvas.png` and 14-site Pd continuity
+  probes. The 0.45 µm lateral clearance, mask outlines and 25% Pd evaporation
+  step-coverage fraction are uncalibrated assumptions.
 
 The browser produces both full Section-panel evidence (including toolbar and true X:Z readout)
 and native canvas-only screenshots with the **real Layers pane temporarily closed** to avoid

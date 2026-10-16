@@ -411,7 +411,8 @@ try {
       ...evidence,
       screenshotBytes: png.length,
       canvasOnlyScreenshotBytes: canvasPng.length,
-      layersHiddenForInspection: !(await sectionLegendToggle.getAttribute('aria-pressed') === 'true'),
+      layersHiddenForInspection:
+        (await sectionLegendToggle.getAttribute('aria-pressed')) !== 'true',
     });
   }
   // Mid-scale Section bridge evidence: CNTFET channel, Pd drain landing and
