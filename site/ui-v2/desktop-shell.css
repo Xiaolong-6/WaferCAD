@@ -220,8 +220,7 @@
   }
 
   /* Restore and collapse share the same outlined sidebar glyph geometry. */
-  body[data-workstation]:not([data-preview-mode])
-    .p-restore-panel-actions [data-action='expand-empty'] .wc-icon {
+  body[data-workstation]:not([data-preview-mode]) .p-restore-panel-actions .wc-icon {
     width: 17px;
     height: 17px;
     stroke-width: 1.7;
