@@ -27,11 +27,16 @@ const strip = (a, b, width) => {
 
 // Unreported positions are explicit assumptions, never paper metrology.
 export const SWX_COMPACT_ASSUMPTIONS = Object.freeze({
-  fixedBusYUm: -18,
-  movingBusYUm: -27.4,
-  shuttleExtentYUm: [-34, 8],
-  springAnchorYUm: 40,
-  springTipYUm: 6,
+  // Moving the comb/shuttle frame up makes room for one genuine folded-spring
+  // pair on each axial side. These absolute registrations are illustrative.
+  actuatorFrameShiftYUm: 30,
+  fixedBusYUm: 12,
+  movingBusYUm: 2.6,
+  shuttleExtentYUm: [-4, 38],
+  springAnchorYUm: 70,
+  springTipYUm: 36,
+  lowerSpringAnchorYUm: -30,
+  lowerSpringTipYUm: 4,
   springBaseXUm: [6, 16],
   fingerPitchUm: 1.65,
   firstFingerXUm: 8.8,
@@ -103,32 +108,34 @@ export function createCompactSwxActuator(state = 'off') {
   for (const side of [-1, 1]) {
     for (const baseX of a.springBaseXUm) {
       const x = (offset) => side * (baseX + offset);
+      const lower = baseX === a.springBaseXUm[0];
+      const anchorY = lower ? a.lowerSpringAnchorYUm : a.springAnchorYUm;
+      const tipY = lower ? a.lowerSpringTipYUm : a.springTipYUm;
+      const direction = lower ? 1 : -1;
+      // The 30/22um spring beam topology is mirrored axially for the
+      // LOWER support, but both moving tips follow the SAME +Y stroke.
+      // This keeps the ends fixed and the comb between two spring pairs.
+      const longY = anchorY + direction * p.foldedSpringLongBeamUm;
+      const shortY = longY - direction * p.foldedSpringShortBeamUm;
       const path = [
-        [x(0), a.springAnchorYUm],
-        [x(0), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [x(springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm],
-        [
-          x(2 * springPitch),
-          a.springAnchorYUm - p.foldedSpringLongBeamUm + p.foldedSpringShortBeamUm,
-        ],
-        [x(2 * springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [x(3 * springPitch), a.springAnchorYUm - p.foldedSpringLongBeamUm],
-        [x(3 * springPitch), a.springTipYUm],
+        [x(0), anchorY],
+        [x(0), longY],
+        [x(springPitch), longY],
+        [x(springPitch), shortY],
+        [x(2 * springPitch), shortY],
+        [x(2 * springPitch), longY],
+        [x(3 * springPitch), longY],
+        [x(3 * springPitch), tipY],
       ];
       const displaced = path.map(([px, py], i) => [px, py + (travel * i) / (path.length - 1)]);
       const [outline] = miteredPolyline(displaced, p.foldedSpringWidthUm);
       springContours.push(outline);
       flexure.push(outline);
-      const anchor = rect(side * baseX, a.springAnchorYUm, 8, 8);
+      const anchor = rect(side * baseX, anchorY, 8, 8);
       anchors.push(anchor);
       fixed.push(anchor);
       shuttle.push(
-        strip(
-          [side * railX, a.springTipYUm + travel],
-          [x(3 * springPitch), a.springTipYUm + travel],
-          0.45,
-        ),
+        strip([side * railX, tipY + travel], [x(3 * springPitch), tipY + travel], 0.45),
       );
     }
   }
@@ -149,7 +156,7 @@ export function createCompactSwxActuator(state = 'off') {
     unresolved: [
       'Must connect moving SWX reflector and both compliant optical ports without silicon shorts',
       'Must integrate structural aligners and independently check BOX support and release',
-      'All four folded spring anchor pads are currently on the +Y side of both comb banks, contrary to Fig. 1c/S8a; two pairs must flank the combs before source layout acceptance',
+      'Both folded-spring pairs now flank the combs in an assumed shifted actuator frame; absolute author pad registration, 30um frame offset and long mechanical bridge remain unverified',
       'All placement coordinates are illustrative; author GDS and FEM are unavailable',
     ],
   };

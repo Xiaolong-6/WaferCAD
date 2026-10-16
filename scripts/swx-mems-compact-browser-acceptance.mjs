@@ -184,9 +184,9 @@ try {
           ),
         ) * zScale;
       const closeups = [
-        { name: 'comb', position: [39, -10, topZ + 52], target: [0, -22, topZ], fov: 46 },
+        { name: 'comb', position: [39, 25, topZ + 52], target: [0, 9, topZ], fov: 46 },
         { name: 'swt', position: [19, -71, topZ + 38], target: [0, -48, topZ], fov: 43 },
-        { name: 'springs', position: [12, 62, topZ + 53], target: [0, 25, topZ], fov: 47 },
+        { name: 'springs', position: [12, 48, topZ + 110], target: [0, 20, topZ], fov: 50 },
         {
           name: 's7-guides',
           position: [34, -60, topZ + 94],
@@ -210,8 +210,8 @@ try {
         },
         {
           name: 'actuator-plan',
-          position: [4, -8, topZ + 115],
-          target: [0, 0, topZ * 0.45],
+          position: [4, 19, topZ + 135],
+          target: [0, 19, topZ * 0.45],
           fov: 44,
         },
       ];

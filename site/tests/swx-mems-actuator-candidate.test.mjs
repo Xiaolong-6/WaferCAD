@@ -72,14 +72,18 @@ test('S8 shuttle contains two open triangular cells between each alternate diago
   }
 });
 
-test('Fig. 1c/S8 spring-comb axial topology is explicitly BLOCKED until both pairs flank combs', () => {
+test('Fig. 1c/S8 spring-comb axial topology has one pair at EACH end of the comb', () => {
   for (const state of ['off', 'on']) {
     const report = auditCompactSpringAxialRegistration(state);
-    assert.equal(report.sourceTopologyMet, false);
+    assert.equal(report.sourceTopologyMet, true);
     assert.equal(report.anchorPositionsUm.length, 4);
-    assert.deepEqual(report.counts, { above: 4, below: 0, within: 0 });
-    assert.ok(report.anchorPositionsUm.every((anchor) => anchor.yUm === 40));
-    assert.ok(report.combHandleSpanYUm.maxY < 40);
+    assert.deepEqual(report.counts, { above: 2, below: 2, within: 0 });
+    assert.deepEqual(
+      report.anchorPositionsUm.map((anchor) => anchor.yUm),
+      [-30, 70, -30, 70],
+    );
+    assert.ok(report.combHandleSpanYUm.minY > -30);
+    assert.ok(report.combHandleSpanYUm.maxY < 70);
     assert.equal(report.sourceToleranceAvailable, false);
   }
 });
@@ -93,9 +97,15 @@ test('compact spring anchors stay fixed and springs move only at shuttle ends', 
   for (let i = 0; i < 4; i++) {
     const a = bounds(off.springContours[i]);
     const b = bounds(on.springContours[i]);
-    assert.ok(a.maxY > 39);
-    closeTo(a.maxY, b.maxY);
-    assert.ok(b.minY > a.minY, 'moving flexure tip must follow positive Y stroke');
+    if (i % 2 === 0) {
+      assert.ok(a.minY < -29, 'lower spring anchor is below the comb');
+      closeTo(a.minY, b.minY);
+      assert.ok(b.maxY > a.maxY, 'lower spring tip must follow positive Y stroke');
+    } else {
+      assert.ok(a.maxY > 69, 'upper spring anchor is above the comb');
+      closeTo(a.maxY, b.maxY);
+      assert.ok(b.minY > a.minY, 'upper spring tip must follow positive Y stroke');
+    }
     assert.equal(off.springContours[i].length, 16);
   }
 });
@@ -119,23 +129,24 @@ test('compact candidate has no fixed/moving positive-area silicon overlap', asyn
       state + ' four independent spring anchors must not touch or merge',
     );
     const contact = v.intersection(union(pose.springContours), union(pose.shuttle));
-    const maxAllowedY = SWX_COMPACT_ASSUMPTIONS.springTipYUm + pose.travelUm + 0.35;
-    const unexpected = contact
-      .flatMap((multi) => multi)
-      .flat()
-      .filter((point) => point[1] > maxAllowedY);
-    assert.equal(
-      unexpected.length,
-      0,
-      state + ' spring free span inadvertently contacts perforated shuttle',
-    );
+    const contactPoints = contact.flatMap((multi) => multi).flat();
+    for (const point of contactPoints) {
+      const nearLowerTip =
+        Math.abs(point[1] - (SWX_COMPACT_ASSUMPTIONS.lowerSpringTipYUm + pose.travelUm)) < 0.5;
+      const nearUpperTip =
+        Math.abs(point[1] - (SWX_COMPACT_ASSUMPTIONS.springTipYUm + pose.travelUm)) < 0.5;
+      assert.ok(
+        nearLowerTip || nearUpperTip,
+        state + ' spring free span inadvertently contacts the shuttle at ' + point,
+      );
+    }
     const pieces = union(pose.movable);
     const component = (point) => pieces.findIndex((poly) => v.pointInMulti(point, [poly]));
     const sample = [
-      [-25, -27.4 + pose.travelUm],
-      [25, -27.4 + pose.travelUm],
-      [-2.65, pose.travelUm],
-      [2.65, pose.travelUm],
+      [-25, SWX_COMPACT_ASSUMPTIONS.movingBusYUm + pose.travelUm],
+      [25, SWX_COMPACT_ASSUMPTIONS.movingBusYUm + pose.travelUm],
+      [-2.65, 18 + pose.travelUm],
+      [2.65, 18 + pose.travelUm],
     ];
     const indices = sample.map(component);
     assert.ok(indices.every((i) => i >= 0));

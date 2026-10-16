@@ -10,7 +10,10 @@
 import { createSwxGeometry, miteredPolyline } from './swx-mems-geometry.mjs';
 import { createSwxDoubleHairpin } from './swx-mems-compact-bends.mjs';
 import { createCompactSwxGuides } from './swx-mems-compact-guides.mjs';
-import { createCompactSwxActuator } from './swx-mems-actuator-candidate.mjs';
+import {
+  createCompactSwxActuator,
+  SWX_COMPACT_ASSUMPTIONS,
+} from './swx-mems-actuator-candidate.mjs';
 import { SWX_COMPACT_GRATING_ASSUMPTIONS } from './swx-mems-compact-gratings.mjs';
 
 export const SWX_INTERFACE_ASSUMPTIONS = Object.freeze({
@@ -40,7 +43,8 @@ function makeOpticalRouting(travel) {
   // Each stationary reflector port remains on the fixed half of the SWX.
   // The right fixed port loops to the left BELOW the shuttle bottom, while
   // the two compliant lower-half waveguides are routed farther downstream.
-  // This deliberately avoids the moving bridge at (24,-49.6..-27.4)um.
+  // This deliberately avoids the movable bridge near x=24um, spanning from
+  // the SWX to the relocated comb handle. The bridge is NOT an FEM beam.
   const coreWidth = 0.4;
   const fixed = [
     ...miteredPolyline(
@@ -94,7 +98,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
   const travel = actuator.travelUm;
   const bridgeStart = [SWX_INTERFACE_ASSUMPTIONS.bridgeStartXUm, dy - 1.6 + travel];
   const bridgeCorner = [corner, dy - 1.6 + travel];
-  const bridgeEnd = [corner, -27.4 + travel];
+  const bridgeEnd = [corner, SWX_COMPACT_ASSUMPTIONS.movingBusYUm + travel];
   const mechanicalBridge = miteredPolyline(
     [bridgeStart, bridgeCorner, bridgeEnd],
     SWX_INTERFACE_ASSUMPTIONS.bridgeWidthUm,
@@ -126,7 +130,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
       'Shallow grating groove masks are illustrative; source pitch and coupling efficiency unverified',
       'S7-sized guides now isolated from fixed/moving shorts; source placement and FEM stiffness unverified',
       'BOX undercut, electrode insulation and complete process History need new verification',
-      'Interface placement and mechanical-bridge thickness are illustrative, not published author GDS',
+      'Shifted actuator frame, extended mechanical bridge, anchor coordinates and bridge thickness are illustrative, not published author GDS',
     ],
   };
 }

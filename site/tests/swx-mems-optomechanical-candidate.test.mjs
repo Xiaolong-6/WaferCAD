@@ -5,6 +5,7 @@ import {
   SWX_INTERFACE_ASSUMPTIONS,
 } from '../../scripts/swx-mems-optomechanical-candidate.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
+import { SWX_COMPACT_ASSUMPTIONS } from '../../scripts/swx-mems-actuator-candidate.mjs';
 import { filletPolyline } from '../../scripts/swx-mems-compact-bends.mjs';
 import { createSwxFootprintScopeAudit } from '../../scripts/swx-mems-footprint-scope.mjs';
 
@@ -48,7 +49,10 @@ test('translated SWT and mechanical connector have coherent physical envelope', 
     const bridge = polygonBound(pose.mechanicalBridge[0]);
     assert.ok(bridge[0] > 3, 'bridge must depart the moving reflector on its right side');
     assert.ok(bridge[2] < 25, 'bridge must not enter the fixed comb bus');
-    assert.ok(bridge[3] < -25, 'bridge terminates at the moving comb handle');
+    assert.ok(
+      Math.abs(bridge[3] - (SWX_COMPACT_ASSUMPTIONS.movingBusYUm + pose.travelUm)) < 0.5,
+      'bridge must terminate at the relocated moving comb handle',
+    );
   }
 });
 
@@ -106,8 +110,8 @@ test('SWT-to-shuttle interface has no fixed/moving positive-area overlap and one
     );
     const connectedRegion = (point) => moving.findIndex((poly) => v.pointInMulti(point, [poly]));
     const samplePoints = [
-      [-25, -27.4 + pose.travelUm],
-      [25, -27.4 + pose.travelUm],
+      [-25, SWX_COMPACT_ASSUMPTIONS.movingBusYUm + pose.travelUm],
+      [25, SWX_COMPACT_ASSUMPTIONS.movingBusYUm + pose.travelUm],
       [0, SWX_INTERFACE_ASSUMPTIONS.offsetYUm - 1.6 + pose.travelUm],
       [24, SWX_INTERFACE_ASSUMPTIONS.offsetYUm - 1.6 + pose.travelUm],
     ];

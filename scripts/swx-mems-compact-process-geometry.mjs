@@ -28,12 +28,12 @@ const rect = (x, y, w, h) => [
 const shift = (polygon, dx, dy) => polygon.map(([x, y]) => [x + dx, y + dy]);
 const FIELD = [160, 220];
 const ELECTRICAL = [
-  [-16, 40],
-  [-6, 40],
-  [6, 40],
-  [16, 40],
-  [-41, -18],
-  [41, -18],
+  [-16, 70],
+  [-6, -30],
+  [6, -30],
+  [16, 70],
+  [-41, 12],
+  [41, 12],
 ];
 const RAIL_X = (SWX_REPORTED.shuttleWidthUm - 0.7) / 2;
 
@@ -104,8 +104,8 @@ export function createSwxCompactProcessGeometry(state = 'off') {
     maskNames: labels.map(([layer, name]) => ({ layer, name })),
     gapUm: source.gapUm,
     travelUm: source.travelUm,
-    releasedBeamTestPoint: [RAIL_X, -12 + source.travelUm],
-    anchorTestPoint: [6, 40],
+    releasedBeamTestPoint: [RAIL_X, 18 + source.travelUm],
+    anchorTestPoint: [6, SWX_COMPACT_ASSUMPTIONS.lowerSpringAnchorYUm],
     // Used for numeric acceptance of released Si, not a picture heuristic.
     physicalGroups: {
       fixed: source.fixed,
@@ -159,6 +159,8 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
   assumptions: {
     ...SWX_ASSUMPTIONS,
     compactMechanical: SWX_COMPACT_ASSUMPTIONS,
+    sourceS8SpringCombAxialTopologyRestored: true,
+    sourceS8AbsoluteCoordinatesVerified: false,
     compactOptical: SWX_INTERFACE_ASSUMPTIONS,
     fieldUm: FIELD,
     sourceGratingGroovesImplemented: false,
