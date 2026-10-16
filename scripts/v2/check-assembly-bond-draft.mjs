@@ -89,6 +89,7 @@ try {
     await waitForPaint(page);
     const committed = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(committed.assemblyPreview.sources, 3);
+    assert.equal(committed.sectionCollapse.enabled, false);
     assert.equal(committed.assemblyPreview.index, 2);
     assert.equal(committed.sharedIdentity, true);
     assert.equal(committed.workflow.writable, false);
@@ -224,6 +225,7 @@ try {
     );
     const afterFirst = await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(afterFirst.assemblyPreview.sources, 2);
+    assert.equal(afterFirst.sectionCollapse.enabled, false);
     assert.equal(afterFirst.assemblyPreview.index, 1);
     assert.equal(afterFirst.sharedIdentity, true);
     assert.equal(afterFirst.workflow.writable, false);
