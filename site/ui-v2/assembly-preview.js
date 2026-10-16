@@ -87,9 +87,8 @@ export function mountAssemblyPreviewControls({
 
   const sync = () => {
     const index = currentIndex();
-    stage.textContent = index === 0
-      ? `Original wafer · 0 / ${maxIndex()}`
-      : `Bond ${index} / ${maxIndex()}`;
+    stage.textContent =
+      index === 0 ? `Original wafer · 0 / ${maxIndex()}` : `Bond ${index} / ${maxIndex()}`;
     backward.disabled = index === 0;
     forward.disabled = index === maxIndex();
     nav.dataset.bondIndex = String(index);
