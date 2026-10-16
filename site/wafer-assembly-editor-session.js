@@ -97,6 +97,27 @@ export function createAssemblyBondEditorSession(
     return structuredClone(next);
   }
 
+  function applyVariantProject(next, reason) {
+    const previous = currentProject();
+    try {
+      if (applyVisibleProject(structuredClone(next)) !== true) {
+        throw new Error(`Assembly Variant ${reason} was rejected by the workstation.`);
+      }
+    } catch (error) {
+      try {
+        if (applyVisibleProject(structuredClone(previous)) !== true) {
+          throw new Error('Previous Assembly state was not restored.');
+        }
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [error, rollbackError],
+          'Assembly Variant update and physical rollback both failed.',
+        );
+      }
+      throw error;
+    }
+  }
+
   function createVariant(id, name = '') {
     assertReadable();
     if (!visibleParity()) throw new Error('Bond workspace material drift; fork refused.');
@@ -112,9 +133,7 @@ export function createAssemblyBondEditorSession(
     const nextHistory = project.waferAssembly
       ? createAssemblyBondHistorySession(project)
       : null;
-    if (applyVisibleProject(structuredClone(project)) !== true) {
-      throw new Error('Assembly Variant fork was rejected by the workstation.');
-    }
+    applyVariantProject(project, 'fork');
     graph = candidate;
     history = nextHistory;
     revision++;
@@ -129,9 +148,7 @@ export function createAssemblyBondEditorSession(
     const nextHistory = project.waferAssembly
       ? createAssemblyBondHistorySession(project)
       : null;
-    if (applyVisibleProject(structuredClone(project)) !== true) {
-      throw new Error('Assembly Variant switch was rejected by the workstation.');
-    }
+    applyVariantProject(project, 'switch');
     graph = candidate;
     history = nextHistory;
     revision++;
