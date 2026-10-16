@@ -1,0 +1,46 @@
+name: Wafer bonding preview Chromium
+
+on:
+  push:
+    branches:
+      - feat/multi-wafer-bonding-from-pr229-20261015
+    paths:
+      - scripts/v2/check-assembly-preview.mjs
+      - .github/workflows/wafer-bonding-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wafer-bond-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install targeted Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Native Assembly three-stage four-view acceptance
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4182
+        run: |
+          python3 -m http.server 4182 --bind 127.0.0.1 --directory site >/tmp/wafercad-assembly-preview-http.log 2>&1 &
+          node scripts/v2/check-assembly-preview.mjs
+      - name: Store inspected view screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wafer-bond-assembly-preview
+          path: test-results/wafer-bond-preview/*.png
+          if-no-files-found: warn
+          retention-days: 14
