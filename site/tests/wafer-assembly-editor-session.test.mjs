@@ -319,10 +319,13 @@ test('source-aware Variant fork from A+B preserves both C and D histories and ph
   assert.equal(graph.branches.length, 2);
   assert.deepEqual(graph.branches[0].sourceRefs, [0, 1, 2]);
   assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
-  assert.deepEqual(host.controller.listVariants().map((b) => [b.id, b.active]), [
-    ['main', false],
-    ['alt', true],
-  ]);
+  assert.deepEqual(
+    host.controller.listVariants().map((b) => [b.id, b.active]),
+    [
+      ['main', false],
+      ['alt', true],
+    ],
+  );
   const primary = host.controller.switchVariant('main');
   assert.deepEqual(primary.model, mainHead.model);
   assert.deepEqual(host.getVisible().model, mainHead.model);
