@@ -213,7 +213,8 @@ export function mountAssemblyBondDraftControls({
         },
       };
       await editor.appendPostBondStepDurable(input);
-      status.textContent = 'Post-Bond geometry saved. Export all Variants; .wafercad is baseline only.';
+      status.textContent =
+        'Post-Bond geometry saved. Export all Variants; .wafercad is baseline only.';
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';
