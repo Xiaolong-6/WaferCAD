@@ -2171,6 +2171,57 @@ diffuseColor.a *= waferCadAlphaScale;`,
     host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
     // Temporary PR250 read-only geometry diagnosis, removed after root cause.
     host.dataset.roughImplantCutEdgeAudit = JSON.stringify(implantCutAudit);
+    // PR250 audit-only: compare the real cap boundary, not only equal-LOD
+    // synthetic vertices, on the exact observed Y=-150 rough ROI cut.
+    const profileCaps = [...boundaryProfiles].map(([index, profile]) => ({
+      index,
+      profile,
+      cap: physicalSurfacePlan?.caps?.[index],
+    }));
+    host.dataset.roughBoundaryCapSources = JSON.stringify(
+      profileCaps.map(({ index, profile, cap }) => ({
+        index,
+        layerId: cap?.layerId,
+        z: cap?.z,
+        buried: cap?.buried,
+        normal: cap?.normal,
+        profileNormal: cap?.profileNormal,
+        segments: profile.segments.length,
+      })),
+    );
+    const siliconCap = profileCaps.find(
+      ({ cap }) => cap?.layerId === 'base' && Math.abs(cap.z - 174.3) < 2e-5,
+    );
+    const aluminaCap = profileCaps.find(
+      ({ cap }) => cap?.layerId === 'layer-3' && Math.abs(cap.z - 174.35) < 2e-5,
+    );
+    const p = [2000, -150];
+    const q = [2495.0395, -150];
+    let thicknessAudit = { available: Boolean(siliconCap && aluminaCap) };
+    if (
+      siliconCap &&
+      aluminaCap &&
+      boundaryProfileOverlapsEdge(siliconCap.profile, p, q) &&
+      boundaryProfileOverlapsEdge(aluminaCap.profile, p, q)
+    ) {
+      const samples = sidewallBoundarySamples(
+        { p, q, z0: siliconCap.cap.z, z1: aluminaCap.cap.z },
+        { lowerProfile: siliconCap.profile, upperProfile: aluminaCap.profile },
+      );
+      const deviations = samples.map(
+        (sample) => sample.upperZ - sample.lowerZ - (aluminaCap.cap.z - siliconCap.cap.z),
+      );
+      thicknessAudit = {
+        available: true,
+        samples: samples.length,
+        minimumDeviation: Math.min(...deviations),
+        maximumDeviation: Math.max(...deviations),
+        negativeThicknessSamples: samples.filter(
+          (sample) => sample.upperZ - sample.lowerZ <= 0,
+        ).length,
+      };
+    }
+    host.dataset.roughConformalCutGapAudit = JSON.stringify(thicknessAudit);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
     rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
