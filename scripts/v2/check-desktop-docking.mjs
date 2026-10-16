@@ -50,6 +50,62 @@ async function assertGrid(page, expected) {
       assert.ok(intersect(a, b) <= 2, 'Panels do not overlap: ' + a.name + ' / ' + b.name);
   }
 }
+async function assertDesktopShell(page) {
+  const shell = await page.evaluate(() => {
+    const sidebar = document.querySelector('.p-sidebar');
+    const workspace = document.querySelector('.p-workspace');
+    const toolbar = workspace?.querySelector('.p-desktop-dock-actions');
+    const right = workspace?.getBoundingClientRect();
+    const nav = toolbar?.getBoundingClientRect();
+    return {
+      parenthood:
+        sidebar?.contains(document.querySelector('.p-topbar')) &&
+        sidebar?.contains(document.querySelector('.p-nav')) &&
+        sidebar?.contains(document.querySelector('.p-inspector')) &&
+        workspace?.contains(document.querySelector('.p-viewbar')) &&
+        workspace?.contains(document.querySelector('.p-canvases')) &&
+        workspace?.contains(document.querySelector('.p-status')),
+      sidebarWidth: sidebar?.getBoundingClientRect().width,
+      workspaceWidth: right?.width,
+      centered:
+        right && nav ? Math.abs((right.left + right.right - nav.left - nav.right) / 2) : Infinity,
+      projectInSidebar: Boolean(sidebar?.querySelector('[data-slot="topbar.project"]')),
+      outerOverflow: document.documentElement.scrollWidth - innerWidth,
+    };
+  });
+  assert.equal(shell.parenthood, true, 'Desktop Shell owns two stable columns');
+  assert.ok(shell.sidebarWidth >= 280 && shell.workspaceWidth >= 300);
+  assert.ok(shell.centered <= 2, 'View navigation is centered inside right column');
+  assert.ok(shell.projectInSidebar);
+  assert.ok(shell.outerOverflow <= 1);
+}
+async function assertMockChrome(page) {
+  const result = await page.evaluate(() => {
+    const sidebarButton = document.querySelector('.p-topbar [data-action="hide-editor"]');
+    const overviewButton = document.querySelector('[data-action="dock:overview"]');
+    const switcher = overviewButton.closest('.p-desktop-dock-actions');
+    const icon = overviewButton.querySelector('.wc-icon');
+    const sidebarIcon = sidebarButton.querySelector('.wc-icon');
+    return {
+      sidebarIcon: sidebarButton.querySelector('use')?.getAttribute('href'),
+      overviewIcon: overviewButton.querySelector('use')?.getAttribute('href'),
+      sidebarIconWidth: sidebarIcon.getBoundingClientRect().width,
+      overviewIconWidth: icon.getBoundingClientRect().width,
+      switcherGap: getComputedStyle(switcher).gap,
+      overviewHeight: overviewButton.getBoundingClientRect().height,
+      overviewMinWidth: parseFloat(getComputedStyle(overviewButton).minWidth),
+      overviewActiveBackground: getComputedStyle(overviewButton).backgroundColor,
+    };
+  });
+  assert.equal(result.sidebarIcon, '#p-icon-sidebarCollapse');
+  assert.equal(result.overviewIcon, '#p-icon-overview');
+  assert.equal(result.sidebarIconWidth, 17);
+  assert.equal(result.overviewIconWidth, 15);
+  assert.equal(result.switcherGap, '7px');
+  assert.equal(result.overviewHeight, 36);
+  assert.ok(result.overviewMinWidth >= 72);
+  assert.equal(result.overviewActiveBackground, 'rgb(237, 243, 249)');
+}
 async function setTemplate(page, id) {
   const header = page.locator('#mainPanel [data-slot="view.main.header"]');
   await header.focus();
@@ -98,6 +154,26 @@ try {
       assert.deepEqual(controls, ['dock:overview', ...views.map((view) => 'dock:view:' + view)]);
       assert.equal(await page.locator('.p-section-dock-actions:visible').count(), 0);
       await assertGrid(page, 4);
+      await assertDesktopShell(page);
+      await assertMockChrome(page);
+      if (width === 1440) {
+        await page.locator('.p-topbar [data-action="hide-editor"]').click();
+        assert.equal(await page.locator('.p-sidebar:visible').count(), 0);
+        const restore = page.locator('.p-viewbar [data-action="expand-empty"]');
+        assert.equal(
+          await restore.locator('use').getAttribute('href'),
+          '#p-icon-sidebarExpand',
+          'Restore and Collapse use mirrored sidebar glyphs',
+        );
+        assert.equal(
+          await restore.locator('.wc-icon').evaluate((node) => getComputedStyle(node).width),
+          '17px',
+        );
+        await page.screenshot({ path: resolve(output, 'restore-panel-1440.png') });
+        await restore.click();
+        await assertDesktopShell(page);
+        await assertGrid(page, 4);
+      }
       // Four window titlebar glyphs must match the canonical viewbar sprite.
       const titleIcons = await page.evaluate(() => {
         const expected = { main: 'main', mask: 'mask', three: 'cube', section: 'section' };
@@ -131,26 +207,61 @@ try {
         await page.locator('[data-action="dock:view:mask"]').getAttribute('aria-pressed'),
         'false',
       );
-      // Workflow Mask must reopen a previously closed view and maximize it.
+      // Workflow Mask temporarily presents a full-size view without changing
+      // the user's prior composition or writing Mask visibility to preferences.
+      const layoutBeforeFocus = await layoutState(page);
+      const storedBeforeFocus = await page.evaluate(() =>
+        localStorage.getItem('wafercad.desktop-view-layout.v1'),
+      );
       await page.locator('.p-nav [data-action="domain:mask"]').click();
       await assertGrid(page, 1);
-      assert.equal((await layoutState(page)).maximized, 'mask');
-      assert.equal((await layoutState(page)).visible.includes('mask'), true);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus);
+      if (width === 1440)
+        await page.screenshot({ path: resolve(output, 'mask-workflow-temporary-focus.png') });
+      await page.waitForFunction(() => document.querySelectorAll('.v2-dock-divider').length === 0);
       await page.locator('.p-nav [data-action="domain:mask"]').click();
-      assert.equal(
-        (await layoutState(page)).maximized,
-        'mask',
-        'Repeated Mask navigation does not restore',
-      );
+      await assertGrid(page, 1);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Repeated Mask retains focus');
       await page.locator('#maskPanel [data-action="maximize:mask"]').click();
+      await assertGrid(page, 3);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Restore preserves hidden Mask');
+      if (width === 1440)
+        await page.screenshot({ path: resolve(output, 'mask-workflow-restored-layout.png') });
+      assert.equal(
+        await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1')),
+        storedBeforeFocus,
+        'Temporary Mask focus must not touch stored preferences',
+      );
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      await assertGrid(page, 1);
+      await page.locator('.p-nav [data-action="domain:process"]').click();
+      await assertGrid(page, 3);
+      assert.deepEqual(
+        await layoutState(page),
+        layoutBeforeFocus,
+        'Process tab ends temporary focus',
+      );
+      await page.locator('#threePanel [data-action="maximize:three"]').click();
+      await assertGrid(page, 1);
+      const priorMaximizedLayout = await layoutState(page);
+      assert.equal(priorMaximizedLayout.maximized, 'three');
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      await assertGrid(page, 1);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      await page.locator('#maskPanel [data-action="maximize:mask"]').click();
+      await assertGrid(page, 1);
+      assert.equal(await page.locator('#threePanel').isVisible(), true);
+      assert.deepEqual(
+        await layoutState(page),
+        priorMaximizedLayout,
+        'Restore recovers an already-maximized user view',
+      );
+      await page.locator('#threePanel [data-action="maximize:three"]').click();
+      await assertGrid(page, 3);
+      await page.locator('[data-action="dock:view:mask"]').click();
       await assertGrid(page, 4);
       await verifyIdentity(page);
-      await page.locator('#threePanel [data-action="maximize:three"]').click();
-      await assertGrid(page, 1);
-      assert.equal((await layoutState(page)).maximized, 'three');
-      await page.locator('#threePanel [data-action="maximize:three"]').click();
-      await assertGrid(page, 4);
-      assert.equal((await layoutState(page)).maximized, null);
       const unchanged = await page.evaluate(
         () =>
           JSON.stringify(window.WaferCadV2Workstation.snapshot().model) ===
@@ -162,6 +273,41 @@ try {
 
       // Presets and drag/keyboard acceptance run once at comfortable desktop width.
       if (width === 1440) {
+        // Sidebar drag changes .p-canvases without changing window dimensions.
+        // Absolute dock splitters must track the actual CSS Grid boundaries.
+        const sidebarDivider = await page.locator('.p-divider').boundingBox();
+        assert.ok(sidebarDivider, 'Sidebar divider is present');
+        const startX = sidebarDivider.x + sidebarDivider.width / 2;
+        const dragY = sidebarDivider.y + sidebarDivider.height / 3;
+        const initialWidth = (await measure(page)).stageWidth;
+        await page.mouse.move(startX, dragY);
+        await page.mouse.down();
+        await page.mouse.move(startX + 64, dragY, { steps: 10 });
+        await page.waitForFunction(() => {
+          const main = document.querySelector('#mainPanel').getBoundingClientRect();
+          const mask = document.querySelector('#maskPanel').getBoundingClientRect();
+          const three = document.querySelector('#threePanel').getBoundingClientRect();
+          const section = document.querySelector('#sectionPanel').getBoundingClientRect();
+          const splitters = [...document.querySelectorAll('.v2-dock-divider-columns')];
+          const expected = [(main.right + mask.left) / 2, (three.right + section.left) / 2];
+          // A straight boundary across multiple rows is one continuous handle.
+          return (
+            splitters.length > 0 &&
+            splitters.every((handle) => {
+              const rect = handle.getBoundingClientRect();
+              return expected.every(
+                (boundary) => Math.abs(rect.left + rect.width / 2 - boundary) < 3,
+              );
+            })
+          );
+        });
+        assert.ok(
+          (await measure(page)).stageWidth < initialWidth - 40,
+          'Sidebar pointer drag actually shrinks the Dock stage',
+        );
+        await page.screenshot({ path: resolve(output, 'sidebar-resize-live-1440.png') });
+        await page.mouse.up();
+        await assertGrid(page, 4);
         for (const id of [
           'four-left',
           'four-right',
@@ -411,6 +557,11 @@ try {
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
+    assert.equal(
+      await page.locator('.p-sidebar').evaluate((node) => getComputedStyle(node).display),
+      'contents',
+      'Mobile flattens desktop hosts without a second scroll container',
+    );
     assert.equal(await page.locator('.p-desktop-dock-actions:visible').count(), 0);
     assert.equal(await page.locator('.v2-dock-divider:visible').count(), 0);
     assert.equal(await page.locator('.p-nav [data-action]').count(), 5);

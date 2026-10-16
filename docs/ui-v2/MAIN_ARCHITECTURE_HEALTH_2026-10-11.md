@@ -1,5 +1,7 @@
 # Main architecture health and view-kit extraction
 
+> **Historical design checkpoint (2026-10-11):** The budgets, source paths, missing integrations and approval statements below apply only to the named revision. They do not describe the production Workstation as of 2026-10-16. Consult [Architecture](../ARCHITECTURE.md) and the current `site/ui-v2/` implementation before planning new UI work.
+
 Latest approved stage: behavior-preserving view-kit extraction, based on Main checkpoint 6dfff3b0ac58a9d3af1db550ece1a3629a6e0864. The [extraction checkpoint](#view-kit-extraction-checkpoint) below records the current budget rule, migration, isolation evidence, workarounds and validation. Earlier sections preserve the original Main checkpoint and its historical budget/authorization statements; they do not override the later approval. Mask remains unimplemented and awaits approval.
 
 Date: 2026-10-11. Branch: codex/ui-v2-m3-main-audit-20261010. Product diff base: da37fe4d217d26f23941144908f5abe9d4dc784c. Pre-checkpoint HEAD: 918b4bbcc9cdaaef08b419aebff7441f40c12f3e (the separate verified format-only commit). This report accompanies a local checkpoint; no push, merge, deployment, view-kit extraction or Mask implementation is authorized. Resolve the checkpoint containing this report with `git log -1 --format=%H -- docs/ui-v2/MAIN_ARCHITECTURE_HEALTH_2026-10-11.md`.
