@@ -183,10 +183,7 @@ test('S6 labeled geometry: R1=5um transition, two R2=3um U-returns and L=15um', 
       assert.equal(path.arcs[1].kind, 'outer-return-R2');
       assert.equal(path.arcs[2].kind, 'inner-return-R2');
       assert.equal(path.nominalTerminalStraightLUm, 15);
-      approx(
-        Math.abs(path.stationaryEnd[0] - path.terminalRunStart[0]),
-        15,
-      );
+      approx(Math.abs(path.stationaryEnd[0] - path.terminalRunStart[0]), 15);
       approx(path.stationaryEnd[1], -95);
       assert.ok(path.arcs.every((arc) => Number.isFinite(arc.sweepRad)));
       for (const arc of path.arcs) {

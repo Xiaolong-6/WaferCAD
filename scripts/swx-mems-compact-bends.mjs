@@ -66,6 +66,7 @@ export function filletPolyline(points, radius, segmentsPerTurn = 12) {
       lastArcIndex: result.length - 1,
       start: turn.entry,
       end: turn.exit,
+      sweepRad: turn.sweep,
     });
   }
   result.push(points.at(-1));
@@ -106,15 +107,7 @@ export function createSwxDoubleHairpin({ side, travelUm = 0, samplesPerHalfTurn 
     center: arc.center,
     startIndex: arc.firstArcIndex,
     endIndex: arc.lastArcIndex,
-    sweepRad:
-      Math.atan2(
-        points[arc.lastArcIndex][1] - arc.center[1],
-        points[arc.lastArcIndex][0] - arc.center[0],
-      ) -
-      Math.atan2(
-        points[arc.firstArcIndex][1] - arc.center[1],
-        points[arc.firstArcIndex][0] - arc.center[0],
-      ),
+    sweepRad: arc.sweepRad,
   }));
 
   const appendReturn = (center, sweep, kind) => {
