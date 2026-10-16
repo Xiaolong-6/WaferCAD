@@ -65,7 +65,9 @@ test('post-Bond replay yields exact same material as the existing Process Worker
     face: 'back',
     area: fullFaceGeometry(candidate),
   };
-  const expected = applyProcessFaces(candidate, params, (model, face) => applyOperation(model, face));
+  const expected = applyProcessFaces(candidate, params, (model, face) =>
+    applyOperation(model, face),
+  );
   assert.equal(expected.result.changed, true);
   const result = appendPostBondGeometryStep(project, [], step);
   assert.deepEqual(result.model, expected.model);
@@ -119,7 +121,11 @@ test('post-Bond Recipe size bound rejects out-of-range replay without mutation',
   const project = bonded();
   assert.equal(MAX_POST_BOND_STEPS, 16);
   assert.throws(
-    () => replayPostBondGeometry(project, Array.from({ length: 17 }, () => null)),
+    () =>
+      replayPostBondGeometry(
+        project,
+        Array.from({ length: 17 }, () => null),
+      ),
     /bounded step count/,
   );
   assert.throws(() => replayPostBondGeometry(wafer('standalone'), []), /source provenance/);
