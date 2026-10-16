@@ -54,10 +54,11 @@
     height: var(--p-mobile-dock-height);
     box-sizing: border-box;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* The left action switches modes; the remaining four columns are tabs. */
+    grid-template-columns: 64px repeat(4, minmax(0, 1fr));
     align-items: start;
-    gap: 2px;
-    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
     overflow: hidden;
     background: var(--wc-surface);
     border: 0;
@@ -80,6 +81,25 @@
     white-space: nowrap;
     border: 0;
     border-radius: var(--wc-radius-sm);
+  }
+
+  /* The persistent neutral switch is not part of the selectable tab group. */
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button:first-child {
+    position: relative;
+    background: color-mix(in srgb, var(--wc-page) 85%, var(--wc-border));
+    border: 1px solid var(--wc-border);
+    border-radius: var(--wc-radius-md);
+    color: var(--wc-text);
+    font-weight: 600;
+  }
+
+  body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button:first-child::after {
+    content: '';
+    position: absolute;
+    inset: 9px -7px 9px auto;
+    width: 1px;
+    background: var(--wc-border);
+    pointer-events: none;
   }
 
   body[data-workstation]:not([data-preview-mode]) .p-nav > .wc-button .wc-icon {
