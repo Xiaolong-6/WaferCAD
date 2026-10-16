@@ -127,10 +127,28 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     current[index] = next;
     return current;
   }
-  function setPreview(axis, values) {
+  // The grid tracks update on pointermove, but splitters are absolutely
+  // positioned children of the grid host. Keep every segment of the dragged
+  // boundary at the *current* track edge, including during a live preview.
+  function moveHandlesWithGrid(axis, values, g) {
+    const isColumn = axis === 'columns';
+    const available = isColumn ? g.width : g.height;
+    const gap = isColumn ? g.colGap : g.rowGap;
+    const offset = isColumn ? g.left : g.top;
+    for (const handle of handles) {
+      if (handle.dataset.dockAxis !== axis) continue;
+      const boundary = Number(handle.dataset.dockIndex);
+      const before = values.slice(0, boundary + 1).reduce((a, b) => a + b, 0);
+      const position = offset + before * available + gap * (boundary + 0.5);
+      handle.style[isColumn ? 'left' : 'top'] = position + 'px';
+      handle.setAttribute('aria-valuenow', String(Math.round(values[boundary] * 100)));
+    }
+  }
+  function setPreview(axis, values, g) {
     host.style[axis === 'columns' ? 'gridTemplateColumns' : 'gridTemplateRows'] = values
       .map((value) => 'minmax(0, ' + value + 'fr)')
       .join(' ');
+    moveHandlesWithGrid(axis, values, g);
   }
   function pointerDown(event) {
     const handle = event.target.closest('.v2-dock-divider');
@@ -165,7 +183,7 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     const next = movedRatios(drag.g, drag.axis, drag.index, position - drag.start);
     if (!next) return;
     drag.values = next;
-    setPreview(drag.axis, next);
+    setPreview(drag.axis, next, drag.g);
     event.preventDefault();
   }
   function pointerEnd(event) {
@@ -175,7 +193,7 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     if (event.type !== 'pointercancel') {
       dispatch({ type: 'SET_RATIOS', axis: current.axis, values: current.values });
     } else {
-      setPreview(current.axis, current.g.ratios[current.axis]);
+      setPreview(current.axis, current.g.ratios[current.axis], current.g);
     }
     requestAnimationFrame(refresh);
   }

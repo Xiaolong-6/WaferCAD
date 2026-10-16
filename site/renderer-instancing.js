@@ -157,6 +157,31 @@ export function translatedSidewallInstanceGroups(
   const threshold = Math.max(2, Math.floor(Number(minInstances) || 8)),
     buckets = new Map(),
     leftovers = [];
+  // Per-call, bounded memo: the snap is pure and quantum fixed. Real wafer
+  // arrays reuse XY positions, edge deltas, and Z spans across many sidewalls.
+  const snapped = new Map();
+  let checked = 0;
+  let hits = 0;
+  let memoEnabled = true;
+  const reuseSnap = (value) => {
+    if (!memoEnabled) return snap(value, quantum);
+    // Stop paying lookup costs on high-cardinality non-array meshes.
+    // Only the work strategy changes; snap() itself remains authoritative.
+    checked++;
+    if (checked === 4096 && hits * 100 < checked * 45) {
+      memoEnabled = false;
+      snapped.clear();
+      return snap(value, quantum);
+    }
+    const key = Number(value);
+    if (snapped.has(key)) {
+      hits++;
+      return snapped.get(key);
+    }
+    const quantized = snap(value, quantum);
+    if (snapped.size < 2048) snapped.set(key, quantized);
+    return quantized;
+  };
 
   for (const part of parts || []) {
     const p = part?.p,
@@ -177,12 +202,12 @@ export function translatedSidewallInstanceGroups(
       continue;
     }
 
-    const tx = snap(p[0], quantum),
-      ty = snap(p[1], quantum),
-      dx = snap(Number(q[0]) - Number(p[0]), quantum),
-      dy = snap(Number(q[1]) - Number(p[1]), quantum),
-      localZ0 = snap(z0, quantum),
-      localZ1 = snap(z1, quantum);
+    const tx = reuseSnap(p[0]),
+      ty = reuseSnap(p[1]),
+      dx = reuseSnap(Number(q[0]) - Number(p[0])),
+      dy = reuseSnap(Number(q[1]) - Number(p[1])),
+      localZ0 = reuseSnap(z0),
+      localZ1 = reuseSnap(z1);
     if (Math.hypot(dx, dy) <= 1e-12 || Math.abs(localZ1 - localZ0) <= 1e-12) {
       leftovers.push(part);
       continue;
