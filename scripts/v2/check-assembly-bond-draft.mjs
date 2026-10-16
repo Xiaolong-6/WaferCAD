@@ -543,9 +543,7 @@ try {
         assert.equal(processForkGraph.branches[0].postBondSteps.length, 2);
         assert.equal(processForkGraph.branches[2].postBondSteps.length, 2);
         assert.equal(processForkGraph.branches[2].postBondSteps[1].params.material, 'Al');
-        await restoredProcessTab
-          .getByLabel('Bond Variant', { exact: true })
-          .selectOption('main');
+        await restoredProcessTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
         await restoredProcessTab.waitForFunction(() =>
           document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.8 µm'),
         );
