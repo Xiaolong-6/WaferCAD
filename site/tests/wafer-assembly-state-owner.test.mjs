@@ -150,3 +150,16 @@ test('ordinary History state cannot capture embedded Assembly even in opt-in wor
   assert.equal(host.controller.isValidSnapshotState(project), false);
   assert.equal(host.controller.isValidSnapshotStates([project]), false);
 });
+
+test('opt-in Assembly Save validates physical replay without any hierarchy mutation', () => {
+  const host = createOptInHost();
+  host.controller.loadProjectSnapshot(assemblyProject());
+  host.events.length = 0;
+  const saved = host.controller.buildProjectSnapshot(true);
+  validateBondedAssemblyProject(saved);
+  assert.deepEqual(host.events, []);
+  const live = host.getLive();
+  live.model.layers[0].name = 'Forged source material';
+  assert.throws(() => host.controller.buildProjectSnapshot(true), /material differs/);
+  assert.deepEqual(host.events, [], 'failed Save cannot rewrite source layout hierarchy');
+});
