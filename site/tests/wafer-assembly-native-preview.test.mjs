@@ -147,3 +147,40 @@ test('Assembly preview Z extent never invents dimensions for missing physical ma
     /physical Z extent/,
   );
 });
+
+test('opt-in native draft commits a third donor with Recovery before actual workspace mutation', async () => {
+  const original = bonded();
+  const store = createWorkstationRuntime(
+    { source: 'three.wafercad', hash: '', data: original },
+    { assemblyPreview: true },
+  );
+  const checkpoints = [];
+  const session = store.createAssemblyBondDraftSession(async (project, reason) => {
+    checkpoints.push({ project, reason });
+    return true;
+  });
+  assert.equal(session.currentIndex(), 2);
+  const fourth = wafer('Donor D');
+  const result = await session.bond(fourth, { donorId: 'D' });
+  assert.equal(checkpoints.length, 1);
+  assert.deepEqual(checkpoints[0].project, original);
+  assert.equal(checkpoints[0].reason, 'pre-wafer-bond');
+  assert.equal(result.operation.donorId, 'D');
+  assert.equal(store.assemblyPreviewSession.currentIndex(), 3);
+  assert.equal(store.assemblyPreviewSession.maxIndex(), 3);
+  assert.equal(store.state.waferAssembly.sources.length, 4);
+  assert.deepEqual(store.state.model, result.project.model);
+  assert.equal(store.state.threeShowBorders, true);
+  assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 1600);
+  assert.deepEqual(store.restoreAssemblyStage(2).model, original.model);
+  assert.deepEqual(store.restoreAssemblyStage(3).model, result.project.model);
+  assert.deepEqual(store.assemblyPreviewSession.fullProduct(), result.project);
+  assert.equal(store.history.listHistory().length, 0, 'ordinary History owner remains untouched');
+});
+
+test('isolated Recovery store refuses commits where IndexedDB is unavailable', async () => {
+  const { createAssemblyBondDraftRecovery } = await import('../wafer-assembly-draft-recovery.js');
+  const recovery = createAssemblyBondDraftRecovery({ indexedDB: null });
+  await assert.rejects(() => recovery.checkpoint(bonded()), /requires IndexedDB/);
+  await assert.rejects(() => recovery.load('missing'), /requires IndexedDB/);
+});
