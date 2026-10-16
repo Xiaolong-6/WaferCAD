@@ -6,11 +6,8 @@ await loadGeometryKernel();
 const { createModel } = await import('../model.js');
 const { migrateProjectFile, validateProjectFile } = await import('../project-schema.js');
 const { replayWaferAssembly } = await import('../wafer-assembly.js');
-const {
-  prepareWaferBondTransaction,
-  commitWaferBondTransaction,
-  replayWaferBondTransaction,
-} = await import('../wafer-bond-transaction.js');
+const { prepareWaferBondTransaction, commitWaferBondTransaction, replayWaferBondTransaction } =
+  await import('../wafer-bond-transaction.js');
 
 function wafer(name) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness: 400 });
