@@ -61,7 +61,6 @@ numerically degenerate band partitions. The current Kernel's material
 selectivity, XY Boolean clip, runtime cost, save/replay and radial SEM
 correspondence are intentionally unchanged and remain integration gates.
 
-
 ## Exposed-seed operation-plan boundary (not enabled in Process)
 
 `planSelectiveIsotropicRelease` now accepts an explicitly exposed

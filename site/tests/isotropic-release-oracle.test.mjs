@@ -163,9 +163,13 @@ test('selective exposed seed plans preserve Front/Back Z bands and material targ
 
 test('selective seed planning rejects hidden, unselected or excessive work', () => {
   const valid = {
-    seedLayerId: 'base', seedZ: 0, face: 'front',
-    targetLayerIds: ['base'], isExposed: true,
-    radius: 36, maxLateralErrorUm: 0.5,
+    seedLayerId: 'base',
+    seedZ: 0,
+    face: 'front',
+    targetLayerIds: ['base'],
+    isExposed: true,
+    radius: 36,
+    maxLateralErrorUm: 0.5,
   };
   assert.throws(
     () => planSelectiveIsotropicRelease({ ...valid, isExposed: false }),
@@ -175,10 +179,7 @@ test('selective seed planning rejects hidden, unselected or excessive work', () 
     () => planSelectiveIsotropicRelease({ ...valid, targetLayerIds: ['oxide'] }),
     /selected target/,
   );
-  assert.throws(
-    () => planSelectiveIsotropicRelease({ ...valid, maxBands: 8 }),
-    /band budget/,
-  );
+  assert.throws(() => planSelectiveIsotropicRelease({ ...valid, maxBands: 8 }), /band budget/);
   assert.throws(
     () => planSelectiveIsotropicRelease({ ...valid, face: 'both' }),
     /Invalid physical/,
