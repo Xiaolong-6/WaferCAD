@@ -18,7 +18,7 @@ await mkdir(directory, { recursive: true });
 const filename = resolve('test-results/swx-mems-compact/swx-compact-candidate.wafercad');
 const source = await readProjectFile(new Blob([await readFile(filename)]));
 assert.equal(source.snapshotBranches.branches.length, 2);
-assert.equal(source.layout.elements.length, 172, 'Compact mask includes four six-groove couplers');
+assert.equal(source.layout.elements.length, 178, 'Compact mask contains four gratings and two S7 guides');
 const browser = await launchBrowser();
 const report = { browser: browser.version(), cases: [] };
 try {
