@@ -147,7 +147,9 @@ try {
       })
       .first();
     await insertTarget.locator('.snapshot-more-trigger').click();
-    await insertTarget.locator('.snapshot-more-popover button', { hasText: 'Insert before' }).click();
+    await insertTarget
+      .locator('.snapshot-more-popover button', { hasText: 'Insert before' })
+      .click();
     await page.getByRole('button', { name: 'Update current Variant', exact: true }).click();
     await page.waitForFunction(
       () => /Insert Step/.test(document.querySelector('#applyOperationBtn')?.textContent || ''),
@@ -257,7 +259,7 @@ try {
     assert.deepEqual(reopenedInsertion.workflow.branches, committed.workflow.branches);
     assert.deepEqual(errors, []);
     console.log(
-      'V2_HISTORY_INSERT_SUCCESS: 4 Worker requests, physical Z stack, Recovery and Save/Reload PASS',
+      'V2_HISTORY_INSERT_SUCCESS: four Workers, physical Z, Recovery and reload PASS',
     );
     console.log('V2_HISTORY_INSERT_RECOVERY: Worker fault, exact rollback, Save/Reload PASS');
   } finally {
