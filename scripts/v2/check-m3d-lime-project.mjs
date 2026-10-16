@@ -759,17 +759,16 @@ try {
   };
   await ensureSelected(zoom3d);
   await page.mouse.move(centerX, centerY);
-  await page.mouse.wheel(0, -130);
+  // Deliberately reach a device-scale camera distance; a 130px wheel step
+  // barely changed the 14um-wide field and left the entire blanket in view.
+  await page.mouse.wheel(0, -1600);
   await waitForPaint(page);
   const gateStepCamera = (await snapshot()).threeCamera;
   assert.ok(
-    cameraDistance(gateStepCamera) < cameraDistance(beforeLocalCameras.threeCamera),
-    'Local Pd gate-step Zoom must reduce actual camera distance',
+    cameraDistance(gateStepCamera) < cameraDistance(beforeLocalCameras.threeCamera) * 0.6,
+    'Local Pd gate-step view must reduce camera distance by at least 40%',
   );
-  const gateStep = await captureVisibleThree(
-    page,
-    resolve(output, 'three-local-pd-gate-step.png'),
-  );
+  const gateStep = await captureVisibleThree(page, resolve(output, 'three-local-pd-gate-step.png'));
   assert.ok(gateStep.coloredPixels > 1000, 'Local Pd gate-step frame is empty');
   report.threeLocalCameraEvidence.push({
     label: 'pd-gate-step',
