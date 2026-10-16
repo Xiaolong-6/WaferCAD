@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   boundaryProfileFromPositions,
+  boundaryProfileOverlapsEdge,
+  shiftedBoundaryProfile,
   sidewallBoundarySamples,
 } from '../rough-boundary-profile.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
