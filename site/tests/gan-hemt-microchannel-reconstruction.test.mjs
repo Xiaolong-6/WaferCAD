@@ -14,6 +14,7 @@ import {
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
@@ -151,6 +152,45 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.checks.frontBackExteriorSiO2WithUnsealedCoolant, true);
   assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
   assert.equal(validation.checks.twoInferredGsgDieBodiesAndPadsAreRealGeometry, true);
+  assert.equal(project.assemblyWires?.length, 2, 'Integrated example must have real Au loops');
+  validateAssemblyWires(project.assemblyWires);
+  const allWireIds = new Set();
+  for (const wire of project.assemblyWires) {
+    assert.equal(wire.material, 'Au');
+    assert.equal(wire.source, 'inferred');
+    assert.equal(wire.diameterUm, 12);
+    assert.ok(!allWireIds.has(wire.id), 'Each Au loop requires a stable unique id');
+    allWireIds.add(wire.id);
+    const [source, leftControl, rightControl, destination] = wire.points;
+    const anchors = [source, destination];
+    for (const [index, point] of anchors.entries()) {
+      const segments = stackAt(project.model, point.slice(0, 2));
+      const metal = segments.find((segment) => segment.layerId === wire.contactLayerIds[index]);
+      assert.ok(metal, 'Au bond endpoint is not owned by an existing metal pad');
+      assert.ok(Math.abs(metal.z1 - point[2]) < 1e-8, 'Wire must touch the top metal face');
+    }
+    assert.ok(leftControl[2] > source[2] + 100, 'Loop fails to rise from HEMT metal');
+    assert.ok(rightControl[2] > destination[2] + 100, 'Loop fails to rise from GSG metal');
+    assert.ok(Math.abs(source[0]) === 225 && Math.abs(destination[0]) === 1250);
+    assert.equal(Math.sign(source[0]), Math.sign(destination[0]));
+    assert.equal(source[1], 0);
+    assert.equal(destination[1], 0);
+  }
+  const reopenedAssembly = await readProjectFile({
+    size: Buffer.byteLength(json),
+    text: async () => json,
+  });
+  assert.deepEqual(
+    reopenedAssembly.assemblyWires,
+    project.assemblyWires,
+    'Actual 3D Au bond geometry must survive save/reload',
+  );
+  for (const name of ['06 Integrated GaN HEMT', '07 HEMT and dual GSG']) {
+    const inspectionBookmark = project.snapshots.find((snapshot) => snapshot.name.startsWith(name));
+    assert.ok(inspectionBookmark?.state.assemblyWires?.length === 2,
+      'Final inspection Bookmarks must retain both Au wire solids');
+  }
+
   // Candidate process-order contract: source paper distinguishes metalized
   // TSVs from HEMT-to-GSG Au wire bonds. Do not turn a metadata-only assembly
   // record into an assertion of physical electrical connectivity.
