@@ -129,8 +129,16 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const sicIndex = depositIndex('GaN HEMT SiC substrate 99 um');
   const gsgIndex = depositIndex('GSG Au pads surrogate 0.5 um');
   assert.ok(
-    [tiSeedIndex, cuSeedIndex, cuFillIndex, cuPlanarizationIndex, solderIndex, sicIndex, gsgIndex, wireBondRecordIndex]
-      .every((index) => index >= 0),
+    [
+      tiSeedIndex,
+      cuSeedIndex,
+      cuFillIndex,
+      cuPlanarizationIndex,
+      solderIndex,
+      sicIndex,
+      gsgIndex,
+      wireBondRecordIndex,
+    ].every((index) => index >= 0),
     'Expected physical TSV/HEMT materials and separate wire-bond source record',
   );
   assert.ok(
