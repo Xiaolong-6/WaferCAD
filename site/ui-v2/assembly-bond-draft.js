@@ -86,20 +86,102 @@ export function mountAssemblyBondDraftControls({
   const status = document.createElement('p');
   status.className = 'assembly-bond-draft-status';
   status.setAttribute('role', 'status');
-  panel.append(header, description, form, status);
+  const variants = document.createElement('section');
+  variants.className = 'assembly-bond-variants';
+  const variantsTitle = document.createElement('strong');
+  variantsTitle.textContent = 'Bond Variants';
+  const variantSelect = document.createElement('select');
+  variantSelect.setAttribute('aria-label', 'Bond Variant');
+  const variantName = document.createElement('input');
+  variantName.type = 'text';
+  variantName.placeholder = 'Alternative route';
+  variantName.maxLength = 120;
+  variantName.setAttribute('aria-label', 'New Bond Variant name');
+  const forkButton = document.createElement('button');
+  forkButton.type = 'button';
+  forkButton.textContent = 'Fork from current Bond';
+  const variantExport = document.createElement('button');
+  variantExport.type = 'button';
+  variantExport.textContent = 'Export all Variants';
+  variants.append(variantsTitle, variantSelect, variantName, forkButton, variantExport);
+  panel.append(header, description, form, variants, status);
   root.append(panel);
 
   let busy = false;
   const sync = () => {
+    const all = editor.listVariants();
+    variantSelect.replaceChildren();
+    for (const branch of all) {
+      const option = document.createElement('option');
+      option.value = branch.id;
+      option.textContent = `${branch.name} · ${branch.headIndex} Bonds`;
+      variantSelect.append(option);
+      if (branch.active) variantSelect.value = branch.id;
+    }
     const atHead = editor.currentIndex() === editor.maxIndex();
     apply.disabled = busy || !atHead || editor.maxIndex() >= 7;
     donorFile.disabled = busy || !atHead;
-    exportButton.disabled = busy;
+    exportButton.disabled = busy || editor.maxIndex() === 0;
+    exportButton.textContent = all.length > 1 ? 'Export active Assembly' : 'Export full Assembly';
+    forkButton.disabled = busy || atHead;
+    variantSelect.disabled = busy || all.length < 2;
+    variantExport.disabled = busy;
     panel.dataset.bondIndex = String(editor.currentIndex());
     if (!atHead) {
       status.textContent = 'Return to the Assembly HEAD before adding another donor.';
     }
   };
+
+  forkButton.addEventListener('click', () => {
+    try {
+      const ids = new Set(editor.listVariants().map((item) => item.id));
+      let number = 1;
+      while (ids.has(`variant-${number}`)) number++;
+      const id = `variant-${number}`;
+      editor.createVariant(id, variantName.value || id);
+      variantName.value = '';
+      status.dataset.error = 'false';
+      status.textContent = `Created ${id}. You can now Bond a different donor.`;
+      sync();
+      onChanged();
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+      sync();
+    }
+  });
+  variantSelect.addEventListener('change', () => {
+    try {
+      editor.switchVariant(variantSelect.value);
+      status.dataset.error = 'false';
+      status.textContent = `Switched to ${variantSelect.value}.`;
+      sync();
+      onChanged();
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+      sync();
+    }
+  });
+  variantExport.addEventListener('click', () => {
+    try {
+      const graph = editor.exportVariantGraph();
+      const blob = new Blob([JSON.stringify(graph)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'wafercad-bond-variants.wafercad-variants.json';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      status.dataset.error = 'false';
+      status.textContent = 'Exported all source-shared Variants. Import this sidecar to reopen the complete branch graph.';
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+    }
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
