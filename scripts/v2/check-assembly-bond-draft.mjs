@@ -116,6 +116,24 @@ try {
     assert.equal(checkpoints[0].reason, 'pre-wafer-bond');
     assert.deepEqual(checkpoints[0].project.waferAssembly, baseline.waferAssembly);
     assert.deepEqual(checkpoints[0].project.model, baseline.model);
+    const originalWorkspaceId = await page.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const open = indexedDB.open('wafercad-assembly-bond-drafts-v1', 2);
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const db = open.result;
+            const tx = db.transaction('workspaces', 'readonly');
+            const request = tx.objectStore('workspaces').getAll();
+            request.onsuccess = () => {
+              db.close();
+              resolve(request.result.length === 1 ? request.result[0].id : null);
+            };
+            request.onerror = () => reject(request.error);
+          };
+        }),
+    );
+    assert.ok(originalWorkspaceId, 'one committed workspace must exist after the Bond');
 
     await page.locator('.assembly-preview-views [data-view="three"]').click();
     await waitForPaint(page);
@@ -315,13 +333,14 @@ try {
         null,
         { timeout: 20000 },
       );
-      const committedOption = await committedTab
-        .getByLabel('Assembly Bond Recovery checkpoint')
-        .locator('option')
-        .evaluateAll(
-          (options) => options.find((option) => option.value.startsWith('workspace:'))?.value,
-        );
-      assert.ok(committedOption);
+      const committedOption = `workspace:${originalWorkspaceId}`;
+      assert.ok(
+        await committedTab
+          .getByLabel('Assembly Bond Recovery checkpoint')
+          .locator(`option[value="${committedOption}"]`)
+          .count(),
+        'original tab workspace must be independently recoverable',
+      );
       await committedTab
         .getByLabel('Assembly Bond Recovery checkpoint')
         .selectOption(committedOption);
