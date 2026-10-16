@@ -13,8 +13,8 @@
   }) => {
     // Preview mode is assigned by workstation-entry after this script loads.
     // Resolve shell ownership at construction, not at module evaluation.
-    const production =
-      document.body.hasAttribute('data-workstation') && document.body.dataset.previewMode !== 'true';
+    const previewMode = document.body.dataset.previewMode === 'true';
+    const production = document.body.hasAttribute('data-workstation') && !previewMode;
     const slots = new Map();
     const narrow = () => window.WaferCadV2ViewState.compact(window);
     const slot = (name, cls = '', tag = 'div') => {
