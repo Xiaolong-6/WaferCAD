@@ -102,14 +102,18 @@ test('source registry refuses forged byte records, referenced donor aliases and 
   tamper((graph) => (graph.branches[0].sourceRefs[2] = 1), /unique, shared receiver/);
   tamper((graph) => (graph.branches[0].bonds[1].contactAreaUm2 += 1), /replay differs/);
   tamper((graph) => (graph.activeBranchId = 'missing'), /active branch/);
-  tamper((graph) => graph.sources.push(structuredClone(graph.sources[1])), /Duplicate .* registry source/);
+  tamper(
+    (graph) => graph.sources.push(structuredClone(graph.sources[1])),
+    /Duplicate .* registry source/,
+  );
 });
 
 test('fork must preserve immutable original Bond prefix and reject invalid branch operations', () => {
   const initial = createAssemblyVariantGraph(bonded());
   assert.throws(() => forkAssemblyVariant(initial, { id: 'new' }), /historical Bond/);
   assert.throws(
-    () => appendAssemblyVariantBond(setAssemblyVariantCursor(initial, 1), wafer('D'), { donorId: 'D' }),
+    () =>
+      appendAssemblyVariantBond(setAssemblyVariantCursor(initial, 1), wafer('D'), { donorId: 'D' }),
     /explicit new Variant/,
   );
   const forked = forkAssemblyVariant(setAssemblyVariantCursor(initial, 1), { id: 'alt' });
@@ -117,7 +121,10 @@ test('fork must preserve immutable original Bond prefix and reject invalid branc
   assert.throws(() => activateAssemblyVariant(forked, 'unknown'), /does not exist/);
   const mismatched = structuredClone(forked);
   mismatched.branches[1].bonds[0].spec.dx = 21;
-  assert.throws(() => validateAssemblyVariantGraph(mismatched), /replay differs|immutable parent Bond prefix/);
+  assert.throws(
+    () => validateAssemblyVariantGraph(mismatched),
+    /replay differs|immutable parent Bond prefix/,
+  );
 });
 
 test('standalone receiver may populate one shared source registry before its first Bond', () => {
