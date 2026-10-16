@@ -6,10 +6,10 @@ import {
   commitWaferBondTransaction,
 } from './wafer-bond-transaction.js';
 import { createAssemblyBondHistorySession } from './wafer-assembly-history-session.js';
-import { validateBondedAssemblyProject } from './wafer-assembly.js';
+import { sameCanonicalModel, validateBondedAssemblyProject } from './wafer-assembly.js';
 
 function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return sameCanonicalModel(left, right);
 }
 
 function matchesRecordedBond(operation, step) {
