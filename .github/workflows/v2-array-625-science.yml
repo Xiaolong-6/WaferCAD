@@ -8,6 +8,7 @@ on:
       - 'site/tests/array-instance-invariants.test.mjs'
       - 'site/tests/array-6400-history.test.mjs'
       - 'scripts/v2/check-array-6400-worker-replay.mjs'
+      - 'scripts/v2/check-array-4725-fullmask-worker.mjs'
       - 'site/model-array.js'
       - 'site/model-array-process.js'
       - '.github/workflows/v2-array-625-science.yml'
@@ -35,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in site/tests/array-instance-invariants.test.mjs scripts/v2/check-array-625-science.mjs site/tests/array-6400-history.test.mjs scripts/v2/check-array-6400-worker-replay.mjs; do
+          for file in site/tests/array-instance-invariants.test.mjs scripts/v2/check-array-625-science.mjs site/tests/array-6400-history.test.mjs scripts/v2/check-array-6400-worker-replay.mjs scripts/v2/check-array-4725-fullmask-worker.mjs; do
             npx prettier "$file" | diff -u "$file" -
           done
       - name: Verify canonical 625-site Process and 6400-site IO science
@@ -61,6 +62,10 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-array-6400-worker-replay.mjs
+      - name: Verify every active device by production 4725-site file Mask deposit and selective Etch
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/v2/check-array-4725-fullmask-worker.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
