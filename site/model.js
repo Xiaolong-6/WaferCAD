@@ -21,7 +21,6 @@ import {
   difference,
   intersection,
   isEmpty,
-  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -642,33 +641,14 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
       model.width * model.height * 1e-15,
     ),
     canonical = partitionProcessRegions(regions, overlapTolerance, operation),
-    // Synchronize collinear shared-edge nodes while all coordinates are still
-    // exact. Independent per-region rounding can otherwise open zero-width
-    // seams into real missing XY material on curved, highly noded contours.
+    // Synchronize shared-edge vertices BEFORE independently rounding region
+    // coordinates to the 0.1 nm persistence grid. Otherwise near-coincident
+    // curved faces can open artificial full-depth cracks on the first snap.
     synchronized = nodeProcessPartitionEdges(canonical),
     snapped = synchronized.map((region) => ({
       ...region,
       geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
     }));
-
-  const debugCanonical =
-    operation === 'Conformal' &&
-    typeof process !== 'undefined' &&
-    process.env?.WAFERCAD_CONFORMAL_DEBUG === '1';
-  const priorVoids = debugCanonical ? uncoveredGeometryRaw({ ...model, regions }) : null;
-  const probe = (phase, value) => {
-    if (!debugCanonical) return;
-    const missing = verifiedConformalCoverageLoss({ ...model, regions: value }, priorVoids);
-    console.error('CONFORMAL_CANON_DIAGNOSTIC ' + JSON.stringify({
-      phase,
-      area: geometryArea(missing),
-      polygons: missing.length,
-      firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
-    }));
-  };
-  probe('canonical', canonical);
-  probe('pre-snap-node-synchronization', synchronized);
-  probe('first-snap', snapped);
 
   // Runtime geometry is checked before snapping. Any overlap in this second
   // pass is therefore introduced only by the 0.1 nm persistence grid and can
@@ -681,20 +661,16 @@ function canonicalizeProcessPartition(model, regions, operation = 'Isotropic rel
         geom: sanitizeProcessGeometry(snapProcessGeometry(region.geom)),
       }))
       .filter((region) => !isEmpty(region.geom));
-  probe('post-overlap-partition', partitioned);
-  probe('post-edge-noding', noded);
-  probe('second-snap', stored);
-  // Genuine overlaps above overlapTolerance must still reject before assignment.
-  const finalPartition = partitionProcessRegions(stored, overlapTolerance, operation);
-  probe('final-overlap-partition', finalPartition);
-  const finalized = finalPartition
+  // A final ownership pass removes any persistence-grid sliver that noding +
+  // rounding can reintroduce. Do not snap again here: another snap can recreate
+  // the same overlap. The serializer will quantize stable coordinates on export.
+  // Genuine overlaps above overlapTolerance still reject before assignment.
+  return partitionProcessRegions(stored, overlapTolerance, operation)
     .map((region) => ({
       ...region,
       geom: dropPersistenceDegeneratePolygons(region.geom),
     }))
     .filter((region) => !isEmpty(region.geom));
-  probe('post-degenerate-filter', finalized);
-  return finalized;
 }
 
 function stackKey(stack) {
@@ -990,16 +966,7 @@ function healConformalCoverageCracks(model, originalVoids) {
     if (isEmpty(missing)) return;
     const missingArea = geometryArea(missing);
     if (missingArea > maxRepairArea) {
-      // Keep hard failure and rollback; include the actual missing polygons'
-      // bounds so a future geometry fix can reproduce the precise owner split.
-      // Reporting the bounds never grants permission to heal lost material.
-      const lostBounds = missing.slice(0, 8).map((polygon) => ({
-        area: geometryArea([polygon]),
-        ...multiBounds([polygon]),
-      }));
-      throw new Error(
-        `Conformal lost ${missingArea} µm² of existing XY material coverage (pieces=${missing.length}, firstBounds=${JSON.stringify(lostBounds)}).`,
-      );
+      throw new Error(`Conformal lost ${missingArea} µm² of existing XY material coverage.`);
     }
 
     for (const polygon of missing) {
@@ -1142,33 +1109,14 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   const originalVoids = baseCoverageState(model) === 'full' ? [] : uncoveredGeometryRaw(model);
   let uncovered = cloneGeom(originalVoids);
 
-  // Opt-in scientific instrumentation for locating the first owner-loss
-  // stage. It never changes a polygon, the numerical tolerance or rollback.
-  const debugCoverage =
-    typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1';
-  const diagnostic = (phase, source = null) => {
-    if (!debugCoverage) return;
-    const lost = verifiedConformalCoverageLoss(model, originalVoids);
-    const summary = {
-      phase,
-      lostArea: geometryArea(lost),
-      pieces: lost.length,
-      firstBounds: lost.slice(0, 3).map((polygon) => multiBounds([polygon])),
-      sourceZ: source?.z,
-      sourceBounds: source ? multiBounds(source.geom) : undefined,
-    };
-    console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify(summary));
-  };
-
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
-  diagnostic('after-horizontal');
 
   // Stage 2: coat only physical vertical boundaries from the pre-coating
   // topography. Intersect each boundary band with active so real steps inside a
   // mask opening still receive conformal coverage while the mask edge remains a
   // hard clip.
-  for (const [sourceIndex, source] of sources.entries()) {
+  for (const source of sources) {
     for (const rawBand of conformalBoundaryBands(source.geom, amount, active)) {
       // Use one persistence-grid band for both the hit and its complement.
       const band = intersection(intersection(snapProcessGeometry(rawBand), active), model.boundary);
@@ -1198,7 +1146,6 @@ function applyConformalCoating(model, active, layerId, amount, face) {
         uncovered = difference(uncovered, wall.geom);
       }
     }
-    diagnostic('after-source-' + sourceIndex, source);
   }
   return originalVoids;
 }
@@ -1586,15 +1533,6 @@ function applyOperationImpl(
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
-    if (typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1') {
-      const missing = verifiedConformalCoverageLoss(model, conformalOriginalVoids);
-      console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify({
-        phase: 'after-merge',
-        lostArea: geometryArea(missing),
-        pieces: missing.length,
-        firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
-      }));
-    }
     // A coverage boolean retry may derive sub-grid cracks from snapped inputs.
     // Unioning those cracks into one unsnapped owner can overlap its neighbors.
     // Check the runtime partition first, then normalize the shared persistence
@@ -1604,15 +1542,6 @@ function applyOperationImpl(
     });
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
       model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
-      if (typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1') {
-        const missing = verifiedConformalCoverageLoss(model, conformalOriginalVoids);
-        console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify({
-          phase: 'after-canonicalization',
-          lostArea: geometryArea(missing),
-          pieces: missing.length,
-          firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
-        }));
-      }
     }
     healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
