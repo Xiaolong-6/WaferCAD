@@ -44,13 +44,13 @@ const selectView = async (key) => {
 };
 const revealSectionDock = async () => {
   const dock = page.locator('#sectionPanel');
-  const sectionTab = page.getByRole('button', { name: 'Section', exact: true }).first();
-  if (await sectionTab.count()) {
-    // A pressed Section control can still represent an Overview thumbnail.
-    // Explicitly activate its real full-stage view each time we inspect it.
-    await sectionTab.click();
-  } else if (!(await dock.isVisible())) {
-    await page.locator('[data-action="section"]:visible').first().click();
+  if (!(await dock.isVisible())) {
+    const oldDock = page.locator('[data-action="section"]:visible');
+    if (await oldDock.count()) {
+      await oldDock.first().click();
+    } else {
+      await page.getByRole('button', { name: 'Section', exact: true }).first().click();
+    }
   }
   await dock.waitFor({ state: 'visible', timeout: 12000 });
   await waitForPaint(page);
@@ -58,12 +58,25 @@ const revealSectionDock = async () => {
 const requireLargeView = async (kind) => {
   const panel = page.locator('#' + kind + 'Panel');
   await panel.waitFor({ state: 'visible', timeout: 12000 });
-  const bounds = await panel.boundingBox();
+  let bounds = await panel.boundingBox();
+  let expanded = false;
+  if (!bounds || bounds.width <= 700 || bounds.height <= 500) {
+    const maximize = page.locator(`[data-action="maximize:${kind}"]:visible`).first();
+    await maximize.click();
+    expanded = true;
+    await waitForPaint(page);
+    bounds = await panel.boundingBox();
+  }
   assert.ok(
     bounds && bounds.width > 700 && bounds.height > 500,
-    kind + ' scientific view must occupy the stage rather than a thumbnail: ' +
-      JSON.stringify(bounds),
+    `Full-stage ${kind} panel bounds: ${JSON.stringify(bounds)}`,
   );
+  await waitForPaint(page);
+  return expanded;
+};
+const restoreLargeView = async (kind, expanded) => {
+  if (!expanded) return;
+  await page.locator(`[data-action="maximize:${kind}"]:visible`).first().click();
   await waitForPaint(page);
 };
 const exportProject = async () => {
@@ -355,14 +368,16 @@ try {
     { timeout: 120000 },
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
-  // Current single-view Section/3D tabs already occupy the full stage; verify
-  // physical panel size rather than clicking an obsolete maximize control.
+  // Expand a docked thumbnail only when required; both full-stage screenshots
+  // must prove adequate physical panel bounds before acceptance.
   await revealSectionDock();
-  await requireLargeView('section');
+  const fullSectionExpanded = await requireLargeView('section');
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-section-expanded.png') });
+  await restoreLargeView('section', fullSectionExpanded);
   await selectView('three');
-  await requireLargeView('three');
+  const fullThreeExpanded = await requireLargeView('three');
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
+  await restoreLargeView('three', fullThreeExpanded);
 
   // An illustrative 0.13 µm gate in a reported 130 nm foundry node needs a device-scale inspection
   // separate from the 11 µm field section. Use the real Main Slice settings
@@ -399,7 +414,7 @@ try {
     assert.ok(local.ax < local.gateX && local.gateX < local.bx);
     await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
     await revealSectionDock();
-    await requireLargeView('section');
+    const localSectionExpanded = await requireLargeView('section');
     assert.ok(
       Number(await page.locator('#sectionCanvas').getAttribute('data-x-px-per-um')) > 0,
       'Local section must render at a nonzero physical scale',
@@ -407,6 +422,7 @@ try {
     await page.screenshot({
       path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-section.png'),
     });
+    await restoreLargeView('section', localSectionExpanded);
   }
   // Local sections are inspection-only UI state. The candidate project and
   // its default cross-device Section remain unchanged on disk.
@@ -501,7 +517,7 @@ try {
     // never be clicked in a browser acceptance test.
     await selectView('three');
     await waitForPaint(page);
-    await requireLargeView('three');
+    const localThreeExpanded = await requireLargeView('three');
     await page.locator('#threePanel [data-action="fit:three"]').click();
     await waitForPaint(page);
     const framing = await snap();
@@ -584,6 +600,7 @@ try {
       camera: inspectionCamera,
       unchangedPhysicalModel: true,
     });
+    await restoreLargeView('three', localThreeExpanded);
     // Record a SECOND, explicitly isolated scientific-inspection image. Real
     // Section Layers controls hide unrelated S/D and opposite-device markers;
     // the underlying material topology, masks and Recipe remain unchanged.
@@ -616,7 +633,7 @@ try {
     );
     await selectView('three');
     await waitForPaint(page);
-    await requireLargeView('three');
+    const isolatedThreeExpanded = await requireLargeView('three');
     await page.waitForFunction(
       () =>
         Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
@@ -633,6 +650,7 @@ try {
       materialGeometryUnchanged: true,
       allMarkersScreenshotRetained: true,
     };
+    await restoreLargeView('three', isolatedThreeExpanded);
   }
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
