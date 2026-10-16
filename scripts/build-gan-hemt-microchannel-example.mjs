@@ -688,6 +688,27 @@ export async function buildGanMicrochannel() {
     'conformal',
   );
   bookmark('03a TSV local SiO2 before metallization');
+  // Fig. 2(d): separate front/back directional 200 nm Ti and 500 nm Cu
+  // are published. Deep TSV seed coverage is an independently labelled
+  // conformal geometry surrogate, NOT guaranteed real sputter step coverage.
+  for (const [metal, thickness] of [
+    ['Ti', GAN_TSV_LINER.titaniumUm],
+    ['Cu', GAN_TSV_LINER.copperUm],
+  ]) {
+    for (const face of ['front', 'back']) {
+      process(
+        'Double-sided ' + metal + ' sputter on oxide, ' + face,
+        'deposit',
+        {
+          material: 'Interposer ' + face + ' ' + metal + ' sputter ' + thickness + ' um',
+          thickness,
+          coverage: 'direct',
+          face,
+        },
+      );
+    }
+  }
+  bookmark('03a Double-sided Ti/Cu before local TSV filling');
   // Local mask includes both the exposed 70 um bore and 10 um of Si rim.
   // Uniform Ti/Cu coverage down an 800 um via is a geometric assumption,
   // not a sputtering, electroplating or insulating-breakdown simulation.
@@ -874,6 +895,26 @@ export async function buildGanMicrochannel() {
   for (const y of [-GAN_LOWER_FEED.portOffsetY, GAN_LOWER_FEED.portOffsetY]) {
     assert.equal(materialAt([0, y], -150), false, 'Global SiO2 sealed a rear coolant port');
   }
+  // Occupancy checks for *separate* front and back metal material solids.
+  for (const [face, tiZ, cuZ] of [
+    ['front', 600.6, 601.0],
+    ['back', -200.6, -201.0],
+  ]) {
+    for (const [metal, z, thickness] of [
+      ['Ti', tiZ, GAN_TSV_LINER.titaniumUm],
+      ['Cu', cuZ, GAN_TSV_LINER.copperUm],
+    ]) {
+      const name = 'Interposer ' + face + ' ' + metal + ' sputter ' + thickness + ' um';
+      const layer = model.layers.find((item) => item.name === name);
+      assert.ok(layer, 'Missing source-supported double-sided metal: ' + name);
+      assert.ok(
+        owner([2000, 0]).stack.some(
+          (seg) => seg.layerId === layer.id && seg.z0 < z && seg.z1 > z,
+        ),
+        'Front/back sputtered metal is absent at ' + [face, metal, z],
+      );
+    }
+  }
   const tsvOxide = model.layers.find(
     (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
   );
@@ -896,6 +937,8 @@ export async function buildGanMicrochannel() {
         600 +
           GAN_TSV_LINER.inferredExposedExteriorSiO2Um +
           GAN_TSV_LINER.inferredLocalSiO2Um +
+          GAN_TSV_LINER.titaniumUm +
+          GAN_TSV_LINER.copperUm +
           GAN_TSV_LINER.titaniumUm +
           GAN_TSV_LINER.copperUm +
           0.000001,
@@ -1001,9 +1044,9 @@ export async function buildGanMicrochannel() {
   );
   const cooledSegments = owner([30, 0]).stack.filter((segment) => segment.layerId === cooledSiC.id);
   assert.equal(cooledSegments.length, 1, 'No distinct SiC bottom over central channel');
-  assert.equal(cooledSegments[0].z0, 605.5, 'Unexpected SiC/AuSn stand-off');
+  assert.equal(cooledSegments[0].z0, 606.2, 'Unexpected SiC/AuSn stand-off');
   assert.equal(cooledSegments[0].z1 - cooledSegments[0].z0, 99);
-  assert.equal(materialAt([30, 0], 605.49), false, 'SiC backside is coolant-obstructed');
+  assert.equal(materialAt([30, 0], 606.19), false, 'SiC backside is coolant-obstructed');
   const gsgDie = model.layers.find(
     (layer) => layer.name === 'GSG chip substrate surrogate (100 um inferred)',
   );
@@ -1014,9 +1057,9 @@ export async function buildGanMicrochannel() {
   assert.ok(gsgDie && gsgSolder && gsgPad, 'Missing one or more physical GSG assembly layers');
   for (const x of [-1250, 1250]) {
     for (const [layerId, z0, z1] of [
-      [gsgSolder.id, 600.5, 605.5],
-      [gsgDie.id, 605.5, 705.5],
-      [gsgPad.id, 705.5, 706],
+      [gsgSolder.id, 601.2, 606.2],
+      [gsgDie.id, 606.2, 706.2],
+      [gsgPad.id, 706.2, 706.7],
     ]) {
       assert.ok(
         owner([x, 0]).stack.some(
@@ -1088,6 +1131,7 @@ export async function buildGanMicrochannel() {
       idealizedCuPlanarizationPreservesTSVConductors: true,
       localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage: true,
       frontBackExteriorSiO2WithUnsealedCoolant: true,
+      actualDoubleSidedTiCuSputteredMaterials: true,
       twoInferredGsgDieBodiesAndPadsAreRealGeometry: true,
     },
     checkpoints,

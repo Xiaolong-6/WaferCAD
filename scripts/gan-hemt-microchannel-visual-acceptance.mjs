@@ -311,6 +311,12 @@ try {
     }
     const viaCenters = [-1450, 1450].flatMap((x) => [-950, 950].map((y) => [x, y]));
     const viaZ = [-150, -50, 50, 150, 250, 350, 450, 550];
+    const missingDoubleSidedMetal = [
+      { name: 'Interposer front Ti sputter 0.2 um', z: 600.6 },
+      { name: 'Interposer back Ti sputter 0.2 um', z: -200.6 },
+      { name: 'Interposer front Cu sputter 0.5 um', z: 601.0 },
+      { name: 'Interposer back Cu sputter 0.5 um', z: -201.0 },
+    ].filter(({ name, z }) => !hasLayer([2000, 0], z, byName.get(name)));
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
@@ -332,7 +338,7 @@ try {
     );
     const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
-    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.75, ids.pad));
+    const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 706.45, ids.pad));
     const missingGsgDieCenters = [-1250, 1250]
       .map((x) => [x, 0])
       .filter((xy) => !hasLayer(xy, 650, gsgDieId));
@@ -346,6 +352,7 @@ try {
       viaCoreSamples: viaCenters.length * viaZ.length,
       gsgGoldSamples: gsgPadCenters.length,
       missingCuCore,
+      missingDoubleSidedMetal,
       missingLocalOxideRims,
       missingGlobalFrontOxide,
       missingGlobalBackOxide,
@@ -359,6 +366,7 @@ try {
   });
   assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
   assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
+  assert.deepEqual(geometry.missingDoubleSidedMetal, [], 'Front/back sputtered metal missing');
   assert.deepEqual(
     geometry.missingLocalOxideRims,
     [],
@@ -495,6 +503,7 @@ try {
     completeInterposerAuNiPaAuMetallizationModeled: false,
     hemtBacksideViaMetallizationModeled: false,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
+    doubleSidedTiCuGeometryVerified: geometry.missingDoubleSidedMetal.length === 0,
     localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
     sampledCentralAndPeripheralFrontBackOxideVerified:
       geometry.missingGlobalFrontOxide.length === 0 && geometry.missingGlobalBackOxide.length === 0,
