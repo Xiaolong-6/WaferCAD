@@ -190,3 +190,53 @@ test('failed durable Process write reverts step graph and derived preview, never
   assert.deepEqual(h.currentModel(), start().model);
   assert.equal(h.revision(), 1);
 });
+
+test('durable Process undo/redo persists cursor, preserves future Recipe and restores the same geometry', async () => {
+  const h = host();
+  const first = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const second = await h.session.appendPostBondStepDurable({
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  assert.deepEqual(h.session.processTimeline(), { index: 2, length: 2, available: true });
+  assert.deepEqual(h.session.postBondPreviewModel(), second.model);
+  const priorRevision = h.revision();
+  await h.session.restorePostBondStepDurable(1);
+  assert.equal(h.revision(), priorRevision + 1);
+  assert.deepEqual(h.session.postBondPreviewModel(), first.model);
+  assert.equal(h.confirmed().branches[0].postBondSteps.length, 2);
+  assert.equal(h.confirmed().branches[0].postBondCursor, 1);
+  await h.session.restorePostBondStepDurable(0);
+  assert.equal(h.session.postBondPreviewModel(), null);
+  assert.deepEqual(h.currentModel(), start().model);
+  await assert.rejects(
+    () =>
+      h.session.appendPostBondStepDurable({
+        command: 'deposit',
+        params: { material: 'Al', thicknessUm: 1, face: 'front' },
+      }),
+    /historical Recipe requires a new Variant/,
+  );
+  await h.session.restorePostBondStepDurable(2);
+  assert.deepEqual(h.session.postBondPreviewModel(), second.model);
+  assert.equal(h.session.exportVariantGraph().branches[0].postBondSteps.length, 2);
+});
+
+test('failed durable Process navigation restores prior cursor, graph and visual material', async () => {
+  let deny = false;
+  const h = host({ reject: () => deny });
+  const film = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'Oxide', thicknessUm: 1, face: 'front' },
+  });
+  const prior = h.session.exportVariantGraph();
+  deny = true;
+  await assert.rejects(() => h.session.restorePostBondStepDurable(0), /durable graph write failure/);
+  assert.deepEqual(h.session.exportVariantGraph(), prior);
+  assert.deepEqual(h.session.postBondPreviewModel(), film.model);
+  assert.equal(h.session.processTimeline().index, 1);
+  assert.equal(h.revision(), 1);
+});
