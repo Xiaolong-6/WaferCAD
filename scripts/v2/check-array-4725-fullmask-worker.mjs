@@ -7,8 +7,7 @@ import { createSnapshotManager } from '../../site/workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { createModel, geometryArea } = await import('../../site/model.js');
-const { createRectangularGridArrayModel } =
-  await import('../../site/model-array-construction.js');
+const { createRectangularGridArrayModel } = await import('../../site/model-array-construction.js');
 const { arrayParts } = await import('../../site/model-array.js');
 const { rectMulti, pointInMulti } = await import('../../site/vector-geometry.js');
 const { migrateProjectFile, validateProjectFile } = await import('../../site/project-schema.js');
@@ -255,9 +254,7 @@ try {
     });
     assert.deepEqual(reopened, saved, 'Full-mask physical History and Mask context round-trip');
     assert.deepEqual(errors, []);
-    console.log(
-      'V2_ARRAY_4725_FULL_MASK: 4725 device deposit+etch, 1675 unchanged backgrounds, volume, History/IO PASS',
-    );
+    console.log('V2_ARRAY_4725_FULL_MASK: all devices, intact backgrounds, Z, volume and IO PASS');
   } finally {
     await context.close();
   }
