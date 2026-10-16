@@ -1,4 +1,4 @@
-name: PR229 exact HEAD science and Chromium closure
+name: PR229 exact formatted wire science and Chromium closure
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     paths: [.github/workflows/pr229-format-test-once.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   focused:
@@ -19,8 +19,9 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Verify committed formatting, lint and scientific geometry
+      - name: Format focused scientific test files exactly and verify geometry
         run: |
+          npx prettier --write site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
           npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
           npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
           node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs
@@ -42,6 +43,15 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
+      - name: Commit exact formatted test evidence only after full science and browser pass
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-tsv-liner-probe.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "style(gan): format 3D Au bond and TSV scientific contracts"
+            git push origin HEAD:"$GITHUB_REF_NAME"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
