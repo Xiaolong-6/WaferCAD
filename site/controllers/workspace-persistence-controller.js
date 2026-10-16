@@ -821,8 +821,23 @@ export function createWorkspacePersistenceController({
           markStructuralDirty();
 
           updateStage('Saving restored workspace…');
-          const persisted = await persistNow({ force: true });
-          if (!persisted) throw new Error('Another tab took over local autosave.');
+          let persisted = await persistNow({ force: true });
+          if (!persisted && hasWriteAccess()) {
+            // A concurrent, superseded History attestation can decline this
+            // forced write without an IndexedDB attempt. Drain that result,
+            // cancel its deferred autosave and require one fresh validated
+            // restore commit while the original writer lease is still held.
+            clearTimer();
+            markStructuralDirty();
+            persisted = await persistNow({ force: true });
+          }
+          if (!persisted) {
+            throw new Error(
+              hasWriteAccess()
+                ? 'Recovery restore could not commit a fresh validated workspace.'
+                : 'Another tab took over local autosave.',
+            );
+          }
           committed = true;
           await refreshRecoveryOptions();
           return { ok: true };
