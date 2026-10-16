@@ -57,6 +57,36 @@ Generic external profile import/rendering is **not shipped by PR #225**; it is
 tracked as a potential independent visualization task only when an actual
 external dataset and desired presentation are defined.
 
+
+### Fig. 1b mask redraw (2026-10-16)
+
+The updated layout follows the supplied paper image's **visual topology** rather than
+treating the old 14 × 8 µm illustrative Mask as foundry data:
+
+- Each compact horizontal ACTIVE island has a central 0.13 µm *assumed*
+  vertical POLY gate, a source and a drain, and a separately connected U-shaped
+  body-tie diffusion/contact rail below the transistor.
+- The tallest **inverted U-shaped METAL1** bridge connects both POLY gate
+  contacts (**VIN**). A shorter nested upper inverted-U bridge connects the two
+  inner drain contacts (**VOUT**). The outer source leads and lower U rail connect
+  left pMOS to **VDD** and right nMOS to **GND**.
+- The mask contains **94 CNT polygons**: four source/drain terminals, two POLY
+  terminals, and **44 contact sites in each U-shaped well-tie** (2 × 17 along the
+  horizontal bottom plus five sites per side). These pitches, widths, and even
+  the figure's apparent number of CNT symbols are illustrative.
+- HVTN (left)/HVTP (right) frame the relevant ACTIVE/gate regions. LVTN/LVTP
+  are reference outline masks only and are not executed as T-CMOS LVT steps.
+- **13 layers and 142 layout polygons** export through the same File Mask as
+  GDS/OAS. The canonical .wafercad, full process History, both Variants,
+  recipe replay, and browser screenshots all derive from this same Mask.
+
+The alignment was manually traced from Fig. 1b's linework. No unreported
+micrometre dimensions, alignment accuracy, foundry design rules or physical
+PN/BTBT solution are inferred from the schematic. The historical 80-element
+candidate is superseded by the revised saved model. Source/drain CNT arrays
+are presently represented by one structural contact per terminal; the paper
+draws them as small matrices, so this remains a visible figure-level difference.
+
 ## Shared Base and two process Variants
 
 - **Main / T-CMOS:** 0° As+ donor HVTN marker for pMOS and BF2+ acceptor HVTP marker for nMOS, illustrated as a buried 80–240 nm interval.
@@ -73,13 +103,13 @@ The T-CMOS HVT, p/n LDD and p/n HDD Implant steps now write these qualitative re
 
 The existing `findDopantPolarityOverlaps` detects **co-occupancy of opposite-polarity qualitative annotations**, not a physical PN junction surface. The source and drain share the same LDD/HDD mask/record; labels below are derived from the reconstructed POLY gate and METAL1 VDD/VOUT/GND contact placement. The new terminal-qualified diagnostic partitions that overlap into the inferred Source and Drain footprints **without assigning carrier concentration, diffusion, activation, net polarity, a depletion boundary or BTBT current**.
 
-For this _illustrative_ reconstruction, HVT and HDD intersect over **0.82–0.92 µm Z** (100 nm). In both pMOS (HVTN donor / p+ HDD acceptor) and nMOS (HVTP acceptor / n+ HDD donor), the Source intersection is **1.287 µm²** and the Drain intersection is **1.703 µm²**.
+For this _illustrative_ Fig. 1b redrawing, HVT and HDD intersect over **0.82–0.92 µm Z** (100 nm). In both pMOS (HVTN donor / p+ HDD acceptor) and nMOS (HVTP acceptor / n+ HDD donor), the Source and Drain intersections are each **0.7416 µm²**. This is structural annotation overlap only, not a predicted PN junction.
 
 Both source and drain overlaps are nonzero. A nonzero overlap **must not** be interpreted as a physically resolved body–drain interface or tunnelling hot spot.
 
 The inferred U-shaped body ties connect the pMOS n-well to VDD and the nMOS p-well to GND using Si/W/Metal1 interfaces. At the sampled contact centers, the correct schematic well is present, but **no separate n+ or p+ surface-contact dopant intent exists**. The generator records this in `validation.bodyTieContactEvidence`; `ohmicContactValidated` remains false even if a future qualitative contact marker is introduced. Carrier concentration, activation, contact resistivity and source-supported tie geometry cannot be established from the available article. No speculative foundry implant step is added.
 
-A separate material-clipped 3D audit compares the HVT donor/acceptor body intents with the schematic n-/p-well Electrical Region markers. Each transistor currently contains **0.51584 µm³** of body annotation inside its matching well, and **0.01364 µm³** outside it, in residual silicon beneath STI. This is **not proof of physical implant penetration**: mask layout, ion range in STI SiO₂ and well activation are not supplied by the paper. The model retains its original masks and stored history; the audit records the discrepancy rather than silently redefining a new foundry process or claiming a measurable PN boundary. The schematic n-/p-wells are `electricalRegions`, with no corresponding calibrated `dopantRegions` well concentrations. Until dopant net-concentration/activation, P/N boundary extraction and semiconductor transport exist, paper Fig. 1a junction-level scientific acceptance remains **open**. The per-device terminal measurements are reproduced by focused scientific tests and the generator's independent `validation.json` report; the generated project's material/Recipe geometry is unchanged.
+A separate material-clipped 3D audit compares the HVT donor/acceptor body intents with the schematic n-/p-well Electrical Region markers. Each transistor currently contains **0.258048 µm³** of body annotation inside its matching well, and **0.022272 µm³** outside it, in residual silicon beneath STI. This is **not proof of physical implant penetration**: mask layout, ion range in STI SiO₂ and well activation are not supplied by the paper. The model retains its original masks and stored history; the audit records the discrepancy rather than silently redefining a new foundry process or claiming a measurable PN boundary. The schematic n-/p-wells are `electricalRegions`, with no corresponding calibrated `dopantRegions` well concentrations. WaferCAD does not solve junction physics; quantitative PN/BTBT acceptance is outside the project scope. The per-device terminal measurements are reproduced by focused scientific tests and the generator's independent `validation.json` report; the generated project's material/Recipe geometry is unchanged.
 
 ## Geometry build order
 
@@ -128,6 +158,6 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/80-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
+Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/142-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
 
 Scientific visual acceptance still required: archive a close local pMOS Section and nMOS Section showing the respective gate, semiconductor body and intended body–drain interface, plus a corresponding focused 3D view. Include a wide-field context image for each crop, the exact Section endpoints and view/visibility settings, a legend identifying inferred geometry versus source-supported features, and a comparison with paper Fig. 1a/b and Supplementary Fig. 1. Expanded full-field screenshots alone cannot establish 130 nm junction correspondence. Do not present the 80–240 nm display band as a measured junction thickness or imply a calibrated dopant concentration/BTBT current. Keep this PR Draft, and do not add to Welcome or merge until current-head CI and these evidence gates are satisfied.

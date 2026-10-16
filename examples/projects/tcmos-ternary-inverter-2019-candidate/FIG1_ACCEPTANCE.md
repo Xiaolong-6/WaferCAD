@@ -23,13 +23,23 @@ The paper reports **commercial 130 nm and 90 nm CMOS foundry processes**. It doe
 
 ## Fig. 1b: Mask/layout correspondence
 
+**2026-10-16 redraw:** The revised Mask has distinct inverted-U VIN and VOUT
+bridges above the devices, source-rail inverted U shapes on the outer edges,
+and two U-shaped body-tie/CNT arrays underneath. The drawing tracks the
+user-provided Fig. 1b schematic's relative geometry and colors. It is not
+foundry layout metrology. Four separate Metal1 electrical nets remain proven
+disjoint and connected by the terminal-provenance invariant. The observed
+paper-vs-CAD difference still includes a single CNT per Source/Drain terminal
+rather than the source schematic's small contact matrices.
+
+
 | Criterion | Browser / model evidence | Disposition |
 | --- | --- | --- |
 | ACTIVE / STI and complementary wells | Full Section and 3D show both side-by-side MOS structures | Qualitative topology pass. |
 | LVTN / LVTP and HVTN / HVTP labels | Left HVTN pMOS / right HVTP nMOS correct; LVTN/LVTP are reference-only masks, not T-CMOS process doping | Naming and branch intent pass. |
 | Two POLY gates and contacts | Model assigns 0.13 µm assumed gate widths and separate CNT contacts | Model-internal geometry pass, **not foundry-dimension pass**. |
 | VDD, VOUT, GND, VIN | Four separate METAL1 net footprints; VOUT joins both drains, VIN both gates | Model-internal topology pass. |
-| Polygon counts and serialization | GDS and OAS both export 13 layers, 80 elements | Geometry interoperability pass. |
+| Polygon counts and serialization | Fig. 1b redrawing now uses 13 layers and 142 Mask elements | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
 | Exact physical layout dimensions | Paper does not disclose the complete foundry GDS or mask coordinates | Unverifiable; candidate is a reconstructed layout, **not a digitized foundry mask**. |
 
 ## Browser screenshots inspected
@@ -46,8 +56,8 @@ HVT-only PNGs isolate one annotation via real Section visibility toggles; full-m
 ## Scientific and transaction checks
 
 - Browser Run All from fresh Base: 23/23 steps. Material parity: 26 compared slabs, maximum XY mismatch area 1.6653345369377348e-15 µm²; Save/Reload and Recovery pass.
-- In illustrative geometry each pMOS and nMOS body/HDD annotation co-occupies Source area 1.287 µm² and Drain area 1.703 µm², Z=0.82–0.92 µm; **co-occupancy is not a PN junction**.
-- HVT annotation material clipped to matching schematic Well: 0.51584 µm³; residual silicon below STI outside matching Well: 0.01364 µm³, per device. Actual oxide stopping power/implant penetration is unknown.
+- In the revised geometry each pMOS and nMOS body/HDD annotation co-occupies Source and Drain areas of **0.7416 µm² each**, Z=0.82–0.92 µm within ACTIVE silicon; **co-occupancy is not a PN junction**.
+- HVT annotation clipped to matching schematic Well: **0.258048 µm³**; residual silicon below STI outside matching Well: **0.022272 µm³**, per device. Actual oxide stopping power/implant penetration is unknown.
 - Both Well ties geometrically contact Si/W/Metal1 with appropriate schematic well polarity; n+/p+ contact doping is missing and ohmic conduction not established.
 - Candidate is immutable across these diagnostic-only refinements. The alternate 18° tilt demonstration is explicitly NOT PAPER.
 
