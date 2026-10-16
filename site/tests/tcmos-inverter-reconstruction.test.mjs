@@ -127,7 +127,7 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
     /missing or ambiguous Metal1 owner/,
   );
   const invalidWellTie = structuredClone(TCMOS_MASKS);
-  invalidWellTie.find(({ id }) => id === 10).rectangles[6].y += 2;
+  invalidWellTie.find(({ id }) => id === 10).rectangles[7].y += 2;
   assert.throws(
     () => auditTcmosTerminalNetProvenance(invalidWellTie, TCMOS_METAL_NETS),
     /incorrect device footprint/,
