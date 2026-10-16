@@ -436,9 +436,13 @@ export function createWorkspacePersistenceController({
 
   async function saveCurrentProject(project) {
     if (recoveryRollbackUnsafe) return false;
-    const saved = await saveWorkspaceState(project, { appCommit }, {
-      canCommit: () => !recoveryRollbackUnsafe && hasWriteAccess(),
-    });
+    const saved = await saveWorkspaceState(
+      project,
+      { appCommit },
+      {
+        canCommit: () => !recoveryRollbackUnsafe && hasWriteAccess(),
+      },
+    );
     if (!saved) {
       saving = false;
       dirty = true;
@@ -1011,7 +1015,10 @@ export function createWorkspacePersistenceController({
 
   async function saveCheckpoint() {
     if (recoveryRollbackUnsafe) {
-      status('Recovery rollback failed. Saving is locked until the browser tab is reloaded.', 'error');
+      status(
+        'Recovery rollback failed. Saving is locked until the browser tab is reloaded.',
+        'error',
+      );
       return;
     }
     if (!hasWriteAccess()) {
@@ -1077,7 +1084,10 @@ export function createWorkspacePersistenceController({
 
   async function takeOverWorkspace() {
     if (recoveryRollbackUnsafe) {
-      status('Recovery rollback failed. Reload this tab before attempting writer takeover.', 'error');
+      status(
+        'Recovery rollback failed. Reload this tab before attempting writer takeover.',
+        'error',
+      );
       return;
     }
     const flushed = await requestOwnerFlush(),

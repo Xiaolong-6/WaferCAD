@@ -193,8 +193,7 @@ try {
         .click();
       await page.waitForFunction(
         () => {
-          const message =
-            document.querySelector('[data-slot="status.message"]')?.textContent || '';
+          const message = document.querySelector('[data-slot="status.message"]')?.textContent || '';
           return (
             /in-memory rollback also failed/i.test(message) &&
             !window.WaferCadV2Workstation.snapshot().workflow.busy
@@ -207,10 +206,7 @@ try {
         trace: window.__recoveryDoubleFault,
         message: document.querySelector('[data-slot="status.message"]')?.textContent || '',
       }));
-      assert.ok(
-        doubleFault.trace.checkpointWrites >= 1,
-        'Original Recovery point was protected',
-      );
+      assert.ok(doubleFault.trace.checkpointWrites >= 1, 'Original Recovery point was protected');
       assert.ok(
         doubleFault.trace.failedCurrentWrites >= 1,
         'Actual IndexedDB current write must fail after protection',
@@ -253,7 +249,10 @@ try {
     const protectedOriginal = durability.protectedModels.find(
       (model) => model.processRevision === before.model.processRevision,
     );
-    assert.ok(protectedOriginal, 'A valid pre-restore checkpoint must retain the original revision');
+    assert.ok(
+      protectedOriginal,
+      'A valid pre-restore checkpoint must retain the original revision',
+    );
     assert.deepEqual(
       protectedOriginal,
       before.model,
