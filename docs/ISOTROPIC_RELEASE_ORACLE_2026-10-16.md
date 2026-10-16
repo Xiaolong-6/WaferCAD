@@ -3,7 +3,7 @@
 The final #242 Microdisk remains an eight-slice selective Si release from a
 paper-derived 148/82 µm SiO₂ mask. Source-independent calculations already
 verify the 1.8 µm oxide and ~230 ng oxide mass; the **36 µm release radius is an
-engineering assumption**. The published Fig. 2a SEM is of a *similar* disk.
+engineering assumption**. The published Fig. 2a SEM is of a _similar_ disk.
 
 This branch introduces `site/isotropic-release-oracle.js` as a deterministic
 **continuous Euclidean reference** for a single physical release seed plane.
@@ -24,7 +24,7 @@ etch fronts.
 2. Select an adaptive XY/Z partition rule from a **predeclared** error budget;
    quantify monotonicity, symmetry, remaining material volume and
    convergence independently of the displayed view.
-3. Save a new *opt-in* project state; old eight-step models and History must
+3. Save a new _opt-in_ project state; old eight-step models and History must
    remain exactly restorable and not be silently regenerated.
 4. Inspect real Chromium sections with multiple radial cuts; compare to
    Basiri-Esfahani 2019 SEM only at supported scale/device provenance.
