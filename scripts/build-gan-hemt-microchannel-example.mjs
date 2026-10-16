@@ -134,7 +134,7 @@ export const GAN_TSV_LINER = Object.freeze({
   // This native conformal deposit is restricted to four TSV windows;
   // whole-outside-surface oxide remains explicitly UNMODELED.
   inferredLocalSiO2Um: 0.5,
-  inferredProtectedExteriorSiO2Um: 0.5,
+  inferredExposedExteriorSiO2Um: 0.5,
   titaniumUm: 0.2,
   copperUm: 0.5,
   inferredFullCuFillUm: 35,
@@ -218,19 +218,6 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
     id: 27,
     name: 'Independent GSG AuSn solder footprints (inferred)',
     rectangles: [-1250, 1250].map((x) => centered(200, 330, x)),
-  },
-  {
-    id: 28,
-    name: 'Protected exterior oxide region excluding interconnected central coolant (inferred)',
-    // Four disjoint rectangles preserve all original central coolant bores,
-    // feeder trenches and top manifold branches without tiny mask holes.
-    // This is intentionally NOT full exterior wafer oxidation.
-    rectangles: [
-      rect(-3000, -2500, 2350, 5000),
-      rect(650, -2500, 2350, 5000),
-      rect(-650, -2500, 1300, 650),
-      rect(-650, 1850, 1300, 650),
-    ],
   },
   {
     id: 20,
@@ -671,21 +658,19 @@ export async function buildGanMicrochannel() {
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
   bookmark('03 TSV bores');
-  // Retest genuine unmasked front/back exposed-surface oxide only AFTER
-  // correcting conformal wall spans across disjoint Z material islands.
-  // Keep the ORIGINAL coolant-centerline invariant unchanged: a 0.5 um
-  // source-reported-unknown film cannot fill a many-um-wide open fluid turn.
-  // This still models idealized geometry, not thermal oxide kinetics.
-  // Conservative Mask 28 remains available as a fallback if science fails.
+  // True exposed front/back surface geometry under unchanged coolant and
+  // material-coverage scientific contracts. The Kernel nodes shared XY edges
+  // before 0.1 nm coordinate rounding, so thin curved contours survive.
+  // Oxide thickness 0.5 um is INFERRED, not thermal-growth chemistry.
   process('Full-exposed-surface front SiO2 on interposer (inferred 0.5 um)', 'deposit', {
     material: 'Interposer front exposed-surface SiO2 0.5 um (inferred)',
-    thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
+    thickness: GAN_TSV_LINER.inferredExposedExteriorSiO2Um,
     coverage: 'conformal',
     face: 'front',
   });
   process('Full-exposed-surface backside SiO2 on interposer (inferred 0.5 um)', 'deposit', {
     material: 'Interposer back exposed-surface SiO2 0.5 um (inferred)',
-    thickness: GAN_TSV_LINER.inferredProtectedExteriorSiO2Um,
+    thickness: GAN_TSV_LINER.inferredExposedExteriorSiO2Um,
     coverage: 'conformal',
     face: 'back',
   });
@@ -872,6 +857,12 @@ export async function buildGanMicrochannel() {
     [[2000, 0], -200.25, exteriorBackOxide],
     [[2500, 1800], 600.25, exteriorFrontOxide],
     [[2500, 1800], -200.25, exteriorBackOxide],
+    [[500, 0], 600.25, exteriorFrontOxide],
+    [[500, 0], -200.25, exteriorBackOxide],
+    [[150, 1000], 600.25, exteriorFrontOxide],
+    [[150, 1000], -200.25, exteriorBackOxide],
+    [[-400, 500], 600.25, exteriorFrontOxide],
+    [[-400, 500], -200.25, exteriorBackOxide],
   ]) {
     assert.ok(
       owner(point).stack.some(
@@ -903,7 +894,7 @@ export async function buildGanMicrochannel() {
       (z) =>
         z <=
         600 +
-          GAN_TSV_LINER.inferredProtectedExteriorSiO2Um +
+          GAN_TSV_LINER.inferredExposedExteriorSiO2Um +
           GAN_TSV_LINER.inferredLocalSiO2Um +
           GAN_TSV_LINER.titaniumUm +
           GAN_TSV_LINER.copperUm +
