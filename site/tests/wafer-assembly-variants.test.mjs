@@ -17,6 +17,7 @@ const {
   appendAssemblyVariantBond,
   appendAssemblyVariantPostBondStep,
   assemblyVariantPostBondModel,
+  setAssemblyVariantPostBondCursor,
 } = await import('../wafer-assembly-variants.js');
 const { readProjectFile, serializeProject } = await import('../project-io.js');
 
@@ -236,4 +237,54 @@ test('post-Bond operations reject a standalone or historical receiver and corrup
   const forged = structuredClone(initial);
   forged.branches[0].postBondSteps = 'not-an-array';
   assert.throws(() => validateAssemblyVariantGraph(forged), /step array|Recipe record/);
+});
+
+test('post-Bond Process timeline moves without truncating full Recipe and rejects historical append', () => {
+  const original = createAssemblyVariantGraph(bonded());
+  const first = appendAssemblyVariantPostBondStep(original, {
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const second = appendAssemblyVariantPostBondStep(first.graph, {
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  assert.equal(second.graph.branches[0].postBondCursor, 2);
+  const undoOne = setAssemblyVariantPostBondCursor(second.graph, 1);
+  const undoAll = setAssemblyVariantPostBondCursor(undoOne, 0);
+  assert.equal(undoOne.branches[0].postBondSteps.length, 2);
+  assert.equal(undoOne.branches[0].postBondCursor, 1);
+  assert.equal(undoAll.branches[0].postBondCursor, 0);
+  assert.deepEqual(assemblyVariantPostBondModel(undoOne), first.model);
+  assert.deepEqual(assemblyVariantPostBondModel(undoAll), assemblyVariantProject(original).model);
+  assert.deepEqual(assemblyVariantPostBondModel(setAssemblyVariantPostBondCursor(undoOne, 2)), second.model);
+  assert.throws(
+    () => appendAssemblyVariantPostBondStep(undoOne, {
+      command: 'deposit',
+      params: { material: 'Al', thicknessUm: 1, face: 'front' },
+    }),
+    /historical Recipe requires a new Variant/,
+  );
+  const reloaded = JSON.parse(JSON.stringify(undoOne));
+  assert.deepEqual(validateAssemblyVariantGraph(reloaded), undoOne);
+  assert.deepEqual(assemblyVariantPostBondModel(reloaded), first.model);
+  assert.deepEqual(second.graph.branches[0].postBondSteps, undoOne.branches[0].postBondSteps);
+});
+
+test('post-Bond cursor rejects forged indices and accepts previous v2 sidecar at Recipe HEAD', () => {
+  const graph = appendAssemblyVariantPostBondStep(createAssemblyVariantGraph(bonded()), {
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1, face: 'front' },
+  }).graph;
+  for (const bad of [-1, 2, 0.5, NaN]) {
+    assert.throws(() => setAssemblyVariantPostBondCursor(graph, bad), /outside its Recipe timeline/);
+  }
+  const forged = structuredClone(graph);
+  forged.branches[0].postBondCursor = 5;
+  assert.throws(() => validateAssemblyVariantGraph(forged), /outside its Recipe timeline/);
+  const legacyV2 = structuredClone(graph);
+  delete legacyV2.branches[0].postBondCursor;
+  assert.deepEqual(assemblyVariantPostBondModel(legacyV2), assemblyVariantPostBondModel(graph));
+  const historicalBond = setAssemblyVariantCursor(graph, 0);
+  assert.throws(() => setAssemblyVariantPostBondCursor(historicalBond, 0), /completed Bond HEAD/);
 });
