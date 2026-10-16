@@ -9,7 +9,11 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
-import { chooseAssemblyPreviewFile, mountAssemblyPreviewControls } from './assembly-preview.js';
+import {
+  assemblyPreviewZExtent,
+  chooseAssemblyPreviewFile,
+  mountAssemblyPreviewControls,
+} from './assembly-preview.js';
 
 const { el } = window.WaferCadV2Components;
 try {
@@ -319,6 +323,7 @@ try {
     mountAssemblyPreviewControls({
       currentIndex: () => session.currentIndex(),
       maxIndex: () => session.maxIndex(),
+      stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.state.model).thicknessUm} µm`,
       restoreIndex: (index) => {
         store.restoreAssemblyStage(index);
         workflow.refresh();
