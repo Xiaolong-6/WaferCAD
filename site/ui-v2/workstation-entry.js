@@ -386,7 +386,9 @@ try {
         onChanged: refreshPostBondProcess,
       });
       refreshPostBondProcess();
-      status('Assembly Bond draft · source-bound Process preview; export all Variants to keep edits.');
+      status(
+        'Assembly Bond draft · source-bound Process preview; export all Variants to keep edits.',
+      );
     } else {
       status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
     }
