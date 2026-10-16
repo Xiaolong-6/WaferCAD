@@ -24,6 +24,40 @@ permissions:
   contents: read
 
 jobs:
+  one-time-mask-fixture:
+    name: One-time Fig1b CNT fixture sync
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 225
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate Fig1b geometry and format touched files
+        run: |
+          node scripts/build-tcmos-inverter-example.mjs
+          cp test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          npx prettier --write scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs
+      - name: Commit only to PR 225 branch
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          if git diff --cached --quiet; then
+            echo "Already synced"
+          else
+            git commit -m "chore(tcmos-mask): sync expanded body CNT geometry"
+            git push origin "HEAD:${PR_BRANCH}"
+          fi
+
   paper-geometry:
     name: T-CMOS kernel, Recipe and storage
     runs-on: ubuntu-latest
