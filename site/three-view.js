@@ -2151,30 +2151,34 @@ diffuseColor.a *= waferCadAlphaScale;`,
     ];
     const isContiguousFilm = (lower, upper) =>
       (getModel()?.regions || []).some((region) => {
-        const substrate = region.stack?.find(
-          (layer) =>
-            layer.layerId === lower.layerId && Math.abs(layer.z1 - lower.z) < 2e-5,
-        );
-        const coating = region.stack?.find(
-          (layer) =>
-            layer.layerId === upper.layerId &&
+        const substrate = region.stack?.find((layer) => {
+          if (layer.layerId !== lower.layerId) return false;
+          return Math.abs(layer.z1 - lower.z) < 2e-5;
+        });
+        const coating = region.stack?.find((layer) => {
+          if (layer.layerId !== upper.layerId) return false;
+          return (
             Math.abs(layer.z0 - lower.z) < 2e-5 &&
-            Math.abs(layer.z1 - upper.z) < 2e-5,
-        );
+            Math.abs(layer.z1 - upper.z) < 2e-5
+          );
+        });
         return Boolean(substrate && coating);
       });
     let alignedConformalCutPairs = 0;
     for (const lower of profileCapsForWalls) {
+      if (!clipEdges.length) break;
       if (!lower.cap?.buried || lower.cap.appearance?.kind !== 'rough') continue;
       const upper = profileCapsForWalls.find((candidate) => {
         const coat = candidate.cap;
         if (!coat || coat.buried || coat.appearance?.kind !== 'rough') return false;
         if (!(coat.z > lower.cap.z)) return false;
-        if (Number(coat.profileNormal ?? coat.normal) !==
-          Number(lower.cap.profileNormal ?? lower.cap.normal)) return false;
-        if (!profileFields.every(
-          (field) => lower.cap.appearance[field] === coat.appearance[field],
-        )) return false;
+        const normal = Number(coat.profileNormal ?? coat.normal);
+        const substrateNormal = Number(lower.cap.profileNormal ?? lower.cap.normal);
+        if (normal !== substrateNormal) return false;
+        const lowerAppearance = lower.cap.appearance;
+        const upperAppearance = coat.appearance;
+        const profileMatches = (field) => lowerAppearance[field] === upperAppearance[field];
+        if (!profileFields.every(profileMatches)) return false;
         if (!isContiguousFilm(lower.cap, coat)) return false;
         return clipEdges.some(
           ([p, q]) =>
@@ -2183,10 +2187,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         );
       });
       if (!upper) continue;
-      wallProfiles.set(
-        lower.index,
-        shiftedBoundaryProfile(upper.profile, lower.cap.z - upper.cap.z),
-      );
+      const shifted = shiftedBoundaryProfile(upper.profile, lower.cap.z - upper.cap.z);
+      wallProfiles.set(lower.index, shifted);
       alignedConformalCutPairs++;
     }
     host.dataset.roughConformalCutAlignedPairs = String(alignedConformalCutPairs);
