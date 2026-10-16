@@ -1,4 +1,4 @@
-name: PR311 one-shot precise canonicalization pass audit
+name: PR311 one-shot pre-noded persistence quantization contract
 
 on:
   push:
