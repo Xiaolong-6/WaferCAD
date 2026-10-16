@@ -130,6 +130,10 @@ const isolationFrame = [
 export const GAN_TSV_LINER = Object.freeze({
   boreWidth: 70,
   localMaskWindow: 90,
+  // The source reports an outer SiO2 insulator but not its thickness.
+  // This native conformal deposit is restricted to four TSV windows;
+  // whole-outside-surface oxide remains explicitly UNMODELED.
+  inferredLocalSiO2Um: 0.5,
   titaniumUm: 0.2,
   copperUm: 0.5,
   inferredFullCuFillUm: 35,
@@ -178,7 +182,7 @@ export const GAN_MICROCHANNEL_MASKS = Object.freeze([
   },
   {
     id: 25,
-    name: 'Four local Ti/Cu seed-coating windows with exposed TSV silicon rim',
+    name: 'Four local oxide/Ti/Cu coating windows with exposed TSV silicon rim',
     rectangles: tsvCenters.map(([x, y]) =>
       centered(GAN_TSV_LINER.localMaskWindow, GAN_TSV_LINER.localMaskWindow, x, y),
     ),
@@ -453,6 +457,11 @@ export async function buildGanMicrochannel() {
           ? '#B78F69'
           : '#8095A7';
     }
+    if (command === 'deposit' && params.material.startsWith('TSV SiO2')) {
+      const oxide = model.layers.find((layer) => layer.id === result.layerId);
+      assert.ok(oxide, 'Local TSV oxide deposition produced no layer');
+      oxide.color = '#B9DCE8';
+    }
     const recipe = {
       ...params,
       face: kernel.face,
@@ -643,9 +652,22 @@ export async function buildGanMicrochannel() {
   // rather than claiming a fully modeled metal-filled conductive via.
   etch('Four illustrative through-TSV bores (70 um inferred)', 14, 800);
   bookmark('03 TSV bores');
+  // The paper oxidizes the bonded silicon BEFORE Ti/Cu metallization.
+  // SiO2 thickness is not reported. Restrict this 0.5 um native conformal
+  // surrogate to four TSV mask windows, leaving all open coolant channels
+  // unchanged. This is NOT the whole-wafer outside-surface oxide of Fig 2c,
+  // and occupancy cannot prove electrical insulation or hermeticity.
+  deposit(
+    'Inferred local SiO2 TSV insulation before Ti/Cu (0.5 um)',
+    'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
+    GAN_TSV_LINER.inferredLocalSiO2Um,
+    25,
+    'conformal',
+  );
+  bookmark('03a TSV local SiO2 before metallization');
   // Local mask includes both the exposed 70 um bore and 10 um of Si rim.
-  // Uniform 800 um-deep Ti/Cu coating is a geometric assumption, not a
-  // simulation of real sputter coverage or complete TSV copper filling.
+  // Uniform Ti/Cu coverage down an 800 um via is a geometric assumption,
+  // not a sputtering, electroplating or insulating-breakdown simulation.
   deposit(
     'Idealized conformal TSV Ti seed (200 nm)',
     'TSV Ti conformal seed surrogate 0.2 um',
@@ -685,7 +707,7 @@ export async function buildGanMicrochannel() {
   bookmark('03c Cu-filled TSV columns / after inferred planarization');
   record(
     'Electrical TSV and chip wiring finishing steps (metadata only)',
-    'Paper Fig. 2(c,d): the idealized Cu core and Ti/Cu seed geometry are modeled, but real sputter coverage, oxide insulation, electroplating kinetics/voids, NiPaAu and Au interconnect routing, and electrical continuity are NOT verified.',
+    'Paper Fig. 2(c,d): local TSV SiO2 geometry plus Ti/Cu seed and Cu core now exist, but whole-surface thermal oxidation, dielectric isolation quality, sputter/plating kinetics, NiPaAu, Au routing and electrical continuity are NOT verified.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',
@@ -798,6 +820,9 @@ export async function buildGanMicrochannel() {
         region.stack.some((segment) => segment.z0 < z && segment.z1 > z),
     );
   }
+  const tsvOxide = model.layers.find(
+    (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
+  );
   const tsvTi = model.layers.find(
     (layer) => layer.name === 'TSV Ti conformal seed surrogate 0.2 um',
   );
@@ -805,13 +830,16 @@ export async function buildGanMicrochannel() {
     (layer) => layer.name === 'TSV Cu conformal seed surrogate 0.5 um',
   );
   const tsvFill = model.layers.find((layer) => layer.name === 'TSV Cu electrofill surrogate 35 um');
-  assert.ok(tsvTi && tsvCu && tsvFill, 'Missing physical TSV Ti/Cu seed or Cu fill');
+  assert.ok(tsvOxide && tsvTi && tsvCu && tsvFill, 'Missing oxide or TSV Ti/Cu/Cu core');
   const copperZtops = model.regions.flatMap((region) =>
     region.stack.filter((s) => s.layerId === tsvFill.id).map((s) => s.z1),
   );
   assert.ok(copperZtops.length > 0);
   assert.ok(
-    copperZtops.every((z) => z <= 600.700001),
+    copperZtops.every(
+      (z) => z <= 600 + GAN_TSV_LINER.inferredLocalSiO2Um +
+        GAN_TSV_LINER.titaniumUm + GAN_TSV_LINER.copperUm + 0.000001,
+    ),
     'Unremoved Cu overburden above TSV',
   );
   for (const [x, y] of tsvCenters) {
@@ -834,6 +862,7 @@ export async function buildGanMicrochannel() {
           }
         }
       }
+      assert.ok(present.has(tsvOxide.id), 'SiO2 below Ti/Cu missing at ' + [x, y, z]);
       assert.ok(present.has(tsvTi.id), 'Ti coating missing at ' + [x, y, z]);
       assert.ok(present.has(tsvCu.id), 'Cu coating missing at ' + [x, y, z]);
     }
@@ -997,6 +1026,7 @@ export async function buildGanMicrochannel() {
       fourTSVsWithContinuousTiCuSeedGeometry: true,
       fourCuFilledTSVsWithUnblockedCoolant: true,
       idealizedCuPlanarizationPreservesTSVConductors: true,
+      localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage: true,
       twoInferredGsgDieBodiesAndPadsAreRealGeometry: true,
     },
     checkpoints,

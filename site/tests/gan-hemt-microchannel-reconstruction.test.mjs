@@ -109,8 +109,9 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   assert.equal(validation.pass, true);
   assert.equal(validation.mode, 'geometry-surrogate-not-wafer-bond-simulation');
   assert.equal(validation.maskLayers, 18);
-  assert.equal(validation.processNodes, 33);
-  assert.equal(validation.recipeSteps, 32);
+  assert.equal(validation.processNodes, 34);
+  assert.equal(validation.recipeSteps, 33);
+  assert.equal(validation.checks.localizedTsvSiO2ConformalGeometryWithoutCoolantBlockage, true);
   assert.equal(validation.checks.twoInferredGsgDieBodiesAndPadsAreRealGeometry, true);
   // Candidate process-order contract: source paper distinguishes metalized
   // TSVs from HEMT-to-GSG Au wire bonds. Do not turn a metadata-only assembly
@@ -121,6 +122,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const wireBondRecordIndex = recipe.findIndex(
     (step) => step.command === 'record' && step.params.label.includes('Au wire bonds'),
   );
+  const localOxideIndex = depositIndex('TSV SiO2 local oxide surrogate 0.5 um (inferred)');
   const tiSeedIndex = depositIndex('TSV Ti conformal seed surrogate 0.2 um');
   const cuSeedIndex = depositIndex('TSV Cu conformal seed surrogate 0.5 um');
   const cuFillIndex = depositIndex('TSV Cu electrofill surrogate 35 um');
@@ -135,6 +137,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   const gsgIndex = depositIndex('GSG Au pads surrogate 0.5 um');
   assert.ok(
     [
+      localOxideIndex,
       tiSeedIndex,
       cuSeedIndex,
       cuFillIndex,
@@ -149,7 +152,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     'Expected physical TSV/HEMT materials and separate wire-bond source record',
   );
   assert.ok(
-    tiSeedIndex < cuSeedIndex &&
+    localOxideIndex < tiSeedIndex &&
+      tiSeedIndex < cuSeedIndex &&
       cuSeedIndex < cuFillIndex &&
       cuFillIndex < cuPlanarizationIndex &&
       cuPlanarizationIndex < solderIndex &&
@@ -175,8 +179,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
         step.params.coverage === 'conformal' &&
         step.params.material.startsWith('TSV '),
     ).length,
-    3,
-    'Native Recipe must replay Ti/Cu seed coatings and inferred Cu electrofill',
+    4,
+    'Native Recipe must replay local SiO2, Ti/Cu coating and inferred Cu electrofill',
   );
   assert.ok(
     project.processRecipe.steps.some(
@@ -285,6 +289,14 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     false,
     '2DEG is an electronic state rather than a physically deposited solid',
   );
+  const oxideBookmark = project.snapshots.find((s) =>
+    s.name.startsWith('03a TSV local SiO2'),
+  );
+  assert.ok(oxideBookmark, 'Physical local TSV oxide needs a saved pre-metallization state');
+  const oxideLayer = project.model.layers.find(
+    (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
+  );
+  assert.ok(oxideLayer, 'Local TSV SiO2 layer is missing');
   const platedTSV = project.snapshots.find((s) => s.name.startsWith('03b Open Ti/Cu-lined'));
   assert.ok(platedTSV, 'Ti/Cu deposition needs a distinct scientific Bookmark');
   const filledBookmark = project.snapshots.find((r) => r.name.startsWith('03c Cu-filled TSV'));
@@ -312,8 +324,8 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     n.operation.label.includes('Planarize TSV Cu overburden'),
   );
   assert.ok(preCmp && postCmp, 'Missing separately replayable Cu deposition and CMP');
-  assert.ok(Math.abs(zTop(preCmp) - 635.7) < 1e-6);
-  assert.ok(Math.abs(zTop(postCmp) - 600.7) < 1e-6);
+  assert.ok(Math.abs(zTop(preCmp) - 636.2) < 1e-6);
+  assert.ok(Math.abs(zTop(postCmp) - 601.2) < 1e-6);
   const tsvInspection = project.snapshots.find((s) => s.name.startsWith('06 Integrated GaN HEMT'));
   assert.ok(tsvInspection);
   assert.equal(tsvInspection.state.roi, null);

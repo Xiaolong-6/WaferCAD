@@ -289,6 +289,7 @@ try {
     const model = window.WaferCadV2Workstation.snapshot().model;
     const byName = new Map(model.layers.map((layer) => [layer.name, layer.id]));
     const names = {
+      oxide: 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
       ti: 'TSV Ti conformal seed surrogate 0.2 um',
       cu: 'TSV Cu conformal seed surrogate 0.5 um',
       fill: 'TSV Cu electrofill surrogate 35 um',
@@ -311,6 +312,9 @@ try {
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
     );
+    const missingLocalOxideRims = viaCenters.filter(([x, y]) =>
+      !hasLayer([x + 43, y], 600.25, ids.oxide),
+    );
     const gsgPadCenters = [-1250, 1250].flatMap((x) => [-95, 0, 95].map((y) => [x, y]));
     const gsgDieId = byName.get('GSG chip substrate surrogate (100 um inferred)');
     const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 705.25, ids.pad));
@@ -327,6 +331,7 @@ try {
       viaCoreSamples: viaCenters.length * viaZ.length,
       gsgGoldSamples: gsgPadCenters.length,
       missingCuCore,
+      missingLocalOxideRims,
       missingGsgPads,
       missingGsgDieCenters,
       sourceProcessLayersPresent: {
@@ -337,6 +342,11 @@ try {
   });
   assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
   assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
+  assert.deepEqual(
+    geometry.missingLocalOxideRims,
+    [],
+    'Browser-loaded TSV SiO2 rim geometry missing',
+  );
   assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG gold contacts are absent');
   assert.deepEqual(
     geometry.missingGsgDieCenters,
@@ -377,6 +387,7 @@ try {
     distinctFromCoolantSection: true,
     copperFilledGeometry: geometry.missingCuCore.length === 0,
     copperCoreOccupancySamples: geometry.viaCoreSamples,
+    localizedOxideRimSamples: 4,
     gsgGoldOccupancySamples: geometry.gsgGoldSamples,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     physicalSeedThicknessUm: { Ti: 0.2, Cu: 0.5 },
@@ -465,6 +476,8 @@ try {
     completeInterposerAuNiPaAuMetallizationModeled: false,
     hemtBacksideViaMetallizationModeled: false,
     sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
+    localizedOxideGeometryVerified: geometry.missingLocalOxideRims.length === 0,
+    wholeOutsideSurfaceOxideVerified: false,
     oxideInsulationScientificVerification: false,
     electricalContinuityVerified: false,
     fig1aContourAndAppearanceVerified: false,

@@ -22,9 +22,12 @@ function layerAt(model, point, z) {
 test('Production Cu-filled TSVs retain seed liners and open coolant network', async () => {
   const { project } = await buildGanMicrochannel();
   const model = project.model;
+  const oxide = model.layers.find(
+    (layer) => layer.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)',
+  );
   const ti = model.layers.find((l) => l.name === 'TSV Ti conformal seed surrogate 0.2 um');
   const cu = model.layers.find((l) => l.name === 'TSV Cu conformal seed surrogate 0.5 um');
-  assert.ok(ti && cu, 'Production build omitted real Ti/Cu wall material');
+  assert.ok(oxide && ti && cu, 'Production build omitted local SiO2/Ti/Cu wall material');
   const heights = [-150, 50, 250, 450, 550];
   const seen = {};
   for (const [x, y] of tsvCenters) {
@@ -37,6 +40,7 @@ test('Production Cu-filled TSVs retain seed liners and open coolant network', as
         observed.add(layerAt(model, [x + offset, y], z));
       }
       for (const [name, id] of [
+        ['SiO2', oxide.id],
         ['Ti', ti.id],
         ['Cu', cu.id],
       ]) {
@@ -86,7 +90,16 @@ test('Persisted Cu-filled TSV geometry is planarized without losing metal', asyn
       assert.equal(layerAt(model, [x, y], z), fill.id);
     }
     assert.notEqual(layerAt(model, [x, y], 625), fill.id);
-    assert.equal(layerAt(model, [x + 35.4, y], 600.45), seed.id);
+    assert.equal(
+      layerAt(model, [x + 43, y], 600.25),
+      model.layers.find((l) => l.name === 'TSV SiO2 local oxide surrogate 0.5 um (inferred)').id,
+      'Oxide top rim must sit between Si and Ti',
+    );
+    assert.equal(
+      layerAt(model, [x + 43, y], 600.95),
+      seed.id,
+      'Cu seed top rim must sit above the local oxide and Ti',
+    );
   }
 });
 
