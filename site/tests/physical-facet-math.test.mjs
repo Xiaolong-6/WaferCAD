@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   facetNormalFilmVerticalSeparation,
+  physicalPyramidSlabCellVolume,
+  samplePhysicalPyramidSlab,
   squarePyramidReliefVolume,
   squarePyramidSample,
 } from '../physical-facet-math.js';
@@ -71,4 +73,66 @@ test('invalid parameters fail closed', () => {
   assert.throws(() => squarePyramidSample(0, 0, { ...args, pitch: NaN }), RangeError);
   assert.throws(() => squarePyramidSample(0, 0, { ...args, face: 'both' }), RangeError);
   assert.throws(() => facetNormalFilmVerticalSeparation({ gradient: [0, 0] }, 0.01), RangeError);
+});
+
+test('physical slab has unique front/back material interfaces at every XY point', () => {
+  const descriptor = {
+    layerId: 'silicon',
+    pitch: 6.4,
+    height: 4.5,
+    bottomPlaneZ: -125.5,
+    topPlaneZ: 125.5,
+  };
+  for (const point of [[0, 0], [1.2, 0.4], [3.2, 0], [3.2, 3.2], [-2, -1]]) {
+    const slab = samplePhysicalPyramidSlab(...point, descriptor);
+    assert.equal(slab.layerId, 'silicon');
+    assert.ok(slab.z0 < slab.z1);
+    assert.ok(Math.abs(slab.thicknessUm - (slab.z1 - slab.z0)) < 1e-12);
+    assert.ok(Math.abs(slab.z0 + slab.z1) < 1e-12);
+    assert.ok(slab.thicknessUm >= 251);
+    assert.ok(slab.thicknessUm <= 260);
+  }
+  const atApex = samplePhysicalPyramidSlab(0, 0, descriptor);
+  const atValley = samplePhysicalPyramidSlab(3.2, 3.2, descriptor);
+  assert.equal(atApex.thicknessUm, 260);
+  assert.equal(atValley.thicknessUm, 251);
+  assert.equal(atApex.interfaces.top.normal, null);
+  assert.equal(atApex.interfaces.bottom.normal, null);
+  assert.deepEqual(
+    samplePhysicalPyramidSlab(1.2, 0.4, descriptor),
+    samplePhysicalPyramidSlab(1.2 + 6.4, 0.4, descriptor),
+  );
+});
+
+test('physical double-sided relief conserves integral thickness separately from planar model', () => {
+  const parameters = {
+    pitch: 6.4,
+    height: 4.5,
+    bottomPlaneZ: -125.5,
+    topPlaneZ: 125.5,
+  };
+  const volume = physicalPyramidSlabCellVolume(parameters);
+  const meanPhysicalThickness = volume / (6.4 * 6.4);
+  assert.ok(Math.abs(meanPhysicalThickness - 254) < 1e-12);
+  assert.ok(meanPhysicalThickness > 251);
+  assert.ok(meanPhysicalThickness < 260);
+  const initialFlatVolume = 260 * 6.4 * 6.4;
+  const removedVolume = initialFlatVolume - volume;
+  assert.ok(Math.abs(removedVolume / (6.4 * 6.4) - 6) < 1e-12);
+});
+
+test('physical slab owner fails closed for invalid layer or inverted planes', () => {
+  const valid = {
+    layerId: 'silicon', pitch: 6.4, height: 4.5,
+    bottomPlaneZ: -125.5, topPlaneZ: 125.5,
+  };
+  assert.throws(() => samplePhysicalPyramidSlab(0, 0, { ...valid, layerId: '' }), RangeError);
+  assert.throws(
+    () => samplePhysicalPyramidSlab(0, 0, { ...valid, bottomPlaneZ: 126 }),
+    RangeError,
+  );
+  assert.throws(
+    () => physicalPyramidSlabCellVolume({ ...valid, topPlaneZ: NaN }),
+    RangeError,
+  );
 });

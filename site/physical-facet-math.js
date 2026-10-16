@@ -71,3 +71,59 @@ export function squarePyramidReliefVolume(pitch, height) {
   positive(height, 'height');
   return (pitch * pitch * height) / 3;
 }
+
+/**
+ * Canonical point-owner PROTOTYPE for a single physically faceted Si slab.
+ * The planes are the LOW points of the front and back pyramids. Neither
+ * interface is a visualization offset: z0 and z1 are physical boundaries.
+ *
+ * This does not yet serialize as a WaferCAD model region, nor implement
+ * coating-geometry Boolean operations at ridges, valleys or mask edges.
+ */
+export function samplePhysicalPyramidSlab(
+  x,
+  y,
+  { layerId, pitch, height, bottomPlaneZ, topPlaneZ, originX = 0, originY = 0 },
+) {
+  if (typeof layerId !== 'string' || !layerId.length) {
+    throw new RangeError('Physical material layerId is required');
+  }
+  finite(bottomPlaneZ, 'bottomPlaneZ');
+  finite(topPlaneZ, 'topPlaneZ');
+  if (!(bottomPlaneZ < topPlaneZ)) {
+    throw new RangeError('Physical top plane must exceed bottom plane');
+  }
+  const front = squarePyramidSample(x, y, {
+    pitch, height, planeZ: topPlaneZ, originX, originY, face: 'front',
+  });
+  const back = squarePyramidSample(x, y, {
+    pitch, height, planeZ: bottomPlaneZ, originX, originY, face: 'back',
+  });
+  return {
+    layerId,
+    z0: back.z,
+    z1: front.z,
+    thicknessUm: front.z - back.z,
+    interfaces: { bottom: back, top: front },
+  };
+}
+
+// Integrate the two symmetric four-facet pyramid surfaces over one cell.
+// The averaged physical slab is thicker than its valley-to-valley distance
+// by 2h/3. This is a distinct physical invariant from a planar 2.5D stack.
+export function physicalPyramidSlabCellVolume({
+  pitch,
+  height,
+  bottomPlaneZ,
+  topPlaneZ,
+}) {
+  positive(pitch, 'pitch');
+  positive(height, 'height');
+  finite(bottomPlaneZ, 'bottomPlaneZ');
+  finite(topPlaneZ, 'topPlaneZ');
+  if (!(bottomPlaneZ < topPlaneZ)) {
+    throw new RangeError('Physical top plane must exceed bottom plane');
+  }
+  return pitch * pitch * (topPlaneZ - bottomPlaneZ) +
+    2 * squarePyramidReliefVolume(pitch, height);
+}

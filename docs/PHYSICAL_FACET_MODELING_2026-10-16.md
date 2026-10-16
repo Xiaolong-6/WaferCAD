@@ -46,3 +46,26 @@ relief volume and fail-closed undefined normals. It **does not certify**
 physical deposition, material ownership, Snapshot replay or original paper
 SEM correspondence. These remain explicit subsequent gates; no relaxation
 of scientific tolerances or legacy baseline regeneration is permitted.
+
+## Canonical point-ownership prototype (not active Model)
+
+The new experimental `samplePhysicalPyramidSlab` evaluates _both_
+front and back interfaces using the same deterministic relief lattice.
+At a selected XY point it returns a unique physical Si interval
+`[z0,z1]`, two corresponding surface descriptors and a true local
+thickness. There is no dependence on 3D renderer colors or LOD.
+
+For a symmetric height `h = 4.5 µm`, front/back valley planes at
+`±125.5 µm` and pitch `6.4 µm`, local material thickness ranges
+from **251 µm at valley** to **260 µm at apex**. Integral relief
+volume yields an **average physical thickness of 254 µm**. This
+is different from the existing flat **251 µm** region-stack slab:
+one must not silently substitute the renderer's pyramids while
+retaining the old volume, or declare mass conservation passed.
+
+The prototype is a deterministic source for future XY/Z owners. It
+does **not** yet allocate canonical region IDs, resolve mask
+boundaries, support real facet-normal coating at creases, persist
+the data, or enable a new Process mode. Kernel integration must
+confirm which wafer-thickness/etch-depth interpretation is
+supported by the paper. The current Sahli project remains intact.
