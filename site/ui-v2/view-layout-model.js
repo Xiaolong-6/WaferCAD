@@ -152,16 +152,6 @@ export function reduceDesktopLayout(state, action) {
         state,
         state.visible.filter((key) => key !== id),
       );
-    case 'FOCUS_VIEW': {
-      // Workflow navigation is an explicit request to inspect this view, not
-      // a maximize toggle. A previously closed view is reopened atomically.
-      if (!validId(id)) return state;
-      if (state.maximized === id && state.visible.includes(id)) return state;
-      const restored = state.visible.includes(id)
-        ? state
-        : withVisibility(state, [...state.visible, id]);
-      return { ...restored, maximized: id };
-    }
     case 'MAXIMIZE':
       if (!validId(id) || !state.visible.includes(id)) return state;
       return { ...state, maximized: state.maximized === id ? null : id };
@@ -246,15 +236,19 @@ export function reduceDesktopLayout(state, action) {
 /** Read-only projection for the desktop Shell: panel placement, navigation and tracks.
  * The renderer never receives a new project/scene/camera from a layout transition.
  */
-export function projectDesktopLayout(state) {
-  const displayed = displayedViews(state);
-  const template = resolveTemplate(displayed.length, state.maximized ? 'one-full' : state.preset);
-  const tracks = state.maximized ? { columns: [1], rows: [1] } : activeTracks(state);
+export function projectDesktopLayout(state, temporaryFocus = null) {
+  // Workflow focus is a read-only presentation override. In particular, focusing
+  // a closed Mask must never add it to the user's saved visible views.
+  const focus = validId(temporaryFocus) ? temporaryFocus : null;
+  const displayed = focus ? [focus] : displayedViews(state);
+  const maximized = focus || state.maximized;
+  const template = resolveTemplate(displayed.length, maximized ? 'one-full' : state.preset);
+  const tracks = maximized ? { columns: [1], rows: [1] } : activeTracks(state);
   return {
     displayed,
     highlighted: [...displayed],
-    overviewPressed: isOverview(state),
-    maximized: state.maximized,
+    overviewPressed: !focus && isOverview(state),
+    maximized,
     preset: template?.id || null,
     columns: tracks?.columns || [],
     rows: tracks?.rows || [],
