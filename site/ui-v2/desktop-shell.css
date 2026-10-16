@@ -252,7 +252,8 @@
   }
 
   body[data-workstation]:not([data-preview-mode])
-    .p-desktop-dock-actions button[aria-pressed='true'] {
+    .p-desktop-dock-actions
+    button[aria-pressed='true'] {
     background: #edf3f9;
     color: #255f91;
     box-shadow: none;
