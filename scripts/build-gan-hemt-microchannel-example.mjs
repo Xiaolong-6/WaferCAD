@@ -747,7 +747,7 @@ export async function buildGanMicrochannel() {
   bookmark('03c Cu-filled TSV columns / after inferred planarization');
   record(
     'Electrical TSV and chip wiring finishing steps (metadata only)',
-    'Paper Fig. 2(c,d): MASKED peripheral front/back SiO2 plus local TSV oxide precede Ti/Cu and Cu core; the central coolant area is intentionally uncoated because unmasked conformal Kernel coverage blocked a fluid branch. Full exterior oxidation, dielectric insulation, metal finishing, Au routing and electrical continuity remain UNVERIFIED.',
+    'Paper Fig. 2(c,d): unmasked front/back exposed-surface SiO2 plus local TSV oxide precede physical double-sided directional Ti (200 nm) / Cu (500 nm) sputter and idealized deep-TSV seed/core fill. Full thermal growth, dielectric isolation, sputter step coverage, Au/NiPaAu finishing and circuit connectivity remain UNVERIFIED.',
   );
   const solderResult = deposit(
     'Peripheral AuSn solder support, 5 um thickness illustrative',

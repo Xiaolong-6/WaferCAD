@@ -1,4 +1,4 @@
-name: PR229 one-shot dual-face TiCu native metal and science
+name: PR229 final source-consistent dual-face TiCu science and browser
 
 on:
   push:
