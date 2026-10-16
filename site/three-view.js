@@ -1589,15 +1589,9 @@ export function createThreeView({
           .map((surface) => Number(surface?.appearance?.featureSize))
           .filter((value) => Number.isFinite(value) && value > 0),
         targetStep = featureSizes.length
-          ? Math.max(
-              1e-6,
-              Math.min(...featureSizes) / (4 * Math.sqrt(policy.roughnessDetail)),
-            )
+          ? Math.max(1e-6, Math.min(...featureSizes) / (4 * Math.sqrt(policy.roughnessDetail)))
           : length,
-        segments = Math.max(
-          1,
-          Math.min(policy.sidewallSegments, Math.ceil(length / targetStep)),
-        ),
+        segments = Math.max(1, Math.min(policy.sidewallSegments, Math.ceil(length / targetStep))),
         pointAt = (t) => [p[0] + dx * t, p[1] + dy * t],
         hasDepth =
           Number.isFinite(Number(part.lowerDepth)) && Number.isFinite(Number(part.upperDepth)),

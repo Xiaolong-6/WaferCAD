@@ -44,12 +44,3 @@ jobs:
       - name: Final lint, formatting, generated documentation and Node tests
         if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
         run: npm run check
-
-      - name: Diagnose PR250 formatting only
-        if: ${{ failure() && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
-        run: |
-          for file in site/three-view.js site/tests/three-outline-geometry.test.mjs; do
-            echo "::group::Prettier diff for $file"
-            npx prettier "$file" | diff -u "$file" - || true
-            echo "::endgroup::"
-          done
