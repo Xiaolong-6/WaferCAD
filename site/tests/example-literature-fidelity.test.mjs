@@ -215,6 +215,22 @@ test('Sahli pyramid SEM remains outside the canonical 2.5D facet contract', asyn
     region.stack.filter((interval) => interval.layerId === 'base'),
   );
   assert.ok(silicon.length > 1);
+  // The paper's 260 µm describes the incoming wafer, not the etched
+  // canonical 2.5D slab. Both-face 4.5 µm etch removes 9 µm in total.
+  const incomingThickness = project.processRecipe.base.thickness;
+  const textured = project.processRecipe.steps.find(
+    (step) => step.command === 'etch' && step.params.target === project.processRecipe.base.material,
+  );
+  assert.equal(incomingThickness, 260);
+  assert.ok(textured, 'Missing the source-order silicon texturing etch');
+  assert.equal(textured.params.face, 'both');
+  assert.equal(textured.params.thicknessUm, 4.5);
+  const remainingSlab = incomingThickness - 2 * textured.params.thicknessUm;
+  assert.equal(remainingSlab, 251);
+  for (const interval of silicon) {
+    assert.ok(Math.abs(interval.z0 + remainingSlab / 2) < 1e-9);
+    assert.ok(Math.abs(interval.z1 - remainingSlab / 2) < 1e-9);
+  }
   assert.ok(
     silicon.every(
       (interval) =>
