@@ -113,7 +113,10 @@ export const TCMOS_METAL_NETS = Object.freeze([
       fig(137, 356, 176, 398),
       ...bodyTapActive(198),
     ],
-    islands: [[0, 1, 2, 3], [4, 5, 6]],
+    islands: [
+      [0, 1, 2, 3],
+      [4, 5, 6],
+    ],
   },
   {
     name: 'VOUT',
@@ -134,7 +137,10 @@ export const TCMOS_METAL_NETS = Object.freeze([
       fig(545, 356, 582, 398),
       ...bodyTapActive(520),
     ],
-    islands: [[0, 1, 2, 3], [4, 5, 6]],
+    islands: [
+      [0, 1, 2, 3],
+      [4, 5, 6],
+    ],
   },
   {
     name: 'VIN',
@@ -298,7 +304,12 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
     // Supply-side and body-U wires in Fig.1b do not meet in the drawing.
     // Only these explicitly traced islands may be disjoint.
     const supply = net.name === 'VDD' || net.name === 'GND';
-    const expected = supply ? [[0, 1, 2, 3], [4, 5, 6]] : [rectangles.map((_, i) => i)];
+    const expected = supply
+      ? [
+          [0, 1, 2, 3],
+          [4, 5, 6],
+        ]
+      : [rectangles.map((_, i) => i)];
     const groups = net.islands || [rectangles.map((_, i) => i)];
     if (JSON.stringify(groups) !== JSON.stringify(expected))
       fail(net.name + ': invalid schematic island partition');
