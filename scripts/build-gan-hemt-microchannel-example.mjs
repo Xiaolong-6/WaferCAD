@@ -910,7 +910,10 @@ export async function buildGanMicrochannel() {
     assert.equal(materialAt([0, y], -150), false, 'Global SiO2 sealed a rear coolant port');
   }
   // Au plating must exist as two real materials on the correct faces.
-  for (const [face, z] of [['front', 601.45], ['back', -201.45]]) {
+  for (const [face, z] of [
+    ['front', 601.45],
+    ['back', -201.45],
+  ]) {
     const gold = model.layers.find(
       (layer) => layer.name === 'Interposer ' + face + ' Au plate 0.5 um (inferred)',
     );

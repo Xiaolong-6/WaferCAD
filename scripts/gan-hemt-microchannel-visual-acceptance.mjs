@@ -320,11 +320,9 @@ try {
     const missingFaceAu = [
       { face: 'front', z: 601.45 },
       { face: 'back', z: -201.45 },
-    ].filter(({ face, z }) =>
-      !hasLayer(
-        [2000, 0], z,
-        byName.get('Interposer ' + face + ' Au plate 0.5 um (inferred)'),
-      ),
+    ].filter(
+      ({ face, z }) =>
+        !hasLayer([2000, 0], z, byName.get('Interposer ' + face + ' Au plate 0.5 um (inferred)')),
     );
     const missingCuCore = viaCenters.flatMap(([x, y]) =>
       viaZ.filter((z) => !hasLayer([x, y], z, ids.fill)).map((z) => [x, y, z]),
