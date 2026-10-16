@@ -50,6 +50,62 @@ async function assertGrid(page, expected) {
       assert.ok(intersect(a, b) <= 2, 'Panels do not overlap: ' + a.name + ' / ' + b.name);
   }
 }
+async function assertDesktopShell(page) {
+  const shell = await page.evaluate(() => {
+    const sidebar = document.querySelector('.p-sidebar');
+    const workspace = document.querySelector('.p-workspace');
+    const toolbar = workspace?.querySelector('.p-desktop-dock-actions');
+    const right = workspace?.getBoundingClientRect();
+    const nav = toolbar?.getBoundingClientRect();
+    return {
+      parenthood:
+        sidebar?.contains(document.querySelector('.p-topbar')) &&
+        sidebar?.contains(document.querySelector('.p-nav')) &&
+        sidebar?.contains(document.querySelector('.p-inspector')) &&
+        workspace?.contains(document.querySelector('.p-viewbar')) &&
+        workspace?.contains(document.querySelector('.p-canvases')) &&
+        workspace?.contains(document.querySelector('.p-status')),
+      sidebarWidth: sidebar?.getBoundingClientRect().width,
+      workspaceWidth: right?.width,
+      centered:
+        right && nav ? Math.abs((right.left + right.right - nav.left - nav.right) / 2) : Infinity,
+      projectInSidebar: Boolean(sidebar?.querySelector('[data-slot="topbar.project"]')),
+      outerOverflow: document.documentElement.scrollWidth - innerWidth,
+    };
+  });
+  assert.equal(shell.parenthood, true, 'Desktop Shell owns two stable columns');
+  assert.ok(shell.sidebarWidth >= 280 && shell.workspaceWidth >= 300);
+  assert.ok(shell.centered <= 2, 'View navigation is centered inside right column');
+  assert.ok(shell.projectInSidebar);
+  assert.ok(shell.outerOverflow <= 1);
+}
+async function assertMockChrome(page) {
+  const result = await page.evaluate(() => {
+    const sidebarButton = document.querySelector('.p-topbar [data-action="hide-editor"]');
+    const overviewButton = document.querySelector('[data-action="dock:overview"]');
+    const switcher = overviewButton.closest('.p-desktop-dock-actions');
+    const icon = overviewButton.querySelector('.wc-icon');
+    const sidebarIcon = sidebarButton.querySelector('.wc-icon');
+    return {
+      sidebarIcon: sidebarButton.querySelector('use')?.getAttribute('href'),
+      overviewIcon: overviewButton.querySelector('use')?.getAttribute('href'),
+      sidebarIconWidth: sidebarIcon.getBoundingClientRect().width,
+      overviewIconWidth: icon.getBoundingClientRect().width,
+      switcherGap: getComputedStyle(switcher).gap,
+      overviewHeight: overviewButton.getBoundingClientRect().height,
+      overviewMinWidth: parseFloat(getComputedStyle(overviewButton).minWidth),
+      overviewActiveBackground: getComputedStyle(overviewButton).backgroundColor,
+    };
+  });
+  assert.equal(result.sidebarIcon, '#p-icon-sidebarCollapse');
+  assert.equal(result.overviewIcon, '#p-icon-overview');
+  assert.equal(result.sidebarIconWidth, 17);
+  assert.equal(result.overviewIconWidth, 15);
+  assert.equal(result.switcherGap, '7px');
+  assert.equal(result.overviewHeight, 36);
+  assert.ok(result.overviewMinWidth >= 72);
+  assert.equal(result.overviewActiveBackground, 'rgb(237, 243, 249)');
+}
 async function setTemplate(page, id) {
   const header = page.locator('#mainPanel [data-slot="view.main.header"]');
   await header.focus();
@@ -98,6 +154,26 @@ try {
       assert.deepEqual(controls, ['dock:overview', ...views.map((view) => 'dock:view:' + view)]);
       assert.equal(await page.locator('.p-section-dock-actions:visible').count(), 0);
       await assertGrid(page, 4);
+      await assertDesktopShell(page);
+      await assertMockChrome(page);
+      if (width === 1440) {
+        await page.locator('.p-topbar [data-action="hide-editor"]').click();
+        assert.equal(await page.locator('.p-sidebar:visible').count(), 0);
+        const restore = page.locator('.p-viewbar [data-action="expand-empty"]');
+        assert.equal(
+          await restore.locator('use').getAttribute('href'),
+          '#p-icon-sidebarExpand',
+          'Restore and Collapse use mirrored sidebar glyphs',
+        );
+        assert.equal(
+          await restore.locator('.wc-icon').evaluate((node) => getComputedStyle(node).width),
+          '17px',
+        );
+        await page.screenshot({ path: resolve(output, 'restore-panel-1440.png') });
+        await restore.click();
+        await assertDesktopShell(page);
+        await assertGrid(page, 4);
+      }
       // Four window titlebar glyphs must match the canonical viewbar sprite.
       const titleIcons = await page.evaluate(() => {
         const expected = { main: 'main', mask: 'mask', three: 'cube', section: 'section' };
@@ -411,6 +487,11 @@ try {
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
+    assert.equal(
+      await page.locator('.p-sidebar').evaluate((node) => getComputedStyle(node).display),
+      'contents',
+      'Mobile flattens desktop hosts without a second scroll container',
+    );
     assert.equal(await page.locator('.p-desktop-dock-actions:visible').count(), 0);
     assert.equal(await page.locator('.v2-dock-divider:visible').count(), 0);
     assert.equal(await page.locator('.p-nav [data-action]').count(), 5);
