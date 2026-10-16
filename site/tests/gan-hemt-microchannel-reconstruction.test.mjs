@@ -431,10 +431,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   ).id;
   const sic = channel.find((segment) => segment.layerId === sicId);
   assert.ok(sic, 'GaN-on-SiC chip is not positioned over channel');
-  assert.equal(sic.z0, 605, 'AuSn bond stand-off must set the SiC backside at z=605');
+  assert.equal(sic.z0, 605.5, 'AuSn bond stand-off must set the SiC backside at z=605.5');
   assert.equal(sic.z1 - sic.z0, 99);
   assert.equal(
-    solidAt(project.model, [30, 0], 604.99),
+    solidAt(project.model, [30, 0], 605.49),
     false,
     'Cooling liquid must contact exposed SiC bottom face',
   );
