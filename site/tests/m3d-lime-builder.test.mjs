@@ -262,7 +262,7 @@ test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps'
       return segment;
     });
     assert.ok(
-      Math.abs((seamPd[1].z1 - seamPd[1].z0) - 0.01125) < 1e-9,
+      Math.abs(seamPd[1].z1 - seamPd[1].z0 - 0.01125) < 1e-9,
       'The explicitly inferred 11.25nm PVD wall bridge is absent at cell ' + cell,
     );
     for (let edge = 0; edge < 2; edge++) {
