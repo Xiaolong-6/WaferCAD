@@ -82,7 +82,7 @@ try {
       null,
       { timeout: 60000 },
     );
-    await page.locator('.assembly-bond-draft-status').getByText(/Bonded C/).waitFor();
+    await page.locator('.assembly-bond-draft-status').filter({ hasText: /Bonded C/ }).waitFor();
     await waitForPaint(page);
     const committed = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(committed.assemblyPreview.sources, 3);
@@ -134,7 +134,10 @@ try {
     });
     assert.equal(reloaded.waferAssembly.sources.length, 3);
     assert.equal(reloaded.waferAssembly.bonds.length, 2);
-    assert.deepEqual(reloaded.waferAssembly.sources[0].project.model, baseline.waferAssembly.sources[0].project.model);
+    assert.deepEqual(
+      reloaded.waferAssembly.sources[0].project.model,
+      baseline.waferAssembly.sources[0].project.model,
+    );
     assert.deepEqual(reloaded.model, committed.model);
     assert.deepEqual(errors, [], 'No uncaught page errors during transaction or export');
     console.log('Native Assembly Bond draft: donor C, durable Recovery, Undo/Redo, export = OK');
