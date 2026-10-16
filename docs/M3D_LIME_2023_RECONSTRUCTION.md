@@ -93,6 +93,18 @@ HfO₂ wall column uncoated by the Pd, making all 14 CNTFET-to-digital-RRAM Pd
 connections _electrically discontinuous_ even though their mask footprints
 overlapped and the RRAM vertical stack was correct.
 
+**October 16 exact-sidewall regression:** The initial 72-point path sampler
+could jump over the 10 nm HfO₂ wall. Independent decoding of the first
+post-PVD project showed that **12 of 14** gate-edge sites still lacked Pd
+although the sparse samples passed. The fault was a merged XY geometry
+owner whose broad bounding box masked its disjoint 10 nm strips. The
+acceptance test now checks all 14 physical gate-edge positions at 5 nm
+inside the gate, 5 nm into the sidewall, and 15 nm beyond the edge.
+The masked strips are classified separately by effective material-band
+width, and each requires the 11.25 nm Pd surrogate plus more than 10 nm
+physical Z overlap to both adjacent metal sections. A green generic
+path-sampling test alone is **not** sufficient evidence.
+
 The opt-in `pvd-step` coverage mode is an explicitly **inferred
 finite-angular-spread approximation**: normal horizontal surfaces receive the
 source-reported 45 nm nominal Pd film, while eligible narrow HfO₂ wall
