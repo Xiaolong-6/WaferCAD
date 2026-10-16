@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { selectScientificView } from './desktop-view-selector.mjs';
+import { projectDesktopLayout } from '../../site/ui-v2/view-layout-model.js';
 import { PROJECT_LENGTH_QUANTUM_UM, readProjectFile } from '../../site/project-io.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
@@ -102,13 +103,44 @@ try {
         );
         if (domain === 'mask') {
           const maskNavigation = (await snap()).ui;
-          assert.equal(
-            width > 820 ? maskNavigation.desktopLayout.maximized : maskNavigation.maximize,
-            'mask',
-            'Mask workflow navigation focuses the corresponding scientific view',
-          );
-          assert.equal(maskNavigation.view, 'mask');
+          if (width > 820) {
+            assert.equal(
+              maskNavigation.temporaryFocus,
+              'mask',
+              'Desktop Mask workflow temporarily focuses the Mask view',
+            );
+            assert.deepEqual(
+              maskNavigation.desktopLayout,
+              initial.ui.desktopLayout,
+              'Mask focus must not overwrite the user dock layout',
+            );
+            const presentation = projectDesktopLayout(
+              maskNavigation.desktopLayout,
+              maskNavigation.temporaryFocus,
+            );
+            assert.deepEqual(presentation.displayed, ['mask']);
+            assert.equal(presentation.maximized, 'mask');
+            // The actual titlebar Restore control returns to exactly the
+            // previous user dock arrangement, rather than saving a new layout.
+            await page.locator('#maskPanel [data-action="maximize:mask"]').click();
+            const restored = (await snap()).ui;
+            assert.equal(restored.temporaryFocus, null);
+            assert.deepEqual(restored.desktopLayout, initial.ui.desktopLayout);
+            await panel('mask');
+          } else {
+            assert.equal(maskNavigation.maximize, 'mask');
+          }
+          assert.equal((await snap()).ui.view, 'mask');
         }
+      }
+      if (width > 820) {
+        const afterHistoryNavigation = (await snap()).ui;
+        assert.equal(afterHistoryNavigation.temporaryFocus, null);
+        assert.deepEqual(
+          afterHistoryNavigation.desktopLayout,
+          initial.ui.desktopLayout,
+          'Leaving Mask focus must restore the exact user dock layout',
+        );
       }
       const historyScroll = page.locator('#snapshotList');
       assert.equal(await historyScroll.isVisible(), true);
