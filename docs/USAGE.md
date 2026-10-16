@@ -14,7 +14,7 @@ Set:
 - H in the same display unit for rectangular bases;
 - Z as a physical thickness in the selected display/input unit.
 
-Use **Rebuild Base** in the current v2 **Project → Base** editor to create or rebuild it. The corresponding button in Legacy is **Apply base**.
+Use **Rebuild Base** in **Project → Base** to create or rebuild the substrate.
 
 If the structure has Process Steps or saved Variants, rebuilding Base offers **Keep previous history**, **Clear history**, or **Cancel**. Keep archives the previous Main as a restorable Variant (including its original HEAD and child Variants), then creates a clean Main with the new Base. Clear permanently replaces the process lineage; Cancel makes no changes. **Revert** and **Undo** restore both geometry and the History branch graph. With no existing process history, Apply base proceeds directly.
 
