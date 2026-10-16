@@ -2075,7 +2075,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const physicalCaps = physicalSurfacePlan?.caps || [];
     const candidates = [...profiles].flatMap(([capIndex, profile]) => {
       const cap = physicalCaps[capIndex];
-      if (!cap || cap.buried || cap.appearance?.kind !== 'rough') return [];
+      if (!cap || cap.appearance?.kind !== 'rough') return [];
+      // A surface-following Implant belongs to its underlying material, not
+      // to the neighboring ALD top displaced by the film thickness. Prefer
+      // the actual same-layer buried Si boundary when it exists at this Z.
+      const sameLayerBuried =
+        cap.buried &&
+        cap.layerId === implant.layerId &&
+        Math.abs(Number(cap.z) - outside) < 2e-5;
+      if (cap.buried && !sameLayerBuried) return [];
       if (Number(cap.profileNormal ?? cap.normal) !== direction) return [];
       if ((Number(cap.z) - outside) * direction < -2e-5) return [];
       // Display-only LOD is not a physical profile characteristic.
@@ -2090,13 +2098,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         'featureCv',
         'heightCv',
       ].every((key) => cap.appearance[key] === source[key]);
-      return same ? [{ capIndex, cap, profile }] : [];
+      return same ? [{ capIndex, cap, profile, sameLayerBuried }] : [];
     });
     if (!candidates.length) return { parts, profiles, appearances, matched: 0 };
     const matchedProfiles = new Map(profiles);
     const matchedAppearances = new Map(appearances);
     const resolvedParts = [];
     let matched = 0;
+    let matchedSameLayer = 0;
     for (const part of parts) {
       const selected = candidates
         .filter(({ profile }) => boundaryProfileOverlapsEdge(profile, part.p, part.q))
@@ -2117,12 +2126,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         [surfaceKey]: { ...part[surfaceKey], capIndex: syntheticCapIndex },
       });
       matched++;
+      if (selected.sameLayerBuried) matchedSameLayer++;
     }
     return {
       parts: resolvedParts,
       profiles: matchedProfiles,
       appearances: matchedAppearances,
       matched,
+      matchedSameLayer,
     };
   }
 
@@ -2136,6 +2147,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     let rebuilt = 0;
     let matchedImplantCuts = 0;
+    let matchedSameLayerImplantCuts = 0;
     for (const object of presentationObjects) {
       const previous = object.geometry;
       const implant = object.userData?.waferCadImplantCut;
@@ -2154,6 +2166,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       object.geometry = implant ? shearImplantGeometry(geometry, implant) : geometry;
       matchedImplantCuts += aligned?.matched || 0;
+      matchedSameLayerImplantCuts += aligned?.matchedSameLayer || 0;
       previous.dispose();
       object.position.z = 0;
       trackZDisplayObject(object);
@@ -2164,6 +2177,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       rebuilt++;
     }
     host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
+    host.dataset.roughImplantCutSameLayerMatches = String(matchedSameLayerImplantCuts);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
     rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
