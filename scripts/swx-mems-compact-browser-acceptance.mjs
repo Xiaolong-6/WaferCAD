@@ -49,7 +49,7 @@ try {
       const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       // PR-head and GitHub merge-head may use different view shells.
       // Exercise the real UI actions on either shell, without altering geometry.
-      const desktopDock = page.locator('[data-action="dock:overview"]');
+      const desktopDock = page.locator('.p-desktop-dock-actions [data-action="dock:overview"]');
       const isDocking = (await desktopDock.count()) > 0;
       const showOverview = async () => {
         if (isDocking) await desktopDock.click();
