@@ -27,61 +27,81 @@ const rectanglePolygon = (r) => [
   [r.x + r.w, r.y + r.h],
   [r.x, r.y + r.h],
 ];
-// Fig. 1b is a schematic, NOT a released foundry layout. Use its mask topology:
-// two horizontal ACTIVE bars, complementary enclosing LVT/HVT windows, nested
-// U-shaped body-tap contact arrays and four separate METAL1 electrical nets.
-const P_ACTIVE = rect(-5, -0.65, 4, 1.3);
-const N_ACTIVE = rect(1, -0.65, 4, 1.3);
+// Fig. 1b is a *drawn layout schematic*, not a foundry GDS. The geometry
+// below traces the image's visual topology: two compact ACTIVE islands and
+// U-shaped tap rows, outer VDD/GND inverted-U leads, and nested VIN/VOUT
+// inverted-U bridges across both transistors. XY widths and pitches are
+// illustrative. Gate L=0.13 µm is also an assumption, not measured in Fig.1b.
+const P_ACTIVE = rect(-4.12, -0.36, 2.24, 0.72);
+const N_ACTIVE = rect(1.88, -0.36, 2.24, 0.72);
 const gateLeft = -3;
 const gateRight = 3;
-const sd = (minX, maxX) => rect(minX, -0.65, maxX - minX, 1.3);
 const U_CENTERS = [-3, 3];
+const sd = (minX, maxX) => rect(minX, -0.36, maxX - minX, 0.72);
 function bodyTapActive(cx) {
-  // U-shaped diffusion / substrate-well tie, isolated from the channel ACTIVE.
   return [
-    rect(cx - 2.55, -2.3, 5.1, 0.4),
-    rect(cx - 2.55, -2.3, 0.4, 1.6),
-    rect(cx + 2.15, -2.3, 0.4, 1.6),
+    rect(cx - 2.25, -1.28, 4.5, 0.36),
+    rect(cx - 2.25, -1.28, 0.42, 1.62),
+    rect(cx + 1.83, -1.28, 0.42, 1.62),
   ];
 }
 function bodyTapContacts(cx) {
   const contacts = [];
-  for (let i = 0; i < 10; i++) {
-    contacts.push(rect(cx - 2.25 + i * 0.5 - 0.09, -2.19, 0.18, 0.18));
+  // Dense bottom U: two rows, 15 sites per row. The schematic indicates
+  // a dense array; pitch and contact sizes below are not foundry dimensions.
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 15; col++) {
+      const x = cx - 1.92 + col * (3.84 / 14);
+      const y = -1.17 + row * 0.14;
+      contacts.push(rect(x - 0.055, y - 0.055, 0.11, 0.11));
+    }
   }
-  for (const x of [cx - 2.35, cx + 2.35]) {
-    for (const y of [-1.65, -1.2, -0.85]) {
-      contacts.push(rect(x - 0.09, y - 0.09, 0.18, 0.18));
+  for (const x of [cx - 2.04, cx + 2.04]) {
+    for (const y of [-0.80, -0.55, -0.30, -0.05, 0.20]) {
+      contacts.push(rect(x - 0.055, y - 0.055, 0.11, 0.11));
     }
   }
   return contacts;
 }
 function bodyTapMetal(cx) {
-  return [
-    rect(cx - 2.55, -2.3, 5.1, 0.4),
-    rect(cx - 2.55, -2.3, 0.4, 1.6),
-    rect(cx + 2.15, -2.3, 0.4, 1.6),
-  ];
+  return bodyTapActive(cx);
 }
+// Four disjoint connected Metal1 nets. Reconstruct the *inverted* U-shaped
+// upper wires and *upright* U body-tap rails visible in Fig.1b; no direct
+// horizontal VOUT bridge through the transistor centers.
 export const TCMOS_METAL_NETS = Object.freeze([
   {
     name: 'VDD',
-    rectangles: [rect(-4.52, -2.16, 0.36, 2.36), ...bodyTapMetal(-3)],
+    rectangles: [
+      ...bodyTapMetal(-3),
+      rect(-6.30, 2.16, 2.58, 0.58),
+      rect(-6.30, -1.28, 0.58, 4.02),
+      rect(-4.18, -1.28, 0.46, 4.02),
+    ],
   },
   {
     name: 'VOUT',
-    rectangles: [rect(-1.84, -0.16, 3.68, 0.32)],
+    rectangles: [
+      rect(-2.27, 2.10, 4.54, 0.54),
+      rect(-2.27, -0.14, 0.41, 2.78),
+      rect(1.86, -0.14, 0.41, 2.78),
+    ],
   },
   {
     name: 'GND',
-    rectangles: [rect(4.16, -2.16, 0.36, 2.36), ...bodyTapMetal(3)],
+    rectangles: [
+      ...bodyTapMetal(3),
+      rect(3.72, 2.16, 2.58, 0.58),
+      rect(5.72, -1.28, 0.58, 4.02),
+      rect(3.72, -1.28, 0.46, 4.02),
+    ],
   },
   {
     name: 'VIN',
     rectangles: [
-      rect(-3.18, 1.0, 0.36, 1.65),
-      rect(2.82, 1.0, 0.36, 1.65),
-      rect(-3.18, 2.41, 6.36, 0.24),
+      rect(-3.20, 0.61, 0.40, 3.02),
+      rect(2.80, 0.61, 0.40, 3.02),
+      rect(-3.20, 3.08, 6.40, 0.55),
     ],
   },
 ]);
@@ -89,78 +109,76 @@ export const TCMOS_METAL_NETS = Object.freeze([
 export const TCMOS_MASKS = Object.freeze([
   {
     id: 1,
-    name: 'ACTIVE / STI complement, transistor plus isolated U-shaped body ties',
+    name: 'ACTIVE / STI complement, compact transistor bars and U-shaped body ties',
     rectangles: [P_ACTIVE, N_ACTIVE, ...U_CENTERS.flatMap(bodyTapActive)],
   },
   { id: 2, name: 'NWELL (pMOS + body tie)', rectangles: [P_ACTIVE, ...bodyTapActive(-3)] },
   { id: 3, name: 'PWELL (nMOS + body tie)', rectangles: [N_ACTIVE, ...bodyTapActive(3)] },
-  // Fig. 1b explicitly labels left pMOS as HVTN, right nMOS as HVTP.
-  // HVTN corresponds to As+ n-type doping in n-well / pMOS.
   {
     id: 4,
     name: 'HVTN As+ pMOS buried body implant window',
-    rectangles: [rect(-4.08, -0.92, 2.48, 1.85)],
+    rectangles: [rect(-4.20, -0.48, 2.40, 1.60)],
   },
   {
     id: 5,
     name: 'HVTP BF2+ nMOS buried body implant window',
-    rectangles: [rect(1.6, -0.92, 2.48, 1.85)],
+    rectangles: [rect(1.80, -0.48, 2.40, 1.60)],
   },
   {
     id: 6,
     name: 'POLY 130nm separate gates (VIN joined via METAL1)',
     rectangles: [
-      rect(gateLeft - GATE_LENGTH_UM / 2, -0.83, GATE_LENGTH_UM, 2.2),
-      rect(gateRight - GATE_LENGTH_UM / 2, -0.83, GATE_LENGTH_UM, 2.2),
+      rect(gateLeft - GATE_LENGTH_UM / 2, -0.36, GATE_LENGTH_UM, 1.25),
+      rect(gateRight - GATE_LENGTH_UM / 2, -0.36, GATE_LENGTH_UM, 1.25),
     ],
   },
   {
     id: 7,
     name: 'P source/drain openings',
-    rectangles: [sd(-5, gateLeft - 0.09), sd(gateLeft + 0.09, -1)],
+    rectangles: [sd(-4.12, gateLeft - 0.09), sd(gateLeft + 0.09, -1.88)],
   },
   {
     id: 8,
     name: 'N source/drain openings',
-    rectangles: [sd(1, gateRight - 0.09), sd(gateRight + 0.09, 5)],
+    rectangles: [sd(1.88, gateRight - 0.09), sd(gateRight + 0.09, 4.12)],
   },
   {
     id: 9,
     name: 'Silicide exposed source/drain',
     rectangles: [
-      sd(-5, gateLeft - 0.09),
-      sd(gateLeft + 0.09, -1),
-      sd(1, gateRight - 0.09),
-      sd(gateRight + 0.09, 5),
+      sd(-4.12, gateLeft - 0.09),
+      sd(gateLeft + 0.09, -1.88),
+      sd(1.88, gateRight - 0.09),
+      sd(gateRight + 0.09, 4.12),
     ],
   },
   {
     id: 10,
-    name: 'CNT transistor / POLY contacts and U-shaped body tie arrays',
+    name: 'CNT source/drain, POLY, and dense U-shaped body-tie arrays',
     rectangles: [
-      rect(-4.52, -0.18, 0.36, 0.36),
-      rect(-1.84, -0.18, 0.36, 0.36),
-      rect(1.48, -0.18, 0.36, 0.36),
-      rect(4.16, -0.18, 0.36, 0.36),
-      rect(-3.13, 1.02, 0.26, 0.26),
-      rect(2.87, 1.02, 0.26, 0.26),
+      rect(-4.06, -0.11, 0.22, 0.22),
+      rect(-2.16, -0.11, 0.22, 0.22),
+      rect(1.94, -0.11, 0.22, 0.22),
+      rect(3.84, -0.11, 0.22, 0.22),
+      rect(-3.11, 0.64, 0.22, 0.22),
+      rect(2.89, 0.64, 0.22, 0.22),
       ...U_CENTERS.flatMap(bodyTapContacts),
     ],
   },
   {
     id: 11,
-    name: 'METAL1 VDD / VOUT / GND / VIN (isolated nets)',
+    name: 'METAL1 source rails VDD/GND, outer VIN and nested VOUT bridge',
     rectangles: TCMOS_METAL_NETS.flatMap((net) => net.rectangles),
   },
   {
     id: 12,
-    name: 'LVTN reference CMOS channel implant window (not applied to T-CMOS)',
-    rectangles: [rect(-5.7, -2.72, 5.4, 3.65)],
+    name: 'LVTN reference CMOS channel window (not applied to T-CMOS)',
+    rectangles: [rect(-5.50, -1.51, 5.00, 3.25)],
   },
   {
     id: 13,
-    name: 'LVTP reference CMOS channel implant window (not applied to T-CMOS)',
-    rectangles: [rect(0.3, -2.72, 5.4, 3.65)],
+    name: 'LVTP reference CMOS channel window (not applied to T-CMOS)',
+    rectangles: [rect(0.50, -1.51, 5.00, 3.25)],
   },
 ]);
 
@@ -298,7 +316,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       id: 'pMOS-well-tie',
       device: 'pMOS',
       kind: 'well-tie',
-      cnt: 18,
+      cnt: 6,
       mask: 2,
       net: 'VDD',
     },
@@ -306,7 +324,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       id: 'nMOS-well-tie',
       device: 'nMOS',
       kind: 'well-tie',
-      cnt: 37,
+      cnt: 6 + bodyTapContacts(-3).length,
       mask: 3,
       net: 'GND',
     },
@@ -1058,8 +1076,8 @@ export async function buildTcmosInverter({
     }),
   );
   const contactSites = [
-    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.35, -0.85] },
-    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.35, -0.85] },
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.04, -0.80] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.04, -0.80] },
   ].map((site) => {
     const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
     const silicon = region?.stack.find((segment) => segment.layerId === 'base');
