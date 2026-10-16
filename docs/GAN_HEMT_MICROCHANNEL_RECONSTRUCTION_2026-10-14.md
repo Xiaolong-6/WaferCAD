@@ -39,6 +39,8 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 7. A 5 µm AuSn perimeter support film is illustrative and supports a 99 µm SiC bridge over the open channel. Solder geometry is not reported in the sources.
 8. The Fig. 1(a) upper device now includes a **25 nm AlGaN barrier** above the inferred 1 µm GaN buffer and a **150 nm SiN isolation/passivation frame** outside the 303 × 393 µm active window (Mask 24). **Neither AlGaN nor SiN thickness is given in the source**, so both are physically scaled illustrative assumptions, not measured reconstruction. The 2DEG is recorded as an _electronic interface_, not invented as a separate solid material. Gate/source/drain metals (0.2 µm) and GSG pads are schematic; complete Au routing between GSG pads, TSV columns and device contacts is not modeled. Ohmic contacts and device transport remain unverified.
 9. Gold wire loops, polymer sealing, aluminum manifold, flow, heat transfer and device electrical performance are out of scope. **The coolant remains a true void, not a solid film**.
+10. **Electrical paths are physically distinct in the article:** Fig. 2(f) electrically connects the HEMT to two independently soldered GSG Pad *chips* via Au wire bonds. The Cu-plated interposer TSVs provide a separately described vertical/ground interconnect function. Fig. 1(a), Fig. 2 and the supplementary figures also depict or describe backside HEMT via/metallization. The current project has only 2D Au GSG *footprints* on the interposer, top HEMT contact patches, and four idealized Cu-filled TSVs; it has no independent GSG dies, fabricated HEMT-to-GSG curved wires, through-HEMT backside via, complete TSV-to-surface metal net, or electrical continuity solver. A direct GSG-pad-to-TSV Au trace must **not** be invented as a paper requirement. Neither local Au pad occupancy nor filled Cu TSV material alone establishes circuit continuity.
+11. **Oxidation/metallization order:** the paper specifies direct Si–Si bonding, external-surface thermal SiO₂ insulation, double-sided 200 nm Ti / 500 nm Cu sputtering, Au plating and NiPaAu on TSVs (Fig. 2(c,d)). The source does not give a calibrated thermal oxide thickness, Au plating profile or exact wire-bond loop coordinates. The current idealized TSV Ti/Cu/Cu-fill only partially represents metallization and omits the full oxide, Au, NiPaAu and electrical isolation interfaces; those must not be implicitly represented by colors or material names.
 
 ## Screenshot audit: visual semantics versus physical topology
 
@@ -140,6 +142,21 @@ The following checks have **historical, commit-specific evidence**, including th
 - [ ] **Electrical, thermal and packaging validation:** idealized Cu-filled TSV geometry exists, but via-to-pad Au wiring, oxide isolation, real plating quality, electrical continuity, full Au wire bonds, hermetic seals, CFD, heat transfer and HEMT IV performance remain unverified or absent.
 - [ ] **Author layout parity:** original GDS and several exact intermediate
       channel masks are unavailable. Do not label inferred patterns as originals.
+
+### Figure-specific electrical geometry acceptance matrix
+
+| Published structure/process | Candidate geometry | Scientific release gate |
+| --- | --- | --- |
+| Four-level connected Si microchannels and two backside ports | Physical voids and inferred external feeders | Verify 3D void topology, each of six top paths and unobstructed coolant contact to SiC backside |
+| Four electrical TSVs | Real idealized Ti/Cu seed walls and 35 µm conformal Cu closure in square holes | Verify XY/Z occupancy, seed-wall rings, planarity and top/bottom conductor termination; no conductivity claim |
+| High-temperature SiO₂ insulating layer after wafer bonding | Not modeled | Preserve coolant openings and prove SiO₂ electrical isolation before claiming an insulated TSV |
+| Ti/Cu, subsequent Au and NiPaAu interposer plating | Ti/Cu present only inside scoped representative TSV windows; complete outer metallization missing | Define paper-supported versus inferred dimensions, 3D termination and material continuity |
+| HEMT backside via and backside attachment metal | Not modeled | Reproduce device-side contact through thinned SiC without falsely covering the active coolant surface |
+| Two independently mounted GSG Pad chips and Au HEMT-to-GSG wire bonds | Two deposited Au pad footprints only; curved bonds absent | Model separate chips and actual wire geometry, and verify the intended HEMT ↔ GSG electrical path (distinct from TSV grounding) |
+| Physical bond of two separately processed 400 µm Si wafers | One interposer with four virtual bridge tiers | Depend on the native Bond work in PR #264; preserve wafer provenance, source masks and replay |
+| Paper Fig. 1(a) visual correspondence | Partial structural surrogate | Independently inspect true coolant Section, transverse TSV Section and HEMT close-up; explicitly label inferred dimensions and different cut planes |
+
+A visually continuous gold line or top-level schematic annotation is **not evidence of an electrical connection**. A claimed route needs material occupancy through intermediate XY/Z locations, a physically credible contact interface, replay fidelity and saved-project equivalence. A registered layer name is not sufficient.
 
 ### Current integration and evidence gate
 
