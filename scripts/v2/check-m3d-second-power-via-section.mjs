@@ -62,7 +62,7 @@ try {
     await page.evaluate(() =>
       performance
         .getEntriesByType('resource')
-        .some((item) => /\\/app\\.js(?:\\?|$)/.test(item.name)),
+        .some((item) => /\/app\.js(?:\?|$)/.test(item.name)),
     ),
     false,
     'Native v2 figure evidence must not boot the legacy app',
