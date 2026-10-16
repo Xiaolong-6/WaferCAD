@@ -6,6 +6,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'scripts/example-literature-visual-evidence.mjs'
+      - 'site/tests/literature-provenance-matrix.test.mjs'
+      - 'docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
+      - 'docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json'
       - 'site/examples/photodetector-literature-examples.wafercad'
       - '.github/workflows/literature-figure-evidence.yml'
   workflow_dispatch:
@@ -14,6 +17,28 @@ permissions:
   contents: read
 
 jobs:
+  metadata:
+    name: Paper provenance scientific contract and exact formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify eight-family provenance and fail-closed paper acceptance
+        run: node --test site/tests/literature-provenance-matrix.test.mjs
+      - name: Show precise formatting differences
+        shell: bash
+        run: |
+          set -euo pipefail
+          failure=0
+          for file in site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md; do
+            diff -u "$file" <(npx prettier "$file") || failure=1
+          done
+          exit "$failure"
   evidence:
     name: Real browser Section and 3D figure cuts
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
