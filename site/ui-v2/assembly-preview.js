@@ -1,6 +1,7 @@
 // Isolated v15 Assembly preview: no normal editor import and no writer lease.
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
+import { validateProjectFile } from '../project-schema.js';
 
 // Display-only source palette. Material identity and persisted layer colors
 // remain unchanged; it is the wafer of origin that is being highlighted.
@@ -54,7 +55,11 @@ export function assemblyPreviewZExtent(model) {
   return { minZ, maxZ, thicknessUm: Number((maxZ - minZ).toPrecision(10)) };
 }
 
-export async function readAssemblyPreviewFile(file, readProject = readProjectFile) {
+export async function readAssemblyPreviewFile(
+  file,
+  readProject = readProjectFile,
+  { allowStandalone = false } = {},
+) {
   if (!file || typeof file.name !== 'string' || !/\.wafercad$/i.test(file.name)) {
     throw new Error('Select a .wafercad Assembly project.');
   }
@@ -63,7 +68,14 @@ export async function readAssemblyPreviewFile(file, readProject = readProjectFil
   }
   const data = await readProject(file);
   if (!data?.waferAssembly || !Array.isArray(data.waferAssembly.sources)) {
-    throw new Error('The selected file does not contain a bonded v15 Assembly.');
+    if (!allowStandalone) {
+      throw new Error('The selected file does not contain a bonded v15 Assembly.');
+    }
+    validateProjectFile(data);
+    if (data.waferAssembly != null) {
+      throw new Error('The selected file contains an incomplete Assembly.');
+    }
+    return { source: file.name, hash: '', data };
   }
   validateBondedAssemblyProject(data);
   if (data.waferAssembly.bonds.length < 1) {
@@ -74,17 +86,17 @@ export async function readAssemblyPreviewFile(file, readProject = readProjectFil
 
 export function chooseAssemblyPreviewFile(
   root,
-  { load = readAssemblyPreviewFile, recovery = null } = {},
+  { load = readAssemblyPreviewFile, recovery = null, allowStandalone = false } = {},
 ) {
   if (!root || typeof root.replaceChildren !== 'function') {
     throw new Error('Assembly preview requires a document root.');
   }
   const title = document.createElement('h1');
-  title.textContent = 'Assembly Preview';
+  title.textContent = allowStandalone ? 'Assembly · Direct Bond draft' : 'Assembly Preview';
   const description = document.createElement('p');
-  description.textContent =
-    'Inspect an existing bonded .wafercad file and its original wafers. Read-only: ' +
-    'no edits, workspace takeover, or autosave.';
+  description.textContent = allowStandalone
+    ? 'Start from an independent wafer or reopen an Assembly. Bond a donor with a durable Recovery checkpoint; export manually.'
+    : 'Inspect an existing bonded .wafercad file and its original wafers. Read-only: no edits, workspace takeover, or autosave.';
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.wafercad';
@@ -156,7 +168,7 @@ export function chooseAssemblyPreviewFile(
       input.disabled = true;
       status.textContent = 'Validating material and all donor sources…';
       try {
-        const project = await load(input.files[0]);
+        const project = await load(input.files[0], readProjectFile, { allowStandalone });
         resolve(project);
       } catch (error) {
         status.textContent = error?.message || String(error);
