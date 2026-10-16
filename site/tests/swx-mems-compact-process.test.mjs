@@ -33,7 +33,10 @@ test('compact process retains all canonical mask layers within its true field', 
     assert.equal(source.maskPolygons.get(3).length, 6);
     assert.equal(source.maskPolygons.get(2).length, 28, '4 SWT trims + 24 shallow grating arcs');
     assert.equal(source.physicalGroups.gratingGrooves.length, 24);
-    assert.equal(source.layout.elements.length, 172);
+    assert.equal(source.physicalGroups.guides.guides.length, 2);
+    assert.equal(source.physicalGroups.guides.fixed.length, 2);
+    assert.equal(source.physicalGroups.guides.flexure.length, 4);
+    assert.equal(source.layout.elements.length, 178);
     assert.equal(source.physicalGroups.actuator.banks.length, 2);
     assert.equal(source.physicalGroups.actuator.springContours.length, 4);
     assert.equal(source.reconstructionStatus, 'isolated-compact-candidate');
@@ -58,7 +61,9 @@ test('compact candidate keeps common lithographic mask and numeric OFF/ON optica
     on.physicalGroups.gratingGrooves,
     'Stationary grating grooves must not deform with ON actuation',
   );
-  assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.guidedMechanicalAlignersImplemented, false);
+  assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.guidedMechanicalAlignersImplemented, true);
+  assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.authorGuideAnchorCoordinatesVerified, false);
+  assert.equal(SWX_COMPACT_PROCESS_PROFILE.assumptions.independentStructuralFEMValidated, false);
 });
 
 test('every critical BOX/electrode probe is inside the expanded fabrication field', () => {
