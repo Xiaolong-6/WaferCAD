@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  adaptiveReleaseDepthBands,
   isotropicOracleReaches,
   isotropicReleaseDepth,
   isotropicReleaseFrontZ,
@@ -87,4 +88,42 @@ test('invalid inputs fail rather than creating an unphysical etch envelope', () 
     RangeError,
   );
   assert.throws(() => uniformRadialStairErrorBound(36, 0), RangeError);
+});
+
+test('adaptive depth bands guarantee lateral accuracy at every depth', () => {
+  const radius = 36;
+  const bands = adaptiveReleaseDepthBands({ radius, maxLateralErrorUm: 0.5 });
+  assert.equal(bands.length, 36);
+  assert.equal(bands[0].depth0, 0);
+  assert.equal(bands.at(-1).depth1, radius);
+  for (const [index, band] of bands.entries()) {
+    if (index > 0) assert.ok(Math.abs(bands[index - 1].depth1 - band.depth0) < 1e-12);
+    assert.ok(band.maxLateralErrorUm <= 0.5 + 1e-12);
+    assert.ok(band.depth1 > band.depth0);
+    for (let j = 0; j <= 8; j++) {
+      const depth = band.depth0 + ((band.depth1 - band.depth0) * j) / 8;
+      const exactLateral = isotropicReleaseDepth(radius, depth);
+      assert.ok(Math.abs(exactLateral - band.lateralRadius) <= 0.5 + 1e-12);
+    }
+  }
+});
+
+test('adaptive front accuracy is monotone and fails closed on band budget', () => {
+  const counts = [1, 0.5, 0.25].map((error) =>
+    adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: error }).length,
+  );
+  assert.deepEqual(counts, [18, 36, 72]);
+  assert.deepEqual(adaptiveReleaseDepthBands({ radius: 0, maxLateralErrorUm: 0.5 }), []);
+  assert.throws(
+    () => adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: 0.001 }),
+    /budget/,
+  );
+  assert.throws(
+    () => adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: NaN }),
+    RangeError,
+  );
+  assert.throws(
+    () => adaptiveReleaseDepthBands({ radius: 36, maxLateralErrorUm: 0.5, maxBands: 0 }),
+    RangeError,
+  );
 });

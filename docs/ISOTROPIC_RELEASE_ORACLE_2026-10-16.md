@@ -43,3 +43,20 @@ near multiple etch seeds.
    artifacts.
 
 Targeted test: `node --test site/tests/isotropic-release-oracle.test.mjs`.
+
+## Adaptive reference geometry (not production Kernel)
+
+A new opt-in *pure* depth-band generator partitions **lateral footprint
+radii** evenly and maps those endpoints through the continuous
+`z(L)=sqrt(r²-L²)` profile. Its variable-depth bands are guaranteed to
+have at most the requested lateral footprint error when the midpoint
+radius is used. At 36 µm radius, the mathematical target 0.5 µm
+requires 36 bands, compared to the current fixed **eight** uniform
+Z-depth bands (whose conservative lateral bound is 12.53 µm).
+The guarantee is geometric and applies to one seed front only.
+
+`adaptiveReleaseDepthBands({ radius, maxLateralErrorUm, maxBands })`
+rejects nonpositive/infinite tolerances, exceeded work budgets and
+numerically degenerate band partitions. The current Kernel's material
+selectivity, XY Boolean clip, runtime cost, save/replay and radial SEM
+correspondence are intentionally unchanged and remain integration gates.

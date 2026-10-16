@@ -57,3 +57,52 @@ export function uniformDepthMidpointLateralErrorBound(radius, slices) {
   const halfStep = radius / (2 * slices);
   return Math.sqrt(halfStep * (2 * radius - halfStep));
 }
+
+/**
+ * Partition one ideal spherical release front into variable Z-depth bands.
+ * The returned footprints are midpoints in LATERAL distance, unlike the
+ * production kernel's equally spaced Z-depth bands.
+ *
+ * For a given band the exact lateral radius L(z) is monotone; therefore
+ * choosing its endpoint midpoint bounds the lateral error by half the
+ * band's lateral span at *every* depth, including near the tangent rim.
+ *
+ * This is a pure reference for a SINGLE exposed seed. It does not account
+ * for selectivity, other seed islands or XY Boolean polygonization.
+ */
+export function adaptiveReleaseDepthBands({
+  radius,
+  maxLateralErrorUm,
+  maxBands = 4096,
+}) {
+  nonnegative(radius, 'radius');
+  if (!Number.isFinite(maxLateralErrorUm) || maxLateralErrorUm <= 0) {
+    throw new RangeError('maxLateralErrorUm must be finite and positive');
+  }
+  if (!Number.isSafeInteger(maxBands) || maxBands < 1) {
+    throw new RangeError('maxBands must be a positive integer');
+  }
+  if (radius === 0) return [];
+  const count = Math.ceil(radius / (2 * maxLateralErrorUm));
+  if (!Number.isSafeInteger(count) || count > maxBands) {
+    throw new RangeError('Requested release accuracy exceeds the band budget');
+  }
+  const bands = [];
+  for (let i = 0; i < count; i++) {
+    const outerLateral = (radius * (count - i)) / count;
+    const innerLateral = (radius * (count - i - 1)) / count;
+    const depth0 = isotropicReleaseDepth(radius, outerLateral);
+    const depth1 = isotropicReleaseDepth(radius, innerLateral);
+    const lateralRadius = (outerLateral + innerLateral) / 2;
+    if (!(depth1 > depth0)) {
+      throw new RangeError('Release bands are below floating-point resolution');
+    }
+    bands.push({
+      depth0,
+      depth1,
+      lateralRadius,
+      maxLateralErrorUm: (outerLateral - innerLateral) / 2,
+    });
+  }
+  return bands;
+}
