@@ -22,11 +22,9 @@ try {
       (process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182') + '/app.html?start=empty',
       { waitUntil: 'domcontentloaded', timeout: 120000 },
     );
-    await page.waitForFunction(
-      () => document.body.dataset.ready === 'true',
-      null,
-      { timeout: 120000 },
-    );
+    await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
+      timeout: 120000,
+    });
     await page.locator('[data-action="domain:project"]').click();
     await page.locator('#openProjectInput').setInputFiles(filename);
     const confirm = page.getByRole('button', { name: 'Open project', exact: true });
@@ -57,16 +55,20 @@ try {
     assert.deepEqual(errors, []);
     await writeFile(
       resolve(dir, 'browser-report.json'),
-      JSON.stringify({
-        realChromium: browser.version(),
-        imported: true,
-        elements: snapshot.layout.elements.length,
-        switches: 352,
-        shuffleLinks: 640,
-        crossingMarkers: 1824,
-        physicalArrayFabricationAccepted: false,
-        errors,
-      }, null, 2) + '\n',
+      JSON.stringify(
+        {
+          realChromium: browser.version(),
+          imported: true,
+          elements: snapshot.layout.elements.length,
+          switches: 352,
+          shuffleLinks: 640,
+          crossingMarkers: 1824,
+          physicalArrayFabricationAccepted: false,
+          errors,
+        },
+        null,
+        2,
+      ) + '\n',
     );
   } finally {
     await context.close();

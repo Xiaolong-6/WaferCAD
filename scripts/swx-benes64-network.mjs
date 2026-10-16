@@ -13,8 +13,7 @@ export const BENES64_SOURCE = Object.freeze({
   shuffleWidthUm: 1.2,
   mmiArmLengthUm: 5.74,
   mmiArmWidthsUm: Object.freeze([
-    1.2, 1.521, 1.772, 1.792, 1.704, 1.711, 1.642,
-    1.779, 1.744, 1.871, 2.078, 2.075, 0.7,
+    1.2, 1.521, 1.772, 1.792, 1.704, 1.711, 1.642, 1.779, 1.744, 1.871, 2.078, 2.075, 0.7,
   ]),
 });
 export const BENES64_PAIR_BITS = Object.freeze([0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0]);
@@ -41,8 +40,9 @@ export function benesStageOrder(pairBit) {
     throw new Error('Benes pairing bit must be between 0 and 5');
   }
   const block = 2 ** (pairBit + 1);
-  return Array.from({ length: 64 }, (_, lane) =>
-    Math.floor(lane / block) * block + reverseBits(lane % block, pairBit + 1),
+  return Array.from(
+    { length: 64 },
+    (_, lane) => Math.floor(lane / block) * block + reverseBits(lane % block, pairBit + 1),
   );
 }
 const laneY = (index) => (index - 31.5) * BENES64_LAYOUT.lanePitchUm;
@@ -89,10 +89,7 @@ export function createBenes64Network() {
         if (permutation[i] <= permutation[j]) continue;
         const t = (j - i) / (permutation[i] - i - permutation[j] + j);
         if (!(t > 0 && t < 1)) throw new Error('Non-interior waveguide crossing');
-        const location = [
-          firstX + t * (lastX - firstX),
-          laneY(i + t * (permutation[i] - i)),
-        ];
+        const location = [firstX + t * (lastX - firstX), laneY(i + t * (permutation[i] - i))];
         crossings.push({
           id: 'cross-' + stage + '-' + count,
           stage,
@@ -129,7 +126,10 @@ export function createBenes64DiagnosticLayout(network = createBenes64Network()) 
   const add = (layer, kind, points, width = 0) => {
     elements.push({
       sourceCell: 'BENES64_ARRAY_TOPOLOGY',
-      kind, layer, datatype: 0, points,
+      kind,
+      layer,
+      datatype: 0,
+      points,
       ...(kind === 'path' ? { width } : {}),
     });
   };
@@ -137,7 +137,15 @@ export function createBenes64DiagnosticLayout(network = createBenes64Network()) 
     const [x, y] = cell.centerUm;
     add(90, 'polygon', rect(x, y, 120, 124));
     for (const d of [-38, 38]) {
-      add(91, 'path', [[x - 60, y + d], [x + 60, y + d]], 1.2);
+      add(
+        91,
+        'path',
+        [
+          [x - 60, y + d],
+          [x + 60, y + d],
+        ],
+        1.2,
+      );
     }
   }
   for (const link of network.links) {
@@ -154,8 +162,11 @@ export function createBenes64DiagnosticLayout(network = createBenes64Network()) 
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   const combos = [...counts.entries()].map(([key, count]) => ({
-    key, count, cell: 'BENES64_ARRAY_TOPOLOGY',
-    layer: Number(key.split('|')[1]), datatype: 0,
+    key,
+    count,
+    cell: 'BENES64_ARRAY_TOPOLOGY',
+    layer: Number(key.split('|')[1]),
+    datatype: 0,
   }));
   const [width, height] = BENES64_LAYOUT.fieldUm;
   return {
@@ -166,8 +177,12 @@ export function createBenes64DiagnosticLayout(network = createBenes64Network()) 
     hierarchy: {},
     combos,
     bounds: {
-      minX: -width / 2, maxX: width / 2, minY: -height / 2,
-      maxY: height / 2, width, height,
+      minX: -width / 2,
+      maxX: width / 2,
+      minY: -height / 2,
+      maxY: height / 2,
+      width,
+      height,
     },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
   };
