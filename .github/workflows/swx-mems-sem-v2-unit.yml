@@ -24,12 +24,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Capture one-time exact browser-source formatter patch
-        shell: bash
-        run: |
-          npx prettier --write scripts/swx-mems-sem-v2-browser-acceptance.mjs
-          mkdir -p test-results/swx-sem-v2
-          git diff -- scripts/swx-mems-sem-v2-browser-acceptance.mjs > test-results/swx-sem-v2/prettier-browser.patch
       - name: Scientific invariants for newly oriented single MEMS unit
         run: node --test site/tests/swx-mems-sem-v2-unit.test.mjs
       - name: Execute actual OFF/ON Kernel and common Recipe

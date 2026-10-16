@@ -37,7 +37,8 @@ try {
       await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
         timeout: 120000,
       });
-      const docking = (await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').count()) > 0;
+      const docking =
+        (await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').count()) > 0;
       const switchView = async (view) => {
         if (docking) {
           await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
@@ -77,7 +78,9 @@ try {
         );
         if (state === 'on') {
           await page.locator('[data-action="domain:history"]').click();
-          await page.locator('.history-variant[data-variant-id="on"] .history-variant-name').click();
+          await page
+            .locator('.history-variant[data-variant-id="on"] .history-variant-name')
+            .click();
           await page.waitForFunction(
             () =>
               window.WaferCadV2Workstation.snapshot().workflow.branches.some(
@@ -119,9 +122,7 @@ try {
       const topZ =
         Math.max(
           ...source.model.regions.flatMap((region) =>
-            region.stack
-              .filter((seg) => seg.layerId === layer.id)
-              .map((seg) => seg.z1),
+            region.stack.filter((seg) => seg.layerId === layer.id).map((seg) => seg.z1),
           ),
         ) * zScale;
       for (const [name, targetY, cameraHeight, fov] of [
