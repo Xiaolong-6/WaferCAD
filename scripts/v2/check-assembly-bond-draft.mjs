@@ -179,6 +179,114 @@ try {
   } finally {
     await context.close();
   }
+
+  // A separate browser context: start from *two independent* .wafercad files.
+  const { context: firstContext, page: firstPage } = await newUiPage(browser, {
+    viewport: { width: 1365, height: 900 },
+    deviceScaleFactor: 1,
+    acceptDownloads: true,
+  });
+  try {
+    const firstErrors = observePageErrors(firstPage);
+    const receiver = source('Independent receiver A');
+    const donor = source('Independent donor B');
+    await firstPage.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+      waitUntil: 'domcontentloaded',
+    });
+    await firstPage.getByLabel('Open bonded Assembly project').setInputFiles({
+      name: 'receiver.wafercad',
+      mimeType: 'application/json',
+      buffer: Buffer.from(serializeProject(receiver)),
+    });
+    await firstPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 90000,
+    });
+    const beforeFirst = await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(beforeFirst.assemblyPreview.sources, 1);
+    assert.equal(beforeFirst.assemblyPreview.bonds, 0);
+    assert.equal(beforeFirst.assemblyPreview.index, 0);
+    assert.deepEqual(beforeFirst.model, receiver.model);
+    assert.equal(beforeFirst.workflow.writable, false);
+    assert.match(await firstPage.locator('.assembly-preview-stage').textContent(), /Z 400 µm/);
+    await firstPage.locator('.assembly-bond-draft-tools summary').click();
+    assert.equal(await firstPage.locator('input[name="receiverId"]').inputValue(), 'A');
+    assert.equal(await firstPage.locator('input[name="donorId"]').inputValue(), 'B');
+    await firstPage.getByLabel('Select independent donor wafer').setInputFiles({
+      name: 'donor.wafercad',
+      mimeType: 'application/json',
+      buffer: Buffer.from(serializeProject(donor)),
+    });
+    await firstPage.getByRole('button', { name: 'Validate and Bond' }).click();
+    await firstPage.waitForFunction(
+      () => window.WaferCadV2Workstation?.snapshot().assemblyPreview.bonds === 1,
+      null,
+      { timeout: 60000 },
+    );
+    const afterFirst = await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.equal(afterFirst.assemblyPreview.sources, 2);
+    assert.equal(afterFirst.assemblyPreview.index, 1);
+    assert.equal(afterFirst.sharedIdentity, true);
+    assert.equal(afterFirst.workflow.writable, false);
+    assert.match(await firstPage.locator('.assembly-preview-stage').textContent(), /Z 800 µm/);
+    await firstPage.locator('.assembly-preview-views [data-view="three"]').click();
+    await waitForPaint(firstPage);
+    await firstPage.screenshot({ path: resolve(output, 'first-bond-two-independent-wafers.png') });
+
+    await firstPage.getByRole('button', { name: '← Bond' }).click();
+    const undone = await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+    assert.deepEqual(undone.model, receiver.model);
+    await firstPage.getByRole('button', { name: 'Bond →' }).click();
+    assert.deepEqual(
+      (await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
+      afterFirst.model,
+    );
+
+    const downloadPromise = firstPage.waitForEvent('download', { timeout: 30000 });
+    await firstPage.getByRole('button', { name: 'Export full Assembly' }).click();
+    const exportFile = await downloadPromise;
+    const fileBytes = await readFile(await exportFile.path());
+    const assembled = await readProjectFile({
+      size: fileBytes.length,
+      text: async () => fileBytes.toString('utf8'),
+    });
+    assert.equal(assembled.waferAssembly.sources.length, 2);
+    assert.equal(assembled.waferAssembly.bonds.length, 1);
+    assert.equal(assembled.waferAssembly.sources[0].id, 'A');
+    assert.equal(assembled.waferAssembly.sources[1].id, 'B');
+    assert.deepEqual(assembled.waferAssembly.sources[0].project.model, receiver.model);
+    assert.deepEqual(assembled.waferAssembly.sources[1].project.model, donor.model);
+    assert.deepEqual(assembled.model, afterFirst.model);
+
+    const recoveryPage = await firstContext.newPage();
+    try {
+      await recoveryPage.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await recoveryPage.waitForFunction(
+        () => {
+          const select = document.querySelector('[aria-label="Assembly Bond Recovery checkpoint"]');
+          return Boolean(select?.options.length && !select.disabled);
+        },
+        null,
+        { timeout: 20000 },
+      );
+      await recoveryPage.getByRole('button', { name: 'Restore pre-Bond checkpoint' }).click();
+      await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 90000,
+      });
+      const recovered = await recoveryPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.equal(recovered.assemblyPreview.sources, 1);
+      assert.equal(recovered.assemblyPreview.bonds, 0);
+      assert.deepEqual(recovered.model, receiver.model);
+      assert.equal(recovered.workflow.writable, false);
+    } finally {
+      await recoveryPage.close();
+    }
+    assert.deepEqual(firstErrors, [], 'First-Bond Chromium produced no uncaught browser errors');
+    console.log('Native first Bond: two independent sources, Recovery, Undo/Redo, export = OK');
+  } finally {
+    await firstContext.close();
+  }
 } finally {
   await browser.close();
 }
