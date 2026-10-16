@@ -243,14 +243,76 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
   // CNT ordering, inferred S/D direction and well association are specific to
   // this reconstructed Fig. 1b layout; they are not released foundry data.
   const sites = [
-    { id: 'pMOS-source', device: 'pMOS', kind: 'source', cnt: 0, mask: 7, rect: 0, net: 'VDD' },
-    { id: 'pMOS-drain', device: 'pMOS', kind: 'drain', cnt: 1, mask: 7, rect: 1, net: 'VOUT' },
-    { id: 'nMOS-drain', device: 'nMOS', kind: 'drain', cnt: 2, mask: 8, rect: 0, net: 'VOUT' },
-    { id: 'nMOS-source', device: 'nMOS', kind: 'source', cnt: 3, mask: 8, rect: 1, net: 'GND' },
-    { id: 'pMOS-gate', device: 'pMOS', kind: 'gate', cnt: 4, mask: 6, rect: 0, net: 'VIN' },
-    { id: 'nMOS-gate', device: 'nMOS', kind: 'gate', cnt: 5, mask: 6, rect: 1, net: 'VIN' },
-    { id: 'pMOS-well-tie', device: 'pMOS', kind: 'well-tie', cnt: 18, mask: 2, net: 'VDD' },
-    { id: 'nMOS-well-tie', device: 'nMOS', kind: 'well-tie', cnt: 37, mask: 3, net: 'GND' },
+    {
+      id: 'pMOS-source',
+      device: 'pMOS',
+      kind: 'source',
+      cnt: 0,
+      mask: 7,
+      rect: 0,
+      net: 'VDD',
+    },
+    {
+      id: 'pMOS-drain',
+      device: 'pMOS',
+      kind: 'drain',
+      cnt: 1,
+      mask: 7,
+      rect: 1,
+      net: 'VOUT',
+    },
+    {
+      id: 'nMOS-drain',
+      device: 'nMOS',
+      kind: 'drain',
+      cnt: 2,
+      mask: 8,
+      rect: 0,
+      net: 'VOUT',
+    },
+    {
+      id: 'nMOS-source',
+      device: 'nMOS',
+      kind: 'source',
+      cnt: 3,
+      mask: 8,
+      rect: 1,
+      net: 'GND',
+    },
+    {
+      id: 'pMOS-gate',
+      device: 'pMOS',
+      kind: 'gate',
+      cnt: 4,
+      mask: 6,
+      rect: 0,
+      net: 'VIN',
+    },
+    {
+      id: 'nMOS-gate',
+      device: 'nMOS',
+      kind: 'gate',
+      cnt: 5,
+      mask: 6,
+      rect: 1,
+      net: 'VIN',
+    },
+    {
+      id: 'pMOS-well-tie',
+      device: 'pMOS',
+      kind: 'well-tie',
+      cnt: 18,
+      mask: 2,
+      net: 'VDD',
+    },
+    {
+      id: 'nMOS-well-tie',
+      device: 'nMOS',
+      kind: 'well-tie',
+      cnt: 37,
+      mask: 3,
+      net: 'GND',
+    },
   ];
   const terminals = sites.map((site) => {
     const contact = cnt[site.cnt];
@@ -269,9 +331,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
     if (site.kind === 'well-tie' && active.filter((r) => inRect(point, r)).length !== 1) {
       fail(site.id + ': outside isolated ACTIVE');
     }
-    const owners = metalNets.filter((net) =>
-      net.rectangles.some((r) => inRect(point, r)),
-    );
+    const owners = metalNets.filter((net) => net.rectangles.some((r) => inRect(point, r)));
     if (owners.length !== 1) fail(site.id + ': missing or ambiguous Metal1 owner');
     if (owners[0].name !== site.net) {
       fail(site.id + ': wrong net ' + owners[0].name + ', expected ' + site.net);
@@ -1011,7 +1071,10 @@ export async function buildTcmosInverter({
     assert.ok(silicon, 'Well-tie validation requires an actual silicon contact site');
     return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
   });
-  const terminalNetProvenance = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
+  const terminalNetProvenance = auditTcmosTerminalNetProvenance(
+    TCMOS_MASKS,
+    TCMOS_METAL_NETS,
+  );
   const bodyTieContactEvidence = {
     provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
     contacts: auditSchematicBodyTieContacts(model, contactSites, v),
