@@ -2132,11 +2132,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
       profile,
       cap: physicalSurfacePlan?.caps?.[index],
     }));
-    const clipEdges = (getClipGeometry() || []).flatMap((polygon) =>
-      (polygon || []).flatMap((ring) =>
-        (ring || []).slice(1).map((point, index) => [ring[index], point]),
-      ),
-    );
+    const clipEdges = [];
+    for (const polygon of getClipGeometry() || []) {
+      for (const ring of polygon || []) {
+        for (let index = 1; index < ring.length; index++) {
+          clipEdges.push([ring[index - 1], ring[index]]);
+        }
+      }
+    }
     const profileFields = [
       'kind',
       'profileId',
@@ -2149,47 +2152,64 @@ diffuseColor.a *= waferCadAlphaScale;`,
       'featureCv',
       'heightCv',
     ];
-    const isContiguousFilm = (lower, upper) =>
-      (getModel()?.regions || []).some((region) => {
-        const substrate = region.stack?.find((layer) => {
-          if (layer.layerId !== lower.layerId) return false;
-          return Math.abs(layer.z1 - lower.z) < 2e-5;
-        });
-        const coating = region.stack?.find((layer) => {
-          if (layer.layerId !== upper.layerId) return false;
-          return (
-            Math.abs(layer.z0 - lower.z) < 2e-5 &&
-            Math.abs(layer.z1 - upper.z) < 2e-5
-          );
-        });
-        return Boolean(substrate && coating);
-      });
+    const regions = getModel()?.regions || [];
+    const isContiguousFilm = (lower, upper) => {
+      for (const region of regions) {
+        let substrate = false;
+        let coating = false;
+        for (const layer of region.stack || []) {
+          if (layer.layerId === lower.layerId) {
+            substrate ||= Math.abs(layer.z1 - lower.z) < 2e-5;
+          }
+          if (layer.layerId === upper.layerId) {
+            coating ||= Math.abs(layer.z0 - lower.z) < 2e-5 &&
+              Math.abs(layer.z1 - upper.z) < 2e-5;
+          }
+        }
+        if (substrate && coating) return true;
+      }
+      return false;
+    };
     let alignedConformalCutPairs = 0;
-    for (const lower of profileCapsForWalls) {
-      if (!clipEdges.length) break;
-      if (!lower.cap?.buried || lower.cap.appearance?.kind !== 'rough') continue;
-      const upper = profileCapsForWalls.find((candidate) => {
-        const coat = candidate.cap;
-        if (!coat || coat.buried || coat.appearance?.kind !== 'rough') return false;
-        if (!(coat.z > lower.cap.z)) return false;
-        const normal = Number(coat.profileNormal ?? coat.normal);
-        const substrateNormal = Number(lower.cap.profileNormal ?? lower.cap.normal);
-        if (normal !== substrateNormal) return false;
-        const lowerAppearance = lower.cap.appearance;
-        const upperAppearance = coat.appearance;
-        const profileMatches = (field) => lowerAppearance[field] === upperAppearance[field];
-        if (!profileFields.every(profileMatches)) return false;
-        if (!isContiguousFilm(lower.cap, coat)) return false;
-        return clipEdges.some(
-          ([p, q]) =>
-            boundaryProfileOverlapsEdge(lower.profile, p, q) &&
-            boundaryProfileOverlapsEdge(candidate.profile, p, q),
-        );
-      });
-      if (!upper) continue;
-      const shifted = shiftedBoundaryProfile(upper.profile, lower.cap.z - upper.cap.z);
-      wallProfiles.set(lower.index, shifted);
-      alignedConformalCutPairs++;
+    if (clipEdges.length) {
+      for (const lower of profileCapsForWalls) {
+        if (!lower.cap?.buried || lower.cap.appearance?.kind !== 'rough') continue;
+        let matchingUpper = null;
+        for (const upper of profileCapsForWalls) {
+          const coat = upper.cap;
+          if (!coat || coat.buried || coat.appearance?.kind !== 'rough') continue;
+          if (!(coat.z > lower.cap.z)) continue;
+          const normal = Number(coat.profileNormal ?? coat.normal);
+          const substrateNormal = Number(lower.cap.profileNormal ?? lower.cap.normal);
+          if (normal !== substrateNormal) continue;
+          let sameProfile = true;
+          for (const field of profileFields) {
+            if (lower.cap.appearance[field] !== coat.appearance[field]) {
+              sameProfile = false;
+              break;
+            }
+          }
+          if (!sameProfile || !isContiguousFilm(lower.cap, coat)) continue;
+          let overlapping = false;
+          for (const [p, q] of clipEdges) {
+            if (
+              boundaryProfileOverlapsEdge(lower.profile, p, q) &&
+              boundaryProfileOverlapsEdge(upper.profile, p, q)
+            ) {
+              overlapping = true;
+              break;
+            }
+          }
+          if (overlapping) {
+            matchingUpper = upper;
+            break;
+          }
+        }
+        if (!matchingUpper) continue;
+        const dz = lower.cap.z - matchingUpper.cap.z;
+        wallProfiles.set(lower.index, shiftedBoundaryProfile(matchingUpper.profile, dz));
+        alignedConformalCutPairs++;
+      }
     }
     host.dataset.roughConformalCutAlignedPairs = String(alignedConformalCutPairs);
     let rebuilt = 0;
