@@ -92,7 +92,14 @@ for (const [cx, cy] of terminalPixels.slice(0, 4))
   for (const dy of [-12, 0, 12])
     for (const dx of [-12, 0, 12])
       if (dx !== 0 || dy !== 0) extraContactPixels.push(pixelCnt(cx + dx, cy + dy, 7));
-const gateExtra = [pixelCnt(198, 347, 7), pixelCnt(520, 347, 7)];
+const gateExtra = [
+  pixelCnt(198, 347, 6),
+  pixelCnt(205, 340, 6),
+  pixelCnt(205, 347, 6),
+  pixelCnt(520, 347, 6),
+  pixelCnt(527, 340, 6),
+  pixelCnt(527, 347, 6),
+];
 const bodyContactStart = terminalPixels.length + extraContactPixels.length + gateExtra.length;
 // Four disjoint METAL1 networks retain the exact inverted-U silhouette,
 // upright-U body rail and broad source/drain contact pads seen in Fig.1b.
@@ -147,7 +154,7 @@ export const TCMOS_MASK_PRESENTATION = Object.freeze({
   showStructure: false,
   layers: [
     { layer: 1, datatype: 0, color: '#247b9a', mode: 'fill', opacity: 0.42 },
-    { layer: 11, datatype: 0, color: '#6c71ce', mode: 'fill', opacity: 0.46 },
+    { layer: 11, datatype: 0, color: '#6c71ce', mode: 'hatch', opacity: 0.46 },
     { layer: 6, datatype: 0, color: '#df4d55', mode: 'hatch', opacity: 0.24 },
     { layer: 10, datatype: 0, color: '#3b7b43', mode: 'cross', opacity: 0 },
     { layer: 12, datatype: 0, color: '#e37b28', mode: 'outline', opacity: 0 },

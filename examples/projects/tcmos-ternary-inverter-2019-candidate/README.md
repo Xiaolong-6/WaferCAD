@@ -69,13 +69,13 @@ treating the old 14 × 8 µm illustrative Mask as foundry data:
   contacts (**VIN**). A shorter nested upper inverted-U bridge connects the two
   inner drain contacts (**VOUT**). The outer source leads and lower U rail connect
   left pMOS to **VDD** and right nMOS to **GND**.
-- The mask contains **214 CNT polygons**: four 3×3 source/drain matrices, two POLY
+- The mask contains **218 CNT polygons**: four 3×3 source/drain matrices, two POLY
   terminals, and **87 contact sites per U-shaped well-tie** (3 × 19 along the
   horizontal bottom plus five rows × three columns on each side). These pitches, widths, and even
   the figure's apparent number of CNT symbols are illustrative.
 - HVTN (left)/HVTP (right) frame the relevant ACTIVE/gate regions. LVTN/LVTP
   are reference outline masks only and are not executed as T-CMOS LVT steps.
-- **13 layers and 270 layout polygons** export through the same File Mask as
+- **13 layers and 274 layout polygons** export through the same File Mask as
   GDS/OAS. The canonical .wafercad, full process History, both Variants,
   recipe replay, and browser screenshots all derive from this same Mask.
 
@@ -156,6 +156,6 @@ Do not silently change existing Implant semantics. The buried-start Implant anno
 Repository: Xiaolong-6/WaferCAD.
 Branch: feat/tcmos-ternary-inverter-example-20261014.
 Initial base: main at 223ba3374f773e8d45fa17b3abb37a2d76b73acd.
-Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/270-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
+Current stage (2026-10-15): T-CMOS generator, real v2 fresh-Base 23/23 replay, 13-layer/274-polygon GDS and OAS export, and Recovery passed on earlier heads. Main's initially stale 100000 × 100000 µm dimension label was corrected and the browser acceptance now requires 14 × 8 µm. On previous head `fd7b2be`, T-CMOS, browser, Mask, KLayout, and UI acceptance passed; Quality and M3D quality/docs failed only due to Prettier formatting in `site/ui-v2/main-view.js`. That formatting was corrected at `551105b`, but GitHub Actions had no runs registered for that exact head when checked. Do not describe the latest head as green without its own checks. Separate Both-face and TiO2 committed-fixture comparison failures must be handled by their owning branches, not by regenerating unrelated fixtures here.
 
 Scientific visual acceptance still required: archive a close local pMOS Section and nMOS Section showing the respective gate, semiconductor body and intended body–drain interface, plus a corresponding focused 3D view. Include a wide-field context image for each crop, the exact Section endpoints and view/visibility settings, a legend identifying inferred geometry versus source-supported features, and a comparison with paper Fig. 1a/b and Supplementary Fig. 1. Expanded full-field screenshots alone cannot establish 130 nm junction correspondence. Do not present the 80–240 nm display band as a measured junction thickness or imply a calibrated dopant concentration/BTBT current. Keep this PR Draft, and do not add to Welcome or merge until current-head CI and these evidence gates are satisfied.

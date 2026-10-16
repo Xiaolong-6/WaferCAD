@@ -44,7 +44,7 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
   assert.equal(gates[0].h, gates[1].h);
   assert.equal(gates.length, 2, 'Fig.1b has two separate POLY gates connected at METAL1');
   assert.equal(TCMOS_MASKS.find((m) => m.id === 1).rectangles.length, 8);
-  assert.equal(TCMOS_MASKS.find((m) => m.id === 10).rectangles.length, 214);
+  assert.equal(TCMOS_MASKS.find((m) => m.id === 10).rectangles.length, 218);
   assert.equal(TCMOS_MASKS.find((m) => m.id === 12).rectangles.length, 1);
   assert.equal(TCMOS_MASKS.find((m) => m.id === 13).rectangles.length, 1);
   assert.equal(TCMOS_DOI, '10.1038/s41928-019-0272-8');
@@ -71,8 +71,8 @@ test('Fig.1b schematic masks retain nested inverted-U upper nets and dense body-
   assert.ok(byNet('VDD').at(-2).y < p.y, 'pMOS body U is below ACTIVE');
   assert.ok(byNet('GND').at(-2).y < n.y, 'nMOS body U is below ACTIVE');
   const cnt = byId(10);
-  assert.equal(cnt.length, 214);
-  const bodyU = cnt.slice(40, 127);
+  assert.equal(cnt.length, 218);
+  const bodyU = cnt.slice(44, 131);
   assert.equal(bodyU.length, 87);
   assert.equal(
     new Set(bodyU.slice(0, 57).map((contact) => contact.y)).size,
@@ -140,7 +140,7 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
     /incorrect device footprint/,
   );
   const invalidWellTie = structuredClone(TCMOS_MASKS);
-  invalidWellTie.find(({ id }) => id === 10).rectangles[43].y += 2;
+  invalidWellTie.find(({ id }) => id === 10).rectangles[47].y += 2;
   assert.throws(
     () => auditTcmosTerminalNetProvenance(invalidWellTie, TCMOS_METAL_NETS),
     /incorrect device footprint/,
