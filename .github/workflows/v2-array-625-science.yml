@@ -29,6 +29,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify array science formatting with exact diff
+        run: npx prettier site/tests/array-instance-invariants.test.mjs | diff -u site/tests/array-instance-invariants.test.mjs -
       - name: Verify canonical 625-site Process and 6400-site IO science
         run: node --test site/tests/array-instance-invariants.test.mjs
       - run: npx playwright install --with-deps chromium
