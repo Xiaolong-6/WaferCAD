@@ -70,7 +70,10 @@ export async function readAssemblyPreviewFile(
       throw new Error('Assembly Variant source registry exceeds the supported file limit.');
     }
     const decoded = JSON.parse(await file.text());
-    const graph = activateAssemblyVariant(validateAssemblyVariantGraph(decoded), decoded.activeBranchId);
+    const graph = activateAssemblyVariant(
+      validateAssemblyVariantGraph(decoded),
+      decoded.activeBranchId,
+    );
     return {
       source: file.name,
       hash: '',
