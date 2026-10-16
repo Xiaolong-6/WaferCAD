@@ -20,10 +20,31 @@ const THREE = {
     constructor(x, y, z) {
       Object.assign(this, { x, y, z });
     }
+    clone() {
+      return new THREE.Vector3(this.x, this.y, this.z);
+    }
+    negate() {
+      this.x *= -1;
+      this.y *= -1;
+      this.z *= -1;
+      return this;
+    }
   },
   CubicBezierCurve3: class {
     constructor(...points) {
       this.points = points;
+    }
+    getTangent(end) {
+      const a = this.points[end ? 2 : 0];
+      const b = this.points[end ? 3 : 1];
+      return new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    }
+  },
+  Quaternion: class {
+    setFromUnitVectors(from, to) {
+      this.from = from;
+      this.to = to;
+      return this;
     }
   },
   TubeGeometry: class {
@@ -31,9 +52,13 @@ const THREE = {
       Object.assign(this, { curve, segments, radius, radialSegments, closed });
     }
   },
-  SphereGeometry: class {
-    constructor(radius, widthSegments, heightSegments) {
-      Object.assign(this, { radius, widthSegments, heightSegments });
+  CircleGeometry: class {
+    constructor(radius, segments) {
+      Object.assign(this, { radius, segments });
+    }
+    applyQuaternion(quaternion) {
+      this.quaternion = quaternion;
+      return this;
     }
     translate(x, y, z) {
       this.translation = [x, y, z];
@@ -55,7 +80,7 @@ const THREE = {
   },
 };
 
-test('wire-bond meshes include a tube and two canonical-space closed contact feet', () => {
+test('wire-bond meshes include a tube and two tangent-aligned end disks', () => {
   assert.equal(validateAssemblyWires([wire]).length, 1);
   const curve = assemblyWireCurve(THREE, wire);
   const meshes = createAssemblyWireMeshes(THREE, wire, curve);
@@ -69,7 +94,10 @@ test('wire-bond meshes include a tube and two canonical-space closed contact fee
     [wire.points[0], wire.points[3]],
     'Contact feet must use baked canonical XYZ rather than mutable object.position',
   );
-  assert.ok(meshes.slice(1).every((mesh) => mesh.geometry.radius > 6));
+  assert.ok(meshes.slice(1).every((mesh) => mesh.geometry.radius === 6));
+  assert.ok(meshes.slice(1).every((mesh) => mesh.geometry.segments === 10));
+  assert.ok(meshes[1].geometry.quaternion.to.z < 0);
+  assert.ok(meshes[2].geometry.quaternion.to.z < 0);
   assert.ok(meshes.every((mesh) => mesh.userData.wafercadAssemblyWireId === wire.id));
   assert.deepEqual(
     meshes.map((mesh) => mesh.userData.wafercadAssemblyPart),
