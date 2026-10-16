@@ -1,7 +1,8 @@
 name: PR264 focused formatter diff (read-only)
 on:
-  push:
-    branches: [feat/multi-wafer-bonding-from-pr229-20261015]
+  pull_request:
+    types: [synchronize]
+    branches: [feat/example-gan-hemt-microchannel-20261014]
     paths:
       - .github/workflows/pr264-format-diff-once.yml
 permissions:
