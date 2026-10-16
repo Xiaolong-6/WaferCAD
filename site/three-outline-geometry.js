@@ -263,9 +263,21 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
       });
       if (!remaining.length) break;
     }
+    // Keep existing Float32 endpoints and line orientation bit-identical
+    // whenever subtraction leaves the full original segment unchanged.
+    if (
+      remaining.length === 1 &&
+      Math.abs(remaining[0][0] - axis.t0) <= 1e-8 &&
+      Math.abs(remaining[0][1] - axis.t1) <= 1e-8
+    ) {
+      result.push(line);
+      continue;
+    }
     const aT = axis.ux * line[0][0] + axis.uy * line[0][1];
     const bT = axis.ux * line[1][0] + axis.uy * line[1][1];
     const pointAt = (t) => {
+      if (Math.abs(t - aT) <= 1e-8) return line[0].slice();
+      if (Math.abs(t - bT) <= 1e-8) return line[1].slice();
       const fraction = (t - aT) / (bT - aT);
       return line[0].map((value, i) => value + (line[1][i] - value) * fraction);
     };
