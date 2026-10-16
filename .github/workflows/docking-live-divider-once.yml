@@ -1,3 +1,4 @@
+# Diagnostic rerun: capture in-flight grid and handle coordinates before movement assertion.
 name: Docking Live Divider Visual Check
 
 on:
