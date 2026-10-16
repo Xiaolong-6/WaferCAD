@@ -41,6 +41,7 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
 - [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md) — derived topology and material ownership.
 - [Morphology](ROUGHNESS_MORPHOLOGY.md) — deterministic visual relief and physical/export boundaries.
+- [Experimental physical facet model (2026-10-16)](PHYSICAL_FACET_MODELING_2026-10-16.md) — analytic normal, thickness and volume oracle; physical Kernel integration remains open.
 - [Implant](IMPLANT.md) — structural annotation, clipping and shared gradient semantics.
 - [Mask File/Draw](MASK_DRAW.md) — independent sources, Process selection and export scope.
 - [KLayout compatibility](KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
