@@ -217,7 +217,9 @@ try {
       await assertGrid(page, 1);
       assert.equal(await page.locator('#maskPanel').isVisible(), true);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus);
-      assert.equal(await page.locator('.v2-dock-divider:visible').count(), 0);
+      await page.waitForFunction(
+        () => document.querySelectorAll('.v2-dock-divider').length === 0,
+      );
       await page.locator('.p-nav [data-action="domain:mask"]').click();
       await assertGrid(page, 1);
       assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Repeated Mask retains focus');
