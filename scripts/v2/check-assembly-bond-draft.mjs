@@ -98,7 +98,7 @@ try {
     const checkpoints = await page.evaluate(
       () =>
         new Promise((resolve, reject) => {
-          const open = indexedDB.open('wafercad-assembly-bond-drafts-v1', 1);
+          const open = indexedDB.open('wafercad-assembly-bond-drafts-v1', 2);
           open.onerror = () => reject(open.error);
           open.onsuccess = () => {
             const db = open.result;
@@ -151,7 +151,7 @@ try {
       });
       await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').waitFor();
       await recoveryPage
-        .getByRole('button', { name: 'Restore pre-Bond checkpoint' })
+        .getByRole('button', { name: 'Restore Assembly Recovery' })
         .waitFor({ state: 'visible' });
       await recoveryPage.waitForFunction(
         () => {
@@ -161,7 +161,10 @@ try {
         null,
         { timeout: 15000 },
       );
-      await recoveryPage.getByRole('button', { name: 'Restore pre-Bond checkpoint' }).click();
+      const checkpointOption = await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').locator('option').evaluateAll((options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value);
+      assert.ok(checkpointOption, 'pre-Bond checkpoint remains independently recoverable');
+      await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').selectOption(checkpointOption);
+      await recoveryPage.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
       await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 90000,
       });
@@ -368,7 +371,10 @@ try {
         null,
         { timeout: 20000 },
       );
-      await recoveryPage.getByRole('button', { name: 'Restore pre-Bond checkpoint' }).click();
+      const checkpointOption = await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').locator('option').evaluateAll((options) => options.find((option) => option.value.startsWith('checkpoint:'))?.value);
+      assert.ok(checkpointOption, 'pre-Bond checkpoint remains independently recoverable');
+      await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').selectOption(checkpointOption);
+      await recoveryPage.getByRole('button', { name: 'Restore Assembly Recovery' }).click();
       await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
         timeout: 90000,
       });
