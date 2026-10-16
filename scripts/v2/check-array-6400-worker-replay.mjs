@@ -378,7 +378,6 @@ try {
       'V2_ARRAY_4725_FULL_MASK: 4725 exact deposits/etches, 1675 protected background, IO PASS',
     );
 
-
     // The two full-field operations above used real Workers; now promote
     // those exact scientific states into an actual native v2 History project.
     // Editing the earlier 4725-device Mask through UI must replay the later
@@ -488,9 +487,7 @@ try {
       (name) => {
         const state = window.WaferCadV2Workstation.snapshot();
         return (
-          state.projectName === name &&
-          state.workflow.steps.length === 2 &&
-          !state.workflow.busy
+          state.projectName === name && state.workflow.steps.length === 2 && !state.workflow.busy
         );
       },
       uiSaved.name,
@@ -498,11 +495,17 @@ try {
     );
     const imported = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(imported.model.array.instances.length, 6400);
-    assert.deepEqual(imported.model, fullMask.etched, 'Actual UI import keeps the complete Mask result');
+    assert.deepEqual(
+      imported.model,
+      fullMask.etched,
+      'Actual UI import keeps the complete Mask result',
+    );
     await page.locator('[data-action="domain:history"]').click();
-    const editRow = page.locator('.history-step-wrap', {
-      hasText: '4725 device masked film',
-    }).first();
+    const editRow = page
+      .locator('.history-step-wrap', {
+        hasText: '4725 device masked film',
+      })
+      .first();
     await editRow.locator('.snapshot-more-trigger').click();
     await editRow.locator('.snapshot-more-popover button', { hasText: 'Edit Step' }).click();
     await page.waitForFunction(
@@ -521,10 +524,12 @@ try {
       };
     });
     await page.locator('#applyOperationBtn').evaluate((button) => button.click());
-    await page.getByRole('button', {
-      name: 'Replace & replay later Steps',
-      exact: true,
-    }).click();
+    await page
+      .getByRole('button', {
+        name: 'Replace & replay later Steps',
+        exact: true,
+      })
+      .click();
     await page.waitForFunction(
       () =>
         /Replayed 1 later Step/.test(
@@ -556,12 +561,18 @@ try {
       const part = newParts[n];
       assert.deepEqual(
         stack(part, [0, 0]),
-        [['base', -1, 1], [fullMask.filmId, 1, 1.01]],
+        [
+          ['base', -1, 1],
+          [fullMask.filmId, 1, 1.01],
+        ],
         part.id + ' should retain 10 nm at the etched center',
       );
       assert.deepEqual(
         stack(part, [0.075, 0.075]),
-        [['base', -1, 1], [fullMask.filmId, 1, 1.02]],
+        [
+          ['base', -1, 1],
+          [fullMask.filmId, 1, 1.02],
+        ],
         part.id + ' should retain 20 nm outside selective Etch',
       );
       assert.deepEqual(
