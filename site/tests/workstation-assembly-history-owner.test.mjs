@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createWorkstationHistoryOwner } from '../ui-v2/workstation-history-owner.js';
-import {
-  createWorkspacePersistenceController,
-} from '../controllers/workspace-persistence-controller.js';
+import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
 
 test('Assembly workspace cannot instantiate or mutate generic Snapshot History', async () => {
   let captureCalls = 0;
