@@ -158,6 +158,7 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
   const edges = clipBoundaryEdges(clip);
   if (!edges.length) return [];
   const result = [],
+    horizontal = [],
     verticals = new Map();
   for (const wall of sidewalls || []) {
     const p = wall?.p,
@@ -184,8 +185,16 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
       );
       const at = (sample, face) => [...sample.point, sample[face]];
       for (let i = 0; i + 1 < samples.length; i++) {
-        result.push([at(samples[i], 'lowerZ'), at(samples[i + 1], 'lowerZ')]);
-        result.push([at(samples[i], 'upperZ'), at(samples[i + 1], 'upperZ')]);
+        horizontal.push({
+          line: [at(samples[i], 'lowerZ'), at(samples[i + 1], 'lowerZ')],
+          layerId: wall.layerId,
+          face: 'lower',
+        });
+        horizontal.push({
+          line: [at(samples[i], 'upperZ'), at(samples[i + 1], 'upperZ')],
+          layerId: wall.layerId,
+          face: 'upper',
+        });
       }
       for (const [sample, direction] of [
         [samples[0], 1],
@@ -201,6 +210,21 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
         });
       }
     }
+  }
+  // The same physical material can be partitioned into adjacent Z slabs by
+  // a neighboring etch. Their matching upper/lower contour is an internal
+  // computational seam, not an exposed interface on the ROI cut.
+  const adjacentFaces = new Map();
+  for (const { line, layerId, face } of horizontal) {
+    if (layerId == null) continue;
+    const key = `${layerId}|${segmentKey(...line)}`;
+    if (!adjacentFaces.has(key)) adjacentFaces.set(key, new Set());
+    adjacentFaces.get(key).add(face);
+  }
+  for (const { line, layerId } of horizontal) {
+    const key = layerId == null ? null : `${layerId}|${segmentKey(...line)}`;
+    if (key && adjacentFaces.get(key)?.size === 2) continue;
+    result.push(line);
   }
   for (const candidates of verticals.values()) {
     // Equal material spans meeting on one straight cut are artificial wall
