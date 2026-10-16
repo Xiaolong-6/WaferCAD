@@ -28,7 +28,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   const units = createDisplayUnits(() => state);
   const { input, choice, pair, textarea } = createInspectionFields({ hook, units });
   const source = 'site/examples/m3d-selfpowered-full-replay.wafercad';
-  const expectedHash = '31f07d85c32d44685ef7f49485e432c2b73f713550dd981998376c61de46995b';
+  const expectedHash = '473c1ed296d417db6f9ba1e49eb56cc955efb8ad3257063c65ed81aada8bea0e';
   let state,
     shell,
     overlays,
