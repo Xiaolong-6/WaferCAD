@@ -7,6 +7,10 @@ on:
       - feat/example-gan-hemt-microchannel-20261014
     paths:
       - scripts/v2/check-assembly-preview.mjs
+      - scripts/v2/check-assembly-bond-draft.mjs
+      - site/ui-v2/assembly-bond-draft.js
+      - site/wafer-assembly-editor-session.js
+      - site/wafer-assembly-draft-recovery.js
       - site/ui-v2/assembly-preview.js
       - site/ui-v2/workstation-entry.js
       - site/ui-v2/workstation-runtime.js
@@ -43,11 +47,14 @@ jobs:
         run: |
           python3 -m http.server 4182 --bind 127.0.0.1 --directory site >/tmp/wafercad-assembly-preview-http.log 2>&1 &
           node scripts/v2/check-assembly-preview.mjs
+          node scripts/v2/check-assembly-bond-draft.mjs
       - name: Store inspected view screenshots
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: wafer-bond-assembly-preview
-          path: test-results/wafer-bond-preview/*.png
+          path: |
+            test-results/wafer-bond-preview/*.png
+            test-results/wafer-bond-draft/*.png
           if-no-files-found: warn
           retention-days: 14
