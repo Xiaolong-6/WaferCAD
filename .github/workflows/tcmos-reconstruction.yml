@@ -24,6 +24,42 @@ permissions:
   contents: read
 
 jobs:
+  one-time-fixture:
+    # Temporarily regenerate the committed fixture after the Fig1b mask redraw.
+    # Remove this job after its single PR-branch commit has landed.
+    name: One-time Fig1b project fixture sync
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 225
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild exact candidate and format changed JS
+        run: |
+          node scripts/build-tcmos-inverter-example.mjs
+          cp test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          npx prettier --write scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs
+      - name: Commit generated project only to the approved PR branch
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          if git diff --cached --quiet; then
+            echo "Fixture already current; no commit."
+          else
+            git commit -m "chore(tcmos): regenerate Fig1b project and format generator"
+            git push origin "HEAD:${PR_BRANCH}"
+          fi
+
   paper-geometry:
     name: T-CMOS kernel, Recipe and storage
     runs-on: ubuntu-latest
