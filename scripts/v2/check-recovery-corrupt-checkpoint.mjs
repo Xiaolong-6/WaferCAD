@@ -29,7 +29,9 @@ try {
       await page.waitForFunction(
         (expected) => {
           const state = window.WaferCadV2Workstation.snapshot();
-          return !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected);
+          return (
+            !state.workflow.busy && state.model.layers.some((layer) => layer.name === expected)
+          );
         },
         name,
         { timeout: 120000 },
@@ -157,7 +159,7 @@ try {
     );
     assert.deepEqual(storedAfter, storedBefore, 'Corruption cannot modify current IndexedDB state');
 
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
+    await page.goto(base + '/app.html', { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 120000,
     });
