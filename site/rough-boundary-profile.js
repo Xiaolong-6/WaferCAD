@@ -130,7 +130,7 @@ export function boundaryProfileOverlapsEdge(profile, p, q) {
   return matchingSegments(profile, line).some(({ p: a, q: b }) => {
     const ta = line.ux * a[0] + line.uy * a[1];
     const tb = line.ux * b[0] + line.uy * b[1];
-    return Math.min(line.t1, Math.max(ta, tb)) -
-      Math.max(line.t0, Math.min(ta, tb)) > 1e-8;
+    const overlap = Math.min(line.t1, Math.max(ta, tb)) - Math.max(line.t0, Math.min(ta, tb));
+    return overlap > 1e-8;
   });
 }
