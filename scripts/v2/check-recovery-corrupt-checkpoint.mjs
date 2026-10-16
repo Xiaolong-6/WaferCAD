@@ -172,20 +172,32 @@ try {
       return null;
     }, selectedKey);
     assert.ok(validKey, 'A separate valid Recovery checkpoint must exist');
+    // A failed Restore does not refresh its selector. Re-enter Project to
+    // synchronize the visible Recovery options with committed IndexedDB metadata.
+    await page.locator('[data-action="domain:process"]').click();
+    await page.locator('[data-action="domain:project"]').click();
+    await page.waitForFunction(
+      (key) =>
+        [...document.querySelectorAll('#workspaceRecoverySelect option')].some(
+          (option) => option.value === key,
+        ),
+      validKey,
+      { timeout: 120000 },
+    );
 
     for (const failAtOpen of [1, 2]) {
       await page.locator('#workspaceRecoverySelect').selectOption(validKey);
       await page.evaluate((failAt) => {
-        const nativeOpen = IDBFactory.prototype.open;
+        const nativeOpen = window.IDBFactory.prototype.open;
         const trace = { attempts: 0, hits: 0, failAt };
         window.__recoveryStorageFault = trace;
         window.__recoveryNativeOpen = nativeOpen;
-        IDBFactory.prototype.open = function (...args) {
+        window.IDBFactory.prototype.open = function (...args) {
           if (args[0] === 'wafercad-workspace-v1') {
             trace.attempts++;
             if (trace.attempts === failAt) {
               trace.hits++;
-              throw new DOMException('Synthetic IndexedDB unavailable', 'SecurityError');
+              throw new window.DOMException('Synthetic IndexedDB unavailable', 'SecurityError');
             }
           }
           return Reflect.apply(nativeOpen, this, args);
@@ -220,7 +232,7 @@ try {
         );
       } finally {
         await page.evaluate(() => {
-          IDBFactory.prototype.open = window.__recoveryNativeOpen;
+          window.IDBFactory.prototype.open = window.__recoveryNativeOpen;
           delete window.__recoveryNativeOpen;
         });
       }
