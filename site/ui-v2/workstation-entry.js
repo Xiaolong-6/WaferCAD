@@ -77,6 +77,7 @@ try {
     mobile: 'view',
     splitViews: ['main', 'mask'],
     desktopLayout: readOnlyPreview ? null : loadDesktopLayout(desktopPreferences),
+    temporaryFocus: null,
   };
   let message = 'Opening workspace…',
     commitVersion = 'commit local',
@@ -103,7 +104,9 @@ try {
       selectedNavigation: uiState.domain,
       visibleNestedPanels: uiState.domain === 'project' ? ['base'] : [],
       splitChoices: true,
-      desktopLayout: readOnlyPreview ? null : projectDesktopLayout(uiState.desktopLayout),
+      desktopLayout: readOnlyPreview
+        ? null
+        : projectDesktopLayout(uiState.desktopLayout, uiState.temporaryFocus),
       // Compact visibility has exactly one owner: mobile = view | edit.
       editorHidden: window.WaferCadV2ViewState.compact(window)
         ? uiState.mobile !== 'edit'
@@ -156,11 +159,27 @@ try {
   // Layout changes repaint only Shell/element sizing. Scientific invalidation
   // remains owned by the existing model scheduler and canvas ResizeObservers.
   const desktopDockingActive = () => !readOnlyPreview && desktopDockingEnabled(window.innerWidth);
+  const setTemporaryFocus = (view) => {
+    const next = desktopDockingActive() && view === 'mask' ? 'mask' : null;
+    if (next === uiState.temporaryFocus) return false;
+    if (uiState.temporaryFocus) floatingManagers.get(uiState.temporaryFocus)?.closeFloatings();
+    uiState.temporaryFocus = next;
+    return true;
+  };
   const changeDesktopLayout = (action) => {
     if (!desktopDockingActive()) return;
+    // Direct docking actions are user intent. Drop any workflow-only focus
+    // before applying them to the persisted user layout.
+    const clearedFocus = setTemporaryFocus(null);
     const previous = uiState.desktopLayout;
     const next = reduceDesktopLayout(previous, action);
-    if (next === previous) return;
+    if (next === previous) {
+      if (clearedFocus && !starting) {
+        shell.render();
+        requestAnimationFrame(() => desktopResizer?.refresh());
+      }
+      return;
+    }
     if (previous.maximized && previous.maximized !== next.maximized)
       floatingManagers.get(previous.maximized)?.closeFloatings();
     for (const view of previous.visible) {
@@ -326,13 +345,12 @@ try {
     }
     if (action.startsWith('domain:')) {
       const domain = action.split(':')[1];
-      // Compact navigation keeps its prior single-view behavior; desktop
-      // workflow Mask explicitly opens/maximizes the real Mask docked panel.
+      // Workflow Mask temporarily presents a full-size Mask, leaving the
+      // user's dock visibility, ordering, track ratios and maximize untouched.
       uiState.maximize = !desktopDockingActive() && domain === 'mask' ? 'mask' : null;
       if (domain === 'mask') uiState.view = 'mask';
+      setTemporaryFocus(domain === 'mask' ? 'mask' : null);
       selectPane('edit', domain);
-      if (domain === 'mask' && desktopDockingActive())
-        changeDesktopLayout({ type: 'FOCUS_VIEW', view: 'mask' });
       render();
     } else if (action === 'dock:overview') {
       changeDesktopLayout({ type: 'RESET_OVERVIEW' });
@@ -358,7 +376,12 @@ try {
       render();
     } else if (action.startsWith('maximize:')) {
       const key = action.split(':')[1];
-      if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
+      if (desktopDockingActive() && uiState.temporaryFocus === key) {
+        // Restore the exact pre-focus composition, even when Mask was closed
+        // or another view had previously been maximized.
+        setTemporaryFocus(null);
+        render({ scientific: false });
+      } else if (desktopDockingActive()) changeDesktopLayout({ type: 'MAXIMIZE', view: key });
       else {
         uiState.maximize = uiState.maximize === key ? null : key;
         render();
@@ -366,6 +389,7 @@ try {
     } else if (action === 'face:main') {
       workflow.refresh();
     } else if (action === 'hide-editor' || action === 'return-results') {
+      setTemporaryFocus(null);
       selectPane('view');
       render();
     } else if (action === 'show-editor' || action === 'expand-empty') {
@@ -382,6 +406,7 @@ try {
     const compact = window.WaferCadV2ViewState.compact(window);
     if (width === previousWidth && compact === previousCompact) return;
     if (compact !== previousCompact) mobileWorkspace.cancelPendingScroll();
+    if (compact) setTemporaryFocus(null);
     previousWidth = width;
     previousCompact = compact;
     render();
