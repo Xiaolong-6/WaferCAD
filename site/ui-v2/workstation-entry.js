@@ -333,11 +333,19 @@ try {
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
   if (assemblyPreview) {
+    const draftWorkspaceId = project.workspaceId || crypto.randomUUID();
     const draftEditor = assemblyEdit
-      ? store.createAssemblyBondDraftSession(async (value, reason) => {
-          await assemblyDraftRecovery.checkpoint(value, reason);
-          return true;
-        })
+      ? store.createAssemblyBondDraftSession(
+          async (value, reason) => {
+            await assemblyDraftRecovery.checkpoint(value, reason);
+            return true;
+          },
+          {
+            persistedRevision: project.workspaceRevision ?? 0,
+            persistVariantGraph: (graph, expectedRevision) =>
+              assemblyDraftRecovery.saveWorkspaceGraph(draftWorkspaceId, graph, expectedRevision),
+          },
+        )
       : null;
     const session = store.assemblyPreviewSession;
     let draftUi = null;
@@ -345,8 +353,12 @@ try {
       currentIndex: () => session.currentIndex(),
       maxIndex: () => session.maxIndex(),
       stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.state.model).thicknessUm} µm`,
-      restoreIndex: (index) => {
-        store.restoreAssemblyStage(index);
+      restoreIndex: async (index) => {
+        if (draftEditor) {
+          await store.restoreAssemblyStageDurable(index);
+        } else {
+          store.restoreAssemblyStage(index);
+        }
         draftUi?.sync();
         workflow.refresh();
       },
