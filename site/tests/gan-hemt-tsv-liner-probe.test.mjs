@@ -146,7 +146,36 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
   assert.ok(wireBondRecord, 'Published HEMT-to-GSG gold wire bonding must remain documented');
   assert.match(
     wireBondRecord.params.note,
-    /True curved wires.*not geometric model features/,
-    'A recorded source operation must not be mistaken for fabricated wire geometry',
+    /two illustrative solid 3D Au wire loops/,
+    'The Recipe must explicitly distinguish inferred 3D wires from reported dimensions',
   );
+  const hemtMetal = model.layers.find(
+    (layer) => layer.name === 'Source/drain metal surrogate 0.2 um',
+  );
+  const gsgMetal = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  assert.ok(hemtMetal && gsgMetal, 'Wire contacts need existing metal material layers');
+  assert.equal(project.assemblyWires?.length, 2, 'Both independent GSG chips need a 3D wire');
+  for (const side of [-1, 1]) {
+    const id = side < 0 ? 'hemt-to-left-gsg' : 'hemt-to-right-gsg';
+    const wire = project.assemblyWires.find((candidate) => candidate.id === id);
+    assert.ok(wire, 'Missing physical packaging wire ' + id);
+    assert.equal(wire.material, 'Au');
+    assert.equal(wire.source, 'inferred', 'Unknown wire dimensions cannot become source facts');
+    assert.equal(wire.diameterUm, 12);
+    assert.deepEqual(wire.contactLayerIds, [hemtMetal.id, gsgMetal.id]);
+    const [start, controlA, controlB, end] = wire.points;
+    assert.deepEqual(start.slice(0, 2), [side * 225, 0]);
+    assert.deepEqual(end.slice(0, 2), [side * 1250, 0]);
+    for (const [point, metal] of [[start, hemtMetal], [end, gsgMetal]]) {
+      const surface = stackAt(model, point.slice(0, 2)).filter(
+        (segment) => segment.layerId === metal.id,
+      );
+      assert.equal(surface.length, 1, 'Wire endpoint must contact exactly one real metal pad');
+      assert.ok(
+        Math.abs(surface[0].z1 - point[2]) < 1e-8,
+        'Wire endpoint is floating above or buried inside its specified pad',
+      );
+    }
+    assert.ok(controlA[2] > start[2] && controlB[2] > end[2]);
+  }
 });
