@@ -56,6 +56,16 @@ const revealSectionDock = async () => {
   await dock.waitFor({ state: 'visible', timeout: 12000 });
   await waitForPaint(page);
 };
+const requireLargeView = async (kind) => {
+  const panel = page.locator('#' + kind + 'Panel');
+  await panel.waitFor({ state: 'visible', timeout: 12000 });
+  const bounds = await panel.boundingBox();
+  assert.ok(
+    bounds && bounds.width > 700 && bounds.height > 500,
+    kind + ' scientific view must occupy the stage rather than a thumbnail',
+  );
+  await waitForPaint(page);
+};
 const exportProject = async () => {
   await panel('project');
   await page.locator('#projectExportMenuBtn').click();
@@ -345,23 +355,14 @@ try {
     { timeout: 120000 },
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
-  // Figure 1a has device-scale details that cannot be judged in the four-view
-  // thumbnail. Capture native maximized Section and 3D views for inspection.
+  // Current single-view Section/3D tabs already occupy the full stage; verify
+  // physical panel size rather than clicking an obsolete maximize control.
   await revealSectionDock();
-  const maximizeSection = page.locator('[data-action="maximize:section"]:visible').first();
-  await maximizeSection.click();
-  await waitForPaint(page);
+  await requireLargeView('section');
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-section-expanded.png') });
-  await maximizeSection.click();
-  await waitForPaint(page);
   await selectView('three');
-  await waitForPaint(page);
-  const maximizeThree = page.locator('[data-action="maximize:three"]:visible').first();
-  await maximizeThree.click();
-  await waitForPaint(page);
+  await requireLargeView('three');
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
-  await maximizeThree.click();
-  await waitForPaint(page);
 
   // An illustrative 0.13 µm gate in a reported 130 nm foundry node needs a device-scale inspection
   // separate from the 11 µm field section. Use the real Main Slice settings
@@ -398,9 +399,7 @@ try {
     assert.ok(local.ax < local.gateX && local.gateX < local.bx);
     await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
     await revealSectionDock();
-    const expandLocal = page.locator('[data-action="maximize:section"]:visible').first();
-    await expandLocal.click();
-    await waitForPaint(page);
+    await requireLargeView('section');
     assert.ok(
       Number(await page.locator('#sectionCanvas').getAttribute('data-x-px-per-um')) > 0,
       'Local section must render at a nonzero physical scale',
@@ -408,8 +407,6 @@ try {
     await page.screenshot({
       path: resolve(dir, 'tcmos-fig1a-' + local.device + '-local-section.png'),
     });
-    await expandLocal.click();
-    await waitForPaint(page);
   }
   // Local sections are inspection-only UI state. The candidate project and
   // its default cross-device Section remain unchanged on disk.
@@ -504,9 +501,7 @@ try {
     // never be clicked in a browser acceptance test.
     await selectView('three');
     await waitForPaint(page);
-    const expandThree = page.locator('[data-action="maximize:three"]').first();
-    await expandThree.click();
-    await waitForPaint(page);
+    await requireLargeView('three');
     await page.locator('#threePanel [data-action="fit:three"]').click();
     await waitForPaint(page);
     const framing = await snap();
@@ -589,20 +584,12 @@ try {
       camera: inspectionCamera,
       unchangedPhysicalModel: true,
     });
-    await expandThree.click();
-    await waitForPaint(page);
     // Record a SECOND, explicitly isolated scientific-inspection image. Real
     // Section Layers controls hide unrelated S/D and opposite-device markers;
     // the underlying material topology, masks and Recipe remain unchanged.
     // Keep the all-annotations image above as the unfiltered comparison.
-    // On desktop Section is a dock (data-action="section"), not a view tab.
-    const sectionPanel = page.locator('#sectionPanel');
-    if (!(await sectionPanel.isVisible())) {
-      const showSection = page.locator('[data-action="section"]');
-      if (await showSection.isVisible()) await showSection.click();
-    }
-    await sectionPanel.waitFor({ state: 'visible', timeout: 12000 });
-    await waitForPaint(page);
+    await revealSectionDock();
+    await requireLargeView('section');
     const selectedName = local.device === 'pmos-HVTN' ? 'HVTN' : 'HVTP';
     const hiddenAnnotations = [
       ...expected.model.implants,
@@ -629,8 +616,7 @@ try {
     );
     await selectView('three');
     await waitForPaint(page);
-    await expandThree.click();
-    await waitForPaint(page);
+    await requireLargeView('three');
     await page.waitForFunction(
       () =>
         Number(document.querySelector('#threeHost')?.dataset.implantCutBuiltCount) > 0 &&
@@ -647,8 +633,6 @@ try {
       materialGeometryUnchanged: true,
       allMarkersScreenshotRetained: true,
     };
-    await expandThree.click();
-    await waitForPaint(page);
   }
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors');
   Object.assign(report, {
@@ -682,8 +666,7 @@ try {
   );
   assert.deepEqual(tiltState.section, { a: [-4.45, 0], b: [-2.95, 0] });
   await revealSectionDock();
-  await page.locator('[data-action="maximize:section"]:visible').first().click();
-  await waitForPaint(page);
+  await requireLargeView('section');
   await page.screenshot({ path: resolve(dir, 'tcmos-tilt-18deg-NOT-PAPER-section.png') });
   report.tiltDiagnostic = { sourceSupported: false, tiltDegrees: 18, sectionSpanUm: 1.5 };
   assert.deepEqual(pageErrors, [], 'Unexpected v2 browser errors after tilt diagnostic');
