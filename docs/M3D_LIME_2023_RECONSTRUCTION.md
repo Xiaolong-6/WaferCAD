@@ -183,9 +183,9 @@ the existing geometric, History and Chromium checks. The relevant source is
   blanket CNT film and its physical O₂ removal are **not** represented.
 - **Analog CIM passivation CMP order:** The paper deposits 400 nm PECVD SiO₂,
   patterns F-RIE contact openings, fills the TE contacts with W, and then
-  performs CMP. The Builder inserts an additional `CIM passivation CMP
-  endpoint Z 1.28um (inferred)` **before** F-RIE contact opening and W via
-  fill, followed by its post-W CMP. The early CMP is an **inferred geometric
+  performs CMP. The Builder inserts an additional pre-via CMP at
+  `Z = 1.28 µm (inferred)` **before** F-RIE contact opening and W via fill,
+  followed by its post-W CMP. The early CMP is an **inferred geometric
   planarization surrogate**, not a source-reported intermediate operation.
   Either a corrected, replayable intermediate model must eliminate it, or its
   non-paper status must remain explicit; the final W/TE contact tests alone
