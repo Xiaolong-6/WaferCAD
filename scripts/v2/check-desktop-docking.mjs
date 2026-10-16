@@ -207,26 +207,53 @@ try {
         await page.locator('[data-action="dock:view:mask"]').getAttribute('aria-pressed'),
         'false',
       );
-      // Workflow Mask must reopen a previously closed view and maximize it.
+      // Workflow Mask temporarily presents a full-size view without changing
+      // the user's prior composition or writing Mask visibility to preferences.
+      const layoutBeforeFocus = await layoutState(page);
+      const storedBeforeFocus = await page.evaluate(() =>
+        localStorage.getItem('wafercad.desktop-view-layout.v1'),
+      );
       await page.locator('.p-nav [data-action="domain:mask"]').click();
       await assertGrid(page, 1);
-      assert.equal((await layoutState(page)).maximized, 'mask');
-      assert.equal((await layoutState(page)).visible.includes('mask'), true);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus);
+      assert.equal(await page.locator('.v2-dock-divider:visible').count(), 0);
       await page.locator('.p-nav [data-action="domain:mask"]').click();
-      assert.equal(
-        (await layoutState(page)).maximized,
-        'mask',
-        'Repeated Mask navigation does not restore',
-      );
+      await assertGrid(page, 1);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Repeated Mask retains focus');
       await page.locator('#maskPanel [data-action="maximize:mask"]').click();
+      await assertGrid(page, 3);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Restore preserves hidden Mask');
+      assert.equal(
+        await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1')),
+        storedBeforeFocus,
+        'Temporary Mask focus must not touch stored preferences',
+      );
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      await assertGrid(page, 1);
+      await page.locator('.p-nav [data-action="domain:process"]').click();
+      await assertGrid(page, 3);
+      assert.deepEqual(await layoutState(page), layoutBeforeFocus, 'Process tab ends temporary focus');
+      await page.locator('#threePanel [data-action="maximize:three"]').click();
+      await assertGrid(page, 1);
+      const priorMaximizedLayout = await layoutState(page);
+      assert.equal(priorMaximizedLayout.maximized, 'three');
+      await page.locator('.p-nav [data-action="domain:mask"]').click();
+      await assertGrid(page, 1);
+      assert.equal(await page.locator('#maskPanel').isVisible(), true);
+      await page.locator('#maskPanel [data-action="maximize:mask"]').click();
+      await assertGrid(page, 1);
+      assert.equal(await page.locator('#threePanel').isVisible(), true);
+      assert.deepEqual(
+        await layoutState(page),
+        priorMaximizedLayout,
+        'Restore recovers an already-maximized user view',
+      );
+      await page.locator('#threePanel [data-action="maximize:three"]').click();
+      await assertGrid(page, 3);
+      await page.locator('[data-action="dock:view:mask"]').click();
       await assertGrid(page, 4);
       await verifyIdentity(page);
-      await page.locator('#threePanel [data-action="maximize:three"]').click();
-      await assertGrid(page, 1);
-      assert.equal((await layoutState(page)).maximized, 'three');
-      await page.locator('#threePanel [data-action="maximize:three"]').click();
-      await assertGrid(page, 4);
-      assert.equal((await layoutState(page)).maximized, null);
       const unchanged = await page.evaluate(
         () =>
           JSON.stringify(window.WaferCadV2Workstation.snapshot().model) ===
@@ -238,6 +265,38 @@ try {
 
       // Presets and drag/keyboard acceptance run once at comfortable desktop width.
       if (width === 1440) {
+        // Sidebar drag changes .p-canvases without changing window dimensions.
+        // Absolute dock splitters must track the actual CSS Grid boundaries.
+        const sidebarDivider = await page.locator('.p-divider').boundingBox();
+        assert.ok(sidebarDivider, 'Sidebar divider is present');
+        const startX = sidebarDivider.x + sidebarDivider.width / 2;
+        const dragY = sidebarDivider.y + sidebarDivider.height / 3;
+        const initialWidth = (await measure(page)).stageWidth;
+        await page.mouse.move(startX, dragY);
+        await page.mouse.down();
+        await page.mouse.move(startX + 64, dragY, { steps: 10 });
+        await page.waitForFunction(() => {
+          const main = document.querySelector('#mainPanel').getBoundingClientRect();
+          const mask = document.querySelector('#maskPanel').getBoundingClientRect();
+          const three = document.querySelector('#threePanel').getBoundingClientRect();
+          const section = document.querySelector('#sectionPanel').getBoundingClientRect();
+          const splitters = [...document.querySelectorAll('.v2-dock-divider-columns')];
+          const expected = [(main.right + mask.left) / 2, (three.right + section.left) / 2];
+          return (
+            splitters.length === expected.length &&
+            splitters.every((handle, index) => {
+              const rect = handle.getBoundingClientRect();
+              return Math.abs(rect.left + rect.width / 2 - expected[index]) <= 2;
+            })
+          );
+        });
+        assert.ok(
+          (await measure(page)).stageWidth < initialWidth - 40,
+          'Sidebar pointer drag actually shrinks the Dock stage',
+        );
+        await page.screenshot({ path: resolve(output, 'sidebar-resize-live-1440.png') });
+        await page.mouse.up();
+        await assertGrid(page, 4);
         for (const id of [
           'four-left',
           'four-right',
