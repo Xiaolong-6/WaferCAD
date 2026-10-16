@@ -338,7 +338,14 @@ try {
           stack
             .filter((segment) => originalLayerIds.includes(segment.layerId))
             .map((segment) => [segment.layerId, segment.z0, segment.z1, segment.role || null]);
-        const samples = [[0, 0], [-575, 0], [575, 0], [0, 150], [-700.005, 0], [700.005, 0]];
+        const samples = [
+          [0, 0],
+          [-575, 0],
+          [575, 0],
+          [0, 150],
+          [-700.005, 0],
+          [700.005, 0],
+        ];
         for (const point of samples) {
           const owner = (site) =>
             site.model.regions.filter((region) => pointInMulti(point, region.geom));
@@ -346,8 +353,10 @@ try {
           const next = owner(after);
           if (previous.length !== 1 || next.length !== 1)
             throw Error('Etch changed center material ownership at ' + point);
-          if (JSON.stringify(originalStack(previous[0].stack)) !==
-              JSON.stringify(originalStack(next[0].stack)))
+          if (
+            JSON.stringify(originalStack(previous[0].stack)) !==
+            JSON.stringify(originalStack(next[0].stack))
+          )
             throw Error('Etch modified the original buried stack at ' + point);
         }
         return { before: volume(before), after: volume(after), preservedSamples: samples.length };
