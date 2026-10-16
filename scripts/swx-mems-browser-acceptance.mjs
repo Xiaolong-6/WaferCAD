@@ -175,7 +175,9 @@ try {
       await showOverview();
       await page.waitForFunction(
         () => {
-          const stage = document.querySelector('[data-view-mode="overview"],[data-view-mode="docking"]');
+          const stage = document.querySelector(
+            '[data-view-mode="overview"],[data-view-mode="docking"]',
+          );
           if (!stage) return false;
           return ['mainCanvas', 'maskCanvas', 'threeHost', 'sectionCanvas'].every((id) => {
             const node = document.getElementById(id);
