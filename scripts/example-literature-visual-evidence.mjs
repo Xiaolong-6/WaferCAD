@@ -267,7 +267,7 @@ const CASES = [
         a: [-2.3, 1.1],
         b: [2.3, 1.1],
         probes: [
-          { id: 'negative-x-pillar', xy: [-1.1, 1.1], present: ['TiO2', 'ITO'] },
+          { id: 'negative-x-annular-pillar', xy: [-1.2, 1.1], present: ['TiO2', 'ITO'] },
           { id: 'positive-x-pillar', xy: [1.1, 1.1], present: ['TiO2', 'ITO'] },
           { id: 'substrate-control', xy: [0, 0], present: ['ITO'], absent: ['TiO2'] },
         ],
