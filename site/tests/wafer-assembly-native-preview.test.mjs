@@ -231,20 +231,22 @@ test('editable native v2 begins with a standalone receiver and delegates first B
   assert.equal(checkpoints.length, 2);
   assert.deepEqual(checkpoints[1].project, first.project);
   assert.deepEqual(store.state.model, third.project.model);
-  assert.deepEqual(store.assemblyPreviewSession.listHistory().map((node) => node.operation.donorId), [
-    'B',
-    'C',
-  ]);
+  assert.deepEqual(
+    store.assemblyPreviewSession.listHistory().map((node) => node.operation.donorId),
+    ['B', 'C'],
+  );
 });
 
 test('editable native v2 refuses the standalone source without a first-Bond opt-in', () => {
   const receiver = wafer('Standalone A');
   assert.throws(
-    () => createWorkstationRuntime({ source: 'receiver', data: receiver }, { assemblyPreview: true }),
+    () =>
+      createWorkstationRuntime({ source: 'receiver', data: receiver }, { assemblyPreview: true }),
     /requires verified Assembly provenance/,
   );
   assert.throws(
-    () => createWorkstationRuntime({ source: 'receiver', data: receiver }, { firstBondDraft: true }),
+    () =>
+      createWorkstationRuntime({ source: 'receiver', data: receiver }, { firstBondDraft: true }),
     /First-Bond draft requires/,
   );
 });
