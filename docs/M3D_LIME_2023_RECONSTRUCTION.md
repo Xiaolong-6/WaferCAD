@@ -165,6 +165,40 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 - Recipe **Rebuild Base → Run All** now retains a valid pre-existing physical Section A–B (including the paper-aligned local slice); the UI v2 and legacy Base controllers share this policy, while a manual Base change or an out-of-bounds Section still selects a centered default. Browser-level persistence is a required CI assertion.
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
 
+## Unresolved published-Methods process-order audit (October 16, 2026)
+
+These source discrepancies are **open process-fidelity defects**, independent of
+the existing geometric, History and Chromium checks. The relevant source is
+[Li et al. 2023, Methods, Fabrication of the M3D-LIME Chip](https://pmc.ncbi.nlm.nih.gov/articles/PMC10628152/).
+
+- **CNTFET O₂ channel patterning order:** The paper wet-transfers and cleans
+  the CNT, patterns Ti 1 nm / Pd 45 nm source/drain contacts, and **only then**
+  lithographically patterns the CNT channel using O₂ plasma, before 10 nm Y
+  deposition and oxidation. The current 46-step Builder combines PCz cleaning
+  and O₂ patterning in the non-geometric `recipe-step-26`, **ahead** of
+  source/drain `recipe-step-27` through `recipe-step-30`. The sequence must
+  be corrected in the editable Recipe and every associated History state as
+  well as the deterministic committed `.wafercad`. The CNT currently appears
+  at its final Mask footprint immediately after transfer; an intermediate
+  blanket CNT film and its physical O₂ removal are **not** represented.
+- **Analog CIM passivation CMP order:** The paper deposits 400 nm PECVD SiO₂,
+  patterns F-RIE contact openings, fills the TE contacts with W, and then
+  performs CMP. The Builder inserts an additional `CIM passivation CMP
+  endpoint Z 1.28um (inferred)` **before** F-RIE contact opening and W via
+  fill, followed by its post-W CMP. The early CMP is an **inferred geometric
+  planarization surrogate**, not a source-reported intermediate operation.
+  Either a corrected, replayable intermediate model must eliminate it, or its
+  non-paper status must remain explicit; the final W/TE contact tests alone
+  cannot validate the source ordering.
+
+**Required closeout:** Rebuild the fixture from the real Process Kernel and
+check exact Recipe/History step ordering, intermediate material occupancy,
+deterministic `.wafercad` bytes, Save/Open, rollback, 14/14 Pd gate-edge
+contacts and 46-step (or explicitly revised step-count) Chromium replay.
+No early-only change to the Builder is acceptable if it leaves the checked-in
+asset, historical snapshots or source claims out of sync. Previously green
+checks on the current fixture do not prove either order defect is resolved.
+
 ## Paper-figure visual evidence boundary (October 2026)
 
 - **Fig. 1b — three-tier TEM, 1 µm scale bar.** The source shows CMOS,
