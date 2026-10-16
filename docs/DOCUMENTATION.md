@@ -44,7 +44,7 @@ flowchart LR
 - Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
 - `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
-- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Wiki checks run on every main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
+- [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Relevant documentation PRs run focused Process Guide, Wiki and navigation Node tests in a read-only workflow; only the separate Main push workflow may publish Wiki content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.
 
 ## Change workflow
 

@@ -1,5 +1,7 @@
 # P1 numerical integrity, release routing and Recovery fault handoff — 2026-10-14
 
+> **Status verified 2026-10-16:** [PR #222](https://github.com/Xiaolong-6/WaferCAD/pull/222), which delivered this P1 science/release/Recovery work, merged into Main on 2026-10-14 (`223ba33`). Branch, baseline, and remaining-work statements below are historical checkpoint evidence; consult the active [Testing](testing.md) and [CI](CI.md) contracts for present gates.
+
 ## Baseline and working boundary
 
 - Repository: `Xiaolong-6/WaferCAD`.

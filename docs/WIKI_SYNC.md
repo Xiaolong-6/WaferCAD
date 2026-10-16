@@ -19,6 +19,10 @@ Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact,
 
 See [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
 
+## Pre-publication PR verification
+
+[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on relevant pull-request changes, exercises the Process Guide, Wiki Manual and Documentation test suites, and has repository read-only permissions. It cannot push to the Wiki or deploy Pages. Draft Quality separately runs lint, formatting and `docs:check` before the Main publication step.
+
 ## Deploy workflow
 
 `.github/workflows/product-manual-wiki.yml` runs after **every push to main**, with no path filters, and can also be started manually. It:
