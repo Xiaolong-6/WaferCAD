@@ -45,7 +45,9 @@ The [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks release 
 - [Mask File/Draw](MASK_DRAW.md) — independent sources, Process selection and export scope.
 - [KLayout compatibility](KLAYOUT_LAYOUT_COMPATIBILITY.md) — pinned parser/import oracle; recorded corpus results are revision-specific evidence.
 
-## Current work and verification
+## Design contracts, ongoing work and dated verification
+
+Dated implementation plans and handoffs preserve the status of their original revision. For merged PRs (notably #188 and #267), their old Draft/approval language is historical; always check the linked PR and latest Main implementation before interpreting a dated acceptance claim.
 
 - [Process Report Export](REPORT_EXPORT.md) — portable offline HTML/Markdown ZIP, complete History ledger, export limits and accepted capture boundaries.
 - [Report historical keyframes](REPORT_KEYFRAMES.md) — saved-state Section SVG provenance, keyframe budgets, failure reporting and planned extensions.
