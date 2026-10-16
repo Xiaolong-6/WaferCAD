@@ -1115,14 +1115,33 @@ function applyConformalCoating(model, active, layerId, amount, face) {
   const originalVoids = baseCoverageState(model) === 'full' ? [] : uncoveredGeometryRaw(model);
   let uncovered = cloneGeom(originalVoids);
 
+  // Opt-in scientific instrumentation for locating the first owner-loss
+  // stage. It never changes a polygon, the numerical tolerance or rollback.
+  const debugCoverage =
+    typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1';
+  const diagnostic = (phase, source = null) => {
+    if (!debugCoverage) return;
+    const lost = verifiedConformalCoverageLoss(model, originalVoids);
+    const summary = {
+      phase,
+      lostArea: geometryArea(lost),
+      pieces: lost.length,
+      firstBounds: lost.slice(0, 3).map((polygon) => multiBounds([polygon])),
+      sourceZ: source?.z,
+      sourceBounds: source ? multiBounds(source.geom) : undefined,
+    };
+    console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify(summary));
+  };
+
   // Stage 1: coat every exposed horizontal surface in the selected area.
   splitByArea(model, active, (stack) => addLayerToSurface(stack, layerId, amount, face), false);
+  diagnostic('after-horizontal');
 
   // Stage 2: coat only physical vertical boundaries from the pre-coating
   // topography. Intersect each boundary band with active so real steps inside a
   // mask opening still receive conformal coverage while the mask edge remains a
   // hard clip.
-  for (const source of sources) {
+  for (const [sourceIndex, source] of sources.entries()) {
     for (const rawBand of conformalBoundaryBands(source.geom, amount, active)) {
       // Use one persistence-grid band for both the hit and its complement.
       const band = intersection(intersection(snapProcessGeometry(rawBand), active), model.boundary);
@@ -1152,6 +1171,7 @@ function applyConformalCoating(model, active, layerId, amount, face) {
         uncovered = difference(uncovered, wall.geom);
       }
     }
+    diagnostic('after-source-' + sourceIndex, source);
   }
   return originalVoids;
 }
