@@ -173,9 +173,10 @@ try {
       const before = await dimensions(page);
       assert.equal(before.horizontalOverflow, 0);
       if (width > 820) {
+        const expectedSidebarWidth = Math.min(390, Math.max(300, width * 0.21));
         assert.ok(
-          Math.abs(before.editorWidth - expectedPanelWidth(width)) < 2,
-          `Default editor width is 27vw clamped at ${width}px`,
+          Math.abs(before.editorWidth - expectedSidebarWidth) < 2,
+          `Production Sidebar follows the 21vw/300–390px design contract at ${width}px`,
         );
         const divider = page.locator('.p-divider');
         await divider.focus();
