@@ -314,33 +314,25 @@ try {
     );
     const gsgPadCenters = [-1250, 1250].map((x) => [x, 0]);
     const missingGsgPads = gsgPadCenters.filter((xy) => !hasLayer(xy, 600.25, ids.pad));
-    // These two unmetalized positions separate representative TSVs from
-    // their nearby GSG pads. They demonstrate a known missing *route* without
-    // pretending that a point sample proves complete electrical isolation.
-    const unmodeledRoutePoints = [-1450, 1450].map((x) => [x, -500]);
-    const unexpectedlyMetallizedRoutePoints = unmodeledRoutePoints.filter((xy) =>
-      hasLayer(xy, 600.25, ids.pad),
-    );
+    // Figure 2(f) connects the HEMT and the independently mounted GSG Pad
+    // chips with Au wire bonds. TSV Cu is a separate vertical interconnection.
+    // These material samples validate components, NOT a particular circuit net.
+    const hasOxideLayer = model.layers.some((layer) => /SiO(?:2|₂)/i.test(layer.name));
+    const hasNiPaAuLayer = model.layers.some((layer) => /NiPaAu/i.test(layer.name));
     return {
       materialLayerIdsFound: Object.values(ids).every(Boolean),
       viaCoreSamples: viaCenters.length * viaZ.length,
       missingCuCore,
       missingGsgPads,
-      unmodeledRoutePoints,
-      unexpectedlyMetallizedRoutePoints,
-      missingSourceProcessMaterials: ['SiO2', 'NiPaAu'].filter(
-        (name) => !model.layers.some((layer) => layer.name.includes(name)),
-      ),
+      sourceProcessLayersPresent: {
+        siliconOxide: hasOxideLayer,
+        nickelPalladiumGold: hasNiPaAuLayer,
+      },
     };
   });
   assert.equal(geometry.materialLayerIdsFound, true, 'Loaded project lacks TSV or GSG metal');
   assert.deepEqual(geometry.missingCuCore, [], 'Browser-loaded TSV cores have real voids');
   assert.deepEqual(geometry.missingGsgPads, [], 'Browser-loaded GSG pads are absent');
-  assert.deepEqual(
-    geometry.unexpectedlyMetallizedRoutePoints,
-    [],
-    'Previously absent Au routing changed; re-audit Fig. 1(a) connectivity',
-  );
   const tsvSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('tsv-transverse-section.png', directory), tsvSectionShot);
 
@@ -375,8 +367,7 @@ try {
     distinctFromCoolantSection: true,
     copperFilledGeometry: geometry.missingCuCore.length === 0,
     copperCoreOccupancySamples: geometry.viaCoreSamples,
-    unmodeledAuRouteProbePoints: geometry.unmodeledRoutePoints,
-    missingSourceProcessMaterials: geometry.missingSourceProcessMaterials,
+    sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
     physicalSeedThicknessUm: { Ti: 0.2, Cu: 0.5 },
     inferredCuFillUm: 35,
     electricalContactContinuityVerified: false,
@@ -394,13 +385,16 @@ try {
     reference: 'Lian et al. (2022), Fig. 1(a), Fig. 2(c-f), DOI 10.1038/s41378-022-00462-3',
     verifiedIdealizedCopperCoreSamples: geometry.viaCoreSamples,
     trueDualWaferBondModeled: false,
-    completeAuNiPaAuTSVToChipRoutingModeled: false,
-    oxideInsulationModeled: !geometry.missingSourceProcessMaterials.includes('SiO2'),
+    hemtToGsgWireBondGeometryModeled: false,
+    completeInterposerAuNiPaAuMetallizationModeled: false,
+    hemtBacksideViaMetallizationModeled: false,
+    sourceProcessLayersPresent: geometry.sourceProcessLayersPresent,
+    oxideInsulationScientificVerification: false,
     electricalContinuityVerified: false,
     fig1aContourAndAppearanceVerified: false,
   };
   report.note =
-    'Captured separate real coolant, TSV and HEMT views. Cu cores have actual XY/Z occupancy; sampled Au routing gaps and source-process omissions remain explicit. Browser smoke pass does not constitute Fig. 1(a) scientific visual acceptance.';
+    'Captured separate coolant, TSV and HEMT views. Cu cores and GSG pad footprints have sampled XY/Z occupancy. Paper Fig. 2(f) HEMT-to-GSG wire bonds, backside HEMT via metallization, oxide insulation and completed interposer electrical routing still require separate scientific verification. Browser smoke pass is not Fig. 1(a) acceptance.';
   await writeFile(
     new URL('visual-acceptance.json', directory),
     JSON.stringify(report, null, 2) + '\n',
