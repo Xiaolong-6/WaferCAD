@@ -82,7 +82,10 @@ try {
       null,
       { timeout: 60000 },
     );
-    await page.locator('.assembly-bond-draft-status').filter({ hasText: /Bonded C/ }).waitFor();
+    await page
+      .locator('.assembly-bond-draft-status')
+      .filter({ hasText: /Bonded C/ })
+      .waitFor();
     await waitForPaint(page);
     const committed = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(committed.assemblyPreview.sources, 3);
@@ -151,9 +154,7 @@ try {
         .waitFor({ state: 'visible' });
       await recoveryPage.waitForFunction(
         () => {
-          const select = document.querySelector(
-            '[aria-label="Assembly Bond Recovery checkpoint"]',
-          );
+          const select = document.querySelector('[aria-label="Assembly Bond Recovery checkpoint"]');
           return Boolean(select && select.options.length && !select.disabled);
         },
         null,
