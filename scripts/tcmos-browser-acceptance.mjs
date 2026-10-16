@@ -190,6 +190,14 @@ try {
   // Legacy NWELL/PWELL/S-D/silicide masks are process-only; they must not
   // leak into the user's approved Mask or binary GDS/OAS exports.
   await panel('mask');
+  await selectView('mask');
+  const maskLarge = await requireLargeView('mask');
+  const visibleMask = await snap();
+  assert.equal(visibleMask.layout.combos.length, 8);
+  assert.equal(visibleMask.layout.elements.length, 232);
+  await page.locator('#maskCanvas').waitFor({ state: 'visible', timeout: 12000 });
+  await page.screenshot({ path: resolve(dir, 'tcmos-svg-mask-expanded-before-replay.png') });
+  await restoreLargeView('mask', maskLarge);
   const maskLayerBoxes = page.locator('#v2-maskLayerList input[type="checkbox"]');
   assert.equal(await maskLayerBoxes.count(), expected.layout.combos.length);
   for (let index = 0; index < expected.layout.combos.length; index++) {
@@ -254,6 +262,24 @@ try {
   }
   await page.keyboard.press('Escape');
   assert.deepEqual((await snap()).model, opened.model, 'Mask export mutated canonical geometry');
+  // A durable, independently inspectable Mask acceptance record is written
+  // BEFORE the legacy Recipe is attempted. That downstream failure cannot
+  // retroactively invalidate the completed File Mask export checks.
+  await writeFile(
+    resolve(dir, 'svg-mask-only-acceptance.json'),
+    JSON.stringify(
+      {
+        pass: true,
+        source: 'layout-complete.svg',
+        layers: expected.layout.combos.length,
+        polygons: expected.layout.elements.length,
+        exports: maskExports,
+        downstreamRecipeValidated: false,
+      },
+      null,
+      2,
+    ),
+  );
 
   await panel('process');
   await page.locator('[data-action="process-mode:recipe"]').click();
