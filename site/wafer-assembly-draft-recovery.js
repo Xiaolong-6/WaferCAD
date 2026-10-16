@@ -7,15 +7,18 @@ const STORE = 'checkpoints';
 function requestValue(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('Assembly draft IndexedDB request failed.'));
+    request.onerror = () =>
+      reject(request.error || new Error('Assembly draft IndexedDB request failed.'));
   });
 }
 
 function completed(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onabort = () => reject(transaction.error || new Error('Assembly Recovery transaction aborted.'));
-    transaction.onerror = () => reject(transaction.error || new Error('Assembly Recovery transaction failed.'));
+    transaction.onabort = () =>
+      reject(transaction.error || new Error('Assembly Recovery transaction aborted.'));
+    transaction.onerror = () =>
+      reject(transaction.error || new Error('Assembly Recovery transaction failed.'));
   });
 }
 
@@ -47,7 +50,12 @@ export function createAssemblyBondDraftRecovery({
     try {
       const tx = db.transaction(STORE, 'readwrite');
       const done = completed(tx);
-      tx.objectStore(STORE).put({ key, reason, project: copy, updatedAt: new Date().toISOString() });
+      tx.objectStore(STORE).put({
+        key,
+        reason,
+        project: copy,
+        updatedAt: new Date().toISOString(),
+      });
       await done;
       return key;
     } finally {
@@ -78,12 +86,14 @@ export function createAssemblyBondDraftRecovery({
       const done = completed(tx);
       const records = await requestValue(tx.objectStore(STORE).getAll());
       await done;
-      return records.map(({ key, reason, updatedAt, project }) => ({
-        key,
-        reason,
-        updatedAt,
-        sourceCount: project?.waferAssembly?.sources?.length || 0,
-      })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      return records
+        .map(({ key, reason, updatedAt, project }) => ({
+          key,
+          reason,
+          updatedAt,
+          sourceCount: project?.waferAssembly?.sources?.length || 0,
+        }))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     } finally {
       db.close();
     }
