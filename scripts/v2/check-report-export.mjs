@@ -184,7 +184,9 @@ try {
     // Narrow screen: the same Project Export trigger must stay in view, with
     // both choices available and without adding an extra Report action.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('[data-action="domain:project"]').click();
+    if (!(await page.locator('.p-nav [data-action="domain:project"]').isVisible()))
+      await page.locator('.p-nav [data-action="show-editor"]').click();
+    await page.locator('.p-nav [data-action="domain:project"]').click();
     await page.locator('#projectExportMenuBtn').click();
     const mobileMenu = page.getByRole('menu', { name: 'Project export formats' });
     await mobileMenu.waitFor({ state: 'visible' });

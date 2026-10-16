@@ -2,6 +2,16 @@
 
 WaferCAD browser tests are split by intent. New coverage should go into the narrowest suite that owns the behavior instead of extending one long stateful scenario.
 
+## Repository ownership and layout
+
+- `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
+- `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
+- `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
+- `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
+- `site/examples/`: released Welcome projects, previews and thumbnails. `examples/projects/`: authoring candidates, reconstruction source inputs, project provenance and non-published research fixtures. A byte-identical source/release copy is not deletable until its scripts, workflow paths and reconstruction ownership are proven independent.
+
+**Structure migration gate:** inventory import paths, npm/globs, workflow `paths` filters and documentation links; move one owner at a time; run owning Node/CI selectors and scientifically relevant fixtures. No broad restructure for cosmetic directory symmetry. Do not store transient CI reports under tracked fixture directories.
+
 ## Test tiers
 
 | Tier                        | Entry point                   | Purpose                                                                                                                  | Expected style                                                   |
@@ -108,6 +118,21 @@ approve removal of Legacy-specific UI/DOM tests. Welcome's interactive
 preview is now v2-only, but former Legacy-only scientific owners must still be
 migrated without losing scenario ownership.
 
+### Production desktop docking ownership
+
+The production Workstation's desktop-only (821px and wider) view layout is owned by
+`site/ui-v2/view-layout-model.js` and `view-layout-templates.js`.
+`site/tests/view-layout.test.mjs` covers pure visibility, ordered slots,
+maximize/restore, Snap and preference invariants. After starting the v2
+browser server, `npm run test:ui:docking` checks real Chromium 1440/1024/821px
+Grid geometry, all four-/three-view presets, titlebar Snap exchange,
+split-resize handles, Panel/Canvas identity, scientific-model invariance,
+and the unchanged 390px compact navigation. It writes unapproved screenshot
+evidence to `test-results/ui-v2-desktop-docking/`. The final
+Main/Mask/Mobile targeted CI owner invokes it; Draft visual iterations should
+prefer the direct command rather than the full browser matrix.
+No temporary standalone workflow is required after the initial screenshot acceptance.
+
 ### UI v2 shared-workstation checks
 
 The default-v2 route and Welcome handoff are owned by `scripts/v2/check-startup.mjs`.
@@ -116,9 +141,18 @@ on-demand four-view preview renders the small final-stage project through v2,
 never acquires the writer lease, and does not change the saved-workspace marker.
 It has no `start` intent, autosave or Recovery side effects. Full examples
 continue to open through the ordinary v2 Project route.
-`scripts/v2/check-cross-ui-recovery.mjs` checks explicit Project Save before
-opening the optional Legacy URL, exact cross-interface recovery, and concurrent
-Legacy/v2 writer ownership. The Workstation footer shows the deployed commit
+`scripts/v2/check-cross-ui-recovery.mjs` retains its historical CI entry
+name while exercising the production v2 Workstation only: complete 47-Step and
+seven-Variant Example handoff, exact saved-model reload, explicit Project Save,
+competing v2 writer exclusion, protected unload, and Recovery after replacement.
+The original executable Legacy↔v2 browser handoff test remains independently
+available in `scripts/v2/check-legacy-cross-ui-recovery.mjs` and runs under
+`legacy-cross-ui-retirement.yml` when either writer implementation changes,
+or by manual dispatch. This separate gate must be retired only after all
+cross-interface storage contracts have a verified replacement.
+Historical pre-v2 project decoding and compatibility remain separately owned
+by `check-legacy-project-recovery.mjs` and its SHA-256-pinned fixture.
+The Workstation footer shows the deployed commit
 from `build-info.json` (or `commit local` in local development).
 Existing scientific/controller suites retain their Legacy DOM assertions at
 `app-legacy.html`. Suites that start through Welcome explicitly use
