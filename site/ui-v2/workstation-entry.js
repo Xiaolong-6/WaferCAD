@@ -131,6 +131,7 @@ try {
       mobileViewport?.update();
     },
     invalidateScientific: () => store.renderAll(),
+    invalidateVisibleView: (key) => store.invalidate(key),
     scheduleLayout: () => requestAnimationFrame(() => desktopResizer?.refresh()),
   });
   // View-specific, nonmodal floating editors are transient UI, not model state.
@@ -259,9 +260,17 @@ try {
     const trigger = event.target.closest('button[data-action]');
     if (!trigger || trigger.disabled) return;
     const action = trigger.dataset.action;
+    const previousMobile = uiState.mobile;
+    const previousView = uiState.view;
     if (mobileWorkspace.handleAction(action)) {
-      // Stable adapters paint newly visible views. Navigation does not alter the model.
-      render({ scientific: false });
+      // Main/Mask adapters do not repaint in onShow; refresh only the view
+      // that becomes visible, never all four scientific views.
+      const visibleView =
+        uiState.mobile === 'view' &&
+        (previousMobile !== 'view' || previousView !== uiState.view)
+          ? uiState.view
+          : null;
+      render(visibleView ? { scientificView: visibleView } : { scientific: false });
       return;
     }
     if (action.startsWith('domain:')) {
