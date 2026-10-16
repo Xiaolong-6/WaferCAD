@@ -175,11 +175,13 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 - **Fig. 2c — analog RRAM TEM, 20 nm scale bar.** Source stack:
   TiN / HfAlOₓ (8 nm) / TaOₓ (45 nm) / TiN. Browser evidence:
   `section-analog-rram-nanoscale-canvas.png` plus the original panel capture,
-  checked material IDs, Z thickness, physical X:Z scale and lateral mask edge.
+  checked material IDs, Z thickness and physical X:Z scale; the Mask-edge transition
+  is checked independently at its different X coordinate.
   Model boundaries are piecewise ideal rather than measured TEM contours.
 - **Fig. 2d — digital RRAM TEM, 20 nm scale bar.** Source stack:
   Pd / TaOₓ (20 nm) / Ta₂O₅ (10 nm) / Pt. Browser evidence:
-  `section-digital-rram-nanoscale-canvas.png` and independent model XY/Z probes.
+  `section-digital-rram-nanoscale-canvas.png` centered on the thickness probe
+  and independent model XY/Z and Mask-edge probes.
   Idealized layer interfaces do not establish fabricated TEM contour fidelity.
 - **Supplementary Fig. 6a — CNTFET beside digital RRAM.** The RRAM island
   is separated from the active CNT and lands on the Pd drain. Browser evidence:
@@ -188,6 +190,9 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
   probes. The 0.45 µm lateral clearance, mask outlines and 25% Pd evaporation
   step-coverage fraction are uncalibrated assumptions.
 
+Each thin-film image is centered on the **same physical X/Z sample** used to check
+its nanometre film thickness. The independent Mask-edge check may lie outside
+that magnified field of view and is not mistaken for a film-center capture.
 The browser produces both full Section-panel evidence (including toolbar and true X:Z readout)
 and native canvas-only screenshots with the **real Layers pane temporarily closed** to avoid
 obscuring the nanoscale material interface. It restores the original Layers preference and

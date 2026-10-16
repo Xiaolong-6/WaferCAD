@@ -309,8 +309,11 @@ try {
       target.material + ': source film thickness changed',
     );
     const physicalZUm = (film.z0 + film.z1) / 2;
-    // A film-center crop yields only uniform horizontal stripes. Anchor the
-    // physical 1:1 close-up to its inferred lithographic edge instead.
+    // Preserve a separate numerical Mask-edge topology check, but capture
+    // the nanoscale film at the physical X used by the film-thickness probe.
+    // At 20x zoom, an inferred lithographic edge can lie several micrometres
+    // away and outside the image, making an edge-centered screenshot invalid
+    // evidence for the layer whose thickness was actually checked.
     const sectionYUm = expected.section.a[1];
     const sourceMask = expected.layout.elements.find((element) => {
       if (element.kind !== 'polygon') return false;
@@ -342,6 +345,7 @@ try {
     );
     await page.locator('#sectionPanel [data-action="fit:section"]').click();
     await waitForPaint(page);
+    const filmCaptureXUm = target.physicalXUm;
     const initialPosition = await sectionCanvas.evaluate(
       (canvas, { x, z, startX, spanX }) => {
         const d = canvas.dataset;
@@ -360,7 +364,7 @@ try {
         }
       },
       {
-        x: inspectionXUm,
+        x: filmCaptureXUm,
         z: physicalZUm,
         startX: expected.section.a[0],
         spanX: expected.section.b[0] - expected.section.a[0],
@@ -409,7 +413,7 @@ try {
           height: canvas.getBoundingClientRect().height,
         };
       },
-      { x: inspectionXUm, z: physicalZUm, startX: expected.section.a[0] },
+      { x: filmCaptureXUm, z: physicalZUm, startX: expected.section.a[0] },
     );
     assert.ok(evidence.viewportZoom >= 16, 'Nanoscale Section zoom is insufficient');
     assert.ok(
@@ -439,6 +443,8 @@ try {
       material: target.material,
       physicalXUm: target.physicalXUm,
       inspectionXUm,
+      filmCaptureXUm,
+      photoTarget: 'validated-film-center',
       inspectionMaskLayer: target.inspectionMaskLayer,
       physicalZUm,
       filmThicknessNm: actualThicknessUm * 1000,
