@@ -244,7 +244,8 @@ try {
         const columnY = rect.y + rect.height / 4;
         assert.equal(
           await page.evaluate(
-            ({ x, y }) => document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            ({ x, y }) =>
+              document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
             { x: columnX, y: columnY },
           ),
           'columns',
@@ -265,7 +266,8 @@ try {
           return {
             expected: [(main.right + mask.left) / 2, (three.right + section.left) / 2],
             gridColumns: document.querySelector('.p-canvases').style.gridTemplateColumns,
-            savedTracks: window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid'],
+            savedTracks:
+              window.WaferCadV2Workstation.snapshot().ui.desktopLayout.tracks['four-grid'],
             handles: handles.map((handle) => ({
               left: handle.style.left,
               axis: handle.dataset.dockAxis,
@@ -277,16 +279,25 @@ try {
             }),
           };
         });
-        assert.ok(columnAlignment.observed.length > 0, 'Column splitter remains present while dragging');
+        assert.ok(
+          columnAlignment.observed.length > 0,
+          'Column splitter remains present while dragging',
+        );
         for (const position of columnAlignment.observed) {
           for (const boundary of columnAlignment.expected)
-            assert.ok(Math.abs(position - boundary) < 3, 'Column splitter must follow live Grid boundary');
+            assert.ok(
+              Math.abs(position - boundary) < 3,
+              'Column splitter must follow live Grid boundary',
+            );
         }
         await page.screenshot({ path: resolve(output, 'divider-mid-drag-columns.png') });
-        console.log('Live column splitter measurement', JSON.stringify({
-          initial: rect.x + rect.width / 2,
-          ...columnAlignment,
-        }));
+        console.log(
+          'Live column splitter measurement',
+          JSON.stringify({
+            initial: rect.x + rect.width / 2,
+            ...columnAlignment,
+          }),
+        );
         assert.ok(
           columnAlignment.observed[0] > rect.x + rect.width / 2 + 12,
           'Column splitter visibly moves during drag',
@@ -307,7 +318,8 @@ try {
         const rowY = rowRect.y + rowRect.height / 2;
         assert.equal(
           await page.evaluate(
-            ({ x, y }) => document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
+            ({ x, y }) =>
+              document.elementFromPoint(x, y)?.closest('.v2-dock-divider')?.dataset.dockAxis,
             { x: rowX, y: rowY },
           ),
           'rows',
@@ -333,7 +345,10 @@ try {
         assert.ok(rowAlignment.observed.length > 0, 'Row splitter remains present while dragging');
         for (const position of rowAlignment.observed) {
           for (const boundary of rowAlignment.expected)
-            assert.ok(Math.abs(position - boundary) < 3, 'Row splitter must follow live Grid boundary');
+            assert.ok(
+              Math.abs(position - boundary) < 3,
+              'Row splitter must follow live Grid boundary',
+            );
         }
         assert.ok(rowAlignment.observed[0] > rowRect.y + rowRect.height / 2 + 12);
         await page.screenshot({ path: resolve(output, 'divider-mid-drag-rows.png') });
