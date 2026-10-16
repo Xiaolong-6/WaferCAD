@@ -29,8 +29,13 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Verify array science formatting with exact diff
-        run: npx prettier site/tests/array-instance-invariants.test.mjs | diff -u site/tests/array-instance-invariants.test.mjs -
+      - name: Verify focused science formatting with exact diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in site/tests/array-instance-invariants.test.mjs scripts/v2/check-array-625-science.mjs; do
+            npx prettier "$file" | diff -u "$file" -
+          done
       - name: Verify canonical 625-site Process and 6400-site IO science
         run: node --test site/tests/array-instance-invariants.test.mjs
       - run: npx playwright install --with-deps chromium
@@ -54,6 +59,8 @@ jobs:
           name: v2-array-625-acceptance
           path: |
             test-results/v2-array-science/625-sites-after-deposition.png
+            test-results/v2-array-science/625-jlfet-conformal.png
+            test-results/v2-array-science/625-jlfet-roi-etch-section.png
             serve-v2.log
           if-no-files-found: ignore
           retention-days: 14
