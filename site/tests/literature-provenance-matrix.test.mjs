@@ -85,7 +85,6 @@ function assertPaperMatchEvidence(entry) {
   );
 }
 
-
 test('eight paper provenance records match the actual published example catalog', async () => {
   assert.equal(provenance.schema, 'wafercad-literature-figure-provenance-v1');
   assert.equal(provenance.issue, 241);
@@ -197,15 +196,33 @@ test('paper-match status rejects uncalibrated and scientifically unsupported cla
   assert.doesNotThrow(() => assertPaperMatchEvidence(validSchema));
 
   for (const change of [
-    (entry) => { entry.classification = 'assumed'; },
-    (entry) => { entry.captureEvidence.originalPaperOverlay = false; },
-    (entry) => { entry.acceptance.paperMatchEvidence.sourcePanel = 'Fig. 99z'; },
-    (entry) => { entry.acceptance.paperMatchEvidence.modelCutUm.b = [-1, 0]; },
-    (entry) => { entry.acceptance.paperMatchEvidence.measurement.umPerPixel = 0; },
-    (entry) => { entry.acceptance.paperMatchEvidence.measurement.matchedFeatures = 2; },
-    (entry) => { entry.acceptance.paperMatchEvidence.measurement.registrationErrorUm = 0.03; },
-    (entry) => { entry.acceptance.paperMatchEvidence.measurement.shapeMismatchUm = 0.06; },
-    (entry) => { entry.acceptance.paperMatchEvidence.comparisonArtifactURL = 'https://example.com/mock.png'; },
+    (entry) => {
+      entry.classification = 'assumed';
+    },
+    (entry) => {
+      entry.captureEvidence.originalPaperOverlay = false;
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.sourcePanel = 'Fig. 99z';
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.modelCutUm.b = [-1, 0];
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.measurement.umPerPixel = 0;
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.measurement.matchedFeatures = 2;
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.measurement.registrationErrorUm = 0.03;
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.measurement.shapeMismatchUm = 0.06;
+    },
+    (entry) => {
+      entry.acceptance.paperMatchEvidence.comparisonArtifactURL = 'https://example.com/mock.png';
+    },
   ]) {
     const entry = structuredClone(validSchema);
     change(entry);
