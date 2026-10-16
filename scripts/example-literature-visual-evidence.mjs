@@ -95,6 +95,62 @@ const CASES = [
       },
     ],
   },
+  {
+    id: 'three-tier-silicon-jlfets',
+    file: 'three-tier-silicon-jlfets',
+    source: 'Lam et al. 2026, Nature Fig. 3; local three-tier junctionless Si device, not original GDS',
+    cuts: [
+      {
+        id: 'three-tier-channel-to-pads',
+        a: [-720, 0],
+        b: [720, 0],
+        zFocus: { top: 250.08, bottom: -249.99 },
+        probes: [
+          {
+            id: 'three-tier-gate-center',
+            xy: [0, 0],
+            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
+              'T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate',
+              'T1 Gate metal', 'T2 Gate metal', 'T3 Gate metal'],
+            absent: ['T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
+          },
+          {
+            id: 'left-sd-pad',
+            xy: [-575, 0],
+            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
+              'T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
+            absent: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
+          },
+          {
+            id: 'right-sd-pad',
+            xy: [575, 0],
+            present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane',
+              'T1 S/D metal', 'T2 S/D metal', 'T3 S/D metal'],
+            absent: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
+          },
+        ],
+      },
+      {
+        id: 'central-gate-detail',
+        a: [-80, 0],
+        b: [80, 0],
+        zFocus: { top: 250.08, bottom: -249.99 },
+        probes: [{ id: 'center', xy: [0, 0],
+          present: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'] }],
+      },
+      {
+        id: 'conformal-gate-sidewall-detail',
+        a: [-720, 0],
+        b: [-670, 0],
+        zFocus: { top: 250.08, bottom: -249.99 },
+        probes: [{
+          id: 'left-gate-sidewall', xy: [-700.005, 0],
+          present: ['T1 HfO2 gate', 'T2 HfO2 gate', 'T3 HfO2 gate'],
+          absent: ['T1 Si membrane', 'T2 Si membrane', 'T3 Si membrane'],
+        }],
+      },
+    ],
+  },
   // Branch evidence always selects a real History Variant in the browser. The
   // four models are never synthesized or replaced outside the History UI.
   {
@@ -246,9 +302,36 @@ function pointInRing([x, y], ring) {
   return inside;
 }
 
+// The Fig. 3 source uses lossless shared-assets-v3 polygon templates.
+// Decode quantized XY deltas for scientific point probes instead of treating
+// compressed [templateId, offsetX, offsetY] tuples as physical polygons.
+function regionPhysicalPolygons(project, region) {
+  const geometry = region.geom || project.sharedGeometries?.[region.geomRef] || [];
+  if (!project.sharedPolygonTemplates || typeof geometry[0]?.[0] !== 'number') {
+    return geometry;
+  }
+  const quantum = project.storage?.lengthQuantumUm;
+  assert.ok(Number.isFinite(quantum) && quantum > 0, 'Missing shared geometry quantum');
+  return geometry.map(([templateId, originX, originY]) => {
+    const template = project.sharedPolygonTemplates[templateId];
+    assert.ok(template?.rings?.length, 'Unresolved geometry template ' + templateId);
+    return template.rings.map((deltas) => {
+      let x = originX;
+      let y = originY;
+      const ring = [];
+      for (let i = 0; i < deltas.length; i += 2) {
+        x += deltas[i];
+        y += deltas[i + 1];
+        ring.push([x * quantum, y * quantum]);
+      }
+      return ring;
+    });
+  });
+}
+
 function materialStackAt(project, point) {
   const owners = project.model.regions.filter((region) =>
-    (region.geom || project.sharedGeometries?.[region.geomRef] || []).some(
+    regionPhysicalPolygons(project, region).some(
       (polygon) =>
         pointInRing(point, polygon[0]) &&
         !polygon.slice(1).some((hole) => pointInRing(point, hole)),
