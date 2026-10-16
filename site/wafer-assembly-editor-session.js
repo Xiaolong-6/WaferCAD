@@ -94,9 +94,7 @@ export function createAssemblyBondEditorSession(
       const result = await commitWaferBondTransaction(prepared, {
         getCurrentProject: () => fullProduct(),
         canCommit: () =>
-          revision === expectedRevision &&
-          currentIndex() === maxIndex() &&
-          visibleParity(),
+          revision === expectedRevision && currentIndex() === maxIndex() && visibleParity(),
         checkpointRecovery: (reason) => checkpointRecovery(structuredClone(previous), reason),
         captureTransaction: () => ({
           project: fullProduct(),
