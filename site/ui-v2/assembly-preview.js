@@ -136,7 +136,7 @@ export function chooseAssemblyPreviewFile(
     recoverySelect.setAttribute('aria-label', 'Assembly Bond Recovery checkpoint');
     recoveryButton = document.createElement('button');
     recoveryButton.type = 'button';
-    recoveryButton.textContent = 'Restore pre-Bond checkpoint';
+    recoveryButton.textContent = 'Restore Assembly Recovery';
     recoverySelect.disabled = true;
     recoveryButton.disabled = true;
     recoveryControls.append(recoverySelect, recoveryButton);
@@ -144,13 +144,24 @@ export function chooseAssemblyPreviewFile(
   }
   root.replaceChildren(panel);
   if (recoveryControls) {
-    void recovery
-      .list()
-      .then((records) => {
+    void Promise.all([recovery.list(), recovery.listWorkspaceGraphs()])
+      .then(([checkpoints, workspaces]) => {
+        const records = [
+          ...workspaces.map((record) => ({
+            key: `workspace:${record.id}`,
+            updatedAt: record.updatedAt,
+            label: `Committed · revision ${record.revision} · ${record.branches} Variants`,
+          })),
+          ...checkpoints.map((record) => ({
+            key: `checkpoint:${record.key}`,
+            updatedAt: record.updatedAt,
+            label: `Pre-Bond · ${record.sourceCount} wafers`,
+          })),
+        ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
         for (const record of records) {
           const option = document.createElement('option');
           option.value = record.key;
-          option.textContent = `${record.updatedAt} · ${record.sourceCount} source wafers`;
+          option.textContent = `${record.updatedAt} · ${record.label}`;
           recoverySelect.append(option);
         }
         recoverySelect.disabled = records.length === 0;
@@ -170,10 +181,25 @@ export function chooseAssemblyPreviewFile(
         opening = true;
         recoveryButton.disabled = true;
         status.dataset.error = 'false';
-        status.textContent = 'Validating durable pre-Bond Recovery…';
+        status.textContent = 'Validating committed or pre-Bond Recovery…';
         try {
-          const recovered = await recovery.load(recoverySelect.value);
-          resolve({ source: 'assembly-recovery', hash: '', data: recovered });
+          if (recoverySelect.value.startsWith('workspace:')) {
+            const recovered = await recovery.loadWorkspaceGraph(
+              recoverySelect.value.slice('workspace:'.length),
+            );
+            resolve({
+              source: 'assembly-committed-recovery',
+              hash: '',
+              data: recovered.project,
+              variantGraph: recovered.graph,
+              workspaceId: recovered.id,
+              workspaceRevision: recovered.revision,
+            });
+          } else {
+            const key = recoverySelect.value.replace(/^checkpoint:/, '');
+            const recovered = await recovery.load(key);
+            resolve({ source: 'assembly-prebond-recovery', hash: '', data: recovered });
+          }
         } catch (error) {
           status.dataset.error = 'true';
           status.textContent = error?.message || String(error);
