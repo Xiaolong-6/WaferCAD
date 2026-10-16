@@ -353,6 +353,7 @@ try {
         render();
       },
       initialView,
+      editableBondDraft: assemblyEdit,
     });
     if (draftEditor) {
       draftUi = mountAssemblyBondDraftControls({
