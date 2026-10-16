@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/swx-mems-geometry.mjs'
       - 'scripts/swx-mems-actuator-candidate.mjs'
+      - 'scripts/swx-mems-sem-support-audit.mjs'
       - 'scripts/swx-mems-spring-axial-audit.mjs'
       - 'scripts/swx-mems-optomechanical-candidate.mjs'
       - 'scripts/swx-mems-compact-process-geometry.mjs'

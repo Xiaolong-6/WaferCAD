@@ -13,6 +13,7 @@ import {
   SWX_INTERFACE_ASSUMPTIONS,
 } from './swx-mems-optomechanical-candidate.mjs';
 import { SWX_COMPACT_ASSUMPTIONS } from './swx-mems-actuator-candidate.mjs';
+import { createSwxSemSupportAudit } from './swx-mems-sem-support-audit.mjs';
 import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 import {
   SWX_COMPACT_GRATING_ASSUMPTIONS,
@@ -124,6 +125,7 @@ export function createSwxCompactProcessGeometry(state = 'off') {
 
 export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
   geometryFactory: createSwxCompactProcessGeometry,
+  semSupportAudit: createSwxSemSupportAudit,
   fieldUm: FIELD,
   section: { a: [25, -36], b: [25, -10] },
   projectName: 'SWX compact optomechanical process candidate · OFF/ON',
@@ -161,6 +163,8 @@ export const SWX_COMPACT_PROCESS_PROFILE = Object.freeze({
     compactMechanical: SWX_COMPACT_ASSUMPTIONS,
     sourceS8SpringCombAxialTopologyRestored: true,
     sourceS8AbsoluteCoordinatesVerified: false,
+    outerSemPerimeterIsolationFrameReconstructed: false,
+    semOuterDarkContourDepthVerified: false,
     compactOptical: SWX_INTERFACE_ASSUMPTIONS,
     fieldUm: FIELD,
     sourceGratingGroovesImplemented: false,

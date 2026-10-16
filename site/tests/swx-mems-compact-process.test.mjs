@@ -6,6 +6,10 @@ import {
 } from '../../scripts/swx-mems-compact-process-geometry.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
 import {
+  createSwxSemSupportAudit,
+  SWX_SEM_PERIMETER_PROVENANCE,
+} from '../../scripts/swx-mems-sem-support-audit.mjs';
+import {
   createCompactGratingGrooves,
   SWX_COMPACT_GRATING_ASSUMPTIONS,
 } from '../../scripts/swx-mems-compact-gratings.mjs';
@@ -42,6 +46,24 @@ test('compact process retains all canonical mask layers within its true field', 
     assert.equal(source.physicalGroups.actuator.springContours.length, 4);
     assert.equal(source.reconstructionStatus, 'isolated-compact-candidate');
   }
+});
+
+test('SEM support ownership enumerates stationary anchors separately from suspended fixed optical guides', () => {
+  for (const state of ['off', 'on']) {
+    const report = createSwxSemSupportAudit(state);
+    assert.equal(report.supported.length, 12);
+    assert.equal(report.released.length, 14);
+    assert.equal(report.perimeter.outerSiliconIsolationFrameReconstructed, false);
+    assert.ok(
+      report.released.some((probe) => probe.name === 'rigid but suspended optical input guide'),
+    );
+    assert.ok(
+      report.released.some((probe) => probe.name === 'rigid but suspended optical output guide'),
+    );
+    const nameSet = new Set([...report.supported, ...report.released].map((probe) => probe.name));
+    assert.equal(nameSet.size, report.supported.length + report.released.length);
+  }
+  assert.equal(SWX_SEM_PERIMETER_PROVENANCE.originalPeripheralMaskGdsAvailable, false);
 });
 
 test('compact candidate keeps common lithographic mask and numeric OFF/ON optical gap', () => {

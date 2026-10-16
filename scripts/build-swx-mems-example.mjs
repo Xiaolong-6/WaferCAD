@@ -367,6 +367,31 @@ export async function buildSwxMems(state = 'off', profile = null) {
   );
   bookmark('04 Released SWX / ' + state.toUpperCase());
 
+  const semProbes = profile?.semSupportAudit?.(state);
+  if (semProbes) {
+    for (const { name, point } of semProbes.supported) {
+      const column = readPoint(model, vectorApi, point);
+      assert.ok(
+        column?.stack.some((s) => s.layerId === layerIds.get(DEVICE)),
+        'SEM supported ' + name + ' has no device Si at ' + point.join(','),
+      );
+      assert.ok(
+        column?.stack.some((s) => s.layerId === layerIds.get(BOX)),
+        'SEM supported ' + name + ' lost BOX at ' + point.join(','),
+      );
+    }
+    for (const { name, point } of semProbes.released) {
+      const column = readPoint(model, vectorApi, point);
+      assert.ok(
+        column?.stack.some((s) => s.layerId === layerIds.get(DEVICE)),
+        'SEM suspended ' + name + ' has no device Si at ' + point.join(','),
+      );
+      assert.ok(
+        !column?.stack.some((s) => s.layerId === layerIds.get(BOX)),
+        'SEM suspended ' + name + ' retains BOX at ' + point.join(','),
+      );
+    }
+  }
   const beam = readPoint(model, vectorApi, source.releasedBeamTestPoint);
   const anchor = readPoint(model, vectorApi, source.anchorTestPoint);
   const gapPoint = profile?.gapPoint?.(source) ?? [
@@ -488,6 +513,8 @@ export async function buildSwxMems(state = 'off', profile = null) {
       SOIStackReconstructed: true,
       releasedBeamHasCanonicalAirGap: true,
       anchorRetainsBOX: true,
+      semSupportOwnershipProbesVerified: !!semProbes,
+      semPerimeterIsolationFrameReconstructed: false,
       SWXOpticalGapRemainsOpen: true,
       recipePreflight: true,
       projectIO: true,
@@ -587,6 +614,31 @@ export async function buildSwxMemsUnified(profile = null) {
     await import('../site/project-io.js');
   const deviceId = project.model.layers.find((layer) => layer.name === DEVICE).id;
   const boxId = project.model.layers.find((layer) => layer.name === BOX).id;
+  const onSemProbes = profile?.semSupportAudit?.('on');
+  if (onSemProbes) {
+    for (const { name, point } of onSemProbes.supported) {
+      const column = readPoint(onModel, v, point);
+      assert.ok(
+        column?.stack.some((s) => s.layerId === deviceId),
+        'ON SEM anchor ' + name + ' has no Si at ' + point.join(','),
+      );
+      assert.ok(
+        column?.stack.some((s) => s.layerId === boxId),
+        'ON SEM anchor ' + name + ' lost BOX at ' + point.join(','),
+      );
+    }
+    for (const { name, point } of onSemProbes.released) {
+      const column = readPoint(onModel, v, point);
+      assert.ok(
+        column?.stack.some((s) => s.layerId === deviceId),
+        'ON SEM beam ' + name + ' has no Si at ' + point.join(','),
+      );
+      assert.ok(
+        !column?.stack.some((s) => s.layerId === boxId),
+        'ON SEM beam ' + name + ' retains BOX at ' + point.join(','),
+      );
+    }
+  }
   const onBeam = readPoint(onModel, v, onPose.releasedBeamTestPoint);
   const onAnchor = readPoint(onModel, v, onPose.anchorTestPoint);
   assert.ok(

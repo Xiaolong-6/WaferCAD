@@ -9,6 +9,7 @@ import { createSwxCompactProcessGeometry } from './swx-mems-compact-process-geom
 import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 import { createSwxFootprintScopeAudit } from './swx-mems-footprint-scope.mjs';
 import { auditCompactSpringAxialRegistration } from './swx-mems-spring-axial-audit.mjs';
+import { createSwxSemSupportAudit } from './swx-mems-sem-support-audit.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -64,6 +65,7 @@ for (const state of ['off', 'on']) {
     bankAxialCenterSeparationUm: Math.abs(left.y - right.y),
     foldedSpringContours: p.actuator.springContours.length,
     s8SpringAxialRegistration: auditCompactSpringAxialRegistration(state),
+    semSupportOwnership: createSwxSemSupportAudit(state),
     s8ShuttleDiagonals: p.actuator.shuttleDiagonals.length,
     s8ShuttleTriangularOpenCellProbes: p.actuator.triangularApertureProbes.length,
     s8TriangularPerforationSourceSpacingVerified: false,
@@ -141,6 +143,15 @@ if (!springAxial.sourceTopologyMet) {
     sourceTopologyMet: false,
   });
 }
+blockers.push({
+  id: 'sem-peripheral-isolation-geometry-unreconstructed',
+  kind: 'source-micrograph-perimeter-context',
+  sourceFigure: 'article SEM Fig. 2a and Supplement fabrication methods',
+  note: 'The compact Si mask covers device, optical leads and supported pads only. The visible surrounding isolation trenches/outer fixed Si and peripheral BOX release contour have NOT been reconstructed from SEM. Dark SEM contours cannot be assigned a unique Si or BOX etch depth from top view; do not invent a perimeter mask.',
+  outerIsolationFrameReconstructed: false,
+  physicalReleaseOwnershipContractPresent: true,
+  sourcePerimeterEtchDepthVerified: false,
+});
 const compactExtent = prototype.off.candidateMaskFootprintUm;
 if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[index])) {
   blockers.push({
