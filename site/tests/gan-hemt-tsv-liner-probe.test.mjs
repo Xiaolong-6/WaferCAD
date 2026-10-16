@@ -106,6 +106,11 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
       gsgPad.id,
       'Illustrative GSG pad footprint is missing',
     );
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 600.51),
+      null,
+      'The 0.5 um GSG pad footprint must not silently grow into a thicker structure',
+    );
     for (const y of [-950, 950]) {
       assert.equal(
         layerAt(model, [side * 1450, y], 550),
