@@ -1,6 +1,7 @@
 // Separate opt-in direct-Bond draft UI. The standard Workstation Process and
 // Recipe editors remain disabled; only this source-aware owner may add donors.
 import { readProjectFile, downloadProject } from '../project-io.js';
+import { downloadAssemblyWorkspace } from '../wafer-assembly-workspace-file.js';
 
 export function mountAssemblyBondDraftControls({
   editor,
@@ -16,7 +17,7 @@ export function mountAssemblyBondDraftControls({
   const description = document.createElement('p');
   description.textContent =
     'Sources remain independent and each Bond has a durable pre-Bond Recovery checkpoint. ' +
-    'Autosave is disabled: export the active Assembly or all Variants explicitly.';
+    'Autosave is disabled: export the complete Assembly Workspace .wafercad to preserve every Bond, Process, source and Variant.';
 
   const form = document.createElement('form');
   form.className = 'assembly-bond-draft-form';
@@ -78,10 +79,13 @@ export function mountAssemblyBondDraftControls({
   apply.textContent = 'Validate and Bond';
   const exportButton = document.createElement('button');
   exportButton.type = 'button';
-  exportButton.textContent = 'Export full Assembly';
+  exportButton.textContent = 'Export Assembly .wafercad';
   const actions = document.createElement('div');
   actions.className = 'assembly-bond-draft-actions';
-  actions.append(apply, exportButton);
+  const exportBaseline = document.createElement('button');
+  exportBaseline.type = 'button';
+  exportBaseline.textContent = 'Bond baseline only';
+  actions.append(apply, exportButton, exportBaseline);
   form.append(actions);
   const status = document.createElement('p');
   status.className = 'assembly-bond-draft-status';
@@ -126,8 +130,8 @@ export function mountAssemblyBondDraftControls({
   const processInfo = document.createElement('p');
   processInfo.textContent =
     'Supported: full-face directional Deposit or Etch. New films are pink for display only ' +
-    '(physical thickness unchanged). Export all Variants to retain Process steps; ' +
-    '.wafercad exports Bond baseline only.';
+    '(physical thickness unchanged). Export Assembly .wafercad retains every Process and Variant; ' +
+    'the separate Bond baseline export intentionally omits post-Bond Process.';
   const processType = document.createElement('select');
   processType.setAttribute('aria-label', 'Post-Bond Process operation');
   for (const [value, label] of [
@@ -224,11 +228,8 @@ export function mountAssemblyBondDraftControls({
     apply.disabled = busy || !atHead || editor.maxIndex() >= 7;
     donorFile.disabled = busy || !atHead;
     exportButton.disabled = busy || editor.maxIndex() === 0;
-    exportButton.textContent = processSteps
-      ? 'Export Bond baseline only'
-      : all.length > 1
-        ? 'Export active Assembly'
-        : 'Export full Assembly';
+    exportButton.textContent = 'Export Assembly .wafercad';
+    exportBaseline.disabled = busy || editor.maxIndex() === 0;
     const processForkAvailable = atHead && processIndex < processSteps;
     forkButton.disabled = busy || (atHead && !processForkAvailable);
     forkButton.textContent = processForkAvailable
@@ -311,8 +312,7 @@ export function mountAssemblyBondDraftControls({
         },
       };
       await editor.appendPostBondStepDurable(input);
-      status.textContent =
-        'Post-Bond geometry saved. Export all Variants; .wafercad is baseline only.';
+      status.textContent = 'Post-Bond Process saved. Export Assembly .wafercad to retain the full timeline.';
       onChanged();
     } catch (error) {
       status.dataset.error = 'true';
@@ -427,16 +427,21 @@ export function mountAssemblyBondDraftControls({
   });
   exportButton.addEventListener('click', () => {
     try {
-      const project = editor.fullProduct();
-      downloadProject(project, 'wafercad-bonded-assembly.wafercad');
+      downloadAssemblyWorkspace(editor.exportVariantGraph());
       status.dataset.error = 'false';
-      const graph = editor.exportVariantGraph();
-      const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
-      status.textContent = active?.postBondSteps?.length
-        ? 'Exported source Bond baseline WITHOUT post-Bond Process. Export all Variants to retain Process geometry.'
-        : editor.listVariants().length > 1
-          ? 'Exported active branch only. Export all Variants to keep the other branches.'
-          : 'Full Assembly export initiated, including every source Recipe/History.';
+      status.textContent =
+        'Full Assembly Workspace exported: source wafers, every Bond, Process Recipe and Variant.';
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+    }
+  });
+  exportBaseline.addEventListener('click', () => {
+    try {
+      downloadProject(editor.fullProduct(), 'wafercad-bond-baseline-only.wafercad');
+      status.dataset.error = 'false';
+      status.textContent =
+        'Exported Bond baseline only. Post-Bond Process and alternative Variants are omitted.';
     } catch (error) {
       status.dataset.error = 'true';
       status.textContent = error?.message || String(error);

@@ -12,6 +12,7 @@ const { migrateProjectFile } = await import('../../site/project-schema.js');
 const { createWaferAssembly, appendWaferToAssembly, createBondedAssemblyProject } =
   await import('../../site/wafer-assembly.js');
 const { serializeProject, readProjectFile } = await import('../../site/project-io.js');
+const { readAssemblyWorkspaceFile } = await import('../../site/wafer-assembly-workspace-file.js');
 
 function source(name, thickness = 400) {
   const model = createModel({ shape: 'rect', width: 100, height: 80, thickness });
@@ -153,7 +154,7 @@ try {
     );
 
     const exportPromise = page.waitForEvent('download', { timeout: 30000 });
-    await page.getByRole('button', { name: 'Export full Assembly' }).click();
+    await page.getByRole('button', { name: 'Bond baseline only' }).click();
     const downloaded = await exportPromise;
     const bytes = await readFile(await downloaded.path());
     const reloaded = await readProjectFile({
@@ -501,6 +502,60 @@ try {
       assert.equal(savedGraph.branches[0].postBondSteps.length, 2);
       assert.equal(savedGraph.branches[0].postBondCursor, 1);
       assert.equal(savedGraph.branches[1].postBondSteps.length, 0);
+      // A native .wafercad Workspace must reopen all sources, Process cursors,
+      // checksum-verified geometry and inactive Variants without a sidecar.
+      const workspaceDownload = processTab.waitForEvent('download', { timeout: 30000 });
+      await processTab.getByRole('button', { name: 'Export Assembly .wafercad' }).click();
+      const workspaceFile = await workspaceDownload;
+      assert.match(workspaceFile.suggestedFilename(), /\\.wafercad$/);
+      const workspaceBytes = await readFile(await workspaceFile.path());
+      const workspace = await readAssemblyWorkspaceFile({
+        name: workspaceFile.suggestedFilename(),
+        size: workspaceBytes.length,
+        text: async () => workspaceBytes.toString('utf8'),
+      });
+      assert.deepEqual(workspace.graph, savedGraph);
+      assert.equal(workspace.graph.sources.length, 4);
+      assert.equal(workspace.graph.branches[0].postBondCursor, 1);
+      const nativeTab = await context.newPage();
+      try {
+        await nativeTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await nativeTab.getByLabel('Open bonded Assembly project').setInputFiles({
+          name: workspaceFile.suggestedFilename(),
+          mimeType: 'application/json',
+          buffer: workspaceBytes,
+        });
+        await nativeTab.waitForFunction(
+          () => window.WaferCadV2Workstation?.ready,
+          null,
+          { timeout: 90000 },
+        );
+        await nativeTab.locator('.assembly-bond-draft-tools summary').click();
+        await nativeTab
+          .locator('.assembly-bond-post-process-count')
+          .filter({ hasText: /Process 1 \\/ 2/ })
+          .waitFor();
+        assert.match(
+          await nativeTab.locator('.assembly-preview-stage').textContent(),
+          /Z 1201.8 µm/,
+        );
+        assert.equal(await nativeTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(), 2);
+        await nativeTab.getByRole('button', { name: 'Redo Assembly history' }).click();
+        await nativeTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
+        );
+        await nativeTab.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
+        await nativeTab.waitForFunction(() =>
+          document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1150 µm'),
+        );
+        await nativeTab.screenshot({
+          path: resolve(output, 'native-workspace-reopened-two-variants.png'),
+        });
+      } finally {
+        await nativeTab.close();
+      }
 
       const restoredProcessTab = await context.newPage();
       try {
@@ -684,7 +739,7 @@ try {
     );
 
     const downloadPromise = firstPage.waitForEvent('download', { timeout: 30000 });
-    await firstPage.getByRole('button', { name: 'Export full Assembly' }).click();
+    await firstPage.getByRole('button', { name: 'Bond baseline only' }).click();
     const exportFile = await downloadPromise;
     const fileBytes = await readFile(await exportFile.path());
     const assembled = await readProjectFile({

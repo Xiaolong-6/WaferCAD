@@ -1,5 +1,6 @@
 // Isolated v15 Assembly preview: no normal editor import and no writer lease.
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
+import { ASSEMBLY_WORKSPACE_FORMAT, parseAssemblyWorkspace } from '../wafer-assembly-workspace-file.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 import { validateProjectFile } from '../project-schema.js';
 import {
@@ -87,6 +88,21 @@ export async function readAssemblyPreviewFile(
   if (!Number.isFinite(file.size) || file.size > MAX_PROJECT_FILE_BYTES) {
     throw new Error('Assembly project exceeds the supported project-file size limit.');
   }
+  // A portable Assembly Workspace keeps Process and Variant provenance.
+  // Ordinary bonded v15 files remain readable as immutable baselines.
+  let decoded = null;
+  try {
+    decoded = JSON.parse(await file.text());
+  } catch {
+    // Preserve the normal project's dedicated JSON error handling.
+  }
+  if (decoded?.format === ASSEMBLY_WORKSPACE_FORMAT) {
+    const { project: data, graph } = parseAssemblyWorkspace(decoded);
+    if (!allowStandalone && !data.waferAssembly) {
+      throw new Error('Assembly preview requires at least one Bond.');
+    }
+    return { source: file.name, hash: '', data, variantGraph: graph };
+  }
   const data = await readProject(file);
   if (!data?.waferAssembly || !Array.isArray(data.waferAssembly.sources)) {
     if (!allowStandalone) {
@@ -116,8 +132,8 @@ export function chooseAssemblyPreviewFile(
   title.textContent = allowStandalone ? 'Assembly · Direct Bond draft' : 'Assembly Preview';
   const description = document.createElement('p');
   description.textContent = allowStandalone
-    ? 'Open an independent wafer, an Assembly or an exported Variants sidecar. Source provenance is validated before opening; export changes explicitly.'
-    : 'Inspect an existing bonded .wafercad file and its original wafers. Read-only: no edits, workspace takeover, or autosave.';
+    ? 'Open a wafer, a complete Assembly Workspace .wafercad, a Bond baseline, or an older Variants sidecar. All source Recipes and branch geometry are validated before editing.'
+    : 'Inspect a bonded .wafercad baseline or full Assembly Workspace with its original wafers. Read-only: no edits, workspace takeover, or autosave.';
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = allowStandalone ? '.wafercad,.wafercad-variants.json' : '.wafercad';

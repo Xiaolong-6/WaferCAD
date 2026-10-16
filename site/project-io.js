@@ -809,6 +809,11 @@ export async function readProjectFile(file) {
     throw new Error('Project file is not valid JSON.');
   }
 
+  if (parsed?.format === 'WaferCAD-assembly-workspace') {
+    throw new Error(
+      'Full Assembly Workspace requires the source-aware Assembly editor; ordinary Workstation import is disabled.',
+    );
+  }
   expandProjectStorage(parsed);
   const project = validateProjectFile(migrateProjectFile(parsed));
   return validateBondedAssemblyProject(project);

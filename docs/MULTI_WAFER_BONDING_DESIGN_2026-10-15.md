@@ -350,3 +350,23 @@ post-Bond Process, normal Workstation project editing, production `.wafercad`
 transport of post-Bond Recipe, complete Quality and deployment acceptance
 remain separate gates. A normal `.wafercad` export remains the Bond
 baseline; the Variant sidecar is required for derived Process provenance.
+
+## October 16 — portable full Assembly Workspace .wafercad transport
+
+A versioned `WaferCAD-assembly-workspace` container (version 1) carries one
+shared source registry, every immutable Bond operation, all post-Bond Process
+Recipes/cursors and all Variants in a single `.wafercad` file. Import fully
+replays and validates the Variant graph and physical source projects before
+constructing the selected material view. No foreign product History or
+unrecognized fields are allowed to enter this container.
+
+The dedicated Assembly editor now exports the complete Workspace by default.
+The former baseline-only export remains available as an explicitly labelled
+option, and legacy `.wafercad-variants.json` sidecars remain readable. The
+ordinary Workstation importer intentionally refuses this distinct full
+Workspace container rather than dropping Process/Variant provenance. Older
+Bond-only v15 and standalone v14 projects retain their original semantics.
+
+This is a **scoped native Assembly editor transport milestone**; normal
+Workstation edit controls, Mask/ROI post-Bond semantics, broad Quality and
+release approval remain outstanding.
