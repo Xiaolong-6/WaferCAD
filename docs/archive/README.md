@@ -2,6 +2,14 @@
 
 This is an evidence index, not an alternative product contract. Canonical historical text lives under `docs/archive/`. Original files have been removed; internal documentation links point directly to the archived copies. Branch names, pending gates, test counts and measurements describe the recorded revision. Start from the [documentation map](../README.md) for current behavior.
 
+## Dated audits relocated on 2026-10-16
+
+- [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md)
+- [Export API reachability review](SITE_EXPORT_API_REVIEW_2026-10-13.md)
+- [Scientific symbol review](SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md)
+
+Their historical root URLs remain available as link-forwarding pages.
+
 ## Additional lifecycle dispositions (2026-10-15)
 
 The following are previously committed, revision-specific records preserved in full. Current rules and unresolved work remain in the documentation map and owning engineering contracts.

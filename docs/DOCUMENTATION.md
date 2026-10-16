@@ -1,5 +1,19 @@
 # Documentation architecture and maintenance
 
+## Folder ownership and compatibility
+
+| Folder | Document owner | Rule |
+| --- | --- | --- |
+| `docs/` | Stable root entrypoints: Architecture, Development, CI, Testing, Usage and documentation governance | Preserve existing links when migrating; old filenames can remain redirect pages. |
+| `docs/science/` | Current process, geometry, annotation and numerical contracts | Validate against the Kernel and scientific invariants. |
+| `docs/examples/` | Published example provenance, paper assumptions and device-specific evidence | Distinguish source-derived facts from illustrative values and dated checks. |
+| `docs/ui-v2/` | UI contracts, architecture notes and clearly dated implementation stages | Follow latest production code; do not treat older PR evidence as current gates. |
+| `docs/wiki/` | Public user manual (flat pages) and generated SVG guide assets | Wiki sync copies `docs/wiki/*.md` from Main; do not nest managed pages. |
+| `docs/archive/` | Dated, frozen historical reviews and handoff evidence | Retain original data, avoid reinterpreting historical validation. |
+| `docs/review/` | Existing visual evidence files | Preserve URLs and provenance; not live UI snapshots by default. |
+
+When relocating an already published Markdown document, retain its old URL as a short compatibility page, including its original heading anchors where feasible. Point navigation to the single canonical destination. Update or preserve repository-relative links and run the focused documentation check. Do not duplicate the full text across active folders or delete scientific provenance for cosmetic tidiness.
+
 ## Authority and readers
 
 **Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
