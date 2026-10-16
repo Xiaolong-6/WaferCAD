@@ -137,8 +137,7 @@ test('Bond checkpoints cannot accept a corrupted embedded source or forged root 
   const corrupted = structuredClone(root);
   corrupted.waferAssembly.sources[1].bytes += 1;
   assert.throws(
-    () =>
-      resolveAssemblyBondHistoryStep(corrupted, assemblyBondHistoryStep(root.waferAssembly, 1)),
+    () => resolveAssemblyBondHistoryStep(corrupted, assemblyBondHistoryStep(root.waferAssembly, 1)),
     /bytes/,
   );
   assert.throws(() => assemblyBondCheckpoint(corrupted.waferAssembly, 0), /size\/provenance/);
