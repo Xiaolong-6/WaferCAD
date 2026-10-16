@@ -152,19 +152,21 @@ export function createWorkstationRuntime(
     presentationRevision = null,
     originPresentationModel = null,
     originPresentationSource = null,
-    originPresentationAssembly = null;
+    originPresentationAssembly = null,
+    postBondPresentationModel = null;
   function renderModel() {
     if (assemblyPreview && state.waferAssembly) {
+      const displaySource = postBondPresentationModel || state.model;
       if (
         originPresentationModel &&
-        originPresentationSource === state.model &&
+        originPresentationSource === displaySource &&
         originPresentationAssembly === state.waferAssembly
       ) {
         return originPresentationModel;
       }
-      originPresentationSource = state.model;
+      originPresentationSource = displaySource;
       originPresentationAssembly = state.waferAssembly;
-      originPresentationModel = assemblyPreviewOriginModel(state.model, state.waferAssembly);
+      originPresentationModel = assemblyPreviewOriginModel(displaySource, state.waferAssembly);
       return originPresentationModel;
     }
     if (!renameFocus) return state.model;
@@ -250,6 +252,8 @@ export function createWorkstationRuntime(
     views.get('section')?.resetTransient();
     views.get('main')?.runtime.roi.clearDrawingMode();
     projectState.loadProjectSnapshot(snapshot);
+    postBondPresentationModel = null;
+    originPresentationModel = null;
     renameFocus = null;
     presentationModel = null;
     Object.assign(state, {
@@ -342,6 +346,15 @@ export function createWorkstationRuntime(
     counters,
     viewState,
     renderModel,
+    setPostBondPresentationModel(model) {
+      if (!assemblyBondEditor) {
+        throw new Error('Post-Bond presentation requires an isolated Assembly draft owner.');
+      }
+      // A derived view never becomes the canonical physical .wafercad model.
+      postBondPresentationModel = model ? structuredClone(model) : null;
+      originPresentationModel = null;
+      invalidate('main', 'section', 'three');
+    },
     setRenameFocus(focus) {
       renameFocus = focus;
       presentationModel = null;
