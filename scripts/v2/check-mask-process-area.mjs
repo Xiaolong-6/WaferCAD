@@ -1,11 +1,7 @@
 // Scientific invariant: Process/Mask ROI applies only within the selected physical footprint.
 import assert from 'node:assert/strict';
-import {
-  launchBrowser,
-  newUiPage,
-  showWorkstationView,
-  waitForPaint,
-} from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const browser = await launchBrowser();
@@ -27,7 +23,7 @@ try {
       await button.click();
       await waitForPaint(page);
     };
-    await showWorkstationView(page, 'mask');
+    await selectScientificView(page, 'mask', 1440);
     await command('mask-roi-toggle');
     await page.locator('[data-action="mask-roi-tool:square"]').click();
     const bounds = await page.locator('#maskCanvas').boundingBox();
