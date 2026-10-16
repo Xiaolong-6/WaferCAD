@@ -243,3 +243,64 @@ test('failed durable Process navigation restores prior cursor, graph and visual 
   assert.equal(h.session.processTimeline().index, 1);
   assert.equal(h.revision(), 1);
 });
+
+test('durable Process fork creates an independent Recipe suffix without replacing Main or source', async () => {
+  const h = host();
+  const first = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  const second = await h.session.appendPostBondStepDurable({
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  await h.session.restorePostBondStepDurable(1);
+  const forked = await h.session.createVariantDurable('alternate-process', 'Alternative cap');
+  assert.equal(forked.id, 'alternate-process');
+  assert.equal(h.session.processTimeline().index, 1);
+  assert.equal(h.session.processTimeline().length, 1);
+  assert.deepEqual(h.session.postBondPreviewModel(), first.model);
+  const alternative = await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'Al', thicknessUm: 0.4, face: 'front' },
+  });
+  assert.equal(h.confirmed().sources.length, 2);
+  assert.equal(h.confirmed().branches.length, 2);
+  assert.equal(h.confirmed().branches[0].postBondSteps.length, 2);
+  assert.equal(h.confirmed().branches[1].forkProcessIndex, 1);
+  assert.equal(h.confirmed().branches[1].postBondSteps.length, 2);
+  assert.notDeepEqual(alternative.model, second.model);
+  await h.session.switchVariantDurable('main');
+  assert.deepEqual(h.session.postBondPreviewModel(), first.model);
+  await h.session.restorePostBondStepDurable(2);
+  assert.deepEqual(h.session.postBondPreviewModel(), second.model);
+  await h.session.switchVariantDurable('alternate-process');
+  assert.deepEqual(h.session.postBondPreviewModel(), alternative.model);
+  assert.deepEqual(h.currentModel(), start().model);
+});
+
+test('rejected durable Process fork restores original Recipe cursor and physical view', async () => {
+  let deny = false;
+  const h = host({ reject: () => deny });
+  await h.session.appendPostBondStepDurable({
+    command: 'deposit',
+    params: { material: 'SiO2', thicknessUm: 1.8, face: 'front' },
+  });
+  await h.session.appendPostBondStepDurable({
+    command: 'etch',
+    params: { profile: 'directional', thicknessUm: 0.5, face: 'front' },
+  });
+  await h.session.restorePostBondStepDurable(1);
+  const baseline = h.session.exportVariantGraph();
+  const revision = h.revision();
+  deny = true;
+  await assert.rejects(
+    () => h.session.createVariantDurable('failed-process'),
+    /Simulated durable graph write failure/,
+  );
+  assert.deepEqual(h.session.exportVariantGraph(), baseline);
+  assert.equal(h.session.listVariants().length, 1);
+  assert.deepEqual(h.session.processTimeline(), { index: 1, length: 2, available: true });
+  assert.deepEqual(h.currentModel(), start().model);
+  assert.equal(h.revision(), revision);
+});
