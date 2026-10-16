@@ -3,10 +3,7 @@
 // The full donor source lineage remains owned by one canonical v15 product.
 import { createSnapshotManager } from './workspace-snapshots.js';
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
-import {
-  assemblyBondCheckpoint,
-  assemblyBondHistoryTimeline,
-} from './wafer-assembly-history.js';
+import { assemblyBondCheckpoint, assemblyBondHistoryTimeline } from './wafer-assembly-history.js';
 
 export function createAssemblyBondHistorySession(inputProject, options = {}) {
   validateBondedAssemblyProject(inputProject);
@@ -52,10 +49,7 @@ export function createAssemblyBondHistorySession(inputProject, options = {}) {
   const nodeIds = [];
   for (const operation of timeline.steps) {
     // Prepare the full physical stage before publishing its compact node.
-    const nextProject = assemblyBondCheckpoint(
-      canonicalProduct.waferAssembly,
-      operation.bondIndex,
-    );
+    const nextProject = assemblyBondCheckpoint(canonicalProduct.waferAssembly, operation.bondIndex);
     const previousIndex = cursorIndex;
     const previousProject = visibleProject;
     cursorIndex = operation.bondIndex;
