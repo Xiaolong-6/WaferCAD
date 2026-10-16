@@ -104,7 +104,58 @@ export function mountAssemblyBondDraftControls({
   variantExport.type = 'button';
   variantExport.textContent = 'Export all Variants';
   variants.append(variantsTitle, variantSelect, variantName, forkButton, variantExport);
-  panel.append(header, description, form, variants, status);
+  const process = document.createElement('section');
+  process.className = 'assembly-bond-post-process';
+  const processTitle = document.createElement('strong');
+  processTitle.textContent = 'Post-Bond Process · geometric preview';
+  const processInfo = document.createElement('p');
+  processInfo.textContent =
+    'Supported: full-face directional Deposit or Etch. This is source-bound geometry only. ' +
+    'Export all Variants to preserve the Process steps; .wafercad exports Bond baseline only.';
+  const processType = document.createElement('select');
+  processType.setAttribute('aria-label', 'Post-Bond Process operation');
+  for (const [value, label] of [
+    ['deposit', 'Deposit'],
+    ['etch', 'Etch'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    processType.append(option);
+  }
+  const processMaterial = document.createElement('input');
+  processMaterial.value = 'SiO2';
+  processMaterial.setAttribute('aria-label', 'Post-Bond Process material');
+  const processThickness = document.createElement('input');
+  processThickness.type = 'number';
+  processThickness.step = 'any';
+  processThickness.min = '0';
+  processThickness.value = '1.8';
+  processThickness.setAttribute('aria-label', 'Post-Bond Process thickness µm');
+  const processFace = document.createElement('select');
+  processFace.setAttribute('aria-label', 'Post-Bond Process face');
+  for (const value of ['front', 'back']) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value === 'front' ? 'Front' : 'Back';
+    processFace.append(option);
+  }
+  const processButton = document.createElement('button');
+  processButton.type = 'button';
+  processButton.textContent = 'Apply Process preview';
+  const processCount = document.createElement('span');
+  processCount.className = 'assembly-bond-post-process-count';
+  process.append(
+    processTitle,
+    processInfo,
+    processType,
+    processMaterial,
+    processThickness,
+    processFace,
+    processButton,
+    processCount,
+  );
+  panel.append(header, description, form, variants, process, status);
   root.append(panel);
 
   let busy = false;
@@ -119,10 +170,20 @@ export function mountAssemblyBondDraftControls({
       if (branch.active) variantSelect.value = branch.id;
     }
     const atHead = editor.currentIndex() === editor.maxIndex();
+    const graph = editor.exportVariantGraph();
+    const activeBranch = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+    const processSteps = activeBranch?.postBondSteps?.length || 0;
+    processCount.textContent = `${processSteps} saved geometry steps`;
+    processButton.disabled = busy || !atHead || editor.maxIndex() < 1 || processSteps >= 16;
+    processMaterial.disabled = processType.value !== 'deposit';
     apply.disabled = busy || !atHead || editor.maxIndex() >= 7;
     donorFile.disabled = busy || !atHead;
     exportButton.disabled = busy || editor.maxIndex() === 0;
-    exportButton.textContent = all.length > 1 ? 'Export active Assembly' : 'Export full Assembly';
+    exportButton.textContent = processSteps
+      ? 'Export Bond baseline only'
+      : all.length > 1
+        ? 'Export active Assembly'
+        : 'Export full Assembly';
     forkButton.disabled = busy || atHead;
     variantSelect.disabled = busy || all.length < 2;
     variantExport.disabled = busy;
@@ -131,6 +192,38 @@ export function mountAssemblyBondDraftControls({
       status.textContent = 'Return to the Assembly HEAD before adding another donor.';
     }
   };
+
+  processType.addEventListener('change', sync);
+  processButton.addEventListener('click', async () => {
+    if (busy || processButton.disabled) return;
+    busy = true;
+    status.dataset.error = 'false';
+    status.textContent = 'Validating geometry and publishing post-Bond Process…';
+    sync();
+    try {
+      const input = {
+        command: processType.value,
+        params: {
+          ...(processType.value === 'deposit'
+            ? { material: processMaterial.value.trim(), coverage: 'direct' }
+            : { profile: 'directional' }),
+          thicknessUm: Number(processThickness.value),
+          area: 'full',
+          face: processFace.value,
+        },
+      };
+      await editor.appendPostBondStepDurable(input);
+      status.textContent = 'Post-Bond geometry saved. Export all Variants; .wafercad is baseline only.';
+      onChanged();
+    } catch (error) {
+      status.dataset.error = 'true';
+      status.textContent = error?.message || String(error);
+      onChanged();
+    } finally {
+      busy = false;
+      sync();
+    }
+  });
 
   forkButton.addEventListener('click', async () => {
     if (busy) return;
@@ -238,8 +331,11 @@ export function mountAssemblyBondDraftControls({
       const project = editor.fullProduct();
       downloadProject(project, 'wafercad-bonded-assembly.wafercad');
       status.dataset.error = 'false';
-      status.textContent =
-        editor.listVariants().length > 1
+      const graph = editor.exportVariantGraph();
+      const active = graph.branches.find((branch) => branch.id === graph.activeBranchId);
+      status.textContent = active?.postBondSteps?.length
+        ? 'Exported source Bond baseline WITHOUT post-Bond Process. Export all Variants to retain Process geometry.'
+        : editor.listVariants().length > 1
           ? 'Exported active branch only. Export all Variants to keep the other branches.'
           : 'Full Assembly export initiated, including every source Recipe/History.';
     } catch (error) {
