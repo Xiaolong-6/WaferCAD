@@ -9,6 +9,7 @@ import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
 import { createAssemblyBondHistorySession } from '../wafer-assembly-history-session.js';
+import { createAssemblyBondEditorSession } from '../wafer-assembly-editor-session.js';
 import { assemblyPreviewOriginModel } from './assembly-preview.js';
 
 export async function loadWorkstationProject() {
@@ -259,19 +260,38 @@ export function createWorkstationRuntime(project, { assemblyPreview = false } = 
     validateStates: projectState.isValidSnapshotStates,
   });
   history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
-  const assemblyPreviewSession = assemblyPreview
+  let assemblyPreviewSession = assemblyPreview
     ? createAssemblyBondHistorySession(project.data)
     : null;
+  let assemblyBondEditor = null;
   function restoreAssemblyStage(index) {
-    if (!assemblyPreviewSession) throw new Error('Bond History preview is not active.');
-    const projectAtStage = assemblyPreviewSession.restoreIndex(index);
-    restore(projectAtStage);
-    // Stage reload restores source display settings; keep inspection outlines on.
+    const active = assemblyBondEditor || assemblyPreviewSession;
+    if (!active) throw new Error('Bond History preview is not active.');
+    const projectAtStage = active.restoreIndex(index);
+    if (!assemblyBondEditor) restore(projectAtStage);
     state.threeShowBorders = true;
     return projectAtStage;
   }
+  function createAssemblyBondDraftSession(checkpointRecovery) {
+    if (!assemblyPreviewSession || assemblyBondEditor) {
+      throw new Error('Bond draft editor requires one isolated Assembly preview.');
+    }
+    assemblyBondEditor = createAssemblyBondEditorSession(project.data, {
+      checkpointRecovery,
+      applyVisibleProject: (next) => {
+        restore(next);
+        state.threeShowBorders = true;
+        return true;
+      },
+      getVisibleModel: () => state.model,
+    });
+    return assemblyBondEditor;
+  }
   return {
-    assemblyPreviewSession,
+    get assemblyPreviewSession() {
+      return assemblyBondEditor || assemblyPreviewSession;
+    },
+    createAssemblyBondDraftSession,
     restoreAssemblyStage,
     state,
     local,
