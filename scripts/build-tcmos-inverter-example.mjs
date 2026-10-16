@@ -322,9 +322,7 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
       fail(site.id + ': ambiguous CNT');
     }
     const footprints = mask(site.mask);
-    const matches = footprints
-      .map((r, i) => (inRect(point, r) ? i : -1))
-      .filter((i) => i >= 0);
+    const matches = footprints.map((r, i) => (inRect(point, r) ? i : -1)).filter((i) => i >= 0);
     if (matches.length !== 1 || (site.rect !== undefined && matches[0] !== site.rect)) {
       fail(site.id + ': incorrect device footprint');
     }
@@ -1071,10 +1069,7 @@ export async function buildTcmosInverter({
     assert.ok(silicon, 'Well-tie validation requires an actual silicon contact site');
     return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
   });
-  const terminalNetProvenance = auditTcmosTerminalNetProvenance(
-    TCMOS_MASKS,
-    TCMOS_METAL_NETS,
-  );
+  const terminalNetProvenance = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
   const bodyTieContactEvidence = {
     provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
     contacts: auditSchematicBodyTieContacts(model, contactSites, v),

@@ -85,10 +85,7 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
   );
   const shorted = structuredClone(TCMOS_METAL_NETS);
   shorted[1].rectangles[0].w = 7;
-  assert.throws(
-    () => auditTcmosTerminalNetProvenance(TCMOS_MASKS, shorted),
-    /Metal1 short/,
-  );
+  assert.throws(() => auditTcmosTerminalNetProvenance(TCMOS_MASKS, shorted), /Metal1 short/);
   const shiftedContact = structuredClone(TCMOS_MASKS);
   shiftedContact.find(({ id }) => id === 10).rectangles[0].x += 1;
   assert.throws(
@@ -109,10 +106,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(validation.pass, true);
   assert.equal(validation.measuredGateLengthSourceReported, false);
   assert.equal(validation.terminalNetProvenance.terminals.length, 8);
-  assert.equal(
-    validation.terminalNetProvenance.physicalElectricalConnectivityVerified,
-    false,
-  );
+  assert.equal(validation.terminalNetProvenance.physicalElectricalConnectivityVerified, false);
   assert.deepEqual(validation.availableVariants, ['main', 'conventional-cmos']);
   assert.equal(project.layout.elements.length > 0, true);
   assert.equal(project.processRecipe.steps.length, validation.recipeSteps);

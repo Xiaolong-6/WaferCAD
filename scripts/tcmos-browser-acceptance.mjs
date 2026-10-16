@@ -30,6 +30,16 @@ const panel = async (key) => {
   await page.locator(`.p-nav [data-action="domain:${key}"]`).click();
   await waitForPaint(page);
 };
+// Project Open may return the workstation to Main-only view. Section is a
+// dock on desktop, and its maximize button must be visible before clicking.
+const revealSectionDock = async () => {
+  const dock = page.locator('#sectionPanel');
+  if (!(await dock.isVisible())) {
+    await page.locator('[data-action="section"]').click();
+  }
+  await dock.waitFor({ state: 'visible', timeout: 12000 });
+  await waitForPaint(page);
+};
 const exportProject = async () => {
   await panel('project');
   await page.locator('#projectExportMenuBtn').click();
@@ -321,13 +331,16 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-v2-after-runall.png') });
   // Figure 1a has device-scale details that cannot be judged in the four-view
   // thumbnail. Capture native maximized Section and 3D views for inspection.
-  const maximizeSection = page.locator('[data-action="maximize:section"]').first();
+  await revealSectionDock();
+  const maximizeSection = page.locator('[data-action="maximize:section"]:visible').first();
   await maximizeSection.click();
   await waitForPaint(page);
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-section-expanded.png') });
   await maximizeSection.click();
   await waitForPaint(page);
-  const maximizeThree = page.locator('[data-action="maximize:three"]').first();
+  await page.locator('[data-action="view:three"]').click();
+  await waitForPaint(page);
+  const maximizeThree = page.locator('[data-action="maximize:three"]:visible').first();
   await maximizeThree.click();
   await waitForPaint(page);
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
@@ -368,7 +381,8 @@ try {
     );
     assert.ok(local.ax < local.gateX && local.gateX < local.bx);
     await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
-    const expandLocal = page.locator('[data-action="maximize:section"]').first();
+    await revealSectionDock();
+    const expandLocal = page.locator('[data-action="maximize:section"]:visible').first();
     await expandLocal.click();
     await waitForPaint(page);
     assert.ok(
@@ -651,7 +665,8 @@ try {
     [18, 18],
   );
   assert.deepEqual(tiltState.section, { a: [-4.45, 0], b: [-2.95, 0] });
-  await page.locator('[data-action="maximize:section"]').first().click();
+  await revealSectionDock();
+  await page.locator('[data-action="maximize:section"]:visible').first().click();
   await waitForPaint(page);
   await page.screenshot({ path: resolve(dir, 'tcmos-tilt-18deg-NOT-PAPER-section.png') });
   report.tiltDiagnostic = { sourceSupported: false, tiltDegrees: 18, sectionSpanUm: 1.5 };
