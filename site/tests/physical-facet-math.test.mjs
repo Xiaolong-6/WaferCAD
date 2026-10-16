@@ -30,7 +30,6 @@ test('facet normal is unit length, consistent with analytic tangent slopes', () 
     const [nx, ny, nz] = sample.normal;
     const [gx, gy] = sample.gradient;
     assert.ok(Math.abs(Math.hypot(nx, ny, nz) - 1) < 1e-12);
-    assert.ok(Math.abs(nx * gx + nz * 1 * 0 - -gx * nz) < 1e-12);
     assert.ok(Math.abs(nx + gx * nz) < 1e-12);
     assert.ok(Math.abs(ny + gy * nz) < 1e-12);
   }
