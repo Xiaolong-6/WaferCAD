@@ -1,0 +1,56 @@
+name: SWX Benes 64x64 Array
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/swx-benes64-network.mjs'
+      - 'scripts/build-swx-benes64-array.mjs'
+      - 'scripts/swx-benes64-browser-acceptance.mjs'
+      - 'site/tests/swx-benes64-network.test.mjs'
+      - '.github/workflows/swx-benes64-array.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benes64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify 352-switch/1824-crossing Benes topology
+        run: node --test site/tests/swx-benes64-network.test.mjs
+      - name: Build full array WaferCAD project and validate roundtrip
+        run: node scripts/build-swx-benes64-array.mjs
+      - name: Install pinned Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start real UI v2
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > test-results/swx-benes64/server.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat test-results/swx-benes64/server.log
+          exit 1
+      - name: Real Chromium full 64x64 Mask import screenshot
+        run: node scripts/swx-benes64-browser-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benes64-array-importable-topology
+          path: test-results/swx-benes64/
+          if-no-files-found: warn
+          retention-days: 14
