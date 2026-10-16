@@ -207,3 +207,95 @@ test('strict material parity ignores JSON property order without relaxing values
   assert.equal(host.backups.length, 1);
   assert.deepEqual(host.getVisible().model, host.controller.fullProduct().model);
 });
+
+test('first direct Bond preserves independent source Recipe/History and creates one compact node', async () => {
+  const receiver = source('receiver A');
+  const donor = source('donor B');
+  const hostState = { visible: structuredClone(receiver), checkpoints: [] };
+  const session = createAssemblyBondEditorSession(receiver, {
+    checkpointRecovery: async (project, reason) => {
+      hostState.checkpoints.push({ project, reason });
+      return true;
+    },
+    applyVisibleProject: (project) => {
+      hostState.visible = structuredClone(project);
+      return true;
+    },
+    getVisibleModel: () => hostState.visible.model,
+  });
+  assert.equal(session.currentIndex(), 0);
+  assert.equal(session.maxIndex(), 0);
+  assert.deepEqual(session.listHistory(), []);
+  const first = await session.bond(donor, { receiverId: 'A', donorId: 'B' });
+  assert.equal(first.project.waferAssembly.sources.length, 2);
+  assert.deepEqual(first.project.waferAssembly.sources[0].project.model, receiver.model);
+  assert.deepEqual(first.project.waferAssembly.sources[1].project.model, donor.model);
+  assert.equal(session.listHistory().length, 1);
+  assert.equal(session.currentIndex(), 1);
+  assert.equal(hostState.checkpoints.length, 1);
+  assert.deepEqual(hostState.checkpoints[0].project, receiver);
+  assert.equal(hostState.checkpoints[0].reason, 'pre-wafer-bond');
+  const recovered = session.undo();
+  assert.equal(recovered.waferAssembly, undefined);
+  assert.deepEqual(recovered.model, receiver.model);
+  assert.deepEqual(session.redo().model, first.project.model);
+  assert.deepEqual(hostState.visible.model, first.project.model);
+  assert.equal(JSON.stringify(session.exportCompactHistory()).includes('regions'), false);
+  const saved = serializeProject(session.fullProduct());
+  const readBack = await readProjectFile({
+    size: Buffer.byteLength(saved),
+    text: async () => saved,
+  });
+  assert.deepEqual(readBack.waferAssembly, first.project.waferAssembly);
+});
+
+test('first Bond failure restores standalone receiver without phantom Assembly or History', async () => {
+  const receiver = source('receiver A');
+  let visible = structuredClone(receiver);
+  let failed = false;
+  const session = createAssemblyBondEditorSession(receiver, {
+    checkpointRecovery: async () => true,
+    applyVisibleProject: (project) => {
+      visible = structuredClone(project);
+      return true;
+    },
+    getVisibleModel: () => visible.model,
+    onCommit: () => {
+      if (!failed) {
+        failed = true;
+        throw new Error('Initial Bond operation rejected');
+      }
+    },
+  });
+  await assert.rejects(
+    () => session.bond(source('donor B'), { receiverId: 'A', donorId: 'B' }),
+    /Initial Bond operation rejected/,
+  );
+  assert.deepEqual(session.fullProduct(), receiver);
+  assert.deepEqual(visible.model, receiver.model);
+  assert.equal(session.currentIndex(), 0);
+  assert.equal(session.maxIndex(), 0);
+  assert.deepEqual(session.listHistory(), []);
+  const succeeding = await session.bond(source('donor B'), { receiverId: 'A', donorId: 'B' });
+  assert.equal(succeeding.project.waferAssembly.bonds.length, 1);
+});
+
+test('first Bond recovery refusal leaves standalone source unchanged and does not create History', async () => {
+  const receiver = source('receiver A');
+  let visible = structuredClone(receiver);
+  const session = createAssemblyBondEditorSession(receiver, {
+    checkpointRecovery: async () => false,
+    applyVisibleProject: (project) => {
+      visible = structuredClone(project);
+      return true;
+    },
+    getVisibleModel: () => visible.model,
+  });
+  await assert.rejects(
+    () => session.bond(source('donor B'), { receiverId: 'A', donorId: 'B' }),
+    /durable Recovery checkpoint was not created/,
+  );
+  assert.deepEqual(session.fullProduct(), receiver);
+  assert.deepEqual(visible, receiver);
+  assert.equal(session.maxIndex(), 0);
+});
