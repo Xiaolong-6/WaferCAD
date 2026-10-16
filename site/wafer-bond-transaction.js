@@ -101,14 +101,29 @@ export function prepareWaferBondTransaction(receiverProject, donorProject, reque
  * preserved source projects. The History record never carries mutable donor
  * model objects; the caller resolves the donor from canonical Assembly lineage.
  */
-export function replayWaferBondTransaction(receiverProject, donorProject, operation) {
+export function replayWaferBondTransaction(
+  receiverProject,
+  donorProject,
+  operation,
+  expectedProductProject,
+) {
   if (operation?.kind !== 'bond' || !operation.spec || !operation.donorId) {
     throw new Error('Bond History replay requires a recorded Bond specification.');
   }
   if (operation.spec.donorId !== operation.donorId) {
     throw new Error('Bond History donor ID does not match its recorded specification.');
   }
+  if (!expectedProductProject?.waferAssembly) {
+    throw new Error('Bond History replay requires the committed product Assembly baseline.');
+  }
+  validateBondedAssemblyProject(expectedProductProject);
   const recomputed = prepareWaferBondTransaction(receiverProject, donorProject, operation.spec);
+  if (
+    !exactProject(recomputed.project.waferAssembly, expectedProductProject.waferAssembly) ||
+    !exactProject(recomputed.project.model, expectedProductProject.model)
+  ) {
+    throw new Error('Bond History replay differs from the committed product Assembly.');
+  }
   for (const key of ['donorId', 'spec', 'contactAreaUm2', 'donorLayerIds']) {
     if (JSON.stringify(operation[key]) !== JSON.stringify(recomputed.operation[key])) {
       throw new Error(`Bond History replay has mismatched ${key} provenance.`);
