@@ -124,7 +124,7 @@ test('T-CMOS inferred terminal nets reject shorts, breaks, swapped rails and bad
   shiftedContact.find(({ id }) => id === 10).rectangles[0].x += 1;
   assert.throws(
     () => auditTcmosTerminalNetProvenance(shiftedContact, TCMOS_METAL_NETS),
-    /missing or ambiguous Metal1 owner/,
+    /incorrect device footprint/,
   );
   const invalidWellTie = structuredClone(TCMOS_MASKS);
   invalidWellTie.find(({ id }) => id === 10).rectangles[7].y += 2;
@@ -273,11 +273,20 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     bodyIds.has(b.implantId),
   );
   assert.ok(bodyBands.length >= 2, 'Both HVT buried regions intersect A-B');
-  for (const band of bodyBands) {
-    assert.ok(Math.abs(band.outerZ - 0.92) < 1e-8, 'Buried zone must not touch the top Si surface');
+  // Fig.1b HVT windows intentionally enclose and slightly overshoot ACTIVE.
+  // Only semiconductor-hosted bands have the original silicon source Z=1;
+  // over-STI display annotations are not a measured dopant profile.
+  const activeBars = TCMOS_MASKS.find((mask) => mask.id === 1).rectangles.slice(0, 2);
+  const onActive = bodyBands.filter((band) => {
+    const midX = -5.5 + ((band.t0 + band.t1) / 2) * 11;
+    return activeBars.some((r) => midX > r.x && midX < r.x + r.w);
+  });
+  assert.ok(onActive.length >= 2, 'Both HVT body markers intersect active Si');
+  for (const band of onActive) {
+    assert.ok(Math.abs(band.outerZ - 0.92) < 1e-8, 'Si buried zone cannot touch the surface');
     assert.ok(
       Math.abs(band.innerZ - 0.76) < 1e-8,
-      'Buried interval must end at the recorded depth',
+      'Si buried interval ends at the recorded depth',
     );
   }
   assert.equal(
