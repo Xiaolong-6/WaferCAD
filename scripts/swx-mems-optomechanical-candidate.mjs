@@ -9,6 +9,7 @@
  */
 import { createSwxGeometry, miteredPolyline } from './swx-mems-geometry.mjs';
 import { createSwxDoubleHairpin } from './swx-mems-compact-bends.mjs';
+import { createCompactSwxGuides } from './swx-mems-compact-guides.mjs';
 import { createCompactSwxActuator } from './swx-mems-actuator-candidate.mjs';
 import { SWX_COMPACT_GRATING_ASSUMPTIONS } from './swx-mems-compact-gratings.mjs';
 
@@ -99,6 +100,7 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
     SWX_INTERFACE_ASSUMPTIONS.bridgeWidthUm,
   );
   const opticalRouting = makeOpticalRouting(travel);
+  const guides = createCompactSwxGuides(travel);
   return {
     state,
     travelUm: travel,
@@ -109,18 +111,20 @@ export function createSwxOptomechanicalCandidate(state = 'off') {
       ...fixedStops,
       ...opticalRouting.fixed,
       ...opticalRouting.supportedPads,
+      ...guides.fixed,
     ],
     movable: [...actuator.movable, ...movableFacetsAndPorts, ...movableStops, ...mechanicalBridge],
-    flexure: [...actuator.flexure, ...opticalRouting.movingSpringWaveguides],
+    flexure: [...actuator.flexure, ...opticalRouting.movingSpringWaveguides, ...guides.flexure],
     actuator,
     optics: { fixedFacetsAndPorts, movableFacetsAndPorts, fixedStops, movableStops },
     mechanicalBridge,
     opticalRouting,
+    guides,
     integrationStatus: 'optical-four-port-routing-candidate-no-wafercad-project',
     unresolved: [
       'Both moving optical legs carry S6 5/3um semicircles; placement, elastic deformation and FDTD losses remain unverified',
       'Shallow grating groove masks are illustrative; source pitch and coupling efficiency unverified',
-      'Guided mechanical aligner supports have not yet been reconstructed',
+      'Two S7-sized 7um/100nm aligners modeled; placement and predicted FEM stiffness remain unverified',
       'BOX undercut, electrode insulation and complete process History need new verification',
       'Interface placement and mechanical-bridge thickness are illustrative, not published author GDS',
     ],
