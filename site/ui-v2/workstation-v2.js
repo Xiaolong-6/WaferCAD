@@ -2,6 +2,7 @@
 // All domain lifecycle and visible business state arrive through an adapter/presentation API.
 (() => {
   const { el, button, divider } = window.WaferCadV2Components;
+  const production = document.body.hasAttribute('data-workstation');
   window.createWaferCadV2Workstation = ({
     root,
     state,
@@ -55,7 +56,8 @@
       'aria-label': 'Collapse workflow panel',
       'data-help': 'shell.navigation',
     });
-    navHost.append(navLabel, ...navButtons.values(), hideEditor);
+    navHost.append(navLabel, ...navButtons.values(), ...(production ? [] : [hideEditor]));
+    if (production) topbar.append(hideEditor);
     // Mobile uses this exact navigation host as a fixed bottom dock. Reparent
     // stable buttons instead of creating duplicate actions or domain adapters.
     const mobileEdit = button('Edit', 'show-editor', 'process', {
@@ -147,7 +149,6 @@
       viewbar,
       canvases,
     );
-    const body = el('div', { class: 'p-body' }, navHost, inspector, emptyStrip, separator, stage);
     const status = el(
       'footer',
       { class: 'p-status', role: 'status', 'aria-live': 'polite' },
@@ -184,12 +185,21 @@
     };
     const overlays = window.WaferCadV2Overlays.create({ root, portals });
     window.WaferCadV2ActiveOverlays = overlays;
+    // Production owns a true two-column shell. The M2 standalone prototypes
+    // retain their own layout tree; both paths share the same stable adapters.
+    const sidebar = production
+      ? el('aside', { class: 'p-sidebar', 'aria-label': 'Project and workflow' }, topbar, navHost, inspector, emptyStrip)
+      : null;
+    const workspace = production
+      ? el('section', { class: 'p-workspace', 'aria-label': 'Scientific workspace' }, stage, status)
+      : null;
+    const body = production
+      ? el('div', { class: 'p-body' }, sidebar, separator, workspace)
+      : el('div', { class: 'p-body' }, navHost, inspector, emptyStrip, separator, stage);
     const workbench = el(
       'div',
       { class: 'p-workbench', 'data-layout': state.layout },
-      topbar,
-      body,
-      status,
+      ...(production ? [body] : [topbar, body, status]),
       ...Object.values(portals),
     );
     root.replaceChildren(workbench);
@@ -216,7 +226,7 @@
     }
 
     function bindDividers() {
-      const horizontal = state.layout === 'c';
+      const horizontal = !production && state.layout === 'c';
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
       separator.setAttribute(
         'aria-valuemax',
@@ -247,7 +257,7 @@
       separator.addEventListener('pointermove', (event) => {
         if (previous == null) return;
         const next = horizontal ? event.clientY : event.clientX;
-        update((next - previous) * (horizontal || state.layout === 'b' ? -1 : 1));
+        update((next - previous) * (horizontal || (!production && state.layout === 'b') ? -1 : 1));
         previous = next;
       });
       const release = () => {
@@ -286,7 +296,7 @@
               ? [...navButtons.values()]
               : [...viewButtons.values(), mobileSection]),
           ]
-        : [navLabel, ...navButtons.values(), hideEditor];
+        : [navLabel, ...navButtons.values(), ...(production ? [] : [hideEditor])];
       navHost.setAttribute(
         'aria-label',
         compact ? (state.mobile === 'edit' ? 'Edit workspaces' : 'Views') : 'Workspaces',
@@ -558,7 +568,7 @@
       mounted.dataset.mobile = state.mobile;
       if (state.panelSize) mounted.style.setProperty('--p-panel', `${state.panelSize}px`);
       if (state.bottomSize) mounted.style.setProperty('--p-bottom', `${state.bottomSize}px`);
-      const horizontalDivider = state.layout === 'c';
+      const horizontalDivider = !production && state.layout === 'c';
       separator.setAttribute(
         'aria-valuemax',
         String(horizontalDivider ? 380 : Math.max(240, window.innerWidth - 320)),
