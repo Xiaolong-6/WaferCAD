@@ -163,8 +163,7 @@ if (!semRegistration.semRegistrationAccepted) {
     semMovingSwxToCombUmApprox: semRegistration.semMovingSwxToCombUmApprox,
     sourceSignedAxialOffsetUmApprox: semRegistration.sourceSignedAxialOffsetUmApprox,
     candidateSignedAxialOffsetUm: semRegistration.candidateSignedAxialOffsetUm,
-    candidateFixedOpticalTerminalCentersUm:
-      semRegistration.candidateFixedOpticalTerminalCentersUm,
+    candidateFixedOpticalTerminalCentersUm: semRegistration.candidateFixedOpticalTerminalCentersUm,
     issues: semRegistration.hardBlockers,
     note: 'Measured SEM shows moving SWT with comb below it and two laterally opposed fixed upper optical leads. Current actuator sits on the opposite axial side and both fixed terminal pads are left. The long x=24um mechanical detour cannot be source-matched by repainting the perimeter or moving external pads alone. Co-design the SWX-to-shuttle frame, two fixed optical leads, S6 returns and supported terminals before source visual acceptance.',
     registrationAccepted: false,
