@@ -587,10 +587,24 @@ try {
   await waitForPaint(page);
   assert.equal((await snapshot()).ui.maximize, null, 'Section inspection must restore UI layout');
 
-  for (const view of ['main', 'mask', 'three']) {
-    await page.locator('[data-action="view:' + view + '"]').click();
+  // Desktop Overview (new native workspace) keeps multiple view panels
+  // mounted; older Single/mobile layouts expose explicit view:* actions.
+  // Exercise the active mode and assert a real panel instead of requiring a
+  // hidden/retired navigation button after the workstation shell migration.
+  async function showAndVerifyView(view) {
+    const panel = page.locator('#' + view + 'Panel');
+    const direct = page.locator('[data-action="view:' + view + '"]:visible');
+    if (await direct.count()) {
+      await direct.first().click();
+    } else if (!(await panel.isVisible())) {
+      const overview = page.locator('[data-action="mode:overview"]:visible');
+      assert.ok(await overview.count(), 'No real Overview route to ' + view + ' panel');
+      await overview.first().click();
+    }
     await waitForPaint(page);
+    assert.ok(await panel.isVisible(), 'Expected active ' + view + ' panel after navigation');
   }
+  for (const view of ['main', 'mask', 'three']) await showAndVerifyView(view);
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
@@ -751,8 +765,7 @@ try {
   // Real Mask-toolbar download, through the production export Worker. Select
   // all eleven author-unavailable *inferred* layers rather than the three
   // initially highlighted inspection layers.
-  await page.locator('[data-action="view:mask"]').click();
-  await waitForPaint(page);
+  await showAndVerifyView('mask');
   const maskBefore = await snapshot();
   const exportMenu = page.locator('[data-action="mask-export-menu"]');
   if (!(await exportMenu.isVisible()))
