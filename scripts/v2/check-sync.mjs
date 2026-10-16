@@ -120,12 +120,32 @@ try {
             );
             assert.deepEqual(presentation.displayed, ['mask']);
             assert.equal(presentation.maximized, 'mask');
+            assert.equal(await page.locator('#maskPanel').isVisible(), true);
+            assert.equal(
+              await page.locator('#mainPanel').isVisible(),
+              false,
+              'Temporary Mask focus must actually hide the other scientific views',
+            );
+            if (width === 1440)
+              await page.screenshot({
+                path: resolve(output, 'mask-temporary-focus-1440.png'),
+                animations: 'disabled',
+              });
             // The actual titlebar Restore control returns to exactly the
             // previous user dock arrangement, rather than saving a new layout.
             await page.locator('#maskPanel [data-action="maximize:mask"]').click();
             const restored = (await snap()).ui;
             assert.equal(restored.temporaryFocus, null);
             assert.deepEqual(restored.desktopLayout, initial.ui.desktopLayout);
+            assert.deepEqual(
+              projectDesktopLayout(restored.desktopLayout).displayed,
+              projectDesktopLayout(initial.ui.desktopLayout).displayed,
+            );
+            if (width === 1440)
+              await page.screenshot({
+                path: resolve(output, 'mask-focus-restored-1440.png'),
+                animations: 'disabled',
+              });
             await panel('mask');
           } else {
             assert.equal(maskNavigation.maximize, 'mask');
