@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/v2/profile-startup-ci.mjs'
       - 'scripts/v2/p1-offscreen-probe.mjs'
+      - 'scripts/v2/p1-worker-three-probe.mjs'
       - 'scripts/v2/p1-webgl-frame-correlation.mjs'
       - 'scripts/v2/p1-webgl-frame-correlation.test.mjs'
       - 'scripts/v2/p1-cpu-stack-diagnostics.mjs'
@@ -91,6 +92,7 @@ jobs:
         run: |
           node --check scripts/v2/profile-startup-ci.mjs
           node --check site/three-view.js
+          node --check scripts/v2/p1-worker-three-probe.mjs
       - name: Hardware adapter and frame attribution regression
         run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs scripts/v2/p1-webgl-frame-correlation.test.mjs scripts/v2/p1-cpu-stack-diagnostics.test.mjs scripts/v2/p1-scientific-model-evidence.test.mjs
       - name: Targeted renderer parity and History integrity tests
@@ -114,6 +116,8 @@ jobs:
           exit 1
       - name: Isolated Worker WebGL2 capability probe (informational)
         run: node scripts/v2/p1-offscreen-probe.mjs
+      - name: Synthetic Three.js main versus Worker pixel parity (informational)
+        run: node scripts/v2/p1-worker-three-probe.mjs
       - name: Legacy owner persistence and async storage regression
         timeout-minutes: 8
         shell: bash
