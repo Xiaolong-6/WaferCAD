@@ -84,6 +84,8 @@ for (const state of ['off', 'on']) {
     s6WaypointRegistrationSourceVerified: false,
     halfTurnsPerOpticalLeg: p.opticalRouting.movingCenterlines.map((line) => line.halfTurns.length),
     s7GuidesIntegrated: true,
+    s7GuideBeamsPerSide: p.guides.guides.map((guide) => (guide.beam ? 1 : 0)),
+    s7SingleNarrowBeamTopologyFromSource: true,
     s7GuidesOriginalAnchorRegistrationVerified: false,
     s7CompleteSourceSchematicTopologyVerified: false,
     s7GuideSourceDimensionsUm: [7, 0.1, 1],
@@ -106,10 +108,19 @@ const blockers = [
     sourceDimensionsPreserved: true,
     includedInCompactProcessMask: true,
     fullSourceS7SchematicTopologyVerified: false,
+    schematicSingleAlignerBeamPerSide: true,
     sourceEvidence:
-      'Supplement Fig. S7a shows parallel/folded alignment flexures. The two-beam surrogate uses an unreported 0.8um spacing and inferred pad coordinates; it is still not equivalent to original GDS or FEM.',
+      'Direct check of Supplement Fig. S7a: the structural aligner is one 100nm narrow beam between wide ends; the adjacent multiply folded diagram is the folded spring. Removed unsupported dual-rail S7 aligners. The two anchor locations and stiffness still lack GDS/FEM verification.',
   },
 ];
+blockers.push({
+  id: 's8-shuttle-perforation-and-spring-registration',
+  kind: 'source-figure-topology-unverified',
+  note: 'Article Fig. 1c depicts triangular shuttle perforations and two folded-spring pairs alongside the shuttle; the compact candidate uses an illustrative rectangular-rung ladder and inferred spring-anchor placement. Do not call mechanical source fidelity accepted without topology and layout reconciliation.',
+  sourceFigure: 'article Fig. 1c / Supplement Fig. S8a',
+  perforationPatternVerified: false,
+  foldedSpringAnchorRegistrationVerified: false,
+});
 const compactExtent = prototype.off.candidateMaskFootprintUm;
 if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[index])) {
   blockers.push({
