@@ -864,7 +864,17 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
+  // Fit includes every modeled tier in Z. Zoom the clipped scene slightly
+  // further to make its Pd landing and digital-RRAM island inspectable.
+  const fittedRoiCamera = (await snapshot()).threeCamera;
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.wheel(0, -380);
+  await waitForPaint(page);
   const localRoiCamera = (await snapshot()).threeCamera;
+  assert.ok(
+    cameraDistance(localRoiCamera) < cameraDistance(fittedRoiCamera),
+    'Clipped 3D inspection zoom must reduce actual camera distance',
+  );
   const localRoiCapture = await captureVisibleThree(
     page,
     resolve(output, 'three-local-clipped-cntfet-pd-rram.png'),
@@ -893,6 +903,15 @@ try {
   // required to roundtrip byte-for-byte.
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
+  // Local ROI editing can leave the dock in a genuine Single 3D view.
+  // Return to the visible Section Layers owner before checking real toggles.
+  if (!(await sectionPanel.isVisible())) {
+    const nativeSection = page.locator('[data-action="dock:view:section"]:visible');
+    if (await nativeSection.count()) await nativeSection.first().click();
+    else await page.locator('[data-action="section"]').click();
+    await waitForPaint(page);
+  }
+  assert.ok(await sectionPanel.isVisible(), 'Section Layers must be visible for restoration');
   for (const id of activeStackHiddenLayerIds) await checkboxFor(id).check();
   await waitForPaint(page);
   if (!zoomWasActive) await zoomControl3d.click();
