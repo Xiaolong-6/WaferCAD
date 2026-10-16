@@ -10,9 +10,7 @@ const output = 'test-results/p1-startup-cpu/surface-groups-feasibility.json';
 await mkdir('test-results/p1-startup-cpu', { recursive: true });
 const browser = await launchBrowser();
 try {
-  const { page, context } = await newUiPage(browser, {
-    viewport: { width: 1440, height: 900 },
-  });
+  const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 900 } });
   try {
     await page.goto(base + '/app.html?start=example&example=m3d', {
       waitUntil: 'domcontentloaded',
@@ -59,11 +57,8 @@ try {
           worker.terminate();
         }
         const workerWallMs = Math.round(performance.now() - start);
-        const exact = Boolean(
-          answer?.ok &&
-            answer.face === face &&
-            JSON.stringify(answer.groups) === JSON.stringify(baseline),
-        );
+        const geometryEqual = JSON.stringify(answer?.groups) === JSON.stringify(baseline);
+        const exact = answer?.ok === true && answer.face === face && geometryEqual;
         faces.push({
           face,
           exact,
