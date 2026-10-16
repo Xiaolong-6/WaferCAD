@@ -35,7 +35,13 @@ function matchesRecordedBond(operation, step) {
 
 export function createAssemblyBondEditorSession(
   initialProduct,
-  { checkpointRecovery, applyVisibleProject, getVisibleModel, onCommit = () => {}, variantGraph = null } = {},
+  {
+    checkpointRecovery,
+    applyVisibleProject,
+    getVisibleModel,
+    onCommit = () => {},
+    variantGraph = null,
+  } = {},
 ) {
   if (typeof checkpointRecovery !== 'function') {
     throw new Error('Assembly editor requires a durable Recovery checkpoint owner.');
@@ -50,18 +56,14 @@ export function createAssemblyBondEditorSession(
   let graph = variantGraph
     ? structuredClone(validateAssemblyVariantGraph(variantGraph))
     : createAssemblyVariantGraph(initialProduct);
-  if (
-    variantGraph &&
-    !same(assemblyVariantProject(graph).model, initialProduct.model)
-  ) {
+  if (variantGraph && !same(assemblyVariantProject(graph).model, initialProduct.model)) {
     throw new Error('Assembly Variant workspace differs from selected physical project.');
   }
   let history = initialProduct.waferAssembly
     ? createAssemblyBondHistorySession(initialProduct)
     : null;
   const fullProduct = () => (history ? history.fullProduct() : assemblyVariantProject(graph));
-  const currentProject = () =>
-    history ? history.currentProject() : assemblyVariantProject(graph);
+  const currentProject = () => (history ? history.currentProject() : assemblyVariantProject(graph));
   const currentIndex = () => (history ? history.currentIndex() : 0);
   const maxIndex = () => (history ? history.maxIndex() : 0);
   let committing = false;
@@ -130,9 +132,7 @@ export function createAssemblyBondEditorSession(
     if (!same(project.model, currentProject().model)) {
       throw new Error('Assembly Variant fork changed its source geometry.');
     }
-    const nextHistory = project.waferAssembly
-      ? createAssemblyBondHistorySession(project)
-      : null;
+    const nextHistory = project.waferAssembly ? createAssemblyBondHistorySession(project) : null;
     applyVariantProject(project, 'fork');
     graph = candidate;
     history = nextHistory;
@@ -145,9 +145,7 @@ export function createAssemblyBondEditorSession(
     if (!visibleParity()) throw new Error('Bond workspace material drift; switch refused.');
     const candidate = activateAssemblyVariant(graph, id);
     const project = assemblyVariantProject(candidate);
-    const nextHistory = project.waferAssembly
-      ? createAssemblyBondHistorySession(project)
-      : null;
+    const nextHistory = project.waferAssembly ? createAssemblyBondHistorySession(project) : null;
     applyVariantProject(project, 'switch');
     graph = candidate;
     history = nextHistory;
