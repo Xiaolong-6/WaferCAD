@@ -262,9 +262,27 @@ export function mountAssemblyPreviewControls({
     forward.disabled = index === maxIndex();
     nav.dataset.bondIndex = String(index);
   };
-  const navigate = (delta) => {
-    restoreIndex(currentIndex() + delta);
-    sync();
+  let navigating = false;
+  const navigate = async (delta) => {
+    if (navigating) return;
+    navigating = true;
+    backward.disabled = true;
+    forward.disabled = true;
+    try {
+      await restoreIndex(currentIndex() + delta);
+      stage.dataset.error = 'false';
+      sync();
+    } catch (error) {
+      stage.dataset.error = 'true';
+      stage.textContent = error?.message || String(error);
+    } finally {
+      navigating = false;
+      if (stage.dataset.error !== 'true') sync();
+      else {
+        backward.disabled = currentIndex() === 0;
+        forward.disabled = currentIndex() === maxIndex();
+      }
+    }
   };
   backward.addEventListener('click', () => navigate(-1));
   forward.addEventListener('click', () => navigate(1));
