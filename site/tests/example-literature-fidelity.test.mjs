@@ -107,6 +107,15 @@ test('Basiri-Esfahani microdisk preserves process chronology and a real void', a
     outside.some((entry) => entry.name.includes('SiO₂')),
     false,
   );
+  // Paper Results: approximately 230 ng. Derive mass independently from
+  // every saved SiO₂ polygon and physical thickness, not render pixels.
+  // 2.2 g/cm³ fused silica density = 0.0022 ng/µm³.
+  const silicaVolume = materialVolume(project, project.model, 'Thermal SiO₂');
+  const silicaMassNg = silicaVolume * 0.0022;
+  assert.ok(
+    Math.abs(silicaMassNg - 230) / 230 < 0.05,
+    `Physical SiO₂ mass ${silicaMassNg.toFixed(2)} ng differs from the paper's ~230 ng`,
+  );
 });
 
 test('PERC point contacts expose silicon but nearby rear regions remain insulated', async () => {
@@ -116,6 +125,26 @@ test('PERC point contacts expose silicon but nearby rear regions remain insulate
     (element) => element.layer === 5 && element.datatype === 0,
   );
   assert.equal(rearOpenings.length, 100);
+  // These are the saved engineering-mask grid coordinates, not author GDS.
+  // A count-only assertion would miss duplicate, shifted or missing cells.
+  const rearMetalPattern = project.layout.elements.filter(
+    (element) => element.layer === 6 && element.datatype === 0,
+  );
+  const gridPositions = Array.from({ length: 10 }, (_, i) => -9000 + 2000 * i);
+  const expectedCenters = new Set(
+    gridPositions.flatMap((x) => gridPositions.map((y) => `${x},${y}`)),
+  );
+  const centerKey = (element) => {
+    const count = element.points.length;
+    const [x, y] = element.points.reduce(
+      ([sumX, sumY], point) => [sumX + point[0], sumY + point[1]],
+      [0, 0],
+    );
+    return `${Math.round((x / count) * 1000) / 1000},${Math.round((y / count) * 1000) / 1000}`;
+  };
+  assert.equal(rearMetalPattern.length, 100);
+  assert.deepEqual(new Set(rearOpenings.map(centerKey)), expectedCenters);
+  assert.deepEqual(new Set(rearMetalPattern.map(centerKey)), expectedCenters);
   const steps = project.processRecipe.steps;
   assert.equal(steps.length, 17);
   const backWindow = steps.find((step) => step.command === 'etch' && step.params.face === 'back');
