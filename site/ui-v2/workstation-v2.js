@@ -189,7 +189,14 @@
     // Production owns a true two-column shell. The M2 standalone prototypes
     // retain their own layout tree; both paths share the same stable adapters.
     const sidebar = production
-      ? el('aside', { class: 'p-sidebar', 'aria-label': 'Project and workflow' }, topbar, navHost, inspector, emptyStrip)
+      ? el(
+          'aside',
+          { class: 'p-sidebar', 'aria-label': 'Project and workflow' },
+          topbar,
+          navHost,
+          inspector,
+          emptyStrip,
+        )
       : null;
     const workspace = production
       ? el('section', { class: 'p-workspace', 'aria-label': 'Scientific workspace' }, stage, status)
