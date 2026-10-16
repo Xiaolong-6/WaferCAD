@@ -28,9 +28,23 @@ test('matching v2 filenames do not turn partial test transfer into retirement ap
   const recipe = byPath.get('scripts/process-recipe-safety-regression.mjs');
   assert.equal(recipe.status, 'partial-candidate');
   assert.ok(recipe.draftPrs.includes(268));
+  assert.ok(
+    recipe.nativeCandidates.some(
+      (candidate) =>
+        candidate.path === 'scripts/v2/check-recipe-prefix-stop-parity.mjs' &&
+        candidate.existsOnBranch,
+    ),
+  );
   assert.ok(recipe.missingParity.some((gap) => /template/.test(gap)));
   const worker = byPath.get('scripts/process-transaction-ui-regression.mjs');
   assert.ok(worker.draftPrs.includes(265));
+  assert.ok(
+    worker.nativeCandidates.some(
+      (candidate) =>
+        candidate.path === 'scripts/v2/check-worker-fault-parity.mjs' && candidate.existsOnBranch,
+    ),
+  );
+  assert.ok(worker.missingParity.some((gap) => /interleavings/.test(gap)));
   const klayout = byPath.get('scripts/klayout-ui-compat.mjs');
   assert.equal(klayout.nativeCandidates.length, 2);
   assert.ok(klayout.missingParity.some((gap) => /export/.test(gap)));
