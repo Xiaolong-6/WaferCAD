@@ -1,4 +1,4 @@
-name: PR229 fully formatted paper science and real 3D closure
+name: PR229 bootstrapped geometry and real 3D science closure
 
 on:
   push:
