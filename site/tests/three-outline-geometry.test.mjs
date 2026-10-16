@@ -230,22 +230,12 @@ test('ROI contour matching clips only overlapping spans and retains material jun
   assert.ok(junction.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]));
 });
 
-test('stacked sections of continuous silicon never draw their shared Z-slab seam', () => {
+test('stacked silicon slabs share no black line, but silicon-oxide does', () => {
   const lower = { p: [0, 0], q: [4, 0], z0: 0, z1: 1, layerId: 'base' };
   const upper = { ...lower, z0: 1, z1: 2 };
-  const sameMaterial = sectionCutContours([lower, upper], [square]);
-  assert.ok(
-    !sameMaterial.some(([a, b]) => a[2] === 1 && b[2] === 1),
-    'internal silicon slab boundary is not an outline',
-  );
-  assert.ok(sameMaterial.some(([a, b]) => a[2] === 0 && b[2] === 0));
-  assert.ok(sameMaterial.some(([a, b]) => a[2] === 2 && b[2] === 2));
-
-  const film = { ...upper, layerId: 'oxide' };
-  assert.ok(
-    sectionCutContours([lower, film], [square]).some(
-      ([a, b]) => a[2] === 1 && b[2] === 1,
-    ),
-    'an actual silicon/oxide interface must remain visible',
-  );
+  const seam = ([a, b]) => a[2] === 1 && b[2] === 1;
+  const lines = sectionCutContours([lower, upper], [square]);
+  assert.equal(lines.some(seam), false, 'silicon slab split is not an interface');
+  const oxide = { ...upper, layerId: 'oxide' };
+  assert.equal(sectionCutContours([lower, oxide], [square]).some(seam), true);
 });
