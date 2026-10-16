@@ -9,6 +9,8 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import { createAssemblyBondDraftRecovery } from '../wafer-assembly-draft-recovery.js';
+import { mountAssemblyBondDraftControls } from './assembly-bond-draft.js';
 import {
   assemblyPreviewZExtent,
   chooseAssemblyPreviewFile,
@@ -20,6 +22,7 @@ try {
   window.WaferCadV2Icons.installSprite();
   const params = new URLSearchParams(window.location.search);
   const assemblyPreview = params.get('assemblyPreview') === '1';
+  const assemblyEdit = assemblyPreview && params.get('bondEdit') === '1';
   const readOnlyPreview = params.get('preview') === '1' || assemblyPreview;
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
@@ -306,8 +309,8 @@ try {
               assemblyPreview: {
                 index: store.assemblyPreviewSession.currentIndex(),
                 bonds: store.assemblyPreviewSession.maxIndex(),
-                sources: project.data.waferAssembly.sources.length,
-                readOnly: true,
+                sources: store.assemblyPreviewSession.fullProduct().waferAssembly.sources.length,
+                readOnly: !assemblyEdit,
                 originDisplayColors: [
                   ...new Set(store.renderModel().layers.map((layer) => layer.color)),
                 ],
@@ -322,13 +325,22 @@ try {
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
   if (assemblyPreview) {
+    const draftRecovery = assemblyEdit ? createAssemblyBondDraftRecovery() : null;
+    const draftEditor = assemblyEdit
+      ? store.createAssemblyBondDraftSession(async (value, reason) => {
+          await draftRecovery.checkpoint(value, reason);
+          return true;
+        })
+      : null;
     const session = store.assemblyPreviewSession;
-    mountAssemblyPreviewControls({
+    let draftUi = null;
+    const nav = mountAssemblyPreviewControls({
       currentIndex: () => session.currentIndex(),
       maxIndex: () => session.maxIndex(),
       stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.state.model).thicknessUm} µm`,
       restoreIndex: (index) => {
         store.restoreAssemblyStage(index);
+        draftUi?.sync();
         workflow.refresh();
       },
       selectView: (view) => {
@@ -340,7 +352,18 @@ try {
       },
       initialView,
     });
-    status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
+    if (draftEditor) {
+      draftUi = mountAssemblyBondDraftControls({
+        editor: draftEditor,
+        onChanged: () => {
+          nav.sync();
+          workflow.refresh();
+        },
+      });
+      status('Assembly Bond draft · durable Recovery before commit; export explicitly.');
+    } else {
+      status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
+    }
   }
   if (readOnlyPreview && window.parent !== window) {
     window.addEventListener('message', (event) => {
