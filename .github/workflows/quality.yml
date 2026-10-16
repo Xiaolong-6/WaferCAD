@@ -41,6 +41,10 @@ jobs:
           npm run docs:check
           node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs
 
+      - name: Temporary array test Prettier diff
+        if: failure()
+        run: npx prettier site/tests/array-6400-history.test.mjs | diff -u site/tests/array-6400-history.test.mjs -
+
       - name: Final lint, formatting, generated documentation and Node tests
         if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
         run: npm run check
