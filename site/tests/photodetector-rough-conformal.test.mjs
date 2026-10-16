@@ -91,7 +91,7 @@ test('Photodetector rough conformal geometry retains a 50 nm film', async () => 
   }
 });
 
-test('Photodetector independently budgeted conformal caps retain a 50 nm common-XY gap', async (t) => {
+test('Photodetector independent rough LOD keeps 50 nm gap at common XY', async (t) => {
   const url = new URL('../examples/photodetector-literature-examples.wafercad', import.meta.url);
   const { model } = expandProjectStorage(JSON.parse(await readFile(url, 'utf8')));
   const region = model.regions.find((item) => item.id === 'region-113');
@@ -139,15 +139,16 @@ test('Photodetector independently budgeted conformal caps retain a 50 nm common-
       const a = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / det;
       const b = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / det;
       const c = 1 - a - b;
-      if (a >= -1e-6 && b >= -1e-6 && c >= -1e-6)
+      if (a >= -1e-6 && b >= -1e-6 && c >= -1e-6) {
         return a * az + b * bz + c * cz;
+      }
     }
     throw new Error(`Sample (${x}, ${y}) is outside the rough cap`);
   };
   const sampleGap = (lower, upper) => {
     let maximumDeviation = 0;
     let minimumGap = Infinity;
-    for (let ix = 0; ix < 11; ix++)
+    for (let ix = 0; ix < 11; ix++) {
       for (let iy = 0; iy < 11; iy++) {
         // Interior, nonvertex barycentric samples on the actual tessellated
         // triangles: matching boundary endpoints alone cannot pass this.
@@ -157,6 +158,7 @@ test('Photodetector independently budgeted conformal caps retain a 50 nm common-
         minimumGap = Math.min(minimumGap, gap);
         maximumDeviation = Math.max(maximumDeviation, Math.abs(gap - thickness));
       }
+    }
     return { minimumGap, maximumDeviation };
   };
 
@@ -167,22 +169,27 @@ test('Photodetector independently budgeted conformal caps retain a 50 nm common-
     const appearance = { ...silicon.frontSurface, displayRoughBlend: blend };
     const caps = [
       { appearance, z: silicon.z1, normal: 1, profileNormal: 1 },
-      { appearance: { ...ald.frontSurface, displayRoughBlend: blend },
-        z: ald.z1, normal: 1, profileNormal: 1 },
+      {
+        appearance: { ...ald.frontSurface, displayRoughBlend: blend },
+        z: ald.z1,
+        normal: 1,
+        profileNormal: 1,
+      },
     ];
     const requests = caps.map((cap) => ({
       cap,
       appearance: cap.appearance,
       zone: { ...baseZone, lodContext: { ...lodContext } },
     }));
-    const makeMesh = (index) => meshGeometry.roughMeshDataFromPreparedCap({
-      z: caps[index].z,
-      normal: 1,
-      appearance: caps[index].appearance,
-      closeToIdeal: false,
-      analyticNormals: false,
-      lodZones: [requests[index].zone],
-    });
+    const makeMesh = (index) =>
+      meshGeometry.roughMeshDataFromPreparedCap({
+        z: caps[index].z,
+        normal: 1,
+        appearance: caps[index].appearance,
+        closeToIdeal: false,
+        analyticNormals: false,
+        lodZones: [requests[index].zone],
+      });
 
     const allocations = [8, 512];
     requests.forEach((request, index) => {
