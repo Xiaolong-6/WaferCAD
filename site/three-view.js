@@ -60,6 +60,7 @@ import {
   projectedPixelsPerUnit,
   roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
+  synchronizeConformalRoughLods,
   roughLod,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
@@ -2226,6 +2227,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 triangleBudget: null,
               };
             requests.push({
+              cap: task.cap,
               zone: prepared,
               appearance: task.cap.appearance,
               baseTriangles: Math.max(1, zone.baseTriangles.length),
@@ -2254,6 +2256,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     requests.forEach((request, index) => {
       request.zone.triangleBudget = allocations[index];
     });
+    // Equal seeded rough surfaces need identical display tessellation to
+    // preserve thin conformal spacing between their independent layer caps.
+    const conformalLodPairs = synchronizeConformalRoughLods(requests, allocations);
+    host.dataset.roughConformalLodPairs = String(conformalLodPairs);
     // Anti-alias unresolved features in the *displayed* stochastic heightfield
     // without increasing the scene triangle budget or changing stored geometry.
     const visibleArea = Math.max(1e-12, boundsArea(visibleBounds(context.model, context.clip))),
