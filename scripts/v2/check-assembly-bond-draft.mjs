@@ -139,6 +139,40 @@ try {
       baseline.waferAssembly.sources[0].project.model,
     );
     assert.deepEqual(reloaded.model, committed.model);
+    const recoveryPage = await context.newPage();
+    try {
+      const recoveryErrors = observePageErrors(recoveryPage);
+      await recoveryPage.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await recoveryPage.getByLabel('Assembly Bond Recovery checkpoint').waitFor();
+      await recoveryPage
+        .getByRole('button', { name: 'Restore pre-Bond checkpoint' })
+        .waitFor({ state: 'visible' });
+      await recoveryPage.waitForFunction(
+        () => {
+          const select = document.querySelector(
+            '[aria-label="Assembly Bond Recovery checkpoint"]',
+          );
+          return Boolean(select && select.options.length && !select.disabled);
+        },
+        null,
+        { timeout: 15000 },
+      );
+      await recoveryPage.getByRole('button', { name: 'Restore pre-Bond checkpoint' }).click();
+      await recoveryPage.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+        timeout: 90000,
+      });
+      const recovered = await recoveryPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.equal(recovered.assemblyPreview.sources, 2);
+      assert.equal(recovered.assemblyPreview.bonds, 1);
+      assert.deepEqual(recovered.model, baseline.model);
+      assert.equal(recovered.workflow.writable, false);
+      assert.deepEqual(recoveryErrors, []);
+    } finally {
+      await recoveryPage.close();
+    }
+
     assert.deepEqual(errors, [], 'No uncaught page errors during transaction or export');
     console.log('Native Assembly Bond draft: donor C, durable Recovery, Undo/Redo, export = OK');
   } finally {
