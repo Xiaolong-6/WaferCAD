@@ -1,4 +1,4 @@
-name: PR229 one-shot local TSV oxide build and browser proof
+name: PR229 one-shot verify centered full upper-package camera
 
 on:
   push:

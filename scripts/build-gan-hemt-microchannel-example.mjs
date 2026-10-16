@@ -804,9 +804,11 @@ export async function buildGanMicrochannel() {
     roi: { type: 'rect', a: [-1600, -750], b: [1600, 750] },
     section: { a: [-1500, 0], b: [1500, 0] },
     threeCamera: {
-      position: [1750, -2200, 1950],
+      // Symmetric oblique package inspection: both independent GSG chips
+      // must be fully visible without artificially scaling their geometry.
+      position: [0, -2200, 3150],
       target: [0, 0, 670],
-      fov: 36,
+      fov: 38,
     },
   });
 
