@@ -25,6 +25,38 @@ permissions:
   contents: read
 
 jobs:
+  one-time-svg-fixture:
+    name: One-time SVG Mask canonical fixture and formatting
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 225
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate Mask candidate from authoritative SVG
+        run: |
+          node scripts/build-tcmos-inverter-example.mjs
+          cp test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          npx prettier --write scripts/tcmos-svg-mask.mjs site/tests/tcmos-inverter-reconstruction.test.mjs scripts/build-tcmos-inverter-example.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+      - name: Commit exactly to the PR branch
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/tcmos-svg-mask.mjs site/tests/tcmos-inverter-reconstruction.test.mjs scripts/build-tcmos-inverter-example.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/README.md examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(tcmos-mask): sync source-authoritative SVG File Mask candidate"
+            git push origin "HEAD:${PR_BRANCH}"
+          fi
+
   paper-geometry:
     name: T-CMOS kernel, Recipe and storage
     runs-on: ubuntu-latest
