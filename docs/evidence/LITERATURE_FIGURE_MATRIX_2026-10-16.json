@@ -87,7 +87,7 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
     },
     {
       "id": "magic-1000-mos2-beol",
@@ -102,7 +102,7 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
     },
     {
       "id": "three-tier-silicon-jlfets",
@@ -132,7 +132,7 @@
         "quantitativeOverlay": false
       },
       "browserEvidenceURL": null,
-      "evidenceType": "canonical project and independent targeted regression; original paper-matched Chromium cut still missing"
+      "evidenceType": "canonical project and independent targeted regression; original paper-matched figure cut still missing"
     }
   ]
 }
