@@ -176,7 +176,8 @@ export function mountAssemblyBondDraftControls({
       anchor.remove();
       URL.revokeObjectURL(url);
       status.dataset.error = 'false';
-      status.textContent = 'Exported all source-shared Variants. Import this sidecar to reopen the complete branch graph.';
+      status.textContent =
+        'Exported all source-shared Variants. Import this sidecar to reopen the complete branch graph.';
     } catch (error) {
       status.dataset.error = 'true';
       status.textContent = error?.message || String(error);
