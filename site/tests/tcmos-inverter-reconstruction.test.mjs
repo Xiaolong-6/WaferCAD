@@ -284,10 +284,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.ok(onActive.length >= 2, 'Both HVT body markers intersect active Si');
   for (const band of onActive) {
     assert.ok(Math.abs(band.outerZ - 0.92) < 1e-8, 'Si buried zone cannot touch the surface');
-    assert.ok(
-      Math.abs(band.innerZ - 0.76) < 1e-8,
-      'Si buried interval ends at the recorded depth',
-    );
+    assert.ok(Math.abs(band.innerZ - 0.76) < 1e-8, 'Si buried interval ends at the recorded depth');
   }
   assert.equal(
     project.processRecipe.steps.filter(
@@ -366,8 +363,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     { name: 'GND', point: [3.95, 0] },
     { name: 'VIN pMOS gate', point: [-3, 0.75] },
     { name: 'VIN nMOS gate', point: [3, 0.75] },
-    { name: 'VDD pMOS body tie', point: [-5.04, -0.80] },
-    { name: 'GND nMOS body tie', point: [5.04, -0.80] },
+    { name: 'VDD pMOS body tie', point: [-5.04, -0.8] },
+    { name: 'GND nMOS body tie', point: [5.04, -0.8] },
   ];
   for (const {
     name,

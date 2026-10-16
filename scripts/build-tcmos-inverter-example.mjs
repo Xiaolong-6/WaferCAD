@@ -76,15 +76,15 @@ export const TCMOS_METAL_NETS = Object.freeze([
     name: 'VDD',
     rectangles: [
       ...bodyTapMetal(-3),
-      rect(-6.30, 2.16, 2.58, 0.58),
-      rect(-6.30, -1.28, 0.58, 4.02),
+      rect(-6.3, 2.16, 2.58, 0.58),
+      rect(-6.3, -1.28, 0.58, 4.02),
       rect(-4.18, -1.28, 0.46, 4.02),
     ],
   },
   {
     name: 'VOUT',
     rectangles: [
-      rect(-2.27, 2.10, 4.54, 0.54),
+      rect(-2.27, 2.1, 4.54, 0.54),
       rect(-2.27, -0.14, 0.41, 2.78),
       rect(1.86, -0.14, 0.41, 2.78),
     ],
@@ -101,9 +101,9 @@ export const TCMOS_METAL_NETS = Object.freeze([
   {
     name: 'VIN',
     rectangles: [
-      rect(-3.20, 0.61, 0.40, 3.02),
-      rect(2.80, 0.61, 0.40, 3.02),
-      rect(-3.20, 3.08, 6.40, 0.55),
+      rect(-3.2, 0.61, 0.4, 3.02),
+      rect(2.8, 0.61, 0.4, 3.02),
+      rect(-3.2, 3.08, 6.4, 0.55),
     ],
   },
 ]);
@@ -119,12 +119,12 @@ export const TCMOS_MASKS = Object.freeze([
   {
     id: 4,
     name: 'HVTN As+ pMOS buried body implant window',
-    rectangles: [rect(-4.20, -0.48, 2.40, 1.60)],
+    rectangles: [rect(-4.2, -0.48, 2.4, 1.6)],
   },
   {
     id: 5,
     name: 'HVTP BF2+ nMOS buried body implant window',
-    rectangles: [rect(1.80, -0.48, 2.40, 1.60)],
+    rectangles: [rect(1.8, -0.48, 2.4, 1.6)],
   },
   {
     id: 6,
@@ -175,12 +175,12 @@ export const TCMOS_MASKS = Object.freeze([
   {
     id: 12,
     name: 'LVTN reference CMOS channel window (not applied to T-CMOS)',
-    rectangles: [rect(-5.50, -1.51, 5.00, 3.25)],
+    rectangles: [rect(-5.5, -1.51, 5.0, 3.25)],
   },
   {
     id: 13,
     name: 'LVTP reference CMOS channel window (not applied to T-CMOS)',
-    rectangles: [rect(0.50, -1.51, 5.00, 3.25)],
+    rectangles: [rect(0.5, -1.51, 5.0, 3.25)],
   },
 ]);
 
@@ -1078,8 +1078,8 @@ export async function buildTcmosInverter({
     }),
   );
   const contactSites = [
-    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.04, -0.80] },
-    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.04, -0.80] },
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.04, -0.8] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.04, -0.8] },
   ].map((site) => {
     const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
     const silicon = region?.stack.find((segment) => segment.layerId === 'base');
