@@ -140,7 +140,10 @@ test('legacy v15 Bond-only and Variant sidecar remain readable alongside native 
     { allowStandalone: true },
   );
   assert.deepEqual(sidecar.variantGraph, graph);
-  assert.deepEqual(sidecar.data, parseAssemblyWorkspace(JSON.parse(serializeAssemblyWorkspace(graph))).project);
+  assert.deepEqual(
+    sidecar.data,
+    parseAssemblyWorkspace(JSON.parse(serializeAssemblyWorkspace(graph))).project,
+  );
 });
 
 test('unbonded source graph is editable only through explicit Assembly draft opt-in', async () => {

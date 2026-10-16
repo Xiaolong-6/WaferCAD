@@ -535,13 +535,16 @@ try {
         await nativeTab.locator('.assembly-bond-draft-tools summary').click();
         await nativeTab
           .locator('.assembly-bond-post-process-count')
-          .filter({ hasText: /Process 1 \\/ 2/ })
+          .filter({ hasText: /Process 1 \/ 2/ })
           .waitFor();
         assert.match(
           await nativeTab.locator('.assembly-preview-stage').textContent(),
           /Z 1201.8 µm/,
         );
-        assert.equal(await nativeTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(), 2);
+        assert.equal(
+          await nativeTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(),
+          2,
+        );
         await nativeTab.getByRole('button', { name: 'Redo Assembly history' }).click();
         await nativeTab.waitForFunction(() =>
           document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 1201.3 µm'),
