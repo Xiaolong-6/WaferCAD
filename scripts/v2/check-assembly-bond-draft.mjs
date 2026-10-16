@@ -624,15 +624,28 @@ try {
     assert.equal(afterFirst.assemblyPreview.index, 1);
     assert.equal(afterFirst.sharedIdentity, true);
     assert.equal(afterFirst.workflow.writable, false);
+    await firstPage
+      .locator('.assembly-bond-draft-status')
+      .filter({ hasText: /Bonded B/ })
+      .waitFor();
+    await firstPage.waitForFunction(() =>
+      document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 800 µm'),
+    );
     assert.match(await firstPage.locator('.assembly-preview-stage').textContent(), /Z 800 µm/);
     await firstPage.locator('.assembly-preview-views [data-view="three"]').click();
     await waitForPaint(firstPage);
     await firstPage.screenshot({ path: resolve(output, 'first-bond-two-independent-wafers.png') });
 
     await firstPage.getByRole('button', { name: '← Bond' }).click();
+    await firstPage.waitForFunction(() =>
+      document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 400 µm'),
+    );
     const undone = await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.deepEqual(undone.model, receiver.model);
     await firstPage.getByRole('button', { name: 'Bond →' }).click();
+    await firstPage.waitForFunction(() =>
+      document.querySelector('.assembly-preview-stage')?.textContent.includes('Z 800 µm'),
+    );
     assert.deepEqual(
       (await firstPage.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
       afterFirst.model,
