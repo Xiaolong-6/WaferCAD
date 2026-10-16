@@ -149,6 +149,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     findDopantPolarityOverlaps,
     findTerminalQualifiedDopantOverlaps,
     auditSchematicWellBodyCoverage,
+    auditDopantPhysicsEvidence,
   } = await import('../dopant-regions.js');
   const { geometryArea } = await import('../model.js');
   const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
@@ -198,6 +199,9 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     false,
     'Schematic electrical n-/p-well regions do not constitute calibrated well doping',
   );
+  assert.deepEqual(validation.physicsEvidence, auditDopantPhysicsEvidence(model));
+  assert.equal(validation.physicsEvidence.qualitativeWellIntentCount, 0);
+  assert.equal(validation.qualitativeJunctionEvidence.quantifiedWellDoping, false);
   assert.equal(validation.qualitativeJunctionEvidence.physicalJunctionResolved, false);
   assert.equal(validation.qualitativeJunctionEvidence.btbtCurrentComputed, false);
   const wellCoverage = auditSchematicWellBodyCoverage(model, v, geometryArea);

@@ -6,7 +6,7 @@
 
 - Literature: Jeong et al., *Nature Electronics* (2019), [DOI 10.1038/s41928-019-0272-8](https://doi.org/10.1038/s41928-019-0272-8), especially Fig. 1a–b, Methods and Supplementary Fig. 1.
 - Real Chromium acceptance: [run 38744110625](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625), [browser artifact 11978041932](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38744110625/artifacts/11978041932). Includes `browser-acceptance.json`, unmodified candidate, local-inspection derivatives and original PNG evidence.
-- Targeted Kernel/Recipe/storage and Chromium Run All on previous exact head `32373ce`: pass; Quality: pass. Later heads must be verified independently. The evidence is from the **existing CI Chromium run**, not a new local browser run.
+- Most recent verified exact-head evidence before this scientific-gate change: Head `61da11e` — [T-CMOS Kernel/Recipe/storage and Chromium Run All](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820768), [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820753), [Mask area](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820798), [full-array renderer](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820661) and [M3D Welcome](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38871820854): all pass. Subsequent heads require independent verification.
 
 ## Fig. 1a: source topology versus demonstrated model
 
@@ -49,6 +49,7 @@ HVT-only PNGs isolate one annotation via real Section visibility toggles; full-m
 - In illustrative geometry each pMOS and nMOS body/HDD annotation co-occupies Source area 1.287 µm² and Drain area 1.703 µm², Z=0.82–0.92 µm; **co-occupancy is not a PN junction**.
 - HVT annotation material clipped to matching schematic Well: 0.51584 µm³; residual silicon below STI outside matching Well: 0.01364 µm³, per device. Actual oxide stopping power/implant penetration is unknown.
 - Both Well ties geometrically contact Si/W/Metal1 with appropriate schematic well polarity; n+/p+ contact doping is missing and ohmic conduction not established.
+- The read-only `auditDopantPhysicsEvidence` gate rejects unsupported profile kinds and reports only **qualitative** well intents. Even adding a `role=well` intent or an unvalidated numeric concentration property cannot set `quantifiedWellDoping`, `physicalJunctionResolved`, `ohmicContactValidated` or `btbtCurrentComputed` to true. The present project schema has no calibrated net-doping or activation profile.
 - Candidate is immutable across these diagnostic-only refinements. The alternate 18° tilt demonstration is explicitly NOT PAPER.
 
 ## Acceptance decision and next stage

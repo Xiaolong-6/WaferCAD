@@ -1016,6 +1016,7 @@ export async function buildTcmosInverter({
     findTerminalQualifiedDopantOverlaps,
     auditSchematicWellBodyCoverage,
     auditSchematicBodyTieContacts,
+    auditDopantPhysicsEvidence,
   } = await import('../site/dopant-regions.js');
   const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
   const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
@@ -1067,6 +1068,7 @@ export async function buildTcmosInverter({
     return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
   });
   const terminalNetProvenance = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
+  const physicsEvidence = auditDopantPhysicsEvidence(model);
   const bodyTieContactEvidence = {
     provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
     contacts: auditSchematicBodyTieContacts(model, contactSites, v),
@@ -1090,15 +1092,16 @@ export async function buildTcmosInverter({
     dopantRegionIntents: model.dopantRegions.length,
     bodyTieContactEvidence,
     terminalNetProvenance,
+    physicsEvidence,
     qualitativeJunctionEvidence: {
       kind: 'terminal-clipped-opposite-polarity-cooccupancy',
       sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
       overlapAreaUm2: overlapAreas,
-      quantifiedWellDoping: model.dopantRegions.some((region) => region.role === 'well'),
+      quantifiedWellDoping: physicsEvidence.quantifiedWellDoping,
       schematicWellBodyCoverage: wellBodySummary,
       oxideStoppingPowerKnown: false,
-      physicalJunctionResolved: false,
-      btbtCurrentComputed: false,
+      physicalJunctionResolved: physicsEvidence.physicalJunctionResolved,
+      btbtCurrentComputed: physicsEvidence.btbtCurrentComputed,
     },
     electricalMarkers: model.electricalRegions.length,
     finalRegions: model.regions.length,
