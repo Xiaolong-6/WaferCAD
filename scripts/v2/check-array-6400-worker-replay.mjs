@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { loadGeometryKernel, projectForBenchmark } from '../process-benchmarks.mjs';
 import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
+import { createSnapshotManager } from '../../site/workspace-snapshots.js';
 
 await loadGeometryKernel();
 const { applyOperation, createModel } = await import('../../site/model.js');
@@ -10,7 +11,6 @@ const { createRectangularGridArrayModel } = await import('../../site/model-array
 const { migrateProjectFile, validateProjectFile } = await import('../../site/project-schema.js');
 const { serializeProject, readProjectFile } = await import('../../site/project-io.js');
 const { rectMulti } = await import('../../site/vector-geometry.js');
-const { createSnapshotManager } = await import('../../site/workspace-snapshots.js');
 
 const source = createModel({ shape: 'rect', width: 0.375, height: 0.375, thickness: 2 });
 const seed = createRectangularGridArrayModel(source, {
