@@ -137,23 +137,19 @@ test('Bond checkpoints cannot accept a corrupted embedded source or forged root 
   const corrupted = structuredClone(root);
   corrupted.waferAssembly.sources[1].bytes += 1;
   assert.throws(
-    () => resolveAssemblyBondHistoryStep(corrupted, assemblyBondHistoryStep(root.waferAssembly, 1)),
+    () =>
+      resolveAssemblyBondHistoryStep(corrupted, assemblyBondHistoryStep(root.waferAssembly, 1)),
     /bytes/,
   );
+  assert.throws(() => assemblyBondCheckpoint(corrupted.waferAssembly, 0), /size\/provenance/);
   const forged = structuredClone(root);
   forged.model.layers[0].name = 'Fake root layer';
-  assert.throws(
-    () => assemblyBondHistoryTimeline(forged),
-    /material differs/,
-  );
+  assert.throws(() => assemblyBondHistoryTimeline(forged), /material differs/);
 });
 
 test('History rejects an invalid step zero and forged kind before any state restore', () => {
   const project = threeWafers();
   assert.throws(() => assemblyBondHistoryStep(project.waferAssembly, 0), /original receiver/);
   const bad = { ...assemblyBondHistoryStep(project.waferAssembly, 1), kind: 'deposit' };
-  assert.throws(
-    () => resolveAssemblyBondHistoryStep(project, bad),
-    /must be a Bond operation/,
-  );
+  assert.throws(() => resolveAssemblyBondHistoryStep(project, bad), /must be a Bond operation/);
 });
