@@ -215,6 +215,15 @@ export function sectionCutContours(sidewalls = [], clip = null, { boundaryProfil
   return ownedContourSegments(result);
 }
 
+// An owned material/cap border must not be drawn a second time by the
+// inspection-cut pass. Keep true cut-only edges (including material junctions).
+export function unownedContourSegments(segments = [], alreadyOutlined = []) {
+  const owned = new Set(
+    ownedContourSegments(alreadyOutlined).map(([a, b]) => segmentKey(a, b)),
+  );
+  return ownedContourSegments(segments).filter(([a, b]) => !owned.has(segmentKey(a, b)));
+}
+
 export function contoursToPositions(lines) {
   return ownedContourSegments(lines).flat(2);
 }

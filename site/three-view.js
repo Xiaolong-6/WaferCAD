@@ -20,6 +20,7 @@ import {
   transparentInspectionContours,
   contoursToPositions,
   sectionCutContours,
+  unownedContourSegments,
 } from './three-outline-geometry.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
@@ -2006,13 +2007,23 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const plan = physicalSurfacePlan,
       clip = getClipGeometry(),
       contours = transparentInspectionContours(plan, { boundaryProfiles }),
-      sectionLines = sectionCutContours(plan.sidewalls, clip, { boundaryProfiles }),
-      extraLines = [...contours.buried, ...sectionLines],
+      roughBorders = [...(boundaryProfiles?.entries() || [])].flatMap(([index, profile]) =>
+        plan.caps[index]?.buried || plan.caps[index]?.appearance?.kind !== 'rough'
+          ? []
+          : profile.segments.map(({ p, q }) => [p, q]),
+      ),
+      // Only the cut face introduces new structural borders. Buried cap
+      // perimeters are not exposed outlines: drawing them as solid black
+      // produces false internal lines across translucent materials.
+      sectionLines = unownedContourSegments(
+        sectionCutContours(plan.sidewalls, clip, { boundaryProfiles }),
+        [...contours.exposed, ...roughBorders],
+      ),
       model = getModel();
-    host.dataset.hiddenBorderSegmentCount = String(contours.exposed.length + extraLines.length);
-    host.dataset.buriedContourSegmentCount = String(contours.buried.length);
+    host.dataset.hiddenBorderSegmentCount = String(contours.exposed.length + sectionLines.length);
+    host.dataset.buriedContourSegmentCount = '0';
     host.dataset.sectionContourSegmentCount = String(sectionLines.length);
-    addBorderPositions(displayBorderPositions(contoursToPositions(extraLines)), {
+    addBorderPositions(displayBorderPositions(contoursToPositions(sectionLines)), {
       order: 100005,
       opacity: Number(getInspection()?.opacity ?? 1),
       dashSize: Math.max(

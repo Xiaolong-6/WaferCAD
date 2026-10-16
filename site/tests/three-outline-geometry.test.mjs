@@ -7,6 +7,7 @@ import {
   ownedContourSegments,
   sectionCutContours,
   transparentInspectionContours,
+  unownedContourSegments,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
 import { boundaryProfileFromPositions } from '../rough-boundary-profile.js';
@@ -228,4 +229,30 @@ test('ROI contour matching clips only overlapping spans and retains material jun
     [square],
   );
   assert.ok(junction.some(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]));
+});
+
+test('ROI cut only outlines new edges, never a previously drawn rough material border', () => {
+  const roughBorder = [
+      [0, 0, 174.2],
+      [1, 0, 174.3],
+    ],
+    idealBorder = [
+      [0, 0, 173],
+      [0, 0, 174],
+    ],
+    genuineCut = [
+      [1, 0, 173],
+      [1, 0, 174],
+    ],
+    candidates = [
+      [roughBorder[1], roughBorder[0]],
+      idealBorder,
+      genuineCut,
+      genuineCut,
+    ];
+  assert.deepEqual(
+    unownedContourSegments(candidates, [roughBorder, idealBorder]),
+    [genuineCut],
+    'rough cap outlines and original material borders have one owner each',
+  );
 });
