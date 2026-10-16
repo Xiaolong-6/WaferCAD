@@ -2083,11 +2083,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const matchedProfiles = new Map(profiles);
     const matchedAppearances = new Map(appearances);
     const resolvedParts = [];
+    const edgeAudit = [];
     let matched = 0;
     for (const part of parts) {
       const selected = candidates
         .filter(({ profile }) => boundaryProfileOverlapsEdge(profile, part.p, part.q))
         .sort((a, b) => Math.abs(a.cap.z - outside) - Math.abs(b.cap.z - outside))[0];
+      edgeAudit.push({
+        p: part.p,
+        q: part.q,
+        length: Math.hypot(part.q[0] - part.p[0], part.q[1] - part.p[1]),
+        implantTopZ: part.z1,
+        selectedCapZ: selected?.cap.z ?? null,
+        selectedCapLayer: selected?.cap.layerId ?? null,
+        selectedCapIndex: selected?.capIndex ?? null,
+      });
       if (!selected) {
         resolvedParts.push(part);
         continue;
@@ -2110,6 +2120,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       profiles: matchedProfiles,
       appearances: matchedAppearances,
       matched,
+      edgeAudit,
     };
   }
 
@@ -2123,6 +2134,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     let rebuilt = 0;
     let matchedImplantCuts = 0;
+    const implantCutAudit = [];
     for (const object of presentationObjects) {
       const previous = object.geometry;
       const implant = object.userData?.waferCadImplantCut;
@@ -2141,6 +2153,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       );
       object.geometry = implant ? shearImplantGeometry(geometry, implant) : geometry;
       matchedImplantCuts += aligned?.matched || 0;
+      if (aligned?.edgeAudit?.length) {
+        implantCutAudit.push({
+          name: object.name || implant?.name || '',
+          edges: aligned.edgeAudit,
+        });
+      }
       previous.dispose();
       object.position.z = 0;
       trackZDisplayObject(object);
@@ -2151,6 +2169,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       rebuilt++;
     }
     host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
+    // Temporary PR250 read-only geometry diagnosis, removed after root cause.
+    host.dataset.roughImplantCutEdgeAudit = JSON.stringify(implantCutAudit);
     host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
     host.dataset.roughBoundarySidewallObjects = String(rebuilt);
     rebuildInspectionContours(boundaryProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
