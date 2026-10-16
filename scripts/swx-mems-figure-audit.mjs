@@ -8,6 +8,7 @@ import { createSwxOptomechanicalCandidate } from './swx-mems-optomechanical-cand
 import { createSwxCompactProcessGeometry } from './swx-mems-compact-process-geometry.mjs';
 import { SWX_COMPACT_GUIDE_ASSUMPTIONS } from './swx-mems-compact-guides.mjs';
 import { createSwxFootprintScopeAudit } from './swx-mems-footprint-scope.mjs';
+import { auditCompactSpringAxialRegistration } from './swx-mems-spring-axial-audit.mjs';
 
 const extent = (points) => {
   const x = points.map(([px]) => px);
@@ -62,6 +63,7 @@ for (const state of ['off', 'on']) {
     combCellsPerBank: p.actuator.banks.map((bank) => bank.stationary.length - 1),
     bankAxialCenterSeparationUm: Math.abs(left.y - right.y),
     foldedSpringContours: p.actuator.springContours.length,
+    s8SpringAxialRegistration: auditCompactSpringAxialRegistration(state),
     s8ShuttleDiagonals: p.actuator.shuttleDiagonals.length,
     s8ShuttleTriangularOpenCellProbes: p.actuator.triangularApertureProbes.length,
     s8TriangularPerforationSourceSpacingVerified: false,
@@ -125,6 +127,20 @@ blockers.push({
   illustrativeTriangularAperturesImplemented: true,
   foldedSpringAnchorRegistrationVerified: false,
 });
+const springAxial = prototype.off.s8SpringAxialRegistration;
+if (!springAxial.sourceTopologyMet) {
+  blockers.push({
+    id: 's8-folded-springs-do-not-flank-combs',
+    kind: 'source-mechanical-topology',
+    sourceFigure: springAxial.sourceFigure,
+    actualAnchorCentersUm: springAxial.anchorPositionsUm,
+    actualCombHandleSpanYUm: springAxial.combHandleSpanYUm,
+    actualCounts: springAxial.counts,
+    requiredCounts: { above: 2, below: 2, within: 0 },
+    note: 'The paper places electrostatic combs between TWO axial spring pairs, whereas all four fixed spring anchors in this compact candidate are above the comb. Blindly mirroring the lower pair into the current SWX/optical-feed corridor produces fixed/moving Si contact; relocation requires an integrated mechanical + photonic layout redesign.',
+    sourceTopologyMet: false,
+  });
+}
 const compactExtent = prototype.off.candidateMaskFootprintUm;
 if (compactExtent.some((width, index) => width > SWX_REPORTED.fullFootprintUm[index])) {
   blockers.push({

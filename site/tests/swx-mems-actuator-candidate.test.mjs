@@ -5,6 +5,7 @@ import {
   SWX_COMPACT_ASSUMPTIONS,
 } from '../../scripts/swx-mems-actuator-candidate.mjs';
 import { SWX_REPORTED } from '../../scripts/swx-mems-geometry.mjs';
+import { auditCompactSpringAxialRegistration } from '../../scripts/swx-mems-spring-axial-audit.mjs';
 
 const closeTo = (a, b) => assert.ok(Math.abs(a - b) < 1e-10, a + ' != ' + b);
 const bounds = (poly) => ({
@@ -68,6 +69,18 @@ test('S8 shuttle contains two open triangular cells between each alternate diago
         state + ' expected open triangular shuttle aperture at ' + point.join(','),
       );
     }
+  }
+});
+
+test('Fig. 1c/S8 spring-comb axial topology is explicitly BLOCKED until both pairs flank combs', () => {
+  for (const state of ['off', 'on']) {
+    const report = auditCompactSpringAxialRegistration(state);
+    assert.equal(report.sourceTopologyMet, false);
+    assert.equal(report.anchorPositionsUm.length, 4);
+    assert.deepEqual(report.counts, { above: 4, below: 0, within: 0 });
+    assert.ok(report.anchorPositionsUm.every((anchor) => anchor.yUm === 40));
+    assert.ok(report.combHandleSpanYUm.maxY < 40);
+    assert.equal(report.sourceToleranceAvailable, false);
   }
 });
 

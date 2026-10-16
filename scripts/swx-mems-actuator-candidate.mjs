@@ -149,6 +149,7 @@ export function createCompactSwxActuator(state = 'off') {
     unresolved: [
       'Must connect moving SWX reflector and both compliant optical ports without silicon shorts',
       'Must integrate structural aligners and independently check BOX support and release',
+      'All four folded spring anchor pads are currently on the +Y side of both comb banks, contrary to Fig. 1c/S8a; two pairs must flank the combs before source layout acceptance',
       'All placement coordinates are illustrative; author GDS and FEM are unavailable',
     ],
   };
