@@ -2,6 +2,11 @@
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 import { validateProjectFile } from '../project-schema.js';
+import {
+  validateAssemblyVariantGraph,
+  activateAssemblyVariant,
+  assemblyVariantProject,
+} from '../wafer-assembly-variants.js';
 
 // Display-only source palette. Material identity and persisted layer colors
 // remain unchanged; it is the wafer of origin that is being highlighted.
@@ -60,6 +65,19 @@ export async function readAssemblyPreviewFile(
   readProject = readProjectFile,
   { allowStandalone = false } = {},
 ) {
+  if (allowStandalone && /\.wafercad-variants\.json$/i.test(file?.name)) {
+    if (!Number.isFinite(file.size) || file.size > MAX_PROJECT_FILE_BYTES) {
+      throw new Error('Assembly Variant source registry exceeds the supported file limit.');
+    }
+    const decoded = JSON.parse(await file.text());
+    const graph = activateAssemblyVariant(validateAssemblyVariantGraph(decoded), decoded.activeBranchId);
+    return {
+      source: file.name,
+      hash: '',
+      data: assemblyVariantProject(graph),
+      variantGraph: graph,
+    };
+  }
   if (!file || typeof file.name !== 'string' || !/\.wafercad$/i.test(file.name)) {
     throw new Error('Select a .wafercad Assembly project.');
   }
@@ -95,11 +113,11 @@ export function chooseAssemblyPreviewFile(
   title.textContent = allowStandalone ? 'Assembly · Direct Bond draft' : 'Assembly Preview';
   const description = document.createElement('p');
   description.textContent = allowStandalone
-    ? 'Start from an independent wafer or reopen an Assembly. Bond a donor with a durable Recovery checkpoint; export manually.'
+    ? 'Open an independent wafer, an Assembly or an exported Variants sidecar. Source provenance is validated before opening; export changes explicitly.'
     : 'Inspect an existing bonded .wafercad file and its original wafers. Read-only: no edits, workspace takeover, or autosave.';
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.wafercad';
+  input.accept = allowStandalone ? '.wafercad,.wafercad-variants.json' : '.wafercad';
   input.setAttribute('aria-label', 'Open bonded Assembly project');
   const status = document.createElement('p');
   status.setAttribute('role', 'status');
