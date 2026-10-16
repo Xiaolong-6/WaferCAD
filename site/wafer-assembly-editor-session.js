@@ -7,6 +7,7 @@ import {
 } from './wafer-bond-transaction.js';
 import { createAssemblyBondHistorySession } from './wafer-assembly-history-session.js';
 import { sameCanonicalModel, validateBondedAssemblyProject } from './wafer-assembly.js';
+import { validateProjectFile } from './project-schema.js';
 
 function same(left, right) {
   return sameCanonicalModel(left, right);
@@ -33,16 +34,23 @@ export function createAssemblyBondEditorSession(
   if (typeof applyVisibleProject !== 'function' || typeof getVisibleModel !== 'function') {
     throw new Error('Assembly editor requires an observable workspace and rollback owner.');
   }
+  // Index zero may be an independent receiver. Once bonded, this owner
+  // handles its entire compact History and every subsequent donor.
+  validateProjectFile(initialProduct);
   validateBondedAssemblyProject(initialProduct);
-  if (!initialProduct?.waferAssembly) {
-    throw new Error('Assembly editor requires an existing bonded source lineage.');
-  }
-
-  let history = createAssemblyBondHistorySession(initialProduct);
+  const originalReceiver = structuredClone(initialProduct);
+  let history = initialProduct.waferAssembly
+    ? createAssemblyBondHistorySession(initialProduct)
+    : null;
+  const fullProduct = () => (history ? history.fullProduct() : structuredClone(originalReceiver));
+  const currentProject = () =>
+    history ? history.currentProject() : structuredClone(originalReceiver);
+  const currentIndex = () => (history ? history.currentIndex() : 0);
+  const maxIndex = () => (history ? history.maxIndex() : 0);
   let committing = false;
   let revision = 0;
 
-  const visibleParity = () => same(getVisibleModel(), history.currentProject().model);
+  const visibleParity = () => same(getVisibleModel(), currentProject().model);
   const assertReadable = () => {
     if (committing) throw new Error('Bond transaction is in progress.');
   };
@@ -50,16 +58,19 @@ export function createAssemblyBondEditorSession(
   function restoreIndex(index) {
     assertReadable();
     if (!visibleParity()) throw new Error('Bond workspace material drift; navigation refused.');
-    const prior = history.currentIndex();
-    const next = history.restoreIndex(index);
+    const prior = currentIndex();
+    if (!history && index !== 0) {
+      throw new Error('Bond History navigation is outside the source lineage.');
+    }
+    const next = history ? history.restoreIndex(index) : structuredClone(originalReceiver);
     try {
       if (applyVisibleProject(structuredClone(next)) === false) {
         throw new Error('Bond stage change rejected by the workstation.');
       }
     } catch (error) {
-      history.restoreIndex(prior);
+      history?.restoreIndex(prior);
       try {
-        applyVisibleProject(history.currentProject());
+        applyVisibleProject(currentProject());
       } catch (rollbackError) {
         throw new AggregateError([error, rollbackError], 'Bond navigation rollback failed.');
       }
@@ -70,26 +81,26 @@ export function createAssemblyBondEditorSession(
 
   async function bond(donorProject, request) {
     assertReadable();
-    if (history.currentIndex() !== history.maxIndex()) {
+    if (currentIndex() !== maxIndex()) {
       throw new Error('Bond from a historical checkpoint requires an explicit new Variant.');
     }
     if (!visibleParity()) throw new Error('Bond workspace material drift; commit refused.');
     // Preflight first. No IndexedDB writer or UI mutation is needed for bad input.
-    const previous = history.fullProduct();
+    const previous = fullProduct();
     const prepared = prepareWaferBondTransaction(previous, donorProject, request);
     const expectedRevision = revision;
     committing = true;
     try {
       const result = await commitWaferBondTransaction(prepared, {
-        getCurrentProject: () => history.fullProduct(),
+        getCurrentProject: () => fullProduct(),
         canCommit: () =>
           revision === expectedRevision &&
-          history.currentIndex() === history.maxIndex() &&
+          currentIndex() === maxIndex() &&
           visibleParity(),
         checkpointRecovery: (reason) => checkpointRecovery(structuredClone(previous), reason),
         captureTransaction: () => ({
-          project: history.fullProduct(),
-          index: history.currentIndex(),
+          project: fullProduct(),
+          index: currentIndex(),
         }),
         applyProject: (project) => {
           const nextHistory = createAssemblyBondHistorySession(project);
@@ -110,11 +121,17 @@ export function createAssemblyBondEditorSession(
           return true;
         },
         restoreTransaction: (snapshot) => {
-          const previousHistory = createAssemblyBondHistorySession(snapshot.project);
-          previousHistory.restoreIndex(snapshot.index);
-          // Restore the exact source-owned timeline even if the failed host
-          // changed the current physical view before throwing.
-          applyVisibleProject(previousHistory.currentProject());
+          const previousHistory = snapshot.project.waferAssembly
+            ? createAssemblyBondHistorySession(snapshot.project)
+            : null;
+          previousHistory?.restoreIndex(snapshot.index);
+          // First-Bond rollback must restore standalone source Recipe/History.
+          const restoredProject = previousHistory
+            ? previousHistory.currentProject()
+            : snapshot.project;
+          if (applyVisibleProject(restoredProject) !== true) {
+            throw new Error('Bond rollback workspace restoration was not confirmed.');
+          }
           history = previousHistory;
           revision = expectedRevision;
           return true;
@@ -128,15 +145,15 @@ export function createAssemblyBondEditorSession(
 
   return {
     bond,
-    currentProject: () => history.currentProject(),
-    fullProduct: () => history.fullProduct(),
-    currentIndex: () => history.currentIndex(),
-    maxIndex: () => history.maxIndex(),
-    listHistory: () => history.listHistory(),
-    exportCompactHistory: () => history.exportCompactHistory(),
+    currentProject,
+    fullProduct,
+    currentIndex,
+    maxIndex,
+    listHistory: () => (history ? history.listHistory() : []),
+    exportCompactHistory: () => (history ? history.exportCompactHistory() : null),
     restoreIndex,
-    undo: () => restoreIndex(Math.max(0, history.currentIndex() - 1)),
-    redo: () => restoreIndex(Math.min(history.maxIndex(), history.currentIndex() + 1)),
+    undo: () => restoreIndex(Math.max(0, currentIndex() - 1)),
+    redo: () => restoreIndex(Math.min(maxIndex(), currentIndex() + 1)),
     isCommitting: () => committing,
   };
 }
