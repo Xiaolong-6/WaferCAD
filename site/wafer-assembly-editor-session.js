@@ -47,7 +47,6 @@ export function createAssemblyBondEditorSession(
   // handles its entire compact History and every subsequent donor.
   validateProjectFile(initialProduct);
   validateBondedAssemblyProject(initialProduct);
-  const originalReceiver = structuredClone(initialProduct);
   let graph = variantGraph
     ? structuredClone(validateAssemblyVariantGraph(variantGraph))
     : createAssemblyVariantGraph(initialProduct);
@@ -60,9 +59,9 @@ export function createAssemblyBondEditorSession(
   let history = initialProduct.waferAssembly
     ? createAssemblyBondHistorySession(initialProduct)
     : null;
-  const fullProduct = () => (history ? history.fullProduct() : structuredClone(originalReceiver));
+  const fullProduct = () => (history ? history.fullProduct() : assemblyVariantProject(graph));
   const currentProject = () =>
-    history ? history.currentProject() : structuredClone(originalReceiver);
+    history ? history.currentProject() : assemblyVariantProject(graph);
   const currentIndex = () => (history ? history.currentIndex() : 0);
   const maxIndex = () => (history ? history.maxIndex() : 0);
   let committing = false;
@@ -80,7 +79,7 @@ export function createAssemblyBondEditorSession(
     if (!history && index !== 0) {
       throw new Error('Bond History navigation is outside the source lineage.');
     }
-    const next = history ? history.restoreIndex(index) : structuredClone(originalReceiver);
+    const next = history ? history.restoreIndex(index) : assemblyVariantProject(graph);
     try {
       if (applyVisibleProject(structuredClone(next)) === false) {
         throw new Error('Bond stage change rejected by the workstation.');
