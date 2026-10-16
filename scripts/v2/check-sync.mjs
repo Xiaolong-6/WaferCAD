@@ -92,6 +92,11 @@ try {
       await page.locator('[data-action="process-mode:code"]').click();
       const originalCode = await page.locator('#recipeCodeEditor').inputValue();
       await page.locator('#recipeCodeEditor').fill('// retained draft');
+      const userDesktopLayout = width > 820 ? (await snap()).ui.desktopLayout : null;
+      const storedDesktopLayout =
+        width > 820
+          ? await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1'))
+          : null;
       for (const domain of ['project', 'mask', 'history']) {
         await panel(domain);
         assert.equal(await page.locator('#recipeCodeEditor').isVisible(), false);
@@ -102,12 +107,37 @@ try {
         );
         if (domain === 'mask') {
           const maskNavigation = (await snap()).ui;
-          assert.equal(
-            width > 820 ? maskNavigation.desktopLayout.maximized : maskNavigation.maximize,
-            'mask',
-            'Mask workflow navigation focuses the corresponding scientific view',
-          );
+          if (width > 820) {
+            assert.equal(maskNavigation.temporaryFocus, 'mask', 'Desktop Mask focus is transient');
+            assert.deepEqual(
+              maskNavigation.desktopLayout,
+              userDesktopLayout,
+              'Desktop Mask focus must preserve the entire user dock layout',
+            );
+            assert.equal(await page.locator('#maskPanel').isVisible(), true);
+            assert.equal(
+              await page.locator('.p-canvases .p-view:not([hidden])').count(),
+              1,
+              'Only Mask is displayed during temporary desktop focus',
+            );
+            assert.equal(
+              await page.evaluate(() => localStorage.getItem('wafercad.desktop-view-layout.v1')),
+              storedDesktopLayout,
+              'Temporary Mask focus must not persist a layout change',
+            );
+          } else {
+            assert.equal(maskNavigation.maximize, 'mask', 'Compact Mask view is maximized');
+          }
           assert.equal(maskNavigation.view, 'mask');
+        }
+        if (domain === 'history' && width > 820) {
+          const afterHistory = (await snap()).ui;
+          assert.equal(afterHistory.temporaryFocus, null, 'History exits temporary Mask focus');
+          assert.deepEqual(
+            afterHistory.desktopLayout,
+            userDesktopLayout,
+            'History restores the exact user dock layout',
+          );
         }
       }
       const historyScroll = page.locator('#snapshotList');
