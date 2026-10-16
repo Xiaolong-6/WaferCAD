@@ -180,7 +180,7 @@ try {
     await page.getByRole('button', { name: 'Fork from current Bond' }).click();
     await page
       .locator('.assembly-bond-variants')
-      .getByLabel('Bond Variant')
+      .getByLabel('Bond Variant', { exact: true })
       .selectOption('variant-1');
     await page.locator('.assembly-bond-draft-form input[name="donorId"]').fill('D');
     await page.getByLabel('Select independent donor wafer').setInputFiles({
@@ -217,11 +217,11 @@ try {
     assert.deepEqual(graph.branches[0].sourceRefs, [0, 1, 2]);
     assert.deepEqual(graph.branches[1].sourceRefs, [0, 1, 3]);
 
-    await page.getByLabel('Bond Variant').selectOption('main');
+    await page.getByLabel('Bond Variant', { exact: true }).selectOption('main');
     const switchedMain = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.deepEqual(switchedMain.model, committed.model);
     assert.equal(switchedMain.workflow.writable, false);
-    await page.getByLabel('Bond Variant').selectOption('variant-1');
+    await page.getByLabel('Bond Variant', { exact: true }).selectOption('variant-1');
     assert.deepEqual(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
       alternate.model,
@@ -245,8 +245,8 @@ try {
       assert.deepEqual(sidecarView.model, alternate.model);
       assert.equal(sidecarView.assemblyPreview.bonds, 2);
       await sidecarTab.locator('.assembly-bond-draft-tools summary').click();
-      assert.equal(await sidecarTab.getByLabel('Bond Variant').locator('option').count(), 2);
-      await sidecarTab.getByLabel('Bond Variant').selectOption('main');
+      assert.equal(await sidecarTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(), 2);
+      await sidecarTab.getByLabel('Bond Variant', { exact: true }).selectOption('main');
       assert.deepEqual(
         (await sidecarTab.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
         committed.model,
