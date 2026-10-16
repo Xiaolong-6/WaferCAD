@@ -35,7 +35,12 @@ test('versioned physical descriptor round-trips as pure JSON', () => {
   const json = JSON.stringify(source);
   const reopened = restorePhysicalPyramidOwner(JSON.parse(json));
   assert.equal(JSON.stringify(reopened), json);
-  for (const xy of [[0, 0], [1.2, 0.4], [-3, 1.2], [6.399, -2]]) {
+  for (const xy of [
+    [0, 0],
+    [1.2, 0.4],
+    [-3, 1.2],
+    [6.399, -2],
+  ]) {
     assert.deepEqual(physicalMaterialAt(reopened, ...xy), physicalMaterialAt(source, ...xy));
   }
 });

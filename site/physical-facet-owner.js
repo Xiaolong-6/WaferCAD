@@ -10,8 +10,14 @@ function finite(x, label) {
 }
 
 export function makePhysicalPyramidOwner({
-  layerId, pitch, height, bottomPlaneZ, topPlaneZ,
-  originX = 0, originY = 0, domain,
+  layerId,
+  pitch,
+  height,
+  bottomPlaneZ,
+  topPlaneZ,
+  originX = 0,
+  originY = 0,
+  domain,
 }) {
   if (typeof layerId !== 'string' || !layerId.trim()) {
     throw new RangeError('Missing physical material layerId');
@@ -40,8 +46,15 @@ export function makePhysicalPyramidOwner({
   }
   if (nx * ny > 1_000_000) throw new RangeError('Too many physical owner cells');
   return {
-    kind: PHYSICAL_OWNER_KIND, layerId, pitch, height, bottomPlaneZ, topPlaneZ,
-    originX, originY, domain: { minX, maxX, minY, maxY },
+    kind: PHYSICAL_OWNER_KIND,
+    layerId,
+    pitch,
+    height,
+    bottomPlaneZ,
+    topPlaneZ,
+    originX,
+    originY,
+    domain: { minX, maxX, minY, maxY },
   };
 }
 
@@ -63,22 +76,25 @@ export function physicalMaterialAt(owner, x, y, z = null) {
     return null;
   }
   const interval = samplePhysicalPyramidSlab(x, y, config);
-  const occupancy = z === null
-    ? 'unqueried'
-    : z > interval.z0 && z < interval.z1
-      ? 'solid'
-      : z === interval.z0 || z === interval.z1
-        ? 'interface'
-        : 'void';
+  const occupancy =
+    z === null
+      ? 'unqueried'
+      : z > interval.z0 && z < interval.z1
+        ? 'solid'
+        : z === interval.z0 || z === interval.z1
+          ? 'interface'
+          : 'void';
   return { ...interval, occupancy };
 }
 
 export function physicalOwnerVolume(owner) {
   const config = restorePhysicalPyramidOwner(owner);
   const { domain, pitch } = config;
-  return ((domain.maxX - domain.minX) / pitch) *
+  return (
+    ((domain.maxX - domain.minX) / pitch) *
     ((domain.maxY - domain.minY) / pitch) *
-    physicalPyramidSlabCellVolume(config);
+    physicalPyramidSlabCellVolume(config)
+  );
 }
 
 export function rejectUnimplementedPhysicalProcess(owner, operation) {

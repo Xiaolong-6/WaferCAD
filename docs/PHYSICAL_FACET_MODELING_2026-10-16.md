@@ -72,7 +72,7 @@ supported by the paper. The current Sahli project remains intact.
 
 ## Versioned physical material-owner prototype (not active Model)
 
-New `site/physical-facet-owner.js` exports a JSON-safe, opt-in 
+New `site/physical-facet-owner.js` exports a JSON-safe, opt-in
 `wafercad-physical-pyramid-slab-v1` descriptor. It owns one material,
 a rectangular integer-cell XY domain and two analytic physical interfaces.
 Point probes distinguish solid interiors, exact interfaces and voids.
