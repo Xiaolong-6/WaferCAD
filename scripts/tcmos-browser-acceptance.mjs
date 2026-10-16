@@ -394,7 +394,7 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
   await restoreLargeView('three', fullThreeExpanded);
 
-  // An illustrative 0.13 µm gate in a reported 130 nm foundry node needs a device-scale inspection
+  // An pixel-measured schematic POLY stripe in a reported 130 nm foundry node needs a device-scale inspection
   // separate from the 11 µm field section. Use the real Main Slice settings
   // rather than modifying the project model or fabricating additional masks.
   const localSections = [

@@ -771,7 +771,7 @@ export async function buildTcmosInverter({
     0.005,
     6,
   );
-  deposit('Pattern separate 130nm POLY gates (VIN via METAL1)', 'POLY gate', 0.2, 6);
+  deposit('Pattern Fig1b-measured POLY gates (VIN via METAL1)', 'POLY gate', 0.2, 6);
   record(
     'Gate-oxide source/drain window surrogate',
     'custom',
@@ -1071,7 +1071,7 @@ export async function buildTcmosInverter({
     },
     checkpoints,
     keyAssumptions: [
-      'The paper reports a 130 nm foundry node, not a measured gate length for this layout. L = 0.13 µm is an illustrative local Mask choice; all XY placement and contact widths are illustrative.',
+      'The 130 nm foundry node is not a measured gate length. The drawn POLY width 0.44 µm follows the 24-pixel schematic stroke using the documented illustrative mapping; all Mask XY positions, CNT pitches and widths are illustrative, not foundry design rules.',
       'The 5 nm gate oxide is represented only under POLY footprints, avoiding an unphysical display blanket over STI and body-tie surfaces; foundry oxidation/strip steps remain abstracted.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',

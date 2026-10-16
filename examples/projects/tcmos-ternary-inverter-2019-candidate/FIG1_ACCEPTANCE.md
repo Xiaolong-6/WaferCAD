@@ -19,27 +19,39 @@
 | Body–drain region | Paper attributes tunnelling to highly doped body/drain regions | Material-clipped HVT/HDD **structural annotations** are visualized. External PN/BTBT simulation results may later be overlaid; no device-physics calculation or quantitative PN acceptance is required here. |
 | Energy bands / ternary VTC | Bias-specific BTBT band diagrams and electronic output | Outside the PR #225 reconstruction scope; externally computed data can be displayed separately with source and units. |
 
-The paper reports **commercial 130 nm and 90 nm CMOS foundry processes**. It does **not** provide a measured physical gate length for this depicted local cell. The candidate chooses `GATE_LENGTH_UM=0.13`; this is a geometry assumption, **not source-confirmed measured L**, despite sharing the 130 nm node number.
+The paper reports **commercial 130 nm and 90 nm CMOS foundry processes**. It does **not** provide a measured physical gate length for this depicted local cell. The candidate uses a **0.44 µm illustrative POLY band** traced from the image's 24-pixel drawn width; it is **not a source-confirmed physical gate length**, despite the paper's 130 nm technology-node label.
 
 ## Fig. 1b: Mask/layout correspondence
+
+**Pixel registration evidence (2026-10-16):** The original user-provided Fig. 1b
+is 713×498 px, SHA-256 prefix `f39c0b4562ab2eec`. Its x/y geometry is
+measured and mapped by one transform: pixel origin (359,365), 54 pixels per
+illustrative µm, coordinates snapped to 0.01 µm. Key measured rectangles are
+ACTIVE-left (137,356)-(259,398), ACTIVE-right (460,356)-(582,398),
+POLY-left (186,327)-(210,401), HVTN (133,307)-(266,409),
+HVTP (455,306)-(588,409), VIN top (188,151)-(532,191), VOUT top
+(237,208)-(483,248). Fig. 1b does not specify actual mask micrometres.
+The overlay and exact-head real-Chromium screenshot are compared at identical
+pixel registration, with no digitally painted CAD screenshot.
+
 
 **2026-10-16 redraw:** The revised Mask has distinct inverted-U VIN and VOUT
 bridges above the devices, source-rail inverted U shapes on the outer edges,
 and two U-shaped body-tie/CNT arrays underneath. The drawing tracks the
 user-provided Fig. 1b schematic's relative geometry and colors. It is not
 foundry layout metrology. Four separate Metal1 electrical nets remain proven
-disjoint and connected by the terminal-provenance invariant. The observed
-paper-vs-CAD difference still includes a single CNT per Source/Drain terminal
-rather than the source schematic's small contact matrices.
+disjoint and connected by the terminal-provenance invariant. Every Source/Drain terminal now has a 3×3 CNT matrix. Remaining paper-vs-browser
+style differences are the Mask UI's filled HVT/LVT windows rather than the
+original illustration's outline-only labels.
 
 
 | Criterion | Browser / model evidence | Disposition |
 | --- | --- | --- |
 | ACTIVE / STI and complementary wells | Full Section and 3D show both side-by-side MOS structures | Qualitative topology pass. |
 | LVTN / LVTP and HVTN / HVTP labels | Left HVTN pMOS / right HVTP nMOS correct; LVTN/LVTP are reference-only masks, not T-CMOS process doping | Naming and branch intent pass. |
-| Two POLY gates and contacts | Model assigns 0.13 µm assumed gate widths and separate CNT contacts | Model-internal geometry pass, **not foundry-dimension pass**. |
+| Two POLY gates and contacts | Model assigns 0.44 µm pixel-measured illustrative gate bands and separate CNT contacts | Model-internal geometry pass, **not foundry-dimension pass**. |
 | VDD, VOUT, GND, VIN | Four separate METAL1 net footprints; VOUT joins both drains, VIN both gates | Model-internal topology pass. |
-| Polygon counts and serialization | Fig. 1b redrawing now uses 13 layers and 142 Mask elements | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
+| Polygon counts and serialization | Fig. 1b redrawing now uses 13 layers and 196 Mask elements | File Mask generation and candidate browser export; latest committed-Head CI remains the release gate. |
 | Exact physical layout dimensions | Paper does not disclose the complete foundry GDS or mask coordinates | Unverifiable; candidate is a reconstructed layout, **not a digitized foundry mask**. |
 
 ## Browser screenshots inspected
@@ -56,8 +68,8 @@ HVT-only PNGs isolate one annotation via real Section visibility toggles; full-m
 ## Scientific and transaction checks
 
 - Browser Run All from fresh Base: 23/23 steps. Material parity: 26 compared slabs, maximum XY mismatch area 1.6653345369377348e-15 µm²; Save/Reload and Recovery pass.
-- In the revised geometry each pMOS and nMOS body/HDD annotation co-occupies Source and Drain areas of **0.7416 µm² each**, Z=0.82–0.92 µm within ACTIVE silicon; **co-occupancy is not a PN junction**.
-- HVT annotation clipped to matching schematic Well: **0.258048 µm³**; residual silicon below STI outside matching Well: **0.022272 µm³**, per device. Actual oxide stopping power/implant penetration is unknown.
+- In the revised geometry each pMOS and nMOS body/HDD annotation co-occupies Source and Drain areas of **0.6864 µm² (pMOS Source/Drain), 0.6708 µm² (nMOS Drain), and 0.7020 µm² (nMOS Source)**, Z=0.82–0.92 µm within ACTIVE silicon; **co-occupancy is not a PN junction**.
+- HVT annotation clipped to matching schematic Well: **0.282048 µm³**; residual silicon below STI outside matching Well: **0.028808 µm³** (pMOS), **0.029112 µm³** (nMOS). Actual oxide stopping power/implant penetration is unknown.
 - Both Well ties geometrically contact Si/W/Metal1 with appropriate schematic well polarity; n+/p+ contact doping is missing and ohmic conduction not established.
 - Candidate is immutable across these diagnostic-only refinements. The alternate 18° tilt demonstration is explicitly NOT PAPER.
 
