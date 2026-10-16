@@ -1,0 +1,45 @@
+name: PR311 one-shot GaN coverage sliver locator
+
+on:
+  push:
+    branches: [fix/conformal-disjoint-z-span-306]
+    paths: [.github/workflows/pr311-coverage-locator-once.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify local kernel syntax and focused gap science
+        run: |
+          node --check site/model.js
+          node --test site/tests/conformal-floating-gap.test.mjs site/tests/conformal-process.test.mjs
+      - name: Reproduce frozen full-front/back oxide on isolated Kernel
+        run: |
+          git fetch --quiet origin ceb953b313f6da7fa012b70d8c52075ea4c8e7d0
+          git show ceb953b313f6da7fa012b70d8c52075ea4c8e7d0:scripts/build-gan-hemt-microchannel-example.mjs > scripts/build-gan-hemt-microchannel-example.mjs
+          set +e
+          node scripts/build-gan-hemt-microchannel-example.mjs > /tmp/gan-coverage.log 2>&1
+          outcome=$?
+          set -e
+          cat /tmp/gan-coverage.log
+          if [ "$outcome" -eq 0 ]; then
+            echo "Full oxide passed after Kernel patch; diagnose whether expected loss disappeared."
+          else
+            grep 'Conformal lost' /tmp/gan-coverage.log
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr311-exact-lost-polygon-bounds
+          path: /tmp/gan-coverage.log
+          if-no-files-found: warn
