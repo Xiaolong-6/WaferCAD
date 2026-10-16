@@ -696,16 +696,12 @@ export async function buildGanMicrochannel() {
     ['Cu', GAN_TSV_LINER.copperUm],
   ]) {
     for (const face of ['front', 'back']) {
-      process(
-        'Double-sided ' + metal + ' sputter on oxide, ' + face,
-        'deposit',
-        {
-          material: 'Interposer ' + face + ' ' + metal + ' sputter ' + thickness + ' um',
-          thickness,
-          coverage: 'direct',
-          face,
-        },
-      );
+      process('Double-sided ' + metal + ' sputter on oxide, ' + face, 'deposit', {
+        material: 'Interposer ' + face + ' ' + metal + ' sputter ' + thickness + ' um',
+        thickness,
+        coverage: 'direct',
+        face,
+      });
     }
   }
   bookmark('03a Double-sided Ti/Cu before local TSV filling');
@@ -908,9 +904,7 @@ export async function buildGanMicrochannel() {
       const layer = model.layers.find((item) => item.name === name);
       assert.ok(layer, 'Missing source-supported double-sided metal: ' + name);
       assert.ok(
-        owner([2000, 0]).stack.some(
-          (seg) => seg.layerId === layer.id && seg.z0 < z && seg.z1 > z,
-        ),
+        owner([2000, 0]).stack.some((seg) => seg.layerId === layer.id && seg.z0 < z && seg.z1 > z),
         'Front/back sputtered metal is absent at ' + [face, metal, z],
       );
     }
