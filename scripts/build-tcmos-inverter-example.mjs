@@ -163,6 +163,149 @@ export const TCMOS_MASKS = Object.freeze([
     rectangles: [rect(0.3, -2.72, 5.4, 3.65)],
   },
 ]);
+
+/**
+ * Read-only CNT-to-METAL1 terminal provenance for the illustrative masks.
+ * Fail closed on disconnected nets, shorts and ambiguous terminal assignments.
+ * This geometry audit does not demonstrate physical conduction or ohmic contacts.
+ */
+export function auditTcmosTerminalNetProvenance(masks, metalNets) {
+  const eps = 1e-12;
+  const validRect = (r) =>
+    r &&
+    [r.x, r.y, r.w, r.h].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+    r.w > 0 &&
+    r.h > 0;
+  const overlap = (a, b) => [
+    Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x),
+    Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y),
+  ];
+  const connected = (a, b) => {
+    const [dx, dy] = overlap(a, b);
+    // A shared edge conducts, but a single-corner touch does not.
+    return (dx > eps && dy >= -eps) || (dy > eps && dx >= -eps);
+  };
+  const inRect = ([x, y], r) =>
+    x > r.x + eps && x < r.x + r.w - eps && y > r.y + eps && y < r.y + r.h - eps;
+  const center = (r) => [r.x + r.w / 2, r.y + r.h / 2];
+  const fail = (message) => {
+    throw new Error('T-CMOS terminal net provenance: ' + message);
+  };
+  const mask = (id) => {
+    const found = masks.find((item) => item.id === id);
+    if (!found || !Array.isArray(found.rectangles)) fail('missing mask ' + id);
+    if (found.rectangles.some((r) => !validRect(r))) fail('invalid mask ' + id);
+    return found.rectangles;
+  };
+  const cnt = mask(10);
+  const active = mask(1);
+  const required = ['VDD', 'VOUT', 'GND', 'VIN'];
+  if (
+    metalNets.length !== required.length ||
+    new Set(metalNets.map((net) => net.name)).size !== 4 ||
+    required.some((name) => !metalNets.some((net) => net.name === name))
+  ) {
+    fail('exactly four independent named nets required');
+  }
+  for (const net of metalNets) {
+    const rectangles = net.rectangles;
+    if (
+      !Array.isArray(rectangles) ||
+      !rectangles.length ||
+      rectangles.some((r) => !validRect(r))
+    ) {
+      fail(net.name + ': invalid routing');
+    }
+    const visited = new Set([0]);
+    const queue = [0];
+    while (queue.length) {
+      const current = queue.shift();
+      for (let i = 0; i < rectangles.length; i++) {
+        if (!visited.has(i) && connected(rectangles[current], rectangles[i])) {
+          visited.add(i);
+          queue.push(i);
+        }
+      }
+    }
+    if (visited.size !== rectangles.length) fail(net.name + ': disconnected routing');
+  }
+  for (let i = 0; i < metalNets.length; i++) {
+    for (let j = i + 1; j < metalNets.length; j++) {
+      if (
+        metalNets[i].rectangles.some((a) =>
+          metalNets[j].rectangles.some((b) => connected(a, b)),
+        )
+      ) {
+        fail('Metal1 short: ' + metalNets[i].name + ' / ' + metalNets[j].name);
+      }
+    }
+  }
+  // CNT ordering, inferred S/D direction and well association are specific to
+  // this reconstructed Fig. 1b layout; they are not released foundry data.
+  const sites = [
+    { id: 'pMOS-source', device: 'pMOS', kind: 'source', cnt: 0, mask: 7, rect: 0, net: 'VDD' },
+    { id: 'pMOS-drain', device: 'pMOS', kind: 'drain', cnt: 1, mask: 7, rect: 1, net: 'VOUT' },
+    { id: 'nMOS-drain', device: 'nMOS', kind: 'drain', cnt: 2, mask: 8, rect: 0, net: 'VOUT' },
+    { id: 'nMOS-source', device: 'nMOS', kind: 'source', cnt: 3, mask: 8, rect: 1, net: 'GND' },
+    { id: 'pMOS-gate', device: 'pMOS', kind: 'gate', cnt: 4, mask: 6, rect: 0, net: 'VIN' },
+    { id: 'nMOS-gate', device: 'nMOS', kind: 'gate', cnt: 5, mask: 6, rect: 1, net: 'VIN' },
+    { id: 'pMOS-well-tie', device: 'pMOS', kind: 'well-tie', cnt: 18, mask: 2, net: 'VDD' },
+    { id: 'nMOS-well-tie', device: 'nMOS', kind: 'well-tie', cnt: 37, mask: 3, net: 'GND' },
+  ];
+  const terminals = sites.map((site) => {
+    const contact = cnt[site.cnt];
+    if (!contact) fail(site.id + ': missing CNT');
+    const point = center(contact);
+    if (cnt.filter((r) => inRect(point, r)).length !== 1) {
+      fail(site.id + ': ambiguous CNT');
+    }
+    const footprints = mask(site.mask);
+    const matches = footprints
+      .map((r, i) => (inRect(point, r) ? i : -1))
+      .filter((i) => i >= 0);
+    if (matches.length !== 1 || (site.rect !== undefined && matches[0] !== site.rect)) {
+      fail(site.id + ': incorrect device footprint');
+    }
+    if (site.kind === 'well-tie' && active.filter((r) => inRect(point, r)).length !== 1) {
+      fail(site.id + ': outside isolated ACTIVE');
+    }
+    const owners = metalNets.filter((net) =>
+      net.rectangles.some((r) => inRect(point, r)),
+    );
+    if (owners.length !== 1) fail(site.id + ': missing or ambiguous Metal1 owner');
+    if (owners[0].name !== site.net) {
+      fail(site.id + ': wrong net ' + owners[0].name + ', expected ' + site.net);
+    }
+    return {
+      id: site.id,
+      device: site.device,
+      kind: site.kind,
+      point,
+      net: owners[0].name,
+      provenance: 'inferred-from-reconstructed-CNT/METAL1-layout',
+    };
+  });
+  const byId = Object.fromEntries(terminals.map((terminal) => [terminal.id, terminal]));
+  for (const device of ['pMOS', 'nMOS']) {
+    const gate = byId[device + '-gate'].point[0];
+    if (
+      (byId[device + '-source'].point[0] - gate) *
+        (byId[device + '-drain'].point[0] - gate) >=
+      0
+    ) {
+      fail(device + ': source and drain do not flank the gate');
+    }
+  }
+  return {
+    kind: 'illustrative-layout-terminal-net-provenance',
+    sourceDocumentedFoundryRouting: false,
+    physicalElectricalConnectivityVerified: false,
+    ohmicContactsValidated: false,
+    physicalJunctionResolved: false,
+    terminals,
+  };
+}
+
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 
 export function tcmosLayout() {
@@ -868,6 +1011,7 @@ export async function buildTcmosInverter({
     assert.ok(silicon, 'Well-tie validation requires an actual silicon contact site');
     return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
   });
+  const terminalNetProvenance = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
   const bodyTieContactEvidence = {
     provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
     contacts: auditSchematicBodyTieContacts(model, contactSites, v),
@@ -890,6 +1034,7 @@ export async function buildTcmosInverter({
     implantMarkers: model.implants.length,
     dopantRegionIntents: model.dopantRegions.length,
     bodyTieContactEvidence,
+    terminalNetProvenance,
     qualitativeJunctionEvidence: {
       kind: 'terminal-clipped-opposite-polarity-cooccupancy',
       sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
