@@ -25,12 +25,7 @@ function grid(rows, pitch, activeSites = rows * rows) {
 function stackAtCenter(part) {
   const owners = part.model.regions.filter((region) => pointInMulti([0, 0], region.geom));
   assert.equal(owners.length, 1, 'Each device center must have exactly one physical owner');
-  return owners[0].stack.map(({ layerId, z0, z1, role }) => [
-    layerId,
-    z0,
-    z1,
-    role || null,
-  ]);
+  return owners[0].stack.map(({ layerId, z0, z1, role }) => [layerId, z0, z1, role || null]);
 }
 
 async function roundTrip(model) {
@@ -124,7 +119,7 @@ test('625-site canonical Process keeps buried Z, selective ROI and Save/Reload e
   );
 });
 
-test('6400-site real GRID survives canonical IO with physical roles and XY/Z locality', async () => {
+test('6400-site GRID preserves roles and physical XY/Z through project IO', async () => {
   const model = grid(80, 0.375, 4725);
   validateProcessModel(model);
   const original = arrayParts(model);
