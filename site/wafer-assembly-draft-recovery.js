@@ -1,6 +1,7 @@
 // Independent durable Recovery for opt-in Assembly Bond drafts.
 // Does not acquire the ordinary Workstation writer lease or replace its autosave.
 import { validateBondedAssemblyProject } from './wafer-assembly.js';
+import { validateProjectFile } from './project-schema.js';
 
 const STORE = 'checkpoints';
 
@@ -40,10 +41,10 @@ export function createAssemblyBondDraftRecovery({
   }
 
   async function checkpoint(project, reason = 'pre-wafer-bond') {
+    // First Bond checkpoints the independent receiver, later Bonds checkpoint
+    // the immutable Assembly baseline. Both are complete portable projects.
+    validateProjectFile(project);
     validateBondedAssemblyProject(project);
-    if (!project?.waferAssembly) {
-      throw new Error('Assembly draft Recovery requires bonded provenance.');
-    }
     const copy = structuredClone(project);
     const key = `${new Date().toISOString()}-${globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)}`;
     const db = await database();
@@ -72,6 +73,7 @@ export function createAssemblyBondDraftRecovery({
       const record = await requestValue(tx.objectStore(STORE).get(key));
       await done;
       if (!record) throw new Error('Assembly Recovery checkpoint not found.');
+      validateProjectFile(record.project);
       validateBondedAssemblyProject(record.project);
       return structuredClone(record.project);
     } finally {
@@ -91,7 +93,7 @@ export function createAssemblyBondDraftRecovery({
           key,
           reason,
           updatedAt,
-          sourceCount: project?.waferAssembly?.sources?.length || 0,
+          sourceCount: project?.waferAssembly?.sources?.length || 1,
         }))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     } finally {
