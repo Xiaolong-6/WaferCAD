@@ -83,6 +83,90 @@ export function allocateRoughTriangleBudgets(requests, { totalBudget = 900000 } 
   return normalized.sort((a, b) => a.index - b.index).map((item) => item.allocated);
 }
 
+// A thin conformal film may share the exact seeded heightfield and XY
+// triangulation of its substrate. Independent per-layer triangle budgets can
+// otherwise create crossed *display* surfaces despite a valid physical film.
+// Couple only identical XY meshes with identical morphology, never unrelated
+// material caps; keep the aggregate allocation bounded by the input budget.
+export function synchronizeConformalRoughLods(requests, allocations) {
+  const groups = new Map();
+  const sameZoneXY = (a, b) => {
+    const left = a?.baseTriangles;
+    const right = b?.baseTriangles;
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length)
+      return false;
+    for (let i = 0; i < left.length; i++)
+      for (let j = 0; j < 3; j++)
+        for (let k = 0; k < 2; k++)
+          if (left[i]?.[j]?.[k] !== right[i]?.[j]?.[k]) return false;
+    return true;
+  };
+  for (let index = 0; index < requests.length; index++) {
+    const request = requests[index];
+    const cap = request?.cap;
+    const appearance = cap?.appearance;
+    if (appearance?.kind !== 'rough' || !request?.zone?.baseTriangles?.length) continue;
+    const profile = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(appearance)
+          .filter(([key]) => key !== 'displayRoughBlend')
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+    const zone = request.zone;
+    const bounds = zone.bounds || {};
+    const key = JSON.stringify([
+      profile,
+      cap.profileNormal ?? cap.normal,
+      zone.baseTriangles.length,
+      bounds.minX,
+      bounds.maxX,
+      bounds.minY,
+      bounds.maxY,
+    ]);
+    if (!groups.has(key)) groups.set(key, []);
+    const alternatives = groups.get(key);
+    let group = alternatives.find((candidate) =>
+      sameZoneXY(requests[candidate[0]].zone, zone),
+    );
+    if (!group) {
+      group = [];
+      alternatives.push(group);
+    }
+    group.push(index);
+  }
+  let pairedZones = 0;
+  for (const alternatives of groups.values()) {
+    for (const group of alternatives) {
+      if (group.length < 2) continue;
+      // One cap appearing twice at the same physical plane is not a film.
+      if (
+        new Set(group.map((index) => requests[index].cap.z)).size < 2
+      )
+        continue;
+      const budget = Math.floor(
+        group.reduce((sum, index) => sum + allocations[index], 0) / group.length,
+      );
+      const contexts = group.map((index) => requests[index].zone.lodContext || {});
+      const context = {
+        ...contexts[0],
+        distance: Math.min(...contexts.map((item) => item.distance ?? Infinity)),
+        roughnessDetail: Math.max(...contexts.map((item) => item.roughnessDetail ?? 1)),
+        screenPriority: Math.max(...contexts.map((item) => item.screenPriority ?? 1)),
+        visibleFraction: Math.max(...contexts.map((item) => item.visibleFraction ?? 1)),
+        maxDepth: Math.max(...contexts.map((item) => item.maxDepth ?? 0)),
+      };
+      for (const index of group) {
+        const zone = requests[index].zone;
+        zone.triangleBudget = Math.max(zone.baseTriangles.length, budget);
+        zone.lodContext = { ...context };
+      }
+      pairedZones += group.length;
+    }
+  }
+  return pairedZones;
+}
+
 export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
