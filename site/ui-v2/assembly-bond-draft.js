@@ -201,7 +201,11 @@ export function mountAssemblyBondDraftControls({
       : all.length > 1
         ? 'Export active Assembly'
         : 'Export full Assembly';
-    forkButton.disabled = busy || atHead;
+    const processForkAvailable = atHead && processIndex < processSteps;
+    forkButton.disabled = busy || (atHead && !processForkAvailable);
+    forkButton.textContent = processForkAvailable
+      ? 'Fork Process Variant'
+      : 'Fork from current Bond';
     variantSelect.disabled = busy || all.length < 2;
     variantExport.disabled = busy;
     panel.dataset.bondIndex = String(editor.currentIndex());
