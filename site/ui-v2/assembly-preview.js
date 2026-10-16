@@ -2,7 +2,6 @@
 import { readProjectFile, MAX_PROJECT_FILE_BYTES } from '../project-io.js';
 import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 
-
 /** Physical Z span across all material stacks; preview-only, no model changes. */
 export function assemblyPreviewZExtent(model) {
   let minZ = Infinity;
@@ -106,8 +105,8 @@ export function mountAssemblyPreviewControls({
 
   const sync = () => {
     const index = currentIndex();
-    const step = index === 0 ? `Original wafer · 0 / ${maxIndex()}` : `Bond ${index} / ${maxIndex()}`;
-    stage.textContent = `${step}${stageDetail()}`;
+    const phase = index === 0 ? 'Original wafer' : `Bond ${index}`;
+    stage.textContent = `${phase} · ${index} / ${maxIndex()}${stageDetail()}`;
     backward.disabled = index === 0;
     forward.disabled = index === maxIndex();
     nav.dataset.bondIndex = String(index);
