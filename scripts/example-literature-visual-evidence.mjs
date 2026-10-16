@@ -444,7 +444,18 @@ function regionPhysicalPolygons(project, region) {
   assert.ok(Number.isFinite(quantum) && quantum > 0, 'Missing shared geometry quantum');
   return geometry.map(([templateId, originX, originY]) => {
     const template = project.sharedPolygonTemplates[templateId];
-    assert.ok(template?.rings?.length, 'Unresolved geometry template ' + templateId);
+    assert.ok(template, 'Unresolved geometry template ' + templateId);
+    if (template.raw) {
+      assert.ok(
+        Array.isArray(template.raw) && originX === undefined && originY === undefined,
+        'Invalid lossless raw polygon placement',
+      );
+      return template.raw;
+    }
+    assert.ok(
+      template.rings?.length && Number.isSafeInteger(originX) && Number.isSafeInteger(originY),
+      'Invalid packed polygon placement',
+    );
     return template.rings.map((deltas) => {
       let x = originX;
       let y = originY;
