@@ -134,9 +134,8 @@ export function createCompactSwxActuator(state = 'off') {
       const anchor = rect(side * baseX, anchorY, 8, 8);
       anchors.push(anchor);
       fixed.push(anchor);
-      shuttle.push(
-        strip([side * railX, tipY + travel], [x(3 * springPitch), tipY + travel], 0.45),
-      );
+      const movingY = tipY + travel;
+      shuttle.push(strip([side * railX, movingY], [x(3 * springPitch), movingY], 0.45));
     }
   }
   movable.push(...shuttle);
