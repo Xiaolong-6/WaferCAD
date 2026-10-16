@@ -104,6 +104,8 @@ export function createWorkspacePersistenceController({
   // this hook. Snapshot mutation checks still compare detached copies.
   cacheValidatedProjectSnapshots = () => {},
   snapshotManager,
+  // Preview / Assembly History is never a normal autosave writer.
+  trackSnapshotMutations = true,
   syncBaseControls,
   syncTransformInputs,
   renderAll,
@@ -167,7 +169,7 @@ export function createWorkspacePersistenceController({
     }
   }
 
-  installSnapshotMutationTracking();
+  if (trackSnapshotMutations) installSnapshotMutationTracking();
 
   function readMarker() {
     try {

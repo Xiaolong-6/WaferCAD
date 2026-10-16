@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createWorkstationHistoryOwner } from '../ui-v2/workstation-history-owner.js';
+import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
 
 test('Assembly workspace cannot instantiate or mutate generic Snapshot History', async () => {
   let captureCalls = 0;
@@ -31,4 +32,23 @@ test('Assembly workspace cannot instantiate or mutate generic Snapshot History',
     assert.throws(() => history[mutation](), /forbidden/, mutation);
   }
   assert.equal(captureCalls, 0, 'failed mutations did not call generic capture');
+});
+
+
+test('read-only persistence does not instrument an isolated, frozen Assembly owner', () => {
+  const owner = createWorkstationHistoryOwner({ assemblyWorkspace: true });
+  assert.equal(Object.isExtensible(owner), false);
+  const persistence = createWorkspacePersistenceController({
+    root: { getElementById: () => null },
+    snapshotManager: owner,
+    trackSnapshotMutations: false,
+    workspaceSession: {},
+    buildProjectSnapshot: () => {
+      throw new Error('Preview must not save');
+    },
+    status: () => {},
+  });
+  assert.equal(typeof persistence.persistNow, 'function');
+  assert.equal(owner.mode, 'assembly-isolated');
+  assert.throws(() => owner.create('foreign-bookmark'), /forbidden/);
 });
