@@ -2162,8 +2162,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
             substrate ||= Math.abs(layer.z1 - lower.z) < 2e-5;
           }
           if (layer.layerId === upper.layerId) {
-            coating ||= Math.abs(layer.z0 - lower.z) < 2e-5 &&
-              Math.abs(layer.z1 - upper.z) < 2e-5;
+            coating ||= Math.abs(layer.z0 - lower.z) < 2e-5 && Math.abs(layer.z1 - upper.z) < 2e-5;
           }
         }
         if (substrate && coating) return true;
