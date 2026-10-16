@@ -1559,6 +1559,15 @@ function applyOperationImpl(
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
+    if (typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1') {
+      const missing = verifiedConformalCoverageLoss(model, conformalOriginalVoids);
+      console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify({
+        phase: 'after-merge',
+        lostArea: geometryArea(missing),
+        pieces: missing.length,
+        firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
+      }));
+    }
     // A coverage boolean retry may derive sub-grid cracks from snapped inputs.
     // Unioning those cracks into one unsnapped owner can overlap its neighbors.
     // Check the runtime partition first, then normalize the shared persistence
@@ -1568,6 +1577,15 @@ function applyOperationImpl(
     });
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
       model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+      if (typeof process !== 'undefined' && process.env?.WAFERCAD_CONFORMAL_DEBUG === '1') {
+        const missing = verifiedConformalCoverageLoss(model, conformalOriginalVoids);
+        console.error('CONFORMAL_OWNER_DIAGNOSTIC ' + JSON.stringify({
+          phase: 'after-canonicalization',
+          lostArea: geometryArea(missing),
+          pieces: missing.length,
+          firstBounds: missing.slice(0, 3).map((polygon) => multiBounds([polygon])),
+        }));
+      }
     }
     healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
