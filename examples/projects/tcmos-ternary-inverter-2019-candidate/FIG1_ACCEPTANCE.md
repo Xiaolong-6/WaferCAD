@@ -76,6 +76,36 @@ PN surface. The candidate's 80–240 nm illustrated band remains separate.
 even if an unvalidated numeric field is attached to a qualitative record.
 This does not add a calibrated solver, new project schema, or material geometry.
 
+## Independent semiconductor numerical input contract
+
+The experimental `site/semiconductor-field-contract.js` provides an opt-in,
+read-only **two-dimensional X–Z numerical input boundary**. It is not part of
+the `.wafercad` project schema and cannot silently convert qualitative
+Implant or Well annotations into activated doping.
+
+- `validateNetDopantCrossSection` requires explicit physical units (µm,
+  cm⁻³), monotonically increasing axes, nonnegative finite donor/acceptor
+  samples, matching semiconductor-host IDs, and *synthetic* or
+  *external-unverified* provenance. Samples outside a semiconductor must
+  carry zero concentration.
+- `findSampledNetDopantSignCrossings` locates **strict sign changes of
+  supplied `N_D-N_A` between adjacent samples** within the same host,
+  using linear interpolation. Exact-zero nodes and different host materials
+  cannot be promoted into fictitious junction surfaces. The output contains
+  point candidates, not a continuous physical PN interface.
+- `validatePoissonCrossSectionInput` verifies positive relative
+  permittivity, temperature and four consistent Dirichlet edge arrays,
+  but **does not run Poisson, calculate potential/electric field, or perform
+  carrier statistics and BTBT**. A validated boundary input is not a
+  numerically verified device.
+
+Synthetic tests prove that sign changes are localized, empty/equal fields
+produce no artificial junction, incompatible hosts are separated, invalid
+concentrations and units fail closed, and inconsistent Poisson corners
+are rejected. All outputs explicitly preserve
+`physicalPnInterfaceResolved=false` or `poissonSolved=false`.
+The T-CMOS candidate and the original 80–240 nm HVT band remain unchanged.
+
 ## Acceptance decision and next stage
 
 **Accept as a qualified, clearly labeled illustrative structural T-CMOS example** for further candidate review, with complete Recipe, two process Variants and the above image evidence. **Do not approve it as a quantitatively reproduced body–drain tunnelling junction** or as verified BTBT / ternary-transfer simulation.
