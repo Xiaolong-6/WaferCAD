@@ -204,6 +204,180 @@ try {
       { instances: 6400, changed: 1 },
       { instances: 6400, changed: 1 },
     ]);
+
+    // #289: whole-mask scientific acceptance of all 4,725 active devices.
+    // Each site has an independent 200 nm selected square: all 1,675
+    // background sites are deliberately excluded from the same file Mask.
+    // One Worker request must commit every selected device atomically.
+    const allDevices = seed.array.instances.filter((item) => item.role === 'device');
+    assert.equal(allDevices.length, 4725);
+    const activeMask = allDevices.map((site) => ({
+      kind: 'polygon',
+      points: rectMulti(0.2, 0.2, site.x, site.y)[0][0].slice(0, -1),
+    }));
+    const innerMask = allDevices.map((site) => ({
+      kind: 'polygon',
+      points: rectMulti(0.1, 0.1, site.x, site.y)[0][0].slice(0, -1),
+    }));
+    const fullMask = await page.evaluate(
+      async ({ initialModel, maskDeposit, maskEtch }) => {
+        const operate = (model, params, elements) =>
+          new Promise((resolve, reject) => {
+            const worker = new Worker('/process-worker.js');
+            const timeout = setTimeout(() => {
+              worker.terminate();
+              reject(Error('Full-mask 4725-device production Worker timed out'));
+            }, 180000);
+            const fail = (message) => {
+              clearTimeout(timeout);
+              worker.terminate();
+              reject(Error(message));
+            };
+            worker.onmessage = ({ data }) => {
+              if (data?.id !== 1 || data.type === 'progress') return;
+              if (data.type === 'error' || data.rejected)
+                return fail(data.message || data.error || 'Full-mask Worker rejected Process');
+              clearTimeout(timeout);
+              worker.terminate();
+              resolve(data);
+            };
+            worker.onerror = (error) => fail(error.message || 'Full-mask Worker crashed');
+            worker.postMessage({
+              id: 1,
+              model,
+              params,
+              areaRequest: {
+                mode: 'mask',
+                maskSourceMode: 'file',
+                maskTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+                maskRoi: null,
+                elements,
+              },
+            });
+          });
+        const deposit = await operate(
+          initialModel,
+          {
+            type: 'add',
+            name: '4725-device mask 10nm',
+            face: 'front',
+            growth: 'direct',
+            thickness: 0.01,
+          },
+          maskDeposit,
+        );
+        if (!deposit.validated || !deposit.result?.changed || !deposit.result.layerId)
+          throw Error('Full-mask 10 nm film must be validated and get a material ID');
+        const etch = await operate(
+          deposit.model,
+          {
+            type: 'etch',
+            face: 'front',
+            etchProfile: 'directional',
+            thickness: 0.01,
+            etchTargetLayerIds: [deposit.result.layerId],
+          },
+          maskEtch,
+        );
+        if (!etch.validated || !etch.result?.changed)
+          throw Error('Full-mask selective Etch must be validated');
+        return {
+          deposited: deposit.model,
+          etched: etch.model,
+          filmId: deposit.result.layerId,
+          depositResult: deposit.result,
+          etchResult: etch.result,
+        };
+      },
+      { initialModel: seed, maskDeposit: activeMask, maskEtch: innerMask },
+    );
+    assert.equal(fullMask.depositResult.arrayChangedInstances, 4725);
+    assert.equal(fullMask.etchResult.arrayChangedInstances, 4725);
+    assert.equal(fullMask.deposited.array.instances.length, 6400);
+    assert.equal(fullMask.etched.array.instances.length, 6400);
+
+    const physicalSites = (model) => {
+      const templates = new Map(model.array.templates.map((item) => [item.id, item.model]));
+      return model.array.instances.map((item) => ({
+        ...item,
+        model: templates.get(item.templateId),
+      }));
+    };
+    const initialParts = physicalSites(seed);
+    const addedParts = physicalSites(fullMask.deposited);
+    const etchedParts = physicalSites(fullMask.etched);
+    const { pointInMulti } = await import('../../site/vector-geometry.js');
+    const stack = (part, point) => {
+      const owners = part.model.regions.filter((region) => pointInMulti(point, region.geom));
+      assert.equal(owners.length, 1, part.id + ' must have one physical owner at ' + point);
+      return owners[0].stack.map(({ layerId, z0, z1 }) => [layerId, z0, z1]);
+    };
+    let verifiedDevices = 0;
+    let verifiedBackground = 0;
+    for (let index = 0; index < 6400; index++) {
+      const basePart = initialParts[index];
+      const deposited = addedParts[index];
+      const etched = etchedParts[index];
+      assert.deepEqual(
+        [deposited.id, deposited.role, deposited.x, deposited.y],
+        [basePart.id, basePart.role, basePart.x, basePart.y],
+        'Deposit must preserve site identity, placement and role',
+      );
+      assert.deepEqual(
+        [etched.id, etched.role, etched.x, etched.y],
+        [basePart.id, basePart.role, basePart.x, basePart.y],
+        'Etch must preserve site identity, placement and role',
+      );
+      const substrate = [['base', -1, 1]];
+      if (basePart.role === 'background') {
+        verifiedBackground++;
+        assert.deepEqual(deposited.model, basePart.model, basePart.id + ' deposit leak');
+        assert.deepEqual(etched.model, basePart.model, basePart.id + ' etch leak');
+        continue;
+      }
+      verifiedDevices++;
+      const coated = [...substrate, [fullMask.filmId, 1, 1.01]];
+      assert.deepEqual(stack(deposited, [0, 0]), coated, basePart.id + ' center coating');
+      assert.deepEqual(
+        stack(deposited, [0.15, 0.15]),
+        substrate,
+        basePart.id + ' outside Mask must stay bare',
+      );
+      assert.deepEqual(stack(etched, [0, 0]), substrate, basePart.id + ' selected Etch');
+      assert.deepEqual(
+        stack(etched, [0.075, 0.075]),
+        coated,
+        basePart.id + ' retained annular 10 nm film',
+      );
+      assert.deepEqual(
+        stack(etched, [0.15, 0.15]),
+        substrate,
+        basePart.id + ' outside Mask Etch untouched',
+      );
+    }
+    assert.equal(verifiedDevices, 4725);
+    assert.equal(verifiedBackground, 1675);
+    const fullProject = migrateProjectFile(
+      projectForBenchmark({
+        model: fullMask.etched,
+        section: { a: [-15, 0], b: [15, 0] },
+      }),
+    );
+    validateProjectFile(fullProject);
+    const fullSerialized = serializeProject(fullProject);
+    const fullReopened = await readProjectFile({
+      size: Buffer.byteLength(fullSerialized),
+      text: async () => fullSerialized,
+    });
+    assert.deepEqual(
+      fullReopened.model,
+      fullMask.etched,
+      'All 4725 processed device stacks must survive canonical Save/Reload',
+    );
+    console.log(
+      'V2_ARRAY_4725_FULL_MASK: 4725 exact deposits/etches, 1675 protected background, IO PASS',
+    );
+
     assert.deepEqual(pageErrors, []);
     console.log('V2_ARRAY_6400_WORKER_HISTORY_REPLAY: persisted Mask steps -> actual Worker PASS');
   } finally {
