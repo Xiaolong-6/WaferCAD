@@ -14,7 +14,7 @@ import {
   ganManifoldCenterline,
 } from '../../scripts/build-gan-hemt-microchannel-example.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
-import { validateAssemblyWires } from '../assembly-wire-geometry.js';
+import { inferredAuWireBond, validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { createSnapshotManager } from '../workspace-snapshots.js';
 
 await loadGeometryKernel();
@@ -35,6 +35,30 @@ function stackAt(model, xy) {
 function solidAt(model, xy, z) {
   return stackAt(model, xy).some((segment) => segment.z0 < z && segment.z1 > z);
 }
+
+test('3D Au packaging primitive rejects invalid geometry before project import', () => {
+  const valid = inferredAuWireBond({
+    id: 'contact-a-to-b',
+    from: [0, 0, 707],
+    to: [1000, 0, 707.2],
+    fromLayerId: 'layer-1',
+    toLayerId: 'layer-2',
+  });
+  assert.equal(validateAssemblyWires([valid]).length, 1);
+  assert.throws(() => validateAssemblyWires([valid, valid]), /unique/);
+  assert.throws(
+    () => validateAssemblyWires([{ ...valid, diameterUm: Number.NaN }]),
+    /diameter/,
+  );
+  assert.throws(
+    () => validateAssemblyWires([{ ...valid, points: valid.points.slice(0, 3) }]),
+    /four finite/,
+  );
+  assert.throws(
+    () => validateAssemblyWires([{ ...valid, points: [valid.points[0], valid.points[0], valid.points[2], valid.points[3]] }]),
+    /rise/,
+  );
+});
 
 test('Lian 2022 derived mask values distinguish reported from inferred geometry', () => {
   assert.equal(GAN_MICROCHANNEL_DOI, '10.1038/s41378-022-00462-3');
@@ -213,8 +237,10 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
 
   for (const name of ['06 Integrated GaN HEMT', '07 HEMT and dual GSG']) {
     const inspectionBookmark = project.snapshots.find((snapshot) => snapshot.name.startsWith(name));
-    assert.ok(inspectionBookmark?.state.assemblyWires?.length === 2,
-      'Final inspection Bookmarks must retain both Au wire solids');
+    assert.ok(
+      inspectionBookmark?.state.assemblyWires?.length === 2,
+      'Final inspection Bookmarks must retain both Au wire solids',
+    );
   }
 
   // Candidate process-order contract: source paper distinguishes metalized
