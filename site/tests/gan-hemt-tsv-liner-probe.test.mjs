@@ -89,3 +89,42 @@ test('Persisted Cu-filled TSV geometry is planarized without losing metal', asyn
     assert.equal(layerAt(model, [x + 35.4, y], 600.45), seed.id);
   }
 });
+
+test('GSG metal pads do not falsely establish a continuous TSV-to-pad Au route', async () => {
+  const { project } = await buildGanMicrochannel();
+  const model = project.model;
+  const gold = model.layers.find((layer) => layer.name === 'GSG Au pads surrogate 0.5 um');
+  const copper = model.layers.find(
+    (layer) => layer.name === 'TSV Cu electrofill surrogate 35 um',
+  );
+  assert.ok(gold && copper, 'Expected distinct Au pad and copper-filled TSV materials');
+
+  // Sampling a pad only proves local material occupancy. The canonical model
+  // does not currently include a plated conductor between these components.
+  for (const side of [-1, 1]) {
+    assert.equal(
+      layerAt(model, [side * 1250, 0], 600.25),
+      gold.id,
+      'The illustrative GSG pad is missing',
+    );
+    for (const y of [-500, 500]) {
+      assert.notEqual(
+        layerAt(model, [side * 1450, y], 600.25),
+        gold.id,
+        'A newly introduced Au route needs full 3D continuity and replay verification',
+      );
+    }
+    for (const y of [-950, 950]) {
+      assert.equal(
+        layerAt(model, [side * 1450, y], 550),
+        copper.id,
+        'Actual TSV copper must remain continuous below the surface',
+      );
+    }
+  }
+  assert.equal(
+    model.layers.some((layer) => /NiPaAu|SiO2/i.test(layer.name)),
+    false,
+    'New oxide or barrier materials require a dedicated source-process and coolant audit',
+  );
+});
