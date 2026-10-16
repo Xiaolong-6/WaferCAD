@@ -28,23 +28,36 @@ test('S7 isolated guide candidates preserve the measured beam/truss dimensions',
   assert.throws(() => createCompactSwxGuides(-0.01), /Invalid guide stroke/);
 });
 
-test('unqualified guide pads remain OUTSIDE production compact fabrication mask', async () => {
+test('S7 guide anchor/beam separation and intended attachment survive both poses', async () => {
   const { loadGeometryKernel } = await import('../../scripts/process-benchmarks.mjs');
   await loadGeometryKernel();
   const vector = await import('../vector-geometry.js');
   const { geometryArea } = await import('../model.js');
   const union = (polys) => vector.unionGeometries(polys.map((ring) => [[[...ring, ring[0]]]]));
+  const overlapArea = (left, right) =>
+    geometryArea(vector.intersection(union(left), union(right)));
   for (const state of ['off', 'on']) {
     const model = createSwxOptomechanicalCandidate(state);
-    const isolated = createCompactSwxGuides(model.travelUm);
-    const anchorBridgeContact = geometryArea(
-      vector.intersection(union(isolated.fixed), union(model.movable)),
+    const aligned = model.guides;
+    assert.equal(aligned.guides.length, 2);
+    assert.ok(aligned.fixed.every((polygon) => model.fixed.includes(polygon)));
+    assert.ok(aligned.flexure.every((polygon) => model.flexure.includes(polygon)));
+    assert.ok(
+      overlapArea(aligned.fixed, model.movable) < 1e-8,
+      state + ' stationary S7 pad shorts moving silicon',
     );
     assert.ok(
-      anchorBridgeContact > 1e-6,
-      'This guide layout must remain isolated until the bridge/anchor collision is redesigned',
+      overlapArea(model.fixed, model.movable) < 1e-8,
+      state + ' compact model fixed/moving silicon short',
     );
-    const currentContact = geometryArea(vector.intersection(union(model.fixed), union(model.movable)));
-    assert.ok(currentContact < 1e-8, state + ' process candidate is not electrically isolated');
+    const otherFixed = model.fixed.filter((ring) => !aligned.fixed.includes(ring));
+    assert.ok(
+      overlapArea(aligned.flexure, otherFixed) < 1e-8,
+      state + ' S7 beam contacts an unrelated fixed silicon region',
+    );
+    for (const guide of aligned.guides) {
+      assert.ok(overlapArea([guide.beam], [guide.pad]) > 1e-6);
+      assert.ok(overlapArea([guide.truss], model.movable) > 1e-6);
+    }
   }
 });
