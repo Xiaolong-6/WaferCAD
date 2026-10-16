@@ -21,12 +21,12 @@ test('S7 isolated guide candidates preserve the measured beam/truss dimensions',
     const a = off.guides[i],
       b = on.guides[i];
     assert.equal(a.centerline.length, 17);
-    assert.equal(a.beam.length, 36, '17 centerline vertices give a single miter-joined beam');
+    assert.equal(a.beam.length, 34, '17 centerline vertices give a single 34-vertex miter polygon');
     assert.deepEqual(a.centerline[0], b.centerline[0]);
     assert.ok(Math.abs(b.centerline.at(-1)[1] - a.centerline.at(-1)[1] - on.travelUm) < 1e-10);
     assert.equal(a.truss.length, 4);
     for (const pose of [a, b]) {
-      assert.equal(pose.beam.length, 36);
+      assert.equal(pose.beam.length, 34);
       assert.ok(
         Math.abs(pose.centerline.at(-1)[0] - pose.centerline[0][0]) ===
           SWX_REPORTED.structuralAlignerLengthUm,
