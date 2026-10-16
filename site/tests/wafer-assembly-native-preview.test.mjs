@@ -344,6 +344,14 @@ test('native 3D/Section receives derived post-Bond geometry without mutating sou
   assert.deepEqual(runtime.state.model, baseline);
   assert.deepEqual(runtime.renderModel().regions, applied.model.regions);
   assert.notDeepEqual(runtime.renderModel().regions, baseline.regions);
+  const originalLayerIds = new Set(baseline.layers.map((layer) => layer.id));
+  const newFilm = runtime.renderModel().layers.find((layer) => !originalLayerIds.has(layer.id));
+  assert.equal(newFilm.color, '#D253A0', 'new film is visibly highlighted in preview only');
+  assert.notEqual(
+    newFilm.color,
+    applied.model.layers.find((layer) => layer.id === newFilm.id).color,
+    'canonical Process material color must not be rewritten by rendering',
+  );
   assert.equal(owner.exportVariantGraph().branches[0].postBondSteps.length, 1);
   const graph = owner.exportVariantGraph();
   const reloaded = createWorkstationRuntime(
