@@ -187,7 +187,8 @@ export function createAssemblyBondEditorSession(
     const product = assemblyVariantProject(
       restoredGraph,
       restoredGraph.activeBranchId,
-      restoredGraph.branches.find((branch) => branch.id === restoredGraph.activeBranchId).bonds.length,
+      restoredGraph.branches.find((branch) => branch.id === restoredGraph.activeBranchId).bonds
+        .length,
     );
     const restoredHistory = product.waferAssembly
       ? createAssemblyBondHistorySession(product)
