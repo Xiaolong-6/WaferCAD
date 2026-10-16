@@ -8,6 +8,7 @@ import { createModel } from '../model.js';
 import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
+import { createAssemblyBondHistorySession } from '../wafer-assembly-history-session.js';
 
 export async function loadWorkstationProject() {
   const model = createModel();
@@ -67,7 +68,10 @@ export async function loadBundledProject(
   return { source: path, hash, data };
 }
 
-export function createWorkstationRuntime(project) {
+export function createWorkstationRuntime(project, { assemblyPreview = false } = {}) {
+  if (assemblyPreview && !project?.data?.waferAssembly) {
+    throw new Error('Assembly preview requires verified Assembly provenance.');
+  }
   let sectionLayersVisible = true;
   try {
     sectionLayersVisible = localStorage.getItem('wafercad.v2.section-layers.v1') !== 'false';
@@ -94,6 +98,7 @@ export function createWorkstationRuntime(project) {
   let history = null;
   let restoreListener = () => {};
   const projectState = createProjectStateController({
+    enableAssemblyWorkspace: assemblyPreview,
     getState: () => state,
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
@@ -235,7 +240,18 @@ export function createWorkstationRuntime(project) {
     validateStates: projectState.isValidSnapshotStates,
   });
   history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
+  const assemblyPreviewSession = assemblyPreview
+    ? createAssemblyBondHistorySession(project.data)
+    : null;
+  function restoreAssemblyStage(index) {
+    if (!assemblyPreviewSession) throw new Error('Bond History preview is not active.');
+    const projectAtStage = assemblyPreviewSession.restoreIndex(index);
+    restore(projectAtStage);
+    return projectAtStage;
+  }
   return {
+    assemblyPreviewSession,
+    restoreAssemblyStage,
     state,
     local,
     project,
