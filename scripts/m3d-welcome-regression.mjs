@@ -2,7 +2,13 @@
 // Retires the obsolete Legacy DOM regression without dropping its user contracts.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { gotoWelcome, launchBrowser, newUiContext, observePageErrors } from './test-helpers/ui.mjs';
+import {
+  gotoWelcome,
+  launchBrowser,
+  newUiContext,
+  observePageErrors,
+  showWorkstationView,
+} from './test-helpers/ui.mjs';
 
 await mkdir('test-results/m3d/welcome', { recursive: true });
 const browser = await launchBrowser();
@@ -56,7 +62,7 @@ try {
   assert.equal(await page.locator('#snapshotList .history-step-wrap').count(), 36);
   assert.equal((await page.locator('#snapshotCount').textContent()).trim(), '36');
 
-  await page.locator('[data-action="view:three"]').click();
+  await showWorkstationView(page, 'three');
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,

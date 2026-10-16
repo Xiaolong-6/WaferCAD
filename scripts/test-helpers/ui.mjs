@@ -92,6 +92,35 @@ export async function waitForPaint(page) {
   );
 }
 
+/**
+ * Show a real v2 result panel using the navigation contract for the active
+ * breakpoint. Desktop docking renders all four views in Overview and does
+ * not expose the old view:* actions; do not toggle an already visible dock
+ * button and accidentally close the very panel under test.
+ *
+ * This adapter is navigation-only. Callers must retain their own science,
+ * renderer, and project invariants after the panel becomes visible.
+ */
+export async function showWorkstationView(page, view) {
+  assert.ok(['main', 'mask', 'three', 'section'].includes(view), 'Unknown result view');
+  const panel = page.locator('#' + view + 'Panel');
+  const dock = page.locator('.p-desktop-dock-actions:visible');
+  if (await dock.count()) {
+    if (!(await panel.isVisible())) {
+      const overview = dock.locator('[data-action="dock:overview"]');
+      await overview.click();
+    }
+    if (!(await panel.isVisible())) {
+      const toggle = dock.locator('[data-action="dock:view:' + view + '"]');
+      await toggle.click();
+    }
+  } else if (!(await panel.isVisible())) {
+    await page.locator('[data-action="view:' + view + '"]:visible').click();
+  }
+  await panel.waitFor({ state: 'visible', timeout: 30000 });
+  await waitForPaint(page);
+}
+
 export async function waitForCanvasSizeSync(page, selector) {
   await page.waitForFunction((selector) => {
     const canvas = document.querySelector(selector);
