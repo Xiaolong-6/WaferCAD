@@ -2,7 +2,13 @@
 // Retires the obsolete Legacy DOM regression without dropping its user contracts.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { gotoWelcome, launchBrowser, newUiContext, observePageErrors, showWorkstationView } from './test-helpers/ui.mjs';
+import {
+  gotoWelcome,
+  launchBrowser,
+  newUiContext,
+  observePageErrors,
+  showWorkstationView,
+} from './test-helpers/ui.mjs';
 
 await mkdir('test-results/m3d/welcome', { recursive: true });
 const browser = await launchBrowser();
