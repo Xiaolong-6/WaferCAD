@@ -167,7 +167,10 @@ try {
     assert.equal(updated.workflow.steps.length, 4, 'Replacing a Step retains process length');
     assert.equal(updated.workflow.branches.length, 1, 'Current Variant rewrite stays on Main');
     assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback B edited'));
-    assert.equal(updated.model.layers.some((layer) => layer.name === 'Rollback B'), false);
+    assert.equal(
+      updated.model.layers.some((layer) => layer.name === 'Rollback B'),
+      false,
+    );
     assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback C'));
     assert.ok(updated.model.layers.some((layer) => layer.name === 'Rollback D'));
     const localThicknesses = updated.model.regions
