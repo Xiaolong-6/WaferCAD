@@ -164,19 +164,20 @@ test('opt-in Assembly Save validates physical replay without any hierarchy mutat
   assert.deepEqual(host.events, [], 'failed Save cannot rewrite source layout hierarchy');
 });
 
-
 test('worker autosave cannot smuggle normal History into a bonded Assembly', () => {
+  let live = null;
   const host = createProjectStateController({
     enableAssemblyWorkspace: true,
     getState: () => live,
-    applyState: (value) => { live = value; },
+    applyState: (value) => {
+      live = value;
+    },
     ensureHierarchy: () => {},
     setSectionEditEnabled: () => {},
     getSnapshotRecords: () => [],
     getSnapshotBranchState: () => null,
     getWorkerSnapshotHistory: () => ({ snapshots: [{ id: 'foreign-worker-node' }] }),
   });
-  let live = null;
   host.loadProjectSnapshot(assemblyProject());
   const prior = structuredClone(live.waferAssembly);
   assert.throws(
