@@ -1,4 +1,4 @@
-name: PR311 one-shot isolate merge versus canonicalization XY loss
+name: PR311 one-shot precise canonicalization pass audit
 
 on:
   push:
