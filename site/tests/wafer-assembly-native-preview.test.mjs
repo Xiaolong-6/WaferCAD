@@ -44,7 +44,10 @@ test('native v2 Assembly loader verifies complete v15 donor provenance before UI
 test('native v2 Assembly loader rejects unsafe files without overwriting a workspace', async () => {
   const original = bonded();
   const bytes = serializeProject(original);
-  await assert.rejects(() => readAssemblyPreviewFile(fileLike(bytes, 'project.json')), /\.wafercad/);
+  await assert.rejects(
+    () => readAssemblyPreviewFile(fileLike(bytes, 'project.json')),
+    /\.wafercad/,
+  );
   await assert.rejects(
     () =>
       readAssemblyPreviewFile({
@@ -98,7 +101,10 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   assert.deepEqual(store.state.model, original.model);
   assert.equal(store.assemblyPreviewSession.currentIndex(), 2);
   assert.equal(store.history.listHistory().length, 0, 'normal editor History remains untouched');
-  assert.deepEqual(original.waferAssembly.sources[1].project.model, bonded().waferAssembly.sources[1].project.model);
+  assert.deepEqual(
+    original.waferAssembly.sources[1].project.model,
+    bonded().waferAssembly.sources[1].project.model,
+  );
 });
 
 test('native v2 ordinary workstation still refuses bonded files without preview opt-in', () => {
@@ -108,7 +114,8 @@ test('native v2 ordinary workstation still refuses bonded files without preview 
     /requires the multi-wafer editor/,
   );
   assert.throws(
-    () => createWorkstationRuntime({ source: 'standalone', data: wafer('A') }, { assemblyPreview: true }),
+    () =>
+      createWorkstationRuntime({ source: 'standalone', data: wafer('A') }, { assemblyPreview: true }),
     /requires verified Assembly provenance/,
   );
 });
