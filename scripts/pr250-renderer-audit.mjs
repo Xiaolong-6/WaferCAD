@@ -477,6 +477,10 @@ try {
         const implantBlend = Number(diagnostics.host.roughImplantDisplayBlendMin);
         assert.ok(Number.isFinite(blend) && blend > 0);
         assert.ok(Number.isFinite(implantBlend) && implantBlend > 0);
+        assert.ok(
+          Number(diagnostics.host.roughImplantCutProfileMatches) > 0,
+          'Implant ROI cut must share final rough-cap boundary vertices',
+        );
         if (fixture.name.includes('-micro-')) {
           assert.equal(blend, 1, 'microscopic roughness must retain full display relief');
           assert.equal(implantBlend, 1, 'microscopic implant must match physical roughness');
