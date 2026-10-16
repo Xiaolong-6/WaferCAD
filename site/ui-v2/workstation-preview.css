@@ -341,3 +341,48 @@ body[data-workstation][data-preview-mode='true'] .p-view .p-readout {
   opacity: 0.5;
   cursor: default;
 }
+
+/* Preview-only Process stages are visually distinct from Bond and Variants. */
+.assembly-bond-post-process {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #d7dfe8;
+}
+
+.assembly-bond-post-process > strong,
+.assembly-bond-post-process > p,
+.assembly-bond-post-process > button,
+.assembly-bond-post-process-count {
+  grid-column: 1 / -1;
+}
+
+.assembly-bond-post-process select,
+.assembly-bond-post-process input,
+.assembly-bond-post-process button {
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 7px;
+  border: 1px solid #bdc8d6;
+  border-radius: 7px;
+  background: #fff;
+  color: #293c54;
+  font: inherit;
+}
+
+.assembly-bond-post-process p {
+  margin: 0;
+  color: #57677a;
+}
+
+.assembly-bond-post-process-count {
+  color: #66788a;
+  font-size: 11px;
+}
+
+.assembly-bond-post-process button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
