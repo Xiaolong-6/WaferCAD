@@ -7,12 +7,10 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 
 const { expandProjectStorage } = await import('../project-io.js');
-const { roughBoundaryEdgesFromTriangles, roughMeshDataFromPreparedCap } = await import(
-  '../rough-mesh-geometry.js'
-);
-const { roughDisplayProfileOffsetAtPoint, roughProfileOffsetAtPoint } = await import(
-  '../surface-rendering.js'
-);
+const rough = await import('../rough-mesh-geometry.js');
+const surface = await import('../surface-rendering.js');
+const { roughBoundaryEdgesFromTriangles, roughMeshDataFromPreparedCap } = rough;
+const { roughDisplayProfileOffsetAtPoint, roughProfileOffsetAtPoint } = surface;
 
 test('Photodetector 50 nm rough ALD and following implant preserve a shared front profile', async () => {
   const stored = JSON.parse(
@@ -26,16 +24,17 @@ test('Photodetector 50 nm rough ALD and following implant preserve a shared fron
   assert.ok(active, 'Black-Si active region must exist');
   const silicon = active.stack.find((layer) => layer.layerId === 'base');
   const ald = active.stack.find((layer) => layer.layerId === 'layer-3');
-  const implant = model.implants
-    .find((entry) => entry.face === 'front')
-    ?.patches.find((patch) => patch.surfaceAppearance?.kind === 'rough');
+  const frontImplant = model.implants.find((entry) => entry.face === 'front');
+  const implant = frontImplant?.patches.find(
+    (patch) => patch.surfaceAppearance?.kind === 'rough',
+  );
 
   assert.ok(silicon?.frontSurface && ald?.frontSurface && implant?.surfaceAppearance);
   assert.deepEqual(ald.frontSurface, silicon.frontSurface);
   assert.deepEqual(implant.surfaceAppearance, silicon.frontSurface);
   assert.equal(ald.z0, silicon.z1, 'ALD must begin at the rough Si front interface');
   const thickness = ald.z1 - silicon.z1;
-  assert.ok(Math.abs(thickness - 0.05) < 1e-10, 'ALD physical thickness must remain 50 nm');
+  assert.ok(Math.abs(thickness - 0.05) < 1e-10, 'ALD must retain 50 nm thickness');
 
   const p = [2492, -3, 0],
     q = [2498, -3, 0],
@@ -88,9 +87,9 @@ test('Photodetector 50 nm rough ALD and following implant preserve a shared fron
       assert.equal(upper.positions[i + 1], y, mode + ': matched y tessellation');
       assert.ok(
         Math.abs(gap - thickness) < 2e-5,
-        mode + ': Float32 vertex coating gap changed by ' + (gap - thickness) + ' um',
+        mode + ': Float32 coating gap drift ' + (gap - thickness) + ' um',
       );
-      assert.equal(materialOffset, implantOffset, mode + ': implant display profile divergence');
+      assert.equal(materialOffset, implantOffset, mode + ': implant display profile mismatch');
       if (blend === 1)
         assert.equal(
           materialOffset,
