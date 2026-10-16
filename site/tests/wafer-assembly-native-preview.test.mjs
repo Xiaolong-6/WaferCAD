@@ -77,7 +77,8 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   assert.equal(store.assemblyPreviewSession.currentIndex(), 2);
   assert.deepEqual(store.state.model, original.model);
   assert.equal(store.state.threeShowBorders, true);
-  assert.deepEqual(store.state.sectionCollapse, { enabled: false });
+  assert.equal(store.state.sectionCollapse.enabled, false);
+  assert.ok(store.state.sectionCollapse.top > store.state.sectionCollapse.bottom);
   assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 1200);
   const physicalBeforePresentation = structuredClone(store.state.model);
   const presentation = store.renderModel();
@@ -104,7 +105,8 @@ test('real native v2 runtime renders one shared physical model for each read-onl
   assert.deepEqual(store.state.model, first.model);
   assert.equal(assemblyPreviewZExtent(store.state.model).thicknessUm, 800);
   assert.equal(store.state.threeShowBorders, true);
-  assert.deepEqual(store.state.sectionCollapse, { enabled: false });
+  assert.equal(store.state.sectionCollapse.enabled, false);
+  assert.ok(store.state.sectionCollapse.top > store.state.sectionCollapse.bottom);
   assert.equal(main.model, mask.model);
   assert.equal(main.model, three.model);
 
