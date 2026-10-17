@@ -1,0 +1,25 @@
+name: PR264 GaN matrix formatting diff (read-only)
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [feat/example-gan-hemt-microchannel-20261014]
+    paths:
+      - .github/workflows/pr264-gan-format-diff-once.yml
+permissions:
+  contents: read
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Print exact canonical formatter patch
+        run: |
+          npx prettier --write scripts/gan-hemt-microchannel-visual-acceptance.mjs
+          git diff --check
+          git diff --no-ext-diff -- scripts/gan-hemt-microchannel-visual-acceptance.mjs
