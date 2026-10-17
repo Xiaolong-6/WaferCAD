@@ -459,6 +459,18 @@ export function createPlanRenderers({
 
   function renderMain() {
     const { model, activeFace, section, readOnlyPreview } = getState();
+    if (validateExperimentalPhysicalFacetModel(model)) {
+      // Never display the flat Base compatibility stack as physical Main.
+      // The read-only laboratory route enables only 3D and Section.
+      const canvas = $('mainCanvas');
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#576b7a';
+      ctx.font = '12px system-ui';
+      ctx.fillText('Physical Main view unavailable in this experimental model', 24, 36);
+      canvas.dataset.physicalFacetUnsupported = 'true';
+      return;
+    }
     const c = $('mainCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
