@@ -249,7 +249,11 @@ try {
     await page.locator('#' + id).fill(String(value));
     await page.locator('#' + id).press('Tab');
   }
-  assert.deepEqual((await snap()).section, sourceSection, 'Array A–B must cross transistor silicon');
+  assert.deepEqual(
+    (await snap()).section,
+    sourceSection,
+    'Array A–B must cross transistor silicon',
+  );
   await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
   await waitForPaint(page);
   await page.screenshot({ path: resolve(dir, 'tcmos-4x4-transistor-row-section.png') });
@@ -264,7 +268,11 @@ try {
   const reopened = await readProjectFile(new Blob([await readFile(exportedPath)]));
   assert.equal(reopened.model.kernel, 'vector-2.5d-array-v1');
   assert.equal(reopened.model.array.instances.length, 16);
-  assert.deepEqual(reopened.section, expected.section, 'Saved A–B must cross actual SVG transistor rows');
+  assert.deepEqual(
+    reopened.section,
+    expected.section,
+    'Saved A–B must cross actual SVG transistor rows',
+  );
   const expectedPhysical = resolveArrayModel(expected.model);
   const replayedPhysical = resolveArrayModel(reopened.model);
   // Never pass both empty array roots to occupancy() – that would produce
