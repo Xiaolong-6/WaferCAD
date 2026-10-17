@@ -76,10 +76,22 @@ test('closed physical 3D surfaces conserve analytical XY/Z material volume', () 
 test('physical Section corners and 3D triangle facets share exact source geometry', () => {
   const source = owner({ minX: -6.4, maxX: 6.4, minY: -6.4, maxY: 6.4 });
   for (const [a, b] of [
-    [[-6.4, 0], [6.4, 0]],
-    [[-6.4, -6.4], [6.4, 6.4]],
-    [[-6.4, 1.25], [6.4, -3.75]],
-    [[0.7, -6.4], [2.8, 6.4]],
+    [
+      [-6.4, 0],
+      [6.4, 0],
+    ],
+    [
+      [-6.4, -6.4],
+      [6.4, 6.4],
+    ],
+    [
+      [-6.4, 1.25],
+      [6.4, -3.75],
+    ],
+    [
+      [0.7, -6.4],
+      [2.8, 6.4],
+    ],
   ]) {
     const section = physicalPyramidSection(source, a, b);
     assert.equal(section.layerId, source.layerId);

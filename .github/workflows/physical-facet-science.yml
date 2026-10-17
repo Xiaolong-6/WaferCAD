@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
       - name: Verify physical owner, closed mesh and exact Section contracts
@@ -26,8 +26,3 @@ jobs:
           site/tests/physical-facet-math.test.mjs
           site/tests/physical-facet-owner.test.mjs
           site/tests/physical-facet-surface.test.mjs
-      - name: Temporary read-only formatter diagnosis
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npx prettier --write site/physical-facet-surface.js site/tests/physical-facet-surface.test.mjs
-          git diff --unified=3 -- site/physical-facet-surface.js site/tests/physical-facet-surface.test.mjs

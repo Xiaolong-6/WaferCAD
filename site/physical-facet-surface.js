@@ -104,8 +104,14 @@ export function physicalPyramidSolidMesh(owner, { maxCells = 256 } = {}) {
           const b = polygon[i];
           const c = polygon[i + 1];
           if (area2(a, b, c) <= EPS * EPS) continue;
-          add('top', [a, b, c].map((xy) => vertex(xy, valid, 'top')));
-          add('bottom', [c, b, a].map((xy) => vertex(xy, valid, 'bottom')));
+          add(
+            'top',
+            [a, b, c].map((xy) => vertex(xy, valid, 'top')),
+          );
+          add(
+            'bottom',
+            [c, b, a].map((xy) => vertex(xy, valid, 'bottom')),
+          );
         }
         for (let i = 0; i < polygon.length; i++) {
           const a = polygon[i];
@@ -144,7 +150,10 @@ function segmentIntersections(a, b, c, d) {
     if (Math.abs(rx * dy - ry * dx) > EPS) return [];
     const lengthSquared = dx * dx + dy * dy;
     return lengthSquared
-      ? [(rx * dx + ry * dy) / lengthSquared, ((d[0] - a[0]) * dx + (d[1] - a[1]) * dy) / lengthSquared]
+      ? [
+          (rx * dx + ry * dy) / lengthSquared,
+          ((d[0] - a[0]) * dx + (d[1] - a[1]) * dy) / lengthSquared,
+        ]
       : [];
   }
   const t = (rx * ey - ry * ex) / det;
@@ -207,7 +216,9 @@ export function physicalPyramidSection(owner, a, b, options = {}) {
 // Divergence theorem on a closed, consistently wound triangle boundary.
 export function signedPhysicalMeshVolume(mesh) {
   let volume = 0;
-  for (const { vertices: [a, b, c] } of mesh.triangles) {
+  for (const {
+    vertices: [a, b, c],
+  } of mesh.triangles) {
     volume +=
       (a[0] * (b[1] * c[2] - b[2] * c[1]) +
         a[1] * (b[2] * c[0] - b[0] * c[2]) +
