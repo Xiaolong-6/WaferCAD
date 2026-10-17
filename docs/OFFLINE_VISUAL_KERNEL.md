@@ -30,3 +30,17 @@ node scripts/offline-ui-capture.mjs --component topbar --width 1440 --height 960
 ```
 
 The UI exporter reads the **actual CSS links from `site/app.html`**, executes the real v2 native icon/component/registry/overlay/Shell modules directly in an `about:blank` Chromium document, and captures a specific component rather than navigating to the app. It records a SHA-256 for each source file. Shell adapters intentionally contain no mocked project, geometry, or business content. Supported targets are `navigation`, `topbar`, and `viewbar`; hidden targets fail rather than returning fake results. This establishes real **shell/component CSS inspection only**. It cannot confirm live domain contents, application startup, runtime interactions, real WebGL render, or scientific geometry.
+
+## Offscreen 3D geometry preview
+
+```sh
+# Requires the pinned Three.js package plus Python VTK (no browser/WebGL):
+node scripts/offline-three-capture.mjs --fixture step --output test-results/offline-three --z-exaggeration 3
+node scripts/offline-three-capture.mjs --project site/examples/photodetector-literature-examples.wafercad --output test-results/offline-three --z-exaggeration 8
+# Canonical owned triangle mesh and JSON metadata without VTK:
+node scripts/offline-three-capture.mjs --fixture step --mesh-only
+```
+
+Uses the production `buildRenderSurfacePlan()` owned caps and sidewalls and the production `triangulatePolygon(THREE, polygon)` for cap topology. Open sidewalls form two triangles per quad; buried material interfaces are explicitly excluded from the opaque exterior preview. This does **not** reconstruct rough/pyramid displacement or Three.js material/shader/transparent border compositing. The optional Python VTK rasterizer is a separate offline image backend and must never be labeled a native Three.js image. Z exaggeration is presentation-only and recorded alongside source SHA and material counts. Fail explicitly on invalid caps, impossible sidewall spans and excessive triangle budgets. It must not mutate the project.
+
+Focused read-only triangle conversion tests: `node --test site/tests/offline-three-mesh.test.mjs`. VTK is **not** added to the locked production dependency set; only the optional offline 3D PNG path requires it. The scientific source and WebGL renderer remain unchanged.

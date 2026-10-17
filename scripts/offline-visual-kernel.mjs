@@ -28,7 +28,7 @@ const sha = () => {
   try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: new URL('..', import.meta.url), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
   catch { return 'unavailable'; }
 };
-async function loadInput(settings) {
+export async function loadInput(settings) {
   await loadGeometryKernel();
   if (settings['--fixture']) {
     if (settings['--project']) throw Error('Specify either --fixture or --project.');
