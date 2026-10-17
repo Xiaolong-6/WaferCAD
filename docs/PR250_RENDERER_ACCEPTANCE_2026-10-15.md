@@ -4,64 +4,25 @@ This is a local engineering acceptance record, not merge authorization. Human
 visual acceptance, required remote CI results, and explicit user Merge approval
 remain separate gates.
 
-## 2026-10-17 targeted ROI rough-cut follow-up
+## 2026-10-17 ROI rough-cut verification
 
-**Exact tested production HEAD:** `422ba1e760e1cd9d9dfd7426c7754c19715a8479`.
-This addendum supersedes earlier *status* estimates below, while preserving
-their dated, source-specific evidence. [Exact-HEAD Browser regression](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38947599596),
-[Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38947599452),
-Renderer Isolation, M3D, documentation and Visual-first checks **passed**.
-The Draft PR remains unmerged. Draft-skipped runs are not counted as passes.
+The tested production source is `422ba1e`; this document update does not
+change its Renderer. [Browser regression](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38947599596)
+and Quality passed at that source revision.
 
-**Actual problem:** Photodetector Black-Si / 50 nm Al₂O₃ ROI cut at
-`y=-150 µm`. Before correction, independent material-cap Float32 boundary
-interpolation yielded apparent local thickness **1.50–97.93 nm** along the
-observed front cut (258 common XY samples), producing blue-gray Si triangles
-between the gold ALD cap and pink Implant cut in an opaque close-up.
-The real Implant cut had already matched the exposed ALD cap, so changing its
-depth bias or preferring a nominal buried Si layer did not fix the image.
+- The Photodetector ROI cut exposed an apparent Si/Al₂O₃ gap of 1.50–97.93 nm.
+- The corrected display cut has a 50 nm gap within 0.0031 nm at 130 samples.
+- Fixed-camera 85/260-unit opaque and transparent close-ups show no blue Si wedges.
+- The 12 × 12 µm micro-ROI was inspected at camera distance 14 with Z Break 8×.
+- Chromium captured 29 scenes, with zero browser errors and 10 project roundtrips.
+- Eighteen boundary/outline and two 50 nm conformal Node tests passed.
+- The targeted no-Worker probe passed; the full fallback matrix remains open.
+- SwiftShader GPU-height precision and RTX 3060 acceptance are still open.
 
-**Product correction:** the ROI-only material sidewall now uses a single
-actual rendered conformal cap boundary, translated by the *existing physical*
-Z separation where a continuous layer stack, same seeded roughness, equal
-surface normal and overlapping cut segment all agree. The exact Photodetector
-fixture reports **one matched pair**. The corrected cut-sidewall spacing
-deviates by at most **3.0517578e-6 µm (0.0031 nm)** across 130 common samples,
-within the unchanged **2e-5 µm** scientific acceptance limit. This proves
-the *display-sidewall* result in this fixture, not complete manifold equality
-of every independently triangulated buried-cap interior.
-
-**Real Chromium visual evidence:** the fixed-camera 85-unit close-up changes
-8,306 pixels by over 12 RGB levels; the previously identified blue-gray wedge
-fill drops from 2,459 detected pixels to zero, while legitimate border strokes
-remain. Matched opaque and transparent, Border ON/OFF and 260-unit captures
-show no new broad misregistration. The 12 × 12 µm micro-ROI, camera distance
-14 units, was additionally checked in opaque/Border ON and transparent mode;
-its visibly jagged front cut tracks the rough top edge. A straighter right
-silhouette may be an actual **sample exterior**, because this micro-ROI spans
-`x=2489–2501 µm`, crossing the fixture's approximately `x=2500 µm`
-outer material boundary. That classification is not yet a separate
-full-perimeter topology proof.
-[Exact-HEAD 29-scene browser artifact](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38947599596/artifacts/12065973937):
-**29 captures, 0 page errors, 10 deterministic .wafercad roundtrips**.
-Production materials/Recipe and exported project data were not altered.
-
-**Executed contracts:** the same browser run includes 18 rough-boundary and
-outline Node tests, the two Photodetector conformal 50 nm geometry tests,
-and the targeted no-Worker rough fallback probe, all successful. The latter
-does **not** supersede the older failed full 40-case no-Worker matrix.
-SwiftShader's unselected GPU-height oracle remains outside its `2e-5 µm`
-limit, so production software displacement remains CPU parity rather than a
-claim of software GLSL correctness. Full hardware evidence for **RTX 3060**,
-cold-refinement latency acceptance, independently triangulated cap interiors
-and the complete release Quality gate remain separate work.
-
-**Integration:** Main has advanced since this PR branch was created; the
-overlapping files are `docs/README.md` and
-`site/tests/documentation.test.mjs`. When syncing, preserve Main's #310
-documentation/archive relocation and compatibility-forwarding semantics.
-Never replace the newer 82-item inventory with this branch's historical
-79-item assertion. No merge into Main without the owner's express approval.
+These statements apply to the observed ROI cut. Buried-cap interior watertightness,
+cold-refinement latency and complete release Quality remain separate checks.
+When syncing Main, retain #310 documentation relocation and forwarding checks.
+PR #250 stays Draft; merging to Main requires explicit approval.
 
 ## Reproduction and environment
 
