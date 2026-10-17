@@ -18,7 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          ref: feat/m3d-precharge-geometry-20261017
+          fetch-depth: 0
           persist-credentials: true
       - uses: actions/setup-node@v4
         with:
@@ -43,4 +44,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "testdata(m3d): regenerate 15-CNTFET precharge fixture"
+          # Preserve any newer human/agent commits; never force the branch.
+          git fetch origin refs/heads/feat/m3d-precharge-geometry-20261017
+          git rebase origin/feat/m3d-precharge-geometry-20261017
           git push origin HEAD:refs/heads/feat/m3d-precharge-geometry-20261017
