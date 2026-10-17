@@ -148,16 +148,30 @@ The following unresolved findings are limited to evidence already identified
 in #242 and the present register; no new source-specific dimensions are
 inferred.
 
-| Family                      | Model / browser evidence already supported                                              | Outstanding paper fidelity                                                                                                                                                                                                         | Disposition                                                            |
-| --------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Black-Si / Ge photodetector | FINAL retains active 50 nm Al₂O₃; QA branch removes it; Ge A/B cuts captured            | Original article and distinct Ge thesis figures must be compared separately; no electrical-transport claim                                                                                                                         | Engineering topology evidenced; paper match open                       |
-| PERC                        | 100 rear Al–Si point openings and insulated controls checked                            | 2 mm reconstruction mask pitch is not author GDS; Fig. 1 alone cannot validate all XY coordinates                                                                                                                                  | Contact topology evidenced; XY author-match unsupported                |
-| Sahli textured tandem       | Nominal film stack and masked Ag/IZO captures exist                                     | Si canonical top is planar even where Renderer draws pyramids; physical facet normals and conformal material occupancy absent                                                                                                      | **Confirmed canonical-vs-texture geometry gap**; #297                  |
-| Suspended Microdisk         | 148/82 µm radii, 1.8 µm silica, released annulus and pedestal reconstructed             | XeF₂ R=36 µm is assumed and rendered undercut uses eight Z slices; Fig. 2a depicts a similar device                                                                                                                                | Geometric proxy; continuous release #298                               |
-| M3D self-powered IC         | Tier / via material probes and both native-v2 power-via A–B captures exist              | The two captured Sections and material stacks are **identical**; a distinct per-via structure and exact paper panel are not demonstrated. Source Fig. 1 describes overall integration; Extended Data Fig. 1 documents process flow | Via presence supported; source-specific via distinction **unverified** |
-| MAGIC-1000                  | Local four-level interconnect and MoS₂ gate Sections captured                           | 40×24 µm illustrative local proxy cannot certify full 1,433-transistor processor routing or original author mask                                                                                                                   | Representative cell only                                               |
-| Three-tier JLFET            | Three 10 nm silicon tiers, gate/sidewall and local 625-site engineering array evidenced | The 91/100 nm local ILD and array layout are illustrative; paper Figs. 1–2 address device structure, Fig. 3 wafer statistics                                                                                                       | Local material topology evidenced; full paper XY match open            |
-| TiO₂ metalens               | Illustrative pillar diameters / row Sections and material probes captured               | 4,725 sites are educational reconstruction, not author phase-optimized GDS or optical performance                                                                                                                                  | Process and motif proxy only                                           |
+### Per-family disposition
+
+- **Black-Si / Ge photodetector:** FINAL retains active 50 nm Al₂O₃; QA removes it.
+  Ge A/B Section captures exist. The article and separate thesis Fig. 15 need
+  independent comparison; no electrical-transport agreement is claimed.
+- **PERC:** 100 rear Al–Si openings and nearby insulated controls are verified.
+  The 2 mm reconstruction pitch is not original GDS; author XY fidelity is open.
+- **Sahli tandem:** Nominal films and Ag/IZO masks are captured. Canonical Si
+  remains planar although the Renderer displays pyramids. Physical facet
+  normals and true conformal ownership are absent. This is a known gap (#297).
+- **Microdisk:** 148/82 µm radii, 1.8 µm silica, annulus and pedestal exist.
+  XeF₂ R=36 µm is assumed, and eight-Z-band release is a geometric proxy.
+  Fig. 2a shows a similar device rather than this exact reconstructed disk.
+- **M3D:** Tier/via probes and both power-via Section captures are available.
+  The two resulting screenshots and material intervals are identical.
+  Distinct source-specific via geometry and a corresponding SEM panel have not
+  been demonstrated. Fig. 1 covers architecture; Extended Data Fig. 1 the flow.
+- **MAGIC-1000:** Four-level local interconnect and MoS₂ gate are captured.
+  The 40×24 µm proxy cannot certify 1,433-transistor routing or author masks.
+- **Three-tier JLFET:** Three 10 nm Si tiers and local 625-site array are
+  evidenced. The 91/100 nm ILD and mask placement are illustrative. Figs. 1–2
+  contain device structures; Fig. 3 gives wafer statistics.
+- **TiO₂ metalens:** Pillar Section cuts and saved material probes are captured.
+  The 4,725-site array is a process motif, not optimized author GDS or optics.
 
 **Finite closeout:** #299/#302 may be considered complete as an *honest,
 fail-closed evidence register* once its exact HEAD tests and required CI are
