@@ -50,7 +50,14 @@ async function fixture() {
       .filter((region) => region.stack.some((s) => s.layerId === m1Layer.id))
       .map((region) => region.geom));
     const grid = PROJECT_LENGTH_QUANTUM_UM;
-    const quantize = (value) => Number((Math.round(value / grid) * grid).toFixed(4));
+    // The *committed historical fixture* uses its original four-decimal
+    // integer-grid point representation. Multiplication by 10,000 followed
+    // by division preserves its half-grid tie behavior. Dividing directly
+    // by 0.0001 can choose the opposite neighboring grid point because of
+    // binary floating-point representation, without any mask/process change.
+    const gridScale = Math.round(1 / grid);
+    const quantize = (value) =>
+      Number((Math.round(value * gridScale) / gridScale).toFixed(4));
     const m1Reference = unionGeometries(
       approvedSvg.find((group) => group.name === 'METAL1').shapes.map(({ points }) => {
         const materialRing = points.map(([x, y]) => [quantize(x), quantize(y)]);
