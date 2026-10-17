@@ -1,0 +1,372 @@
+# Multi-wafer bonding design and staged scientific acceptance
+
+Status: **Draft / validated source-aware Bond authoring, persistent Variants and restricted post-Bond geometric Process preview** (updated 2026-10-16).
+Branch: `feat/multi-wafer-bonding-from-pr229-20261015`.
+Reference example: PR #229, Lian et al., _Microsystems & Nanoengineering_ 8, 119 (2022), DOI 10.1038/s41378-022-00462-3.
+**Do not merge to Main without explicit scientific/visual user approval.**
+
+## Goal and non-goals
+
+Enable independently fabricated donor and receiver wafers to be aligned, bonded,
+and subsequently processed as one assembly, with complete provenance and
+reproducible Recipe/History. The initial GaN/SiC example requires two separately
+patterned 400 µm Si wafers with true internal coolant voids. A monolithic
+800 µm five-tier surrogate is not equivalent to wafer-to-wafer bonding.
+
+This is geometric process emulation. Bond chemistry, hermeticity, interface
+strength, warpage, thermo-mechanical deformation, void collapse, wafer
+bow/overlay statistics, and heat/CFD/electrical transport are not predicted.
+
+## Existing code constraints
+
+- `site/model.js`: canonical physical model = XY nonoverlapping polygon regions
+  carrying sorted (layerId, z0, z1) material slabs; micrometre coordinates.
+- `site/process-topology.js` derives actual surfaces/voids and Section/3D.
+- `site/model-array.js` is a _translation-only lateral repetition_ mechanism,
+  **not** a generic stacked-chip assembly; it must not be overloaded.
+- `site/process-face-execution.js` implements atomic Front/Back processing of
+  one model; it is not a donor/receiver operation.
+- `site/process-recipe.js` currently accepts Deposit/Extend/Etch/Lift-off/
+  Implant/Electrical/Record/Snapshot, not a Bond command.
+- `site/project-schema.js` now supports project v15 with strict Assembly validation and legacy v14 migration;
+  `site/project-io.js` packs shared geometries and model dictionaries.
+- History/Recovery require validated candidate commit, stable replay input and
+  safe downstream rollback.
+
+## Architectural decision
+
+Introduce a distinct Assembly provenance domain rather than representing each
+wafer as Deposit, Transfer/Laminate, a duplicated Base, a Variant, or a lateral
+Array instance.
+
+### Proposed persistent structure (not implemented yet)
+
+```text
+Assembly
+  sources[waferId] -> independently valid, immutable input project revision
+     material model, masks, Recipe, History, source hash and units
+  bonds[] -> ordered physical operations
+     donorId, receiverRevision, face pair, XY transform/handedness,
+     contact plane, zero-thickness interface geometry, material mapping
+  product -> a normal, valid 2.5D material model
+  productHistory -> Bond node, then conventional post-bond operations
+```
+
+An Assembly can be extended with a third wafer by bonding against a completed
+product revision. Source identities and Layer IDs must remain distinct and
+traceable. The external source file shall be embedded (bounded, deduplicated)
+rather than linked by an unverifiable local path. Recursive/foreign-project
+references must be rejected, bounded and migration-tested. The new v15 project schema explicitly gates embedded Assembly provenance; older
+v14 readers reject v15 rather than silently misinterpreting it.
+
+### Physical coordinate contract
+
+- XY align: `dx`, `dy`, `rotationDeg` in canonical µm/degrees; no implicit rescale.
+- Face pair: Front–Front, Front–Back, Back–Front, Back–Back.
+- The donor requested face is placed at the receiver's outermost material Z
+  plane. A same-face pair flips donor Z. An explicit X/Y mirror is applied to
+  its XY coordinates on flipping, then rotation and translation.
+- Material Z intervals are translated/reflected **without changing thickness**.
+  The two material solids may meet but must never overlap in positive Z.
+- Direct bond is **zero-thickness interface metadata**, not a deposited layer.
+  For this phase only direct, zero-gap contact is supported. A positive gap
+  or an adhesive film requires actual separately modeled materials/spacers.
+- Positive-area contact is the intersection of the real exposed face material
+  footprints at the common plane. Recessed/etched footprints are excluded.
+  Empty fluid cavities are preserved as genuine voids; geometric contact alone
+  does not prove bonding quality or channel airtightness.
+- Partial contact may be structurally legal, but contact fraction, connected
+  contact islands, seal-ring continuity and bond-quality gates will be added
+  before general release.
+
+### Atomic transaction requirements
+
+`prepareBond(receiver, donor, spec)` must be pure: validate both sources;
+transform donor and annotate provenance; partition overlapping XY footprints;
+sort and validate all Z slabs; verify nonzero contact and no illegal material
+collision; validate the entire candidate; return a candidate and audit record.
+A thrown error cannot change either source model, History, Recovery, Recipe,
+or the live UI. Only the future transaction controller may commit the validated
+candidate. Prepare / commit must be independent of renderer caches.
+
+## Implementation progress
+
+### P0 / P1 prototype (committed)
+
+`site/wafer-bonding.js` provides `bondWaferModels(receiver, donor, request)`.
+It returns `{model, interface, donorLayerIds}` and never mutates the source
+models. It maps layer identities, flips orientation and optional appearance,
+computes real contact geometry, partitions XY regions, preserves Z voids and
+validates the final native model.
+
+The strict prototype intentionally rejects canonical Array models and models
+with Implant/Electrical Region annotations instead of silently dropping their
+geometry. It does not yet create History operations, persistent provenance,
+Recipe syntax, imported donor projects, or UI controls. These must not be
+advertised as complete. The pure Kernel continues returning the interface separately; the v15
+Assembly project wrapper now persists typed Bond metadata and full validated
+source projects, with strict replay parity before both export and import.
+
+`site/tests/wafer-bonding.test.mjs` defines thirteen directed scientific tests:
+800 µm two-wafer stack, capped open coolant trench, handedness/90° rotation,
+front/back pairing, third-wafer extension, atomic rejection, and annotation/
+array exclusion. These are proposed acceptance tests; their execution must
+be reported independently.
+
+### P1 remaining: hard scientific invariants
+
+1. Verify after geometry Kernel load with:
+   `node --test site/tests/wafer-bonding.test.mjs`.
+2. Verify non-rectangular holes, many disconnected islands, partial seams,
+   layered donor/receiver, remapped paired layers, and coordinate extremes.
+3. Guard against tiny positive-area slivers, invalid contact percentages, and
+   polygon-Boolean instability with the **existing strict** tolerances; do not
+   widen global scientific tolerances to pass acceptance.
+4. Cross-check input Model JSON before/after all failed operations.
+5. Benchmark actual PR #229 two-wafer masks before lifting region budgets.
+6. Integrate annotations and/or reject them at user-facing preflight, with
+   no silent loss of physical metadata.
+
+### P2: provenance + IO + Recipe/History
+
+Add a bounded Assembly object to `project-schema.js` and asset packing in
+`project-io.js`, with migration and round-trip validation of all donor source
+revisions and interface geometry. Then add explicit `bond()` semantics to the
+Recipe parser/preflight, Process worker, History operation labels and
+Replay/Branch/Recovery transaction path. The design must preserve completed
+independent donor recipes and allow post-bond steps on the assembled product.
+
+Acceptance: byte-stable canonical source hashes, Layer ID provenance,
+Save→Reload→Replay occupancy parity, third-wafer extension, Undo/Redo,
+Abort/retry and failed-load isolation. Only then can this be a user-facing
+manufacturing operation.
+
+### P3: UI and real browser visual acceptance
+
+Project → Assembly opens an explicit donor selector and lists source wafer
+states. Bond editor: face pair, flip axis, XY offset/rotation, physical
+contact method, live read-only overlap/interface preview, warnings, and one
+atomic Commit Bond action. Main/Section/3D remain the existing synchronized
+views. Section shows an optional **display-only** zero-thickness interface,
+and 3D supports wafer inspection by provenance without inventing opaque
+bonding films. Browser acceptance captures four views and paper-specific
+sections; inspect screenshots autonomously before any full CI.
+
+### P4: GaN interposer article test, PR #229
+
+Build _two independent_ `thickness: 400` µm Si material models. Preserve
+source-reporting vs inferred XY masks. Etch each separately (front/back 200 µm
+DRIE where paper-supported), align correctly and Bond once. Verify total
+interposer 800 µm only at physically solid sites, open longitudinal coolant
+network, TSV location, Si ribs, face orientation and continuous port/channel
+connectivity. Compare Fig. 1(a/c) and Fig. 2(g–i) at correct orientation with
+real Chromium Main/Mask/3D/Section and inspection bookmarks. Do not infer
+thermal or hydraulic performance from geometry. The existing PR #229 remains
+independent and may continue fixing its surrogate.
+
+## CI and release gates
+
+During architecture/kernel iteration run only relevant local Node tests,
+scientific invariants and minimal import/startup smoke. Do not enable a
+full Quality or Browser Regression campaign just to turn a Draft PR green.
+After verified geometry, targeted browser screenshots and paper comparison,
+run targeted CI then the full required release gates. Record red/not-run
+checks accurately. No merge or deployment without explicit user approval.
+
+## Known gaps and handoff (current, 2026-10-16)
+
+**Implemented and scoped-verified:** independent source-preserving direct Bond
+Kernel and v15 Assembly files; experimental native Workstation first and
+incremental Bond; atomic source-aware History and C/D Variants; isolated
+revision-controlled durable IndexedDB Recovery; deterministic geometric
+post-Bond full-face Deposit/Etch replay stored only in the Variant sidecar;
+real Chromium Main/Mask/3D/Section checks and autonomous screenshot inspection.
+The ordinary editable Workstation Assembly import **remains fail-closed**.
+
+**Still unverified / unsupported:** normal Workstation editable Process/Recipe
+and Worker orchestration with global History ownership; masked/ROI, Conformal,
+Planarize, Implant, Electrical and other post-Bond operations; a single
+portable v15 project format with integrated post-Bond Process provenance;
+source-aware mixed Bond–Process branch continuation; mobile acceptance;
+full Quality and browser regression; full original GaN Fig. 1/2 author-mask
+and intermediate Recipe fidelity; final release/merge approval.
+
+**Next:** integrate supported post-Bond steps into the formal Workstation
+Process transaction owner without duplicating History writers, then extend
+only operations with validated science and transaction invariants. Perform
+final Quality/release gates after complete visual acceptance. Keep all source
+wafers and PR #229 masks independently auditable.
+
+## Verified P1B/P2 milestone — 2026-10-15
+
+- **P1B:** thirteen primary geometry/transaction tests, six Assembly source/replay
+  tests, and a two-independent-400-µm-Si paper-dimension test passed. Check
+  both bond faces, XY mirror/rotation, distinct layer IDs, contact islands,
+  surface coverage fractions, buried coolant voids, oxide interface film and
+  three-wafer extension. The GaN case is a source-dimension **geometric
+  fixture**, not the complete author's GDS/Recipe or a visual reconstruction.
+- **P2 (partial):** `site/wafer-assembly.js` embeds full validated source
+  projects (including Mask/layout, Recipe and source History snapshots) with
+  bounded byte budgets and deterministic ordered replay. A v15
+  `waferAssembly` field is validated in `project-schema.js`, and
+  `project-io.js` uses **lossless-only** storage for bonded projects. Source
+  length drift, wrong contact metadata, illegal nested provenance, mismatched
+  output geometry and pre-v15 Assembly files are refused before import/export.
+- **Acceptance:** seven v15 IO/migration unit tests pass. The original
+  `project-geometry-storage.test.mjs` remains unchanged and now passes after
+  removing an eager geometry dependency and preserving v14 snapshot versions.
+  The Recovery path validates replay parity for Assembly records; v14 files
+  no longer create needless version-upgrade checkpoints on every startup.
+  A strict editor import guard prevents losing Assembly provenance before the
+  live state owner and Bond History transaction are implemented.
+- **Still missing:** a user-facing Bond operation and transaction in
+  Recipe/History/Recovery, original two-wafer full PR #229 flow, real
+  Chromium four-view screenshots, cross-version browser open test, complete
+  Quality and release gates. Do not merge or deploy.
+
+The v15 assembled project currently exposes an **immutable post-bond
+baseline**. To prevent corruption, it refuses to save post-bond material
+changes until a first-class Bond History/Recipe operation exists. The donor's
+independent source History remains inside the Assembly record and is not
+misrepresented as the product's own linear Process History. After P2 History
+integration this restriction can be lifted with explicit replay provenance.
+
+## Safety policy for the staged v15 codec
+
+A v15 Bonded Assembly can be generated, validated, exported and round-tripped
+through the standalone geometry/IO APIs. **It is intentionally not yet
+editable in the ordinary WaferCAD workstation**: the generic project-state
+controller currently does not own `waferAssembly` metadata. Until it is
+transactionally wired into the live Workspace and History controllers, that
+import is refused _before_ any state mutation. Ordinary v14 project import
+continues unchanged. No source Project, Mask, Recipe or History may be silently
+discarded to make a Preview appear functional. The gate will be lifted only
+after a dedicated editor-state ownership and atomic Rollback test suite passes.
+
+## October 16 — source-aware post-Bond geometric Process acceptance
+
+The physical Bond project remains a **canonical v15 provenance baseline**.
+Post-Bond processing never rewrites `waferAssembly.sources` or substitutes
+a derived model for the source-backed `project.model`. The experimental
+Bond editor at `app.html?assemblyPreview=1&bondEdit=1` has a separate,
+versioned `.wafercad-variants.json` graph (v2, with legacy v1 readable).
+Each branch stores compact `postBondSteps` with normalized Process Recipe
+parameters and a deterministic material checksum. Replay executes each
+step from a fresh Bond geometry baseline, validates the complete Process
+model and rejects stale/corrupted steps. The checksum is a **drift
+diagnostic**, not cryptographic attestation.
+
+Initial **supported geometry subset**: full-area Front or Back directional
+Deposit and smooth directional Etch. Geometry is computed with the same
+`fullFaceGeometry`, `applyProcessFaces` and `applyOperation` interfaces
+as Process Worker. These are geometric emulations without chemistry,
+dopant transport, activation, thermal stress, or transport equations.
+Masked/ROI Process, multi-face post-Bond operations, Conformal, Implant,
+Electrical and unrelated commands deliberately fail closed.
+
+The native 3D/Section renderers display the derived result as an isolated
+presentation model; added Process films are highlighted pink **only for
+inspection**, with physical thickness unchanged. For example, three
+400 µm wafers plus a 1.8 µm full-face SiO₂ deposit display **1201.8 µm**
+total height, while the canonical source Bond baseline remains **1200 µm**.
+A standard `.wafercad` export from this experimental editor is explicitly
+labelled **Bond baseline only** and cannot carry the derived film. Users
+must export **all Variants** to retain post-Bond Process records.
+
+**Acceptance evidence:** [Targeted scientific and transaction CI](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38895445291)
+(135/135 tests, ESLint and Prettier),
+[real Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38895445269)
+(17 Main/Mask/3D/Section and Process screenshots; attached artifact).
+Scientific invariants include source immutability, Worker-equivalent
+full-face replay, split C/D branches, corrupted checksum rejection,
+persistence/failed-write rollback, and sidecar reload. This is a
+**scoped experimental milestone**, not full PR or Main release acceptance.
+
+## October 16 — Process-stage Variant forks and persistent Recipe history
+
+The experimental source-aware editor can fork from either a historical **Bond**
+checkpoint or an undone **post-Bond Process** checkpoint. For the latter, each
+new Variant stores the identical source IDs, complete Bond chain, the selected
+immutable Process Recipe prefix and explicit `forkProcessIndex` ancestry. Its
+later Process operations diverge independently. The parent retains every
+step, and both branches replay from the unchanged canonical v15 source stack.
+The shared source registry is never duplicated.
+
+Post-Bond Recipe Undo/Redo uses `postBondCursor` without truncating the
+Recipe HEAD. Forking at a historical Process cursor creates an independent
+branch with that cursor promoted to its new HEAD; appending from an undone
+cursor without an explicit Variant still **fails closed**. Validation refuses
+corrupt contact/Bond prefixes, altered Process checksums, missing Process-fork
+metadata, tampered fork indices and changed parent Process prefixes. Branch
+fork/switch/step operations use the same durable revision-controlled IndexedDB
+writer and rollback contract as the existing Bond transaction owner.
+
+**Scoped acceptance:** [143/143 scientific and transaction tests, ESLint and
+Prettier](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38904399799);
+[final actual Chromium acceptance](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38904486031)
+with 19 screenshots. The browser verified independent outcomes after
+**A+B+C** (1200 µm bonded base): Deposit 1.8 µm, then Etch 0.5 µm
+(Main 1201.3 µm), while a Process fork from the Deposit-only checkpoint
+appends a further 0.4 µm Al film (1202.2 µm). An existing alternative
+A+B+D wafer remains **1150 µm**. Physical Z, sidecar export, pristine
+source provenance, and all branch switches are checked. The artificial
+high-contrast highlight is renderer-only; no physical dimensions are changed.
+
+**Remaining boundary:** ordinary writable Workstation integration, shared
+global Recipe/Worker/History ownership, explicit post-Bond Mask/ROI and
+conformal process semantics, mobile visual acceptance, complete Quality and
+full browser regression are **not** completed by this scoped milestone.
+The experimental editor still uses `.wafercad-variants.json` to persist
+derived Process provenance, while a normal `.wafercad` export represents
+only the canonical Bond baseline. Do not merge or deploy without the user's
+explicit approval and final required gates.
+
+## October 16 — unified Assembly History transaction boundary
+
+The opt-in Bond editor exposes a single source-aware Undo/Redo entry spanning
+both the Bond cursor and the post-Bond Process cursor. Undo exhausts Process
+stages before moving to the prior Bond; redo restores Bond stages before
+replaying Process stages. Both operations publish exactly one revision-checked
+Assembly Variant graph transaction and roll back the visible model and cursor
+if publication fails. Navigating at an endpoint is a no-op and must not
+consume a graph revision.
+
+This control is backed by `createAssemblyBondEditorSession`, not by ordinary
+Workstation `SnapshotManager`. The two controllers cannot write the same
+v15 provenance. Ordinary single-wafer autosave remains disabled in the opt-in
+Bond editor; pre-Bond Recovery checkpoints and the versioned Variant graph
+remain the only supported durable owner of Assembly edits.
+
+Targeted science now explicitly tests the full six-step navigation sequence
+from **A+B+C + Deposit + Etch** back through both Process steps and the
+third Bond, then forward to the exact original Recipe graph and material.
+It also asserts failed durable publication cannot advance the process
+cursor. The real Chromium acceptance exercises the same boundary and
+captures the visible History controls.
+
+**Scope limitation:** This is still the experimental
+`app.html?assemblyPreview=1&bondEdit=1` entry. Masked/ROI and conformal
+post-Bond Process, normal Workstation project editing, production `.wafercad`
+transport of post-Bond Recipe, complete Quality and deployment acceptance
+remain separate gates. A normal `.wafercad` export remains the Bond
+baseline; the Variant sidecar is required for derived Process provenance.
+
+## October 16 — portable full Assembly Workspace .wafercad transport
+
+A versioned `WaferCAD-assembly-workspace` container (version 1) carries one
+shared source registry, every immutable Bond operation, all post-Bond Process
+Recipes/cursors and all Variants in a single `.wafercad` file. Import fully
+replays and validates the Variant graph and physical source projects before
+constructing the selected material view. No foreign product History or
+unrecognized fields are allowed to enter this container.
+
+The dedicated Assembly editor now exports the complete Workspace by default.
+The former baseline-only export remains available as an explicitly labelled
+option, and legacy `.wafercad-variants.json` sidecars remain readable. The
+ordinary Workstation importer intentionally refuses this distinct full
+Workspace container rather than dropping Process/Variant provenance. Older
+Bond-only v15 and standalone v14 projects retain their original semantics.
+
+This is a **scoped native Assembly editor transport milestone**; normal
+Workstation edit controls, Mask/ROI post-Bond semantics, broad Quality and
+release approval remain outstanding.

@@ -13,6 +13,7 @@ import { normalizeSectionZScales } from '../section-z-collapse.js';
 import { XY_UNITS } from '../units.js';
 import { STRUCTURE_PALETTES } from './layer-legend-controller.js';
 import { equalStatePairs } from '../state-equality.js';
+import { validateBondedAssemblyProject } from '../wafer-assembly.js';
 
 export function createEmptyLayout() {
   return {
@@ -40,9 +41,21 @@ export function createProjectStateController({
   // The app supplies the strict import worker; non-worker callers use project IO.
   readValidatedFile = readProjectFile,
   yieldHistoryAttestation = () => new Promise((resolve) => globalThis.setTimeout(resolve, 0)),
+  enableAssemblyWorkspace = false,
 }) {
   let importedStates = new WeakMap();
   let attestationGeneration = 0;
+
+  // Assembly products must not be passed to the generic single-wafer editor.
+  function assertEditableProject(project, { completeProject = false } = {}) {
+    if (project?.waferAssembly == null) return;
+    if (!enableAssemblyWorkspace) {
+      throw new Error(
+        'This bonded Assembly requires the multi-wafer editor. The source file was not modified.',
+      );
+    }
+    if (completeProject) validateBondedAssemblyProject(project);
+  }
 
   function importedSnapshotStateRefs(project) {
     if (!project) return [];
@@ -123,18 +136,22 @@ export function createProjectStateController({
   }
 
   async function readProjectSnapshot(file) {
-    return cacheImportedSnapshotStatesAsync(await readValidatedFile(file));
+    const project = await readValidatedFile(file);
+    assertEditableProject(project, { completeProject: true });
+    return cacheImportedSnapshotStatesAsync(project);
   }
 
   // Only call with project-worker.js output: that Worker already expanded,
   // migrated and strictly validated the project before posting its result.
   function readWorkerValidatedProjectSnapshot(project) {
+    assertEditableProject(project, { completeProject: true });
     return cacheImportedSnapshotStates(project);
   }
 
   // Preferred in progressive startup: yield between private attestation
   // batches while retaining strict before/after snapshot equality checks.
   function readWorkerValidatedProjectSnapshotAsync(project) {
+    assertEditableProject(project, { completeProject: true });
     return cacheImportedSnapshotStatesAsync(project);
   }
 
@@ -142,8 +159,15 @@ export function createProjectStateController({
     includeSnapshots = false,
     { skipHistoryHeadSync = false, workerStorage = false } = {},
   ) {
-    ensureHierarchy();
+    // Fail closed even if future workspace wiring exposes Assembly state before
+    // this controller owns its source lineage and History transactions.
+    const initialState = getState();
+    assertEditableProject(initialState);
+    // Assembly source layouts are immutable. Rebuilding their hierarchy before
+    // verifying replay parity could mutate a corrupt bonded workspace on Save.
+    if (initialState?.waferAssembly == null) ensureHierarchy();
     const state = getState();
+    assertEditableProject(state);
     const project = {
       format: 'WaferCAD-vector',
       version: CURRENT_PROJECT_VERSION,
@@ -170,6 +194,9 @@ export function createProjectStateController({
         ? { assemblyWires: structuredClone(state.assemblyWires) }
         : {}),
       ...(state.processRecipe ? { processRecipe: structuredClone(state.processRecipe) } : {}),
+      ...(state.waferAssembly != null
+        ? { waferAssembly: structuredClone(state.waferAssembly) }
+        : {}),
       roi: state.roi,
       roiAnchor: state.roiAnchor,
       section: state.section,
@@ -198,7 +225,17 @@ export function createProjectStateController({
       // regular exports always remain independently cloned.
       const workerHistory =
         workerStorage && skipHistoryHeadSync ? getWorkerSnapshotHistory() : null;
-      if (workerHistory) {
+      if (state.waferAssembly != null) {
+        // Product History cannot contain generic full model snapshots. Preserve
+        // the single Assembly/Variant History owner until the formal adapter exists.
+        const records = workerHistory?.snapshots || getSnapshotRecords();
+        const branches =
+          workerHistory?.snapshotBranches ||
+          getSnapshotBranchState({ skipSync: skipHistoryHeadSync });
+        if (records.length || branches) {
+          throw new Error('Bonded Assembly product History is not yet supported.');
+        }
+      } else if (workerHistory) {
         project.snapshots = workerHistory.snapshots;
         if (workerHistory.snapshotBranches) {
           project.snapshotBranches = workerHistory.snapshotBranches;
@@ -209,10 +246,12 @@ export function createProjectStateController({
         if (snapshotBranches) project.snapshotBranches = snapshotBranches;
       }
     }
+    if (state.waferAssembly != null) validateBondedAssemblyProject(project);
     return project;
   }
 
   function loadProjectSnapshot(project) {
+    assertEditableProject(project, { completeProject: true });
     setSectionEditEnabled(false);
 
     const model = project.model;
@@ -278,6 +317,7 @@ export function createProjectStateController({
         project.processRecipe && typeof project.processRecipe === 'object'
           ? structuredClone(project.processRecipe)
           : null,
+      waferAssembly: project.waferAssembly ? structuredClone(project.waferAssembly) : null,
       roi: project.roi ? normalizeRoi(project.roi) : null,
       roiAnchor: project.roiAnchor || 'center',
       section: project.section,
@@ -323,6 +363,7 @@ export function createProjectStateController({
       activeFace: 'front',
       assemblyWires: [],
       processRecipe: null,
+      waferAssembly: null,
       roi: null,
       roiAnchor: 'center',
       section: { a: [-model.width * 0.42, 0], b: [model.width * 0.42, 0] },
@@ -348,6 +389,7 @@ export function createProjectStateController({
   }
 
   function isValidSnapshotState(state) {
+    if (state?.waferAssembly != null) return false;
     try {
       validateProjectFile(state);
       return state.snapshots == null;
@@ -357,6 +399,7 @@ export function createProjectStateController({
   }
 
   function isValidSnapshotStates(states) {
+    if (states.some((state) => state?.waferAssembly != null)) return false;
     try {
       const uniqueStates = [...new Set(states)];
       const copies = uniqueStates.map((state) => {

@@ -125,13 +125,39 @@ test('project JSON round-trip remains valid', () => {
   assert.deepEqual(loaded, source);
 });
 
+test('v14 single-wafer migration retains v14 snapshots while explicit v15 stays v15', () => {
+  const single = validProject();
+  single.version = 14;
+  const snapshotState = structuredClone(single);
+  single.snapshots = [
+    {
+      id: 'v14-snapshot',
+      name: 'Single wafer before Assembly support',
+      createdAt: '2026-10-15T12:00:00.000Z',
+      state: snapshotState,
+    },
+  ];
+
+  const legacy = migrateProjectFile(single);
+  assert.equal(legacy.version, 14);
+  assert.equal(legacy.snapshots[0].state.version, 14);
+  assert.equal(single.version, 14);
+  assert.equal(validateProjectFile(legacy), legacy);
+
+  const explicitV15 = validProject();
+  explicitV15.version = CURRENT_PROJECT_VERSION;
+  const current = migrateProjectFile(explicitV15);
+  assert.equal(current.version, CURRENT_PROJECT_VERSION);
+  assert.equal(validateProjectFile(current), current);
+});
+
 test('v13 projects migrate electrical region defaults into v14', () => {
   const source = validProject();
   source.version = 13;
   delete source.model.electricalRegions;
   delete source.model.nextElectricalRegionId;
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.deepEqual(migrated.model.electricalRegions, []);
   assert.equal(migrated.model.nextElectricalRegionId, 1);
   assert.equal(validateProjectFile(migrated), migrated);
@@ -533,7 +559,7 @@ test('project validator rejects base metadata that disagrees with boundary bound
   assert.throws(() => validateProjectFile(source), /bounds do not match model width\/height/);
 });
 
-test('legacy project migration adds current version and inspect-state defaults', () => {
+test('legacy project migration retains v14 and inspect-state defaults', () => {
   const source = validProject();
   const snapshotState = validProject();
   source.snapshots = [
@@ -555,11 +581,11 @@ test('legacy project migration adds current version and inspect-state defaults',
 
   const beforeZ = source.model.regions[0].stack[0].z1;
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.roiAnchor, 'center');
   assert.equal(migrated.display.threeOpacity, 1);
   assert.equal(migrated.display.threeShowBorders, false);
-  assert.equal(migrated.snapshots[0].state.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.snapshots[0].state.version, 14);
   assert.equal(migrated.snapshots[0].state.roiAnchor, 'center');
   assert.equal(migrated.model.units.z, 'µm');
   assert.equal(migrated.snapshots[0].state.model.units.z, 'µm');
@@ -634,7 +660,7 @@ test('v5 migration defaults Mask source to File and preserves future Draw compat
   delete source.maskSourceMode;
   delete source.drawMask;
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.maskSourceMode, 'file');
   assert.deepEqual(migrated.drawMask, { nextShapeId: 1, shapes: [] });
   assert.equal(validateProjectFile(migrated), migrated);
@@ -730,7 +756,7 @@ test('v8 migration upgrades rough amplitude metadata to mean/CV profile schema',
 
   const migrated = migrateProjectFile(source),
     rough = migrated.model.regions[0].stack[0].frontSurface;
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(rough.meanHeight, 0.4);
   assert.equal(rough.featureCv, 0.25);
   assert.equal(rough.heightCv, 0.25);
@@ -807,7 +833,7 @@ test('v12 stochastic surfaces upgrade to v13 without changing morphology', () =>
 
   const migrated = migrateProjectFile(source),
     rough = migrated.model.regions[0].stack[0].frontSurface;
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(rough.morphology, 'stochastic');
   assert.equal(rough.polarity, 'normal');
   assert.equal(validateProjectFile(migrated), migrated);
@@ -838,7 +864,7 @@ test('v7 migration converts world-space Mask ROI into mask-local coordinates', (
   source.maskRoiAnchor = 'center';
 
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.maskRoi.type, 'square');
   assert.ok(Math.abs(migrated.maskRoi.size - 20 / source.maskTransform.scale) < 1e-12);
   assert.equal(migrated.maskRoi.rotation, -source.maskTransform.rotation);
@@ -851,7 +877,7 @@ test('v6 migration defaults independent Mask ROI state', () => {
   delete source.maskRoi;
   delete source.maskRoiAnchor;
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.maskRoi, null);
   assert.equal(migrated.maskRoiAnchor, 'center');
   assert.equal(validateProjectFile(migrated), migrated);
@@ -864,7 +890,7 @@ test('v9 projects migrate to the experimental implant model without changing mat
   delete source.model.nextImplantId;
 
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.deepEqual(migrated.model.implants, []);
   assert.equal(migrated.model.nextImplantId, 1);
   assert.equal(validateProjectFile(migrated), migrated);
@@ -897,7 +923,7 @@ test('v10 implant metadata migrates border styling to view state and keeps overl
   source.model.nextImplantId = 2;
 
   const migrated = migrateProjectFile(source);
-  assert.equal(migrated.version, CURRENT_PROJECT_VERSION);
+  assert.equal(migrated.version, 14);
   assert.equal(migrated.display.sectionShowBorders, false);
   assert.equal(migrated.model.implants[0].visible, true);
   assert.equal('border' in migrated.model.implants[0], false);

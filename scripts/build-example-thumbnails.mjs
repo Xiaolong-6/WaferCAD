@@ -61,7 +61,14 @@ try {
       { timeout: 120000 },
     );
     await page.waitForFunction(
-      () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+      () => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          Number(host.dataset.rendererFrameSerial || 0) > 0 &&
+          document.querySelector('#threePanel')?.dataset.viewLoad === 'ready'
+        );
+      },
       null,
       { timeout: 120000 },
     );

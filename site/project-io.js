@@ -1,5 +1,6 @@
 import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { validateBondedAssemblyProject } from './wafer-assembly.js';
 import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
@@ -420,6 +421,7 @@ function packWorkspaceState(state, modelAssets, layoutAssets, { quantize = false
 
 export function prepareProjectForWorkspaceStorage(project, options = {}) {
   validateProjectFile(project);
+  if (project.waferAssembly != null) validateBondedAssemblyProject(project);
 
   const stored = cloneCore(project, { snapshotBranches: false });
   const layoutAssets = createAssetResolver(project.layout, () => {});
@@ -557,6 +559,9 @@ function assertQuantizedProjectGeometryPreserved(before, after) {
 
 export function prepareProjectForStorage(project) {
   validateProjectFile(project);
+  if (project.waferAssembly != null) {
+    throw new Error('Bonded Assembly must use lossless project storage.');
+  }
 
   const stored = cloneCore(project, { snapshotBranches: false });
   quantizeProjectLengths(stored);
@@ -733,6 +738,9 @@ function hasSubgridModelLengths(project) {
 }
 
 export function prepareProjectForExport(project) {
+  if (project.waferAssembly != null) {
+    return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
+  }
   if (hasSubgridModelLengths(project)) {
     return { stored: prepareProjectForWorkspaceStorage(project), mode: 'lossless' };
   }
@@ -747,9 +755,10 @@ export function prepareProjectForExport(project) {
 }
 
 function serializedProject(project, maxBytes, { allowLosslessFallback = false } = {}) {
-  const result = allowLosslessFallback
-    ? prepareProjectForExport(project)
-    : { stored: prepareProjectForStorage(project), mode: 'compact' };
+  const result =
+    allowLosslessFallback || project.waferAssembly != null
+      ? prepareProjectForExport(project)
+      : { stored: prepareProjectForStorage(project), mode: 'compact' };
   const text = JSON.stringify(result.stored);
   const blob = new Blob([text], { type: 'application/json' });
   if (blob.size > maxBytes) {
@@ -800,6 +809,12 @@ export async function readProjectFile(file) {
     throw new Error('Project file is not valid JSON.');
   }
 
+  if (parsed?.format === 'WaferCAD-assembly-workspace') {
+    throw new Error(
+      'Full Assembly Workspace requires the source-aware Assembly editor; ordinary Workstation import is disabled.',
+    );
+  }
   expandProjectStorage(parsed);
-  return validateProjectFile(migrateProjectFile(parsed));
+  const project = validateProjectFile(migrateProjectFile(parsed));
+  return validateBondedAssemblyProject(project);
 }

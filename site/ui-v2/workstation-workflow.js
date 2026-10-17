@@ -961,6 +961,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     loadProjectSnapshot: domain.load,
     cacheValidatedProjectSnapshots: projectState.readWorkerValidatedProjectSnapshotAsync,
     snapshotManager: history,
+    trackSnapshotMutations: !readOnly,
     syncBaseControls: domain.syncBaseControls,
     syncTransformInputs: domain.importer.syncTransformInputs,
     renderAll: refresh,

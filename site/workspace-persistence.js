@@ -1,9 +1,6 @@
 import { expandProjectStorage, prepareProjectForWorkspaceStorage } from './project-io.js';
-import {
-  CURRENT_PROJECT_VERSION,
-  migrateProjectFile,
-  validateProjectFile,
-} from './project-schema.js';
+import { migrateProjectFile, validateProjectFile } from './project-schema.js';
+import { validateBondedAssemblyProject } from './wafer-assembly.js';
 
 const DB_NAME = 'wafercad-workspace-v1';
 const DB_VERSION = 2;
@@ -249,6 +246,17 @@ export async function clearWorkspaceRecoveryPoints() {
   }
 }
 
+// For normal v14 files, understanding opt-in v15 Assembly must not
+// create needless migration Recovery snapshots on every startup.
+export function requiresWorkspaceMigrationCheckpoint(rawVersion, migratedVersion) {
+  return (
+    Number.isInteger(rawVersion) &&
+    rawVersion >= 1 &&
+    Number.isInteger(migratedVersion) &&
+    migratedVersion > rawVersion
+  );
+}
+
 // Called by the restore worker. Keep migration, validation and its mandatory
 // pre-migration Recovery checkpoint within this existing transactional owner.
 export async function loadWorkspaceStateDirect() {
@@ -274,7 +282,8 @@ export async function loadWorkspaceStateDirect() {
   expandProjectStorage(project);
   const rawVersion = Number(project.version) || 1,
     migrated = validateProjectFile(migrateProjectFile(project));
-  if (rawVersion < CURRENT_PROJECT_VERSION) {
+  validateBondedAssemblyProject(migrated);
+  if (requiresWorkspaceMigrationCheckpoint(rawVersion, migrated.version)) {
     await createWorkspaceRecoveryCheckpoint(migrated, {
       appCommit: metadata?.appCommit,
       reason: `pre-migration-v${rawVersion}`,

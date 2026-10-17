@@ -9,6 +9,16 @@ import { createSectionView } from './section-view.js';
 import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
+import { createAssemblyBondDraftRecovery } from '../wafer-assembly-draft-recovery.js';
+import { readStartupFile, removeStartupFile } from '../startup-file.js';
+import { openStagedAssemblyProject } from '../assembly-startup-routing.js';
+import { readAssemblyPreviewFile } from './assembly-preview.js';
+import { mountAssemblyBondDraftControls } from './assembly-bond-draft.js';
+import {
+  assemblyPreviewZExtent,
+  chooseAssemblyPreviewFile,
+  mountAssemblyPreviewControls,
+} from './assembly-preview.js';
 import {
   desktopDockingEnabled,
   projectDesktopLayout,
@@ -27,9 +37,12 @@ const { el } = window.WaferCadV2Components;
 try {
   window.WaferCadV2Icons.installSprite();
   const params = new URLSearchParams(window.location.search);
-  const readOnlyPreview = params.get('preview') === '1';
+  const assemblyPreview = params.get('assemblyPreview') === '1';
+  const assemblyEdit = assemblyPreview && params.get('bondEdit') === '1';
+  const readOnlyPreview = params.get('preview') === '1' || assemblyPreview;
   const allowedViews = ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
+  const assemblyDraftRecovery = assemblyEdit ? createAssemblyBondDraftRecovery() : null;
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
   const desktopPreferences = (() => {
     if (readOnlyPreview) return null;
@@ -39,10 +52,24 @@ try {
       return null;
     }
   })();
-  const project = readOnlyPreview
-      ? await loadBundledProject(params.get('example'), undefined, { preview: true })
-      : await loadWorkstationProject(),
-    store = createWorkstationRuntime(project);
+  if (assemblyPreview) document.body.dataset.assemblyPreview = 'true';
+  const stagedAssembly =
+    assemblyPreview && params.get('start') === 'staged'
+      ? await openStagedAssemblyProject(readStartupFile, readAssemblyPreviewFile)
+      : null;
+  const project = assemblyPreview
+      ? stagedAssembly ||
+        (await chooseAssemblyPreviewFile(document.getElementById('app-root'), {
+          recovery: assemblyDraftRecovery,
+          allowStandalone: assemblyEdit,
+        }))
+      : readOnlyPreview
+        ? await loadBundledProject(params.get('example'), undefined, { preview: true })
+        : await loadWorkstationProject(),
+    store = createWorkstationRuntime(project, {
+      assemblyPreview,
+      firstBondDraft: assemblyEdit && !project.data.waferAssembly,
+    });
   if (readOnlyPreview) {
     // Navigation is enabled from the first frame without activating editing tools.
     store.local.main.panEnabled = true;
@@ -262,6 +289,7 @@ try {
   store.views.set('mask', mask);
   const section = createSectionView({ store, main, workstation: scope('section') });
   store.views.set('section', section);
+  // The modern renderer owns progressive first-frame and refinement status.
   const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
   // In overview, let a visible 2D scientific canvas present before expensive
@@ -446,6 +474,9 @@ try {
         source: project.source,
         hash: project.hash,
         model: store.state.model,
+        // Packaging wires are explicit 3D geometry, not 2.5D material layers.
+        // Expose the saved, read-only project field for visual parity audits.
+        assemblyWires: store.state.assemblyWires || [],
         roi: store.state.roi,
         maskRoi: store.state.maskRoi,
         maskTransform: store.state.maskTransform,
@@ -473,6 +504,20 @@ try {
         counts: store.counters,
         ui: uiState,
         scientificUnchanged: geometryBefore === store.geometrySnapshot(),
+        ...(assemblyPreview
+          ? {
+              assemblyPreview: {
+                index: store.assemblyPreviewSession.currentIndex(),
+                bonds: store.assemblyPreviewSession.maxIndex(),
+                sources:
+                  store.assemblyPreviewSession.fullProduct().waferAssembly?.sources.length ?? 1,
+                readOnly: !assemblyEdit,
+                originDisplayColors: [
+                  ...new Set(store.renderModel().layers.map((layer) => layer.color)),
+                ],
+              },
+            }
+          : {}),
         sharedIdentity:
           main.state.model === mask.state.model && main.state.model === store.state.model,
       }),
@@ -480,6 +525,70 @@ try {
   };
   shell.getRoot().dataset.boot = 'ready';
   document.body.dataset.ready = 'true';
+  if (assemblyPreview) {
+    const draftWorkspaceId = project.workspaceId || crypto.randomUUID();
+    const draftEditor = assemblyEdit
+      ? store.createAssemblyBondDraftSession(
+          async (value, reason) => {
+            await assemblyDraftRecovery.checkpoint(value, reason);
+            return true;
+          },
+          {
+            persistedRevision: project.workspaceRevision ?? 0,
+            persistVariantGraph: (graph, expectedRevision) =>
+              assemblyDraftRecovery.saveWorkspaceGraph(draftWorkspaceId, graph, expectedRevision),
+          },
+        )
+      : null;
+    const session = store.assemblyPreviewSession;
+    let draftUi = null;
+    const nav = mountAssemblyPreviewControls({
+      currentIndex: () => session.currentIndex(),
+      maxIndex: () => session.maxIndex(),
+      stageDetail: () => ` · Z ${assemblyPreviewZExtent(store.renderModel()).thicknessUm} µm`,
+      restoreIndex: async (index) => {
+        if (draftEditor) {
+          await store.restoreAssemblyStageDurable(index);
+        } else {
+          store.restoreAssemblyStage(index);
+        }
+        if (draftEditor) {
+          store.setPostBondPresentationModel(draftEditor.postBondPreviewModel());
+        }
+        draftUi?.sync();
+        workflow.refresh();
+      },
+      selectView: (view) => {
+        uiState.view = view;
+        uiState.mode = 'single';
+        uiState.section = false;
+        uiState.maximize = null;
+        render();
+      },
+      initialView,
+      editableBondDraft: assemblyEdit,
+    });
+    if (draftEditor) {
+      const refreshPostBondProcess = () => {
+        store.setPostBondPresentationModel(draftEditor.postBondPreviewModel());
+        nav.sync();
+        workflow.refresh();
+      };
+      draftUi = mountAssemblyBondDraftControls({
+        editor: draftEditor,
+        onChanged: refreshPostBondProcess,
+      });
+      refreshPostBondProcess();
+      status(
+        'Assembly Workspace · source-bound Bond and Process; save complete .wafercad to retain Variants.',
+      );
+    } else {
+      status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
+    }
+    // A staged project is consumed only after its provenance was validated,
+    // its isolated durable writer was installed, and the editor is mounted.
+    if (stagedAssembly) await removeStartupFile();
+  }
   if (readOnlyPreview && window.parent !== window) {
     window.addEventListener('message', (event) => {
       if (event.source !== window.parent || event.origin !== window.location.origin) return;

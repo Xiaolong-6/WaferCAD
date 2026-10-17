@@ -34,6 +34,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 
 - [Scientific contracts](science/README.md) — kernel, precision, geometry, morphology and annotation.
 - [Literature reconstruction](examples/README.md) — paper assumptions and named-example evidence.
+- [Multi-wafer bonding design and validation](MULTI_WAFER_BONDING_DESIGN_2026-10-15.md) — source-preserving direct bonding, provenance-aware Assembly editing and scientific acceptance boundaries.
 - [UI Workstation](ui-v2/README.md) — production interface ownership and dated UI contracts.
 - [Historical evidence](archive/README.md) — superseded checks and completed investigations.
 

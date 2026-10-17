@@ -3,11 +3,15 @@ import { readProjectFile } from '../project-io.js';
 import { createProjectStateController } from '../controllers/project-state-controller.js';
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
-import { createSnapshotManager } from '../workspace-snapshots.js';
-import { createModel } from '../model.js';
+import { createWorkstationHistoryOwner } from './workstation-history-owner.js';
+import { createModel, modelBoundsZ } from '../model.js';
+import { defaultSectionCollapseForModel } from '../section-z-collapse.js';
 import { createEmptyLayout } from '../controllers/project-state-controller.js';
 import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
 import { versionedExampleAssetPath, bufferBackedProjectFile } from '../example-asset.js';
+import { createAssemblyBondHistorySession } from '../wafer-assembly-history-session.js';
+import { createAssemblyBondEditorSession } from '../wafer-assembly-editor-session.js';
+import { assemblyPreviewOriginModel } from './assembly-preview.js';
 
 export async function loadWorkstationProject() {
   const model = createModel();
@@ -67,7 +71,16 @@ export async function loadBundledProject(
   return { source: path, hash, data };
 }
 
-export function createWorkstationRuntime(project) {
+export function createWorkstationRuntime(
+  project,
+  { assemblyPreview = false, firstBondDraft = false } = {},
+) {
+  if (assemblyPreview && !project?.data?.waferAssembly && !firstBondDraft) {
+    throw new Error('Assembly preview requires verified Assembly provenance.');
+  }
+  if (firstBondDraft && (!assemblyPreview || project?.data?.waferAssembly)) {
+    throw new Error('First-Bond draft requires an independent source and preview mode.');
+  }
   let sectionLayersVisible = true;
   try {
     sectionLayersVisible = localStorage.getItem('wafercad.v2.section-layers.v1') !== 'false';
@@ -94,6 +107,7 @@ export function createWorkstationRuntime(project) {
   let history = null;
   let restoreListener = () => {};
   const projectState = createProjectStateController({
+    enableAssemblyWorkspace: assemblyPreview,
     getState: () => state,
     applyState: (value) => Object.assign(state, value),
     ensureHierarchy: () => {},
@@ -108,6 +122,18 @@ export function createWorkstationRuntime(project) {
     },
   });
   projectState.loadProjectSnapshot(project.data);
+  // Display-only inspection policy: an inherited single-wafer Z Break
+  // compresses the receiver substrate and obscures actual bonded interfaces.
+  // Never change the persisted source project or physical model.
+  function useAssemblyInspectionSettings() {
+    if (!assemblyPreview) return;
+    state.threeShowBorders = true;
+    state.sectionCollapse = {
+      ...defaultSectionCollapseForModel(state.model, modelBoundsZ(state.model)),
+      enabled: false,
+    };
+  }
+  useAssemblyInspectionSettings();
   let maskBrowser = null;
   const selectedElement = (element) =>
     maskBrowser
@@ -124,8 +150,26 @@ export function createWorkstationRuntime(project) {
   let renameFocus = null,
     presentationModel = null,
     presentationSource = null,
-    presentationRevision = null;
+    presentationRevision = null,
+    originPresentationModel = null,
+    originPresentationSource = null,
+    originPresentationAssembly = null,
+    postBondPresentationModel = null;
   function renderModel() {
+    if (assemblyPreview && state.waferAssembly) {
+      const displaySource = postBondPresentationModel || state.model;
+      if (
+        originPresentationModel &&
+        originPresentationSource === displaySource &&
+        originPresentationAssembly === state.waferAssembly
+      ) {
+        return originPresentationModel;
+      }
+      originPresentationSource = displaySource;
+      originPresentationAssembly = state.waferAssembly;
+      originPresentationModel = assemblyPreviewOriginModel(displaySource, state.waferAssembly);
+      return originPresentationModel;
+    }
     if (!renameFocus) return state.model;
     if (
       presentationSource === state.model &&
@@ -209,6 +253,8 @@ export function createWorkstationRuntime(project) {
     views.get('section')?.resetTransient();
     views.get('main')?.runtime.roi.clearDrawingMode();
     projectState.loadProjectSnapshot(snapshot);
+    postBondPresentationModel = null;
+    originPresentationModel = null;
     renameFocus = null;
     presentationModel = null;
     Object.assign(state, {
@@ -229,15 +275,62 @@ export function createWorkstationRuntime(project) {
     restoreListener();
     invalidate('main', 'mask', 'section', 'three');
   }
-  history = createSnapshotManager({
+  history = createWorkstationHistoryOwner({
+    assemblyWorkspace: assemblyPreview,
     capture: () => projectState.buildProjectSnapshot(false),
     restore,
     validateState: projectState.isValidSnapshotState,
     validateStates: projectState.isValidSnapshotStates,
     cooperativeValidateStates: true,
   });
-  history.importRecords(project.data.snapshots || [], project.data.snapshotBranches);
+  // In Assembly mode, the source-aware owner alone controls Bond navigation.
+  // Ordinary snapshotManager cannot ingest an Assembly or copy donor provenance.
+  history.importRecords(
+    assemblyPreview ? [] : project.data.snapshots || [],
+    assemblyPreview ? null : project.data.snapshotBranches,
+  );
+  let assemblyPreviewSession =
+    assemblyPreview && project.data.waferAssembly
+      ? createAssemblyBondHistorySession(project.data)
+      : null;
+  let assemblyBondEditor = null;
+  function restoreAssemblyStage(index) {
+    const active = assemblyBondEditor || assemblyPreviewSession;
+    if (!active) throw new Error('Bond History preview is not active.');
+    const projectAtStage = active.restoreIndex(index);
+    if (!assemblyBondEditor) restore(projectAtStage);
+    useAssemblyInspectionSettings();
+    return projectAtStage;
+  }
+  function createAssemblyBondDraftSession(checkpointRecovery, durability = {}) {
+    if ((!assemblyPreviewSession && !firstBondDraft) || assemblyBondEditor) {
+      throw new Error('Bond draft editor requires one isolated Assembly preview.');
+    }
+    assemblyBondEditor = createAssemblyBondEditorSession(project.data, {
+      checkpointRecovery,
+      variantGraph: project.variantGraph ?? null,
+      ...durability,
+      applyVisibleProject: (next) => {
+        restore(next);
+        useAssemblyInspectionSettings();
+        return true;
+      },
+      getVisibleModel: () => state.model,
+    });
+    return assemblyBondEditor;
+  }
   return {
+    get assemblyPreviewSession() {
+      return assemblyBondEditor || assemblyPreviewSession;
+    },
+    createAssemblyBondDraftSession,
+    restoreAssemblyStage,
+    restoreAssemblyStageDurable: async (index) => {
+      if (!assemblyBondEditor) return restoreAssemblyStage(index);
+      const restored = await assemblyBondEditor.restoreIndexDurable(index);
+      useAssemblyInspectionSettings();
+      return restored;
+    },
     state,
     local,
     project,
@@ -256,6 +349,27 @@ export function createWorkstationRuntime(project) {
     counters,
     viewState,
     renderModel,
+    setPostBondPresentationModel(model) {
+      if (!assemblyBondEditor) {
+        throw new Error('Post-Bond presentation requires an isolated Assembly draft owner.');
+      }
+      // New post-Bond films are highlighted ONLY in the presentation model;
+      // source layer IDs, scientific material and saved Recipe colors remain
+      // untouched. Their actual physical Z dimensions are never exaggerated.
+      const baselineLayerIds = new Set(state.model.layers.map((layer) => layer.id));
+      postBondPresentationModel = model
+        ? {
+            ...structuredClone(model),
+            layers: model.layers.map((layer) =>
+              baselineLayerIds.has(layer.id)
+                ? structuredClone(layer)
+                : { ...structuredClone(layer), color: '#D253A0' },
+            ),
+          }
+        : null;
+      originPresentationModel = null;
+      invalidate('main', 'section', 'three');
+    },
     setRenameFocus(focus) {
       renameFocus = focus;
       presentationModel = null;

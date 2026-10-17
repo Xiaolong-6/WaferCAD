@@ -104,6 +104,8 @@ export function createWorkspacePersistenceController({
   // this hook. Snapshot mutation checks still compare detached copies.
   cacheValidatedProjectSnapshots = () => {},
   snapshotManager,
+  // Assembly read-only History is immutable and never becomes an autosave writer.
+  trackSnapshotMutations = true,
   syncBaseControls,
   syncTransformInputs,
   renderAll,
@@ -168,7 +170,7 @@ export function createWorkspacePersistenceController({
     }
   }
 
-  installSnapshotMutationTracking();
+  if (trackSnapshotMutations) installSnapshotMutationTracking();
 
   function readMarker() {
     try {
