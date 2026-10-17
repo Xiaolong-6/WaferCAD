@@ -311,13 +311,10 @@ export function sectionCutContours(
         z1 = Math.max(candidate.line[0][2], candidate.line[1][2]);
       let remaining = [[z0, z1]];
       for (const [otherIndex, other] of candidates.entries()) {
-        if (
-          otherIndex === index ||
+        const dot =
           candidate.tangent[0] * other.tangent[0] +
-            candidate.tangent[1] * other.tangent[1] >=
-            -1 + 1e-7
-        )
-          continue;
+          candidate.tangent[1] * other.tangent[1];
+        if (otherIndex === index || dot >= -1 + 1e-7) continue;
         const otherLow = Math.min(other.line[0][2], other.line[1][2]),
           otherHigh = Math.max(other.line[0][2], other.line[1][2]);
         remaining = remaining.flatMap(([start, end]) => {
@@ -332,10 +329,7 @@ export function sectionCutContours(
       for (const [start, end] of remaining) {
         if (end - start <= 1e-9) continue;
         const p = candidate.line[0];
-        result.push([
-          [p[0], p[1], start],
-          [p[0], p[1], end],
-        ]);
+        result.push([[p[0], p[1], start], [p[0], p[1], end]]);
       }
     }
   }

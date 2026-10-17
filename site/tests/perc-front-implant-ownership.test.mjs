@@ -47,5 +47,9 @@ test('real PERC rear-contact partition does not split the front C09 rough ROI Im
   assert.equal(c09Rough[0].surfaceAppearance.seed, 3668339987);
   assert.ok(pointInMulti([-7000, 2990], c09Rough[0].polys));
   assert.ok(annotationInspectionCutSegments(c09Rough[0], roi).length > 0);
-  assert.equal(JSON.stringify(model), original, 'display derivation must not modify PERC Kernel data');
+  assert.equal(
+    JSON.stringify(model),
+    original,
+    'display derivation must not modify PERC Kernel data',
+  );
 });

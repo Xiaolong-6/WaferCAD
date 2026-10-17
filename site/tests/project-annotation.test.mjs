@@ -114,7 +114,11 @@ test('PERC back contact partition cannot split equivalent front rough Implant di
   assert.equal(after[0].innerZ, before[0].innerZ);
   assert.deepEqual(after[0].surfaceAppearance, before[0].surfaceAppearance);
   assert.equal(after[0].viewClipped, before[0].viewClipped);
-  assert.deepEqual(model.implants, reference, 'display union must not mutate canonical Implant data');
+  assert.deepEqual(
+    model.implants,
+    reference,
+    'display union must not mutate canonical Implant data',
+  );
   for (let x = -7; x <= 7; x += 0.5) {
     for (let y = -6; y <= 6; y += 0.5) {
       assert.equal(

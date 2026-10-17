@@ -203,16 +203,10 @@ test('Ag contact subdivision cannot project a full-height line through same-mate
     'back-contact or Ag footprint must not create a -140 to +137 vertical seam',
   );
   assert.ok(
-    contours.some(
-      ([a, b]) =>
-        a[0] === 4 && b[0] === 4 && a[2] === -140 && b[2] === 137.1,
-    ),
+    contours.some(([a, b]) => a[0] === 4 && b[0] === 4 && a[2] === -140 && b[2] === 137.1),
     'preserve a real exterior ROI corner',
   );
-  const foreign = sectionCutContours(
-    [left, { ...right, layerId: 'Ag' }],
-    clip,
-  ).filter(isJunction);
+  const foreign = sectionCutContours([left, { ...right, layerId: 'Ag' }], clip).filter(isJunction);
   assert.ok(
     foreign.some(([a, b]) => Math.abs(a[2] - b[2]) > 200),
     'different material ownership must retain true exposed vertical interfaces',
@@ -223,9 +217,7 @@ test('rough cap height sampling jitter never creates a tall internal cut contour
   const left = { p: [0, 0], q: [2, 0], z0: 0, z1: 5, layerId: 'silicon' },
     right = { p: [2, 0], q: [4, 0], z0: 0, z1: 5 + 1e-5, layerId: 'silicon' },
     lines = sectionCutContours([left, right], [square]);
-  const internal = lines.filter(
-    ([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2],
-  );
+  const internal = lines.filter(([a, b]) => a[0] === 2 && b[0] === 2 && a[2] !== b[2]);
   assert.ok(
     internal.every(([a, b]) => Math.abs(a[2] - b[2]) <= 1e-5 + 1e-10),
     'LOD-only rough-cap sampling mismatch must not create an entire body-depth line',
