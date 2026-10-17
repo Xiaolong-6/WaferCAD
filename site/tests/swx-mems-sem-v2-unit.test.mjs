@@ -7,6 +7,7 @@ import {
   auditSwxSemV2ElectricalNets,
 } from '../../scripts/swx-mems-sem-v2-unit.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { auditSwxPaperEnvelope } from '../../scripts/swx-mems-paper-envelope-audit.mjs';
 
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
@@ -216,6 +217,30 @@ test('SEM v2 retains the 20 open S8 shuttle apertures in the actual OFF/ON silic
         state + ' full silicon mask closes an S8 shuttle aperture at ' + translatedPoint.join(','),
       );
     }
+  }
+});
+
+test('real mask-field footprint is separately recorded from paper SWX/device dimensions', () => {
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxSemV2ProcessGeometry(state);
+    const scope = auditSwxPaperEnvelope(v, geometry);
+    assert.deepEqual(scope.paperReported.switchIncludingActuator, { width: 95, height: 100 });
+    assert.deepEqual(scope.paperReported.splitCrossing, { width: 23, height: 23 });
+    assert.equal(scope.siliconFitsField, true);
+    assert.ok(scope.fullMaskSiliconFootprintUm.width > 0);
+    assert.ok(scope.fullMaskSiliconFootprintUm.height > 0);
+    assert.ok(scope.opticalCrossingGeometryBoundsUm.width > 0);
+    assert.ok(scope.actuatorGeometryBoundsUm.height > 0);
+    assert.ok(
+      scope.coreAndActuatorGeometryBoundsUm.width <= scope.fullMaskSiliconFootprintUm.width,
+    );
+    assert.ok(
+      scope.coreAndActuatorGeometryBoundsUm.height <= scope.fullMaskSiliconFootprintUm.height,
+    );
+    assert.equal(scope.dimensionsComparedOnLikeForLikeScope, false);
+    assert.equal(scope.paperSwitchFootprintAccepted, false);
+    assert.equal(scope.paperSwxFootprintAccepted, false);
+    assert.equal(scope.fullFigureGeometryAccepted, false);
   }
 });
 
