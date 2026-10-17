@@ -1,0 +1,371 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  createSwxSemV2ProcessGeometry,
+  SWX_SEM_V2_ASSUMPTIONS,
+  createSwxSemV2SupportAudit,
+  auditSwxSemV2ElectricalNets,
+} from '../../scripts/swx-mems-sem-v2-unit.mjs';
+import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
+import { auditSwxPaperEnvelope } from '../../scripts/swx-mems-paper-envelope-audit.mjs';
+
+await loadGeometryKernel();
+const v = await import('../vector-geometry.js');
+const { geometryArea } = await import('../model.js');
+const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[0]]]]));
+const contact = (a, b) => geometryArea(v.intersection(union(a), union(b)));
+const centroid = (ring) => {
+  const x = ring.map((p) => p[0]);
+  const y = ring.map((p) => p[1]);
+  return [(Math.min(...x) + Math.max(...x)) / 2, (Math.min(...y) + Math.max(...y)) / 2];
+};
+
+test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
+  assert.equal(SWX_SEM_V2_ASSUMPTIONS.fullFidelityClaim, false);
+  assert.equal(SWX_SEM_V2_ASSUMPTIONS.sourceAuthorGdsAvailable, false);
+  for (const state of ['off', 'on']) {
+    const { maskPolygons, physicalGroups, layout } = createSwxSemV2ProcessGeometry(state);
+    const pose = physicalGroups.semV2;
+    const mobileSwxY = centroid(pose.source.optics.movableFacetsAndPorts[0])[1];
+    const centerCombY = centroid(pose.movableActuator[0])[1];
+    assert.ok(
+      centerCombY < mobileSwxY,
+      state + ' actuator must be BELOW movable reflector, like paper SEM',
+    );
+    assert.deepEqual(pose.fixedPads.map(centroid), [
+      [-70, -20],
+      [70, -20],
+      [-64, -71],
+      [64, -71],
+    ]);
+    assert.equal(
+      maskPolygons.get(1).length,
+      pose.fixed.length + pose.movable.length + pose.flexure.length,
+    );
+    assert.ok(layout.bounds.minY <= -124);
+    assert.ok(layout.bounds.maxX >= 76);
+    assert.equal(pose.springContours.length, 4);
+    assert.equal(pose.springTrussContours.length, 12);
+    assert.equal(SWX_SEM_V2_ASSUMPTIONS.foldedSpringTrussWidthUm, 1);
+    assert.equal(pose.lowerSpringCenterlines.length, 2);
+    assert.equal(pose.upperSpringCenterlines.length, 2);
+    const [lowerLeft, lowerRight] = pose.lowerSpringCenterlines;
+    const [upperLeft, upperRight] = pose.upperSpringCenterlines;
+    for (const path of [lowerLeft, lowerRight, upperLeft, upperRight]) {
+      for (const [start, finish, nominal] of [
+        [0, 1, 30],
+        [2, 3, 22],
+        [4, 5, 30],
+      ]) {
+        assert.ok(
+          Math.abs(Math.abs(path[finish][0] - path[start][0]) - nominal) < 1e-10,
+          state + ' lower folded spring lost its 30/22um parallel spans',
+        );
+      }
+    }
+    for (const path of [lowerLeft, lowerRight]) {
+      assert.equal(path[0][1], -99, 'Lower anchor must not move with shuttle');
+    }
+    for (const path of [upperLeft, upperRight]) {
+      assert.equal(path[0][1], -70, 'Upper anchor must not move with shuttle');
+      assert.ok(path.at(-1)[1] < path[0][1], 'Upper spring must fold toward comb');
+    }
+    assert.equal(lowerLeft[0][0], -43.5);
+    assert.equal(lowerRight[0][0], 43.5);
+    assert.equal(upperLeft[0][0], -41);
+    assert.equal(upperRight[0][0], 41);
+    assert.equal(pose.opticalFlexures.length, 2);
+    assert.equal(pose.bridge.length, 1, 'No unreported 24um transverse S7 bridge');
+    assert.equal(pose.aligners.fixed.length, 2);
+    assert.equal(pose.aligners.flexure.length, 4);
+    assert.deepEqual(
+      pose.aligners.centerlines.map((line) => line[0]),
+      [
+        [-11, -50],
+        [11, -50],
+      ],
+    );
+    for (const [index, side] of [-1, 1].entries()) {
+      const end = pose.aligners.centerlines[index].at(-1);
+      assert.ok(Math.abs(end[0] - side * 4) < 1e-12);
+      assert.ok(Math.abs(end[1] - (-50 + pose.travel)) < 1e-12);
+      const length = Math.abs(
+        pose.aligners.centerlines[index][0][0] - pose.aligners.centerlines[index].at(-1)[0],
+      );
+      assert.equal(length, 7);
+      const truss = pose.aligners.flexure[index * 2 + 1];
+      const span = v.multiBounds([[[...truss, truss[0]]]]);
+      assert.equal(span.width, 1);
+      assert.equal(span.height, 1);
+    }
+  }
+});
+
+test('SEM v2 S6 has actual R1/R2 circular arcs and 15um terminal in OFF/ON', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
+    assert.equal(pose.hairpins.length, 2);
+    for (const route of pose.hairpins) {
+      assert.equal(route.transitionArcs.length, 1);
+      assert.equal(route.returnArcs.length, 2);
+      assert.deepEqual(route.radiiUm, [5, 3, 3]);
+      assert.equal(route.coreWidthUm, 0.4);
+      assert.equal(route.straightLUm, 15);
+      assert.equal(route.sourceWaypointCoordinatesVerified, false);
+      for (const arc of [...route.transitionArcs, ...route.returnArcs]) {
+        const startIndex = arc.firstArcIndex ?? arc.startIndex;
+        const endIndex = arc.lastArcIndex ?? arc.endIndex;
+        for (let index = startIndex; index <= endIndex; index++) {
+          const point = route.centerline[index];
+          const measuredRadiusUm = Math.hypot(point[0] - arc.center[0], point[1] - arc.center[1]);
+          assert.ok(
+            Math.abs(measuredRadiusUm - arc.radiusUm) < 1e-9,
+            state + ' S6 optical curve has a wrong physical radius',
+          );
+        }
+      }
+      for (const arc of route.returnArcs) {
+        assert.ok(Math.abs(Math.abs(arc.sweepRad) - Math.PI) < 1e-12);
+      }
+      const terminal = route.stationaryEnd;
+      assert.equal(route.centerline.at(-1), terminal);
+      const nominalRunUm = Math.abs(terminal[0] - route.terminalStraightStart[0]);
+      assert.ok(Math.abs(nominalRunUm - 15) < 1e-9);
+      assert.equal(terminal[1], -71);
+      assert.ok(
+        Math.abs(route.terminalStraightStart[1] - (terminal[1] + pose.travel)) < 1e-9,
+        'Terminal anchors stay fixed as the suspended S6 flexes',
+      );
+    }
+  }
+});
+
+test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
+    assert.ok(
+      contact(pose.fixed, pose.movable) < 1e-8,
+      state + ' moving actuator or SWX contacts unrelated fixed Si',
+    );
+    // Every structural truss is a 1um-wide Si bar and must overlap the
+    // compliant 200nm beam; otherwise a visually thicker line can hide
+    // an electrically/mechanically disconnected spring structure.
+    for (let i = 0; i < 12; i++) {
+      const truss = pose.springTrussContours[i];
+      const x = truss.map((p) => p[0]);
+      assert.ok(Math.abs(Math.max(...x) - Math.min(...x) - 1) < 1e-12);
+      assert.ok(
+        contact([truss], [pose.springContours[Math.floor(i / 3)]]) > 1e-4,
+        state + ' folded spring truss ' + i + ' detached from its beam',
+      );
+      const otherFixed = pose.fixed.filter((ring) => !pose.fixedActuator.slice(-4).includes(ring));
+      assert.ok(
+        contact([truss], otherFixed) < 1e-8,
+        state + ' truss ' + i + ' contacts an unrelated fixed silicon net',
+      );
+      assert.ok(
+        contact([truss], pose.opticalFlexures) < 1e-8,
+        state + ' truss ' + i + ' collides with an S6 waveguide',
+      );
+    }
+    for (let i = 0; i < 4; i++) {
+      const own = pose.fixedActuator.at(-4 + i);
+      assert.ok(contact([pose.springContours[i]], [own]) > 1e-4);
+      const unrelatedFixed = pose.fixed.filter((ring) => ring !== own);
+      assert.ok(
+        contact([pose.springContours[i]], unrelatedFixed) < 1e-8,
+        state + ' horizontal spring touches unrelated stationary Si',
+      );
+      assert.ok(
+        contact([pose.springContours[i]], pose.opticalFlexures) < 1e-8,
+        state + ' horizontal spring accidentally welds to S6 optical flexure',
+      );
+      assert.ok(
+        contact([own], pose.opticalFlexures) < 1e-8,
+        state + ' supported spring pad accidentally welds to S6',
+      );
+      assert.ok(
+        contact([pose.springContours[i]], pose.movableActuator) > 1e-4,
+        state + ' folded spring ' + i + ' is disconnected from moving shuttle',
+      );
+    }
+    for (let i = 0; i < 2; i++) {
+      assert.ok(
+        contact([pose.opticalFlexures[i]], [pose.fixedPads[3 - i]]) < 1e-8,
+        state + ' moving S6 guide touches the opposite mode converter support',
+      );
+      assert.ok(
+        contact([pose.opticalFlexures[i]], pose.fixedActuator) < 1e-8,
+        state + ' moving S6 guide contacts a fixed electrostatic conductor',
+      );
+      assert.ok(
+        pose.fixedRoutes[i].length > 16,
+        state + ' fixed input/output must have a smooth bent guide, not an L-shaped post',
+      );
+      assert.ok(
+        contact([pose.fixedRoutes[i]], pose.opticalFlexures) < 1e-8,
+        state + ' fixed optical lead is shorted to a moving S6 waveguide',
+      );
+      assert.ok(
+        contact([pose.fixedRoutes[i]], [pose.fixedPads[i]]) > 1e-4,
+        state + ' stationary optical feed ' + i + ' missing pad contact',
+      );
+      assert.ok(
+        contact([pose.opticalFlexures[i]], [pose.fixedPads[i + 2]]) > 1e-4,
+        state + ' moving S6 optical feed ' + i + ' missing supported pad',
+      );
+      assert.ok(
+        contact([pose.opticalFlexures[i]], [pose.source.optics.movableFacetsAndPorts[i + 3]]) > 0.1,
+        state + ' S6 optical route ' + i + ' lost movable SWX port',
+      );
+    }
+    assert.ok(contact(pose.bridge, pose.source.optics.movableFacetsAndPorts) > 1e-4);
+    assert.ok(contact(pose.bridge, pose.movableActuator) > 1e-4);
+  }
+});
+
+test('SEM v2 retains the 20 open S8 shuttle apertures in the actual OFF/ON silicon mask', () => {
+  for (const state of ['off', 'on']) {
+    const { maskPolygons, physicalGroups } = createSwxSemV2ProcessGeometry(state);
+    const pose = physicalGroups.semV2;
+    const apertureProbes = pose.source.actuator.triangularApertureProbes;
+    assert.equal(apertureProbes.length, 20);
+    const physicalSi = union(maskPolygons.get(1));
+    for (const [x, y] of apertureProbes) {
+      const translatedPoint = [x, y + SWX_SEM_V2_ASSUMPTIONS.actuatorFrameTranslationYUm];
+      assert.equal(
+        v.pointInMulti(translatedPoint, physicalSi),
+        false,
+        state + ' full silicon mask closes an S8 shuttle aperture at ' + translatedPoint.join(','),
+      );
+    }
+  }
+});
+
+test('real mask-field footprint is separately recorded from paper SWX/device dimensions', () => {
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxSemV2ProcessGeometry(state);
+    const scope = auditSwxPaperEnvelope(v, geometry);
+    assert.deepEqual(scope.paperReported.switchIncludingActuator, { width: 95, height: 100 });
+    assert.deepEqual(scope.paperReported.splitCrossing, { width: 23, height: 23 });
+    assert.deepEqual(scope.paperReported.preprintSupplementTable1, { width: 100, height: 90 });
+    assert.equal(scope.reportedFullFootprintConflict, true);
+    assert.equal(scope.supplementaryFootprintVersionOfRecordVerified, false);
+    assert.equal(scope.siliconFitsField, true);
+    assert.ok(scope.fullMaskSiliconFootprintUm.width > 0);
+    assert.ok(scope.fullMaskSiliconFootprintUm.height > 0);
+    assert.ok(scope.opticalCrossingGeometryBoundsUm.width > 0);
+    assert.ok(scope.actuatorGeometryBoundsUm.height > 0);
+    // Paper optical scope ≠ full access-port envelope. Fixed-stationary
+    // window is anchored at the midpoint of the nominal 900nm OFF slit.
+    assert.ok(Math.abs(scope.stationaryOpticalOriginUm.x) < 1e-10);
+    assert.equal(scope.stationaryOpticalOriginUm.y, -48);
+    assert.ok(Math.abs(scope.photonicMeasurementWindowUm.minX + 11.5) < 1e-10);
+    assert.ok(Math.abs(scope.photonicMeasurementWindowUm.maxX - 11.5) < 1e-10);
+    assert.equal(scope.photonicMeasurementWindowUm.minY, -59.5);
+    assert.equal(scope.photonicMeasurementWindowUm.maxY, -36.5);
+    assert.equal(scope.activeSwxWithinPhotonicWindow, true);
+    assert.equal(scope.accessPortsExtendOutsidePhotonicWindow, true);
+    assert.ok(Math.abs(scope.activeSwxFeatureBoundsUm.width - 9.26) < 1e-10);
+    assert.ok(
+      Math.abs(scope.activeSwxFeatureBoundsUm.height - (state === 'off' ? 6.26 : 5.375)) < 1e-10,
+    );
+    // Preserve the unresolved full-body Y difference. 95um X width alone
+    // must never turn full author-size acceptance green.
+    assert.equal(scope.coreAndActuatorGeometryBoundsUm.width, 95);
+    assert.ok(Math.abs(scope.coreAndActuatorGeometryBoundsUm.height - 68.2) < 1e-10);
+    assert.ok(Math.abs(scope.unregisteredFullSwitchYDifferenceUm - 31.8) < 1e-10);
+    assert.ok(
+      scope.coreAndActuatorGeometryBoundsUm.width <= scope.fullMaskSiliconFootprintUm.width,
+    );
+    assert.ok(
+      scope.coreAndActuatorGeometryBoundsUm.height <= scope.fullMaskSiliconFootprintUm.height,
+    );
+    assert.equal(scope.dimensionsComparedOnLikeForLikeScope, false);
+    assert.equal(scope.paperSwitchFootprintAccepted, false);
+    assert.equal(scope.paperSwxFootprintAccepted, false);
+    assert.equal(scope.fullFigureGeometryAccepted, false);
+  }
+});
+
+test('SEM v2 actual silicon Mask keeps two driven comb domains insulated', () => {
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxSemV2ProcessGeometry(state);
+    const audit = auditSwxSemV2ElectricalNets(v, geometry);
+    assert.equal(audit.metalContacts, 6);
+    assert.equal(audit.springAnchorsShareNet, true);
+    assert.equal(audit.combsSeparatedFromGround, true);
+    assert.ok([1, 2].includes(audit.independentCombDriveDomains));
+    const combDriveDomains = new Set(audit.metalPadSiOwnerIndices.slice(4)).size;
+    assert.equal(audit.independentCombDriveDomains, combDriveDomains);
+    assert.equal(audit.sourceCombCommonBiasVerified, false);
+    assert.equal(
+      audit.uncontactedSiliconNetIndices.length,
+      audit.siliconConnectedDomains - new Set(audit.metalPadSiOwnerIndices).size,
+    );
+    // Only explicit fabricated Si connectivity counts: without the missing
+    // peripheral return conductor the fixed optical frame is NOT certified
+    // externally grounded by the successful comb insulation test.
+    assert.equal(audit.stationaryOpticalExternalGroundVerified, false);
+    assert.equal(audit.sourceElectricalGroundingAccepted, false);
+  }
+});
+
+test('SEM v2 real post-release ownership includes all twelve wider 1um spring trusses', () => {
+  for (const state of ['off', 'on']) {
+    const probes = createSwxSemV2SupportAudit(state);
+    assert.equal(probes.supported.length, 12);
+    assert.equal(probes.released.length, 38);
+    assert.equal(
+      probes.released.filter((probe) => probe.name.startsWith('folded spring truss ')).length,
+      12,
+    );
+    const beamProbes = probes.released.filter((probe) =>
+      probe.name.startsWith('folded spring beam '),
+    );
+    assert.equal(beamProbes.length, 12);
+    const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
+    for (let index = 0; index < beamProbes.length; index++) {
+      const [x, y] = beamProbes[index].point;
+      const smallColumn = [
+        [x - 0.02, y - 0.02],
+        [x + 0.02, y - 0.02],
+        [x + 0.02, y + 0.02],
+        [x - 0.02, y + 0.02],
+      ];
+      assert.ok(
+        contact([smallColumn], [pose.springContours[Math.floor(index / 3)]]) > 1e-4,
+        state + ' release probe ' + beamProbes[index].name + ' misses its real silicon beam',
+      );
+    }
+    assert.equal(probes.outerIsolationTrenchVerified, false);
+    assert.equal(probes.sourceHFUndercutFrontVerified, false);
+    const names = [...probes.supported, ...probes.released].map((x) => x.name);
+    assert.equal(new Set(names).size, 50);
+  }
+});
+
+test('paper-width 95um actuator retains four anchored moving spring connections', () => {
+  for (const state of ['off', 'on']) {
+    const source = createSwxSemV2ProcessGeometry(state);
+    const pose = source.physicalGroups.semV2;
+    const envelope = auditSwxPaperEnvelope(v, source);
+    // External grating couplers and assumed Ground/Signal routing are
+    // intentionally excluded. This checks the real MEMS actuator XY outline.
+    assert.equal(envelope.actuatorGeometryBoundsUm.minX, -47.5);
+    assert.equal(envelope.actuatorGeometryBoundsUm.maxX, 47.5);
+    assert.equal(envelope.actuatorGeometryBoundsUm.width, 95);
+    assert.ok(envelope.actuatorGeometryBoundsUm.height <= 100);
+    assert.equal(envelope.paperSwitchFootprintAccepted, false);
+    for (const [index, spring] of pose.springContours.entries()) {
+      assert.ok(
+        contact([spring], pose.fixedActuator) > 0.08,
+        state + ' spring ' + index + ' lost finite grounded-anchor overlap',
+      );
+      assert.ok(
+        contact([spring], pose.movableActuator) > 0.07,
+        state + ' spring ' + index + ' lost finite moving-shuttle overlap',
+      );
+    }
+  }
+});

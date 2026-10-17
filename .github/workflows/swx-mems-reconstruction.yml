@@ -1,0 +1,113 @@
+name: SWX MEMS Reconstruction
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/swx-mems-geometry.mjs'
+      - 'scripts/swx-mems-actuator-candidate.mjs'
+      - 'scripts/swx-mems-sem-support-audit.mjs'
+      - 'scripts/swx-mems-sem-registration.mjs'
+      - 'scripts/swx-mems-spring-axial-audit.mjs'
+      - 'scripts/swx-mems-optomechanical-candidate.mjs'
+      - 'scripts/swx-mems-compact-process-geometry.mjs'
+      - 'scripts/swx-mems-compact-gratings.mjs'
+      - 'scripts/swx-mems-compact-bends.mjs'
+      - 'scripts/swx-mems-compact-guides.mjs'
+      - 'site/tests/swx-mems-compact-guides.test.mjs'
+      - 'scripts/build-swx-mems-compact-candidate.mjs'
+      - 'scripts/swx-mems-compact-browser-acceptance.mjs'
+      - 'site/tests/swx-mems-compact-process.test.mjs'
+      - 'scripts/swx-mems-optomechanical-preview.mjs'
+      - 'site/tests/swx-mems-optomechanical-candidate.test.mjs'
+      - 'site/tests/swx-mems-actuator-candidate.test.mjs'
+      - 'scripts/swx-mems-figure-audit.mjs'
+      - 'scripts/swx-mems-footprint-scope.mjs'
+      - 'scripts/build-swx-mems-example.mjs'
+      - 'scripts/swx-mems-browser-acceptance.mjs'
+      - 'scripts/swx-mems-klayout-verify.py'
+      - 'site/tests/swx-mems-geometry.test.mjs'
+      - 'examples/projects/swx-photonic-mems-candidate/**'
+      - '.github/workflows/swx-mems-reconstruction.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Compact actuator targeted scientific contracts
+        run: node --test site/tests/swx-mems-actuator-candidate.test.mjs
+      - name: Compact optical/mechanical interface scientific contracts
+        run: node --test site/tests/swx-mems-optomechanical-candidate.test.mjs
+      - name: S7 guide dimensions and known collision quarantine
+        run: node --test site/tests/swx-mems-compact-guides.test.mjs
+      - name: Geometry and pose tests
+        run: node --test site/tests/swx-mems-geometry.test.mjs
+      - name: Quantify published figure layout discrepancies (advisory)
+        run: node scripts/swx-mems-figure-audit.mjs
+      - name: Compile shared fabrication and OFF/ON Variants
+        run: node scripts/build-swx-mems-example.mjs
+      - name: Compact process targeted mask and substrate contracts
+        run: node --test site/tests/swx-mems-compact-process.test.mjs
+      - name: Build independent compact candidate using real Kernel and Recipe
+        run: node scripts/build-swx-mems-compact-candidate.mjs
+      - name: Install browser runtime
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ubuntu-chromium-1.55.1
+      - name: Install pinned Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Render isolated optomechanical geometry in Chromium
+        run: node scripts/swx-mems-optomechanical-preview.mjs
+      - name: Launch isolated UI v2
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > test-results/swx-mems/serve-v2.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat test-results/swx-mems/serve-v2.log
+          exit 1
+      - name: Compact candidate real v2 four-view and browser GDS/OAS acceptance
+        run: node scripts/swx-mems-compact-browser-acceptance.mjs
+      - name: Real v2 project import and Mask GDS export
+        run: node scripts/swx-mems-browser-acceptance.mjs
+      - name: Verify actual OFF/ON browser GDS/OAS independently with KLayout
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
+          python3 scripts/swx-mems-klayout-verify.py test-results/swx-mems
+          python3 scripts/swx-mems-klayout-verify.py test-results/swx-mems-compact compact
+      - name: Archive reconstructed projects and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swx-mems-projects-and-validation
+          path: test-results/swx-mems/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Archive isolated compact candidate project and process report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swx-compact-candidate-science-evidence
+          path: test-results/swx-mems-compact/
+          if-no-files-found: ignore
+          retention-days: 14
