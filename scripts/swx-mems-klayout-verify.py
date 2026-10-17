@@ -14,17 +14,19 @@ import klayout.db as kdb
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "test-results/swx-mems")
 MODE = sys.argv[2] if len(sys.argv) > 2 else "canonical"
-assert MODE in ("canonical", "compact", "sem-v2"), f"Unsupported SWX verification mode {MODE}"
-CANDIDATE = MODE == "compact"
+assert MODE in ("canonical", "compact", "sem-v2", "sem-ground"), f"Unsupported SWX verification mode {MODE}"
+CANDIDATE = MODE in ("compact", "sem-ground")
 PROJECT_NAME = {
     "canonical": "swx-photonic-mems.wafercad",
     "compact": "swx-compact-candidate.wafercad",
     "sem-v2": "swx-sem-v2-unit.wafercad",
+    "sem-ground": "swx-sem-ground-return-candidate.wafercad",
 }
 EXPORT_PREFIX = {
     "canonical": "swx",
     "compact": "compact",
     "sem-v2": "sem-v2",
+    "sem-ground": "sem-ground",
 }
 PROJECT = ROOT / PROJECT_NAME[MODE]
 BROWSER = ROOT / "browser"
