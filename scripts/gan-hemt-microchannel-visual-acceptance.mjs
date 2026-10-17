@@ -542,17 +542,28 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
-  await page.waitForFunction(
-    () => {
-      const state = window.WaferCadV2Workstation?.snapshot();
-      return (
-        state?.assemblyWires?.length === 2 &&
-        document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2'
-      );
-    },
-    null,
-    { timeout: 120000 },
-  );
+  // Read-only project diagnostics and *actual mesh construction* are separate
+  // invariants. A stored wire alone is not proof that the 3D scene built it.
+  const wireAudit = await page.evaluate(() => {
+    const host = document.getElementById('threeHost');
+    const wires = window.WaferCadV2Workstation?.snapshot()?.assemblyWires || [];
+    return {
+      storedCount: wires.length,
+      builtCount: Number(host?.dataset.assemblyWireBuiltCount || 0),
+      renderState: host?.dataset.renderState,
+      frameSerial: Number(host?.dataset.rendererFrameSerial || 0),
+    };
+  });
+  assert.equal(wireAudit.storedCount, 2, 'Restored package lost its two explicit Au wire records');
+  if (wireAudit.builtCount !== 2) {
+    await page.waitForFunction(
+      () => document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2',
+      null,
+      { timeout: 45000 },
+    );
+  }
+  const builtWires = await page.locator('#threeHost').getAttribute('data-assembly-wire-built-count');
+  assert.equal(builtWires, '2', 'The renderer did not construct both Au wire tubes');
   const packageCanvas = await page.locator('#threeHost').boundingBox();
   assert.ok(
     packageCanvas && packageCanvas.height >= 340,

@@ -473,6 +473,9 @@ try {
         source: project.source,
         hash: project.hash,
         model: store.state.model,
+        // Packaging wires are explicit 3D geometry, not 2.5D material layers.
+        // Expose the saved, read-only project field for visual parity audits.
+        assemblyWires: store.state.assemblyWires || [],
         roi: store.state.roi,
         maskRoi: store.state.maskRoi,
         maskTransform: store.state.maskTransform,
