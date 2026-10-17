@@ -2,15 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { buildTcmosInverter } from '../../scripts/build-tcmos-inverter-example.mjs';
-import {
-  createTcmosArrayPatch,
-  TCMOS_ARRAY_SPEC,
-} from '../../scripts/build-tcmos-array-patch.mjs';
+import { createTcmosArrayPatch, TCMOS_ARRAY_SPEC } from '../../scripts/build-tcmos-array-patch.mjs';
 
 await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
-const { arrayParts, resolveArrayModel, translateGeometry } =
-  await import('../model-array.js');
+const { arrayParts, resolveArrayModel, translateGeometry } = await import('../model-array.js');
 const { resolveQualitativeDopantRegion } = await import('../dopant-regions.js');
 const { validateProjectFile } = await import('../project-schema.js');
 

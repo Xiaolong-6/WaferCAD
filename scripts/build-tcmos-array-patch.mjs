@@ -18,8 +18,7 @@ export const TCMOS_ARRAY_SPEC = Object.freeze({
 
 export async function createTcmosArrayPatch(source, spec = TCMOS_ARRAY_SPEC) {
   await loadGeometryKernel();
-  const { createRectangularGridArrayModel } =
-    await import('../site/model-array-construction.js');
+  const { createRectangularGridArrayModel } = await import('../site/model-array-construction.js');
   const { translateGeometry } = await import('../site/model-array.js');
   const { validateProjectFile } = await import('../site/project-schema.js');
   const { prepareProjectForWorkspaceStorage, readProjectFile } =

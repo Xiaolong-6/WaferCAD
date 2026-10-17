@@ -396,10 +396,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
       ?.visible,
     true,
   );
-  assert.equal(
-    project.snapshots[0].state.model.layers.find((l) => l.id === ild.id)?.visible,
-    true,
-  );
+  assert.equal(project.snapshots[0].state.model.layers.find((l) => l.id === ild.id)?.visible, true);
   assert.ok(
     project.snapshotBranches.nodes
       .slice(0, -1)

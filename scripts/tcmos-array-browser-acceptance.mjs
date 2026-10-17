@@ -17,10 +17,13 @@ const report = { result: 'in_progress', sourceCells: 16, replayedArrayRecipe: fa
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 try {
-  await page.goto((process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173') + '/app.html?start=empty', {
-    waitUntil: 'domcontentloaded',
-    timeout: 120000,
-  });
+  await page.goto(
+    (process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173') + '/app.html?start=empty',
+    {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000,
+    },
+  );
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
     timeout: 120000,
   });
@@ -41,12 +44,17 @@ try {
     true,
   );
   for (const key of ['mask', 'three', 'section']) {
-    await page.locator('.p-nav [data-action="domain:' + (key === 'mask' ? 'mask' : 'project') + '"]').click();
+    await page
+      .locator('.p-nav [data-action="domain:' + (key === 'mask' ? 'mask' : 'project') + '"]')
+      .click();
     const dock = page.locator('[data-action="dock:view:' + key + '"]:visible').first();
     if (await dock.count()) {
       if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
     } else if (key !== 'section') {
-      await page.locator('[data-action="view:' + key + '"]:visible').first().click();
+      await page
+        .locator('[data-action="view:' + key + '"]:visible')
+        .first()
+        .click();
     } else {
       await page.getByRole('button', { name: 'Section', exact: true }).first().click();
     }
