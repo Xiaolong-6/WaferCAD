@@ -50,6 +50,7 @@ try {
     assert.equal(data.productionHost.rendererPhase, 'complete');
     assert.equal(data.productionHost.owner, 'wafercad-physical-pyramid-slab-v1');
     assert.equal(data.productionHost.triangleCount, data.physicalTriangleCount);
+    assert.equal(data.productionHost.axesHelperHidden, true, 'No axis piercing physical body');
     assert.equal(data.sourceKernel, 'vector-physical-facet-experimental-v1');
     assert.equal(data.ownerKind, 'wafercad-physical-pyramid-slab-v1');
     assert.ok(data.physicalTriangleCount >= 32);

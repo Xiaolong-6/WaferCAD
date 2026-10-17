@@ -9,6 +9,7 @@ on:
       - 'site/physical-facet-preview.js'
       - 'site/physical-facet-render-geometry.js'
       - 'site/physical-facet-surface.js'
+      - 'site/three-view.js'
       - 'site/model-view-geometry.js'
       - 'scripts/v2/capture-physical-facet-preview.mjs'
       - '.github/workflows/physical-facet-visual.yml'

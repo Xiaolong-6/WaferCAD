@@ -4,7 +4,10 @@ import { createThreeView } from './three-view.js';
 import { createModel } from './model.js';
 import { attachExperimentalPhysicalFacetOwner } from './physical-facet-model.js';
 import { physicalOwnerVolume } from './physical-facet-owner.js';
-import { buildPhysicalFacetPresentation, physicalFacetPresentationZ } from './physical-facet-render-geometry.js';
+import {
+  buildPhysicalFacetPresentation,
+  physicalFacetPresentationZ,
+} from './physical-facet-render-geometry.js';
 import { sectionContours } from './model-view-geometry.js';
 
 const physicalDescriptor = {
@@ -145,6 +148,7 @@ window.WaferCadPhysicalFacetEvidence = {
     rendererState: canvas3d.dataset.renderState,
     owner: canvas3d.dataset.physicalFacetOwner,
     triangleCount: Number(canvas3d.dataset.physicalFacetTriangles),
+    axesHelperHidden: canvas3d.dataset.physicalFacetAxesHidden === 'true',
   },
   setAngle,
 };
