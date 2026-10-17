@@ -9,6 +9,33 @@
 
 This is a geometry-first reconstruction of stepped coolant voids and a representative integrated HEMT. It is not original device GDS, a calibrated fabrication flow or an ANSYS thermal/CFD reproduction. For PR #229, existing 3D Au wires are retained, but native wafer Bond, packaging metallurgy, thermal/CFD models and electrical simulation are outside its acceptance scope.
 
+## Delivery model: independent unassembled workpieces
+
+The source publication contains three dies (one GaN HEMT and two GSG Pad dies)
+plus one microchannel Si interposer. The current WaferCAD project format has
+one canonical Main History per project. Until native assembly/Bond capability
+is accepted, the official editable deliverable consists of **four separate
+native projects**, not four fabricated branches of a common die:
+
+| Project | History / intended role |
+| --- | --- |
+| `gan-microchannel-interposer-2022.wafercad` | Si microchannel Main; four-tier geometric surrogate, **not** a real bonded-wafer process |
+| `gan-hemt-die-2022.wafercad` | Independent HEMT Main with native gates and source-labeled inferred metal |
+| `gan-gsg-left-die-2022.wafercad` | Independent left GSG Pad Die Main |
+| `gan-gsg-right-die-2022.wafercad` | Independent right GSG Pad Die Main |
+
+All four have editable, reopenable material, Mask, Recipe and History data.
+None stores `assemblyWires`, Bond, placement or completed package geometry.
+The legacy `gan-hemt-microchannel-2022.wafercad` is retained **only as
+a hypothetical composite geometry reference**, including illustrative Au wire
+loops. Its History **does not prove actual die transfer or wafer bonding**.
+Future native Bond/Assembly must consume the four independent inputs; it must
+not infer a completed manufacturing step from this historical reference.
+
+The Welcome cover artwork for new workpieces is explicitly marked
+`SCHEMATIC ONLY`. It is not a WaferCAD render or a scientific figure.
+Real Workstation Main/Mask/3D/Section must be inspected separately.
+
 ## Directly reported dimensions
 
 | Quantity                             | Publication                                        | Usage                                                           |
