@@ -606,10 +606,20 @@ try {
   await page.screenshot({
     path: new URL('three-chip-presentation-toolbar.png', directory).pathname,
   });
-  const packageBorders = page.locator('[data-action="borders:three"]:visible').first();
-  const packageOpacity = page.locator('[data-action="opacity:three"]:visible').first();
-  assert.ok(await packageBorders.isVisible(), 'Package 3D border control is unavailable');
-  assert.ok(await packageOpacity.isVisible(), 'Package 3D opacity control is unavailable');
+  const packageBorders = page.locator('#threePanel [data-action="borders:three"]');
+  const packageOpacity = page.locator('#threePanel [data-action="opacity:three"]');
+  assert.equal(await packageBorders.count(), 1, 'Package 3D border control is absent');
+  assert.equal(await packageOpacity.count(), 1, 'Package 3D opacity control is absent');
+  // Native production toolbars move original buttons into the More popover
+  // when the panel is narrow, even at a desktop viewport. Exercise that
+  // exact menu path instead of directly manipulating internal presentation.
+  const revealThreeTool = async (tool) => {
+    if (await tool.isVisible()) return;
+    const more = page.getByRole('button', { name: '3D more tools', exact: true });
+    assert.ok(await more.isVisible(), '3D overflow control is unavailable');
+    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+    await tool.waitFor({ state: 'visible', timeout: 30000 });
+  };
   const scientificState = () =>
     page.evaluate(() => {
       const state = window.WaferCadV2Workstation.snapshot();
@@ -628,7 +638,9 @@ try {
   for (const opacityValue of [1, 0.5]) {
     // Use the production opacity slider's input handler. Directly mutating
     // threeOpacity would bypass the real Workstation render transaction.
+    await revealThreeTool(packageOpacity);
     await packageOpacity.click();
+    await page.locator('#threeOpacityRange').waitFor({ state: 'visible' });
     await page.locator('#threeOpacityRange').evaluate((slider, next) => {
       slider.value = String(next);
       slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -653,7 +665,11 @@ try {
       );
       const pressed = (await packageBorders.getAttribute('aria-pressed')) === 'true';
       const changed = pressed !== borders;
-      if (changed) await packageBorders.click();
+      if (changed) {
+        await revealThreeTool(packageBorders);
+        await packageBorders.click();
+        await page.keyboard.press('Escape');
+      }
       await page.waitForFunction(
         ({ previousSerial, borders, opacityValue, changed }) => {
           const host = document.getElementById('threeHost');
