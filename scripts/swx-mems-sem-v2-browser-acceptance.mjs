@@ -213,46 +213,46 @@ try {
         path: resolve(directory, state + '-section.png'),
       });
       if (exportPrefix === 'sem-ground') {
-        // The ordinary SEM section crosses the comb, not the new ground
-        // rail. Re-import the SAME real WaferCAD project with a short XY
-        // rail transect to expose central BOX retention after HF release.
-        const railSection = { a: [-80, -85], b: [-71, -85] };
-        const inspect = structuredClone(source);
-        inspect.section = railSection;
-        for (const branch of inspect.snapshotBranches.branches) {
-          if (branch.headState) branch.headState.section = railSection;
+        // Reopen the REAL processed WaferCAD project for two route-specific
+        // sections. The old y=-85 cut missed the relocated ground rail and
+        // falsely produced an empty section under a successful browser gate.
+        for (const [name, section, spanUm] of [
+          ['ground', { a: [-80, -51], b: [-71, -51] }, 9],
+          ['signal', { a: [-8, -115], b: [8, -115] }, 16],
+        ]) {
+          const inspect = structuredClone(source);
+          inspect.section = section;
+          for (const branch of inspect.snapshotBranches.branches) {
+            if (branch.headState) branch.headState.section = section;
+          }
+          for (const node of inspect.snapshotBranches.nodes) {
+            if (node.state) node.state.section = section;
+          }
+          for (const bookmark of inspect.snapshots) {
+            if (bookmark.state) bookmark.state.section = section;
+          }
+          const projectFile = 'sem-v2-' + name + '-section.wafercad';
+          await importProject({
+            name: projectFile,
+            mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(inspect)),
+          });
+          await showSection();
+          await page.waitForFunction(
+            ({ expected, filename }) => {
+              const panel = document.getElementById('sectionPanel');
+              const sectionText = panel?.textContent || '';
+              const opening = document.body.innerText.includes('Opening ' + filename);
+              return sectionText.includes(expected + ' µm span') && !opening;
+            },
+            { expected: spanUm, filename: projectFile },
+            { timeout: 120000 },
+          );
+          await waitForPaint(page);
+          await page.locator('#sectionPanel').screenshot({
+            path: resolve(directory, state + '-section-' + name + '-rail.png'),
+          });
         }
-        for (const node of inspect.snapshotBranches.nodes) {
-          if (node.state) node.state.section = railSection;
-        }
-        for (const bookmark of inspect.snapshots) {
-          if (bookmark.state) bookmark.state.section = railSection;
-        }
-        await importProject({
-          name: 'sem-v2-ground-rail-section.wafercad',
-          mimeType: 'application/json',
-          buffer: Buffer.from(JSON.stringify(inspect)),
-        });
-        await showSection();
-        // The import helper can return while the PREVIOUS project's name
-        // is still visible and the new import dialog is validating. Wait
-        // for the real short (9um) section span and dialog dismissal before
-        // capturing any evidence from the new project.
-        await page.waitForFunction(
-          () => {
-            const sectionText = document.getElementById('sectionPanel')?.textContent || '';
-            const opening = document.body.innerText.includes(
-              'Opening sem-v2-ground-rail-section.wafercad',
-            );
-            return /9\s*µm\s*span/.test(sectionText) && !opening;
-          },
-          null,
-          { timeout: 120000 },
-        );
-        await waitForPaint(page);
-        await page.locator('#sectionPanel').screenshot({
-          path: resolve(directory, state + '-section-perimeter-rail.png'),
-        });
       }
       if (state === 'off') {
         await page.locator('[data-action="domain:process"]').click();
