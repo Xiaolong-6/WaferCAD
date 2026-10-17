@@ -241,7 +241,7 @@ try {
         await page.waitForFunction(
           () => {
             const sectionText = document.getElementById('sectionPanel')?.textContent || '';
-            const opening = document.body.textContent.includes(
+            const opening = document.body.innerText.includes(
               'Opening sem-v2-ground-rail-section.wafercad',
             );
             return /9\s*µm\s*span/.test(sectionText) && !opening;
