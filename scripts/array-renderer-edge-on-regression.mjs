@@ -97,35 +97,66 @@ try {
   // camera in one browser task. The test still requires the first exact frame
   // and all its walls to render; a timeout is a correctness failure.
   const handle = await page.waitForFunction(
-    (previous) => {
+    ({ previous, farTriangles }) => {
       const host = document.getElementById('threeHost');
       if (
         host?.dataset.transparentArrayLodTier !== 'exact' ||
         host.dataset.renderState !== 'ready' ||
-        Number(host.dataset.rendererFrameSerial || 0) <= previous
+        // The selected exact tier may be ready while the last completed
+        // WebGL frame and triangle counters still belong to the far tier.
+        host.dataset.rendererFrameArrayLodTier !== 'exact' ||
+        host.dataset.rendererFrameSceneGeneration !== host.dataset.sceneGeneration ||
+        Number(host.dataset.rendererFrameSerial || 0) <= previous ||
+        // The *first* exact-tier frame can still be transitional. Never fit
+        // away before a fully drawn exact frame satisfies the same strict
+        // scientific triangle-count invariant asserted again below.
+        Number(host.dataset.rendererDrawTriangles || 0) <= farTriangles
       )
         return false;
       const edge = { ...host.dataset };
       document.getElementById('fit3dBtn')?.click();
       return JSON.stringify(edge);
     },
-    beforeEdgeFrame,
+    { previous: beforeEdgeFrame, farTriangles },
     { timeout: 240000, polling: 100 },
   );
   const edgeOn = JSON.parse(await handle.jsonValue());
   assert.equal(edgeOn.transparentArrayLodTier, 'exact');
+  assert.equal(edgeOn.rendererFrameArrayLodTier, 'exact');
+  assert.equal(edgeOn.rendererFrameSceneGeneration, edgeOn.sceneGeneration);
   assert.equal(edgeOn.cameraDampingEnabled, 'false');
   assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
   assert.equal(edgeOn.arrayInstances, far.arrayInstances);
   assert.equal(edgeOn.processRevision, far.processRevision);
-  assert.ok(Number(edgeOn.rendererDrawTriangles) > farTriangles);
-  console.log(
-    'ARRAY_EDGE_EXACT',
-    JSON.stringify({
-      tier: edgeOn.transparentArrayLodTier,
-      triangles: edgeOn.rendererDrawTriangles,
-      frameSerial: edgeOn.rendererFrameSerial,
-    }),
+  const exactDiagnostics = {
+    tier: edgeOn.transparentArrayLodTier,
+    frameTier: edgeOn.rendererFrameArrayLodTier,
+    sceneGeneration: edgeOn.sceneGeneration,
+    frameSceneGeneration: edgeOn.rendererFrameSceneGeneration,
+    renderState: edgeOn.renderState,
+    renderPhase: edgeOn.renderPhase,
+    rendererUpdateKind: edgeOn.rendererUpdateKind,
+    triangles: Number(edgeOn.rendererDrawTriangles),
+    farTriangles,
+    drawCalls: edgeOn.rendererDrawCalls,
+    sceneTriangleKinds: edgeOn.sceneTriangleKinds,
+    retainedGeometry: edgeOn.sceneRetainedGeometryCount,
+    retainedMaterials: edgeOn.sceneRetainedMaterialCount,
+    sidewalls: edgeOn.sidewallTriangleCount,
+    bodyCount: edgeOn.electricalFarLodBodyCount,
+    frameMs: edgeOn.rendererFrameMs,
+    frameSerial: edgeOn.rendererFrameSerial,
+  };
+  console.log('ARRAY_EDGE_EXACT', JSON.stringify(exactDiagnostics));
+  // Keep failure geometry evidence rather than only the far screenshot:
+  // this is a strict gate; no fallback-to-far or tolerance weakening.
+  await writeFile(
+    new URL('exact-frame-report.json', output),
+    JSON.stringify({ far, edgeOn, exactDiagnostics, errors }, null, 2),
+  );
+  assert.ok(
+    exactDiagnostics.triangles > farTriangles,
+    'completed exact-tier frame must draw more triangles than the far LOD',
   );
 
   await page.waitForFunction(

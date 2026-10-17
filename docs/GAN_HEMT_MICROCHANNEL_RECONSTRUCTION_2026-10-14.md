@@ -7,7 +7,7 @@
 - Main figures: article Fig. 1 (chip and interposer design) and Fig. 2(a–i) (DRIE, wafer bonding, oxidation, metallization and assembly).
 - Supplement: Fig. S-1 (HEMT gate/source/drain and backside grounds), Fig. S-5 (GSG pads and gold-wire bonding).
 
-This is a geometry-first reconstruction of stepped coolant voids and a representative integrated HEMT. It is not original device GDS, a calibrated fabrication flow or an ANSYS thermal/CFD reproduction.
+This is a geometry-first reconstruction of stepped coolant voids and a representative integrated HEMT. It is not original device GDS, a calibrated fabrication flow or an ANSYS thermal/CFD reproduction. For PR #229, existing 3D Au wires are retained, but native wafer Bond, packaging metallurgy, thermal/CFD models and electrical simulation are outside its acceptance scope.
 
 ## Directly reported dimensions
 
@@ -24,13 +24,13 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 | Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Native idealized Ti/Cu conformal geometry; Au routing unmodeled |
 | Water and measured operating point   | 3 mL/min; ~7.5 V, 0.8 A; 93.8 °C maximum           | Metadata only, never predicted                                  |
 
-The abstract uses "pitch" for the 30 µm microchannel parameter while the main design text specifies width/spacing. We use separate 30 µm width and 30 µm spacing (60 µm centerline period) and disclose this interpretation.
+The abstract uses "pitch" for the 30 µm microchannel parameter while the main design text specifies width/spacing. We use separate 30 µm width and 30 µm spacing (60 µm centerline period) and disclose this interpretation. The paper also reports 6 µm Source–Drain spacing; only the external S/D contact pads, not that local 6 µm active-region clearance, are modeled.
 
 **Top-footprint audit:** the published 380 × 760 µm region and the generated 330 × 760 µm six-stripe Mask have different lateral extents. Only the top stripe length and stated stripe width/spacing are directly instantiated. The additional nominal 25 µm shoulders on each side are not photolithographically patterned top openings. This unresolved footprint interpretation is part of the scientific acceptance gate, not a dimensional-parity pass.
 
 ## Geometrical assumptions and limits
 
-1. Interposer XY 6000 × 5000 µm is a representative viewing field inferred from the published photographs and scale markers, not a separately reported precision dimension.
+1. Interposer XY 6000 × 5000 µm follows the explicit 6 mm × 5 mm nominal outer-size arrows in the source Fig. 2(h) photograph; exact author GDS edge coordinates remain unavailable.
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
 4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Six 30 µm-wide strips with five 30 µm solid ribs span **330 µm**, while the paper gives a **380 µm** overall top microchannel footprint. The remaining **50 µm**, represented by nominal 25 µm solid margins on both lateral edges, is a _geometric interpretation_, not a measured original-mask feature; the Mask layer 13 itself spans 330 × 760 µm, not a continuously etched 380 × 760 µm rectangle. Do not describe the modeled top etch as an exact 380 µm opening. Original GDS and the exact channel count are unavailable. **Fig. 1(c) / Fig. 2(h) show symmetric curved inlet/outlet diversion structures**, and the Example now includes a separate top-cap DRIE step using Mask 22: twelve rounded diversion branches (six on each end), plus two central 110 × 50 µm collection throats at Y = ±425 µm. Each branch is a 24 µm-wide piecewise curve with a nested U-shaped return bend around the collecting throat, spanning approximately Y = ±355 to ±478 µm for the outer channels. The inside lanes take shorter arcs. The source contours are inferred, and the geometry is mirrored at both ends. The coordinates and curve geometry are explicitly **inferred**, not the authors' GDS. The published figure has its inlet/outlet horizontally; the Example is rotated 90° in XY so flow is along Y.
@@ -58,7 +58,7 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   Real stepped TSV dimensions, copper electroplating, electrical contacts,
   NiPaAu elemental composition, oxide isolation and measured conductivity remain **unverified**.
 - **SiC/water boundary:** water is not modeled as a material. In the
-  representative channel center, the SiC bottom is at Z = 605 µm, above a
+  representative channel center, the SiC bottom is at Z = 606.7 µm, above a
   5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
   an empty volume immediately beneath that SiC bottom surface. The fluid is
   exposed to the _SiC substrate backside_, not directly to the GaN epitaxy.
@@ -163,7 +163,7 @@ A geometrically continuous 3D Au tube touching two metal pads is **not evidence 
 - The branch remains **Draft**. GitHub's exact PR HEAD, mergeability and required CI checks must be re-verified after each documentation or asset update; a passed older focused run is never evidence that a new HEAD is green.
 - Inspect **actual rendered Chromium evidence** independently for three physically different scales/cut planes: longitudinal coolant ports/manifold, transverse Cu-filled TSVs, and the locally magnified HEMT with a thickness legend. A combined Fig. 1(a)-style view must not imply a single co-planar cross-section or scale 25 nm / 150 nm films up to false thicknesses.
 - A final paper comparison must explicitly note the absent wafer-to-wafer direct bond, missing Au/TSV-to-pad electrical routes, absent original GDS, inferred dimensions and no thermal/CFD/electrical validation. Passing geometry and replay checks alone does not close these scientific gates.
-- Reconcile with contemporary Main in a controlled integration branch and run the necessary targeted scientific/visual checks before broader release Quality. Do not merge or deploy without explicit approval.
+- Reconcile with contemporary Main on the existing PR #229 branch and run the necessary targeted scientific/visual checks before broader release Quality. Do not merge or deploy without explicit approval.
 
 ### Figure review
 
