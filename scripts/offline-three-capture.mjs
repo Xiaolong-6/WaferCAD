@@ -6,6 +6,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { loadInput } from './offline-visual-kernel.mjs';
+import { offlineSourceRevision } from './offline-source-revision.mjs';
 import { collectOwnedMesh } from './offline-three-mesh.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 function parse(argv) {
@@ -41,9 +42,8 @@ export async function captureThree(opts = {}) {
   if (!opts['--mesh-only']) {
     execFileSync(process.env.WAFERCAD_PYTHON || 'python3', [join(here,'offline-three-vtk.py'), meshPath, pngPath, String(width), String(height), String(zExaggeration)], { timeout: 120000, stdio: 'inherit' });
   }
-  let commit = 'unavailable';
-  try { commit = execFileSync('git', ['rev-parse','HEAD'], {cwd:resolve(here,'..'),encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim(); } catch {}
-  const evidence = { schema:'wafercad-offline-three-p0', source:input.source, inputSha256:input.inputSha256, commit, renderer:opts['--mesh-only']?'geometry-only':'VTK-offscreen-native-owned-mesh', nativeGeometryOwner:'buildRenderSurfacePlan', triangleOwner:'triangulatePolygon', zExaggeration, resolution:{width,height}, ...mesh.evidence, acceptanceScope:'Read-only geometry preview only. Not WaferCAD Three.js screenshot/LOD or rough shader validation.' };
+  const sourceRevision = offlineSourceRevision(resolve(here,'..'));
+  const evidence = { schema:'wafercad-offline-three-p0', source:input.source, inputSha256:input.inputSha256, ...sourceRevision, renderer:opts['--mesh-only']?'geometry-only':'VTK-offscreen-native-owned-mesh', nativeGeometryOwner:'buildRenderSurfacePlan', triangleOwner:'triangulatePolygon', zExaggeration, resolution:{width,height}, ...mesh.evidence, acceptanceScope:'Read-only geometry preview only. Not WaferCAD Three.js screenshot/LOD or rough shader validation.' };
   await writeFile(evidencePath, `${JSON.stringify(evidence,null,2)}\n`);
   return { meshPath, pngPath: opts['--mesh-only'] ? null : pngPath, evidencePath, evidence };
 }

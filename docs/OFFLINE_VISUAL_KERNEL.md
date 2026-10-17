@@ -73,3 +73,55 @@ fabricated patterns. Very large masks may exceed offline SVG performance.
 Focused checks: `node --test site/tests/offline-mask-svg.test.mjs`.
 A synthetic File/Draw sample rendered to two PNGs using an in-memory Chromium
 SVG is a smoke test only, not an end-to-end `.wafercad` validation.
+
+## Portable ChatGPT source package (no localhost, CI, or remote browser)
+
+From a **full WaferCAD checkout** containing the target PR's exact HEAD,
+build the portable source archive once:
+
+```sh
+python3 scripts/offline-package.py --output test-results/wafercad-offline-source.zip
+python3 scripts/offline-package.py --verify test-results/wafercad-offline-source.zip
+```
+
+The ZIP contains actual `site/` code and `.wafercad` example assets, the
+minimum offline `scripts/` entrypoints, the pinned `node_modules/three`,
+`node_modules/playwright` and `node_modules/playwright-core` sources, plus a
+cryptographic manifest recording each file SHA-256, original Git HEAD and
+whether any uncommitted source was present at packaging time. It refuses
+symlinks, missing required files and excessive size. It never modifies WaferCAD
+or calls GitHub Actions. Before opening a supplied package, **verify** its
+paths, count, size and per-file SHA-256 hashes with `--verify`; a self-contained
+manifest proves internal consistency, not independent GitHub authenticity.
+
+After downloading the archive into the ChatGPT execution environment, extract
+it into an isolated folder, then run the existing offline commands there:
+
+```sh
+# In the extracted folder, with Node and an existing Chromium executable:
+node scripts/offline-visual-kernel.mjs --project site/examples/perc-solar-cells-point-contacts.wafercad --view mask --output output/mask
+node scripts/offline-visual-kernel.mjs --project site/examples/photodetector-literature-examples.wafercad --view section --scale physical --output output/section
+node scripts/offline-three-capture.mjs --project site/examples/photodetector-literature-examples.wafercad --mesh-only --output output/three
+node scripts/offline-ui-capture.mjs --component navigation --width 390 --height 844 --output output/ui
+```
+
+The first two commands can use an existing system Chromium via
+`WAFERCAD_CHROMIUM` to rasterize SVG; `--svg-only` needs no browser. The 3D
+PNG path additionally requires locally installed Python VTK; `--mesh-only`
+does not. If the receiving environment lacks Chromium or WebGL, it **must not**
+claim real browser acceptance. The source revision in evidence is taken from
+the package's `offline-source-manifest.json` when present, otherwise from Git,
+with `dirtyAtPackaging` explicitly retained. A mutable or locally edited bundle
+must never be represented as an immutable published SHA.
+
+Acceptance remains scoped: independently rendered scientific structures and
+standalone native Shell controls do **not** establish production Three.js pixel
+correctness, full UI interaction, layout synchronization or Recovery safety.
+Those still require real-app Chromium and scientific/release gates before merge.
+
+Focused local package tests, without CI:
+
+```sh
+python3 scripts/offline-package.test.py
+node --test site/tests/offline-source-revision.test.mjs
+```

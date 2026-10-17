@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { basename, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { offlineSourceRevision } from './offline-source-revision.mjs';
 import { loadGeometryKernel, processBenchmark } from './process-benchmarks.mjs';
 import { renderMainSvg, renderSectionSvg } from './offline-visual-svg.mjs';
 import { renderMaskSvg } from './offline-mask-svg.mjs';
@@ -25,10 +25,7 @@ function options(argv) {
   return result;
 }
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
-const sha = () => {
-  try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: new URL('..', import.meta.url), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
-  catch { return 'unavailable'; }
-};
+
 export async function loadInput(settings) {
   await loadGeometryKernel();
   if (settings['--fixture']) {
@@ -96,7 +93,7 @@ export async function run(settings) {
   }
   await mkdir(out, { recursive: true });
   const svgPath = join(out, `${view}.svg`), pngPath = join(out, `${view}.png`), evidencePath = join(out, `${view}.evidence.json`);
-  const evidence = { schema: 'wafercad-offline-visual-p0', source, inputSha256, commit: sha(), width, height, borders, ...data.evidence, captureMethod: settings['--svg-only'] ? 'svg' : 'svg-inline-chromium-png', renderingScope: 'scientific geometry inspection, not native UI/Three pixel acceptance' };
+  const evidence = { schema: 'wafercad-offline-visual-p0', source, inputSha256, ...offlineSourceRevision(fileURLToPath(new URL('..', import.meta.url))), width, height, borders, ...data.evidence, captureMethod: settings['--svg-only'] ? 'svg' : 'svg-inline-chromium-png', renderingScope: 'scientific geometry inspection, not native UI/Three pixel acceptance' };
   await writeFile(svgPath, data.svg, 'utf8');
   if (!settings['--svg-only']) await pngFromSvg(data.svg, pngPath, width, height);
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');

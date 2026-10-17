@@ -4,7 +4,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { offlineSourceRevision } from './offline-source-revision.mjs';
 
 const site = resolve(dirname(fileURLToPath(import.meta.url)), '../site');
 const components = {
@@ -97,9 +97,8 @@ export async function captureShell(options = {}) {
     await mkdir(out, { recursive: true });
     await locator.screenshot({ path: screenshot, animations: 'disabled' });
     if (errors.length) throw Error(`Native Shell generated errors: ${errors.join('; ')}`);
-    let commit = 'unavailable';
-    try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: resolve(site, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
-    const evidence = { schema: 'wafercad-offline-ui-shell-p0', commit, component, domain, mobile, viewport: { width, height }, bounds: box, sourceSha256: Object.fromEntries(sources.map((item) => [item.name, sha256(item.code)])), method: 'native-v2-shell-inline-scripts-css-about-blank', limitations: ['Shell-only: no domain adapters, real Example, scientific views, persistence or application interactions. Not full-browser visual acceptance.'] };
+    const sourceRevision = offlineSourceRevision(resolve(site, '..'));
+    const evidence = { schema: 'wafercad-offline-ui-shell-p0', ...sourceRevision, component, domain, mobile, viewport: { width, height }, bounds: box, sourceSha256: Object.fromEntries(sources.map((item) => [item.name, sha256(item.code)])), method: 'native-v2-shell-inline-scripts-css-about-blank', limitations: ['Shell-only: no domain adapters, real Example, scientific views, persistence or application interactions. Not full-browser visual acceptance.'] };
     await writeFile(metadataPath, `${JSON.stringify(evidence, null, 2)}\n`);
     return { screenshot, metadataPath, evidence };
   } finally { await browser.close(); }
