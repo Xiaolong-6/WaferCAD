@@ -32,10 +32,7 @@ test('4x4 routed overlay preserves every approved source M1 polygon and CNT mapp
       { x: tcmosRoutingCells()[i].x, y: tcmosRoutingCells()[i].y },
     );
     for (const [j, name] of names.entries()) {
-      const translated = m1[j].points.map(([x, y]) => [
-        Number((x + cell.x).toFixed(4)),
-        Number((y + cell.y).toFixed(4)),
-      ]);
+      const translated = m1[j].points.map(([x, y]) => [x + cell.x, y + cell.y]);
       assert.deepEqual(layout.m1[4 * i + j].points, translated);
       assert.equal(layout.m1[4 * i + j].net,
         name === 'VOUT' ? 'VOUT/' + cell.id : name);
@@ -52,10 +49,7 @@ test('all M1-to-M2 vias are FULLY inside exactly one approved M1 polygon', () =>
     assert.ok(site);
     const pad = rect(via.rect);
     const owners = original.filter(({ points }) => {
-      const moved = points.map(([x, y]) => [
-        Number((x + site.x).toFixed(4)),
-        Number((y + site.y).toFixed(4)),
-      ]);
+      const moved = points.map(([x, y]) => [x + site.x, y + site.y]);
       // Preserve the existing 1e-12 um² geometry-science threshold.
       return geometryArea(geometry.difference(pad, shape(moved))) < 1e-12;
     });
