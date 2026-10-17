@@ -632,15 +632,17 @@ try {
         await page.locator('#threeHost').getAttribute('data-renderer-frame-serial'),
       );
       const pressed = (await packageBorders.getAttribute('aria-pressed')) === 'true';
-      if (pressed !== borders) await packageBorders.click();
+      const changed = pressed !== borders;
+      if (changed) await packageBorders.click();
       await page.waitForFunction(
-        ({ previousSerial, borders, opacityValue }) => {
+        ({ previousSerial, borders, opacityValue, changed }) => {
           const host = document.getElementById('threeHost');
           const button = document.querySelector('[data-action="borders:three"]');
           const expectedOutline = borders ? 'structural-depth' : 'off';
           return (
             host?.dataset.renderState === 'ready' &&
-            Number(host.dataset.rendererFrameSerial || 0) >= previousSerial + (pressed !== borders ? 1 : 0) &&
+            Number(host.dataset.rendererFrameSerial || 0) >=
+              previousSerial + (changed ? 1 : 0) &&
             host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent') &&
             host.dataset.outlineVisibility === expectedOutline &&
             host.dataset.assemblyWireBuiltCount === '2' &&
@@ -648,7 +650,7 @@ try {
             button?.getAttribute('aria-pressed') === String(borders)
           );
         },
-        { previousSerial, borders, opacityValue },
+        { previousSerial, borders, opacityValue, changed },
         { timeout: 120000 },
       );
       await waitForPaint(page);
@@ -658,8 +660,11 @@ try {
         '3D presentation controls mutated saved material/process geometry',
       );
       const filename =
-        'three-chip-' + (opacityValue === 1 ? 'opaque' : 'transparent') +
-        '-borders-' + (borders ? 'on' : 'off') + '.png';
+        'three-chip-' +
+        (opacityValue === 1 ? 'opaque' : 'transparent') +
+        '-borders-' +
+        (borders ? 'on' : 'off') +
+        '.png';
       const screenshot = await page.locator('#threeHost').screenshot({ type: 'png' });
       await writeFile(new URL(filename, directory), screenshot);
       const diagnostic = await page.locator('#threeHost').evaluate((host) => ({
@@ -672,7 +677,14 @@ try {
         drawTriangles: Number(host.dataset.rendererDrawTriangles),
       }));
       assert.ok(diagnostic.drawTriangles > 0, 'Package 3D rendered no physical triangles');
-      combinations.push({ filename, opacity: opacityValue, borders, bytes: screenshot.length, diagnostic, screenshot });
+      combinations.push({
+        filename,
+        opacity: opacityValue,
+        borders,
+        bytes: screenshot.length,
+        diagnostic,
+        screenshot,
+      });
     }
     const pair = combinations.slice(-2);
     assert.ok(
