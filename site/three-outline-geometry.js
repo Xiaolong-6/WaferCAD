@@ -312,8 +312,7 @@ export function sectionCutContours(
       let remaining = [[z0, z1]];
       for (const [otherIndex, other] of candidates.entries()) {
         const dot =
-          candidate.tangent[0] * other.tangent[0] +
-          candidate.tangent[1] * other.tangent[1];
+          candidate.tangent[0] * other.tangent[0] + candidate.tangent[1] * other.tangent[1];
         if (otherIndex === index || dot >= -1 + 1e-7) continue;
         const otherLow = Math.min(other.line[0][2], other.line[1][2]),
           otherHigh = Math.max(other.line[0][2], other.line[1][2]);
