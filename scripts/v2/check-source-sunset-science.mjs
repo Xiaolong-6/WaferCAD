@@ -22,6 +22,7 @@ export const NATIVE_SCIENTIFIC_CANDIDATES = Object.freeze({
   array: Object.freeze([
     'scripts/v2/check-array-625-science.mjs',
     'scripts/v2/check-array-6400-worker-replay.mjs',
+    'scripts/v2/check-array-renderer-isolation.mjs',
   ]),
   examples: Object.freeze([
     'scripts/v2/check-m4-projects.mjs',

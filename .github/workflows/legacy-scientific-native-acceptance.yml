@@ -17,14 +17,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  native-process-io:
+  native-science:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
     strategy:
       fail-fast: false
       matrix:
-        domain: [process, interchange]
+        domain: [process, interchange, array, examples]
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       WAFERCAD_V2_BASE: http://127.0.0.1:4173
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -51,5 +51,16 @@ jobs:
           done
           cat /tmp/pr290-native-science.log
           exit 1
-      - name: Verify physical-science and IO owners without changing tolerances
+      - name: Verify native science owners without changing tolerances
         run: node scripts/v2/check-source-sunset-science.mjs ${{ matrix.domain }}
+      - name: Preserve exact browser scientific evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr290-native-science-${{ matrix.domain }}-${{ github.sha }}
+          path: |
+            test-results/v2-array-science/
+            test-results/ui-v2-m4-projects/
+            test-results/v2-metalens-science/
+          retention-days: 7
+          if-no-files-found: ignore
