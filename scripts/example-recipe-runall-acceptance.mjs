@@ -14,6 +14,7 @@ import {
 import { readProjectFile } from '../site/project-io.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
 // Assert an actual production-v2 .wafercad export before and after replay.
 async function exportCurrentProject(page, timeout = 120000) {
@@ -148,6 +149,22 @@ try {
       const opened = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
       assert.ok(opened.source !== 'empty', `${example.id}: example was not imported`);
       assert.ok(opened.model.layers.length > 1, `${example.id}: source lost physical layers`);
+      if (example.id === 'three-tier-silicon-jlfets') {
+        // This is still the real 625-site, 40-step native-v2 Run All. Use the
+        // actual Main maximize control while processing so repeatedly redrawing
+        // the large 3D scene does not compete with the scientific Worker.
+        // Separate array/renderer owners verify the populated 3D scene.
+        assert.ok(
+          opened.model.array?.instances?.length >= 625,
+          'JLFET Run All must exercise the full native wafer array',
+        );
+        await selectScientificView(page, 'main', 1440);
+        await page.waitForFunction(
+          () => !document.querySelector('#threeHost')?.checkVisibility(),
+          null,
+          { timeout: 30000 },
+        );
+      }
       if (requestedVariant) {
         await page.locator('[data-action="domain:history"]').click();
         const variant = page.locator(`.history-variant[data-variant-id="${requestedVariant}"]`);
