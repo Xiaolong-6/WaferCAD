@@ -2,7 +2,7 @@ name: T-CMOS candidate reconstruction
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/tcmos-ternary-inverter-example-20261014]
     paths:
       - 'scripts/build-tcmos-inverter-example.mjs'
       - 'scripts/build-tcmos-array-patch.mjs'
@@ -45,7 +45,36 @@ permissions:
   contents: read
 
 jobs:
+  routed-physics:
+    if: github.base_ref == 'feat/tcmos-ternary-inverter-example-20261014'
+    name: T-CMOS routed 4x4 targeted science
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate actual stored 23-step model and physical interconnect
+        run: |
+          node --test site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs
+      - name: Generate routed model from approved stored source
+        run: node scripts/build-tcmos-array-physical-interconnect.mjs
+      - name: Check changed files formatting
+        run: npx prettier --check scripts/build-tcmos-array-interconnect.mjs scripts/build-tcmos-array-physical-interconnect.mjs scripts/tcmos-array-interconnect-browser-acceptance.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs
+      - name: Upload physical model and science evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-routed-4x4-targeted
+          path: test-results/tcmos/
+          retention-days: 14
+          if-no-files-found: ignore
+
   svg-mask-only:
+    if: github.base_ref == 'main'
     name: SVG Mask visual and GDS/OAS acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -80,6 +109,7 @@ jobs:
           if-no-files-found: ignore
 
   paper-geometry:
+    if: github.base_ref == 'main'
     name: T-CMOS kernel, Recipe and storage
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -112,6 +142,7 @@ jobs:
           if-no-files-found: ignore
 
   browser-replay:
+    if: github.base_ref == 'main'
     name: T-CMOS v2 browser Run All
     runs-on: ubuntu-latest
     timeout-minutes: 25
