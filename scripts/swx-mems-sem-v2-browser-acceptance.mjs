@@ -218,7 +218,7 @@ try {
         // falsely produced an empty section under a successful browser gate.
         for (const [name, section, spanUm] of [
           ['ground', { a: [-80, -51], b: [-71, -51] }, 9],
-          ['signal', { a: [-8, -115], b: [8, -115] }, 16],
+          ['signal', { a: [0, -122], b: [0, -108] }, 14],
         ]) {
           const inspect = structuredClone(source);
           inspect.section = section;
