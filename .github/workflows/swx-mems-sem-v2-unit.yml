@@ -25,6 +25,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: One-time exact Prettier patch capture
+        shell: bash
+        run: |
+          mkdir -p test-results/swx-sem-v2
+          npx prettier --write scripts/swx-mems-sem-v2-unit.mjs site/tests/swx-mems-sem-v2-unit.test.mjs
+          git diff -- scripts/swx-mems-sem-v2-unit.mjs site/tests/swx-mems-sem-v2-unit.test.mjs > test-results/swx-sem-v2/formatter.patch
       - name: Scientific invariants for newly oriented single MEMS unit
         run: node --test site/tests/swx-mems-sem-v2-unit.test.mjs
       - name: Execute actual OFF/ON Kernel and common Recipe
