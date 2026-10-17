@@ -11,7 +11,7 @@ export const HU2025_PAPER_FOOTPRINT_UM = Object.freeze({
   splitCrossing: Object.freeze({ width: 23, height: 23 }),
 });
 
-const toMulti = (rings) => rings.map((ring) => [[...ring, ring[0]]]);
+const toMulti = (rings) => rings.map((ring) => [[[...ring, ring[0]]]]);
 
 export function auditSwxPaperEnvelope(vectorApi, source) {
   const pose = source.physicalGroups.semV2;
