@@ -11,7 +11,8 @@ import klayout.db as kdb
 
 root = pathlib.Path(sys.argv[1])
 expected_counts = {**{layer: 8 for layer in range(11, 15)},
-                   **{layer: 14 for layer in range(15, 22)}}
+                   **{layer: 15 for layer in range(15, 19)},
+                   **{layer: 14 for layer in range(19, 22)}}
 
 
 def read_mask(filename):
@@ -41,7 +42,7 @@ def read_mask(filename):
               and (layout.get_info(i).layer, layout.get_info(i).datatype)
               not in {(layer, 0) for layer in expected_counts}]
     assert not others, f"{filename}: unexpected layers {others}"
-    assert sum(len(entry[1]) for entry in polys.values()) == 130
+    assert sum(len(entry[1]) for entry in polys.values()) == 134
     return layout, polys
 
 
@@ -102,8 +103,36 @@ for layer in expected_counts:
     assert gds_polygons == oas_polygons, (
         f"KLayout found a 1nm physical-coordinate difference on {layer}/0; "
         f"GDS DBU={gds.dbu}, OAS DBU={oas.dbu}")
+def isolated_precharge(polys, dbu, filename):
+    # Separate Fig. 3b ML pre-charge FET: 15th CNTFET, no 15th RRAM.
+    # Coordinates are explicitly inferred and do not prove ML wiring.
+    def physical(box):
+        return tuple(round(value * dbu * 1000) for value in (
+            box.left, box.bottom, box.right, box.top))
+    channel = polys[16][1][-1]
+    gate = polys[15][1][-1]
+    source = polys[17][1][-1]
+    drain = polys[18][1][-1]
+    # Do not assume export ordering is source ordering: locate by XY bounding box.
+    candidates = [box for box in polys[16][1]
+                  if physical(box) == (44000, -25000, 46600, -5000)]
+    assert len(candidates) == 1, f"{filename}: missing inferred pre-charge CNT island"
+    channel = candidates[0]
+    assert not any(r.bbox().overlaps(channel) for r in [polys[19][0]]), (
+        f"{filename}: pre-charge overlaps a fabricated RRAM")
+    assert any(physical(b) == (43750, -25000, 46850, -5000)
+               for b in polys[15][1]), f"{filename}: pre-charge gate missing"
+    assert any(physical(b) == (43100, -25000, 44300, -5000)
+               for b in polys[17][1]), f"{filename}: pre-charge source missing"
+    assert any(physical(b) == (46300, -25000, 48100, -5000)
+               for b in polys[18][1]), f"{filename}: pre-charge drain missing"
+    return {'bbox_nm': list(physical(channel)), 'has_rram': False}
+
+
 gds_geom = aligned_contacts(gds_layers, gds.dbu, "GDS")
 oas_geom = aligned_contacts(oas_layers, oas.dbu, "OAS")
+gds_precharge = isolated_precharge(gds_layers, gds.dbu, "GDS")
+oas_precharge = isolated_precharge(oas_layers, oas.dbu, "OAS")
 report = {
     'passed': True,
     'reader': 'KLayout Python 0.30.12',
@@ -114,6 +143,8 @@ report = {
     'oas_dbu_um': oas.dbu,
     'gds': gds_geom,
     'oas': oas_geom,
+    'gds_precharge': gds_precharge,
+    'oas_precharge': oas_precharge,
 }
 out = root.parent / "klayout-m3d-lime.json"
 out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
