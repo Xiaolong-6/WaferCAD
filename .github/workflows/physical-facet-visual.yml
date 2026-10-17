@@ -14,6 +14,7 @@ on:
       - 'site/ui-v2/workstation-runtime.js'
       - 'site/ui-v2/workstation-entry.js'
       - 'scripts/v2/capture-physical-facet-workstation.mjs'
+      - 'scripts/v2/check-physical-facet-indexeddb-recovery.mjs'
       - 'site/three-view.js'
       - 'site/model-view-geometry.js'
       - 'scripts/v2/capture-physical-facet-preview.mjs'
@@ -50,6 +51,8 @@ jobs:
         run: node scripts/v2/capture-physical-facet-preview.mjs
       - name: Inspect native v2 Workstation physical file read-only
         run: node scripts/v2/capture-physical-facet-workstation.mjs
+      - name: Fault-inject real IndexedDB Recovery write in Chromium
+        run: node scripts/v2/check-physical-facet-indexeddb-recovery.mjs
       - name: Retain unreviewed screenshots and metrics
         if: always()
         uses: actions/upload-artifact@v6
@@ -58,5 +61,6 @@ jobs:
           path: |
             test-results/physical-facet-preview/
             test-results/physical-facet-workstation/
+            test-results/physical-facet-recovery/
           retention-days: 14
           if-no-files-found: warn
