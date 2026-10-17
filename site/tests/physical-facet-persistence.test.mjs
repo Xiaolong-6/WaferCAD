@@ -283,7 +283,7 @@ test('invalid physical descriptors, modified regions and unsupported UI import f
     sectionContours(previewImport.model, [-6.4, 0], [6.4, 0]),
     sectionContours(pristine.model, [-6.4, 0], [6.4, 0]),
   );
-    const legacy = fixture(false);
+  const legacy = fixture(false);
   const data = serializeProject(legacy);
   assert.deepEqual(
     (await readProjectFile({ size: Buffer.byteLength(data), text: async () => data })).model,

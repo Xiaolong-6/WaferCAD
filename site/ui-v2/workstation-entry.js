@@ -30,7 +30,9 @@ try {
   const params = new URLSearchParams(window.location.search);
   const readOnlyPreview = params.get('preview') === '1';
   const physicalFacetPreview = readOnlyPreview && params.get('physicalFacet') === '1';
-  const allowedViews = physicalFacetPreview ? ['three', 'section'] : ['main', 'mask', 'three', 'section'];
+  const allowedViews = physicalFacetPreview
+    ? ['three', 'section']
+    : ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
   if (physicalFacetPreview) document.body.dataset.physicalFacetPreview = 'read-only';

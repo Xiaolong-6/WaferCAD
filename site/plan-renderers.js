@@ -847,7 +847,9 @@ export function createPlanRenderers({
       });
     }
 
-    for (const electrical of physicalOwner ? [] : electricalRegionSectionBands(model, section.a, section.b)) {
+    for (const electrical of physicalOwner
+      ? []
+      : electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
         times =

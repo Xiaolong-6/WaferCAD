@@ -787,10 +787,7 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
   return { requested: true, filename, bytes: blob.size, mode };
 }
 
-export async function readProjectFile(
-  file,
-  { experimentalPhysicalFacetReadOnly = false } = {},
-) {
+export async function readProjectFile(file, { experimentalPhysicalFacetReadOnly = false } = {}) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
     throw new Error(
