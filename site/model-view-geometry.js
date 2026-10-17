@@ -17,6 +17,8 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { visibleMaterialModel } from './model.js';
+import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
+import { physicalPyramidSection } from './physical-facet-surface.js';
 import {
   appearanceSurfaceGroupsFromTopology,
   extrusionGroupsFromTopology,
@@ -104,6 +106,21 @@ export function appearanceSurfaceGroups(model, clip = null) {
 }
 
 export function sectionContours(model, a, b) {
+  if (model?.experimentalPhysicalFacetShell) {
+    throw new RangeError(
+      'Physical coating Section requires a multi-material renderer; refusing Si-only surrogate',
+    );
+  }
+  const owner = validateExperimentalPhysicalFacetModel(model);
+  if (owner) {
+    // One true physical solid, directly from its shared 3D triangle owner.
+    // No flattening into constant-Z Section slabs or renderer-only relief.
+    const points = physicalPyramidSection(owner, a, b).points;
+    const upper = points.map(({ t, z1 }) => [t, z1]);
+    const lower = points.toReversed().map(({ t, z0 }) => [t, z0]);
+    const ring = [...upper, ...lower, [...upper[0]]];
+    return [{ layerId: owner.layerId, polys: [[ring]] }];
+  }
   const groups = new Map();
   for (const { layerId, t0, t1, z0, z1 } of sectionSlices(model, a, b)) {
     if (!groups.has(layerId)) groups.set(layerId, []);
