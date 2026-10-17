@@ -97,3 +97,27 @@ remain hard preconditions before a new opt-in replay or any source
 figure claim. The targeted tests explicitly verify a buried Base
 blocked by front oxide, backside Base visibility, real XY mask clipping,
 invalid selectivity and byte-identical original Model state.
+
+## Opt-in adaptive kernel execution (experimental; no Recipe migration)
+
+The canonical `applyOperation(model, { type:'etch',
+etchProfile:'isotropic', isotropicLateralErrorUm: 0.5, ... })`
+now accepts a **deliberate opt-in** per-operation request. It invokes
+the independent `adaptiveReleaseDepthBands` oracle and executes
+material-selective XY removal using the actual `exposedSurfaceGroups`,
+`conformalBoundaryBands`, `splitByArea`, and canonical ownership
+partition exactly as the existing Kernel does. The planner rejects
+invalid accuracy, band-budget overflow and unsupported array Models
+before accepting a partial result; all geometry failures roll the
+entire Model back through `applyOperation()`.
+
+If the optional accuracy field is absent, the exact existing
+**eight equal-depth slices** remain unchanged, including all old
+Recipe/History states. This is **not** yet the shipped Workstation UI
+mode or a new automatically migrated Microdisk project. The analytic
+0.5 µm bound applies to the requested **single-seed lateral band
+radius**, and does not prove that polygon-buffer chord error,
+multi-seed collisions, source-paper XeF2 chemistry or total final
+Si shape is within 0.5 µm. Those independent topology, Section,
+volume and real-browser acceptance checks remain required before
+promotion to normal Process.

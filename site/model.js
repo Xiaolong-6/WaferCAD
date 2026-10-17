@@ -1,4 +1,5 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
+import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
 import {
   assertExperimentalPhysicalFacetNotProcessed,
   assertExperimentalPhysicalFacetNotRendered,
@@ -1169,7 +1170,7 @@ function removeLayerInterval(stack, targetLayerIds, z0, z1) {
   return normalizeStack(out);
 }
 
-function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
+function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateralErrorUm = null) {
   const targets = new Set((targetLayerIds || []).filter(Boolean));
   if (!targets.size) {
     return {
@@ -1190,6 +1191,17 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
     };
   }
 
+  // Opt-in: actual Process uses physically bounded adaptive Z bands;
+  // the ordinary path keeps its bit-for-bit legacy eight-band definition.
+  // Resolve all budgets BEFORE any mutation of the Model.
+  const adaptiveBands =
+    lateralErrorUm == null
+      ? null
+      : adaptiveReleaseDepthBands({
+          radius: amount,
+          maxLateralErrorUm: lateralErrorUm,
+          maxBands: 128,
+        });
   let changed = false;
   for (const seed of seeds) {
     // Work from the protected complement rather than repeatedly unioning a
@@ -1198,11 +1210,22 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face) {
     // near-coincident slivers at mask edges.
     const protectedGeom = difference(model.boundary, seed.geom);
 
-    for (let index = 0; index < ISOTROPIC_ETCH_SLICES; index++) {
-      const d0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
-        d1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
-        depth = (d0 + d1) / 2,
-        lateral = Math.sqrt(Math.max(0, amount * amount - depth * depth)),
+    const legacyBands = adaptiveBands
+      ? null
+      : Array.from({ length: ISOTROPIC_ETCH_SLICES }, (_, index) => {
+          const depth0 = (amount * index) / ISOTROPIC_ETCH_SLICES,
+            depth1 = (amount * (index + 1)) / ISOTROPIC_ETCH_SLICES,
+            midDepth = (depth0 + depth1) / 2;
+          return {
+            depth0,
+            depth1,
+            lateralRadius: Math.sqrt(Math.max(0, amount * amount - midDepth * midDepth)),
+          };
+        });
+    for (const band of adaptiveBands || legacyBands) {
+      const d0 = band.depth0,
+        d1 = band.depth1,
+        lateral = band.lateralRadius,
         footprints = [seed.geom];
 
       if (lateral > 1e-9 && !isEmpty(protectedGeom)) {
@@ -1249,6 +1272,7 @@ function applyOperationImpl(
     targetLayerId,
     etchTargetLayerIds = [],
     etchProfile = 'directional',
+    isotropicLateralErrorUm = null,
     thickness,
     face = 'front',
     area,
@@ -1263,6 +1287,18 @@ function applyOperationImpl(
   // Use the actual requested physical value. Previously this clamped every
   // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
   const amount = Number(thickness);
+  if (
+    isotropicLateralErrorUm != null &&
+    (type !== 'etch' ||
+      etchProfile !== 'isotropic' ||
+      !Number.isFinite(isotropicLateralErrorUm) ||
+      isotropicLateralErrorUm <= 0)
+  ) {
+    return {
+      changed: false,
+      error: 'Opt-in isotropic lateral error must be finite and positive for isotropic etch.',
+    };
+  }
   if (type === 'etch' && !['directional', 'isotropic'].includes(etchProfile)) {
     return { changed: false, error: 'Unsupported Etch profile.' };
   }
@@ -1488,7 +1524,14 @@ function applyOperationImpl(
       protectedEtchVoids = uncoveredGeometryRaw(model);
     }
     if (etchProfile === 'isotropic') {
-      const release = applyIsotropicEtch(model, active, selectiveTargets, amount, face);
+      const release = applyIsotropicEtch(
+        model,
+        active,
+        selectiveTargets,
+        amount,
+        face,
+        isotropicLateralErrorUm,
+      );
       if (!release.changed) return release;
     } else {
       splitByArea(model, active, (stack) =>
@@ -1582,6 +1625,12 @@ export function applyOperation(model, params) {
   }
   if (!['front', 'back', undefined, null].includes(params?.face)) {
     return { changed: false, error: 'Unsupported Process face.' };
+  }
+  if (isArrayModel(model) && params?.isotropicLateralErrorUm != null) {
+    return {
+      changed: false,
+      error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
+    };
   }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =

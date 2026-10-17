@@ -36,6 +36,7 @@ jobs:
         run: >-
           node --test
           site/tests/isotropic-release-oracle.test.mjs
+          site/tests/isotropic-release.test.mjs
           site/tests/isotropic-release-topology.test.mjs
           site/tests/literature-provenance-matrix.test.mjs
       - name: Show precise formatting differences
