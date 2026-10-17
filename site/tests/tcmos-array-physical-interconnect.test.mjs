@@ -6,6 +6,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { buildTcmosPhysicalRoutedVariant } from '../../scripts/build-tcmos-array-physical-interconnect.mjs';
+import { readTcmosReferenceMask } from '../../scripts/tcmos-svg-mask.mjs';
 
 await loadGeometryKernel();
 const { pointInMulti } = await import('../vector-geometry.js');
@@ -27,6 +28,15 @@ async function fixture() {
     assert.equal(source.processRecipe?.steps?.length, 23,
       'The routed candidate must come from the approved 23-step source project');
     assert.equal(source.layout.elements.length, 232);
+    const approvedSvg = readTcmosReferenceMask();
+    const approvedMasks = approvedSvg.flatMap((group) => group.shapes.map((shape) => ({
+      layer: group.layer, datatype: group.datatype, points: shape.points,
+    })));
+    assert.deepEqual(
+      source.layout.elements.map(({ layer, datatype, points }) => ({ layer, datatype, points })),
+      approvedMasks,
+      'Persisted paper-derived source must preserve all 232 exact approved SVG polygons',
+    );
     assert.equal(source.model.kernel, 'vector-2.5d-v1');
     const beforeModel = structuredClone(source.model);
     const beforeLayout = structuredClone(source.layout);
