@@ -170,6 +170,7 @@ test('19 independent net components: 3 buses + 16 accessible and unshorted outpu
   assert.ok(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"'));
   assert.ok(svg.includes('<polygon'));
   assert.ok(svg.includes('<rect'));
+  assert.doesNotMatch(svg, /height="[^"]+""/, 'Via SVG has doubled attribute quotes');
 });
 
 test('DRC rejects same-layer VOUT short, wrong via ownership and missing trunk continuity', () => {
