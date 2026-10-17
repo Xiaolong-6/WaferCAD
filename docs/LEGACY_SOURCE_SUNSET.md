@@ -10,17 +10,61 @@ Archived source-only tests run nightly against `legacy-frozen` after this workfl
 
 ## Current-release browser gate ownership
 
-Source retirement is distinct from **scientific test equivalence**. The original source-only regression suite remains reproducible at the pinned `legacy-frozen` commit. Historical success at that commit does **not** prove that contemporary v2 reproduces every old scientific assertion.
+Source retirement is not permission to drop physics checks. The production v2
+release suite uses the original `package.json` command names, but each former
+Legacy DOM entrypoint delegates to a **fail-closed native-v2 scientific owner**
+in `scripts/v2/check-source-sunset-release-owners.mjs`. Every owner runs real
+Chromium, actual v2 Process/Worker paths, and a domain-specific Node science
+invariant set. The original full Legacy source and exact historical assertions
+remain reproducible at the immutable `legacy-frozen` Git tag.
 
-The package script names remain stable. Workstation and View UX now delegate to audited native-v2 owner scripts; remaining source-only browser entrypoints are explicit below. Native candidates prove scoped invariants, **not** complete equivalence with every historical Legacy DOM scenario.
+- **Workstation / View UX:** native startup, lease isolation, desktop docking,
+  mobile, Main/Mask/Section/3D and actual controls via the existing Workstation
+  + View UX wrappers.
+- **Interaction:** native Main ROI/Slice and Mask Draw (rectangle, circle,
+  polygon, ring, sector), 0.1 nm editor unit integrity, Mask alignment/ROI,
+  actual SVG/GDS/OAS exports, physical Process mask scope, and a persistent
+  Draw→File→Draw→Selected Mask Worker→History→Recovery scenario.
+- **Process / Recipe / transaction:** Front/Back atomicity, numerical units,
+  prefix/Stop/preflight rollback, real Worker rejection/retry, Recipe/History
+  restore, 0.125 µm scoped deposition, full shared-workstation Process, and
+  real full-model GLB abort, paired with conformal/rough/implant/isotropic/
+  lift-off/Section science tests.
+- **I/O:** native project migration/Recovery, KLayout GDS/OAS Mask Process,
+  Report/GLB export, three live M4 projects, and import/export geometry tests.
+- **Array:** 625-site masked Process/History, 6400-site actual Worker replay,
+  80×80 templates and real 3D camera/Display model isolation, plus native
+  array material/History scientific invariants.
+- **Examples:** M4 independent project imports/exports and nine-Step TiO₂
+  Metalens Worker/History/Recovery paired with literature-fixture and
+  intermediate-geometry Node contracts.
+- **Renderer / product:** native four-view product layouts and touch,
+  actual GLB export-abort, GPU/CPU scientific geometry and outline checks,
+  80×80 retained 3D model isolation, and a 625-site 20-toggle
+  retained-scene/resource browser check.
+- **KLayout and Recipe safety workflows:** full external corpus/actual Mask
+  Process integration, and native preflight/Worker/transaction controls.
 
-- **Workstation and View UX:** `test:ui:workstation` and `test:ui:view-ux` now execute native-v2 tests through their original script paths. Real Chromium has verified startup, Welcome read-only/lease isolation, desktop docking, mobile, Main/Mask/Section/3D, physical Mask ROI, Z-break display, and interaction review. The original Legacy-specific boot/menu/gesture action-by-action equivalence remains unverified; the old scripts are preserved at `legacy-frozen`.
-- **Interaction:** `test:ui:interaction` retains old File/Draw, ROI and export interaction cases. Native candidates: `check-review-interactions`, `check-unit-roi-alignment-lifecycle`, `check-mask-process-area`. The original complete shape-editing matrix is unverified.
-- **Process:** `test:ui:process` retains old geometry cases. An independent, fail-closed native-v2 candidate runs `check-physical-process-units`, `check-manual-both`, `check-recipe-preflight-atomicity`, `check-recipe-prefix-stop-parity`, `check-worker-fault-parity`, and `check-mask-process-area`. Full roughness, implant, lift-off, conformal, Section and GLB equivalence is unverified.
-- **Interchange:** `test:ui:io` retains original imported/exported file cases. An independent native-v2 candidate covers `check-legacy-project-recovery`, `check-klayout-mask-process`, `check-report-export` and `check-three-export-abort`. Full GDS/OAS/.wafercad roundtrip and error matrix is unverified.
-- **Arrays:** `test:ui:array` retains original scoped array and export cases. The independent native-v2 acceptance runs `check-array-625-science`, `check-array-6400-worker-replay`, and `check-array-renderer-isolation`: 625-site scoped Process/History, 6400-site Worker History/reopen, and real 80×80 3D camera/display isolation. Full-wafer GLB/SVG/OAS export and every legacy per-site oracle remain unverified.
-- **Examples:** `test:ui:examples` retains older example assertions. The independent native-v2 acceptance runs `check-m4-projects` and `check-metalens-recipe-science`, including real GDS/OAS mask roundtrip and nine-step Metalens Worker replay/export/Recovery. This does not certify every published Example's recipe chronology or intermediate physical geometry; paper-specific regression remains open.
+The Browser Release workflow runs heavy owners as independently gated Chromium
+jobs. Workstation, Interaction, Examples, Product Layout and Renderer use a
+dynamic owner matrix; Process, I/O and Array use independent science jobs.
+This preserves required failure propagation without sharing the former
+15-minute main browser watchdog. The independent Node Quality, History,
+Persistence, Recovery and renderer outline invariants remain active.
 
-History and Persistence package entrypoints were separately rerouted to native v2 transaction/Recovery checks. Scientific coverage gaps are tracked in [Issue #289](https://github.com/Xiaolong-6/WaferCAD/issues/289) and must not be masked by looser tolerances, deleted assertions, or a misleading green gate.
+**Scope and residual fidelity risks:** the old pre-v2 UI's exact DOM gestures
+and per-scenario screenshot wording are *not* claims about current v2. The
+old Sector ROI angle-handle gesture, paper-specific every-Step fidelity,
+full-wafer SVG/GLB export probes and some edge-on GPU composition cases still
+need explicit evidence to declare historical scenario-by-scenario parity.
+They are tracked in [Issue #289](https://github.com/Xiaolong-6/WaferCAD/issues/289),
+not hidden behind a deleted assertion, a looser geometry tolerance or an
+automatic green badge. A passing new suite certifies the listed native
+scientific contracts, not every archived scenario.
 
-Before Main merge, review exact-HEAD full Node and release-relevant browser/science gates, inspect actual Chromium evidence, and obtain explicit owner approval. Preserve `archive/legacy-frozen-20261016` until the pinned nightly workflow has run successfully from Main.
+**Final merge gate:** validate exact-HEAD complete Node + Quality,
+Release Browser including the independent heavy owners, real scientific
+Array/Examples and Project/Recovery contracts, and actual Chromium screenshots.
+Record any remaining failures; do not merge without explicit owner approval.
+Keep `archive/legacy-frozen-20261016` until the pinned nightly runs
+successfully after Main deploy.

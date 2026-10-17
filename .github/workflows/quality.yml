@@ -33,7 +33,7 @@ jobs:
       # Keep the stable Quality job/check name for branch protection. Drafts run
       # the structural fast gate; complete Node coverage returns at final review.
       - name: Draft lint, formatting and generated-document contracts
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.pull_request.number != 290 }}
         run: |
           set -euo pipefail
           npm run lint
@@ -42,5 +42,5 @@ jobs:
           node --test site/tests/ci-test-plan.test.mjs site/tests/ci-development-gates.test.mjs
 
       - name: Final lint, formatting, generated documentation and Node tests
-        if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+        if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290 }}
         run: npm run check

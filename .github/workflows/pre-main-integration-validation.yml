@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 240
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
       WAFERCAD_PROCESS_EXTENDED: "1"

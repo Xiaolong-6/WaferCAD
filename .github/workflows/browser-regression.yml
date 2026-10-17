@@ -73,6 +73,8 @@ jobs:
       product_layout: ${{ steps.plan.outputs.product_layout }}
       renderer: ${{ steps.plan.outputs.renderer }}
       process: ${{ steps.plan.outputs.process }}
+      extended: ${{ steps.plan.outputs.extended }}
+      extended_matrix: ${{ steps.plan.outputs.extended_matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -155,12 +157,8 @@ jobs:
         if: ${{ needs.plan.outputs.smoke == 'true' }}
         run: npm run test:ui:smoke
 
-      - name: Run workstation regression
-        if: ${{ needs.plan.outputs.workstation == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-        run: npm run test:ui:workstation
-
       - name: Run resilience regression
-        if: ${{ needs.plan.outputs.resilience == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ needs.plan.outputs.resilience == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
         run: npm run test:ui:resilience
 
       - name: Run History regression
@@ -170,25 +168,6 @@ jobs:
       - name: Run persistence regression
         if: ${{ needs.plan.outputs.persistence == 'true' }}
         run: npm run test:ui:persistence
-
-      - name: Run interaction regression
-        if: ${{ needs.plan.outputs.interaction == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-        run: npm run test:ui:interaction
-
-      - name: Run bundled example regression
-        if: ${{ needs.plan.outputs.examples == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-        run: npm run test:ui:examples
-
-      - name: Run product layout regression
-        if: ${{ needs.plan.outputs.product_layout == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-        run: npm run test:ui:product:layout
-
-      - name: Run renderer product regression
-        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-        # The 625-site software-WebGL stress run is isolated below so the
-        # ordinary UI/browser checks retain their own 15-minute watchdog.
-        run: node scripts/renderer-product-regression.mjs
-
       - name: Check rough cap, sidewall, and outline geometry contracts
         if: needs.plan.outputs.renderer == 'true'
         run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
@@ -247,30 +226,88 @@ jobs:
         run: node scripts/pr250-renderer-audit.mjs
 
       - name: Package tested preview
-        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
         run: |
           mkdir -p test-results/product-review/preview
           cp -R site/. test-results/product-review/preview/
           node -e 'require("node:fs").writeFileSync("test-results/product-review/preview/build-info.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
 
       - name: Upload product review and preview
-        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+        if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
         uses: actions/upload-artifact@v6
         with:
           name: wafercad-product-review-${{ github.sha }}
           path: test-results/product-review
           retention-days: 14
 
+  release-ui-owners:
+    name: Native v2 Release ${{ matrix.suite }}
+    needs: plan
+    if: ${{ needs.plan.outputs.extended == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJson(needs.plan.outputs.extended_matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start real native-v2 application
+        run: |
+          python3 -m http.server 4173 --directory site >/tmp/release-ui-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/app.html >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/release-ui-http.log
+          exit 1
+      - name: Execute scientific Browser release owner
+        shell: bash
+        run: |
+          case "${{ matrix.suite }}" in
+            workstation) npm run test:ui:workstation ;;
+            interaction) npm run test:ui:interaction ;;
+            examples) npm run test:ui:examples ;;
+            product_layout) npm run test:ui:product:layout ;;
+            renderer) node scripts/renderer-product-regression.mjs ;;
+            *) echo 'Unknown release owner' >&2; exit 1 ;;
+          esac
+      - name: Archive real Chromium release evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-release-${{ matrix.suite }}-${{ github.sha }}
+          path: |
+            test-results/
+            /tmp/release-ui-http.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   renderer-array:
     name: 625-site array renderer regression
     needs: plan
     # Run 625-site software-WebGL stress at final review, on main or by manual dispatch.
-    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
     # Large transparent software-WebGL frames take ~34 s per completed frame.
     # The full 20-toggle resource-stability contract needs a dedicated watchdog;
     # cold/warm speed targets remain advisory, correctness and hangs remain hard.
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
@@ -320,11 +357,15 @@ jobs:
           if-no-files-found: warn
 
   process-geometry:
-    name: Process geometry regression
+    name: Native v2 Process scientific release ${{ matrix.domain }}
     needs: plan
     if: ${{ needs.plan.outputs.process == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: [process, io, array]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
       WAFERCAD_PROCESS_EXTENDED: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
@@ -362,24 +403,31 @@ jobs:
           cat /tmp/wafercad-http.log
           exit 1
 
-      - name: Run process geometry regression
-        run: npm run test:ui:process
+      - name: Run native scientific release owner
+        shell: bash
+        run: |
+          case "${{ matrix.domain }}" in
+            process) node scripts/process-geometry-regression.mjs ;;
+            io) npm run test:ui:io ;;
+            array) npm run test:ui:array ;;
+            *) echo 'Unknown process owner' >&2; exit 1 ;;
+          esac
 
       - name: Upload Lift-off UX screenshots
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: liftoff-ux-${{ github.sha }}
-          path: test-results/process-geometry
+          name: native-process-${{ matrix.domain }}-${{ github.sha }}
+          path: test-results/
           retention-days: 14
           if-no-files-found: ignore
 
   renderer-array-edge-on:
     name: 625-site edge-on exact-wall restoration
     needs: plan
-    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     env:
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
     steps:
