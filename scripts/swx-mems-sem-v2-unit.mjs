@@ -461,3 +461,51 @@ export const SWX_SEM_V2_PROCESS_PROFILE = Object.freeze({
   guidedSupportPoints: [...newTerminalsUm, [-14, -50], [34, -45]],
   assumptions: SWX_SEM_V2_ASSUMPTIONS,
 });
+
+/**
+ * Independent positive-Si electrical-domain inventory for the actual
+ * manufactured SEM-v2 Mask. This measures lithographic connectivity, NOT
+ * external wire-bond grounding, author GDS, or electrostatic FEM.
+ */
+export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
+  const silicon = vectorApi.unionGeometries(
+    geometry.maskPolygons.get(1).map((ring) => [[[...ring, ring[0]]]]),
+  );
+  const metalPads = geometry.maskPolygons.get(3);
+  const ownerIds = metalPads.map((ring, padIndex) => {
+    const xs = ring.map(([x]) => x);
+    const ys = ring.map(([, y]) => y);
+    const center = [
+      (Math.min(...xs) + Math.max(...xs)) / 2,
+      (Math.min(...ys) + Math.max(...ys)) / 2,
+    ];
+    const owners = silicon.flatMap((net, netIndex) =>
+      vectorApi.pointInMulti(center, [net]) ? [netIndex] : [],
+    );
+    if (owners.length !== 1) {
+      throw new Error('Metal pad ' + padIndex + ' must belong to exactly one Si domain');
+    }
+    return owners[0];
+  });
+  const anchorNetId = ownerIds[0];
+  const springAnchorsShareNet = ownerIds.slice(0, 4).every((owner) => owner === anchorNetId);
+  const stationaryCombsIsolated =
+    ownerIds[4] !== ownerIds[5] &&
+    ownerIds[4] !== anchorNetId &&
+    ownerIds[5] !== anchorNetId;
+  const uncontactedSiliconNetIndices = silicon
+    .map((_, index) => index)
+    .filter((index) => !ownerIds.includes(index));
+  return {
+    siliconConnectedDomains: silicon.length,
+    metalContacts: metalPads.length,
+    metalPadSiOwnerIndices: ownerIds,
+    springAnchorsShareNet,
+    stationaryCombsIsolated,
+    uncontactedSiliconNetIndices,
+    // The model does not yet reconstruct the SEM peripheral silicon
+    // / electrical ground return for the fixed optical frame.
+    stationaryOpticalExternalGroundVerified: false,
+    sourceElectricalGroundingAccepted: false,
+  };
+}
