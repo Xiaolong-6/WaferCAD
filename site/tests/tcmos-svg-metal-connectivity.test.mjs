@@ -77,7 +77,22 @@ test('approved SVG: all 218 CNTs are fully covered by exactly one metal and a se
 });
 
 test('all 218 original contacts carry a real METAL1/W interface and a lower geometric material host', async () => {
-  const { project } = await buildTcmosInverter({ includeComparison: false });
+  const { project, validation } = await buildTcmosInverter({ includeComparison: false });
+  assert.equal(validation.terminalNetProvenance.auditScope, 'superseded-raster-rectangles-only');
+  assert.deepEqual(validation.sourceSvgMetalTopology.metal1ContinuousPaths, {
+    VIN: 1,
+    VOUT: 1,
+    VDD: 1,
+    GND: 1,
+  });
+  assert.deepEqual(validation.sourceSvgMetalTopology.cntByNet, {
+    VIN: 8,
+    VOUT: 18,
+    VDD: 96,
+    GND: 96,
+  });
+  assert.equal(validation.sourceSvgMetalTopology.sourceAndWellTieShareMetalPolygon, true);
+  assert.equal(validation.sourceSvgMetalTopology.ohmicWellContactValidated, false);
   const cnt = project.layout.elements.filter((shape) => shape.layer === 10);
   const layerNameById = new Map(project.model.layers.map((layer) => [layer.id, layer.name]));
   const slab = (region, name) => region?.stack.find(

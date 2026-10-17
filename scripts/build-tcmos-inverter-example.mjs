@@ -1254,7 +1254,60 @@ export async function buildTcmosInverter({
     assert.ok(silicon, 'Well-tie validation requires an actual silicon contact site');
     return { ...site, hostLayerId: 'base', surfaceZ: silicon.z1 };
   });
-  const terminalNetProvenance = auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS);
+  // Historical raster rectangles were an early diagram trace, not the
+  // approved File Mask. The raster source/body island split is no longer an
+  // authoritative electrical-net conclusion after SVG acceptance.
+  const terminalNetProvenance = {
+    ...auditTcmosTerminalNetProvenance(TCMOS_MASKS, TCMOS_METAL_NETS),
+    auditScope: 'superseded-raster-rectangles-only',
+  };
+  const svgMetals = project.layout.elements.filter((element) => element.layer === 11);
+  const svgContacts = project.layout.elements.filter((element) => element.layer === 10);
+  const svgActive = project.layout.elements.filter((element) => element.layer === 1);
+  const svgPoly = project.layout.elements.filter((element) => element.layer === 6);
+  const vectorPath = ({ points }) => [[points.concat([points[0]])]];
+  const shapeCenter = ({ points }) => [
+    (Math.min(...points.map(([x]) => x)) + Math.max(...points.map(([x]) => x))) / 2,
+    (Math.min(...points.map(([, y]) => y)) + Math.max(...points.map(([, y]) => y))) / 2,
+  ];
+  assert.equal(svgMetals.length, 4, 'The SVG must contain exactly four Metal1 paths');
+  const counts = [0, 0, 0, 0];
+  for (const contact of svgContacts) {
+    const center = shapeCenter(contact);
+    const matching = svgMetals
+      .map((metal, index) => (v.pointInMulti(center, vectorPath(metal)) ? index : -1))
+      .filter((index) => index >= 0);
+    assert.equal(matching.length, 1, 'Approved SVG CNT must have exactly one Metal1');
+    assert.equal(
+      [...svgActive, ...svgPoly].filter((host) =>
+        v.pointInMulti(center, vectorPath(host)),
+      ).length,
+      1,
+      'Approved SVG CNT must land on exactly one ACTIVE or POLY host',
+    );
+    counts[matching[0]]++;
+  }
+  assert.deepEqual(counts, [8, 18, 96, 96], 'Current SVG Metal1 CNT allocation changed');
+  for (const [index, source, tie] of [
+    [2, [-4.0265, -1.2625], [-5.48, -1.14]],
+    [3, [4.0265, -1.2625], [5.48, -1.14]],
+  ]) {
+    assert.ok(
+      v.pointInMulti(source, vectorPath(svgMetals[index])) &&
+        v.pointInMulti(tie, vectorPath(svgMetals[index])),
+      'Approved SVG source and Well Tie must share the same Metal1 polygon',
+    );
+  }
+  const sourceSvgMetalTopology = {
+    source: 'user-approved layout-complete.svg; not superseded raster rectangles',
+    metal1ContinuousPaths: { VIN: 1, VOUT: 1, VDD: 1, GND: 1 },
+    cntByNet: { VIN: counts[0], VOUT: counts[1], VDD: counts[2], GND: counts[3] },
+    sourceAndWellTieShareMetalPolygon: true,
+    interCellBusesPresent: false,
+    geometryOnly: true,
+    ohmicWellContactValidated: false,
+    btbtCurrentComputed: false,
+  };
   const bodyTieContactEvidence = {
     provenance: 'inferred U-shaped body-tie and METAL1 nets; not a released foundry layout',
     contacts: auditSchematicBodyTieContacts(model, contactSites, v),
@@ -1278,6 +1331,7 @@ export async function buildTcmosInverter({
     dopantRegionIntents: model.dopantRegions.length,
     bodyTieContactEvidence,
     terminalNetProvenance,
+    sourceSvgMetalTopology,
     qualitativeJunctionEvidence: {
       kind: 'terminal-clipped-opposite-polarity-cooccupancy',
       sourceDrainTerminals: 'inferred from POLY separation and Metal1 contact routing',
