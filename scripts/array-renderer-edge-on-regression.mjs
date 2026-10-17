@@ -124,17 +124,35 @@ try {
   assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
   assert.equal(edgeOn.arrayInstances, far.arrayInstances);
   assert.equal(edgeOn.processRevision, far.processRevision);
-  assert.ok(Number(edgeOn.rendererDrawTriangles) > farTriangles);
-  console.log(
-    'ARRAY_EDGE_EXACT',
-    JSON.stringify({
-      tier: edgeOn.transparentArrayLodTier,
-      frameTier: edgeOn.rendererFrameArrayLodTier,
-      sceneGeneration: edgeOn.sceneGeneration,
-      frameSceneGeneration: edgeOn.rendererFrameSceneGeneration,
-      triangles: edgeOn.rendererDrawTriangles,
-      frameSerial: edgeOn.rendererFrameSerial,
-    }),
+  const exactDiagnostics = {
+    tier: edgeOn.transparentArrayLodTier,
+    frameTier: edgeOn.rendererFrameArrayLodTier,
+    sceneGeneration: edgeOn.sceneGeneration,
+    frameSceneGeneration: edgeOn.rendererFrameSceneGeneration,
+    renderState: edgeOn.renderState,
+    renderPhase: edgeOn.renderPhase,
+    rendererUpdateKind: edgeOn.rendererUpdateKind,
+    triangles: Number(edgeOn.rendererDrawTriangles),
+    farTriangles,
+    drawCalls: edgeOn.rendererDrawCalls,
+    sceneTriangleKinds: edgeOn.sceneTriangleKinds,
+    retainedGeometry: edgeOn.sceneRetainedGeometryCount,
+    retainedMaterials: edgeOn.sceneRetainedMaterialCount,
+    sidewalls: edgeOn.sidewallTriangleCount,
+    bodyCount: edgeOn.electricalFarLodBodyCount,
+    frameMs: edgeOn.rendererFrameMs,
+    frameSerial: edgeOn.rendererFrameSerial,
+  };
+  console.log('ARRAY_EDGE_EXACT', JSON.stringify(exactDiagnostics));
+  // Keep failure geometry evidence rather than only the far screenshot:
+  // this is a strict gate; no fallback-to-far or tolerance weakening.
+  await writeFile(
+    new URL('exact-frame-report.json', output),
+    JSON.stringify({ far, edgeOn, exactDiagnostics, errors }, null, 2),
+  );
+  assert.ok(
+    exactDiagnostics.triangles > farTriangles,
+    'completed exact-tier frame must draw more triangles than the far LOD',
   );
 
   await page.waitForFunction(
