@@ -17,12 +17,10 @@ one canonical Main History per project. Until native assembly/Bond capability
 is accepted, the official editable deliverable consists of **four separate
 native projects**, not four fabricated branches of a common die:
 
-| Project | History / intended role |
-| --- | --- |
-| `gan-microchannel-interposer-2022.wafercad` | Si microchannel Main; four-tier geometric surrogate, **not** a real bonded-wafer process |
-| `gan-hemt-die-2022.wafercad` | Independent HEMT Main with native gates and source-labeled inferred metal |
-| `gan-gsg-left-die-2022.wafercad` | Independent left GSG Pad Die Main |
-| `gan-gsg-right-die-2022.wafercad` | Independent right GSG Pad Die Main |
+- **Si interposer:** `gan-microchannel-interposer-2022.wafercad`. Four-tier geometric surrogate; no native wafer bonding.
+- **HEMT:** `gan-hemt-die-2022.wafercad`. Independent Main with native gates and inferred metal.
+- **Left GSG Pad Die:** `gan-gsg-left-die-2022.wafercad`. Independent Main.
+- **Right GSG Pad Die:** `gan-gsg-right-die-2022.wafercad`. Independent Main.
 
 All four have editable, reopenable material, Mask, Recipe and History data.
 None stores `assemblyWires`, Bond, placement or completed package geometry.
