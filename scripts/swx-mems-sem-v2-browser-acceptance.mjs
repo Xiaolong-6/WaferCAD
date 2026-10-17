@@ -234,6 +234,21 @@ try {
           buffer: Buffer.from(JSON.stringify(inspect)),
         });
         await showSection();
+        // The import helper can return while the PREVIOUS project's name
+        // is still visible and the new import dialog is validating. Wait
+        // for the real short (9um) section span and dialog dismissal before
+        // capturing any evidence from the new project.
+        await page.waitForFunction(
+          () => {
+            const sectionText = document.getElementById('sectionPanel')?.textContent || '';
+            const opening = document.body.textContent.includes(
+              'Opening sem-v2-ground-rail-section.wafercad',
+            );
+            return /9\\s*µm\\s*span/.test(sectionText) && !opening;
+          },
+          null,
+          { timeout: 120000 },
+        );
         await waitForPaint(page);
         await page.locator('#sectionPanel').screenshot({
           path: resolve(directory, state + '-section-perimeter-rail.png'),
