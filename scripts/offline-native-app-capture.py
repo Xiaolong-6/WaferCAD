@@ -296,6 +296,50 @@ def run(args):
                     report['images']['project'] = {'file': image.name, 'sha256': snapshot_sha(image)}
                     report['exampleLoad'] = 'attempted; independently inspect native page and Worker logs'
                     report['afterProject'] = runtime_probe(page)
+            if args.inmemory_demo or args.inmemory_project:
+                model_input = {'model': None, 'demo': args.inmemory_demo}
+                input_evidence = None
+                if args.inmemory_project:
+                    project_path = args.inmemory_project.resolve()
+                    if not project_path.is_file() or project_path.suffix != '.wafercad':
+                        raise ValueError('In-memory native model requires an existing .wafercad file')
+                    model_path = out / 'validated-native-model.json'
+                    subprocess.run(
+                        ['node', str(root / 'scripts/offline-native-project-export.mjs'),
+                         str(project_path), str(model_path)],
+                        cwd=root, check=True, capture_output=True, text=True, timeout=90)
+                    validated = json.loads(model_path.read_text(encoding='utf-8'))
+                    model_input['model'] = validated.pop('model')
+                    input_evidence = {**validated, 'validatedModelFile': model_path.name,
+                                      'validatedModelSha256': snapshot_sha(model_path)}
+                expression = (root / 'scripts/offline-native-model-view.js').read_text(
+                    encoding='utf-8')
+                details = page.evaluate(expression, model_input)
+                page.wait_for_timeout(2600)
+                state = page.evaluate('''() => {
+                  const item=window.__wafercadOfflineModel;
+                  const canvas=item?.host?.querySelector('canvas');
+                  const bounds=canvas?.getBoundingClientRect();
+                  return {ready:item?.renderer?.ready || false,
+                    renderState:item?.host?.dataset?.renderState || null,
+                    renderError:item?.host?.dataset?.renderError || null,
+                    width:bounds?.width || 0,height:bounds?.height || 0};
+                }''')
+                ready = bool(details['initialized'] and state['ready']
+                             and state['renderState'] == 'ready'
+                             and state['width'] > 100 and state['height'] > 100)
+                image = out / 'isolated-native-model.png'
+                page.screenshot(path=str(image), animations='disabled')
+                report['images']['isolatedNativeModel'] = {
+                    'file': image.name, 'sha256': snapshot_sha(image)}
+                report['isolatedNativeModel'] = {
+                    'ready': ready, 'geometry': details, 'renderer': state,
+                    'source': input_evidence or 'production createModel three-material demo',
+                    'workstationStateLoaded': False, 'recoveryVerified': False}
+                report['limitations'].append(
+                    'Isolated native Three.js viewport: Main/Mask/Section, History and Recovery are not synchronized.')
+                if not ready:
+                    fail = True
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
@@ -304,7 +348,7 @@ def run(args):
                                                    and not errors and not report['unexpectedRejections'])
             report['evidenceTier'] = ('native-origin-unreviewed' if mode == 'https-origin'
                                        else 'null-origin-native-diagnostic-only')
-            fail = not report['nativeVisualEvidence']
+            fail = fail or not report['nativeVisualEvidence']
             if args.project and mode != 'https-origin':
                 # The four-view diagnostic can pass, but project must remain unverified.
                 report['projectAcceptance'] = False
@@ -327,7 +371,12 @@ def main():
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--browser', help='Installed Chromium executable (or WAFERCAD_CHROMIUM)')
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--project', type=Path, help='Optional real project; only attempted on HTTPS origin')
+    parser.add_argument('--project', type=Path, help='Optional native Open; only attempted on HTTPS origin')
+    model_group = parser.add_mutually_exclusive_group()
+    model_group.add_argument('--inmemory-demo', action='store_true',
+                             help='Render a production three-material in-memory model in isolated ThreeView')
+    model_group.add_argument('--inmemory-project', type=Path,
+                             help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)

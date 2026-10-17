@@ -222,3 +222,53 @@ are still required.
 Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
+
+### Source-backed in-memory native 3D: demo or validated project
+
+Worker-restricted browsers can still render real, validated model topology
+inside a **separate production Three.js viewport** without opening a project
+in the Workstation. These options keep all four original app panels visible
+in the initial screenshot, then capture a second isolated native viewport.
+
+```sh
+# Deterministic in-memory three-material model (production createModel):
+python3 scripts/offline-native-app-capture.py \
+  --root . --output test-results/offline-native-demo --inmemory-demo
+
+# Real file validated with readProjectFile(), then native production 3D:
+python3 scripts/offline-native-app-capture.py \
+  --root . --output test-results/offline-native-photodetector \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad
+```
+
+The project helper invokes the production `readProjectFile()` with the pinned
+polygon-boolean vendor, including storage expansion, migrations, full strict
+schema/geometry validation and the original file SHA-256. For safety, files
+over 8 MiB are refused in this synchronous diagnostic path. It uses
+`buildRenderSurfacePlan()` and `rememberRenderSurfacePlan()` to supply the
+real native renderer with the same model identity, without attempting to
+construct a cross-origin Worker. No independent reconstructed geometry or
+fake Worker is involved. The `isolated-native-model.png` screenshot and
+`isolatedNativeModel` evidence record layer/region and cap/sidewall counts,
+the native canvas/Renderer ready state, and an explicit
+`workstationStateLoaded: false` flag.
+
+**This is 3D geometry/presentation inspection only, not a project Open
+transaction.** Main, Mask and Section continue to show the existing
+Workstation project; History, Autosave, Recovery and storage leases are
+neither bypassed nor verified.
+
+In production, `process-task-controller` now allows an explicit optional
+`startupFallback` only when Worker construction throws. The project reader
+opts in for files of at most 8 MiB, using the original strict
+`readProjectFile()` validator, with Abort and busy-task semantics preserved.
+Process Apply, Layout, export, running Worker errors and DataClone failures
+keep their existing behavior. Even after a successful fallback parse,
+`openProjectFile()` **still requires the normal pre-replacement Recovery
+checkpoint**: a `null`-origin browser without storage must fail closed
+rather than silently replacing the editor state.
+
+Targeted checks:
+`node --test site/tests/process-task-controller.test.mjs site/tests/offline-native-project-export.test.mjs`
+and `python3 scripts/offline-native-app-capture.test.py`.
+Neither diagnostic mode is final Workstation or release acceptance.
