@@ -177,3 +177,35 @@ functions. Old `.wafercad` schemas and scientific tolerances are
 unchanged. The new Main canvas-grid and palette refinements were also
 merged into this feature branch without overriding the physical Section
 guard.
+
+## Single-facet local conformal material patch (experimental, 2026-10-17)
+
+A new pure-science construction `physicalFacetNormalCoatingPatch(owner, options)`
+builds **one real closed coating solid**, strictly within an open planar
+facet of an existing physical pyramid. It uses outward unit normals on
+both Front and Back, and moves the entire triangle by the specified
+normal distance (not by fixed vertical Z). The resulting six-vertex
+triangular prism has eight consistently wound boundary triangles.
+
+For a triangular XY area `Axy`, surface slope `g` and normal thickness
+`t`, its exact physical film volume is
+`Axy * sqrt(1 + |g|²) * t`. The interface distance from source to
+coating outer surface equals `t`, with a larger fixed-XY vertical
+separation `t * sqrt(1 + |g|²)` on sloping facets. A signed closed-mesh
+volume check and front/back material-section checks enforce this
+contract. Invalid thickness/material identities, inverted triangles,
+ridge/apex crossings, inter-cell transitions and offsets that leave
+the source facet are rejected.
+
+**Crucial limit:** the prism's cut edges are intentionally *artificial*
+patch boundaries. This is **not** a continuous coating around pyramid
+ridges, valleys or corners; its normal thickness is only established on
+one planar facet interior. It is **not** registered as a project layer,
+a Process operation, a Section material owner or a production 3D overlay.
+There is no claim of physically correct multi-facet conformal coverage,
+and Main/Mask/production Process remain unavailable for the experimental
+physical Kernel. Next scientific gate is a topologically complete film
+join at convex and concave creases, with non-overlapping material
+ownership, exact cross-section and volume contracts, and genuine
+browser 3D/Section visual inspection before activating the film in the
+Model.

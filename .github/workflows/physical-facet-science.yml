@@ -30,5 +30,6 @@ jobs:
           site/tests/physical-facet-math.test.mjs
           site/tests/physical-facet-owner.test.mjs
           site/tests/physical-facet-surface.test.mjs
+          site/tests/physical-facet-coating.test.mjs
           site/tests/physical-facet-persistence.test.mjs
           site/tests/physical-facet-recovery.test.mjs
