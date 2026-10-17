@@ -40,8 +40,7 @@ export async function capturePhotodetectorRoughRoi(page, output, width) {
   const roi = await page.evaluate(() => window.WaferCadV2Workstation.snapshot().roi);
   assert.equal(roi?.type, 'rect', 'Actual Main ROI must be rectangular');
   assert.ok(
-    Math.abs(roi.b[0] - roi.a[0] - 16) < 1e-6 &&
-      Math.abs(roi.b[1] - roi.a[1] - 16) < 1e-6,
+    Math.abs(roi.b[0] - roi.a[0] - 16) < 1e-6 && Math.abs(roi.b[1] - roi.a[1] - 16) < 1e-6,
     'Main ROI must be exactly 16 x 16 physical um',
   );
 
