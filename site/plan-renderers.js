@@ -51,20 +51,23 @@ export function createPlanRenderers({
   formatXY,
   xyText,
   xyUnitLabel,
+  canvasTheme = false,
 }) {
   const $ = (id) => root.getElementById(id);
   const canvasColors = (canvas) => {
-    const style = getComputedStyle(canvas);
-    const color = (name, fallback) =>
-      style.getPropertyValue(`--wc-canvas-${name}`).trim() || fallback;
+    // Shared renderer is also called by the legacy adapter. Only v2 opts in.
+    const style = canvasTheme ? getComputedStyle(canvas) : null;
+    const color = (name, oldValue, newValue) =>
+      canvasTheme ? style.getPropertyValue(`--wc-canvas-${name}`).trim() || newValue : oldValue;
     return {
-      minor: color('grid-minor', '#edf1f5'),
-      major: color('grid-major', '#dbe2ea'),
-      axis: color('grid-axis', '#9fb0c1'),
-      solid: color('outline-solid', '#7f93a8'),
-      dashed: color('outline-dashed', '#9fb0c1'),
-      section: color('section-highlight', '#e8590c'),
-      roiFill: color('roi-fill', 'rgba(232,89,12,.05)'),
+      minor: color('grid-minor', '#edf1f5', '#edf1f5'),
+      major: color('grid-major', '#dbe2ea', '#dbe2ea'),
+      axis: color('grid-axis', '#9fb0c1', '#9fb0c1'),
+      solid: color('outline-solid', '#96a1ad', '#7f93a8'),
+      dashed: color('outline-dashed', '#aab3bd', '#9fb0c1'),
+      section: color('section-highlight', '#cc5062', '#e8590c'),
+      roiStroke: color('section-highlight', '#d65361', '#e8590c'),
+      roiFill: color('roi-fill', 'rgba(214,83,97,.05)', 'rgba(232,89,12,.05)'),
     };
   };
 
@@ -127,7 +130,7 @@ export function createPlanRenderers({
     if (!roi && !roiDraft) return;
     const r = roiDraft || roi;
     ctx.save();
-    ctx.strokeStyle = colors.section;
+    ctx.strokeStyle = colors.roiStroke;
     ctx.fillStyle = colors.roiFill;
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1.2;
@@ -157,7 +160,7 @@ export function createPlanRenderers({
       for (const point of Object.values(roiHandlePoints(roi))) {
         const q = worldToCanvas(point, v, back);
         ctx.fillStyle = '#fff';
-        ctx.strokeStyle = colors.section;
+        ctx.strokeStyle = colors.roiStroke;
         ctx.fillRect(q[0] - 5, q[1] - 5, 10, 10);
         ctx.strokeRect(q[0] - 5, q[1] - 5, 10, 10);
       }
@@ -439,7 +442,7 @@ export function createPlanRenderers({
       v = viewport(w, h, 'mask'),
       colors = canvasColors(c);
     ctx.clearRect(0, 0, w, h);
-    drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
+    if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
 
     // Alignment reference: current process surface topology. Rough areas get a
     // subtle neutral darkening so they read as wafer topography without changing
@@ -483,7 +486,7 @@ export function createPlanRenderers({
     c.dataset.xPxPerUm = String(v.s);
     $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
     ctx.clearRect(0, 0, w, h);
-    drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
+    if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
     drawBaseOutline(ctx, v, { fill: false, back, colors });
     if (isArrayModel(model)) drawArrayPlan(ctx, v, back);
     else {

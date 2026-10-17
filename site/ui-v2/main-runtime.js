@@ -146,6 +146,7 @@ export function createMainRuntime({
   });
   renderer = createPlanRenderers({
     root,
+    canvasTheme: true,
     getState: () => ({ ...state, model: renderModel() }),
     getSectionEditor: () => editor,
     ...plan,
