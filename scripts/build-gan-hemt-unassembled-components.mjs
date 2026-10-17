@@ -316,10 +316,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const previewDir = join(dest, 'previews');
   await mkdir(dest, { recursive: true });
   await mkdir(previewDir, { recursive: true });
-  for (const [role, text] of Object.entries(files)) {
+  for (const [role, project] of Object.entries(components)) {
     const name = manifest.components.find((item) => item.role === role).filename;
-    await writeFile(join(dest, name), text);
-    const preview = finalPreview(components[role]);
+    await writeFile(join(dest, name), files[name]);
+    const preview = finalPreview(project);
     validateProjectFile(preview);
     await writeFile(
       join(previewDir, name),
