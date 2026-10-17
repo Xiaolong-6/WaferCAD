@@ -1,27 +1,30 @@
 // Fast, read-only screenshot evidence for visual-first development.
 // Capturing is not AI/human approval, a pixel baseline, or a science oracle.
 import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchBrowser, waitForPaint } from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiContext, waitForPaint } from '../test-helpers/ui.mjs';
+import {
+  parseVisualCaptureSettings,
+  resolvePinnedThree,
+  sourceEvidence,
+} from './visual-first-contract.mjs';
 
 const output = resolve(process.env.WAFERCAD_VISUAL_OUTPUT || 'test-results/visual-first');
-const example = process.env.WAFERCAD_VISUAL_EXAMPLE || 'jlfet';
-assert.match(example, /^[a-z0-9-]+$/, 'Use a published example slug');
+const { example, start, views, viewports, softwareWebgl } = parseVisualCaptureSettings();
 const port = String(process.env.WAFERCAD_VISUAL_PORT || 4189);
 const external = process.env.WAFERCAD_V2_BASE;
 const base = external || 'http://127.0.0.1:' + port;
-const cases = [
-  { width: 1440, height: 900 },
-  { width: 390, height: 844 },
-];
-if (process.env.WAFERCAD_VISUAL_SMALL === '1') cases.push({ width: 360, height: 640 });
+const cases = viewports;
 
 await mkdir(output, { recursive: true });
 const report = {
-  example,
+  example: start === 'example' ? example : null,
+  start,
   base,
+  captureKind: 'real-app-native-renderers',
   reviewStatus: 'unreviewed',
   captureStatus: 'running',
   captures: [],
@@ -51,17 +54,43 @@ try {
     await new Promise((done) => setTimeout(done, 200));
   }
   assert.ok(available, 'Visual-first preview server must respond');
-  browser = await launchBrowser();
+  const threeDir = await resolvePinnedThree(resolve('.'), process.env.WAFERCAD_THREE_DIR || '');
+  if (views.includes('three') && !threeDir) {
+    throw Error('Pinned Three.js 0.179.1 is required for reproducible 3D screenshots; run npm ci.');
+  }
+  // Route the production import map to the exact locally pinned Three.js package.
+  // This never changes application source or substitutes a new renderer.
+  if (threeDir) process.env.WAFERCAD_THREE_DIR = threeDir;
+  report.threeSource = threeDir ? 'pinned-local-0.179.1' : 'not-required';
+  report.source = await sourceEvidence(resolve('.'));
+  browser = softwareWebgl
+    ? await chromium.launch({
+        headless: true,
+        ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
+        args: [
+          '--use-angle=swiftshader',
+          '--enable-unsafe-swiftshader',
+          '--enable-webgl',
+          '--ignore-gpu-blocklist',
+          '--disable-dev-shm-usage',
+          '--no-sandbox',
+        ],
+      })
+    : await launchBrowser();
   report.browser = browser.version();
+  report.softwareWebgl = softwareWebgl;
   for (const { width, height } of cases) {
-    const context = await browser.newContext({ viewport: { width, height } });
+    const context = await newUiContext(browser, { viewport: { width, height } });
     try {
       const page = await context.newPage();
       page.on('pageerror', (error) => report.errors.push(error.message));
-      await page.goto(base + '/app.html?start=example&example=' + example, {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      });
+      await page.goto(
+        base +
+          (start === 'empty'
+            ? '/app.html?start=empty'
+            : '/app.html?start=example&example=' + example),
+        { waitUntil: 'domcontentloaded', timeout: 120000 },
+      );
       await page.waitForFunction(
         () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
         null,
@@ -79,7 +108,7 @@ try {
         };
       });
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
-      for (const view of ['main', 'mask', 'three', 'section']) {
+      for (const view of views) {
         await page.evaluate(
           ({ name, width }) => {
             if (width > 820) {
@@ -120,18 +149,39 @@ try {
           else assert.equal(sectionState.maximize, 'section', 'Desktop Section maximized');
         }
         if (view === 'three') {
-          try {
-            await page.waitForFunction(
-              () => {
-                const host = document.getElementById('threeHost');
-                return host?.querySelector('canvas') && host.dataset.renderPhase === 'complete';
-              },
-              null,
-              { timeout: 20000 },
-            );
-          } catch {
-            report.warnings.push('3D frame readiness not confirmed at ' + width + 'px');
-          }
+          // A placeholder or unfinished WebGL frame is NOT successful visual evidence.
+          await page.waitForFunction(
+            () => {
+              const host = document.getElementById('threeHost');
+              const canvas = host?.querySelector('canvas');
+              if (!canvas || host.classList.contains('three-unavailable')) return false;
+              const gl = canvas.getContext('webgl2');
+              return Boolean(
+                host.dataset.renderPhase === 'complete' &&
+                gl &&
+                !gl.isContextLost() &&
+                canvas.width > 0 &&
+                canvas.height > 0,
+              );
+            },
+            null,
+            { timeout: 60000 },
+          );
+        }
+        const canvasId = { main: 'mainCanvas', mask: 'maskCanvas', section: 'sectionCanvas' }[view];
+        if (canvasId) {
+          await page.waitForFunction(
+            (id) => {
+              const canvas = document.getElementById(id);
+              return Boolean(
+                canvas?.width > 0 &&
+                canvas.height > 0 &&
+                canvas.getBoundingClientRect().width > 0,
+              );
+            },
+            canvasId,
+            { timeout: 20000 },
+          );
         }
         const filename = view + '-' + width + '.png';
         await page.screenshot({ path: resolve(output, filename) });
@@ -148,6 +198,13 @@ try {
             view === 'three'
               ? await page.locator('#threeHost').getAttribute('data-render-phase')
               : null,
+          realCanvas: await page.evaluate((view) => {
+            const id = { main: 'mainCanvas', mask: 'maskCanvas', section: 'sectionCanvas' }[view];
+            const canvas = id
+              ? document.getElementById(id)
+              : document.querySelector('#threeHost canvas');
+            return { width: canvas?.width || 0, height: canvas?.height || 0 };
+          }, view),
         });
       }
     } finally {

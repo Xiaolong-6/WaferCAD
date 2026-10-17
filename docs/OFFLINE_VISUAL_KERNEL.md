@@ -1,5 +1,28 @@
 # Offline Visual Kernel (P0)
 
+## Evidence tiers: geometry diagnostics vs native visual acceptance
+
+**Tier A — scientific geometry diagnostics.** The SVG and optional Python/VTK
+backends inspect canonical topology, crop/Section coordinates, and provenance.
+They are **not** pixel or layout or shader or interaction acceptance. Maintain
+these diagnostic paths for existing evidence only; do not extend independent
+renderers as substitutes for `plan-renderers.js` or Three.js.
+
+**Tier B — actual-app visual evidence.** The existing
+`npm run preview:visual` starts the production `app.html` Workstation and
+captures native Main, Mask, 3D, Section and surrounding UI via real Chromium.
+It accepts `WAFERCAD_CHROMIUM`, optionally enables software WebGL using
+`WAFERCAD_VISUAL_SWIFTSHADER=1`, and automatically routes the application's
+pinned Three.js 0.179.1 dependency to `node_modules/three`. Only this tier can
+supply renderer/UI screenshots. It strictly rejects an unfinished or lost
+3D WebGL frame, and labels captured evidence **unreviewed** until an AI or
+human actually inspects it. See [CI visual-first guidance](CI.md).
+
+Both tiers are read-only and do not establish scientific/History/Recovery or
+final Quality acceptance. In managed Chromium environments where navigation
+is policy-blocked, Tier B remains **unverified** rather than being replaced
+by simulated images. Do not bypass administrator browser policy.
+
 The read-only visual kernel is a developer tool. It **does not start WaferCAD**, navigate to `localhost`, require `file://` access in Chromium or change project / History state.
 
 ## Run from a complete WaferCAD checkout

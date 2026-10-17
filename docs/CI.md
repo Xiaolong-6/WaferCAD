@@ -15,13 +15,36 @@ example in the production `app.html` Workstation, and captures Main, Mask,
 Set `WAFERCAD_VISUAL_SMALL=1` for an additional 360 px portrait case, or
 `WAFERCAD_VISUAL_EXAMPLE=<published-slug>` to select another real example.
 
-Artifacts are written to `test-results/visual-first/`. The report includes
-real model/History summary and a 3D frame-readiness diagnostic. Screenshots
-are **unreviewed evidence**, not automated visual approval, pixel baselines,
-scientific/geometry acceptance, or permission to merge. The developing agent
-must open and inspect the images, note deviations, and iterate locally before
-requesting full acceptance. A screenshot workflow success means only that
-the capture completed.
+Artifacts are written to `test-results/visual-first/`. This is **real-application
+visual evidence**, not a parallel scientific illustration: the capture opens
+production `site/app.html`, uses the native Canvas/Three.js renderers and the
+real Workstation controls, and records source SHA-256 hashes and the Git revision
+(where available). The capture fails rather than silently approving an
+unfinished/unavailable WebGL frame. Screenshots remain **unreviewed evidence**,
+not automated visual approval, geometry/science acceptance, pixel baselines,
+or permission to merge. The developing agent must inspect the images and
+iterate locally before requesting full acceptance.
+
+Capture a particular Example/viewport/view without running the entire Browser
+suite (for an empty-shell check, use `WAFERCAD_VISUAL_START=empty`):
+
+```sh
+WAFERCAD_VISUAL_EXAMPLE=photodetector-literature \
+WAFERCAD_VISUAL_VIEWS=main,mask,three,section \
+WAFERCAD_VISUAL_VIEWPORTS=1440x900,390x844 \
+WAFERCAD_CHROMIUM=/path/to/chromium \
+WAFERCAD_VISUAL_SWIFTSHADER=1 \
+npm run preview:visual
+```
+
+`WAFERCAD_CHROMIUM` can point at a compatible standalone Chromium executable,
+including one supplied by an independently installed package. The command
+requires the pinned `node_modules/three` version `0.179.1` for 3D and routes
+the production Three.js import map to those local bytes, avoiding reliance on
+the CDN. Software WebGL flags are opt-in. An environment where browser policy
+blocks `localhost` cannot complete this capture; a geometry-only SVG/VTK image
+must not be reported as a substitute. See
+[Offline Visual Kernel](OFFLINE_VISUAL_KERNEL.md) for separate diagnostic use.
 
 `visual-first.yml` automatically captures applicable **Draft** PRs, and
 can also be dispatched manually. It never publishes and cannot approve
