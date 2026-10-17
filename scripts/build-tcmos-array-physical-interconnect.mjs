@@ -310,6 +310,9 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
 }
 
 async function main() {
+  // Schema validation invoked by readProjectFile needs the real Boolean Kernel
+  // even before the physical generation function starts.
+  await loadGeometryKernel();
   // The original 23-step source is already an approved persisted project.
   // Reconstructing those 23 steps again is neither necessary nor desirable
   // for every routed visual iteration: their own science gate tests that.
