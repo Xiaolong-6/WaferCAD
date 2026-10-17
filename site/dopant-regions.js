@@ -6,6 +6,8 @@
  * etches and voids may remove the material that originally carried doping.
  * No electrical current, diffusion, activation or BTBT is inferred.
  */
+import { arrayParts, geometryBounds, isArrayModel, translateGeometry } from './model-array.js';
+
 const POLARITIES = new Set(['donor', 'acceptor']);
 const ROLES = new Set(['well', 'body', 'source-drain', 'channel', 'contact']);
 const validNumber = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -83,7 +85,18 @@ export function resolveQualitativeDopantRegion(model, dopant, vectorApi) {
   const z1 =
     face === 'front' ? dopant.sourceZ - dopant.depthStartUm : dopant.sourceZ + dopant.depthEndUm;
   const out = [];
-  for (const region of model.regions || []) {
+  // Native array roots intentionally store no per-cell material regions.
+  // Resolve world-space qualitative dopant intent against actual translated
+  // template owners, or the 4×4 T-CMOS model loses its 16-cell doping intent.
+  const regions = isArrayModel(model)
+    ? arrayParts(model, geometryBounds(dopant.area)).flatMap((part) =>
+        part.model.regions.map((region) => ({
+          ...region,
+          geom: translateGeometry(region.geom, part.x, part.y),
+        })),
+      )
+    : model.regions || [];
+  for (const region of regions) {
     const segments = (region.stack || []).filter(
       (segment) =>
         segment.layerId === dopant.hostLayerId &&

@@ -1057,14 +1057,14 @@ export async function buildTcmosInverter({
   deposit('Pattern W contact plugs (illustrative)', 'W contacts', 0.47, 10);
   deposit('Pattern METAL1 interconnects', 'METAL1 Al', 0.2, 11);
 
-  // The interlayer dielectric remains fully present and exportable in the
-  // physical process model. Hide it only in the *final inspection state* so
-  // that the default Main/Section/3D displays reveal the transistor stack.
-  // Earlier History stages retain their normal visible process layers.
+  // The ILD is real material and must be visible by default: removing it
+  // makes Metal1 and W contacts look suspended above the silicon wafer.
+  // Dedicated diagnostic/transparent views may hide it without changing
+  // physical materials or paper-derived mask geometry.
   const ild = model.layers.find((layer) => layer.name === 'Interlayer SiO2');
   assert.ok(ild, 'The dielectric must exist before applying the view preset.');
-  assert.equal(modelApi.setLayerVisible(model, ild.id, false), true);
-  project.display.threeOpacity = 0.75;
+  assert.equal(ild.visible, true, 'Do not hide the supporting ILD by default');
+  project.display.threeOpacity = 0.55;
   project.display.threeCamera = {
     position: [13.3, -14.3, 10.2],
     target: [0, -1.2, 0.95],
@@ -1292,7 +1292,7 @@ export async function buildTcmosInverter({
     finalRegions: model.regions.length,
     finalMaterialLayers: model.layers.length,
     inspectionPreset: {
-      hiddenMaterial: 'Interlayer SiO2',
+      visibleDielectric: 'Interlayer SiO2',
       camera: copy(project.display.threeCamera),
     },
     checkpoints,

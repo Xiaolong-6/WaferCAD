@@ -373,8 +373,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.ok(model.layers.some((l) => l.name === 'METAL1 Al'));
   const ild = model.layers.find((l) => l.name === 'Interlayer SiO2');
   assert.ok(ild, 'Physical ILD remains present in the process geometry');
-  assert.equal(ild.visible, false, 'Final inspection hides only the dielectric');
-  assert.equal(project.display.threeOpacity, 0.75);
+  assert.equal(ild.visible, true, 'Interlayer oxide supports Metal1 in the default 3D view');
+  assert.equal(project.display.threeOpacity, 0.55);
   assert.deepEqual(project.display.threeCamera, {
     position: [13.3, -14.3, 10.2],
     target: [0, -1.2, 0.95],
@@ -390,15 +390,15 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const head = project.snapshotBranches.nodes.find(
     (node) => node.id === project.snapshotBranches.branches[0].headNodeId,
   );
-  assert.equal(head.state.model.layers.find((l) => l.id === ild.id)?.visible, false);
+  assert.equal(head.state.model.layers.find((l) => l.id === ild.id)?.visible, true);
   assert.equal(
     project.snapshotBranches.branches[0].headState.model.layers.find((l) => l.id === ild.id)
       ?.visible,
-    false,
+    true,
   );
   assert.equal(
     project.snapshots[0].state.model.layers.find((l) => l.id === ild.id)?.visible,
-    false,
+    true,
   );
   assert.ok(
     project.snapshotBranches.nodes
