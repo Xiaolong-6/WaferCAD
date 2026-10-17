@@ -58,7 +58,10 @@ test('experimental adaptive etch changes REAL selective material voids under a r
   const undercut = sectionStackAt(model, [2.5, 0]);
   assert.ok(center.every((s) => s.layerId !== oxideLayerId));
   assert.ok(center.every((s) => s.z1 <= 1.000000001 || s.layerId !== 'base'));
-  assert.ok(far.some((s) => s.layerId === oxideLayerId), 'masked oxide must survive');
+  assert.ok(
+    far.some((s) => s.layerId === oxideLayerId),
+    'masked oxide must survive',
+  );
   assert.ok(undercut.some((s) => s.layerId === 'base' && s.z1 < 5));
   assert.ok(model.regions.length > 1, 'physical material topology must be partitioned');
   assert.deepEqual(JSON.parse(JSON.stringify(model)), model);
@@ -78,7 +81,11 @@ test('adaptive release differs from legacy eight bands without silently changing
     legacy.regions,
     'opt-in finer-depth geometry must not be the unchanged eight-band result',
   );
-  for (const [x, y] of [[0, 0], [7, 0], [10, 10]]) {
+  for (const [x, y] of [
+    [0, 0],
+    [7, 0],
+    [10, 10],
+  ]) {
     assert.equal(
       sectionStackAt(adaptive, [x, y]).some((s) => s.layerId !== 'base'),
       sectionStackAt(legacy, [x, y]).some((s) => s.layerId !== 'base'),
