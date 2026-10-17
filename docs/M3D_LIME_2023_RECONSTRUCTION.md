@@ -27,7 +27,7 @@ All lengths below are physical nanometres unless noted. The builder converts nm 
 | CNTFET protection  | Y 10 nm naturally oxidized at 250°C to Y₂O₃; Al₂O₃ 35 / HfO₂ 10 at 250°C                                        | Main pp. 4, 8, Methods        | Oxidation as **Record**; Y₂O₃ geometry 10 nm surrogate, not predicted grown-oxide thickness                                                                              |
 | Buffer / 2T2R TCAM | Pd BE / TaOₓ 20 / Ta₂O₅ 10 / Pt 10; Pd hard-mask 60; Al₂O₃ protection 45 at 150°C; Ti 20 / Pd 120 interconnects | Main pp. 4, 8, Methods        | One top-tier process for both buffer and TCAM; Pd hard-mask and dry etch are **Record** because surviving final mask is unspecified                                      |
 
-For detailed source circuit topology see **main Fig. 1b–3** and **Supplementary Fig. 1, 4 and 6**. The 1k-bit CIM in Fig. 2 has 8 BL × 128 SL, and a 512-bit 1T1R buffer is stacked in the third tier alongside the fabricated 5 × 1 2T2R TCAM. The generator preserves these as _documented design context_, with **eight analog CIM sites, four digital buffer sites and all five local TCAM cells** explicitly materialized. It must never claim to materialize the full 1k+512-bit arrays.
+For detailed source circuit topology see **main Fig. 1b–3** and **Supplementary Fig. 1, 4 and 6**. The 1k-bit CIM in Fig. 2 has 8 BL × 128 SL, and a 512-bit 1T1R buffer is stacked in the third tier alongside the fabricated 5 × 1 2T2R TCAM. The generator preserves these as _documented design context_, with **eight analog CIM sites, four digital buffer sites and five local 2T2R TCAM cells (ten CNTFETs)** explicitly materialized. The paper also describes a separate CNTFET **pre-charge transistor** for the 5 × 1 TCAM; the current 14-CNTFET local reconstruction does **not** include that transistor or its complete match-line control wiring. It must never claim to materialize the full 1k+512-bit arrays or the complete fabricated TCAM peripheral circuit.
 
 ## Unpublished/assumed information
 
@@ -39,6 +39,7 @@ For detailed source circuit topology see **main Fig. 1b–3** and **Supplementar
 - Dense CNT nanotube film morphology and CNT/oxide electrostatics are not simulated. Thin CNT is represented as a contiguous 1 nm film solely for inspecting material ownership.
 - Y oxidation chemistry and possible volume expansion are **not** simulated by the Process Kernel.
 - CIM-to-buffer _electrical interlayer via connections_ are not geometrically proven. The paper's Fig. 1b itself omits these ILVs. Their fabrication is recorded, while local device examples remain physically distinguishable.
+- The fabricated 5 × 1 2T2R TCAM includes a **pre-charge CNTFET** for the match line, explicitly described alongside Fig. 3b. The inferred Mask layout currently contains **ten TCAM access CNTFETs and four buffer CNTFETs only**, not that additional transistor; continuous ML/SL/SEL and its control path are not reconstructed. Device-site counts must not be described as complete TCAM circuit topology.
 - The fabricated prototype relies on **off-chip** ADC/programming/read circuitry, with no on-chip TCAM sense amplifier; do not insert those as fabricated structures. See paper discussion and public peer review file (reviewer 1 responses 1/5).
 - Hardware accuracy, Hamming-distance, CNN execution time and energy-efficiency values are from measurements combined with system-level simulation. WaferCAD models **geometry** and cannot recalculate those metrics.
 
@@ -165,7 +166,7 @@ angle, original GDS placement, electrical performance or TEM contour fidelity.
 - Recipe **Rebuild Base → Run All** now retains a valid pre-existing physical Section A–B (including the paper-aligned local slice); the UI v2 and legacy Base controllers share this policy, while a manual Base change or an out-of-bounds Section still selects a centered default. Browser-level persistence is a required CI assertion.
 - No proof of full array connectivity, original lithographic coordinates, device performance or electrical simulation is claimed.
 
-## Unresolved published-Methods process-order audit (October 16, 2026)
+## Published-Methods chronology and remaining geometric surrogates (October 17, 2026)
 
 These process-order audit items are tracked independently of
 the existing geometric, History and Chromium checks. The relevant source is
@@ -192,13 +193,20 @@ the existing geometric, History and Chromium checks. The relevant source is
   non-paper status must remain explicit; the final W/TE contact tests alone
   cannot validate the source ordering.
 
-**Required closeout:** Rebuild the fixture from the real Process Kernel and
-check exact Recipe/History step ordering, intermediate material occupancy,
-deterministic `.wafercad` bytes, Save/Open, rollback, 14/14 Pd gate-edge
-contacts and 46-step (or explicitly revised step-count) Chromium replay.
-No early-only change to the Builder is acceptable if it leaves the checked-in
-asset, historical snapshots or source claims out of sync. Previously green
-checks on the current fixture do not prove either order defect is resolved.
+**Current-HEAD deterministic verification:** At feature HEAD `667ee5da` the
+[M3D-LIME Kernel/Chromium/KLayout workflow](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39017239342)
+passes the real-Kernel fixture regeneration/equality check, source-derived
+process-order and 14/14 Pd contact assertions, 46-step browser replay and
+external Mask export inspection. Quality, Browser Regression and History/Recovery
+also pass on that same HEAD. This closes the earlier **Recipe chronology and
+serialized-asset synchronization** blocker, but it does **not** physically
+model the pre-pattern blanket CNT film or O₂ etch, justify the pre-via CMP,
+validate the inferred 25% Pd step coverage, supply the omitted TCAM pre-charge
+transistor or electrical wiring, or establish source TEM/SEM morphology match.
+Any subsequent Builder change must again regenerate the checked-in fixture from
+the real Kernel and verify intermediate occupancy, Recipe/History, persistence,
+rollback, all contacts and real Chromium/KLayout; an early-only Builder change
+that desynchronizes serialized History remains unacceptable.
 
 ## Paper-figure visual evidence boundary (October 2026)
 
