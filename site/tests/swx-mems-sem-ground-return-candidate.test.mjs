@@ -50,8 +50,8 @@ test('perimeter rails connect optical Si to ground without driven-comb shorts', 
     );
     const opticalNet = baseNets.find((net) => v.pointInMulti([-70, -20], [net]));
     const groundNet = baseNets.find((net) => v.pointInMulti([-49, -99], [net]));
-    const driveNets = baseNets.filter((net) =>
-      v.pointInMulti([-41, -78], [net]) || v.pointInMulti([41, -78], [net]),
+    const driveNets = baseNets.filter(
+      (net) => v.pointInMulti([-41, -78], [net]) || v.pointInMulti([41, -78], [net]),
     );
     assert.ok(opticalNet && groundNet);
     assert.equal(driveNets.length, 2);
