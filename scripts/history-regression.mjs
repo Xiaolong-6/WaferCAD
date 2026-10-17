@@ -2,8 +2,8 @@
 // The full retired Legacy regression is immutable under the legacy-frozen tag.
 import { spawnSync } from 'node:child_process';
 
-const base =
-  process.env.WAFERCAD_V2_BASE || process.env.WAFERCAD_URL || 'http://127.0.0.1:4173';
+const configuredBase = process.env.WAFERCAD_V2_BASE || process.env.WAFERCAD_URL;
+const base = configuredBase || 'http://127.0.0.1:4173';
 const suites = [
   'scripts/v2/check-history-replay-rollback.mjs',
   'scripts/v2/check-history-variant-parity.mjs',

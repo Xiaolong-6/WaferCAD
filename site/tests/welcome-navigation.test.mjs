@@ -39,6 +39,7 @@ test('v2 interactive previews and published old-bookmark redirect stay functiona
   assert.match(welcomeJs, /preview: '1'/);
   assert.doesNotMatch(welcomeJs, /app-legacy\.html/);
   assert.match(appHtml, /ui-v2\/workstation-preview\.css/);
-  const bookmarkRedirectPattern = /location\.replace\('\.\/app\.html' \+ location\.search \+ location\.hash\)/;
-  assert.match(pages, bookmarkRedirectPattern);
+  const redirectStart = "location.replace('./app.html'";
+  const redirectTail = ' + location.search + location.hash)';
+  assert.ok(pages.includes(redirectStart + redirectTail));
 });
