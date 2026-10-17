@@ -50,6 +50,7 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   lowerHorizontalAnchorYUm: -99,
   lowerSpringBeamLongUm: SWX_REPORTED.foldedSpringLongBeamUm,
   lowerSpringBeamShortUm: SWX_REPORTED.foldedSpringShortBeamUm,
+  foldedSpringTrussWidthUm: SWX_REPORTED.foldedSpringTrussUm,
   sourceAuthorGdsAvailable: false,
   fullFidelityClaim: false,
   fixedLeadIllustrativeFilletRadiusUm: 6,
@@ -175,6 +176,28 @@ function semV2PhysicalPose(state) {
   const springs = springCenterlines.map((centerline) => {
     return miteredPolyline(centerline, SWX_REPORTED.foldedSpringWidthUm)[0];
   });
+  // Supplement S7a identifies 1um-wide TRUSSES connecting adjacent
+  // horizontal 200nm compliant runs. They must be real device Si, not
+  // a graphical border thickening; release these 12 bars with the beam.
+  const springTrussContours = springCenterlines.flatMap((centerline) =>
+    [
+      [1, 2],
+      [3, 4],
+      [5, 6],
+    ].map(([start, end]) => {
+      const p = centerline[start];
+      const q = centerline[end];
+      if (Math.abs(p[0] - q[0]) > 1e-9) {
+        throw new Error('Folded spring truss must connect vertical station spans');
+      }
+      return rect(
+        p[0],
+        (p[1] + q[1]) / 2,
+        SWX_REPORTED.foldedSpringTrussUm,
+        Math.abs(p[1] - q[1]) + SWX_REPORTED.foldedSpringWidthUm,
+      );
+    }),
+  );
   // The source SEM has opposing, inward-sloped fixed input/output guides,
   // not two vertical posts and a horizontal roof above the SWX. The
   // intermediate XY and 6um fillet radius are illustrative placements:
@@ -230,7 +253,7 @@ function semV2PhysicalPose(state) {
     ...source.optics.movableStops,
     ...bridge,
   ];
-  const flexure = [...springs, ...opticalFlexures, ...source.guides.flexure];
+  const flexure = [...springs, ...springTrussContours, ...opticalFlexures, ...source.guides.flexure];
   return {
     source,
     state,
@@ -241,6 +264,7 @@ function semV2PhysicalPose(state) {
     fixedActuator,
     movableActuator,
     springContours: springs,
+    springTrussContours,
     lowerSpringCenterlines,
     upperSpringCenterlines,
     fixedRoutes,

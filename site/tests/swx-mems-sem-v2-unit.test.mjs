@@ -43,6 +43,8 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
     assert.ok(layout.bounds.minY <= -124);
     assert.ok(layout.bounds.maxX >= 76);
     assert.equal(pose.springContours.length, 4);
+    assert.equal(pose.springTrussContours.length, 12);
+    assert.equal(SWX_SEM_V2_ASSUMPTIONS.foldedSpringTrussWidthUm, 1);
     assert.equal(pose.lowerSpringCenterlines.length, 2);
     assert.equal(pose.upperSpringCenterlines.length, 2);
     const [lowerLeft, lowerRight] = pose.lowerSpringCenterlines;
@@ -121,6 +123,29 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
       contact(pose.fixed, pose.movable) < 1e-8,
       state + ' moving actuator or SWX contacts unrelated fixed Si',
     );
+    // Every structural truss is a 1um-wide Si bar and must overlap the
+    // compliant 200nm beam; otherwise a visually thicker line can hide
+    // an electrically/mechanically disconnected spring structure.
+    for (let i = 0; i < 12; i++) {
+      const truss = pose.springTrussContours[i];
+      const x = truss.map((p) => p[0]);
+      assert.ok(Math.abs(Math.max(...x) - Math.min(...x) - 1) < 1e-12);
+      assert.ok(
+        contact([truss], [pose.springContours[Math.floor(i / 3)]]) > 1e-4,
+        state + ' folded spring truss ' + i + ' detached from its beam',
+      );
+      const otherFixed = pose.fixed.filter(
+        (ring) => !pose.fixedActuator.slice(-4).includes(ring),
+      );
+      assert.ok(
+        contact([truss], otherFixed) < 1e-8,
+        state + ' truss ' + i + ' contacts an unrelated fixed silicon net',
+      );
+      assert.ok(
+        contact([truss], pose.opticalFlexures) < 1e-8,
+        state + ' truss ' + i + ' collides with an S6 waveguide',
+      );
+    }
     for (let i = 0; i < 4; i++) {
       const own = pose.fixedActuator.at(-4 + i);
       assert.ok(contact([pose.springContours[i]], [own]) > 1e-4);

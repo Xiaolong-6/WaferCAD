@@ -26,6 +26,9 @@ export const SWX_REPORTED = Object.freeze({
   meanderRadiiUm: [5, 3],
   meanderLengthUm: 15,
   foldedSpringWidthUm: 0.2,
+  // Supplement Fig. S7a: the connecting transverse braces are thicker
+  // than the 200nm elastic runs (wt = 1 um).
+  foldedSpringTrussUm: 1,
   foldedSpringLongBeamUm: 30,
   foldedSpringShortBeamUm: 22,
   foldedSpringClearanceUm: 1.5,
