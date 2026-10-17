@@ -67,7 +67,7 @@ test('OFF/ON actual ground and signal routing connects the correct physical Si i
       baseline.maskPolygons.get(1).map((ring) => [[[...ring, ring[0]]]]),
     );
     const opticalNet = nets.find((net) => v.pointInMulti([-70, -20], [net]));
-    const groundNet = nets.find((net) => v.pointInMulti([-49, -99], [net]));
+    const groundNet = nets.find((net) => v.pointInMulti([-43.5, -99], [net]));
     const driveNets = nets.filter(
       (net) => v.pointInMulti([-41, -78], [net]) || v.pointInMulti([41, -78], [net]),
     );

@@ -34,8 +34,8 @@ const newTerminalsUm = Object.freeze([
 ]);
 const electrodeCentersUm = Object.freeze([
   [-41, -70],
-  [-49, -99],
-  [49, -99],
+  [-43.5, -99],
+  [43.5, -99],
   [41, -70],
   [-41, -78],
   [41, -78],
@@ -46,7 +46,11 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   actuatorFrameTranslationYUm: -90,
   upperHorizontalAnchorXUm: 41,
   upperHorizontalAnchorYUm: -70,
-  lowerHorizontalAnchorXUm: 49,
+  // Source Fig. 3a constrains the full actuator to 95um across.
+  // Only the lower spring/anchor frame is re-registered here; keep all
+  // physical 30/22/30um beam lengths and optical SWT tooth pitch unchanged.
+  // This is bounded engineering registration, not recovered author GDS.
+  lowerHorizontalAnchorXUm: 43.5,
   lowerHorizontalAnchorYUm: -99,
   lowerSpringBeamLongUm: SWX_REPORTED.foldedSpringLongBeamUm,
   lowerSpringBeamShortUm: SWX_REPORTED.foldedSpringShortBeamUm,
@@ -365,7 +369,7 @@ export function createSwxSemV2ProcessGeometry(state = 'off') {
     maskPolygons,
     layout,
     releasedBeamTestPoint: [(SWX_REPORTED.shuttleWidthUm - 0.7) / 2, -72 + pose.travel],
-    anchorTestPoint: [49, -99],
+    anchorTestPoint: [43.5, -99],
     physicalGroups: {
       ...original.physicalGroups,
       fixed: pose.fixed,
@@ -390,9 +394,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
   const supported = [
     add('stationary left comb handle', [-25, -78]),
     add('stationary right comb handle', [25, -78]),
-    add('lower left spring anchor', [-49, -99]),
+    add('lower left spring anchor', [-43.5, -99]),
     add('upper left spring anchor', [-41, -70]),
-    add('lower right spring anchor', [49, -99]),
+    add('lower right spring anchor', [43.5, -99]),
     add('upper right spring anchor', [41, -70]),
     add('S7 left stationary anchor', [-14, -50]),
     add('S7 right stationary anchor', [14, -50]),
@@ -429,9 +433,9 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('moving shuttle rail', [2.65, -72 + travel]),
     add('left moving comb handle', [-25, -87.4 + travel]),
     add('right moving comb handle', [25, -87.4 + travel]),
-    add('left lower folded spring', [-34, -99 + travel / 14]),
+    add('left lower folded spring', [-28.5, -99 + travel / 14]),
     add('left upper folded spring', [-30, -70]),
-    add('right lower folded spring', [34, -99 + travel / 14]),
+    add('right lower folded spring', [28.5, -99 + travel / 14]),
     add('right upper folded spring', [30, -70]),
     add('stationary-but-suspended input guide', [-40, -14.75]),
     add('stationary-but-suspended output guide', [40, -14.75]),

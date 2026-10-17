@@ -70,8 +70,8 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
       assert.equal(path[0][1], -70, 'Upper anchor must not move with shuttle');
       assert.ok(path.at(-1)[1] < path[0][1], 'Upper spring must fold toward comb');
     }
-    assert.equal(lowerLeft[0][0], -49);
-    assert.equal(lowerRight[0][0], 49);
+    assert.equal(lowerLeft[0][0], -43.5);
+    assert.equal(lowerRight[0][0], 43.5);
     assert.equal(upperLeft[0][0], -41);
     assert.equal(upperRight[0][0], 41);
     assert.equal(pose.opticalFlexures.length, 2);
@@ -320,5 +320,30 @@ test('SEM v2 real post-release ownership includes all twelve wider 1um spring tr
     assert.equal(probes.sourceHFUndercutFrontVerified, false);
     const names = [...probes.supported, ...probes.released].map((x) => x.name);
     assert.equal(new Set(names).size, 50);
+  }
+});
+
+test('paper-width 95um actuator retains four anchored moving spring connections', () => {
+  for (const state of ['off', 'on']) {
+    const source = createSwxSemV2ProcessGeometry(state);
+    const pose = source.physicalGroups.semV2;
+    const envelope = auditSwxPaperEnvelope(v, source);
+    // External grating couplers and assumed Ground/Signal routing are
+    // intentionally excluded. This checks the real MEMS actuator XY outline.
+    assert.equal(envelope.actuatorGeometryBoundsUm.minX, -47.5);
+    assert.equal(envelope.actuatorGeometryBoundsUm.maxX, 47.5);
+    assert.equal(envelope.actuatorGeometryBoundsUm.width, 95);
+    assert.ok(envelope.actuatorGeometryBoundsUm.height <= 100);
+    assert.equal(envelope.paperSwitchFootprintAccepted, false);
+    for (const [index, spring] of pose.springContours.entries()) {
+      assert.ok(
+        contact([spring], pose.fixedActuator) > 0.08,
+        state + ' spring ' + index + ' lost finite grounded-anchor overlap',
+      );
+      assert.ok(
+        contact([spring], pose.movableActuator) > 0.07,
+        state + ' spring ' + index + ' lost finite moving-shuttle overlap',
+      );
+    }
   }
 });
