@@ -15,6 +15,32 @@ test('real-app capture permits scoped views and an empty live Workstation', () =
   assert.equal(result.start, 'empty');
   assert.equal(result.softwareWebgl, true);
 });
+test('2D/UI scope selects native Main, Mask and Section without requiring WebGL', () => {
+  const options = parseVisualCaptureSettings({
+    WAFERCAD_VISUAL_SCOPE: '2d-ui',
+    WAFERCAD_VISUAL_START: 'empty',
+  });
+  assert.equal(options.scope, '2d-ui');
+  assert.deepEqual(options.views, ['main', 'mask', 'section']);
+  assert.deepEqual(options.untestedViews, ['three']);
+  assert.equal(options.requiresWebgl, false);
+  assert.equal(options.start, 'empty');
+});
+test('3D-only scope remains an independent mandatory WebGL gate', () => {
+  const options = parseVisualCaptureSettings({ WAFERCAD_VISUAL_SCOPE: '3d' });
+  assert.deepEqual(options.views, ['three']);
+  assert.equal(options.requiresWebgl, true);
+  assert.deepEqual(options.untestedViews, ['main', 'mask', 'section']);
+});
+test('visual scope does not permit silently expanding to unvalidated views', () => {
+  for (const env of [
+    { WAFERCAD_VISUAL_SCOPE: '2d-ui', WAFERCAD_VISUAL_VIEWS: 'main,three' },
+    { WAFERCAD_VISUAL_SCOPE: '3d', WAFERCAD_VISUAL_VIEWS: 'section' },
+    { WAFERCAD_VISUAL_SCOPE: 'unknown' },
+  ]) {
+    assert.throws(() => parseVisualCaptureSettings(env));
+  }
+});
 test('invalid view, viewport, and example fail closed', () => {
   for (const env of [{WAFERCAD_VISUAL_VIEWS:'main,fake'}, {WAFERCAD_VISUAL_VIEWS:'main,main'}, {WAFERCAD_VISUAL_VIEWPORTS:'2x4'}, {WAFERCAD_VISUAL_VIEWPORTS:'300x700'}, {WAFERCAD_VISUAL_VIEWPORTS:'390x844,390x700'}, {WAFERCAD_VISUAL_EXAMPLE:'../secret'}, {WAFERCAD_VISUAL_SWIFTSHADER:'yes'}]) {
     assert.throws(() => parseVisualCaptureSettings(env));

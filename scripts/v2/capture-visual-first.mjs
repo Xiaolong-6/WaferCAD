@@ -13,7 +13,7 @@ import {
 } from './visual-first-contract.mjs';
 
 const output = resolve(process.env.WAFERCAD_VISUAL_OUTPUT || 'test-results/visual-first');
-const { example, start, views, viewports, softwareWebgl } = parseVisualCaptureSettings();
+const { example, start, scope, views, untestedViews, requiresWebgl, viewports, softwareWebgl } = parseVisualCaptureSettings();
 const port = String(process.env.WAFERCAD_VISUAL_PORT || 4189);
 const external = process.env.WAFERCAD_V2_BASE;
 const base = external || 'http://127.0.0.1:' + port;
@@ -23,6 +23,11 @@ await mkdir(output, { recursive: true });
 const report = {
   example: start === 'example' ? example : null,
   start,
+  scope,
+  requestedViews: views,
+  untestedViews,
+  requiresWebgl,
+  visualAcceptance: false,
   base,
   captureKind: 'real-app-native-renderers',
   reviewStatus: 'unreviewed',
@@ -55,7 +60,7 @@ try {
   }
   assert.ok(available, 'Visual-first preview server must respond');
   const threeDir = await resolvePinnedThree(resolve('.'), process.env.WAFERCAD_THREE_DIR || '');
-  if (views.includes('three') && !threeDir) {
+  if (requiresWebgl && !threeDir) {
     throw Error('Pinned Three.js 0.179.1 is required for reproducible 3D screenshots; run npm ci.');
   }
   // Route the production import map to the exact locally pinned Three.js package.
@@ -134,20 +139,19 @@ try {
           { name: view, width },
         );
         await waitForPaint(page);
-        const sectionState =
-          view === 'section'
-            ? await page.evaluate((compact) => {
-                const ui = window.WaferCadV2Workstation.snapshot().ui;
-                return {
-                  view: ui.view,
-                  maximize: compact ? ui.maximize : ui.desktopLayout?.maximized,
-                };
-              }, width <= 820)
-            : null;
-        if (sectionState) {
-          if (width <= 820) assert.equal(sectionState.view, 'section', 'Portrait Section tab');
-          else assert.equal(sectionState.maximize, 'section', 'Desktop Section maximized');
-        }
+        const selectedState = await page.evaluate((compact) => {
+          const ui = window.WaferCadV2Workstation.snapshot().ui;
+          return {
+            view: ui.view,
+            maximized: compact ? ui.maximize : ui.desktopLayout?.maximized,
+          };
+        }, width <= 820);
+        if (width <= 820)
+          assert.equal(selectedState.view, view, `Portrait ${view} tab`);
+        else
+          assert.equal(selectedState.maximized, view, `Desktop ${view} maximized`);
+        const panel = page.locator('#' + view + 'Panel');
+        assert.ok(await panel.isVisible(), 'Selected view must be visible: ' + view + '/' + width);
         if (view === 'three') {
           // A placeholder or unfinished WebGL frame is NOT successful visual evidence.
           await page.waitForFunction(
@@ -176,7 +180,9 @@ try {
               return Boolean(
                 canvas?.width > 0 &&
                 canvas.height > 0 &&
-                canvas.getBoundingClientRect().width > 0,
+                canvas.getBoundingClientRect().width > 0 &&
+                canvas.getBoundingClientRect().height > 0 &&
+                canvas.getContext('2d'),
               );
             },
             canvasId,
@@ -185,14 +191,14 @@ try {
         }
         const filename = view + '-' + width + '.png';
         await page.screenshot({ path: resolve(output, filename) });
-        const panel = page.locator('#' + view + 'Panel');
-        assert.ok(await panel.isVisible(), 'Selected view must be visible: ' + view + '/' + width);
         await panel.screenshot({ path: resolve(output, view + '-' + width + '-panel.png') });
         report.captures.push({
           width,
           height,
           view,
           screenshot: filename,
+          selectedState,
+          scope,
           initial,
           frame:
             view === 'three'
@@ -212,6 +218,8 @@ try {
     }
   }
   assert.equal(report.errors.length, 0, 'No uncaught browser errors during visual capture');
+  // Three.js was not exercised by the 2D/UI capture scope. The report must
+  // not imply that a successful Main/Mask/Section capture validates WebGL.
   report.captureStatus = 'complete';
   console.log('Visual evidence captured at ' + output);
   console.log('Screenshots must be examined by an AI or human before visual acceptance.');

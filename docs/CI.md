@@ -25,6 +25,39 @@ not automated visual approval, geometry/science acceptance, pixel baselines,
 or permission to merge. The developing agent must inspect the images and
 iterate locally before requesting full acceptance.
 
+### Scope-aware capture when WebGL is unavailable
+
+For UI, desktop layout, Main, Mask and Section-only changes, run the **real
+application** with the three-view scope. The collector opens `app.html` and
+captures native Canvas 2D, panels and Workstation controls, without treating an
+unavailable 3D renderer as a failure of those three views:
+
+```sh
+WAFERCAD_VISUAL_SCOPE=2d-ui \
+WAFERCAD_VISUAL_START=empty \
+WAFERCAD_VISUAL_VIEWPORTS=1440x900,390x844 \
+WAFERCAD_CHROMIUM=/path/to/chromium \
+npm run preview:visual
+```
+
+`WAFERCAD_VISUAL_SCOPE=3d` checks only the real Three.js view and **requires**
+a valid WebGL frame and the pinned `three@0.179.1` dependency.
+`WAFERCAD_VISUAL_SCOPE=all` (default) retains the full four-view acceptance
+capture. `WAFERCAD_VISUAL_VIEWS` may further narrow, but never widen, the
+selected scope. A three-view capture records `untestedViews: ["three"]`,
+`requiresWebgl: false`, and `visualAcceptance: false` in `report.json`.
+A 2D/UI success therefore **does not pass, waive or resolve** a 3D-specific
+issue, even if the overview screenshot contains a `3D unavailable` panel.
+It also does not prove a scientific geometry, process, History or Recovery
+contract. AI inspection of actual screenshots and relevant focused tests remain
+necessary for the scoped UI acceptance.
+
+Where enterprise browser policy blocks navigation, the normal real-app capture
+remains unavailable. A permitted **in-memory real-component** capture can
+provide UI-only diagnostic evidence, with its exact limitations recorded; it
+cannot be renamed a native full-app screenshot or used to waive the visual
+requirement. Do not circumvent enforced Chromium security policy.
+
 Capture a particular Example/viewport/view without running the entire Browser
 suite (for an empty-shell check, use `WAFERCAD_VISUAL_START=empty`):
 

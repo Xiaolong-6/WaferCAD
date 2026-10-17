@@ -5,7 +5,12 @@ import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-const VIEWS = new Set(['main', 'mask', 'three', 'section']);
+const VIEW_SCOPES = Object.freeze({
+  all: ['main', 'mask', 'three', 'section'],
+  '2d-ui': ['main', 'mask', 'section'],
+  '3d': ['three'],
+});
+const VIEWS = new Set(VIEW_SCOPES.all);
 const DEFAULT_VIEWPORTS = [{ width: 1440, height: 900 }, { width: 390, height: 844 }];
 const FINGERPRINTS = [
   'app.html',
@@ -24,11 +29,15 @@ export function parseVisualCaptureSettings(env = process.env) {
   if (!/^[a-z0-9-]+$/.test(example)) throw Error('Invalid bundled example slug');
   const start = env.WAFERCAD_VISUAL_START || 'example';
   if (!['empty', 'example'].includes(start)) throw Error('WAFERCAD_VISUAL_START must be empty or example');
+  const scope = env.WAFERCAD_VISUAL_SCOPE || 'all';
+  if (!Object.hasOwn(VIEW_SCOPES, scope)) throw Error('Invalid WAFERCAD_VISUAL_SCOPE');
   const views = env.WAFERCAD_VISUAL_VIEWS
     ? env.WAFERCAD_VISUAL_VIEWS.split(',').map((s) => s.trim())
-    : [...VIEWS];
+    : [...VIEW_SCOPES[scope]];
   if (!views.length || views.some((view) => !VIEWS.has(view)) || new Set(views).size !== views.length)
     throw Error('Invalid or duplicate WAFERCAD_VISUAL_VIEWS');
+  if (views.some((view) => !VIEW_SCOPES[scope].includes(view)))
+    throw Error('WAFERCAD_VISUAL_VIEWS must remain within the selected scope');
   const viewports = env.WAFERCAD_VISUAL_VIEWPORTS
     ? env.WAFERCAD_VISUAL_VIEWPORTS.split(',').map((entry) => {
         const match = /^(\d{3,4})x(\d{3,4})$/.exec(entry.trim());
@@ -48,7 +57,16 @@ export function parseVisualCaptureSettings(env = process.env) {
   }
   if (env.WAFERCAD_VISUAL_SWIFTSHADER && !['0', '1'].includes(env.WAFERCAD_VISUAL_SWIFTSHADER))
     throw Error('WAFERCAD_VISUAL_SWIFTSHADER must be 0 or 1');
-  return { example, start, views, viewports, softwareWebgl: env.WAFERCAD_VISUAL_SWIFTSHADER === '1' };
+  return {
+    example,
+    start,
+    scope,
+    views,
+    untestedViews: VIEW_SCOPES.all.filter((view) => !views.includes(view)),
+    requiresWebgl: views.includes('three'),
+    viewports,
+    softwareWebgl: env.WAFERCAD_VISUAL_SWIFTSHADER === '1',
+  };
 }
 
 export async function sourceEvidence(root) {
