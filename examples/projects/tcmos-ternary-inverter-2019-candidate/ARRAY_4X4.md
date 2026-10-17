@@ -1,42 +1,73 @@
-# 4×4 T-CMOS array inspection prototype (2026-10-17)
+# T-CMOS 4×4 native Recipe and History acceptance (2026-10-17)
 
-The authoritative unit is the user-approved `layout-complete.svg` (8 File Mask
-layers / 232 shapes / 218 contacts). This **illustrative geometry scaling**
-stage tiles the unchanged original layout at a **14 × 8 µm illustrative
-pitch** into **4 rows × 4 columns = 16 cells**; the 4×4 patch occupies
-**56 × 32 µm**. Pitch and extent are design choices, not foundry die-map
-metrology. The scientific reference is Jeong et al., Nature Electronics
-(2019), DOI 10.1038/s41928-019-0272-8.
+The sole source for the exported File Mask remains the user-approved
+`layout-complete.svg`: 8 source layer groups, 232 polygons and 218 CNT
+contacts **per cell**. The 4×4 patch translates the unchanged SVG into
+**16 sites** at an illustrative **14 × 8 µm pitch** over **56 × 32 µm**,
+for **3,712 exported mask polygons**, including **3,488 CNTs**. These
+dimensions and placements are demonstrative CAD choices, not recovered
+foundry reticle/die specifications.
 
-- One canonical vector-2.5d model template, 16 native translations and a
-  translated 3,712-element File Mask. No wafer reticle, pads, scribe lanes,
-  pad fanout, VDD/GND buses or cross-cell electrical functionality is invented.
-- The original cell's STI/oxide/POLY/silicide/W/METAL1 layers, well markers,
-  and material ownership remain in the instanced geometry. The ILD is
-  **visible by default** to avoid a misleading floating interconnect.
-- Original qualitative dopant XY intent is translated across all 16 cell
-  centres; it remains non-calibrated and proves no junction/BTBT conduction.
-- The generated `test-results/tcmos/tcmos-inverter-4x4-ARRAY-PROTOTYPE.wafercad`
-  is **inspection-only**. Its original 1×1 Recipe and History are deliberately
-  absent because they do not replay the 16-cell process. The approved 1×1
-  project retains its complete 23-step Recipe, snapshots and two branches.
-- Kernel, schema, storage and real Chromium Mask/3D/Section evidence must
-  pass before promoting this experiment. 8×8 and a die-patch are future
-  gated scopes; do not call this a real wafer map.
+## Three distinct, explicitly scoped outputs
 
-**Connectivity caveat:** The original SVG shows a gap between the external
-VDD/GND leads and the inner body-tie U-shaped rail. This prototype preserves
-the gap and keeps the 16 cells independent. Physical ohmic well contact and
-electrical continuity are NOT validated.
+- **1×1 source**:
+  `tcmos-ternary-inverter-130nm.wafercad`. Approved original File Mask,
+  23-step Recipe, and independently restorable T-CMOS and conventional
+  CMOS History Variants.
+- **4×4 structure-only inspection**:
+  `test-results/tcmos/tcmos-inverter-4x4-ARRAY-PROTOTYPE.wafercad`.
+  One physical template + 16 native instances; its single-cell Recipe
+  and History are deliberately absent, never deceptively copied.
+- **4×4 validated Recipe/History**:
+  [`tcmos-inverter-4x4-replayed.wafercad`](tcmos-inverter-4x4-replayed.wafercad).
+  This committed file comes directly from real Chromium **new Base →
+  Run All 23/23 → Export**, contains **23 actual History nodes**, and
+  was bytewise verified against the exported Git Blob
+  `994fafc0b509eb593d12b565e72a5628735bf897`.
+  A separate generator,
+  `scripts/build-tcmos-array-recipe-experiment.mjs`, creates the
+  pre-replay candidate for repeatable independent testing.
 
-## Native 4×4 Recipe experiment (not yet accepted)
+The original 218-shape CNT **Draw Mask** is reused in each native
+instance's local process frame for the two CNT operations. Other private
+process windows are precisely tiled. This prevents redundant large
+Draw Masks and avoids re-quantizing source File Mask vertices.
+The complete **3,712-polygon File Mask remains unchanged** by Recipe
+capture, and both GDS and OAS binary round trips retain eight layer
+groups and all polygons.
 
-`scripts/build-tcmos-array-recipe-experiment.mjs` separately writes
-`tcmos-inverter-4x4-RECIPE-EXPERIMENT.wafercad`: the 23 original T-CMOS
-commands, a reconstructible `rect-grid` Base, translated Draw Mask windows,
-and the source SVG array File Mask layer `10|0` for CNT openings and fill.
-The common CNT layer avoids duplicating 6,976 contact polygons in Recipe and
-retains existing schema budgets. Passing science-schema/preflight/storage tests
-**is not** whole-array Process/History acceptance. Full real-browser replay,
-scientific material parity, and Recovery must pass before promotion. The prior
-inspection-only 4×4 artifact remains unaffected.
+## Actual browser and scientific evidence
+
+- [Scoped Chromium + 26 Node scientific contracts, run 39017758653](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39017758653):
+  Recipe 23/23, expanded 16-cell material comparison in **26 Z
+  intervals**, 8 materials, maximum **0 µm²** XY mismatch; GDS/OAS
+  binary parsing confirms **3,712 polygons**.
+- [Final Chromium Save/Recovery, run 39018054248](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39018054248):
+  deliberately change project name, restore the saved checkpoint, then
+  verify **all 16 native instances**, 26 material intervals, and
+  qualitative dopant record semantics with **0 µm²** mismatch.
+- [Screenshots, exported 4×4 project and JSON record](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39018054248/artifacts/12096020375).
+  The real Chromium screenshot after Run All and the after-Recovery
+  screenshot show repeated physical stacks. Earlier separate Main/Mask,
+  3D and Section visual captures are retained in
+  [run 39008666718](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39008666718/artifacts/12091638844).
+
+All 16 source-cell regions, implants and **qualitative** dopant markers
+are represented. Interlayer SiO₂ is visible by default so METAL1 and W
+contacts do not appear suspended. A real-material/geometry result is
+not evidence for a calibrated ion implantation profile or measured
+electrical transfer curve.
+
+## Scientific provenance and remaining gates
+
+The original SVG contains apparent gaps between external VDD/GND
+leads and U-shaped body-tie metal. The model intentionally **does not**
+invent missing cross-cell routing, pad frames, wafer die/reticle layout
+or validated ohmic well contact. No measured dopant concentration,
+junction depth, BTBT current or ternary VTC is claimed.
+
+The 4×4 structural/process/History/Recovery gate is accepted; an **8×8**
+array or die/wafer patch remains a separately reviewed scaling scope.
+PR #225 remains **Draft**, Welcome registration and Main merge are
+**not authorized**. Final integration alignment and release Quality
+checks must be completed before requesting merge approval.

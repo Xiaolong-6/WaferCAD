@@ -122,8 +122,11 @@ a **56 × 32 µm illustrative field**, one canonical physical model
 template, 16 native array instances, and **3,712 File Mask polygons**
 (8 SVG layer groups; 218 × 16 = 3,488 CNTs). The default ILD is visible.
 The original 1×1 project retains its 23-step Recipe and historical
-Variants. Array-wide process replay, all-cell electrical fanout, pad
-routing and 8×8/wafer layout are **not accepted or claimed**.
+Variants. In a subsequent separate gate, native **4×4 23/23 Recipe,
+23 actual History nodes, and actual Save → Recovery Restore passed**,
+with 26 material Z intervals and **0 µm²** expanded XY difference.
+All-cell electrical fanout, pad routing and 8×8/wafer layout are
+**not accepted or claimed**.
 
 Actual Chromium screenshot evidence: [PR #225 4×4 and 1×1 replay
 artifact](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39008666718/artifacts/12091638844).
@@ -138,6 +141,15 @@ intent at every cell. Chromium visual inspection confirms visible oxide,
 **Physical limitation:** the approved SVG includes unconnected
 body-tie/supply rail islands, and this example keeps independent
 unwired inverter layouts. Ohmic body contact, PN/BTBT, full inter-cell
-routing and whole-array Recipe/History remain unverified. These cannot
-be inferred from the wafer photograph alone; final Main merge and
+routing remain unverified; whole-array Recipe/History/Recovery geometry,
+by contrast, has been separately verified. Electrical behavior cannot
+be inferred from the wafer photograph; final Main merge and
 Welcome registration remain unauthorized.
+
+**4×4 exact browser evidence:** [run 39018054248](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39018054248),
+[artifact 12096020375](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39018054248/artifacts/12096020375),
+and the [committed verified project](tcmos-inverter-4x4-replayed.wafercad).
+The final array reproduces **23/23 steps**, 8 materials, **26 physical
+Z slabs with 0 µm² maximum XY mismatch**, 23 History nodes, and
+Save → mutate → Recovery Restore with another 26-slab zero-difference
+material check. GDS/OAS each retain 8 layer groups and 3,712 polygons.

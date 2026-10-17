@@ -32,7 +32,7 @@ Status: **candidate generator, not yet a shipped Welcome Example**.
 - Implementation: scripts/build-tcmos-inverter-example.mjs
 - Regression: site/tests/tcmos-inverter-reconstruction.test.mjs
 - Figure-level provenance and visual acceptance: [FIG1_ACCEPTANCE.md](FIG1_ACCEPTANCE.md)
-- Separately generated 4×4 geometry-only prototype: [ARRAY_4X4.md](ARRAY_4X4.md). This is not a published die map and does not yet replay a 16-cell Recipe.
+- Native 4×4 array, including a **23-step verified Recipe, 23 History nodes and actual Recovery Restore**: [ARRAY_4X4.md](ARRAY_4X4.md) and [committed `.wafercad`](tcmos-inverter-4x4-replayed.wafercad). The 56 × 32 µm array remains illustrative, not a foundry die map.
 
 ## Intended reconstruction and provenance
 
