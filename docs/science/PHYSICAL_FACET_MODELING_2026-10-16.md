@@ -197,7 +197,7 @@ contract. Invalid thickness/material identities, inverted triangles,
 ridge/apex crossings, inter-cell transitions and offsets that leave
 the source facet are rejected.
 
-**Crucial limit:** the prism's cut edges are intentionally *artificial*
+**Crucial limit:** the prism's cut edges are intentionally _artificial_
 patch boundaries. This is **not** a continuous coating around pyramid
 ridges, valleys or corners; its normal thickness is only established on
 one planar facet interior. It is **not** registered as a project layer,

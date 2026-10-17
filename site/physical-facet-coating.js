@@ -32,7 +32,8 @@ function sector(owner, point) {
   ) {
     throw new RangeError('Physical facet normal undefined at a cell edge');
   }
-  const side = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : dy > 0 ? 'north' : 'south';
+  const side =
+    Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : dy > 0 ? 'north' : 'south';
   return `${ix}:${iy}:${side}`;
 }
 
@@ -86,9 +87,7 @@ export function physicalFacetNormalCoatingPatch(
   const slope = samples[0].gradient;
   if (
     samples.some(
-      (p) =>
-        p.normal.some((v, i) => v !== normal[i]) ||
-        p.gradient.some((v, i) => v !== slope[i]),
+      (p) => p.normal.some((v, i) => v !== normal[i]) || p.gradient.some((v, i) => v !== slope[i]),
     )
   ) {
     throw new RangeError('A coating patch cannot span different planar facets');

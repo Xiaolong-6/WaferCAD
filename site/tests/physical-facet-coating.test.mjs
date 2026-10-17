@@ -22,10 +22,7 @@ const triangleXY = [
 const film = 0.05;
 const eps = 1e-11;
 const close = (actual, expected) =>
-  assert.ok(
-    Math.abs(actual - expected) <= eps,
-    `Measured ${actual} versus expected ${expected}`,
-  );
+  assert.ok(Math.abs(actual - expected) <= eps, `Measured ${actual} versus expected ${expected}`);
 
 for (const face of ['front', 'back']) {
   test(`${face} local facet coating is a closed true-normal triangle prism`, () => {
@@ -62,8 +59,7 @@ for (const face of ['front', 'back']) {
         close(outer[axis] - inner[axis], film * patch.normal[axis]);
       }
       const outside = samplePhysicalPyramidSlab(...outer.slice(0, 2), owner);
-      const verticalGap =
-        face === 'front' ? outer[2] - outside.z1 : outside.z0 - outer[2];
+      const verticalGap = face === 'front' ? outer[2] - outside.z1 : outside.z0 - outer[2];
       close(verticalGap, film * Math.hypot(expectedSlope, 1));
       assert.ok(verticalGap > film, 'Sloped surface must not use vertical-thickness shortcut');
     }
