@@ -1,5 +1,12 @@
 import { assertLayoutByteLength } from '../layout-io.js';
 import { downloadProject, readProjectFile } from '../project-io.js';
+import { stageStartupFile } from '../startup-file.js';
+import {
+  ASSEMBLY_EDITOR_STARTUP_URL,
+  welcomeProjectStartupTarget,
+  handoffAssemblyProjectFile,
+} from '../assembly-startup-routing.js';
+import { readAssemblyPreviewFile } from '../ui-v2/assembly-preview.js';
 import { bundledExampleById } from '../bundled-examples.js';
 import { upgradeBundledExampleHistory } from '../bundled-example-history.js';
 import { bufferBackedProjectFile, versionedExampleAssetPath } from '../example-asset.js';
@@ -1024,6 +1031,22 @@ export function createProjectController({
 
   async function openProjectFile(file, { prepareProject = null, startupProtected = false } = {}) {
     try {
+      // Full Assembly and bonded v15 imports must never reach generic
+      // SnapshotManager.importRecords or the ordinary autosave owner.
+      if ((await welcomeProjectStartupTarget(file)) === ASSEMBLY_EDITOR_STARTUP_URL) {
+        await handoffAssemblyProjectFile(file, {
+          validate: (candidate) =>
+            readAssemblyPreviewFile(candidate, readProjectFile, { allowStandalone: true }),
+          checkpoint: startupProtected
+            ? async () => true
+            : () => requireRecoveryCheckpoint('pre-open-project'),
+          stage: stageStartupFile,
+          navigate: (target) => {
+            globalThis.location.href = target;
+          },
+        });
+        return true;
+      }
       const project = await readProjectFileTask(file);
       if (!project) return false;
       if (typeof prepareProject === 'function') prepareProject(project);

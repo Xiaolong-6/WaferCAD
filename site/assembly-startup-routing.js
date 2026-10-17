@@ -41,3 +41,19 @@ export async function openStagedAssemblyProject(readStagedFile, readAssemblyFile
   // Recovery writer setup and rendering must all succeed before deletion.
   return readAssemblyFile(staged.file, undefined, { allowStandalone: true });
 }
+
+/**
+ * Atomic handoff from a *running* ordinary Workstation. The source-aware
+ * import must be valid before checkpointing the current workspace. Never
+ * stage or navigate unless the pre-replacement Recovery checkpoint succeeds.
+ */
+export async function handoffAssemblyProjectFile(
+  file,
+  { validate, checkpoint, stage, navigate },
+) {
+  await validate(file);
+  await checkpoint();
+  await stage(file, 'project');
+  navigate(ASSEMBLY_EDITOR_STARTUP_URL);
+  return true;
+}

@@ -575,6 +575,53 @@ try {
         await welcomeTab.close();
       }
 
+      // In an ordinary running Workstation, opening the same portable file
+      // must checkpoint the previous project before handing the entire file to
+      // the source-aware durable Assembly editor (no generic History import).
+      const ordinaryTab = await context.newPage();
+      try {
+        await ordinaryTab.goto(`${base}/app.html?start=empty`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await ordinaryTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+          timeout: 90000,
+        });
+        await ordinaryTab.waitForFunction(
+          () => typeof document.getElementById('openProjectInput')?.onchange === 'function',
+        );
+        await ordinaryTab.locator('#openProjectInput').setInputFiles({
+          name: workspaceFile.suggestedFilename(),
+          mimeType: 'application/json',
+          buffer: workspaceBytes,
+        });
+        await ordinaryTab
+          .locator('.v2-workflow-dialog-actions')
+          .getByRole('button', { name: 'Open project' })
+          .click();
+        await ordinaryTab.waitForURL(/assemblyPreview=1&bondEdit=1&start=staged/, {
+          timeout: 60000,
+        });
+        await ordinaryTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+          timeout: 90000,
+        });
+        const handoff = await ordinaryTab.evaluate(() =>
+          window.WaferCadV2Workstation.snapshot(),
+        );
+        assert.equal(handoff.assemblyPreview.readOnly, false);
+        assert.equal(handoff.workflow.writable, false, 'ordinary History cannot edit this Assembly');
+        assert.equal(handoff.assemblyPreview.sources, 4);
+        await ordinaryTab.locator('.assembly-bond-draft-tools summary').click();
+        assert.equal(
+          await ordinaryTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(),
+          2,
+        );
+        await ordinaryTab.screenshot({
+          path: resolve(output, 'ordinary-workstation-open-full-assembly-handoff.png'),
+        });
+      } finally {
+        await ordinaryTab.close();
+      }
+
       const nativeTab = await context.newPage();
       try {
         await nativeTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {

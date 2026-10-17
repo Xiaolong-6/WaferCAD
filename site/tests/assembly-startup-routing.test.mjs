@@ -6,6 +6,7 @@ import {
   projectStartupTarget,
   welcomeProjectStartupTarget,
   openStagedAssemblyProject,
+  handoffAssemblyProjectFile,
 } from '../assembly-startup-routing.js';
 
 test('Welcome routes complete Workspace and bonded v15 to the source-aware editor', async () => {
@@ -76,4 +77,51 @@ test('staged Assembly loader preserves file ownership until validation and edito
     () => openStagedAssemblyProject(async () => ({ kind: 'layout', file }), readAssembly),
     /staged Assembly file is unavailable/,
   );
+});
+
+test('in-workstation handoff validates, checkpoints, stages and only then navigates', async () => {
+  const file = { name: 'bonded.wafercad' };
+  const order = [];
+  const hooks = {
+    validate: async (candidate) => {
+      assert.equal(candidate, file);
+      order.push('validate');
+    },
+    checkpoint: async () => {
+      order.push('checkpoint');
+    },
+    stage: async (candidate, kind) => {
+      assert.equal(candidate, file);
+      assert.equal(kind, 'project');
+      order.push('stage');
+    },
+    navigate: (url) => {
+      assert.equal(url, ASSEMBLY_EDITOR_STARTUP_URL);
+      order.push('navigate');
+    },
+  };
+  assert.equal(await handoffAssemblyProjectFile(file, hooks), true);
+  assert.deepEqual(order, ['validate', 'checkpoint', 'stage', 'navigate']);
+});
+
+test('invalid provenance or failed Recovery never replaces an ordinary workspace', async () => {
+  for (const failure of ['validate', 'checkpoint', 'stage']) {
+    const trace = [];
+    const hooks = Object.fromEntries(
+      ['validate', 'checkpoint', 'stage'].map((key) => [
+        key,
+        async () => {
+          trace.push(key);
+          if (key === failure) throw new Error(`blocked-${key}`);
+        },
+      ]),
+    );
+    hooks.navigate = () => trace.push('navigate');
+    await assert.rejects(
+      () => handoffAssemblyProjectFile({ name: 'unsafe.wafercad' }, hooks),
+      new RegExp(`blocked-${failure}`),
+    );
+    assert.equal(trace.includes('navigate'), false);
+    assert.equal(trace.includes('stage'), failure === 'stage');
+  }
 });
