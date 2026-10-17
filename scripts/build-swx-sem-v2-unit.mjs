@@ -11,6 +11,7 @@ import {
   createSwxSemV2ProcessGeometry,
   auditSwxSemV2ElectricalNets,
 } from './swx-mems-sem-v2-unit.mjs';
+import { auditSwxPaperEnvelope } from './swx-mems-paper-envelope-audit.mjs';
 
 export async function buildSwxSemV2Candidate() {
   const result = await buildSwxMemsUnified(SWX_SEM_V2_PROCESS_PROFILE);
@@ -26,11 +27,14 @@ export async function buildSwxSemV2Candidate() {
   assert.equal(electricalAudit.metalContacts, 6);
   assert.ok(electricalAudit.springAnchorsShareNet, 'Spring anchor ground net is fragmented');
   assert.ok(electricalAudit.combsSeparatedFromGround, 'Driven combs short to grounded MEMS');
-  return { ...result, electricalAudit };
+  const figureScopeAudit = auditSwxPaperEnvelope(vectorApi, source);
+  assert.equal(figureScopeAudit.siliconFitsField, true);
+  return { ...result, electricalAudit, figureScopeAudit };
 }
 const dir = resolve('test-results/swx-sem-v2');
 await mkdir(dir, { recursive: true });
-const { json, validation, project, electricalAudit } = await buildSwxSemV2Candidate();
+const { json, validation, project, electricalAudit, figureScopeAudit } =
+  await buildSwxSemV2Candidate();
 await writeFile(resolve(dir, 'swx-sem-v2-unit.wafercad'), json);
 await writeFile(
   resolve(dir, 'science-report.json'),
@@ -43,6 +47,7 @@ await writeFile(
       trueOffOnVariantCount: project.snapshotBranches.branches.length,
       sourcePadAndUnderetchCoordinatesVerified: false,
       sourceElectricalNetAudit: electricalAudit,
+      figureScopeAudit,
     },
     null,
     2,
