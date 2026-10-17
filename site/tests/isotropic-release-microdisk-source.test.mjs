@@ -38,8 +38,7 @@ function materialVolume(model, layerId) {
       sum +
       geometryArea(region.geom) *
         region.stack.reduce(
-          (height, segment) =>
-            height + (segment.layerId === layerId ? segment.z1 - segment.z0 : 0),
+          (height, segment) => height + (segment.layerId === layerId ? segment.z1 - segment.z0 : 0),
           0,
         ),
     0,
@@ -94,7 +93,10 @@ test('published M07 Microdisk selectively releases Si under the 148/82 um mask',
 
   const shielded = stackAt(adaptive, [110, 0]);
   const hub = stackAt(adaptive, [0, 0]);
-  assert.ok(shielded.some((s) => s.layerId === 'layer-1'), 'Silica annulus must remain');
+  assert.ok(
+    shielded.some((s) => s.layerId === 'layer-1'),
+    'Silica annulus must remain',
+  );
   assert.ok(
     shielded.some((s) => s.layerId === 'base' && s.z1 < 40),
     'Si must laterally undercut the originally oxide-covered disk',
