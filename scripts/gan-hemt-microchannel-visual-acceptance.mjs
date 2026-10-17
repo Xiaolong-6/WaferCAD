@@ -514,11 +514,14 @@ try {
   try {
     await page.waitForFunction(
       () => {
-        const state = window.WaferCadV2Workstation?.snapshot();
+        const dataset = document.getElementById('threeHost')?.dataset;
+        // The public Workstation inspection snapshot intentionally omits
+        // project-level assemblyWires. Assert the actual WebGL scene build
+        // rather than a field absent from that diagnostics projection.
         return (
-          state?.assemblyWires?.length === 2 &&
-          document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2' &&
-          document.getElementById('threeHost')?.dataset.assemblyWireEndcapCount === '4'
+          dataset?.renderState === 'ready' &&
+          dataset?.assemblyWireBuiltCount === '2' &&
+          dataset?.assemblyWireEndcapCount === '4'
         );
       },
       null,
