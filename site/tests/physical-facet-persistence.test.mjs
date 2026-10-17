@@ -271,7 +271,19 @@ test('invalid physical descriptors, modified regions and unsupported UI import f
     readProjectFile({ size: Buffer.byteLength(text), text: async () => text }),
     /not yet supported in the production Workstation/,
   );
-  const legacy = fixture(false);
+  const previewImport = await readProjectFile(
+    { size: Buffer.byteLength(text), text: async () => text },
+    { experimentalPhysicalFacetReadOnly: true },
+  );
+  assert.deepEqual(
+    previewImport.model.experimentalPhysicalFacetOwner,
+    pristine.model.experimentalPhysicalFacetOwner,
+  );
+  assert.deepEqual(
+    sectionContours(previewImport.model, [-6.4, 0], [6.4, 0]),
+    sectionContours(pristine.model, [-6.4, 0], [6.4, 0]),
+  );
+    const legacy = fixture(false);
   const data = serializeProject(legacy);
   assert.deepEqual(
     (await readProjectFile({ size: Buffer.byteLength(data), text: async () => data })).model,
