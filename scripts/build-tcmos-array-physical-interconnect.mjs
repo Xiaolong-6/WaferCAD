@@ -176,13 +176,15 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   for (const group of supplementary) {
     project.layout.elements.push(...group.rectangles.map((entry) => ({
       kind: 'polygon',
-      sourceCell: 'TCMOS_ROUTED_4X4_ILLUSTRATIVE',
+      // All geometries belong to the active root cell; a fictitious disconnected
+      // sourceCell would silently drop these supplemental polygons on GDS/OAS.
+      sourceCell: project.layout.root,
       layer: group.layer, datatype: 0,
       points: rectPoints(entry.rect),
     })));
     project.layout.combos.push({
-      key: group.layer + '|0',
-      cell: 'TCMOS_ROUTED_4X4_ILLUSTRATIVE',
+      key: project.layout.root + '|' + group.layer + '|0',
+      cell: project.layout.root,
       layer: group.layer, datatype: 0, count: group.rectangles.length,
     });
   }
@@ -191,6 +193,9 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     layer: g.layer, datatype: 0,
     color: palette[index], mode: 'fill', opacity: 0.72,
   })));
+  project.selectedLayerKeys = [
+    ...new Set([...project.selectedLayerKeys, ...supplementary.map((g) => g.layer + '|0')]),
+  ];
   project.layout.name = 'T-CMOS 4x4 — illustrative routed stack (original SVG preserved)';
   project.name = 'T-CMOS inverter · 4×4 POST-RECIPE ROUTED PHYSICAL PROTOTYPE';
   project.section = { a: [-21, -16], b: [-21, 16] };
