@@ -6,6 +6,7 @@ import {
 } from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
+import { drawPlanGrid } from './plan-grid.js';
 import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
 import {
   electricalRegionSectionBands,
@@ -51,8 +52,25 @@ export function createPlanRenderers({
   formatXY,
   xyText,
   xyUnitLabel,
+  canvasTheme = false,
 }) {
   const $ = (id) => root.getElementById(id);
+  const canvasColors = (canvas) => {
+    // Shared renderer is also called by the legacy adapter. Only v2 opts in.
+    const style = canvasTheme ? getComputedStyle(canvas) : null;
+    const color = (name, oldValue, newValue) =>
+      canvasTheme ? style.getPropertyValue(`--wc-canvas-${name}`).trim() || newValue : oldValue;
+    return {
+      minor: color('grid-minor', '#edf1f5', '#edf1f5'),
+      major: color('grid-major', '#dbe2ea', '#dbe2ea'),
+      axis: color('grid-axis', '#9fb0c1', '#9fb0c1'),
+      solid: color('outline-solid', '#96a1ad', '#7f93a8'),
+      dashed: color('outline-dashed', '#aab3bd', '#9fb0c1'),
+      section: color('section-highlight', '#cc5062', '#e8590c'),
+      roiStroke: color('section-highlight', '#d65361', '#e8590c'),
+      roiFill: color('roi-fill', 'rgba(214,83,97,.05)', 'rgba(232,89,12,.05)'),
+    };
+  };
 
   function canvasPathMulti(ctx, geom, v, back = false) {
     ctx.beginPath();
@@ -63,7 +81,7 @@ export function createPlanRenderers({
           i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
         });
   }
-  function drawBaseOutline(ctx, v, { fill = true, back = false } = {}) {
+  function drawBaseOutline(ctx, v, { fill = true, back = false, colors } = {}) {
     const { model } = getState();
     ctx.save();
     canvasPathMulti(ctx, model.boundary, v, back);
@@ -73,7 +91,7 @@ export function createPlanRenderers({
     } else {
       ctx.setLineDash([5, 4]);
     }
-    ctx.strokeStyle = fill ? '#96a1ad' : '#aab3bd';
+    ctx.strokeStyle = fill ? colors.solid : colors.dashed;
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
@@ -108,13 +126,13 @@ export function createPlanRenderers({
       ctx.stroke();
     }
   }
-  function drawRoi(ctx, v, back = false) {
+  function drawRoi(ctx, v, back = false, colors) {
     const { roi, roiDraft, sectionEditEnabled, roiTool } = getState();
     if (!roi && !roiDraft) return;
     const r = roiDraft || roi;
     ctx.save();
-    ctx.strokeStyle = '#d65361';
-    ctx.fillStyle = 'rgba(214,83,97,.05)';
+    ctx.strokeStyle = colors.roiStroke;
+    ctx.fillStyle = colors.roiFill;
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -143,7 +161,7 @@ export function createPlanRenderers({
       for (const point of Object.values(roiHandlePoints(roi))) {
         const q = worldToCanvas(point, v, back);
         ctx.fillStyle = '#fff';
-        ctx.strokeStyle = '#d65361';
+        ctx.strokeStyle = colors.roiStroke;
         ctx.fillRect(q[0] - 5, q[1] - 5, 10, 10);
         ctx.strokeRect(q[0] - 5, q[1] - 5, 10, 10);
       }
@@ -422,7 +440,8 @@ export function createPlanRenderers({
     const { model, activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
-      v = viewport(w, h, 'mask');
+      v = viewport(w, h, 'mask'),
+      colors = canvasColors(c);
     ctx.clearRect(0, 0, w, h);
     if (validateExperimentalPhysicalFacetModel(model)) {
       // The fixed read-only lab offers physical 3D and Section only. Refuse
@@ -433,6 +452,7 @@ export function createPlanRenderers({
       c.dataset.physicalFacetUnsupported = 'true';
       return;
     }
+    if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
 
     // Alignment reference: current process surface topology. Rough areas get a
     // subtle neutral darkening so they read as wafer topography without changing
@@ -483,11 +503,13 @@ export function createPlanRenderers({
     const c = $('mainCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'main'),
-      back = activeFace === 'back';
+      back = activeFace === 'back',
+      colors = canvasColors(c);
     c.dataset.xPxPerUm = String(v.s);
     $('mainCoords').style.bottom = `${$('mainPanel').clientHeight - c.offsetTop - h + 26}px`;
     ctx.clearRect(0, 0, w, h);
-    drawBaseOutline(ctx, v, { fill: false, back });
+    if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
+    drawBaseOutline(ctx, v, { fill: false, back, colors });
     if (isArrayModel(model)) drawArrayPlan(ctx, v, back);
     else {
       const patches = surfaceGroups(model, activeFace);
@@ -527,15 +549,15 @@ export function createPlanRenderers({
     ctx.save();
     ctx.setLineDash([5, 4]);
     canvasPathMulti(ctx, model.boundary, v, back);
-    ctx.strokeStyle = '#aab3bd';
+    ctx.strokeStyle = colors.dashed;
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
     if (!readOnlyPreview) {
-      drawRoi(ctx, v, back);
+      drawRoi(ctx, v, back, colors);
       const a = worldToCanvas(section.a, v, back),
         b = worldToCanvas(section.b, v, back);
-      ctx.strokeStyle = '#cc5062';
+      ctx.strokeStyle = colors.section;
       ctx.lineWidth = 2.3;
       ctx.beginPath();
       ctx.moveTo(...a);
