@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 function workflow(name) {
@@ -66,10 +66,14 @@ test('visual evidence is explicitly unreviewed, never a merge gate', () => {
 });
 
 test('heavy PR scopes ignore documentation tests and isolated screenshot collection', () => {
+  assert.equal(
+    existsSync(new URL('../../.github/workflows/ui-v2-d1.yml', import.meta.url)),
+    false,
+    'Deprecated D1 workflow is retired, not reintroduced as a passing gate',
+  );
   for (const name of [
     'ui-v2-stage-c-m4.yml',
     'ui-v2-main-mask.yml',
-    'ui-v2-d1.yml',
     'example-recipe-reconstruction.yml',
     'native-fig3-full-replay.yml',
   ]) {
@@ -80,7 +84,6 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
   for (const name of [
     'ui-v2-stage-c-m4.yml',
     'ui-v2-main-mask.yml',
-    'ui-v2-d1.yml',
     'ui-v2-three.yml',
   ]) {
     const source = workflow(name).replaceAll('"', "'");
