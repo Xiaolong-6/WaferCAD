@@ -268,6 +268,10 @@ try {
         mobileInitial.model,
         'Mobile Add navigation must not change scientific material geometry',
       );
+      // Compact pane navigation restores document scroll after two animation
+      // frames; capture the settled editor, not the stale View scroll offset.
+      await waitForPaint(page);
+      await page.waitForFunction(() => window.scrollY <= 1, null, { timeout: 5000 });
       await shot(page, 'mobile-add-opens-process');
       report.cases.push({ label: 'mobile-main-add-to-process', status: 'pass' });
       await page.locator('.p-nav [data-action="return-results"]').click();
