@@ -15,7 +15,7 @@ const shell = createPhysicalFacetShellQuery(
 );
 const views = [
   { id: 'shellFront', face: 'front', minX: -6.2, maxX: 6.2, minZ: 125, maxZ: 130.6, steps: 54 },
-  { id: 'shellRoi', face: 'front', minX: -0.55, maxX: 0.55, minZ: 129, maxZ: 130.18, steps: 30 },
+  { id: 'shellRoi', face: 'front', minX: -0.55, maxX: 0.55, minZ: 129, maxZ: 130.18, steps: 120 },
   { id: 'shellBack', face: 'back', minX: -6.2, maxX: 6.2, minZ: -130.6, maxZ: -125, steps: 54 },
 ];
 const evidence = { kind: shell.descriptor.kind, sourceTriangleCount: shell.sourceTriangleCount, views: [] };
