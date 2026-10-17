@@ -1,5 +1,5 @@
-name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 8: verify repeated local CNT template plus corrected narrow invariant import.
+name: T-CMOS 4x4 validated project sync (temporary)
+# One-shot scoped Recovery / scientific acceptance and verified 4x4 project synchronization.
 
 on:
   push:
@@ -7,11 +7,13 @@ on:
     paths:
       - '.github/workflows/tcmos-recipe-science-probe-once.yml'
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   recipe-science:
+    if: github.repository == 'Xiaolong-6/WaferCAD'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -40,6 +42,22 @@ jobs:
             sleep 1
           done
           node scripts/tcmos-array-recipe-browser-acceptance.mjs
+      - name: Commit only the verified 4x4 Recipe + History project
+        env:
+          TARGET_BRANCH: feat/tcmos-ternary-inverter-example-20261014
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$TARGET_BRANCH"
+          test -s test-results/tcmos/tcmos-4x4-replayed.wafercad
+          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('test-results/tcmos/tcmos-4x4-replayed.wafercad'));if(p.model.kernel!=='vector-2.5d-array-v1'||p.layout.elements.length!==3712||p.processRecipe.steps.length!==23||p.snapshotBranches.nodes.length<23)throw Error('The generated file is not the full accepted Recipe+History');"
+          cp test-results/tcmos/tcmos-4x4-replayed.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-inverter-4x4-replayed.wafercad
+          git add -- examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-inverter-4x4-replayed.wafercad
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "test(tcmos): persist accepted native 4x4 Recipe and Recovery geometry"
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          fi
       - name: Upload the exact experimental candidate
         if: always()
         uses: actions/upload-artifact@v6
