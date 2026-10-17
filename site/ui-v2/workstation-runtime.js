@@ -1,5 +1,7 @@
 // One project owner. View facades isolate gesture state while sharing actual project references.
-import { readProjectFile } from '../project-io.js';
+import { readProjectFile, serializeProject } from '../project-io.js';
+import { CURRENT_PROJECT_VERSION } from '../project-schema.js';
+import { attachExperimentalPhysicalFacetOwner } from '../physical-facet-model.js';
 import { createProjectStateController } from '../controllers/project-state-controller.js';
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';
@@ -28,6 +30,49 @@ export async function loadWorkstationProject() {
       planViews: { main: { zoom: 1, panX: 0, panY: 0 }, mask: { zoom: 1, panX: 0, panY: 0 } },
     },
   };
+}
+
+// Internal laboratory route only: serializes and reopens a fixed physical
+// model through the actual project reader. Never accepts URLs or user files.
+// The calling Workstation must use read-only preview to avoid unsupported
+// Process, partial planar views and persistent lease/cache writes.
+export async function loadExperimentalPhysicalFacetPreview() {
+  const initial = await loadWorkstationProject();
+  const model = attachExperimentalPhysicalFacetOwner(
+    createModel({ shape: 'rect', width: 12.8, height: 12.8, thickness: 251 }),
+    {
+      layerId: 'base',
+      pitch: 6.4,
+      height: 4.5,
+      bottomPlaneZ: -125.5,
+      topPlaneZ: 125.5,
+      domain: { minX: -6.4, maxX: 6.4, minY: -6.4, maxY: 6.4 },
+    },
+  );
+  const data = {
+    ...initial.data,
+    format: 'WaferCAD-vector',
+    version: CURRENT_PROJECT_VERSION,
+    name: 'Physical Si facet (read-only lab)',
+    model,
+    activeCell: initial.data.layout.root,
+    section: { a: [-6.4, 0], b: [6.4, 0] },
+    display: {
+      xyUnit: 'um',
+      sectionCollapse: { top: 118, bottom: -118, enabled: true },
+      sectionScaleMode: 'auto',
+      sectionShowBorders: true,
+      threeOpacity: 1,
+      threeShowBorders: false,
+    },
+  };
+  const text = serializeProject(data);
+  const bytes = new TextEncoder().encode(text);
+  const project = await readProjectFile(
+    bufferBackedProjectFile(bytes.buffer, 'physical-facet-readonly.wafercad'),
+    { experimentalPhysicalFacetReadOnly: true },
+  );
+  return { source: 'internal-physical-facet-readonly', hash: '', data: project };
 }
 
 export async function loadBundledProject(
