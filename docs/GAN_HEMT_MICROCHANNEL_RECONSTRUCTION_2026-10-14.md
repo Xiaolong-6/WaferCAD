@@ -7,7 +7,7 @@
 - Main figures: article Fig. 1 (chip and interposer design) and Fig. 2(a–i) (DRIE, wafer bonding, oxidation, metallization and assembly).
 - Supplement: Fig. S-1 (HEMT gate/source/drain and backside grounds), Fig. S-5 (GSG pads and gold-wire bonding).
 
-This is a geometry-first reconstruction of stepped coolant voids and a representative integrated HEMT. It is not original device GDS, a calibrated fabrication flow or an ANSYS thermal/CFD reproduction.
+This is a geometry-first reconstruction of stepped coolant voids and a representative integrated HEMT. It is not original device GDS, a calibrated fabrication flow or an ANSYS thermal/CFD reproduction. **PR #229 scope: native CAD geometry, paper-supported dimensions, editable Example/History and real Workstation rendering. Retain existing Au wire bonding; manufacturing-process fidelity, native two-wafer Bond, circuit simulation, metallurgy, package sealing and CFD are NOT merge blockers for this Example.**
 
 ## Directly reported dimensions
 
@@ -20,6 +20,7 @@ This is a geometry-first reconstruction of stepped coolant voids and a represent
 | Straight top channel width / spacing | 30 / 30 µm (paper main text)                       | Six illustrative 30 µm channels, 30 µm apart                    |
 | HEMT chip dimensions                 | 1120 × 878.5 × 100 µm                              | XY chip footprint; SiC 99 µm + GaN 1 µm as structural surrogate |
 | HEMT active region                   | 303 × 393 µm                                       | Mask dimension                                                  |
+| Source–drain spacing                 | 6 µm (paper abstract / Fig. 1b)                     | **Not reconstructed as a local 6 µm contact gap**; current outer S/D contact pads are schematic |
 | Gate fingers                         | Ten, each 0.5 µm gate length and 300 µm gate width | Ten 0.5 × 300 µm mask rectangles                                |
 | Interposer Ti/Cu                     | 200 nm / 500 nm; followed by Au                    | Native idealized Ti/Cu conformal geometry; Au routing unmodeled |
 | Water and measured operating point   | 3 mL/min; ~7.5 V, 0.8 A; 93.8 °C maximum           | Metadata only, never predicted                                  |
@@ -30,7 +31,7 @@ The abstract uses "pitch" for the 30 µm microchannel parameter while the main d
 
 ## Geometrical assumptions and limits
 
-1. Interposer XY 6000 × 5000 µm is a representative viewing field inferred from the published photographs and scale markers, not a separately reported precision dimension.
+1. The nominal **6000 × 5000 µm** interposer follows the explicit **6 mm × 5 mm** dimension arrows in Fig. 2(h). These are photograph-labeled outer dimensions, **not** original GDS coordinates or a claim of micrometre-accurate die-edge metrology.
 2. True direct bonding of two separately patterned 400 µm wafers is unavailable as one current Kernel operation. The construction begins with a 400 µm HR Si base, etches a 700 × 900 µm lower cavity 200 µm deep, then adds four 100 µm Si flat bridges with etched openings. This creates canonical Z voids and an 800 µm final interposer. It is a **single-model surrogate**, not the reported manufacturing sequence.
 3. Intermediate transition masks 600 × 860 and 480 × 820 µm are inferred. The supplied article gives only the top 380 × 760 and bottom 700 × 900 µm dimensions numerically.
 4. Six parallel top channels and their exact positions are inferred. Only 30 µm width/spacing and alignment with gate fingers are reported. Six 30 µm-wide strips with five 30 µm solid ribs span **330 µm**, while the paper gives a **380 µm** overall top microchannel footprint. The remaining **50 µm**, represented by nominal 25 µm solid margins on both lateral edges, is a _geometric interpretation_, not a measured original-mask feature; the Mask layer 13 itself spans 330 × 760 µm, not a continuously etched 380 × 760 µm rectangle. Do not describe the modeled top etch as an exact 380 µm opening. Original GDS and the exact channel count are unavailable. **Fig. 1(c) / Fig. 2(h) show symmetric curved inlet/outlet diversion structures**, and the Example now includes a separate top-cap DRIE step using Mask 22: twelve rounded diversion branches (six on each end), plus two central 110 × 50 µm collection throats at Y = ±425 µm. Each branch is a 24 µm-wide piecewise curve with a nested U-shaped return bend around the collecting throat, spanning approximately Y = ±355 to ±478 µm for the outer channels. The inside lanes take shorter arcs. The source contours are inferred, and the geometry is mirrored at both ends. The coordinates and curve geometry are explicitly **inferred**, not the authors' GDS. The published figure has its inlet/outlet horizontally; the Example is rotated 90° in XY so flow is along Y.
@@ -58,8 +59,8 @@ tiers, and vertical tubular shapes at four remote TSV sites.
   Real stepped TSV dimensions, copper electroplating, electrical contacts,
   NiPaAu elemental composition, oxide isolation and measured conductivity remain **unverified**.
 - **SiC/water boundary:** water is not modeled as a material. In the
-  representative channel center, the SiC bottom is at Z = 605 µm, above a
-  5 µm AuSn-support-defined fluid stand-off. A material occupancy test verifies
+  representative channel center, the SiC bottom is at Z = 606.7 µm, above a
+  5 µm AuSn-support-defined fluid stand-off (the interposer's top plated face is at Z = 601.7 µm). A material occupancy test verifies
   an empty volume immediately beneath that SiC bottom surface. The fluid is
   exposed to the _SiC substrate backside_, not directly to the GaN epitaxy.
 - **Inspection only:** the saved 3D cutaway ROI is X = 0…650 µm and Y = −1650…1650 µm,
@@ -118,11 +119,11 @@ The dedicated test checks real four-level cavity Z gaps, two separated remote ba
 
 ## Verification and release boundary
 
-The following checks have **historical, commit-specific evidence**, including the original geometry run `38580570948` at `86dd56d` and later TSV-focused science run [38738607990](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38738607990) for the Cu-filled surrogate. They do **not** establish current-HEAD CI or final paper-level visual acceptance:
+The following checks describe the **verified pre-audit feature HEAD `3ef98d736e844b572e85baf77adf1ac1ebf2d94e`**, not automatic acceptance of any newer commit. It passed [focused science, immutable Example and real Chromium](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39027759706), [Quality](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39027759739), [Browser regression](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39027759721), and [visual-first screenshots](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39027759724). New HEADs require relevant gates:
 
 - [x] Full Kernel build and model-schema validation without process errors.
 - [x] Project Save/Reload and Recipe Run All from Base; identical final material
-      occupancy for 11 materials and 12 Z slabs (maximum mismatched XY area: 0 µm²).
+      occupancy for **29 materials and 71 Z slabs** (maximum mismatched XY area: 0 µm²).
 - [x] Canonical four-level empty cavities and remote backside ports, four idealized Ti/Cu-lined and Cu-filled TSV columns, open coolant paths and exposed SiC backside checked against material occupancy and void-connectivity invariants in the relevant focused runs.
 - [x] Editable Mask and History preserved; GDSII/OASIS export and source/inferred
       dimensions checked in dedicated tests.
@@ -134,6 +135,8 @@ The following checks have **historical, commit-specific evidence**, including th
       experimental thermal/flow measurements are never claimed as WaferCAD predictions.
 
 ### Explicitly out of scope or unverified
+
+**These disclosures are not release blockers for PR #229.** The closure criteria are native geometric consistency and truthful source/inference labels. Manufacturing, metallurgy and simulations are independent work.
 
 - [x] **Inferred structural fan-outs:** a two-ended curved diversion network with 12 branches, two throats and all six channel connections is modeled. No original GDS is available.
 - [ ] **Original hydraulic mask and uniformity:** precise author diversion contours, pressure drop, turbulence/laminar regime and uniformity of parallel-channel flow remain **unverified**.
@@ -151,19 +154,34 @@ The following checks have **historical, commit-specific evidence**, including th
 | Four electrical TSVs                                                  | Local inferred SiO₂, 200 nm Ti / 500 nm Cu walls, 35 µm conformal Cu closure                                                      | Verify XY/Z occupancy, seed-wall rings, planarity and top/bottom conductor termination; no conductivity claim                                       |
 | High-temperature SiO₂ insulating layer after wafer bonding            | Unmasked exposed-front/back SiO₂ 0.5 µm and TSV local liner; sampled coolant voids remain open                                    | Source-order, oxide rims and coolant-path tests pass; dielectric isolation and film quality remain unverified                                       |
 | Ti/Cu, subsequent Au and NiPaAu interposer plating                    | Double-sided Ti/Cu plus inferred two-face Au and TSV-local composite NiPaAu cap solids; metallurgy and contact physics unverified | Define paper-supported versus inferred dimensions, 3D termination and material continuity                                                           |
-| HEMT backside via and backside attachment metal                       | Not modeled                                                                                                                       | Reproduce device-side contact through thinned SiC without falsely covering the active coolant surface                                               |
+| HEMT backside via and backside attachment metal                       | Not modeled                                                                                                                       | **Out of Example scope**; do not claim a physical ground/electrical path. Preserve existing open coolant.                                             |
 | Two independently mounted GSG Pad chips and Au HEMT-to-GSG wire bonds | Two separate inferred GSG die bodies, three Au pads each, and two 3D Au tubes (12 µm diameter inferred) with top-metal anchors    | Check 3D tubes in real Chromium, endpoint occupancy, inferred dimensions, and unknown electrical net assignment (TSV ground path separate)          |
-| Physical bond of two separately processed 400 µm Si wafers            | One interposer with four virtual bridge tiers                                                                                     | Depend on the native Bond work in PR #264; preserve wafer provenance, source masks and replay                                                       |
+| Physical bond of two separately processed 400 µm Si wafers            | One interposer with four virtual bridge tiers                                                                                     | **Out of PR #229 scope**. PR #264 is a separate native Bond capability, not a prerequisite for this geometric surrogate.                              |
 | Paper Fig. 1(a) visual correspondence                                 | Partial structural surrogate                                                                                                      | Independently inspect true coolant Section, transverse TSV Section and HEMT close-up; explicitly label inferred dimensions and different cut planes |
 
 A geometrically continuous 3D Au tube touching two metal pads is **not evidence of a verified electrical connection**. A claimed route needs material occupancy through intermediate XY/Z locations, a physically credible contact interface, replay fidelity and saved-project equivalence. A registered layer name is not sufficient.
+
+### Source-grounded geometry acceptance and closure (2026-10-17)
+
+**Target:** one GaN HEMT, two independent GSG Pad die, and four-tier geometrically open Si microchannels in native WaferCAD; retain the two already-implemented solid Au wire loops. This is not a wafer-scale fabrication, electrical, thermal or packaging demonstrator.
+
+**Fig. 1 / Fig. 2 comparison:**
+
+- **Source-reported or photograph-labeled:** 6 × 5 mm interposer (Fig. 2h outer arrows), 1120 × 878.5 µm HEMT, 100 µm thinned die, 10 × (0.5 × 300 µm) gate fingers, 6 µm Source–Drain spacing, 303 × 393 µm active area, ~800 µm interposer, 700 × 900 µm bottom cavity, 380 × 760 µm top channel footprint and 30 µm channel width/spacing. The six-channel count, two intermediate transition footprints, fan-out masks, TSV squares, GSG die dimensions and Au wire-loop routing are **inferred**.
+- **Top 380 versus actual etched 330 µm:** six 30 µm open stripes separated by five 30 µm Si ribs span 330 µm. The additional nominal 25 µm unetched lateral margin on either side is a **modeling interpretation**, not author-mask metrology. The original channel count/GDS is unpublished. Do not quietly advertise a continuous 380 µm etched opening or alter open flow topology just to match a bounding number.
+- **Missing fine contact geometry:** the present Mask 19 is only two illustrative exterior Source/Drain pad rectangles at X = ±225 µm; the 6 µm local Source–Drain clearance cited by the paper is **not physically modeled**, even though all ten 0.5 × 300 µm gate rectangles are physical. The existing gate zone is therefore a geometric **schematic at contact resolution**. A later local correction must preserve existing Au wire endpoint anchors and be source-constrained, not invented to make a test green. Until then the Example cannot claim lithographic parity for the active region.
+- **Actual physical boundary:** archived final geometry and tests place the SiC bottom at **Z = 606.7 µm** and the plated interposer top at **Z = 601.7 µm**, with an open void in between and perimeter AuSn supports, not a solid coolant object or GaN directly exposed to water.
+
+**Satisfied geometric/interaction contract at audited HEAD:** true stepped Z voids and both rear ports, connections from both ports to six modeled top channels, solid inter-channel ribs, SiC above exposed coolant, two separate GSG dies, two nonfloating Au wire solids, Mask/History/Recipe save/reload, GDSII/OASIS export, exact material occupancy on Recipe replay, and real Chromium 3D/Main/Mask/Section inspections including opaque/transparent × Border OFF/ON. Screenshots verify presence, clipping and visibility; they cannot resolve 25 nm AlGaN or prove the 6 µm local Source–Drain gap.
+
+**Closure path, no scope creep:** review true science/geometry discrepancies; inspect key screenshots at correct scales; reconcile the shared model fixes against PR #311; bring the existing PR #229 branch up to Main in one batch; run the necessary targeted gates and final Quality; request explicit merge approval. Native two-wafer Bond (#264), metallurgical contact completion, full electrical nets, CFD and cosmetic global Border refactoring remain outside this PR.
 
 ### Current integration and evidence gate
 
 - The branch remains **Draft**. GitHub's exact PR HEAD, mergeability and required CI checks must be re-verified after each documentation or asset update; a passed older focused run is never evidence that a new HEAD is green.
 - Inspect **actual rendered Chromium evidence** independently for three physically different scales/cut planes: longitudinal coolant ports/manifold, transverse Cu-filled TSVs, and the locally magnified HEMT with a thickness legend. A combined Fig. 1(a)-style view must not imply a single co-planar cross-section or scale 25 nm / 150 nm films up to false thicknesses.
 - A final paper comparison must explicitly note the absent wafer-to-wafer direct bond, missing Au/TSV-to-pad electrical routes, absent original GDS, inferred dimensions and no thermal/CFD/electrical validation. Passing geometry and replay checks alone does not close these scientific gates.
-- Reconcile with contemporary Main in a controlled integration branch and run the necessary targeted scientific/visual checks before broader release Quality. Do not merge or deploy without explicit approval.
+- Reconcile contemporary Main **on the existing PR #229 branch, not auxiliary integration branches**, and separately review the overlapping Kernel work in PR #311. Run targeted scientific/visual checks before final release Quality. Do not merge or deploy without explicit approval.
 
 ### Figure review
 
