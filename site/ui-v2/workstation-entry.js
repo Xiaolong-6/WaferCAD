@@ -10,6 +10,9 @@ import { createWorkstationThreeView } from './three-view.js';
 import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createWorkstationWorkflow } from './workstation-workflow.js';
 import { createAssemblyBondDraftRecovery } from '../wafer-assembly-draft-recovery.js';
+import { readStartupFile, removeStartupFile } from '../startup-file.js';
+import { openStagedAssemblyProject } from '../assembly-startup-routing.js';
+import { readAssemblyPreviewFile } from './assembly-preview.js';
 import { mountAssemblyBondDraftControls } from './assembly-bond-draft.js';
 import {
   assemblyPreviewZExtent,
@@ -50,11 +53,16 @@ try {
     }
   })();
   if (assemblyPreview) document.body.dataset.assemblyPreview = 'true';
+  const stagedAssembly =
+    assemblyPreview && params.get('start') === 'staged'
+      ? await openStagedAssemblyProject(readStartupFile, readAssemblyPreviewFile)
+      : null;
   const project = assemblyPreview
-      ? await chooseAssemblyPreviewFile(document.getElementById('app-root'), {
+      ? stagedAssembly ||
+        (await chooseAssemblyPreviewFile(document.getElementById('app-root'), {
           recovery: assemblyDraftRecovery,
           allowStandalone: assemblyEdit,
-        })
+        }))
       : readOnlyPreview
         ? await loadBundledProject(params.get('example'), undefined, { preview: true })
         : await loadWorkstationProject(),
@@ -579,11 +587,14 @@ try {
       });
       refreshPostBondProcess();
       status(
-        'Assembly Bond draft · source-bound Process preview; export all Variants to keep edits.',
+        'Assembly Workspace · source-bound Bond and Process; save complete .wafercad to retain Variants.',
       );
     } else {
       status('Bonded Assembly · origin colors are display-only; no editor or autosave.');
     }
+    // A staged project is consumed only after its provenance was validated,
+    // its isolated durable writer was installed, and the editor is mounted.
+    if (stagedAssembly) await removeStartupFile();
   }
   if (readOnlyPreview && window.parent !== window) {
     window.addEventListener('message', (event) => {

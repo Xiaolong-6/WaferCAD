@@ -517,6 +517,47 @@ try {
       assert.deepEqual(workspace.graph, savedGraph);
       assert.equal(workspace.graph.sources.length, 4);
       assert.equal(workspace.graph.branches[0].postBondCursor, 1);
+      // Normal Welcome Open Project must route the *same* full Workspace to
+      // the source-aware editor without passing through generic History.
+      // The staged IndexedDB record is consumed only after successful boot.
+      const welcomeTab = await context.newPage();
+      try {
+        await welcomeTab.goto(`${base}/index.html`, { waitUntil: 'domcontentloaded' });
+        await welcomeTab.locator('#welcomeProjectInput').setInputFiles({
+          name: workspaceFile.suggestedFilename(),
+          mimeType: 'application/json',
+          buffer: workspaceBytes,
+        });
+        await welcomeTab.waitForURL(/assemblyPreview=1&bondEdit=1&start=staged/, {
+          timeout: 30000,
+        });
+        await welcomeTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+          timeout: 90000,
+        });
+        const started = await welcomeTab.evaluate(async () => ({
+          preview: window.WaferCadV2Workstation.snapshot().assemblyPreview,
+          ordinaryWritable: window.WaferCadV2Workstation.snapshot().workflow.writable,
+          stagedFile: await import('./startup-file.js').then((module) => module.readStartupFile()),
+        }));
+        assert.equal(started.preview.readOnly, false);
+        assert.equal(started.ordinaryWritable, false);
+        assert.equal(started.stagedFile, null, 'staging removed only after Assembly boot');
+        await welcomeTab.locator('.assembly-bond-draft-tools summary').click();
+        await welcomeTab
+          .locator('.assembly-bond-post-process-count')
+          .filter({ hasText: /Process 1 \/ 2/ })
+          .waitFor();
+        assert.equal(
+          await welcomeTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(),
+          2,
+        );
+        await welcomeTab.screenshot({
+          path: resolve(output, 'welcome-full-assembly-workspace-native-editor.png'),
+        });
+      } finally {
+        await welcomeTab.close();
+      }
+
       const nativeTab = await context.newPage();
       try {
         await nativeTab.goto(`${base}/app.html?assemblyPreview=1&bondEdit=1`, {

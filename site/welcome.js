@@ -1,5 +1,6 @@
 import { BUNDLED_EXAMPLES } from './bundled-examples.js';
 import { stageStartupFile } from './startup-file.js';
+import { welcomeProjectStartupTarget } from './assembly-startup-routing.js';
 import { versionedExampleAssetPath } from './example-asset.js';
 
 const $ = (id) => document.getElementById(id);
@@ -344,8 +345,12 @@ async function stageAndOpen(file, kind) {
       );
     }
     status(`Preparing ${file.name}…`);
+    const destination =
+      kind === 'project'
+        ? await welcomeProjectStartupTarget(file)
+        : './app.html?start=staged';
     await stageStartupFile(file, kind);
-    globalThis.location.href = './app.html?start=staged';
+    globalThis.location.href = destination;
   } catch (error) {
     console.error(error);
     status(`Could not prepare ${file.name}: ${error.message}`);
