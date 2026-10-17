@@ -160,13 +160,13 @@ components, **not this feature branch's exact integrated release HEAD**.
 
 ## Real native app with offline SwiftShader (diagnostic)
 
-This independent Playwright/Python entrypoint launches **the actual** \`site/app.html\`
+This independent Playwright/Python entrypoint launches **the actual** `site/app.html`
 and its production Three.js 3D renderer. It does not render mock HTML, generate
 independent 3D geometry, modify Chromium administrator policy, or call CI.
 The portable source ZIP includes the script, but **does not bundle a browser
 binary or Python Playwright**. Provide an installed Chromium and Python Playwright.
 
-\`\`\`sh
+```sh
 python3 scripts/offline-native-app-capture.py \
   --root . --browser /usr/bin/chromium \
   --output test-results/offline-native-app \
@@ -175,24 +175,24 @@ python3 scripts/offline-native-app-capture.py \
 # Demand a real HTTPS origin, for projects that need Worker/IndexedDB:
 python3 scripts/offline-native-app-capture.py \
   --root . --output test-results/offline-native-origin --require-origin
-\`\`\`
+```
 
 This tool verifies the **exact Three.js version in app.html's import map**
-against \`node_modules/three\` (currently 0.179.1). A catch-all Playwright
-request route serves only local \`site/\` via
-\`https://wafercad.local/\` and the pinned Three.js
-\`build/\` / \`examples/jsm/\` files via the exact CDN URL. All other
+against `node_modules/three` (currently 0.179.1). A catch-all Playwright
+request route serves only local `site/` via
+`https://wafercad.local/` and the pinned Three.js
+`build/` / `examples/jsm/` files via the exact CDN URL. All other
 requests are denied and recorded; the known optional missing
-\`build-info.json\` is recorded separately. Path traversal and version
+`build-info.json` is recorded separately. Path traversal and version
 mismatch fail closed. No real network access is required.
 
 On Linux the default is **headful Chromium** with an existing X display
 or ephemeral **Xvfb**; ANGLE/SwiftShader software WebGL is enabled.
-Use \`WAFERCAD_CHROMIUM\` or \`--browser\` to pick the exact executable.
-\`--headless\` is optional but may be unable to initialize WebGL.
-The tool captures \`four-view.png\`, a real pointer-drag
-\`three-orbit.png\`, \`three-maximized.png\`, and
-\`native-app.evidence.json\` containing Chromium path/version, WebGL
+Use `WAFERCAD_CHROMIUM` or `--browser` to pick the exact executable.
+`--headless` is optional but may be unable to initialize WebGL.
+The tool captures `four-view.png`, a real pointer-drag
+`three-orbit.png`, `three-maximized.png`, and
+`native-app.evidence.json` containing Chromium path/version, WebGL
 renderer and native context status, SHA-256 image hashes, request
 allowlist/denials, and JS errors. It fails if the four native views,
 3D WebGL, or necessary local resources fail. These images still require
@@ -200,25 +200,25 @@ allowlist/denials, and JS errors. It fails if the four native views,
 hardware acceptance.
 
 **Origin limitation:** If administrator policy blocks the initial
-\`https://wafercad.local/\` navigation, the tool **does not bypass or
-change policy**. Unless \`--require-origin\` was supplied, it falls back
+`https://wafercad.local/` navigation, the tool **does not bypass or
+change policy**. Unless `--require-origin` was supplied, it falls back
 to injecting the unmodified application HTML and real scripts into an
-\`about:blank\` document. Its origin is \`null\`, even though a \`base\`
+`about:blank` document. Its origin is `null`, even though a `base`
 element maps relative source URLs. This case is marked
-\`null-origin-native-diagnostic-only\` and is **not** equivalent to normal
+`null-origin-native-diagnostic-only` and is **not** equivalent to normal
 app-origin visual acceptance. Native 3D and orbit/maximize can still be
 diagnosed. Project files are intentionally **not opened** there:
-module Workers cannot be created from \`null\` origin. No fake Blob
+module Workers cannot be created from `null` origin. No fake Blob
 Worker, storage/locks shim, or fake successful Recovery state is used.
 Example loading, multi-tab coordination, IndexedDB/History/Recovery,
 mobile touch and release gates all remain **unverified**.
 
-With working HTTPS navigation the optional \`--project\` performs an
+With working HTTPS navigation the optional `--project` performs an
 Open-file UI attempt and records a screenshot/Worker errors, but it
 **never automatically marks example scientific or visual acceptance
 complete**. Independent review and the original targeted science gates
 are still required.
 
-Focused checks: \`python3 scripts/offline-native-app-capture.test.py\`.
+Focused checks: `python3 scripts/offline-native-app-capture.test.py`.
 The real Chromium screenshot run is manual and intentionally not part of
 the ordinary unit-test/CI loop.
