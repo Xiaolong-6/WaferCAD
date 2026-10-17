@@ -253,6 +253,25 @@ test('real mask-field footprint is separately recorded from paper SWX/device dim
     assert.ok(scope.fullMaskSiliconFootprintUm.height > 0);
     assert.ok(scope.opticalCrossingGeometryBoundsUm.width > 0);
     assert.ok(scope.actuatorGeometryBoundsUm.height > 0);
+    // Paper optical scope ≠ full access-port envelope. Fixed-stationary
+    // window is anchored at the midpoint of the nominal 900nm OFF slit.
+    assert.ok(Math.abs(scope.stationaryOpticalOriginUm.x) < 1e-10);
+    assert.equal(scope.stationaryOpticalOriginUm.y, -48);
+    assert.ok(Math.abs(scope.photonicMeasurementWindowUm.minX + 11.5) < 1e-10);
+    assert.ok(Math.abs(scope.photonicMeasurementWindowUm.maxX - 11.5) < 1e-10);
+    assert.equal(scope.photonicMeasurementWindowUm.minY, -59.5);
+    assert.equal(scope.photonicMeasurementWindowUm.maxY, -36.5);
+    assert.equal(scope.activeSwxWithinPhotonicWindow, true);
+    assert.equal(scope.accessPortsExtendOutsidePhotonicWindow, true);
+    assert.ok(Math.abs(scope.activeSwxFeatureBoundsUm.width - 9.26) < 1e-10);
+    assert.ok(
+      Math.abs(scope.activeSwxFeatureBoundsUm.height - (state === 'off' ? 6.26 : 5.375)) < 1e-10,
+    );
+    // Preserve the unresolved full-body Y difference. 95um X width alone
+    // must never turn full author-size acceptance green.
+    assert.equal(scope.coreAndActuatorGeometryBoundsUm.width, 95);
+    assert.ok(Math.abs(scope.coreAndActuatorGeometryBoundsUm.height - 68.2) < 1e-10);
+    assert.ok(Math.abs(scope.unregisteredFullSwitchYDifferenceUm - 31.8) < 1e-10);
     assert.ok(
       scope.coreAndActuatorGeometryBoundsUm.width <= scope.fullMaskSiliconFootprintUm.width,
     );
