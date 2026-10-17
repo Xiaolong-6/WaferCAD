@@ -669,6 +669,10 @@ async function importLayoutBuffer(
   return imported;
 }
 
+// Fallback parsing can block the UI thread; keep large files Worker-only.
+// This is only used if the Project Worker cannot even be constructed.
+const MAX_SYNC_PROJECT_IMPORT_BYTES = 8 * 1024 * 1024;
+
 async function readProjectFileTask(file) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
@@ -687,6 +691,16 @@ async function readProjectFileTask(file) {
       abortMessage: 'Project open aborted. The current workspace was not changed.',
       failurePrefix: 'Project open failed',
       transfer: [arrayBuffer],
+      startupFallback:
+        file.size <= MAX_SYNC_PROJECT_IMPORT_BYTES
+          ? async ({ signal }) => {
+              if (signal.aborted) return { aborted: true };
+              // The normal reader performs the same expansion, migration and
+              // strict project/schema validation as project-worker.js.
+              const project = await readProjectFile(file);
+              return signal.aborted ? { aborted: true } : { project };
+            }
+          : null,
     },
   );
   if (task?.aborted) return null;
