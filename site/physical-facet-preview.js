@@ -1,13 +1,10 @@
 // Isolated Chromium visual acceptance surface for #297/#300.
 // Both WebGL triangles and native Section originate from one physical owner.
-import * as THREE from 'three';
+import { createThreeView } from './three-view.js';
 import { createModel } from './model.js';
 import { attachExperimentalPhysicalFacetOwner } from './physical-facet-model.js';
 import { physicalOwnerVolume } from './physical-facet-owner.js';
-import {
-  buildPhysicalFacetPresentation,
-  physicalFacetPresentationZ,
-} from './physical-facet-render-geometry.js';
+import { buildPhysicalFacetPresentation, physicalFacetPresentationZ } from './physical-facet-render-geometry.js';
 import { sectionContours } from './model-view-geometry.js';
 
 const physicalDescriptor = {
@@ -30,69 +27,41 @@ if (!sectionRing || sectionRing.length < 6 || !sceneData.physicalTriangleCount) 
 
 const canvas3d = document.getElementById('physicalThree');
 const canvasSection = document.getElementById('physicalSection');
-const renderer = new THREE.WebGLRenderer({
-  canvas: canvas3d,
-  alpha: false,
-  antialias: true,
-  preserveDrawingBuffer: true,
+// This acceptance page exercises the actual production createThreeView path.
+// Do not instantiate a separate Three.js mesh/renderer here.
+const threeView = createThreeView({
+  host: canvas3d,
+  stats: document.getElementById('physicalThreeStats'),
+  getModel: () => model,
+  getClipGeometry: () => null,
+  getInspection: () => ({ opacity: 1, borders: false, fast: false }),
+  getZCollapse: () => ({ top: 118, bottom: -118, enabled: true }),
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setClearColor(0xf8fafc);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.2, 220);
-camera.up.set(0, 0, 1);
-scene.add(new THREE.HemisphereLight(0xf8fcff, 0xb0bfd0, 2.1));
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
-keyLight.position.set(-13, -22, 34);
-scene.add(keyLight);
-const fillLight = new THREE.DirectionalLight(0xb2d8ed, 1.0);
-fillLight.position.set(20, 11, -13);
-scene.add(fillLight);
-
-const materials = {
-  top: new THREE.MeshStandardMaterial({
-    color: 0x73b0d2,
-    metalness: 0.06,
-    roughness: 0.87,
-    flatShading: true,
-    side: THREE.DoubleSide,
-  }),
-  bottom: new THREE.MeshStandardMaterial({
-    color: 0x6d98b2,
-    metalness: 0.06,
-    roughness: 0.95,
-    flatShading: true,
-    side: THREE.DoubleSide,
-  }),
-  side: new THREE.MeshStandardMaterial({
-    color: 0x9cadbc,
-    metalness: 0,
-    roughness: 0.98,
-    side: THREE.DoubleSide,
-  }),
-};
-for (const [face, array] of Object.entries(sceneData.positions)) {
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute('position', new THREE.BufferAttribute(array, 3));
-  geom.computeVertexNormals();
-  scene.add(new THREE.Mesh(geom, materials[face]));
+const initialized = await threeView.init();
+if (!initialized) throw new Error('Production ThreeView failed to initialize for physical owner');
+await threeView.render();
+if (canvas3d.dataset.renderState !== 'ready' || !canvas3d.dataset.physicalFacetOwner) {
+  throw new Error('Production ThreeView did not commit physical owner geometry');
 }
+const originalView = threeView.getViewState();
+if (!originalView) throw new Error('Production ThreeView did not initialize camera controls');
 
 function setAngle(angle = 'isometric') {
-  switch (angle) {
-    case 'top':
-      camera.position.set(15, -17, 45);
-      break;
-    case 'side':
-      camera.position.set(23, -33, 13);
-      break;
-    default:
-      camera.position.set(27, -35, 25);
-  }
-  camera.lookAt(0, 0, 0);
-  camera.updateProjectionMatrix();
-  renderer.render(scene, camera);
+  const target = originalView.target;
+  const span = Math.hypot(
+    originalView.position[0] - target[0],
+    originalView.position[1] - target[1],
+    originalView.position[2] - target[2],
+  );
+  const directions = {
+    isometric: [0.65, -0.75, 0.72],
+    top: [0.08, -0.16, 1],
+    side: [0.6, -1, 0.2],
+  };
+  const direction = directions[angle] || directions.isometric;
+  const n = Math.hypot(...direction);
+  const position = target.map((component, index) => component + (direction[index] * span) / n);
+  threeView.setViewState({ ...originalView, position, target });
 }
 
 function drawSection() {
@@ -151,17 +120,10 @@ function drawSection() {
   );
 }
 
-function resize() {
-  const bounds = canvas3d.getBoundingClientRect();
-  renderer.setSize(Math.max(2, bounds.width), Math.max(2, bounds.height), false);
-  camera.aspect = Math.max(2, bounds.width) / Math.max(2, bounds.height);
-  camera.updateProjectionMatrix();
-  setAngle(document.body.dataset.angle || 'isometric');
-  drawSection();
-}
 document.body.dataset.angle = new URLSearchParams(location.search).get('angle') || 'isometric';
-resize();
-window.addEventListener('resize', resize);
+setAngle(document.body.dataset.angle);
+drawSection();
+window.addEventListener('resize', drawSection);
 document.body.dataset.physicalFacetReady = 'true';
 document.getElementById('evidenceStatus').textContent = 'Physical owner · verified geometry view';
 window.WaferCadPhysicalFacetEvidence = {
@@ -177,5 +139,12 @@ window.WaferCadPhysicalFacetEvidence = {
   displayedZBreakOnly: sceneData.displayOnlyZBreak,
   frontApexZ: 130,
   backApexZ: -130,
+  rendererKind: 'production-createThreeView',
+  productionHost: {
+    rendererPhase: canvas3d.dataset.renderPhase,
+    rendererState: canvas3d.dataset.renderState,
+    owner: canvas3d.dataset.physicalFacetOwner,
+    triangleCount: Number(canvas3d.dataset.physicalFacetTriangles),
+  },
   setAngle,
 };
