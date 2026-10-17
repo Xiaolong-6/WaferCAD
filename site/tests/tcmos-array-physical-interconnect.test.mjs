@@ -9,7 +9,9 @@ import { buildTcmosPhysicalRoutedVariant } from '../../scripts/build-tcmos-array
 import { readTcmosReferenceMask } from '../../scripts/tcmos-svg-mask.mjs';
 
 await loadGeometryKernel();
-const { pointInMulti } = await import('../vector-geometry.js');
+const { pointInMulti, unionGeometries, difference } = await import('../vector-geometry.js');
+const { geometryArea } = await import('../model.js');
+const { PROJECT_LENGTH_QUANTUM_UM } = await import('../project-io.js');
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { readProjectFile } = await import('../project-io.js');
 const approx = (a, b) => Math.abs(a - b) < 1e-9;
@@ -38,6 +40,27 @@ async function fixture() {
       'Persisted paper-derived source must preserve all 232 exact approved SVG polygons',
     );
     assert.equal(source.model.kernel, 'vector-2.5d-v1');
+    // Important distinction: approved File Mask keeps EXACT SVG vertices,
+    // but the 23-step final physical material is noded to the project's
+    // 0.1 nm persistence grid. The actual M1 occupation must equal the
+    // grid-normalized source, not the unrounded Mask boundary.
+    const m1Layer = source.model.layers.find((layer) => layer.name === 'METAL1 Al');
+    assert.ok(m1Layer);
+    const m1Actual = unionGeometries(source.model.regions
+      .filter((region) => region.stack.some((s) => s.layerId === m1Layer.id))
+      .map((region) => region.geom));
+    const grid = PROJECT_LENGTH_QUANTUM_UM;
+    const quantize = (value) => Number((Math.round(value / grid) * grid).toFixed(4));
+    const m1Reference = unionGeometries(
+      approvedSvg.find((group) => group.name === 'METAL1').shapes.map(({ points }) => {
+        const materialRing = points.map(([x, y]) => [quantize(x), quantize(y)]);
+        return [[materialRing.concat([materialRing[0]])]];
+      }),
+    );
+    assert.ok(geometryArea(difference(m1Reference, m1Actual)) < 1e-12,
+      'Persisted physical M1 is missing source geometry after documented process-grid quantization');
+    assert.ok(geometryArea(difference(m1Actual, m1Reference)) < 1e-12,
+      'Persisted physical M1 has extra geometry after documented process-grid quantization');
     const beforeModel = structuredClone(source.model);
     const beforeLayout = structuredClone(source.layout);
     const beforeHistory = structuredClone(source.snapshotBranches);
