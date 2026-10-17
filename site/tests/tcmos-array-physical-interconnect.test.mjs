@@ -3,6 +3,7 @@
 // replayable 23-step routed Recipe/History.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { buildTcmosPhysicalRoutedVariant } from '../../scripts/build-tcmos-array-physical-interconnect.mjs';
 
@@ -11,9 +12,35 @@ const { pointInMulti } = await import('../vector-geometry.js');
 const { validateProjectFile, validateProcessModel } = await import('../project-schema.js');
 const { readProjectFile } = await import('../project-io.js');
 const approx = (a, b) => Math.abs(a - b) < 1e-9;
+// Prefer the APPROVED persisted result of the existing 23-step reconstruction
+// over recomputing 23 process steps for every routed science test. The separate
+// reconstruction tests still enforce source Recipe/History/rebuild parity.
+const approvedProjectUrl = new URL(
+  '../../examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad',
+  import.meta.url,
+);
 let generated;
 async function fixture() {
-  if (!generated) generated = buildTcmosPhysicalRoutedVariant();
+  if (!generated) generated = (async () => {
+    const source = await readProjectFile(new Blob([await readFile(approvedProjectUrl)]));
+    validateProjectFile(source);
+    assert.equal(source.processRecipe?.steps?.length, 23,
+      'The routed candidate must come from the approved 23-step source project');
+    assert.equal(source.layout.elements.length, 232);
+    assert.equal(source.model.kernel, 'vector-2.5d-v1');
+    const beforeModel = structuredClone(source.model);
+    const beforeLayout = structuredClone(source.layout);
+    const beforeHistory = structuredClone(source.snapshotBranches);
+    const routed = await buildTcmosPhysicalRoutedVariant(source);
+    assert.deepEqual(source.model, beforeModel,
+      'Routed physical prototype mutated the original 23-step material model');
+    assert.deepEqual(source.layout, beforeLayout,
+      'Routed physical prototype changed the approved original File Mask');
+    assert.deepEqual(source.snapshotBranches, beforeHistory,
+      'Routed prototype mutated source Recovery/History');
+    assert.equal(routed.report.originalModelKernel, 'vector-2.5d-array-v1');
+    return routed;
+  })();
   return generated;
 }
 test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, source intact', async () => {
