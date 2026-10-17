@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 5: canonicalize translated masks on existing CAD precision grid; keep strict Schema.
+# Iteration 6: preserve original SVG and opt-in CNT process grid on indexed array masks.
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Geometry and Recipe preflight only
         run: |
-          node --test site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs
+          node --test site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs
           node scripts/build-tcmos-array-recipe-experiment.mjs
       - name: Real Chromium 16-cell Recipe Run All and strict parity
         timeout-minutes: 30
