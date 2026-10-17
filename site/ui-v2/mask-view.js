@@ -6,6 +6,7 @@ import { createFloatingEditorManager } from './view-kit/floating-editor.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
+import { createEmptyHint, isEmptyActiveMask } from './view-kit/empty-state.js';
 import { maskRoiAnchorPoint } from '../mask-roi-geometry.js';
 
 export async function createMaskView({ project, sharedState, workstation } = {}) {
@@ -50,6 +51,24 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     splitViews: ['main', 'three'],
     maximize: null,
   };
+  const emptyHint = createEmptyHint({
+    label: 'Empty mask',
+    parts: [
+      {
+        text: 'Draw',
+        onClick: () => document.querySelector('#maskPanel [data-action="draw-toggle"]')?.click(),
+      },
+      ' or ',
+      {
+        text: 'import',
+        // The existing Mask workflow owns the native GDS/OAS change handler.
+        onClick: () => document.getElementById('gdsInput')?.click(),
+      },
+      ' a mask.',
+    ],
+  });
+  const updateEmptyHint = () =>
+    emptyHint.update(Boolean(workstation && !workstation.readOnlyPreview && isEmptyActiveMask(state)));
   const caption = () =>
     `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · ${units.label()}`;
   const iconButton = (hint, action, glyph, extra = {}) =>
@@ -72,6 +91,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
   function sync() {
     syncDisplayUnitFields(document, units.key());
     if (!state) return;
+    updateEmptyHint();
     const opacity = Number.isFinite(state.maskOpacity) ? state.maskOpacity : 0.65;
     if (document.activeElement !== maskOpacityRange) maskOpacityRange.value = String(opacity);
     maskOpacityValue.textContent = `${Math.round(opacity * 100)}%`;
@@ -445,6 +465,7 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       { class: 'p-science v2-plan-stage', 'data-v2-stage-host': '' },
       hook('maskCanvas', el('canvas', { 'aria-label': 'Mask scientific plan', tabindex: 0 })),
       ...(strip && roiStrip ? [strip.node, roiStrip.node] : []),
+      emptyHint.node,
       hook('maskCoords', el('span', { class: 'p-scale' }, 'µm')),
     );
     return window
@@ -556,6 +577,12 @@ export async function createMaskView({ project, sharedState, workstation } = {})
       confirmAction,
       selectedMaskElement: workstation?.selectedMaskElement,
     });
+    const renderMask = runtime.render;
+    runtime.render = (...args) => {
+      updateEmptyHint();
+      return renderMask(...args);
+    };
+    updateEmptyHint();
     new ResizeObserver(() => runtime.render()).observe(hooks.get('maskCanvas'));
     roiSync(state.maskRoi);
     document.addEventListener('click', async (event) => {
