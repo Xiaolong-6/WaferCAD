@@ -601,6 +601,9 @@ try {
         processRevision: state.model.processRevision,
         regionCount: state.model.regions.length,
         layerCount: state.model.layers.length,
+        camera: state.threeCamera,
+        roi: state.roi,
+        section: state.section,
       };
     });
   const invariant = await scientificState();
