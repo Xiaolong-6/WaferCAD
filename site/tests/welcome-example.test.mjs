@@ -14,7 +14,7 @@ const { BUNDLED_EXAMPLES } = await import('../bundled-examples.js');
 const { expandProjectStorage } = await import('../project-io.js');
 const { validateProjectFile } = await import('../project-schema.js');
 
-test('welcome example catalog promotes nine literature-backed project families', async () => {
+test('Welcome lists independent GaN Main workpieces and an assembly-only reference', async () => {
   assert.deepEqual(
     BUNDLED_EXAMPLES.map((example) => example.id),
     [
@@ -26,9 +26,25 @@ test('welcome example catalog promotes nine literature-backed project families',
       'magic-1000-mos2-beol',
       'three-tier-silicon-jlfets',
       'tio2-metalens-four-unit',
+      'gan-microchannel-interposer-2022',
+      'gan-hemt-die-2022',
+      'gan-gsg-left-die-2022',
+      'gan-gsg-right-die-2022',
       'gan-hemt-microchannel-2022',
     ],
   );
+  const gaNWorkpieces = BUNDLED_EXAMPLES.filter((item) =>
+    ["gan-microchannel-interposer-2022","gan-hemt-die-2022","gan-gsg-left-die-2022","gan-gsg-right-die-2022"].includes(item.id),
+  );
+  assert.equal(gaNWorkpieces.length, 4);
+  for (const workpiece of gaNWorkpieces) {
+    assert.match(workpiece.title, /unassembled/i);
+    assert.match(workpiece.preview.alt, /Schematic only/);
+    assert.match(workpiece.summary, /No |not bonded|No bonding|No placement/i);
+  }
+  const reference = BUNDLED_EXAMPLES.find((item) => item.id === 'gan-hemt-microchannel-2022');
+  assert.match(reference.title, /reference only/i);
+  assert.match(reference.summary, /HISTORICAL GEOMETRY-ONLY ASSEMBLY REFERENCE/);
   const literature = BUNDLED_EXAMPLES[0];
   assert.equal(literature.kind, 'project');
   assert.match(literature.path, /photodetector-literature-examples\.wafercad$/);

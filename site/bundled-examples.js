@@ -242,11 +242,135 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     tags: ['Literature', 'Metalens', 'TiO₂', 'Lift-off', 'EBL / RIE', 'Illustrative XY'],
   },
   {
+    id: 'gan-microchannel-interposer-2022',
+    title: 'HR-Si microchannel interposer — unassembled',
+    figure: 'Lian et al. · independent workpiece, not bonded',
+    kind: 'project',
+    level: 'Unassembled GaN device literature',
+    variants: [],
+    path: './examples/gan-microchannel-interposer-2022.wafercad',
+    filename: 'gan-microchannel-interposer-2022.wafercad',
+    previewProject: {
+      path: './examples/previews/gan-microchannel-interposer-2022.wafercad',
+      filename: 'gan-microchannel-interposer-2022-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/gan-microchannel-interposer-2022-schematic.svg',
+      view: 'three',
+      alt: 'Schematic only: HR-Si interposer; NOT a renderer screenshot',
+      label: 'SCHEMATIC ONLY · open native 3D / independent Main',
+    },
+    summary:
+      'Independent 800 µm Si workpiece with four-tier coolant cavities, true TSV geometry and separate Main/History. No wafer Bond, die placement or connecting wires.',
+    sources: [
+      {
+        citation:
+          'T. Lian et al., “Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device,” Microsystems & Nanoengineering 8, 119 (2022).',
+        doi: '10.1038/s41378-022-00462-3',
+        href: 'https://doi.org/10.1038/s41378-022-00462-3',
+      },
+    ],
+    tags: ['Literature', 'GaN', 'Independent Main', 'No Bond', 'Unassembled'],
+  },
+  {
+    id: 'gan-hemt-die-2022',
+    title: 'GaN HEMT Die — unassembled',
+    figure: 'Lian et al. · independent workpiece, not bonded',
+    kind: 'project',
+    level: 'Unassembled GaN device literature',
+    variants: [],
+    path: './examples/gan-hemt-die-2022.wafercad',
+    filename: 'gan-hemt-die-2022.wafercad',
+    previewProject: {
+      path: './examples/previews/gan-hemt-die-2022.wafercad',
+      filename: 'gan-hemt-die-2022-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/gan-hemt-die-2022-schematic.svg',
+      view: 'three',
+      alt: 'Schematic only: GaN HEMT Die; NOT a renderer screenshot',
+      label: 'SCHEMATIC ONLY · open native 3D / independent Main',
+    },
+    summary:
+      'Independent GaN-on-SiC Main with ten Gate fingers and explicitly inferred outer source/drain pads. No bonding, die placement or assembly wire.',
+    sources: [
+      {
+        citation:
+          'T. Lian et al., “Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device,” Microsystems & Nanoengineering 8, 119 (2022).',
+        doi: '10.1038/s41378-022-00462-3',
+        href: 'https://doi.org/10.1038/s41378-022-00462-3',
+      },
+    ],
+    tags: ['Literature', 'GaN', 'Independent Main', 'No Bond', 'Unassembled'],
+  },
+  {
+    id: 'gan-gsg-left-die-2022',
+    title: 'Left GSG Pad Die — unassembled',
+    figure: 'Lian et al. · independent workpiece, not bonded',
+    kind: 'project',
+    level: 'Unassembled GaN device literature',
+    variants: [],
+    path: './examples/gan-gsg-left-die-2022.wafercad',
+    filename: 'gan-gsg-left-die-2022.wafercad',
+    previewProject: {
+      path: './examples/previews/gan-gsg-left-die-2022.wafercad',
+      filename: 'gan-gsg-left-die-2022-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/gan-gsg-left-die-2022-schematic.svg',
+      view: 'three',
+      alt: 'Schematic only: Left GSG Die; NOT a renderer screenshot',
+      label: 'SCHEMATIC ONLY · open native 3D / independent Main',
+    },
+    summary:
+      'Independent left GSG Die Main with three inferred Au pads. No placement, Bond or Au wire operations.',
+    sources: [
+      {
+        citation:
+          'T. Lian et al., “Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device,” Microsystems & Nanoengineering 8, 119 (2022).',
+        doi: '10.1038/s41378-022-00462-3',
+        href: 'https://doi.org/10.1038/s41378-022-00462-3',
+      },
+    ],
+    tags: ['Literature', 'GaN', 'Independent Main', 'No Bond', 'Unassembled'],
+  },
+  {
+    id: 'gan-gsg-right-die-2022',
+    title: 'Right GSG Pad Die — unassembled',
+    figure: 'Lian et al. · independent workpiece, not bonded',
+    kind: 'project',
+    level: 'Unassembled GaN device literature',
+    variants: [],
+    path: './examples/gan-gsg-right-die-2022.wafercad',
+    filename: 'gan-gsg-right-die-2022.wafercad',
+    previewProject: {
+      path: './examples/previews/gan-gsg-right-die-2022.wafercad',
+      filename: 'gan-gsg-right-die-2022-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/gan-gsg-right-die-2022-schematic.svg',
+      view: 'three',
+      alt: 'Schematic only: Right GSG Die; NOT a renderer screenshot',
+      label: 'SCHEMATIC ONLY · open native 3D / independent Main',
+    },
+    summary:
+      'Independent right GSG Die Main with three inferred Au pads. No placement, Bond or Au wire operations.',
+    sources: [
+      {
+        citation:
+          'T. Lian et al., “Thermal property evaluation of a 2.5D integration method with device level microchannel direct cooling for a high-power GaN HEMT device,” Microsystems & Nanoengineering 8, 119 (2022).',
+        doi: '10.1038/s41378-022-00462-3',
+        href: 'https://doi.org/10.1038/s41378-022-00462-3',
+      },
+    ],
+    tags: ['Literature', 'GaN', 'Independent Main', 'No Bond', 'Unassembled'],
+  },
+  {
     id: 'gan-hemt-microchannel-2022',
-    title: 'GaN HEMT with integrated microchannel cooling',
+    title: 'GaN package — hypothetical assembly reference only',
     figure: 'Lian et al. · four stepped Si microchannels / 2.5D package',
     kind: 'project',
-    level: '2.5D heterogeneous integration literature',
+    level: 'Reference-only hypothetical assembly; no native Bond',
     variants: [],
     path: './examples/gan-hemt-microchannel-2022.wafercad',
     filename: 'gan-hemt-microchannel-2022.wafercad',
@@ -261,7 +385,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
       label: 'Paper-derived geometric surrogate · not a thermal simulation',
     },
     summary:
-      'Paper-derived, kernel-replayable 2.5D GaN-on-SiC HEMT above an 800 µm Si interposer with four stepped cooling cavities, six top channels and symmetric curved distribution manifolds connected to two rear ports. The manifold geometry and bonding process are explicitly inferred surrogates; no thermal or CFD predictions are made.',
+      'HISTORICAL GEOMETRY-ONLY ASSEMBLY REFERENCE. This combined 3D surrogate places the HEMT and two GSG dies over the Si interposer and draws two inferred Au wire loops. The project History is NOT a real Bond or die-placement process. Use the four separate unassembled Main projects as future assembly inputs.',
     sources: [
       {
         citation:
@@ -270,7 +394,7 @@ export const BUNDLED_EXAMPLES = Object.freeze([
         href: 'https://doi.org/10.1038/s41378-022-00462-3',
       },
     ],
-    tags: ['Literature', 'GaN HEMT', 'Microfluidics', '2.5D', 'TSV', 'Geometry surrogate'],
+    tags: ['Reference only', 'GaN HEMT', 'NO Bond', 'Microfluidics', 'Surrogate'],
   },
 ]);
 

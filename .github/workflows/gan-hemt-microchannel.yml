@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
+      - scripts/build-gan-hemt-unassembled-components.mjs
+      - scripts/gan-unassembled-visual-acceptance.mjs
+      - site/tests/gan-unassembled-components.test.mjs
       - scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - scripts/example-recipe-runall-acceptance.mjs
@@ -19,6 +22,11 @@ on:
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
       - site/examples/gan-hemt-microchannel-2022.wafercad
+      - site/examples/gan-*-die-2022.wafercad
+      - site/examples/gan-microchannel-interposer-2022.wafercad
+      - site/examples/gan-hemt-unassembled-components.json
+      - site/examples/previews/gan-*-die-2022.wafercad
+      - site/examples/previews/gan-microchannel-interposer-2022.wafercad
       - site/examples/previews/gan-hemt-microchannel-2022.wafercad
       - site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp
       - tests/fixtures/project-io/example-thumbnails.json
@@ -49,11 +57,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Focused lint
-        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
+        run: npx eslint scripts/build-gan-hemt-unassembled-components.mjs site/tests/gan-unassembled-components.test.mjs scripts/gan-unassembled-visual-acceptance.mjs scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
+        run: npx prettier --check scripts/build-gan-hemt-unassembled-components.mjs site/tests/gan-unassembled-components.test.mjs scripts/gan-unassembled-visual-acceptance.mjs scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+      - name: Unassembled component scientific and native History/Recovery tests
+        run: node --test site/tests/gan-unassembled-components.test.mjs
       - name: TSV conformal material wall-science probe
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Generate reopenable project and validation evidence
@@ -100,6 +110,10 @@ jobs:
       # Preserve the package precontract screenshot and true WebGL mesh counters.
       # The public Workstation snapshot intentionally omits assemblyWires;
       # verify actual rendered wire/end-cap counts without altering scientific gates.
+      - name: Capture real Chromium four-workpiece Main/3D evidence
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/gan-unassembled-visual-acceptance.mjs
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
@@ -111,6 +125,9 @@ jobs:
       - name: Verify saved Preview shape and Welcome/Wiki catalog after rendering
         run: |
           node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          for id in gan-microchannel-interposer-2022 gan-hemt-die-2022 gan-gsg-left-die-2022 gan-gsg-right-die-2022; do
+            node scripts/build-example-previews.mjs --id="$id"
+          done
           node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
       - name: Run complete UI Recipe from fresh Base and validate output
         env:
@@ -123,6 +140,7 @@ jobs:
           name: gan-hemt-visual-browser-evidence
           path: |
             test-results/gan-microchannel/
+            test-results/gan-unassembled/
             test-results/example-recipe-runall/
             site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp
           if-no-files-found: warn
@@ -130,6 +148,10 @@ jobs:
         run: |
           git diff --exit-code -- \
             site/examples/gan-hemt-microchannel-2022.wafercad \
+            site/examples/gan-*-die-2022.wafercad \
+            site/examples/gan-microchannel-interposer-2022.wafercad \
+            site/examples/previews/gan-*-die-2022.wafercad \
+            site/examples/previews/gan-microchannel-interposer-2022.wafercad \
             site/examples/previews/gan-hemt-microchannel-2022.wafercad \
             site/bundled-examples.js \
             site/tests/welcome-example.test.mjs \
