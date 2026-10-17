@@ -1,4 +1,4 @@
-const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v3';
+const GPU_ROUGH_PROGRAM_VERSION = 'wafercad-gpu-rough-v5';
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -25,6 +25,11 @@ export function gpuRoughAppearanceUniforms(
   return {
     waferCadRoughFeatureSize: { value: featureSize },
     waferCadRoughMeanHeight: { value: meanHeight },
+    waferCadRoughVisualBlend: {
+      value: Number.isFinite(Number(appearance?.displayRoughBlend))
+        ? clamp01(appearance.displayRoughBlend)
+        : 1,
+    },
     waferCadRoughFeatureCv: { value: clamp01(appearance?.featureCv) },
     waferCadRoughHeightCv: { value: clamp01(appearance?.heightCv) },
     waferCadRoughEtchDepth: { value: etchDepth },
@@ -52,6 +57,21 @@ export function canUseGpuRoughPreview(appearance) {
   );
 }
 
+// WebGL2 highp float does not guarantee the same transcendental accuracy
+// across hardware and software backends. SwiftShader has exceeded the
+// 2e-5 um physical-height parity contract on this profile. Use the existing
+// deterministic CPU mesh on known software rasterizers instead of relying on
+// approximate per-vertex GLSL displacement. Do not disable WebGL itself.
+export function supportsPreciseGpuRoughDisplacement(renderer) {
+  const gl = renderer?.getContext?.();
+  if (!gl) return true;
+  const debug = gl.getExtension?.('WEBGL_debug_renderer_info');
+  const name = String(
+    (debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '',
+  );
+  return !/swiftshader|llvmpipe|softpipe|software rasterizer/i.test(name);
+}
+
 export function canUseGpuRoughTask({
   appearance,
   buried = false,
@@ -69,6 +89,7 @@ export function canUseGpuRoughTask({
 const ROUGH_PROFILE_GLSL = `
 uniform float waferCadRoughFeatureSize;
 uniform float waferCadRoughMeanHeight;
+uniform float waferCadRoughVisualBlend;
 uniform float waferCadRoughFeatureCv;
 uniform float waferCadRoughHeightCv;
 uniform float waferCadRoughEtchDepth;
@@ -211,9 +232,13 @@ float waferCadRoughProfile(vec2 absolutePoint) {
   vec2 point =
     absolutePoint - vec2(waferCadRoughSampleOriginX, waferCadRoughSampleOriginY);
   uint seed = waferCadRoughSeed();
-  return waferCadRoughMorphology > 0.5
+  float raw = waferCadRoughMorphology > 0.5
     ? waferCadPyramidOffset(point, seed)
     : waferCadStochasticOffset(point, seed);
+  float mean = min(waferCadRoughEtchDepth, max(0.0, waferCadRoughMeanHeight));
+  float center =
+    waferCadRoughPolarityNormal > 0.5 ? waferCadRoughEtchDepth - mean : mean;
+  return mix(center, raw, waferCadRoughVisualBlend);
 }
 `;
 
@@ -252,7 +277,7 @@ export function decorateGpuRoughMaterial(
       '#include <common>',
       `attribute float waferCadGpuDisplace;
 varying vec2 vWaferCadRoughXY;
-varying float vWaferCadGpuDisplace;
+varying float vWaferCadRoughSurface;
 ${ROUGH_PROFILE_GLSL}`,
     );
     shader.vertexShader = injectAfter(
@@ -260,7 +285,9 @@ ${ROUGH_PROFILE_GLSL}`,
       '#include <begin_vertex>',
       `// Compact arrays define rough morphology in the template-local physical frame.
 vWaferCadRoughXY = position.xy;
-vWaferCadGpuDisplace = waferCadGpuDisplace;
+// Cap vertices use 0 (CPU-pinned) or 1 (GPU); closures use -1.
+// This shading domain stays constant within every triangle.
+vWaferCadRoughSurface = step(0.0, waferCadGpuDisplace);
 if (waferCadGpuDisplace > 0.5) {
   transformed.z += waferCadRoughProfileNormal * waferCadRoughProfile(vWaferCadRoughXY);
 }`,
@@ -270,13 +297,20 @@ if (waferCadGpuDisplace > 0.5) {
       shader.fragmentShader,
       '#include <common>',
       `varying vec2 vWaferCadRoughXY;
-varying float vWaferCadGpuDisplace;
+varying float vWaferCadRoughSurface;
 ${ROUGH_PROFILE_GLSL}`,
     );
     shader.fragmentShader = injectAfter(
       shader.fragmentShader,
       '#include <normal_fragment_maps>',
-      `if (vWaferCadGpuDisplace > 0.5 && waferCadRoughNormalStrength > 0.0) {
+      `if (vWaferCadRoughSurface > 0.5 && waferCadRoughNormalStrength > 0.0) {
+  // Unresolved subpixel profile gradients must not fake mesh-height cracks.
+  // Leave the vertex displacement and section geometry untouched.
+  float waferCadFootprint = max(
+    length(dFdx(vWaferCadRoughXY)), length(dFdy(vWaferCadRoughXY))
+  );
+  float waferCadFeaturePixels = waferCadRoughFeatureSize / max(1e-9, waferCadFootprint);
+  float waferCadMicroNormalWeight = smoothstep(1.5, 3.0, waferCadFeaturePixels);
   float waferCadHeight = waferCadRoughProfile(vWaferCadRoughXY);
   float waferCadScreenDx = dFdx(waferCadHeight);
   float waferCadScreenDy = dFdy(waferCadHeight);
@@ -294,7 +328,8 @@ ${ROUGH_PROFILE_GLSL}`,
       normalize((waferCadSigmaX * waferCadStY.y - waferCadSigmaY * waferCadStX.y) / waferCadDet);
     vec3 waferCadBitangent =
       normalize((-waferCadSigmaX * waferCadStY.x + waferCadSigmaY * waferCadStX.x) / waferCadDet);
-    float waferCadSlope = waferCadRoughProfileNormal * waferCadRoughNormalStrength;
+    float waferCadSlope =
+      waferCadRoughProfileNormal * waferCadRoughNormalStrength * waferCadMicroNormalWeight;
     normal = normalize(
       normal -
         waferCadSlope *
@@ -305,6 +340,29 @@ ${ROUGH_PROFILE_GLSL}`,
     );
   };
 
+  material.needsUpdate = true;
+  return true;
+}
+
+// Wire/outline variant: the same vertex displacement as the rough cap, without
+// the fragment-normal shader (LineBasicMaterial has no normal_fragment_maps).
+export function decorateGpuRoughLineMaterial(material, appearance, { profileNormal = 1 } = {}) {
+  if (!material || !canUseGpuRoughPreview(appearance)) return false;
+  const uniforms = gpuRoughAppearanceUniforms(appearance, { profileNormal }),
+    previousCompile = material.onBeforeCompile,
+    previousProgramKey = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () =>
+    `${previousProgramKey ? previousProgramKey() : ''}|wafercad-gpu-rough-line-v1`;
+  material.onBeforeCompile = (shader, renderer) => {
+    previousCompile?.(shader, renderer);
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = injectAfter(shader.vertexShader, '#include <common>', ROUGH_PROFILE_GLSL);
+    shader.vertexShader = injectAfter(
+      shader.vertexShader,
+      '#include <begin_vertex>',
+      'transformed.z += waferCadRoughProfileNormal * waferCadRoughProfile(position.xy);',
+    );
+  };
   material.needsUpdate = true;
   return true;
 }
