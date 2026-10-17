@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 3: capture underlying Step13 worker/UI failure and direct kernel probe.
+# Iteration 4: use original Recipe outside workstation snapshot for exact Step13 science diagnostic.
 
 on:
   push:
