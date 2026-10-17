@@ -36,10 +36,7 @@ export function localGeometry(geometry, part, domain, polygonBoundsCache = new W
     const localDomain = translateGeometry(worldDomain, -part.x, -part.y);
     let selected = [];
     if (templateGeometry) {
-      selected =
-        part.role === 'background'
-          ? []
-          : intersection(templateGeometry, localDomain);
+      selected = part.role === 'background' ? [] : intersection(templateGeometry, localDomain);
     } else if (index) {
       const geoms = [];
       for (const instance of queryMaskInstances(index, bounds)) {
@@ -65,10 +62,7 @@ export function localGeometry(geometry, part, domain, polygonBoundsCache = new W
             ? local
             : local.map((polygon) =>
                 polygon.map((ring) =>
-                  ring.map(([x, y]) => [
-                    Number(x.toFixed(4)),
-                    Number(y.toFixed(4)),
-                  ]),
+                  ring.map(([x, y]) => [Number(x.toFixed(4)), Number(y.toFixed(4))]),
                 ),
               ),
         );

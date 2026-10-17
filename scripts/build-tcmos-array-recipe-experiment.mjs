@@ -94,16 +94,18 @@ async function main() {
   await mkdir(directory, { recursive: true });
   const file = resolve(directory, 'tcmos-inverter-4x4-RECIPE-EXPERIMENT.wafercad');
   await writeFile(file, json);
-  console.log(JSON.stringify({
-    experimental: true,
-    fullRecipeValidated: false,
-    instanceCount: project.model.array.instances.length,
-    maskElements: project.layout.elements.length,
-    recipeSteps: project.processRecipe.steps.length,
-    preflightErrors: report.errors,
-    bytes: Buffer.byteLength(json),
-    file,
-  }));
+  console.log(
+    JSON.stringify({
+      experimental: true,
+      fullRecipeValidated: false,
+      instanceCount: project.model.array.instances.length,
+      maskElements: project.layout.elements.length,
+      recipeSteps: project.processRecipe.steps.length,
+      preflightErrors: report.errors,
+      bytes: Buffer.byteLength(json),
+      file,
+    }),
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {

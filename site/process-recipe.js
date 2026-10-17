@@ -139,10 +139,7 @@ function normalizeMask(mask) {
       ? mask.layerKeys.map(normalizeRecipeLayerKey)
       : [];
   const processGridUm = mask.processGridUm;
-  if (
-    processGridUm !== undefined &&
-    (sourceMode !== 'file' || processGridUm !== 0.0001)
-  ) {
+  if (processGridUm !== undefined && (sourceMode !== 'file' || processGridUm !== 0.0001)) {
     throw new Error('File Mask processGridUm only supports the existing 0.0001 µm grid.');
   }
   if (mask.arrayRepeat != null && (sourceMode !== 'draw' || mask.arrayRepeat !== true)) {

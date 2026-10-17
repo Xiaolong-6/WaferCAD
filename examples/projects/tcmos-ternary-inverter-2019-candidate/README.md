@@ -94,7 +94,7 @@ treating the old 14 × 8 µm illustrative Mask as foundry data:
 - The tallest **inverted U-shaped METAL1** bridge connects both POLY gate
   contacts (**VIN**). A shorter nested upper inverted-U bridge connects the two
   inner drain contacts (**VOUT**). The outer source leads and lower U rail connect
-  source pads to the **VDD/GND** labels. The earlier *raster approximation* left a
+  source pads to the **VDD/GND** labels. The earlier _raster approximation_ left a
   24–25 px apparent gap between the outside supply leg and inner U-shaped
   body metal. That legacy diagnostic is not authoritative: the approved
   SVG has **one continuous VDD polygon and one continuous GND polygon**

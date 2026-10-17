@@ -37,8 +37,10 @@ const selectPanel = async (kind) => {
   await waitForPaint(page);
 };
 try {
-  await page.goto((process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173') +
-    '/app.html?start=empty', { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.goto(
+    (process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173') + '/app.html?start=empty',
+    { waitUntil: 'domcontentloaded', timeout: 120000 },
+  );
   await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
     timeout: 120000,
   });
@@ -65,9 +67,9 @@ try {
   const selection = page.locator('#v2-maskLayerList input[type="checkbox"]');
   assert.equal(await selection.count(), 8);
   for (let i = 0; i < 8; i++) {
-    await page.evaluate(() => document.querySelector(
-      '#v2-maskLayerList input[type="checkbox"]:not(:checked)',
-    )?.click());
+    await page.evaluate(() =>
+      document.querySelector('#v2-maskLayerList input[type="checkbox"]:not(:checked)')?.click(),
+    );
   }
   const tools = page.locator('[data-action="mask-export-menu"]');
   if (!(await tools.isVisible())) {
@@ -89,9 +91,10 @@ try {
     const exportedPath = resolve(dir, 'tcmos-4x4-recipe-mask.' + format);
     await download.saveAs(exportedPath);
     const bytes = await readFile(exportedPath);
-    const parsed = format === 'gds'
-      ? parseGDS(Uint8Array.from(bytes).buffer)
-      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const parsed =
+      format === 'gds'
+        ? parseGDS(Uint8Array.from(bytes).buffer)
+        : await parseOAS(Uint8Array.from(bytes).buffer);
     const elements = flattenGDS(parsed, parsed.root).elements;
     const byLayer = {};
     for (const element of elements) {
@@ -111,7 +114,7 @@ try {
     window.__tcmosArrayStatusHistory = [];
     const status = document.querySelector('[data-slot="status.message"]');
     if (status) {
-      new MutationObserver(() => {
+      new window.MutationObserver(() => {
         const text = status.textContent?.trim() || '';
         if (text && window.__tcmosArrayStatusHistory.at(-1) !== text) {
           window.__tcmosArrayStatusHistory.push(text);
@@ -126,12 +129,18 @@ try {
     if (await clear.count()) await clear.first().click();
     else throw new Error('Unknown array Recipe confirmation modal');
   }
-  await page.waitForFunction(() => {
-    const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
-    const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
-    return /^(Completed|Failed|Stopped):/.test(summary) ||
-      /Recipe (completed|failed)|Recipe failed at Step/i.test(status);
-  }, null, { timeout: 900000 });
+  await page.waitForFunction(
+    () => {
+      const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
+      const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
+      return (
+        /^(Completed|Failed|Stopped):/.test(summary) ||
+        /Recipe (completed|failed)|Recipe failed at Step/i.test(status)
+      );
+    },
+    null,
+    { timeout: 900000 },
+  );
   const summary = await page.locator('#recipeRunSummary').innerText();
   const status = await page.locator('[data-slot="status.message"]').innerText();
   report.runSummary = summary;
@@ -243,9 +252,10 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-4x4-recipe-replayed.png') });
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
-    () => /Saved .* locally/.test(
-      document.querySelector('[data-slot="status.message"]')?.textContent || '',
-    ),
+    () =>
+      /Saved .* locally/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      ),
     null,
     { timeout: 120000 },
   );
@@ -258,10 +268,7 @@ try {
   await page.locator('#projectNameInput').press('Tab');
   await page.locator('#workspaceRecoverySelect').selectOption(recovery);
   await page.locator('#workspaceRestoreBtn').click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'Restore', exact: true })
-    .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Restore', exact: true }).click();
   await page.waitForFunction(
     (name) => {
       const state = window.WaferCadV2Workstation.snapshot();
@@ -276,24 +283,12 @@ try {
   assert.equal(restored.model.array.instances.length, 16);
   const recoveredPhysical = resolveArrayModel(restored.model);
   assert.ok(recoveredPhysical.regions.length > 100);
-  report.recoveryMaterial = await assertSameMaterialGeometry(
-    replayedPhysical,
-    recoveredPhysical,
-    { areaToleranceUm2: 2e-6 },
-  );
+  report.recoveryMaterial = await assertSameMaterialGeometry(replayedPhysical, recoveredPhysical, {
+    areaToleranceUm2: 2e-6,
+  });
   assert.deepEqual(
-    restored.model.dopantRegions.map((d) => [
-      d.role,
-      d.polarity,
-      d.depthStartUm,
-      d.depthEndUm,
-    ]),
-    reopened.model.dopantRegions.map((d) => [
-      d.role,
-      d.polarity,
-      d.depthStartUm,
-      d.depthEndUm,
-    ]),
+    restored.model.dopantRegions.map((d) => [d.role, d.polarity, d.depthStartUm, d.depthEndUm]),
+    reopened.model.dopantRegions.map((d) => [d.role, d.polarity, d.depthStartUm, d.depthEndUm]),
     'Recovery must preserve every qualitative dopant annotation',
   );
   await page.screenshot({ path: resolve(dir, 'tcmos-4x4-recovery-restored.png') });

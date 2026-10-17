@@ -211,10 +211,13 @@ test('process-only array File Mask grid preserves original polygons and is opt-i
   const sourceBefore = JSON.stringify(index);
   const boundary = rectMulti(2, 2);
   const part = { x: 0, y: 0 };
-  const raw = deferredArrayMaskArea({ boundary, index, mode: 'mask' }, {
-    intersection,
-    isEmpty: (g) => !g.length,
-  });
+  const raw = deferredArrayMaskArea(
+    { boundary, index, mode: 'mask' },
+    {
+      intersection,
+      isEmpty: (g) => !g.length,
+    },
+  );
   const snapped = deferredArrayMaskArea(
     { boundary, index, mode: 'mask', processGridUm: 0.0001 },
     { intersection, isEmpty: (g) => !g.length },
@@ -225,7 +228,14 @@ test('process-only array File Mask grid preserves original polygons and is opt-i
   assert.notDeepEqual(normal, capture, 'process quantization must affect selected geometry');
   assert.equal(JSON.stringify(index), sourceBefore, 'source SVG Mask index must not be mutated');
   assert.deepEqual(
-    [...new Set(capture.flat(2).flat().map((n) => Math.round(n * 1e6)))].length > 0,
+    [
+      ...new Set(
+        capture
+          .flat(2)
+          .flat()
+          .map((n) => Math.round(n * 1e6)),
+      ),
+    ].length > 0,
     true,
   );
   assert.throws(
