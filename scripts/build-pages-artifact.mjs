@@ -9,6 +9,10 @@ const excludedFiles = new Set([
   'app-legacy.html',
   'app.js',
   'workstation.css',
+  // Experimental science oracles belong to tests/preview, not the shipped v2 bundle.
+  'isotropic-release-topology.js',
+  'physical-facet-coating.js',
+  'physical-facet-coating-section.js',
   // Retired browser-only modules retained in Git, not imported by the v2 product.
   'workstation-ui.js',
   'controllers/build-controller.js',
