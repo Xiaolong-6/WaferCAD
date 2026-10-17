@@ -251,6 +251,54 @@ try {
   );
   const recovery = await page.locator('#workspaceRecoverySelect').inputValue();
   assert.ok(recovery, 'Array replay must create a Recovery checkpoint');
+  const savedName = reopened.name;
+  // An existing selectable checkpoint is not sufficient: actually restore it
+  // and compare all 16 material owners after the destructive name mutation.
+  await page.locator('#projectNameInput').fill('Temporary 4x4 recovery corruption probe');
+  await page.locator('#projectNameInput').press('Tab');
+  await page.locator('#workspaceRecoverySelect').selectOption(recovery);
+  await page.locator('#workspaceRestoreBtn').click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Restore', exact: true })
+    .click();
+  await page.waitForFunction(
+    (name) => {
+      const state = window.WaferCadV2Workstation.snapshot();
+      return state.projectName === name && !state.workflow.busy;
+    },
+    savedName,
+    { timeout: 120000 },
+  );
+  const restored = await snap();
+  assert.equal(restored.projectName, savedName, 'Recovery must undo temporary mutation');
+  assert.equal(restored.model.kernel, 'vector-2.5d-array-v1');
+  assert.equal(restored.model.array.instances.length, 16);
+  const recoveredPhysical = resolveArrayModel(restored.model);
+  assert.ok(recoveredPhysical.regions.length > 100);
+  report.recoveryMaterial = await assertSameMaterialGeometry(
+    replayedPhysical,
+    recoveredPhysical,
+    { areaToleranceUm2: 2e-6 },
+  );
+  assert.deepEqual(
+    restored.model.dopantRegions.map((d) => [
+      d.role,
+      d.polarity,
+      d.depthStartUm,
+      d.depthEndUm,
+    ]),
+    reopened.model.dopantRegions.map((d) => [
+      d.role,
+      d.polarity,
+      d.depthStartUm,
+      d.depthEndUm,
+    ]),
+    'Recovery must preserve every qualitative dopant annotation',
+  );
+  await page.screenshot({ path: resolve(dir, 'tcmos-4x4-recovery-restored.png') });
+  assert.deepEqual(pageErrors, [], 'Browser emitted unexpected page errors');
+  report.recovery = { restored: true, instances: 16, checkpoint: true };
   report.status = 'pass';
 } catch (error) {
   report.status = 'fail';
