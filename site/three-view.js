@@ -15,6 +15,11 @@ import {
   electricalRegionSolids,
   implantSolids,
 } from './model-view-geometry.js';
+import { buildPhysicalFacetPresentation } from './physical-facet-render-geometry.js';
+import {
+  PHYSICAL_FACET_MODEL_KERNEL,
+  validateExperimentalPhysicalFacetModel,
+} from './physical-facet-model.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
@@ -2541,6 +2546,76 @@ diffuseColor.a *= waferCadAlphaScale;`,
     return initPromise;
   }
 
+  // Experimental physical facet Model uses actual owner triangles. This is an
+  // opt-in production ThreeView path; old vector models never enter it.
+  function renderExperimentalPhysicalFacet(model, clip, inspection, signature) {
+    if (clip) throw new RangeError('Experimental physical facets do not support ROI clipping yet');
+    const owner = validateExperimentalPhysicalFacetModel(model);
+    if (!owner) throw new RangeError('Missing experimental physical facet owner');
+    if (
+      physicalSceneModel === model &&
+      physicalSceneSignature === signature &&
+      presentationObjects.size
+    ) {
+      applyPresentationState();
+      host.dataset.physicalFacetOwner = owner.kind;
+      return;
+    }
+
+    // Never route a real faceted owner into the flat Process topology plan.
+    // Group disposal also drops any stale surface variants and GPU resources.
+    disposeGroup();
+    const data = buildPhysicalFacetPresentation(model);
+    const exterior = { kind: 'material-exterior' };
+    const materialState = presentationState(exterior, inspection).materialState;
+    let built = 0;
+    for (const face of ['top', 'bottom', 'side']) {
+      const vertices = data.positions[face];
+      if (!vertices.length) continue;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geometry.computeVertexNormals();
+      const material = createSurfaceMaterial(
+        layerById(model, owner.layerId),
+        materialState,
+        null,
+        exterior,
+      );
+      material.flatShading = true;
+      const mesh = addSurfaceMesh(
+        geometry,
+        material,
+        materialState,
+        null,
+        0,
+        false,
+        null,
+        exterior,
+      );
+      if (mesh) {
+        mesh.name = `physical-${face}-${owner.layerId}`;
+        built++;
+      }
+    }
+    if (built !== 3) throw new RangeError('Incomplete physical facet 3D surface faces');
+    physicalSceneModel = model;
+    physicalSceneSignature = signature;
+    activeSceneVariant = null;
+    physicalSurfacePlan = null;
+    host.dataset.physicalFacetOwner = owner.kind;
+    host.dataset.physicalFacetTriangles = String(data.physicalTriangleCount);
+    host.dataset.physicalFacetSourceCells = String(data.sourceCells);
+    host.dataset.surfaceTopology = JSON.stringify({
+      physicalTriangles: data.physicalTriangleCount,
+      sourceCells: data.sourceCells,
+    });
+    host.dataset.rendererUpdateKind = 'physical-facet-geometry';
+    applyZDisplayState(model);
+    applyPresentationState({ profile: false, settle: true });
+    host.dataset.sceneVariant = 'physical-facet';
+    stats.textContent = 'physical Si (experimental)';
+  }
+
   async function render() {
     if (!ready) return;
     if (rendering) {
@@ -2550,6 +2625,26 @@ diffuseColor.a *= waferCadAlphaScale;`,
     }
     const model = getModel();
     if (!model) return;
+    if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
+      try {
+        renderExperimentalPhysicalFacet(
+          model,
+          getClipGeometry(),
+          getInspection() || {},
+          sceneSignature(model, getClipGeometry(), getInspection() || {}),
+        );
+      } catch (error) {
+        host.dataset.renderState = 'error';
+        host.dataset.renderPhase = 'build-failed';
+        host.dataset.rendererBuildFailure = error?.message || String(error);
+        stats.textContent = 'Experimental physical 3D unavailable';
+        console.error('Physical facet 3D build failed:', error);
+      }
+      return;
+    }
+    delete host.dataset.physicalFacetOwner;
+    delete host.dataset.physicalFacetTriangles;
+    delete host.dataset.physicalFacetSourceCells;
     const clip = getClipGeometry(),
       inspection = getInspection() || {},
       signature = sceneSignature(model, clip, inspection),
