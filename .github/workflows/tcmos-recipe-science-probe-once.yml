@@ -1,0 +1,34 @@
+name: T-CMOS 4x4 Recipe science probe (temporary)
+
+on:
+  push:
+    branches: [feat/tcmos-ternary-inverter-example-20261014]
+    paths:
+      - '.github/workflows/tcmos-recipe-science-probe-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recipe-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Geometry and Recipe preflight only
+        run: |
+          node --test site/tests/tcmos-array-recipe-experiment.test.mjs
+          node scripts/build-tcmos-array-recipe-experiment.mjs
+      - name: Upload the exact experimental candidate
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-4x4-recipe-experiment-probe
+          path: test-results/tcmos/tcmos-inverter-4x4-RECIPE-EXPERIMENT.wafercad
+          retention-days: 7
+          if-no-files-found: ignore
