@@ -840,8 +840,7 @@ export function createThreeView({
       // Snapshot the LOD tier of the frame that actually completed rendering.
       // renderState and transparentArrayLodTier can advance before the first
       // exact WebGL frame; consumers must not pair a new tier with old counters.
-      host.dataset.rendererFrameArrayLodTier =
-        host.dataset.transparentArrayLodTier || 'exact';
+      host.dataset.rendererFrameArrayLodTier = host.dataset.transparentArrayLodTier || 'exact';
       host.dataset.rendererFrameSceneGeneration = host.dataset.sceneGeneration || '0';
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
