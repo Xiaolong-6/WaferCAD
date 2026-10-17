@@ -6,6 +6,7 @@ import {
   prepareMaskInstanceIndex,
   selectedMaskInstanceIndex,
   attachArrayMaskQuery,
+  deferredArrayMaskArea,
 } from '../mask-instance-index.js';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
@@ -194,4 +195,45 @@ test('canonical array Process uses deferred Mask envelopes for masked, inverse a
   state.layout = { ...state.layout, elements: [] };
   assert.deepEqual(geometry.operationAreaGeometry('mask'), []);
   assert.deepEqual(geometry.operationAreaGeometry('invert'), []);
+});
+
+test('process-only array File Mask grid preserves original polygons and is opt-in', () => {
+  const polygon = {
+    kind: 'polygon',
+    points: [
+      [-0.537125, -0.086],
+      [-0.317125, -0.086],
+      [-0.317125, 0.134],
+      [-0.537125, 0.134],
+    ],
+  };
+  const index = compileMaskInstanceIndex([polygon]);
+  const sourceBefore = JSON.stringify(index);
+  const boundary = rectMulti(2, 2);
+  const part = { x: 0, y: 0 };
+  const raw = deferredArrayMaskArea({ boundary, index, mode: 'mask' }, {
+    intersection,
+    isEmpty: (g) => !g.length,
+  });
+  const snapped = deferredArrayMaskArea(
+    { boundary, index, mode: 'mask', processGridUm: 0.0001 },
+    { intersection, isEmpty: (g) => !g.length },
+  );
+  const normal = localGeometry(raw, part, boundary);
+  const capture = localGeometry(snapped, part, boundary);
+  assert.ok(normal.length && capture.length);
+  assert.notDeepEqual(normal, capture, 'process quantization must affect selected geometry');
+  assert.equal(JSON.stringify(index), sourceBefore, 'source SVG Mask index must not be mutated');
+  assert.deepEqual(
+    [...new Set(capture.flat(2).flat().map((n) => Math.round(n * 1e6)))].length > 0,
+    true,
+  );
+  assert.throws(
+    () =>
+      deferredArrayMaskArea(
+        { boundary, index, mode: 'mask', processGridUm: 0.0002 },
+        { intersection, isEmpty: (g) => !g.length },
+      ),
+    /existing 0.0001 µm/,
+  );
 });

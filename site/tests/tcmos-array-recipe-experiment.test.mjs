@@ -28,6 +28,7 @@ test('native 4×4 23-step Recipe has reconstructible Base and original CNT Mask'
     if (index === 20 || index === 21) {
       assert.equal(step.params.mask.sourceMode, 'file');
       assert.deepEqual(step.params.mask.layerKeys, ['10|0']);
+      assert.equal(step.params.mask.processGridUm, 0.0001);
     } else {
       const count = original[index].params.mask.drawMask.shapes.length;
       const shapes = step.params.mask.drawMask.shapes;

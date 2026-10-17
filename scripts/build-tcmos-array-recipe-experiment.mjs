@@ -56,6 +56,9 @@ export async function createTcmosArrayRecipeExperiment(source, spec = TCMOS_ARRA
         sourceMode: 'file',
         cell: source.activeCell,
         layerKeys: ['10|0'],
+        // Only the Recipe contact geometry is snapped to the previously
+        // validated 0.1 nm process grid. Approved SVG remains unchanged.
+        processGridUm: 0.0001,
         transform: { x: 0, y: 0, scale: 1, rotation: 0 },
         roi: null,
       };
