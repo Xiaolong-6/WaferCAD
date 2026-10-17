@@ -1,4 +1,4 @@
-name: M3D ML targeted science and native browser acceptance
+name: M3D ML artifact-led final directed acceptance
 
 on:
   push:
@@ -9,12 +9,13 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
-  real-kernel-and-k-layout:
+  verify-final-physical-project:
     if: github.repository == 'Xiaolong-6/WaferCAD' && github.ref == 'refs/heads/feat/m3d-precharge-geometry-20261017'
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,37 +26,82 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
-      - name: Apply standard formatting only to ML source contracts
+      - run: npm ci --no-audit --no-fund
+      - name: Download exact real Kernel/Chromium artifact from earlier targeted gate
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39029843399
+          name: m3d-ml-native-evidence-a7366bfe62dcd6283a70f6afbe221af07ec16170
+          path: .
+          github-token: ${{ github.token }}
+      - name: Require real Kernel fixture and initial mask exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s site/examples/m3d-lime-rram-cntfet.wafercad
+          test -s test-results/m3d-lime/browser/full-inferred-mask.gds
+          test -s test-results/m3d-lime/browser/full-inferred-mask.oas
+          test -s test-results/m3d-lime/browser/three-local-tcam-ml-junction.png
+          test -s test-results/m3d-lime/browser/three-local-tcam-ml-precharge-focused.png
+          test -s test-results/m3d-lime/browser/report.json
+          test -s test-results/m3d-lime/validation.json
+          git diff --exit-code a7366bfe62dcd6283a70f6afbe221af07ec16170 HEAD -- scripts/build-m3d-lime-example.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile, stat } from 'node:fs/promises';
+          import { readProjectFile } from './site/project-io.js';
+          const path = 'site/examples/m3d-lime-rram-cntfet.wafercad';
+          const source = await readFile(path, 'utf8');
+          const project = await readProjectFile({size:(await stat(path)).size,text:async()=>source});
+          const browser = JSON.parse(await readFile('test-results/m3d-lime/browser/report.json', 'utf8'));
+          const science = JSON.parse(await readFile('test-results/m3d-lime/validation.json', 'utf8'));
+          assert.equal(science.pass, true);
+          assert.equal(project.processRecipe.steps.length, 50);
+          assert.equal(project.snapshotBranches.nodes.length, 51);
+          assert.equal(project.layout.combos.length, 12);
+          assert.equal(project.layout.elements.length, 142);
+          console.log('Real Kernel, persisted 50-step History, Chromium GDS/OAS contracts PASS');
+          NODE
+      - name: Format exactly edited source with locked Prettier and ESLint
         run: |
           npx prettier --write scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
           npx prettier --check scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
           npm run lint
-      - name: Rebuild using actual Kernel and schema (no JSON fabrication)
-        run: node scripts/build-m3d-lime-example.mjs --write-repo
-      - name: Strict physical Pd bridge, ML continuity and native ALD
-        run: node --test site/tests/m3d-lime-builder.test.mjs site/tests/m3d-lime-ald45-regression.test.mjs
-      - name: Prepare native Chromium
+      - name: Install real Chromium and launch production workstation
         run: npx playwright install --with-deps chromium
-      - name: Start real v2 application
+      - name: Start local production app
         shell: bash
         run: |
-          node scripts/v2/serve-v2.mjs > m3d-ml-server.log 2>&1 &
-          for attempt in $(seq 1 60); do
+          node scripts/v2/serve-v2.mjs > m3d-ml-browser-server.log 2>&1 &
+          for n in $(seq 1 60); do
             if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then exit 0; fi
             sleep 1
           done
-          cat m3d-ml-server.log
+          cat m3d-ml-browser-server.log
           exit 1
-      - name: Chromium project load, native Section/3D, 50-step Run All and GDS/OAS
+      - name: Run real Chromium 50-step Recipe with actual progress watchdog
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-m3d-lime-project.mjs
-      - name: Verify exported masks with independent KLayout
+      - name: Require completed exact model, browser replay, and GDS/OAS
         run: |
-          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFile} from 'node:fs/promises';
+          const b=JSON.parse(await readFile('test-results/m3d-lime/browser/report.json','utf8'));
+          assert.equal(b.pass,true);
+          assert.equal(b.steps,50);
+          assert.equal(b.maskInterchange.layers,12);
+          assert.equal(b.maskInterchange.polygons,142);
+          console.log('Native Chromium 50-step Run All and 12-layer export PASS');
+          NODE
+      - name: Independent external KLayout and three-dimensional metal graph
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12 shapely==2.1.2
           python3 scripts/klayout-m3d-lime-verify.py test-results/m3d-lime/browser
-      - name: Commit only verified fixture and source formatting
+          python3 scripts/m3d-ml-conductive-graph.py site/examples/m3d-lime-rram-cntfet.wafercad | tee test-results/m3d-lime/ml-conductive-graph.json
+      - name: Commit only verified source formatting and true Kernel fixture
         shell: bash
         run: |
           set -euo pipefail
@@ -63,20 +109,20 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md site/examples/m3d-lime-rram-cntfet.wafercad
           git diff --cached --check
-          git diff --cached --name-only
           test -n "$(git diff --cached --name-only)"
-          git commit -m 'testdata(m3d): accept kernel-generated ML and precharge drain fixture'
+          git commit -m 'testdata(m3d): accept physically checked real-Kernel ML project'
           git fetch origin refs/heads/feat/m3d-precharge-geometry-20261017
           test "$(git rev-parse origin/feat/m3d-precharge-geometry-20261017)" = "$GITHUB_SHA"
           git push origin HEAD:refs/heads/feat/m3d-precharge-geometry-20261017
-      - name: Keep actual targeted evidence
+      - name: Publish actual KLayout and 3D graph evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m3d-ml-native-evidence-${{ github.sha }}
+          name: m3d-ml-final-science-${{ github.sha }}
           path: |
-            test-results/m3d-lime/
-            site/examples/m3d-lime-rram-cntfet.wafercad
-            m3d-ml-server.log
-          if-no-files-found: warn
+            test-results/m3d-lime/klayout-m3d-lime.json
+            test-results/m3d-lime/ml-conductive-graph.json
+            test-results/m3d-lime/browser/
+            m3d-ml-browser-server.log
           retention-days: 14
+          if-no-files-found: warn
