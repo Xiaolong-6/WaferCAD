@@ -138,8 +138,16 @@ function normalizeMask(mask) {
     : Array.isArray(mask.layerKeys)
       ? mask.layerKeys.map(normalizeRecipeLayerKey)
       : [];
+  const processGridUm = mask.processGridUm;
+  if (
+    processGridUm !== undefined &&
+    (sourceMode !== 'file' || processGridUm !== 0.0001)
+  ) {
+    throw new Error('File Mask processGridUm only supports the existing 0.0001 µm grid.');
+  }
   return {
     sourceMode,
+    ...(processGridUm == null ? {} : { processGridUm }),
     ...(mask.cell ? { cell: String(mask.cell) } : {}),
     layerKeys,
     ...(mask.transform && typeof mask.transform === 'object'
@@ -618,6 +626,7 @@ function serializeMask(mask, indent = '  ') {
   if (mask.cell) fields.push(`cell: ${quote(mask.cell)}`);
   if (mask.layerKeys?.length) fields.push(`layers: ${JSON.stringify(mask.layerKeys)}`);
   if (mask.transform) fields.push(`transform: ${JSON.stringify(mask.transform)}`);
+  if (mask.processGridUm != null) fields.push(`processGridUm: ${mask.processGridUm}`);
   if (Object.hasOwn(mask, 'roi')) fields.push(`roi: ${JSON.stringify(mask.roi)}`);
   if (source === 'draw' && mask.drawMask) fields.push(`drawMask: ${JSON.stringify(mask.drawMask)}`);
   return `{ ${fields.join(', ')} }`;
