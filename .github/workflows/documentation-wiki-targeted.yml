@@ -5,7 +5,13 @@ name: Documentation and Wiki targeted checks
 on:
   pull_request:
     paths:
+      # Repository entrypoints and provenance also affect documentation accuracy.
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'THIRD_PARTY_NOTICES.md'
+      - 'examples/projects/README.md'
       - 'docs/**'
+      - 'site/bundled-examples.js'
       - 'site/process-guide.js'
       - 'site/process-guide-svg.js'
       - 'scripts/build-process-guide.mjs'
@@ -13,6 +19,7 @@ on:
       - 'scripts/check-documentation.mjs'
       - 'scripts/check-wiki-change-coverage.mjs'
       - '.github/workflows/documentation-wiki-targeted.yml'
+      - '.github/workflows/product-manual-wiki.yml'
 
 permissions:
   contents: read
