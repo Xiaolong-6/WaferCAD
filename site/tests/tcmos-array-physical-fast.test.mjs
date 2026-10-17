@@ -90,8 +90,12 @@ test('fast real-Kernel 4x4 multimetal Via and M2-M4 physical geometry, storage',
   assert.equal(project.model.kernel, 'vector-2.5d-v1');
   assert.equal(project.layout.elements.length, 3963);
   assert.equal(project.model.layers.some((layer) => layer.name === 'Interlayer SiO2'), true);
-  assert.deepEqual(project.layout.elements.slice(0, approved.length),
-    approved, 'First original cell must preserve source-approved SVG vertices');
+  const expectedSource = routed.cells.flatMap((cell) => approved.map((element) => ({
+    ...element,
+    points: element.points.map(([x, y]) => [x + cell.x, y + cell.y]),
+  })));
+  assert.deepEqual(project.layout.elements.slice(0, 3712), expectedSource,
+    'Every replicated approved SVG vertex must remain exact on all 16 cells');
 
   assert.equal(report.graph.continuousNets, 19);
   assert.equal(report.materialLayersAdded, 9);
