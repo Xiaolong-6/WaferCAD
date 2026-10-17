@@ -65,9 +65,9 @@ Canonical region stacks and IDs are physical truth. Topology, meshes, caches, di
 
 ## Modules
 
-### `site/app.js`
+### `site/ui-v2/workstation-entry.js`
 
-Owns application state and top-level controller composition. Detailed 2D Mask/Main/Section drawing is delegated to `site/plan-renderers.js`; Process panel state/request orchestration is delegated to `site/controllers/process-panel-controller.js`; History edit/insert transactions live in `site/controllers/history-mutation-controller.js`; browser autosave/Recovery/safe-reload orchestration is delegated to `site/controllers/workspace-persistence-controller.js`; synchronized view refresh/base summaries live in `site/controllers/workspace-view-controller.js`; mask/ROI process-selection geometry lives in `site/selection-geometry.js`; Project toolbar and History-tree presentation live in `site/controllers/project-controller.js`; the 3D renderer is delegated to `site/three-view.js`.
+Bootstraps the production v2 Workstation from `site/app.html`, composes canonical state with the v2 workflow, project/mask panels and four scientific views, and exposes the snapshot/readiness contract used in browser acceptance. The shared geometry/kernel, state/History and persistence modules remain independently owned. The removed Legacy editor composition root is preserved at the immutable `legacy-frozen` tag, not in the active checkout. See [Legacy source retirement](LEGACY_SOURCE_SUNSET.md) for the exact rollback reference.
 
 ### `site/controllers/workspace-persistence-controller.js`
 
@@ -276,7 +276,7 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 ## Workspace layout
 
-The production shell is owned by `site/ui-v2/workstation-v2.js`, with desktop presentation in `site/ui-v2/desktop-shell.css` and compact presentation in `site/ui-v2/mobile-workstation.css`. Desktop composition is modeled by `site/ui-v2/view-layout-model.js` and presented by `site/ui-v2/view-layout.css`. At widths of **821 px and above**, the left workflow sidebar (project title, workflow navigation and editor) and right scientific workspace occupy separate columns, with one resizable divider. The centered workspace viewbar offers **Overview**, **Main**, **Mask**, **3D** and **Section**. Overview restores the four-view composition; individual scientific views have independent visibility and maximize/restore state. The retained `site/workstation-ui.js` and `site/workstation.css` are Legacy regression sources, not the active production shell.
+The production shell is owned by `site/ui-v2/workstation-v2.js`, with desktop presentation in `site/ui-v2/desktop-shell.css` and compact presentation in `site/ui-v2/mobile-workstation.css`. Desktop composition is modeled by `site/ui-v2/view-layout-model.js` and presented by `site/ui-v2/view-layout.css`. At widths of **821 px and above**, the left workflow sidebar (project title, workflow navigation and editor) and right scientific workspace occupy separate columns, with one resizable divider. The centered workspace viewbar offers **Overview**, **Main**, **Mask**, **3D** and **Section**. Overview restores the four-view composition; individual scientific views have independent visibility and maximize/restore state. The Legacy UI shell and stylesheet have been removed from the active checkout; their original source is preserved at the immutable `legacy-frozen` tag. Production layout is owned by the v2 shell modules above.
 
 Desktop layout preferences are separate from project geometry and are restored through their dedicated view-layout storage. At **820 px and below**, compact Edit/View selection and scrolling are managed by the mobile workspace controller; the production title bar is hidden and navigation moves to a fixed bottom dock. Compact mode reuses the scientific view instances rather than recreating the model or the worker. Layout, camera, ROI inspection and maximize choices must not mutate canonical material geometry.
 

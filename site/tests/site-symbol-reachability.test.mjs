@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,17 +50,14 @@ test('real WaferCAD code symbol audit is read-only and parseable', async () => {
   const result = await auditSiteSymbols(repo);
   assert.ok(result.scannedModules > 100);
   assert.deepEqual(result.parseErrors, []);
+  // Removed Legacy composition roots must not leave vacuous unused-symbol assertions.
+  for (const retired of ['site/app.js', 'site/app-legacy.html', 'site/workstation.css']) {
+    await assert.rejects(access(join(repo, retired)), { code: 'ENOENT' });
+  }
   for (const [file, symbol] of [
-    ['site/app.js', 'surfaceSegment'],
-    ['site/app.js', 'surfaceZ'],
-    ['site/app.js', 'transformMulti'],
     ['site/controllers/project-controller.js', 'migrateProjectFile'],
     ['site/controllers/project-controller.js', 'validateProjectFile'],
     ['site/controllers/section-collapse-controller.js', 'translateSectionCollapse'],
-    ['site/app.js', 'refreshRecoveryOptions'],
-    ['site/app.js', 'invMaskPoint'],
-    ['site/app.js', 'activeScopeCells'],
-    ['site/app.js', 'setActiveCell'],
     ['site/gds.js', 'dataType'],
     ['site/tests/example-regression.test.mjs', 'migrateProjectFile'],
     ['site/ui-v2/mock-views.js', 'field'],

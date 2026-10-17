@@ -4,9 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const textExtensions = new Set(['.js', '.mjs', '.html', '.css']);
 const sourceExtensions = new Set(['.js', '.mjs', '.css']);
-// Source-tree tests still have a real Legacy editor; published Pages ship only
-// the redirect shim. Audit these two execution surfaces independently.
-const sourceEntries = ['index.html', 'app.html', 'app-legacy.html', 'guide/index.html'];
+// Source includes v2 only; published Pages generate the historical bookmark redirect.
+const sourceEntries = ['index.html', 'app.html', 'guide/index.html'];
 const pagesEntries = ['index.html', 'app.html', 'guide/index.html'];
 const pagesRedirects = ['app-legacy.html'];
 const devEntries = new Set([

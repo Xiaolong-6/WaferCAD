@@ -92,7 +92,8 @@ test('OFF/ON actual ground and signal routing connects the correct physical Si i
     assert.ok(geometryArea(v.intersection(union([supported]), union([signal]))) > 100);
     assert.ok(areaContact(supported, groundNet) < 1e-8);
     const rightAnchor = candidate.physicalGroups.candidateRightGroundSupportAnchor;
-    assert.ok(areaContact(rightAnchor, candidate.physicalGroups.candidateGroundRails[1]) > 1);
+    const rightGround = candidate.physicalGroups.candidateGroundRails[1];
+    assert.ok(geometryArea(v.intersection(union([rightAnchor]), union([rightGround]))) > 1);
     assert.ok(areaContact(rightAnchor, driveNets[0]) < 1e-8);
     assert.ok(areaContact(rightAnchor, driveNets[1]) < 1e-8);
     assert.ok(geometryArea(v.intersection(union([rightAnchor]), union([signal]))) < 1e-8);

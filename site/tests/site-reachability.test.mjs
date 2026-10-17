@@ -55,14 +55,10 @@ test('audit source-tree Legacy browser-test entrypoint separately from Pages', a
   assert.deepEqual(report.compatibilityRoots, []);
   assert.deepEqual(report.compatibilityOnly, []);
   assert.ok(report.productionRoots.includes('app.html'));
-  assert.ok(
-    report.productionRoots.includes('app-legacy.html'),
-    'Retained test editor exists only in source',
-  );
+  assert.ok(!report.productionRoots.includes('app-legacy.html'));
   assert.ok(report.productionReachable > 20);
-  assert.ok(!report.unproven.includes('welcome.js'), 'Welcome must be reachable');
-  assert.ok(!report.unproven.includes('app.js'), 'Legacy app.js must be reachable');
-  assert.ok(!report.developerOnly.includes('app.js'), 'Legacy is a source-tree browser-test root');
+  assert.ok(!report.unproven.includes('welcome.js'));
+
   assert.ok(!report.unproven.includes('controllers/tool-tabs-controller.js'));
   const summary = {
     scannedFiles: report.scannedFiles,
