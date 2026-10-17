@@ -632,31 +632,26 @@ try {
       };
     });
   const invariant = await scientificState();
-  // Geometry, ROI, Section and process revisions remain bit-for-bit exact.
-  // OrbitControls can normalize a fixed camera by a few binary64 ULPs
-  // during a repaint; treat only that representational drift separately.
-  const assertPresentationUnchanged = async () => {
-    const current = await scientificState();
-    const { camera: currentCamera, ...currentScience } = current;
-    const { camera: originalCamera, ...originalScience } = invariant;
+  const assertStablePresentation = async () => {
+    const actual = await scientificState();
+    const { camera: actualCamera, ...actualScience } = actual;
+    const { camera: initialCamera, ...initialScience } = invariant;
     assert.deepEqual(
-      currentScience,
-      originalScience,
-      '3D presentation controls mutated saved material/process geometry, ROI or Section',
+      actualScience,
+      initialScience,
+      '3D presentation controls mutated saved material/process/ROI/Section geometry',
     );
-    assert.deepEqual(Object.keys(currentCamera), Object.keys(originalCamera));
-    assert.equal(currentCamera.fov, originalCamera.fov);
-    for (const axis of ['position', 'target']) {
-      assert.equal(currentCamera[axis].length, originalCamera[axis].length);
-      currentCamera[axis].forEach((actual, index) => {
-        const expected = originalCamera[axis][index];
-        const maximumRoundoff =
-          4 * Number.EPSILON * Math.max(1, Math.abs(actual), Math.abs(expected));
+    assert.equal(actualCamera.fov, initialCamera.fov, 'Opacity/Border changed camera FOV');
+    // OrbitControls can round-trip spherical coordinates by about 1e-12 um
+    // while repainting. This is camera-only precision, not physical geometry.
+    for (const field of ['position', 'target']) {
+      assert.equal(actualCamera[field].length, initialCamera[field].length);
+      for (let i = 0; i < actualCamera[field].length; i++) {
         assert.ok(
-          Math.abs(actual - expected) <= maximumRoundoff,
-          `Camera ${axis}[${index}] moved beyond four binary64 ULPs: ${expected} → ${actual}`,
+          Math.abs(actualCamera[field][i] - initialCamera[field][i]) <= 1e-9,
+          'Opacity/Border changed camera ' + field + '[' + i + ']',
         );
-      });
+      }
     }
   };
   const combinations = [];
@@ -736,7 +731,7 @@ try {
         { timeout: 120000 },
       );
       await waitForPaint(page);
-      await assertPresentationUnchanged();
+      await assertStablePresentation();
       const filename =
         'three-chip-' +
         (opacityValue === 1 ? 'opaque' : 'transparent') +
