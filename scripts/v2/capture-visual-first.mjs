@@ -13,7 +13,8 @@ import {
 } from './visual-first-contract.mjs';
 
 const output = resolve(process.env.WAFERCAD_VISUAL_OUTPUT || 'test-results/visual-first');
-const { example, start, scope, views, untestedViews, requiresWebgl, viewports, softwareWebgl } = parseVisualCaptureSettings();
+const { example, start, scope, views, untestedViews, requiresWebgl, viewports, softwareWebgl } =
+  parseVisualCaptureSettings();
 const port = String(process.env.WAFERCAD_VISUAL_PORT || 4189);
 const external = process.env.WAFERCAD_V2_BASE;
 const base = external || 'http://127.0.0.1:' + port;
@@ -146,10 +147,8 @@ try {
             maximized: compact ? ui.maximize : ui.desktopLayout?.maximized,
           };
         }, width <= 820);
-        if (width <= 820)
-          assert.equal(selectedState.view, view, `Portrait ${view} tab`);
-        else
-          assert.equal(selectedState.maximized, view, `Desktop ${view} maximized`);
+        if (width <= 820) assert.equal(selectedState.view, view, `Portrait ${view} tab`);
+        else assert.equal(selectedState.maximized, view, `Desktop ${view} maximized`);
         const panel = page.locator('#' + view + 'Panel');
         assert.ok(await panel.isVisible(), 'Selected view must be visible: ' + view + '/' + width);
         if (view === 'three') {

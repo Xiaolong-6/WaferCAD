@@ -148,6 +148,7 @@ Focused local package tests, without CI:
 python3 scripts/offline-package.test.py
 node --test site/tests/offline-source-revision.test.mjs
 ```
+
 ## ChatGPT no-Node-dependencies fallback and real-file validation
 
 For environments with system Python Playwright/CairoSVG/VTK but no installed Node

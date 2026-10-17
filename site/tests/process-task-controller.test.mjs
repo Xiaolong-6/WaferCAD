@@ -231,7 +231,6 @@ test('Abort notifies transaction owner before settling, including programmatic a
   }
 });
 
-
 test('opt-in project reader fallback runs only when Worker construction fails', async () => {
   const originalWorker = globalThis.Worker;
   let fallbackCalls = 0;
@@ -245,12 +244,14 @@ test('opt-in project reader fallback runs only when Worker construction fails', 
     const result = await controller.runWorker(
       '../project-worker.js',
       { arrayBuffer: new ArrayBuffer(0) },
-      { startupFallback: async ({ signal, startupError }) => {
-        fallbackCalls++;
-        assert.equal(signal.aborted, false);
-        assert.match(startupError.message, /origin null/);
-        return { project: { strictlyValidated: true } };
-      } },
+      {
+        startupFallback: async ({ signal, startupError }) => {
+          fallbackCalls++;
+          assert.equal(signal.aborted, false);
+          assert.match(startupError.message, /origin null/);
+          return { project: { strictlyValidated: true } };
+        },
+      },
     );
     assert.deepEqual(result.project, { strictlyValidated: true });
     assert.equal(fallbackCalls, 1);
@@ -266,20 +267,26 @@ test('started Worker errors do not trigger the opt-in startup fallback', async (
   let fallbackCalls = 0;
   globalThis.Worker = class {
     postMessage(message) {
-      queueMicrotask(() => this.onmessage?.({
-        data: { id: message.id, type: 'error', message: 'strict project validation failed' },
-      }));
+      queueMicrotask(() =>
+        this.onmessage?.({
+          data: { id: message.id, type: 'error', message: 'strict project validation failed' },
+        }),
+      );
     }
     terminate() {}
   };
   const controller = createProcessTaskController({ root: fakeRoot(), status: () => {} });
   try {
-    const result = await controller.runWorker('../project-worker.js', {}, {
-      startupFallback: async () => {
-        fallbackCalls++;
-        return { project: {} };
+    const result = await controller.runWorker(
+      '../project-worker.js',
+      {},
+      {
+        startupFallback: async () => {
+          fallbackCalls++;
+          return { project: {} };
+        },
       },
-    });
+    );
     assert.match(result.error, /strict project validation failed/);
     assert.equal(fallbackCalls, 0);
     assert.equal(controller.isBusy(), false);
@@ -299,12 +306,16 @@ test('aborting before fallback execution prevents project replacement', async ()
   };
   const controller = createProcessTaskController({ root: fakeRoot(), status: () => {} });
   try {
-    const pending = controller.runWorker('../project-worker.js', {}, {
-      startupFallback: () => {
-        fallbackCalls++;
-        return { project: { shouldNotLoad: true } };
+    const pending = controller.runWorker(
+      '../project-worker.js',
+      {},
+      {
+        startupFallback: () => {
+          fallbackCalls++;
+          return { project: { shouldNotLoad: true } };
+        },
       },
-    });
+    );
     controller.abort();
     assert.deepEqual(await pending, { aborted: true });
     assert.equal(fallbackCalls, 0);
@@ -323,12 +334,20 @@ test('fallback validation failures leave task controller idle and report errors'
       throw new Error('constructor refused');
     }
   };
-  const controller = createProcessTaskController({ root: fakeRoot(),
-    status: (message, level) => messages.push({ message, level }) });
+  const controller = createProcessTaskController({
+    root: fakeRoot(),
+    status: (message, level) => messages.push({ message, level }),
+  });
   try {
-    const result = await controller.runWorker('../project-worker.js', {}, {
-      startupFallback: async () => { throw new Error('invalid project schema'); },
-    });
+    const result = await controller.runWorker(
+      '../project-worker.js',
+      {},
+      {
+        startupFallback: async () => {
+          throw new Error('invalid project schema');
+        },
+      },
+    );
     assert.match(result.error, /invalid project schema/);
     assert.equal(controller.isBusy(), false);
     assert.equal(messages.at(-1).level, 'error');

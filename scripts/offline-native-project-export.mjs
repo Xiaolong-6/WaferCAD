@@ -46,7 +46,9 @@ export async function exportValidatedModel(inputPath, outputPath) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 4) {
-    console.error('Usage: node scripts/offline-native-project-export.mjs INPUT.wafercad OUTPUT.json');
+    console.error(
+      'Usage: node scripts/offline-native-project-export.mjs INPUT.wafercad OUTPUT.json',
+    );
     process.exitCode = 2;
   } else {
     exportValidatedModel(resolve(process.argv[2]), resolve(process.argv[3]))
