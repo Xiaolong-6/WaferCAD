@@ -248,6 +248,9 @@ test('real mask-field footprint is separately recorded from paper SWX/device dim
     const scope = auditSwxPaperEnvelope(v, geometry);
     assert.deepEqual(scope.paperReported.switchIncludingActuator, { width: 95, height: 100 });
     assert.deepEqual(scope.paperReported.splitCrossing, { width: 23, height: 23 });
+    assert.deepEqual(scope.paperReported.preprintSupplementTable1, { width: 100, height: 90 });
+    assert.equal(scope.reportedFullFootprintConflict, true);
+    assert.equal(scope.supplementaryFootprintVersionOfRecordVerified, false);
     assert.equal(scope.siliconFitsField, true);
     assert.ok(scope.fullMaskSiliconFootprintUm.width > 0);
     assert.ok(scope.fullMaskSiliconFootprintUm.height > 0);

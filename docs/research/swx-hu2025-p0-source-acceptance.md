@@ -43,3 +43,31 @@ The live independent results are retained in the [SEM-v2 exact-head workflow art
 - **Unverified/not claimed:** original EBL GDS, nanometer sidewall taper, calibrated HF kinetics and full release boundary, coupled FDTD/FEM, source-author exact perimeter Si/isolation geometry.
 
 **Scientific acceptance is an explicit FAIL/BLOCKED state whenever grounding, source dimensional registration, suspension ownership or SEM perimeter structure is unresolved — regardless of workflow green status.**
+
+## Measured scopes and preprint footprint discrepancy (17 October 2026)
+
+The experimental SEM-v2 positive-Si footprint includes four fiber-facing test
+couplers. Its full mask bounds must not be compared to the photonic SWX or
+switch-body dimensions. The active reflecting tooth facets and mechanical
+stoppers occupy **9.26 × 6.26 µm in OFF** and **9.26 × 5.375 µm in ON**. These
+features fit a stationary-referenced **23 × 23 µm inspection window** at
+`x = [-11.5, 11.5]`, `y = [-59.5, -36.5]`, while the optical access
+ports/tapers extend outside it. The 23 × 23 µm window is **an engineering
+inspection crop**, not proof of the author's photonic footprint definition,
+mask outline, optical transmission, or SEM registration.
+
+The present actuator width is **95 µm**, but the grouped actuator + reflector
+port geometry spans only **68.2 µm in Y**. Its difference from the reported
+100 µm full-switch dimension is **31.8 µm on unmatched measurement scopes**;
+do not extend a fabricated waveguide just to make that number zero.
+
+**Source discrepancy:** the [arXiv combined manuscript, main text p. 10](https://arxiv.org/pdf/2305.17366#page=10)
+reports **95 × 100 µm** (the same value appears in the journal article),
+while [Supplementary Table 1, p. 3/27, in that arXiv PDF](https://arxiv.org/pdf/2305.17366#page=28)
+lists this work's **full footprint as 100 × 90 µm**. The author may have used
+different revisions or measurement scopes; the *publisher's final
+supplementary PDF has not been independently reconciled*. Neither value can
+be silently used to infer missing XY mask coordinates. All
+`paperSwitchFootprintAccepted` and `paperSwxFootprintAccepted` flags remain
+**false** pending source registration.
+

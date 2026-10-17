@@ -9,6 +9,11 @@
 export const HU2025_PAPER_FOOTPRINT_UM = Object.freeze({
   switchIncludingActuator: Object.freeze({ width: 95, height: 100 }),
   splitCrossing: Object.freeze({ width: 23, height: 23 }),
+  // The arXiv combined manuscript PDF's supplementary Table 1 (page 3/27)
+  // lists "This work" as 100x90um full footprint, inconsistent with the
+  // article text's 95x100um. This is a SOURCE VERSION/DEFINITION conflict;
+  // do not silently choose one or pad the physical model to either box.
+  preprintSupplementTable1: Object.freeze({ width: 100, height: 90 }),
 });
 
 // A measured shape is one polygon with one closed ring. Keep this
@@ -134,6 +139,12 @@ export function auditSwxPaperEnvelope(vectorApi, source) {
     accessPortsExtendOutsidePhotonicWindow,
     coreAndActuatorGeometryBoundsUm,
     unregisteredFullSwitchYDifferenceUm,
+    reportedFullFootprintConflict:
+      paperReported.switchIncludingActuator.width !==
+        paperReported.preprintSupplementTable1.width ||
+      paperReported.switchIncludingActuator.height !==
+        paperReported.preprintSupplementTable1.height,
+    supplementaryFootprintVersionOfRecordVerified: false,
     siliconFitsField,
     // The author did not supply EBL GDS, a measured SEM transform or a
     // documented mask-footprint definition that includes all four couplers.
