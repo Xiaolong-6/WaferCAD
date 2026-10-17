@@ -30,6 +30,17 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
   assert.equal(report.materialLayersAdded, 9);
   assert.equal(report.graph.continuousNets, 19);
   assert.equal(report.dielectricAndViaStages.length, 3);
+  assert.deepEqual(report.viaFootprintChecks.map((check) => check.viaSites),
+    [64, 64, 12]);
+  assert.deepEqual(report.viaFootprintChecks.map((check) => check.name),
+    ['VIA12 W (illustrative)', 'VIA23 W (illustrative)', 'VIA34 W (illustrative)']);
+  for (const check of report.viaFootprintChecks) {
+    assert.ok(check.actualAreaUm2 > 0);
+    assert.ok(check.missingAreaUm2 < 1e-12,
+      check.name + ': real physical Via opening was only partly filled');
+    assert.ok(check.extraAreaUm2 < 1e-12,
+      check.name + ': real physical Via conductor leaked beyond its mask');
+  }
   assert.ok(report.finalRegionCount > report.baselineRegionCount);
   assert.ok(report.routedSurfaceMaxZ > report.originalSurfaceMaxZ);
   assert.ok(!project.processRecipe && !project.snapshots && !project.snapshotBranches);
