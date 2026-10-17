@@ -102,6 +102,10 @@ try {
       if (
         host?.dataset.transparentArrayLodTier !== 'exact' ||
         host.dataset.renderState !== 'ready' ||
+        // The selected exact tier may be ready while the last completed
+        // WebGL frame and triangle counters still belong to the far tier.
+        host.dataset.rendererFrameArrayLodTier !== 'exact' ||
+        host.dataset.rendererFrameSceneGeneration !== host.dataset.sceneGeneration ||
         Number(host.dataset.rendererFrameSerial || 0) <= previous
       )
         return false;
@@ -114,6 +118,8 @@ try {
   );
   const edgeOn = JSON.parse(await handle.jsonValue());
   assert.equal(edgeOn.transparentArrayLodTier, 'exact');
+  assert.equal(edgeOn.rendererFrameArrayLodTier, 'exact');
+  assert.equal(edgeOn.rendererFrameSceneGeneration, edgeOn.sceneGeneration);
   assert.equal(edgeOn.cameraDampingEnabled, 'false');
   assert.equal(Number(edgeOn.electricalFarLodBodyCount), 0);
   assert.equal(edgeOn.arrayInstances, far.arrayInstances);
@@ -123,6 +129,9 @@ try {
     'ARRAY_EDGE_EXACT',
     JSON.stringify({
       tier: edgeOn.transparentArrayLodTier,
+      frameTier: edgeOn.rendererFrameArrayLodTier,
+      sceneGeneration: edgeOn.sceneGeneration,
+      frameSceneGeneration: edgeOn.rendererFrameSceneGeneration,
       triangles: edgeOn.rendererDrawTriangles,
       frameSerial: edgeOn.rendererFrameSerial,
     }),
