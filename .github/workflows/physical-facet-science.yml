@@ -1,0 +1,28 @@
+name: Physical facet scientific contracts
+
+on:
+  pull_request:
+    paths:
+      - 'site/physical-facet-*.js'
+      - 'site/tests/physical-facet-*.test.mjs'
+      - '.github/workflows/physical-facet-science.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  physical-facet-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify physical owner, closed mesh and exact Section contracts
+        run: >-
+          node --test
+          site/tests/physical-facet-math.test.mjs
+          site/tests/physical-facet-owner.test.mjs
+          site/tests/physical-facet-surface.test.mjs
