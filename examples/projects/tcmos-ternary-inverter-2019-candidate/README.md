@@ -32,6 +32,7 @@ Status: **candidate generator, not yet a shipped Welcome Example**.
 - Implementation: scripts/build-tcmos-inverter-example.mjs
 - Regression: site/tests/tcmos-inverter-reconstruction.test.mjs
 - Figure-level provenance and visual acceptance: [FIG1_ACCEPTANCE.md](FIG1_ACCEPTANCE.md)
+- Separately generated 4×4 geometry-only prototype: [ARRAY_4X4.md](ARRAY_4X4.md). This is not a published die map and does not yet replay a 16-cell Recipe.
 
 ## Intended reconstruction and provenance
 
@@ -158,7 +159,7 @@ This writes `test-results/tcmos/tcmos-tilt-demo-18deg-NOT-PAPER.wafercad`. Only 
 
 ## Default inspection state
 
-The final candidate stores `Interlayer SiO2.visible = false` as **display-only** metadata while retaining the complete dielectric volume in every physical process region. This removes the opaque blanket from Main/3D/Section without deleting oxide or altering process thickness. The originally blanket 5 nm gate dielectric has separately been corrected to the two POLY footprints, because the all-field oxide overlay was physically misleading and made the Main view appear uniformly colored. The original ILD can be restored with the material legend checkbox. Intermediate History steps preserve visible dielectric to show deposition/fill during process review; the last History head and final bookmark reflect the unobscured inspection preset.
+The final candidate now stores `Interlayer SiO2.visible = true` and a global 3D opacity of **0.55**. This keeps the real dielectric supporting METAL1 and W contacts visible in the initial 3D view, avoiding a misleading suspended-metal appearance. The geometric ILD and all process thicknesses are unchanged, including in History/Recovery. For an isolated internal-contact inspection, hide the ILD explicitly using the material legend; that is a view preference, not an etched void. The 5 nm gate dielectric remains confined to the two POLY footprints rather than an incorrect all-field film.
 
 A saved project-specific 3D camera targets the transistor pair from an oblique, closer vantage point. This camera is part of the example file, not a global renderer default. Section A–B now traverses the SVG-aligned cross-device channel at y=-1.2 µm. For an individual schematic POLY band, users still need to zoom into Section or adjust A–B; the published Fig. 1a is an illustrative 3D sketch, and no original foundry GDS or exact depth profile is available. Visual matching is _qualitative_.
 

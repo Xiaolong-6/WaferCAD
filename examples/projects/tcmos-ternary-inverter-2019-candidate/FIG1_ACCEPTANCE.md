@@ -111,3 +111,33 @@ it must not present illustrative color bands as externally computed data.
 
 Keep PR #225 Draft and out of Welcome pending explicit release/merge approval.
 This record alone does not authorize Main merge.
+
+
+## 2026-10-17 — 4×4 native array prototype acceptance
+
+After explicit user approval to extend beyond one cell, an independent
+**inspection-only** project was generated from the accepted SVG and
+unit's final physical model. It contains 16 spatially distinct cells on
+a **56 × 32 µm illustrative field**, one canonical physical model
+template, 16 native array instances, and **3,712 File Mask polygons**
+(8 SVG layer groups; 218 × 16 = 3,488 CNTs). The default ILD is visible.
+The original 1×1 project retains its 23-step Recipe and historical
+Variants. Array-wide process replay, all-cell electrical fanout, pad
+routing and 8×8/wafer layout are **not accepted or claimed**.
+
+Actual Chromium screenshot evidence: [PR #225 4×4 and 1×1 replay
+artifact](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39008666718/artifacts/12091638844).
+It includes `tcmos-4x4-mask-chromium.png`,
+`tcmos-4x4-three-chromium.png` and
+`tcmos-4x4-section-chromium.png`, plus the browser acceptance JSON.
+The 4×4 scientific test verifies all 16 Mask translations, native
+instance ownership, lossless project storage and non-calibrated dopant
+intent at every cell. Chromium visual inspection confirms visible oxide,
+16 structures and coherent cross-row sections.
+
+**Physical limitation:** the approved SVG includes unconnected
+body-tie/supply rail islands, and this example keeps independent
+unwired inverter layouts. Ohmic body contact, PN/BTBT, full inter-cell
+routing and whole-array Recipe/History remain unverified. These cannot
+be inferred from the wafer photograph alone; final Main merge and
+Welcome registration remain unauthorized.
