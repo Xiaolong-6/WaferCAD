@@ -42,7 +42,7 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
     [1, 11, 6, 10, 12, 13, 4, 5],
   );
   assert.deepEqual(FIELD_UM, [14, 8]);
-  assert.equal(GATE_LENGTH_UM, 0.44);
+  assert.equal(GATE_LENGTH_UM, 0.48125);
   assert.equal(layout.root, 'TCMOS_130NM_LOCAL');
   assert.equal(layout.units.hasPhysicalUnits, true);
   assert.equal(layout.combos.length, 8, 'SVG alone owns all exported Mask layers');
@@ -65,8 +65,14 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
     );
   }
   const gates = TCMOS_MASKS.find((m) => m.id === 6).rectangles;
-  assert.equal(gates[0].w, GATE_LENGTH_UM);
-  assert.equal(gates[1].w, GATE_LENGTH_UM);
+  // Legacy pixel-rectangle metadata is retained only for negative-path
+  // provenance tests; it no longer controls the SVG-derived process geometry.
+  assert.equal(gates[0].w, 0.44);
+  assert.equal(gates[1].w, 0.44);
+  const sourcePoly = layout.elements.filter((element) => element.layer === 6);
+  for (const gate of sourcePoly) {
+    assert.equal(gate.points[1][0] - gate.points[0][0], GATE_LENGTH_UM);
+  }
   assert.equal(gates[0].h, gates[1].h);
   assert.equal(gates.length, 2, 'Fig.1b has two separate POLY gates connected at METAL1');
   assert.equal(TCMOS_MASKS.find((m) => m.id === 1).rectangles.length, 8);

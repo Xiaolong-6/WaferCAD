@@ -16,7 +16,9 @@ import { readTcmosReferenceMask } from './tcmos-svg-mask.mjs';
 
 export const TCMOS_DOI = '10.1038/s41928-019-0272-8';
 export const FIELD_UM = [14, 8];
-export const GATE_LENGTH_UM = 0.44;
+// Width of the two source-approved SVG POLY rectangles (38.5 vector units at
+// 80 units per illustrative µm); NOT a physically measured transistor gate.
+export const GATE_LENGTH_UM = 38.5 / 80;
 const BASE_THICKNESS_UM = 2;
 const FIXED_DATE = '2026-10-14T08:00:00.000Z';
 const CELL = 'TCMOS_130NM_LOCAL';
@@ -530,7 +532,7 @@ export function tcmosLayout() {
   // The user's SVG is the complete File Mask source of truth: exactly
   // eight layers and 232 polygons. Do not include five legacy, hidden
   // process-only layers in the File Mask or its GDS/OAS exports.
-  // Old Recipe source masks are separate and remain frozen for Mask review.
+  // Recipe snapshots capture SVG-derived process geometry separately.
   const traced = readTcmosReferenceMask();
   const elements = traced.flatMap(({ layer, datatype, shapes }) =>
     shapes.map(({ points }) => ({
@@ -1295,7 +1297,7 @@ export async function buildTcmosInverter({
     },
     checkpoints,
     keyAssumptions: [
-      'The 130 nm foundry node is not a measured gate length. The drawn POLY width 0.44 µm follows the 24-pixel schematic stroke using the documented illustrative mapping; all Mask XY positions, CNT pitches and widths are illustrative, not foundry design rules.',
+      'The 130 nm foundry node is not a measured gate length. Approved SVG POLY width 38.5/80 = 0.48125 illustrative µm follows the supplied vector drawing, not foundry metrology; all Mask XY positions, CNT pitches and widths are illustrative, not foundry design rules.',
       'The 5 nm gate oxide is represented only under POLY footprints, avoiding an unphysical display blanket over STI and body-tie surfaces; foundry oxidation/strip steps remain abstracted.',
       'Si handle=2um, STI depth=230nm, fill=280nm, gate oxide=5nm, POLY=200nm, ILD=450nm and METAL1=200nm are model choices, not author measurements.',
       'As+ for left pMOS (HVTN window) and BF2+ for right nMOS (HVTP window); buried interval 80–240 nm is illustrative, not calibrated concentration or tunnel-junction thickness.',
