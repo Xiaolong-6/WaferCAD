@@ -22,6 +22,39 @@ const browser = await chromium.launch({
   args: ['--enable-unsafe-swiftshader'],
 });
 const report = { example: id, views: {}, source: 'Real WaferCAD browser rendering' };
+// Production desktop uses persistent four-view docking; older single-view
+// controls may be absent. Never toggle OFF a view that is already visible.
+async function showScientificView(page, view, { maximize = false } = {}) {
+  const selector = view === 'three' ? '#threeHost' : '#sectionCanvas';
+  const singleView = page.locator(`[data-action="view:${view}"]`).first();
+  if (await singleView.isVisible()) {
+    await singleView.click();
+  } else {
+    const dock = page.locator(`[data-action="dock:view:${view}"]`).first();
+    if (await dock.isVisible()) {
+      if (!(await page.locator(selector).isVisible())) await dock.click();
+      if (maximize) {
+        const layout = await page.evaluate(
+          () => window.WaferCadV2Workstation?.snapshot()?.ui?.desktopLayout,
+        );
+        if (layout?.maximized !== view) {
+          const button = page.locator(`[data-action="maximize:${view}"]`).first();
+          assert.ok(await button.isVisible(), 'Visible ' + view + ' dock lacks maximize action');
+          await button.click();
+        }
+      }
+    } else if (view === 'section') {
+      const sectionDock = page.locator('[data-action="section"]').first();
+      assert.ok(await sectionDock.isVisible(), 'No Section view navigation is available');
+      if ((await sectionDock.getAttribute('aria-pressed')) !== 'true') {
+        await sectionDock.click();
+      }
+    } else {
+      throw new Error('No visible 3D view navigation control in the current Workstation');
+    }
+  }
+  await page.locator(selector).waitFor({ state: 'visible', timeout: 30000 });
+}
 try {
   for (const view of ['main', 'mask', 'section', 'three']) {
     const context = await browser.newContext({
@@ -148,7 +181,7 @@ try {
     null,
     { timeout: 120000 },
   );
-  await page.locator('[data-action="view:three"]').click();
+  await showScientificView(page, 'three');
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
@@ -220,11 +253,13 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
+  // The production four-view dock may start without Section displayed.
+  await showScientificView(page, 'section');
   // Capture the physical top-device Section before reclaiming the dock.
   const hemtSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('hemt-active-section.png', directory), hemtSectionShot);
   const sectionDock = page.locator('[data-action="section"]').first();
-  if ((await sectionDock.getAttribute('aria-pressed')) === 'true') {
+  if ((await sectionDock.count()) && (await sectionDock.getAttribute('aria-pressed')) === 'true') {
     await sectionDock.click();
   }
   await waitForPaint(page);
@@ -275,11 +310,7 @@ try {
     null,
     { timeout: 120000 },
   );
-  const sectionButton = page.locator('[data-action="section"]').first();
-  if ((await sectionButton.getAttribute('aria-pressed')) !== 'true') {
-    await sectionButton.click();
-  }
-  await page.locator('#sectionCanvas').waitFor({ state: 'visible', timeout: 120000 });
+  await showScientificView(page, 'section');
   await waitForPaint(page);
   // Audit actual XY/Z material occupancy from the persisted browser project,
   // not only material layer names or colors. A metallic-looking cylinder can
@@ -473,12 +504,15 @@ try {
     null,
     { timeout: 120000 },
   );
-  await page.locator('[data-action="view:three"]').click();
+  await showScientificView(page, 'three', { maximize: true });
   // The TSV inspection just enabled the Section dock, halving the remaining
   // 3D canvas and visually clipping the rightmost GSG die. Reclaim the dock
   // before judging the complete package footprint in the real renderer.
   const packageSectionDock = page.locator('[data-action="section"]').first();
-  if ((await packageSectionDock.getAttribute('aria-pressed')) === 'true') {
+  if (
+    (await packageSectionDock.count()) &&
+    (await packageSectionDock.getAttribute('aria-pressed')) === 'true'
+  ) {
     await packageSectionDock.click();
   }
   await page.waitForFunction(
