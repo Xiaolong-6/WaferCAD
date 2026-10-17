@@ -21,7 +21,7 @@ Use this page to find the document that owns a question. Current contracts descr
 | Canonical model, module ownership, workers and state flow        | [Architecture](ARCHITECTURE.md)                |
 | Implementation contracts and local checks                        | [Development](DEVELOPMENT.md)                  |
 | Shared ChatGPT/Codex workflow and reproducible handoff           | [Collaboration](COLLABORATION.md)              |
-| Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md) and [Node test layout](../site/tests/README.md) |
+| Test ownership, scientific/runtime coverage and visual baselines | [Testing](testing.md)                          |
 | PR/main/scheduled/manual triggers and Draft cost controls        | [CI routing](CI.md)                            |
 | Documentation ownership, navigation and drift checks             | [Documentation architecture](DOCUMENTATION.md) |
 | Generated manual and GitHub Wiki delivery                        | [Wiki publishing](WIKI_SYNC.md)                |
