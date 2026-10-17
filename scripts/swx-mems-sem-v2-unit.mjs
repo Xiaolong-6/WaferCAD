@@ -508,7 +508,9 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
   // grounded spring/shuttle structure. The paper does NOT establish
   // whether the two drives share one on-chip Si net or external bias.
   const combsSeparatedFromGround = ownerIds[4] !== anchorNetId && ownerIds[5] !== anchorNetId;
-  const independentCombDriveDomains = new Set(ownerIds.slice(4)).size;
+  // The last contacts can be experimental Ground/Signal pads. Only the
+  // two fixed-comb electrodes at canonical indices 4/5 count as drives.
+  const independentCombDriveDomains = new Set(ownerIds.slice(4, 6)).size;
   // Name the optical and MEMS Si domains by actual source-mask locations,
   // never by the unstable ordering of Boolean-union polygon components.
   const ownerOfPoint = (point, name) => {

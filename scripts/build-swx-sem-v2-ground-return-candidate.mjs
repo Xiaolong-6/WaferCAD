@@ -28,6 +28,13 @@ const candidateFigureScopeAudit = auditSwxPaperEnvelope(v, source);
 assert.equal(originalAudit.opticalFrameConnectedToGroundSi, false);
 assert.equal(candidateAudit.opticalFrameConnectedToGroundSi, true);
 assert.equal(candidateAudit.combsSeparatedFromGround, true);
+assert.equal(candidateAudit.independentCombDriveDomains, 1);
+assert.equal(candidateAudit.siliconConnectedDomains, 2);
+assert.equal(candidateAudit.metalContacts, 8);
+assert.deepEqual(candidateAudit.metalPadSiOwnerIndices.slice(6), [
+  candidateAudit.springGroundNetId,
+  candidateAudit.metalPadSiOwnerIndices[4],
+]);
 assert.equal(candidateAudit.springAnchorsShareNet, true);
 assert.equal(candidateAudit.sourceElectricalTopologySatisfied, true);
 assert.equal(candidateAudit.sourceElectricalGroundingAccepted, false);
@@ -46,7 +53,11 @@ await writeFile(
       candidateSiliconDomains: candidateAudit.siliconConnectedDomains,
       sourceElectricalNetAudit: candidateAudit,
       figureScopeAudit: candidateFigureScopeAudit,
-      extraneousSourceUnverifiedBOXSupportedRails: 2,
+      extraneousSourceUnverifiedBOXSupportedRails: 0,
+      inventedSourcePerimeterRails: true,
+      modeledExternalGoldContacts: 2,
+      paperPadXYCoordinatesVerified: false,
+      independentStationaryCombSignalDomains: candidateAudit.independentCombDriveDomains,
       fabricatedSiliconElectricalTopologySatisfied: true,
       authorPerimeterGeometryAccepted: false,
       authorGroundRoutingAccepted: false,
