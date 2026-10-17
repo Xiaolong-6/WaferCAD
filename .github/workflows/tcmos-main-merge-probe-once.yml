@@ -1,0 +1,53 @@
+name: T-CMOS #225 main integration conflict probe (temporary)
+
+on:
+  push:
+    branches:
+      - integrate/tcmos225-main-20261017
+    paths:
+      - .github/workflows/tcmos-main-merge-probe-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  merge-probe:
+    if: github.repository == 'Xiaolong-6/WaferCAD'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preview real Git three-way merge against current main (no push)
+        run: |
+          git config user.name 'WaferCAD integration probe'
+          git config user.email 'wafercad-integration@example.invalid'
+          git fetch origin main --no-tags
+          echo "CURRENT_HEAD=$(git rev-parse HEAD)"
+          echo "TARGET_MAIN=$(git rev-parse origin/main)"
+          git merge --no-commit --no-ff origin/main || true
+          echo "=== UNMERGED PATHS ==="
+          git diff --name-only --diff-filter=U
+          echo "=== CONFLICT TYPES ==="
+          git ls-files -u | head -80
+          echo "=== MERGE STATUS ==="
+          git status --short
+          mkdir -p /tmp/tcmos-merge-probe
+          git diff --name-only --diff-filter=U > /tmp/tcmos-merge-probe/unmerged-paths.txt
+          git status --short > /tmp/tcmos-merge-probe/status.txt
+          git rev-parse HEAD origin/main > /tmp/tcmos-merge-probe/heads.txt
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              mkdir -p "/tmp/tcmos-merge-probe/conflicts/$(dirname "$file")"
+              cp "$file" "/tmp/tcmos-merge-probe/conflicts/$file"
+            fi
+          done < /tmp/tcmos-merge-probe/unmerged-paths.txt
+      - name: Preserve read-only merged-preview conflict evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos225-merge-probe
+          path: /tmp/tcmos-merge-probe/
+          retention-days: 7
