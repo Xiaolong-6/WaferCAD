@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 import {
   baseUrl,
   gotoWelcome,
@@ -590,6 +591,9 @@ try {
   // real desktop viewport before operating its physical 3D presentation tools.
   // The 1000 px evidence screenshot above stays unchanged.
   await page.setViewportSize({ width: 1440, height: 900 });
+  // Exercise the same desktop view navigation as the passing M3D Welcome
+  // border test. A ready WebGL host does not prove its toolbar is laid out.
+  await selectScientificView(page, 'three', 1440);
   await page.waitForFunction(
     () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
@@ -598,10 +602,43 @@ try {
   // PR #229 / #250 integration: exercise actual workstation controls, not a
   // synthetic standalone renderer. The same saved package and camera must
   // survive four border/opacity presentations without rebuilding material.
-  const packageBorders = page.locator('[data-action="borders:three"]:visible').first();
-  const packageOpacity = page.locator('[data-action="opacity:three"]:visible').first();
-  assert.ok(await packageBorders.isVisible(), 'Package 3D border control is unavailable');
-  assert.ok(await packageOpacity.isVisible(), 'Package 3D opacity control is unavailable');
+  const packageBorders = page.locator('#threePanel [data-action="borders:three"]');
+  const packageOpacity = page.locator('#threePanel [data-action="opacity:three"]');
+  try {
+    await packageBorders.waitFor({ state: 'visible', timeout: 20000 });
+    await packageOpacity.waitFor({ state: 'visible', timeout: 20000 });
+  } catch (error) {
+    const toolbar = await page.evaluate(() => {
+      const panel = document.getElementById('threePanel');
+      const borders = panel?.querySelector('[data-action="borders:three"]');
+      const opacity = panel?.querySelector('[data-action="opacity:three"]');
+      const rect = (element) => {
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height,
+          display: style.display,
+          visibility: style.visibility,
+        };
+      };
+      return {
+        viewport: [innerWidth, innerHeight],
+        maximized: window.WaferCadV2Workstation?.snapshot()?.ui?.desktopLayout?.maximized,
+        panel: rect(panel),
+        borders: rect(borders),
+        opacity: rect(opacity),
+        borderCount: document.querySelectorAll('[data-action="borders:three"]').length,
+        opacityCount: document.querySelectorAll('[data-action="opacity:three"]').length,
+      };
+    });
+    throw new Error('3D toolbar not visible after real desktop navigation: ' + JSON.stringify(toolbar), {
+      cause: error,
+    });
+  }
   const scientificState = () =>
     page.evaluate(() => {
       const state = window.WaferCadV2Workstation.snapshot();
