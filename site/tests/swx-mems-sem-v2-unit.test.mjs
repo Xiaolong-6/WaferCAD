@@ -200,14 +200,18 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
   }
 });
 
-test('SEM v2 real post-release support ownership is 12 fixed and 14 suspended sites', () => {
+test('SEM v2 real post-release ownership includes all twelve wider 1um spring trusses', () => {
   for (const state of ['off', 'on']) {
     const probes = createSwxSemV2SupportAudit(state);
     assert.equal(probes.supported.length, 12);
-    assert.equal(probes.released.length, 14);
+    assert.equal(probes.released.length, 26);
+    assert.equal(
+      probes.released.filter((probe) => probe.name.startsWith('folded spring truss ')).length,
+      12,
+    );
     assert.equal(probes.outerIsolationTrenchVerified, false);
     assert.equal(probes.sourceHFUndercutFrontVerified, false);
     const names = [...probes.supported, ...probes.released].map((x) => x.name);
-    assert.equal(new Set(names).size, 26);
+    assert.equal(new Set(names).size, 38);
   }
 });

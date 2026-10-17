@@ -382,6 +382,18 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('S7 right stationary anchor', [34, -45]),
     ...newTerminalsUm.map((point, index) => add('terminal support ' + index, point)),
   ];
+  // Inspect each *real* 1um truss at its own centroid after HF. The
+  // older 14 released point probes covered compliant beams but not the
+  // wider truss Si that could retain an unintended BOX island.
+  const trussReleasePoints = semV2PhysicalPose(state).springTrussContours.map(
+    (ring, index) => {
+      const xs = ring.map((point) => point[0]);
+      const ys = ring.map((point) => point[1]);
+      const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+      return add('folded spring truss ' + index, [x, y]);
+    },
+  );
   const released = [
     add('moving shuttle rail', [2.65, -72 + travel]),
     add('left moving comb handle', [-25, -87.4 + travel]),
@@ -397,6 +409,7 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('left S7 narrow aligner beam', [-7.5, -50 + travel / 2]),
     add('right S7 narrow aligner beam', [27.5, -45 + travel / 2]),
     add('central movable SWX-to-shuttle link', [0, -52 + travel]),
+    ...trussReleasePoints,
   ];
   return {
     state,
