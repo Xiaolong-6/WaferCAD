@@ -14,7 +14,7 @@ node scripts/offline-visual-kernel.mjs --fixture step --view section --output te
 node scripts/offline-visual-kernel.mjs --fixture step --view main --svg-only
 ```
 
-Outputs: `main.svg`/`section.svg`, matching PNG (unless `--svg-only`) and `*.evidence.json`. The PNG rasterizer uses **Chromium on `about:blank`** with inline SVG; it never opens application URLs, and requires a locally available Playwright Chromium executable (override via `WAFERCAD_CHROMIUM`). Input `.wafercad` is parsed using the existing `readProjectFile` migration and validation. Geometry comes only from production `surfaceGroups` and `sectionSlices`, and `--fixture step` uses the production process benchmark. No custom scientific slice/topology algorithm is introduced.
+Outputs: `main.svg`/`section.svg`/`mask.svg`, matching PNG (unless `--svg-only`) and `*.evidence.json`. The PNG rasterizer uses **Chromium on `about:blank`** with inline SVG; it never opens application URLs, and requires a locally available Playwright Chromium executable (override via `WAFERCAD_CHROMIUM`). Input `.wafercad` is parsed using the existing `readProjectFile` migration and validation. Geometry comes only from production `surfaceGroups` and `sectionSlices`, and `--fixture step` uses the production process benchmark. No custom scientific slice/topology algorithm is introduced.
 
 The metadata records the exact input SHA-256, checkout commit, view, physical bounds, XY/Z pixel calibration and rendering limitations. `--scale auto` uses independent X/Z scaling, and `--scale physical` fixes a true 1:1 physical X:Z ratio. No Z break is applied. The exported SVG shows visible materials but is **not** a native renderer screenshot. This P0 does **not** reproduce rough surface tessellation, annotations, Mask, native WebGL transparency/borders or full UI interactions. Do not use it to close native renderer or real-browser visual acceptance requirements.
 
@@ -44,3 +44,32 @@ node scripts/offline-three-capture.mjs --fixture step --mesh-only
 Uses the production `buildRenderSurfacePlan()` owned caps and sidewalls and the production `triangulatePolygon(THREE, polygon)` for cap topology. Open sidewalls form two triangles per quad; buried material interfaces are explicitly excluded from the opaque exterior preview. This does **not** reconstruct rough/pyramid displacement or Three.js material/shader/transparent border compositing. The optional Python VTK rasterizer is a separate offline image backend and must never be labeled a native Three.js image. Z exaggeration is presentation-only and recorded alongside source SHA and material counts. Fail explicitly on invalid caps, impossible sidewall spans and excessive triangle budgets. It must not mutate the project.
 
 Focused read-only triangle conversion tests: `node --test site/tests/offline-three-mesh.test.mjs`. VTK is **not** added to the locked production dependency set; only the optional offline 3D PNG path requires it. The scientific source and WebGL renderer remain unchanged.
+
+## File / Draw Mask offline inspection
+
+```sh
+node scripts/offline-visual-kernel.mjs --project site/examples/perc-solar-cells-point-contacts.wafercad --view mask --output test-results/offline-mask-file
+node scripts/offline-visual-kernel.mjs --project site/examples/perc-solar-cells-point-contacts.wafercad --view mask --mask-source draw --mask-opacity 0.75 --output test-results/offline-mask-draw
+```
+
+The renderer uses native `maskLocalToWorld()` for File coordinates,
+`drawShapeGeometry()` for individual Draw rings/polygons and
+`maskRoiWorldGeometry()` for the optional Mask ROI. It preserves their
+separate coordinate spaces (only File coordinates use the saved alignment).
+The outline reference comes from native `surfaceGroups()` for the selected
+front/back face and is a dashed overlay, **never** fabricated as Mask geometry.
+Selected `layer|datatype` File elements retain the shared native palette;
+non-selected elements remain visible but subdued. Native polygon holes are
+rendered using SVG `fill-rule=evenodd`. The output is a diagram for Mask
+inspection, not the actual Canvas rasterizer, touch interaction or GDS export.
+
+The offline File renderer currently uses the stored flattened
+`layout.elements/linework` and saved `selectedLayerKeys`, **not an independently
+recomputed cell-hierarchy filter**. Verify active Cell and imported hierarchical
+semantics with the real Mask UI before treating the file capture as acceptance.
+Empty Masks are explicitly reported as zero source elements rather than showing
+fabricated patterns. Very large masks may exceed offline SVG performance.
+
+Focused checks: `node --test site/tests/offline-mask-svg.test.mjs`.
+A synthetic File/Draw sample rendered to two PNGs using an in-memory Chromium
+SVG is a smoke test only, not an end-to-end `.wafercad` validation.

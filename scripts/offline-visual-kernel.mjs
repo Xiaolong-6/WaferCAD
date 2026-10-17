@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { loadGeometryKernel, processBenchmark } from './process-benchmarks.mjs';
 import { renderMainSvg, renderSectionSvg } from './offline-visual-svg.mjs';
+import { renderMaskSvg } from './offline-mask-svg.mjs';
 
 function options(argv) {
   const flags = new Set(['--svg-only', '--no-borders']);
@@ -20,7 +21,7 @@ function options(argv) {
       result[flag] = argv[++i];
     }
   }
-  for (const key of Object.keys(result)) if (!['--project', '--fixture', '--view', '--output', '--width', '--height', '--face', '--scale', '--svg-only', '--no-borders'].includes(key)) throw Error(`Unknown option: ${key}`);
+  for (const key of Object.keys(result)) if (!['--project', '--fixture', '--view', '--output', '--width', '--height', '--face', '--scale', '--svg-only', '--no-borders', '--mask-source', '--mask-opacity'].includes(key)) throw Error(`Unknown option: ${key}`);
   return result;
 }
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -56,7 +57,7 @@ async function pngFromSvg(svg, pngPath, width, height) {
 }
 export async function run(settings) {
   const view = settings['--view'] || 'section';
-  if (!['section', 'main'].includes(view)) throw Error('P0 supports --view main|section only. UI, Mask and native 3D are not implemented.');
+  if (!['section', 'main', 'mask'].includes(view)) throw Error('Offline visual kernel supports --view main|section|mask.');
   const width = Number(settings['--width'] || 1100), height = Number(settings['--height'] || 760);
   const out = resolve(settings['--output'] || 'test-results/offline-visual');
   const { project, inputSha256, source } = await loadInput(settings);
@@ -65,9 +66,34 @@ export async function run(settings) {
   const borders = !settings['--no-borders'];
   const sectionA = project.section?.a || [-project.model.width * .42, 0];
   const sectionB = project.section?.b || [project.model.width * .42, 0];
-  const data = view === 'main'
-    ? renderMainSvg({ model: project.model, patches: surfaceGroups(project.model, settings['--face'] || project.activeFace || 'front'), title: `${project.name || source} / Main`, width, height, face: settings['--face'] || project.activeFace || 'front', borders })
-    : renderSectionSvg({ model: project.model, slices: sectionSlices(project.model, sectionA, sectionB), a: sectionA, b: sectionB, title: `${project.name || source} / Section`, width, height, scaleMode: settings['--scale'] || 'auto', borders });
+  let data;
+  if (view === 'main') {
+    data = renderMainSvg({ model: project.model, patches: surfaceGroups(project.model, settings['--face'] || project.activeFace || 'front'), title: `${project.name || source} / Main`, width, height, face: settings['--face'] || project.activeFace || 'front', borders });
+  } else if (view === 'section') {
+    data = renderSectionSvg({ model: project.model, slices: sectionSlices(project.model, sectionA, sectionB), a: sectionA, b: sectionB, title: `${project.name || source} / Section`, width, height, scaleMode: settings['--scale'] || 'auto', borders });
+  } else {
+    const [{ maskLocalToWorld, maskRoiWorldGeometry }, { drawShapeGeometry }] = await Promise.all([
+      import('../site/mask-roi-geometry.js'),
+      import('../site/draw-mask-geometry.js'),
+    ]);
+    const maskSource = settings['--mask-source'] || project.maskSourceMode || 'file';
+    const transform = project.maskTransform || { x: 0, y: 0, scale: 1, rotation: 0 };
+    const selected = new Set(project.selectedLayerKeys || []);
+    const fileElements = [...(project.layout?.linework || []), ...(project.layout?.elements || [])]
+      .filter(item => item.kind === 'polygon' || item.kind === 'path')
+      .map(item => ({ ...item, points: item.points.map(p => maskLocalToWorld(p, transform)),
+        width: item.kind === 'path' ? item.width * Math.abs(Number(transform.scale) || 1) : 0,
+        selected: selected.has(`${item.layer}|${item.datatype}`) }));
+    const drawGeometries = (project.drawMask?.shapes || []).map(shape => ({ id: shape.id, geom: drawShapeGeometry(shape) }));
+    const roiTransform = maskSource === 'file' ? transform : { x: 0, y: 0, scale: 1, rotation: 0 };
+    const roiGeometry = project.maskRoi ? maskRoiWorldGeometry(project.maskRoi, roiTransform, 96) : null;
+    const activeFace = settings['--face'] || project.activeFace || 'front';
+    const opacity = settings['--mask-opacity'] === undefined ? Number(project.maskOpacity ?? 0.65) : Number(settings['--mask-opacity']);
+    data = renderMaskSvg({model: project.model, fileElements, drawGeometries, source: maskSource,
+      referencePatches: borders ? surfaceGroups(project.model, activeFace) : [], roiGeometry,
+      face: activeFace, opacity, width, height, title: `${project.name || source} / Mask`});
+    data.evidence.maskTransform = maskSource === 'file' ? transform : null;
+  }
   await mkdir(out, { recursive: true });
   const svgPath = join(out, `${view}.svg`), pngPath = join(out, `${view}.png`), evidencePath = join(out, `${view}.evidence.json`);
   const evidence = { schema: 'wafercad-offline-visual-p0', source, inputSha256, commit: sha(), width, height, borders, ...data.evidence, captureMethod: settings['--svg-only'] ? 'svg' : 'svg-inline-chromium-png', renderingScope: 'scientific geometry inspection, not native UI/Three pixel acceptance' };
