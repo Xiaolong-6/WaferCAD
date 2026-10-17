@@ -65,7 +65,10 @@ try {
     if (await dock.count()) {
       if ((await dock.getAttribute('aria-pressed')) !== 'true') await dock.click();
     } else if (view !== 'section') {
-      await page.locator('[data-action="view:' + view + '"]:visible').first().click();
+      await page
+        .locator('[data-action="view:' + view + '"]:visible')
+        .first()
+        .click();
     } else {
       await page.getByRole('button', { name: 'Section', exact: true }).first().click();
     }
@@ -112,23 +115,25 @@ try {
     const ys = points.map(([, y]) => y);
     const rect = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
     const rectArea = (rect[2] - rect[0]) * (rect[3] - rect[1]);
-    const ring = points.at(-1)[0] === points[0][0] &&
-      points.at(-1)[1] === points[0][1]
-      ? points.slice(0, -1)
-      : points;
+    const ring =
+      points.at(-1)[0] === points[0][0] && points.at(-1)[1] === points[0][1]
+        ? points.slice(0, -1)
+        : points;
     assert.equal(ring.length, 4, 'Routing rectangle changed vertex count');
     const doubleArea = ring.reduce((value, [x, y], i) => {
       const [u, v] = ring[(i + 1) % ring.length];
       return value + x * v - u * y;
     }, 0);
-    assert.ok(Math.abs(Math.abs(doubleArea) / 2 - rectArea) < 1e-9,
-      'Routing polygon is no longer a complete Manhattan rectangle');
-    return element.layer + '|' + element.datatype + '|' +
-      rect.map((v) => v.toFixed(6)).join(',');
+    assert.ok(
+      Math.abs(Math.abs(doubleArea) / 2 - rectArea) < 1e-9,
+      'Routing polygon is no longer a complete Manhattan rectangle',
+    );
+    return element.layer + '|' + element.datatype + '|' + rect.map((v) => v.toFixed(6)).join(',');
   };
   const expectedRouting = file.layout.elements
     .filter((element) => supplementalLayers.has(element.layer))
-    .map(rectangularSignature).sort();
+    .map(rectangularSignature)
+    .sort();
   assert.equal(expectedRouting.length, 251);
   const menu = page.locator('[data-action="mask-export-menu"]');
   if (!(await menu.isVisible()))
@@ -143,9 +148,10 @@ try {
     const output = resolve(dir, 'tcmos-4x4-routed-mask.' + format);
     await download.saveAs(output);
     const bytes = await readFile(output);
-    const parsed = format === 'gds'
-      ? parseGDS(Uint8Array.from(bytes).buffer)
-      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const parsed =
+      format === 'gds'
+        ? parseGDS(Uint8Array.from(bytes).buffer)
+        : await parseOAS(Uint8Array.from(bytes).buffer);
     const elements = flattenGDS(parsed, parsed.root).elements;
     const counts = {};
     for (const element of elements) {
@@ -157,9 +163,13 @@ try {
     assert.equal(Object.keys(counts).length, 14);
     const actualRouting = elements
       .filter((element) => supplementalLayers.has(element.layer))
-      .map(rectangularSignature).sort();
-    assert.deepEqual(actualRouting, expectedRouting,
-      format + ': changed one or more supplemental Via/M2/M3/M4 mask rectangles');
+      .map(rectangularSignature)
+      .sort();
+    assert.deepEqual(
+      actualRouting,
+      expectedRouting,
+      format + ': changed one or more supplemental Via/M2/M3/M4 mask rectangles',
+    );
     report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 3963 });
   }
   // Save -> destructive name mutation -> actual Recovery Restore. Merely
@@ -167,9 +177,10 @@ try {
   await page.locator('.p-nav [data-action="domain:project"]').click();
   await page.locator('#saveProjectBtn').click();
   await page.waitForFunction(
-    () => /Saved .* locally/.test(
-      document.querySelector('[data-slot="status.message"]')?.textContent || ''
-    ),
+    () =>
+      /Saved .* locally/.test(
+        document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      ),
     null,
     { timeout: 120000 },
   );
@@ -191,17 +202,29 @@ try {
   const restored = await snapshot();
   assert.equal(restored.projectName, file.name);
   assert.equal(restored.model.kernel, 'vector-2.5d-v1');
-  assert.deepEqual(restored.model.layers, loaded.model.layers,
-    'Recovery changed the physical layer identities/materials');
-  assert.deepEqual(restored.model.regions, loaded.model.regions,
-    'Recovery changed physical XY/Z region geometry or material stacks');
-  assert.deepEqual(restored.layout.elements, loaded.layout.elements,
-    'Recovery changed original or supplemental File Mask vertices');
-  assert.ok(!restored.processRecipe && !restored.snapshotBranches,
-    'Recovery must not synthesize unverified routed process history');
+  assert.deepEqual(
+    restored.model.layers,
+    loaded.model.layers,
+    'Recovery changed the physical layer identities/materials',
+  );
+  assert.deepEqual(
+    restored.model.regions,
+    loaded.model.regions,
+    'Recovery changed physical XY/Z region geometry or material stacks',
+  );
+  assert.deepEqual(
+    restored.layout.elements,
+    loaded.layout.elements,
+    'Recovery changed original or supplemental File Mask vertices',
+  );
+  assert.ok(
+    !restored.processRecipe && !restored.snapshotBranches,
+    'Recovery must not synthesize unverified routed process history',
+  );
   await page.screenshot({ path: resolve(dir, 'tcmos-4x4-routed-recovery-restored.png') });
   report.recovery = {
-    checkpoint: true, restored: true,
+    checkpoint: true,
+    restored: true,
     materialRegions: restored.model.regions.length,
     maskElements: restored.layout.elements.length,
     strictModelAndMaskParity: true,
@@ -216,8 +239,10 @@ try {
   throw error;
 } finally {
   await mkdir(dir, { recursive: true });
-  await writeFile(resolve(dir, 'tcmos-4x4-routed-browser-report.json'),
-    JSON.stringify(report, null, 2));
+  await writeFile(
+    resolve(dir, 'tcmos-4x4-routed-browser-report.json'),
+    JSON.stringify(report, null, 2),
+  );
   await context.close();
   await browser.close();
 }
