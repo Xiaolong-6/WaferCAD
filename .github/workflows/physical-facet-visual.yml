@@ -9,6 +9,11 @@ on:
       - 'site/physical-facet-preview.js'
       - 'site/physical-facet-render-geometry.js'
       - 'site/physical-facet-surface.js'
+      - 'site/plan-renderers.js'
+      - 'site/project-io.js'
+      - 'site/ui-v2/workstation-runtime.js'
+      - 'site/ui-v2/workstation-entry.js'
+      - 'scripts/v2/capture-physical-facet-workstation.mjs'
       - 'site/three-view.js'
       - 'site/model-view-geometry.js'
       - 'scripts/v2/capture-physical-facet-preview.mjs'
@@ -43,11 +48,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Render true physical facet geometry in Chromium
         run: node scripts/v2/capture-physical-facet-preview.mjs
+      - name: Inspect native v2 Workstation physical file read-only
+        run: node scripts/v2/capture-physical-facet-workstation.mjs
       - name: Retain unreviewed screenshots and metrics
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: physical-facet-same-owner-browser-evidence
-          path: test-results/physical-facet-preview/
+          path: |
+            test-results/physical-facet-preview/
+            test-results/physical-facet-workstation/
           retention-days: 14
           if-no-files-found: warn
