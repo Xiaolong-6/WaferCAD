@@ -95,6 +95,10 @@ export async function capturePhotodetectorRoughRoi(page, output, width) {
     JSON.stringify(window.WaferCadV2Workstation.snapshot().model),
   );
   assert.equal(modelAfter, modelBefore, 'Presentation-only inspection must not change geometry');
+  // Keep the actual viewport intact while moving the pointer off Fit view,
+  // so the evidence frame is not obscured by a transient toolbar tooltip.
+  await page.mouse.move(335, 845);
+  await page.waitForTimeout(350);
   const filename = `photodetector-rough-roi-${width}.png`;
   await page.screenshot({ path: resolve(output, filename) });
   await page.locator('#threePanel').screenshot({
