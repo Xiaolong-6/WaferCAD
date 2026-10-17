@@ -26,6 +26,11 @@ test('eight native-v2 literature Sections intersect published canonical material
     const slices = sectionSlices(project.model, source.a, source.b);
     assert.ok(slices.length > 0, source.id + ': A-B cut misses all material');
     assert.ok(slices.every((entry) => entry.layerId && entry.z1 > entry.z0));
+    if (source.id === 'tio2-metalens-four-unit') {
+      const tioxide = project.model.layers.find((layer) => layer.name === 'TiO2');
+      assert.ok(tioxide, 'Missing physical TiO2 layer');
+      assert.ok(slices.some((slice) => slice.layerId === tioxide.id));
+    }
     assert.equal(source.acceptance.status, 'open-paper-match');
   }
 });

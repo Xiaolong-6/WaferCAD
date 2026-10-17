@@ -19,7 +19,7 @@ const cuts = Object.freeze({
   'm3d-selfpowered-heterogeneous-ic': { a: [12, -5.3], b: [20, -5.3] },
   'magic-1000-mos2-beol': { a: [-10, -4], b: [10, -4] },
   'three-tier-silicon-jlfets': { a: [-720, 0], b: [720, 0] },
-  'tio2-metalens-four-unit': { a: [-2.3, 1.1], b: [2.3, 1.1] },
+  'tio2-metalens-four-unit': { a: [-2.3, 0.1875], b: [2.3, 0.1875] },
 });
 const threeSamples = new Set(['suspended-silica-microdisk', 'm3d-selfpowered-heterogeneous-ic']);
 const hash = (data) => createHash('sha256').update(data).digest('hex');
@@ -127,6 +127,13 @@ async function run() {
               section: state.section,
               sectionSlices: physical.length,
               materialIds: [...new Set(physical.map((slice) => slice.layerId))].sort(),
+              materialNames: [
+                ...new Set(
+                  physical.map(
+                    (slice) => state.model.layers.find((layer) => layer.id === slice.layerId)?.name,
+                  ),
+                ),
+              ].sort(),
             };
           },
           { a: item.a, b: item.b },
@@ -137,6 +144,10 @@ async function run() {
           item.id + ' missing material owners',
         );
         assert.ok(model.sectionSlices > 0, item.id + ' has no physical Section material');
+        if (item.id === 'tio2-metalens-four-unit') {
+          const titaniumOxide = model.materialNames.includes('TiO2');
+          assert.ok(titaniumOxide, 'Metalens cut contains no TiO2 nanopillar');
+        }
         await selectScientificView(page, 'section', 1560);
         await page.locator('#sectionCanvas').waitFor({ state: 'visible', timeout: 120000 });
         await waitForPaint(page);
