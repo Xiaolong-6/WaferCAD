@@ -144,6 +144,7 @@ export function createMaskRuntime({
   });
   renderer = createPlanRenderers({
     root,
+    canvasTheme: true,
     getState: () => state,
     getDrawMaskController: () => draw,
     getMaskRoiController: () => roi,

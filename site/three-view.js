@@ -8,6 +8,7 @@ import {
 import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
+import { renderDepthAwareOutlines } from './three-outline-pass.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -16,6 +17,12 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import {
+  ownedContourSegments,
+  contoursToPositions,
+  sectionCutContours,
+  unownedContourSegments,
+} from './three-outline-geometry.js';
 import { buildRenderSurfacePlanAsync } from './renderer-surface-plan-async.js';
 import { appendSidewallTriangle } from './renderer-sidewall-triangle.js';
 import { clipBorderPositions } from './renderer-border-position-clip.js';
@@ -26,7 +33,11 @@ import {
   simplifyDisplayPolygons,
   simplifyDisplaySidewallParts,
 } from './renderer-line-reduction.js';
-import { canUseGpuRoughTask, decorateGpuRoughMaterial } from './gpu-rough-surface.js';
+import {
+  canUseGpuRoughTask,
+  decorateGpuRoughMaterial,
+  supportsPreciseGpuRoughDisplacement,
+} from './gpu-rough-surface.js?v=rough-line-v1';
 import { triangulatePolygon } from './polygon-triangulation.js';
 import {
   spatialInstanceChunks,
@@ -35,13 +46,21 @@ import {
 } from './renderer-instancing.js';
 import { createCollapsedZDisplayTransform, resolveSectionCollapse } from './section-z-collapse.js';
 import { geometryFromRoughCap, geometryFromRoughMeshData } from './rough-mesh-geometry.js';
+import {
+  boundaryProfileFromPositions,
+  boundaryProfileOverlapsEdge,
+  shiftedBoundaryProfile,
+  sidewallBoundarySamples,
+} from './rough-boundary-profile.js';
 import { buildRoughSpatialZones, prepareMorphologyExportTasks } from './morphology-mesh-policy.js';
 import {
   adaptiveRoughMeshLod,
+  roughDisplayHeightBlend,
   allocateRoughTriangleBudgets,
   projectedPixelsPerUnit,
-  roughProfileOffsetAtPoint,
+  roughDisplayProfileOffsetAtPoint,
   roughSceneTriangleBudget,
+  synchronizeConformalRoughLods,
   roughLod,
   roughVisualBoundsZ,
 } from './surface-rendering.js';
@@ -120,6 +139,7 @@ export function createThreeView({
   let smoothSidewallTemplateTriangleCount = 0;
   let transparentMeshes = [];
   let roughWorker = null;
+  let preciseGpuRoughDisplacement = true;
   let roughWorkerResolve = null;
   let roughWorkerGeneration = 0;
   let roughRefineTimer = null;
@@ -778,6 +798,22 @@ export function createThreeView({
   }
 
   let completedFrameSerial = 0;
+  function renderInspectionFrame(targetRenderer = renderer) {
+    const occluders = [],
+      outlines = [];
+    scene.traverseVisible((object) => {
+      if (object.userData?.waferCadOutlineRole) outlines.push(object);
+      else if (object.isMesh && object.userData?.waferCadPresentation?.kind === 'material-exterior')
+        occluders.push(object);
+    });
+    const classified = renderDepthAwareOutlines(targetRenderer, scene, camera, {
+      occluders,
+      outlines,
+    });
+    host.dataset.outlineVisibility = classified ? 'structural-depth' : 'off';
+    host.dataset.outlineDepthMeshCount = String(classified ? occluders.length : 0);
+  }
+
   function scheduleFrame() {
     if (!renderer || frame != null) return;
     frame = requestAnimationFrame(() => {
@@ -797,12 +833,17 @@ export function createThreeView({
       updateRoughMaterialLod();
       updateTransparentOrder();
       const frameStartedAt = performance.now();
-      renderer.render(scene, camera);
+      renderInspectionFrame();
       // Ready/assembly flags can be set before the first WebGL frame. This
       // sequence is committed only after renderer.render actually returns.
       // CI additionally waits for compositor presentation when profiling.
       completedFrameSerial++;
       host.dataset.rendererFrameSerial = String(completedFrameSerial);
+      // Snapshot the LOD tier of the frame that actually completed rendering.
+      // renderState and transparentArrayLodTier can advance before the first
+      // exact WebGL frame; consumers must not pair a new tier with old counters.
+      host.dataset.rendererFrameArrayLodTier = host.dataset.transparentArrayLodTier || 'exact';
+      host.dataset.rendererFrameSceneGeneration = host.dataset.sceneGeneration || '0';
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
@@ -1079,8 +1120,19 @@ export function createThreeView({
         return {
           visible: Boolean(inspection.borders),
           materialState: {
-            opacity: transparent ? 0.46 : 1,
+            opacity: transparent ? 0.85 : 1,
             transparent,
+            depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
+        };
+      case 'hidden-border':
+        return {
+          visible: transparent && Boolean(inspection.borders),
+          materialState: {
+            opacity: Math.min(0.34, 0.14 + (1 - opacity) * 0.24),
+            transparent: true,
             depthTest: true,
             depthWrite: false,
           },
@@ -1173,10 +1225,7 @@ export function createThreeView({
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
     if (object.isLineSegments && descriptor.kind === 'border') {
-      object.renderOrder =
-        Number(getInspection()?.opacity ?? 1) < 0.999
-          ? 80
-          : (object.userData?.waferCadBorderOrder ?? object.renderOrder);
+      object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
     } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
   }
@@ -1326,12 +1375,7 @@ export function createThreeView({
       object.visible = Boolean(state.visible);
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
       if (object.isLineSegments && descriptor.kind === 'border') {
-        // Draw before transparent layer meshes (100+), so intervening colored
-        // surfaces attenuate hidden edges rather than leaving a black forest.
-        object.renderOrder =
-          Number(inspection.opacity ?? 1) < 0.999
-            ? 80
-            : (object.userData?.waferCadBorderOrder ?? object.renderOrder);
+        object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
       } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     }
     if (roughRenderContext) {
@@ -1566,7 +1610,18 @@ export function createThreeView({
     return center;
   }
 
-  function geometryFromSidewallParts(parts, displayTolerance = 0) {
+  function displaySurfaceProfile(surface, appearanceByCapIndex = null) {
+    if (surface?.appearance?.kind !== 'rough') return surface;
+    const appearance = appearanceByCapIndex?.get(surface.capIndex);
+    return appearance ? { ...surface, appearance } : surface;
+  }
+
+  function geometryFromSidewallParts(
+    parts,
+    displayTolerance = 0,
+    boundaryProfiles = null,
+    appearanceByCapIndex = null,
+  ) {
     const positions = [],
       normals = [],
       annotationDepths = [];
@@ -1575,16 +1630,19 @@ export function createThreeView({
       surface?.appearance?.kind === 'rough'
         ? z +
           (Number(surface.profileNormal) || 1) *
-            roughProfileOffsetAtPoint(point[0], point[1], surface.appearance)
+            roughDisplayProfileOffsetAtPoint(point[0], point[1], surface.appearance)
         : z;
-    // This synchronous geometry phase runs under one fixed render policy.
-    // Resolve quality budgets once rather than for every physical sidewall.
     const policy = renderPolicy(false);
 
     for (const part of displayTolerance > 0
       ? simplifyDisplaySidewallParts(parts, displayTolerance)
       : mergeCollinearSidewallParts(parts)) {
-      const p = part.p,
+      const samplePart = {
+          ...part,
+          lowerSurface: displaySurfaceProfile(part.lowerSurface, appearanceByCapIndex),
+          upperSurface: displaySurfaceProfile(part.upperSurface, appearanceByCapIndex),
+        },
+        p = part.p,
         q = part.q,
         dx = q[0] - p[0],
         dy = q[1] - p[1],
@@ -1605,15 +1663,30 @@ export function createThreeView({
         lowerDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.lowerDepth))) : null,
         upperDepth = hasDepth ? Math.max(0, Math.min(1, Number(part.upperDepth))) : null;
 
-      for (let segment = 0; segment < segments; segment++) {
-        const t0 = segment / segments,
-          t1 = (segment + 1) / segments,
-          p0 = pointAt(t0),
-          p1 = pointAt(t1),
-          lower0 = [...p0, displacedZ(p0, part.z0, part.lowerSurface)],
-          lower1 = [...p1, displacedZ(p1, part.z0, part.lowerSurface)],
-          upper1 = [...p1, displacedZ(p1, part.z1, part.upperSurface)],
-          upper0 = [...p0, displacedZ(p0, part.z1, part.upperSurface)],
+      const lowerProfile = boundaryProfiles?.get(part.lowerSurface?.capIndex),
+        upperProfile = boundaryProfiles?.get(part.upperSurface?.capIndex),
+        samples =
+          lowerProfile || upperProfile
+            ? sidewallBoundarySamples(samplePart, {
+                lowerProfile,
+                upperProfile,
+                fallbackSegments: segments,
+              })
+            : Array.from({ length: segments + 1 }, (_, index) => {
+                const point = pointAt(index / segments);
+                return {
+                  point,
+                  lowerZ: displacedZ(point, part.z0, samplePart.lowerSurface),
+                  upperZ: displacedZ(point, part.z1, samplePart.upperSurface),
+                };
+              });
+      for (let segment = 0; segment + 1 < samples.length; segment++) {
+        const a = samples[segment],
+          b = samples[segment + 1],
+          lower0 = [...a.point, a.lowerZ],
+          lower1 = [...b.point, b.lowerZ],
+          upper1 = [...b.point, b.upperZ],
+          upper0 = [...a.point, a.upperZ],
           firstDepths = hasDepth ? [lowerDepth, lowerDepth, upperDepth] : null,
           secondDepths = hasDepth ? [lowerDepth, upperDepth, upperDepth] : null;
         appendSidewallTriangle(
@@ -1640,6 +1713,14 @@ export function createThreeView({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    if (
+      parts.some(
+        (part) => part.lowerSurface?.capIndex != null || part.upperSurface?.capIndex != null,
+      )
+    ) {
+      geometry.userData.waferCadSidewallParts = parts;
+      geometry.userData.waferCadSidewallTolerance = displayTolerance;
+    }
     if (annotationDepths.length === positions.length / 3 && annotationDepths.length) {
       geometry.setAttribute(
         'annotationDepth',
@@ -1919,27 +2000,310 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
   function addBorderPositions(
     positions,
-    { order = 100000, opacity = 1, adaptiveRough = false, presentation = { kind: 'border' } } = {},
+    {
+      order = 100000,
+      opacity = 1,
+      adaptiveRough = false,
+      planContours = false,
+      dashed = false,
+      includeHidden = true,
+      dashSize = 1,
+      presentation = { kind: 'border' },
+    } = {},
   ) {
     if (!positions?.length) return null;
     const edgeGeometry = new THREE.BufferGeometry();
     edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    const edgeMaterial = new THREE.LineBasicMaterial({
-        color: 0x111820,
-        transparent: opacity < 0.999,
-        opacity: opacity < 0.999 ? 0.46 : 1,
-        depthTest: true,
-        depthFunc: THREE.LessEqualDepth,
-        depthWrite: false,
-      }),
+    const materialOptions = {
+      color: dashed ? 0x263d57 : 0x111820,
+      transparent: dashed || opacity < 0.999,
+      opacity: dashed ? 0.25 : opacity < 0.999 ? 0.85 : 1,
+      depthTest: true,
+      depthFunc: dashed ? THREE.GreaterDepth : THREE.LessEqualDepth,
+      depthWrite: false,
+    };
+    const edgeMaterial = dashed
+        ? new THREE.LineDashedMaterial({
+            ...materialOptions,
+            dashSize: Math.max(1e-5, dashSize),
+            gapSize: Math.max(1e-5, dashSize * 0.7),
+          })
+        : new THREE.LineBasicMaterial(materialOptions),
       edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
+    edges.userData.waferCadOutlineRole = dashed ? 'hidden' : 'visible';
+    edges.userData.waferCadPlanContours = planContours;
     group.add(edges);
     trackZDisplayObject(edges);
     registerPresentationObject(edges, presentation);
     if (adaptiveRough) roughOwnedObjects.add(edges);
+    if (!dashed && includeHidden) {
+      addBorderPositions(positions, {
+        order: order - 1,
+        opacity,
+        adaptiveRough,
+        planContours,
+        dashed: true,
+        dashSize,
+        presentation: { kind: 'hidden-border' },
+      });
+    }
     return edges;
+  }
+
+  function rebuildInspectionContours(
+    boundaryProfiles = null,
+    appearanceByCapIndex = null,
+    outlinedRoughCapIndices = null,
+  ) {
+    if (!physicalSurfacePlan) return;
+    for (const object of [...presentationObjects]) {
+      if (!object.userData?.waferCadPlanContours) continue;
+      presentationObjects.delete(object);
+      zDisplayObjects.delete(object);
+      object.parent?.remove(object);
+      disposeObjectResources(object);
+    }
+    const plan = physicalSurfacePlan,
+      clip = getClipGeometry(),
+      exposedBorders = ownedContourSegments(plan.borderLines),
+      // A cut alone may introduce additional edges. Keep full-wafer scenes
+      // free of per-rough-cap outline collection and extra geometry.
+      roughBorders = clip
+        ? [...(boundaryProfiles?.entries() || [])].flatMap(([index, profile]) =>
+            plan.caps[index]?.buried || plan.caps[index]?.appearance?.kind !== 'rough'
+              ? []
+              : profile.segments.map(({ p, q }) => [p, q]),
+          )
+        : [],
+      // Only the cut face introduces new structural borders. Buried cap
+      // perimeters are not exposed outlines: drawing them as solid black
+      // produces false internal lines across translucent materials.
+      sectionSidewalls = plan.sidewalls.map((part) => ({
+        ...part,
+        lowerSurface: displaySurfaceProfile(part.lowerSurface, appearanceByCapIndex),
+        upperSurface: displaySurfaceProfile(part.upperSurface, appearanceByCapIndex),
+      })),
+      sectionLines = unownedContourSegments(
+        sectionCutContours(sectionSidewalls, clip, {
+          boundaryProfiles,
+          ownedCapBorderIndices: outlinedRoughCapIndices,
+        }),
+        [...exposedBorders, ...roughBorders],
+      ),
+      model = getModel();
+    host.dataset.hiddenBorderSegmentCount = String(exposedBorders.length + sectionLines.length);
+    host.dataset.buriedContourSegmentCount = '0';
+    host.dataset.sectionContourSegmentCount = String(sectionLines.length);
+    addBorderPositions(displayBorderPositions(contoursToPositions(sectionLines)), {
+      order: 100005,
+      opacity: Number(getInspection()?.opacity ?? 1),
+      dashSize: Math.max(
+        1e-5,
+        Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+      ),
+      planContours: true,
+      includeHidden: false,
+      presentation: { kind: 'border' },
+    });
+  }
+
+  function matchImplantCutToRoughCaps(implant, parts, profiles, appearances) {
+    const surfaceKey = implant.face === 'back' ? 'lowerSurface' : 'upperSurface';
+    const outside = Number(implant.outerZ);
+    const direction = implant.face === 'back' ? -1 : 1;
+    const source = implant.surfaceAppearance;
+    if (source?.kind !== 'rough' || !Number.isFinite(outside)) {
+      return { parts, profiles, appearances, matched: 0 };
+    }
+    const physicalCaps = physicalSurfacePlan?.caps || [];
+    const candidates = [...profiles].flatMap(([capIndex, profile]) => {
+      const cap = physicalCaps[capIndex];
+      if (!cap || cap.appearance?.kind !== 'rough') return [];
+      if (cap.buried) return [];
+      if (Number(cap.profileNormal ?? cap.normal) !== direction) return [];
+      if ((Number(cap.z) - outside) * direction < -2e-5) return [];
+      // Display-only LOD is not a physical profile characteristic.
+      const same = [
+        'profileId',
+        'seed',
+        'morphology',
+        'polarity',
+        'featureSize',
+        'meanHeight',
+        'etchDepth',
+        'featureCv',
+        'heightCv',
+      ].every((key) => cap.appearance[key] === source[key]);
+      return same ? [{ capIndex, cap, profile }] : [];
+    });
+    if (!candidates.length) return { parts, profiles, appearances, matched: 0 };
+    const matchedProfiles = new Map(profiles);
+    const matchedAppearances = new Map(appearances);
+    const resolvedParts = [];
+    let matched = 0;
+    for (const part of parts) {
+      const selected = candidates
+        .filter(({ profile }) => boundaryProfileOverlapsEdge(profile, part.p, part.q))
+        .sort((a, b) => Math.abs(a.cap.z - outside) - Math.abs(b.cap.z - outside))[0];
+      if (!selected) {
+        resolvedParts.push(part);
+        continue;
+      }
+      const syntheticCapIndex = -(matched + 1);
+      const shifted = shiftedBoundaryProfile(selected.profile, outside - selected.cap.z);
+      matchedProfiles.set(syntheticCapIndex, shifted);
+      matchedAppearances.set(
+        syntheticCapIndex,
+        appearances.get(selected.capIndex) || selected.cap.appearance,
+      );
+      resolvedParts.push({
+        ...part,
+        [surfaceKey]: { ...part[surfaceKey], capIndex: syntheticCapIndex },
+      });
+      matched++;
+    }
+    return {
+      parts: resolvedParts,
+      profiles: matchedProfiles,
+      appearances: matchedAppearances,
+      matched,
+    };
+  }
+
+  function installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices = null) {
+    const appearanceByCapIndex = new Map();
+    for (const task of roughTasks) {
+      const index = physicalSurfacePlan?.caps?.indexOf(task.cap) ?? -1;
+      if (index >= 0 && task.visualAppearance?.kind === 'rough') {
+        appearanceByCapIndex.set(index, task.visualAppearance);
+      }
+    }
+    // A conformal upper cap and the buried lower cap may use independently
+    // tessellated XY footprints (including the physical lateral film offset).
+    // For an ROI cut, derive the material sidewall's shared rough boundary from
+    // one real Float32 cap and shift only by the physical film thickness.
+    // This does not change the buried cap mesh, Kernel or saved layer geometry.
+    const wallProfiles = new Map(boundaryProfiles);
+    const profileCapsForWalls = [...boundaryProfiles].map(([index, profile]) => ({
+      index,
+      profile,
+      cap: physicalSurfacePlan?.caps?.[index],
+    }));
+    const clipEdges = [];
+    for (const polygon of getClipGeometry() || []) {
+      for (const ring of polygon || []) {
+        for (let index = 1; index < ring.length; index++) {
+          clipEdges.push([ring[index - 1], ring[index]]);
+        }
+      }
+    }
+    const profileFields = [
+      'kind',
+      'profileId',
+      'seed',
+      'morphology',
+      'polarity',
+      'featureSize',
+      'meanHeight',
+      'etchDepth',
+      'featureCv',
+      'heightCv',
+    ];
+    const regions = getModel()?.regions || [];
+    const isContiguousFilm = (lower, upper) => {
+      for (const region of regions) {
+        let substrate = false;
+        let coating = false;
+        for (const layer of region.stack || []) {
+          if (layer.layerId === lower.layerId) {
+            substrate ||= Math.abs(layer.z1 - lower.z) < 2e-5;
+          }
+          if (layer.layerId === upper.layerId) {
+            coating ||= Math.abs(layer.z0 - lower.z) < 2e-5 && Math.abs(layer.z1 - upper.z) < 2e-5;
+          }
+        }
+        if (substrate && coating) return true;
+      }
+      return false;
+    };
+    let alignedConformalCutPairs = 0;
+    if (clipEdges.length) {
+      for (const lower of profileCapsForWalls) {
+        if (!lower.cap?.buried || lower.cap.appearance?.kind !== 'rough') continue;
+        let matchingUpper = null;
+        for (const upper of profileCapsForWalls) {
+          const coat = upper.cap;
+          if (!coat || coat.buried || coat.appearance?.kind !== 'rough') continue;
+          if (!(coat.z > lower.cap.z)) continue;
+          const normal = Number(coat.profileNormal ?? coat.normal);
+          const substrateNormal = Number(lower.cap.profileNormal ?? lower.cap.normal);
+          if (normal !== substrateNormal) continue;
+          let sameProfile = true;
+          for (const field of profileFields) {
+            if (lower.cap.appearance[field] !== coat.appearance[field]) {
+              sameProfile = false;
+              break;
+            }
+          }
+          if (!sameProfile || !isContiguousFilm(lower.cap, coat)) continue;
+          let overlapping = false;
+          for (const [p, q] of clipEdges) {
+            if (
+              boundaryProfileOverlapsEdge(lower.profile, p, q) &&
+              boundaryProfileOverlapsEdge(upper.profile, p, q)
+            ) {
+              overlapping = true;
+              break;
+            }
+          }
+          if (overlapping) {
+            matchingUpper = upper;
+            break;
+          }
+        }
+        if (!matchingUpper) continue;
+        const dz = lower.cap.z - matchingUpper.cap.z;
+        wallProfiles.set(lower.index, shiftedBoundaryProfile(matchingUpper.profile, dz));
+        alignedConformalCutPairs++;
+      }
+    }
+    host.dataset.roughConformalCutAlignedPairs = String(alignedConformalCutPairs);
+    let rebuilt = 0;
+    let matchedImplantCuts = 0;
+    for (const object of presentationObjects) {
+      const previous = object.geometry;
+      const implant = object.userData?.waferCadImplantCut;
+      const parts = implant
+        ? displaySidewallParts(annotationSidewallParts(implant, getClipGeometry()))
+        : previous?.userData?.waferCadSidewallParts;
+      if (!parts) continue;
+      const aligned = implant
+        ? matchImplantCutToRoughCaps(implant, parts, wallProfiles, appearanceByCapIndex)
+        : null;
+      const geometry = geometryFromSidewallParts(
+        aligned?.parts || parts,
+        previous.userData.waferCadSidewallTolerance || 0,
+        aligned?.profiles || wallProfiles,
+        aligned?.appearances || appearanceByCapIndex,
+      );
+      object.geometry = implant ? shearImplantGeometry(geometry, implant) : geometry;
+      matchedImplantCuts += aligned?.matched || 0;
+      previous.dispose();
+      object.position.z = 0;
+      trackZDisplayObject(object);
+      if (object.isInstancedMesh) {
+        object.computeBoundingBox?.();
+        object.computeBoundingSphere?.();
+      }
+      rebuilt++;
+    }
+    host.dataset.roughImplantCutProfileMatches = String(matchedImplantCuts);
+    host.dataset.roughBoundaryProfileCount = String(boundaryProfiles.size);
+    host.dataset.roughBoundarySidewallObjects = String(rebuilt);
+    rebuildInspectionContours(wallProfiles, appearanceByCapIndex, outlinedRoughCapIndices);
   }
 
   function roughSceneRoiFraction(model, clip) {
@@ -1949,12 +2313,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
   }
 
   function gpuRoughTask(task) {
-    return canUseGpuRoughTask({
-      appearance: task?.cap?.appearance,
-      buried: task?.cap?.buried,
-      implant: Boolean(task?.implant),
-      zDisplay: currentZDisplay,
-    });
+    return (
+      preciseGpuRoughDisplacement &&
+      canUseGpuRoughTask({
+        appearance: task?.cap?.appearance,
+        buried: task?.cap?.buried,
+        implant: Boolean(task?.implant),
+        zDisplay: currentZDisplay,
+      })
+    );
   }
 
   function prepareAdaptiveRoughTasks({ interactive = false } = {}) {
@@ -2011,7 +2378,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 triangleBudget: null,
               };
             requests.push({
+              cap: task.cap,
               zone: prepared,
+              appearance: task.cap.appearance,
               baseTriangles: Math.max(1, zone.baseTriangles.length),
               desiredTriangles: Math.max(1, preview.desiredTriangles),
               priority,
@@ -2038,6 +2407,48 @@ diffuseColor.a *= waferCadAlphaScale;`,
     requests.forEach((request, index) => {
       request.zone.triangleBudget = allocations[index];
     });
+    // Equal seeded rough surfaces need identical display tessellation to
+    // preserve thin conformal spacing between their independent layer caps.
+    const conformalLodPairs = synchronizeConformalRoughLods(requests, allocations);
+    host.dataset.roughConformalLodPairs = String(conformalLodPairs);
+    // Anti-alias unresolved features in the *displayed* stochastic heightfield
+    // without increasing the scene triangle budget or changing stored geometry.
+    const visibleArea = Math.max(1e-12, boundsArea(visibleBounds(context.model, context.clip))),
+      triangles = requests.reduce((sum, request) => {
+        const zone = request.zone;
+        return (
+          sum +
+          adaptiveRoughMeshLod({
+            triangleCount: request.baseTriangles,
+            maxEdge: zone.maxEdge,
+            featureSize: request.appearance?.featureSize,
+            ...zone.lodContext,
+            triangleBudget: zone.triangleBudget,
+          }).estimatedTriangles
+        );
+      }, 0),
+      pitch = Math.sqrt((2 * visibleArea) / Math.max(1, triangles));
+    tasks.forEach((task, index) => {
+      const appearance = task.cap.appearance,
+        blend =
+          appearance?.kind === 'rough' && appearance.morphology === 'stochastic'
+            ? roughDisplayHeightBlend(appearance.featureSize, pitch)
+            : 1;
+      task.visualAppearance = blend < 1 ? { ...appearance, displayRoughBlend: blend } : appearance;
+      roughTasks[index].visualAppearance = task.visualAppearance;
+    });
+    host.dataset.roughDisplaySamplePitchUm = String(pitch);
+    host.dataset.roughDisplayBlendMin = String(
+      Math.min(1, ...tasks.map((task) => task.visualAppearance?.displayRoughBlend ?? 1)),
+    );
+    host.dataset.roughImplantDisplayBlendMin = String(
+      Math.min(
+        1,
+        ...tasks
+          .filter((task) => task.implant && task.cap.appearance?.kind === 'rough')
+          .map((task) => task.visualAppearance?.displayRoughBlend ?? 1),
+      ),
+    );
     return { tasks, sceneBudget, requestedSceneBudget, baseTriangleCount, policy };
   }
 
@@ -2067,7 +2478,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       return false;
     }
     clearAdaptiveRoughObjects();
-
+    const boundaryProfiles = new Map();
+    const outlinedRoughCapIndices = new Set();
     for (const result of results || []) {
       const task = roughTasks[result.taskId];
       if (!task || !result.data) continue;
@@ -2080,6 +2492,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
             }
           : result.data;
       let geometry = geometryFromRoughMeshData(THREE, meshData);
+      const capIndex = physicalSurfacePlan?.caps?.indexOf(cap) ?? -1;
+      if (capIndex >= 0 && geometry.userData.roughBoundaryPositions?.length) {
+        boundaryProfiles.set(
+          capIndex,
+          boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+        );
+      }
       if (task.implant) {
         setAnnotationDepthAttribute(
           geometry,
@@ -2093,9 +2512,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ? createAnnotationGradientMaterial(task.implant, task.state, {
             roughness: cap.appearance ? 0.84 : 0.72,
           })
-        : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+        : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
       if (geometry.userData.roughGpuDisplacement && !task.implant) {
-        decorateGpuRoughMaterial(material, cap.appearance, {
+        decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
           profileNormal: cap.profileNormal ?? cap.normal,
           normalStrength: mode === 'interactive' ? 0.82 : 1,
         });
@@ -2134,9 +2553,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
             presentation: { kind: 'border' },
           },
         );
+        if (capIndex >= 0) outlinedRoughCapIndices.add(capIndex);
       }
     }
-
+    installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices);
     roughRebuildCount++;
     currentRoughMode = mode;
     const data = renderer?.domElement?.dataset;
@@ -2176,7 +2596,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         geometry: {
           z: cap.z,
           normal: cap.normal,
-          appearance: cap.appearance,
+          appearance: task.visualAppearance || cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
@@ -2192,6 +2612,29 @@ diffuseColor.a *= waferCadAlphaScale;`,
         },
       };
     });
+  }
+
+  // If the Worker cannot run, finish the real detailed geometry in the main
+  // thread and settle the same readiness contract as the Worker completion.
+  // Do not synchronously build a preview followed by another detailed build.
+  function completeSynchronousRoughFallback(sceneToken, startedAt, preparedTasks = null) {
+    const applied = rebuildAdaptiveRoughGeometrySync({ sceneToken, preparedTasks });
+    if (!applied) return false;
+    host.dataset.rendererRoughMs = String(performance.now() - startedAt);
+    const profileStart = roughRenderContext?.profileStart;
+    if (Number.isFinite(profileStart)) {
+      host.dataset.rendererFinalReadyMs = String(performance.now() - profileStart);
+    }
+    roughInteractionCache = null;
+    host.dataset.renderPhase = 'complete';
+    host.dataset.renderState = 'ready';
+    stats.textContent = hasMaterial(roughRenderContext.model)
+      ? roughRenderContext.clip
+        ? 'ROI'
+        : 'full model'
+      : 'no material';
+    scheduleFrame();
+    return true;
   }
 
   function requestRoughGeometry(mode = 'detailed', { force = false, refineAfter = false } = {}) {
@@ -2224,8 +2667,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       worker = new Worker(workerUrl);
     } catch (error) {
       console.warn('Rough mesh worker unavailable; using synchronous fallback.', error);
-      if (!interactive) return Promise.resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-      return Promise.resolve(false);
+      return Promise.resolve(
+        completeSynchronousRoughFallback(
+          sceneToken,
+          rendererRoughStart,
+          interactive ? null : prepared,
+        ),
+      );
     }
 
     const generation = ++roughWorkerGeneration,
@@ -2253,8 +2701,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (message.type === 'error') {
           console.warn('Rough mesh worker failed.', message.message);
           finish();
-          if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-          else resolve(false);
+          resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
           return;
         }
         if (message.type !== 'done') return;
@@ -2299,8 +2746,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
         console.warn('Rough mesh worker failed.', event.message || event);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-        else resolve(false);
+        resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
       };
 
       try {
@@ -2312,8 +2758,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       } catch (error) {
         console.warn('Could not start rough mesh worker task.', error);
         finish();
-        if (!interactive) resolve(rebuildAdaptiveRoughGeometrySync({ sceneToken }));
-        else resolve(false);
+        resolve(
+          completeSynchronousRoughFallback(
+            sceneToken,
+            rendererRoughStart,
+            interactive ? null : prepared,
+          ),
+        );
       }
     });
   }
@@ -2321,6 +2772,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
   function rebuildAdaptiveRoughGeometrySync({
     interactive = false,
     sceneToken = roughRenderContext?.sceneGeneration ?? null,
+    preparedTasks = null,
   } = {}) {
     const context = roughRenderContext;
     if (
@@ -2341,14 +2793,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const wasRendering = rendering;
     rendering = true;
     try {
-      const prepared = prepareAdaptiveRoughTasks({ interactive });
+      // Worker construction/postMessage failure is synchronous: its detailed
+      // LOD allocation is still valid. Reuse it rather than triangulating and
+      // budgeting the same scene a second time. A failed interactive request
+      // deliberately falls back to a freshly prepared detailed build.
+      const prepared = preparedTasks || prepareAdaptiveRoughTasks({ interactive }),
+        boundaryProfiles = new Map(),
+        outlinedRoughCapIndices = new Set();
+      host.dataset.roughFallbackReusedPreparation = String(Boolean(preparedTasks));
       for (const task of prepared.tasks) {
         const cap = task.cap;
         let geometry = geometryFromRoughCap(THREE, {
           z: cap.z,
           normal: cap.normal,
           polys: cap.polys,
-          appearance: cap.appearance,
+          appearance: task.visualAppearance || cap.appearance,
           closeToIdeal: task.closeToIdeal ?? !cap.buried,
           sidewallBoundaryIntervals: cap.sidewallBoundaryIntervals,
           profileNormal: cap.profileNormal,
@@ -2357,6 +2816,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
           analyticNormals: task.gpuDisplacement ? false : prepared.policy.analyticNormals,
           gpuDisplacement: Boolean(task.gpuDisplacement),
         });
+        const capIndex = physicalSurfacePlan?.caps?.indexOf(cap) ?? -1;
+        if (capIndex >= 0 && geometry.userData.roughBoundaryPositions?.length) {
+          boundaryProfiles.set(
+            capIndex,
+            boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
+          );
+        }
         if (task.implant) {
           setAnnotationDepthAttribute(
             geometry,
@@ -2370,9 +2836,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           ? createAnnotationGradientMaterial(task.implant, task.state, {
               roughness: cap.appearance ? 0.84 : 0.72,
             })
-          : createSurfaceMaterial(task.layer, task.state, cap.appearance);
+          : createSurfaceMaterial(task.layer, task.state, task.visualAppearance || cap.appearance);
         if (geometry.userData.roughGpuDisplacement && !task.implant) {
-          decorateGpuRoughMaterial(material, cap.appearance, {
+          decorateGpuRoughMaterial(material, task.visualAppearance || cap.appearance, {
             profileNormal: cap.profileNormal ?? cap.normal,
             normalStrength: interactive ? 0.82 : 1,
           });
@@ -2414,9 +2880,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
               presentation: { kind: 'border' },
             },
           );
+          if (capIndex >= 0) outlinedRoughCapIndices.add(capIndex);
         }
       }
 
+      installRoughBoundaryProfiles(boundaryProfiles, outlinedRoughCapIndices);
       roughRebuildCount++;
       currentRoughMode = interactive ? 'interactive' : 'detailed';
       const data = renderer?.domElement?.dataset;
@@ -2484,6 +2952,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
           preferredPixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
           renderer.setPixelRatio(preferredPixelRatio);
           renderer.setClearColor(0xf5f7f9);
+          preciseGpuRoughDisplacement = supportsPreciseGpuRoughDisplacement(renderer);
+          host.dataset.roughDisplacementBackend = preciseGpuRoughDisplacement
+            ? 'gpu-vertex'
+            : 'cpu-software-parity';
 
           scene = new THREE.Scene();
           camera = new THREE.PerspectiveCamera(34, 1, 1, 1e9);
@@ -3119,6 +3591,21 @@ diffuseColor.a *= waferCadAlphaScale;`,
         opacity,
         presentation: { kind: 'border' },
       });
+      host.dataset.hiddenBorderSegmentCount = '0';
+      host.dataset.buriedContourSegmentCount = '0';
+      host.dataset.sectionContourSegmentCount = '0';
+      // Small scenes and rough scenes can switch opaque <-> transparent
+      // through a presentation-only update without rebuilding the scene.
+      // Prepare their dormant hidden lines once, regardless of initial opacity.
+      // Large smooth arrays get a dedicated transparent scene variant instead,
+      // so their opaque startup remains free of hidden-contour allocations.
+      const needsHiddenContourSuperset =
+        targetVariant === 'transparent' ||
+        Number(plan.arrayInstances || 0) < 64 ||
+        roughTasks.length > 0;
+      if (needsHiddenContourSuperset) {
+        rebuildInspectionContours();
+      }
 
       // Implant and Electrical Region annotations are built as a persistent
       // superset. Presentation state decides which internal volumes are visible,
@@ -3189,6 +3676,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
           );
           if (cut) {
             cut.name = `${implant.name || implant.implantId || 'Implant'} ROI cut`;
+            // Rebuild its visual cut only after the actual conformal rough
+            // caps are prepared; canonical implant depth/dose stay unchanged.
+            if (appearance) cut.userData.waferCadImplantCut = implant;
             implantCutCount++;
             implantGradientMeshCount++;
           }
@@ -3732,6 +4222,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
           geometry?.dispose?.();
           return null;
         }
+        geometry.userData = {};
         const layer = layerById(model, layerId),
           material = exportMaterial(layer),
           mesh = translations
@@ -3759,7 +4250,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       await yieldToUi();
       reportProgress(0.08, 'Allocating morphology mesh');
       const roughTasks = prepareMorphologyExportTasks(THREE, roughCaps),
-        capCount = Math.max(1, surfacePlan.caps.length);
+        capCount = Math.max(1, surfacePlan.caps.length),
+        exportBoundaryProfiles = new Map();
       let roughMeshDataByCap = null;
       try {
         roughMeshDataByCap = await buildExportRoughMeshData(roughTasks);
@@ -3794,6 +4286,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
                 });
             const roughBorderVertexCount = Math.floor(
               (geometry.userData?.roughBorderPositions?.length || 0) / 3,
+            );
+            exportBoundaryProfiles.set(
+              capIndex,
+              boundaryProfileFromPositions(geometry.userData.roughBoundaryPositions),
             );
             // Renderer-only LOD/debug metadata can include large typed arrays.
             // Keep GLB extras compact and publish only the stable export contract
@@ -3847,7 +4343,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       for (const sidewall of surfacePlan.sidewalls) {
         if (sidewall.instanceTranslations) {
           addExportMesh(
-            geometryFromSidewallParts(sidewall.parts || [sidewall]),
+            geometryFromSidewallParts(sidewall.parts || [sidewall], 0, exportBoundaryProfiles),
             sidewall.layerId,
             ' · sidewalls',
             sidewall.instanceTranslations,
@@ -3862,7 +4358,11 @@ diffuseColor.a *= waferCadAlphaScale;`,
       const sidewallGroupCount = Math.max(1, sidewallsByLayer.size);
       for (const [layerId, parts] of sidewallsByLayer) {
         throwIfAborted();
-        addExportMesh(geometryFromSidewallParts(parts), layerId, ' · sidewalls');
+        addExportMesh(
+          geometryFromSidewallParts(parts, 0, exportBoundaryProfiles),
+          layerId,
+          ' · sidewalls',
+        );
         sidewallIndex++;
         reportProgress(0.79 + 0.1 * (sidewallIndex / sidewallGroupCount), 'Building sidewalls');
         if (sidewallIndex % 2 === 0) await yieldToUi();
@@ -3916,7 +4416,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       },
       prepareScene: () => requestRoughGeometry('detailed', { force: true }),
       capture: (captureRenderer) => {
-        captureRenderer.render(scene, camera);
+        renderInspectionFrame(captureRenderer);
         return new Promise((resolve, reject) =>
           captureRenderer.domElement.toBlob(
             (value) => (value ? resolve(value) : reject(new Error('PNG capture failed.'))),

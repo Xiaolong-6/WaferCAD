@@ -300,6 +300,46 @@ test('array profiles retain their physical local frame in Section and resolved g
     roughProfileOffsetAtPoint(-0.5, 0.125, local),
   );
 });
+
+test('array sidewall rough profiles reference parent caps after template grouping and substrate consolidation', () => {
+  const model = twoSites();
+  applyOperation(model, { type: 'add', name: 'Film', thickness: 0.4, area: model.boundary });
+  for (const [seed, x] of [
+    [11, -5],
+    [22, 5],
+  ]) {
+    applyOperation(model, {
+      type: 'etch',
+      thickness: 0.2,
+      area: rectMulti(10, 10, x, 0),
+      surface: {
+        kind: 'rough',
+        morphology: 'pyramid',
+        polarity: 'normal',
+        featureSize: 0.5,
+        meanHeight: 0.1,
+        featureCv: 0,
+        heightCv: 0,
+        seed,
+      },
+    });
+  }
+  validateProcessModel(model);
+  const before = structuredClone(model),
+    plan = buildRenderSurfacePlan(model),
+    parts = plan.sidewalls.flatMap((wall) => wall.parts || [wall]),
+    roughSurfaces = parts.flatMap((part) => [part.lowerSurface, part.upperSurface]).filter(Boolean);
+  assert.ok(plan.sidewalls.some((wall) => wall.parts?.length));
+  assert.ok(roughSurfaces.some((surface) => surface.appearance.seed === 11));
+  assert.ok(roughSurfaces.some((surface) => surface.appearance.seed === 22));
+  for (const surface of roughSurfaces) {
+    const cap = plan.caps[surface.capIndex];
+    assert.ok(cap, 'leaf-local cap indices must be remapped to the final parent cap array');
+    assert.deepEqual(cap.appearance, surface.appearance);
+    assert.ok(cap.sidewallBoundaryIntervals.length);
+  }
+  assert.deepEqual(model, before, 'array render metadata cannot alter canonical geometry');
+});
 test('lossless workspace arrays share template dictionaries and reject invalid v4 references', () => {
   const m = twoSites();
   for (const i of m.array.instances) i.x += 0.000001;

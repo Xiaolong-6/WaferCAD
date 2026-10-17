@@ -140,7 +140,9 @@
     gap: 12px;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-panel-head {
+  /* Only the editor chrome suppresses separators; the four scientific
+     view titlebars retain their shared mobile 1px divider. */
+  body[data-workstation]:not([data-preview-mode]) .p-sidebar .p-panel-head {
     border-bottom: 0;
   }
 
@@ -281,15 +283,8 @@
     background: var(--wc-page);
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-view {
-    border: 0;
-    border-radius: 6px;
-    background: var(--wc-surface);
-  }
-
-  body[data-workstation]:not([data-preview-mode]) .p-view .p-panel-head {
-    border: 0;
-  }
+  /* View outlines and titlebar dividers inherit the same mobile/desktop
+     component tokens; only docking geometry differs by viewport. */
 
   body[data-workstation]:not([data-preview-mode]) .p-viewbar,
   body[data-workstation]:not([data-preview-mode]) .p-view .p-toolbar {

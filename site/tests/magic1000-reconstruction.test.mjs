@@ -78,7 +78,20 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
       if (!copy.dopantRegions?.length) delete copy.dopantRegions;
       return copy;
     };
-    assert.deepEqual(withoutEmptyDopants(packed.model), withoutEmptyDopants(project.model));
+    // The shipped .wafercad snapshot is a historical project: loading it must
+    // preserve its authored Base color, even though new projects now use a
+    // lighter default. Compare all physical geometry and other material
+    // metadata strictly; account only for this explicit legacy color.
+    const packedBase = packed.model.layers.find((layer) => layer.id === 'base');
+    const generatedBase = project.model.layers.find((layer) => layer.id === 'base');
+    assert.equal(packedBase?.color, '#C3CBD4', 'Legacy asset retains saved Base color');
+    assert.equal(generatedBase?.color, '#DDE4EC', 'New projects use current Base color');
+    const generatedWithLegacyBase = structuredClone(project.model);
+    generatedWithLegacyBase.layers.find((layer) => layer.id === 'base').color = packedBase.color;
+    assert.deepEqual(
+      withoutEmptyDopants(packed.model),
+      withoutEmptyDopants(generatedWithLegacyBase),
+    );
     assert.equal(packed.processRecipe.steps.length, project.processRecipe.steps.length);
   }
 });

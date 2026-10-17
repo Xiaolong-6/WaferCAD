@@ -83,6 +83,85 @@ export function allocateRoughTriangleBudgets(requests, { totalBudget = 900000 } 
   return normalized.sort((a, b) => a.index - b.index).map((item) => item.allocated);
 }
 
+// A thin conformal film may share the exact seeded heightfield and XY
+// triangulation of its substrate. Independent per-layer triangle budgets can
+// otherwise create crossed *display* surfaces despite a valid physical film.
+// Couple only identical XY meshes with identical morphology, never unrelated
+// material caps; keep the aggregate allocation bounded by the input budget.
+export function synchronizeConformalRoughLods(requests, allocations) {
+  const groups = new Map();
+  const sameZoneXY = (a, b) => {
+    const left = a?.baseTriangles;
+    const right = b?.baseTriangles;
+    if (!Array.isArray(left) || !Array.isArray(right)) return false;
+    if (left.length !== right.length) return false;
+    for (let i = 0; i < left.length; i++) {
+      for (let j = 0; j < 3; j++) {
+        for (let k = 0; k < 2; k++) {
+          if (left[i]?.[j]?.[k] !== right[i]?.[j]?.[k]) return false;
+        }
+      }
+    }
+    return true;
+  };
+  for (let index = 0; index < requests.length; index++) {
+    const request = requests[index];
+    const cap = request?.cap;
+    const appearance = cap?.appearance;
+    if (appearance?.kind !== 'rough' || !request?.zone?.baseTriangles?.length) continue;
+    const entries = Object.entries(appearance)
+      .filter(([key]) => key !== 'displayRoughBlend')
+      .sort(([a], [b]) => a.localeCompare(b));
+    const profile = JSON.stringify(Object.fromEntries(entries));
+    const zone = request.zone;
+    const bounds = zone.bounds || {};
+    const key = JSON.stringify([
+      profile,
+      cap.profileNormal ?? cap.normal,
+      zone.baseTriangles.length,
+      bounds.minX,
+      bounds.maxX,
+      bounds.minY,
+      bounds.maxY,
+    ]);
+    if (!groups.has(key)) groups.set(key, []);
+    const alternatives = groups.get(key);
+    const match = (candidate) => sameZoneXY(requests[candidate[0]].zone, zone);
+    let group = alternatives.find(match);
+    if (!group) {
+      group = [];
+      alternatives.push(group);
+    }
+    group.push(index);
+  }
+  let pairedZones = 0;
+  for (const alternatives of groups.values()) {
+    for (const group of alternatives) {
+      if (group.length < 2) continue;
+      // One cap appearing twice at the same physical plane is not a film.
+      if (new Set(group.map((index) => requests[index].cap.z)).size < 2) continue;
+      const totalBudget = group.reduce((sum, index) => sum + allocations[index], 0);
+      const budget = Math.floor(totalBudget / group.length);
+      const contexts = group.map((index) => requests[index].zone.lodContext || {});
+      const context = {
+        ...contexts[0],
+        distance: Math.min(...contexts.map((item) => item.distance ?? Infinity)),
+        roughnessDetail: Math.max(...contexts.map((item) => item.roughnessDetail ?? 1)),
+        screenPriority: Math.max(...contexts.map((item) => item.screenPriority ?? 1)),
+        visibleFraction: Math.max(...contexts.map((item) => item.visibleFraction ?? 1)),
+        maxDepth: Math.max(...contexts.map((item) => item.maxDepth ?? 0)),
+      };
+      for (const index of group) {
+        const zone = requests[index].zone;
+        zone.triangleBudget = Math.max(zone.baseTriangles.length, budget);
+        zone.lodContext = { ...context };
+      }
+      pairedZones += group.length;
+    }
+  }
+  return pairedZones;
+}
+
 export function adaptiveRoughMeshLod({
   triangleCount = 1,
   maxEdge = 0,
@@ -360,6 +439,25 @@ export function roughProfileOffsetAtPoint(x, y, appearance) {
     polarity = appearance?.polarity === 'normal' ? 'normal' : 'inverted',
     offset = polarity === 'normal' ? roughMaxRelief(appearance) - relief : relief;
   return Object.is(offset, -0) ? 0 : offset;
+}
+
+// These overrides affect displayed geometry only, never the canonical profile.
+export function roughDisplayHeightBlend(featureSize, samplePitch) {
+  const feature = Number(featureSize),
+    pitch = Number(samplePitch);
+  if (!(feature > 0) || !(pitch > 0) || !Number.isFinite(feature + pitch)) return 1;
+  return 0.12 + 0.88 * smoothstep(0.25, 1, feature / pitch);
+}
+
+export function roughDisplayProfileOffsetAtPoint(x, y, appearance) {
+  const original = roughProfileOffsetAtPoint(x, y, appearance),
+    weight = Number(appearance?.displayRoughBlend);
+  if (!Number.isFinite(weight) || weight >= 1) return original;
+  const fraction = Math.max(0, Math.min(1, weight)),
+    depth = roughMaxRelief(appearance),
+    mean = Math.min(depth, Math.max(0, Number(appearance?.meanHeight) || 0)),
+    center = appearance?.polarity === 'normal' ? depth - mean : mean;
+  return center + fraction * (original - center);
 }
 
 export function roughTextureValue(appearanceOrSeed, x, y, size = 64) {
