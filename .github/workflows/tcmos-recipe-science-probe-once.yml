@@ -12,7 +12,7 @@ permissions:
 jobs:
   recipe-science:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -24,11 +24,26 @@ jobs:
         run: |
           node --test site/tests/tcmos-array-recipe-experiment.test.mjs
           node scripts/build-tcmos-array-recipe-experiment.mjs
+      - name: Real Chromium 16-cell Recipe Run All and strict parity
+        timeout-minutes: 30
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: |
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-array-recipe-probe.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/tcmos-array-recipe-browser-acceptance.mjs
       - name: Upload the exact experimental candidate
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: tcmos-4x4-recipe-experiment-probe
-          path: test-results/tcmos/tcmos-inverter-4x4-RECIPE-EXPERIMENT.wafercad
+          path: test-results/tcmos/
           retention-days: 7
           if-no-files-found: ignore
