@@ -81,7 +81,7 @@ Source pages in `docs/wiki/` are checked on every `main` push and synchronized t
 
 ## Operations
 
-The current v2 **Process → Manual → Surface** selector offers **Front / Back / Both**. Compatible Both operations execute **Front → Back** atomically as one logical History Step. One Both-face Deposit creates **two distinct, paired Layer IDs** (Front and Back), even for the same material name; paired Extend or selective Etch requires an eligible material on both faces. **Both Lift-off and absolute-Z Planarize/CMP are unsupported**, and choosing Both does not change the Front/Back inspection face. Recipe Code also supports `face: 'both'`; the Legacy UI retains its previous selector. See the [Both-face Kernel contract](docs/PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual Both acceptance](docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+The current v2 **Process → Manual → Surface** selector offers **Front / Back / Both**. Compatible Both operations execute **Front → Back** atomically as one logical History Step. One Both-face Deposit creates **two distinct, paired Layer IDs** (Front and Back), even for the same material name; paired Extend or selective Etch requires an eligible material on both faces. **Both Lift-off and absolute-Z Planarize/CMP are unsupported**, and choosing Both does not change the Front/Back inspection face. Recipe Code also supports `face: 'both'`; the historical Legacy UI is preserved at the `legacy-frozen` tag. See the [Both-face Kernel contract](docs/PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual Both acceptance](docs/ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 
 Process operations use one of three areas:
 
@@ -114,7 +114,7 @@ Rebuilding Base after Process edits requires an explicit History decision: keep 
 
 ## Repository layout
 
-- `site/` — browser application source, including `app.html` (default UI v2), the retained Legacy test entry `app-legacy.html`, eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`: the published Legacy URL is only a redirect; old editor JS/CSS, developer prototypes, and tests are excluded. Welcome previews run on read-only v2.
+- `site/` — browser application source, including `app.html` (default UI v2), eight Welcome example families and bundled editable examples. Pages stages a filtered runtime with `scripts/build-pages-artifact.mjs`: it generates the legacy bookmark redirect at `app-legacy.html`, without restoring retired editor JS/CSS. The immutable `legacy-frozen` tag retains the historical editor and DOM-specific tests. Developer prototypes and tests are excluded from Pages; Welcome previews run on read-only v2.
 - `docs/wiki/` — tracked product manual source, including the AI and Recipe guides
 - `docs/` — maintained technical contracts, development documentation and [documentation map](docs/README.md)
 - `docs/archive/` — [revision-specific historical evidence](docs/archive/README.md); completed plans and old audit records are not current product contracts
