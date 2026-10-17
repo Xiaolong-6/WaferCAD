@@ -1,0 +1,47 @@
+name: PR327 one-time local source bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/pr327-local-source-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package exact PR head for local Chromium and science
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Package exact source plus installed dependencies, without Git credentials
+        run: |
+          printf '%s\n' "$(git rev-parse HEAD)" > /tmp/pr327-source-head.txt
+          tar -czf /tmp/pr327-local-source.tar.gz \
+            --exclude='./.git' \
+            --exclude='./test-results' \
+            --exclude='./playwright-report' \
+            --exclude='./.cache' \
+            -C "$GITHUB_WORKSPACE" .
+          tar -tzf /tmp/pr327-local-source.tar.gz | grep -q './site/model.js'
+          tar -tzf /tmp/pr327-local-source.tar.gz | grep -q './node_modules/three/package.json'
+      - name: Upload local source bootstrap (not acceptance evidence)
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr327-local-validation-source
+          path: |
+            /tmp/pr327-local-source.tar.gz
+            /tmp/pr327-source-head.txt
+          if-no-files-found: error
+          retention-days: 1
