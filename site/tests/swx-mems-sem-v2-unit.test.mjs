@@ -227,7 +227,8 @@ test('SEM v2 actual silicon Mask keeps two driven comb domains insulated', () =>
     assert.equal(audit.springAnchorsShareNet, true);
     assert.equal(audit.combsSeparatedFromGround, true);
     assert.ok([1, 2].includes(audit.independentCombDriveDomains));
-    assert.equal(audit.independentCombDriveDomains, new Set(audit.metalPadSiOwnerIndices.slice(4)).size);
+    const combDriveDomains = new Set(audit.metalPadSiOwnerIndices.slice(4)).size;
+    assert.equal(audit.independentCombDriveDomains, combDriveDomains);
     assert.equal(audit.sourceCombCommonBiasVerified, false);
     assert.equal(
       audit.uncontactedSiliconNetIndices.length,
