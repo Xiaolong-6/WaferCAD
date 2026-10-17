@@ -41,6 +41,17 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
     assert.ok(check.extraAreaUm2 < 1e-12,
       check.name + ': real physical Via conductor leaked beyond its mask');
   }
+  assert.deepEqual(report.metalFootprintChecks.map((check) => check.shapeCount),
+    [64, 44, 3]);
+  assert.deepEqual(report.metalFootprintChecks.map((check) => check.name),
+    ['METAL2 Al (illustrative)', 'METAL3 Al (illustrative)', 'METAL4 Al (illustrative)']);
+  for (const check of report.metalFootprintChecks) {
+    assert.ok(check.actualAreaUm2 > 0);
+    assert.ok(check.missingAreaUm2 < 1e-12,
+      check.name + ': 2.5D film is missing part of an interconnect');
+    assert.ok(check.extraAreaUm2 < 1e-12,
+      check.name + ': 2.5D metal is outside the approved routed footprint');
+  }
   assert.ok(report.finalRegionCount > report.baselineRegionCount);
   assert.ok(report.routedSurfaceMaxZ > report.originalSurfaceMaxZ);
   assert.ok(!project.processRecipe && !project.snapshots && !project.snapshotBranches);
