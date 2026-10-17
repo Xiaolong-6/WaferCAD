@@ -117,7 +117,13 @@ function processArea(
         : request.maskIndex ||
           maskIndexApi.compileMaskInstanceIndex(request.elements || [], request.maskTransform);
     return maskIndexApi.deferredArrayMaskArea(
-      { boundary: model.boundary, index, mode, limiter },
+      {
+        boundary: model.boundary,
+        index,
+        mode,
+        limiter,
+        processGridUm: request.processGridUm ?? null,
+      },
       vectorApi,
     );
   }

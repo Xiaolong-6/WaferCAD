@@ -29,7 +29,7 @@ export function neighborhoodKey(part, parts) {
 const maskTemplateGeometries = new WeakMap();
 export function localGeometry(geometry, part, domain, polygonBoundsCache = new WeakMap()) {
   if (geometry.arrayMaskQuery) {
-    const { index, mode, limiter, boundary } = geometry.arrayMaskQuery;
+    const { index, mode, limiter, boundary, processGridUm } = geometry.arrayMaskQuery;
     const worldDomain = intersection(domain, boundary),
       bounds = geometryBounds(worldDomain);
     const localDomain = translateGeometry(worldDomain, -part.x, -part.y);
@@ -51,7 +51,21 @@ export function localGeometry(geometry, part, domain, polygonBoundsCache = new W
           -part.x,
           -part.y,
         )[0][0][0];
-        geoms.push(translateGeometry(geom, dx, dy));
+        const local = translateGeometry(geom, dx, dy);
+        // Optional Recipe-only process capture, AFTER instance translation.
+        // Do not mutate indexed SVG source vertices or exported File Mask.
+        geoms.push(
+          processGridUm == null
+            ? local
+            : local.map((polygon) =>
+                polygon.map((ring) =>
+                  ring.map(([x, y]) => [
+                    Number(x.toFixed(4)),
+                    Number(y.toFixed(4)),
+                  ]),
+                ),
+              ),
+        );
       }
       selected = unionGeometries(geoms);
     }
