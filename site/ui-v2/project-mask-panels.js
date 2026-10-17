@@ -2,7 +2,7 @@
 import { createBaseControlsController } from '../controllers/base-controls-controller.js';
 import { createMaskBrowserController } from '../controllers/mask-browser-controller.js';
 import { createMaskImportController } from '../controllers/mask-import-controller.js';
-import { MAX_PROJECT_FILE_BYTES } from '../project-io.js';
+import { MAX_PROJECT_FILE_BYTES, readProjectFile } from '../project-io.js';
 import { buildProcessReportData } from '../process-report.js';
 import { captureHistorySections } from '../report-history-captures.js';
 import { createDisplayUnits, syncDisplayUnitFields } from './view-kit/display-units.js';
@@ -403,7 +403,18 @@ export function createProjectMaskPanels({
       const result = await task.runWorker(
         '../project-worker.js',
         { arrayBuffer },
-        { label: `Opening ${file.name}…`, transfer: [arrayBuffer] },
+        {
+          label: `Opening ${file.name}…`,
+          transfer: [arrayBuffer],
+          startupFallback:
+            file.size <= 8 * 1024 * 1024
+              ? async ({ signal }) => {
+                  if (signal.aborted) return { aborted: true };
+                  const project = await readProjectFile(file);
+                  return signal.aborted ? { aborted: true } : { project };
+                }
+              : null,
+        },
       );
       if (result?.error) throw Error(result.error);
       if (!result?.project) return null;

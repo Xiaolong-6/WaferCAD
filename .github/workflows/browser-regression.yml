@@ -193,6 +193,13 @@ jobs:
         if: needs.plan.outputs.renderer == 'true'
         run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
 
+      # PR #328's scientific contract uses the actual committed PERC file.
+      # Draft Quality runs only the fast structural checks, so keep this
+      # targeted geometry gate active before final review.
+      - name: Verify PERC front Implant ownership after rear contact partition
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 328 }}
+        run: node --test site/tests/perc-front-implant-ownership.test.mjs site/tests/project-annotation.test.mjs
+
       - name: Verify PR250 conformal 50 nm common-XY geometry
         if: ${{ needs.plan.outputs.renderer == 'true' && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
         run: node --test site/tests/photodetector-rough-conformal.test.mjs
