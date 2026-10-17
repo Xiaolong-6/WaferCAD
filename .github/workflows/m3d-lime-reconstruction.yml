@@ -49,6 +49,29 @@ jobs:
         run: node --test site/tests/m3d-lime-builder.test.mjs
       - name: Check committed project matches source recipe
         run: git diff --exit-code -- site/examples/m3d-lime-rram-cntfet.wafercad
+      - name: Upload kernel source validation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3d-lime-source-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            test-results/m3d-lime/validation.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  native-browser-and-klayout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -67,6 +90,7 @@ jobs:
           cat serve-v2.log
           exit 1
       - name: Browser project load and Run All
+        timeout-minutes: 20
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-m3d-lime-project.mjs
@@ -78,7 +102,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m3d-lime-kernel-${{ github.sha }}
+          name: m3d-lime-browser-${{ github.event.pull_request.head.sha || github.sha }}
           if-no-files-found: warn
           path: |
             site/examples/m3d-lime-rram-cntfet.wafercad

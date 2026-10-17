@@ -8,6 +8,7 @@ on:
       - "site/model.js"
       - "site/app.html"
       - "site/controllers/process-panel-controller.js"
+      - "scripts/visual-layout-regression.mjs"
       - "docs/wiki/**"
       - ".github/workflows/m3d-conformal-baseline.yml"
   workflow_dispatch:
