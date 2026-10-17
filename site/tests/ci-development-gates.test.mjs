@@ -66,11 +66,8 @@ test('visual evidence is explicitly unreviewed, never a merge gate', () => {
 });
 
 test('heavy PR scopes ignore documentation tests and isolated screenshot collection', () => {
-  assert.equal(
-    existsSync(new URL('../../.github/workflows/ui-v2-d1.yml', import.meta.url)),
-    false,
-    'Deprecated D1 workflow is retired, not reintroduced as a passing gate',
-  );
+  const retiredD1 = new URL('../../.github/workflows/ui-v2-d1.yml', import.meta.url);
+  assert.equal(existsSync(retiredD1), false);
   for (const name of [
     'ui-v2-stage-c-m4.yml',
     'ui-v2-main-mask.yml',
