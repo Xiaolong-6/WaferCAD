@@ -212,6 +212,33 @@ try {
       await page.locator('#sectionPanel').screenshot({
         path: resolve(directory, state + '-section.png'),
       });
+      if (exportPrefix === 'sem-ground') {
+        // The ordinary SEM section crosses the comb, not the new ground
+        // rail. Re-import the SAME real WaferCAD project with a short XY
+        // rail transect to expose central BOX retention after HF release.
+        const railSection = { a: [-80, -85], b: [-71, -85] };
+        const inspect = structuredClone(source);
+        inspect.section = railSection;
+        for (const branch of inspect.snapshotBranches.branches) {
+          if (branch.headState) branch.headState.section = railSection;
+        }
+        for (const node of inspect.snapshotBranches.nodes) {
+          if (node.state) node.state.section = railSection;
+        }
+        for (const bookmark of inspect.snapshots) {
+          if (bookmark.state) bookmark.state.section = railSection;
+        }
+        await importProject({
+          name: 'sem-v2-ground-rail-section.wafercad',
+          mimeType: 'application/json',
+          buffer: Buffer.from(JSON.stringify(inspect)),
+        });
+        await showSection();
+        await waitForPaint(page);
+        await page.locator('#sectionPanel').screenshot({
+          path: resolve(directory, state + '-section-perimeter-rail.png'),
+        });
+      }
       if (state === 'off') {
         await page.locator('[data-action="domain:process"]').click();
         const recipeTab = page.locator('[data-action="process-mode:recipe"]');
