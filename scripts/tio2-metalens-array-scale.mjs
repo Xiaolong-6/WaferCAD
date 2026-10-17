@@ -11,6 +11,9 @@ import { loadGeometryKernel, projectForBenchmark } from './process-benchmarks.mj
 import { buildMetalensLocal, metaAtomPolygons } from './build-tio2-metalens-example.mjs';
 
 const pitch = 0.375;
+// Preserve this published illustrative project's glass color independently
+// of the global Workstation Base palette. Geometry and materials are unchanged.
+const ILLUSTRATIVE_GLASS_COLOR = '#C3CBD4';
 const families = ['circle', 'square', 'ring', 'bipolar-concentric-ring'];
 
 export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
@@ -69,6 +72,7 @@ export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
   const makeLeaf = (family, scale) => {
     const leaf = m.createModel({ shape: 'rect', width: pitch, height: pitch, thickness: 2 });
     leaf.layers[0].name = 'Glass (2um illustration)';
+    leaf.layers[0].color = ILLUSTRATIVE_GLASS_COLOR;
     if (publish) {
       histories.set(leaf, [structuredClone(leaf)]);
       // Cleaning is metadata, just as in the four-unit source Recipe.
@@ -253,7 +257,9 @@ export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
       nextElectricalRegionId: histories.get(first)[index].nextElectricalRegionId,
       revision: node.state.model.revision,
       processRevision: node.state.model.processRevision,
-      layers: node.state.model.layers,
+      layers: node.state.model.layers.map((layer) =>
+        layer.id === 'base' ? { ...layer, color: ILLUSTRATIVE_GLASS_COLOR } : layer,
+      ),
       array: {
         version: 1,
         templates: [...definitions].map(([id, leaf]) => ({
