@@ -5,9 +5,12 @@ on:
     paths:
       - 'scripts/swx-mems-sem-v2-unit.mjs'
       - 'scripts/build-swx-sem-v2-unit.mjs'
+      - 'scripts/swx-mems-sem-ground-return-candidate.mjs'
+      - 'scripts/build-swx-sem-v2-ground-return-candidate.mjs'
       - 'scripts/swx-mems-sem-v2-browser-acceptance.mjs'
       - 'scripts/swx-mems-klayout-verify.py'
       - 'site/tests/swx-mems-sem-v2-unit.test.mjs'
+      - 'site/tests/swx-mems-sem-ground-return-candidate.test.mjs'
       - '.github/workflows/swx-mems-sem-v2-unit.yml'
   workflow_dispatch:
 
@@ -17,7 +20,7 @@ permissions:
 jobs:
   unit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 28
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,10 +28,13 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Scientific invariants for newly oriented single MEMS unit
-        run: node --test site/tests/swx-mems-sem-v2-unit.test.mjs
-      - name: Execute actual OFF/ON Kernel and common Recipe
-        run: node scripts/build-swx-sem-v2-unit.mjs
+      - name: Scientific invariants for original and independent ground-return trial
+        run: |
+          node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs
+      - name: Execute original and isolated trial OFF/ON Kernel + common Recipes
+        run: |
+          node scripts/build-swx-sem-v2-unit.mjs
+          node scripts/build-swx-sem-v2-ground-return-candidate.mjs
       - name: Install pinned Chromium for real unit visual validation
         run: npx playwright install --with-deps chromium
       - name: Start WaferCAD UI v2
@@ -43,16 +49,24 @@ jobs:
           done
           cat test-results/swx-sem-v2/server.log
           exit 1
-      - name: Real Chromium OFF/ON Mask, 3D, Section, browser Recipe, GDS/OAS
-        run: node scripts/swx-mems-sem-v2-browser-acceptance.mjs
+      - name: Real Chromium OFF/ON original and candidate Mask, 3D, Section, Recipe, GDS/OAS
+        run: |
+          node scripts/swx-mems-sem-v2-browser-acceptance.mjs
+          WAFERCAD_SWX_SEM_OUTPUT=test-results/swx-sem-v2-ground \
+          WAFERCAD_SWX_SEM_PROJECT=swx-sem-ground-return-candidate.wafercad \
+          WAFERCAD_SWX_SEM_EXPORT_PREFIX=sem-ground \
+          node scripts/swx-mems-sem-v2-browser-acceptance.mjs
       - name: Independent GDS/OAS Boolean parity (KLayout 0.30.12)
         run: |
           python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
           python3 scripts/swx-mems-klayout-verify.py test-results/swx-sem-v2 sem-v2
+          python3 scripts/swx-mems-klayout-verify.py test-results/swx-sem-v2-ground sem-ground
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: isolated-single-mems-sem-v2
-          path: test-results/swx-sem-v2/
+          path: |
+            test-results/swx-sem-v2/
+            test-results/swx-sem-v2-ground/
           retention-days: 14
           if-no-files-found: ignore
