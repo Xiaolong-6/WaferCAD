@@ -61,7 +61,7 @@ try {
         null,
         { timeout: 20000 },
       );
-      if (await page.locator('body').getAttribute('data-ready') !== 'true') {
+      if ((await page.locator('body').getAttribute('data-ready')) !== 'true') {
         throw new Error(
           'Physical Workstation boot failed: ' +
             (await page.locator('#app-root').innerText()) +
@@ -108,7 +108,9 @@ try {
         );
         metrics = await page.evaluate(() => {
           const canvas = document.getElementById('sectionCanvas');
-          const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+          const pixels = canvas
+            .getContext('2d')
+            .getImageData(0, 0, canvas.width, canvas.height).data;
           let colored = 0;
           for (let i = 0; i < pixels.length; i += 16) {
             if (pixels[i] < 210 && pixels[i + 1] < 210) colored++;
@@ -125,7 +127,10 @@ try {
         assert.equal(metrics.owner, 'wafercad-physical-pyramid-slab-v1');
         assert.equal(metrics.zMin, -130);
         assert.equal(metrics.zMax, 130);
-        assert.ok(metrics.coloredSamples > 300, 'Native Section must contain real colored physical material');
+        assert.ok(
+          metrics.coloredSamples > 300,
+          'Native Section must contain real colored physical material',
+        );
       }
       await waitForPaint(page);
       assert.deepEqual(errors, [], view + ' must have no page errors');
