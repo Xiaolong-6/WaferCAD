@@ -35,15 +35,11 @@ test('Welcome staging still protects maximum file size', () => {
 });
 
 test('v2 interactive previews and published old-bookmark redirect stay functional', () => {
-  assert.match(
-    welcomeJs,
-    /return \`\.\/app\.html\?\$\{params\.toString\(\)\}\`/,
-  );
+  const previewHrefPattern = /return \`\.\/app\.html\?\$\{params\.toString\(\)\}\`/;
+  assert.match(welcomeJs, previewHrefPattern);
   assert.match(welcomeJs, /preview: '1'/);
   assert.doesNotMatch(welcomeJs, /app-legacy\.html/);
   assert.match(appHtml, /ui-v2\/workstation-preview\.css/);
-  assert.match(
-    pages,
-    /location\.replace\('\.\/app\.html' \+ location\.search \+ location\.hash\)/,
-  );
+  const bookmarkRedirectPattern = /location\.replace\('\.\/app\.html' \+ location\.search \+ location\.hash\)/;
+  assert.match(pages, bookmarkRedirectPattern);
 });

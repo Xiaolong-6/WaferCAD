@@ -36,6 +36,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Literature reconstruction](examples/README.md) — paper assumptions and named-example evidence.
 - [UI Workstation](ui-v2/README.md) — production interface ownership and dated UI contracts.
 - [Historical evidence](archive/README.md) — superseded checks and completed investigations.
+- [Legacy source retirement](LEGACY_SOURCE_SUNSET.md) — frozen source tag, v2 redirect/reader guarantees and archived nightly contracts.
 
 ## Scientific and interchange contracts
 

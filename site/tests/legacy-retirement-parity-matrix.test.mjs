@@ -35,15 +35,24 @@ test('Recipe, Worker, History, Recovery and Array v2 owners are retained', async
       'scripts/process-transaction-ui-regression.mjs',
       'scripts/v2/check-worker-fault-parity.mjs',
     ],
-    ['scripts/history-regression.mjs', 'scripts/v2/check-history-replay-rollback.mjs'],
-    ['scripts/persistence-regression.mjs', 'scripts/v2/check-recovery-two-tab-takeover.mjs'],
-    ['scripts/array-runtime-regression.mjs', 'scripts/v2/check-array-625-science.mjs'],
+    [
+      'scripts/history-regression.mjs',
+      'scripts/v2/check-history-replay-rollback.mjs',
+    ],
+    [
+      'scripts/persistence-regression.mjs',
+      'scripts/v2/check-recovery-two-tab-takeover.mjs',
+    ],
+    [
+      'scripts/array-runtime-regression.mjs',
+      'scripts/v2/check-array-625-science.mjs',
+    ],
   ]) {
-    assert.ok(
-      rows
-        .get(old)
-        .nativeCandidates.some((candidate) => candidate.path === owner && candidate.existsOnBranch),
+    const candidates = rows.get(old).nativeCandidates;
+    const hasOwner = candidates.some(
+      (candidate) => candidate.path === owner && candidate.existsOnBranch,
     );
+    assert.ok(hasOwner);
   }
   assert.equal(
     rows.get('scripts/array-renderer-regression.mjs').status,
