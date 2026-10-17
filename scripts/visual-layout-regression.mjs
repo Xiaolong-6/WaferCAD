@@ -77,7 +77,7 @@ try {
       await page.locator('#operationType').selectOption('add');
       await page.locator('[data-action="process-mode:recipe"]').click();
       assert.equal(
-        await page.locator('[data-process-input-mode="recipe"]').getAttribute('aria-pressed'),
+        await page.locator('[data-action="process-mode:recipe"]').getAttribute('aria-pressed'),
         'true',
       );
       await page.locator('[data-action="process-mode:step"]').click();
