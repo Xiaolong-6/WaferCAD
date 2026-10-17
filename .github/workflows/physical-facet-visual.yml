@@ -41,6 +41,22 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: One-time exact source-format snapshot
+        run: |
+          npx prettier --write site/plan-renderers.js site/project-io.js site/tests/physical-facet-persistence.test.mjs site/ui-v2/workstation-entry.js site/ui-v2/workstation-runtime.js scripts/v2/capture-physical-facet-workstation.mjs
+          git diff --stat
+      - name: Upload temporary formatted source snapshot
+        uses: actions/upload-artifact@v6
+        with:
+          name: physical-facet-workstation-prettier-source
+          path: |
+            site/plan-renderers.js
+            site/project-io.js
+            site/tests/physical-facet-persistence.test.mjs
+            site/ui-v2/workstation-entry.js
+            site/ui-v2/workstation-runtime.js
+            scripts/v2/capture-physical-facet-workstation.mjs
+          retention-days: 1
       - uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
