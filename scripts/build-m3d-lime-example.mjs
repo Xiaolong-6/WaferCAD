@@ -662,7 +662,20 @@ export async function buildM3DLime() {
   deposit('Top Ti interconnect adhesion 20nm', 'Top Ti interconnect 20nm', 0.02, 21);
   assertPhysicalContact(prechargeDrainProbe, 'CNT drain Pd 45nm', 'Top Ti interconnect 20nm');
   assertPhysicalContact(digitalRramProbe, 'Digital Pt TE 10nm', 'Top Ti interconnect 20nm');
-  deposit('Top Pd interconnect 120nm', 'Top Pd interconnect 120nm', 0.12, 21);
+  // Top-level patterned Pd must also bridge conformal passivation sidewalls
+  // at the pre-charge CNTFET end. Ideal vertical-only deposition leaves the
+  // physically continuous mask electrically open. Assume *inferred*, not
+  // measured, finite-angle PVD: nominal 120nm on horizontal material and
+  // at most 50% (60nm) on the bounded sidewall strips. All actual paths
+  // must independently retain >10nm Z overlap under the strict ML test.
+  deposit(
+    'Top Pd interconnect 120nm (inferred 50% PVD sidewall coverage)',
+    'Top Pd interconnect 120nm',
+    0.12,
+    21,
+    'pvd-step',
+    { stepCoverageFraction: 0.5 },
+  );
   assertPhysicalContact(digitalRramProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
   assertPhysicalContact(prechargeDrainProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
   record(
