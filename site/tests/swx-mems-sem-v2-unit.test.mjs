@@ -200,6 +200,24 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
   }
 });
 
+test('SEM v2 retains the 20 open S8 shuttle apertures in the actual OFF/ON silicon mask', () => {
+  for (const state of ['off', 'on']) {
+    const { maskPolygons, physicalGroups } = createSwxSemV2ProcessGeometry(state);
+    const pose = physicalGroups.semV2;
+    const apertureProbes = pose.source.actuator.triangularApertureProbes;
+    assert.equal(apertureProbes.length, 20);
+    const physicalSi = union(maskPolygons.get(1));
+    for (const [x, y] of apertureProbes) {
+      const translatedPoint = [x, y + SWX_SEM_V2_ASSUMPTIONS.actuatorFrameTranslationYUm];
+      assert.equal(
+        v.pointInMulti(translatedPoint, physicalSi),
+        false,
+        state + ' full silicon mask closes an S8 shuttle aperture at ' + translatedPoint.join(','),
+      );
+    }
+  }
+});
+
 test('SEM v2 real post-release ownership includes all twelve wider 1um spring trusses', () => {
   for (const state of ['off', 'on']) {
     const probes = createSwxSemV2SupportAudit(state);
