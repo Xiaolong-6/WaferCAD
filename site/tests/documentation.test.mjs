@@ -75,7 +75,7 @@ test('archived documents have canonical links and no obsolete originals', async 
   const archiveRoot = new URL('../../docs/archive/', import.meta.url);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');
   const archived = (await readdir(archiveRoot, { recursive: true }))
-    .map((entry) => String(entry).replaceAll('\\\\', '/'))
+    .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
 
   // The 2026-10-16 structure audit deliberately relocated exactly three dated

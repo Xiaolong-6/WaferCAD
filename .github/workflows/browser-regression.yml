@@ -29,6 +29,10 @@ on:
       - "scripts/array-runtime-regression.mjs"
       - "scripts/array-renderer-regression.mjs"
       - "scripts/renderer-pipeline-benchmark.mjs"
+      - "scripts/pr250-renderer-audit.mjs"
+      - "scripts/pr250-audit-fixtures.mjs"
+      - "scripts/pr250-audit-compare.mjs"
+      - "scripts/rough-boundary-audit.mjs"
       - "scripts/interaction-regression.mjs"
       - "scripts/resilience-regression.mjs"
       - "scripts/test-helpers/**"
@@ -184,6 +188,63 @@ jobs:
         # The 625-site software-WebGL stress run is isolated below so the
         # ordinary UI/browser checks retain their own 15-minute watchdog.
         run: node scripts/renderer-product-regression.mjs
+
+      - name: Check rough cap, sidewall, and outline geometry contracts
+        if: needs.plan.outputs.renderer == 'true'
+        run: node --test site/tests/rough-boundary-profile.test.mjs site/tests/three-outline-geometry.test.mjs site/tests/three-outline-ownership.test.mjs
+
+      - name: Verify PR250 conformal 50 nm common-XY geometry
+        if: ${{ needs.plan.outputs.renderer == 'true' && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
+        run: node --test site/tests/photodetector-rough-conformal.test.mjs
+
+      - name: Capture real photodetector rough ROI evidence
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        env:
+          WAFERCAD_AUDIT_PHOTODETECTOR: '1'
+          WAFERCAD_AUDIT_PERSPECTIVE: ${{ github.event.pull_request.number == 250 && '1' || '0' }}
+          WAFERCAD_AUDIT_FILTER: photodetector-blacksi-final
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-photodetector
+        run: node scripts/pr250-renderer-audit.mjs
+
+      - name: Upload targeted Photodetector ROI evidence
+        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr250-photodetector-${{ github.sha }}
+          path: test-results/product-review/pr250-photodetector/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Check explicit no-Worker rough fallback matrix
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        env:
+          WAFERCAD_AUDIT_NO_WORKER: '1'
+          WAFERCAD_AUDIT_TIMEOUT: '30000'
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-no-worker
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.number }}" == "250" ]]; then
+            # Recheck the formerly failed no-Worker 8-fixture, 40-capture matrix.
+            node scripts/pr250-renderer-audit.mjs
+          else
+            WAFERCAD_AUDIT_FILTER=rect-stochastic-exposed node scripts/pr250-renderer-audit.mjs
+          fi
+
+      - name: Upload PR250 no-Worker matrix evidence
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.number == 250 && needs.plan.outputs.renderer == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr250-no-worker-${{ github.sha }}
+          path: test-results/product-review/pr250-no-worker/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Check rough boundary and depth visibility evidence
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        env:
+          WAFERCAD_AUDIT_ORACLE: '1'
+          WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-audit
+        run: node scripts/pr250-renderer-audit.mjs
 
       - name: Package tested preview
         if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
