@@ -994,6 +994,38 @@ try {
   };
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
+  // Fig. 3b's inferred ML pre-charge CNTFET lies outside the saved 3D ROI.
+  // Verify it in a separate genuine Main ROI view, without fabricating an
+  // RRAM device or altering the recipe/material geometry.
+  await editInspectionRoi({ centerXUm: 46, centerYUm: -15, widthUm: 6.5, heightUm: 22 });
+  const prechargeRoi = (await snapshot()).roi;
+  assert.deepEqual(prechargeRoi, {
+    type: 'rect',
+    a: [42.75, -26],
+    b: [49.25, -4],
+  });
+  await showAndVerifyView('three');
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await page.locator('#threePanel [data-action="fit:three"]').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const prechargeCapture = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-tcam-ml-precharge.png'),
+  );
+  assert.ok(prechargeCapture.coloredPixels > 1000, 'ML pre-charge 3D evidence is empty');
+  report.threePrechargeEvidence = {
+    roi: prechargeRoi,
+    coloredPixels: prechargeCapture.coloredPixels,
+    canvas: prechargeCapture.canvas,
+    note: 'Independent inferred pre-charge FET; no claim of original ML routing or author GDS',
+  };
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
   const savedRoi = beforeCutaway.roi;
   assert.equal(savedRoi?.type, 'rect', 'Original inspection ROI must be rectangular');
   await editInspectionRoi({
