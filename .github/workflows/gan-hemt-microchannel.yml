@@ -144,6 +144,8 @@ jobs:
             site/tests/welcome-example.test.mjs \
             docs/wiki/Examples-and-Modeling-Limits.md \
             README.md docs/wiki/Getting-Started.md
+      # The preview source hash was refreshed only after real Chromium
+      # reproduced the exact existing canonical WebP bytes and image digest.
       - name: Validate committed thumbnail integrity after browser comparison
         run: |
           # Headless raster output can vary between identical Browser/GPU contexts.
