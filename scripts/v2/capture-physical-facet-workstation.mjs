@@ -47,10 +47,18 @@ try {
       });
       assert.equal(response.status(), 200);
       await page.waitForFunction(
-        () => document.body.dataset.ready === 'true',
+        () => ['true', 'error'].includes(document.body.dataset.ready),
         null,
-        { timeout: 45000 },
+        { timeout: 20000 },
       );
+      if (await page.locator('body').getAttribute('data-ready') !== 'true') {
+        throw new Error(
+          'Physical Workstation boot failed: ' +
+            (await page.locator('#app-root').innerText()) +
+            '; browser errors: ' +
+            errors.join('; '),
+        );
+      }
       assert.equal(
         await page.locator('body').getAttribute('data-physical-facet-preview'),
         'read-only',
