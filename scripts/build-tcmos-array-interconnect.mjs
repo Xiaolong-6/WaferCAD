@@ -42,6 +42,8 @@ const horizontal = (x0, x1, y, width) =>
 const vertical = (x, y0, y1, width) =>
   box(x - width / 2, y0, x + width / 2, y1);
 const moved = (point, cell) => [n4(point[0] + cell.x), n4(point[1] + cell.y)];
+// File Mask is source geometry: NEVER re-quantize these approved vertices.
+const movedSource = (point, cell) => [point[0] + cell.x, point[1] + cell.y];
 const localNet = (name, cell) => (name === 'VOUT' ? 'VOUT/' + cell.id : name);
 
 export function tcmosRoutingCells(spec = TCMOS_ARRAY_SPEC) {
@@ -89,7 +91,7 @@ export function buildTcmosRoutedOverlay() {
         net,
         cellId: cell.id,
         // The only M1 geometry comes from the approved original SVG.
-        points: sourceMetal[index].points.map((p) => moved(p, cell)),
+        points: sourceMetal[index].points.map((p) => movedSource(p, cell)),
       });
       emit('M2', net, 'm2/' + cell.id + '/' + net,
         square(point[0], point[1], spec.m2PadWidth));
