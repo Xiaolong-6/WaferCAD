@@ -191,6 +191,36 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   });
   assert.equal(viaFootprintChecks.reduce((sum, entry) => sum + entry.viaSites, 0),
     140, 'One or more Via physical volumes are missing');
+  // A correct Via without exact horizontal metal geometry could still
+  // leave a physically opened or shorted bus. Check *every upper-metal film*
+  // against its intended world-space footprint, not just the landing squares.
+  const metalFootprintChecks = metals.map((layer, index) => {
+    const metalName = 'M' + (index + 2);
+    const shapes = routed.metal.filter((shape) => shape.layer === metalName);
+    const expected = unionRects(shapes.map((shape) => shape.rect));
+    const actualParts = model.regions
+      .filter((region) => region.stack.some((segment) => segment.layerId === layer.id))
+      .map((region) => region.geom);
+    assert.ok(actualParts.length, layer.name + ': no final metal material');
+    const actual = vector.unionGeometries(actualParts);
+    const missingAreaUm2 = geometryArea(vector.difference(expected, actual));
+    const extraAreaUm2 = geometryArea(vector.difference(actual, expected));
+    assert.ok(missingAreaUm2 < 1e-12,
+      layer.name + ': missing continuous metal footprint area = ' +
+        missingAreaUm2 + ' µm²');
+    assert.ok(extraAreaUm2 < 1e-12,
+      layer.name + ': extra metal footprint area = ' + extraAreaUm2 + ' µm²');
+    return {
+      name: layer.name,
+      shapeCount: shapes.length,
+      designedAreaUm2: geometryArea(expected),
+      actualAreaUm2: geometryArea(actual),
+      missingAreaUm2,
+      extraAreaUm2,
+    };
+  });
+  assert.deepEqual(metalFootprintChecks.map((check) => check.shapeCount),
+    [64, 44, 3], 'An upper-metal film changed its intended shape count');
   // A full source File Mask remains a strict prefix, including exact vertex
   // coordinates. Supplemental layout layers are exclusively this new variant.
   assert.deepEqual(project.layout.elements, exactSourceMasks,
@@ -267,6 +297,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
       materialLayersAdded: 9,
       dielectricAndViaStages: counts,
       viaFootprintChecks,
+      metalFootprintChecks,
       routedPlanes: planes,
       baselineRegionCount,
       finalRegionCount: model.regions.length,
