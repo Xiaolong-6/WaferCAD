@@ -21,10 +21,18 @@ test('grid lines are panned with world origin and classified into three levels',
   const ctx = {
     save() {},
     restore() {},
-    beginPath() { lines = []; },
-    moveTo(x, y) { lines.push(['move', x, y]); },
-    lineTo(x, y) { lines.push(['line', x, y]); },
-    stroke() { strokes.push({ color: this.strokeStyle, lines: [...lines] }); },
+    beginPath() {
+      lines = [];
+    },
+    moveTo(x, y) {
+      lines.push(['move', x, y]);
+    },
+    lineTo(x, y) {
+      lines.push(['line', x, y]);
+    },
+    stroke() {
+      strokes.push({ color: this.strokeStyle, lines: [...lines] });
+    },
   };
   const viewport = { s: 1, cx: 100, cy: 80 };
   const worldToCanvas = ([x, y], v) => [v.cx + x * v.s, v.cy - y * v.s];
@@ -41,7 +49,10 @@ test('grid lines are panned with world origin and classified into three levels',
 });
 
 test('existing project snapshot loader retains the saved model and material colors', () => {
-  const source = readFileSync(new URL('../controllers/project-state-controller.js', import.meta.url), 'utf8');
+  const source = readFileSync(
+    new URL('../controllers/project-state-controller.js', import.meta.url),
+    'utf8',
+  );
   assert.match(source, /const model = project\.model;/);
   assert.match(source, /applyState\(\{\s*model,/);
   const newModel = readFileSync(new URL('../model.js', import.meta.url), 'utf8');

@@ -51,9 +51,15 @@ test('Hint actions are inline buttons and hidden visibility is reversible', () =
     children: [],
     attributes: {},
     listeners: {},
-    append(...children) { this.children.push(...children); },
-    setAttribute(key, value) { this.attributes[key] = value; },
-    addEventListener(name, handler) { this.listeners[name] = handler; },
+    append(...children) {
+      this.children.push(...children);
+    },
+    setAttribute(key, value) {
+      this.attributes[key] = value;
+    },
+    addEventListener(name, handler) {
+      this.listeners[name] = handler;
+    },
   });
   globalThis.document = {
     createElement: makeNode,
