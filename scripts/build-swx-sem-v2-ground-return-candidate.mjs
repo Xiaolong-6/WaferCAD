@@ -10,12 +10,14 @@ import {
   createSwxSemGroundReturnCandidate,
   SWX_GROUND_RETURN_PROCESS_PROFILE,
   auditSwxGroundReturnBucklingRisk,
+  SWX_GROUND_RETURN_ASSUMPTIONS,
 } from './swx-mems-sem-ground-return-candidate.mjs';
 import {
   createSwxSemV2ProcessGeometry,
   auditSwxSemV2ElectricalNets,
 } from './swx-mems-sem-v2-unit.mjs';
 import { auditSwxPaperEnvelope } from './swx-mems-paper-envelope-audit.mjs';
+import { auditSwxPostHFPerimeterSupport } from './swx-mems-posthf-perimeter-audit.mjs';
 
 const { json, validation, project } = await buildSwxMemsUnified(SWX_GROUND_RETURN_PROCESS_PROFILE);
 const source = createSwxSemGroundReturnCandidate('off');
@@ -27,6 +29,27 @@ const originalAudit = auditSwxSemV2ElectricalNets(v, original);
 const candidateAudit = auditSwxSemV2ElectricalNets(v, source);
 const candidateFigureScopeAudit = auditSwxPaperEnvelope(v, source);
 const mechanicalRiskScreen = auditSwxGroundReturnBucklingRisk();
+// Nominal 8um oxide anchors shrink during HF; inspect the REAL processed
+// BOX boundaries, rather than treating the drawn Si pads as fully supported.
+const postHFPerimeterSupportByPose = project.snapshotBranches.branches.map((branch) => ({
+  branch: branch.name,
+  ...auditSwxPostHFPerimeterSupport(
+    v,
+    branch.headState.model,
+    SWX_GROUND_RETURN_ASSUMPTIONS,
+  ),
+}));
+assert.equal(postHFPerimeterSupportByPose.length, 2);
+for (const actual of postHFPerimeterSupportByPose) {
+  assert.equal(actual.externalSignalContinuouslySupported, true);
+  assert.equal(actual.actualGroundSupportShorterThanNominal, true);
+  assert.ok(actual.ground.every((path) => path.supportedLengthUm > 4 && path.supportedLengthUm < 5));
+  assert.ok(actual.signalCrossSection.supportedLengthUm > 1.9);
+  assert.ok(actual.signalCrossSection.supportedLengthUm < 2.1);
+  assert.ok(actual.longestActualReleasedSpan.lengthUm > 35);
+  assert.ok(actual.longestActualReleasedSpan.lengthUm < 37);
+  assert.equal(actual.postHFMechanicalAcceptance, false);
+}
 assert.equal(mechanicalRiskScreen.longest.route, 'signal');
 assert.equal(mechanicalRiskScreen.longest.lengthUm, 37);
 assert.equal(mechanicalRiskScreen.rightGroundAnchorRetainsBOX, true);
@@ -61,6 +84,7 @@ await writeFile(
       sourceElectricalNetAudit: candidateAudit,
       figureScopeAudit: candidateFigureScopeAudit,
       perimeterMechanicalRiskScreen: mechanicalRiskScreen,
+      postHFPerimeterSupportByPose,
       externalSignalBusRetainsBOX: true,
       leftGroundContactRetainsBOX: true,
       rightGroundAnchorRetainsBOX: true,
