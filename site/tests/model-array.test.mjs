@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadGeometryKernel, projectForBenchmark } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 const { createModel } = await import('../model.js');
-const { rectMulti, pointInMulti } = await import('../vector-geometry.js');
+const { rectMulti, pointInMulti, difference } = await import('../vector-geometry.js');
 const { ARRAY_MODEL_KERNEL, isArrayModel, resolveArrayModel, translateGeometry } =
   await import('../model-array.js');
 const { validateProcessModel, migrateProjectFile } = await import('../project-schema.js');
