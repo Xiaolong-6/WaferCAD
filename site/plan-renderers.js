@@ -419,11 +419,20 @@ export function createPlanRenderers({
   }
 
   function renderMask() {
-    const { activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
+    const { model, activeFace, maskSourceMode, layout, maskOpacity, readOnlyPreview } = getState();
     const c = $('maskCanvas'),
       { ctx, w, h } = setupCanvas(c),
       v = viewport(w, h, 'mask');
     ctx.clearRect(0, 0, w, h);
+    if (validateExperimentalPhysicalFacetModel(model)) {
+      // The fixed read-only lab offers physical 3D and Section only. Refuse
+      // to draw the flat compatibility region as a misleading Mask reference.
+      ctx.fillStyle = '#576b7a';
+      ctx.font = '12px system-ui';
+      ctx.fillText('Physical Mask reference unavailable in this experimental model', 24, 36);
+      c.dataset.physicalFacetUnsupported = 'true';
+      return;
+    }
 
     // Alignment reference: current process surface topology. Rough areas get a
     // subtle neutral darkening so they read as wafer topography without changing
