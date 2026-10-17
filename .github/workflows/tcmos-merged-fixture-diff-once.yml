@@ -1,4 +1,4 @@
-name: T-CMOS merged fixture drift diagnostic (temporary)
+name: T-CMOS #225 post-main canonical fixture + formatting (one-shot)
 
 on:
   push:
@@ -7,49 +7,84 @@ on:
     paths:
       - .github/workflows/tcmos-merged-fixture-diff-once.yml
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  inspect-fixture-diff:
+  fix-and-verify:
+    if: github.repository == 'Xiaolong-6/WaferCAD'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Generate exact candidate and enumerate every semantic change (no baseline rewrite)
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Fix scoped browser-global ESLint and existing source formatting
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/tcmos-array-recipe-browser-acceptance.mjs')
+          raw = path.read_text()
+          old = "new MutationObserver("
+          assert raw.count(old) == 1, "Unexpected browser-observer usage"
+          path.write_text(raw.replace(old, "new window.MutationObserver("))
+          PY
+          npx prettier --write scripts/tcmos-array-recipe-browser-acceptance.mjs scripts/build-tcmos-array-recipe-experiment.mjs site/tests/mask-instance-index.test.mjs site/model-array-context.js site/process-recipe.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+      - name: Rebuild 1x1 canonical fixture, verifying ONLY historical base-color deltas
         run: |
           node scripts/build-tcmos-inverter-example.mjs
           node --input-type=module <<'JS'
-          import { readFileSync } from 'node:fs';
-          const base = 'examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad';
-          const output = 'test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad';
-          const before = JSON.parse(readFileSync(base, 'utf8'));
-          const after = JSON.parse(readFileSync(output, 'utf8'));
-          const differences = [];
-          const walk = (a, b, path) => {
+          import { readFileSync, copyFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const path = 'examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad';
+          const produced = 'test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad';
+          const old = JSON.parse(readFileSync(path,'utf8'));
+          const next = JSON.parse(readFileSync(produced,'utf8'));
+          const changes = [];
+          const walk = (a,b,p) => {
             if (Object.is(a,b)) return;
-            if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a)!==Array.isArray(b)) {
-              differences.push({path,from:JSON.stringify(a)?.slice(0,120),to:JSON.stringify(b)?.slice(0,120)});
-              return;
+            if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+              changes.push([p,a,b]);return;
             }
-            for (const key of new Set([...Object.keys(a),...Object.keys(b)])) {
-              if (!(key in a)||!(key in b)) {
-                differences.push({path:path+'/'+key,from:key in a?JSON.stringify(a[key])?.slice(0,120):'<missing>',to:key in b?JSON.stringify(b[key])?.slice(0,120):'<missing>'});
-              } else walk(a[key],b[key],path+'/'+key);
+            assert.equal(Array.isArray(a),Array.isArray(b),'shape mismatch '+p);
+            const keys = new Set([...Object.keys(a),...Object.keys(b)]);
+            for (const k of keys) {
+              assert.ok(k in a && k in b,'missing key '+p+'/'+k);
+              walk(a[k],b[k],p+'/'+k);
             }
           };
-          walk(before, after, '');
-          console.log('FIELD_DIFFERENCE_COUNT='+differences.length);
-          const tally = {};
-          for(const d of differences) {
-            const category = d.path.replace(/\/\d+(?=\/|$)/g, '/#');
-            tally[category] = (tally[category] || 0) + 1;
+          walk(old,next,'');
+          assert.equal(changes.length,41,'Expected only 41 default Base color deltas');
+          for (const [path,a,b] of changes) {
+            assert.match(path,/^\/(?:model|sharedModels\/\d+)\/layers\/0\/color$/);
+            assert.equal(a,'#C3CBD4');
+            assert.equal(b,'#DDE4EC');
           }
-          console.log('SEMANTIC_DIFFERENCES='+JSON.stringify(Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,75)));
-          console.log('EXAMPLE_DIFFERENCES='+JSON.stringify(differences.slice(0,25)));
+          copyFileSync(produced,path);
+          console.log('FIXTURE_SYNC: exactly 41 Base color-only changes, no geometric/Recipe/History mutations');
           JS
+      - name: Full lint + formatting + focused T-CMOS science contracts
+        run: |
+          npm run lint
+          npm run format:check
+          npm run docs:check
+          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs
+          cmp examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad
+      - name: Commit ONLY checked source formatting and base-color-only fixture
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "feat/tcmos-ternary-inverter-example-20261014"
+          git add -- scripts/tcmos-array-recipe-browser-acceptance.mjs scripts/build-tcmos-array-recipe-experiment.mjs site/tests/mask-instance-index.test.mjs site/model-array-context.js site/process-recipe.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "fix(tcmos): align post-main Base color fixture and canonicalize scoped tests"
+            git push origin "HEAD:refs/heads/feat/tcmos-ternary-inverter-example-20261014"
+          fi
