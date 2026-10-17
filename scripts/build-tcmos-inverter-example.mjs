@@ -508,8 +508,28 @@ export function tcmosLayout() {
     maskPresentation: copy(TCMOS_MASK_PRESENTATION),
   };
 }
+// Process-only reconstruction windows do not belong to the user-supplied
+// eight-layer SVG File Mask (or to GDS/OAS exports). Store these windows as
+// immutable per-step Draw Mask captures instead of referring to absent File
+// Mask layers. Recipe replay and the generator then use identical regions.
+const INTERNAL_PROCESS_MASK_IDS = new Set([2, 3, 7, 8, 9]);
 function maskContext(id) {
-  assert.ok(BY_ID.has(id), 'Unknown mask: ' + id);
+  const source = BY_ID.get(id);
+  assert.ok(source, 'Unknown mask: ' + id);
+  if (INTERNAL_PROCESS_MASK_IDS.has(id)) {
+    const shapes = source.rectangles.map(({ x, y, w, h }, index) => ({
+      id: 'shape-' + (index + 1),
+      type: 'rect',
+      a: [x, y],
+      b: [x + w, y + h],
+    }));
+    return {
+      sourceMode: 'draw',
+      layerKeys: [],
+      drawMask: { nextShapeId: shapes.length + 1, shapes },
+      roi: null,
+    };
+  }
   return {
     sourceMode: 'file',
     cell: CELL,
