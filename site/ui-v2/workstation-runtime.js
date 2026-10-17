@@ -55,7 +55,13 @@ export async function loadExperimentalPhysicalFacetPreview() {
     version: CURRENT_PROJECT_VERSION,
     name: 'Physical Si facet (read-only lab)',
     model,
-    activeCell: initial.data.layout.root,
+    layout: {
+      ...initial.data.layout,
+      root: 'TOP',
+      hierarchy: { TOP: [] },
+      bounds: { minX: -6.4, maxX: 6.4, minY: -6.4, maxY: 6.4, width: 12.8, height: 12.8 },
+    },
+    activeCell: 'TOP',
     section: { a: [-6.4, 0], b: [6.4, 0] },
     display: {
       xyUnit: 'um',
