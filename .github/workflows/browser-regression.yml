@@ -200,20 +200,6 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 328 }}
         run: node --test site/tests/perc-front-implant-ownership.test.mjs site/tests/project-annotation.test.mjs
 
-      # One-time environment bootstrap: produce the exact pinned Three.js
-      # dependency so the real PR head can be visually tested in local Chromium
-      # when the sandbox has no access to the npm CDN. Remove after capture.
-      - name: Export offline Three.js for PR328 Chromium inspection
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 328 }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: pr328-offline-three-${{ github.event.pull_request.head.sha }}
-          path: |
-            node_modules/three/build/
-            node_modules/three/examples/jsm/
-          if-no-files-found: error
-          retention-days: 3
-
       - name: Verify PR250 conformal 50 nm common-XY geometry
         if: ${{ needs.plan.outputs.renderer == 'true' && github.event_name == 'pull_request' && github.event.pull_request.number == 250 }}
         run: node --test site/tests/photodetector-rough-conformal.test.mjs
