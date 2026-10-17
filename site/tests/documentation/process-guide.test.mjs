@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
-import { PROCESS_GUIDE, processGuideEntry, processGuideKey } from '../process-guide.js';
-import { processGuideSvg } from '../process-guide-svg.js';
-import { processOperationsMarkdown } from '../../scripts/build-process-guide.mjs';
-import { processWikiDiagramSvg } from '../../scripts/build-wiki-diagrams.mjs';
+import { PROCESS_GUIDE, processGuideEntry, processGuideKey } from '../../process-guide.js';
+import { processGuideSvg } from '../../process-guide-svg.js';
+import { processOperationsMarkdown } from '../../../scripts/build-process-guide.mjs';
+import { processWikiDiagramSvg } from '../../../scripts/build-wiki-diagrams.mjs';
 
 test('every Process variant has distinct catalog metadata and a valid diagram', () => {
   assert.equal(PROCESS_GUIDE.length, 19);
@@ -36,7 +36,7 @@ test('every Process variant has distinct catalog metadata and a valid diagram', 
 test('Wiki image assets match every in-app Process illustration', async () => {
   for (const entry of PROCESS_GUIDE) {
     const image = await readFile(
-      new URL('../../docs/wiki/assets/process/' + entry.id + '.svg', import.meta.url),
+      new URL('../../../docs/wiki/assets/process/' + entry.id + '.svg', import.meta.url),
       'utf8',
     );
     assert.equal(image, processWikiDiagramSvg(entry.id), entry.id + ': stale Wiki illustration');
@@ -102,7 +102,7 @@ test('all current manual selector combinations resolve to intended operation dia
 
 test('generated Wiki operation documentation is identical to current Process catalog', async () => {
   const tracked = await readFile(
-    new URL('../../docs/wiki/Process-Operations.md', import.meta.url),
+    new URL('../../../docs/wiki/Process-Operations.md', import.meta.url),
     'utf8',
   );
   assert.equal(tracked, processOperationsMarkdown());
@@ -113,9 +113,9 @@ test('generated Wiki operation documentation is identical to current Process cat
 });
 
 test('public guide and reusable Process diagrams use canonical catalog', async () => {
-  const guide = await readFile(new URL('../guide/index.html', import.meta.url), 'utf8');
+  const guide = await readFile(new URL('../../guide/index.html', import.meta.url), 'utf8');
   const panel = await readFile(
-    new URL('../controllers/process-panel-controller.js', import.meta.url),
+    new URL('../../controllers/process-panel-controller.js', import.meta.url),
     'utf8',
   );
   assert.match(panel, /processGuideKey\(/);
@@ -127,7 +127,7 @@ test('public guide and reusable Process diagrams use canonical catalog', async (
 
 test('portable v2 guide uses the canonical catalog and all 19 SVG pairs without module loading', async () => {
   const script = await readFile(
-    new URL('../ui-v2/process-guide.generated.js', import.meta.url),
+    new URL('../../ui-v2/process-guide.generated.js', import.meta.url),
     'utf8',
   );
   const window = {};

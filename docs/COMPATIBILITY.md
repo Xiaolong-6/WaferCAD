@@ -11,6 +11,9 @@ To keep previously shared GitHub file URLs open, relocated documents retain thei
 - [Former path](IMPLANT.md) → [Canonical document](science/IMPLANT.md)
 - [Former path](ROUGHNESS_MORPHOLOGY.md) → [Canonical document](science/ROUGHNESS_MORPHOLOGY.md)
 
+- [Former path](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) → [Canonical document](science/PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md)
+- [Former path](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) → [Canonical document](science/PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md)
+
 ## Examples
 
 - [Former path](EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) → [Canonical document](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md)

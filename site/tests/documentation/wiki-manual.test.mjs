@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { BUNDLED_EXAMPLES } from '../bundled-examples.js';
-import { PROCESS_GUIDE } from '../process-guide.js';
-import { parseProcessRecipeSource } from '../process-recipe.js';
+import { BUNDLED_EXAMPLES } from '../../bundled-examples.js';
+import { PROCESS_GUIDE } from '../../process-guide.js';
+import { parseProcessRecipeSource } from '../../process-recipe.js';
 
-const manual = (page) => readFile(new URL(`../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
+const manual = (page) => readFile(new URL(`../../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
 
 test('Wiki examples cover exactly the published Welcome project families and their sources', async () => {
   const page = await manual('Examples-and-Modeling-Limits');
@@ -45,9 +45,9 @@ test('every shipped example section embeds a real corresponding preview asset', 
     const image = example.preview?.path?.replace(/^\.\//, '');
     assert.ok(image?.startsWith('examples/thumbnails/'), example.id + ': invalid preview path');
     assert.ok(page.includes('/site/' + image), example.id + ': missing preview');
-    await access(new URL('../' + image, import.meta.url));
+    await access(new URL('../../' + image, import.meta.url));
     if (image.endsWith('.svg')) {
-      const asset = await readFile(new URL('../' + image, import.meta.url), 'utf8');
+      const asset = await readFile(new URL('../../' + image, import.meta.url), 'utf8');
       assert.match(asset, /<svg[\s>]/);
       assert.match(asset, /SCHEMATIC ONLY|Illustrative/i);
     }
@@ -85,7 +85,7 @@ test('the novice path is discoverable and names the current UI controls', async 
   ]) {
     assert.ok(guide.includes(step), `novice workflow missing ${step}`);
   }
-  const welcome = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const welcome = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(welcome, /id="welcomeEmptyBtn"[^>]*href="\.\/app\.html\?start=empty"/);
   assert.match(guide, /click \*\*Start empty\*\*/);
   assert.match(guide, /Open \*\*Project\*\*[\s\S]*XYZ display unit/);
@@ -94,20 +94,20 @@ test('the novice path is discoverable and names the current UI controls', async 
   assert.match(guide, /Also add to Recipe → No/);
 
   const v2Project = await readFile(
-    new URL('../ui-v2/project-mask-panels.js', import.meta.url),
+    new URL('../../ui-v2/project-mask-panels.js', import.meta.url),
     'utf8',
   );
   assert.match(v2Project, /'XYZ display unit'/);
   assert.match(v2Project, /button\('Rebuild Base'/);
   assert.match(v2Project, /host\('panel.base'\)/);
   const v2Workflow = await readFile(
-    new URL('../ui-v2/workstation-workflow.js', import.meta.url),
+    new URL('../../ui-v2/workstation-workflow.js', import.meta.url),
     'utf8',
   );
   assert.match(v2Workflow, /\['step', 'Manual', 'manual'\]/);
   assert.match(v2Workflow, /'Also add to Recipe'[\s\S]*?'false'/);
   assert.match(v2Workflow, /fields.input\('Thickness \/ depth/);
-  const v2Mask = await readFile(new URL('../ui-v2/mask-view.js', import.meta.url), 'utf8');
+  const v2Mask = await readFile(new URL('../../ui-v2/mask-view.js', import.meta.url), 'utf8');
   assert.match(v2Mask, /'mask-source'/);
   assert.match(v2Mask, /'draw-toggle'/);
 });
@@ -115,12 +115,12 @@ test('the novice path is discoverable and names the current UI controls', async 
 test('Mask ROI documentation agrees with Whole face worker clipping', async () => {
   const masks = await manual('Masks-and-ROI');
   const gettingStarted = await manual('Getting-Started');
-  const worker = await readFile(new URL('../process-worker.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../../process-worker.js', import.meta.url), 'utf8');
   assert.match(masks, /even \*\*Whole face\*\*/);
   assert.match(gettingStarted, /including Whole face/);
   assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
   assert.match(worker, /deferredArrayMaskArea\([\s\S]*?limiter \},[\s\S]*?vectorApi/);
-  const selection = await readFile(new URL('../selection-geometry.js', import.meta.url), 'utf8');
+  const selection = await readFile(new URL('../../selection-geometry.js', import.meta.url), 'utf8');
   assert.match(
     selection,
     /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
@@ -189,7 +189,7 @@ test('Wiki uses legible first-party visual evidence or task-specific diagrams, a
         ),
         `${page}: image path must be from an approved reviewed asset family (${asset})`,
       );
-      await access(new URL('../../' + asset, import.meta.url));
+      await access(new URL('../../../' + asset, import.meta.url));
       if (asset.startsWith('site/examples/thumbnails/')) {
         const allowed =
           page === 'Examples-and-Modeling-Limits' ||

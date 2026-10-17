@@ -22,7 +22,7 @@ and do not skip physics, Recovery, worker rollback or morphology contracts.
 
 ## Repository ownership and layout
 
-- `site/tests/*.test.mjs`: Node unit, model, geometry, schema, History and scientific invariants. `npm test` discovers this flat glob; **moving tests into subdirectories without updating the runner and CI routing silently drops coverage**. Group ownership through names and documentation first.
+- `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.
 - `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
 - `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
 - `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
@@ -239,7 +239,7 @@ For renderer performance diagnosis, `npm run benchmark:renderer` opens the bundl
 
 ### Documentation checks
 
-`npm run docs:check` validates generated Process output and the repository-wide documentation link/navigation contract. `node --test site/tests/documentation.test.mjs site/tests/wiki-manual.test.mjs site/tests/process-guide.test.mjs` owns link negative cases, actual tutorial parsing, Welcome catalog alignment and generated operation diagrams. See [Documentation architecture](DOCUMENTATION.md) for authority and publishing boundaries.
+`npm run docs:check` validates generated Process output and the repository-wide documentation link/navigation contract. `node --test site/tests/documentation-suite.test.mjs` owns link negative cases, actual tutorial parsing, Welcome catalog alignment and generated operation diagrams. See [Documentation architecture](DOCUMENTATION.md) for authority and publishing boundaries.
 
 ### Focused Recipe audit checks
 
@@ -283,7 +283,7 @@ See [CI routing](CI.md) for the path-to-suite policy and full-regression events.
 
 ## Node test ownership
 
-The former `site/selftest.mjs` monolith has been removed. `npm test` now runs only `node --test site/tests/*.test.mjs`.
+The former `site/selftest.mjs` monolith has been removed. `npm test` runs `node --test site/tests/*.test.mjs`, including the documentation suite aggregator that imports every grouped documentation test. All other test owners remain flat pending separately validated migration.
 
 The migrated self-test contracts are owned by focused files:
 
