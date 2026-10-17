@@ -408,6 +408,7 @@ function modelAssetKey(model) {
     Array.isArray(model.implants) ? model.implants.length : 0,
     Array.isArray(model.electricalRegions) ? model.electricalRegions.length : 0,
     JSON.stringify(model.experimentalPhysicalFacetOwner || null),
+    JSON.stringify(model.experimentalPhysicalFacetShell || null),
   ].join('|');
 }
 

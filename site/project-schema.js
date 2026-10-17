@@ -501,7 +501,8 @@ function validateModel(model, budget, geometryCache) {
 
   if (
     model.kernel === PHYSICAL_FACET_MODEL_KERNEL ||
-    Object.hasOwn(model, 'experimentalPhysicalFacetOwner')
+    Object.hasOwn(model, 'experimentalPhysicalFacetOwner') ||
+    Object.hasOwn(model, 'experimentalPhysicalFacetShell')
   ) {
     try {
       validateExperimentalPhysicalFacetModel(model);
