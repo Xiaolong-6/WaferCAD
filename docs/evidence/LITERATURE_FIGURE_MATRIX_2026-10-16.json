@@ -125,7 +125,7 @@
       "id": "m3d-selfpowered-heterogeneous-ic",
       "projectPath": "./examples/m3d-selfpowered-full-replay.wafercad",
       "sourceURL": "https://doi.org/10.1038/s41928-026-01624-1",
-      "paperPanel": "specific paper-to-Section panel not yet established",
+      "paperPanel": "Fig. 1 overall M3D architecture; Extended Data Fig. 1 fabrication flow; exact power-via micrograph panel not established",
       "classification": "unreported",
       "claim": "reconstructed power vias physically contact; inferred routing lacks original author mask",
       "acceptance": {
