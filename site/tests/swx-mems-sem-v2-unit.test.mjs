@@ -91,9 +91,12 @@ test('SEM v2 S6 centerline implements reported 5/3um radii and 15um terminal in 
         const endIndex = arc.lastArcIndex ?? arc.endIndex;
         for (let index = startIndex; index <= endIndex; index++) {
           const point = route.centerline[index];
+          const measuredRadiusUm = Math.hypot(
+            point[0] - arc.center[0],
+            point[1] - arc.center[1],
+          );
           assert.ok(
-            Math.abs(Math.hypot(point[0] - arc.center[0], point[1] - arc.center[1]) - arc.radiusUm) <
-              1e-9,
+            Math.abs(measuredRadiusUm - arc.radiusUm) < 1e-9,
             state + ' S6 optical curve has a wrong physical radius',
           );
         }
@@ -103,7 +106,8 @@ test('SEM v2 S6 centerline implements reported 5/3um radii and 15um terminal in 
       }
       const terminal = route.stationaryEnd;
       assert.equal(route.centerline.at(-1), terminal);
-      assert.ok(Math.abs(Math.abs(terminal[0] - route.terminalStraightStart[0]) - 15) < 1e-9);
+      const nominalRunUm = Math.abs(terminal[0] - route.terminalStraightStart[0]);
+      assert.ok(Math.abs(nominalRunUm - 15) < 1e-9);
       assert.equal(terminal[1], -71);
       assert.ok(
         Math.abs(route.terminalStraightStart[1] - (terminal[1] + pose.travel)) < 1e-9,
