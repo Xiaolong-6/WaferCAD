@@ -1,0 +1,29 @@
+name: PR228 one shot offline workspace snapshot
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pr228-one-shot-offline-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned offline tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Produce portable read-only offline source package
+        run: |
+          python3 scripts/offline-package.py --output "${RUNNER_TEMP}/pr228-offline-source.zip"
+          python3 scripts/offline-package.py --verify "${RUNNER_TEMP}/pr228-offline-source.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr228-one-shot-offline-source
+          path: ${{ runner.temp }}/pr228-offline-source.zip
+          retention-days: 2
+          if-no-files-found: error
