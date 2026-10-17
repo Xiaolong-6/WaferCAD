@@ -76,6 +76,7 @@ jobs:
           name: m3d-ml-native-evidence-${{ github.sha }}
           path: |
             test-results/m3d-lime/
+            site/examples/m3d-lime-rram-cntfet.wafercad
             m3d-ml-server.log
           if-no-files-found: warn
           retention-days: 14
