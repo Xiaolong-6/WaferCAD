@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 6: preserve original SVG and opt-in CNT process grid on indexed array masks.
+# Iteration 7: compare local repeated CNT Draw Mask physical parity without altering exported SVG.
 
 on:
   push:
