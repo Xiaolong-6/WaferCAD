@@ -66,6 +66,10 @@ function regionArea(model, area, shapes) {
 function makeBase(material, thickness) {
   const model = createModel({ shape: 'rect', width: 7000, height: 7000, thickness });
   model.layers[0].name = material;
+  // This historical scientific fixture predates the application's new base
+  // palette; preserve its original presentation color without rewriting any
+  // saved geometry, process steps, or History reference snapshots.
+  model.layers[0].color = '#C3CBD4';
   return model;
 }
 function state(model, shapes, face, recipe) {
