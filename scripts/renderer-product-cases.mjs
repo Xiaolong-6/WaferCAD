@@ -434,18 +434,28 @@ export async function runRendererProductCases({ page, capture }) {
   await page.locator('#threeMaxBtn').click();
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('0.5');
-  // A range fill alone can leave the model at its previous opaque setting.
-  // Commit the actual input event and wait for the transparent Renderer state.
+  // The input event must update the material presentation, not merely the
+  // HTML slider. Small rough scenes reuse a presentation-only scene variant,
+  // so sceneVariant may remain "opaque" while actual materials are transparent.
   await page.locator('#threeOpacityRange').dispatchEvent('input');
   await page.locator('#threePanel .three-opacity-control > summary').click();
-  await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return host?.dataset.sceneVariant === 'transparent' && host.dataset.renderState === 'ready';
-    },
-    null,
-    { timeout: 20000 },
-  );
+  const awaitVisibleBuriedInterface = () =>
+    page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        if (host?.dataset.renderState !== 'ready') return false;
+        if (Number(document.getElementById('threeOpacityRange')?.value) !== 0.5) {
+          return false;
+        }
+        const types = JSON.parse(host.dataset.sceneTriangleKinds || '[]');
+        return types.some(
+          ([kind, triangles]) => kind === 'material-interface' && triangles > 0,
+        );
+      },
+      null,
+      { timeout: 20000 },
+    );
+  await awaitVisibleBuriedInterface();
   await waitForPaint(page);
   await page.locator('#threeMaxBtn').click();
   await capture(page, 'wide-rough-3d-transparent-max');
@@ -457,29 +467,22 @@ export async function runRendererProductCases({ page, capture }) {
   }
   assert.equal(await page.locator('#threeBorders').isChecked(), true);
   await page.locator('#threeMaxBtn').click();
-  await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return host?.dataset.sceneVariant === 'transparent' && host.dataset.renderState === 'ready';
-    },
-    null,
-    { timeout: 20000 },
-  );
-  assert.equal(
-    await page.locator('#threeOpacityRange').inputValue(),
-    '0.5',
-    'Opacity control must remain at 50% after maximize and Border toggle',
-  );
+  await awaitVisibleBuriedInterface();
   const outlineDiagnostics = await page.locator('#threeHost').evaluate((host) => ({
-    sceneVariant: host.dataset.sceneVariant,
     updateKind: host.dataset.rendererUpdateKind,
     renderState: host.dataset.renderState,
     hiddenSegments: Number(host.dataset.hiddenBorderSegmentCount || 0),
     buriedSegments: Number(host.dataset.buriedContourSegmentCount || 0),
+    materialInterfaceTriangles:
+      new Map(JSON.parse(host.dataset.sceneTriangleKinds || '[]')).get('material-interface') || 0,
   }));
+  // Physically owned material interfaces must be drawn as translucent meshes.
+  // Buried cap perimeters must NOT be repeated as false black contour lines.
   assert.ok(
-    outlineDiagnostics.hiddenSegments > 0 && outlineDiagnostics.buriedSegments > 0,
-    `transparent buried material must expose physically owned internal contours: ${JSON.stringify(outlineDiagnostics)}`,
+    outlineDiagnostics.hiddenSegments > 0 &&
+      outlineDiagnostics.materialInterfaceTriangles > 0 &&
+      outlineDiagnostics.buriedSegments === 0,
+    `transparent material must show the buried interface without phantom outlines: ${JSON.stringify(outlineDiagnostics)}`,
   );
   await capture(page, 'wide-rough-3d-transparent-borders-max');
   await captureRoughEvidence('rough-transparent-borders-3d-evidence');
