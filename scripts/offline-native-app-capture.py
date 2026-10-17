@@ -209,7 +209,20 @@ def run(args):
             except Exception as exc:
                 if args.require_origin:
                     report['navigationError'] = str(exc)
-                    raise RuntimeError('Normal HTTPS navigation blocked; origin-required mode refuses fallback') from exc
+                    report['bootstrapMode'] = 'https-origin-blocked'
+                    report['originValid'] = False
+                    report['nativeThreeRendered'] = False
+                    report['fourViewsVisible'] = False
+                    report['nativeVisualEvidence'] = False
+                    report['evidenceTier'] = 'blocked-https-origin'
+                    report['httpRequestsAllowed'] = dict(counts)
+                    report['rejectedRequests'] = rejected
+                    report['unexpectedRejections'] = [v for v in rejected
+                        if not urlsplit(v['url']).path.endswith('/build-info.json')]
+                    report['fatalError'] = 'Normal HTTPS navigation blocked; origin-required mode refuses fallback'
+                    (out / 'native-app.evidence.json').write_text(
+                        json.dumps(report, indent=2, ensure_ascii=False) + '\n')
+                    raise RuntimeError(report['fatalError']) from exc
                 report['navigationError'] = str(exc)
                 mode = 'about-blank-null-origin'
                 page.close()
