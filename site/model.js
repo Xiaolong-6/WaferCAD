@@ -50,7 +50,7 @@ export const COLORS = [
   '#B7799C',
   '#7590AA',
 ];
-export const BASE_COLOR = '#C3CBD4';
+export const BASE_COLOR = '#DDE4EC';
 
 function baseGeometry(shape, width, height) {
   return shape === 'circle' ? circleMulti(width, height, 192) : rectMulti(width, height);

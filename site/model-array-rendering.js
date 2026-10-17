@@ -87,6 +87,7 @@ function ownBoundaryWall(w, part, neighbors, layerOrder) {
 export function buildArrayRenderPlan(model, clip, build) {
   if (clip) return build(resolveArrayModel(model, geometryBounds(clip)), clip);
   const groups = new Map(),
+    sourceCapsByWall = new WeakMap(),
     order = new Map(model.layers.map((l, i) => [l.id, i]));
   for (const part of arrayParts(model)) {
     const neighbors = neighborhood(model, part),
@@ -94,7 +95,15 @@ export function buildArrayRenderPlan(model, clip, build) {
     let entry = groups.get(key);
     if (!entry) {
       const plan = build(part.model);
-      const sidewalls = plan.sidewalls.flatMap((w) => ownBoundaryWall(w, part, neighbors, order));
+      const sidewalls = plan.sidewalls.flatMap((w) => {
+        const owned = ownBoundaryWall(w, part, neighbors, order);
+        for (const wall of owned)
+          sourceCapsByWall.set(wall, {
+            lower: plan.caps[w.lowerSurface?.capIndex],
+            upper: plan.caps[w.upperSurface?.capIndex],
+          });
+        return owned;
+      });
       const borders = plan.borderLines.filter(([a, b]) => !boundaryLine(a, b, part.model.boundary));
       for (const w of sidewalls)
         if (boundaryLine(w.p, w.q, part.model.boundary) && !w.buried)
@@ -155,6 +164,19 @@ export function buildArrayRenderPlan(model, clip, build) {
     ...cap,
     instanceTranslations: instanceTranslations(indices),
   }));
+  const capObjects = new Map([...capMap.keys()].map((cap, index) => [cap, caps[index]])),
+    capIndices = new Map(),
+    remapWall = (wall) => {
+      const sources = sourceCapsByWall.get(wall);
+      if (!sources) return wall;
+      const surface = (value, source) =>
+        value ? { ...value, capIndex: capIndices.get(source) } : null;
+      return {
+        ...wall,
+        lowerSurface: surface(wall.lowerSurface, sources.lower),
+        upperSurface: surface(wall.upperSurface, sources.upper),
+      };
+    };
   const wallGroups = new Map();
   for (const [wall, indices] of wallMap) {
     const key = JSON.stringify([indices, wall.layerId, wall.buried]);
@@ -211,6 +233,17 @@ export function buildArrayRenderPlan(model, clip, build) {
     sidewalls = sidewalls.filter((w) => w.layerId !== 'base');
     sidewalls.push(...wafer.sidewalls);
   }
+  for (const [source, cap] of capObjects) capIndices.set(source, caps.indexOf(cap));
+  sidewalls = sidewalls.map((wall) =>
+    wall.parts
+      ? {
+          ...wall,
+          lowerSurface: remapWall(wall.parts[0]).lowerSurface,
+          upperSurface: remapWall(wall.parts[0]).upperSurface,
+          parts: wall.parts.map(remapWall),
+        }
+      : remapWall(wall),
+  );
   return {
     caps,
     sidewalls,

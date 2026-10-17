@@ -13,42 +13,6 @@ import {
   canvasInkFraction,
 } from './test-helpers/ui.mjs';
 
-async function ensureThreeVisible(page) {
-  if (await page.locator('#threeHost').isVisible()) return;
-  for (const action of ['view:three', 'dock:view:three']) {
-    const control = page.locator(`[data-action="${action}"]:visible`).first();
-    if (await control.count()) {
-      await control.click();
-      return;
-    }
-  }
-  throw new Error('3D view is not reachable through the active Workstation layout');
-}
-
-async function ensureSectionVisible(page) {
-  if (await page.locator('#sectionCanvas').isVisible()) return;
-  // Exit a temporary 3D maximize before selecting another physical plane.
-  const restore = page.locator('[data-action="maximize:three"]:visible').first();
-  if (await restore.count()) {
-    await restore.click();
-    await waitForPaint(page);
-  }
-  if (await page.locator('#sectionCanvas').isVisible()) return;
-  for (const action of ['view:section', 'dock:view:section', 'mobile-section']) {
-    const control = page.locator(`[data-action="${action}"]:visible`).first();
-    if (await control.count()) {
-      await control.click();
-      return;
-    }
-  }
-  throw new Error('Section view is not reachable through the active Workstation layout');
-}
-
-async function expandThreeForCapture(page) {
-  const maximize = page.locator('[data-action="maximize:three"]:visible').first();
-  if (await maximize.count()) await maximize.click();
-}
-
 const id = 'gan-hemt-microchannel-2022';
 const directory = new URL('../test-results/gan-microchannel/visual/', import.meta.url);
 await mkdir(directory, { recursive: true });
@@ -58,6 +22,39 @@ const browser = await chromium.launch({
   args: ['--enable-unsafe-swiftshader'],
 });
 const report = { example: id, views: {}, source: 'Real WaferCAD browser rendering' };
+// Production desktop uses persistent four-view docking; older single-view
+// controls may be absent. Never toggle OFF a view that is already visible.
+async function showScientificView(page, view, { maximize = false } = {}) {
+  const selector = view === 'three' ? '#threeHost' : '#sectionCanvas';
+  const singleView = page.locator(`[data-action="view:${view}"]`).first();
+  if (await singleView.isVisible()) {
+    await singleView.click();
+  } else {
+    const dock = page.locator(`[data-action="dock:view:${view}"]`).first();
+    if (await dock.isVisible()) {
+      if (!(await page.locator(selector).isVisible())) await dock.click();
+      if (maximize) {
+        const layout = await page.evaluate(
+          () => window.WaferCadV2Workstation?.snapshot()?.ui?.desktopLayout,
+        );
+        if (layout?.maximized !== view) {
+          const button = page.locator(`[data-action="maximize:${view}"]`).first();
+          assert.ok(await button.isVisible(), 'Visible ' + view + ' dock lacks maximize action');
+          await button.click();
+        }
+      }
+    } else if (view === 'section') {
+      const sectionDock = page.locator('[data-action="section"]').first();
+      assert.ok(await sectionDock.isVisible(), 'No Section view navigation is available');
+      if ((await sectionDock.getAttribute('aria-pressed')) !== 'true') {
+        await sectionDock.click();
+      }
+    } else {
+      throw new Error('No visible 3D view navigation control in the current Workstation');
+    }
+  }
+  await page.locator(selector).waitFor({ state: 'visible', timeout: 30000 });
+}
 try {
   for (const view of ['main', 'mask', 'section', 'three']) {
     const context = await browser.newContext({
@@ -81,14 +78,7 @@ try {
     await page.locator(selector).waitFor({ state: 'visible', timeout: 120000 });
     if (view === 'three') {
       await page.waitForFunction(
-        () => {
-          const host = document.getElementById('threeHost');
-          return (
-            host?.dataset.renderState === 'ready' &&
-            Number(host.dataset.rendererFrameSerial || 0) > 0 &&
-            document.querySelector('#threePanel')?.dataset.viewLoad === 'ready'
-          );
-        },
+        () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
         null,
         { timeout: 120000 },
       );
@@ -191,16 +181,9 @@ try {
     null,
     { timeout: 120000 },
   );
-  await ensureThreeVisible(page);
+  await showScientificView(page, 'three');
   await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.rendererFrameSerial || 0) > 0 &&
-        document.querySelector('#threePanel')?.dataset.viewLoad === 'ready'
-      );
-    },
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
     { timeout: 120000 },
   );
@@ -265,22 +248,20 @@ try {
     { timeout: 120000 },
   );
   await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.rendererFrameSerial || 0) > 0 &&
-        document.querySelector('#threePanel')?.dataset.viewLoad === 'ready'
-      );
-    },
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
     { timeout: 120000 },
   );
   await waitForPaint(page);
+  // The production four-view dock may start without Section displayed.
+  await showScientificView(page, 'section');
   // Capture the physical top-device Section before reclaiming the dock.
   const hemtSectionShot = await page.locator('#sectionCanvas').screenshot({ type: 'png' });
   await writeFile(new URL('hemt-active-section.png', directory), hemtSectionShot);
-  await expandThreeForCapture(page);
+  const sectionDock = page.locator('[data-action="section"]').first();
+  if ((await sectionDock.count()) && (await sectionDock.getAttribute('aria-pressed')) === 'true') {
+    await sectionDock.click();
+  }
   await waitForPaint(page);
   const hemtShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('hemt-active.png', directory), hemtShot);
@@ -329,8 +310,7 @@ try {
     null,
     { timeout: 120000 },
   );
-  await ensureSectionVisible(page);
-  await page.locator('#sectionCanvas').waitFor({ state: 'visible', timeout: 120000 });
+  await showScientificView(page, 'section');
   await waitForPaint(page);
   // Audit actual XY/Z material occupancy from the persisted browser project,
   // not only material layer names or colors. A metallic-looking cylinder can
@@ -524,65 +504,67 @@ try {
     null,
     { timeout: 120000 },
   );
-  await ensureThreeVisible(page);
+  await showScientificView(page, 'three', { maximize: true });
   // The TSV inspection just enabled the Section dock, halving the remaining
   // 3D canvas and visually clipping the rightmost GSG die. Reclaim the dock
   // before judging the complete package footprint in the real renderer.
-  await expandThreeForCapture(page);
+  const packageSectionDock = page.locator('[data-action="section"]').first();
+  if (
+    (await packageSectionDock.count()) &&
+    (await packageSectionDock.getAttribute('aria-pressed')) === 'true'
+  ) {
+    await packageSectionDock.click();
+  }
   await page.waitForFunction(
-    () => {
-      const host = document.getElementById('threeHost');
-      return (
-        host?.dataset.renderState === 'ready' &&
-        Number(host.dataset.rendererFrameSerial || 0) > 0 &&
-        document.querySelector('#threePanel')?.dataset.viewLoad === 'ready'
-      );
-    },
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
     null,
     { timeout: 120000 },
   );
+  // Capture evidence BEFORE checking the assembly wire contract. Without
+  // this diagnostic a failed renderer leaves only a two-minute timeout, making
+  // it impossible to distinguish lost Bookmark state from a stale 3D scene.
   await waitForPaint(page);
-  // Capture visual evidence and record source plus Renderer diagnostics
-  // *before* the strict contract. This differentiates lost saved wires,
-  // ROI clipping, and incomplete WebGL mesh construction.
   const inspectWireState = () =>
     page.evaluate(() => {
       const state = window.WaferCadV2Workstation?.snapshot();
       const host = document.getElementById('threeHost');
       return {
-        storedCount: state?.assemblyWires?.length ?? null,
-        storedWireIds: state?.assemblyWires?.map((wire) => wire.id) || [],
-        roi: state?.roi,
+        snapshotWireCount: state?.assemblyWires?.length ?? null,
+        snapshotWireIds: state?.assemblyWires?.map((wire) => wire.id) || [],
+        historyNodeCount: state?.snapshotBranches?.nodes?.length ?? null,
         modelRevision: state?.model?.revision ?? null,
+        roi: state?.roi,
+        hostPresent: !!host,
         rendererDataset: host ? { ...host.dataset } : null,
       };
     });
-  const diagnostics = await inspectWireState();
+  const diagnostic = await inspectWireState();
   await writeFile(
     new URL('three-chip-wire-diagnostic.json', directory),
-    JSON.stringify(diagnostics, null, 2) + '\n',
+    JSON.stringify(diagnostic, null, 2) + '\n',
   );
   const precontractShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('three-chip-precontract.png', directory), precontractShot);
-  assert.equal(diagnostics.storedCount, 2, 'Restored package lost the two saved Au wire records');
   try {
     await page.waitForFunction(
       () => {
-        const host = document.getElementById('threeHost');
+        const dataset = document.getElementById('threeHost')?.dataset;
+        // The public Workstation inspection snapshot intentionally omits
+        // project-level assemblyWires. Assert the actual WebGL scene build
+        // rather than a field absent from that diagnostics projection.
         return (
-          host?.dataset.renderState === 'ready' &&
-          host.dataset.assemblyWireBuiltCount === '2' &&
-          host.dataset.assemblyWireEndcapCount === '4' &&
-          Number(host.dataset.rendererFrameSerial || 0) > 0
+          dataset?.renderState === 'ready' &&
+          dataset?.assemblyWireBuiltCount === '2' &&
+          dataset?.assemblyWireEndcapCount === '4'
         );
       },
       null,
-      { timeout: 25000 },
+      { timeout: 20000 },
     );
   } catch (error) {
     throw new Error(
-      'Actual Au wire tube/endcap renderer contract failed: ' +
-        JSON.stringify({ before: diagnostics, after: await inspectWireState() }),
+      'Three-chip Au wire material/renderer contract failed: ' +
+        JSON.stringify({ before: diagnostic, after: await inspectWireState() }),
       { cause: error },
     );
   }

@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  roughDisplayHeightBlend,
+  roughDisplayProfileOffsetAtPoint,
+  roughProfileOffsetAtPoint,
+} from '../surface-rendering.js';
+
+const appearance = {
+  kind: 'rough',
+  morphology: 'stochastic',
+  polarity: 'normal',
+  featureSize: 0.3,
+  meanHeight: 0.5,
+  etchDepth: 0.9,
+  featureCv: 0.25,
+  heightCv: 0.3,
+  seed: 20261015,
+};
+
+test('coarse macro features are display-filtered but resolved microfeatures are exact', () => {
+  assert.equal(roughDisplayHeightBlend(0.3, 2), 0.12);
+  assert.equal(roughDisplayHeightBlend(0.3, 0.04), 1);
+  assert.equal(roughDisplayHeightBlend(0.3, 0), 1);
+  assert.ok(roughDisplayHeightBlend(0.3, 0.6) > 0.12);
+  const x = 2.135,
+    y = -1.843;
+  const raw = roughProfileOffsetAtPoint(x, y, appearance),
+    blend = 0.12,
+    center = appearance.etchDepth - appearance.meanHeight;
+  assert.equal(roughDisplayProfileOffsetAtPoint(x, y, appearance), raw);
+  assert.equal(
+    roughDisplayProfileOffsetAtPoint(x, y, { ...appearance, displayRoughBlend: 1 }),
+    raw,
+  );
+  const low = roughDisplayProfileOffsetAtPoint(x, y, { ...appearance, displayRoughBlend: blend });
+  assert.ok(Math.abs(low - (center + blend * (raw - center))) < 1e-12);
+  assert.equal(
+    roughDisplayProfileOffsetAtPoint(x, y, { ...appearance, displayRoughBlend: 0 }),
+    center,
+  );
+});
+
+test('display height is deterministic and preserves front/back physical profile bounds', () => {
+  const before = JSON.stringify(appearance);
+  for (const seed of [1, 123, 20261015]) {
+    for (const polarity of ['normal', 'inverted']) {
+      const profile = { ...appearance, seed, polarity, displayRoughBlend: 0.15 },
+        center =
+          polarity === 'normal'
+            ? appearance.etchDepth - appearance.meanHeight
+            : appearance.meanHeight;
+      for (const [x, y] of [
+        [0, 0],
+        [0.125, -0.76],
+        [2495, 3],
+      ]) {
+        const actual = roughDisplayProfileOffsetAtPoint(x, y, profile),
+          raw = roughProfileOffsetAtPoint(x, y, profile);
+        assert.ok(Math.abs(actual - (center + 0.15 * (raw - center))) < 1e-12);
+        assert.ok(actual >= 0 && actual <= appearance.etchDepth);
+      }
+    }
+  }
+  assert.equal(JSON.stringify(appearance), before);
+});

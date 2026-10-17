@@ -289,15 +289,8 @@ try {
   store.views.set('mask', mask);
   const section = createSectionView({ store, main, workstation: scope('section') });
   store.views.set('section', section);
-  const three = createWorkstationThreeView({
-    store,
-    workstation: scope('three'),
-    onFirstFrame: () => {
-      // The host can report renderState=ready before WebGL's first committed
-      // frame. Only clear the startup cover once renderer.render completed.
-      if (progressive.snapshot().project === 'ready') progressive.viewFrame('three');
-    },
-  });
+  // The modern renderer owns progressive first-frame and refinement status.
+  const three = createWorkstationThreeView({ store, workstation: scope('three') });
   store.views.set('three', three);
   // In overview, let a visible 2D scientific canvas present before expensive
   // WebGL initialization/scene work. All 3D requests, including onShow, pass

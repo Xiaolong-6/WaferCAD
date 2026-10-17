@@ -104,7 +104,7 @@ export function createWorkspacePersistenceController({
   // this hook. Snapshot mutation checks still compare detached copies.
   cacheValidatedProjectSnapshots = () => {},
   snapshotManager,
-  // Preview / Assembly History is never a normal autosave writer.
+  // Assembly read-only History is immutable and never becomes an autosave writer.
   trackSnapshotMutations = true,
   syncBaseControls,
   syncTransformInputs,
@@ -146,7 +146,8 @@ export function createWorkspacePersistenceController({
     channelSequence = 0,
     interactionDepth = 0,
     transientTimer = null,
-    takeoverPendingMessage = null;
+    takeoverPendingMessage = null,
+    recoveryRollbackUnsafe = false;
   const flushWaiters = new Map();
 
   function installSnapshotMutationTracking() {
@@ -267,6 +268,10 @@ export function createWorkspacePersistenceController({
   }
 
   function syncSaveStatus() {
+    if (recoveryRollbackUnsafe) {
+      setSaveStatus('Recovery rollback failed · Reload required', 'error');
+      return;
+    }
     if (failed) {
       setSaveStatus('Local save failed', 'error');
       return;
@@ -432,7 +437,14 @@ export function createWorkspacePersistenceController({
   }
 
   async function saveCurrentProject(project) {
-    const saved = await saveWorkspaceState(project, { appCommit }, { canCommit: hasWriteAccess });
+    if (recoveryRollbackUnsafe) return false;
+    const saved = await saveWorkspaceState(
+      project,
+      { appCommit },
+      {
+        canCommit: () => !recoveryRollbackUnsafe && hasWriteAccess(),
+      },
+    );
     if (!saved) {
       saving = false;
       dirty = true;
@@ -443,7 +455,7 @@ export function createWorkspacePersistenceController({
   }
 
   function persistNow({ force = false } = {}) {
-    if (!ready || !hasWriteAccess()) {
+    if (recoveryRollbackUnsafe || !ready || !hasWriteAccess()) {
       syncSaveStatus();
       return Promise.resolve(false);
     }
@@ -557,6 +569,7 @@ export function createWorkspacePersistenceController({
   }
 
   function schedule({ markDirty: shouldMarkDirty = true, delay = AUTOSAVE_IDLE_MS } = {}) {
+    if (recoveryRollbackUnsafe) return;
     if (shouldMarkDirty) markDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
@@ -574,6 +587,7 @@ export function createWorkspacePersistenceController({
   }
 
   function scheduleStructural({ delay = AUTOSAVE_IDLE_MS } = {}) {
+    if (recoveryRollbackUnsafe) return;
     markStructuralDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
@@ -591,6 +605,7 @@ export function createWorkspacePersistenceController({
   }
 
   function scheduleView({ delay = VIEW_AUTOSAVE_IDLE_MS } = {}) {
+    if (recoveryRollbackUnsafe) return;
     markViewDirty();
     if (!ready || !hasWriteAccess()) {
       syncSaveStatus();
@@ -631,7 +646,7 @@ export function createWorkspacePersistenceController({
           commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
         select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
       }
-      const writable = hasWriteAccess() ?? false;
+      const writable = !recoveryRollbackUnsafe && (hasWriteAccess() ?? false);
       restore.disabled = !writable;
       if (clear) clear.disabled = !writable;
     } catch (error) {
@@ -766,6 +781,13 @@ export function createWorkspacePersistenceController({
   }
 
   async function restoreSelectedRecovery() {
+    if (recoveryRollbackUnsafe) {
+      status(
+        'Recovery rollback failed. Reload this tab from the last saved project before restoring again.',
+        'error',
+      );
+      return;
+    }
     if (!hasWriteAccess()) {
       status('This tab cannot restore Recovery until it owns local autosave.', 'warning');
       return;
@@ -852,6 +874,20 @@ export function createWorkspacePersistenceController({
               renderAll();
               renderSnapshots();
             } catch (rollbackError) {
+              // The volatile workspace is no longer a trusted Save source.
+              // Halt queued autosave and all future storage commits until reload.
+              recoveryRollbackUnsafe = true;
+              clearTimer();
+              for (const id of [
+                'workspaceRestoreBtn',
+                'workspaceRecoveryClearBtn',
+                'saveProjectBtn',
+              ]) {
+                const button = $(id);
+                if (button) button.disabled = true;
+              }
+              failed = true;
+              syncSaveStatus();
               throw new Error(
                 `Recovery write failed, and in-memory rollback also failed: ${rollbackError.message}. The pre-restore checkpoint is available. Original error: ${error.message}`,
               );
@@ -881,6 +917,13 @@ export function createWorkspacePersistenceController({
   }
 
   async function reloadSafely() {
+    if (recoveryRollbackUnsafe) {
+      status(
+        'Recovery rollback failed. Reload the browser tab to reopen the last saved project; local saving is locked.',
+        'error',
+      );
+      return;
+    }
     if (!hasWriteAccess()) {
       status('This tab does not own autosave. Take over before reloading safely.', 'warning');
       return;
@@ -929,7 +972,7 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
-    if (!ready || !hasWriteAccess()) return false;
+    if (recoveryRollbackUnsafe || !ready || !hasWriteAccess()) return false;
     clearTimer();
     // A refused checkpoint must not strand edits by cancelling the queued
     // autosave; keep the dirty workspace scheduled after a transient failure.
@@ -981,6 +1024,13 @@ export function createWorkspacePersistenceController({
   }
 
   async function saveCheckpoint() {
+    if (recoveryRollbackUnsafe) {
+      status(
+        'Recovery rollback failed. Saving is locked until the browser tab is reloaded.',
+        'error',
+      );
+      return;
+    }
     if (!hasWriteAccess()) {
       status('This tab cannot Save locally while another tab owns browser storage.', 'warning');
       return;
@@ -1043,6 +1093,13 @@ export function createWorkspacePersistenceController({
   }
 
   async function takeOverWorkspace() {
+    if (recoveryRollbackUnsafe) {
+      status(
+        'Recovery rollback failed. Reload this tab before attempting writer takeover.',
+        'error',
+      );
+      return;
+    }
     const flushed = await requestOwnerFlush(),
       marker = readMarker(),
       savedChanged = Boolean(marker?.saveId && marker.saveId !== baseSaveId),
@@ -1084,6 +1141,10 @@ export function createWorkspacePersistenceController({
     }
 
     if (choice === 'cancel') return;
+    if (recoveryRollbackUnsafe) {
+      status('Recovery rollback failed. Reload this tab before taking over storage.', 'error');
+      return;
+    }
     takeoverPendingMessage = null;
     if (!workspaceSession.takeOver()) {
       status('Could not take over the local workspace.', 'error');
@@ -1288,12 +1349,17 @@ export function createWorkspacePersistenceController({
       void reloadSafely();
     };
     $('workspaceRecoverySelect').onchange = (event) => {
-      $('workspaceRestoreBtn').disabled = !event.target.value || !hasWriteAccess();
+      $('workspaceRestoreBtn').disabled =
+        recoveryRollbackUnsafe || !event.target.value || !hasWriteAccess();
     };
     $('workspaceRestoreBtn').onclick = () => {
       void restoreSelectedRecovery();
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
+      if (recoveryRollbackUnsafe) {
+        status('Recovery rollback failed. Reload this tab before clearing Recovery.', 'error');
+        return;
+      }
       if (!hasWriteAccess()) {
         status(
           'This tab cannot clear local Recovery while another tab owns browser storage.',
@@ -1314,6 +1380,9 @@ export function createWorkspacePersistenceController({
       }
       const result = await runVisibleTask(
         async ({ updateStage }) => {
+          if (recoveryRollbackUnsafe) {
+            throw new Error('Recovery rollback failed. Reload before clearing Recovery.');
+          }
           updateStage('Removing local Recovery checkpoints…');
           const removed = await clearWorkspaceRecoveryPoints();
           await refreshRecoveryOptions();

@@ -3,9 +3,8 @@ import {
   lineIntervalKey,
   localParameterAtLineT,
   partitionLineIntervals,
-  pointAtLineT,
 } from './line-intervals.js';
-import { adaptiveRoughMeshLod, roughProfileOffsetAtPoint } from './surface-rendering.js';
+import { adaptiveRoughMeshLod, roughDisplayProfileOffsetAtPoint } from './surface-rendering.js';
 import { triangulatePolygon } from './polygon-triangulation.js';
 
 function triangleNormal(a, b, c) {
@@ -91,26 +90,79 @@ export function roughBoundaryEdgesFromTriangles(triangles) {
 
 function roughPoint(point, z, profileNormal, appearance) {
   return [
-    point[0],
-    point[1],
-    z + profileNormal * roughProfileOffsetAtPoint(point[0], point[1], appearance),
+    Math.fround(point[0]),
+    Math.fround(point[1]),
+    Math.fround(
+      z +
+        profileNormal *
+          roughDisplayProfileOffsetAtPoint(
+            Math.fround(point[0]),
+            Math.fround(point[1]),
+            appearance,
+          ),
+    ),
   ];
 }
 
-function roughPointNormal(point, normal, profileNormal, appearance) {
-  const feature = Math.max(1e-9, Number(appearance?.featureSize) || 1),
-    step = Math.max(1e-6, feature * 0.08),
-    dx =
-      (roughProfileOffsetAtPoint(point[0] + step, point[1], appearance) -
-        roughProfileOffsetAtPoint(point[0] - step, point[1], appearance)) /
-      (2 * step),
-    dy =
-      (roughProfileOffsetAtPoint(point[0], point[1] + step, appearance) -
-        roughProfileOffsetAtPoint(point[0], point[1] - step, appearance)) /
-      (2 * step),
-    length = Math.hypot(dx, dy, 1) || 1,
-    slopeSign = normal * profileNormal;
-  return [(-slopeSign * dx) / length, (-slopeSign * dy) / length, normal / length];
+// Edge samples are already sorted by the canonical line parameter. A given
+// spatial edge can be queried by many LOD subsegments: bound the search to the
+// requested interval instead of repeatedly scanning the entire shared edge.
+export function roughEdgeSamplesInInterval(samples, t0, t1, { interior = false } = {}) {
+  if (!samples?.length) return [];
+  const epsilon = 1e-10,
+    lower = Math.min(t0, t1) + (interior ? epsilon : -epsilon),
+    upper = Math.max(t0, t1) + (interior ? -epsilon : epsilon);
+  if (lower > upper) return [];
+  // Interior queries are strict; boundary queries are inclusive.
+  const bound = (threshold, strict) => {
+    let low = 0,
+      high = samples.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (strict ? samples[middle][0] <= threshold : samples[middle][0] < threshold)
+        low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  };
+  const start = bound(lower, interior),
+    end = bound(upper, !interior);
+  return samples.slice(start, end);
+}
+
+// Use the actual Float32 tessellated cap for lighting: an unresolved
+// analytic microheight gradient can face behind its own coarse LOD triangle,
+// producing dark false cracks. This modifies normal buffers only, not vertices.
+function smoothCapNormals(positions, normals, triangleKinds) {
+  const sums = new Map();
+  const key = (offset) => `${positions[offset]},${positions[offset + 1]},${positions[offset + 2]}`;
+  for (let i = 0; i + 8 < positions.length; i += 9) {
+    if (triangleKinds[i / 3] !== 0) continue;
+    const ux = positions[i + 3] - positions[i],
+      uy = positions[i + 4] - positions[i + 1],
+      uz = positions[i + 5] - positions[i + 2],
+      vx = positions[i + 6] - positions[i],
+      vy = positions[i + 7] - positions[i + 1],
+      vz = positions[i + 8] - positions[i + 2],
+      cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    for (let j = i; j < i + 9; j += 3) {
+      const sampleKey = key(j),
+        current = sums.get(sampleKey);
+      if (current) {
+        current[0] += cross[0];
+        current[1] += cross[1];
+        current[2] += cross[2];
+      } else sums.set(sampleKey, cross.slice());
+    }
+  }
+  for (let i = 0; i + 2 < positions.length; i += 3) {
+    if (triangleKinds[i / 3] !== 0) continue;
+    const total = sums.get(key(i));
+    if (!total) continue;
+    const length = Math.hypot(...total);
+    if (!(length > 1e-12)) continue;
+    for (let axis = 0; axis < 3; axis++) normals[i + axis] = total[axis] / length;
+  }
 }
 
 export function roughMeshDataFromPreparedCap({
@@ -131,9 +183,40 @@ export function roughMeshDataFromPreparedCap({
     normals = [],
     gpuDisplace = [],
     roughBorderPositions = [],
-    zoneResults = [];
-  let maxDepth = 0;
+    roughBoundaryPositions = [],
+    zoneResults = [],
+    boundaryPoints = new Map(),
+    boundaryByX = new Map(),
+    pointKeys = new WeakMap(),
+    keyForPoint = (point) => {
+      let key = pointKeys.get(point);
+      if (key == null) {
+        key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
+        pointKeys.set(point, key);
+      }
+      return key;
+    },
+    pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  let maxDepth = 0,
+    skippedDegenerateTriangles = 0;
 
+  // Cap-local memoization only; canonical geometry and the heightfield are
+  // unchanged. Cap entries are discarded with this mesh task and capped to
+  // bound transient memory on large detailed rough surfaces.
+  const roughSampleCache = new Map();
+  const roughSample = (point) => {
+    const x = Math.fround(point[0]),
+      y = Math.fround(point[1]),
+      key = `${x},${y}`;
+    let sample = roughSampleCache.get(key);
+    if (!sample) {
+      sample = { point: roughPoint([x, y, z], z, profileNormal, appearance) };
+      if (roughSampleCache.size < 131072) {
+        roughSampleCache.set(key, sample);
+      }
+    }
+    return sample.point;
+  };
   const polygonEdges = (zonePolys) => {
       const edges = [];
       for (const poly of zonePolys || []) {
@@ -158,10 +241,15 @@ export function roughMeshDataFromPreparedCap({
     globalTAtLocal = (line, t) =>
       line.forward ? line.t0 + (line.t1 - line.t0) * t : line.t1 - (line.t1 - line.t0) * t,
     pushTriangle = (a, b, c) => {
+      [a, b, c] = [a, b, c].map((point) => point.map(Math.fround));
       const faceNormal = triangleNormal(a, b, c);
+      if (faceNormal.every((value) => value === 0)) {
+        skippedDegenerateTriangles++;
+        return;
+      }
       positions.push(...a, ...b, ...c);
       normals.push(...faceNormal, ...faceNormal, ...faceNormal);
-      gpuDisplace.push(0, 0, 0);
+      gpuDisplace.push(-1, -1, -1);
     },
     pushRoughTriangle = (a, b, c) => {
       if (!analyticNormals) {
@@ -169,33 +257,18 @@ export function roughMeshDataFromPreparedCap({
         return;
       }
       positions.push(...a, ...b, ...c);
-      normals.push(
-        ...roughPointNormal(a, normal, profileNormal, appearance),
-        ...roughPointNormal(b, normal, profileNormal, appearance),
-        ...roughPointNormal(c, normal, profileNormal, appearance),
-      );
+      normals.push(0, 0, normal, 0, 0, normal, 0, 0, normal);
       gpuDisplace.push(0, 0, 0);
     },
     pushGpuRoughTriangle = (a, b, c) => {
-      positions.push(...a, ...b, ...c);
+      const av = boundaryByX.get(Math.fround(a[0]))?.get(Math.fround(a[1])),
+        bv = boundaryByX.get(Math.fround(b[0]))?.get(Math.fround(b[1])),
+        cv = boundaryByX.get(Math.fround(c[0]))?.get(Math.fround(c[1]));
+      positions.push(...(av || a), ...(bv || b), ...(cv || c));
       normals.push(0, 0, normal, 0, 0, normal, 0, 0, normal);
-      gpuDisplace.push(1, 1, 1);
+      gpuDisplace.push(av ? 0 : 1, bv ? 0 : 1, cv ? 0 : 1);
     },
-    pointAlongEdge = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, z],
-    roughAlongEdge = (p, q, t) => roughPoint(pointAlongEdge(p, q, t), z, profileNormal, appearance),
-    coarseApproxAlongEdge = (p, q, t, coarseDepth) => {
-      const segments = 2 ** coarseDepth,
-        scaled = Math.max(0, Math.min(segments, t * segments)),
-        index = Math.min(segments - 1, Math.floor(scaled)),
-        local = Math.max(0, Math.min(1, scaled - index)),
-        a = roughAlongEdge(p, q, index / segments),
-        b = roughAlongEdge(p, q, (index + 1) / segments);
-      return [
-        a[0] + (b[0] - a[0]) * local,
-        a[1] + (b[1] - a[1]) * local,
-        a[2] + (b[2] - a[2]) * local,
-      ];
-    };
+    pointAlongEdge = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, z];
 
   for (const zone of zones) {
     if (!Array.isArray(zone.baseTriangles) || !zone.baseTriangles.length) continue;
@@ -209,22 +282,9 @@ export function roughMeshDataFromPreparedCap({
         triangleBudget: zone.triangleBudget ?? null,
       }),
       depth = lod.depth,
-      triangles = subdivideRoughBaseTriangles(baseTriangles, depth),
       edges = Array.isArray(zone.edges) ? zone.edges : polygonEdges(zone.polys);
     maxDepth = Math.max(maxDepth, depth);
     zoneResults.push({ ...zone, depth, lod, edges });
-
-    for (const [a, b, c] of triangles) {
-      if (gpuDisplacement) {
-        pushGpuRoughTriangle(a, b, c);
-      } else {
-        pushRoughTriangle(
-          roughPoint(a, z, profileNormal, appearance),
-          roughPoint(b, z, profileNormal, appearance),
-          roughPoint(c, z, profileNormal, appearance),
-        );
-      }
-    }
   }
 
   const edgeOwners = new Map();
@@ -259,91 +319,137 @@ export function roughMeshDataFromPreparedCap({
           globalT <= Number(span.t1) + 1e-10,
       );
 
-  if (closeToIdeal) {
-    zoneResults.forEach((zone) => {
-      const edgeSegments = 2 ** zone.depth;
-      for (const edge of zone.edges) {
-        const params = new Set(
-          Array.from({ length: edgeSegments + 1 }, (_, index) => index / edgeSegments),
-        );
-        for (const seam of edgeSeams(edge)) {
-          if (seam.t0 > edge.line.t0 + 1e-10 && seam.t0 < edge.line.t1 - 1e-10) {
-            params.add(localParameterAtLineT(edge.line, seam.t0));
-          }
-          if (seam.t1 > edge.line.t0 + 1e-10 && seam.t1 < edge.line.t1 - 1e-10) {
-            params.add(localParameterAtLineT(edge.line, seam.t1));
-          }
-        }
-        const ordered = [...params].sort((a, b) => a - b);
-        for (let index = 0; index < ordered.length - 1; index++) {
-          const t0 = ordered[index],
-            t1 = ordered[index + 1],
-            middleGlobalT = globalTAtLocal(edge.line, (t0 + t1) / 2);
-          if (isSeamAt(edge, middleGlobalT) || hasPhysicalSidewallAt(edge, middleGlobalT)) {
-            continue;
-          }
-          const base0 = pointAlongEdge(edge.p, edge.q, t0),
-            base1 = pointAlongEdge(edge.p, edge.q, t1),
-            top0 = roughAlongEdge(edge.p, edge.q, t0),
-            top1 = roughAlongEdge(edge.p, edge.q, t1);
-          pushTriangle(base0, base1, top1);
-          pushTriangle(base0, top1, top0);
-          roughBorderPositions.push(...top0, ...top1);
+  // Adjacent patches share the same Float32 boundary samples. Refine only
+  // triangles touching another patch's edge; never add a vertical seam sheet.
+  const samplesByKey = new Map();
+  for (const zone of zoneResults) {
+    for (const edge of zone.edges) {
+      if (!samplesByKey.has(edge.key)) samplesByKey.set(edge.key, new Map());
+      const samples = samplesByKey.get(edge.key),
+        segments = 2 ** zone.depth;
+      for (let step = 0; step <= segments; step++) {
+        const t = step / segments,
+          globalT = globalTAtLocal(edge.line, t);
+        samples.set(globalT, pointAlongEdge(edge.p, edge.q, t));
+      }
+      for (const span of sidewallBoundaryIntervals || []) {
+        if (span.key !== edge.key) continue;
+        for (const globalT of [span.t0, span.t1]) {
+          if (globalT < edge.line.t0 || globalT > edge.line.t1) continue;
+          samples.set(
+            globalT,
+            pointAlongEdge(edge.p, edge.q, localParameterAtLineT(edge.line, globalT)),
+          );
         }
       }
-    });
+    }
   }
-
-  for (const seam of seamSpans) {
-    const uniqueOwners = seam.covering.filter(
-      (owner, index) =>
-        seam.covering.findIndex((entry) => entry.zoneIndex === owner.zoneIndex) === index,
-    );
-    if (uniqueOwners.length < 2) continue;
-
-    const sorted = uniqueOwners.sort(
-        (a, b) => zoneResults[b.zoneIndex].depth - zoneResults[a.zoneIndex].depth,
-      ),
-      fine = sorted[0],
-      coarse = sorted.at(-1),
-      fineDepth = zoneResults[fine.zoneIndex].depth,
-      coarseDepth = zoneResults[coarse.zoneIndex].depth;
-    if (fineDepth <= coarseDepth) continue;
-
-    const fineSpan = Math.max(1e-12, fine.edge.line.t1 - fine.edge.line.t0),
-      seamFraction = Math.max(0, Math.min(1, (seam.t1 - seam.t0) / fineSpan)),
-      fineSegments = Math.max(1, Math.ceil(2 ** fineDepth * seamFraction));
-    for (let step = 0; step < fineSegments; step++) {
-      const g0 = seam.t0 + ((seam.t1 - seam.t0) * step) / fineSegments,
-        g1 = seam.t0 + ((seam.t1 - seam.t0) * (step + 1)) / fineSegments,
-        xy0 = pointAtLineT(fine.edge.line, g0),
-        xy1 = pointAtLineT(fine.edge.line, g1),
-        fine0 = roughPoint([xy0[0], xy0[1], z], z, profileNormal, appearance),
-        fine1 = roughPoint([xy1[0], xy1[1], z], z, profileNormal, appearance),
-        coarse0 = coarseApproxAlongEdge(
-          coarse.edge.p,
-          coarse.edge.q,
-          localParameterAtLineT(coarse.edge.line, g0),
-          coarseDepth,
-        ),
-        coarse1 = coarseApproxAlongEdge(
-          coarse.edge.p,
-          coarse.edge.q,
-          localParameterAtLineT(coarse.edge.line, g1),
-          coarseDepth,
-        );
-      pushTriangle(coarse0, coarse1, fine1);
-      pushTriangle(coarse0, fine1, fine0);
+  const orderedSamples = new Map(
+    [...samplesByKey].map(([key, samples]) => [key, [...samples].sort((a, b) => a[0] - b[0])]),
+  );
+  for (const samples of orderedSamples.values()) {
+    for (const [, point] of samples) {
+      const key = keyForPoint(point);
+      if (!boundaryPoints.has(key)) {
+        const value = roughPoint(point, z, profileNormal, appearance);
+        boundaryPoints.set(key, value);
+        if (!boundaryByX.has(value[0])) boundaryByX.set(value[0], new Map());
+        boundaryByX.get(value[0]).set(value[1], value);
+      }
+    }
+  }
+  let conformingExtraTriangles = 0;
+  for (const zone of zoneResults) {
+    const splitEdges = new Map(),
+      segments = 2 ** zone.depth;
+    for (const edge of zone.edges) {
+      for (let step = 0; step < segments; step++) {
+        const a = pointAlongEdge(edge.p, edge.q, step / segments),
+          b = pointAlongEdge(edge.p, edge.q, (step + 1) / segments),
+          t0 = globalTAtLocal(edge.line, step / segments),
+          t1 = globalTAtLocal(edge.line, (step + 1) / segments),
+          samples = roughEdgeSamplesInInterval(orderedSamples.get(edge.key), t0, t1, {
+            interior: true,
+          });
+        if (!samples.length) continue;
+        if (!edge.line.forward) samples.reverse();
+        const aKey = keyForPoint(a),
+          bKey = keyForPoint(b);
+        splitEdges.set(pairKey(aKey, bKey), {
+          from: aKey,
+          points: samples.map(([, point]) => point),
+        });
+      }
+    }
+    for (const triangle of subdivideRoughBaseTriangles(zone.baseTriangles, zone.depth)) {
+      const polygon = splitEdges.size ? [] : triangle;
+      if (splitEdges.size)
+        for (let index = 0; index < 3; index++) {
+          const a = triangle[index],
+            b = triangle[(index + 1) % 3],
+            aKey = keyForPoint(a),
+            split = splitEdges.get(pairKey(aKey, keyForPoint(b)));
+          polygon.push(a);
+          if (split)
+            polygon.push(...(aKey === split.from ? split.points : split.points.slice().reverse()));
+        }
+      // A center fan avoids collinear ears when more than one edge is split.
+      const triangles =
+        polygon.length === 3
+          ? [triangle]
+          : polygon.map((point, index) => [
+              point,
+              polygon[(index + 1) % polygon.length],
+              [
+                (triangle[0][0] + triangle[1][0] + triangle[2][0]) / 3,
+                (triangle[0][1] + triangle[1][1] + triangle[2][1]) / 3,
+                z,
+              ],
+            ]);
+      conformingExtraTriangles += triangles.length - 1;
+      for (const [a, b, c] of triangles) {
+        if (gpuDisplacement) pushGpuRoughTriangle(a, b, c);
+        else pushRoughTriangle(roughSample(a), roughSample(b), roughSample(c));
+      }
+    }
+    for (const edge of zone.edges) {
+      const samples = roughEdgeSamplesInInterval(
+        orderedSamples.get(edge.key),
+        edge.line.t0,
+        edge.line.t1,
+      );
+      if (!edge.line.forward) samples.reverse();
+      for (let index = 0; index < samples.length - 1; index++) {
+        const [g0, point0] = samples[index],
+          [g1, point1] = samples[index + 1],
+          middleGlobalT = (g0 + g1) / 2;
+        if (isSeamAt(edge, middleGlobalT)) continue;
+        const top0 = boundaryPoints.get(keyForPoint(point0)),
+          top1 = boundaryPoints.get(keyForPoint(point1));
+        roughBoundaryPositions.push(...top0, ...top1);
+        if (!closeToIdeal) continue;
+        if (!hasPhysicalSidewallAt(edge, middleGlobalT)) {
+          pushTriangle(point0, point1, top1);
+          pushTriangle(point0, top1, top0);
+        }
+        roughBorderPositions.push(...top0, ...top1);
+      }
     }
   }
 
+  if (analyticNormals && !gpuDisplacement) {
+    smoothCapNormals(positions, normals, gpuDisplace);
+  }
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
     gpuDisplace: gpuDisplacement ? new Float32Array(gpuDisplace) : new Float32Array(),
     roughBorderPositions: new Float32Array(roughBorderPositions),
+    roughBoundaryPositions: new Float32Array(roughBoundaryPositions),
     metadata: {
       roughGpuDisplacement: Boolean(gpuDisplacement),
+      roughConformingExtraTriangles: conformingExtraTriangles,
+      roughSkippedDegenerateTriangles: skippedDegenerateTriangles,
       roughSubdivisionDepth: maxDepth,
       roughLod: zoneResults.map((zone) => zone.lod),
       roughLodZoneCount: zoneResults.length,
@@ -376,6 +482,11 @@ export function geometryFromRoughMeshData(THREE, data) {
   geometry.userData.roughGpuDisplacement = Boolean(metadata.roughGpuDisplacement);
   geometry.userData.roughLod = Array.isArray(metadata.roughLod) ? metadata.roughLod : [];
   geometry.userData.roughBorderPositions = data?.roughBorderPositions || new Float32Array();
+  geometry.userData.roughBoundaryPositions = data?.roughBoundaryPositions || new Float32Array();
+  geometry.userData.roughConformingExtraTriangles =
+    Number(metadata.roughConformingExtraTriangles) || 0;
+  geometry.userData.roughSkippedDegenerateTriangles =
+    Number(metadata.roughSkippedDegenerateTriangles) || 0;
   geometry.userData.roughLodZoneCount = Number(metadata.roughLodZoneCount) || 0;
   geometry.userData.roughLodStitchCount = Number(metadata.roughLodStitchCount) || 0;
   geometry.userData.roughSubdivisionTriangleCount =

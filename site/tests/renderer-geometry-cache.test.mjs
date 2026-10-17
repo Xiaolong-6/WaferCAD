@@ -5,7 +5,8 @@ import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
 
 const { createModel, setLayerVisible } = await import('../model.js');
-const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
+const { buildRenderSurfacePlan, decorateRoughSurfaceBoundaries } =
+  await import('../renderer-geometry.js');
 const { rectMulti } = await import('../vector-geometry.js');
 
 test('renderer reuses topology plan while model and clip are unchanged', () => {
@@ -23,6 +24,45 @@ test('renderer reuses topology plan while model and clip are unchanged', () => {
     'equivalent ROI geometry should share the cached plan',
   );
   assert.notStrictEqual(clippedFirst, first);
+});
+
+test('long sidewalls split at rough cap ownership transitions before selecting a profile', () => {
+  const left = { kind: 'rough', seed: 1 },
+    right = { kind: 'rough', seed: 2 },
+    caps = [
+      { layerId: 'film', z: 1, normal: 1, appearance: left, polys: rectMulti(1, 1, 0.5, 0.5) },
+      { layerId: 'film', z: 1, normal: 1, appearance: right, polys: rectMulti(1, 1, 1.5, 0.5) },
+    ],
+    sidewalls = [{ layerId: 'film', p: [0, 0], q: [2, 0], z0: 0, z1: 1 }],
+    original = structuredClone({ caps, sidewalls }),
+    result = decorateRoughSurfaceBoundaries(caps, sidewalls);
+  assert.equal(result.sidewalls.length, 2);
+  assert.deepEqual(
+    result.sidewalls.map((part) => [part.p, part.q]),
+    [
+      [
+        [0, 0],
+        [1, 0],
+      ],
+      [
+        [1, 0],
+        [2, 0],
+      ],
+    ],
+  );
+  assert.deepEqual(
+    result.sidewalls.map((part) => part.upperSurface.capIndex),
+    [0, 1],
+  );
+  assert.deepEqual(
+    result.sidewalls.map((part) => part.upperSurface.appearance.seed),
+    [1, 2],
+  );
+  assert.deepEqual(
+    { caps, sidewalls },
+    original,
+    'ownership decoration cannot mutate physical geometry',
+  );
 });
 
 test('renderer topology cache invalidates on revision and visibility changes', () => {
