@@ -6,11 +6,13 @@ The active product is entirely under `site/`.
 
 `app.html` opens the production v2 Workstation. The Welcome page's four-view
 interactive preview uses a read-only v2 renderer; it never acquires the writer
-lease or saves a preview into the local Workspace. The historical
-`app-legacy.html` editor, `app.js`, and `workstation.css` remain in Git for
-scientific browser regressions pending migration. Published Pages ships only a
-same-origin redirect from `app-legacy.html` to `app.html` (preserving query and
-fragment), and excludes the old editor's executable resources.
+lease or saves a preview into the local Workspace. The executable Legacy editor,
+including `app-legacy.html`, `app.js`, and `workstation.css`, has been removed
+from the active checkout. Its historical source and original DOM checks remain
+reproducible at the immutable `legacy-frozen` tag; native-v2 scientific owners
+run against the current application. The published `app-legacy.html` URL is a
+build-generated redirect to `app.html` that preserves query and fragment.
+See [Legacy source sunset](LEGACY_SOURCE_SUNSET.md) for test and rollback ownership.
 
 The v2 footer links the deployed short commit SHA to its full GitHub commit
 (`commit local` for unstamped development). If browser `localStorage` is
