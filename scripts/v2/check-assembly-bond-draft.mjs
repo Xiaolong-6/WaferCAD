@@ -609,11 +609,31 @@ try {
         );
         assert.equal(handoff.assemblyPreview.readOnly, false);
         assert.equal(handoff.workflow.writable, false, 'ordinary History cannot edit this Assembly');
-        assert.equal(handoff.assemblyPreview.sources, 4);
+        // The selected branch has three physical wafers, while the shared
+        // source registry also includes the unused donor of another Variant.
+        assert.equal(
+          handoff.assemblyPreview.sources,
+          workspace.project.waferAssembly.sources.length,
+        );
         await ordinaryTab.locator('.assembly-bond-draft-tools summary').click();
         assert.equal(
           await ordinaryTab.getByLabel('Bond Variant', { exact: true }).locator('option').count(),
           2,
+        );
+        const handedOffExport = ordinaryTab.waitForEvent('download', { timeout: 30000 });
+        await ordinaryTab.getByRole('button', { name: 'Export Assembly .wafercad' }).click();
+        const handedOffFile = await handedOffExport;
+        const handedOffBytes = await readFile(await handedOffFile.path());
+        const handedOffGraph = await readAssemblyWorkspaceFile({
+          name: handedOffFile.suggestedFilename(),
+          size: handedOffBytes.length,
+          text: async () => handedOffBytes.toString('utf8'),
+        });
+        assert.equal(handedOffGraph.graph.sources.length, 4, 'Unused Variant donor lost on handoff');
+        assert.deepEqual(
+          handedOffGraph.graph,
+          workspace.graph,
+          'Opening through ordinary Workstation must preserve all Variants and Process cursors',
         );
         await ordinaryTab.screenshot({
           path: resolve(output, 'ordinary-workstation-open-full-assembly-handoff.png'),

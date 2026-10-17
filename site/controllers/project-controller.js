@@ -6,7 +6,6 @@ import {
   welcomeProjectStartupTarget,
   handoffAssemblyProjectFile,
 } from '../assembly-startup-routing.js';
-import { readAssemblyPreviewFile } from '../ui-v2/assembly-preview.js';
 import { bundledExampleById } from '../bundled-examples.js';
 import { upgradeBundledExampleHistory } from '../bundled-example-history.js';
 import { bufferBackedProjectFile, versionedExampleAssetPath } from '../example-asset.js';
@@ -1035,8 +1034,12 @@ export function createProjectController({
       // SnapshotManager.importRecords or the ordinary autosave owner.
       if ((await welcomeProjectStartupTarget(file)) === ASSEMBLY_EDITOR_STARTUP_URL) {
         await handoffAssemblyProjectFile(file, {
-          validate: (candidate) =>
-            readAssemblyPreviewFile(candidate, readProjectFile, { allowStandalone: true }),
+          validate: async (candidate) => {
+            // Load the Geometry/Assembly validator only when actually opening
+            // an Assembly; ordinary Recovery boot must not acquire its imports.
+            const { readAssemblyPreviewFile } = await import('../ui-v2/assembly-preview.js');
+            return readAssemblyPreviewFile(candidate, readProjectFile, { allowStandalone: true });
+          },
           checkpoint: startupProtected
             ? async () => true
             : () => requireRecoveryCheckpoint('pre-open-project'),
