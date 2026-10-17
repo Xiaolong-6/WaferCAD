@@ -26,3 +26,8 @@ jobs:
           site/tests/physical-facet-math.test.mjs
           site/tests/physical-facet-owner.test.mjs
           site/tests/physical-facet-surface.test.mjs
+      - name: Temporary read-only formatter diagnosis
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx prettier --write site/physical-facet-surface.js site/tests/physical-facet-surface.test.mjs
+          git diff --unified=3 -- site/physical-facet-surface.js site/tests/physical-facet-surface.test.mjs
