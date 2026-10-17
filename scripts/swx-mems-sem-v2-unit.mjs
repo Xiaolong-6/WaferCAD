@@ -269,6 +269,7 @@ function semV2PhysicalPose(state) {
     fixedActuator,
     movableActuator,
     springContours: springs,
+    springCenterlines,
     springTrussContours,
     lowerSpringCenterlines,
     upperSpringCenterlines,
@@ -385,7 +386,8 @@ export function createSwxSemV2SupportAudit(state = 'off') {
   // Inspect each *real* 1um truss at its own centroid after HF. The
   // older 14 released point probes covered compliant beams but not the
   // wider truss Si that could retain an unintended BOX island.
-  const springTrusses = semV2PhysicalPose(state).springTrussContours;
+  const springPose = semV2PhysicalPose(state);
+  const springTrusses = springPose.springTrussContours;
   const trussReleasePoints = springTrusses.map((ring, index) => {
     const xs = ring.map((point) => point[0]);
     const ys = ring.map((point) => point[1]);
@@ -393,6 +395,21 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     const y = (Math.min(...ys) + Math.max(...ys)) / 2;
     return add('folded spring truss ' + index, [x, y]);
   });
+  // Each narrow 200nm compliant horizontal run must itself lose BOX after
+  // HF; sampling only the 1um trusses would miss isolated unreleased spans.
+  // Midpoints are safely away from the BOX-supported outer spring pads.
+  const beamRunReleasePoints = springPose.springCenterlines.flatMap((path, springIndex) =>
+    [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+    ].map(([a, b], runIndex) =>
+      add('folded spring beam ' + springIndex + ' run ' + runIndex, [
+        (path[a][0] + path[b][0]) / 2,
+        (path[a][1] + path[b][1]) / 2,
+      ]),
+    ),
+  );
   const released = [
     add('moving shuttle rail', [2.65, -72 + travel]),
     add('left moving comb handle', [-25, -87.4 + travel]),
@@ -409,6 +426,7 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('right S7 narrow aligner beam', [27.5, -45 + travel / 2]),
     add('central movable SWX-to-shuttle link', [0, -52 + travel]),
     ...trussReleasePoints,
+    ...beamRunReleasePoints,
   ];
   return {
     state,
