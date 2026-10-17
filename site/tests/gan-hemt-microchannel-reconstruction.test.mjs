@@ -496,7 +496,11 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   validateProjectFile(project);
   assert.equal(project.planViews.main.zoom, 2.5);
   assert.equal(project.planViews.mask.zoom, 1);
-  assert.deepEqual(project.section, { a: [-660, 0], b: [660, 0] }, 'Default Section must cross the tier staircase, not run down the mostly unstepped coolant trench');
+  assert.deepEqual(
+    project.section,
+    { a: [-660, 0], b: [660, 0] },
+    'Default Section must cross the tier staircase, not run down the mostly unstepped coolant trench',
+  );
   assert.deepEqual(
     project.display.sectionCollapse,
     { top: 0, bottom: -150, enabled: false },
