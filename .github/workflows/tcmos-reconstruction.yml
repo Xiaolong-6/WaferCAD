@@ -63,7 +63,28 @@ jobs:
       - name: Generate routed model from approved stored source
         run: node scripts/build-tcmos-array-physical-interconnect.mjs
       - name: Check changed files formatting
-        run: npx prettier --check scripts/build-tcmos-array-interconnect.mjs scripts/build-tcmos-array-physical-interconnect.mjs scripts/tcmos-array-interconnect-browser-acceptance.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs
+        run: |
+          files=(
+            scripts/build-tcmos-array-interconnect.mjs
+            scripts/build-tcmos-array-physical-interconnect.mjs
+            scripts/tcmos-array-interconnect-browser-acceptance.mjs
+            site/tests/tcmos-array-interconnect.test.mjs
+            site/tests/tcmos-array-physical-fast.test.mjs
+            site/tests/tcmos-array-physical-interconnect.test.mjs
+          )
+          if ! npx prettier --check "${files[@]}"; then
+            # The linked checkout cannot run Prettier locally. Print exact
+            # formatter output for a one-time auditable manual transfer.
+            # CI has no write permissions and never pushes to the branch.
+            npx prettier --write "${files[@]}"
+            for path in "${files[@]}"; do
+              echo "FORMATTED_BEGIN:$path"
+              base64 -w0 "$path"
+              echo
+              echo "FORMATTED_END:$path"
+            done
+            exit 1
+          fi
       - name: Upload physical model and science evidence
         if: always()
         uses: actions/upload-artifact@v6
