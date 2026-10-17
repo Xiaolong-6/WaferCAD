@@ -137,3 +137,39 @@ with independently grounded authors' SEM, dimensions or mask provenance.
 If the paper lacks distinguishing geometry, record `unreported` rather
 than inventing a device-specific difference. The screenshots do not prove
 a published SEM silhouette match.
+
+## 2026-10-17 bounded eight-family scientific disposition
+
+This is the **handoff verdict for #241/#299**, not a claim of paper-figure
+acceptance. Existing Chromium artifacts establish **capture and sampled model
+topology**, whereas a paper match requires matching the source figure's device,
+cut and scale. All eight records deliberately remain `open-paper-match`.
+The following unresolved findings are limited to evidence already identified
+in #242 and the present register; no new source-specific dimensions are
+inferred.
+
+| Family | Model / browser evidence already supported | Outstanding paper fidelity | Disposition |
+| --- | --- | --- | --- |
+| Black-Si / Ge photodetector | FINAL retains active 50 nm Al₂O₃; QA branch removes it; Ge A/B cuts captured | Original article and distinct Ge thesis figures must be compared separately; no electrical-transport claim | Engineering topology evidenced; paper match open |
+| PERC | 100 rear Al–Si point openings and insulated controls checked | 2 mm reconstruction mask pitch is not author GDS; Fig. 1 alone cannot validate all XY coordinates | Contact topology evidenced; XY author-match unsupported |
+| Sahli textured tandem | Nominal film stack and masked Ag/IZO captures exist | Si canonical top is planar even where Renderer draws pyramids; physical facet normals and conformal material occupancy absent | **Confirmed canonical-vs-texture geometry gap**; #297 |
+| Suspended Microdisk | 148/82 µm radii, 1.8 µm silica, released annulus and pedestal reconstructed | XeF₂ R=36 µm is assumed and rendered undercut uses eight Z slices; Fig. 2a depicts a similar device | Geometric proxy; continuous release #298 |
+| M3D self-powered IC | Tier / via material probes and both native-v2 power-via A–B captures exist | The two captured Sections and material stacks are **identical**; a distinct per-via structure and exact paper panel are not demonstrated. Source Fig. 1 describes overall integration; Extended Data Fig. 1 documents process flow | Via presence supported; source-specific via distinction **unverified** |
+| MAGIC-1000 | Local four-level interconnect and MoS₂ gate Sections captured | 40×24 µm illustrative local proxy cannot certify full 1,433-transistor processor routing or original author mask | Representative cell only |
+| Three-tier JLFET | Three 10 nm silicon tiers, gate/sidewall and local 625-site engineering array evidenced | The 91/100 nm local ILD and array layout are illustrative; paper Figs. 1–2 address device structure, Fig. 3 wafer statistics | Local material topology evidenced; full paper XY match open |
+| TiO₂ metalens | Illustrative pillar diameters / row Sections and material probes captured | 4,725 sites are educational reconstruction, not author phase-optimized GDS or optical performance | Process and motif proxy only |
+
+**Finite closeout:** #299/#302 may be considered complete as an *honest,
+fail-closed evidence register* once its exact HEAD tests and required CI are
+confirmed. It must **not** be reported as completion of paper-SEM matching
+or as acceptance of #241's remaining physical modeling. The two concrete
+Kernel gaps remain with existing #297/#300 and #298/#301; do not spawn new
+issues or PRs for these same observations. These scientific owners should
+deliver one opt-in working example each, preserving old .wafercad
+Save/History/Recovery semantics, then perform matching real browser Section/3D
+acceptance. For unavailable author GDS, source-matched SEM cuts, or device
+calibration, retain `unsupported` / `unreported` rather than repeatedly
+generating synthetic screenshots or inventing an exact paper match.
+
+**Safety boundary:** This disposition changes no production Model, Renderer,
+Recipe, Mask, saved project, screenshot baseline or numerical tolerance.
