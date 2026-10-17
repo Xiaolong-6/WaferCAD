@@ -1,0 +1,72 @@
+name: PR290 Native Workstation and View UX
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/v2/check-source-sunset-workstation.mjs'
+      - 'scripts/v2/check-source-sunset-view-ux.mjs'
+      - 'scripts/workstation-regression.mjs'
+      - 'scripts/view-ux-v3-regression.mjs'
+      - 'package.json'
+      - '.github/workflows/legacy-workstation-native-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr290-workstation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-workstation:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start production v2 server
+        run: |
+          python3 -m http.server 4173 --directory site >/tmp/pr290-workstation-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/app.html >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/pr290-workstation-http.log
+          exit 1
+      - name: Validate formal Workstation package entrypoint against real Chromium
+        run: npm run test:ui:workstation
+      - name: Save actual workstation acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr290-native-workstation-${{ github.sha }}
+          path: |
+            test-results/ui-v2-desktop-docking/
+            test-results/ui-v2-mobile/
+            test-results/ui-v2-main-review/
+            test-results/ui-v2-mask-review/
+            test-results/ui-v2-section-review/
+            test-results/ui-v2-three-review/
+            test-results/ui-v2-unit-lifecycle/
+            test-results/ui-v2-review-interactions/
+            /tmp/pr290-workstation-http.log
+          retention-days: 7
+          if-no-files-found: ignore
