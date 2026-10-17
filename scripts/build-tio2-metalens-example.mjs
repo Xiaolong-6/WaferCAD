@@ -180,6 +180,8 @@ export async function buildMetalensLocal() {
 
   const model = modelApi.createModel({ shape: 'rect', width: 5, height: 5, thickness: 2 });
   model.layers[0].name = BASE.material;
+  // Keep the deterministic literature fixture palette when new-project defaults change.
+  model.layers[0].color = '#C3CBD4';
   const root = projectForBenchmark({ model, section: { a: [-2.3, 1.1], b: [2.3, 1.1] } });
   root.name = 'TiO2 achromatic metalens - four meta-atoms / source-derived process';
   root.layout = makeLocalLayout();

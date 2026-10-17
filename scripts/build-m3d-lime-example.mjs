@@ -149,6 +149,8 @@ export async function buildM3DLime() {
     thickness: RECEIVER_THICKNESS_UM,
   });
   model.layers[0].name = '130nm CMOS silicon base (2um visual surrogate)';
+  // Pin the paper fixture's recorded presentation color independently of new-project defaults.
+  model.layers[0].color = '#C3CBD4';
   const BASE = {
     shape: 'rect',
     width: MODEL_SIZE[0],

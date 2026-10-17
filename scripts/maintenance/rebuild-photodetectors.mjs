@@ -66,6 +66,8 @@ function regionArea(model, area, shapes) {
 function makeBase(material, thickness) {
   const model = createModel({ shape: 'rect', width: 7000, height: 7000, thickness });
   model.layers[0].name = material;
+  // The committed paper-derived History/Recipe fixtures use this stable base color.
+  model.layers[0].color = '#C3CBD4';
   return model;
 }
 function state(model, shapes, face, recipe) {
