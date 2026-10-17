@@ -614,6 +614,19 @@ try {
       slider.dispatchEvent(new Event('input', { bubbles: true }));
     }, opacityValue);
     await page.keyboard.press('Escape');
+    // Wait for the opacity render to commit before sampling the frame serial.
+    // The first border state can already be selected, requiring no extra frame.
+    await page.waitForFunction(
+      (opacityValue) => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent')
+        );
+      },
+      opacityValue,
+      { timeout: 120000 },
+    );
     for (const borders of [false, true]) {
       const previousSerial = Number(
         await page.locator('#threeHost').getAttribute('data-renderer-frame-serial'),
@@ -627,7 +640,7 @@ try {
           const expectedOutline = borders ? 'structural-depth' : 'off';
           return (
             host?.dataset.renderState === 'ready' &&
-            Number(host.dataset.rendererFrameSerial || 0) > previousSerial &&
+            Number(host.dataset.rendererFrameSerial || 0) >= previousSerial + (pressed !== borders ? 1 : 0) &&
             host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent') &&
             host.dataset.outlineVisibility === expectedOutline &&
             host.dataset.assemblyWireBuiltCount === '2' &&
