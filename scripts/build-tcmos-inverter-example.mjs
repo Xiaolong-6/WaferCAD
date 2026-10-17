@@ -1279,9 +1279,7 @@ export async function buildTcmosInverter({
       .filter((index) => index >= 0);
     assert.equal(matching.length, 1, 'Approved SVG CNT must have exactly one Metal1');
     assert.equal(
-      [...svgActive, ...svgPoly].filter((host) =>
-        v.pointInMulti(center, vectorPath(host)),
-      ).length,
+      [...svgActive, ...svgPoly].filter((host) => v.pointInMulti(center, vectorPath(host))).length,
       1,
       'Approved SVG CNT must land on exactly one ACTIVE or POLY host',
     );

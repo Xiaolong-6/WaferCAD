@@ -13,10 +13,8 @@ const { geometryArea } = await import('../model.js');
 const NAMES = ['VIN', 'VOUT', 'VDD', 'GND'];
 const POLYGON = (points) => [[points.concat([points[0]])]];
 const midpoint = (points) => [
-  (Math.min(...points.map((point) => point[0])) +
-    Math.max(...points.map((point) => point[0]))) / 2,
-  (Math.min(...points.map((point) => point[1])) +
-    Math.max(...points.map((point) => point[1]))) / 2,
+  (Math.min(...points.map((point) => point[0])) + Math.max(...points.map((point) => point[0]))) / 2,
+  (Math.min(...points.map((point) => point[1])) + Math.max(...points.map((point) => point[1]))) / 2,
 ];
 const cover = (outer, inner) =>
   geometryArea(geometry.difference(POLYGON(inner), POLYGON(outer))) < 1e-12;
@@ -29,7 +27,10 @@ test('approved SVG: all 218 CNTs are fully covered by exactly one metal and a se
   const poly = groups.find((group) => group.name === 'POLY').shapes;
   assert.equal(metal.length, 4);
   assert.equal(contacts.length, 218);
-  assert.deepEqual(metal.map((shape) => shape.points.length), [8, 12, 16, 16]);
+  assert.deepEqual(
+    metal.map((shape) => shape.points.length),
+    [8, 12, 16, 16],
+  );
 
   const count = Object.fromEntries(NAMES.map((name) => [name, 0]));
   for (const [index, contact] of contacts.entries()) {
@@ -67,9 +68,8 @@ test('approved SVG: all 218 CNTs are fully covered by exactly one metal and a se
   for (let i = 0; i < metal.length; i++) {
     for (let j = i + 1; j < metal.length; j++) {
       assert.ok(
-        geometryArea(geometry.intersection(
-          POLYGON(metal[i].points), POLYGON(metal[j].points),
-        )) < 1e-12,
+        geometryArea(geometry.intersection(POLYGON(metal[i].points), POLYGON(metal[j].points))) <
+          1e-12,
         'Approved SVG contains a short between ' + NAMES[i] + ' and ' + NAMES[j],
       );
     }
@@ -95,15 +95,12 @@ test('all 218 original contacts carry a real METAL1/W interface and a lower geom
   assert.equal(validation.sourceSvgMetalTopology.ohmicWellContactValidated, false);
   const cnt = project.layout.elements.filter((shape) => shape.layer === 10);
   const layerNameById = new Map(project.model.layers.map((layer) => [layer.id, layer.name]));
-  const slab = (region, name) => region?.stack.find(
-    (segment) => layerNameById.get(segment.layerId) === name,
-  );
+  const slab = (region, name) =>
+    region?.stack.find((segment) => layerNameById.get(segment.layerId) === name);
   assert.equal(cnt.length, 218);
   for (const [index, contact] of cnt.entries()) {
     const [x, y] = midpoint(contact.points);
-    const region = project.model.regions.find((part) =>
-      geometry.pointInMulti([x, y], part.geom),
-    );
+    const region = project.model.regions.find((part) => geometry.pointInMulti([x, y], part.geom));
     assert.ok(region, 'CNT ' + index + ' must have a physical owner');
     const w = slab(region, 'W contacts');
     const m = slab(region, 'METAL1 Al');
@@ -140,7 +137,8 @@ test('4×4 remains sixteen INDEPENDENT inverter nets, not one invented shared bu
   for (let i = 0; i < metal.length; i++) {
     for (let j = i + 1; j < metal.length; j++) {
       if (Math.floor(i / 4) === Math.floor(j / 4)) continue;
-      const a = bounds(metal[i]), b = bounds(metal[j]);
+      const a = bounds(metal[i]),
+        b = bounds(metal[j]);
       const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0);
       const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1, 0);
       shortestIntercellGap = Math.min(shortestIntercellGap, Math.hypot(dx, dy));
