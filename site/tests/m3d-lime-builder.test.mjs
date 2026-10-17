@@ -281,14 +281,23 @@ test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', as
   materialAt(47.4, -15, 'CNT drain Pd 45nm');
   materialAt(45, -15, 'CNT gate Pd 15nm');
   const pvd = project.model.layers.find((l) => l.name === 'CNT drain Pd 45nm');
-  const bridge = project.model.regions
-    .find((r) => pointInMulti([gate.right + 0.005, -15], r.geom))
-    ?.stack.find((segment) => segment.layerId === pvd.id);
-  assert.ok(bridge, 'pre-charge Pd wall bridge missing');
+  const seam = [gate.right - 0.005, gate.right + 0.005, gate.right + 0.015].map((x) => {
+    const segment = project.model.regions
+      .find((r) => pointInMulti([x, -15], r.geom))
+      ?.stack.find((part) => part.layerId === pvd.id);
+    assert.ok(segment, 'pre-charge Pd is missing at gate edge X=' + x);
+    return segment;
+  });
   assert.ok(
-    Math.abs(bridge.z1 - bridge.z0 - 0.01125) < 1e-9,
-    'pre-charge Pd step must follow same explicitly inferred 25% sidewall hypothesis',
+    Math.abs(seam[1].z1 - seam[1].z0 - 0.01125) < 1e-9,
+    'pre-charge Pd step must follow the explicitly inferred 25% sidewall hypothesis',
   );
+  for (let i = 0; i < 2; i++) {
+    const overlap =
+      Math.min(seam[i].z1, seam[i + 1].z1) -
+      Math.max(seam[i].z0, seam[i + 1].z0);
+    assert.ok(overlap > 0.01, 'pre-charge gate-edge Pd overlap must exceed 10nm');
+  }
 });
 
 test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps', async () => {
