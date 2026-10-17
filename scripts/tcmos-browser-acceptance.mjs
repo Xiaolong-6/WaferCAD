@@ -420,12 +420,14 @@ try {
   await page.screenshot({ path: resolve(dir, 'tcmos-fig1a-three-expanded.png') });
   await restoreLargeView('three', fullThreeExpanded);
 
-  // An pixel-measured schematic POLY stripe in a reported 130 nm foundry node needs a device-scale inspection
-  // separate from the 11 µm field section. Use the real Main Slice settings
-  // rather than modifying the project model or fabricating additional masks.
+  // The approved SVG places ACTIVE and POLY near Y=-1.2 µm, unlike the
+  // discarded raster-layout reconstruction (Y=0). Inspect device-local
+  // sections through actual silicon, not empty STI or elevated interconnect.
+  // The POLY stripe is illustrative and is NOT a measured 130 nm gate.
+  const deviceY = -1.2;
   const localSections = [
-    { device: 'pmos-HVTN', gateX: -3, ax: -3.65, bx: -2.35 },
-    { device: 'nmos-HVTP', gateX: 3, ax: 2.35, bx: 3.65 },
+    { device: 'pmos-HVTN', gateX: -3.22, ax: -4.28, bx: -2.16 },
+    { device: 'nmos-HVTP', gateX: 3.22, ax: 2.16, bx: 4.28 },
   ];
   for (const local of localSections) {
     await selectView('main');
@@ -440,16 +442,16 @@ try {
     await sliceSettings.click();
     for (const [id, value] of [
       ['sectionAx', local.ax],
-      ['sectionAy', 0],
+      ['sectionAy', deviceY],
       ['sectionBx', local.bx],
-      ['sectionBy', 0],
+      ['sectionBy', deviceY],
     ]) {
       await page.locator('#' + id).fill(String(value));
       await page.locator('#' + id).press('Tab');
     }
     assert.deepEqual(
       (await snap()).section,
-      { a: [local.ax, 0], b: [local.bx, 0] },
+      { a: [local.ax, deviceY], b: [local.bx, deviceY] },
       'Local section must keep exact µm physical endpoints',
     );
     assert.ok(local.ax < local.gateX && local.gateX < local.bx);
@@ -470,8 +472,9 @@ try {
   report.localSections = localSections.map(({ device, gateX, ax, bx }) => ({
     device,
     gateXUm: gateX,
-    endpointsUm: { a: [ax, 0], b: [bx, 0] },
-    sourceGeometry: '130 nm process node reported; 0.13 µm gate width is an illustrative choice',
+    endpointsUm: { a: [ax, deviceY], b: [bx, deviceY] },
+    sourceGeometry:
+      '130 nm foundry node reported; the approved SVG POLY stripe is 38.5/80=0.48125 illustrative µm, not a measured gate length',
     physicalGateLengthReportedInSource: false,
   }));
   // Inspect a physical local 3D cutaway using the existing Main ROI clipping
@@ -479,18 +482,18 @@ try {
   // buried 80–240 nm annotations to only a few display pixels. Use the same
   // documented display-only Z break as Section to magnify the near-surface
   // device while retaining original physical coordinates and model bytes.
-  // The y=0 ROI face crosses each gate and the annotated doping intervals.
+  // The SVG-aligned Y=-1.2 ROI intersects the actual gate and S/D silicon.
   report.localThreeD = [];
   for (const local of localSections) {
     const roi = {
       type: 'rect',
-      a: [local.gateX - 0.85, 0],
-      b: [local.gateX + 0.85, 0.75],
+      a: [local.gateX - 1.15, -1.85],
+      b: [local.gateX + 1.15, -0.25],
     };
     const inspection = structuredClone(expected);
     inspection.name = 'T-CMOS ' + local.device + ' LOCAL 3D INSPECTION ONLY';
     inspection.roi = roi;
-    inspection.section = { a: [local.ax, 0], b: [local.bx, 0] };
+    inspection.section = { a: [local.ax, deviceY], b: [local.bx, deviceY] };
     inspection.display.threeOpacity = 0.5;
     inspection.display.threeShowBorders = true;
     inspection.display.threeCutaway = true;
@@ -588,7 +591,7 @@ try {
       '3D Fit must target the transistor-local ROI rather than the full 14 µm field',
     );
     // The default Fit is an elevated isometric overview: it hides the
-    // y=0 inspection face under surface overlays. Reorient the *real*
+    // device-local inspection face under surface overlays. Reorient the *real*
     // OrbitControls to a near-side elevation, then zoom the gate-local ROI.
     // This is a user gesture, not a synthetic rendering or geometry edit.
     const rotateButton = page.locator('#threePanel [data-action="tool:rotate:three"]');
@@ -613,7 +616,7 @@ try {
     const cameraDz = inspectionCamera.position[2] - inspectionCamera.target[2];
     assert.ok(
       cameraDy < -0.5 && Math.abs(cameraDx) < Math.abs(cameraDy) * 0.2,
-      'Local 3D evidence must face the exposed y=0 section rather than a top or end view',
+      'Local 3D evidence must face the SVG-aligned ROI rather than a top or end view',
     );
     assert.ok(
       cameraDz > 0 && cameraDz < Math.hypot(cameraDx, cameraDy) * 0.45,
