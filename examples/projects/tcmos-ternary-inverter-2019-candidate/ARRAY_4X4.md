@@ -28,3 +28,15 @@ metrology. The scientific reference is Jeong et al., Nature Electronics
 VDD/GND leads and the inner body-tie U-shaped rail. This prototype preserves
 the gap and keeps the 16 cells independent. Physical ohmic well contact and
 electrical continuity are NOT validated.
+
+## Native 4×4 Recipe experiment (not yet accepted)
+
+`scripts/build-tcmos-array-recipe-experiment.mjs` separately writes
+`tcmos-inverter-4x4-RECIPE-EXPERIMENT.wafercad`: the 23 original T-CMOS
+commands, a reconstructible `rect-grid` Base, translated Draw Mask windows,
+and the source SVG array File Mask layer `10|0` for CNT openings and fill.
+The common CNT layer avoids duplicating 6,976 contact polygons in Recipe and
+retains existing schema budgets. Passing science-schema/preflight/storage tests
+**is not** whole-array Process/History acceptance. Full real-browser replay,
+scientific material parity, and Recovery must pass before promotion. The prior
+inspection-only 4×4 artifact remains unaffected.
