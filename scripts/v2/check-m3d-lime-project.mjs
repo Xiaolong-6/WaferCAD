@@ -1187,14 +1187,22 @@ try {
         /Recipe completed:|Recipe failed|Recipe preflight failed/.test(status) ||
         /^(Completed|Failed|Stopped):/.test(summary)
       ) return 'finished';
+      // process-recipe-controller updates the live count on every step BEFORE
+      // applyProcessStep(). recipeRunSummary is intentionally blank until the
+      // entire run finishes, so it is never a live progress source.
+      const progressText = document.querySelector('#recipeProgressCount')?.textContent || '';
+      const progress = progressText.match(/(\d+)\s*\/\s*(\d+)/);
+      if (!progress) return 'missing-live-progress';
+      const step = Number(progress[1]);
+      const total = Number(progress[2]);
+      if (total !== 50 || step < 1 || step > total) return 'invalid-live-progress';
       const clock = Date.now();
-      const progress = summary.match(/(\d+)\s*\/\s*(\d+)/);
-      const step = progress ? Number(progress[1]) : 0;
       const state = (window.__m3dRunAllWatchdog ||= { step, lastAdvanceAt: clock });
       if (step > state.step) {
         state.step = step;
         state.lastAdvanceAt = clock;
       }
+      if (step < state.step) return 'regressed-live-progress';
       if (clock - state.lastAdvanceAt > maxIdleMs) return 'stalled';
       return false;
     },
