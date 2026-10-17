@@ -644,7 +644,7 @@ export function createWorkspacePersistenceController({
           commit = point.appCommit ? ` · ${point.appCommit.slice(0, 7)}` : '';
         select.append(new Option(`${date.toLocaleString()}${reason}${commit}`, point.key));
       }
-      const writable = hasWriteAccess() ?? false;
+      const writable = !recoveryRollbackUnsafe && (hasWriteAccess() ?? false);
       restore.disabled = !writable;
       if (clear) clear.disabled = !writable;
     } catch (error) {
@@ -876,6 +876,14 @@ export function createWorkspacePersistenceController({
               // Halt queued autosave and all future storage commits until reload.
               recoveryRollbackUnsafe = true;
               clearTimer();
+              for (const id of [
+                'workspaceRestoreBtn',
+                'workspaceRecoveryClearBtn',
+                'saveProjectBtn',
+              ]) {
+                const button = $(id);
+                if (button) button.disabled = true;
+              }
               failed = true;
               syncSaveStatus();
               throw new Error(
@@ -1131,6 +1139,10 @@ export function createWorkspacePersistenceController({
     }
 
     if (choice === 'cancel') return;
+    if (recoveryRollbackUnsafe) {
+      status('Recovery rollback failed. Reload this tab before taking over storage.', 'error');
+      return;
+    }
     takeoverPendingMessage = null;
     if (!workspaceSession.takeOver()) {
       status('Could not take over the local workspace.', 'error');
@@ -1335,12 +1347,17 @@ export function createWorkspacePersistenceController({
       void reloadSafely();
     };
     $('workspaceRecoverySelect').onchange = (event) => {
-      $('workspaceRestoreBtn').disabled = !event.target.value || !hasWriteAccess();
+      $('workspaceRestoreBtn').disabled =
+        recoveryRollbackUnsafe || !event.target.value || !hasWriteAccess();
     };
     $('workspaceRestoreBtn').onclick = () => {
       void restoreSelectedRecovery();
     };
     $('workspaceRecoveryClearBtn').onclick = async () => {
+      if (recoveryRollbackUnsafe) {
+        status('Recovery rollback failed. Reload this tab before clearing Recovery.', 'error');
+        return;
+      }
       if (!hasWriteAccess()) {
         status(
           'This tab cannot clear local Recovery while another tab owns browser storage.',
@@ -1361,6 +1378,9 @@ export function createWorkspacePersistenceController({
       }
       const result = await runVisibleTask(
         async ({ updateStage }) => {
+          if (recoveryRollbackUnsafe) {
+            throw new Error('Recovery rollback failed. Reload before clearing Recovery.');
+          }
           updateStage('Removing local Recovery checkpoints…');
           const removed = await clearWorkspaceRecoveryPoints();
           await refreshRecoveryOptions();
