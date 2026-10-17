@@ -65,9 +65,10 @@ test('staged Assembly loader preserves file ownership until validation and edito
   assert.ok(opened.variantGraph);
   assert.equal(consumed, false);
   await assert.rejects(
-    () => openStagedAssemblyProject(readStaged, async () => {
-      throw new Error('Corrupted Recipe checksum');
-    }),
+    () =>
+      openStagedAssemblyProject(readStaged, async () => {
+        throw new Error('Corrupted Recipe checksum');
+      }),
     /Corrupted Recipe checksum/,
   );
   assert.equal(consumed, false, 'failed import cannot remove staged input');

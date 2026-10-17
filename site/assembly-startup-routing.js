@@ -1,8 +1,7 @@
 // Route Welcome imports by project ownership, never by filename alone.
 // Full-workspace containers and bonded v15 projects must not be handed to the
 // ordinary single-wafer snapshot/autosave writer.
-export const ASSEMBLY_EDITOR_STARTUP_URL =
-  './app.html?assemblyPreview=1&bondEdit=1&start=staged';
+export const ASSEMBLY_EDITOR_STARTUP_URL = './app.html?assemblyPreview=1&bondEdit=1&start=staged';
 export const STANDARD_WORKSTATION_STARTUP_URL = './app.html?start=staged';
 
 export function projectStartupTarget(document) {
@@ -33,10 +32,7 @@ export async function welcomeProjectStartupTarget(file) {
   }
 }
 
-export async function openStagedAssemblyProject(
-  readStagedFile,
-  readAssemblyFile,
-) {
+export async function openStagedAssemblyProject(readStagedFile, readAssemblyFile) {
   const staged = await readStagedFile();
   if (!staged || staged.kind !== 'project' || !staged.file) {
     throw new Error('The staged Assembly file is unavailable; return to Welcome and retry.');

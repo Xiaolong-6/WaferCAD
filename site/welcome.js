@@ -346,9 +346,7 @@ async function stageAndOpen(file, kind) {
     }
     status(`Preparing ${file.name}…`);
     const destination =
-      kind === 'project'
-        ? await welcomeProjectStartupTarget(file)
-        : './app.html?start=staged';
+      kind === 'project' ? await welcomeProjectStartupTarget(file) : './app.html?start=staged';
     await stageStartupFile(file, kind);
     globalThis.location.href = destination;
   } catch (error) {
