@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { isotropicReleaseBenchmark, projectForBenchmark } from './process-benchmarks.mjs';
 import { checkRoughSectionDetail } from './test-helpers/section-profile.mjs';
 import {
@@ -17,6 +18,32 @@ import {
 
 export async function runRendererProductCases({ page, capture }) {
   const { pointInMulti } = await import('../site/vector-geometry.js');
+
+  // PR CI normally skips the full screenshot gallery for speed. Preserve
+  // just the two actual rough-surface acceptance frames so they can be
+  // visually reviewed before merging a change to the renderer.
+  const captureRoughEvidence = async (name) => {
+    if (process.env.WAFERCAD_CAPTURE_REVIEW !== '0') return;
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        const canvas = host?.querySelector('canvas');
+        return (
+          host?.dataset.renderState === 'ready' && canvas?.dataset.roughMeshMode === 'detailed'
+        );
+      },
+      null,
+      { timeout: 120000 },
+    );
+    await page.screenshot({
+      path: join(
+        resolve(process.env.WAFERCAD_REVIEW_DIR || 'test-results/product-review/renderer'),
+        `${name}.png`,
+      ),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  };
 
   // Literature acceptance path: open the pre-release spoked silica disk,
   // execute Isotropic release through the real Process/worker UI, verify the
@@ -176,23 +203,32 @@ export async function runRendererProductCases({ page, capture }) {
   await page.waitForFunction(
     () => {
       const canvas = document.querySelector('#threeHost canvas');
+      const backend = document.querySelector('#threeHost')?.dataset.roughDisplacementBackend;
       return (
         canvas?.dataset.roughMeshMode === 'detailed' &&
-        canvas.dataset.roughMeshBackend === 'gpu-hybrid' &&
-        Number(canvas.dataset.roughGpuTaskCount || 0) > 0
+        (backend === 'cpu-software-parity'
+          ? canvas.dataset.roughMeshBackend === 'cpu-mesh' &&
+            Number(canvas.dataset.roughGpuTaskCount || 0) === 0
+          : canvas.dataset.roughMeshBackend === 'gpu-hybrid' &&
+            Number(canvas.dataset.roughGpuTaskCount || 0) > 0)
       );
     },
     null,
     { timeout: 10000 },
   );
+  const actualDisplacementBackend = await page
+    .locator('#threeHost')
+    .getAttribute('data-rough-displacement-backend');
+  const expectedGpu = actualDisplacementBackend !== 'cpu-software-parity';
   assert.equal(
     await gpuRoughCanvas.getAttribute('data-rough-mesh-backend'),
-    'gpu-hybrid',
-    'exposed rough cap did not activate the GPU rough backend',
+    expectedGpu ? 'gpu-hybrid' : 'cpu-mesh',
+    'rough cap must use a backend that meets the displacement precision contract',
   );
-  assert.ok(
+  assert.equal(
     Number(await gpuRoughCanvas.getAttribute('data-rough-gpu-task-count')) > 0,
-    'GPU rough backend reported no shader-displaced tasks',
+    expectedGpu,
+    'software WebGL must not execute an unverified GPU heightfield',
   );
   await capture(page, 'wide-gpu-rough-exposed');
   await page.locator('#threeMaxBtn').click();
@@ -295,6 +331,7 @@ export async function runRendererProductCases({ page, capture }) {
     `rough base triangulation cache is incomplete: ${fitBaseTriangulations} < ${fitSpatialZoneBuilds}`,
   );
   await capture(page, 'wide-rough-3d-opaque-max');
+  await captureRoughEvidence('rough-opaque-3d-evidence');
 
   // Interaction LOD: switch to a cached coarse mesh once at drag start,
   // avoid topology rebuilds during mousemove, then refine asynchronously.
@@ -397,11 +434,65 @@ export async function runRendererProductCases({ page, capture }) {
   await page.locator('#threeMaxBtn').click();
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('0.5');
+  // The input event must update the material presentation, not merely the
+  // HTML slider. Small rough scenes reuse a presentation-only scene variant,
+  // so sceneVariant may remain "opaque" while actual materials are transparent.
+  await page.locator('#threeOpacityRange').dispatchEvent('input');
   await page.locator('#threePanel .three-opacity-control > summary').click();
+  const awaitVisibleBuriedInterface = () =>
+    page.waitForFunction(
+      () => {
+        const host = document.getElementById('threeHost');
+        if (host?.dataset.renderState !== 'ready') return false;
+        if (Number(document.getElementById('threeOpacityRange')?.value) !== 0.5) {
+          return false;
+        }
+        const types = JSON.parse(host.dataset.sceneTriangleKinds || '[]');
+        return types.some(([kind, triangles]) => kind === 'material-interface' && triangles > 0);
+      },
+      null,
+      { timeout: 20000 },
+    );
+  await awaitVisibleBuriedInterface();
   await waitForPaint(page);
   await page.locator('#threeMaxBtn').click();
   await capture(page, 'wide-rough-3d-transparent-max');
+  // Maximizing hides the ordinary workspace header's Border control. Toggle
+  // in the normal 3D panel, then maximize again to validate the real viewport.
   await page.locator('#threeMaxBtn').click();
+  if (!(await page.locator('#threeBorders').isChecked())) {
+    await page.locator('#threeBorderControl').click();
+  }
+  assert.equal(await page.locator('#threeBorders').isChecked(), true);
+  await page.locator('#threeMaxBtn').click();
+  await awaitVisibleBuriedInterface();
+  const outlineDiagnostics = await page.locator('#threeHost').evaluate((host) => ({
+    updateKind: host.dataset.rendererUpdateKind,
+    renderState: host.dataset.renderState,
+    hiddenSegments: Number(host.dataset.hiddenBorderSegmentCount || 0),
+    buriedSegments: Number(host.dataset.buriedContourSegmentCount || 0),
+    materialInterfaceTriangles:
+      new Map(JSON.parse(host.dataset.sceneTriangleKinds || '[]')).get('material-interface') || 0,
+  }));
+  // Physically owned material interfaces must be drawn as translucent meshes.
+  // Buried cap perimeters must NOT be repeated as false black contour lines.
+  assert.ok(
+    outlineDiagnostics.hiddenSegments > 0 &&
+      outlineDiagnostics.materialInterfaceTriangles > 0 &&
+      outlineDiagnostics.buriedSegments === 0,
+    `transparent material must show the buried interface without phantom outlines: ${JSON.stringify(outlineDiagnostics)}`,
+  );
+  await capture(page, 'wide-rough-3d-transparent-borders-max');
+  await captureRoughEvidence('rough-transparent-borders-3d-evidence');
+  await page.locator('#threeMaxBtn').click();
+  // The Border label can remain hidden when the workspace reflows after
+  // maximizing. Dispatch the same change event on its checkbox to restore
+  // the test's original inspection state without depending on hit testing.
+  await page.locator('#threeBorders').evaluate((input) => {
+    input.checked = false;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  assert.equal(await page.locator('#threeBorders').isChecked(), false);
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('1');
   await page.locator('#threePanel .three-opacity-control > summary').click();
