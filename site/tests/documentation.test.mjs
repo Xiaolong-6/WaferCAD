@@ -18,6 +18,25 @@ async function fixture(t, entries) {
   return auditDocumentation({ rootDir, files: Object.keys(entries) });
 }
 
+test('documentation PR path ownership covers source documentation entrypoints', async () => {
+  const workflow = await readFile(
+    new URL('../../.github/workflows/documentation-wiki-targeted.yml', import.meta.url),
+    'utf8',
+  );
+  const paths = new Set([...workflow.matchAll(/^\s+- '([^']+)'$/gm)].map((match) => match[1]));
+  for (const path of [
+    'README.md',
+    'AGENTS.md',
+    'THIRD_PARTY_NOTICES.md',
+    'examples/projects/README.md',
+    'docs/**',
+    'site/bundled-examples.js',
+    '.github/workflows/product-manual-wiki.yml',
+  ]) {
+    assert.ok(paths.has(path), `documentation PR checks must include ${path}`);
+  }
+});
+
 test('all repository documentation is reachable with valid internal destinations', async () => {
   const result = await auditDocumentation();
   assert.deepEqual(result.errors, []);
