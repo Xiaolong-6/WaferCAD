@@ -2,21 +2,31 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
   baseUrl,
-  chooseConfirmation,
   launchBrowser,
-  newLegacyUiContext as newUiContext,
+  newUiContext,
   observePageErrors,
-  openFunctionPanel,
-  waitForAppReady,
-  waitForStatus,
 } from './test-helpers/ui.mjs';
-import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
+import { readProjectFile } from '../site/project-io.js';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
+
+// Assert an actual production-v2 .wafercad export before and after replay.
+async function exportCurrentProject(page, timeout = 120000) {
+  await page.locator('[data-action="domain:project"]').click();
+  await page.locator('#projectExportMenuBtn').click({ timeout });
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout }),
+    page.locator('#exportProjectBtn').click({ timeout, noWaitAfter: true }),
+  ]);
+  assert.equal(await download.failure(), null, 'Project export must complete');
+  const path = await download.path();
+  assert.ok(path, 'Project export must be readable');
+  return readProjectFile(new Blob([await readFile(path)]));
+}
 
 function materialFootprintPerimeter(model, name, vectorApi) {
   const ids = new Set(
@@ -123,18 +133,20 @@ try {
     });
     try {
       await page.goto(
-        `${baseUrl}/app-legacy.html?start=example&example=${encodeURIComponent(example.id)}`,
+        `${baseUrl}/app.html?start=example&example=${encodeURIComponent(example.id)}`,
         { waitUntil: 'domcontentloaded', timeout: 120000 },
       );
-      await waitForAppReady(page);
-      await waitForStatus(page, /Opened .*\.wafercad\./, 120000);
       await page.waitForFunction(
-        () => !!document.querySelector('#layerLegend .legend-name'),
+        () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
         null,
         { timeout: 120000 },
       );
+      assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+      const opened = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.ok(opened.source !== 'empty', `${example.id}: example was not imported`);
+      assert.ok(opened.model.layers.length > 1, `${example.id}: source lost physical layers`);
       if (requestedVariant) {
-        await openFunctionPanel(page, 'snapshots', { timeout: 20000 });
+        await page.locator('[data-action="domain:history"]').click();
         const variant = page.locator(`.history-variant[data-variant-id="${requestedVariant}"]`);
         await variant.waitFor({ state: 'attached', timeout: 30000 });
         // A literature Variant can be nested under collapsed family/parent
@@ -165,8 +177,8 @@ try {
         );
       }
       const sourceProject = await exportCurrentProject(page, 120000);
-      await openFunctionPanel(page, 'process', { timeout: 20000 });
-      await page.locator('[data-process-input-mode="recipe"]').click();
+      await page.locator('[data-action="domain:process"]').click();
+      await page.locator('[data-action="process-mode:recipe"]').click();
       const recipeRows = page.locator('.recipe-step-row');
       const count = await recipeRows.count();
       assert.ok(count > 0, `${example.id}: opening the example lost its Recipe`);
@@ -196,19 +208,22 @@ try {
       });
       console.log(`${example.id}: beginning ${count}-Step Kernel rebuild`);
       await page.locator('#recipeRunAllBtn').click();
-      await chooseConfirmation(page, historyChoice);
+      await page.getByRole('button', {
+        name: historyChoice === 'keep' ? 'Keep previous history' : 'Clear history',
+        exact: true,
+      }).click({ timeout: 30000 });
       await page.waitForFunction(
         () => {
           const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
           if (/^(Completed|Failed|Stopped):/.test(summary)) return true;
-          const status = document.querySelector('#statusText')?.textContent || '';
+          const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
           return /Recipe failed at Step|Recipe preflight failed/.test(status);
         },
         null,
         { timeout: 900000 },
       );
       const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
-      const status = (await page.locator('#statusText').innerText()).trim();
+      const status = (await page.locator('[data-slot="status.message"]').innerText()).trim();
       assert.match(
         summary,
         new RegExp(`^Completed: ${count}/${count} steps committed`),
@@ -450,17 +465,17 @@ try {
         page
           .evaluate(() => ({
             url: location.href,
-            ready: document.documentElement.dataset.appReady,
-            status: document.getElementById('statusText')?.textContent,
+            ready: window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
+            status: document.querySelector('[data-slot="status.message"]')?.textContent,
             progress: document.getElementById('recipeProgressCount')?.textContent,
             summary: document.getElementById('recipeRunSummary')?.textContent,
             projectButton: {
               exists: Boolean(
-                document.querySelector('.workstation-rail-button[data-tool="project"]'),
+                document.querySelector('[data-action="domain:project"]'),
               ),
               visible: Boolean(
                 document
-                  .querySelector('.workstation-rail-button[data-tool="project"]')
+                  .querySelector('[data-action="domain:project"]')
                   ?.checkVisibility(),
               ),
             },
