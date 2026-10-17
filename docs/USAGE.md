@@ -41,7 +41,7 @@ Selecting a layer selects that `layer/datatype` across the active subtree.
 
 ## 4. Inspect and author the Mask view
 
-Use the **Mask source** control to choose **File** or **Draw**. Depending on the interface/version, this is shown as a source toggle in the Mask header.
+Use the **Mask source** control in the current Workstation Mask header to choose **File** or **Draw**.
 
 **File** mode keeps imported GDSII/OASIS behavior:
 
@@ -91,9 +91,9 @@ The 3D header exposes **Fast** and **Quality** modes. Fast is the default and lo
 
 ## 6. Apply an operation
 
-The v2 **How it works** control opens a compact **Before → After Process schematic** for the selected Operation, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. Older interfaces may show the schematic directly beneath **Apply**. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
+The v2 **How it works** control opens a compact **Before → After Process schematic** for the selected Operation, Coverage, Transfer Placement, Etch Profile, material selectivity, Surface mode and Orientation. The small illustration is not a simulation of your current geometry and is intentionally not to scale. Select **Wiki ↗** to open the same operation in the [illustrated Process Wiki](https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations). The [product manual](https://github.com/Xiaolong-6/WaferCAD/wiki) has full workspace, mask, project and operation reference chapters.
 
-In the v2 **Process → Manual → Surface** selector choose **Front**, **Back** or **Both**. Both executes Front then Back as one atomic logical Step when the operation supports it. A successful Both Deposit produces **two paired, independent Layer IDs**; both-side selective Etch or Extend requires a compatible exposed paired target. Lift-off and absolute-Z Planarize/CMP are unavailable for Both. Both does not change the Main/Mask inspection face. The Legacy interface retains Front/Back. See [Kernel behavior](PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+In the v2 **Process → Manual → Surface** selector choose **Front**, **Back** or **Both**. Both executes Front then Back as one atomic logical Step when the operation supports it. A successful Both Deposit produces **two paired, independent Layer IDs**; both-side selective Etch or Extend requires a compatible exposed paired target. Lift-off and absolute-Z Planarize/CMP are unavailable for Both. Both does not change the Main/Mask inspection face. The frozen Legacy editor has historical Front/Back-only controls; it is not part of the current application. See [Kernel behavior](PROCESS_BOTH_FACE_2026-10-11.md) and [v2 Manual acceptance](ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 
 Choose an action:
 
