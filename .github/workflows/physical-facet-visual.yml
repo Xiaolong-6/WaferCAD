@@ -50,10 +50,6 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-1.55.1
       - run: npx playwright install --with-deps chromium
-      - name: Inspect exact screenshot code formatting once
-        run: |
-          npx prettier --write site/physical-facet-shell-preview.html site/physical-facet-shell-preview.js scripts/v2/capture-physical-facet-preview.mjs
-          git diff --unified=3 -- site/physical-facet-shell-preview.html site/physical-facet-shell-preview.js scripts/v2/capture-physical-facet-preview.mjs
       - name: Render true physical facet geometry in Chromium
         run: node scripts/v2/capture-physical-facet-preview.mjs
       - name: Inspect native v2 Workstation physical file read-only

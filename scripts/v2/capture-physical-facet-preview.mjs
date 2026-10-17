@@ -152,8 +152,7 @@ try {
         const rgba = node.getContext('2d').getImageData(0, 0, node.width, node.height).data;
         let oxide = 0;
         for (let i = 0; i < rgba.length; i += 16) {
-          if (rgba[i] > 205 && rgba[i + 1] > 130 && rgba[i + 1] < 200 &&
-              rgba[i + 2] < 140) oxide++;
+          if (rgba[i] > 205 && rgba[i + 1] > 130 && rgba[i + 1] < 200 && rgba[i + 2] < 140) oxide++;
         }
         return oxide;
       }, item.id);

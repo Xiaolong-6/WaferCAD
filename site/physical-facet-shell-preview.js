@@ -1,6 +1,9 @@
 // Physical shell material evidence: no appearance offset and no 2D-only oracle.
 import { makePhysicalPyramidOwner } from './physical-facet-owner.js';
-import { createPhysicalFacetShellQuery, makePhysicalFacetShell } from './physical-facet-shell-owner.js';
+import {
+  createPhysicalFacetShellQuery,
+  makePhysicalFacetShell,
+} from './physical-facet-shell-owner.js';
 
 const silicon = makePhysicalPyramidOwner({
   layerId: 'base',
@@ -18,7 +21,11 @@ const views = [
   { id: 'shellRoi', face: 'front', minX: -0.55, maxX: 0.55, minZ: 129, maxZ: 130.18, steps: 120 },
   { id: 'shellBack', face: 'back', minX: -6.2, maxX: 6.2, minZ: -130.6, maxZ: -125, steps: 54 },
 ];
-const evidence = { kind: shell.descriptor.kind, sourceTriangleCount: shell.sourceTriangleCount, views: [] };
+const evidence = {
+  kind: shell.descriptor.kind,
+  sourceTriangleCount: shell.sourceTriangleCount,
+  views: [],
+};
 
 function render(view) {
   const canvas = document.getElementById(view.id);
@@ -29,8 +36,10 @@ function render(view) {
   canvas.height = height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const m = { left: 54 * scale, right: 17 * scale, top: 20 * scale, bottom: 36 * scale };
-  const sx = (x) => m.left + ((x - view.minX) / (view.maxX - view.minX)) * (width - m.left - m.right);
-  const sy = (z) => height - m.bottom - ((z - view.minZ) / (view.maxZ - view.minZ)) * (height - m.top - m.bottom);
+  const sx = (x) =>
+    m.left + ((x - view.minX) / (view.maxX - view.minX)) * (width - m.left - m.right);
+  const sy = (z) =>
+    height - m.bottom - ((z - view.minZ) / (view.maxZ - view.minZ)) * (height - m.top - m.bottom);
   const columns = Array.from({ length: view.steps + 1 }, (_, index) =>
     shell.column(view.minX + (index * (view.maxX - view.minX)) / view.steps, 0),
   );
@@ -88,9 +97,8 @@ function render(view) {
   }
   let coatingValidated = 0;
   for (const c of columns) {
-    const middleZ = view.face === 'front'
-      ? (c.siliconZ1 + c.frontOuterZ) / 2
-      : (c.siliconZ0 + c.backOuterZ) / 2;
+    const middleZ =
+      view.face === 'front' ? (c.siliconZ1 + c.frontOuterZ) / 2 : (c.siliconZ0 + c.backOuterZ) / 2;
     if (shell.sample([c.x, c.y, middleZ]).materialLayerId !== 'oxide') {
       throw new Error('Displayed oxide does not match the canonical volumetric material owner');
     }
@@ -102,9 +110,7 @@ function render(view) {
     coatingValidated,
     physicalZMin: view.minZ,
     physicalZMax: view.maxZ,
-    apexColumn: view.id === 'shellRoi'
-      ? columns[Math.floor(columns.length / 2)]
-      : null,
+    apexColumn: view.id === 'shellRoi' ? columns[Math.floor(columns.length / 2)] : null,
   };
 }
 
@@ -113,8 +119,11 @@ const face = shell.sample([1.5, 0, 127.4]);
 const apex = shell.sample([0, 0, 130.02]);
 const corner = shell.sample([6.42, 6.42, 0]);
 const inside = shell.sample([0, 0, 0]);
-if (apex.materialLayerId !== 'oxide' || corner.materialLayerId !== 'oxide' ||
-    inside.materialLayerId !== 'base') {
+if (
+  apex.materialLayerId !== 'oxide' ||
+  corner.materialLayerId !== 'oxide' ||
+  inside.materialLayerId !== 'base'
+) {
   throw new Error('3D apex/corner/interior material classification failed');
 }
 evidence.apex = apex.materialLayerId;

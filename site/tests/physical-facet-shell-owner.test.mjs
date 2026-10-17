@@ -77,6 +77,20 @@ test('apex, concave valleys, domain sidewalls and 3D corners are covered without
   assert.equal(shell.sample([6.4, 0, 0]).materialLayerId, 'base');
 });
 
+test('3D pyramid apex oxide has a genuine spherical cap rather than a flat Z offset', () => {
+  for (const [x, y] of [
+    [0, 0],
+    [0.02, 0],
+    [0.02, 0.02],
+    [-0.02, 0.02],
+  ]) {
+    const dz = Math.sqrt(thicknessUm * thicknessUm - x * x - y * y);
+    const surface = [x, y, 130 + dz];
+    eq(shell.closest(surface).distanceUm, thicknessUm, 1e-9);
+    assert.equal(shell.sample([x, y, 130 + dz + 0.005]).phase, 'void');
+  }
+});
+
 test('source Si and coating have exclusive material ownership, including exact interfaces', () => {
   for (const x of [-5.8, -3.2, 0, 1.6, 3.2, 5.8]) {
     for (const y of [-5.8, 0, 1.6, 3.2, 5.8]) {
