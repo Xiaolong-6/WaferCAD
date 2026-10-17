@@ -3072,7 +3072,16 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
+        // Small/non-array scenes update materials in place rather than
+        // constructing separate opaque and transparent scene groups. The
+        // active variant and its cache key must follow those materials;
+        // otherwise later requests see a stale sceneVariant and can restore
+        // a cache entry labeled with the wrong presentation mode.
+        clearSceneVariantCache();
+        activeSceneVariant = targetVariant;
+        host.dataset.sceneVariant = targetVariant;
         applyPresentationState();
+        cacheActiveSceneVariant();
         return;
       }
     }
