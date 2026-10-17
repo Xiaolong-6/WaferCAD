@@ -215,14 +215,29 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      - name: Check explicit no-Worker rough fallback readiness
+      - name: Check explicit no-Worker rough fallback matrix
         if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
         env:
-          WAFERCAD_AUDIT_FILTER: rect-stochastic-exposed
           WAFERCAD_AUDIT_NO_WORKER: '1'
           WAFERCAD_AUDIT_TIMEOUT: '30000'
           WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-no-worker
-        run: node scripts/pr250-renderer-audit.mjs
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.number }}" == "250" ]]; then
+            # Recheck the formerly failed no-Worker 8-fixture, 40-capture matrix.
+            node scripts/pr250-renderer-audit.mjs
+          else
+            WAFERCAD_AUDIT_FILTER=rect-stochastic-exposed node scripts/pr250-renderer-audit.mjs
+          fi
+
+      - name: Upload PR250 no-Worker matrix evidence
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.number == 250 && needs.plan.outputs.renderer == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr250-no-worker-${{ github.sha }}
+          path: test-results/product-review/pr250-no-worker/
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Check rough boundary and depth visibility evidence
         if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
