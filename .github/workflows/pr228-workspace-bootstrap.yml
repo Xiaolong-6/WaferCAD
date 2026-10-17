@@ -21,16 +21,16 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Package exact-head source and pinned dependencies for offline local validation
         run: |
-          tar -czf pr228-local-workspace.tgz \
+          tar -czf "$RUNNER_TEMP/pr228-local-workspace.tgz" \
             --exclude=.git \
             --exclude=.cache \
             --exclude=test-results \
             --exclude=pr228-local-workspace.tgz \
             .
-          ls -lh pr228-local-workspace.tgz
+          ls -lh "$RUNNER_TEMP/pr228-local-workspace.tgz"
       - uses: actions/upload-artifact@v4
         with:
           name: pr228-local-workspace-once
-          path: pr228-local-workspace.tgz
+          path: ${{ runner.temp }}/pr228-local-workspace.tgz
           retention-days: 2
           if-no-files-found: error
