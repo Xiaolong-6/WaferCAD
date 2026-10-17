@@ -45,13 +45,43 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-1.55.1
       - run: npx playwright install --with-deps chromium
+      - name: Start shared preview server for full Example acceptance
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[visual-photodetector-full]') }}
+        run: |
+          WAFERCAD_V2_PORT=4189 node scripts/v2/serve-v2.mjs > "${{ runner.temp }}/wafercad-visual-server.log" 2>&1 &
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent http://127.0.0.1:4189/app.html > /dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          cat "${{ runner.temp }}/wafercad-visual-server.log"
+          exit 1
       - name: Capture actual production UI v2 at desktop and portrait widths
+        env:
+          WAFERCAD_V2_BASE: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[visual-photodetector-full]') && 'http://127.0.0.1:4189' || '' }}
+        run: npm run preview:visual
+      - name: Capture real full Photodetector Open and roughness
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[visual-photodetector-full]') }}
+        env:
+          WAFERCAD_V2_BASE: http://127.0.0.1:4189
+          WAFERCAD_VISUAL_START: empty
+          WAFERCAD_VISUAL_OPEN_PROJECT: photodetector-literature-examples.wafercad
+          WAFERCAD_VISUAL_EXPECT_PROJECT: photodetector-literature-examples.wafercad
+          WAFERCAD_VISUAL_EXPECT_LAYERS: '6'
+          WAFERCAD_VISUAL_EXPECT_REGIONS: '5'
+          WAFERCAD_VISUAL_REQUIRE_ROUGH: '1'
+          WAFERCAD_VISUAL_VIEWPORTS: 1440x900
+          WAFERCAD_VISUAL_SWIFTSHADER: '1'
+          WAFERCAD_VISUAL_OUTPUT: test-results/visual-first-photodetector
         run: npm run preview:visual
       - name: Upload unreviewed evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: visual-first-${{ github.sha }}
-          path: test-results/visual-first/
+          path: |
+            test-results/visual-first/
+            test-results/visual-first-photodetector/
           retention-days: 7
           if-no-files-found: warn
