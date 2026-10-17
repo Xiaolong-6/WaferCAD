@@ -14,9 +14,11 @@ import { loadGeometryKernel } from './process-benchmarks.mjs';
 
 await loadGeometryKernel();
 
-const directory = resolve('test-results/swx-sem-v2/browser');
+const root = resolve(process.env.WAFERCAD_SWX_SEM_OUTPUT || 'test-results/swx-sem-v2');
+const directory = resolve(root, 'browser');
 await mkdir(directory, { recursive: true });
-const filename = resolve('test-results/swx-sem-v2/swx-sem-v2-unit.wafercad');
+const filename = resolve(root, process.env.WAFERCAD_SWX_SEM_PROJECT || 'swx-sem-v2-unit.wafercad');
+const exportPrefix = process.env.WAFERCAD_SWX_SEM_EXPORT_PREFIX || 'sem-v2';
 const source = await readProjectFile(new Blob([await readFile(filename)]));
 assert.equal(source.snapshotBranches.branches.length, 2);
 assert.ok(source.layout.elements.length > 0);
@@ -125,7 +127,7 @@ try {
           page.waitForEvent('download', { timeout: 120000 }),
           action.click({ timeout: 120000, noWaitAfter: true }),
         ]);
-        const path = resolve(directory, 'sem-v2-' + state + '.' + format);
+        const path = resolve(directory, exportPrefix + '-' + state + '.' + format);
         await download.saveAs(path);
         const bytes = await readFile(path);
         const parsed =
