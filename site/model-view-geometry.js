@@ -289,6 +289,32 @@ function annotationSurfaceGroups(fragments) {
   }));
 }
 
+// Back-side contact holes can partition the host region without changing
+// the front Implant's physical volume. An independent cap/ROI mesh per host
+// fragment would retain these bookkeeping seams on the rough front surface.
+// Coalesce only *identical* physical Implant fragments at the presentation
+// boundary; neither Kernel regions nor stored annotation patches are edited.
+function coalesceImplantDisplayFragments(fragments) {
+  if (fragments.length < 2) return fragments;
+  const groups = new Map();
+  for (const fragment of fragments) {
+    const { polys, viewClipped, ...physical } = fragment;
+    // Includes ID, face, source/inner/outer Z, depth, tilt, rough appearance
+    // and exposure. Differing materials or surface owners cannot merge.
+    const key = JSON.stringify(physical);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(fragment);
+  }
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    return {
+      ...group[0],
+      polys: unionGeometries(group.map((fragment) => fragment.polys)),
+      viewClipped: group.some((fragment) => fragment.viewClipped),
+    };
+  });
+}
+
 function annotationSolids(fragments) {
   return fragments.map((fragment) => ({
     ...fragment,
@@ -367,7 +393,7 @@ export function implantSurfaceGroups(model, clip = null) {
 export function implantSolids(model, clip = null) {
   if (isArrayModel(model))
     return implantSolids(resolveArrayModel(model, clip ? arrayBounds(clip) : null), clip);
-  return annotationSolids(implantFragments(model, clip));
+  return annotationSolids(coalesceImplantDisplayFragments(implantFragments(model, clip)));
 }
 
 // An ROI inspection face belongs to the ROI boundary, not every boundary of

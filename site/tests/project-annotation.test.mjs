@@ -9,7 +9,7 @@ const { applyOperation, createModel } = modelApi;
 const { annotationInspectionCutSegments, implantSectionBands, implantSolids } =
   await import('../model-view-geometry.js');
 const { validateProjectFile } = await import('../project-schema.js');
-const { rectMulti } = await import('../vector-geometry.js');
+const { rectMulti, circleMulti, pointInMulti } = await import('../vector-geometry.js');
 
 test('Implant inspection faces include only overlapping ROI edges, never host partition edges', () => {
   const clip = [
@@ -52,6 +52,88 @@ test('Implant inspection faces include only overlapping ROI edges, never host pa
   assert.deepEqual(
     annotationInspectionCutSegments({ polys: rectMulti(1, 1) }, rectMulti(10, 10)),
     [],
+  );
+});
+
+test('PERC back contact partition cannot split equivalent front rough Implant display solids', () => {
+  const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
+  const roughness = {
+    kind: 'rough',
+    morphology: 'stochastic',
+    polarity: 'inverted',
+    featureSize: 0.4,
+    meanHeight: 0.25,
+    featureCv: 0.2,
+    heightCv: 0.2,
+    seed: 41,
+    profileId: 'perc-front-back-isolation',
+    geometryMode: 'ideal',
+  };
+  assert.equal(
+    applyOperation(model, {
+      type: 'etch',
+      face: 'front',
+      thickness: 0.4,
+      area: rectMulti(20, 20),
+      surface: roughness,
+    }).changed,
+    true,
+  );
+  assert.equal(
+    applyOperation(model, {
+      type: 'implant',
+      face: 'front',
+      thickness: 0.5,
+      name: 'PERC light phosphorus',
+      area: rectMulti(16, 16),
+    }).changed,
+    true,
+  );
+  const roi = rectMulti(12, 10);
+  const before = implantSolids(model, roi);
+  assert.equal(before.length, 1);
+  const reference = structuredClone(model.implants);
+  const regionCount = model.regions.length;
+
+  // This hole is etched from the rear only; it divides host regions, but
+  // does not change front Si roughness or the implantation volume.
+  assert.equal(
+    applyOperation(model, {
+      type: 'etch',
+      face: 'back',
+      thickness: 0.6,
+      area: circleMulti(3, 3, 64, 3, 0),
+    }).changed,
+    true,
+  );
+  assert.ok(model.regions.length > regionCount, 'rear contact must partition the host');
+  const after = implantSolids(model, roi);
+  assert.equal(after.length, 1, 'rear host bookkeeping must not divide the front Implant cap');
+  assert.equal(after[0].surfaceExposed, before[0].surfaceExposed);
+  assert.equal(after[0].outerZ, before[0].outerZ);
+  assert.equal(after[0].innerZ, before[0].innerZ);
+  assert.deepEqual(after[0].surfaceAppearance, before[0].surfaceAppearance);
+  assert.equal(after[0].viewClipped, before[0].viewClipped);
+  assert.deepEqual(
+    model.implants,
+    reference,
+    'display union must not mutate canonical Implant data',
+  );
+  for (let x = -7; x <= 7; x += 0.5) {
+    for (let y = -6; y <= 6; y += 0.5) {
+      assert.equal(
+        pointInMulti([x + 0.013, y + 0.019], after[0].polys),
+        pointInMulti([x + 0.013, y + 0.019], before[0].polys),
+        `front implant coverage changed at (${x}, ${y})`,
+      );
+    }
+  }
+  // Hidden host boundaries must not become front ROI Cut or material holes.
+  const cuts = annotationInspectionCutSegments(after[0], roi);
+  assert.ok(cuts.length > 0);
+  assert.ok(
+    cuts.every(({ p, q }) => !(p[0] === 1.5 && q[0] === 1.5)),
+    'back-contact seam must not be emitted as a front Implant ROI wall',
   );
 });
 
