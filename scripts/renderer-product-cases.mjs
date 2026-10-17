@@ -434,7 +434,18 @@ export async function runRendererProductCases({ page, capture }) {
   await page.locator('#threeMaxBtn').click();
   await page.locator('#threePanel .three-opacity-control > summary').click();
   await page.locator('#threeOpacityRange').fill('0.5');
+  // A range fill alone can leave the model at its previous opaque setting.
+  // Commit the actual input event and wait for the transparent Renderer state.
+  await page.locator('#threeOpacityRange').dispatchEvent('input');
   await page.locator('#threePanel .three-opacity-control > summary').click();
+  await page.waitForFunction(
+    () => {
+      const host = document.getElementById('threeHost');
+      return host?.dataset.sceneVariant === 'transparent' && host.dataset.renderState === 'ready';
+    },
+    null,
+    { timeout: 20000 },
+  );
   await waitForPaint(page);
   await page.locator('#threeMaxBtn').click();
   await capture(page, 'wide-rough-3d-transparent-max');
@@ -447,9 +458,17 @@ export async function runRendererProductCases({ page, capture }) {
   assert.equal(await page.locator('#threeBorders').isChecked(), true);
   await page.locator('#threeMaxBtn').click();
   await page.waitForFunction(
-    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    () => {
+      const host = document.getElementById('threeHost');
+      return host?.dataset.sceneVariant === 'transparent' && host.dataset.renderState === 'ready';
+    },
     null,
     { timeout: 20000 },
+  );
+  assert.equal(
+    await page.locator('#threeOpacityRange').inputValue(),
+    '0.5',
+    'Opacity control must remain at 50% after maximize and Border toggle',
   );
   const outlineDiagnostics = await page.locator('#threeHost').evaluate((host) => ({
     sceneVariant: host.dataset.sceneVariant,
