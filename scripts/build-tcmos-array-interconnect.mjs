@@ -105,7 +105,7 @@ export function buildTcmosRoutedOverlay() {
     const padX = n4(cell.x + spec.outputPadLocalX);
     const outputNet = localNet('VOUT', cell);
     emit('M3', outputNet, 'm3-output-trace/' + cell.id,
-      horizontal(outX, padX, outY, spec.m3WireWidth));
+      horizontal(outX - spec.m3WireWidth / 2, padX, outY, spec.m3WireWidth));
     emit('M3', outputNet, 'm3-output-pad/' + cell.id,
       square(padX, outY, spec.outputPadWidth));
     ports.push({
@@ -126,7 +126,7 @@ export function buildTcmosRoutedOverlay() {
       const y0 = sites[0].y + PIN[name][1];
       const y1 = sites.at(-1).y + PIN[name][1];
       emit('M3', name, 'm3-trunk/' + name + '/' + column,
-        vertical(x, y0, y1, spec.m3WireWidth));
+        vertical(x, y0 - spec.m3WireWidth / 2, y1 + spec.m3WireWidth / 2, spec.m3WireWidth));
       vias.push({
         id: 'via-M3-M4/' + name + '/' + column,
         from: 'M3', to: 'M4', net: name,
@@ -138,7 +138,7 @@ export function buildTcmosRoutedOverlay() {
     const xs = [0, 1, 2, 3].map((column) =>
       n4(cells[column].x + PIN[name][0]));
     emit('M4', name, 'm4-bus/' + name,
-      horizontal(xs[0], xs.at(-1), spec.m4BusY[name], spec.m4BusWidth));
+      horizontal(xs[0] - spec.m4BusWidth / 2, xs.at(-1) + spec.m4BusWidth / 2, spec.m4BusY[name], spec.m4BusWidth));
     ports.push({
       id: 'port-' + name,
       net: name,
