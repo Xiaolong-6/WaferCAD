@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { planTopologySelectiveIsotropicRelease } from '../isotropic-release-topology.js';
-
 const vendorSource = readFileSync(
   new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
   'utf8',
@@ -13,6 +11,7 @@ new Function('module', 'exports', vendorSource)(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 
 const { createModel } = await import('../model.js');
+const { planTopologySelectiveIsotropicRelease } = await import('../isotropic-release-topology.js');
 const { rectMulti, multiBounds } = await import('../vector-geometry.js');
 
 function coatedFixture() {
