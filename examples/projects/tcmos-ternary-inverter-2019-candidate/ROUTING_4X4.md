@@ -93,6 +93,15 @@ Required commands after a real source checkout is available:
     node scripts/build-tcmos-array-physical-interconnect.mjs
     node scripts/tcmos-array-interconnect-browser-acceptance.mjs
 
+The real-browser script now independently checks **every one** of the
+251 supplementary rectangular polygons after both GDS and OAS roundtrips:
+layer/datatype, exact six-decimal coordinate bounding boxes, four genuine
+Manhattan vertices and rectangle area, rather than counting 3,963
+polygons alone. It also performs actual project Save, deliberate project-name
+mutation, Recovery Restore and strict equality of all restored 2.5D region
+XY/Z material stacks, layers and File Mask elements. Those assertions are
+**committed, not executed** in the current chat environment.
+
 The target browser acceptance script is
 `scripts/tcmos-array-interconnect-browser-acceptance.mjs`. It must open
 the **real generated routed project** in WaferCAD Workstation and capture
