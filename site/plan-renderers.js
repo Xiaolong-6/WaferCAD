@@ -95,6 +95,54 @@ export function createPlanRenderers({
     ctx.stroke();
     ctx.restore();
   }
+  function tracePresentedMask(ctx, e, v, style) {
+    const projected = e.points.map(maskPoint).map((point) => worldToCanvas(point, v));
+    if (!projected.length) return;
+    const bounds = {
+      x0: Math.min(...projected.map((point) => point[0])),
+      x1: Math.max(...projected.map((point) => point[0])),
+      y0: Math.min(...projected.map((point) => point[1])),
+      y1: Math.max(...projected.map((point) => point[1])),
+    };
+    ctx.save();
+    ctx.beginPath();
+    projected.forEach(([x, y], index) => {
+      if (index) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    const { color, mode, opacity } = style;
+    if (mode === 'fill' || mode === 'hatch') {
+      ctx.fillStyle = color;
+      ctx.globalAlpha *= opacity;
+      ctx.fill();
+      ctx.globalAlpha /= opacity;
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = mode === 'outline' ? 1.5 : 1;
+    ctx.stroke();
+    if (mode === 'hatch' || mode === 'cross') {
+      ctx.clip();
+      ctx.beginPath();
+      const { x0, x1, y0, y1 } = bounds;
+      if (mode === 'cross') {
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.moveTo(x1, y0);
+        ctx.lineTo(x0, y1);
+      } else {
+        const height = y1 - y0;
+        for (let x = x0 - height; x < x1 + height; x += 5) {
+          ctx.moveTo(x, y0);
+          ctx.lineTo(x + height, y1);
+        }
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = mode === 'cross' ? 0.8 : 0.65;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   function traceElement(ctx, e, v, selected) {
     const { hoveredLayerKey, maskTransform } = getState();
     const key = layerKey(e.layer, e.datatype),
@@ -444,19 +492,39 @@ export function createPlanRenderers({
     ctx.clearRect(0, 0, w, h);
     if (canvasTheme) drawPlanGrid(ctx, v, w, h, worldToCanvas, colors);
 
-    // Alignment reference: current process surface topology. Rough areas get a
-    // subtle neutral darkening so they read as wafer topography without changing
-    // the mask palette or material hue.
-    drawMaskStructureReference(ctx, v);
-    fillRoughPlanOverlay(ctx, v, activeFace === 'back', 0.07);
+    const presentation = maskSourceMode === 'file' ? layout.maskPresentation : null;
+    if (presentation) {
+      ctx.fillStyle = presentation.background;
+      ctx.fillRect(0, 0, w, h);
+    }
+    if (!presentation || presentation.showStructure) {
+      drawMaskStructureReference(ctx, v);
+      fillRoughPlanOverlay(ctx, v, activeFace === 'back', 0.07);
+    }
 
     if (maskSourceMode === 'draw') {
       getDrawMaskController()?.render(ctx, v, maskOpacity);
     } else {
       ctx.save();
-      ctx.globalAlpha = maskOpacity;
-      for (const e of layout.linework || []) traceElement(ctx, e, v, false);
-      for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+      ctx.globalAlpha = presentation ? 1 : maskOpacity;
+      if (presentation) {
+        // Keep the physical File Mask unchanged. Presentation is an opt-in,
+        // display-only overlay with per-layer ordering and visual semantics.
+        for (const style of presentation.layers) {
+          for (const element of layout.elements || []) {
+            if (element.layer !== style.layer || element.datatype !== style.datatype) continue;
+            if (selectedElement(element)) tracePresentedMask(ctx, element, v, style);
+          }
+        }
+        if (presentation.showUnselected) {
+          for (const element of layout.elements || []) {
+            if (!selectedElement(element)) traceElement(ctx, element, v, false);
+          }
+        }
+      } else {
+        for (const e of layout.linework || []) traceElement(ctx, e, v, false);
+        for (const e of layout.elements || []) traceElement(ctx, e, v, selectedElement(e));
+      }
       ctx.restore();
     }
 

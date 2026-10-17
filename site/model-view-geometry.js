@@ -149,12 +149,14 @@ function deriveAnnotationVolumeFragments(items, model, kind) {
   const fragments = [];
   for (const item of items || []) {
     if (item.visible === false) continue;
-    const thickness = Math.max(0, Number(item.thickness) || 0);
+    const totalDepth = Math.max(0, Number(item.thickness) || 0);
+    const startDepth = kind === 'implant' ? Number(item.depthStart || 0) : 0;
+    const thickness = totalDepth - startDepth;
     if (!(thickness > 1e-12)) continue;
 
     for (const patch of item.patches || []) {
-      const sourceLow = item.face === 'front' ? patch.z - thickness : patch.z,
-        sourceHigh = item.face === 'front' ? patch.z : patch.z + thickness;
+      const sourceLow = item.face === 'front' ? patch.z - totalDepth : patch.z + startDepth,
+        sourceHigh = item.face === 'front' ? patch.z - startDepth : patch.z + totalDepth;
 
       for (const region of model.regions || []) {
         if (!region.stack?.length) continue;
@@ -177,7 +179,7 @@ function deriveAnnotationVolumeFragments(items, model, kind) {
           const currentSurfaceSegment =
               item.face === 'front' ? region.stack.at(-1) : region.stack[0],
             currentSurfaceZ = item.face === 'front' ? currentHigh : currentLow,
-            sourceSurfaceZ = Number(patch.z),
+            sourceSurfaceZ = Number(patch.z) + (item.face === 'front' ? -startDepth : startDepth),
             currentCutsAnnotation =
               item.face === 'front'
                 ? currentSurfaceZ < sourceSurfaceZ - 1e-9

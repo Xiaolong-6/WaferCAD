@@ -160,13 +160,15 @@ test('Mask alignment view overlays neutral structure outlines beneath adjustable
   assert.match(html, /id="maskOpacityValue"/);
   assert.match(planRenderers, /function drawMaskStructureReference\(/);
   assert.match(planRenderers, /maskStructurePatches\(\)/);
-  assert.match(planRenderers, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(planRenderers, /ctx\.globalAlpha = presentation \? 1 : maskOpacity/);
+  assert.match(planRenderers, /getDrawMaskController\(\)\?\.render\(ctx, v, maskOpacity\)/);
   assert.match(planRenderers, /drawMaskStructureReference\(ctx, v\)/);
 });
 
 test('Mask alignment opacity is persisted and applies only to the mask overlay', () => {
   assert.match(html, /id="maskOpacityRange"/);
-  assert.match(planRenderers, /ctx\.globalAlpha = maskOpacity/);
+  assert.match(planRenderers, /ctx\.globalAlpha = presentation \? 1 : maskOpacity/);
+  assert.match(planRenderers, /getDrawMaskController\(\)\?\.render\(ctx, v, maskOpacity\)/);
   assert.match(planRenderers, /drawMaskStructureReference\(ctx, v\)/);
   assert.match(planRenderers, /same-height surface groups across materials/);
   assert.match(projectState, /maskOpacity: state\.maskOpacity/);

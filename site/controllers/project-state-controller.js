@@ -178,6 +178,7 @@ export function createProjectStateController({
         maskOpacity: state.maskOpacity,
         threeOpacity: state.threeOpacity,
         threeShowBorders: state.threeShowBorders,
+        ...(state.threeCutaway ? { threeCutaway: true } : {}),
         threeFastMode: state.threeFastMode !== false,
         threeCamera: state.threeCamera,
         sectionScaleMode: state.sectionScaleMode,
@@ -231,6 +232,7 @@ export function createProjectStateController({
       ),
       threeOpacity = Math.max(0.1, Math.min(1, Number(project.display?.threeOpacity) || 1)),
       threeShowBorders = Boolean(project.display?.threeShowBorders),
+      threeCutaway = Boolean(project.display?.threeCutaway),
       threeCamera =
         project.display?.threeCamera && typeof project.display.threeCamera === 'object'
           ? structuredClone(project.display.threeCamera)
@@ -285,6 +287,7 @@ export function createProjectStateController({
       maskOpacity,
       threeOpacity,
       threeShowBorders,
+      threeCutaway,
       threeFastMode: project.display?.threeFastMode !== false,
       threeCamera,
       sectionScaleMode,
@@ -333,6 +336,7 @@ export function createProjectStateController({
       maskOpacity: previous.maskOpacity,
       threeOpacity: previous.threeOpacity,
       threeShowBorders: previous.threeShowBorders,
+      threeCutaway: false,
       threeFastMode: previous.threeFastMode !== false,
       threeCamera: null,
       planViews: {

@@ -31,6 +31,7 @@ const LIMITS = {
   drawMaskShapes: 10000,
   implants: 10000,
   implantPatches: 200000,
+  dopantRegions: 10000,
   electricalRegions: 10000,
   electricalRegionPatches: 200000,
   recipeSteps: 1000,
@@ -508,6 +509,12 @@ function validateModel(model, budget, geometryCache) {
         fail(`${path}.face`, 'must be front or back.');
       }
       assertLength(implant.thickness, `${path}.thickness`, { min: 1e-12 });
+      if (implant.depthStart != null) {
+        assertFinite(implant.depthStart, `${path}.depthStart`, { min: 0 });
+        if (!(implant.depthStart < implant.thickness)) {
+          fail(`${path}.depthStart`, 'must be less than implant thickness (total depth).');
+        }
+      }
       assertFinite(implant.tilt, `${path}.tilt`, { min: -80, max: 80 });
       if (implant.depthProfile != null && !['follow', 'smooth'].includes(implant.depthProfile)) {
         fail(`${path}.depthProfile`, 'must be follow or smooth.');
@@ -532,6 +539,47 @@ function validateModel(model, budget, geometryCache) {
           validateSurfaceAppearance(patch.surfaceAppearance, `${patchPath}.surfaceAppearance`);
         }
       });
+    });
+  }
+
+  if (model.dopantRegions != null) {
+    const dopants = assertArray(model.dopantRegions, 'model.dopantRegions', LIMITS.dopantRegions);
+    const ids = new Set();
+    const polarities = new Set(['donor', 'acceptor']);
+    const roles = new Set(['well', 'body', 'source-drain', 'channel', 'contact']);
+    dopants.forEach((dopant, index) => {
+      const path = `model.dopantRegions[${index}]`;
+      assertObject(dopant, path);
+      const id = assertString(dopant.id, `${path}.id`, { max: 128 });
+      if (ids.has(id)) fail(`${path}.id`, 'must be unique.');
+      ids.add(id);
+      assertString(dopant.name, `${path}.name`, { max: 256 });
+      if (!polarities.has(dopant.polarity)) fail(`${path}.polarity`, 'is not supported.');
+      if (!roles.has(dopant.role)) fail(`${path}.role`, 'is not supported.');
+      if (!['front', 'back'].includes(dopant.face)) fail(`${path}.face`, 'must be front or back.');
+      const host = assertString(dopant.hostLayerId, `${path}.hostLayerId`, { max: 128 });
+      if (!layerIds.has(host)) fail(`${path}.hostLayerId`, 'references an unknown material.');
+      validateMultiPolygon(dopant.area, `${path}.area`, budget);
+      if (!dopant.area.length) fail(`${path}.area`, 'must not be empty.');
+      assertCoordinate(dopant.sourceZ, `${path}.sourceZ`);
+      assertFinite(dopant.depthStartUm, `${path}.depthStartUm`, { min: 0 });
+      assertLength(dopant.depthEndUm, `${path}.depthEndUm`, { min: 1e-12 });
+      if (!(dopant.depthStartUm < dopant.depthEndUm)) {
+        fail(path, 'requires depthStartUm < depthEndUm.');
+      }
+      assertObject(dopant.profile, `${path}.profile`);
+      if (dopant.profile.kind !== 'qualitative-interval') {
+        fail(
+          `${path}.profile.kind`,
+          'must be qualitative-interval; concentrations are not supported.',
+        );
+      }
+      if (dopant.sourceImplantId != null) {
+        assertString(dopant.sourceImplantId, `${path}.sourceImplantId`, { max: 128 });
+      }
+      if (dopant.provenance != null) {
+        assertString(dopant.provenance, `${path}.provenance`, { max: 256 });
+      }
     });
   }
 
@@ -789,6 +837,37 @@ function validateLayout(layout, budget) {
     assertInteger(combo.count, `${path}.count`, { min: 0 });
   });
 
+  if (layout.maskPresentation != null) {
+    const presentation = assertObject(layout.maskPresentation, 'layout.maskPresentation');
+    if (presentation.version !== 1) fail('layout.maskPresentation.version', 'must be 1.');
+    if (!/^#[0-9a-fA-F]{6}$/.test(presentation.background)) {
+      fail('layout.maskPresentation.background', 'must be a six-digit hex color.');
+    }
+    for (const key of ['showStructure', 'showUnselected']) {
+      if (typeof presentation[key] !== 'boolean') {
+        fail('layout.maskPresentation.' + key, 'must be boolean.');
+      }
+    }
+    const styles = assertArray(presentation.layers, 'layout.maskPresentation.layers', 32);
+    const identifiers = new Set();
+    for (const [index, style] of styles.entries()) {
+      const path = 'layout.maskPresentation.layers[' + index + ']';
+      assertObject(style, path);
+      assertInteger(style.layer, path + '.layer');
+      assertInteger(style.datatype, path + '.datatype');
+      const identifier = style.layer + '|' + style.datatype;
+      if (identifiers.has(identifier)) fail(path, 'contains duplicate layer and datatype.');
+      identifiers.add(identifier);
+      if (!/^#[0-9a-fA-F]{6}$/.test(style.color)) {
+        fail(path + '.color', 'must be a six-digit hex color.');
+      }
+      if (!['fill', 'outline', 'hatch', 'cross'].includes(style.mode)) {
+        fail(path + '.mode', 'must be fill, outline, hatch, or cross.');
+      }
+      assertFinite(style.opacity, path + '.opacity', { min: 0, max: 1 });
+    }
+  }
+
   const hierarchy = assertObject(layout.hierarchy, 'layout.hierarchy');
   const entries = Object.entries(hierarchy);
   if (entries.length > LIMITS.hierarchyCells) fail('layout.hierarchy', 'contains too many cells.');
@@ -962,6 +1041,9 @@ function validateDisplay(display) {
   }
   if (display.threeShowBorders != null && typeof display.threeShowBorders !== 'boolean') {
     fail('display.threeShowBorders', 'must be boolean.');
+  }
+  if (display.threeCutaway != null && typeof display.threeCutaway !== 'boolean') {
+    fail('display.threeCutaway', 'must be boolean.');
   }
   if (display.threeCamera != null) {
     const view = assertObject(display.threeCamera, 'display.threeCamera'),

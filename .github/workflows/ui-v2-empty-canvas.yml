@@ -14,6 +14,7 @@ on:
       - 'site/model.js'
       - 'site/plan-grid.js'
       - 'site/plan-renderers.js'
+      - 'site/tests/function-panel-feedback.test.mjs'
       - 'scripts/v2/check-empty-canvas-hints.mjs'
       - '.github/workflows/ui-v2-empty-canvas.yml'
   workflow_dispatch:

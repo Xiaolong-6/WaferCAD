@@ -70,6 +70,14 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
       text: async () => bytes.toString('utf8'),
     });
     validateProjectFile(packed);
+    // Older bundled fixtures predate the optional qualitative Dopant Region
+    // collection. Absence and an empty array are semantically identical;
+    // every other model field must still match exactly.
+    const withoutEmptyDopants = (model) => {
+      const copy = structuredClone(model);
+      if (!copy.dopantRegions?.length) delete copy.dopantRegions;
+      return copy;
+    };
     // The shipped .wafercad snapshot is a historical project: loading it must
     // preserve its authored Base color, even though new projects now use a
     // lighter default. Compare all physical geometry and other material
@@ -80,7 +88,10 @@ test('MAGIC-1000 reconstructs every layer through live kernel, with validated hi
     assert.equal(generatedBase?.color, '#DDE4EC', 'New projects use current Base color');
     const generatedWithLegacyBase = structuredClone(project.model);
     generatedWithLegacyBase.layers.find((layer) => layer.id === 'base').color = packedBase.color;
-    assert.deepEqual(packed.model, generatedWithLegacyBase);
+    assert.deepEqual(
+      withoutEmptyDopants(packed.model),
+      withoutEmptyDopants(generatedWithLegacyBase),
+    );
     assert.equal(packed.processRecipe.steps.length, project.processRecipe.steps.length);
   }
 });

@@ -332,7 +332,9 @@ export function createThreeView({
       }),
       bounds = visibleBounds(model, getClipGeometry()),
       xySpan = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1e-12),
-      scale = (xySpan * 0.12) / Math.max(transform.displaySpan, 1e-12);
+      // Cutaway changes only the display transform, never canonical Z values.
+      cutaway = Boolean(getClipGeometry() && getInspection()?.cutaway),
+      scale = (xySpan * (cutaway ? 0.44 : 0.12)) / Math.max(transform.displaySpan, 1e-12);
 
     return {
       ...transform,
@@ -1062,6 +1064,7 @@ export function createThreeView({
       processRevision: model?.processRevision ?? 0,
       fast: inspection?.fast !== false,
       clip: clip || null,
+      cutaway: Boolean(clip && inspection?.cutaway),
       zCollapse: getZCollapse?.() || null,
       layers,
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
@@ -1097,6 +1100,7 @@ export function createThreeView({
 
   function presentationState(descriptor, inspection = getInspection() || {}) {
     const materialState = inspectionMaterialState(inspection.opacity),
+      roiCutaway = Boolean(getClipGeometry() && inspection.cutaway),
       opacity = materialState.opacity,
       transparent = materialState.transparent,
       alwaysTransparent = (value) => ({
@@ -1138,26 +1142,37 @@ export function createThreeView({
         return {
           visible: true,
           materialState: alwaysTransparent(
-            opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
+            roiCutaway ? 0.94 : opacity * (transparent ? 0.5 : IMPLANT_DEPTH_GRADIENT.outerAlpha),
           ),
           transparentSort: true,
+        };
+      case 'implant-outline':
+        return {
+          visible: roiCutaway,
+          materialState: {
+            opacity: 1,
+            transparent: false,
+            depthTest: true,
+            depthWrite: false,
+          },
+          transparentSort: false,
         };
       case 'implant-internal':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.18),
+          materialState: alwaysTransparent(opacity * (roiCutaway ? 0.06 : 0.18)),
           transparentSort: true,
         };
       case 'implant-depth':
         return {
           visible: transparent,
-          materialState: alwaysTransparent(opacity * 0.24),
+          materialState: alwaysTransparent(opacity * (roiCutaway ? 0.2 : 0.24)),
           transparentSort: true,
         };
       case 'implant-surface':
         return {
           visible: transparent || Boolean(descriptor?.exposed),
-          materialState: alwaysTransparent(opacity * 0.3),
+          materialState: alwaysTransparent(opacity * (roiCutaway ? 0.08 : 0.3)),
           transparentSort: true,
         };
       case 'electrical-internal':
@@ -1182,7 +1197,7 @@ export function createThreeView({
       default:
         return {
           visible: true,
-          materialState,
+          materialState: roiCutaway ? alwaysTransparent(0.3) : materialState,
           transparentSort: materialState.transparent,
         };
     }
@@ -1350,6 +1365,8 @@ export function createThreeView({
     if (!group || !presentationObjects.size) return false;
     const started = performance.now(),
       inspection = getInspection() || {};
+    // Axes are navigation aids, not scientific geometry. Keep the cut face clear.
+    if (axesHelper) axesHelper.visible = !Boolean(getClipGeometry() && inspection.cutaway);
     for (const object of presentationObjects) {
       const descriptor = object.userData?.waferCadPresentation;
       if (!descriptor) continue;
@@ -1503,6 +1520,43 @@ export function createThreeView({
     }
     geometry.setAttribute('annotationDepth', new THREE.Float32BufferAttribute(values, 1));
     return geometry;
+  }
+
+  // Exact outlines of the illustrative ROI-cut annotation interval. These are
+  // physical annotation bounds only; never interpret them as a solved junction.
+  function addAnnotationCutOutline(annotation, segments) {
+    if (!segments?.length) return null;
+    const positions = [];
+    const shear = Math.tan(((Number(annotation.tilt) || 0) * Math.PI) / 180);
+    const atZ = (xy, z) => {
+      const depth = annotation.face === 'front' ? annotation.sourceZ - z : z - annotation.sourceZ;
+      return [xy[0] + shear * Math.max(0, depth), xy[1], z];
+    };
+    const edge = (a, b) => positions.push(...a, ...b);
+    for (const { p, q } of segments) {
+      const p0 = atZ(p, annotation.z0);
+      const q0 = atZ(q, annotation.z0);
+      const p1 = atZ(p, annotation.z1);
+      const q1 = atZ(q, annotation.z1);
+      edge(p0, q0);
+      edge(q0, q1);
+      edge(q1, p1);
+      edge(p1, p0);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const material = new THREE.LineBasicMaterial({
+      color: new THREE.Color(annotation.color || '#D65A6F').lerp(new THREE.Color(0x111820), 0.5),
+      depthTest: true,
+      depthWrite: false,
+    });
+    const outline = new THREE.LineSegments(geometry, material);
+    outline.name = 'Illustrative Implant interval ROI cut outline';
+    outline.renderOrder = 100100;
+    group.add(outline);
+    trackZDisplayObject(outline);
+    registerPresentationObject(outline, { kind: 'implant-outline' });
+    return outline;
   }
 
   function annotationSidewallParts(annotation, inspectionClip = null) {
@@ -1765,11 +1819,11 @@ export function createThreeView({
   function createAnnotationGradientMaterial(
     annotation,
     materialState,
-    { roughness = 0.72, metalness = 0 } = {},
+    { roughness = 0.72, metalness = 0, flatDepth = false } = {},
   ) {
     const { midDepth, outerAlpha, midAlpha, innerAlpha } = IMPLANT_DEPTH_GRADIENT,
-      midScale = midAlpha / outerAlpha,
-      innerScale = innerAlpha / outerAlpha,
+      midScale = flatDepth ? 1 : midAlpha / outerAlpha,
+      innerScale = flatDepth ? 1 : innerAlpha / outerAlpha,
       material = new THREE.MeshStandardMaterial({
         color: annotation?.color || '#D65A6F',
         roughness,
@@ -1781,7 +1835,8 @@ export function createThreeView({
         depthWrite: false,
       });
     material.userData.waferCadAnnotationGradient = 'section-depth';
-    material.customProgramCacheKey = () => 'wafercad-annotation-depth-gradient-v1';
+    material.customProgramCacheKey = () =>
+      flatDepth ? 'wafercad-annotation-flat-cut-v1' : 'wafercad-annotation-depth-gradient-v1';
     material.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader.replace(
         'void main() {',
@@ -3558,6 +3613,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       let implantInternalCount = 0,
         implantSurfaceCount = 0,
         implantCutCount = 0,
+        implantOutlineCount = 0,
         implantGradientMeshCount = 0;
       const annotationModel =
           isArrayModel(model) && clip ? resolveArrayModel(model, geometryBounds(clip)) : model,
@@ -3594,11 +3650,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
             );
 
         if (inspectionSegments.length) {
+          if (clip && inspection.cutaway && addAnnotationCutOutline(implant, inspectionSegments)) {
+            implantOutlineCount++;
+          }
           const presentation = { kind: 'implant-cut', sortBias: 46 },
             cutState = presentationState(presentation, inspection).materialState,
             cutGeometry = sidewallGeometry(clip),
             cutMaterial = createAnnotationGradientMaterial(implant, cutState, {
               roughness: appearance ? 0.8 : 0.72,
+              flatDepth: Boolean(clip && inspection.cutaway),
             });
           cutMaterial.polygonOffset = true;
           cutMaterial.polygonOffsetFactor = -2;
@@ -3754,6 +3814,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
       host.dataset.implantInternalBuiltCount = String(implantInternalCount);
       host.dataset.implantSurfaceBuiltCount = String(implantSurfaceCount);
       host.dataset.implantCutBuiltCount = String(implantCutCount);
+      host.dataset.implantOutlineBuiltCount = String(implantOutlineCount);
       host.dataset.implantGradientMeshCount = String(implantGradientMeshCount);
       host.dataset.implantGradient = 'section-depth';
 
