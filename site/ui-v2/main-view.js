@@ -66,7 +66,13 @@ export async function createMainView({ project, sharedState, workstation, render
     parts: [
       {
         text: 'Add',
-        onClick: () => document.querySelector('.p-nav [data-action="domain:process"]')?.click(),
+        onClick: () => {
+          // In compact View mode the editor domain buttons are detached from
+          // the nav host. Open Edit using the existing shell action first.
+          if (!document.querySelector('.p-nav [data-action="domain:process"]'))
+            document.querySelector('.p-nav [data-action="show-editor"]')?.click();
+          document.querySelector('.p-nav [data-action="domain:process"]')?.click();
+        },
       },
       ' a process step to see layers.',
     ],

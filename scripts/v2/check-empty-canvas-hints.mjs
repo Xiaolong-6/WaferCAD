@@ -254,6 +254,21 @@ try {
       const mainHint = page.locator('#mainPanel .v2-empty-hint');
       assert.equal(await mainHint.isVisible(), true, 'Mobile Main empty hint');
       await shot(page, 'mobile-empty-main');
+      // Compact View nav contains only view switches, not Process. Add must
+      // reveal the editor and select Process using the normal shell workflow.
+      await mainHint.getByRole('button', { name: 'Add' }).click();
+      await page.waitForFunction(() => {
+        const ui = window.WaferCadV2Workstation.snapshot().ui;
+        return ui.mobile === 'edit' && ui.domain === 'process';
+      });
+      assert.equal(await page.locator('.p-inspector').isVisible(), true);
+      assert.equal(await page.locator('#operationType').isVisible(), true);
+      await shot(page, 'mobile-add-opens-process');
+      report.cases.push({ label: 'mobile-main-add-to-process', status: 'pass' });
+      await page.locator('[data-action="return-results"]').click();
+      await page.waitForFunction(
+        () => window.WaferCadV2Workstation.snapshot().ui.mobile === 'view',
+      );
       await page.locator('[data-action="view:mask"]').click();
       await waitForPaint(page);
       assert.equal(await page.locator('#maskPanel .v2-empty-hint').isVisible(), true);
