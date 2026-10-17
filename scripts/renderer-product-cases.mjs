@@ -448,9 +448,7 @@ export async function runRendererProductCases({ page, capture }) {
           return false;
         }
         const types = JSON.parse(host.dataset.sceneTriangleKinds || '[]');
-        return types.some(
-          ([kind, triangles]) => kind === 'material-interface' && triangles > 0,
-        );
+        return types.some(([kind, triangles]) => kind === 'material-interface' && triangles > 0);
       },
       null,
       { timeout: 20000 },
