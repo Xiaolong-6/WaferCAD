@@ -7,6 +7,8 @@ on:
       - 'scripts/build-tcmos-inverter-example.mjs'
       - 'scripts/build-tcmos-array-patch.mjs'
       - 'scripts/build-tcmos-array-recipe-experiment.mjs'
+      - 'scripts/build-tcmos-array-interconnect.mjs'
+      - 'site/tests/tcmos-array-interconnect.test.mjs'
       - 'scripts/tcmos-array-recipe-browser-acceptance.mjs'
       - 'site/model-array-context.js'
       - 'site/model-array-process.js'
@@ -87,7 +89,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check focused regressions and generate project
         run: |
-          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/tests/tcmos-array-patch.test.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs
+          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/tests/tcmos-array-patch.test.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs
           node scripts/build-tcmos-inverter-example.mjs
           node scripts/build-tcmos-inverter-example.mjs --tilt-demo
           node scripts/build-tcmos-array-patch.mjs
@@ -95,7 +97,7 @@ jobs:
           cmp examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad
       - name: Check source formatting
         if: always()
-        run: npx prettier --check site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/tcmos-array-recipe-browser-acceptance.mjs scripts/build-tcmos-array-recipe-experiment.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs site/model-array-context.js site/model-array-process.js site/process-worker.js site/mask-instance-index.js scripts/tcmos-svg-mask-browser-acceptance.mjs scripts/tcmos-svg-mask.mjs scripts/build-tcmos-array-patch.mjs scripts/tcmos-array-browser-acceptance.mjs site/tests/tcmos-array-patch.test.mjs site/three-view.js site/tests/issue-11-3d-controls.test.mjs scripts/tcmos-browser-acceptance.mjs scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/process-recipe.js site/project-schema.js site/project-io.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
+        run: npx prettier --check scripts/build-tcmos-array-interconnect.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/tcmos-array-recipe-browser-acceptance.mjs scripts/build-tcmos-array-recipe-experiment.mjs site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs site/tests/mask-instance-index.test.mjs site/model-array-context.js site/model-array-process.js site/process-worker.js site/mask-instance-index.js scripts/tcmos-svg-mask-browser-acceptance.mjs scripts/tcmos-svg-mask.mjs scripts/build-tcmos-array-patch.mjs scripts/tcmos-array-browser-acceptance.mjs site/tests/tcmos-array-patch.test.mjs site/three-view.js site/tests/issue-11-3d-controls.test.mjs scripts/tcmos-browser-acceptance.mjs scripts/build-tcmos-inverter-example.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/implant-buried-interval.test.mjs site/tests/dopant-regions.test.mjs site/dopant-regions.js site/model.js site/process-recipe.js site/project-schema.js site/project-io.js site/controllers/process-panel-controller.js site/controllers/process-recipe-controller.js examples/projects/tcmos-ternary-inverter-2019-candidate/README.md
       - name: Share candidate project and verification evidence
         if: always()
         uses: actions/upload-artifact@v6
