@@ -37,6 +37,28 @@ test('documentation PR path ownership covers source documentation entrypoints', 
   }
 });
 
+test('current documentation does not advertise retired Legacy editor sources', async () => {
+  const repo = new URL('../../', import.meta.url);
+  for (const retired of ['app-legacy.html', 'app.js', 'workstation.css']) {
+    await assert.rejects(
+      access(new URL('site/' + retired, repo)),
+      { code: 'ENOENT' },
+      `retired ${retired} must not be treated as a current source`,
+    );
+  }
+  for (const path of [
+    'README.md',
+    'docs/DEVELOPMENT.md',
+    'docs/CI.md',
+    'docs/testing.md',
+    'docs/science/PROCESS_BOTH_FACE_2026-10-11.md',
+    'docs/wiki/Process-and-Recipes.md',
+  ]) {
+    const source = await readFile(new URL(path, repo), 'utf8');
+    assert.match(source, /legacy-frozen/, `${path}: point readers to the frozen source`);
+  }
+});
+
 test('all repository documentation is reachable with valid internal destinations', async () => {
   const result = await auditDocumentation();
   assert.deepEqual(result.errors, []);
