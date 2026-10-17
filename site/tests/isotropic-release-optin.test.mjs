@@ -8,9 +8,7 @@ const { applyOperation, createModel } = await import('../model.js');
 const { pointInMulti, rectMulti } = await import('../vector-geometry.js');
 
 function sectionStackAt(model, point) {
-  return (
-    model.regions.find((region) => pointInMulti(point, region.geom))?.stack || []
-  );
+  return model.regions.find((region) => pointInMulti(point, region.geom))?.stack || [];
 }
 
 function maskedMicroReleaseFixture() {

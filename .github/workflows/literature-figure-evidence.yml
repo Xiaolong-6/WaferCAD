@@ -9,6 +9,7 @@ on:
       - 'scripts/v2/check-m3d-second-power-via-section.mjs'
       - 'site/tests/literature-provenance-matrix.test.mjs'
       - 'site/isotropic-release-*.js'
+      - 'site/model.js'
       - 'site/tests/isotropic-release-*.test.mjs'
       - 'docs/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md'
       - 'docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
@@ -37,6 +38,7 @@ jobs:
           node --test
           site/tests/isotropic-release-oracle.test.mjs
           site/tests/isotropic-release.test.mjs
+          site/tests/isotropic-release-optin.test.mjs
           site/tests/isotropic-release-topology.test.mjs
           site/tests/literature-provenance-matrix.test.mjs
       - name: Show precise formatting differences
@@ -44,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           failure=0
-          for file in site/isotropic-release-topology.js site/tests/isotropic-release-topology.test.mjs site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs; do
+          for file in site/tests/isotropic-release-optin.test.mjs site/isotropic-release-topology.js site/tests/isotropic-release-topology.test.mjs site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs; do
             diff -u "$file" <(npx prettier "$file") || failure=1
           done
           exit "$failure"
