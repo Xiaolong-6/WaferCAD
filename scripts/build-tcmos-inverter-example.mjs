@@ -473,10 +473,6 @@ const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 const SVG_PROCESS_LAYERS = new Map(
   readTcmosReferenceMask().map(({ layer, shapes }) => [layer, shapes]),
 );
-// Storage and the live browser use the documented 0.0001 µm CAD
-// persistence grid. Match that grid here, before boolean operations, rather
-// than changing scientific test tolerances to conceal rounded vertices.
-const processGrid = (n) => Math.round(n * 10000) / 10000;
 const svgBounds = (points) => {
   const xs = points.map(([x]) => x),
     ys = points.map(([, y]) => y),
@@ -487,18 +483,18 @@ const svgBounds = (points) => {
 const svgPolygonMask = (points, index) => ({
   id: 'shape-' + (index + 1),
   type: 'polygon',
-  points: points.map((point) => point.map(processGrid)),
+  points: points.map((point) => [...point]),
 });
 const processRectMask = (r, index) => ({
   id: 'shape-' + (index + 1),
   type: 'rect',
-  a: [processGrid(r.x), processGrid(r.y)],
-  b: [processGrid(r.x + r.w), processGrid(r.y + r.h)],
+  a: [r.x, r.y],
+  b: [r.x + r.w, r.y + r.h],
 });
 // The foundry did not publish these five process windows. Derive them
 // deterministically from the SVG ACTIVE/POLY geometry, not from historical
 // raster guesses. They stay private to each Recipe step (sourceMode:draw).
-function tcmosProcessShapes(id) {
+export function tcmosProcessShapes(id) {
   const active = SVG_PROCESS_LAYERS.get(1);
   const poly = SVG_PROCESS_LAYERS.get(6);
   assert.ok(active?.length === 4 && poly?.length === 2, 'SVG ACTIVE/POLY source unavailable');
@@ -566,28 +562,18 @@ export function tcmosLayout() {
     maskPresentation: copy(TCMOS_MASK_PRESENTATION),
   };
 }
-// Process-only reconstruction windows do not belong to the user-supplied
-// eight-layer SVG File Mask (or to GDS/OAS exports). Store these windows as
-// immutable per-step Draw Mask captures instead of referring to absent File
-// Mask layers. Recipe replay and the generator then use identical regions.
-const INTERNAL_PROCESS_MASK_IDS = new Set([2, 3, 7, 8, 9]);
+// The approved SVG remains the external File Mask / GDS/OAS authority.
+// Capture *exact* source vertices (and derived internal windows) in each
+// Recipe step as Draw Mask data. This isolates replay from the File Mask
+// preview's coordinate-rounding path and makes History deterministic.
+// No SVG elements are changed or hidden auxiliary layers exported.
 function maskContext(id) {
-  const source = BY_ID.get(id);
-  assert.ok(source, 'Unknown mask: ' + id);
-  if (INTERNAL_PROCESS_MASK_IDS.has(id)) {
-    const shapes = tcmosProcessShapes(id);
-    return {
-      sourceMode: 'draw',
-      layerKeys: [],
-      drawMask: { nextShapeId: shapes.length + 1, shapes },
-      roi: null,
-    };
-  }
+  assert.ok(BY_ID.has(id), 'Unknown mask: ' + id);
+  const shapes = tcmosProcessShapes(id);
   return {
-    sourceMode: 'file',
-    cell: CELL,
-    layerKeys: [id + '|0'],
-    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    sourceMode: 'draw',
+    layerKeys: [],
+    drawMask: { nextShapeId: shapes.length + 1, shapes },
     roi: null,
   };
 }
