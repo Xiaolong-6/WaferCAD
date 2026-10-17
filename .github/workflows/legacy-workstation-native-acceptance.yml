@@ -1,0 +1,62 @@
+name: PR290 Native Workstation candidate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'scripts/v2/check-source-sunset-workstation.mjs'
+      - '.github/workflows/legacy-workstation-native-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr290-workstation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-workstation:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WAFERCAD_V2_BASE: http://127.0.0.1:4173
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Start production v2 server
+        run: |
+          python3 -m http.server 4173 --directory site >/tmp/pr290-workstation-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/app.html >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/pr290-workstation-http.log
+          exit 1
+      - name: Validate all native-v2 Workstation owner contracts
+        run: node scripts/v2/check-source-sunset-workstation.mjs
+      - name: Save actual workstation acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr290-native-workstation-${{ github.sha }}
+          path: |
+            test-results/ui-v2-desktop-docking/
+            test-results/ui-v2-mobile/
+            /tmp/pr290-workstation-http.log
+          retention-days: 7
+          if-no-files-found: ignore
