@@ -48,11 +48,62 @@ Expected structural invariants:
 - Every VIA12 square is wholly enclosed by exactly one approved M1 polygon; every VIA has exactly one correct metal owner above and below; no short/open circuit under the specified routing graph.
 - Negative tests inject a cross-net M3 bridge, wrong via ownership, and broken vertical trunk; all must fail rather than weakening the scientific checks.
 
+
+## World-space 2.5D physical-material candidate — implementation committed, **unverified**
+
+The supplemental **physical** generator `scripts/build-tcmos-array-physical-interconnect.mjs`
+has now been implemented **in the same dependent PR #329**. This is a
+separate, post-Recipe physical prototype; the topology-only overlay above
+remains a distinct input/evidence artifact.
+
+- It begins from the completed source-cell material, constructs the unconnected
+  native 16-cell array, and expands its **existing real 2.5D geometry** into a
+  world-space material partition. The unconnected array and its History remain
+  unchanged. Upper-level buses cross instance boundaries without modifying or
+  duplicating the source-cell template.
+- It uses original physical M1 as VIA12's lower conductor; fills intervening
+  **ILD2 / ILD3 / ILD4** dielectric volumes; constructs real W VIA12/VIA23/VIA34
+  material spans ending on M2/M3/M4 respectively. M2, M3, M4 each have a
+  common absolute Z plane, with 0.20 µm illustrative metal thickness and
+  0.30 µm gap to the next plane. The first plane is located above the original
+  modeled M1 stack's global highest point, so source-specific topography is not
+  discarded.
+- The script explicitly checks the **lower and upper physical metal identity**
+  in each Via column, nonzero Via Z thickness, touching adjacent Z intervals,
+  and exact material owner at the via. It validates the whole material model,
+  then serializes and reparses a fresh project.
+- **Nine actual material layers** are added (3 oxides, 3 tungsten Via layers
+  and 3 metal planes). The separate routed mask appends **six distinct
+  supplementary layer groups**, increasing this variant to **3,963 polygons /
+  14 mask groups**, while asserting that the original **3,712 source polygons
+  remain the exact unchanged prefix** even after storage roundtrip.
+- The routed model is a flattened **vector-2.5d-v1** model for global connectivity;
+  the source project remains **vector-2.5d-array-v1** with exactly the original
+  16 instances. Do not misrepresent the flattened new variant as native
+  Recipe/History replay.
+- **Do not claim the new 2.5D result validated yet.** The script is implemented
+  but no source checkout in this Chat execution environment has executed the
+  actual geometry kernel or a real Chromium visual test. The generated routed
+  `.wafercad` is **not committed or accepted**, nor are any true SiO2/Via
+  material interface measurements verified in the actual runtime.
+
+Required commands after a real source checkout is available:
+
+    node --test site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs
+    node scripts/build-tcmos-array-physical-interconnect.mjs
+    node scripts/tcmos-array-interconnect-browser-acceptance.mjs
+
+The target browser acceptance script is
+`scripts/tcmos-array-interconnect-browser-acceptance.mjs`. It must open
+the **real generated routed project** in WaferCAD Workstation and capture
+Main/Mask/3D/Section as applicable. The standalone SVG overlay is never a
+substitute for that visual acceptance.
+
 ## Required next gates before acceptance
 
-1. Implement physical M2/VIA12/M3/VIA23/M4/VIA34 materials on the real 4×4 model **without replacing** the source-approved File Mask or falsifying the existing 23-step Recipe/History. Prefer an explicit post-Recipe route stage and ensure true per-layer Z interfaces and dielectric ownership.
+1. **Run and audit** the newly implemented post-Recipe global 2.5D generator with the actual WaferCAD geometry Kernel. Verify every Via landing and the 3 intermetal oxide volumes; fix any true physical/schema defects rather than weakening assertions. Do not preserve or invent routed History/Recipe.
 2. Re-run source Mask GDS/OAS exact round-trip on the untouched source and **separately export** the supplemental routed mask stack with unique documented layer numbers and datatype. Prove there is no source-net short, missed via or non-Manhattan sliver.
-3. Run real local Chromium Main / Mask / 3D / Section snapshots for the routed variant, inspect M2–M4 alignment, section Via pillars and substrate contact, independently compare the unconnected original. Do not accept a standalone overlay SVG in place of these screenshots.
+3. Run the committed real-browser acceptance script and capture actual WaferCAD Main / Mask / 3D / Section for the newly generated physical project. Inspect M2–M4 alignment, Via pillars, dielectric and substrate contact and independently compare the unconnected original. Do not accept a standalone overlay SVG in place of these screenshots.
 4. Perform focused save/reopen, History/Recovery, Recipe scientific invariants, strict material slabs and unit tests; only after actual visuals pass, run necessary Targeted CI then full final Quality / release checks.
 
 **No Merge to Main or Welcome publication without explicit user approval.** This route is not a claim of measured electrical VTC, BTBT, ohmic body-tie, electrical parasitics or foundry DRC.
