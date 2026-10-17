@@ -123,8 +123,8 @@ try {
   );
   assert.equal(
     opened.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
-    false,
-    'The first-open preview must reveal the gate and contacts by hiding ILD',
+    true,
+    'The first-open 3D must show the supporting ILD rather than floating contacts',
   );
   assert.equal(opened.model.implants[0].depthStart, 0.08);
   assert.equal(opened.model.implants[1].depthStart, 0.08);
@@ -394,7 +394,7 @@ try {
       return (
         current.projectName === name &&
         !current.workflow.busy &&
-        current.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible === false
+        current.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible === true
       );
     },
     expected.name,

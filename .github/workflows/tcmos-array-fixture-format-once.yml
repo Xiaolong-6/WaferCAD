@@ -1,0 +1,49 @@
+name: T-CMOS 4x4 candidate fixture and formatting (one-shot)
+
+on:
+  push:
+    branches:
+      - feat/tcmos-ternary-inverter-example-20261014
+    paths:
+      - .github/workflows/tcmos-array-fixture-format-once.yml
+
+permissions: {}
+
+jobs:
+  validate-and-sync:
+    if: github.repository == 'Xiaolong-6/WaferCAD'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format only touched T-CMOS source and acceptance files
+        run: |
+          npx prettier --write scripts/build-tcmos-array-patch.mjs scripts/tcmos-array-browser-acceptance.mjs site/tests/tcmos-array-patch.test.mjs site/tests/tcmos-inverter-reconstruction.test.mjs
+      - name: Validate source and regenerate precise 1x1 fixture
+        run: |
+          node --test site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/tcmos-array-patch.test.mjs
+          node scripts/build-tcmos-inverter-example.mjs
+          node scripts/build-tcmos-array-patch.mjs
+          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('test-results/tcmos/tcmos-inverter-4x4-ARRAY-PROTOTYPE.wafercad'));if(p.model.kernel!=='vector-2.5d-array-v1'||p.layout.elements.length!==3712)throw Error('Bad 4x4 array')"
+      - name: Commit limited source/fixture updates to candidate branch
+        env:
+          TARGET_BRANCH: feat/tcmos-ternary-inverter-example-20261014
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$TARGET_BRANCH"
+          cp test-results/tcmos/tcmos-ternary-inverter-130nm.wafercad examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          git add -- scripts/build-tcmos-array-patch.mjs scripts/tcmos-array-browser-acceptance.mjs site/tests/tcmos-array-patch.test.mjs site/tests/tcmos-inverter-reconstruction.test.mjs examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "test(tcmos): synchronize ILD-visible unit fixture and format 4x4 prototype"
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          fi
