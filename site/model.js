@@ -815,20 +815,11 @@ function mutateStack(
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator, merge = true, useActualHitForRest = false) {
+function splitByArea(model, area, mutator, merge = true) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
-    // An adaptive band contains curved, nearly coincident Boolean boundaries.
-    // Independent intersection/difference calls can disagree at those edges.
-    // For the opt-in path derive the retained complement from the SAME actual
-    // hit polygon, so one computed cut owns both sides of the split.
-    // Keep the legacy split semantics untouched for saved History replay.
-    const rest = useActualHitForRest
-      ? isEmpty(hit)
-        ? cloneGeom(region.geom)
-        : difference(region.geom, hit)
-      : difference(region.geom, area);
+    const rest = difference(region.geom, area);
     if (!isEmpty(rest))
       next.push({ id: region.id, geom: rest, stack: region.stack.map((s) => ({ ...s })) });
     if (!isEmpty(hit)) {
@@ -1179,6 +1170,73 @@ function removeLayerInterval(stack, targetLayerIds, z0, z1) {
   return normalizeStack(out);
 }
 
+// An opt-in release has nested XY reach at successively shallower Z depths.
+// Own each source XY point only once: first claim the deepest reachable band,
+// then its unclaimed exterior at shallower bands. This avoids re-splitting and
+// re-merging almost coincident mask boundaries at each of 72+ depth levels.
+// A single original stack defines the material owner throughout the partition.
+function applyAdaptiveIsotropicSeed(model, seed, targets, amount, face, depthBands) {
+  const protectedGeom = difference(model.boundary, seed.geom);
+  const originals = model.regions;
+  const owners = originals.map((region) => ({
+    region,
+    pending: cloneGeom(region.geom),
+    claimed: [],
+    eligible: region.stack.some(
+      (part) =>
+        targets.has(part.layerId) &&
+        (face === 'front'
+          ? part.z1 > seed.z - amount + 1e-9 && part.z0 < seed.z - 1e-9
+          : part.z1 > seed.z + 1e-9 && part.z0 < seed.z + amount - 1e-9),
+    ),
+  }));
+  let changed = false;
+
+  // Reverse the physical reach: near the exposed seed the release is deepest.
+  // Each offset mask is computed once and discarded after the claim; the
+  // per-source original geometry never changes while depth bands are explored.
+  for (let index = depthBands.length - 1; index >= 0; index--) {
+    const band = depthBands[index];
+    const masks = index === depthBands.length - 1 ? [seed.geom] : [];
+    if (band.lateralRadius > 1e-9 && !isEmpty(protectedGeom)) {
+      for (const edgeBand of conformalBoundaryBands(seed.geom, band.lateralRadius)) {
+        const undercut = intersection(edgeBand, protectedGeom);
+        if (!isEmpty(undercut)) masks.push(undercut);
+      }
+    }
+    const z0 = face === 'front' ? seed.z - band.depth1 : seed.z;
+    const z1 = face === 'front' ? seed.z : seed.z + band.depth1;
+    for (const owner of owners) {
+      if (!owner.eligible || isEmpty(owner.pending)) continue;
+      const stack = removeLayerInterval(owner.region.stack, [...targets], z0, z1);
+      if (stackKey(stack) === stackKey(owner.region.stack)) continue;
+      for (const mask of masks) {
+        if (isEmpty(owner.pending)) break;
+        const hit = intersection(owner.pending, mask);
+        if (isEmpty(hit)) continue;
+        owner.pending = sanitizeProcessGeometry(difference(owner.pending, hit));
+        owner.claimed.push({
+          id: `region-${model.nextRegionId++}`,
+          geom: hit,
+          stack,
+        });
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    model.regions = [];
+    for (const owner of owners) {
+      if (!isEmpty(owner.pending)) {
+        model.regions.push({ ...owner.region, geom: owner.pending });
+      }
+      model.regions.push(...owner.claimed);
+    }
+    model.regions = mergeRegions(model, model.regions);
+  }
+  return changed;
+}
+
 function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateralErrorUm = null) {
   const targets = new Set((targetLayerIds || []).filter(Boolean));
   if (!targets.size) {
@@ -1211,6 +1269,20 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateral
           maxLateralErrorUm: lateralErrorUm,
           maxBands: 128,
         });
+  // The opt-in branch needs one mutually exclusive XY ownership partition;
+  // do not route it through the legacy repeated split/merge algorithm.
+  if (adaptiveBands) {
+    let changed = false;
+    for (const seed of seeds) {
+      if (applyAdaptiveIsotropicSeed(model, seed, targets, amount, face, adaptiveBands)) {
+        changed = true;
+      }
+    }
+    return changed
+      ? { changed: true }
+      : { changed: false, error: 'The isotropic release did not intersect the selected material.' };
+  }
+
   let changed = false;
   for (const seed of seeds) {
     // Keep the protected complement as the only undercut target, avoiding
@@ -1259,7 +1331,6 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateral
             return next;
           },
           false,
-          adaptiveBands !== null,
         );
       }
 
