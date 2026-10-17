@@ -61,6 +61,39 @@ test('all M1-to-M2 vias are FULLY inside exactly one approved M1 polygon', () =>
   assert.equal(verified, 64);
 });
 
+test('all 280 Via faces have full real polygon-Boolean metal coverage and no foreign-net overlap', () => {
+  const layout = buildTcmosRoutedOverlay();
+  const candidates = (layer) => layer === 'M1'
+    ? layout.m1.map((m) => ({ ...m, geom: shape(m.points) }))
+    : layout.metal.filter((m) => m.layer === layer)
+      .map((m) => ({ ...m, geom: rect(m.rect) }));
+  const byLayer = new Map(['M1', 'M2', 'M3', 'M4']
+    .map((name) => [name, candidates(name)]));
+  let checked = 0;
+  for (const via of layout.vias) {
+    const aperture = rect(via.rect);
+    for (const layer of [via.from, via.to]) {
+      const intersected = byLayer.get(layer)
+        .map((candidate) => ({
+          ...candidate,
+          hit: geometry.intersection(aperture, candidate.geom),
+        }))
+        .filter((candidate) => geometryArea(candidate.hit) > 1e-12);
+      const foreign = intersected.filter((candidate) => candidate.net !== via.net);
+      assert.deepEqual(foreign.map((candidate) => candidate.id), [],
+        via.id + ': Via face intersects another net on ' + layer);
+      const owned = intersected.filter((candidate) => candidate.net === via.net);
+      assert.ok(owned.length > 0, via.id + ': missing ' + layer + ' conductor');
+      const coverage = geometry.unionGeometries(owned.map((candidate) => candidate.hit));
+      // This is the approved geometry-science precision, not a weakened DRC tolerance.
+      assert.ok(geometryArea(geometry.difference(aperture, coverage)) < 1e-12,
+        via.id + ': part of the Via face is uncovered by ' + layer);
+      checked++;
+    }
+  }
+  assert.equal(checked, 280);
+});
+
 test('19 independent net components: 3 buses + 16 accessible and unshorted outputs', () => {
   const routed = buildTcmosRoutedOverlay();
   const report = auditTcmosRoutedOverlay(routed);
