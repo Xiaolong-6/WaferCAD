@@ -2557,8 +2557,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
   // If the Worker cannot run, finish the real detailed geometry in the main
   // thread and settle the same readiness contract as the Worker completion.
   // Do not synchronously build a preview followed by another detailed build.
-  function completeSynchronousRoughFallback(sceneToken, startedAt) {
-    const applied = rebuildAdaptiveRoughGeometrySync({ sceneToken });
+  function completeSynchronousRoughFallback(sceneToken, startedAt, preparedTasks = null) {
+    const applied = rebuildAdaptiveRoughGeometrySync({ sceneToken, preparedTasks });
     if (!applied) return false;
     host.dataset.rendererRoughMs = String(performance.now() - startedAt);
     const profileStart = roughRenderContext?.profileStart;
@@ -2607,7 +2607,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       worker = new Worker(workerUrl);
     } catch (error) {
       console.warn('Rough mesh worker unavailable; using synchronous fallback.', error);
-      return Promise.resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
+      return Promise.resolve(
+        completeSynchronousRoughFallback(
+          sceneToken,
+          rendererRoughStart,
+          interactive ? null : prepared,
+        ),
+      );
     }
 
     const generation = ++roughWorkerGeneration,
@@ -2692,7 +2698,13 @@ diffuseColor.a *= waferCadAlphaScale;`,
       } catch (error) {
         console.warn('Could not start rough mesh worker task.', error);
         finish();
-        resolve(completeSynchronousRoughFallback(sceneToken, rendererRoughStart));
+        resolve(
+          completeSynchronousRoughFallback(
+            sceneToken,
+            rendererRoughStart,
+            interactive ? null : prepared,
+          ),
+        );
       }
     });
   }
@@ -2700,6 +2712,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
   function rebuildAdaptiveRoughGeometrySync({
     interactive = false,
     sceneToken = roughRenderContext?.sceneGeneration ?? null,
+    preparedTasks = null,
   } = {}) {
     const context = roughRenderContext;
     if (
@@ -2720,9 +2733,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
     const wasRendering = rendering;
     rendering = true;
     try {
-      const prepared = prepareAdaptiveRoughTasks({ interactive }),
+      // Worker construction/postMessage failure is synchronous: its detailed
+      // LOD allocation is still valid. Reuse it rather than triangulating and
+      // budgeting the same scene a second time. A failed interactive request
+      // deliberately falls back to a freshly prepared detailed build.
+      const prepared = preparedTasks || prepareAdaptiveRoughTasks({ interactive }),
         boundaryProfiles = new Map(),
         outlinedRoughCapIndices = new Set();
+      host.dataset.roughFallbackReusedPreparation = String(Boolean(preparedTasks));
       for (const task of prepared.tasks) {
         const cap = task.cap;
         let geometry = geometryFromRoughCap(THREE, {
