@@ -235,7 +235,6 @@ export function auditTcmosRoutedOverlay(layout) {
   assert.equal(layout.ports.length, 19);
   const nodes = [...layout.m1, ...layout.metal];
   assert.equal(new Set(nodes.map((node) => node.id)).size, nodes.length);
-  const byId = new Map(nodes.map((node) => [node.id, node]));
   const parent = new Map(nodes.map((node) => [node.id, node.id]));
   const root = (id) => {
     let n = id;
