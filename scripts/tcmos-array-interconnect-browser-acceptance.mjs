@@ -127,6 +127,50 @@ try {
     assert.equal(Object.keys(counts).length, 14);
     report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 3963 });
   }
+  // Save -> destructive name mutation -> actual Recovery Restore. Merely
+  // listing a checkpoint does NOT constitute a recovery acceptance.
+  await page.locator('.p-nav [data-action="domain:project"]').click();
+  await page.locator('#saveProjectBtn').click();
+  await page.waitForFunction(
+    () => /Saved .* locally/.test(
+      document.querySelector('[data-slot="status.message"]')?.textContent || ''
+    ),
+    null,
+    { timeout: 120000 },
+  );
+  const checkpoint = await page.locator('#workspaceRecoverySelect').inputValue();
+  assert.ok(checkpoint, 'Routed material project must create a real Recovery checkpoint');
+  await page.locator('#projectNameInput').fill('Temporary routed material recovery mutation');
+  await page.locator('#projectNameInput').press('Tab');
+  await page.locator('#workspaceRecoverySelect').selectOption(checkpoint);
+  await page.locator('#workspaceRestoreBtn').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Restore', exact: true }).click();
+  await page.waitForFunction(
+    (name) => {
+      const state = window.WaferCadV2Workstation.snapshot();
+      return state.projectName === name && !state.workflow.busy;
+    },
+    file.name,
+    { timeout: 120000 },
+  );
+  const restored = await snapshot();
+  assert.equal(restored.projectName, file.name);
+  assert.equal(restored.model.kernel, 'vector-2.5d-v1');
+  assert.deepEqual(restored.model.layers, loaded.model.layers,
+    'Recovery changed the physical layer identities/materials');
+  assert.deepEqual(restored.model.regions, loaded.model.regions,
+    'Recovery changed physical XY/Z region geometry or material stacks');
+  assert.deepEqual(restored.layout.elements, loaded.layout.elements,
+    'Recovery changed original or supplemental File Mask vertices');
+  assert.ok(!restored.processRecipe && !restored.snapshotBranches,
+    'Recovery must not synthesize unverified routed process history');
+  await page.screenshot({ path: resolve(dir, 'tcmos-4x4-routed-recovery-restored.png') });
+  report.recovery = {
+    checkpoint: true, restored: true,
+    materialRegions: restored.model.regions.length,
+    maskElements: restored.layout.elements.length,
+    strictModelAndMaskParity: true,
+  };
   assert.deepEqual(errors, []);
   report.status = 'pass';
   report.renderedModelRegions = loaded.model.regions.length;
