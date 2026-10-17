@@ -586,6 +586,15 @@ try {
     closedEndcapSurfaces: 4,
     wireBondDiameterUmInferred: 12,
   };
+  // The 1000 px screenshot viewport uses compact toolbar overflow. Expand the
+  // real desktop viewport before operating its physical 3D presentation tools.
+  // The 1000 px evidence screenshot above stays unchanged.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
   // PR #229 / #250 integration: exercise actual workstation controls, not a
   // synthetic standalone renderer. The same saved package and camera must
   // survive four border/opacity presentations without rebuilding material.
