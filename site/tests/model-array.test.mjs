@@ -494,18 +494,21 @@ test('array Lift-off rejects invalid sacrificial IDs without changing any templa
 test('array Implant commits translated qualitative doping atomically across both cells', () => {
   const model = twoSites();
   const before = structuredClone(model);
-  const failure = modelApi.applyOperation(model, {
-    type: 'implant',
-    name: 'Invalid material host',
-    thickness: 0.2,
-    depthStart: 0,
-    face: 'front',
-    area: rectMulti(20, 10),
-    dopantPolarity: 'donor',
-    dopantRole: 'body',
-    dopantHostLayerId: 'not-a-layer',
-  });
-  assert.equal(failure.changed, false);
+  assert.throws(
+    () =>
+      modelApi.applyOperation(model, {
+        type: 'implant',
+        name: 'Invalid material host',
+        thickness: 0.2,
+        depthStart: 0,
+        face: 'front',
+        area: rectMulti(20, 10),
+        dopantPolarity: 'donor',
+        dopantRole: 'body',
+        dopantHostLayerId: 'not-a-layer',
+      }),
+    /Invalid qualitative dopant polarity, role or host material/,
+  );
   assert.deepEqual(model, before, 'Invalid Implant cannot write partial dopant data');
   const result = modelApi.applyOperation(model, {
     type: 'implant',
