@@ -21,6 +21,7 @@ import {
   difference,
   intersection,
   isEmpty,
+  multiBounds,
   rectMulti,
   unionGeometries,
 } from './vector-geometry.js';
@@ -531,6 +532,26 @@ function processGeometryArea(geom) {
   return Math.max(0, total);
 }
 
+// Separate sub-grid corner slivers must not be summed into a fictitious
+// wafer-scale material intersection. This is deliberately narrower than
+// raising the global overlap tolerance: only independent grid-sized corner
+// components from Conformal postcoat normalization qualify. Their XY owner
+// is assigned by the existing deterministic region partition.
+export function isConformalGridFragmentOverlap(overlap, limit, operation) {
+  const grid = PROCESS_GEOMETRY_GRID_UM;
+  if (operation !== 'Conformal postcoat normalization' || overlap.length < 2) return false;
+  return overlap.every((polygon) => {
+    const box = multiBounds([polygon]);
+    return (
+      processGeometryArea([polygon]) <= limit + grid * grid * 1e-5 &&
+      // A Boolean retry can return a zero-area, folded ring whose bounding
+      // rectangle is wider than its physical intersection. Reject any
+      // genuinely extended seam even when its signed area cancels to zero.
+      Math.max(box.width, box.height) <= grid * 32 * (1 + 1e-6)
+    );
+  });
+}
+
 function partitionProcessRegions(
   regions,
   rejectOverlapAbove = null,
@@ -547,8 +568,50 @@ function partitionProcessRegions(
       const overlap = intersection(left, right);
       if (isEmpty(overlap)) continue;
       const overlapArea = processGeometryArea(overlap);
-      if (rejectOverlapAbove != null && overlapArea > rejectOverlapAbove) {
-        throw new Error(`${operation} produced overlapping regions (${overlapArea} µm²).`);
+      // A fallback union may leave the same complete physical stack in two
+      // overlapping computational regions. Assigning that duplicate overlap
+      // to one owner preserves material/Z exactly; a different stack must
+      // still fail the strict persistence-grid geometry threshold.
+      if (
+        rejectOverlapAbove != null &&
+        overlapArea > rejectOverlapAbove &&
+        stackKey(previous.stack) !== stackKey(region.stack) &&
+        !isConformalGridFragmentOverlap(overlap, rejectOverlapAbove, operation)
+      ) {
+        const witness = {
+          box: multiBounds(overlap),
+          componentCount: overlap.length,
+          largestComponents: overlap
+            .map((polygon) => ({
+              area: processGeometryArea([polygon]),
+              box: multiBounds([polygon]),
+            }))
+            .sort((a, b) => b.area - a.area)
+            .slice(0, 3),
+          rejectedComponents: overlap
+            .map((polygon) => ({
+              area: processGeometryArea([polygon]),
+              box: multiBounds([polygon]),
+            }))
+            .filter(
+              ({ area, box }) =>
+                area > rejectOverlapAbove + PROCESS_GEOMETRY_GRID_UM ** 2 * 1e-5 ||
+                Math.max(box.width, box.height) > PROCESS_GEOMETRY_GRID_UM * 32 * (1 + 1e-6),
+            )
+            .slice(0, 5),
+          owners: [previous, region].map(({ id, stack }) => ({
+            id,
+            segments: stack.map(({ layerId, z0, z1, role }) => ({
+              layerId,
+              z0,
+              z1,
+              ...(role ? { role } : {}),
+            })),
+          })),
+        };
+        throw new Error(
+          `${operation} produced overlapping regions (${overlapArea} µm²); witness=${JSON.stringify(witness)}`,
+        );
       }
       geom = sanitizeProcessGeometry(difference(geom, previous.geom));
       if (isEmpty(geom)) break;
@@ -808,7 +871,7 @@ function mutateStack(
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator, merge = true) {
+function splitByArea(model, area, mutator, merge = true, separateHits = false) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
@@ -816,11 +879,19 @@ function splitByArea(model, area, mutator, merge = true) {
     if (!isEmpty(rest))
       next.push({ id: region.id, geom: rest, stack: region.stack.map((s) => ({ ...s })) });
     if (!isEmpty(hit)) {
-      const stack = mutator(
-        region.stack.map((s) => ({ ...s })),
-        region,
-      );
-      if (stack.length) next.push({ id: `region-${model.nextRegionId++}`, geom: hit, stack });
+      // PVD must inspect each disconnected *masked* wall separately. A single
+      // conformal-sidewall owner can group widely spaced devices and include
+      // large polygon bounds even when each exposed band is only 10 nm wide.
+      const fragments = separateHits ? hit.map((polygon) => [polygon]) : [hit];
+      for (const fragment of fragments) {
+        const stack = mutator(
+          region.stack.map((s) => ({ ...s })),
+          region,
+          fragment,
+        );
+        if (stack.length)
+          next.push({ id: `region-${model.nextRegionId++}`, geom: fragment, stack });
+      }
     }
   }
   model.regions = merge ? mergeRegions(model, next) : next;
@@ -1071,7 +1142,11 @@ function applyConformalCoating(model, active, layerId, amount, face) {
       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
     }).cracks.length
   ) {
-    model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+    model.regions = canonicalizeProcessPartition(
+      model,
+      model.regions,
+      'Conformal precoat normalization',
+    );
   }
 
   // Capture the source topography before the horizontal coating is clipped to
@@ -1247,6 +1322,7 @@ function applyOperationImpl(
     face = 'front',
     area,
     growth = 'direct',
+    stepCoverageFraction = null,
     surface,
     color,
     tilt = 0,
@@ -1254,6 +1330,19 @@ function applyOperationImpl(
     electricalRegionSource = 'custom',
   },
 ) {
+  // PVD has finite angular spread: optional, explicitly modelled partial
+  // coverage on narrow pre-existing oxide sidewall columns. This is NOT ALD:
+  // horizontal film receives the nominal thickness; sidewall cap receives
+  // only a declared fraction, with a grid-resolved width bound.
+  if (growth === 'pvd-step') {
+    const fraction = Number(stepCoverageFraction);
+    if (type !== 'add' || !Number.isFinite(fraction) || fraction <= 0 || fraction > 1) {
+      return {
+        changed: false,
+        error: 'PVD step coverage requires a finite fraction in (0, 1] on Deposit.',
+      };
+    }
+  }
   // Use the actual requested physical value. Previously this clamped every
   // positive thickness below 0.01 nm up to 0.01 nm without informing the user.
   const amount = Number(thickness);
@@ -1504,14 +1593,31 @@ function applyOperationImpl(
       face,
     );
   } else {
-    splitByArea(model, active, (stack) => {
-      const exposed = surfaceSegment(stack, face);
-      // A conformal-sidewall segment is a finite-width surrogate for a vertical
-      // film. Its outward Z cap is not a physical horizontal process surface, so
-      // directional Deposit/Extend must not grow another layer from that cap.
-      if (!exposed || exposed.role === 'conformal-sidewall') return stack;
-      return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
-    });
+    splitByArea(
+      model,
+      active,
+      (stack, _region, fragment) => {
+        const exposed = surfaceSegment(stack, face);
+        // Directional evaporation cannot grow from an artificial sidewall cap.
+        // Explicit PVD-step mode grants finite-angle coverage only to narrow,
+        // masked physical wall strips. Bounds of their parent owner or polygon
+        // are misleading: the 10 nm strips can have 0.56 µm-wide boundary
+        // skirts after Boolean clipping.
+        if (!exposed) return stack;
+        if (exposed.role === 'conformal-sidewall') {
+          if (growth !== 'pvd-step') return stack;
+          const stepThickness = amount * Number(stepCoverageFraction);
+          const { width, height } = multiBounds(fragment);
+          const longAxis = Math.max(width, height);
+          const effectiveWidth = longAxis > 0 ? geometryArea(fragment) / longAxis : Infinity;
+          if (!(effectiveWidth > 0 && effectiveWidth <= stepThickness + 1e-9)) return stack;
+          return addLayerToSurface(stack, layer?.id, stepThickness, face);
+        }
+        return mutateStack(stack, { type, layerId: layer?.id, targetLayerId, amount, face });
+      },
+      true,
+      growth === 'pvd-step',
+    );
   }
   model.regions = mergeRegions(model, model.regions);
   if (growth === 'conformal') {
@@ -1523,7 +1629,11 @@ function applyOperationImpl(
       crackTolerance: COVERAGE_CRACK_TOLERANCE_UM,
     });
     if (cracks.length || processPartitionHasFractionalBoundary(model.regions)) {
-      model.regions = canonicalizeProcessPartition(model, model.regions, 'Conformal');
+      model.regions = canonicalizeProcessPartition(
+        model,
+        model.regions,
+        'Conformal postcoat normalization',
+      );
     }
     healConformalCoverageCracks(model, conformalOriginalVoids);
   } else if (healNumericalCoverageCracks(model)) {
@@ -1577,7 +1687,7 @@ export function applyOperation(model, params) {
   }
   if (isArrayModel(model)) return applyArrayOperation(model, params, applyOperation);
   const safeGeometryOperation =
-      params?.growth === 'conformal' ||
+      ['conformal', 'pvd-step'].includes(params?.growth) ||
       (params?.type === 'etch' && params?.etchProfile === 'isotropic'),
     rollback = safeGeometryOperation ? cloneModel(model) : null;
   try {
@@ -1589,7 +1699,9 @@ export function applyOperation(model, params) {
     const prefix =
       params?.growth === 'conformal'
         ? 'Conformal geometry failed safely'
-        : 'Isotropic etch geometry failed safely';
+        : params?.growth === 'pvd-step'
+          ? 'PVD step geometry failed safely'
+          : 'Isotropic etch geometry failed safely';
     return {
       changed: false,
       error: `${prefix}: ${error?.message || 'unknown geometry error'}`,

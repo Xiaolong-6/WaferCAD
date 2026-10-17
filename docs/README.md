@@ -45,6 +45,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Both-face Process Kernel](science/PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.
 - [Bundled-example literature fidelity audit (2026-10-14)](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — eight literature families, source-to-Recipe/Mask material probes, microdisk process correction and remaining figure-alignment gates.
+- [M3D-LIME RRAM/CNTFET reconstruction](M3D_LIME_2023_RECONSTRUCTION.md) — inferred three-tier local Process/Mask recipe, bounded Pd step-coverage hypothesis and pending TEM/3D morphology comparison.
 - [Photodetector reconstruction (2026-10-08)](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
 - [TiO2 metalens reconstruction](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.

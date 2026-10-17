@@ -333,6 +333,7 @@ export function createProjectMaskPanels({
       state.model = value;
       dirty();
     },
+    getSection: () => state.section,
     setSection: (value) => {
       state.section = value;
     },

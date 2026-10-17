@@ -59,6 +59,7 @@ function normalizeCoverage(value, { allowTransfer = false } = {}) {
   const mode = cleanText(value, 'directional').toLowerCase();
   if (['directional', 'direct'].includes(mode)) return 'direct';
   if (mode === 'conformal') return 'conformal';
+  if (allowTransfer && mode === 'pvd-step') return 'pvd-step';
   if (allowTransfer && ['transfer', 'laminate'].includes(mode)) return 'transfer';
   throw new Error(`Unsupported coverage "${value}".`);
 }
@@ -179,6 +180,16 @@ function normalizeStep(command, input, index = 0) {
     const thicknessError = validateMaterialThicknessUm(params.thicknessUm, 'deposit.thickness');
     if (thicknessError) throw new Error(thicknessError);
     params.coverage = normalizeCoverage(params.coverage || params.mode, { allowTransfer: true });
+    if (params.coverage === 'pvd-step') {
+      params.stepCoverageFraction = Number(params.stepCoverageFraction);
+      if (
+        !Number.isFinite(params.stepCoverageFraction) ||
+        params.stepCoverageFraction <= 0 ||
+        params.stepCoverageFraction > 1
+      ) {
+        throw new Error('deposit.stepCoverageFraction must be between 0 (exclusive) and 1.');
+      }
+    } else delete params.stepCoverageFraction;
     params.placement =
       params.coverage === 'transfer'
         ? ['flat', 'follow'].includes(cleanText(params.placement || params.transferMode, 'follow'))

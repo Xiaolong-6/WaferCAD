@@ -255,8 +255,10 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
         choice('Coverage', 'growthMode', [
           ['direct', 'Direct'],
           ['conformal', 'Conformal'],
+          ['pvd-step', 'PVD step (idealized)'],
         ]),
       ),
+      row('pvdStepFractionRow', fields.input('PVD sidewall fraction', 'pvdStepFraction', 0.25)),
       row(
         'transferModeRow',
         choice('Placement', 'transferMode', [
@@ -911,7 +913,7 @@ export function createWorkstationWorkflow({ store, workstation, readOnly = false
     updateOperationUI: process.updateUi,
     renderAll: refresh,
     renderSnapshots: project.renderSnapshots,
-    resetToBase: (recipeBase) => domain.base.applyBase({ recipeBase }),
+    resetToBase: (recipeBase) => domain.base.applyBase({ recipeBase, preserveSection: true }),
     checkpointWorkspace: checkpoint,
     confirmContinue: () =>
       confirmation.confirm({

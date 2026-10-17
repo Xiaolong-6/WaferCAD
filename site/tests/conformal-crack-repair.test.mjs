@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 await loadGeometryKernel();
-const { applyOperation, createModel, geometryArea } = await import('../model.js');
+const { applyOperation, createModel, geometryArea, isConformalGridFragmentOverlap } =
+  await import('../model.js');
 const { rectMulti } = await import('../vector-geometry.js');
 const { validateProcessModel } = await import('../project-schema.js');
 
@@ -55,4 +56,41 @@ test('Conformal does not assign a boolean-retry crack across two valid material 
   } finally {
     globalThis.polygonClipping = kernel;
   }
+});
+
+test('Conformal corner tolerance applies per independent grid fragment, never to a true overlap', () => {
+  const grid = 0.0001;
+  const areaLimit = 2 * grid * grid;
+  const manyCorners = Array.from({ length: 34 }, (_, index) =>
+    rectMulti(grid, grid, index * 0.005, 0),
+  ).flat();
+  assert.ok(geometryArea(manyCorners) > areaLimit, 'aggregate overlap exceeds limit');
+  assert.equal(
+    isConformalGridFragmentOverlap(manyCorners, areaLimit, 'Conformal postcoat normalization'),
+    true,
+    'independent sub-grid corners should retain deterministic owners',
+  );
+  assert.equal(
+    isConformalGridFragmentOverlap(manyCorners, areaLimit, 'Conformal precoat normalization'),
+    false,
+    'precoat physical overlaps must retain strict rejection',
+  );
+  assert.equal(
+    isConformalGridFragmentOverlap(
+      [...manyCorners, ...rectMulti(0.001, 0.001, 1, 0)],
+      areaLimit,
+      'Conformal postcoat normalization',
+    ),
+    false,
+    'a genuine larger overlap cannot be hidden among numerical corner fragments',
+  );
+  assert.equal(
+    isConformalGridFragmentOverlap(
+      [...manyCorners, ...rectMulti(1, 1e-8, 2, 0)],
+      areaLimit,
+      'Conformal postcoat normalization',
+    ),
+    false,
+    'a long, skinny physical seam cannot use the corner-sliver exception',
+  );
 });

@@ -6,11 +6,36 @@ import {
   createRectangularGridArrayModel,
 } from '../model-array-construction.js';
 
+export function sectionAfterBaseRebuild(previousSection, model, { preserveSection = false } = {}) {
+  const width = Number(model?.width),
+    height = Number(model?.height),
+    fallback = { a: [-width * 0.42, 0], b: [width * 0.42, 0] };
+  if (!preserveSection) return fallback;
+  const a = previousSection?.a,
+    b = previousSection?.b;
+  if (
+    ![a, b].every(
+      (p) =>
+        Array.isArray(p) && p.length === 2 && p.every((coordinate) => Number.isFinite(coordinate)),
+    )
+  )
+    return fallback;
+  if (a[0] === b[0] && a[1] === b[1]) return fallback;
+  if (
+    ![a, b].every(
+      ([x, y]) => x >= -width / 2 && x <= width / 2 && y >= -height / 2 && y <= height / 2,
+    )
+  )
+    return fallback;
+  return { a: [...a], b: [...b] };
+}
+
 export function createBaseControlsController({
   root = document,
   getModel,
   setModel,
   setSection,
+  getSection = () => null,
   getBaseRevertSnapshot,
   setBaseRevertSnapshot,
   getHistory,
@@ -67,7 +92,7 @@ export function createBaseControlsController({
     }
   }
 
-  async function applyBase({ recipeBase = null } = {}) {
+  async function applyBase({ recipeBase = null, preserveSection = false } = {}) {
     const shape =
         recipeBase?.shape || root.querySelector('#substrateShape button.active').dataset.shape,
       width = recipeBase ? Number(recipeBase.width) : manualMicron($('baseWidth').value),
@@ -132,7 +157,7 @@ export function createBaseControlsController({
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);
-      setSection({ a: [-width * 0.42, 0], b: [width * 0.42, 0] });
+      setSection(sectionAfterBaseRebuild(getSection(), newModel, { preserveSection }));
       const result = rebuildMainHistory({
         preservePrevious: action === 'keep',
         previousState: before.workspaceState,

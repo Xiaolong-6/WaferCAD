@@ -970,7 +970,15 @@ export function createWorkspacePersistenceController({
   }
 
   async function checkpointCurrent(reason = 'pre-destructive-action') {
-    if (recoveryRollbackUnsafe || !ready || !hasWriteAccess()) return false;
+    if (!recoveryRollbackUnsafe) workspaceSession?.refreshOwnedLease?.();
+    if (recoveryRollbackUnsafe || !ready || !hasWriteAccess()) {
+      console.warn('Recovery checkpoint refused before write', {
+        reason,
+        ready,
+        writable: !recoveryRollbackUnsafe && hasWriteAccess(),
+      });
+      return false;
+    }
     clearTimer();
     // A refused checkpoint must not strand edits by cancelling the queued
     // autosave; keep the dirty workspace scheduled after a transient failure.
@@ -999,17 +1007,20 @@ export function createWorkspacePersistenceController({
     );
 
     if (result?.busy) {
+      console.warn('Recovery checkpoint refused: task busy', { reason });
       resumePendingAutosave();
       status('Another background task is already running.', 'warning');
       return false;
     }
     if (result?.error || !result?.ok) {
+      console.warn('Recovery checkpoint failed', { reason, error: result?.error });
       resumePendingAutosave();
       return false;
     }
     // Packing the Recovery payload and committing it to IndexedDB are async.
     // Another tab may take over during that interval. A completed checkpoint
     // is not permission to replace this tab's live model after lease loss.
+    workspaceSession?.refreshOwnedLease?.();
     if (!hasWriteAccess()) {
       syncSaveStatus();
       status(

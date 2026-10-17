@@ -69,6 +69,8 @@ export async function probeMetalensGrid(grid = 25, { publish = false } = {}) {
   const makeLeaf = (family, scale) => {
     const leaf = m.createModel({ shape: 'rect', width: pitch, height: pitch, thickness: 2 });
     leaf.layers[0].name = 'Glass (2um illustration)';
+    // Stable published GRID fixture palette; separate from new-project Base defaults.
+    leaf.layers[0].color = '#C3CBD4';
     if (publish) {
       histories.set(leaf, [structuredClone(leaf)]);
       // Cleaning is metadata, just as in the four-unit source Recipe.
