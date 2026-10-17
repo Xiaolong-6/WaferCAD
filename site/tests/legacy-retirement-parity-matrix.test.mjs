@@ -52,3 +52,23 @@ test('Recipe, Worker, History, Recovery and Array v2 owners are retained', async
   }
   assert.equal(rows.get('scripts/array-renderer-regression.mjs').status, 'long-term-science-debt');
 });
+
+test('Workstation/View UX native candidates preserve release parity gaps', async () => {
+  const result = await auditLegacyRetirementParity();
+  const rows = new Map(result.rows.map((row) => [row.path, row]));
+  for (const [retired, candidate] of [
+    [
+      'scripts/workstation-regression.mjs',
+      'scripts/v2/check-source-sunset-workstation.mjs',
+    ],
+    ['scripts/view-ux-v3-regression.mjs', 'scripts/v2/check-source-sunset-view-ux.mjs'],
+  ]) {
+    const row = rows.get(retired);
+    assert.equal(row.status, 'v2-invariant-owner');
+    assert.equal(row.sourceDeletionApproved, false);
+    assert.ok(row.missingParity.length >= 2);
+    assert.ok(
+      row.nativeCandidates.some((entry) => entry.path === candidate && entry.existsOnBranch),
+    );
+  }
+});

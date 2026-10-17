@@ -1,4 +1,4 @@
-name: PR290 Native Workstation candidate
+name: PR290 Native Workstation and View UX
 
 on:
   pull_request:
@@ -6,8 +6,10 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'scripts/v2/check-source-sunset-workstation.mjs'
+      - 'scripts/v2/check-source-sunset-view-ux.mjs'
       - 'scripts/workstation-regression.mjs'
-      - 'site/tests/source-sunset-workstation-command.test.mjs'
+      - 'scripts/view-ux-v3-regression.mjs'
+      - 'package.json'
       - '.github/workflows/legacy-workstation-native-acceptance.yml'
   workflow_dispatch:
 
@@ -22,7 +24,7 @@ jobs:
   native-workstation:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       WAFERCAD_V2_BASE: http://127.0.0.1:4173
       WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
@@ -49,8 +51,8 @@ jobs:
           done
           cat /tmp/pr290-workstation-http.log
           exit 1
-      - name: Validate formal Workstation source entrypoint against real Chromium
-        run: node scripts/workstation-regression.mjs
+      - name: Validate formal Workstation package entrypoint against real Chromium
+        run: npm run test:ui:workstation
       - name: Save actual workstation acceptance evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -59,6 +61,12 @@ jobs:
           path: |
             test-results/ui-v2-desktop-docking/
             test-results/ui-v2-mobile/
+            test-results/ui-v2-main-review/
+            test-results/ui-v2-mask-review/
+            test-results/ui-v2-section-review/
+            test-results/ui-v2-three-review/
+            test-results/ui-v2-unit-lifecycle/
+            test-results/ui-v2-review-interactions/
             /tmp/pr290-workstation-http.log
           retention-days: 7
           if-no-files-found: ignore

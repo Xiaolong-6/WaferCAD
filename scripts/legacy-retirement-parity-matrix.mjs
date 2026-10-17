@@ -7,6 +7,39 @@ import { auditLegacyRetirementOwners } from './legacy-retirement-owner-audit.mjs
 
 export const CRITICAL_LEGACY_CONTRACTS = [
   {
+    path: 'scripts/workstation-regression.mjs',
+    domain: 'Startup, Welcome, writer isolation, desktop and mobile Workstation',
+    native: [
+      'scripts/v2/check-source-sunset-workstation.mjs',
+      'scripts/v2/check-startup-shell.mjs',
+      'scripts/v2/check-welcome-preview-isolation.mjs',
+      'scripts/v2/check-desktop-docking.mjs',
+      'scripts/v2/check-mobile-workstation.mjs',
+    ],
+    gaps: [
+      'Original Legacy boot/transformation and all Welcome card visual assertions are archived',
+      'Per-control UX equivalence requires independent native v2 review and screenshots',
+    ],
+  },
+  {
+    path: 'scripts/view-ux-v3-regression.mjs',
+    domain: 'Four-view interaction, Mask process ROI, Section Z break and 3D controls',
+    native: [
+      'scripts/v2/check-source-sunset-view-ux.mjs',
+      'scripts/v2/check-main-view.mjs',
+      'scripts/v2/check-mask-view.mjs',
+      'scripts/v2/check-mask-process-area.mjs',
+      'scripts/v2/check-section-view.mjs',
+      'scripts/v2/check-three-view.mjs',
+      'scripts/v2/check-unit-roi-alignment-lifecycle.mjs',
+      'scripts/v2/check-review-interactions.mjs',
+    ],
+    gaps: [
+      'Original Legacy menu and responsive overflow action-by-action parity',
+      'Independent Z-break/3D/GLB scientific geometry acceptance beyond basic gestures',
+    ],
+  },
+  {
     path: 'scripts/process-recipe-safety-regression.mjs',
     domain: 'Recipe drafts, templates, prefix replay and Stop',
     native: [
