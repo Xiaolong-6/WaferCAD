@@ -20,7 +20,8 @@ function inflateSourceModel(project, snapshotId) {
   model.boundary = structuredClone(project.sharedGeometries[model.boundaryRef]);
   delete model.boundaryRef;
   model.regions = model.regions.map((region) => {
-    const expanded = { ...region, geom: structuredClone(project.sharedGeometries[region.geomRef]) };
+    const geom = structuredClone(project.sharedGeometries[region.geomRef]);
+    const expanded = { ...region, geom };
     delete expanded.geomRef;
     return expanded;
   });
@@ -45,10 +46,9 @@ function materialVolume(model, layerId) {
   );
 }
 
-test('published M07 148/82 um Microdisk source releases real Si without consuming protective oxide', async () => {
-  const project = JSON.parse(
-    await readFile(new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url), 'utf8'),
-  );
+test('published M07 Microdisk selectively releases Si under the 148/82 um mask', async () => {
+  const file = new URL('../examples/suspended-silica-microdisks.wafercad', import.meta.url);
+  const project = JSON.parse(await readFile(file, 'utf8'));
   const releaseStep = project.processRecipe.steps.find(
     (step) => step.id === 'recipe-process-microdisk-08',
   );
