@@ -1,6 +1,6 @@
 # T-CMOS 4×4 — separate illustrative M2/M3/M4 routing variant
 
-**Development status:** independent draft design; **not** part of the paper-approved mask, native Recipe, restored History or the committed unconnected 4×4 project. Neither full metal-process replay nor real Chromium / 3D material-stack acceptance has been completed.
+**Development status (2026-10-17):** independent illustrative, post-Recipe routed 2.5D material prototype. Actual Node Kernel, source-model storage, science and real Chromium Main/Mask/3D/Section, GDS/OAS and Recovery targeted acceptance have passed. It remains separate from the paper-approved SVG, original 23-step Recipe and its History. **Final whole-PR Quality and foundry/electrical validation are not claimed.**
 
 ## Source provenance and what is unchanged
 
@@ -49,7 +49,7 @@ Expected structural invariants:
 - Negative tests inject a cross-net M3 bridge, wrong via ownership, and broken vertical trunk; all must fail rather than weakening the scientific checks.
 
 
-## World-space 2.5D physical-material candidate — implementation committed, **unverified**
+## World-space 2.5D physical-material candidate — targeted scientific and browser acceptance complete
 
 The supplemental **physical** generator `scripts/build-tcmos-array-physical-interconnect.mjs`
 has now been implemented **in the same dependent PR #329**. This is a
@@ -81,11 +81,11 @@ remains a distinct input/evidence artifact.
   the source project remains **vector-2.5d-array-v1** with exactly the original
   16 instances. Do not misrepresent the flattened new variant as native
   Recipe/History replay.
-- **Do not claim the new 2.5D result validated yet.** The script is implemented
-  but no source checkout in this Chat execution environment has executed the
-  actual geometry kernel or a real Chromium visual test. The generated routed
-  `.wafercad` is **not committed or accepted**, nor are any true SiO2/Via
-  material interface measurements verified in the actual runtime.
+- **Verified scope:** committed physical-model generator and all ten targeted real
+  Node scientific tests pass, and the generated routed `.wafercad` was opened
+  in actual Chromium with 1,919 nonempty 3D objects, correct material/Via Section,
+  full GDS/OAS and Recovery parity. The generated prototype is an acceptance
+  artifact, not a committed paper/foundry design or native post-Recipe History.
 
 Required commands after a real source checkout is available:
 
@@ -118,8 +118,10 @@ Separately, the *real* source `project-io.js` / `project-schema.js` and
 The committed 23-step source parsed and validated; the canonical 4×4 array
 also validated, and native `resolveArrayModel` produced 192 regions /
 39,856 geometry points with real `validateProcessModel` passing.
-The combined final routed-project real-Schema/full-storage end gate is
-still pending, as are actual Node CLI, Chromium and GDS/OAS/Recovery tests.
+The combined routed-project real-Schema, project storage, Node CLI, actual
+Chromium and GDS/OAS/Recovery gates have subsequently passed the official
+#329 targeted jobs; see the acceptance evidence below. The earlier isolated
+V8 evidence remains a separate preliminary check, not the final authority.
 
 **Source-grid distinction discovered and verified:** the approved File Mask
 SVG vertex coordinates are preserved exactly, but its *processed M1 physical
@@ -152,9 +154,9 @@ for **VIA12, VIA23, VIA34, M2, M3, M4**. Each mask/material pair has two
 independent area checks: expected-minus-real (missing film) and
 real-minus-expected (extra film). Both must be **under 1e-12 µm²**.
 The linked Node tests require all six reports and physical Via Z contact
-identity. **These six 2.5D checks have been committed but have NOT been
-executed against the actual full 23-step WaferCAD model** in this session;
-only the independent routing XY Boolean check has run.
+identity. The **official Node CI executed these checks using the real saved
+23-step final material** with 10/10 tests passing. No relaxation of the
+1e-12 µm² XY area tolerance was made.
 
 The real-browser script now independently checks **every one** of the
 251 supplementary rectangular polygons after both GDS and OAS roundtrips:
@@ -162,8 +164,8 @@ layer/datatype, exact six-decimal coordinate bounding boxes, four genuine
 Manhattan vertices and rectangle area, rather than counting 3,963
 polygons alone. It also performs actual project Save, deliberate project-name
 mutation, Recovery Restore and strict equality of all restored 2.5D region
-XY/Z material stacks, layers and File Mask elements. Those assertions are
-**committed, not executed** in the current chat environment.
+XY/Z material stacks, layers and File Mask elements. Those assertions **were executed and passed** in the official actual Chromium
+job, with all GDS/OAS polygons, 323-region Recovery model and masks preserved.
 
 The target browser acceptance script is
 `scripts/tcmos-array-interconnect-browser-acceptance.mjs`. It must open
@@ -171,11 +173,12 @@ the **real generated routed project** in WaferCAD Workstation and capture
 Main/Mask/3D/Section as applicable. The standalone SVG overlay is never a
 substitute for that visual acceptance.
 
-## Required next gates before acceptance
+## Targeted acceptance evidence and remaining release gates
 
-1. **Run and audit** the newly implemented post-Recipe global 2.5D generator with the actual WaferCAD geometry Kernel. Verify every Via landing and the 3 intermetal oxide volumes; fix any true physical/schema defects rather than weakening assertions. Do not preserve or invent routed History/Recipe.
-2. Re-run source Mask GDS/OAS exact round-trip on the untouched source and **separately export** the supplemental routed mask stack with unique documented layer numbers and datatype. Prove there is no source-net short, missed via or non-Manhattan sliver.
-3. Run the committed real-browser acceptance script and capture actual WaferCAD Main / Mask / 3D / Section for the newly generated physical project. Inspect M2–M4 alignment, Via pillars, dielectric and substrate contact and independently compare the unconnected original. Do not accept a standalone overlay SVG in place of these screenshots.
-4. Perform focused save/reopen, History/Recovery, Recipe scientific invariants, strict material slabs and unit tests; only after actual visuals pass, run necessary Targeted CI then full final Quality / release checks.
+- **Real scientific / project persistence:** [#329 targeted science, 10/10 pass](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39036264996), using the original saved 23-step material model. The added 140 Via contacts and six M2/M3/M4/Via footprint bands preserve exact XY overlap and Z continuity. All source masks survive unchanged.
+- **Real Chromium Workstation:** [actual 4×4 screenshots and binary export artifacts](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39036264996/artifacts/12101538990), autonomously inspected Main, Mask, 3D and Section. The first 3D capture was correctly rejected as **blank while rebuilding**. The corrected acceptance requires renderState=ready, phase=complete and a nonempty scene, after which 1,919 scene objects and actual rendered materials were observed. No empty/failed 3D remains.
+- **GDS/OAS:** 14 mask groups / 3,963 polygons each, including geometry-by-geometry matching of all 251 supplemental Via/metal rectangles and exact original 3,712 source polygons. GDS 259,386 bytes; OAS 87,634 bytes.
+- **Recovery:** real Save → destructive project-name mutation → Restore, strict 323-region XY/Z stack, 17 physical layers and 3,963 File Mask element parity. The generated routed prototype deliberately has no fake post-Recipe History.
+- **Release remains gated:** final combined PR #225 Quality, necessary main-facing scientific regression, and explicit owner's approval before Main merge. No paper claim of device IV/VTC, BTBT, ohmic behavior, calibrated CMOS process deck, PDK DRC or parasitic signoff.
 
 **No Merge to Main or Welcome publication without explicit user approval.** This route is not a claim of measured electrical VTC, BTBT, ohmic body-tie, electrical parasitics or foundry DRC.
