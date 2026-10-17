@@ -15,6 +15,12 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   assert.equal(validation.doi, '10.1038/s41467-023-42981-1');
   assert.deepEqual(validation.demonstratedArraySizes, { cim: 1024, buffer: 512, tcamCells: 5 });
   assert.deepEqual(validation.representedCellCounts, { cim: 8, buffer: 4, tcamCells: 5 });
+  assert.deepEqual(validation.representedCntfets, {
+    tcamAccess: 10,
+    bufferAccess: 4,
+    mlPrecharge: 1,
+  });
+  assert.equal(validation.representedDigitalRramSites, 14);
   assert.equal(validation.transistorChannelWUm, 20);
   assert.equal(validation.transistorChannelLUm, 2);
   assert.ok(validation.declaredAssumptions.some((v) => v.includes('surrogate')));
@@ -197,8 +203,12 @@ test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal a
   const sources = byMask(17);
   const drains = byMask(18);
   const digitalRrams = byMask(19);
-  assert.equal(channels.length, 14, '4 buffer and 10 TCAM CNTFETs');
-  for (let i = 0; i < channels.length; i++) {
+  assert.equal(channels.length, 15, '4 buffer + 10 TCAM + 1 ML pre-charge CNTFET');
+  assert.equal(gates.length, 15);
+  assert.equal(sources.length, 15);
+  assert.equal(drains.length, 15);
+  assert.equal(digitalRrams.length, 14, 'pre-charge CNTFET must not become an RRAM cell');
+  for (let i = 0; i < digitalRrams.length; i++) {
     const channel = channels[i],
       source = sources[i],
       drain = drains[i],
@@ -227,6 +237,54 @@ test('CNTFET drawn islands preserve reported 20um width and 2um metal-to-metal a
   }
 });
 
+test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', async () => {
+  const { project } = await verifiedFixture();
+  const { pointInMulti } = await import('../vector-geometry.js');
+  const rects = (maskId) =>
+    project.layout.elements
+      .filter((e) => e.layer === maskId)
+      .map((e) => {
+        const xs = e.points.map((p) => p[0]);
+        const ys = e.points.map((p) => p[1]);
+        return {
+          left: Math.min(...xs), right: Math.max(...xs),
+          bottom: Math.min(...ys), top: Math.max(...ys),
+        };
+      });
+  const channel = rects(16).at(-1);
+  const gate = rects(15).at(-1);
+  const source = rects(17).at(-1);
+  const drain = rects(18).at(-1);
+  const rram = rects(19);
+  assert.deepEqual(channel, { left: 44, right: 46.6, bottom: -25, top: -5 });
+  assert.equal(rram.length, 14);
+  assert.ok(
+    rram.every((r) => r.right < channel.left),
+    'pre-charge device must be isolated from the 14 inferred binary-RRAM footprints',
+  );
+  assert.ok(gate.left < source.right && gate.right > drain.left);
+  assert.ok(Math.abs(drain.left - source.right - 2) < 1e-9);
+  const materialAt = (x, y, name) => {
+    const region = project.model.regions.find((r) => pointInMulti([x, y], r.geom));
+    assert.ok(region, 'pre-charge occupancy is missing at ' + x + ',' + y);
+    const id = project.model.layers.find((layer) => layer.name === name)?.id;
+    assert.ok(id, 'missing layer ' + name);
+    assert.ok(region.stack.some((segment) => segment.layerId === id),
+      'missing ' + name + ' at ' + x + ',' + y);
+  };
+  materialAt(45, -15, 'CNT channel 1nm SURROGATE');
+  materialAt(43.3, -15, 'CNT source Pd 45nm');
+  materialAt(47.4, -15, 'CNT drain Pd 45nm');
+  materialAt(45, -15, 'CNT gate Pd 15nm');
+  const pvd = project.model.layers.find((l) => l.name === 'CNT drain Pd 45nm');
+  const bridge = project.model.regions
+    .find((r) => pointInMulti([gate.right + 0.005, -15], r.geom))
+    ?.stack.find((segment) => segment.layerId === pvd.id);
+  assert.ok(bridge, 'pre-charge Pd wall bridge missing');
+  assert.ok(Math.abs(bridge.z1 - bridge.z0 - 0.01125) < 1e-9,
+    'pre-charge Pd step must follow same explicitly inferred 25% sidewall hypothesis');
+});
+
 test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps', async () => {
   const { project } = await verifiedFixture();
   const { pointInMulti } = await import('../vector-geometry.js');
@@ -244,11 +302,11 @@ test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps'
   const gates = rects(15);
   const channels = rects(16);
   const rram = rects(19);
-  assert.equal(gates.length, 14);
-  assert.equal(channels.length, 14);
-  assert.equal(rram.length, 14);
+  assert.equal(gates.length, 15, 'pre-charge gate must be present');
+  assert.equal(channels.length, 15, 'pre-charge CNT island must be present');
+  assert.equal(rram.length, 14, 'only access FET drains receive digital RRAM');
   const samples = 72;
-  for (let cell = 0; cell < channels.length; cell++) {
+  for (let cell = 0; cell < rram.length; cell++) {
     const y = (channels[cell].y0 + channels[cell].y1) / 2;
     const gateEdgeX = gates[cell].x1;
     // Uniform 72-point sampling can jump over the 10 nm oxide wall and
