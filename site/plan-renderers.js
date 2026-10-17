@@ -6,6 +6,7 @@ import {
 } from './model-array.js';
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
+import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
 import {
   electricalRegionSectionBands,
   electricalRegionSurfaceGroups,
@@ -533,6 +534,7 @@ export function createPlanRenderers({
       sectionCollapse,
       sectionViewport,
     } = getState();
+    const physicalOwner = validateExperimentalPhysicalFacetModel(model);
     const mainCanvas = $('sectionCanvas'),
       c = targetCanvas || mainCanvas,
       { ctx, w, h } = setupCanvas(c),
@@ -608,6 +610,7 @@ export function createPlanRenderers({
       effectiveXScale = xScale * screenViewport.zoom * detailScaleX;
 
     if (!detailRoi) {
+      c.dataset.physicalFacetOwner = physicalOwner?.kind || '';
       c.dataset.scaleMode = sectionScaleMode;
       c.dataset.xPxPerUm = String(xScale * screenViewport.zoom);
       c.dataset.zPxPerUm = String(zScale * screenViewport.zoom);
@@ -658,7 +661,7 @@ export function createPlanRenderers({
       }
     }
 
-    const roughColumns = sectionColumns(model, section.a, section.b),
+    const roughColumns = physicalOwner ? [] : sectionColumns(model, section.a, section.b),
       sidewallProfiles = new Map(),
       sectionDx = section.b[0] - section.a[0],
       sectionDy = section.b[1] - section.a[1],
@@ -823,7 +826,7 @@ export function createPlanRenderers({
       });
     }
 
-    for (const electrical of electricalRegionSectionBands(model, section.a, section.b)) {
+    for (const electrical of physicalOwner ? [] : electricalRegionSectionBands(model, section.a, section.b)) {
       const appearance = electrical.surfaceAppearance,
         faceDirection = electrical.face === 'back' ? -1 : 1,
         times =
@@ -871,7 +874,7 @@ export function createPlanRenderers({
     }
 
     const implantBorderPolygons = new Map();
-    for (const implant of implantSectionBands(model, section.a, section.b)) {
+    for (const implant of physicalOwner ? [] : implantSectionBands(model, section.a, section.b)) {
       const appearance = implant.surfaceAppearance,
         faceDirection = implant.face === 'back' ? -1 : 1,
         times =
@@ -1033,7 +1036,7 @@ export function createPlanRenderers({
 
     // Auto mode keeps sub-pixel physical sidewalls legible. Draw this last so the
     // visibility aid cannot be erased by rough-surface compositing.
-    for (const slice of sectionSlices(model, section.a, section.b)) {
+    for (const slice of physicalOwner ? [] : sectionSlices(model, section.a, section.b)) {
       if (slice.role !== 'conformal-sidewall') continue;
       const layer = layerById(model, slice.layerId);
       if (!layer) continue;
