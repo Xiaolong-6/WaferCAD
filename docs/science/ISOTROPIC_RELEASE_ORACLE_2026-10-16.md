@@ -77,3 +77,23 @@ modify a model. Most importantly, it does **not** implement
 colliding undercuts between seed islands, or turn this into a selectable
 new Recipe command. Every required production integration remains gated by
 targeted scientific topology, History/Recovery, and Chromium visual tests.
+
+## Canonical exposed-material seed ownership (combined #298/#299)
+
+`planTopologySelectiveIsotropicRelease()` now derives its seed patches from
+the existing production `exposedSurfaceGroups(model, {face, clip})`
+topology, rather than accepting a caller-provided `isExposed: true`.
+The source geometry is the actual exposed material footprint intersected
+with the requested physical mask. The planner rejects buried target
+layers, unknown layer IDs, unsupported arrays/physical-facet owners,
+invalid faces and unsuitable appearance-only Rough surfaces. Returned
+Front/Back Z bands still derive from the **same pure analytic oracle**;
+their source footprints retain Polygon/MultiPolygon holes and islands.
+
+This is a read-only canonical-topology adapter, **not** a new etch
+operation. It does not replace `applyIsotropicEtch()`, solve the
+exposed-seed dilation Boolean, or mutate old Microdisk snapshots. These
+remain hard preconditions before a new opt-in replay or any source
+figure claim. The targeted tests explicitly verify a buried Base
+blocked by front oxide, backside Base visibility, real XY mask clipping,
+invalid selectivity and byte-identical original Model state.
