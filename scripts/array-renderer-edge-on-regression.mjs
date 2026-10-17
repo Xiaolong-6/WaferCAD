@@ -97,7 +97,7 @@ try {
   // camera in one browser task. The test still requires the first exact frame
   // and all its walls to render; a timeout is a correctness failure.
   const handle = await page.waitForFunction(
-    (previous) => {
+    ({ previous, farTriangles }) => {
       const host = document.getElementById('threeHost');
       if (
         host?.dataset.transparentArrayLodTier !== 'exact' ||
@@ -106,14 +106,18 @@ try {
         // WebGL frame and triangle counters still belong to the far tier.
         host.dataset.rendererFrameArrayLodTier !== 'exact' ||
         host.dataset.rendererFrameSceneGeneration !== host.dataset.sceneGeneration ||
-        Number(host.dataset.rendererFrameSerial || 0) <= previous
+        Number(host.dataset.rendererFrameSerial || 0) <= previous ||
+        // The *first* exact-tier frame can still be transitional. Never fit
+        // away before a fully drawn exact frame satisfies the same strict
+        // scientific triangle-count invariant asserted again below.
+        Number(host.dataset.rendererDrawTriangles || 0) <= farTriangles
       )
         return false;
       const edge = { ...host.dataset };
       document.getElementById('fit3dBtn')?.click();
       return JSON.stringify(edge);
     },
-    beforeEdgeFrame,
+    { previous: beforeEdgeFrame, farTriangles },
     { timeout: 240000, polling: 100 },
   );
   const edgeOn = JSON.parse(await handle.jsonValue());
