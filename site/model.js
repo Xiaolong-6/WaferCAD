@@ -1204,10 +1204,8 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateral
         });
   let changed = false;
   for (const seed of seeds) {
-    // Work from the protected complement rather than repeatedly unioning a
-    // large exposed domain with its dilation. The undercut strip inside the
-    // protected footprint is disjoint from the exposed seed, which avoids
-    // near-coincident slivers at mask edges.
+    // Keep the protected complement as the only undercut target, avoiding
+    // near-coincident overlap with the exposed seed.
     const protectedGeom = difference(model.boundary, seed.geom);
 
     const legacyBands = adaptiveBands
@@ -1229,8 +1227,13 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateral
         footprints = [seed.geom];
 
       if (lateral > 1e-9 && !isEmpty(protectedGeom)) {
-        for (const band of conformalBoundaryBands(protectedGeom, lateral)) {
-          const undercut = intersection(band, protectedGeom);
+        // The opt-in Process must trace only true exposed seed boundaries.
+        // The complement has unrelated exterior edges: offsetting those
+        // would etch protected Si at a wafer edge with no exposed release seed.
+        // Keep the legacy eight-band path unchanged for saved History replay.
+        const boundaryOwner = adaptiveBands ? seed.geom : protectedGeom;
+        for (const boundaryBand of conformalBoundaryBands(boundaryOwner, lateral)) {
+          const undercut = intersection(boundaryBand, protectedGeom);
           if (!isEmpty(undercut)) footprints.push(undercut);
         }
       }

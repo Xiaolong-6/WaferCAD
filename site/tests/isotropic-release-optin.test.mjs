@@ -67,6 +67,57 @@ test('experimental adaptive etch changes REAL selective material voids under a r
   assert.deepEqual(JSON.parse(JSON.stringify(model)), model);
 });
 
+test('opt-in front/back release never mistakes protected wafer outer edges for exposed seeds', () => {
+  for (const face of ['front', 'back']) {
+    const model = createModel({ shape: 'rect', width: 26, height: 26, thickness: 10 });
+    const deposited = applyOperation(model, {
+      type: 'add',
+      name: 'Protective oxide',
+      thickness: 1.2,
+      area: model.boundary,
+      face,
+    });
+    assert.equal(deposited.changed, true);
+    const opened = applyOperation(model, {
+      type: 'etch',
+      etchProfile: 'directional',
+      etchTargetLayerIds: [deposited.layerId],
+      thickness: 1.5,
+      area: rectMulti(4, 4),
+      face,
+    });
+    assert.equal(opened.changed, true);
+    const before = structuredClone(model);
+    const result = applyOperation(model, {
+      type: 'etch',
+      etchProfile: 'isotropic',
+      etchTargetLayerIds: ['base'],
+      thickness: 4,
+      face,
+      area: model.boundary,
+      isotropicLateralErrorUm: 0.25,
+    });
+    assert.equal(result.changed, true, result.error || face + ' must release Si');
+    assert.notDeepEqual(
+      sectionStackAt(model, [2.5, 0]),
+      sectionStackAt(before, [2.5, 0]),
+      face + ' must undercut the oxide next to the actual exposed opening',
+    );
+    for (const point of [
+      [12.5, 0],
+      [-12.5, 0],
+      [0, 12.5],
+      [0, -12.5],
+    ]) {
+      assert.deepEqual(
+        sectionStackAt(model, point),
+        sectionStackAt(before, point),
+        face + ' must not release protected Si at unrelated wafer edge ' + point,
+      );
+    }
+  }
+});
+
 test('adaptive release differs from legacy eight bands without silently changing legacy replay', () => {
   const { model: source } = maskedMicroReleaseFixture();
   const legacy = structuredClone(source);
