@@ -78,7 +78,22 @@ test('archived documents have canonical links and no obsolete originals', async 
     .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
 
-  assert.equal(archived.length, 79, 'archive inventory must be reviewed deliberately');
+  // The 2026-10-16 structure audit deliberately relocated exactly three dated
+  // records. Their original URLs remain readable as forwarding pages.
+  const relocated = new Set([
+    'CI_ARCHITECTURE_AUDIT_2026-10-12.md',
+    'SITE_EXPORT_API_REVIEW_2026-10-13.md',
+    'SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md',
+  ]);
+  assert.equal(
+    archived.length,
+    79 + relocated.size,
+    'archive inventory must be reviewed deliberately',
+  );
+  const compatibility = await readFile(
+    new URL('../../docs/COMPATIBILITY.md', import.meta.url),
+    'utf8',
+  );
   assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
   for (const entry of archived) {
     assert.ok(
@@ -86,11 +101,18 @@ test('archived documents have canonical links and no obsolete originals', async 
       `archive index must link directly to the canonical report: ${entry}`,
     );
     const obsoletePath = new URL(`../../docs/${entry}`, import.meta.url);
-    await assert.rejects(
-      access(obsoletePath),
-      { code: 'ENOENT' },
-      `obsolete historical stub must be deleted: ${entry}`,
-    );
+    if (relocated.has(entry)) {
+      const pointer = await readFile(obsoletePath, 'utf8');
+      assert.match(pointer, /^# Moved:/);
+      assert.ok(pointer.includes(`archive/${entry}`), `archive alias must forward: ${entry}`);
+      assert.ok(compatibility.includes(`](${entry})`), `archive alias must be indexed: ${entry}`);
+    } else {
+      await assert.rejects(
+        access(obsoletePath),
+        { code: 'ENOENT' },
+        `obsolete historical stub must be deleted: ${entry}`,
+      );
+    }
   }
 });
 
