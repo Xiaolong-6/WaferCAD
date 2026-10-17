@@ -35,12 +35,9 @@ const PIN = {
 
 const n4 = (n) => Number(n.toFixed(4));
 const box = (x0, y0, x1, y1) => [n4(x0), n4(y0), n4(x1), n4(y1)];
-const square = (x, y, width) =>
-  box(x - width / 2, y - width / 2, x + width / 2, y + width / 2);
-const horizontal = (x0, x1, y, width) =>
-  box(x0, y - width / 2, x1, y + width / 2);
-const vertical = (x, y0, y1, width) =>
-  box(x - width / 2, y0, x + width / 2, y1);
+const square = (x, y, width) => box(x - width / 2, y - width / 2, x + width / 2, y + width / 2);
+const horizontal = (x0, x1, y, width) => box(x0, y - width / 2, x1, y + width / 2);
+const vertical = (x, y0, y1, width) => box(x - width / 2, y0, x + width / 2, y1);
 const moved = (point, cell) => [n4(point[0] + cell.x), n4(point[1] + cell.y)];
 // File Mask is source geometry: NEVER re-quantize these approved vertices.
 const movedSource = (point, cell) => [point[0] + cell.x, point[1] + cell.y];
@@ -93,12 +90,17 @@ export function buildTcmosRoutedOverlay() {
         // The only M1 geometry comes from the approved original SVG.
         points: sourceMetal[index].points.map((p) => movedSource(p, cell)),
       });
-      emit('M2', net, 'm2/' + cell.id + '/' + net,
-        square(point[0], point[1], spec.m2PadWidth));
-      for (const [from, to] of [['M1', 'M2'], ['M2', 'M3']]) {
+      emit('M2', net, 'm2/' + cell.id + '/' + net, square(point[0], point[1], spec.m2PadWidth));
+      for (const [from, to] of [
+        ['M1', 'M2'],
+        ['M2', 'M3'],
+      ]) {
         vias.push({
           id: 'via-' + from + '-' + to + '/' + cell.id + '/' + net,
-          from, to, net, cellId: cell.id,
+          from,
+          to,
+          net,
+          cellId: cell.id,
           rect: square(point[0], point[1], spec.viaSize),
         });
       }
@@ -106,10 +108,13 @@ export function buildTcmosRoutedOverlay() {
     const [outX, outY] = moved(PIN.VOUT, cell);
     const padX = n4(cell.x + spec.outputPadLocalX);
     const outputNet = localNet('VOUT', cell);
-    emit('M3', outputNet, 'm3-output-trace/' + cell.id,
-      horizontal(outX - spec.m3WireWidth / 2, padX, outY, spec.m3WireWidth));
-    emit('M3', outputNet, 'm3-output-pad/' + cell.id,
-      square(padX, outY, spec.outputPadWidth));
+    emit(
+      'M3',
+      outputNet,
+      'm3-output-trace/' + cell.id,
+      horizontal(outX - spec.m3WireWidth / 2, padX, outY, spec.m3WireWidth),
+    );
+    emit('M3', outputNet, 'm3-output-pad/' + cell.id, square(padX, outY, spec.outputPadWidth));
     ports.push({
       id: 'port-VOUT/' + cell.id,
       net: outputNet,
@@ -127,20 +132,34 @@ export function buildTcmosRoutedOverlay() {
       const x = n4(sites[0].x + PIN[name][0]);
       const y0 = sites[0].y + PIN[name][1];
       const y1 = sites.at(-1).y + PIN[name][1];
-      emit('M3', name, 'm3-trunk/' + name + '/' + column,
-        vertical(x, y0 - spec.m3WireWidth / 2, y1 + spec.m3WireWidth / 2, spec.m3WireWidth));
+      emit(
+        'M3',
+        name,
+        'm3-trunk/' + name + '/' + column,
+        vertical(x, y0 - spec.m3WireWidth / 2, y1 + spec.m3WireWidth / 2, spec.m3WireWidth),
+      );
       vias.push({
         id: 'via-M3-M4/' + name + '/' + column,
-        from: 'M3', to: 'M4', net: name,
+        from: 'M3',
+        to: 'M4',
+        net: name,
         rect: square(x, spec.m4BusY[name], spec.viaSize),
       });
     }
   }
   for (const name of spec.buses) {
-    const xs = [0, 1, 2, 3].map((column) =>
-      n4(cells[column].x + PIN[name][0]));
-    emit('M4', name, 'm4-bus/' + name,
-      horizontal(xs[0] - spec.m4BusWidth / 2, xs.at(-1) + spec.m4BusWidth / 2, spec.m4BusY[name], spec.m4BusWidth));
+    const xs = [0, 1, 2, 3].map((column) => n4(cells[column].x + PIN[name][0]));
+    emit(
+      'M4',
+      name,
+      'm4-bus/' + name,
+      horizontal(
+        xs[0] - spec.m4BusWidth / 2,
+        xs.at(-1) + spec.m4BusWidth / 2,
+        spec.m4BusY[name],
+        spec.m4BusWidth,
+      ),
+    );
     ports.push({
       id: 'port-' + name,
       net: name,
@@ -157,7 +176,11 @@ export function buildTcmosRoutedOverlay() {
     scientificStatus: 'illustrative-routing-topology-only',
     physicalModelIntegrated: false,
     layers: spec.layers,
-    cells, m1, metal, vias, ports,
+    cells,
+    m1,
+    metal,
+    vias,
+    ports,
   };
 }
 
@@ -180,19 +203,27 @@ const contains = (poly, point) => {
   let inside = false;
   const [x, y] = point;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [ax, ay] = poly[i], [bx, by] = poly[j];
+    const [ax, ay] = poly[i],
+      [bx, by] = poly[j];
     const cross = (x - ax) * (by - ay) - (y - ay) * (bx - ax);
-    if (Math.abs(cross) < 1e-10 &&
-        x >= Math.min(ax, bx) && x <= Math.max(ax, bx) &&
-        y >= Math.min(ay, by) && y <= Math.max(ay, by)) return true;
-    if ((ay > y) !== (by > y) &&
-        x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
+    if (
+      Math.abs(cross) < 1e-10 &&
+      x >= Math.min(ax, bx) &&
+      x <= Math.max(ax, bx) &&
+      y >= Math.min(ay, by) &&
+      y <= Math.max(ay, by)
+    )
+      return true;
+    if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
   }
   return inside;
 };
-const corners = (rect) =>
-  [[rect[0], rect[1]], [rect[2], rect[1]],
-    [rect[2], rect[3]], [rect[0], rect[3]]];
+const corners = (rect) => [
+  [rect[0], rect[1]],
+  [rect[2], rect[1]],
+  [rect[2], rect[3]],
+  [rect[0], rect[3]],
+];
 
 export function auditTcmosRoutedOverlay(layout) {
   const s = ROUTED_4X4_SPEC;
@@ -213,7 +244,9 @@ export function auditTcmosRoutedOverlay(layout) {
   };
   const join = (a, b) => parent.set(root(a), root(b));
   const expectedNets = new Set([
-    'VIN', 'VDD', 'GND',
+    'VIN',
+    'VDD',
+    'GND',
     ...layout.cells.map((cell) => 'VOUT/' + cell.id),
   ]);
   const actualNets = new Set(nodes.map((node) => node.net));
@@ -222,20 +255,20 @@ export function auditTcmosRoutedOverlay(layout) {
   for (const layer of ['M2', 'M3', 'M4']) {
     const shapes = byLayer(layer);
     for (const [i, a] of shapes.entries()) {
-      assert.ok(a.rect[0] < a.rect[2] && a.rect[1] < a.rect[3],
-        a.id + ': invalid rectangle');
+      assert.ok(a.rect[0] < a.rect[2] && a.rect[1] < a.rect[3], a.id + ': invalid rectangle');
       for (const b of shapes.slice(i + 1)) {
         if (a.net === b.net) {
           if (touchingWithEdge(a.rect, b.rect)) join(a.id, b.id);
         } else {
-          assert.ok(gap(a.rect, b.rect) >= s.minimumSameLayerNetSpacing - 1e-9,
-            layer + ' SHORT/spacing: ' + a.id + ' vs ' + b.id);
+          assert.ok(
+            gap(a.rect, b.rect) >= s.minimumSameLayerNetSpacing - 1e-9,
+            layer + ' SHORT/spacing: ' + a.id + ' vs ' + b.id,
+          );
         }
       }
     }
   }
-  const stack = { M1: layout.m1, M2: byLayer('M2'),
-    M3: byLayer('M3'), M4: byLayer('M4') };
+  const stack = { M1: layout.m1, M2: byLayer('M2'), M3: byLayer('M3'), M4: byLayer('M4') };
   for (const via of layout.vias) {
     const targets = [via.from, via.to].map((layer) => {
       const matched = stack[layer].filter((shape) => {
@@ -244,10 +277,12 @@ export function auditTcmosRoutedOverlay(layout) {
         }
         return enclosure(shape.rect, via.rect, s.viaEnclosure);
       });
-      assert.equal(matched.length, 1,
-        via.id + ': expected exactly one complete ' + layer + ' landing');
-      assert.equal(matched[0].net, via.net,
-        via.id + ': crossing to wrong net on ' + layer);
+      assert.equal(
+        matched.length,
+        1,
+        via.id + ': expected exactly one complete ' + layer + ' landing',
+      );
+      assert.equal(matched[0].net, via.net, via.id + ': crossing to wrong net on ' + layer);
       return matched[0];
     });
     join(targets[0].id, targets[1].id);
@@ -269,12 +304,16 @@ export function auditTcmosRoutedOverlay(layout) {
   }
   assert.equal(owners.size, 19, 'Expected three global nets plus 16 isolated VOUT nets');
   for (const port of layout.ports) {
-    assert.ok(stack[port.layer].some((shape) =>
-      shape.net === port.net &&
-      (shape.rect
-        ? enclosure(shape.rect, square(...port.point, 0.001), 0)
-        : contains(shape.points, port.point))),
-    port.id + ': port lacks metal');
+    assert.ok(
+      stack[port.layer].some(
+        (shape) =>
+          shape.net === port.net &&
+          (shape.rect
+            ? enclosure(shape.rect, square(...port.point, 0.001), 0)
+            : contains(shape.points, port.point)),
+      ),
+      port.id + ': port lacks metal',
+    );
   }
   return {
     pass: true,
@@ -296,28 +335,67 @@ export function auditTcmosRoutedOverlay(layout) {
 
 export function renderTcmosRoutingOverlaySvg(layout) {
   const colors = {
-    VIN: '#d97706', VDD: '#dc2626', GND: '#2563eb',
+    VIN: '#d97706',
+    VDD: '#dc2626',
+    GND: '#2563eb',
   };
   const color = (net) => colors[net] || '#16a34a';
   const rect = (r) =>
-    'x="' + r[0] + '" y="' + r[1] + '" width="' +
-    n4(r[2] - r[0]) + '" height="' + n4(r[3] - r[1]) + '"';
-  const m1 = layout.m1.map((p) =>
-    '<polygon points="' + p.points.map((v) => v.join(',')).join(' ') +
-    '" fill="#a5a7d8" fill-opacity=".3" stroke="#6366a4" stroke-width=".045"/>').join('');
-  const metal = layout.metal.map((shape) =>
-    '<rect ' + rect(shape.rect) + ' fill="' + color(shape.net) +
-    '" fill-opacity="' + ({ M2: 0.55, M3: 0.8, M4: 0.75 }[shape.layer]) +
-    '" stroke="none"/>').join('');
-  const vias = layout.vias.map((via) =>
-    '<rect ' + rect(via.rect) +
-    '" fill="#111827" stroke="#ffffff" stroke-width=".035"/>').join('');
-  const outlines = layout.cells.map((cell) =>
-    '<rect x="' + (cell.x - 7) + '" y="' + (cell.y - 4) +
-    '" width="14" height="8" fill="none" stroke="#a3a3a3" stroke-width=".04"/>').join('');
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" ' +
+    'x="' +
+    r[0] +
+    '" y="' +
+    r[1] +
+    '" width="' +
+    n4(r[2] - r[0]) +
+    '" height="' +
+    n4(r[3] - r[1]) +
+    '"';
+  const m1 = layout.m1
+    .map(
+      (p) =>
+        '<polygon points="' +
+        p.points.map((v) => v.join(',')).join(' ') +
+        '" fill="#a5a7d8" fill-opacity=".3" stroke="#6366a4" stroke-width=".045"/>',
+    )
+    .join('');
+  const metal = layout.metal
+    .map(
+      (shape) =>
+        '<rect ' +
+        rect(shape.rect) +
+        ' fill="' +
+        color(shape.net) +
+        '" fill-opacity="' +
+        { M2: 0.55, M3: 0.8, M4: 0.75 }[shape.layer] +
+        '" stroke="none"/>',
+    )
+    .join('');
+  const vias = layout.vias
+    .map(
+      (via) =>
+        '<rect ' + rect(via.rect) + '" fill="#111827" stroke="#ffffff" stroke-width=".035"/>',
+    )
+    .join('');
+  const outlines = layout.cells
+    .map(
+      (cell) =>
+        '<rect x="' +
+        (cell.x - 7) +
+        '" y="' +
+        (cell.y - 4) +
+        '" width="14" height="8" fill="none" stroke="#a3a3a3" stroke-width=".04"/>',
+    )
+    .join('');
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" ' +
     'viewBox="-28 -16 56 32"><rect x="-28" y="-16" width="56" height="32" fill="#ffffff"/>' +
-    '<g transform="scale(1,-1)">' + outlines + m1 + metal + vias + '</g></svg>';
+    '<g transform="scale(1,-1)">' +
+    outlines +
+    m1 +
+    metal +
+    vias +
+    '</g></svg>'
+  );
 }
 
 async function main() {
@@ -325,10 +403,14 @@ async function main() {
   const audit = auditTcmosRoutedOverlay(layout);
   const directory = resolve('test-results/tcmos');
   await mkdir(directory, { recursive: true });
-  await writeFile(resolve(directory, 'tcmos-4x4-routing-overlay.json'),
-    JSON.stringify({ layout, audit }, null, 2));
-  await writeFile(resolve(directory, 'tcmos-4x4-routing-overlay.svg'),
-    renderTcmosRoutingOverlaySvg(layout));
+  await writeFile(
+    resolve(directory, 'tcmos-4x4-routing-overlay.json'),
+    JSON.stringify({ layout, audit }, null, 2),
+  );
+  await writeFile(
+    resolve(directory, 'tcmos-4x4-routing-overlay.svg'),
+    renderTcmosRoutingOverlaySvg(layout),
+  );
   console.log(JSON.stringify(audit));
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
