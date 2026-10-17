@@ -71,7 +71,12 @@ test('TCMOS Fig1b mask traces POLY ink without inferring foundry gate length', (
   assert.equal(gates[1].w, 0.44);
   const sourcePoly = layout.elements.filter((element) => element.layer === 6);
   for (const gate of sourcePoly) {
-    assert.equal(gate.points[1][0] - gate.points[0][0], GATE_LENGTH_UM);
+    // Compare at the 0.001 nm source-coordinate grid rather than demand
+    // bitwise equality from IEEE-754 subtraction of transformed SVG points.
+    assert.equal(
+      Math.round((gate.points[1][0] - gate.points[0][0]) * 1e6),
+      Math.round(GATE_LENGTH_UM * 1e6),
+    );
   }
   assert.equal(gates[0].h, gates[1].h);
   assert.equal(gates.length, 2, 'Fig.1b has two separate POLY gates connected at METAL1');
