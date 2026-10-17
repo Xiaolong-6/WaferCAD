@@ -106,8 +106,9 @@ jobs:
           exit 1
       # Real 3D evidence must be captured before a stale committed thumbnail
       # checksum can abort the job. Do not relax or replace the checksum gate.
-      # Always retain the package precontract shot and wire render-state
-      # diagnostic even when the strict Au wire renderer assertion fails.
+      # Preserve the package precontract screenshot and true WebGL mesh counters.
+      # The public Workstation snapshot intentionally omits assemblyWires;
+      # verify actual rendered wire/end-cap counts without altering scientific gates.
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
