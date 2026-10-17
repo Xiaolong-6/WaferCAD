@@ -75,7 +75,9 @@ test('4x4 translation preserves 64 mutually unshorted physical M1 source nets', 
           b.bounds.maxX < a.bounds.minX ||
           a.bounds.maxY < b.bounds.minY ||
           b.bounds.maxY < a.bounds.minY
-        ) continue;
+        ) {
+          continue;
+        }
         assert.ok(
           geometryArea(geometry.intersection(a.geom, b.geom)) < 1e-12,
           a.id + ' / ' + b.id + ': M1 cross-net short',
