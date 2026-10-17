@@ -63,33 +63,61 @@ jobs:
       - name: Generate routed model from approved stored source
         run: node scripts/build-tcmos-array-physical-interconnect.mjs
       - name: Check changed files formatting
-        run: |
-          files=(
-            scripts/build-tcmos-array-interconnect.mjs
-            scripts/build-tcmos-array-physical-interconnect.mjs
-            scripts/tcmos-array-interconnect-browser-acceptance.mjs
-            site/tests/tcmos-array-interconnect.test.mjs
-            site/tests/tcmos-array-physical-fast.test.mjs
-            site/tests/tcmos-array-physical-interconnect.test.mjs
-          )
-          if ! npx prettier --check "${files[@]}"; then
-            # The linked checkout cannot run Prettier locally. Print exact
-            # formatter output for a one-time auditable manual transfer.
-            # CI has no write permissions and never pushes to the branch.
-            npx prettier --write "${files[@]}"
-            for path in "${files[@]}"; do
-              echo "FORMATTED_BEGIN:$path"
-              base64 -w0 "$path"
-              echo
-              echo "FORMATTED_END:$path"
-            done
-            exit 1
-          fi
+        run: npx prettier --check scripts/build-tcmos-array-interconnect.mjs scripts/build-tcmos-array-physical-interconnect.mjs scripts/tcmos-array-interconnect-browser-acceptance.mjs site/tests/tcmos-array-interconnect.test.mjs site/tests/tcmos-array-physical-fast.test.mjs site/tests/tcmos-array-physical-interconnect.test.mjs
       - name: Upload physical model and science evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: tcmos-routed-4x4-targeted
+          path: test-results/tcmos/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  routed-browser:
+    if: github.base_ref == 'feat/tcmos-ternary-inverter-example-20261014'
+    needs: [routed-physics]
+    name: T-CMOS routed 4x4 Chromium and Recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Render actual post-Recipe routed model in WaferCAD Chromium
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4173
+        run: |
+          node scripts/build-tcmos-array-physical-interconnect.mjs
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/tcmos-routed-browser.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/tcmos-array-interconnect-browser-acceptance.mjs
+      - name: Preview genuine routed 3D and Section evidence
+        if: always()
+        run: |
+          for panel in three section; do
+            file="test-results/tcmos/tcmos-4x4-routed-${panel}-chromium.png"
+            if test -f "$file"; then
+              echo "REAL_CHROMIUM_SCREENSHOT_BEGIN:$panel"
+              base64 -w0 "$file"
+              echo
+              echo "REAL_CHROMIUM_SCREENSHOT_END:$panel"
+            fi
+          done
+      - name: Upload actual routed Main Mask 3D Section and exports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: tcmos-routed-4x4-chromium
           path: test-results/tcmos/
           retention-days: 14
           if-no-files-found: ignore
