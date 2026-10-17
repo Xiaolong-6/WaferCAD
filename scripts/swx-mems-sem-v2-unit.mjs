@@ -489,10 +489,12 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
   });
   const anchorNetId = ownerIds[0];
   const springAnchorsShareNet = ownerIds.slice(0, 4).every((owner) => owner === anchorNetId);
-  const stationaryCombsIsolated =
-    ownerIds[4] !== ownerIds[5] &&
-    ownerIds[4] !== anchorNetId &&
-    ownerIds[5] !== anchorNetId;
+  // Both driven comb handles must remain insulated from the moving
+  // grounded spring/shuttle structure. The paper does NOT establish
+  // whether the two drives share one on-chip Si net or external bias.
+  const combsSeparatedFromGround =
+    ownerIds[4] !== anchorNetId && ownerIds[5] !== anchorNetId;
+  const independentCombDriveDomains = new Set(ownerIds.slice(4)).size;
   const uncontactedSiliconNetIndices = silicon
     .map((_, index) => index)
     .filter((index) => !ownerIds.includes(index));
@@ -501,7 +503,9 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
     metalContacts: metalPads.length,
     metalPadSiOwnerIndices: ownerIds,
     springAnchorsShareNet,
-    stationaryCombsIsolated,
+    combsSeparatedFromGround,
+    independentCombDriveDomains,
+    sourceCombCommonBiasVerified: false,
     uncontactedSiliconNetIndices,
     // The model does not yet reconstruct the SEM peripheral silicon
     // / electrical ground return for the fixed optical frame.
