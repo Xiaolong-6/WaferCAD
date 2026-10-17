@@ -60,10 +60,13 @@ electrical transfer curve.
 
 ## Scientific provenance and remaining gates
 
-The original SVG contains apparent gaps between external VDD/GND
-leads and U-shaped body-tie metal. The model intentionally **does not**
-invent missing cross-cell routing, pad frames, wafer die/reticle layout
-or validated ohmic well contact. No measured dopant concentration,
+The source-approved SVG's VDD and GND polygons each form one continuous
+metal shape joining source metal to the corresponding U-shaped body-tie
+contact array. Earlier **legacy raster rectangles** had split each of those
+rails into two islands, but that audit does not describe the approved SVG.
+The 1×1 four-net Metal1 topology and all 218 CNT footprints are independently
+checked. The model intentionally **does not** invent cross-cell routing,
+pad frames, wafer die/reticle layout, or verified ohmic well contacts. No measured dopant concentration,
 junction depth, BTBT current or ternary VTC is claimed.
 
 The 4×4 structural/process/History/Recovery gate is accepted; an **8×8**

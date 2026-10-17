@@ -62,7 +62,7 @@ Both cells have compact horizontal ACTIVE diffusion bars crossed by an **image-p
 
 **Tilt clarification:** Neither Methods nor Supplementary Fig. 1 specifies a beam incidence angle. The arrows in Supplementary Fig. 1 indicate the implantation direction, not a measurable off-normal tilt. The paper does **not** establish a 0° angle. The reconstructed Recipe uses **0° as an assumed, neutral geometric baseline**, not as a documented foundry implantation condition. WaferCAD supports a separate nonzero tilt control, but a genuine directional process comparison should be labelled an _illustrative variant_, never as the published recipe. At 130 nm feature scale a small true tilt-induced lateral displacement may be invisible at full 14 µm field-of-view; zoom and quantitative model checks are needed.
 
-**Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and Metal1 are inferred body-tie regions. Fig.1b does not draw a continuous metal path from the outside supply leg to the U-shaped body rail, so these islands are deliberately kept separate and electrical continuity is unverified. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
+**Body-tie modelling caveat:** Fig. 1b shows the U-shaped contact pattern, but not a complete set of physical under-contact active regions, dopant implants or well tie process steps. The additional U-shaped ACTIVE diffusion and Metal1 are inferred body-tie regions. the earlier raster-rectangle interpretation split the outer supply leg and U-shaped body rail, but the approved SVG has one continuous Metal1 polygon per supply. Geometric metal continuity is supported; the actual ohmic well contact and electrical conductivity are unverified. In this simplified Kernel flow, the tap doping chemistry and physically correct metal/silicide interface are _not simulated_.
 
 ## Scope: externally calculated device results are visualization inputs
 
@@ -94,10 +94,12 @@ treating the old 14 × 8 µm illustrative Mask as foundry data:
 - The tallest **inverted U-shaped METAL1** bridge connects both POLY gate
   contacts (**VIN**). A shorter nested upper inverted-U bridge connects the two
   inner drain contacts (**VOUT**). The outer source leads and lower U rail connect
-  source pads to the **VDD/GND** labels. The original image leaves a
-  24–25 px white gap between each outside supply leg and inner U-shaped
-  body metal. This gap is preserved: it is **not** bridged to satisfy an
-  invented connectivity constraint.
+  source pads to the **VDD/GND** labels. The earlier *raster approximation* left a
+  24–25 px apparent gap between the outside supply leg and inner U-shaped
+  body metal. That legacy diagnostic is not authoritative: the approved
+  SVG has **one continuous VDD polygon and one continuous GND polygon**
+  carrying source and well-tie contacts. No additional metal bridge is
+  invented; the approved SVG itself provides that XY routing.
 - The mask contains **218 CNT polygons**: four 3×3 source/drain matrices, two POLY
   terminals, and **87 contact sites per U-shaped well-tie** (3 × 19 along the
   horizontal bottom plus five rows × three columns on each side). These pitches, widths, and even

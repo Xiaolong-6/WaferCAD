@@ -138,9 +138,10 @@ instance ownership, lossless project storage and non-calibrated dopant
 intent at every cell. Chromium visual inspection confirms visible oxide,
 16 structures and coherent cross-row sections.
 
-**Physical limitation:** the approved SVG includes unconnected
-body-tie/supply rail islands, and this example keeps independent
-unwired inverter layouts. Ohmic body contact, PN/BTBT, full inter-cell
+**Physical limitation:** the approved SVG has four independent Metal1
+paths, with source/body tie joined in the same VDD and GND polygons.
+The obsolete raster-island audit is not the actual SVG connectivity.
+Ohmic body contact, PN/BTBT, full inter-cell
 routing remain unverified; whole-array Recipe/History/Recovery geometry,
 by contrast, has been separately verified. Electrical behavior cannot
 be inferred from the wafer photograph; final Main merge and
