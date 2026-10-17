@@ -28,10 +28,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: One-time ground-test formatting diagnostic (remove after repair)
-        run: |
-          npx prettier site/tests/swx-mems-sem-ground-return-candidate.test.mjs > "${RUNNER_TEMP}/swx-formatted.mjs"
-          diff -u site/tests/swx-mems-sem-ground-return-candidate.test.mjs "${RUNNER_TEMP}/swx-formatted.mjs" || true
       - name: Scientific invariants for original and independent ground-return trial
         run: |
           node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs
