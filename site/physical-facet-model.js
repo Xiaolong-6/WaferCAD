@@ -17,7 +17,11 @@ export function validateExperimentalPhysicalFacetModel(model) {
     }
     return null;
   }
-  if (model.kernel !== PHYSICAL_FACET_MODEL_KERNEL || model.shape !== 'rect' || model.array != null) {
+  if (
+    model.kernel !== PHYSICAL_FACET_MODEL_KERNEL ||
+    model.shape !== 'rect' ||
+    model.array != null
+  ) {
     fail('requires a single rectangular vector model');
   }
   let owner;

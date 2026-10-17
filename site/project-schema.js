@@ -499,7 +499,10 @@ function validateModel(model, budget, geometryCache) {
     if (region.stack.length === 0) fail(`${path}.stack`, 'must not be empty.');
   });
 
-  if (Object.hasOwn(model, 'experimentalPhysicalFacetOwner')) {
+  if (
+    model.kernel === PHYSICAL_FACET_MODEL_KERNEL ||
+    Object.hasOwn(model, 'experimentalPhysicalFacetOwner')
+  ) {
     try {
       validateExperimentalPhysicalFacetModel(model);
     } catch (error) {
