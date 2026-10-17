@@ -3,6 +3,7 @@
 - `site/tests/*.test.mjs` — stable Node test discovery for `npm test`; most existing scientific, IO, Renderer and UI component tests are still flat.
 - `site/tests/documentation/` — Documentation, Wiki and Process Guide tests; discovered by `site/tests/documentation-suite.test.mjs`.
 - `site/tests/history/` — grouped native History scientific and transaction tests; discovered by `site/tests/history-suite.test.mjs`.
+- `site/tests/recovery/` — Workspace and Project Recovery tests; discovered by `site/tests/recovery-suite.test.mjs`.
 - `scripts/*-regression.mjs`, `scripts/v2/` — executable browser test owners and scientific acceptance entrypoints; not Node test discovery directories.
 - `tests/fixtures/` — immutable/scientifically attributable input datasets and expected values.
 - `tests/visual-baselines/` — approved platform-specific pixel references, not transient screenshots.

@@ -43,7 +43,7 @@ on:
       - 'site/tests/union-fast-path.test.mjs'
       - 'site/workspace-persistence.js'
       - 'site/workspace-restore-worker.js'
-      - 'site/tests/workspace-restore-worker.test.mjs'
+      - 'site/tests/recovery/workspace-restore-worker.test.mjs'
       - 'site/tests/renderer-surface-plan-worker.test.mjs'
       - 'site/controllers/workspace-persistence-controller.js'
       - 'site/ui-v2/workstation-workflow.js'
@@ -100,7 +100,7 @@ jobs:
       - name: Hardware adapter and frame attribution regression
         run: node --test scripts/v2/p1-gpu-identity.test.mjs scripts/v2/p1-input-latency.test.mjs scripts/v2/p1-webgl-frame-correlation.test.mjs scripts/v2/p1-cpu-stack-diagnostics.test.mjs scripts/v2/p1-scientific-model-evidence.test.mjs
       - name: Targeted renderer parity and History integrity tests
-        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history/history-head-worker.test.mjs site/tests/snapshots.test.mjs
+        run: node --test site/tests/renderer-instancing.test.mjs site/tests/worker-validated-project-import.test.mjs site/tests/recovery/workspace-restore-worker.test.mjs site/tests/renderer-surface-plan-worker.test.mjs site/tests/renderer-surface-plan-stream.test.mjs site/tests/renderer-sidewall-triangle.test.mjs site/tests/renderer-border-position-clip.test.mjs site/tests/union-fast-path.test.mjs site/tests/polygon-normalized-retry.test.mjs site/tests/polygon-intersection-bounds.test.mjs site/tests/polygon-bounds-groups.test.mjs site/tests/history/history-head-worker.test.mjs site/tests/snapshots.test.mjs
       - uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright

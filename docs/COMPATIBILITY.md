@@ -21,6 +21,8 @@ To keep previously shared GitHub file URLs open, relocated documents retain thei
 - [Former path](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) → [Canonical document](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md)
 - [Former path](TIO2_METALENS_PERFORMANCE_2026-10-10.md) → [Canonical document](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md)
 
+- [Former path](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) → [Canonical document](examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
+
 ## Archive
 
 - [Former path](CI_ARCHITECTURE_AUDIT_2026-10-12.md) → [Canonical document](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md)
