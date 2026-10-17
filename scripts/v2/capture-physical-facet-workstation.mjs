@@ -39,8 +39,18 @@ try {
   try {
     for (const view of ['three', 'section']) {
       const page = await context.newPage();
+      await page.addInitScript(() => {
+        const original = console.error;
+        window.__physicalBootErrors = [];
+        console.error = (...args) => {
+          window.__physicalBootErrors.push(
+            args.map((value) => value?.stack || String(value)).join(' | '),
+          );
+          original(...args);
+        };
+      });
       const errors = [];
-      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('pageerror', (error) => errors.push(error.stack || error.message));
       const response = await page.goto(base + '&view=' + view, {
         waitUntil: 'domcontentloaded',
         timeout: 30000,
@@ -56,7 +66,9 @@ try {
           'Physical Workstation boot failed: ' +
             (await page.locator('#app-root').innerText()) +
             '; browser errors: ' +
-            errors.join('; '),
+            errors.join('; ') +
+            '; captured console: ' +
+            JSON.stringify(await page.evaluate(() => window.__physicalBootErrors || [])),
         );
       }
       assert.equal(
