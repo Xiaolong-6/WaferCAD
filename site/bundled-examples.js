@@ -2,10 +2,10 @@ export const BUNDLED_EXAMPLES = Object.freeze([
   {
     id: 'photodetector-literature',
     title: 'Photodetectors with nanopatterns',
-    figure: 'Black-Si Fig. 1a · Ge Fig. 15',
+    figure: 'Black-Si Fig. 1a · Ge thesis Fig. 15',
     kind: 'project',
     level: 'Literature reconstruction',
-    variants: ['Black-Si · FINAL / QA', 'Ge Fig. 15 · A / B'],
+    variants: ['Black-Si · FINAL / QA', 'Ge thesis Fig. 15 · A / B'],
     path: './examples/photodetector-literature-examples.wafercad',
     filename: 'photodetector-literature-examples.wafercad',
     previewProject: {
@@ -27,6 +27,11 @@ export const BUNDLED_EXAMPLES = Object.freeze([
           'H. Liu et al., “Near-infrared germanium PIN-photodiodes with >1A/W responsivity,” Light: Science & Applications 14, 9 (2025).',
         doi: '10.1038/s41377-024-01670-4',
         href: 'https://doi.org/10.1038/s41377-024-01670-4',
+      },
+      {
+        citation:
+          'H. Liu, “Development of highly sensitive Ge NIR photodiode utilizing nanotexturing and charged oxides,” Aalto University Doctoral Theses 6/2026, Fig. 15.',
+        href: 'https://urn.fi/URN:ISBN:978-952-64-2900-7',
       },
     ],
     tags: ['Literature', 'Rough surfaces', 'ALD', 'Implant', 'Electrical', 'Variants'],

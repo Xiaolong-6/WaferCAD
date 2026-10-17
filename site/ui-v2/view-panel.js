@@ -47,11 +47,27 @@
       const titleSlot = slots.get(`view.${key}.header`);
       const actionSlot = slots.get(`view.${key}.actions`);
       const readoutSlot = slots.get(`view.${key}.readout`);
-      if (headerTitle) titleSlot.replaceChildren(headerTitle);
+      if (headerTitle) {
+        // Scientific View adapters may update their headers independently of
+        // Shell layout renders. Keep the desktop icon with the stable title slot.
+        const dockIcon = titleSlot.querySelector('.v2-dock-title-icon');
+        titleSlot.replaceChildren(...(dockIcon ? [dockIcon] : []), headerTitle);
+      }
       if (headerTools) {
         actionSlot.querySelector('.p-toolbar')?.dispatchEvent(new Event('dispose-toolbar'));
         actionSlot.replaceChildren(headerTools);
       }
+      // Scientific toolbar updates are independent of Docking layout updates.
+      // Reconcile window controls in the same transaction so no close or
+      // maximize button is lost between two Shell renders.
+      if (panel.dataset.dockChromeActive === 'true')
+        prepareDesktopChrome(panel, {
+          key,
+          label: panel.dataset.dockLabel || key,
+          icon: panel.dataset.dockIcon || null,
+          maximized: panel.dataset.dockMaximized === 'true',
+          draggable: panel.dataset.dockDraggable === 'true',
+        });
       readoutSlot.textContent = incomingReadout?.textContent || '';
       return panel;
     }
@@ -63,4 +79,66 @@
       entries: () => new Map(slots),
     });
   };
+  // The desktop workstation owns layout decisions; shared Panel Chrome owns
+  // how its titlebar represents them. Standalone and compact shells opt out.
+  function prepareDesktopChrome(panel, { key, label, icon, maximized = false, draggable = false }) {
+    const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
+    const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
+    if (!title || !actions) return;
+    const glyphName = icon || null;
+    const existingIcon = title.querySelector('.v2-dock-title-icon');
+    if (glyphName && existingIcon && existingIcon.dataset.glyph !== glyphName)
+      existingIcon.remove();
+    if (glyphName && !title.querySelector('.v2-dock-title-icon')) {
+      const glyph = window.WaferCadV2Icons.icon(glyphName);
+      glyph.classList.add('v2-dock-title-icon');
+      glyph.dataset.glyph = glyphName;
+      title.prepend(glyph);
+    }
+    panel.dataset.dockChromeActive = 'true';
+    panel.dataset.dockDraggable = String(draggable);
+    panel.dataset.dockMaximized = String(maximized);
+    panel.dataset.dockLabel = label;
+    if (glyphName) panel.dataset.dockIcon = glyphName;
+    title.tabIndex = draggable ? 0 : -1;
+    title.setAttribute('aria-label', label + ' layout titlebar; Alt+Enter to choose Snap Layout');
+    const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
+    if (maximize) {
+      maximize.setAttribute('aria-label', label + (maximized ? ' restore' : ' maximize'));
+      maximize
+        .querySelector('use')
+        ?.setAttribute('href', '#p-icon-' + (maximized ? 'restore' : 'maximize'));
+      maximize.classList.add('v2-dock-maximize');
+    }
+    let close = actions.querySelector('[data-action="dock:close:' + key + '"]');
+    if (!close) {
+      close = window.WaferCadV2Components.button('', 'dock:close:' + key, 'close', {
+        'aria-label': 'Close ' + label + ' view',
+        title: 'Close ' + label + ' view',
+      });
+      close.classList.add('v2-dock-close');
+      actions.append(close);
+    }
+    if (maximize) close.before(maximize);
+  }
+  function restoreDesktopChrome(panel, key) {
+    const title = panel.querySelector('[data-slot="view.' + key + '.header"]');
+    title?.removeAttribute('tabindex');
+    title?.removeAttribute('aria-label');
+    title?.querySelector('.v2-dock-title-icon')?.remove();
+    delete panel.dataset.dockDraggable;
+    delete panel.dataset.dockChromeActive;
+    delete panel.dataset.dockMaximized;
+    delete panel.dataset.dockLabel;
+    delete panel.dataset.dockIcon;
+    const actions = panel.querySelector('[data-slot="view.' + key + '.actions"]');
+    const maximize = panel.querySelector('[data-action="maximize:' + key + '"]');
+    const toolbar = actions?.querySelector('.p-toolbar');
+    if (maximize && toolbar && maximize.parentNode !== toolbar) toolbar.append(maximize);
+    maximize?.classList.remove('v2-dock-maximize');
+  }
+  window.WaferCadV2PanelChrome = Object.freeze({
+    prepareDesktop: prepareDesktopChrome,
+    restoreDesktop: restoreDesktopChrome,
+  });
 })();

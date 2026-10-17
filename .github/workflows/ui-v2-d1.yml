@@ -6,7 +6,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "site/**"
+      - "!site/tests/**"
       - "scripts/v2/**"
+      - "!scripts/v2/capture-visual-first.mjs"
       - ".github/workflows/ui-v2-d1.yml"
   workflow_dispatch:
 
@@ -20,6 +22,9 @@ permissions:
 jobs:
   section-real-views:
     name: D1 · Section and native views (software WebGL)
+    # D1 full real-view matrix belongs to final review; Draft gets quick
+    # screenshot feedback through visual-first.yml.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

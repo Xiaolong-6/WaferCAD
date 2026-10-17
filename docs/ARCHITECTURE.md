@@ -276,9 +276,9 @@ Changing the global display/input unit never rescales geometry. Base dimensions,
 
 ## Workspace layout
 
-`site/workstation-ui.js` and `site/workstation.css` own the current shell. The title bar selects **Overview**, **Main**, **Mask**, **3D**, or **Split**. Overview shows the three primary scientific panels together; Split keeps two independently chosen panes. Section A–B remains a dock below the primary area. The tool rail opens Project/Base, Process, History and other controls in the Function panel; Function is not a permanent third column in the old five-panel grid.
+The production shell is owned by `site/ui-v2/workstation-v2.js`, with desktop presentation in `site/ui-v2/desktop-shell.css` and compact presentation in `site/ui-v2/mobile-workstation.css`. Desktop composition is modeled by `site/ui-v2/view-layout-model.js` and presented by `site/ui-v2/view-layout.css`. At widths of **821 px and above**, the left workflow sidebar (project title, workflow navigation and editor) and right scientific workspace occupy separate columns, with one resizable divider. The centered workspace viewbar offers **Overview**, **Main**, **Mask**, **3D** and **Section**. Overview restores the four-view composition; individual scientific views have independent visibility and maximize/restore state. The retained `site/workstation-ui.js` and `site/workstation.css` are Legacy regression sources, not the active production shell.
 
-Wide screens default to Overview, with explicit view preferences restored when saved. Compact/mobile selection is handled by the workstation controller rather than assuming one fixed panel arrangement at 900 px. Layout, camera, ROI inspection and maximize choices must not mutate canonical material geometry.
+Desktop layout preferences are separate from project geometry and are restored through their dedicated view-layout storage. At **820 px and below**, compact Edit/View selection and scrolling are managed by the mobile workspace controller; the production title bar is hidden and navigation moves to a fixed bottom dock. Compact mode reuses the scientific view instances rather than recreating the model or the worker. Layout, camera, ROI inspection and maximize choices must not mutate canonical material geometry.
 
 ## Persistence
 

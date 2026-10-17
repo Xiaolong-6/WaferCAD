@@ -1,0 +1,48 @@
+name: Literature Figure Cut Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'scripts/example-literature-visual-evidence.mjs'
+      - 'site/examples/photodetector-literature-examples.wafercad'
+      - '.github/workflows/literature-figure-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Real browser Section and 3D figure cuts
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Inspect published geometric cut locations using Chromium
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory site > /tmp/wafercad-figure-evidence.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          node scripts/example-literature-visual-evidence.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: literature-section-mask-3d-paper-cut-evidence
+          path: test-results/literature-figure-cuts/
+          if-no-files-found: warn
+          retention-days: 14

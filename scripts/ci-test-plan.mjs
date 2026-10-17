@@ -1,5 +1,7 @@
+import { execFileSync } from 'node:child_process';
 import { appendFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 export const BROWSER_SUITES = Object.freeze([
   'smoke',
@@ -18,7 +20,7 @@ const COMMON_TEST_INFRA = [
   /^scripts\/test-helpers\/ui\.mjs$/,
   /^scripts\/test-helpers\/product-scientific\.mjs$/,
 ];
-const DEPENDENCY_FILES = new Set(['package.json', 'package-lock.json']);
+const DEPENDENCY_FILES = new Set(['package-lock.json']);
 const V2_WORKSPACE_PATHS = [/^site\/ui-v2\//, /^scripts\/v2\//];
 const V2_CROSS_UI_PATHS = [
   /^site\/ui-v2\/(?:workstation-(?:entry|runtime|workflow)|project-mask-panels)\.js$/,
@@ -119,7 +121,7 @@ const PRODUCT_REVIEW_PATHS = [
 
 const EXAMPLE_PATHS = [
   /^site\/examples\//,
-  /^examples\//,
+  /^examples\/(?!.*\/(?:README|PROVENANCE)\.md$)/,
   /^site\/bundled-examples\.js$/,
   /^site\/bundled-example-history\.js$/,
   /^scripts\/example-regression\.mjs$/,
@@ -182,7 +184,35 @@ function enableAll(plan) {
   enable(plan, ...BROWSER_SUITES);
 }
 
-export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
+// Only the addition of a dedicated preview command is safe to de-scope.
+// Unrecognized changes, including missing Git history, remain full-suite.
+export function isPreviewOnlyPackageChange(before, after) {
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') {
+    return false;
+  }
+  const { scripts: oldScripts = {}, ...oldPackage } = before;
+  const { scripts: newScripts = {}, ...newPackage } = after;
+  if (
+    !oldScripts ||
+    !newScripts ||
+    typeof oldScripts !== 'object' ||
+    typeof newScripts !== 'object'
+  ) {
+    return false;
+  }
+  const { 'preview:visual': previewCommand, ...otherScripts } = newScripts;
+  return (
+    !Object.hasOwn(oldScripts, 'preview:visual') &&
+    previewCommand === 'node scripts/v2/capture-visual-first.mjs' &&
+    isDeepStrictEqual(oldPackage, newPackage) &&
+    isDeepStrictEqual(oldScripts, otherScripts)
+  );
+}
+
+export function buildCiTestPlan(
+  changedPaths = [],
+  { full = false, packageBefore = null, packageAfter = null } = {},
+) {
   const paths = [...new Set(changedPaths.map((path) => String(path).trim()).filter(Boolean))],
     plan = emptyPlan();
 
@@ -193,7 +223,10 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
     return { full: true, paths, suites: plan, release: buildReleaseGates(paths, true) };
   }
 
-  if (paths.some((path) => DEPENDENCY_FILES.has(path) || matchesAny(path, COMMON_TEST_INFRA))) {
+  if (
+    paths.some((path) => DEPENDENCY_FILES.has(path) || matchesAny(path, COMMON_TEST_INFRA)) ||
+    (paths.includes('package.json') && !isPreviewOnlyPackageChange(packageBefore, packageAfter))
+  ) {
     enableAll(plan);
     return { full: true, paths, suites: plan, release: buildReleaseGates(paths, true) };
   }
@@ -218,6 +251,20 @@ export function buildCiTestPlan(changedPaths = [], { full = false } = {}) {
   }
 
   return { full: false, paths, suites: plan, release: buildReleaseGates(paths) };
+}
+
+function packageAtRevision(ref) {
+  if (!/^[0-9a-f]{40}$/i.test(ref || '')) return null;
+  try {
+    return JSON.parse(
+      execFileSync('git', ['show', `${ref}:package.json`], {
+        encoding: 'utf8',
+        maxBuffer: 1024 * 1024,
+      }),
+    );
+  } catch {
+    return null;
+  }
 }
 
 async function stdinText() {
@@ -247,7 +294,14 @@ async function main() {
       .map((path) => path.trim())
       .filter(Boolean);
   }
-  const plan = buildCiTestPlan(paths, { full });
+  const baseRef = args.find((arg) => arg.startsWith('--base='))?.slice('--base='.length);
+  const headRef = args.find((arg) => arg.startsWith('--head='))?.slice('--head='.length);
+  const needPackage = paths.includes('package.json') && !full;
+  const plan = buildCiTestPlan(paths, {
+    full,
+    packageBefore: needPackage ? packageAtRevision(baseRef) : null,
+    packageAfter: needPackage ? packageAtRevision(headRef) : null,
+  });
   await writeGithubOutputs(plan);
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
 }

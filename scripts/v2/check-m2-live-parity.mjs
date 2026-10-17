@@ -85,6 +85,8 @@ async function capture(page) {
       topbar: box('.p-topbar'),
       nav: box('.p-nav'),
       inspector: box('.p-inspector'),
+      sidebar: box('.p-sidebar'),
+      workspace: box('.p-workspace'),
       stage: box('.p-stage'),
       labels,
       thickness,
@@ -122,8 +124,11 @@ try {
         await page.waitForFunction(() => document.body.dataset.ready === 'true', null, {
           timeout: 120000,
         });
-        if (role === 'real' && !(await page.locator('.p-nav').isVisible()))
-          await page.locator('[data-action="show-editor"]').click();
+        if (
+          role === 'real' &&
+          !(await page.locator('.p-nav [data-action="domain:process"]').isVisible())
+        )
+          await page.locator('.p-nav [data-action="show-editor"]').click();
         const process = page.locator('.p-nav [data-action="domain:process"]');
         await process.click();
         await waitForPaint(page);
@@ -141,9 +146,27 @@ try {
       assert.equal(real.overflowX, 0, 'Real shell must fit the viewport');
       assert.ok(m2.root && real.root && m2.nav && real.nav && m2.inspector && real.inspector);
       if (width >= 821) {
-        near(m2.root.width, real.root.width, 2, 'Workbench width');
-        near(m2.nav.width, real.nav.width, 2, 'Primary navigation width');
-        near(m2.inspector.width, real.inspector.width, 2, 'Manual inspector width');
+        // M2 remains an inset reference shell. Production deliberately occupies
+        // the viewport; compare the owned internal chrome, not the outer card.
+        near(real.root.x, 0, 1, 'Production left edge');
+        near(real.root.y, 0, 1, 'Production top edge');
+        near(real.root.width, width, 1, 'Production full viewport width');
+        assert.ok(m2.root.width < real.root.width, 'M2 reference keeps its inset shell');
+        // Production #285 has a dedicated Sidebar; M2 deliberately keeps its
+        // older inset prototype width. Assert true containment and separation
+        // rather than equating two different Shell architectures.
+        assert.ok(real.sidebar && real.workspace, 'Production owns two stable desktop columns');
+        near(real.sidebar.x, real.root.x, 1, 'Sidebar begins at desktop left edge');
+        near(real.nav.width, real.sidebar.width, 2, 'Navigation fills Sidebar');
+        near(real.inspector.width, real.sidebar.width, 2, 'Inspector fills Sidebar');
+        assert.ok(
+          real.sidebar.width >= 300 && real.sidebar.width <= 390,
+          'Desktop Sidebar respects the approved width limits',
+        );
+        assert.ok(
+          real.workspace.x >= real.sidebar.x + real.sidebar.width,
+          'Workspace must not overlap Sidebar',
+        );
       } else {
         // The mobile Edit page deliberately diverges from the fixed-height M2
         // prototype: keep structural and horizontal-fit checks, not stale
@@ -152,8 +175,8 @@ try {
         near(real.nav.width, real.root.width - 2, 2, 'Mobile nav fits Workbench');
         near(real.inspector.width, real.root.width - 2, 2, 'Mobile editor fits Workbench');
       }
-      if (width >= 821 && m2.stage && real.stage)
-        near(m2.stage.x - m2.root.x, real.stage.x - real.root.x, 2, 'Canvas column origin');
+      if (width >= 821 && real.stage && real.workspace)
+        near(real.stage.x, real.workspace.x, 2, 'Scientific stage begins at Workspace origin');
       const m2Labels = m2.labels.map(normalize);
       const realLabels = real.labels.map(normalize);
       requireOrdered(m2Labels, expected, 'M2 source');
@@ -178,14 +201,10 @@ try {
         );
       }
       near(m2.thickness.box.height, real.thickness.box.height, 2, 'M2 stepper total height');
-      if (width >= 821) {
-        near(m2.thickness.input.width, real.thickness.input.width, 2, 'M2 stepper input width');
-      } else {
-        assert.ok(
-          real.thickness.input.width > 0 && real.thickness.input.width < real.inspector.width,
-          'Mobile stepper input fits document-width editor',
-        );
-      }
+      assert.ok(
+        real.thickness.input.width > 0 && real.thickness.input.width < real.inspector.width,
+        'Stepper input fits the currently owned Inspector width',
+      );
       report.cases.push({ width, result: 'pass', m2, real });
       console.log(`M2 live parity ${width}px: chrome, Manual control order and layout PASS`);
     } catch (error) {
