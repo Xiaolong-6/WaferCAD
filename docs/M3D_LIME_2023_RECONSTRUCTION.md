@@ -8,7 +8,7 @@
 
 ## Experimental metal Match Line routing — NOT YET ACCEPTED (October 17, 2026)
 
-**Source:** Li et al., *Nature Communications* 14, 7140 (2023), Fig. 3b and the TCAM discussion. The ten TCAM RRAM **Pt top electrodes** share the match line (ML); the four buffer RRAM contacts must **not** join ML. During pre-charge the separate CNTFET **source** is driven to 1 V and the **drain** supplies the ML node. All access-drain signal-line (SL), complementary SEL gates, bias and external-pads remain separate unmodeled nets.
+**Source:** Li et al., _Nature Communications_ 14, 7140 (2023), Fig. 3b and the TCAM discussion. The ten TCAM RRAM **Pt top electrodes** share the match line (ML); the four buffer RRAM contacts must **not** join ML. During pre-charge the separate CNTFET **source** is driven to 1 V and the **drain** supplies the ML node. All access-drain signal-line (SL), complementary SEL gates, bias and external-pads remain separate unmodeled nets.
 
 The experimental routing branch introduces one inferred 0.4 µm-wide ML bus at Y=[-2,-1] µm, five inferred vertical trunks reaching the ten 2T2R Pt contacts, and a spur at X=[47,47.4] µm to a dedicated pre-charge **drain** contact opening at X=[47,47.4], Y=[-14.5,-13.5] µm. It retains all fourteen original Pt contact footprints, uses the **same sourced Ti 20 nm / Pd 120 nm interconnect deposition** (Mask 21) for the linked ML, and keeps the four sampled buffer contacts isolated. A distinct Mask 22 sequentially opens the 45 nm digital Al₂O₃ plus 10 nm HfO₂, 35 nm Al₂O₃ and inferred 10 nm Y₂O₃ at the drain. These mask XY coordinates, bus width, opening footprint and via etch assumptions are **illustrative**, not foundry GDS or measured dimensions.
 

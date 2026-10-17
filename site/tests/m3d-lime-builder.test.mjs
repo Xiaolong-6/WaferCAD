@@ -399,8 +399,7 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
       via[0].y1 < drains[14].y1,
     'ML via must land fully inside the fifteenth CNTFET DRAIN',
   );
-  const touches = (a, b) =>
-    a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1;
+  const touches = (a, b) => a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1;
   const connected = new Set([4]);
   const queue = [4];
   while (queue.length) {
@@ -416,7 +415,10 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     assert.ok(connected.has(i), 'TCAM RRAM top contact is absent from common ML: ' + i);
   for (let i = 0; i < 4; i++)
     assert.ok(!connected.has(i), 'Buffer RRAM shorted into TCAM Match Line: ' + i);
-  assert.ok(metal.some((r) => touches(r, via[0])), 'the ML must reach the drain via');
+  assert.ok(
+    metal.some((r) => touches(r, via[0])),
+    'the ML must reach the drain via',
+  );
   assert.ok(
     !metal.some((r) => touches(r, { x0: 43.1, x1: 44.3, y0: -25, y1: -5 })),
     'ML must not touch the pre-charge SOURCE (the reported external 1 V supply)',
@@ -433,13 +435,20 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     const segment = stack.find((s) => s.layerId === names.get(name));
     assert.ok(
       segment,
-      name + ' missing at ' + x + ',' + y + ': ' +
-        JSON.stringify(stack.map((s) => ({
-          layer: project.model.layers.find((layer) => layer.id === s.layerId)?.name || s.layerId,
-          z0: s.z0,
-          z1: s.z1,
-          role: s.role,
-        }))),
+      name +
+        ' missing at ' +
+        x +
+        ',' +
+        y +
+        ': ' +
+        JSON.stringify(
+          stack.map((s) => ({
+            layer: project.model.layers.find((layer) => layer.id === s.layerId)?.name || s.layerId,
+            z0: s.z0,
+            z1: s.z1,
+            role: s.role,
+          })),
+        ),
     );
     return segment;
   };
@@ -546,12 +555,15 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     allGeometryCoordinates(1, -14, -1.5).map((y) => [47.2, y]),
     'every actual material-owner edge on pre-charge spur',
   );
-  const overEnd = [-5.12, -5.1, -5.065, -5.035, -5.015, -5.005, -4.995,
-    -4.985, -4.965, -4.935, -4.9, -4.88];
+  const overEnd = [
+    -5.12, -5.1, -5.065, -5.035, -5.015, -5.005, -4.995, -4.985, -4.965, -4.935, -4.9, -4.88,
+  ];
   const denseDrainSpur = [
     ...Array.from({ length: 81 }, (_, i) => -14 + (12.5 * i) / 80),
     ...overEnd,
-  ].sort((a, b) => a - b).map((y) => [47.2, y]);
+  ]
+    .sort((a, b) => a - b)
+    .map((y) => [47.2, y]);
   assertContinuousPd(denseDrainSpur, 'pre-charge drain-to-ML spur including 5nm-end seams');
 });
 

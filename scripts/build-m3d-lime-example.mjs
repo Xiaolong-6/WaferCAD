@@ -677,7 +677,11 @@ export async function buildM3DLime() {
     { stepCoverageFraction: 0.5 },
   );
   assertPhysicalContact(digitalRramProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
-  assertPhysicalContact(prechargeDrainProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
+  assertPhysicalContact(
+    prechargeDrainProbe,
+    'Top Ti interconnect 20nm',
+    'Top Pd interconnect 120nm',
+  );
   record(
     'Route inferred on-chip TCAM ML; connect SL/SEL externally for testing',
     'custom',

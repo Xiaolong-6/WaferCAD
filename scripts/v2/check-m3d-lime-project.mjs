@@ -1186,7 +1186,8 @@ try {
       if (
         /Recipe completed:|Recipe failed|Recipe preflight failed/.test(status) ||
         /^(Completed|Failed|Stopped):/.test(summary)
-      ) return 'finished';
+      )
+        return 'finished';
       // process-recipe-controller updates the live count on every step BEFORE
       // applyProcessStep(). recipeRunSummary is intentionally blank until the
       // entire run finishes, so it is never a live progress source.
