@@ -65,8 +65,8 @@ do not extend a fabricated waveguide just to make that number zero.
 reports **95 × 100 µm** (the same value appears in the journal article),
 while [Supplementary Table 1, p. 3/27, in that arXiv PDF](https://arxiv.org/pdf/2305.17366#page=28)
 lists this work's **full footprint as 100 × 90 µm**. The author may have used
-different revisions or measurement scopes; the *publisher's final
-supplementary PDF has not been independently reconciled*. Neither value can
+different revisions or measurement scopes; the _publisher's final
+supplementary PDF has not been independently reconciled_. Neither value can
 be silently used to infer missing XY mask coordinates. All
 `paperSwitchFootprintAccepted` and `paperSwxFootprintAccepted` flags remain
 **false** pending source registration.
