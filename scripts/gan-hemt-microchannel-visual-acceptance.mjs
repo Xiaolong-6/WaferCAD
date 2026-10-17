@@ -677,7 +677,10 @@ try {
         JSON.stringify({ diagnostic, error: String(error) }, null, 2) + '\n',
       );
       const screenshot = await page.locator('#threeHost').screenshot({ type: 'png' });
-      await writeFile(new URL('three-chip-' + mode + '-opacity-failure.png', directory), screenshot);
+      await writeFile(
+        new URL('three-chip-' + mode + '-opacity-failure.png', directory),
+        screenshot,
+      );
       throw new Error(JSON.stringify({ diagnostic, cause: String(error) }));
     }
     for (const borders of [false, true]) {
