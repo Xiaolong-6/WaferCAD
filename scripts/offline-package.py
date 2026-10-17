@@ -18,6 +18,7 @@ SCRIPT_NAMES = (
     'offline-three-capture.mjs', 'offline-three-mesh.mjs',
     'offline-three-vtk.py', 'offline-ui-capture.mjs', 'process-benchmarks.mjs',
     'offline-package.py', 'offline-source-revision.mjs',
+    'offline-native-app-capture.py', 'offline-native-app-capture.test.py',
     'offline-chat-native-export.mjs', 'offline-chat-raster.py',
     'offline-chat-vtk.py', 'offline-chat-ui.py', 'offline-chat-acceptance.py',
     'offline-chat-acceptance.test.py',
