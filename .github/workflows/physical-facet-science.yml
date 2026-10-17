@@ -24,6 +24,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - name: One-time exact formatting evidence for local conformal patch
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx prettier --write site/physical-facet-coating.js site/tests/physical-facet-coating.test.mjs docs/science/PHYSICAL_FACET_MODELING_2026-10-16.md
+          git diff --unified=3 -- site/physical-facet-coating.js site/tests/physical-facet-coating.test.mjs docs/science/PHYSICAL_FACET_MODELING_2026-10-16.md
       - name: Verify physical owner, closed mesh and exact Section contracts
         run: >-
           node --test
