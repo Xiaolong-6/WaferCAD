@@ -45,3 +45,12 @@ test('XML escapes untrusted display names', () => {
   assert.ok(!r.svg.includes('<script>'));
   assert.ok(r.svg.includes('&lt;script&gt;'));
 });
+test('Tall physical Section fits viewport without changing X:Z scale', () => {
+  const tall=[{layerId:'base',t0:0,t1:1,z0:-100,z1:100}];
+  const r=renderSectionSvg({model,slices:tall,a:[-10,0],b:[10,0],scaleMode:'physical'});
+  assert.equal(r.evidence.pixelsPerUmX,r.evidence.pixelsPerUmZ);
+  assert.ok(r.evidence.pixelsPerUmX < 3);
+  const match=r.svg.match(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="([^"]+)" fill="#aabbcc"/);
+  assert.ok(match);
+  assert.ok(Number(match[1])<=547);
+});

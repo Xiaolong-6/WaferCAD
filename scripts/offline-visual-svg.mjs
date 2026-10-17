@@ -59,7 +59,7 @@ export function renderSectionSvg({ model, slices, a, b, title = 'Section A–B',
   const zMin = Math.min(...slices.map((s) => finite(s.z0, 'z0'))), zMax = Math.max(...slices.map((s) => finite(s.z1, 'z1')));
   if (!(zMax > zMin)) throw new Error('Section has no positive vertical span.');
   const plot = { x: 90, y: 95, w: width - 180, h: height - 213 };
-  const pxX = plot.w / length;
+  const pxX = scaleMode === 'physical' ? Math.min(plot.w / length, plot.h / (zMax - zMin)) : plot.w / length;
   const pxZ = scaleMode === 'physical' ? pxX : plot.h / (zMax - zMin);
   if (!['physical', 'auto'].includes(scaleMode)) throw new Error('scaleMode must be physical or auto.');
   const top = plot.y + (plot.h - (zMax - zMin) * pxZ) / 2;
@@ -67,10 +67,11 @@ export function renderSectionSvg({ model, slices, a, b, title = 'Section A–B',
   const color = new Map(legend.map((item) => [item.id, item.color]));
   const shapes = slices.map((s) => {
     if (![s.t0, s.t1, s.z0, s.z1].every(Number.isFinite) || s.t1 <= s.t0 || s.z1 <= s.z0 || s.t0 < -1e-8 || s.t1 > 1 + 1e-8) throw Error('Malformed scientific Section slice.');
-    const x = plot.x + s.t0 * plot.w, y = top + (zMax - s.z1) * pxZ;
-    return `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt((s.t1 - s.t0) * plot.w)}" height="${fmt((s.z1 - s.z0) * pxZ)}" fill="${escapeXml(color.get(s.layerId) || '#94a3b8')}" ${borders ? 'stroke="#475569" stroke-opacity=".6" stroke-width=".7"' : ''}/>`;
+    const x = plot.x + (plot.w - length * pxX) / 2 + s.t0 * length * pxX, y = top + (zMax - s.z1) * pxZ;
+    return `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt((s.t1 - s.t0) * length * pxX)}" height="${fmt((s.z1 - s.z0) * pxZ)}" fill="${escapeXml(color.get(s.layerId) || '#94a3b8')}" ${borders ? 'stroke="#475569" stroke-opacity=".6" stroke-width=".7"' : ''}/>`;
   }).join('');
-  const axis = `<text x="${plot.x}" y="${height - 105}" fill="#64748b" font-size="12">A</text><text x="${plot.x + plot.w - 8}" y="${height - 105}" fill="#64748b" font-size="12">B</text>`;
+  const axisStart = plot.x + (plot.w - length * pxX) / 2;
+  const axis = `<text x="${fmt(axisStart)}" y="${height - 105}" fill="#64748b" font-size="12">A</text><text x="${fmt(axisStart + length * pxX - 8)}" y="${height - 105}" fill="#64748b" font-size="12">B</text>`;
   return {
     svg: frame({ width, height, title, subtitle: `WaferCAD native Section slices · ${scaleMode === 'physical' ? 'physical X:Z 1:1' : 'independent X/Z autoscale'} · no Z break`, content: shapes + axis, legend }),
     evidence: { view: 'section', endpointsUm: { a, b }, lineLengthUm: length, zMinUm: zMin, zMaxUm: zMax, pixelsPerUmX: pxX, pixelsPerUmZ: pxZ, scaleMode, materialSlices: slices.length, layerIds: legend.map((x) => x.id), renderer: 'offline-svg-native-topology', limitations: ['No roughness profile, Z break, implant overlay, or UI compositor validation.'] },
