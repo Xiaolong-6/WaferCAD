@@ -1,4 +1,4 @@
-name: T-CMOS #225 main integration conflict probe (temporary)
+name: T-CMOS #225 main integration (temporary scoped)
 
 on:
   push:
@@ -7,47 +7,103 @@ on:
     paths:
       - .github/workflows/tcmos-main-merge-probe-once.yml
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  merge-probe:
+  merge-targeted:
     if: github.repository == 'Xiaolong-6/WaferCAD'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false
-      - name: Preview real Git three-way merge against current main (no push)
-        run: |
-          git config user.name 'WaferCAD integration probe'
-          git config user.email 'wafercad-integration@example.invalid'
-          git fetch origin main --no-tags
-          echo "CURRENT_HEAD=$(git rev-parse HEAD)"
-          echo "TARGET_MAIN=$(git rev-parse origin/main)"
-          git merge --no-commit --no-ff origin/main || true
-          echo "=== UNMERGED PATHS ==="
-          git diff --name-only --diff-filter=U
-          echo "=== CONFLICT TYPES ==="
-          git ls-files -u | head -80
-          echo "=== MERGE STATUS ==="
-          git status --short
-          mkdir -p /tmp/tcmos-merge-probe
-          git diff --name-only --diff-filter=U > /tmp/tcmos-merge-probe/unmerged-paths.txt
-          git status --short > /tmp/tcmos-merge-probe/status.txt
-          git rev-parse HEAD origin/main > /tmp/tcmos-merge-probe/heads.txt
-          while IFS= read -r file; do
-            if [ -f "$file" ]; then
-              mkdir -p "/tmp/tcmos-merge-probe/conflicts/$(dirname "$file")"
-              cp "$file" "/tmp/tcmos-merge-probe/conflicts/$file"
-            fi
-          done < /tmp/tcmos-merge-probe/unmerged-paths.txt
-      - name: Preserve read-only merged-preview conflict evidence
-        if: always()
-        uses: actions/upload-artifact@v6
+          persist-credentials: true
+      - uses: actions/setup-node@v6
         with:
-          name: tcmos225-merge-probe
-          path: /tmp/tcmos-merge-probe/
-          retention-days: 7
+          node-version: '24'
+          cache: npm
+      - name: Merge pinned main into integration branch, never main
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "integrate/tcmos225-main-20261017"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main --no-tags
+          test "$(git rev-parse origin/main)" = "614fe384e6065d2bfc6021ec0416ae789857e6cc"
+          git merge --no-commit --no-ff origin/main || true
+          echo "=== ACTUAL THREE-WAY CONFLICTS ==="
+          git diff --name-only --diff-filter=U
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          conflicts = [
+              Path("site/tests/magic1000-reconstruction.test.mjs"),
+              Path("site/ui-v2/main-view.js"),
+          ]
+          marker = re.compile(
+              r"^<<<<<<< HEAD\n(.*?)^=======\n(.*?)^>>>>>>> origin/main\n",
+              re.M | re.S,
+          )
+          for path in conflicts:
+              raw = path.read_text()
+              matches = list(marker.finditer(raw))
+              if len(matches) != 1:
+                  raise SystemExit(f"Unexpected conflict structure: {path}: {len(matches)}")
+              ours, main = matches[0].groups()
+              if path.name == "main-view.js":
+                  if "dimensionsLabel()" not in ours or "emptyHint.node" not in main:
+                      raise SystemExit("Cannot safely integrate current Main stage/size semantics")
+                  resolved = (
+                      "      emptyHint.node,\n"
+                      "      hook('mainCoords', el('span', { class: 'p-scale' }, dimensionsLabel())),\n"
+                  )
+              else:
+                  if "withoutEmptyDopants" not in ours or "generatedWithLegacyBase" not in main:
+                      raise SystemExit("Cannot safely integrate old-file compatibility assertions")
+                  prefix, separator, _ = ours.partition(
+                      "    assert.deepEqual(withoutEmptyDopants(packed.model), withoutEmptyDopants(project.model));"
+                  )
+                  if not separator:
+                      raise SystemExit("Unexpected older scientific assertion")
+                  main_start = main.index("    // The shipped .wafercad snapshot")
+                  main_tail = main[main_start:]
+                  old = "    assert.deepEqual(packed.model, generatedWithLegacyBase);"
+                  if main_tail.count(old) != 1:
+                      raise SystemExit("Unexpected newer scientific assertion")
+                  main_tail = main_tail.replace(
+                      old,
+                      "    assert.deepEqual(\n"
+                      "      withoutEmptyDopants(packed.model),\n"
+                      "      withoutEmptyDopants(generatedWithLegacyBase),\n"
+                      "    );",
+                  )
+                  resolved = prefix + main_tail
+              merged = raw[:matches[0].start()] + resolved + raw[matches[0].end():]
+              if "<<<<<<<" in merged or ">>>>>>>" in merged:
+                  raise SystemExit(f"Unresolved markers: {path}")
+              path.write_text(merged)
+          PY
+          git add -- site/tests/magic1000-reconstruction.test.mjs site/ui-v2/main-view.js
+          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            echo "Unexpected additional conflict; refusing merge"
+            exit 1
+          fi
+          echo "=== MERGE DIFF SUMMARY ==="
+          git diff --cached --stat | tail -25
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check new combined science/UI files and focused science invariants
+        run: |
+          npx prettier --check site/tests/magic1000-reconstruction.test.mjs site/ui-v2/main-view.js
+          node --test site/tests/magic1000-reconstruction.test.mjs site/tests/model-array.test.mjs site/tests/tcmos-inverter-reconstruction.test.mjs site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-recipe-experiment.test.mjs
+          node --check site/ui-v2/main-view.js
+      - name: Commit integration merge to separate candidate branch only
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "integrate/tcmos225-main-20261017"
+          git status --short | tail -12
+          git commit -m "merge: integrate current main into T-CMOS 225 candidate with both test semantics"
+          git push origin "HEAD:refs/heads/integrate/tcmos225-main-20261017"
