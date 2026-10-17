@@ -6,6 +6,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import { gotoWelcome } from './test-helpers/ui.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 
 const id = process.argv[2] || 'three-tier-silicon-jlfets';
 const repeat = Number(process.argv[3] || 3);
@@ -83,7 +84,9 @@ try {
         await page.evaluate(() => window.WaferCadV2Workstation.snapshot().model.revision),
         expectedRevision,
       );
-      await page.locator('[data-action="view:three"]').click();
+      // Desktop docking has no compact `view:three` action. Use the same
+      // production maximize/restore control exercised by the visual suites.
+      await selectScientificView(page, 'three', 1440);
       const openedMs = performance.now() - started;
       await page.waitForFunction(
         (revision) => {
