@@ -125,3 +125,12 @@ Focused local package tests, without CI:
 python3 scripts/offline-package.test.py
 node --test site/tests/offline-source-revision.test.mjs
 ```
+## ChatGPT no-Node-dependencies fallback and real-file validation
+
+For environments with system Python Playwright/CairoSVG/VTK but no installed Node
+Playwright or Three packages, use [ChatGPT offline capture](OFFLINE_CHAT_RUNTIME.md).
+The read-only Python+Node fallback has been exercised against a complete
+Main source archive with **full Photodetector and PERC .wafercad files**,
+including native Mask data, physical Section Z windows, VTK diagnostics and
+isolated real v2 Shell controls. This verifies the uploaded Main snapshot's
+components, **not this feature branch's exact integrated release HEAD**.

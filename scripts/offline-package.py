@@ -18,9 +18,12 @@ SCRIPT_NAMES = (
     'offline-three-capture.mjs', 'offline-three-mesh.mjs',
     'offline-three-vtk.py', 'offline-ui-capture.mjs', 'process-benchmarks.mjs',
     'offline-package.py', 'offline-source-revision.mjs',
+    'offline-chat-native-export.mjs', 'offline-chat-raster.py',
+    'offline-chat-vtk.py', 'offline-chat-ui.py', 'offline-chat-acceptance.py',
+    'offline-chat-acceptance.test.py',
 )
 OPTIONAL_TOP = ('AGENTS.md', 'package.json', 'package-lock.json',
-                'THIRD_PARTY_NOTICES.md', 'docs/OFFLINE_VISUAL_KERNEL.md')
+                'THIRD_PARTY_NOTICES.md', 'docs/OFFLINE_VISUAL_KERNEL.md', 'docs/OFFLINE_CHAT_RUNTIME.md')
 MODULE_DIRS = ('three', 'playwright', 'playwright-core')
 ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 MAX_FILES = 25000
