@@ -6,6 +6,8 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'scripts/v2/check-source-sunset-workstation.mjs'
+      - 'scripts/workstation-regression.mjs'
+      - 'site/tests/source-sunset-workstation-command.test.mjs'
       - '.github/workflows/legacy-workstation-native-acceptance.yml'
   workflow_dispatch:
 
@@ -47,8 +49,8 @@ jobs:
           done
           cat /tmp/pr290-workstation-http.log
           exit 1
-      - name: Validate all native-v2 Workstation owner contracts
-        run: node scripts/v2/check-source-sunset-workstation.mjs
+      - name: Validate formal Workstation source entrypoint against real Chromium
+        run: node scripts/workstation-regression.mjs
       - name: Save actual workstation acceptance evidence
         if: always()
         uses: actions/upload-artifact@v6
