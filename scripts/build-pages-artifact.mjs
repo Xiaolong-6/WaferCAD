@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 // Developer fixtures are versioned in Git but are not part of the public application.
 const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/'];
 const excludedFiles = new Set([
-  // Retired editor source stays in Git solely for historical browser regressions.
+  // Archived Legacy source must never be republished as executable UI.
   'app-legacy.html',
   'app.js',
   'workstation.css',
+  // Retired browser-only modules retained in Git, not imported by the v2 product.
+  'workstation-ui.js',
+  'controllers/build-controller.js',
+  'controllers/startup-controller.js',
+  'controllers/view-popover-controller.js',
   'app-v2.html',
   'app-v2-main.html',
   'app-v2-mask.html',

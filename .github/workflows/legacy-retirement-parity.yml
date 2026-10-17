@@ -8,6 +8,7 @@ on:
       - 'scripts/legacy-retirement-parity-matrix.mjs'
       - 'site/tests/legacy-retirement-owner-audit.test.mjs'
       - 'site/tests/legacy-retirement-parity-matrix.test.mjs'
+      - 'site/tests/site-symbol-reachability.test.mjs'
       - '.github/workflows/legacy-retirement-parity.yml'
   workflow_dispatch:
 
@@ -29,3 +30,19 @@ jobs:
           node-version: '24'
       - name: Verify explicit owners and remaining scientific parity gaps
         run: node --test site/tests/legacy-retirement-owner-audit.test.mjs site/tests/legacy-retirement-parity-matrix.test.mjs
+
+  retirement-node-contracts:
+    # One-off scoped full Node gate after visual review for the sunset PR.
+    # Other Draft PRs remain on the low-cost Quality fast path.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify all Node scientific, History, IO and documentation contracts
+        run: npm test
