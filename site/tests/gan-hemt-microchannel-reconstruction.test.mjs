@@ -496,7 +496,7 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
   validateProjectFile(project);
   assert.equal(project.planViews.main.zoom, 2.5);
   assert.equal(project.planViews.mask.zoom, 1);
-  assert.deepEqual(project.section, { a: [30, -1700], b: [30, 1700] });
+  assert.deepEqual(project.section, { a: [-660, 0], b: [660, 0] }, 'Default Section must cross the tier staircase, not run down the mostly unstepped coolant trench');
   assert.deepEqual(
     project.display.sectionCollapse,
     { top: 0, bottom: -150, enabled: false },
@@ -506,17 +506,17 @@ test('Lian 2022 structure uses true stepped voids, a suspended die and replayabl
     project.roi,
     {
       type: 'rect',
-      a: [0, -1650],
-      b: [650, 1650],
+      a: [-520, 0],
+      b: [520, 650],
     },
     'Saved ROI must be a local 3D inspection crop',
   );
   assert.deepEqual(
     project.display.threeCamera,
     {
-      position: [-1700, -2250, 1500],
-      target: [200, 0, 330],
-      fov: 36,
+      position: [-1450, -1850, 1350],
+      target: [0, 280, 420],
+      fov: 38,
     },
     'Saved camera must focus on chip and microchannels',
   );

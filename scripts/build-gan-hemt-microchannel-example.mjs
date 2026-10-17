@@ -317,25 +317,27 @@ export async function buildGanMicrochannel() {
   };
   const root = projectForBenchmark({
     model,
-    section: { a: [30, -1700], b: [30, 1700] },
+    section: { a: [-660, 0], b: [660, 0] },
   });
   root.name = 'GaN HEMT / four-level Si microchannel (Lian 2022 surrogate)';
   // Default auto Z-break hides the scientific core of this 800 um device.
   // Keep 1:1 actual Z material geometry and make all four channel tiers visible.
   // Users can explicitly enable Z-break later to collapse only lower bulk Si.
   root.display.sectionCollapse = { top: 0, bottom: -150, enabled: false };
-  root.display.threeOpacity = 0.56;
+  root.display.threeOpacity = 1;
   root.display.threeShowBorders = false;
-  // Inspect one longitudinal side of both port-fed lower channels and the
-  // full stepped cavity; ROI affects only the display, not physical geometry.
-  root.roi = { type: 'rect', a: [0, -1650], b: [650, 1650] };
+  // Fig. 1 structural cutaway: the near Y=0 ROI boundary slices *across*
+  // the four stepped Si tiers below the HEMT/SiC, revealing the channel ribs.
+  // The inlet/outlet route and both Au wire loops have separate full-span
+  // History inspection Bookmarks; this display crop never changes geometry.
+  root.roi = { type: 'rect', a: [-520, 0], b: [520, 650] };
   // Main should open with the package/chip visible at useful pixel size.
   // Mask intentionally retains the full 6 x 5 mm published-scale context.
   root.planViews.main.zoom = 2.5;
   root.display.threeCamera = {
-    position: [-1700, -2250, 1500],
-    target: [200, 0, 330],
-    fov: 36,
+    position: [-1450, -1850, 1350],
+    target: [0, 280, 420],
+    fov: 38,
   };
   root.layout = makeLayout();
   root.maskSourceMode = 'file';
