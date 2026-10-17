@@ -21,3 +21,9 @@ test('desktop Main/Mask/3D/Section use the same panel frame as mobile', () => {
     /body\[data-workstation\]:not\(\[data-preview-mode\]\) \.p-view \.p-panel-head\s*\{[^}]*\bborder\s*:/s,
   );
 });
+
+test('empty hint passes canvas gestures through the card, retaining actionable buttons', () => {
+  const stage = css('view-kit/plan-stage.css');
+  assert.match(stage, /\\.v2-plan-stage > \\.v2-empty-hint\\s*\\{[^}]*pointer-events: none;/s);
+  assert.match(stage, /\\.v2-empty-action\\s*\\{[^}]*pointer-events: auto;/s);
+});

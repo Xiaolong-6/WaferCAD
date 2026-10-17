@@ -35,7 +35,8 @@
   font-size: var(--wc-font-body);
   line-height: var(--wc-leading);
   text-align: center;
-  pointer-events: auto;
+  /* Let canvas gestures pass through the guidance text. */
+  pointer-events: none;
 }
 .v2-plan-stage > .v2-empty-hint[hidden] {
   display: none;
@@ -44,6 +45,7 @@
   margin: 0;
 }
 .v2-empty-action {
+  pointer-events: auto;
   min-height: max(24px, var(--wc-hit-min));
   margin: 0 2px;
   padding: 0 var(--wc-space-2);
