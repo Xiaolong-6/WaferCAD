@@ -225,6 +225,40 @@ try {
       });
     }
 
+    // Quarantine must also preserve the protective checkpoint against a
+    // destructive Clear Recovery click, including a direct handler invocation
+    // that bypasses the disabled UI control.
+    const quarantine = await page.evaluate(async () => {
+      const storage = await import('/workspace-persistence.js');
+      const beforeKeys = (await storage.listWorkspaceRecoveryPoints())
+        .map((point) => point.key)
+        .sort();
+      document.querySelector('#workspaceRecoverySelect').dispatchEvent(new Event('change'));
+      const controls = {
+        restoreDisabled: document.querySelector('#workspaceRestoreBtn').disabled,
+        clearDisabled: document.querySelector('#workspaceRecoveryClearBtn').disabled,
+        saveDisabled: document.querySelector('#saveProjectBtn').disabled,
+      };
+      await document.querySelector('#workspaceRecoveryClearBtn').onclick();
+      document.querySelector('#saveProjectBtn').onclick();
+      const afterKeys = (await storage.listWorkspaceRecoveryPoints())
+        .map((point) => point.key)
+        .sort();
+      return {
+        beforeKeys,
+        afterKeys,
+        controls,
+        saveStatus: document.querySelector('#workspaceSaveStatus')?.textContent || '',
+      };
+    });
+    assert.deepEqual(quarantine.afterKeys, quarantine.beforeKeys);
+    assert.deepEqual(quarantine.controls, {
+      restoreDisabled: true,
+      clearDisabled: true,
+      saveDisabled: true,
+    });
+    assert.match(quarantine.saveStatus, /Recovery rollback failed.*Reload required/i);
+
     // Any half-restored volatile state is not authoritative. After restoring
     // browser APIs, the old durable record must remain untouched even beyond
     // the regular 1.8s autosave window, and a protected original must remain.
