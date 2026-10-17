@@ -44,10 +44,7 @@ test('canonical exposed front is oxide; hidden silicon is never promoted to rele
   assert.equal(front.seedPlans[0].bands.length, 12);
   assert.deepEqual(front.seedPlans[0].targetLayerIds, ['oxide']);
   assert.deepEqual(multiBounds(front.seedPlans[0].seedGeom), multiBounds(model.boundary));
-  assert.throws(
-    () => derive(model, { targetLayerIds: ['base'] }),
-    /no physically exposed seed/,
-  );
+  assert.throws(() => derive(model, { targetLayerIds: ['base'] }), /no physically exposed seed/);
   assert.deepEqual(model, baseline, 'Planning must never mutate the physical Model');
 });
 
@@ -98,10 +95,7 @@ test('material selectivity and unsupported topology fail before any partial muta
     () => derive({ ...model, kernel: 'vector-physical-facet-experimental-v1' }),
     /canonical non-array vector/,
   );
-  assert.throws(
-    () => derive({ ...model, array: { instances: [] } }),
-    /canonical non-array vector/,
-  );
+  assert.throws(() => derive({ ...model, array: { instances: [] } }), /canonical non-array vector/);
 });
 
 test('topology-derived seed plan is JSON-safe and has deterministic Front/Back owner', () => {

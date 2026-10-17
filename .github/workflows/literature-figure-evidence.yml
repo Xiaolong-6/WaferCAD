@@ -32,10 +32,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: One-time exact exposed-seed Prettier diagnostic
-        run: |
-          npx prettier --write site/tests/isotropic-release-topology.test.mjs
-          git diff --unified=3 -- site/tests/isotropic-release-topology.test.mjs
       - name: Verify paper provenance and physical exposed-seed release scientific contracts
         run: >-
           node --test
