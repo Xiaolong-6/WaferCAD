@@ -75,7 +75,26 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
     assert.equal(upperLeft[0][0], -41);
     assert.equal(upperRight[0][0], 41);
     assert.equal(pose.opticalFlexures.length, 2);
-    assert.equal(pose.bridge.length, 2);
+    assert.equal(pose.bridge.length, 1, 'No unreported 24um transverse S7 bridge');
+    assert.equal(pose.aligners.fixed.length, 2);
+    assert.equal(pose.aligners.flexure.length, 4);
+    assert.deepEqual(pose.aligners.centerlines.map((line) => line[0]), [
+      [-11, -50],
+      [11, -50],
+    ]);
+    for (const [index, side] of [-1, 1].entries()) {
+      const end = pose.aligners.centerlines[index].at(-1);
+      assert.ok(Math.abs(end[0] - side * 4) < 1e-12);
+      assert.ok(Math.abs(end[1] - (-50 + pose.travel)) < 1e-12);
+      const length = Math.abs(
+        pose.aligners.centerlines[index][0][0] - pose.aligners.centerlines[index].at(-1)[0],
+      );
+      assert.equal(length, 7);
+      const truss = pose.aligners.flexure[index * 2 + 1];
+      const span = v.multiBounds([[[...truss, truss[0]]]]);
+      assert.equal(span.width, 1);
+      assert.equal(span.height, 1);
+    }
   }
 });
 

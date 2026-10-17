@@ -112,10 +112,37 @@ function newHairpin(side, travel) {
   };
 }
 
+// S7 uses two matched, local aligner flexures adjacent to the two SWX
+// halves. A remote x=34um anchor previously required an unreported 24um
+// transverse bridge; keep the small 7um pair mechanically independent.
+function semV2StructuralAligners(travel) {
+  const fixed = [];
+  const flexure = [];
+  const centerlines = [];
+  for (const side of [-1, 1]) {
+    const padCenter = [side * 14, -50];
+    const fixedX = side * 11;
+    const movableX = side * 4;
+    const centerline = Array.from({ length: 17 }, (_, index) => {
+      const fraction = index / 16;
+      const smooth = fraction * fraction * (3 - 2 * fraction);
+      return [fixedX + (movableX - fixedX) * fraction, -50 + travel * smooth];
+    });
+    fixed.push(rect(...padCenter, 6, 6));
+    flexure.push(
+      miteredPolyline(centerline, SWX_REPORTED.structuralAlignerBeamUm)[0],
+      rect(side * 3.5, -50 + travel, 1, SWX_REPORTED.structuralAlignerTrussUm),
+    );
+    centerlines.push(centerline);
+  }
+  return { fixed, flexure, centerlines };
+}
+
 function semV2PhysicalPose(state) {
   const source = createSwxOptomechanicalCandidate(state);
   const actuator = source.actuator;
   const travel = source.travelUm;
+  const aligners = semV2StructuralAligners(travel);
   const down = SWX_SEM_V2_ASSUMPTIONS.actuatorFrameTranslationYUm;
   const translateActuatorAnchor = (ring, index) => {
     const upper = index % 2 === 1;
@@ -230,14 +257,6 @@ function semV2PhysicalPose(state) {
       ],
       0.7,
     ),
-    strip(
-      [
-        [0, -50 + travel],
-        [23.95, -50 + travel],
-        [24, -45 + travel],
-      ],
-      0.7,
-    ),
   ];
   const fixed = [
     ...fixedActuator,
@@ -245,7 +264,7 @@ function semV2PhysicalPose(state) {
     ...source.optics.fixedStops,
     ...fixedRoutes,
     ...fixedPads,
-    ...source.guides.fixed,
+    ...aligners.fixed,
   ];
   const movable = [
     ...movableActuator,
@@ -253,12 +272,7 @@ function semV2PhysicalPose(state) {
     ...source.optics.movableStops,
     ...bridge,
   ];
-  const flexure = [
-    ...springs,
-    ...springTrussContours,
-    ...opticalFlexures,
-    ...source.guides.flexure,
-  ];
+  const flexure = [...springs, ...springTrussContours, ...opticalFlexures, ...aligners.flexure];
   return {
     source,
     state,
@@ -278,6 +292,7 @@ function semV2PhysicalPose(state) {
     fixedPads,
     hairpins,
     bridge,
+    aligners,
   };
 }
 
@@ -380,7 +395,7 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('lower right spring anchor', [49, -99]),
     add('upper right spring anchor', [41, -70]),
     add('S7 left stationary anchor', [-14, -50]),
-    add('S7 right stationary anchor', [34, -45]),
+    add('S7 right stationary anchor', [14, -50]),
     ...newTerminalsUm.map((point, index) => add('terminal support ' + index, point)),
   ];
   // Inspect each *real* 1um truss at its own centroid after HF. The
@@ -423,7 +438,7 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('left moving S6 optical hairpin', [-58, -59 + travel]),
     add('right moving S6 optical hairpin', [58, -59 + travel]),
     add('left S7 narrow aligner beam', [-7.5, -50 + travel / 2]),
-    add('right S7 narrow aligner beam', [27.5, -45 + travel / 2]),
+    add('right S7 narrow aligner beam', [7.5, -50 + travel / 2]),
     add('central movable SWX-to-shuttle link', [0, -52 + travel]),
     ...trussReleasePoints,
     ...beamRunReleasePoints,
@@ -458,7 +473,7 @@ export const SWX_SEM_V2_PROCESS_PROFILE = Object.freeze({
     { point: [-25, -87.4], shouldRetainBOX: false },
     { point: [25, -87.4], shouldRetainBOX: false },
   ],
-  guidedSupportPoints: [...newTerminalsUm, [-14, -50], [34, -45]],
+  guidedSupportPoints: [...newTerminalsUm, [-14, -50], [14, -50]],
   assumptions: SWX_SEM_V2_ASSUMPTIONS,
 });
 
