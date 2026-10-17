@@ -244,7 +244,7 @@ try {
             const opening = document.body.textContent.includes(
               'Opening sem-v2-ground-rail-section.wafercad',
             );
-            return /9\\s*µm\\s*span/.test(sectionText) && !opening;
+            return /9\s*µm\s*span/.test(sectionText) && !opening;
           },
           null,
           { timeout: 120000 },
