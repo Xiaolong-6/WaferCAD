@@ -81,7 +81,12 @@ export function createProcessTaskController({
     return () => abortListeners.delete(listener);
   }
 
-  function runChildWorker(task, workerPath, payload, { transfer = [], stagePrefix = '' } = {}) {
+  function runChildWorker(
+    task,
+    workerPath,
+    payload,
+    { transfer = [], stagePrefix = '', startupFallback = null } = {},
+  ) {
     if (task.abortController.signal.aborted) return Promise.resolve({ aborted: true });
 
     return new Promise((resolve) => {
@@ -118,10 +123,30 @@ export function createProcessTaskController({
           idleTimer = null;
         } else worker = new Worker(workerUrl);
       } catch (error) {
-        settle({
-          error: error?.message || String(error || 'Worker failed to start.'),
-          aborted: false,
-        });
+        if (typeof startupFallback !== 'function') {
+          settle({
+            error: error?.message || String(error || 'Worker failed to start.'),
+            aborted: false,
+          });
+          return;
+        }
+        task.abortCurrent = abortCurrent;
+        task.stage = 'Worker unavailable · validating locally…';
+        syncDialog();
+        // Only the caller can opt in to its own equivalent, validated operation.
+        // Do not transparently replay a Process task or a Worker that started.
+        Promise.resolve()
+          .then(() =>
+            task.abortController.signal.aborted
+              ? { aborted: true }
+              : startupFallback({ signal: task.abortController.signal, startupError: error }),
+          )
+          .then((result) =>
+            settle(task.abortController.signal.aborted ? { aborted: true } : result),
+          )
+          .catch((failure) =>
+            settle({ error: failure?.message || String(failure), aborted: false }),
+          );
         return;
       }
 
@@ -236,11 +261,12 @@ export function createProcessTaskController({
       abortMessage = 'Task aborted. The workspace was not changed.',
       failurePrefix = 'Task failed',
       transfer = [],
+      startupFallback = null,
     } = {},
   ) {
     return runTask(
       async ({ runWorker: runChild }) => {
-        const result = await runChild(workerPath, payload, { transfer });
+        const result = await runChild(workerPath, payload, { transfer, startupFallback });
         if (result?.error) throw new Error(result.error);
         return result;
       },
