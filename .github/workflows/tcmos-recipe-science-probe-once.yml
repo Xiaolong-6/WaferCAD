@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 2: assert atomic rejection via exception, not a partial return value.
+# Iteration 3: capture underlying Step13 worker/UI failure and direct kernel probe.
 
 on:
   push:

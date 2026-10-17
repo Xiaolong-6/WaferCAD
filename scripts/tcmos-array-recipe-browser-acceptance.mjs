@@ -107,6 +107,18 @@ try {
   await page.locator('[data-action="process-mode:recipe"]').click();
   assert.equal(await page.locator('.recipe-step-row').count(), 23);
   await page.locator('#recipeRunStart').selectOption('new-base');
+  await page.evaluate(() => {
+    window.__tcmosArrayStatusHistory = [];
+    const status = document.querySelector('[data-slot="status.message"]');
+    if (status) {
+      new MutationObserver(() => {
+        const text = status.textContent?.trim() || '';
+        if (text && window.__tcmosArrayStatusHistory.at(-1) !== text) {
+          window.__tcmosArrayStatusHistory.push(text);
+        }
+      }).observe(status, { childList: true, characterData: true, subtree: true });
+    }
+  });
   await page.locator('#recipeRunAllBtn').click();
   const dialog = page.getByRole('dialog');
   if (await dialog.isVisible()) {
@@ -126,14 +138,74 @@ try {
   report.runStatus = status;
   if (!summary.startsWith('Completed: 23/23')) {
     const failed = await snap();
+    const diagnostics = await page.evaluate(async () => {
+      const state = window.WaferCadV2Workstation.snapshot();
+      const step = state.processRecipe.steps[12];
+      const answer = {
+        maskSourceMode: state.maskSourceMode,
+        maskRoi: state.maskRoi,
+        currentDrawShapeCount: state.drawMask?.shapes?.length,
+        step13MaskShapeCount: step.params.mask?.drawMask?.shapes?.length,
+        statuses: window.__tcmosArrayStatusHistory || [],
+      };
+      try {
+        const [{ drawMaskGeometry }, { applyOperation }, arrayApi, vectorApi] =
+          await Promise.all([
+            import('/draw-mask-geometry.js'),
+            import('/model.js'),
+            import('/model-array.js'),
+            import('/vector-geometry.js'),
+          ]);
+        const p = step.params;
+        const geom = drawMaskGeometry(p.mask.drawMask);
+        const params = {
+          type: 'implant',
+          name: p.name,
+          tilt: p.tilt,
+          color: p.color,
+          thickness: p.depthUm,
+          depthStart: p.startDepthUm || 0,
+          face: p.face,
+          area: geom,
+          dopantPolarity: p.dopantPolarity,
+          dopantRole: p.dopantRole,
+          dopantHostLayerId: p.dopantHostLayerId,
+          dopantProvenance: p.dopantProvenance,
+        };
+        answer.drawAreaBounds = arrayApi.geometryBounds(geom);
+        const global = structuredClone(state.model);
+        try {
+          answer.directArrayResult = applyOperation(global, params);
+          answer.directArrayRevision = global.processRevision;
+          answer.directArrayImplants = global.implants.length;
+        } catch (error) {
+          answer.directArrayResult = { thrown: error.message };
+        }
+        const part = arrayApi.arrayParts(state.model)[0];
+        const local = vectorApi.intersection(
+          arrayApi.translateGeometry(geom, -part.x, -part.y),
+          part.model.boundary,
+        );
+        answer.firstCellLocalAreaBounds = arrayApi.geometryBounds(local);
+        const leaf = structuredClone(part.model);
+        try {
+          answer.directFirstCellResult = applyOperation(leaf, { ...params, area: local });
+          answer.directFirstCellImplants = leaf.implants?.length;
+        } catch (error) {
+          answer.directFirstCellResult = { thrown: error.message };
+        }
+      } catch (error) {
+        answer.diagnosticError = error.stack || error.message;
+      }
+      return answer;
+    });
+    await writeFile(
+      resolve(dir, 'tcmos-4x4-step13-diagnostics.json'),
+      JSON.stringify(diagnostics, null, 2),
+    );
     await writeFile(
       resolve(dir, 'tcmos-4x4-replay-intermediate-model.json'),
-      JSON.stringify({
-        model: failed.model,
-        summary,
-        status,
-        nextStep: 13,
-      }),
+      JSON.stringify({ model: failed.model, summary, status, nextStep: 13 }),
     );
   }
   assert.ok(
