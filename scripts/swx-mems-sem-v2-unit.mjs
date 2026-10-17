@@ -494,20 +494,60 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
   // whether the two drives share one on-chip Si net or external bias.
   const combsSeparatedFromGround = ownerIds[4] !== anchorNetId && ownerIds[5] !== anchorNetId;
   const independentCombDriveDomains = new Set(ownerIds.slice(4)).size;
+  // Name the optical and MEMS Si domains by actual source-mask locations,
+  // never by the unstable ordering of Boolean-union polygon components.
+  const ownerOfPoint = (point, name) => {
+    const owners = silicon.flatMap((net, index) =>
+      vectorApi.pointInMulti(point, [net]) ? [index] : [],
+    );
+    if (owners.length !== 1) {
+      throw new Error('SEM ' + name + ' must lie in exactly one fabricated Si domain');
+    }
+    return owners[0];
+  };
+  const fixedOpticalTerminalPointsUm = SWX_SEM_V2_ASSUMPTIONS.fixedTerminalCentersUm.slice(0, 2);
+  const fixedOpticalTerminalNetIds = fixedOpticalTerminalPointsUm.map((point, index) =>
+    ownerOfPoint(point, 'fixed optical terminal ' + index),
+  );
+  const opticalTerminalsShareNet =
+    fixedOpticalTerminalNetIds[0] === fixedOpticalTerminalNetIds[1];
+  const stationaryOpticalNetId = fixedOpticalTerminalNetIds[0];
+  const opticalFrameConnectedToGroundSi =
+    opticalTerminalsShareNet && stationaryOpticalNetId === anchorNetId;
+  const opticalFrameHasDirectMetalContact = ownerIds.includes(stationaryOpticalNetId);
   const uncontactedSiliconNetIndices = silicon
     .map((_, index) => index)
     .filter((index) => !ownerIds.includes(index));
+  const sourceElectricalTopologyBlockers = [
+    ...(!springAnchorsShareNet ? ['spring-anchors-not-on-one-silicon-ground-net'] : []),
+    ...(!combsSeparatedFromGround ? ['stationary-comb-drive-shorted-to-ground'] : []),
+    ...(!opticalTerminalsShareNet ? ['stationary-optical-terminals-are-disconnected'] : []),
+    ...(!opticalFrameConnectedToGroundSi
+      ? ['stationary-optical-frame-not-connected-to-grounded-silicon']
+      : []),
+  ];
   return {
     siliconConnectedDomains: silicon.length,
+    siliconNetBoundsUm: silicon.map((net) => vectorApi.multiBounds([net])),
     metalContacts: metalPads.length,
     metalPadSiOwnerIndices: ownerIds,
+    springGroundNetId: anchorNetId,
+    fixedOpticalTerminalPointsUm,
+    fixedOpticalTerminalNetIds,
+    stationaryOpticalNetId,
+    opticalTerminalsShareNet,
+    opticalFrameConnectedToGroundSi,
+    opticalFrameHasDirectMetalContact,
     springAnchorsShareNet,
     combsSeparatedFromGround,
     independentCombDriveDomains,
     sourceCombCommonBiasVerified: false,
     uncontactedSiliconNetIndices,
-    // The model does not yet reconstruct the SEM peripheral silicon
-    // / electrical ground return for the fixed optical frame.
+    sourceElectricalTopologyBlockers,
+    sourceElectricalTopologySatisfied: sourceElectricalTopologyBlockers.length === 0,
+    // The present candidate does not reconstruct source perimeter Si
+    // and external electrical contacts. Inferred Si connections alone
+    // cannot certify the original author's wire-bond/ground arrangement.
     stationaryOpticalExternalGroundVerified: false,
     sourceElectricalGroundingAccepted: false,
   };
