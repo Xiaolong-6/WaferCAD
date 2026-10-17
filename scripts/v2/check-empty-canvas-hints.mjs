@@ -51,12 +51,6 @@ async function shot(page, label) {
   report.cases.push({ label, screenshot: label + '.png' });
 }
 
-async function assertNoPageErrors(page, where) {
-  // Collect browser exceptions directly; unexpected alerts are dismissed by browser defaults.
-  const errors = await page.evaluate(() => window.__emptyHintsPageErrors || []);
-  assert.deepEqual(errors, [], where + ': browser exceptions');
-}
-
 try {
   let available = false;
   for (let attempt = 0; attempt < 60; attempt++) {

@@ -140,7 +140,9 @@
     gap: 12px;
   }
 
-  body[data-workstation]:not([data-preview-mode]) .p-panel-head {
+  /* Only the editor chrome suppresses separators; the four scientific
+     view titlebars retain their shared mobile 1px divider. */
+  body[data-workstation]:not([data-preview-mode]) .p-sidebar .p-panel-head {
     border-bottom: 0;
   }
 

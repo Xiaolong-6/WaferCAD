@@ -7,6 +7,10 @@ const css = (name) => readFileSync(new URL(`../ui-v2/${name}`, import.meta.url),
 test('desktop Main/Mask/3D/Section use the same panel frame as mobile', () => {
   const base = css('workstation-v2.css');
   const desktop = css('desktop-shell.css');
+  assert.doesNotMatch(
+    desktop,
+    /body\[data-workstation\]:not\(\[data-preview-mode\]\) \.p-panel-head\s*\{[^}]*border-bottom:\s*0;/s,
+  );
   assert.match(
     base,
     /\.p-view\s*\{[^}]*border: 1px solid var\(--wc-border-strong\);[^}]*border-radius: var\(--wc-radius-sm\);/s,
