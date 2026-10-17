@@ -49,19 +49,10 @@ export async function createTcmosArrayRecipeExperiment(source, spec = TCMOS_ARRA
     assert.equal(mask.sourceMode, 'draw', 'Unexpected source mask mode at step ' + (index + 1));
     if (index === 20 || index === 21) {
       assert.equal(mask.drawMask.shapes.length, 218, 'Original CNT source geometry changed');
-      // This uses the 3488 CNT polygons already repeated in the *File Mask*.
-      // Re-copying them into 2 Draw Masks would exceed the existing 100k
-      // Recipe-node safety budget; do not increase that budget.
-      step.params.mask = {
-        sourceMode: 'file',
-        cell: source.activeCell,
-        layerKeys: ['10|0'],
-        // Only the Recipe contact geometry is snapped to the previously
-        // validated 0.1 nm process grid. Approved SVG remains unchanged.
-        processGridUm: 0.0001,
-        transform: { x: 0, y: 0, scale: 1, rotation: 0 },
-        roi: null,
-      };
+      // Repeat one exact, verified 218-contact Draw Mask in every native
+      // array instance. This prevents both a 3488-shape duplication and
+      // mismatched rounding from reimporting the exported SVG File Mask.
+      step.params.mask = { ...mask, arrayRepeat: true };
     } else {
       const single = mask.drawMask.shapes;
       const shapes = cells.flatMap((cell, c) =>
