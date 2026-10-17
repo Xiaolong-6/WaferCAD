@@ -50,6 +50,22 @@ class OfflineChatCaptureTest(unittest.TestCase):
             self.assertGreater(len(data['plan']['sidewalls']),0)
             self.assertLess(len(data['plan']['sidewalls']),25000)
             self.assertLess(len(data['plan']['caps']),300)
+            # Native ROI clipping must constrain every emitted cap and sidewall
+            # in physical XY, rather than merely constraining the camera.
+            for cap in data['plan']['caps']:
+                for poly in cap['polys']:
+                    for ring in poly:
+                        for x, y in ring:
+                            self.assertGreaterEqual(x,1-1e-8)
+                            self.assertLessEqual(x,8+1e-8)
+                            self.assertGreaterEqual(y,-5-1e-8)
+                            self.assertLessEqual(y,5+1e-8)
+            for wall in data['plan']['sidewalls']:
+                for x,y in (wall['p'],wall['q']):
+                    self.assertGreaterEqual(x,1-1e-8)
+                    self.assertLessEqual(x,8+1e-8)
+                    self.assertGreaterEqual(y,-5-1e-8)
+                    self.assertLessEqual(y,5+1e-8)
             run(sys.executable,SCRIPTS/'offline-chat-vtk.py','--input',Path(temporary)/'native-three.json',
                 '--output',temporary,'--camera','iso','--z-exaggeration','4')
             evidence=json.loads((Path(temporary)/'three-native.evidence.json').read_text())
