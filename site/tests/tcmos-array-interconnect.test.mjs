@@ -114,7 +114,7 @@ test('all M1-to-M2 vias are FULLY inside exactly one approved M1 polygon', () =>
   assert.equal(verified, 64);
 });
 
-test('all 280 Via faces have full real polygon-Boolean metal coverage and no foreign-net overlap', () => {
+test('all 312 Via faces have full real polygon-Boolean metal coverage and no foreign-net overlap', () => {
   const layout = buildTcmosRoutedOverlay();
   const candidates = (layer) =>
     layer === 'M1'
@@ -149,7 +149,7 @@ test('all 280 Via faces have full real polygon-Boolean metal coverage and no for
       checked++;
     }
   }
-  assert.equal(checked, 280);
+  assert.equal(checked, 312);
 });
 
 test('19 independent net components: 3 buses + 16 accessible and unshorted outputs', () => {
@@ -159,12 +159,17 @@ test('19 independent net components: 3 buses + 16 accessible and unshorted outpu
   assert.equal(report.continuousNets, 19);
   assert.deepEqual(report.sharedNets, ['VDD', 'GND', 'VIN']);
   assert.equal(report.isolatedOutputs, 16);
-  assert.deepEqual([report.via12, report.via23, report.via34], [64, 64, 12]);
-  assert.deepEqual([report.m2Shapes, report.m3Shapes, report.m4Shapes], [64, 44, 3]);
+  assert.deepEqual([report.via12, report.via23, report.via34], [64, 64, 28]);
+  assert.deepEqual([report.m2Shapes, report.m3Shapes, report.m4Shapes], [64, 44, 51]);
   assert.equal(report.minimumSameLayerNetSpacing, ROUTED_4X4_SPEC.minimumSameLayerNetSpacing);
   assert.equal(report.calibratedElectricalResistance, false);
   assert.equal(report.physicalModelIntegrated, false);
   assert.equal(routed.ports.filter((p) => p.role === 'individual-output-test-port').length, 16);
+  assert.ok(
+    routed.ports
+      .filter((port) => port.role === 'individual-output-test-port')
+      .every((port) => port.layer === 'M4' && port.point[0] === 27),
+  );
   assert.equal(routed.ports.filter((p) => p.role === 'shared-bus-test-port').length, 3);
   const svg = renderTcmosRoutingOverlaySvg(routed);
   assert.ok(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"'));
@@ -191,9 +196,31 @@ test('DRC rejects same-layer VOUT short, wrong via ownership and missing trunk c
   );
 });
 
+test('the 16 independent M4 fanouts reject physical opens and output bridges', () => {
+  const wired = buildTcmosRoutedOverlay();
+  const outputs = wired.ports.filter((port) => port.role === 'individual-output-test-port');
+  assert.equal(outputs.length, 16);
+  assert.ok(outputs.every((port) => port.layer === 'M4' && port.point[0] === 27));
+  assert.equal(new Set(outputs.map((port) => port.point[1])).size, 16);
+  assert.equal(wired.vias.filter((via) => via.from === 'M3').length, 28);
+
+  const opened = buildTcmosRoutedOverlay();
+  const missing = opened.metal.find((metal) => metal.id === 'm4-output-fanout/site-0');
+  assert.ok(missing);
+  missing.rect[0] = missing.rect[2] - 1;
+  assert.throws(() => auditTcmosRoutedOverlay(opened), /OPEN CIRCUIT/);
+
+  const bridged = buildTcmosRoutedOverlay();
+  const output = bridged.metal.find((metal) => metal.id === 'm4-output-pad/site-0');
+  const neighbor = bridged.metal.find((metal) => metal.id === 'm4-output-pad/site-1');
+  assert.ok(output && neighbor);
+  output.rect[3] = neighbor.rect[1] + 0.05;
+  assert.throws(() => auditTcmosRoutedOverlay(bridged), /SHORT\/spacing/);
+});
+
 test('approved 4x4 stored geometry and original Recipe remain unchanged by routing generation', () => {
   const route = buildTcmosRoutedOverlay();
-  assert.equal(route.kind, 'tcmos-4x4-illustrative-multimetal-v1');
+  assert.equal(route.kind, 'tcmos-4x4-illustrative-multimetal-fanout-v2');
   assert.ok(!('model' in route));
   assert.ok(!('processRecipe' in route));
   assert.ok(!('snapshotBranches' in route));

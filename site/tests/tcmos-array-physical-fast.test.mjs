@@ -109,7 +109,7 @@ test('fast real-Kernel 4x4 multimetal Via and M2-M4 physical geometry, storage',
   validateProcessModel(project.model);
   validateProjectFile(project);
   assert.equal(project.model.kernel, 'vector-2.5d-v1');
-  assert.equal(project.layout.elements.length, 3963);
+  assert.equal(project.layout.elements.length, 4027);
   assert.equal(
     project.model.layers.some((layer) => layer.name === 'Interlayer SiO2'),
     true,
@@ -128,14 +128,14 @@ test('fast real-Kernel 4x4 multimetal Via and M2-M4 physical geometry, storage',
 
   assert.equal(report.graph.continuousNets, 19);
   assert.equal(report.materialLayersAdded, 9);
-  assert.equal(routed.vias.length, 140);
+  assert.equal(routed.vias.length, 156);
   assert.deepEqual(
     report.viaFootprintChecks.map((check) => check.viaSites),
-    [64, 64, 12],
+    [64, 64, 28],
   );
   assert.deepEqual(
     report.metalFootprintChecks.map((check) => check.shapeCount),
-    [64, 44, 3],
+    [64, 44, 51],
   );
   for (const check of [...report.viaFootprintChecks, ...report.metalFootprintChecks]) {
     assert.ok(check.designedAreaUm2 > 0);
@@ -154,7 +154,7 @@ test('fast real-Kernel 4x4 multimetal Via and M2-M4 physical geometry, storage',
     text: async () => json,
   });
   validateProjectFile(restored);
-  assert.equal(restored.layout.elements.length, 3963);
+  assert.equal(restored.layout.elements.length, 4027);
   assert.ok(restored.model.regions.length > 80);
   assert.deepEqual(
     restored.layout.elements,

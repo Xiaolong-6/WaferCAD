@@ -115,15 +115,15 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
   assert.ok(!project.model.array);
   assert.equal(report.physicalModelIntegrated, true);
   assert.equal(report.originalMaskPolygons, 3712);
-  assert.equal(report.extraMaskPolygons, 251);
-  assert.equal(project.layout.elements.length, 3963);
+  assert.equal(report.extraMaskPolygons, 315);
+  assert.equal(project.layout.elements.length, 4027);
   assert.equal(project.layout.combos.length, 14);
   assert.equal(report.materialLayersAdded, 9);
   assert.equal(report.graph.continuousNets, 19);
   assert.equal(report.dielectricAndViaStages.length, 3);
   assert.deepEqual(
     report.viaFootprintChecks.map((check) => check.viaSites),
-    [64, 64, 12],
+    [64, 64, 28],
   );
   assert.deepEqual(
     report.viaFootprintChecks.map((check) => check.name),
@@ -142,7 +142,7 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
   }
   assert.deepEqual(
     report.metalFootprintChecks.map((check) => check.shapeCount),
-    [64, 44, 3],
+    [64, 44, 51],
   );
   assert.deepEqual(
     report.metalFootprintChecks.map((check) => check.name),
@@ -175,7 +175,7 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
   assert.equal(roundtrip.layout.elements.length, project.layout.elements.length);
 });
 
-test('all 140 Via physical columns land on actual metal above and below, without oxide-filled holes', async () => {
+test('all 156 Via physical columns land on actual metal above and below, without oxide-filled holes', async () => {
   const { project, routed, report } = await fixture();
   const regions = project.model.regions;
   const byId = new Map(project.model.layers.map(({ id, name }) => [id, name]));
@@ -207,7 +207,7 @@ test('all 140 Via physical columns land on actual metal above and below, without
     ['M2', 'M3', 'M4'],
   );
   assert.ok(report.dielectricAndViaStages.every((s) => s.viaCount > 0));
-  assert.equal(routed.vias.length, 140);
+  assert.equal(routed.vias.length, 156);
 });
 
 test('routed final fixture keeps the original 3712 SVG polygons as exact unchanged prefix', async () => {
@@ -216,7 +216,7 @@ test('routed final fixture keeps the original 3712 SVG polygons as exact unchang
   const additions = project.layout.elements.slice(3712);
   assert.equal(original.filter((s) => s.layer === 10).length, 3488);
   assert.equal(original.filter((s) => s.layer === 11).length, 64);
-  assert.equal(additions.length, 251);
+  assert.equal(additions.length, 315);
   assert.ok(
     additions.every((e) => e.sourceCell === project.layout.root),
     'Supplemental polygon must belong to the actual GDS/OAS root cell',
@@ -233,5 +233,5 @@ test('routed final fixture keeps the original 3712 SVG polygons as exact unchang
   );
   const layers = new Map();
   for (const e of additions) layers.set(e.layer, (layers.get(e.layer) || 0) + 1);
-  assert.deepEqual([...layers.values()], [64, 64, 64, 44, 12, 3]);
+  assert.deepEqual([...layers.values()], [64, 64, 64, 44, 28, 51]);
 });

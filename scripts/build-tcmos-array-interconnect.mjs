@@ -9,7 +9,7 @@ import { readTcmosReferenceMask } from './tcmos-svg-mask.mjs';
 import { TCMOS_ARRAY_SPEC } from './build-tcmos-array-patch.mjs';
 
 export const ROUTED_4X4_SPEC = Object.freeze({
-  variant: 'tcmos-4x4-illustrative-multimetal-v1',
+  variant: 'tcmos-4x4-illustrative-multimetal-fanout-v2',
   buses: ['VDD', 'GND', 'VIN'],
   individualOutputs: 16,
   layers: ['M1', 'M2', 'M3', 'M4'],
@@ -22,7 +22,13 @@ export const ROUTED_4X4_SPEC = Object.freeze({
   m4BusWidth: 0.42,
   outputPadWidth: 0.64,
   outputPadLocalX: 3.3,
-  m4BusY: { VDD: 7.4, VIN: 8.2, GND: 9 },
+  // Move shared supply/control straps into the outer frame so every
+  // output can fan out independently on M4 without same-plane crossings.
+  m4BusY: { VDD: 15.2, VIN: 14.4, GND: -15.4 },
+  outputM4PitchUm: 1.2,
+  outputM4TrackOffsetUm: -2.5,
+  outputPadXUm: 27,
+  outputM4PadWidthUm: 0.7,
 });
 
 const NAMES = ['VIN', 'VOUT', 'VDD', 'GND']; // Exact source SVG METAL1 ordering.
@@ -115,11 +121,45 @@ export function buildTcmosRoutedOverlay() {
       horizontal(outX - spec.m3WireWidth / 2, padX, outY, spec.m3WireWidth),
     );
     emit('M3', outputNet, 'm3-output-pad/' + cell.id, square(padX, outY, spec.outputPadWidth));
+    // Each VOUT now has a complete physical VIA34/M4 fanout to its own
+    // perimeter terminal. Column-dependent tracks isolate all 16 outputs.
+    const trackY = n4(cell.y + spec.outputM4TrackOffsetUm + cell.column * spec.outputM4PitchUm);
+    vias.push({
+      id: 'via-M3-M4-VOUT/' + cell.id,
+      from: 'M3',
+      to: 'M4',
+      net: outputNet,
+      cellId: cell.id,
+      rect: square(padX, outY, spec.viaSize),
+    });
+    emit(
+      'M4',
+      outputNet,
+      'm4-output-drop/' + cell.id,
+      vertical(
+        padX,
+        Math.min(outY, trackY) - spec.m4BusWidth / 2,
+        Math.max(outY, trackY) + spec.m4BusWidth / 2,
+        spec.m4BusWidth,
+      ),
+    );
+    emit(
+      'M4',
+      outputNet,
+      'm4-output-fanout/' + cell.id,
+      horizontal(padX - spec.m4BusWidth / 2, spec.outputPadXUm, trackY, spec.m4BusWidth),
+    );
+    emit(
+      'M4',
+      outputNet,
+      'm4-output-pad/' + cell.id,
+      square(spec.outputPadXUm, trackY, spec.outputM4PadWidthUm),
+    );
     ports.push({
       id: 'port-VOUT/' + cell.id,
       net: outputNet,
-      layer: 'M3',
-      point: [padX, outY],
+      layer: 'M4',
+      point: [spec.outputPadXUm, trackY],
       role: 'individual-output-test-port',
     });
   }
@@ -136,7 +176,12 @@ export function buildTcmosRoutedOverlay() {
         'M3',
         name,
         'm3-trunk/' + name + '/' + column,
-        vertical(x, y0 - spec.m3WireWidth / 2, y1 + spec.m3WireWidth / 2, spec.m3WireWidth),
+        vertical(
+          x,
+          Math.min(y0, spec.m4BusY[name]) - spec.m3WireWidth / 2,
+          Math.max(y1, spec.m4BusY[name]) + spec.m3WireWidth / 2,
+          spec.m3WireWidth,
+        ),
       );
       vias.push({
         id: 'via-M3-M4/' + name + '/' + column,
@@ -230,8 +275,8 @@ export function auditTcmosRoutedOverlay(layout) {
   assert.equal(layout.kind, s.variant);
   assert.equal(layout.cells.length, 16);
   assert.equal(layout.m1.length, 64);
-  assert.equal(layout.metal.length, 64 + 16 * 2 + 12 + 3);
-  assert.equal(layout.vias.length, 64 * 2 + 12);
+  assert.equal(layout.metal.length, 64 + 16 * 2 + 16 * 3 + 12 + 3);
+  assert.equal(layout.vias.length, 64 * 2 + 12 + 16);
   assert.equal(layout.ports.length, 19);
   const nodes = [...layout.m1, ...layout.metal];
   assert.equal(new Set(nodes.map((node) => node.id)).size, nodes.length);

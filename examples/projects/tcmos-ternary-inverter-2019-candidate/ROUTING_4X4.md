@@ -1,4 +1,4 @@
-# T-CMOS 4×4 — separate illustrative M2/M3/M4 routing variant
+> **Current design:** [Fanout v2](ROUTING_FANOUT_V2.md) supersedes the former M3-local VOUT stubs and 140-Via / 3,963-polygon prototype described below. Those older metrics are historical only. Fanout v2 physically connects 16 distinct VOUTs to M4 edge terminals, preserves three shared power/input buses, and contains 156 Via columns / 4,027 mask polygons. No foundry claims.\n\n# T-CMOS 4×4 — separate illustrative M2/M3/M4 routing variant
 
 **Development status (2026-10-17):** independent illustrative, post-Recipe routed 2.5D material prototype. Actual Node Kernel, source-model storage, science and real Chromium Main/Mask/3D/Section, GDS/OAS and Recovery targeted acceptance have passed. It remains separate from the paper-approved SVG, original 23-step Recipe and its History. **Final whole-PR Quality and foundry/electrical validation are not claimed.**
 

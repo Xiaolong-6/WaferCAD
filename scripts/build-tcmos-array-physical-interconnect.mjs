@@ -229,7 +229,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   });
   assert.equal(
     viaFootprintChecks.reduce((sum, entry) => sum + entry.viaSites, 0),
-    140,
+    156,
     'One or more Via physical volumes are missing',
   );
   // A correct Via without exact horizontal metal geometry could still
@@ -265,7 +265,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   });
   assert.deepEqual(
     metalFootprintChecks.map((check) => check.shapeCount),
-    [64, 44, 3],
+    [64, 44, 51],
     'An upper-metal film changed its intended shape count',
   );
   // A full source File Mask remains a strict prefix, including exact vertex
@@ -317,11 +317,11 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     ...new Set([...project.selectedLayerKeys, ...supplementary.map((g) => g.layer + '|0')]),
   ];
   project.layout.name = 'T-CMOS 4x4 — illustrative routed stack (original SVG preserved)';
-  project.name = 'T-CMOS inverter · 4×4 POST-RECIPE ROUTED PHYSICAL PROTOTYPE';
+  project.name = 'T-CMOS inverter · 4×4 REAL M4 OUTPUT FANOUT (ILLUSTRATIVE)';
   project.section = { a: [-21, -16], b: [-21, 16] };
   project.roi = null;
   project.display.threeCamera = null;
-  project.display.threeOpacity = 0.55;
+  project.display.threeOpacity = 0.29;
   project.display.threeFastMode = true;
   // This variant has no independently executed post-Recipe History. Never
   // reuse the 23 nodes of the unconnected original as if routing were replayed.
@@ -343,7 +343,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     text: async () => json,
   });
   validateProjectFile(readBack);
-  assert.equal(readBack.layout.elements.length, 3712 + 251);
+  assert.equal(readBack.layout.elements.length, 3712 + 315);
   assert.deepEqual(
     readBack.layout.elements.slice(0, exactSourceMasks.length),
     exactSourceMasks,
@@ -358,7 +358,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     report: {
       graph,
       originalMaskPolygons: 3712,
-      extraMaskPolygons: 251,
+      extraMaskPolygons: 315,
       originalModelKernel: unconnected.model.kernel,
       routedModelKernel: model.kernel,
       originalSurfaceMaxZ: originalTopZ,
