@@ -221,6 +221,38 @@ try {
   snapshot = await snap();
   assert.equal(snapshot.model.kernel, 'vector-2.5d-array-v1');
   assert.equal(snapshot.model.array.instances.length, 16);
+  // A fresh-Base Run All resets the viewport slice to Y=0, which falls
+  // BETWEEN the 4×4 cell rows. Recover a real device-crossing A–B line
+  // through the same Main controls a user would operate, before export.
+  // This changes presentation only; actual material parity is checked below.
+  const sourceSection = expected.section;
+  assert.deepEqual(sourceSection, { a: [-28, -5.2], b: [28, -5.2] });
+  const mainView = page.locator('[data-action="dock:view:main"]:visible').first();
+  if (await mainView.count()) {
+    if ((await mainView.getAttribute('aria-pressed')) !== 'true') await mainView.click();
+  }
+  const sliceSettings = page.locator('[data-action="slice-coordinates"]');
+  if (!(await sliceSettings.isVisible())) {
+    const roiToggle = page.locator('#mainPanel [data-action="roi"]');
+    if (!(await roiToggle.isVisible())) {
+      await page.locator('#mainPanel button[aria-label="Main more tools"]').click();
+    }
+    await roiToggle.click();
+  }
+  await sliceSettings.click();
+  for (const [id, value] of [
+    ['sectionAx', sourceSection.a[0]],
+    ['sectionAy', sourceSection.a[1]],
+    ['sectionBx', sourceSection.b[0]],
+    ['sectionBy', sourceSection.b[1]],
+  ]) {
+    await page.locator('#' + id).fill(String(value));
+    await page.locator('#' + id).press('Tab');
+  }
+  assert.deepEqual((await snap()).section, sourceSection, 'Array A–B must cross transistor silicon');
+  await page.locator('#mainSliceSettings button[aria-label="Close Section line"]').click();
+  await waitForPaint(page);
+  await page.screenshot({ path: resolve(dir, 'tcmos-4x4-transistor-row-section.png') });
   await selectPanel('project');
   await page.locator('#projectExportMenuBtn').click();
   const [saved] = await Promise.all([
@@ -232,6 +264,7 @@ try {
   const reopened = await readProjectFile(new Blob([await readFile(exportedPath)]));
   assert.equal(reopened.model.kernel, 'vector-2.5d-array-v1');
   assert.equal(reopened.model.array.instances.length, 16);
+  assert.deepEqual(reopened.section, expected.section, 'Saved A–B must cross actual SVG transistor rows');
   const expectedPhysical = resolveArrayModel(expected.model);
   const replayedPhysical = resolveArrayModel(reopened.model);
   // Never pass both empty array roots to occupancy() – that would produce
