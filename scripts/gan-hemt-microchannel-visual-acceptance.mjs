@@ -644,8 +644,7 @@ try {
           const expectedOutline = borders ? 'structural-depth' : 'off';
           return (
             host?.dataset.renderState === 'ready' &&
-            Number(host.dataset.rendererFrameSerial || 0) >=
-              previousSerial + (changed ? 1 : 0) &&
+            Number(host.dataset.rendererFrameSerial || 0) >= previousSerial + (changed ? 1 : 0) &&
             host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent') &&
             host.dataset.outlineVisibility === expectedOutline &&
             host.dataset.assemblyWireBuiltCount === '2' &&

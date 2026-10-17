@@ -52,13 +52,6 @@ jobs:
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Focused formatting
         run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
-      # Emit the exact formatting diff only if an earlier scoped step fails.
-      # This is diagnostic; it does not modify committed source or relax the check.
-      - name: Print proposed script formatting on failure
-        if: failure()
-        run: |
-          npx prettier --write scripts/gan-hemt-microchannel-visual-acceptance.mjs
-          git diff -- scripts/gan-hemt-microchannel-visual-acceptance.mjs
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: TSV conformal material wall-science probe
