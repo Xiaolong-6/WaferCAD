@@ -81,6 +81,53 @@ try {
       await maximize.click();
       await waitForPaint(page);
     }
+    if (view === 'three') {
+      // A visible panel is not proof of a rendered scene: the initial frame
+      // may still say "rebuilding 3D..." and contain no geometry at all.
+      await page.waitForFunction(
+        () => {
+          const host = document.querySelector('#threeHost');
+          return (
+            host?.dataset.renderState === 'ready' &&
+            host.dataset.renderPhase === 'complete' &&
+            !host.dataset.rendererBuildFailure &&
+            Number(host.dataset.sceneVisibleObjectCount) > 0
+          );
+        },
+        null,
+        { timeout: 180000 },
+      );
+      const fit = page.locator('#threePanel [data-action="fit:three"]');
+      if (await fit.count()) {
+        await fit.click();
+        await waitForPaint(page);
+      }
+      await page.waitForFunction(
+        () => {
+          const host = document.querySelector('#threeHost');
+          return (
+            host?.dataset.renderState === 'ready' &&
+            host.dataset.renderPhase === 'complete' &&
+            Number(host.dataset.sceneVisibleObjectCount) > 0
+          );
+        },
+        null,
+        { timeout: 180000 },
+      );
+      const rendered = await page.locator('#threeHost').evaluate((host) => ({
+        state: host.dataset.renderState,
+        phase: host.dataset.renderPhase,
+        visibleObjects: Number(host.dataset.sceneVisibleObjectCount),
+        geometries: Number(host.dataset.sceneGeometryCount),
+        failure: host.dataset.rendererBuildFailure || null,
+      }));
+      assert.ok(
+        rendered.visibleObjects > 0 && rendered.geometries > 0,
+        'Routed 3D screenshot must contain completed actual WebGL geometry',
+      );
+      report.threeScene = rendered;
+      await waitForPaint(page);
+    }
     await panel.screenshot({ path: resolve(dir, 'tcmos-4x4-routed-' + view + '-chromium.png') });
   }
   // Distinct 14-layer mask export must retain all approved 8 layer groups
