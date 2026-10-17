@@ -26,7 +26,7 @@ globalThis.polygonClipping = vendor.exports;
 
 const { createModel, applyOperation, modelBoundsZ } = await import('../model.js');
 const { sectionSlices, materialSolids, sectionContours } = await import(
-  '../model-view-geometry.js'
+  '../model-view-geometry.js',
 );
 
 const descriptor = {
