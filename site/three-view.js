@@ -2552,6 +2552,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (clip) throw new RangeError('Experimental physical facets do not support ROI clipping yet');
     const owner = validateExperimentalPhysicalFacetModel(model);
     if (!owner) throw new RangeError('Missing experimental physical facet owner');
+    // The global XYZ helper crosses a locally collapsed Si sheet and reads
+    // visually as an erroneous vertical material edge in this inspection.
+    if (axesHelper) axesHelper.visible = false;
+    host.dataset.physicalFacetAxesHidden = 'true';
     if (
       physicalSceneModel === model &&
       physicalSceneSignature === signature &&
@@ -2642,6 +2646,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
       return;
     }
+    if (axesHelper) axesHelper.visible = true;
+    delete host.dataset.physicalFacetAxesHidden;
     delete host.dataset.physicalFacetOwner;
     delete host.dataset.physicalFacetTriangles;
     delete host.dataset.physicalFacetSourceCells;
