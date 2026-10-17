@@ -252,9 +252,11 @@ test('3D borders are derived from owned surfaces and stay depth-tested', () => {
   assert.match(threeView, /physicalSurfacePlan = plan/);
   assert.match(threeView, /function addBorderPositions\([\s\S]*?order = 100000/);
   assert.match(threeView, /edges\.renderOrder = order/);
+  assert.match(threeView, /function renderInspectionFrame\(/);
+  assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(
     threeView,
-    /opacity: opacity < 0\.999 \? 0\.46 : 1,[\s\S]*?depthFunc: THREE\.LessEqualDepth/,
+    /depthTest: true,[\s\S]*?depthFunc: dashed \? THREE\.GreaterDepth : THREE\.LessEqualDepth/,
   );
   assert.match(threeView, /presentation: \{ kind: 'border' \}/);
   assert.match(threeView, /visible: Boolean\(inspection\.borders\)/);

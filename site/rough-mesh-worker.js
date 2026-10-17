@@ -30,11 +30,13 @@ self.onmessage = async (event) => {
           normals: data.normals,
           gpuDisplace: data.gpuDisplace,
           roughBorderPositions: data.roughBorderPositions,
+          roughBoundaryPositions: data.roughBoundaryPositions,
           metadata: data.metadata,
         },
       });
       transfer.push(data.positions.buffer, data.normals.buffer, data.roughBorderPositions.buffer);
       if (data.gpuDisplace?.buffer) transfer.push(data.gpuDisplace.buffer);
+      transfer.push(data.roughBoundaryPositions.buffer);
       if (reportProgress) {
         self.postMessage({
           id,
