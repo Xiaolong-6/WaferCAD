@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/swx-mems-sem-v2-unit.mjs'
+      - 'scripts/swx-mems-paper-envelope-audit.mjs'
       - 'scripts/build-swx-sem-v2-unit.mjs'
       - 'scripts/swx-mems-sem-ground-return-candidate.mjs'
       - 'scripts/build-swx-sem-v2-ground-return-candidate.mjs'
