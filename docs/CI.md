@@ -132,7 +132,7 @@ The planner then enables focused suites as needed:
 | Process/model/vector geometry                       | Process Geometry core browser path; full permutations on weekly/manual runs     |
 | Dependency lockfiles or shared browser-test helpers | Full browser regression                                                         |
 
-The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and includes Legacy owners for shared interface changes. Its generated screenshots remain review artifacts rather than approved pixel baselines.
+The real UI v2 [Stage C/M4 workflow](../.github/workflows/ui-v2-stage-c-m4.yml) runs for applicable PRs. Production publication calls this same suite as a reusable workflow, so it must pass at the exact `main` commit before Pages can deploy. It runs real v2 Startup, cross-interface Recovery, synchronization, review interactions, M4 projects and M2 structural layout parity. Ordinary Browser regression remains independent and routes former Legacy command names through native-v2 scientific owners. Its generated screenshots remain review artifacts rather than approved pixel baselines.
 
 Workflow/planner-only changes stay on UI smoke. The planner itself has Node unit tests, while the weekly/manual full sweep validates the complete job matrix. Shared scientific browser helpers that are consumed by Process, Examples, and Product Review remain full-suite triggers, and renderer ownership explicitly includes the Section/plan renderer, rough-mesh worker/geometry, surface renderer, and annotation renderer. Process Geometry remains reserved for geometry-impacting changes and explicit full-regression events.
 
@@ -153,7 +153,7 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 ## Documentation and publication workflows
 
-[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs only on relevant documentation, manual and guide-source PR changes. It runs the three Process Guide/Wiki/Documentation Node suites with read-only repository permissions and does **not** publish Wiki content. Draft Quality independently verifies lint, formatting and generated documentation; neither Draft gate substitutes for final release checks.
+[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on changes to `docs/**`, root documentation (`README.md`, `AGENTS.md`, `THIRD_PARTY_NOTICES.md`), example-authoring provenance (`examples/projects/README.md`), the Welcome catalog (`site/bundled-examples.js`), Process Guide sources, and documentation/publishing workflow definitions. It runs the three Process Guide/Wiki/Documentation Node suites with read-only repository permissions and does **not** publish Wiki content. Draft Quality independently verifies lint, formatting and generated documentation; neither Draft gate substitutes for final release checks.
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
@@ -161,16 +161,17 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 ## Retired public Legacy editor
 
-Production Pages staging now replaces the old `app-legacy.html` source with
-a small same-origin, query-preserving redirect to `app.html`. The old editor
-bootstrap `app.js` and `workstation.css` are excluded from the deploy
-artifact; they stay in Git because historical DOM-based scientific browser
-tests still own those implementations. PRs touching the artifact builder run
-the staged Pages browser smoke, which verifies the legacy bookmark redirect,
-absence of old JS/CSS, and real production Workers under `/WaferCAD/`.
-The redirect performs no Project/Recovery storage migration or mutation.
-Removing the retained Legacy source and test adapters is a separate step,
-requiring replacement scientific test ownership.
+Production Pages staging generates `app-legacy.html` as a same-origin,
+query/hash-preserving redirect to `app.html`. The original Legacy editor,
+including `app.js` and `workstation.css`, is absent from the active checkout
+and retained at the immutable `legacy-frozen` tag. Native-v2 scientific test
+owners replace executable Legacy DOM coverage on the current branch, while
+the frozen source remains reproducible for historical comparisons.
+PRs touching the artifact builder run the staged Pages browser smoke, which
+verifies the bookmark redirect, absence of old JS/CSS, and real production
+Workers under `/WaferCAD/`. The redirect performs no Project/Recovery
+storage migration or mutation. See [Legacy source sunset](LEGACY_SOURCE_SUNSET.md)
+for remaining scenario-by-scenario fidelity risks.
 
 ## Welcome four-view preview isolation
 
@@ -197,11 +198,10 @@ prove agreement with the paper's device microscopy.
 The [Legacy project compatibility acceptance](../.github/workflows/legacy-project-compat.yml)
 is a path-gated PR workflow, independent from the ordinary Pages release. It imports the
 SHA-256-verified historical `shared-assets-v1` project in the real v2 Workstation
-and verifies autosave, reload, and Recovery preservation. It must pass before
-the retained `app-legacy.html` interface and Legacy-only test adapters are
-deleted. This gate supplements current project-format and controller tests;
-it does not authorize skipping migration of Legacy-only scientific browser
-scenarios.
+and verifies autosave, reload, and Recovery preservation. It remains a release-relevant regression even though the executable Legacy
+editor has already been removed from the active checkout. This gate supplements
+current project-format and controller tests; it does not establish exact parity
+with every historical Legacy UI gesture or scientific browser scenario.
 
 ## Heavy Process Geometry job
 
@@ -250,4 +250,4 @@ The planner changes CI scheduling only. It does not remove or weaken any underly
 
 GitHub branch protection/rulesets are repository settings, **not** workflow YAML. A contributor with administration permission must enable protection of `main` and require the stable `Quality / quality` check, with pull requests and stale-review protection as appropriate. The specialized path-selected and Draft-deferred checks cannot safely be made individually required without a stable aggregator: a workflow omitted by a path filter has no successful check to report. Before merging a science, browser, or UI change, inspect the applicable targeted jobs and uploaded evidence; `Quality` success alone is not sufficient for scientific or human acceptance.
 
-The full release DAG prevents ordinary `main` Pages publication until post-merge scientific checks and staged-artifact smoke finish. The obsolete `ui-v2-preview.yml` publisher is retired, and production Pages is the only source-configured publisher. Repository/environment permissions and main protection require separate administration review; software WebGL does not constitute physical-GPU evidence. See [CI architecture audit](CI_ARCHITECTURE_AUDIT_2026-10-12.md) for the remaining controls.
+The full release DAG prevents ordinary `main` Pages publication until post-merge scientific checks and staged-artifact smoke finish. The obsolete `ui-v2-preview.yml` publisher is retired, and production Pages is the only source-configured publisher. Repository/environment permissions and main protection require separate administration review; software WebGL does not constitute physical-GPU evidence. See [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) for the remaining controls.

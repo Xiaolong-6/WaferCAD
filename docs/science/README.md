@@ -8,5 +8,7 @@ Canonical descriptions of idealized process geometry and numerical/visual interp
 - [PROCESS BOTH FACE 2026-10-11](PROCESS_BOTH_FACE_2026-10-11.md)
 - [IMPLANT](IMPLANT.md)
 - [ROUGHNESS MORPHOLOGY](ROUGHNESS_MORPHOLOGY.md)
+- [Physical unit edit integrity](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical µm coordinates and editor unit conversion.
+- [Process/History transaction integrity](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — Step atomicity and Variant rollback.
 
 Other current contracts (Mask, Lift-off, History, and materials) remain linked from [Documentation map](../README.md).

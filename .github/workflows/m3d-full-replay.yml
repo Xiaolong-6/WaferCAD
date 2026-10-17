@@ -10,7 +10,7 @@ on:
       - "site/tests/m3d-reconstruction-regression.test.mjs"
       - "site/model.js"
       - "site/history-operation-label.js"
-      - "site/tests/history-operation-label.test.mjs"
+      - "site/tests/history/history-operation-label.test.mjs"
       - "site/project-io.js"
       - "site/project-export-worker.js"
       - "site/tests/project-file.test.mjs"

@@ -48,7 +48,7 @@ The workflow reports actionable error details when this setup is missing. GitHub
 ## Verification
 
 - `npm run docs:check`
-- `node --test site/tests/process-guide.test.mjs site/tests/wiki-manual.test.mjs site/tests/documentation.test.mjs`
+- `node --test site/tests/documentation-suite.test.mjs`
 - Push/merge to `main`, inspect **Product manual and Wiki sync** in Actions. The log should say either **already up to date** or **Published updated product manual**.
 - Recheck `https://github.com/Xiaolong-6/WaferCAD/wiki/Process-Operations` and that at least one image from `docs/wiki/assets/process/` renders. The old `/WaferCAD/guide/#operation-id` route should redirect to the matching Wiki operation.
 

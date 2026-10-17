@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { prepareWorkspaceStorage } from '../workspace-persistence.js';
+import { prepareWorkspaceStorage } from '../../workspace-persistence.js';
 
 test('background packing clones the candidate and terminates on success and all failure paths', async () => {
   const OriginalWorker = globalThis.Worker;

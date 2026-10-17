@@ -3,7 +3,7 @@ import { access, mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { auditDocumentation, headingAnchors } from '../../scripts/check-documentation.mjs';
+import { auditDocumentation, headingAnchors } from '../../../scripts/check-documentation.mjs';
 
 async function fixture(t, entries) {
   const rootDir = await mkdtemp(join(tmpdir(), 'wafercad-docs-'));
@@ -17,6 +17,47 @@ async function fixture(t, entries) {
   }
   return auditDocumentation({ rootDir, files: Object.keys(entries) });
 }
+
+test('documentation PR path ownership covers source documentation entrypoints', async () => {
+  const workflow = await readFile(
+    new URL('../../../.github/workflows/documentation-wiki-targeted.yml', import.meta.url),
+    'utf8',
+  );
+  const paths = new Set([...workflow.matchAll(/^\s+- '([^']+)'$/gm)].map((match) => match[1]));
+  for (const path of [
+    'README.md',
+    'AGENTS.md',
+    'THIRD_PARTY_NOTICES.md',
+    'examples/projects/README.md',
+    'docs/**',
+    'site/bundled-examples.js',
+    '.github/workflows/product-manual-wiki.yml',
+  ]) {
+    assert.ok(paths.has(path), `documentation PR checks must include ${path}`);
+  }
+});
+
+test('current documentation does not advertise retired Legacy editor sources', async () => {
+  const repo = new URL('../../../', import.meta.url);
+  for (const retired of ['app-legacy.html', 'app.js', 'workstation.css']) {
+    await assert.rejects(
+      access(new URL('site/' + retired, repo)),
+      { code: 'ENOENT' },
+      `retired ${retired} must not be treated as a current source`,
+    );
+  }
+  for (const path of [
+    'README.md',
+    'docs/DEVELOPMENT.md',
+    'docs/CI.md',
+    'docs/testing.md',
+    'docs/science/PROCESS_BOTH_FACE_2026-10-11.md',
+    'docs/wiki/Process-and-Recipes.md',
+  ]) {
+    const source = await readFile(new URL(path, repo), 'utf8');
+    assert.match(source, /legacy-frozen/, `${path}: point readers to the frozen source`);
+  }
+});
 
 test('all repository documentation is reachable with valid internal destinations', async () => {
   const result = await auditDocumentation();
@@ -72,7 +113,7 @@ test('heading links retain Unicode, duplicate suffixes and explicit generated an
 });
 
 test('archived documents have canonical links and no obsolete originals', async () => {
-  const archiveRoot = new URL('../../docs/archive/', import.meta.url);
+  const archiveRoot = new URL('../../../docs/archive/', import.meta.url);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');
   const archived = (await readdir(archiveRoot, { recursive: true }))
     .map((entry) => String(entry).replaceAll('\\', '/'))
@@ -91,7 +132,7 @@ test('archived documents have canonical links and no obsolete originals', async 
     'archive inventory must be reviewed deliberately',
   );
   const compatibility = await readFile(
-    new URL('../../docs/COMPATIBILITY.md', import.meta.url),
+    new URL('../../../docs/COMPATIBILITY.md', import.meta.url),
     'utf8',
   );
   assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
@@ -100,7 +141,7 @@ test('archived documents have canonical links and no obsolete originals', async 
       archiveIndex.includes(`](${entry})`),
       `archive index must link directly to the canonical report: ${entry}`,
     );
-    const obsoletePath = new URL(`../../docs/${entry}`, import.meta.url);
+    const obsoletePath = new URL(`../../../docs/${entry}`, import.meta.url);
     if (relocated.has(entry)) {
       const pointer = await readFile(obsoletePath, 'utf8');
       assert.match(pointer, /^# Moved:/);

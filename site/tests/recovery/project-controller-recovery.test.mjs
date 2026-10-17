@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createProjectController } from '../controllers/project-controller.js';
-import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
+import { createProjectController } from '../../controllers/project-controller.js';
+import { createWorkspacePersistenceController } from '../../controllers/workspace-persistence-controller.js';
 
 test('New Project does not clear workspace when Recovery checkpoint is unavailable', async () => {
   const controls = new Map();

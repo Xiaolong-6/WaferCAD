@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createHistoryMutationController } from '../controllers/history-mutation-controller.js';
+import { createHistoryMutationController } from '../../controllers/history-mutation-controller.js';
 
 function insertionHarness({
   chosenMode = 'branch-replay',

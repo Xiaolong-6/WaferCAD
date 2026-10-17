@@ -5,7 +5,7 @@ import {
   captureWorkspaceStructuralIdentity,
   extractWorkspaceViewState,
   workspaceStructuralIdentityEqual,
-} from '../workspace-dirty-domains.js';
+} from '../../workspace-dirty-domains.js';
 
 function projectFixture() {
   const model = { revision: 4, processRevision: 3 },

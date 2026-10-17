@@ -45,7 +45,7 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 - [Both-face Process Kernel](science/PROCESS_BOTH_FACE_2026-10-11.md) — Front → Back execution, two independent Front/Back Layer IDs, atomic failure and current v2 Manual Surface selector.
 - [Both-face bundled-example consolidation](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) — Photodetector, PERC and Tandem process changes, modeling assumptions and regeneration evidence.
 - [Bundled-example literature fidelity audit (2026-10-14)](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) — eight literature families, source-to-Recipe/Mask material probes, microdisk process correction and remaining figure-alignment gates.
-- [Photodetector reconstruction (2026-10-08)](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
+- [Photodetector reconstruction (2026-10-08)](examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) — historical paper-derived process evidence; later Both-face consolidation supersedes applicable front/back steps.
 - [Lift-off v1 handoff](LIFTOFF_V1_2026-10-09.md) — geometric support semantics, current CI status and acceptance.
 - [TiO2 metalens reconstruction](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) — paper-derived process, four-cell Recipe and the 4,725-site full-array Welcome project with matching Mask and compiled History.
 - [Geometry/process roadmap](PROCESS_GEOMETRY_ROADMAP_2026-10-09.md) — seven proposed capabilities, priorities and scientific acceptance boundaries.
@@ -67,10 +67,10 @@ Dated implementation plans and handoffs preserve the status of their original re
 - [Desktop View Docking reconstruction — 2026-10-15](ui-v2/DESKTOP_DOCKING_PLAN_2026-10-15.md) — desktop-only view state, Snap templates, stable scientific panels and required acceptance gates.
 
 - [P1 science, release and Recovery handoff — 2026-10-14](P1_SCIENCE_RELEASE_RECOVERY_HANDOFF_2026-10-14.md) — branch baseline, fault ownership, planned CI evidence and unresolved administration tasks.
-- [Process History transaction integrity — 2026-10-13](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — fault injection and atomicity boundaries for Recipe, edit and insertion.
+- [Process History transaction integrity — 2026-10-13](science/PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) — fault injection and atomicity boundaries for Recipe, edit and insertion.
 - [Material/target scientific semantics — design proposal](MATERIAL_TARGET_SEMANTICS_2026-10-13.md) — review-only parameter matrix and open choices; no UI activation.
 - [Main protection runbook — 2026-10-13](MAIN_PROTECTION_RUNBOOK_2026-10-13.md) — GitHub Admin-only repository rules and fail-closed verification.
-- [Physical unit edit integrity — 2026-10-13](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical-µm invariants, active editor conversions, and browser acceptance.
+- [Physical unit edit integrity — 2026-10-13](science/PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) — canonical-µm invariants, active editor conversions, and browser acceptance.
 - [Scientific unused-symbol review (2026-10-13)](archive/SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md) — private Kernel and Renderer helper reachability, bounded deletion and acceptance requirements.
 - [Export API ownership review (2026-10-13)](archive/SITE_EXPORT_API_REVIEW_2026-10-13.md) — eight static import candidates, internal-use evidence and API retention contract.
 - [Handoff closeout and outstanding work — 2026-10-13](HANDOFF_STATUS_2026-10-13.md) — current disposition of older UI v2 handoffs, privacy cleanup, and evidence still required.

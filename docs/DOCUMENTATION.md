@@ -3,7 +3,7 @@
 ## Folder ownership and compatibility
 
 - `docs/` owns stable entrypoints, engineering conventions and compatibility links.
-- `docs/science/` owns current process, geometry, annotation and numerical contracts.
+- `docs/science/` owns current process, geometry, annotation, unit-integrity and History transaction contracts.
 - `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
 - `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
 - `docs/wiki/` stays flat for the Main-only GitHub Wiki publisher, with its SVG assets under `assets/`.
@@ -72,6 +72,6 @@ flowchart LR
 
 `npm run docs:check` checks generated operation output, managed manual pages, all tracked/new non-ignored Markdown internal destinations and headings, documentation reachability, current Architecture module paths, published Welcome links and atlas operation IDs. The standalone link/navigation gate is `node scripts/check-documentation.mjs` and uses only Node built-ins plus the existing application catalogs.
 
-`site/tests/wiki-manual.test.mjs` checks the eight-entry catalog, validates repository-owned images, and parses English Recipe and AI-assisted code examples. `site/tests/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The Wiki publishing workflow runs the same documentation checks before synchronization.
+`site/tests/documentation/wiki-manual.test.mjs` checks the eight-entry catalog, validates repository-owned images, and parses English Recipe and AI-assisted code examples. `site/tests/documentation/documentation.test.mjs` owns link/navigation parser and negative-fixture coverage. The root `site/tests/documentation-suite.test.mjs` entry point discovers those files for `npm test` and focused Wiki CI; the Wiki publishing workflow runs the same documentation checks before synchronization.
 
 These checks cannot prove prose/scientific correctness, execute every example as a fabrication process, validate external DOI/vendor URLs, certify the live Wiki/Pages deployment, or accept pixel baselines. External research statements retain their recorded date; full replay and visual acceptance remain in their scientific/browser suites.

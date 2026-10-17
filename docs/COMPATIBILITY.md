@@ -11,12 +11,17 @@ To keep previously shared GitHub file URLs open, relocated documents retain thei
 - [Former path](IMPLANT.md) → [Canonical document](science/IMPLANT.md)
 - [Former path](ROUGHNESS_MORPHOLOGY.md) → [Canonical document](science/ROUGHNESS_MORPHOLOGY.md)
 
+- [Former path](PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md) → [Canonical document](science/PHYSICAL_UNIT_EDIT_INTEGRITY_2026-10-13.md)
+- [Former path](PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md) → [Canonical document](science/PROCESS_HISTORY_TRANSACTION_INTEGRITY_2026-10-13.md)
+
 ## Examples
 
 - [Former path](EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md) → [Canonical document](examples/EXAMPLE_LITERATURE_FIDELITY_2026-10-14.md)
 - [Former path](EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md) → [Canonical document](examples/EXAMPLE_BOTH_FACE_CONSOLIDATION_2026-10-13.md)
 - [Former path](TIO2_METALENS_RECONSTRUCTION_2026-10-09.md) → [Canonical document](examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md)
 - [Former path](TIO2_METALENS_PERFORMANCE_2026-10-10.md) → [Canonical document](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md)
+
+- [Former path](PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md) → [Canonical document](examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
 
 ## Archive
 
