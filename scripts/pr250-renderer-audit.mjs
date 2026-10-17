@@ -322,6 +322,23 @@ try {
                     distance: 1000,
                     targetXY: [2240, -150],
                   },
+                  // Post-#250 user screenshot regression: look from the
+                  // Black-Si rough end toward the smooth multilayer stack.
+                  // Keep the *same* camera at opaque and 70% opacity; test
+                  // both physical Border modes without changing Process data.
+                  ...[
+                    { name: 'rough-front-opaque-borders', opacity: 1, borders: true, distance: 1150 },
+                    { name: 'rough-front-70pct-borders', opacity: 0.7, borders: true, distance: 1150 },
+                    { name: 'rough-front-70pct-no-borders', opacity: 0.7, borders: false, distance: 1150 },
+                    { name: 'rough-front-70pct-close-borders', opacity: 0.7, borders: true, distance: 850 },
+                  ].map((spec) => ({
+                    ...spec,
+                    fast: false,
+                    detail: true,
+                    zBreak: true,
+                    fromRoughLeft: true,
+                    targetXY: [2400, -80],
+                  })),
                   // Real camera closeups of the same ROI front inspection cut
                   // (Y = -150 um), not enlarged screenshots. Two distances
                   // retain the same target and azimuth, enabling border A/B.
@@ -448,6 +465,7 @@ try {
           window.view.updateZCollapse();
           await window.view.render();
           const delta = fit.position.map((value, index) => value - fit.target[index]);
+          if (config.fromRoughLeft) delta[0] = -Math.abs(delta[0]);
           const length = Math.hypot(...delta) || 1;
           const displayScale = Number(document.querySelector('#host').dataset.zDisplayScale);
           const upperSurfaceZ = 174.325;
