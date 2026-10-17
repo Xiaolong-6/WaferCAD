@@ -73,6 +73,7 @@ try {
 
     await page.evaluate(() => {
       const nativePut = window.IDBObjectStore.prototype.put;
+      window.__recoveryOriginalPut = nativePut;
       window.__restoreWriteFault = { writes: 0, originals: 0 };
       window.IDBObjectStore.prototype.put = function (record, ...argumentsAfter) {
         if (this.name === 'workspace' && record?.key === 'current') {
@@ -146,6 +147,165 @@ try {
     console.log(
       'V2_RECOVERY_FAIL_CLOSED: failed IndexedDB commit preserves Model/History/Variant PASS',
     );
+
+    // #320: independently inject a SECOND fault in compensating in-memory
+    // recovery after the final durable write has failed. This must never
+    // claim a successful rollback or silently autosave a partial restoration.
+    await page.evaluate(() => {
+      const originalPut = window.__recoveryOriginalPut;
+      const originalClone = window.structuredClone;
+      const trace = {
+        checkpointWrites: 0,
+        failedCurrentWrites: 0,
+        rollbackCloneFailures: 0,
+        armed: false,
+      };
+      window.__recoveryDoubleFault = trace;
+      window.__recoveryOriginalClone = originalClone;
+      window.IDBObjectStore.prototype.put = function (record, ...argumentsAfter) {
+        if (this.name === 'workspace' && record?.key === 'current') {
+          trace.failedCurrentWrites++;
+          trace.armed = true;
+          throw new window.DOMException(
+            'Synthetic final restore commit failure',
+            'QuotaExceededError',
+          );
+        }
+        if (this.name === 'workspace' && String(record?.key).startsWith('recovery:'))
+          trace.checkpointWrites++;
+        return Reflect.apply(originalPut, this, [record, ...argumentsAfter]);
+      };
+      window.structuredClone = function (value, ...args) {
+        if (trace.armed && trace.rollbackCloneFailures === 0) {
+          trace.rollbackCloneFailures++;
+          trace.armed = false;
+          throw new Error('Synthetic compensating in-memory rollback failure');
+        }
+        return Reflect.apply(originalClone, this, [value, ...args]);
+      };
+    });
+    try {
+      await page.locator('#workspaceRecoverySelect').selectOption(oldPoint);
+      await page.locator('#workspaceRestoreBtn').click();
+      await page
+        .locator('.v2-workflow-dialog-actions')
+        .getByRole('button', { name: 'Restore', exact: true })
+        .click();
+      await page.waitForFunction(
+        () => {
+          const message = document.querySelector('[data-slot="status.message"]')?.textContent || '';
+          return (
+            /in-memory rollback also failed/i.test(message) &&
+            !window.WaferCadV2Workstation.snapshot().workflow.busy
+          );
+        },
+        null,
+        { timeout: 120000 },
+      );
+      const doubleFault = await page.evaluate(() => ({
+        trace: window.__recoveryDoubleFault,
+        message: document.querySelector('[data-slot="status.message"]')?.textContent || '',
+      }));
+      assert.ok(doubleFault.trace.checkpointWrites >= 1, 'Original Recovery point was protected');
+      assert.ok(
+        doubleFault.trace.failedCurrentWrites >= 1,
+        'Actual IndexedDB current write must fail after protection',
+      );
+      assert.equal(
+        doubleFault.trace.rollbackCloneFailures,
+        1,
+        'A separate compensating in-memory rollback must actually fail',
+      );
+      assert.match(doubleFault.message, /pre-restore checkpoint is available/i);
+      assert.doesNotMatch(doubleFault.message, /Restored local recovery checkpoint/i);
+    } finally {
+      await page.evaluate(() => {
+        window.IDBObjectStore.prototype.put = window.__recoveryOriginalPut;
+        window.structuredClone = window.__recoveryOriginalClone;
+      });
+    }
+
+    // Quarantine must also preserve the protective checkpoint against a
+    // destructive Clear Recovery click, including a direct handler invocation
+    // that bypasses the disabled UI control.
+    const quarantine = await page.evaluate(async () => {
+      const storage = await import('/workspace-persistence.js');
+      const beforeKeys = (await storage.listWorkspaceRecoveryPoints())
+        .map((point) => point.key)
+        .sort();
+      document.querySelector('#workspaceRecoverySelect').dispatchEvent(new Event('change'));
+      const controls = {
+        restoreDisabled: document.querySelector('#workspaceRestoreBtn').disabled,
+        clearDisabled: document.querySelector('#workspaceRecoveryClearBtn').disabled,
+        saveDisabled: document.querySelector('#saveProjectBtn').disabled,
+      };
+      await document.querySelector('#workspaceRecoveryClearBtn').onclick();
+      document.querySelector('#saveProjectBtn').onclick();
+      const afterKeys = (await storage.listWorkspaceRecoveryPoints())
+        .map((point) => point.key)
+        .sort();
+      return {
+        beforeKeys,
+        afterKeys,
+        controls,
+        saveStatus: document.querySelector('#workspaceSaveStatus')?.textContent || '',
+      };
+    });
+    assert.deepEqual(quarantine.afterKeys, quarantine.beforeKeys);
+    assert.deepEqual(quarantine.controls, {
+      restoreDisabled: true,
+      clearDisabled: true,
+      saveDisabled: true,
+    });
+    assert.match(quarantine.saveStatus, /Recovery rollback failed.*Reload required/i);
+
+    // Any half-restored volatile state is not authoritative. After restoring
+    // browser APIs, the old durable record must remain untouched even beyond
+    // the regular 1.8s autosave window, and a protected original must remain.
+    await page.waitForTimeout(3500);
+    const durability = await page.evaluate(async () => {
+      const storage = await import('/workspace-persistence.js');
+      const current = await storage.loadWorkspaceState();
+      const points = await storage.listWorkspaceRecoveryPoints();
+      const protectedModels = [];
+      for (const point of points) {
+        if (point.reason !== 'pre-restore') continue;
+        const entry = await storage.loadWorkspaceRecoveryPoint(point.key);
+        if (entry) protectedModels.push(entry.model);
+      }
+      return { current, protectedModels, reasons: points.map((point) => point.reason) };
+    });
+    assert.deepEqual(
+      durability.current,
+      persistedBefore,
+      'No deferred autosave may overwrite durable current after double fault',
+    );
+    const protectedOriginal = durability.protectedModels.find(
+      (model) => model.processRevision === before.model.processRevision,
+    );
+    assert.ok(
+      protectedOriginal,
+      'A valid pre-restore checkpoint must retain the original revision',
+    );
+    assert.deepEqual(
+      protectedOriginal,
+      before.model,
+      'The durable protective Recovery must contain the complete original physical Model',
+    );
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 120000,
+    });
+    const reopened = await snapshot();
+    assert.deepEqual(
+      reopened.model,
+      before.model,
+      'Reload must use original durable physical Model',
+    );
+    assert.deepEqual(reopened.workflow.steps, before.workflow.steps);
+    assert.deepEqual(reopened.workflow.branches, before.workflow.branches);
+    assert.deepEqual(errors, []);
+    console.log('V2_RECOVERY_DOUBLE_FAULT: original durable Model and Recovery intact PASS');
   } finally {
     await context.close();
   }

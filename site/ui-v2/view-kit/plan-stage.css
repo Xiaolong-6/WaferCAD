@@ -1,6 +1,7 @@
 /* Shared planar canvas surface; views supply canvas and readout hooks. */
 .v2-plan-stage {
   position: relative;
+  background: var(--wc-canvas-background, #fbfcfd);
 }
 .v2-plan-stage > canvas {
   position: absolute;
@@ -18,4 +19,49 @@
 }
 .v2-plan-stage > canvas.plan-pan-active {
   cursor: grab;
+}
+
+/* Inline empty-state card sits over the canvas, without altering its geometry. */
+.v2-plan-stage > .v2-empty-hint {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translate(-50%, -50%);
+  max-width: min(320px, calc(100% - 24px));
+  padding: var(--wc-space-2) var(--wc-space-3);
+  border: 1px solid var(--wc-border);
+  border-radius: var(--wc-radius-md);
+  background: var(--wc-surface);
+  color: var(--wc-muted);
+  font-size: var(--wc-font-body);
+  line-height: var(--wc-leading);
+  text-align: center;
+  /* Let canvas gestures pass through the guidance text. */
+  pointer-events: none;
+}
+.v2-plan-stage > .v2-empty-hint[hidden] {
+  display: none;
+}
+.v2-plan-stage > .v2-empty-hint p {
+  margin: 0;
+}
+.v2-empty-action {
+  pointer-events: auto;
+  min-height: max(24px, var(--wc-hit-min));
+  margin: 0 2px;
+  padding: 0 var(--wc-space-2);
+  border: 1px solid var(--wc-accent);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-accent-tint);
+  color: var(--wc-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.v2-empty-action:hover {
+  background: var(--wc-accent-tint-active);
+}
+.v2-empty-action:focus-visible {
+  outline: var(--wc-focus-width) solid var(--wc-focus);
+  outline-offset: var(--wc-focus-offset);
 }

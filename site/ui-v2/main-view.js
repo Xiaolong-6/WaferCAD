@@ -8,6 +8,7 @@ import { createFloatingStrip } from './view-kit/floating-strip.js';
 import { createInspectionFields } from './view-kit/inspection-fields.js';
 import { mountToolPopover } from './view-kit/tool-popover.js';
 import { modelInventoryCount } from './view-kit/model-inventory.js';
+import { createEmptyHint, isBaseOnlyModel } from './view-kit/empty-state.js';
 
 export async function createMainView({ project, sharedState, workstation, renderModel } = {}) {
   const { el, button, toolbar, panelHeader } = window.WaferCadV2Components;
@@ -60,11 +61,33 @@ export async function createMainView({ project, sharedState, workstation, render
       ),
     ),
   );
+  const emptyHint = createEmptyHint({
+    label: 'Empty project',
+    parts: [
+      {
+        text: 'Add',
+        onClick: () => {
+          // In compact View mode the editor domain buttons are detached from
+          // the nav host. Open Edit using the existing shell action first.
+          if (!document.querySelector('.p-nav [data-action="domain:process"]'))
+            document.querySelector('.p-nav [data-action="show-editor"]')?.click();
+          document.querySelector('.p-nav [data-action="domain:process"]')?.click();
+        },
+      },
+      ' a process step to see layers.',
+    ],
+  });
+  // Only the full editable workstation has a Process workflow to open.
+  const updateEmptyHint = () =>
+    emptyHint.update(
+      Boolean(workstation && !workstation.readOnlyPreview && isBaseOnlyModel(state?.model)),
+    );
   const caption = () =>
     `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
   function sync() {
     if (!state) return;
     syncDisplayUnitFields(document, units.key());
+    updateEmptyHint();
     const face = hooks.get('mainFaceBtn');
     if (face) {
       const back = state.activeFace === 'back';
@@ -395,6 +418,7 @@ export async function createMainView({ project, sharedState, workstation, render
       { class: 'p-science v2-main-stage v2-plan-stage', 'data-v2-stage-host': '' },
       hook('mainCanvas', el('canvas', { 'aria-label': 'Main scientific plan', tabindex: 0 })),
       ...(workstation?.readOnlyPreview ? [] : [roiTools]),
+      emptyHint.node,
       hook(
         'mainCoords',
         el('span', { class: 'p-scale' }, `${state.model.width} × ${state.model.height} µm`),
@@ -584,6 +608,13 @@ export async function createMainView({ project, sharedState, workstation, render
       onRoiSync: displayLengths,
       claimPopover: () => {},
     });
+    // Workflow mutations repaint scientific views without calling their UI sync().
+    const renderMain = runtime.render;
+    runtime.render = (...args) => {
+      updateEmptyHint();
+      return renderMain(...args);
+    };
+    updateEmptyHint();
     bindUi();
     window.WaferCadV2Main = {
       ready: true,

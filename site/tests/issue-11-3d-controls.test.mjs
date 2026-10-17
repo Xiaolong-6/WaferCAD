@@ -22,6 +22,10 @@ const roughMeshGeometry = await readFile(
   new URL('../rough-mesh-geometry.js', import.meta.url),
   'utf8',
 );
+const surfaceRendering = await readFile(
+  new URL('../surface-rendering.js', import.meta.url),
+  'utf8',
+);
 const morphologyMeshPolicy = await readFile(
   new URL('../morphology-mesh-policy.js', import.meta.url),
   'utf8',
@@ -49,7 +53,7 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(rendererGeometry, /sidewallBoundaryIntervals:/);
   assert.match(roughMeshGeometry, /hasPhysicalSidewallAt/);
   assert.match(threeView, /sidewallBoundaryIntervals: cap\.sidewallBoundaryIntervals/);
-  assert.match(threeView, /roughProfileOffsetAtPoint\(/);
+  assert.match(threeView, /roughDisplayProfileOffsetAtPoint\(/);
   assert.match(threeView, /part\.lowerSurface/);
   assert.match(threeView, /part\.upperSurface/);
   assert.doesNotMatch(threeView, /alphaHash/);
@@ -84,7 +88,8 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.match(threeView, /controls\.addEventListener\('start'/);
   assert.match(threeView, /controls\.addEventListener\('end'/);
   assert.match(threeView, /return normalizedDistance <= 1\.75 \? 0\.28 : 0\.06/);
-  assert.match(roughMeshGeometry, /function roughPointNormal\(/);
+  assert.match(roughMeshGeometry, /function smoothCapNormals\(/);
+  assert.doesNotMatch(roughMeshGeometry, /function roughPointNormal\(/);
   assert.doesNotMatch(threeView, /function capRenderParts\(/);
   assert.match(threeView, /geometryFromRoughCap\(THREE,/);
   assert.doesNotMatch(threeView, /roughMeshTriangleBudget\(/);
@@ -146,7 +151,9 @@ test('3D inspection controls default to opaque layers with borders off', () => {
   assert.equal((threeView.match(/\.forceSinglePass = true/g) || []).length, 1);
   assert.doesNotMatch(threeView, /opacity: 0\.18/);
   assert.doesNotMatch(threeView, /opacity: 0\.3/);
-  assert.match(roughMeshGeometry, /roughProfileOffsetAtPoint\(/);
+  assert.match(roughMeshGeometry, /roughDisplayProfileOffsetAtPoint\(/);
+  assert.match(surfaceRendering, /export function roughDisplayProfileOffsetAtPoint\(/);
+  assert.match(surfaceRendering, /const original = roughProfileOffsetAtPoint\(x, y, appearance\)/);
   assert.match(threeView, /color: layer\?\.color \|\| '#999'/);
   assert.doesNotMatch(threeView, /0x24282c/);
   assert.doesNotMatch(threeView, /multiplyScalar\(0\.5\)/);
@@ -172,7 +179,8 @@ test('3D inspection controls default to opaque layers with borders off', () => {
     threeView,
     /prepareScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
   );
-  assert.match(threeView, /captureRenderer\.render\(scene, camera\)/);
+  assert.match(threeView, /renderInspectionFrame\(captureRenderer\)/);
+  assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(
     threeView,
     /restoreScene: \(\) => requestRoughGeometry\('detailed', \{ force: true \}\)/,
@@ -267,6 +275,10 @@ test('3D Border preserves accessible checked/focus states and attenuates buried 
   assert.match(style, /\.view-head \.three-border-toggle:has\(input:checked\)/);
   assert.match(style, /#threeBorderControl:has\(input:focus-visible\)/);
   assert.match(threeView, /waferCadBorderOrder/);
-  assert.match(threeView, /\?\s*80\s*:\s*\(?object\.userData\?\.waferCadBorderOrder/);
+  assert.match(
+    threeView,
+    /object\.renderOrder = object\.userData\?\.waferCadBorderOrder \?\? object\.renderOrder/,
+  );
+  assert.match(threeView, /renderDepthAwareOutlines\(targetRenderer, scene, camera/);
   assert.match(threeView, /case 'material-interface':/);
 });

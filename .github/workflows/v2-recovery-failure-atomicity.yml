@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/v2/check-recovery-failure-atomicity.mjs'
+      - 'scripts/v2/check-recovery-corrupt-checkpoint.mjs'
       - 'site/controllers/workspace-persistence-controller.js'
       - '.github/workflows/v2-recovery-failure-atomicity.yml'
   workflow_dispatch:
@@ -42,6 +43,10 @@ jobs:
         env:
           WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
         run: node scripts/v2/check-recovery-failure-atomicity.mjs
+      - name: Verify corrupted Recovery payload leaves active geometry and History intact
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/v2/check-recovery-corrupt-checkpoint.mjs
       - uses: actions/upload-artifact@v6
         if: failure()
         with:

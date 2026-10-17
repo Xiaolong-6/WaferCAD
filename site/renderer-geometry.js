@@ -1,6 +1,6 @@
 import { isArrayModel } from './model-array.js';
 import { buildArrayRenderPlan } from './model-array-rendering.js';
-import { canonicalLineInterval, lineIntervalKey } from './line-intervals.js';
+import { canonicalLineInterval, lineIntervalKey, localParameterAtLineT } from './line-intervals.js';
 import { ownedMaterialSurfacesFromTopology } from './process-topology.js';
 import { visibleMaterialModel } from './model.js';
 
@@ -96,25 +96,18 @@ function capBoundaryIndex(caps) {
   return index;
 }
 
-function sidewallBoundaryAppearance(index, part, z) {
+function sidewallBoundaryAppearance(index, part, z, preferredCapIndex = null) {
   const line = part.line || canonicalLineInterval(part.p, part.q);
   if (!line) return null;
   const candidates = index.get(boundaryKey(part.layerId, z, line)) || [];
   if (!candidates.length) return null;
 
-  const full = candidates.find(
+  const contained = candidates.filter(
       (candidate) =>
         candidate.line.t0 <= line.t0 + SIDEWALL_APPEARANCE_EPSILON &&
         candidate.line.t1 >= line.t1 - SIDEWALL_APPEARANCE_EPSILON,
     ),
-    midpoint = (line.t0 + line.t1) / 2,
-    match =
-      full ||
-      candidates.find(
-        (candidate) =>
-          candidate.line.t0 <= midpoint + SIDEWALL_APPEARANCE_EPSILON &&
-          candidate.line.t1 >= midpoint - SIDEWALL_APPEARANCE_EPSILON,
-      );
+    match = contained.find((candidate) => candidate.capIndex === preferredCapIndex) || contained[0];
   if (!match) return null;
   return {
     appearance: { ...match.appearance },
@@ -123,15 +116,73 @@ function sidewallBoundaryAppearance(index, part, z) {
   };
 }
 
-function decorateSurfacePlan(caps, sidewalls) {
+export function decorateRoughSurfaceBoundaries(caps, sidewalls) {
+  if ((sidewalls || []).some((wall) => wall.parts?.length)) {
+    const tagged = sidewalls.flatMap((wall, index) =>
+        (wall.parts || [wall]).map((part) => ({
+          ...part,
+          roughBoundaryGroupIndex: index,
+        })),
+      ),
+      decorated = decorateRoughSurfaceBoundaries(caps, tagged),
+      groups = sidewalls.map(() => []);
+    for (const part of decorated.sidewalls) {
+      const { roughBoundaryGroupIndex, ...value } = part;
+      groups[roughBoundaryGroupIndex].push(value);
+    }
+    return {
+      caps: decorated.caps,
+      sidewalls: sidewalls.flatMap((wall, index) =>
+        wall.parts ? [{ ...wall, parts: groups[index] }] : groups[index],
+      ),
+    };
+  }
   const index = capBoundaryIndex(caps);
   if (!index.size) return { caps, sidewalls };
 
   const sidewallIntervalsByCap = new Map(),
-    decoratedSidewalls = (sidewalls || []).map((part) => {
+    splitSidewalls = (sidewalls || []).flatMap((part) => {
+      const line = part.line || canonicalLineInterval(part.p, part.q);
+      if (!line) return [part];
+      const parameters = new Set([0, 1]);
+      for (const z of [part.z0, part.z1]) {
+        for (const candidate of index.get(boundaryKey(part.layerId, z, line)) || []) {
+          for (const t of [candidate.line.t0, candidate.line.t1]) {
+            if (
+              t > line.t0 + SIDEWALL_APPEARANCE_EPSILON &&
+              t < line.t1 - SIDEWALL_APPEARANCE_EPSILON
+            ) {
+              parameters.add(localParameterAtLineT(line, t));
+            }
+          }
+        }
+      }
+      const ordered = [...parameters].sort((a, b) => a - b);
+      if (ordered.length === 2) return [part];
+      const pointAt = (t) => [
+        part.p[0] + (part.q[0] - part.p[0]) * t,
+        part.p[1] + (part.q[1] - part.p[1]) * t,
+      ];
+      return ordered.slice(0, -1).map((t, i) => {
+        const p = pointAt(t),
+          q = pointAt(ordered[i + 1]);
+        return { ...part, p, q, line: canonicalLineInterval(p, q) };
+      });
+    }),
+    decoratedSidewalls = splitSidewalls.map((part) => {
       const line = part.line || canonicalLineInterval(part.p, part.q),
-        lowerSurface = sidewallBoundaryAppearance(index, part, part.z0),
-        upperSurface = sidewallBoundaryAppearance(index, part, part.z1);
+        lowerSurface = sidewallBoundaryAppearance(
+          index,
+          part,
+          part.z0,
+          part.lowerSurface?.capIndex,
+        ),
+        upperSurface = sidewallBoundaryAppearance(
+          index,
+          part,
+          part.z1,
+          part.upperSurface?.capIndex,
+        );
 
       for (const surface of [lowerSurface, upperSurface]) {
         if (!line || surface?.capIndex == null) continue;
@@ -151,12 +202,14 @@ function decorateSurfacePlan(caps, sidewalls) {
           ? {
               appearance: lowerSurface.appearance,
               profileNormal: lowerSurface.profileNormal,
+              capIndex: lowerSurface.capIndex,
             }
           : null,
         upperSurface: upperSurface
           ? {
               appearance: upperSurface.appearance,
               profileNormal: upperSurface.profileNormal,
+              capIndex: upperSurface.capIndex,
             }
           : null,
       };
@@ -187,7 +240,7 @@ export function buildRenderSurfacePlan(model, clip = null) {
   const plan = isArrayModel(model)
       ? buildArrayRenderPlan(visibleMaterialModel(model), clip, buildRenderSurfacePlan)
       : ownedMaterialSurfacesFromTopology(visibleMaterialModel(model), clip),
-    decorated = decorateSurfacePlan(plan.caps, plan.sidewalls),
+    decorated = decorateRoughSurfaceBoundaries(plan.caps, plan.sidewalls),
     result = {
       ...plan,
       ...decorated,

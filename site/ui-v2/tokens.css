@@ -6,16 +6,16 @@
   --wc-page: #f3f5f7;
   --wc-surface: #ffffff;
   --wc-subtle: #f8fafb;
-  --wc-border: #d6dde5;
-  --wc-border-strong: #aab9c7;
+  --wc-border: #dde3ea;
+  --wc-border-strong: #9fb0c1;
   --wc-text: #1f2e3b;
   --wc-muted: #526273;
   --wc-disabled: #5c6b7a;
-  --wc-accent: #245f9c;
-  --wc-accent-hover: #1c4d80;
-  --wc-accent-active: #163d66;
-  --wc-accent-tint: #eaf2fb;
-  --wc-accent-tint-active: #d3e5f8;
+  --wc-accent: #1f5fbf;
+  --wc-accent-hover: #184d9c;
+  --wc-accent-active: #123c78;
+  --wc-accent-tint: #e7effc;
+  --wc-accent-tint-active: #cfe0f8;
   --wc-success: #246b4b;
   --wc-success-tint: #eaf5ef;
   --wc-warning: #805816;
@@ -23,6 +23,15 @@
   --wc-danger: #ad3038;
   --wc-danger-tint: #fff0f1;
   --wc-focus: #2b70b7;
+  /* Plan-view colors are presentation-only and never modify material data. */
+  --wc-canvas-background: #fbfcfd;
+  --wc-canvas-grid-minor: #edf1f5;
+  --wc-canvas-grid-major: #dbe2ea;
+  --wc-canvas-grid-axis: #9fb0c1;
+  --wc-canvas-outline-solid: #7f93a8;
+  --wc-canvas-outline-dashed: #9fb0c1;
+  --wc-canvas-section-highlight: #e8590c;
+  --wc-canvas-roi-fill: rgba(232, 89, 12, 0.05);
   --wc-scrim: #1f2e3b66;
 
   --wc-font: 'Segoe UI', system-ui, sans-serif;
