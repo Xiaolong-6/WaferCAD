@@ -8,19 +8,33 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildTcmosInverter } from './build-tcmos-inverter-example.mjs';
 import { createTcmosArrayPatch } from './build-tcmos-array-patch.mjs';
-import { buildTcmosRoutedOverlay, auditTcmosRoutedOverlay } from './build-tcmos-array-interconnect.mjs';
+import {
+  buildTcmosRoutedOverlay,
+  auditTcmosRoutedOverlay,
+} from './build-tcmos-array-interconnect.mjs';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
 
 export const TCMOS_PHYSICAL_ROUTE_SPEC = Object.freeze({
   intermetalClearanceUm: 0.3,
   metalThicknessUm: 0.2,
-  dielectricMaterials: ['ILD2 SiO2 (illustrative)', 'ILD3 SiO2 (illustrative)', 'ILD4 SiO2 (illustrative)'],
+  dielectricMaterials: [
+    'ILD2 SiO2 (illustrative)',
+    'ILD3 SiO2 (illustrative)',
+    'ILD4 SiO2 (illustrative)',
+  ],
   viaMaterials: ['VIA12 W (illustrative)', 'VIA23 W (illustrative)', 'VIA34 W (illustrative)'],
-  metalMaterials: ['METAL2 Al (illustrative)', 'METAL3 Al (illustrative)', 'METAL4 Al (illustrative)'],
+  metalMaterials: [
+    'METAL2 Al (illustrative)',
+    'METAL3 Al (illustrative)',
+    'METAL4 Al (illustrative)',
+  ],
 });
 
 const rectPoints = ([x0, y0, x1, y1]) => [
-  [x0, y0], [x1, y0], [x1, y1], [x0, y1],
+  [x0, y0],
+  [x1, y0],
+  [x1, y1],
+  [x0, y1],
 ];
 const rectGeom = (rect) => [[rectPoints(rect).concat([rectPoints(rect)[0]])]];
 const closeEnough = (a, b) => Math.abs(a - b) <= 1e-9;
@@ -33,7 +47,8 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   const { resolveArrayModel } = await import('../site/model-array.js');
   const { createLayer, modelBoundsZ, geometryArea } = await import('../site/model.js');
   const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
-  const { prepareProjectForWorkspaceStorage, readProjectFile } = await import('../site/project-io.js');
+  const { prepareProjectForWorkspaceStorage, readProjectFile } =
+    await import('../site/project-io.js');
   const { project: original } = source
     ? { project: source }
     : await buildTcmosInverter({ includeComparison: false });
@@ -110,36 +125,49 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   const addVia = (viaGroup, nextPlane, fromLayerId, viaLayer, oxideLayer, label) => {
     const footprints = unionRects(viaGroup.map((v) => v.rect));
     let verifiedColumns = 0;
-    const touched = splitBy(footprints, (stack) => {
-      const cap = stack.at(-1);
-      assert.equal(cap.layerId, oxideLayer.id, label + ': wrong ILD owner');
-      assert.ok(closeEnough(cap.z1, nextPlane), label + ': ILD top shifted');
-      const conductor = stack.at(-2);
-      assert.equal(conductor?.layerId, fromLayerId,
-        label + ': open; Via has no directly underlying conductor');
-      assert.ok(closeEnough(cap.z0, conductor.z1),
-        label + ': oxide/Via did not reach underlying metal');
-      ensurePositive(conductor.z1, nextPlane, label);
-      verifiedColumns++;
-      return [
-        ...stack.slice(0, -1),
-        { layerId: viaLayer.id, z0: conductor.z1, z1: nextPlane },
-      ];
-    }, label);
+    const touched = splitBy(
+      footprints,
+      (stack) => {
+        const cap = stack.at(-1);
+        assert.equal(cap.layerId, oxideLayer.id, label + ': wrong ILD owner');
+        assert.ok(closeEnough(cap.z1, nextPlane), label + ': ILD top shifted');
+        const conductor = stack.at(-2);
+        assert.equal(
+          conductor?.layerId,
+          fromLayerId,
+          label + ': open; Via has no directly underlying conductor',
+        );
+        assert.ok(
+          closeEnough(cap.z0, conductor.z1),
+          label + ': oxide/Via did not reach underlying metal',
+        );
+        ensurePositive(conductor.z1, nextPlane, label);
+        verifiedColumns++;
+        return [...stack.slice(0, -1), { layerId: viaLayer.id, z0: conductor.z1, z1: nextPlane }];
+      },
+      label,
+    );
     assert.ok(touched && verifiedColumns === touched);
     return touched;
   };
   const addMetal = (metalGroup, plane, metalLayer, label) => {
     const mask = unionRects(metalGroup.map((m) => m.rect));
-    return splitBy(mask, (stack) => {
-      const below = stack.at(-1);
-      assert.ok(closeEnough(below.z1, plane), label + ': unexpected vertical void');
-      return [...stack, {
-        layerId: metalLayer.id,
-        z0: plane,
-        z1: plane + names.metalThicknessUm,
-      }];
-    }, label);
+    return splitBy(
+      mask,
+      (stack) => {
+        const below = stack.at(-1);
+        assert.ok(closeEnough(below.z1, plane), label + ': unexpected vertical void');
+        return [
+          ...stack,
+          {
+            layerId: metalLayer.id,
+            z0: plane,
+            z1: plane + names.metalThicknessUm,
+          },
+        ];
+      },
+      label,
+    );
   };
 
   const planes = [];
@@ -153,8 +181,14 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     planes.push(plane);
     const filmRegions = layDielectric(dielectric[index], plane, upper + ' dielectric');
     const viaGroup = routed.vias.filter((v) => v.from === lower && v.to === upper);
-    const viaCount = addVia(viaGroup, plane, lowerId, vias[index],
-      dielectric[index], 'VIA' + (index + 1) + (index + 2));
+    const viaCount = addVia(
+      viaGroup,
+      plane,
+      lowerId,
+      vias[index],
+      dielectric[index],
+      'VIA' + (index + 1) + (index + 2),
+    );
     const metalGroup = routed.metal.filter((m) => m.layer === upper);
     const metalCount = addMetal(metalGroup, plane, metals[index], upper);
     counts.push({ layer: upper, filmRegions, viaCount, metalCount });
@@ -176,10 +210,14 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     const actual = vector.unionGeometries(physicalParts);
     const missingAreaUm2 = geometryArea(vector.difference(expected, actual));
     const extraAreaUm2 = geometryArea(vector.difference(actual, expected));
-    assert.ok(missingAreaUm2 < 1e-12,
-      layer.name + ': missing physical Via area = ' + missingAreaUm2 + ' µm²');
-    assert.ok(extraAreaUm2 < 1e-12,
-      layer.name + ': extraneous Via conductor area = ' + extraAreaUm2 + ' µm²');
+    assert.ok(
+      missingAreaUm2 < 1e-12,
+      layer.name + ': missing physical Via area = ' + missingAreaUm2 + ' µm²',
+    );
+    assert.ok(
+      extraAreaUm2 < 1e-12,
+      layer.name + ': extraneous Via conductor area = ' + extraAreaUm2 + ' µm²',
+    );
     return {
       name: layer.name,
       viaSites: footprints.length,
@@ -189,8 +227,11 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
       extraAreaUm2,
     };
   });
-  assert.equal(viaFootprintChecks.reduce((sum, entry) => sum + entry.viaSites, 0),
-    140, 'One or more Via physical volumes are missing');
+  assert.equal(
+    viaFootprintChecks.reduce((sum, entry) => sum + entry.viaSites, 0),
+    140,
+    'One or more Via physical volumes are missing',
+  );
   // A correct Via without exact horizontal metal geometry could still
   // leave a physically opened or shorted bus. Check *every upper-metal film*
   // against its intended world-space footprint, not just the landing squares.
@@ -205,11 +246,14 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     const actual = vector.unionGeometries(actualParts);
     const missingAreaUm2 = geometryArea(vector.difference(expected, actual));
     const extraAreaUm2 = geometryArea(vector.difference(actual, expected));
-    assert.ok(missingAreaUm2 < 1e-12,
-      layer.name + ': missing continuous metal footprint area = ' +
-        missingAreaUm2 + ' µm²');
-    assert.ok(extraAreaUm2 < 1e-12,
-      layer.name + ': extra metal footprint area = ' + extraAreaUm2 + ' µm²');
+    assert.ok(
+      missingAreaUm2 < 1e-12,
+      layer.name + ': missing continuous metal footprint area = ' + missingAreaUm2 + ' µm²',
+    );
+    assert.ok(
+      extraAreaUm2 < 1e-12,
+      layer.name + ': extra metal footprint area = ' + extraAreaUm2 + ' µm²',
+    );
     return {
       name: layer.name,
       shapeCount: shapes.length,
@@ -219,12 +263,18 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
       extraAreaUm2,
     };
   });
-  assert.deepEqual(metalFootprintChecks.map((check) => check.shapeCount),
-    [64, 44, 3], 'An upper-metal film changed its intended shape count');
+  assert.deepEqual(
+    metalFootprintChecks.map((check) => check.shapeCount),
+    [64, 44, 3],
+    'An upper-metal film changed its intended shape count',
+  );
   // A full source File Mask remains a strict prefix, including exact vertex
   // coordinates. Supplemental layout layers are exclusively this new variant.
-  assert.deepEqual(project.layout.elements, exactSourceMasks,
-    'Physical route must not mutate any approved source Mask vertex');
+  assert.deepEqual(
+    project.layout.elements,
+    exactSourceMasks,
+    'Physical route must not mutate any approved source Mask vertex',
+  );
   const supplementary = [
     { key: 'VIA12', layer: 21, rectangles: routed.vias.filter((v) => v.from === 'M1') },
     { key: 'METAL2', layer: 22, rectangles: routed.metal.filter((m) => m.layer === 'M2') },
@@ -234,25 +284,35 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     { key: 'METAL4', layer: 26, rectangles: routed.metal.filter((m) => m.layer === 'M4') },
   ];
   for (const group of supplementary) {
-    project.layout.elements.push(...group.rectangles.map((entry) => ({
-      kind: 'polygon',
-      // All geometries belong to the active root cell; a fictitious disconnected
-      // sourceCell would silently drop these supplemental polygons on GDS/OAS.
-      sourceCell: project.layout.root,
-      layer: group.layer, datatype: 0,
-      points: rectPoints(entry.rect),
-    })));
+    project.layout.elements.push(
+      ...group.rectangles.map((entry) => ({
+        kind: 'polygon',
+        // All geometries belong to the active root cell; a fictitious disconnected
+        // sourceCell would silently drop these supplemental polygons on GDS/OAS.
+        sourceCell: project.layout.root,
+        layer: group.layer,
+        datatype: 0,
+        points: rectPoints(entry.rect),
+      })),
+    );
     project.layout.combos.push({
       key: project.layout.root + '|' + group.layer + '|0',
       cell: project.layout.root,
-      layer: group.layer, datatype: 0, count: group.rectangles.length,
+      layer: group.layer,
+      datatype: 0,
+      count: group.rectangles.length,
     });
   }
   const palette = ['#8F979E', '#D59B55', '#8F979E', '#5FB4B5', '#8F979E', '#B986C6'];
-  project.layout.maskPresentation.layers.push(...supplementary.map((g, index) => ({
-    layer: g.layer, datatype: 0,
-    color: palette[index], mode: 'fill', opacity: 0.72,
-  })));
+  project.layout.maskPresentation.layers.push(
+    ...supplementary.map((g, index) => ({
+      layer: g.layer,
+      datatype: 0,
+      color: palette[index],
+      mode: 'fill',
+      opacity: 0.72,
+    })),
+  );
   project.selectedLayerKeys = [
     ...new Set([...project.selectedLayerKeys, ...supplementary.map((g) => g.layer + '|0')]),
   ];
@@ -268,24 +328,33 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   delete project.processRecipe;
   delete project.snapshots;
   delete project.snapshotBranches;
-  assert.deepEqual(project.layout.elements.slice(0, exactSourceMasks.length), exactSourceMasks,
-    'Supplementary mask layers must preserve exact original source elements');
+  assert.deepEqual(
+    project.layout.elements.slice(0, exactSourceMasks.length),
+    exactSourceMasks,
+    'Supplementary mask layers must preserve exact original source elements',
+  );
   model.revision++;
   model.processRevision++;
   validateProcessModel(model);
   validateProjectFile(project);
   const json = JSON.stringify(prepareProjectForWorkspaceStorage(project));
   const readBack = await readProjectFile({
-    size: Buffer.byteLength(json), text: async () => json,
+    size: Buffer.byteLength(json),
+    text: async () => json,
   });
   validateProjectFile(readBack);
   assert.equal(readBack.layout.elements.length, 3712 + 251);
-  assert.deepEqual(readBack.layout.elements.slice(0, exactSourceMasks.length), exactSourceMasks,
-    'Storage roundtrip changed one or more approved source File Mask vertices');
+  assert.deepEqual(
+    readBack.layout.elements.slice(0, exactSourceMasks.length),
+    exactSourceMasks,
+    'Storage roundtrip changed one or more approved source File Mask vertices',
+  );
   assert.equal(readBack.layout.combos.length, 14);
   assert.ok(!readBack.processRecipe && !readBack.snapshotBranches);
   return {
-    project, json, routed,
+    project,
+    json,
+    routed,
     report: {
       graph,
       originalMaskPolygons: 3712,
@@ -324,15 +393,22 @@ async function main() {
   const source = await readProjectFile(new Blob([await readFile(approvedPath)]));
   assert.equal(source.model.kernel, 'vector-2.5d-v1');
   assert.equal(source.layout.elements.length, 232);
-  assert.equal(source.processRecipe?.steps?.length, 23,
-    'The approved 23-step source process is missing');
+  assert.equal(
+    source.processRecipe?.steps?.length,
+    23,
+    'The approved 23-step source process is missing',
+  );
   const result = await buildTcmosPhysicalRoutedVariant(source);
   const out = resolve('test-results/tcmos');
   await mkdir(out, { recursive: true });
-  await writeFile(resolve(out, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-PROTOTYPE.wafercad'),
-    result.json);
-  await writeFile(resolve(out, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-REPORT.json'),
-    JSON.stringify(result.report, null, 2));
+  await writeFile(
+    resolve(out, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-PROTOTYPE.wafercad'),
+    result.json,
+  );
+  await writeFile(
+    resolve(out, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-REPORT.json'),
+    JSON.stringify(result.report, null, 2),
+  );
   console.log(JSON.stringify(result.report));
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
