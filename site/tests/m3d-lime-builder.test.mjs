@@ -429,8 +429,18 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     return region;
   };
   const segmentAt = (x, y, name) => {
-    const segment = regionAt(x, y).stack.find((s) => s.layerId === names.get(name));
-    assert.ok(segment, name + ' missing at ' + x + ',' + y);
+    const stack = regionAt(x, y).stack;
+    const segment = stack.find((s) => s.layerId === names.get(name));
+    assert.ok(
+      segment,
+      name + ' missing at ' + x + ',' + y + ': ' +
+        JSON.stringify(stack.map((s) => ({
+          layer: project.model.layers.find((layer) => layer.id === s.layerId)?.name || s.layerId,
+          z0: s.z0,
+          z1: s.z1,
+          role: s.role,
+        }))),
+    );
     return segment;
   };
   const contactAt = (x, y, lower, upper) => {
@@ -466,6 +476,15 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
       'ML spur must not reach buffer channel at x=' + x,
     );
   }
+  const topMetalStep = project.processRecipe.steps.find(
+    (step) => step.params?.material === 'Top Pd interconnect 120nm',
+  );
+  assert.equal(topMetalStep?.params?.coverage, 'pvd-step');
+  assert.equal(
+    topMetalStep?.params?.stepCoverageFraction,
+    0.5,
+    '50% top Pd sidewall coverage is a declared inference, not measured process data',
+  );
   const assertContinuousPd = (points, label) => {
     let previous = null;
     for (const [x, y] of points) {
@@ -490,10 +509,13 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     Array.from({ length: 229 }, (_, i) => [-38.5 + (85.7 * i) / 228, -1.5]),
     'horizontal common Match Line',
   );
-  assertContinuousPd(
-    Array.from({ length: 81 }, (_, i) => [47.2, -14 + (12.5 * i) / 80]),
-    'pre-charge drain-to-ML spur',
-  );
+  const overEnd = [-5.12, -5.1, -5.065, -5.035, -5.015, -5.005, -4.995,
+    -4.985, -4.965, -4.935, -4.9, -4.88];
+  const denseDrainSpur = [
+    ...Array.from({ length: 81 }, (_, i) => -14 + (12.5 * i) / 80),
+    ...overEnd,
+  ].sort((a, b) => a - b).map((y) => [47.2, y]);
+  assertContinuousPd(denseDrainSpur, 'pre-charge drain-to-ML spur including 5nm-end seams');
 });
 
 test('sampled 3-tier cut is physically ordered through both analog CIM and digital RRAM', async () => {
