@@ -632,6 +632,33 @@ try {
       };
     });
   const invariant = await scientificState();
+  // Geometry, ROI, Section and process revisions remain bit-for-bit exact.
+  // OrbitControls can normalize a fixed camera by a few binary64 ULPs
+  // during a repaint; treat only that representational drift separately.
+  const assertPresentationUnchanged = async () => {
+    const current = await scientificState();
+    const { camera: currentCamera, ...currentScience } = current;
+    const { camera: originalCamera, ...originalScience } = invariant;
+    assert.deepEqual(
+      currentScience,
+      originalScience,
+      '3D presentation controls mutated saved material/process geometry, ROI or Section',
+    );
+    assert.deepEqual(Object.keys(currentCamera), Object.keys(originalCamera));
+    assert.equal(currentCamera.fov, originalCamera.fov);
+    for (const axis of ['position', 'target']) {
+      assert.equal(currentCamera[axis].length, originalCamera[axis].length);
+      currentCamera[axis].forEach((actual, index) => {
+        const expected = originalCamera[axis][index];
+        const maximumRoundoff =
+          4 * Number.EPSILON * Math.max(1, Math.abs(actual), Math.abs(expected));
+        assert.ok(
+          Math.abs(actual - expected) <= maximumRoundoff,
+          `Camera ${axis}[${index}] moved beyond four binary64 ULPs: ${expected} → ${actual}`,
+        );
+      });
+    }
+  };
   const combinations = [];
   for (const opacityValue of [1, 0.5]) {
     // Use the production opacity slider's input handler. Directly mutating
@@ -681,11 +708,7 @@ try {
         { timeout: 120000 },
       );
       await waitForPaint(page);
-      assert.deepEqual(
-        await scientificState(),
-        invariant,
-        '3D presentation controls mutated saved material/process geometry',
-      );
+      await assertPresentationUnchanged();
       const filename =
         'three-chip-' +
         (opacityValue === 1 ? 'opaque' : 'transparent') +
