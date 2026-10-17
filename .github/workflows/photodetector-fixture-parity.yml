@@ -1,0 +1,36 @@
+name: Photodetector fixture reproducibility
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'site/model.js'
+      - 'site/examples/photodetector-literature-examples.wafercad'
+      - 'scripts/maintenance/rebuild-photodetectors.mjs'
+      - '.github/workflows/photodetector-fixture-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: photodetector-fixture-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-reproducibility:
+    name: Published photodetector replays exactly from its historical Base
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild from historical Base and verify byte-for-byte equality
+        run: node scripts/maintenance/rebuild-photodetectors.mjs
+      - name: Reject generated file changes
+        run: git diff --exit-code -- site/examples/photodetector-literature-examples.wafercad

@@ -19,6 +19,14 @@ const target = new URL(
   import.meta.url,
 );
 const legacy = expandProjectStorage(JSON.parse(await readFile(target, 'utf8')));
+// This published .wafercad was authored with the previous Base color. A
+// later UI default must not silently recolor its saved Process History.
+const LEGACY_BASE_COLOR = '#C3CBD4';
+assert.equal(
+  legacy.model.layers.find((layer) => layer.id === 'base')?.color,
+  LEGACY_BASE_COLOR,
+  'The published photodetector project must retain its historical Base color',
+);
 const copy = (value) => structuredClone(value);
 const root = copy(legacy);
 for (const key of [
@@ -66,10 +74,7 @@ function regionArea(model, area, shapes) {
 function makeBase(material, thickness) {
   const model = createModel({ shape: 'rect', width: 7000, height: 7000, thickness });
   model.layers[0].name = material;
-  // This historical scientific fixture predates the application's new base
-  // palette; preserve its original presentation color without rewriting any
-  // saved geometry, process steps, or History reference snapshots.
-  model.layers[0].color = '#C3CBD4';
+  model.layers[0].color = LEGACY_BASE_COLOR;
   return model;
 }
 function state(model, shapes, face, recipe) {
