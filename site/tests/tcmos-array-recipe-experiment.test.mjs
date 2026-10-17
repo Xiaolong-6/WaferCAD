@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 import { buildTcmosInverter } from '../../scripts/build-tcmos-inverter-example.mjs';
@@ -74,4 +75,25 @@ test('native 4×4 23-step Recipe has reconstructible Base and original CNT Mask'
   assert.equal(project.layout.elements.length, 3712);
   assert.equal(project.model.array.templates.length, 1);
   assert.ok(!project.snapshotBranches, 'No fake 4×4 process History');
+});
+
+test('committed native 4×4 History restores a transistor-row Section, not a gap', async () => {
+  const filePath = new URL(
+    '../../examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-inverter-4x4-replayed.wafercad',
+    import.meta.url,
+  );
+  const project = JSON.parse(await readFile(filePath, 'utf8'));
+  const section = { a: [-28, -5.2], b: [28, -5.2] };
+  assert.equal(project.model.kernel, 'vector-2.5d-array-v1');
+  assert.equal(project.layout.elements.length, 3712);
+  assert.equal(project.snapshotBranches.nodes.length, 23);
+  assert.deepEqual(project.section, section);
+  const active = project.snapshotBranches.branches.find(
+    (branch) => branch.id === project.snapshotBranches.activeBranchId,
+  );
+  assert.deepEqual(active?.headState?.section, section);
+  assert.equal(
+    project.model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
+    true,
+  );
 });
