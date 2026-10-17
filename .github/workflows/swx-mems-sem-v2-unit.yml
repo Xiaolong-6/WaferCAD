@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/swx-mems-sem-v2-unit.mjs'
       - 'scripts/swx-mems-paper-envelope-audit.mjs'
+      - 'scripts/swx-mems-posthf-perimeter-audit.mjs'
       - 'scripts/build-swx-sem-v2-unit.mjs'
       - 'scripts/swx-mems-sem-ground-return-candidate.mjs'
       - 'scripts/build-swx-sem-v2-ground-return-candidate.mjs'
@@ -12,6 +13,7 @@ on:
       - 'scripts/swx-mems-klayout-verify.py'
       - 'site/tests/swx-mems-sem-v2-unit.test.mjs'
       - 'site/tests/swx-mems-sem-ground-return-candidate.test.mjs'
+      - 'site/tests/swx-mems-posthf-perimeter-audit.test.mjs'
       - '.github/workflows/swx-mems-sem-v2-unit.yml'
   workflow_dispatch:
 
@@ -31,7 +33,7 @@ jobs:
       - run: npm ci
       - name: Scientific invariants for original and independent ground-return trial
         run: |
-          node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs
+          node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs site/tests/swx-mems-posthf-perimeter-audit.test.mjs
       - name: Execute original and isolated trial OFF/ON Kernel + common Recipes
         run: |
           node scripts/build-swx-sem-v2-unit.mjs
