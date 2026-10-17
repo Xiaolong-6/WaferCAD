@@ -23,11 +23,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Read-only physical Section test Prettier diff
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npx prettier --write site/tests/physical-facet-persistence.test.mjs
-          git diff --unified=3 -- site/tests/physical-facet-persistence.test.mjs
       - name: Verify physical owner, closed mesh and exact Section contracts
         run: >-
           node --test
