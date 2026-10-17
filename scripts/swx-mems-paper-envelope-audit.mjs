@@ -11,12 +11,17 @@ export const HU2025_PAPER_FOOTPRINT_UM = Object.freeze({
   splitCrossing: Object.freeze({ width: 23, height: 23 }),
 });
 
-const toMulti = (rings) => rings.map((ring) => [[[...ring, ring[0]]]]);
+// A measured shape is one polygon with one closed ring. Keep this
+// MultiPolygon at four nesting levels for multiBounds(); only the Boolean
+// sweep takes an EXTRA outer array of independent input geometries.
+const toMulti = (rings) => rings.map((ring) => [[...ring, ring[0]]]);
 
 export function auditSwxPaperEnvelope(vectorApi, source) {
   const pose = source.physicalGroups.semV2;
   if (!pose) throw new Error('Paper envelope audit requires actual SEM-v2 device geometry');
-  const silicon = vectorApi.unionGeometries(toMulti(source.maskPolygons.get(1)));
+  const silicon = vectorApi.unionGeometries(
+    toMulti(source.maskPolygons.get(1)).map((polygon) => [polygon]),
+  );
   const allSiliconMaskBoundsUm = vectorApi.multiBounds(silicon);
   const footprintFromMask = {
     width: allSiliconMaskBoundsUm.width,
