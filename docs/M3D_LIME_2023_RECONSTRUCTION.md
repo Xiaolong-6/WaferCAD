@@ -27,7 +27,7 @@ All lengths below are physical nanometres unless noted. The builder converts nm 
 | CNTFET protection  | Y 10 nm naturally oxidized at 250°C to Y₂O₃; Al₂O₃ 35 / HfO₂ 10 at 250°C                                        | Main pp. 4, 8, Methods        | Oxidation as **Record**; Y₂O₃ geometry 10 nm surrogate, not predicted grown-oxide thickness                                                                              |
 | Buffer / 2T2R TCAM | Pd BE / TaOₓ 20 / Ta₂O₅ 10 / Pt 10; Pd hard-mask 60; Al₂O₃ protection 45 at 150°C; Ti 20 / Pd 120 interconnects | Main pp. 4, 8, Methods        | One top-tier process for both buffer and TCAM; Pd hard-mask and dry etch are **Record** because surviving final mask is unspecified                                      |
 
-For detailed source circuit topology see **main Fig. 1b–3** and **Supplementary Fig. 1, 4 and 6**. The 1k-bit CIM in Fig. 2 has 8 BL × 128 SL, and a 512-bit 1T1R buffer is stacked in the third tier alongside the fabricated 5 × 1 2T2R TCAM. The generator preserves these as _documented design context_, with **eight analog CIM sites, four digital buffer sites and five local 2T2R TCAM cells (ten CNTFETs)** explicitly materialized. The paper also describes a separate CNTFET **pre-charge transistor** for the 5 × 1 TCAM; the current 14-CNTFET local reconstruction does **not** include that transistor or its complete match-line control wiring. It must never claim to materialize the full 1k+512-bit arrays or the complete fabricated TCAM peripheral circuit.
+For detailed source circuit topology see **main Fig. 1b–3** and **Supplementary Fig. 1, 4 and 6**. The 1k-bit CIM in Fig. 2 has 8 BL × 128 SL, and a 512-bit 1T1R buffer is stacked in the third tier alongside the fabricated 5 × 1 2T2R TCAM. The generator preserves these as _documented design context_, with **eight analog CIM sites, four digital buffer sites and five local 2T2R TCAM cells (ten CNTFETs)** explicitly materialized. The paper also describes a separate CNTFET **pre-charge transistor** for the 5 × 1 TCAM. In the pre-charge extension, the local geometry includes **15 CNTFETs: 10 TCAM access + 4 buffer + 1 inferred ML pre-charge device**, while digital RRAM remains confined to the original **14 access drains**. The transistor is not evidence of a complete ML supply/control circuit. It must never claim to materialize the full 1k+512-bit arrays or the complete fabricated TCAM peripheral circuit.
 
 ## Unpublished/assumed information
 
@@ -39,7 +39,7 @@ For detailed source circuit topology see **main Fig. 1b–3** and **Supplementar
 - Dense CNT nanotube film morphology and CNT/oxide electrostatics are not simulated. Thin CNT is represented as a contiguous 1 nm film solely for inspecting material ownership.
 - Y oxidation chemistry and possible volume expansion are **not** simulated by the Process Kernel.
 - CIM-to-buffer _electrical interlayer via connections_ are not geometrically proven. The paper's Fig. 1b itself omits these ILVs. Their fabrication is recorded, while local device examples remain physically distinguishable.
-- The fabricated 5 × 1 2T2R TCAM includes a **pre-charge CNTFET** for the match line, explicitly described alongside Fig. 3b. The inferred Mask layout currently contains **ten TCAM access CNTFETs and four buffer CNTFETs only**, not that additional transistor; continuous ML/SL/SEL and its control path are not reconstructed. Device-site counts must not be described as complete TCAM circuit topology.
+- The fabricated 5 × 1 2T2R TCAM includes a **pre-charge CNTFET** for the match line, explicitly described alongside Fig. 3b. The pre-charge extension adds a separate **fifteenth CNTFET** with the reported active channel dimensions but **inferred location and contact footprints**, outside the fourteen RRAM cells. Continuous ML/SL/SEL wiring, pre-charge gate control and its supply remain **unreconstructed**, so the extra physical transistor does not establish a working TCAM circuit.
 - The fabricated prototype relies on **off-chip** ADC/programming/read circuitry, with no on-chip TCAM sense amplifier; do not insert those as fabricated structures. See paper discussion and public peer review file (reviewer 1 responses 1/5).
 - Hardware accuracy, Hamming-distance, CNN execution time and energy-efficiency values are from measurements combined with system-level simulation. WaferCAD models **geometry** and cannot recalculate those metrics.
 
@@ -56,7 +56,7 @@ npm run check
 
 `--write-repo` deterministically generates the committed `site/examples/m3d-lime-rram-cntfet.wafercad`. The generator validates each material stage with the real Process Kernel, recipe preflight, project schema and a storage round-trip before writing. The dedicated CI workflow also loads the file into the real UI v2 Chromium Workstation, runs the full Recipe from a fresh Base and exports and reopens the resulting project. The browser also exports all 11 inferred Mask layers to GDSII and OASIS and checks lossless layer/polygon XY bounds at 1 nm resolution; this is a representative geometry acceptance, **not** full-array or exact-layout verification. Do not add this family to `site/bundled-examples.js` or claim it is deployed before the remaining source/visual/release gates are satisfied.
 
-The builder enforces 2 µm source/drain gap and complete active gate coverage for **all 14 CNTFETs**. A paper-informed, locally framed 9 µm Section A–B now passes through one vertically aligned analog CIM cell and a CNTFET/digital RRAM. The 3D inspection ROI focuses that local cross-section (clear ROI to inspect the full 8-CIM/4-buffer/5-TCAM representative sample). The builder also verifies strict adjoining material interfaces across CMOS W→CIM TiN, CIM TiN→W→Al, and Pd drain→TaOₓ→Ta₂O₅→Pt→Ti→Pd. Their original routing polygons are still inferred. Browser project Open, actual Recipe `Run All`, and project Export/Reopen passed on the representative local device in the [M3D-LIME acceptance run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532631408). The 3-tier Section regression now checks the actual physical Z thicknesses, including the 8 nm HfAlOₓ RSL, 20 nm TaOₓ reservoir, 10 nm Ta₂O₅ RSL, 10 nm Pt electrode and 1 nm CNT display surrogate. The separate v2 browser acceptance exports **all 11 inferred Mask layers (130 polygons)** using the real GDSII and OASIS workers; each file is re-parsed and checked for preserved layer IDs, polygon counts and nanometre-grid XY boundaries. The full exports intentionally differ from the three initially highlighted inspection layers. These checks prove internal format interoperability only, not correspondence with any author-supplied GDS. Next, inspect TEM-to-Section correspondence and local wiring continuity, and consider canonical array translation to reconstruct the complete 1Kb CIM / 512-bit Buffer only after bounding the runtime. A previous full-wafer Section with 210 µm XY span displayed Z exaggeration ×64.4; the default local Section reduces this presentation distortion without changing physical Z. Dedicated Section/3D TEM-to-geometry visual acceptance, accurate inferred routing, full-array replay and a real preview/thumbnail remain **unpassed publication gates**.
+The builder checks a 2 µm active source/drain gap and gate coverage for **14 access CNTFETs plus one inferred ML pre-charge CNTFET**. Digital-RRAM connectivity checks remain restricted to the **14 actual RRAM drain sites**. A paper-informed, locally framed 9 µm Section A–B now passes through one vertically aligned analog CIM cell and a CNTFET/digital RRAM. The 3D inspection ROI focuses that local cross-section (clear ROI to inspect the full 8-CIM/4-buffer/5-TCAM representative sample). The builder also verifies strict adjoining material interfaces across CMOS W→CIM TiN, CIM TiN→W→Al, and Pd drain→TaOₓ→Ta₂O₅→Pt→Ti→Pd. Their original routing polygons are still inferred. Browser project Open, actual Recipe `Run All`, and project Export/Reopen passed on the representative local device in the [M3D-LIME acceptance run](https://github.com/Xiaolong-6/WaferCAD/actions/runs/38532631408). The 3-tier Section regression now checks the actual physical Z thicknesses, including the 8 nm HfAlOₓ RSL, 20 nm TaOₓ reservoir, 10 nm Ta₂O₅ RSL, 10 nm Pt electrode and 1 nm CNT display surrogate. The separate v2 browser acceptance exports **all 11 inferred Mask layers (130 polygons)** using the real GDSII and OASIS workers; each file is re-parsed and checked for preserved layer IDs, polygon counts and nanometre-grid XY boundaries. The full exports intentionally differ from the three initially highlighted inspection layers. These checks prove internal format interoperability only, not correspondence with any author-supplied GDS. Next, inspect TEM-to-Section correspondence and local wiring continuity, and consider canonical array translation to reconstruct the complete 1Kb CIM / 512-bit Buffer only after bounding the runtime. A previous full-wafer Section with 210 µm XY span displayed Z exaggeration ×64.4; the default local Section reduces this presentation distortion without changing physical Z. Dedicated Section/3D TEM-to-geometry visual acceptance, accurate inferred routing, full-array replay and a real preview/thumbnail remain **unpassed publication gates**.
 
 ## Supplementary Fig. 6 structural topology audit (October 14, 2026)
 
@@ -202,7 +202,7 @@ also pass on that same HEAD. This closes the earlier **Recipe chronology and
 serialized-asset synchronization** blocker, but it does **not** physically
 model the pre-pattern blanket CNT film or O₂ etch, justify the pre-via CMP,
 validate the inferred 25% Pd step coverage, supply the omitted TCAM pre-charge
-transistor or electrical wiring, or establish source TEM/SEM morphology match.
+transistor or electrical wiring, or establish source TEM/SEM morphology match. The isolated pre-charge extension is only accepted after its own regenerated fixture, real-Kernel intermediate geometry, browser and external KLayout checks pass.
 Any subsequent Builder change must again regenerate the checked-in fixture from
 the real Kernel and verify intermediate occupancy, Recipe/History, persistence,
 rollback, all contacts and real Chromium/KLayout; an early-only Builder change
@@ -244,3 +244,24 @@ These renders verify the **model-specific internal geometry**, not TEM-derived m
 actual metal continuity or an author-GDS match. The original paper images are accessible
 through [Li et al. 2023](https://doi.org/10.1038/s41467-023-42981-1) and retain their
 own independently reported scale bars.
+
+## Pending local ML pre-charge extension (2026-10-17)
+
+A separate **inferred** CNTFET is positioned at physical XY
+`[44.0, -25.0]..[46.6, -5.0] µm`; gate/contacts reuse the sourced
+10 nm Ti / 15 nm Pd / 1 nm Ti back gate, 10 nm HfO₂ dielectric, 1 nm CNT
+visual surrogate and Ti/Pd source/drain Recipe operations. It is **not**
+connected to a fifteenth Ta₂O₅ RRAM. The original article does not provide
+its exact mask position or local control-wire GDS. No ML connection, pre-charge
+bias or circuit function can be inferred from this geometry alone.
+
+The pre-charge branch must demonstrate **11 mask layers, 134 rectangles**
+(32 foundry/CIM, 60 CNT gate/channel/source/drain, 42 digital RRAM/
+passivation/top contact), with 15 physical CNTFET gates and islands but only
+14 RRAM stacks. Required regressions: actual Kernel regeneration into the
+serialized project, snapshot History and 46-step Recipe equality, all 14
+memory Pd/RRAM bridges, pre-charge gate/contact ownership, conformal coatings,
+external GDS/OAS KLayout and real Chromium import/Run All/Section/3D. The
+former **130-polygon** mask results are historical evidence from the
+14-CNTFET fixture only. **Do not merge the unfinished extension until fixture
+and visual acceptance are complete.**
