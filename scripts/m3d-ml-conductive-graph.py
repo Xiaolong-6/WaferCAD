@@ -138,5 +138,5 @@ print(json.dumps({
     "tcamTopElectrodesOnMl": 10,
     "bufferElectrodesIsolated": 4,
     "viaContactsPrechargeDrain": True,
-    "minimumPdZOverlapUm": 0.01,
+    "requiredPdZOverlapUm": 0.01,
 }, indent=2))
