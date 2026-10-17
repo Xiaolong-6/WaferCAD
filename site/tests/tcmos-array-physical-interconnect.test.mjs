@@ -33,7 +33,7 @@ test('physical post-Recipe 4x4 contains nine genuine new 2.5D material layers, s
   assert.ok(report.finalRegionCount > report.baselineRegionCount);
   assert.ok(report.routedSurfaceMaxZ > report.originalSurfaceMaxZ);
   assert.ok(!project.processRecipe && !project.snapshots && !project.snapshotBranches);
-  assert.equal(project.model.layers.filter((l) => /^(ILD[234]|VIA\\d\\d|METAL[234])/.test(l.name)).length, 9);
+  assert.equal(project.model.layers.filter((l) => /^(ILD[234]|VIA\d\d|METAL[234])/.test(l.name)).length, 9);
   const roundtrip = await readProjectFile({
     size: Buffer.byteLength(json), text: async () => json,
   });
