@@ -967,6 +967,19 @@ export function createThreeView({
     sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
   }
 
+  function commitInPlaceSceneVariant(mode) {
+    if (activeSceneVariant === mode) return;
+    // Material presentation was updated on this same mutable scene group,
+    // not rebuilt as a second variant. A stale cache alias for the old mode
+    // must not later restore the new material state under the old label.
+    for (const [cachedMode, entry] of sceneVariantCache) {
+      if (entry?.group === group) sceneVariantCache.delete(cachedMode);
+    }
+    activeSceneVariant = mode;
+    host.dataset.sceneVariant = mode;
+    cacheActiveSceneVariant();
+  }
+
   function restoreSceneVariant(entry) {
     if (!entry?.group || !scene) return false;
     if (group && group !== entry.group) scene.remove(group);
@@ -3073,6 +3086,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
         applyPresentationState();
+        commitInPlaceSceneVariant(targetVariant);
         return;
       }
     }
