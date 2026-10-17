@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createWorkspacePersistenceController } from '../controllers/workspace-persistence-controller.js';
@@ -8,6 +9,14 @@ import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
 import { physicalPyramidSection } from '../physical-facet-surface.js';
 import { validateProjectFile, CURRENT_PROJECT_VERSION } from '../project-schema.js';
 import { expandProjectStorage, serializeProject } from '../project-io.js';
+
+const vendorSource = readFileSync(
+  new URL('../vendor/polygon-clipping.umd.js', import.meta.url),
+  'utf8',
+);
+const vendor = { exports: {} };
+new Function('module', 'exports', vendorSource)(vendor, vendor.exports);
+globalThis.polygonClipping = vendor.exports;
 
 const { createModel } = await import('../model.js');
 
