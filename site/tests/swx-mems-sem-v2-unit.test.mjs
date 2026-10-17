@@ -4,6 +4,7 @@ import {
   createSwxSemV2ProcessGeometry,
   SWX_SEM_V2_ASSUMPTIONS,
   createSwxSemV2SupportAudit,
+  auditSwxSemV2ElectricalNets,
 } from '../../scripts/swx-mems-sem-v2-unit.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
@@ -215,6 +216,26 @@ test('SEM v2 retains the 20 open S8 shuttle apertures in the actual OFF/ON silic
         state + ' full silicon mask closes an S8 shuttle aperture at ' + translatedPoint.join(','),
       );
     }
+  }
+});
+
+test('SEM v2 actual silicon Mask keeps two driven comb domains insulated', () => {
+  for (const state of ['off', 'on']) {
+    const geometry = createSwxSemV2ProcessGeometry(state);
+    const audit = auditSwxSemV2ElectricalNets(v, geometry);
+    assert.equal(audit.metalContacts, 6);
+    assert.equal(audit.springAnchorsShareNet, true);
+    assert.equal(audit.stationaryCombsIsolated, true);
+    assert.equal(new Set(audit.metalPadSiOwnerIndices).size, 3);
+    assert.equal(
+      audit.uncontactedSiliconNetIndices.length,
+      audit.siliconConnectedDomains - new Set(audit.metalPadSiOwnerIndices).size,
+    );
+    // Only explicit fabricated Si connectivity counts: without the missing
+    // peripheral return conductor the fixed optical frame is NOT certified
+    // externally grounded by the successful comb insulation test.
+    assert.equal(audit.stationaryOpticalExternalGroundVerified, false);
+    assert.equal(audit.sourceElectricalGroundingAccepted, false);
   }
 });
 
