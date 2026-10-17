@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
 import {
   baseUrl,
   gotoWelcome,
@@ -586,39 +587,36 @@ try {
     closedEndcapSurfaces: 4,
     wireBondDiameterUmInferred: 12,
   };
-  // PR #229 / #250 integration: exercise actual workstation controls, not a
-  // synthetic standalone renderer. This browser began at 1000 px where the
-  // responsive toolbar can hide its second button group. Enlarge the real
-  // viewport for the four-way inspection instead of mutating view state.
+  // The 1000 px screenshot viewport uses compact toolbar overflow. Expand the
+  // real desktop viewport before operating its physical 3D presentation tools.
+  // The 1000 px evidence screenshot above stays unchanged.
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.locator('#threeHost').waitFor({ state: 'visible' });
-  await waitForPaint(page);
-  const packageToolbar = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('[data-action="borders:three"]')).map((button) => ({
-      visible: button.getClientRects().length > 0,
-      pressed: button.getAttribute('aria-pressed'),
-    })),
+  // Exercise the same desktop view navigation as the passing M3D Welcome
+  // border test. A ready WebGL host does not prove its toolbar is laid out.
+  await selectScientificView(page, 'three', 1440);
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
   );
-  await writeFile(
-    new URL('three-chip-presentation-toolbar.json', directory),
-    JSON.stringify(packageToolbar, null, 2) + '\n',
-  );
-  await page.screenshot({
-    path: new URL('three-chip-presentation-toolbar.png', directory).pathname,
-  });
+  // PR #229 / #250 integration: exercise actual workstation controls, not a
+  // synthetic standalone renderer. The same saved package and camera must
+  // survive four border/opacity presentations without rebuilding material.
   const packageBorders = page.locator('#threePanel [data-action="borders:three"]');
   const packageOpacity = page.locator('#threePanel [data-action="opacity:three"]');
-  assert.equal(await packageBorders.count(), 1, 'Package 3D border control is absent');
-  assert.equal(await packageOpacity.count(), 1, 'Package 3D opacity control is absent');
-  // Native production toolbars move original buttons into the More popover
-  // when the panel is narrow, even at a desktop viewport. Exercise that
-  // exact menu path instead of directly manipulating internal presentation.
-  const revealThreeTool = async (tool) => {
-    if (await tool.isVisible()) return;
-    const more = page.getByRole('button', { name: '3D more tools', exact: true });
-    assert.ok(await more.isVisible(), '3D overflow control is unavailable');
-    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-    await tool.waitFor({ state: 'visible', timeout: 30000 });
+  assert.equal(await packageBorders.count(), 1, '3D Border control missing from DOM');
+  assert.equal(await packageOpacity.count(), 1, '3D Opacity control missing from DOM');
+  // The production toolbar moves real controls into a Popover overflow menu
+  // when the 3D dock is narrow. Open that menu through its actual trigger;
+  // never bypass the workstation event handler or mutate inspection state.
+  const clickPackageTool = async (control) => {
+    if (!(await control.isVisible())) {
+      const more = page.locator('#threePanel button[aria-label="3D more tools"]');
+      assert.ok(await more.isVisible(), 'No visible 3D overflow-menu trigger');
+      if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+      await control.waitFor({ state: 'visible', timeout: 20000 });
+    }
+    await control.click();
   };
   const scientificState = () =>
     page.evaluate(() => {
@@ -638,9 +636,7 @@ try {
   for (const opacityValue of [1, 0.5]) {
     // Use the production opacity slider's input handler. Directly mutating
     // threeOpacity would bypass the real Workstation render transaction.
-    await revealThreeTool(packageOpacity);
-    await packageOpacity.click();
-    await page.locator('#threeOpacityRange').waitFor({ state: 'visible' });
+    await clickPackageTool(packageOpacity);
     await page.locator('#threeOpacityRange').evaluate((slider, next) => {
       slider.value = String(next);
       slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -665,11 +661,7 @@ try {
       );
       const pressed = (await packageBorders.getAttribute('aria-pressed')) === 'true';
       const changed = pressed !== borders;
-      if (changed) {
-        await revealThreeTool(packageBorders);
-        await packageBorders.click();
-        await page.keyboard.press('Escape');
-      }
+      if (changed) await clickPackageTool(packageBorders);
       await page.waitForFunction(
         ({ previousSerial, borders, opacityValue, changed }) => {
           const host = document.getElementById('threeHost');
