@@ -327,10 +327,30 @@ try {
                   // Keep the *same* camera at opaque and 70% opacity; test
                   // both physical Border modes without changing Process data.
                   ...[
-                    { name: 'rough-front-opaque-borders', opacity: 1, borders: true, distance: 1150 },
-                    { name: 'rough-front-70pct-borders', opacity: 0.7, borders: true, distance: 1150 },
-                    { name: 'rough-front-70pct-no-borders', opacity: 0.7, borders: false, distance: 1150 },
-                    { name: 'rough-front-70pct-close-borders', opacity: 0.7, borders: true, distance: 850 },
+                    {
+                      name: 'rough-front-opaque-borders',
+                      opacity: 1,
+                      borders: true,
+                      distance: 1150,
+                    },
+                    {
+                      name: 'rough-front-70pct-borders',
+                      opacity: 0.7,
+                      borders: true,
+                      distance: 1150,
+                    },
+                    {
+                      name: 'rough-front-70pct-no-borders',
+                      opacity: 0.7,
+                      borders: false,
+                      distance: 1150,
+                    },
+                    {
+                      name: 'rough-front-70pct-close-borders',
+                      opacity: 0.7,
+                      borders: true,
+                      distance: 850,
+                    },
                   ].map((spec) => ({
                     ...spec,
                     fast: false,
