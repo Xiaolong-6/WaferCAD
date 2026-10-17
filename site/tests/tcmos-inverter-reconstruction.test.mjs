@@ -9,6 +9,7 @@ import {
   TCMOS_METAL_NETS,
   auditTcmosTerminalNetProvenance,
   tcmosLayout,
+  tcmosProcessShapes,
 } from '../../scripts/build-tcmos-inverter-example.mjs';
 import { readTcmosReferenceMask } from '../../scripts/tcmos-svg-mask.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
@@ -237,17 +238,24 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   const { geometryArea } = await import('../model.js');
   const qualitativeOverlaps = findDopantPolarityOverlaps(model, v);
   assert.ok(
-    qualitativeOverlaps.some((overlap) => v.pointInMulti([-2.05, 0], overlap.geom)),
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([-2.5, -1.2], overlap.geom)),
     'pMOS body and drain doping masks must qualitatively overlap',
   );
   assert.ok(
-    qualitativeOverlaps.some((overlap) => v.pointInMulti([2.05, 0], overlap.geom)),
+    qualitativeOverlaps.some((overlap) => v.pointInMulti([2.5, -1.2], overlap.geom)),
     'nMOS body and drain doping masks must qualitatively overlap',
   );
   // The input source/drain masks are shared. Identifying the VOUT-side drain
   // requires the reconstructed transistor gate and METAL1 contact routing.
-  const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
-  const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
+  const terminalRects = (id) =>
+    tcmosProcessShapes(id).map(({ a, b }) => ({
+      x: a[0],
+      y: a[1],
+      w: b[0] - a[0],
+      h: b[1] - a[1],
+    }));
+  const pm = terminalRects(7);
+  const nm = terminalRects(8);
   const terminals = [
     { id: 'pMOS-source', kind: 'source', rect: pm[0] },
     { id: 'pMOS-drain', kind: 'drain', rect: pm[1] },
@@ -262,10 +270,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const overlaps = qualified.filter((overlap) => overlap.terminalId === terminal.id);
     assert.ok(overlaps.length, `${terminal.id} must intersect opposite-polarity body/HDD intents`);
     const union = v.unionGeometries(overlaps.map((overlap) => overlap.geom));
-    const expectedArea =
-      { 'pMOS-source': 0.88, 'pMOS-drain': 0.88, 'nMOS-drain': 0.86, 'nMOS-source': 0.9 }[
-        terminal.id
-      ] * 0.78;
+    const expectedArea = geometryArea(terminal.geom);
     assert.ok(
       Math.abs(geometryArea(union) - expectedArea) < 1e-6,
       `${terminal.id} remains an inferred co-occupancy volume, not a PN junction`,
@@ -296,8 +301,8 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     const matching = audit.reduce((sum, item) => sum + item.matchingWellVolumeUm3, 0);
     const outside = audit.reduce((sum, item) => sum + item.outsideMatchingWellVolumeUm3, 0);
     const opposite = audit.reduce((sum, item) => sum + item.oppositeWellVolumeUm3, 0);
-    assert.ok(Math.abs(matching - 0.282048) < 1e-9);
-    assert.ok(Math.abs(outside - (polarity === 'donor' ? 0.028808 : 0.029112)) < 1e-9);
+    assert.ok(Math.abs(matching - 0.2914) < 1e-9);
+    assert.ok(Math.abs(outside - 0.03144095) < 1e-9);
     assert.ok(Math.abs(opposite) < 1e-12);
     const reported = validation.qualitativeJunctionEvidence.schematicWellBodyCoverage[polarity];
     assert.equal(reported.schematicWellPresent, true);
@@ -322,14 +327,17 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   }
   const { implantSectionBands } = await import('../model-view-geometry.js');
   const bodyIds = new Set(model.implants.slice(0, 2).map((item) => item.id));
-  const bodyBands = implantSectionBands(model, [-5.5, 0], [5.5, 0]).filter((b) =>
+  const bodyBands = implantSectionBands(model, [-5.5, -1.2], [5.5, -1.2]).filter((b) =>
     bodyIds.has(b.implantId),
   );
   assert.ok(bodyBands.length >= 2, 'Both HVT buried regions intersect A-B');
   // Fig.1b HVT windows intentionally enclose and slightly overshoot ACTIVE.
   // Only semiconductor-hosted bands have the original silicon source Z=1;
   // over-STI display annotations are not a measured dopant profile.
-  const activeBars = TCMOS_MASKS.find((mask) => mask.id === 1).rectangles.slice(0, 2);
+  const activeBars = tcmosProcessShapes(1).slice(2, 4).map(({ points }) => {
+    const xs = points.map(([x]) => x);
+    return { x: Math.min(...xs), w: Math.max(...xs) - Math.min(...xs) };
+  });
   const onActive = bodyBands.filter((band) => {
     const midX = -5.5 + ((band.t0 + band.t1) / 2) * 11;
     return activeBars.some((r) => midX > r.x && midX < r.x + r.w);
@@ -356,7 +364,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   assert.equal(project.display.threeOpacity, 0.75);
   assert.deepEqual(project.display.threeCamera, {
     position: [13.3, -14.3, 10.2],
-    target: [0, -0.2, 0.95],
+    target: [0, -1.2, 0.95],
     fov: 34,
   });
   assert.equal(project.snapshotBranches.branches[0].headState.name, project.name);
@@ -387,7 +395,7 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   );
   const at = (x, y) =>
     model.regions.find((r) => v.pointInMulti([x, y], r.geom))?.stack?.at(-1)?.layerId;
-  assert.ok(at(-4, 0));
+  assert.ok(at(-4, -1.2));
   assert.ok(at(0, 0));
   const gateOxide = model.layers.find((layer) => layer.name === 'Gate SiO2 (5nm surrogate)');
   assert.ok(gateOxide);
@@ -395,10 +403,10 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     model.regions
       .find((region) => v.pointInMulti([x, y], region.geom))
       ?.stack.some((segment) => segment.layerId === layerId);
-  assert.equal(materialAt(-3, 0, gateOxide.id), true, 'Gate dielectric sits beneath pMOS POLY');
-  assert.equal(materialAt(3, 0, gateOxide.id), true, 'Gate dielectric sits beneath nMOS POLY');
+  assert.equal(materialAt(-3.2, -1.2, gateOxide.id), true, 'Gate dielectric sits beneath pMOS POLY');
+  assert.equal(materialAt(3.2, -1.2, gateOxide.id), true, 'Gate dielectric sits beneath nMOS POLY');
   assert.equal(materialAt(0, 3, gateOxide.id), false, 'No blanket dielectric outside ACTIVE');
-  assert.equal(materialAt(-4, 0, gateOxide.id), false, 'Source remains exposed silicon');
+  assert.equal(materialAt(-4, -1.2, gateOxide.id), false, 'Source remains exposed silicon');
   const branch = project.snapshotBranches.branches[0];
   assert.equal(branch.headNodeId, project.snapshotBranches.cursorNodeId);
   assert.equal(project.processRecipe.base.thickness, 2);
@@ -407,17 +415,17 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   );
   assert.equal(project.processRecipe.steps.filter((s) => s.command === 'implant').length, 6);
   assert.equal(project.processRecipe.steps.at(-1).command, 'deposit');
-  const metals = TCMOS_MASKS.find((mask) => mask.id === 11).rectangles;
-  const contains = (r, x, y) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h;
+  const metals = tcmosProcessShapes(11).map(({ points }) => [[points.concat([points[0]])]]);
+  const contains = (metal, x, y) => v.pointInMulti([x, y], metal);
   const nets = [
-    { name: 'VDD', point: [-3.76, -0.28] },
-    { name: 'VOUT p-drain', point: [-2.2, -0.28] },
-    { name: 'VOUT n-drain', point: [2.2, -0.28] },
-    { name: 'GND', point: [3.78, -0.28] },
-    { name: 'VIN pMOS gate', point: [-2.98, 0.46] },
-    { name: 'VIN nMOS gate', point: [2.98, 0.46] },
-    { name: 'VDD pMOS body tie', point: [-4.37, -1.3] },
-    { name: 'GND nMOS body tie', point: [1.59, -1.3] },
+    { name: 'VDD', point: [-4.0265, -1.2625] },
+    { name: 'VOUT p-drain', point: [-2.4019, -1.265] },
+    { name: 'VOUT n-drain', point: [2.4019, -1.265] },
+    { name: 'GND', point: [4.0265, -1.2625] },
+    { name: 'VIN pMOS gate', point: [-3.3291, -0.42] },
+    { name: 'VIN nMOS gate', point: [3.3291, -0.42] },
+    { name: 'VDD pMOS body tie', point: [-5.48, -1.14] },
+    { name: 'GND nMOS body tie', point: [5.48, -1.14] },
   ];
   for (const {
     name,
@@ -458,24 +466,13 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     );
   }
   assert.equal(TCMOS_METAL_NETS.length, 4, 'four independently routed Metal1 nets');
-  assert.equal(
-    metals.length,
-    TCMOS_METAL_NETS.reduce((sum, net) => sum + net.rectangles.length, 0),
-  );
-  // Electrical net safety: no physical XY overlap between different Metal1 nets.
-  const overlapArea = (a, b) =>
-    Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
-    Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-  for (let i = 0; i < TCMOS_METAL_NETS.length; i++) {
-    for (let j = i + 1; j < TCMOS_METAL_NETS.length; j++) {
-      for (const first of TCMOS_METAL_NETS[i].rectangles) {
-        for (const second of TCMOS_METAL_NETS[j].rectangles) {
-          assert.ok(
-            overlapArea(first, second) < 1e-12,
-            `Metal1 short: ${TCMOS_METAL_NETS[i].name} / ${TCMOS_METAL_NETS[j].name}`,
-          );
-        }
-      }
+  assert.equal(metals.length, 4, 'the source SVG has four complete Metal1 paths');
+  for (let i = 0; i < metals.length; i++) {
+    for (let j = i + 1; j < metals.length; j++) {
+      assert.ok(
+        geometryArea(v.intersection(metals[i], metals[j])) < 1e-12,
+        `SVG Metal1 short between paths ${i} and ${j}`,
+      );
     }
   }
   assert.equal(
@@ -509,7 +506,7 @@ test('assumed 0° HVT baseline and explicitly non-paper 18° tilt diagnostic rem
   assert.equal(demo.validation.tiltSourceReported, false);
   assert.equal(demo.validation.tiltDegrees, 18);
   assert.match(demo.project.name, /NOT REPORTED IN PAPER/);
-  assert.deepEqual(demo.project.section, { a: [-4.45, 0], b: [-2.95, 0] });
+  assert.deepEqual(demo.project.section, { a: [-4.45, -1.2], b: [-2.95, -1.2] });
   assert.equal(
     demo.project.processRecipe.steps.filter(
       (step) => step.command === 'implant' && step.params.tilt === 18,

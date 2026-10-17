@@ -1195,8 +1195,12 @@ export async function buildTcmosInverter({
     auditSchematicWellBodyCoverage,
     auditSchematicBodyTieContacts,
   } = await import('../site/dopant-regions.js');
-  const pm = TCMOS_MASKS.find((mask) => mask.id === 7).rectangles;
-  const nm = TCMOS_MASKS.find((mask) => mask.id === 8).rectangles;
+  // Use exactly the source-derived windows applied to the physical model.
+  // Historical pixel rectangles are retained solely for legacy provenance.
+  const terminalRects = (id) =>
+    tcmosProcessShapes(id).map(({ a, b }) => rect(a[0], a[1], b[0] - a[0], b[1] - a[1]));
+  const pm = terminalRects(7);
+  const nm = terminalRects(8);
   const terminals = [
     { id: 'pMOS-source', kind: 'source', rect: pm[0] },
     { id: 'pMOS-drain', kind: 'drain', rect: pm[1] },
