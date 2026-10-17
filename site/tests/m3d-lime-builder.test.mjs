@@ -247,8 +247,10 @@ test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', as
         const xs = e.points.map((p) => p[0]);
         const ys = e.points.map((p) => p[1]);
         return {
-          left: Math.min(...xs), right: Math.max(...xs),
-          bottom: Math.min(...ys), top: Math.max(...ys),
+          left: Math.min(...xs),
+          right: Math.max(...xs),
+          bottom: Math.min(...ys),
+          top: Math.max(...ys),
         };
       });
   const channel = rects(16).at(-1);
@@ -269,8 +271,10 @@ test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', as
     assert.ok(region, 'pre-charge occupancy is missing at ' + x + ',' + y);
     const id = project.model.layers.find((layer) => layer.name === name)?.id;
     assert.ok(id, 'missing layer ' + name);
-    assert.ok(region.stack.some((segment) => segment.layerId === id),
-      'missing ' + name + ' at ' + x + ',' + y);
+    assert.ok(
+      region.stack.some((segment) => segment.layerId === id),
+      'missing ' + name + ' at ' + x + ',' + y,
+    );
   };
   materialAt(45, -15, 'CNT channel 1nm SURROGATE');
   materialAt(43.3, -15, 'CNT source Pd 45nm');
@@ -281,8 +285,10 @@ test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', as
     .find((r) => pointInMulti([gate.right + 0.005, -15], r.geom))
     ?.stack.find((segment) => segment.layerId === pvd.id);
   assert.ok(bridge, 'pre-charge Pd wall bridge missing');
-  assert.ok(Math.abs(bridge.z1 - bridge.z0 - 0.01125) < 1e-9,
-    'pre-charge Pd step must follow same explicitly inferred 25% sidewall hypothesis');
+  assert.ok(
+    Math.abs(bridge.z1 - bridge.z0 - 0.01125) < 1e-9,
+    'pre-charge Pd step must follow same explicitly inferred 25% sidewall hypothesis',
+  );
 });
 
 test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps', async () => {
