@@ -38,13 +38,31 @@ test('native 4×4 23-step Recipe has reconstructible Base and original CNT Mask'
         if (shape.type === 'polygon') {
           assert.deepEqual(
             tiled.points,
-            shape.points.map(([x, y]) => [x + cell.x, y + cell.y]),
+            shape.points.map(([x, y]) => [
+              Number((x + cell.x).toFixed(4)),
+              Number((y + cell.y).toFixed(4)),
+            ]),
           );
         } else {
-          assert.deepEqual(tiled.a, [shape.a[0] + cell.x, shape.a[1] + cell.y]);
-          assert.deepEqual(tiled.b, [shape.b[0] + cell.x, shape.b[1] + cell.y]);
+          assert.deepEqual(tiled.a, [
+            Number((shape.a[0] + cell.x).toFixed(4)),
+            Number((shape.a[1] + cell.y).toFixed(4)),
+          ]);
+          assert.deepEqual(tiled.b, [
+            Number((shape.b[0] + cell.x).toFixed(4)),
+            Number((shape.b[1] + cell.y).toFixed(4)),
+          ]);
         }
       }
+    }
+  }
+  const ldd = experiment[12].params.mask.drawMask.shapes;
+  for (const shape of ldd) {
+    for (const coordinate of [...shape.a, ...shape.b]) {
+      assert.ok(
+        Math.abs(coordinate * 10000 - Math.round(coordinate * 10000)) < 1e-9,
+        'LDD rectangle mask must remain on existing CAD storage grid',
+      );
     }
   }
   assert.equal(project.layout.elements.length, 3712);

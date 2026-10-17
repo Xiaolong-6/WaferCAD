@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 4: use original Recipe outside workstation snapshot for exact Step13 science diagnostic.
+# Iteration 5: canonicalize translated masks on existing CAD precision grid; keep strict Schema.
 
 on:
   push:

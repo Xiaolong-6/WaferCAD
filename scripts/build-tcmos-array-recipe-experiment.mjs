@@ -25,14 +25,19 @@ export async function createTcmosArrayRecipeExperiment(source, spec = TCMOS_ARRA
     height: spec.rows * spec.pitchY,
     array: { ...spec },
   };
+  // Translate process windows on the existing 0.0001 µm project grid.
+  // Raw IEEE-754 sums can create zero-area slivers at coincident Si/Mask
+  // edges (which the strict project Schema must continue to reject).
+  // This is canonical coordinate arithmetic, not a relaxed area tolerance.
+  const shift = (coordinate, offset) => Number((coordinate + offset).toFixed(4));
   const move = (shape, cell, id) => {
     const copy = structuredClone(shape);
     copy.id = 'shape-' + id;
     if (copy.type === 'polygon') {
-      copy.points = copy.points.map(([x, y]) => [x + cell.x, y + cell.y]);
+      copy.points = copy.points.map(([x, y]) => [shift(x, cell.x), shift(y, cell.y)]);
     } else if (copy.type === 'rect') {
-      copy.a = [copy.a[0] + cell.x, copy.a[1] + cell.y];
-      copy.b = [copy.b[0] + cell.x, copy.b[1] + cell.y];
+      copy.a = [shift(copy.a[0], cell.x), shift(copy.a[1], cell.y)];
+      copy.b = [shift(copy.b[0], cell.x), shift(copy.b[1], cell.y)];
     } else {
       throw new Error('Unexpected process-mask geometry type ' + copy.type);
     }
