@@ -564,11 +564,7 @@ try {
   );
   const precontractShot = await page.locator('#threeHost').screenshot({ type: 'png' });
   await writeFile(new URL('three-chip-precontract.png', directory), precontractShot);
-  assert.equal(
-    diagnostics.storedCount,
-    2,
-    'Restored package lost the two saved Au wire records',
-  );
+  assert.equal(diagnostics.storedCount, 2, 'Restored package lost the two saved Au wire records');
   try {
     await page.waitForFunction(
       () => {
