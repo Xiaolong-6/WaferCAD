@@ -79,8 +79,39 @@ Point probes distinguish solid interiors, exact interfaces and voids.
 Volume is integrated from canonical analytic boundaries, not the 3D display.
 
 This remains isolated from `region.stack`, the .wafercad project serializer,
-Recipe, History, Recovery and all rendering. The isolated JSON round-trip
-is NOT proof of application-wide persistence; changing Process operations
-explicitly fails closed. Partial-cell masks and multi-owner intersections
-are intentionally unsupported. Next gate: canonical owner/region attachment,
-exact interface topology, conformal offset Booleans and save/reopen parity.
+Recipe, History, Recovery and production rendering. The isolated JSON
+round-trip is NOT proof of application-wide persistence; changing Process
+operations explicitly fails closed. Arbitrary mask polygons and multi-owner
+intersections are intentionally unsupported. Next gate: canonical
+owner/region attachment, true conformal offsets and save/reopen parity.
+
+## One-owner physical 3D/Section geometry (experimental only)
+
+`site/physical-facet-surface.js` now triangulates this same opt-in
+material owner into a **closed 3D physical Si solid**, including exterior
+sidewalls, and finds exact Section breakpoints by intersecting the A–B cut
+with those triangle edges. It uses the analytic front/back `z(x,y)`
+interfaces rather than colors, Roughness metadata or a second heightfield.
+The mesh handles rectangular domains clipped across pyramid cells, but is
+explicitly limited to 256 cells by default (hard maximum 4096). Wider
+areas fail closed rather than silently switching to LOD geometry.
+
+The mesh's signed enclosed volume equals the owner's analytic volume.
+Adjacent top/bottom/side triangles must form paired edges, with no
+internal void walls. Section corners and straight segments must evaluate
+to the identical analytic owner interfaces at every tested midpoint.
+A JSON-round-tripped owner must generate the same Section and 3D geometry.
+These are scientifically verifiable structural invariants, not browser
+acceptance or SEM overlays.
+
+Targeted scientific command:
+
+`node --test site/tests/physical-facet-math.test.mjs site/tests/physical-facet-owner.test.mjs site/tests/physical-facet-surface.test.mjs`
+
+**Not yet complete:** Production `model-view-geometry`, Process,
+History/Recovery and the existing Sahli Example still use ideal stacks.
+Neither new geometry output is wired into application 3D/Section views.
+Facet-normal multilayer coating at apex/valley junctions and original-paper
+figure calibration remain blocked. This experimental adapter may only
+become user-facing after an opt-in versioned canonical Model contract and
+save/reopen/rollback test; do not silently upgrade old `.wafercad` files.
