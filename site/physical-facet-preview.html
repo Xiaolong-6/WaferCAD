@@ -73,10 +73,19 @@
       .heading p {
         margin-top: 4px;
       }
-      canvas {
+      #physicalThree,
+      #physicalSection {
         display: block;
         width: 100%;
         height: 510px;
+      }
+      #physicalThree {
+        position: relative;
+      }
+      #physicalThree canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
       }
       .foot {
         margin: 0 auto;
@@ -105,7 +114,8 @@
         .views {
           grid-template-columns: 1fr;
         }
-        canvas {
+        #physicalThree,
+        #physicalSection {
           height: 345px;
         }
       }
@@ -114,7 +124,8 @@
     <script type="importmap">
       {
         "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js"
+          "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
         }
       }
     </script>
@@ -137,10 +148,11 @@
           <h2>Physical 3D solid</h2>
           <p>Closed front, back and sidewall triangles · same analytic material owner</p>
         </div>
-        <canvas
+        <div
           id="physicalThree"
-          aria-label="Experimental physical silicon three-dimensional triangulation"
-        ></canvas>
+          role="img"
+          aria-label="Experimental production ThreeView silicon triangulation"
+        ></div>
       </article>
       <article>
         <div class="heading">
@@ -154,6 +166,7 @@
       </article>
     </main>
     <div class="foot">
+      <span id="physicalThreeStats" role="status">Preparing production ThreeView…</span>
       <span>Period: 6.4 μm · relief: 4.5 μm</span>
       <span>Reference thickness: 251 μm</span>
       <span>Displayed with symmetric Z-break ±118 μm, view only</span>
