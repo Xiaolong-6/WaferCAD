@@ -145,8 +145,12 @@ function normalizeMask(mask) {
   ) {
     throw new Error('File Mask processGridUm only supports the existing 0.0001 µm grid.');
   }
+  if (mask.arrayRepeat != null && (sourceMode !== 'draw' || mask.arrayRepeat !== true)) {
+    throw new Error('arrayRepeat requires a captured Draw Mask.');
+  }
   return {
     sourceMode,
+    ...(mask.arrayRepeat === true ? { arrayRepeat: true } : {}),
     ...(processGridUm == null ? {} : { processGridUm }),
     ...(mask.cell ? { cell: String(mask.cell) } : {}),
     layerKeys,
@@ -629,6 +633,7 @@ function serializeMask(mask, indent = '  ') {
   if (mask.processGridUm != null) fields.push(`processGridUm: ${mask.processGridUm}`);
   if (Object.hasOwn(mask, 'roi')) fields.push(`roi: ${JSON.stringify(mask.roi)}`);
   if (source === 'draw' && mask.drawMask) fields.push(`drawMask: ${JSON.stringify(mask.drawMask)}`);
+  if (source === 'draw' && mask.arrayRepeat) fields.push('arrayRepeat: true');
   return `{ ${fields.join(', ')} }`;
 }
 

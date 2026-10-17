@@ -29,12 +29,18 @@ export function neighborhoodKey(part, parts) {
 const maskTemplateGeometries = new WeakMap();
 export function localGeometry(geometry, part, domain, polygonBoundsCache = new WeakMap()) {
   if (geometry.arrayMaskQuery) {
-    const { index, mode, limiter, boundary, processGridUm } = geometry.arrayMaskQuery;
+    const { index, mode, limiter, boundary, processGridUm, templateGeometry } =
+      geometry.arrayMaskQuery;
     const worldDomain = intersection(domain, boundary),
       bounds = geometryBounds(worldDomain);
     const localDomain = translateGeometry(worldDomain, -part.x, -part.y);
     let selected = [];
-    if (index) {
+    if (templateGeometry) {
+      selected =
+        part.role === 'background'
+          ? []
+          : intersection(templateGeometry, localDomain);
+    } else if (index) {
       const geoms = [];
       for (const instance of queryMaskInstances(index, bounds)) {
         const template = index.templates[instance.templateId];
