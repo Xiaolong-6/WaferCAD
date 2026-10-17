@@ -25,7 +25,7 @@ export async function buildSwxSemV2Candidate() {
   const electricalAudit = auditSwxSemV2ElectricalNets(vectorApi, source);
   assert.equal(electricalAudit.metalContacts, 6);
   assert.ok(electricalAudit.springAnchorsShareNet, 'Spring anchor ground net is fragmented');
-  assert.ok(electricalAudit.stationaryCombsIsolated, 'Driven combs have a Si electrical short');
+  assert.ok(electricalAudit.combsSeparatedFromGround, 'Driven combs short to grounded MEMS');
   return { ...result, electricalAudit };
 }
 const dir = resolve('test-results/swx-sem-v2');
