@@ -1,0 +1,46 @@
+name: T-CMOS metal audit source formatting (temporary)
+
+on:
+  push:
+    branches:
+      - feat/tcmos-ternary-inverter-example-20261014
+    paths:
+      - .github/workflows/tcmos-metal-finalize-once.yml
+
+permissions: {}
+
+jobs:
+  finalize-metal-audit:
+    if: github.repository == 'Xiaolong-6/WaferCAD'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Format exactly the two modified source files
+        run: npx prettier --write site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/build-tcmos-inverter-example.mjs
+      - name: Verify authoritative SVG metal connectivity and full 218 contact stacks
+        run: |
+          node --test site/tests/tcmos-svg-metal-connectivity.test.mjs
+          npx prettier --check site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/build-tcmos-inverter-example.mjs
+      - name: Commit only verified source files to the candidate PR branch
+        env:
+          TARGET_BRANCH: feat/tcmos-ternary-inverter-example-20261014
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$TARGET_BRANCH"
+          git add -- site/tests/tcmos-svg-metal-connectivity.test.mjs scripts/build-tcmos-inverter-example.mjs
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "style(tcmos): canonicalize approved SVG metal audit and provenance report"
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          fi
