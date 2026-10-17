@@ -206,7 +206,8 @@ test('Ag contact subdivision cannot project a full-height line through same-mate
     contours.some(([a, b]) => a[0] === 4 && b[0] === 4 && a[2] === -140 && b[2] === 137.1),
     'preserve a real exterior ROI corner',
   );
-  const foreign = sectionCutContours([left, { ...right, layerId: 'Ag' }], clip).filter(isJunction);
+  const foreignWalls = [left, { ...right, layerId: 'Ag' }];
+  const foreign = sectionCutContours(foreignWalls, clip).filter(isJunction);
   assert.ok(
     foreign.some(([a, b]) => Math.abs(a[2] - b[2]) > 200),
     'different material ownership must retain true exposed vertical interfaces',

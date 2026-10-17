@@ -214,12 +214,12 @@ export function sectionCutContours(
         [samples.at(-1), -1],
       ]) {
         if (!sample) continue;
-        const line = [at(sample, 'lowerZ'), at(sample, 'upperZ')],
-          // Group by the physical cut point and material, not the complete
-          // vertical Z span. Adjacent segments can have slightly different
-          // rough LOD heights or a genuine shallow top step while sharing
-          // the same buried material wall.
-          key = `${wall.layerId ?? ''}|${pointKey(sample.point)}`;
+        const line = [at(sample, 'lowerZ'), at(sample, 'upperZ')];
+        // Group by the physical cut point and material, not the complete
+        // vertical Z span. Adjacent segments can have slightly different
+        // rough LOD heights or a genuine shallow top step while sharing
+        // the same buried material wall.
+        const key = `${wall.layerId ?? ''}|${pointKey(sample.point)}`;
         if (!verticals.has(key)) verticals.set(key, []);
         verticals.get(key).push({
           line,
@@ -329,7 +329,10 @@ export function sectionCutContours(
       for (const [start, end] of remaining) {
         if (end - start <= 1e-9) continue;
         const p = candidate.line[0];
-        result.push([[p[0], p[1], start], [p[0], p[1], end]]);
+        result.push([
+          [p[0], p[1], start],
+          [p[0], p[1], end],
+        ]);
       }
     }
   }
