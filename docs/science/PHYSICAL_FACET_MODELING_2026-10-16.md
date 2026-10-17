@@ -47,7 +47,7 @@ physical deposition, material ownership, Snapshot replay or original paper
 SEM correspondence. These remain explicit subsequent gates; no relaxation
 of scientific tolerances or legacy baseline regeneration is permitted.
 
-## Canonical point-ownership prototype (not active Model)
+## Canonical point ownership (experimental Model only)
 
 The new experimental `samplePhysicalPyramidSlab` evaluates _both_
 front and back interfaces using the same deterministic relief lattice.
@@ -63,14 +63,14 @@ is different from the existing flat **251 µm** region-stack slab:
 one must not silently substitute the renderer's pyramids while
 retaining the old volume, or declare mass conservation passed.
 
-The prototype is a deterministic source for future XY/Z owners. It
-does **not** yet allocate canonical region IDs, resolve mask
-boundaries, support real facet-normal coating at creases, persist
-the data, or enable a new Process mode. Kernel integration must
-confirm which wafer-thickness/etch-depth interpretation is
-supported by the paper. The current Sahli project remains intact.
+This deterministic oracle is now attached to one explicit experimental
+Base-only Model, with versioned physical ownership and native Section
+and ThreeView consumers. It does **not** yet resolve arbitrary mask
+boundaries, real facet-normal coatings at creases, or production Process
+operations. The wafer-thickness/etch-depth interpretation still needs
+source-paper justification. The bundled Sahli project remains intact.
 
-## Versioned physical material-owner prototype (not active Model)
+## Versioned experimental physical material ownership
 
 New `site/physical-facet-owner.js` exports a JSON-safe, opt-in
 `wafercad-physical-pyramid-slab-v1` descriptor. It owns one material,
@@ -78,12 +78,13 @@ a rectangular integer-cell XY domain and two analytic physical interfaces.
 Point probes distinguish solid interiors, exact interfaces and voids.
 Volume is integrated from canonical analytic boundaries, not the 3D display.
 
-This remains isolated from `region.stack`, the .wafercad project serializer,
-Recipe, History, Recovery and production rendering. The isolated JSON
-round-trip is NOT proof of application-wide persistence; changing Process
-operations explicitly fails closed. Arbitrary mask polygons and multi-owner
-intersections are intentionally unsupported. Next gate: canonical
-owner/region attachment, true conformal offsets and save/reopen parity.
+This explicit owner is part of a restricted experimental Model Kernel.
+The planar `region.stack` remains only a checked compatibility reference;
+physical interfaces and volume come from the owner. Compact and workspace
+storage preserve this descriptor with Snapshot/History state. Ordinary
+Process operations fail closed, and production Workstation file import
+is disabled. Arbitrary masks, multi-owner intersections and facet-normal
+conformal offsets remain unsupported.
 
 ## One-owner physical 3D/Section geometry (experimental only)
 
@@ -108,13 +109,13 @@ Targeted scientific command:
 
 `node --test site/tests/physical-facet-math.test.mjs site/tests/physical-facet-owner.test.mjs site/tests/physical-facet-surface.test.mjs`
 
-**Not yet complete:** Production `model-view-geometry`, Process,
-History/Recovery and the existing Sahli Example still use ideal stacks.
-Neither new geometry output is wired into application 3D/Section views.
-Facet-normal multilayer coating at apex/valley junctions and original-paper
-figure calibration remain blocked. This experimental adapter may only
-become user-facing after an opt-in versioned canonical Model contract and
-save/reopen/rollback test; do not silently upgrade old `.wafercad` files.
+**Not yet complete:** The experimental `model-view-geometry` Section
+contour and production `createThreeView` have opt-in physical consumers,
+validated using a real browser preview. The bundled Sahli Example and
+ordinary Workstation Process, Section auxiliary slices and file import
+still do not support this Model. Full native Recovery rollback,
+facet-normal multilayer coating and original-paper figure calibration
+remain blocked. Old `.wafercad` projects must not be silently upgraded.
 
 ## Explicit opt-in persistence staging (not production UI)
 
@@ -136,15 +137,21 @@ mutations return an explicit failure without changing the model.
 The native `sectionContours` geometry API now emits the real polygon
 defined by the owner's face-intersection breakpoints. This is an
 incremental **Section geometry consumer**, not yet an enabled
-Workstation view. Other constant-Z Section slices and legacy 3D
-adapters still reject the physical owner, preventing a misleading
-flat fallback. Production
-Workstation file import also deliberately rejects these experimental
-files until physical geometry renderers consume the same owner.
+Workstation view. Other constant-Z Section slices reject the physical
+owner, preventing a misleading flat fallback. Production ThreeView now
+has an isolated opt-in path that renders the same owner as actual front,
+back and outer-wall triangles. Its three camera views and exact Section
+were captured in real Chromium. Workstation file import deliberately
+remains blocked until the rest of the application's view and transaction
+contracts can safely consume this model.
 
-This is an intermediate **storage and transaction safety contract**,
-not UI activation, native open-in-app certification or complete
-Recovery/rollback validation. No default project has this field; old
-`.wafercad` files are neither upgraded to physical geometry nor
-rebaseline-corrected. Next gate is native UI opt-in rendering plus
-actual save/reopen/history-recovery checks before enabling imports.
+This is an intermediate **storage and transaction safety contract**.
+The actual Snapshot Manager has now restored two distinct physical
+pyramid phases and preserved their exact Section geometry after export
+and reimport. This is not complete Workstation Recovery or end-to-end
+file-open certification. The isolated Chromium inspection uses the
+production ThreeView renderer, without activating an imported project
+or editing any user data. No default project has this field; old
+`.wafercad` files are not upgraded. Next gate: native Workstation
+read-only opening, Section/3D display, and full Recovery rollback before
+enabling any physical Process operations.
