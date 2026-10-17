@@ -348,6 +348,22 @@ export async function buildSwxMems(state = 'off', profile = null) {
   );
   bookmark('03 Metal contacts before release');
 
+  const semProbes = profile?.semSupportAudit?.(state);
+  if (semProbes) {
+    // Before selective HF undercut, the *same exact points* that will be
+    // inspected after release must still be full-height Si on intact BOX.
+    // Checking this paired state prevents a missing/early-etched BOX island
+    // from masquerading as successful post-HF suspension.
+    for (const { name, point } of [...semProbes.supported, ...semProbes.released]) {
+      const column = readPoint(model, vectorApi, point);
+      for (const material of [DEVICE, BOX]) {
+        assert.ok(
+          column?.stack.some((segment) => segment.layerId === layerIds.get(material)),
+          'SEM pre-HF ' + name + ' lacks ' + material + ' at ' + point.join(','),
+        );
+      }
+    }
+  }
   const beamBefore = readPoint(model, vectorApi, source.releasedBeamTestPoint);
   assert.ok(
     beamBefore?.stack.some((item) => item.layerId === layerIds.get(BOX)),
@@ -367,7 +383,6 @@ export async function buildSwxMems(state = 'off', profile = null) {
   );
   bookmark('04 Released SWX / ' + state.toUpperCase());
 
-  const semProbes = profile?.semSupportAudit?.(state);
   if (semProbes) {
     for (const { name, point } of semProbes.supported) {
       const column = readPoint(model, vectorApi, point);
