@@ -33,10 +33,14 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
   ],
   externalSiliconPadWidthUm: 8,
   externalMetalPadWidthUm: 3.5,
-  // These are free-standing 220nm device-Si routing experiments, not
-  // the wide retained-BOX return rails from the superseded candidate.
+  // The grounded leads and vertical signal legs remain narrow, released
+  // device Si. A wider EXTERNAL horizontal signal pad rail retains BOX;
+  // source pad coordinates and the complete perimeter are still unverified.
   groundTraceWidthUm: 0.8,
   signalTraceWidthUm: 1.2,
+  externalSignalSupportWidthUm: 6,
+  externalSignalSupportEndpointsUm: [[-61, -115], [61, -115]],
+  supportedSignalProbePointsUm: [[-33, -115], [0, -115], [33, -115]],
   groundPathsUm: [
     [
       [-70, -20],
@@ -65,7 +69,6 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
     [76, -40],
     [-61, -105],
     [61, -105],
-    [0, -115],
   ],
 });
 
@@ -97,18 +100,21 @@ export function auditSwxGroundReturnBucklingRisk() {
       const from = points[index];
       const lengthUm = Math.hypot(to[0] - from[0], to[1] - from[1]);
       const pinnedCriticalStrain = (Math.PI ** 2 / 12) * (thicknessUm / lengthUm) ** 2;
+      const supportedByBOX = name === 'signal' && index === 2;
       return {
         route: name,
         segmentIndex: index,
         from,
         to,
         lengthUm,
+        supportedByBOX,
         pinnedCriticalStrain,
         idealClampedCriticalStrain: pinnedCriticalStrain * 4,
       };
     }),
   );
-  const longest = spans.reduce((best, item) => (item.lengthUm > best.lengthUm ? item : best));
+  const unsupported = spans.filter((item) => !item.supportedByBOX);
+  const longest = unsupported.reduce((best, item) => (item.lengthUm > best.lengthUm ? item : best));
   // Scenario stresses are NOT measured in the paper or WaferCAD model.
   const hypothetical100ppmCompression = 100e-6;
   return {
@@ -118,6 +124,9 @@ export function auditSwxGroundReturnBucklingRisk() {
     measuredResidualCompression,
     spans,
     longest,
+    longestUnsupportedSpanUm: longest.lengthUm,
+    supportedExternalSignalSpanUm: 122,
+    supportedSignalBusSourceVerified: false,
     hypothetical100ppmCompression,
     stressScenarioMPa: hypothetical100ppmCompression * assumedYoungModulusGPa * 1e3,
     idealClampedCriticalStressMPa:
@@ -142,13 +151,19 @@ export function createSwxSemGroundReturnCandidate(state = 'off') {
     SWX_GROUND_RETURN_ASSUMPTIONS.signalPathUm,
     SWX_GROUND_RETURN_ASSUMPTIONS.signalTraceWidthUm,
   )[0];
+  // Only the remote horizontal Signal segment is widened. Widening the
+  // entire U-route shorts the grounded spring/optical net near y=-77um.
+  const signalSupportRail = miteredPolyline(
+    SWX_GROUND_RETURN_ASSUMPTIONS.externalSignalSupportEndpointsUm,
+    SWX_GROUND_RETURN_ASSUMPTIONS.externalSignalSupportWidthUm,
+  )[0];
   const siliconPads = SWX_GROUND_RETURN_ASSUMPTIONS.externalPadCentersUm.map((center) =>
     pad(center, SWX_GROUND_RETURN_ASSUMPTIONS.externalSiliconPadWidthUm),
   );
   const metalPads = SWX_GROUND_RETURN_ASSUMPTIONS.externalPadCentersUm.map((center) =>
     pad(center, SWX_GROUND_RETURN_ASSUMPTIONS.externalMetalPadWidthUm),
   );
-  const perimeterRoutes = [...groundRails, signalRail, ...siliconPads];
+  const perimeterRoutes = [...groundRails, signalRail, signalSupportRail, ...siliconPads];
   const maskPolygons = new Map(original.maskPolygons);
   maskPolygons.set(1, [...original.maskPolygons.get(1), ...perimeterRoutes]);
   maskPolygons.set(3, [...original.maskPolygons.get(3), ...metalPads]);
@@ -184,6 +199,7 @@ export function createSwxSemGroundReturnCandidate(state = 'off') {
       ...original.physicalGroups,
       candidateGroundRails: groundRails,
       candidateSignalRail: signalRail,
+      candidateSignalSupportRail: signalSupportRail,
       candidateExternalSiliconPads: siliconPads,
       candidateExternalMetalPads: metalPads,
     },
@@ -201,9 +217,13 @@ export function createSwxGroundReturnSupportAudit(state = 'off') {
         name: 'illustrative external electrical anchor ' + index,
         point,
       })),
+      ...SWX_GROUND_RETURN_ASSUMPTIONS.supportedSignalProbePointsUm.map((point, index) => ({
+        name: 'illustrative supported external signal bus ' + index,
+        point,
+      })),
     ],
-    // No unverified BOX-backed side rails. All five remote segments must
-    // genuinely lose BOX in the processed wafer, in both actuation states.
+    // The two ground and two signal vertical remote probes must lose BOX.
+    // The external 6um horizontal signal bar retains BOX at three points.
     released: [
       ...original.released,
       ...SWX_GROUND_RETURN_ASSUMPTIONS.releasedRailProbePointsUm.map((point, index) => ({
