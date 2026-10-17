@@ -31,7 +31,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   await loadGeometryKernel();
   const vector = await import('../site/vector-geometry.js');
   const { resolveArrayModel } = await import('../site/model-array.js');
-  const { createLayer, modelBoundsZ } = await import('../site/model.js');
+  const { createLayer, modelBoundsZ, geometryArea } = await import('../site/model.js');
   const { validateProcessModel, validateProjectFile } = await import('../site/project-schema.js');
   const { prepareProjectForWorkspaceStorage, readProjectFile } = await import('../site/project-io.js');
   const { project: original } = source
@@ -161,6 +161,36 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
     lowerId = metals[index].id;
     top = plane + names.metalThicknessUm;
   }
+  // Prove complete 2.5D VIA VOLUMES, not just pin centres. This runs
+  // against the actually split world-space material partition, and rejects
+  // both unfilled aperture area and extra conductor outside the designed
+  // footprint. The 1e-12 µm² is the existing scientific XY area contract.
+  const viaFootprintChecks = vias.map((layer, index) => {
+    const from = 'M' + (index + 1);
+    const footprints = routed.vias.filter((via) => via.from === from);
+    const expected = unionRects(footprints.map((via) => via.rect));
+    const physicalParts = model.regions
+      .filter((region) => region.stack.some((segment) => segment.layerId === layer.id))
+      .map((region) => region.geom);
+    assert.ok(physicalParts.length > 0, layer.name + ': no final 2.5D material');
+    const actual = vector.unionGeometries(physicalParts);
+    const missingAreaUm2 = geometryArea(vector.difference(expected, actual));
+    const extraAreaUm2 = geometryArea(vector.difference(actual, expected));
+    assert.ok(missingAreaUm2 < 1e-12,
+      layer.name + ': missing physical Via area = ' + missingAreaUm2 + ' µm²');
+    assert.ok(extraAreaUm2 < 1e-12,
+      layer.name + ': extraneous Via conductor area = ' + extraAreaUm2 + ' µm²');
+    return {
+      name: layer.name,
+      viaSites: footprints.length,
+      designedAreaUm2: geometryArea(expected),
+      actualAreaUm2: geometryArea(actual),
+      missingAreaUm2,
+      extraAreaUm2,
+    };
+  });
+  assert.equal(viaFootprintChecks.reduce((sum, entry) => sum + entry.viaSites, 0),
+    140, 'One or more Via physical volumes are missing');
   // A full source File Mask remains a strict prefix, including exact vertex
   // coordinates. Supplemental layout layers are exclusively this new variant.
   assert.deepEqual(project.layout.elements, exactSourceMasks,
@@ -236,6 +266,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
       routedSurfaceMaxZ: top,
       materialLayersAdded: 9,
       dielectricAndViaStages: counts,
+      viaFootprintChecks,
       routedPlanes: planes,
       baselineRegionCount,
       finalRegionCount: model.regions.length,
