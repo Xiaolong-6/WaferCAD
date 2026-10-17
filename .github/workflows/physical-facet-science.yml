@@ -24,11 +24,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Exact one-time Prettier diagnostic
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npx prettier --write site/tests/physical-facet-recovery.test.mjs
-          git diff --unified=3 -- site/tests/physical-facet-recovery.test.mjs
       - name: Verify physical owner, closed mesh and exact Section contracts
         run: >-
           node --test

@@ -155,3 +155,25 @@ or editing any user data. No default project has this field; old
 `.wafercad` files are not upgraded. Next gate: native Workstation
 read-only opening, Section/3D display, and full Recovery rollback before
 enabling any physical Process operations.
+
+## Fault-injected Recovery transaction contracts (2026-10-17)
+
+`site/tests/physical-facet-recovery.test.mjs` exercises the real
+`createWorkspacePersistenceController().restoreSelectedRecovery()`
+transaction using an explicit storage fault adapter. An injected
+`QuotaExceededError` during the recovered-project commit restores the
+original faceted Model, Snapshot records and active History branch graph,
+including the exact Section profile. If the same commit fails and the
+volatile rollback also throws, the controller locks all further Save,
+Recovery and checkpoint actions until reload; it cannot commit the
+untrusted in-memory geometry. This supplements the earlier physical
+Snapshot Manager export/reopen tests.
+
+The fault adapter replaces the storage operations at the controller
+boundary in Node. These tests do **not** establish a real IndexedDB
+abort or browser-level Recovery interaction, which remain separate
+acceptance gates. The production default uses the unchanged persistence
+functions. Old `.wafercad` schemas and scientific tolerances are
+unchanged. The new Main canvas-grid and palette refinements were also
+merged into this feature branch without overriding the physical Section
+guard.

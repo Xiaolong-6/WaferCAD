@@ -83,8 +83,7 @@ async function recoveryFixture({ rollbackFailure = false } = {}) {
     workspaceSaveStatus: { dataset: {}, textContent: '' },
   };
   const root = {
-    getElementById: (id) =>
-      id === 'workspaceRestoreBtn' && !owner ? null : controls[id] || null,
+    getElementById: (id) => (id === 'workspaceRestoreBtn' && !owner ? null : controls[id] || null),
     querySelector: () => null,
   };
   const manager = createSnapshotManager({
@@ -216,9 +215,12 @@ test('physical Recovery commit abort restores Model, Snapshot and History graph 
   assert.deepEqual(harness.manager.exportBranchState(), harness.original.snapshotBranches);
   assert.deepEqual(
     harness.events.filter((value) =>
-      ['pre-restore-checkpoint', 'load-recovery-point', 'attempt-storage-commit', 'load-model'].includes(
-        value,
-      ),
+      [
+        'pre-restore-checkpoint',
+        'load-recovery-point',
+        'attempt-storage-commit',
+        'load-model',
+      ].includes(value),
     ),
     [
       'pre-restore-checkpoint',
