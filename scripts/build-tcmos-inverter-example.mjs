@@ -467,6 +467,61 @@ export function auditTcmosTerminalNetProvenance(masks, metalNets) {
 }
 
 const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
+// The vector Mask defines where actual devices lie. The old screenshot-pixel
+// rectangles have a different Y origin and cannot be reused for process
+// masks: doing so implants the oxide outside the source-approved ACTIVE.
+const SVG_PROCESS_LAYERS = new Map(
+  readTcmosReferenceMask().map(({ layer, shapes }) => [layer, shapes]),
+);
+const svgBounds = (points) => {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return rect(x, y, Math.max(...xs) - x, Math.max(...ys) - y);
+};
+const svgPolygonMask = (points, index) => ({
+  id: 'shape-' + (index + 1),
+  type: 'polygon',
+  points: points.map((point) => [...point]),
+});
+const processRectMask = (r, index) => ({
+  id: 'shape-' + (index + 1),
+  type: 'rect',
+  a: [r.x, r.y],
+  b: [r.x + r.w, r.y + r.h],
+});
+// The foundry did not publish these five process windows. Derive them
+// deterministically from the SVG ACTIVE/POLY geometry, not from historical
+// raster guesses. They stay private to each Recipe step (sourceMode:draw).
+function tcmosProcessShapes(id) {
+  const active = SVG_PROCESS_LAYERS.get(1);
+  const poly = SVG_PROCESS_LAYERS.get(6);
+  assert.ok(active?.length === 4 && poly?.length === 2, 'SVG ACTIVE/POLY source unavailable');
+  if (id === 2 || id === 3) {
+    const side = id === 2 ? 0 : 1;
+    return [active[side], active[side + 2]].map(({ points }, i) =>
+      svgPolygonMask(points, i),
+    );
+  }
+  if (id === 7 || id === 8 || id === 9) {
+    const windows = [];
+    for (const side of id === 9 ? [0, 1] : [id === 7 ? 0 : 1]) {
+      const a = svgBounds(active[side + 2].points);
+      const gate = svgBounds(poly[side].points);
+      const leftEdge = gate.x - 0.03;
+      const rightEdge = gate.x + gate.w + 0.03;
+      assert.ok(a.x < leftEdge && rightEdge < a.x + a.w);
+      windows.push(
+        rect(a.x, a.y, leftEdge - a.x, a.h),
+        rect(rightEdge, a.y, a.x + a.w - rightEdge, a.h),
+      );
+    }
+    return windows.map(processRectMask);
+  }
+  const shapes = SVG_PROCESS_LAYERS.get(id);
+  assert.ok(shapes?.length, 'Unknown source-approved SVG mask ' + id);
+  return shapes.map(({ points }, i) => svgPolygonMask(points, i));
+}
 
 export function tcmosLayout() {
   // The user's SVG is the complete File Mask source of truth: exactly
@@ -517,12 +572,7 @@ function maskContext(id) {
   const source = BY_ID.get(id);
   assert.ok(source, 'Unknown mask: ' + id);
   if (INTERNAL_PROCESS_MASK_IDS.has(id)) {
-    const shapes = source.rectangles.map(({ x, y, w, h }, index) => ({
-      id: 'shape-' + (index + 1),
-      type: 'rect',
-      a: [x, y],
-      b: [x + w, y + h],
-    }));
+    const shapes = tcmosProcessShapes(id);
     return {
       sourceMode: 'draw',
       layerKeys: [],
@@ -585,7 +635,7 @@ export async function buildTcmosInverter({
   };
   const project = projectForBenchmark({
     model,
-    section: { a: [-5.5, 0], b: [5.5, 0] },
+    section: { a: [-5.5, -1.2], b: [5.5, -1.2] },
   });
   project.name =
     mode === 'conventional-cmos'
@@ -666,10 +716,18 @@ export async function buildTcmosInverter({
   }
   function areaFor(maskId, areaMode = 'mask') {
     if (maskId == null) return model.boundary;
-    const mask = BY_ID.get(maskId);
-    assert.ok(mask);
+    const shapes = tcmosProcessShapes(maskId);
     const selected = v.unionGeometries(
-      mask.rectangles.map((r) => v.rectMulti(r.w, r.h, r.x + r.w / 2, r.y + r.h / 2)),
+      shapes.map((shape) =>
+        shape.type === 'rect'
+          ? v.rectMulti(
+              shape.b[0] - shape.a[0],
+              shape.b[1] - shape.a[1],
+              (shape.a[0] + shape.b[0]) / 2,
+              (shape.a[1] + shape.b[1]) / 2,
+            )
+          : [[shape.points.concat([shape.points[0]])]],
+      ),
     );
     return areaMode === 'invert' ? v.difference(model.boundary, selected) : selected;
   }
@@ -856,7 +914,7 @@ export async function buildTcmosInverter({
   etch('STI shallow trench 230nm (illustrative)', '', 0.23, 1, 'invert');
   deposit('STI oxide fill 280nm overburden (illustrative)', 'STI SiO2 fill', 0.28);
   apply('STI CMP to original Si surface', 'etch', { profile: 'planarize', targetZ: 1 });
-  assert.equal(topMaterial(-4, 0), model.layers[0].name, 'STI removed active Si surface');
+  assert.equal(topMaterial(-4, -1.2), model.layers[0].name, 'STI removed active Si surface');
   assert.equal(topMaterial(0, 0), 'STI SiO2 fill', 'STI field oxide not retained');
   bookmark('S01 - STI isolated ACTIVE');
 
@@ -1014,7 +1072,7 @@ export async function buildTcmosInverter({
   project.display.threeOpacity = 0.75;
   project.display.threeCamera = {
     position: [13.3, -14.3, 10.2],
-    target: [0, -0.2, 0.95],
+    target: [0, -1.2, 0.95],
     fov: 34,
   };
   // Preserve consistency between the final History head and the saved
@@ -1031,7 +1089,7 @@ export async function buildTcmosInverter({
       : illustrativeTiltDeg
         ? 'T-CMOS 130nm · TILT DEMO 18° (NOT REPORTED IN PAPER)'
         : 'T-CMOS 130nm · tunnelling-based ternary inverter (illustrative)';
-  if (illustrativeTiltDeg) project.section = { a: [-4.45, 0], b: [-2.95, 0] };
+  if (illustrativeTiltDeg) project.section = { a: [-4.45, -1.2], b: [-2.95, -1.2] };
   // A Variant switch restores the stored Head state, not the root project.
   // Final inspection name/section changes must therefore be reflected in the
   // head and final bookmark; otherwise Save/Recovery restores a stale name.
@@ -1189,8 +1247,8 @@ export async function buildTcmosInverter({
     }),
   );
   const contactSites = [
-    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-4.37, -1.3] },
-    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [1.59, -1.3] },
+    { id: 'pMOS-nwell-tie', net: 'VDD', polarity: 'donor', point: [-5.48, -1.14] },
+    { id: 'nMOS-pwell-tie', net: 'GND', polarity: 'acceptor', point: [5.48, -1.14] },
   ].map((site) => {
     const region = model.regions.find((r) => v.pointInMulti(site.point, r.geom));
     const silicon = region?.stack.find((segment) => segment.layerId === 'base');
