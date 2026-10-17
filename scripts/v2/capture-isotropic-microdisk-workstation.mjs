@@ -19,7 +19,8 @@ const evidence = {
   legacySnapshot: 'snapshot-microdisk-08',
   radiusUm: 36,
   radiusQualification: 'engineering-assumption-not-paper-measured',
-  optInMaxLateralErrorUm: 2,
+  optInMaxLateralErrorUm: 0.25,
+  expectedDepthBands: 72,
   paperOverlayVerified: false,
   actualWorkstation: true,
   result: 'running',
@@ -34,7 +35,8 @@ async function capture(view, kind) {
   await selectScientificView(page, kind, 1560);
   if (kind === 'three') {
     await page.waitForFunction(
-      () => document.querySelector('#threeHost canvas')?.width > 100 &&
+      () =>
+        document.querySelector('#threeHost canvas')?.width > 100 &&
         document.querySelector('#threeHost')?.dataset.renderState === 'ready',
       null,
       { timeout: 120000 },
@@ -73,10 +75,10 @@ try {
     acceptDownloads: false,
   }));
   page.on('pageerror', (error) => errors.push(error.stack || error.message));
-  await page.goto(
-    base + '/app.html?start=example&example=suspended-silica-microdisk',
-    { waitUntil: 'domcontentloaded', timeout: 180000 },
-  );
+  await page.goto(base + '/app.html?start=example&example=suspended-silica-microdisk', {
+    waitUntil: 'domcontentloaded',
+    timeout: 180000,
+  });
   await page.waitForFunction(
     () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
     null,
@@ -96,12 +98,25 @@ try {
     const M08 = project.snapshots.find((item) => item.id === 'snapshot-microdisk-08')?.state?.model;
     if (!M07 || !M08) throw new Error('Actual M07/M08 published scientific snapshots missing');
     const { applyOperation, geometryArea } = await import('/model.js');
+    const { adaptiveReleaseDepthBands } = await import('/isotropic-release-oracle.js');
     const { pointInMulti } = await import('/vector-geometry.js');
+    const bands = adaptiveReleaseDepthBands({
+      radius: 36,
+      maxLateralErrorUm: 0.25,
+      maxBands: 128,
+    });
+    if (bands.length !== 72) throw new Error('Unexpected adaptive depth-band budget');
     const volumeOf = (model, id) =>
-      model.regions.reduce((sum, region) =>
-        sum + geometryArea(region.geom) *
-          region.stack.reduce((height, part) =>
-            height + (part.layerId === id ? part.z1 - part.z0 : 0), 0), 0);
+      model.regions.reduce(
+        (sum, region) =>
+          sum +
+          geometryArea(region.geom) *
+            region.stack.reduce(
+              (height, part) => height + (part.layerId === id ? part.z1 - part.z0 : 0),
+              0,
+            ),
+        0,
+      );
     const stackAt = (model, xy) =>
       model.regions.find((region) => pointInMulti(xy, region.geom))?.stack || [];
     const adaptive = structuredClone(M07);
@@ -112,7 +127,7 @@ try {
       thickness: 36,
       face: 'front',
       area: adaptive.boundary,
-      isotropicLateralErrorUm: 2,
+      isotropicLateralErrorUm: 0.25,
     });
     if (!result.changed) throw new Error('Adaptive M07 Process rejected: ' + result.error);
     const baseVol07 = volumeOf(M07, 'base');
@@ -131,10 +146,12 @@ try {
     if (JSON.stringify(M08.regions) === JSON.stringify(adaptive.regions))
       throw new Error('Experimental and old eight-band materials unexpectedly identical');
     const originalSourceHash = await globalThis.crypto.subtle.digest(
-      'SHA-256', new TextEncoder().encode(originalText),
+      'SHA-256',
+      new TextEncoder().encode(originalText),
     );
     const digest = [...new Uint8Array(originalSourceHash)]
-      .map((b) => b.toString(16).padStart(2, '0')).join('');
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
     const createInspector = (model, name) => {
       const inspection = {
         ...project,
@@ -184,9 +201,12 @@ try {
     const projectText = prepared.inspectorProjects[variant];
     await page.evaluate(async (text) => {
       const { stageStartupFile } = await import('/startup-file.js');
-      await stageStartupFile(new File([text], 'microdisk-native-inspector.wafercad', {
-        type: 'application/json',
-      }), 'project');
+      await stageStartupFile(
+        new File([text], 'microdisk-native-inspector.wafercad', {
+          type: 'application/json',
+        }),
+        'project',
+      );
     }, projectText);
     await page.goto(base + '/app.html?start=staged', {
       waitUntil: 'domcontentloaded',
@@ -197,8 +217,11 @@ try {
       null,
       { timeout: 180000 },
     );
-    assert.equal(await page.locator('body').getAttribute('data-ready'), 'true',
-      variant + ' failed to import into actual native v2 Workstation');
+    assert.equal(
+      await page.locator('body').getAttribute('data-ready'),
+      'true',
+      variant + ' failed to import into actual native v2 Workstation',
+    );
     const snap = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     assert.equal(snap.sharedIdentity, true, 'Main and other views must share one material Model');
     assert.equal(snap.model.kernel, 'vector-2.5d-v1');
@@ -210,12 +233,25 @@ try {
       const model = window.WaferCadV2Workstation.snapshot().model;
       const z = sectionSlices(model, [-175, 0], [175, 0]);
       const t = (110 + 175) / 350;
-      return z.filter((slice) => slice.t0 <= t && t <= slice.t1 && slice.z1 > slice.z0)
+      return z
+        .filter((slice) => slice.t0 <= t && t <= slice.t1 && slice.z1 > slice.z0)
         .map(({ layerId, z0, z1 }) => ({ layerId, z0, z1 }));
     });
     assert.ok(check.length, variant + ' physical native section missing source region');
-    evidence.views.push({ variant, kind: 'section-material-probe', xy: [110, 0], materialBands: check });
+    evidence.views.push({
+      variant,
+      kind: 'section-material-probe',
+      xy: [110, 0],
+      materialBands: check,
+    });
   }
+  const probes = evidence.views.filter((item) => item.kind === 'section-material-probe');
+  assert.equal(probes.length, 2);
+  assert.notDeepEqual(
+    probes[0].materialBands,
+    probes[1].materialBands,
+    'Physical native Section must distinguish original M08 from adaptive Process geometry',
+  );
   assert.deepEqual(errors, [], 'Actual Workstation page must not throw during release captures');
   evidence.result = 'captured-unreviewed';
 } catch (error) {
@@ -223,10 +259,12 @@ try {
   evidence.error = String(error.stack || error);
   evidence.pageErrors = errors;
   if (page) {
-    await page.screenshot({
-      path: resolve(output, 'failure.png'),
-      animations: 'disabled',
-    }).catch(() => {});
+    await page
+      .screenshot({
+        path: resolve(output, 'failure.png'),
+        animations: 'disabled',
+      })
+      .catch(() => {});
   }
   throw error;
 } finally {
