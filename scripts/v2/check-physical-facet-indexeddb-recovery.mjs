@@ -122,12 +122,12 @@ try {
         getElementById: (id) => controls[id] || null,
         querySelector: () => null,
       };
-      const nativePut = IDBObjectStore.prototype.put;
-      IDBObjectStore.prototype.put = function (value, ...args) {
+      const nativePut = globalThis.IDBObjectStore.prototype.put;
+      globalThis.IDBObjectStore.prototype.put = function (value, ...args) {
         if (injectAbort && this.name === 'workspace' && value?.key === 'current') {
           injectAbort = false;
           abortCount++;
-          throw new DOMException('physical Recovery IndexedDB abort', 'QuotaExceededError');
+          throw new globalThis.DOMException('physical Recovery IndexedDB abort', 'QuotaExceededError');
         }
         return nativePut.call(this, value, ...args);
       };
@@ -171,6 +171,9 @@ try {
         await controller.restoreSelectedRecovery();
         const persisted = await loadWorkspaceState();
         const points = await listWorkspaceRecoveryPoints();
+        const restoredBranches = history.exportBranchState();
+        const branchesIdentical =
+          JSON.stringify(restoredBranches) === JSON.stringify(original.snapshotBranches);
         return {
           abortCount,
           loadedStates,
@@ -180,15 +183,15 @@ try {
           storedSectionUnchanged: JSON.stringify(cut(persisted)) === JSON.stringify(originalCut),
           historyRecordCount: history.exportRecords().length,
           originalHistoryCount: original.snapshots.length,
-          originalBranchPreserved:
-            JSON.stringify(history.exportBranchState()) ===
-            JSON.stringify(original.snapshotBranches),
+          originalBranchPreserved: branchesIdentical,
+          branchBefore: branchesIdentical ? undefined : original.snapshotBranches,
+          branchAfter: branchesIdentical ? undefined : restoredBranches,
           preRestoreCheckpointPreserved: points.some((point) => point.reason === 'pre-restore'),
           outcome: statuses.at(-1)?.message || '',
         };
       } finally {
         writerLease = false;
-        IDBObjectStore.prototype.put = nativePut;
+        globalThis.IDBObjectStore.prototype.put = nativePut;
       }
     });
     const result = report.contract;
