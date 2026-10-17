@@ -787,7 +787,10 @@ export function downloadProject(project, filename = 'wafercad-project.wafercad')
   return { requested: true, filename, bytes: blob.size, mode };
 }
 
-export async function readProjectFile(file) {
+export async function readProjectFile(
+  file,
+  { experimentalPhysicalFacetReadOnly = false } = {},
+) {
   if (!file) throw new Error('No project file selected.');
   if (file.size > MAX_PROJECT_FILE_BYTES) {
     throw new Error(
@@ -806,7 +809,10 @@ export async function readProjectFile(file) {
   const project = validateProjectFile(migrateProjectFile(parsed));
   // The opt-in owner is persisted and strictly validated, but the default
   // Workstation must not draw its physical material as a flat surrogate.
-  if (validateExperimentalPhysicalFacetModel(project.model)) {
+  if (
+    validateExperimentalPhysicalFacetModel(project.model) &&
+    experimentalPhysicalFacetReadOnly !== true
+  ) {
     throw new Error(
       'Experimental physical facet is not yet supported in the production Workstation; no flat import is permitted.',
     );
