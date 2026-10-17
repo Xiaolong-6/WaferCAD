@@ -1,6 +1,7 @@
 import {
   loadBundledProject,
   loadWorkstationProject,
+  loadExperimentalPhysicalFacetPreview,
   createWorkstationRuntime,
 } from './workstation-runtime.js';
 import { createMainView } from './main-view.js';
@@ -28,9 +29,11 @@ try {
   window.WaferCadV2Icons.installSprite();
   const params = new URLSearchParams(window.location.search);
   const readOnlyPreview = params.get('preview') === '1';
-  const allowedViews = ['main', 'mask', 'three', 'section'];
+  const physicalFacetPreview = readOnlyPreview && params.get('physicalFacet') === '1';
+  const allowedViews = physicalFacetPreview ? ['three', 'section'] : ['main', 'mask', 'three', 'section'];
   const initialView = allowedViews.includes(params.get('view')) ? params.get('view') : 'three';
   if (readOnlyPreview) document.body.dataset.previewMode = 'true';
+  if (physicalFacetPreview) document.body.dataset.physicalFacetPreview = 'read-only';
   const desktopPreferences = (() => {
     if (readOnlyPreview) return null;
     try {
@@ -39,9 +42,11 @@ try {
       return null;
     }
   })();
-  const project = readOnlyPreview
-      ? await loadBundledProject(params.get('example'), undefined, { preview: true })
-      : await loadWorkstationProject(),
+  const project = physicalFacetPreview
+      ? await loadExperimentalPhysicalFacetPreview()
+      : readOnlyPreview
+        ? await loadBundledProject(params.get('example'), undefined, { preview: true })
+        : await loadWorkstationProject(),
     store = createWorkstationRuntime(project);
   if (readOnlyPreview) {
     // Navigation is enabled from the first frame without activating editing tools.
