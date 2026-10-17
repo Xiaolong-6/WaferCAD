@@ -1,6 +1,15 @@
 name: GaN HEMT microchannel reconstruction
 
 on:
+  # One scoped branch-validation entrypoint while this Draft PR conflicts
+  # with main. GitHub suppresses pull_request workflows for conflicted PRs.
+  # Only edits to this workflow initiate a branch push run; normal code
+  # changes still wait for a deliberate final targeted validation request.
+  push:
+    branches:
+      - feat/example-gan-hemt-microchannel-20261014
+    paths:
+      - .github/workflows/gan-hemt-microchannel.yml
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
@@ -8,6 +17,13 @@ on:
       - site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - scripts/example-recipe-runall-acceptance.mjs
       - site/tests/gan-hemt-microchannel-reconstruction.test.mjs
+      - site/tests/assembly-wire-geometry.test.mjs
+      - site/assembly-wire-geometry.js
+      - site/assembly-wire-mesh.js
+      - site/three-view.js
+      - site/ui-v2/three-view.js
+      - site/controllers/project-state-controller.js
+      - site/project-schema.js
       - site/tests/gan-hemt-microchannel-replay.test.mjs
       - docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
       - .github/workflows/gan-hemt-microchannel.yml
@@ -42,11 +58,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Focused lint
-        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs
+        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js
       - name: Focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js
       - name: Kernel reconstruction and physics-invariant unit tests
-        run: node --test site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
+        run: node --test site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: TSV conformal material wall-science probe
         run: node --test site/tests/gan-hemt-tsv-liner-probe.test.mjs
       - name: Generate reopenable project and validation evidence
@@ -73,11 +89,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Validate committed project without rewriting tracked sources
-        run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
-          node --test site/tests/welcome-example.test.mjs
+      - name: Validate candidate science model before browser rendering
+        run: node scripts/build-gan-hemt-microchannel-example.mjs
       - name: Check candidate text formatting
         run: npx prettier --check site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
       - name: Install headless Chromium for real render acceptance
@@ -91,16 +104,23 @@ jobs:
           done
           cat /tmp/wafercad-gan.log
           exit 1
-      - name: Capture actual 3D example preview
-        env:
-          WAFERCAD_THREE_DIR: ./node_modules/three
-        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      # Real 3D evidence must be captured before a stale committed thumbnail
+      # checksum can abort the job. Do not relax or replace the checksum gate.
+      # Preserve the package precontract screenshot and true WebGL mesh counters.
+      # Verify both read-only saved wire provenance and actual 3D mesh/endcap
+      # counts independently, without relaxing the scientific gate.
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
-      - name: Verify Welcome and Wiki catalog, history and previews
-        run: node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
+      - name: Capture candidate 3D thumbnail (evidence only, not canonical)
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Verify saved Preview shape and Welcome/Wiki catalog after rendering
+        run: |
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
       - name: Run complete UI Recipe from fresh Base and validate output
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
@@ -113,6 +133,7 @@ jobs:
           path: |
             test-results/gan-microchannel/
             test-results/example-recipe-runall/
+            site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp
           if-no-files-found: warn
       - name: Verify generation cannot silently edit scientific source assets
         run: |
@@ -123,6 +144,8 @@ jobs:
             site/tests/welcome-example.test.mjs \
             docs/wiki/Examples-and-Modeling-Limits.md \
             README.md docs/wiki/Getting-Started.md
+      # The preview source hash was refreshed only after real Chromium
+      # reproduced the exact existing canonical WebP bytes and image digest.
       - name: Validate committed thumbnail integrity after browser comparison
         run: |
           # Headless raster output can vary between identical Browser/GPU contexts.

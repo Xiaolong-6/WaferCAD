@@ -542,28 +542,54 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
-  // Read-only project diagnostics and *actual mesh construction* are separate
-  // invariants. A stored wire alone is not proof that the 3D scene built it.
-  const wireAudit = await page.evaluate(() => {
-    const host = document.getElementById('threeHost');
-    const wires = window.WaferCadV2Workstation?.snapshot()?.assemblyWires || [];
-    return {
-      storedCount: wires.length,
-      builtCount: Number(host?.dataset.assemblyWireBuiltCount || 0),
-      renderState: host?.dataset.renderState,
-      frameSerial: Number(host?.dataset.rendererFrameSerial || 0),
-    };
-  });
-  assert.equal(wireAudit.storedCount, 2, 'Restored package lost its two explicit Au wire records');
-  if (wireAudit.builtCount !== 2) {
+  // Capture visual evidence and record source plus Renderer diagnostics
+  // *before* the strict contract. This differentiates lost saved wires,
+  // ROI clipping, and incomplete WebGL mesh construction.
+  const inspectWireState = () =>
+    page.evaluate(() => {
+      const state = window.WaferCadV2Workstation?.snapshot();
+      const host = document.getElementById('threeHost');
+      return {
+        storedCount: state?.assemblyWires?.length ?? null,
+        storedWireIds: state?.assemblyWires?.map((wire) => wire.id) || [],
+        roi: state?.roi,
+        modelRevision: state?.model?.revision ?? null,
+        rendererDataset: host ? { ...host.dataset } : null,
+      };
+    });
+  const diagnostics = await inspectWireState();
+  await writeFile(
+    new URL('three-chip-wire-diagnostic.json', directory),
+    JSON.stringify(diagnostics, null, 2) + '\n',
+  );
+  const precontractShot = await page.locator('#threeHost').screenshot({ type: 'png' });
+  await writeFile(new URL('three-chip-precontract.png', directory), precontractShot);
+  assert.equal(
+    diagnostics.storedCount,
+    2,
+    'Restored package lost the two saved Au wire records',
+  );
+  try {
     await page.waitForFunction(
-      () => document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2',
+      () => {
+        const host = document.getElementById('threeHost');
+        return (
+          host?.dataset.renderState === 'ready' &&
+          host.dataset.assemblyWireBuiltCount === '2' &&
+          host.dataset.assemblyWireEndcapCount === '4' &&
+          Number(host.dataset.rendererFrameSerial || 0) > 0
+        );
+      },
       null,
-      { timeout: 45000 },
+      { timeout: 25000 },
+    );
+  } catch (error) {
+    throw new Error(
+      'Actual Au wire tube/endcap renderer contract failed: ' +
+        JSON.stringify({ before: diagnostics, after: await inspectWireState() }),
+      { cause: error },
     );
   }
-  const builtWires = await page.locator('#threeHost').getAttribute('data-assembly-wire-built-count');
-  assert.equal(builtWires, '2', 'The renderer did not construct both Au wire tubes');
   const packageCanvas = await page.locator('#threeHost').boundingBox();
   assert.ok(
     packageCanvas && packageCanvas.height >= 340,
@@ -579,6 +605,7 @@ try {
     separateGsgAuContacts: 6,
     wireBondGeometryVerified: true,
     wireBondCount: 2,
+    closedEndcapSurfaces: 4,
     wireBondDiameterUmInferred: 12,
   };
   assert.deepEqual(historyErrors, [], 'Three-chip Bookmark restore emitted browser errors');

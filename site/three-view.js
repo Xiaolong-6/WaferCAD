@@ -16,6 +16,7 @@ import {
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import { pointInMulti } from './vector-geometry.js';
+import { createAssemblyWireMeshes } from './assembly-wire-mesh.js';
 import { createDerivedDataCache } from './renderer-derived-cache.js';
 import {
   mergeCollinearSidewallParts,
@@ -832,8 +833,7 @@ export function createThreeView({
       host.dataset.rendererFrameMs = String(performance.now() - frameStartedAt);
       host.dataset.rendererDrawCalls = String(renderer.info?.render?.calls || 0);
       host.dataset.rendererDrawTriangles = String(renderer.info?.render?.triangles || 0);
-      // A physical WebGL frame (not a pending host) is the readiness boundary
-      // for the progressive Workstation view. Signal after renderer.render.
+      // Release the progressive 3D cover only after a committed WebGL frame.
       onFrameRendered();
       if (interacting || changed) scheduleFrame();
     });
@@ -3410,20 +3410,14 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ) {
           continue;
         }
-        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
-        const material = new THREE.MeshStandardMaterial({
-          color: '#D8A83A',
-          metalness: 0.78,
-          roughness: 0.24,
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.name = `Au bond wire / ${wire.id} (inferred)`;
-        mesh.userData.waferCadAssemblyWireId = wire.id;
-        group.add(mesh);
-        trackZDisplayObject(mesh);
+        for (const mesh of createAssemblyWireMeshes(THREE, wire, curve)) {
+          group.add(mesh);
+          trackZDisplayObject(mesh);
+        }
         assemblyWireBuiltCount++;
       }
       host.dataset.assemblyWireBuiltCount = String(assemblyWireBuiltCount);
+      host.dataset.assemblyWireEndcapCount = String(assemblyWireBuiltCount * 2);
 
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
@@ -3844,21 +3838,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
         ) {
           continue;
         }
-        const geometry = new THREE.TubeGeometry(curve, 64, wire.diameterUm / 2, 10, false);
-        const material = new THREE.MeshStandardMaterial({
-          color: '#D8A83A',
-          metalness: 0.78,
-          roughness: 0.24,
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.name = `Au wire bond / ${wire.id} (inferred)`;
-        mesh.userData.wafercadAssemblyWireId = wire.id;
-        mesh.userData.wafercadMaterial = wire.material;
-        mesh.userData.wafercadDiameterUm = wire.diameterUm;
-        mesh.userData.wafercadContactLayerIds = wire.contactLayerIds;
-        mesh.userData.wafercadSource = wire.source;
-        exportGroup.add(mesh);
-        disposable.push(mesh);
+        for (const mesh of createAssemblyWireMeshes(THREE, wire, curve)) {
+          exportGroup.add(mesh);
+          disposable.push(mesh);
+        }
       }
       await yieldToUi();
       reportProgress(0.91, 'Encoding GLB');
