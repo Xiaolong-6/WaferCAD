@@ -209,3 +209,33 @@ join at convex and concave creases, with non-overlapping material
 ownership, exact cross-section and volume contracts, and genuine
 browser 3D/Section visual inspection before activating the film in the
 Model.
+
+## Axial convex and concave coating joins (experimental, 2026-10-17)
+
+The `physicalAxialFacetCoatingSection()` scientific oracle constructs
+an **exact 2D exterior film profile** on a pyramid-row XZ Section using
+the same physical Si triangle owner as the real Renderer and Section.
+This restricted Section follows a pyramid centerline, so the true
+three-dimensional facet normals lie in its XZ plane.
+
+A convex Si apex is connected by a **circular radius-t arc** centered
+on the true substrate ridge vertex, not a sharp artificial miter. A
+concave Si valley uses the intersection of adjacent normal-offset
+facet lines; the foot of each perpendicular must remain on its
+original physical facet. The resulting Section ring is a distinct
+material cross-section, with its true area calculated from the faceted
+polygon plus exact circular-sector/chord corrections. At every
+offset sample, the distance to **all** original Si facets is checked
+to reject neighboring-facet overlap. Invalid axial orientation,
+off-center diagonal cuts, negative normal thickness and oversized
+intersections fail closed.
+
+This is not a 3D coating volume or a canonical material owner.
+It does not yet solve the spherical apex and three-dimensional ridge,
+valley and face-junction patches away from the 1D Section centerline,
+nor mask discontinuities or film self-contact across the full wafer.
+Therefore the existing experimental Si-only Workstation preview
+remains unchanged, and no Process or material-layer activation occurs.
+Before integration: prove full 3D watertight film interfaces,
+non-overlapping material ownership and exact Section/volume
+agreements, then inspect real Chromium frames and source-paper SEM.
