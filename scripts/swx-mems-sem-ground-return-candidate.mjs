@@ -63,9 +63,7 @@ export function createSwxSemGroundReturnCandidate(state = 'off') {
       })),
     ],
     combos: original.layout.combos.map((combo) =>
-      combo.layer === 1
-        ? { ...combo, count: maskPolygons.get(1).length }
-        : combo,
+      combo.layer === 1 ? { ...combo, count: maskPolygons.get(1).length } : combo,
     ),
   };
   return {
