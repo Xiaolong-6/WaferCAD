@@ -46,6 +46,7 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   // Keep the untouched array project independently restorable. Flatten only
   // this separate visual + scientific verification project.
   const project = structuredClone(unconnected);
+  const exactSourceMasks = structuredClone(unconnected.layout.elements);
   project.model = resolveArrayModel(unconnected.model);
   const model = project.model;
   assert.equal(model.kernel, 'vector-2.5d-v1');
@@ -162,6 +163,8 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   }
   // A full source File Mask remains a strict prefix, including exact vertex
   // coordinates. Supplemental layout layers are exclusively this new variant.
+  assert.deepEqual(project.layout.elements, exactSourceMasks,
+    'Physical route must not mutate any approved source Mask vertex');
   const supplementary = [
     { key: 'VIA12', layer: 21, rectangles: routed.vias.filter((v) => v.from === 'M1') },
     { key: 'METAL2', layer: 22, rectangles: routed.metal.filter((m) => m.layer === 'M2') },
@@ -200,6 +203,8 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   delete project.processRecipe;
   delete project.snapshots;
   delete project.snapshotBranches;
+  assert.deepEqual(project.layout.elements.slice(0, exactSourceMasks.length), exactSourceMasks,
+    'Supplementary mask layers must preserve exact original source elements');
   model.revision++;
   model.processRevision++;
   validateProcessModel(model);
@@ -210,6 +215,8 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
   });
   validateProjectFile(readBack);
   assert.equal(readBack.layout.elements.length, 3712 + 251);
+  assert.deepEqual(readBack.layout.elements.slice(0, exactSourceMasks.length), exactSourceMasks,
+    'Storage roundtrip changed one or more approved source File Mask vertices');
   assert.equal(readBack.layout.combos.length, 14);
   assert.ok(!readBack.processRecipe && !readBack.snapshotBranches);
   return {
