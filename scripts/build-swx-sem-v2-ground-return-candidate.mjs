@@ -14,6 +14,7 @@ import {
   createSwxSemV2ProcessGeometry,
   auditSwxSemV2ElectricalNets,
 } from './swx-mems-sem-v2-unit.mjs';
+import { auditSwxPaperEnvelope } from './swx-mems-paper-envelope-audit.mjs';
 
 const { json, validation, project } = await buildSwxMemsUnified(SWX_GROUND_RETURN_PROCESS_PROFILE);
 const source = createSwxSemGroundReturnCandidate('off');
@@ -23,6 +24,7 @@ assert.equal(project.snapshotBranches.branches.length, 2);
 const v = await import('../site/vector-geometry.js');
 const originalAudit = auditSwxSemV2ElectricalNets(v, original);
 const candidateAudit = auditSwxSemV2ElectricalNets(v, source);
+const candidateFigureScopeAudit = auditSwxPaperEnvelope(v, source);
 assert.equal(originalAudit.opticalFrameConnectedToGroundSi, false);
 assert.equal(candidateAudit.opticalFrameConnectedToGroundSi, true);
 assert.equal(candidateAudit.combsSeparatedFromGround, true);
@@ -43,6 +45,8 @@ await writeFile(
       originalSiliconDomains: originalAudit.siliconConnectedDomains,
       candidateSiliconDomains: candidateAudit.siliconConnectedDomains,
       sourceElectricalNetAudit: candidateAudit,
+      figureScopeAudit: candidateFigureScopeAudit,
+      extraneousSourceUnverifiedBOXSupportedRails: 2,
       fabricatedSiliconElectricalTopologySatisfied: true,
       authorPerimeterGeometryAccepted: false,
       authorGroundRoutingAccepted: false,
