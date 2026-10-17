@@ -385,15 +385,14 @@ export function createSwxSemV2SupportAudit(state = 'off') {
   // Inspect each *real* 1um truss at its own centroid after HF. The
   // older 14 released point probes covered compliant beams but not the
   // wider truss Si that could retain an unintended BOX island.
-  const trussReleasePoints = semV2PhysicalPose(state).springTrussContours.map(
-    (ring, index) => {
-      const xs = ring.map((point) => point[0]);
-      const ys = ring.map((point) => point[1]);
-      const x = (Math.min(...xs) + Math.max(...xs)) / 2;
-      const y = (Math.min(...ys) + Math.max(...ys)) / 2;
-      return add('folded spring truss ' + index, [x, y]);
-    },
-  );
+  const springTrusses = semV2PhysicalPose(state).springTrussContours;
+  const trussReleasePoints = springTrusses.map((ring, index) => {
+    const xs = ring.map((point) => point[0]);
+    const ys = ring.map((point) => point[1]);
+    const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+    return add('folded spring truss ' + index, [x, y]);
+  });
   const released = [
     add('moving shuttle rail', [2.65, -72 + travel]),
     add('left moving comb handle', [-25, -87.4 + travel]),
