@@ -78,11 +78,7 @@ test('heavy PR scopes ignore documentation tests and isolated screenshot collect
     assert.ok(source.includes("      - '!site/tests/**'"));
     assert.ok(source.includes("      - 'site/**'"));
   }
-  for (const name of [
-    'ui-v2-stage-c-m4.yml',
-    'ui-v2-main-mask.yml',
-    'ui-v2-three.yml',
-  ]) {
+  for (const name of ['ui-v2-stage-c-m4.yml', 'ui-v2-main-mask.yml', 'ui-v2-three.yml']) {
     const source = workflow(name).replaceAll('"', "'");
     assert.ok(source.includes("      - '!scripts/v2/capture-visual-first.mjs'"));
   }
