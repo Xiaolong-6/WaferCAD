@@ -258,7 +258,8 @@ transaction.** Main, Mask and Section continue to show the existing
 Workstation project; History, Autosave, Recovery and storage leases are
 neither bypassed nor verified.
 
-In production, `process-task-controller` now allows an explicit optional
+In production, both the active v2 Project panel and the legacy app Project reader
+use `process-task-controller`'s explicit optional
 `startupFallback` only when Worker construction throws. The project reader
 opts in for files of at most 8 MiB, using the original strict
 `readProjectFile()` validator, with Abort and busy-task semantics preserved.
