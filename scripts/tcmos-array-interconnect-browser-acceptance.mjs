@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import { launchBrowser, newUiPage, waitForPaint } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
 import { loadGeometryKernel } from './process-benchmarks.mjs';
+import { parseGDS, flattenGDS } from '../site/gds.js';
+import { parseOAS } from '../site/oasis.js';
 
 const dir = resolve('test-results/tcmos');
 const path = resolve(dir, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-PROTOTYPE.wafercad');
@@ -16,6 +18,7 @@ assert.equal(file.layout.elements.length, 3963);
 const browser = await launchBrowser();
 const { page, context } = await newUiPage(browser, {
   viewport: { width: 1440, height: 950 },
+  acceptDownloads: true,
 });
 const errors = [];
 const report = {
@@ -76,6 +79,53 @@ try {
       await waitForPaint(page);
     }
     await panel.screenshot({ path: resolve(dir, 'tcmos-4x4-routed-' + view + '-chromium.png') });
+  }
+  // Distinct 14-layer mask export must retain all approved 8 layer groups
+  // plus exactly six explicitly supplemental interconnect groups.
+  await page.locator('.p-nav [data-action="domain:mask"]').click();
+  const checkboxes = page.locator('#v2-maskLayerList input[type="checkbox"]');
+  assert.equal(await checkboxes.count(), 14, 'Supplemental mask groups are missing');
+  for (let i = 0; i < 14; i++) {
+    const didClick = await page.evaluate(() => {
+      const box = document.querySelector('#v2-maskLayerList input[type="checkbox"]:not(:checked)');
+      if (!box) return false;
+      box.click();
+      return true;
+    });
+    if (!didClick) break;
+  }
+  assert.equal(await page.locator('#v2-maskLayerList input:checked').count(), 14);
+  const expectedCounts = {};
+  for (const element of file.layout.elements) {
+    const key = element.layer + '/' + element.datatype;
+    expectedCounts[key] = (expectedCounts[key] || 0) + 1;
+  }
+  const menu = page.locator('[data-action="mask-export-menu"]');
+  if (!(await menu.isVisible()))
+    await page.getByRole('button', { name: 'Mask more tools' }).click();
+  await menu.click();
+  report.exports = [];
+  for (const format of ['gds', 'oas']) {
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 120000 }),
+      page.locator('[data-action="mask-export:' + format + '"]').click(),
+    ]);
+    const output = resolve(dir, 'tcmos-4x4-routed-mask.' + format);
+    await download.saveAs(output);
+    const bytes = await readFile(output);
+    const parsed = format === 'gds'
+      ? parseGDS(Uint8Array.from(bytes).buffer)
+      : await parseOAS(Uint8Array.from(bytes).buffer);
+    const elements = flattenGDS(parsed, parsed.root).elements;
+    const counts = {};
+    for (const element of elements) {
+      const key = element.layer + '/' + element.datatype;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    assert.deepEqual(counts, expectedCounts, format + ': lost or duplicated routing polygons');
+    assert.equal(elements.length, 3963);
+    assert.equal(Object.keys(counts).length, 14);
+    report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 3963 });
   }
   assert.deepEqual(errors, []);
   report.status = 'pass';
