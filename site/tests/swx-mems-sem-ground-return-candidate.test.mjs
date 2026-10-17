@@ -15,7 +15,6 @@ await loadGeometryKernel();
 const v = await import('../vector-geometry.js');
 const { geometryArea } = await import('../model.js');
 const union = (rings) => v.unionGeometries(rings.map((ring) => [[[...ring, ring[0]]]]));
-const contact = (a, b) => geometryArea(v.intersection(union(a), union(b)));
 
 test('ground study is isolated from the original unapproved SEM-v2 cell', () => {
   assert.equal(SWX_GROUND_RETURN_ASSUMPTIONS.authorPerimeterMaskKnown, false);
@@ -42,7 +41,7 @@ test('ground study is isolated from the original unapproved SEM-v2 cell', () => 
   }
 });
 
-test('each fabricated perimeter rail bonds optical Si to MEMS ground without shorting drive', () => {
+test('perimeter rails connect optical Si to ground without driven-comb shorts', () => {
   for (const state of ['off', 'on']) {
     const baseline = createSwxSemV2ProcessGeometry(state);
     const candidate = createSwxSemGroundReturnCandidate(state);
