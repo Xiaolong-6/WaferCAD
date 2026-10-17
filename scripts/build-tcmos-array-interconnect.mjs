@@ -372,7 +372,7 @@ export function renderTcmosRoutingOverlaySvg(layout) {
   const vias = layout.vias
     .map(
       (via) =>
-        '<rect ' + rect(via.rect) + '" fill="#111827" stroke="#ffffff" stroke-width=".035"/>',
+        '<rect ' + rect(via.rect) + ' fill="#111827" stroke="#ffffff" stroke-width=".035"/>',
     )
     .join('');
   const outlines = layout.cells
