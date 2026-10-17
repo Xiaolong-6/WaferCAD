@@ -405,7 +405,11 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
     model.regions
       .find((region) => v.pointInMulti([x, y], region.geom))
       ?.stack.some((segment) => segment.layerId === layerId);
-  assert.equal(materialAt(-3.2, -1.2, gateOxide.id), true, 'Gate dielectric sits beneath pMOS POLY');
+  assert.equal(
+    materialAt(-3.2, -1.2, gateOxide.id),
+    true,
+    'Gate dielectric sits beneath pMOS POLY',
+  );
   assert.equal(materialAt(3.2, -1.2, gateOxide.id), true, 'Gate dielectric sits beneath nMOS POLY');
   assert.equal(materialAt(0, 3, gateOxide.id), false, 'No blanket dielectric outside ACTIVE');
   assert.equal(materialAt(-4, -1.2, gateOxide.id), false, 'Source remains exposed silicon');

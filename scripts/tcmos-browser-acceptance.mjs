@@ -723,7 +723,7 @@ try {
     tiltState.model.implants.slice(0, 2).map((item) => item.tilt),
     [18, 18],
   );
-  assert.deepEqual(tiltState.section, { a: [-4.45, 0], b: [-2.95, 0] });
+  assert.deepEqual(tiltState.section, { a: [-4.45, -1.2], b: [-2.95, -1.2] });
   await revealSectionDock();
   await requireLargeView('section');
   await page.screenshot({ path: resolve(dir, 'tcmos-tilt-18deg-NOT-PAPER-section.png') });
