@@ -1,6 +1,6 @@
 // Playwright page.evaluate expression. Independent production Three.js instance.
 // It does not assign live Workstation state, bypass Recovery or replace Worker.
-async ({ model: providedModel, demo = false }) => {
+async ({ model: providedModel, demo = false, roiBounds = null, zBreak = null }) => {
   const [{ createThreeView }, { buildRenderSurfacePlan, rememberRenderSurfacePlan }] =
     await Promise.all([
       import('https://wafercad.local/three-view.js'),
@@ -27,11 +27,17 @@ async ({ model: providedModel, demo = false }) => {
   }
   if (!model || !Array.isArray(model.regions)) throw Error('No validated model was provided.');
 
-  // Use production ownership geometry and its native plan cache. The exact
-  // model object is passed to ThreeView, so even large plans need no Worker.
-  const plan = buildRenderSurfacePlan(model);
+  // Diagnostic-only XY crop and Z break expose sub-micron texture that is
+  // unresolvable in the 7000-um-wide, 350-um-thick full-device overview.
+  const clip = roiBounds
+    ? (await import('https://wafercad.local/vector-geometry.js')).rectMulti(
+        roiBounds[2] - roiBounds[0], roiBounds[3] - roiBounds[1],
+        (roiBounds[2] + roiBounds[0]) / 2, (roiBounds[3] + roiBounds[1]) / 2)
+    : null;
+  const collapse = zBreak ? { enabled: true, top: zBreak[0], bottom: zBreak[1] } : null;
+  const plan = buildRenderSurfacePlan(model, clip);
   if (!plan.caps?.length && !plan.sidewalls?.length) throw Error('No visible material geometry.');
-  rememberRenderSurfacePlan(model, null, plan);
+  rememberRenderSurfacePlan(model, clip, plan);
 
   const overlay = document.createElement('div');
   overlay.style.cssText =
@@ -53,14 +59,20 @@ async ({ model: providedModel, demo = false }) => {
     host,
     stats,
     getModel: () => model,
+    getClipGeometry: () => clip,
+    getZCollapse: () => collapse,
     getInspection: () => ({ opacity: 1, borders: true, fast: true }),
   });
   const initialized = await renderer.init();
-  renderer.fit();
-  await renderer.render();
+  // init() already schedules a full native scene build; another render()
+  // during that build supersedes the rough-mesh refinement.
   window.__wafercadOfflineModel = { model, host, renderer };
   return {
     initialized,
+    roiBounds,
+    zBreak,
+    roughCaps: plan.caps.filter((cap) => cap.appearance?.kind === 'rough').length,
+    exposedRoughCaps: plan.caps.filter((cap) => !cap.buried && cap.appearance?.kind === 'rough').length,
     layers: model.layers.length,
     regions: model.regions.length,
     caps: plan.caps.length,

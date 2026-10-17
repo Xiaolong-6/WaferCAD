@@ -12,6 +12,7 @@ import contextlib
 import hashlib
 import json
 import mimetypes
+import math
 import os
 import re
 import shutil
@@ -138,6 +139,22 @@ def runtime_probe(page):
     }''')
 
 
+def parse_native_bounds(raw: str | None, label: str, count: int):
+    if raw is None:
+        return None
+    try:
+        values = tuple(float(value.strip()) for value in raw.split(','))
+    except ValueError as exc:
+        raise ValueError(f'{label} needs {count} finite values') from exc
+    if len(values) != count or not all(math.isfinite(value) for value in values):
+        raise ValueError(f'{label} needs {count} finite values')
+    if count == 4 and (values[2] <= values[0] or values[3] <= values[1]):
+        raise ValueError('ROI must have positive X and Y extent')
+    if count == 2 and values[0] <= values[1]:
+        raise ValueError('Z break top must exceed bottom')
+    return values
+
+
 def snapshot_sha(path: Path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
@@ -157,7 +174,7 @@ def source_revision(root: Path):
 
 
 def run(args):
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
     root = args.root.resolve()
     site = root / 'site'
@@ -305,7 +322,8 @@ def run(args):
                     report['exampleLoad'] = 'attempted; independently inspect native page and Worker logs'
                     report['afterProject'] = runtime_probe(page)
             if args.inmemory_demo or args.inmemory_project:
-                model_input = {'model': None, 'demo': args.inmemory_demo}
+                model_input = {'model': None, 'demo': args.inmemory_demo,
+                               'roiBounds': args.inmemory_roi, 'zBreak': args.inmemory_z_break}
                 input_evidence = None
                 if args.inmemory_project:
                     project_path = args.inmemory_project.resolve()
@@ -323,7 +341,17 @@ def run(args):
                 expression = (root / 'scripts/offline-native-model-view.js').read_text(
                     encoding='utf-8')
                 details = page.evaluate(expression, model_input)
-                page.wait_for_timeout(2600)
+                rough_completion_timeout = False
+                try:
+                    page.wait_for_function('''(roughCaps) => {
+                      const item=window.__wafercadOfflineModel;
+                      if (item?.host?.dataset?.renderState !== 'ready') return false;
+                      const mode=item.host.querySelector('canvas')?.dataset?.roughMeshMode;
+                      return roughCaps > 0 ? mode === 'detailed' : true;
+                    }''', arg=details.get('roughCaps', 0), timeout=30000)
+                except PlaywrightTimeoutError:
+                    rough_completion_timeout = True
+                page.wait_for_timeout(400)
                 state = page.evaluate('''() => {
                   const item=window.__wafercadOfflineModel;
                   const canvas=item?.host?.querySelector('canvas');
@@ -331,9 +359,18 @@ def run(args):
                   return {ready:item?.renderer?.ready || false,
                     renderState:item?.host?.dataset?.renderState || null,
                     renderError:item?.host?.dataset?.renderError || null,
+                    renderPhase:item?.host?.dataset?.renderPhase || null,
+                    roughMeshMode:canvas?.dataset?.roughMeshMode || 'none',
+                    roughMeshBackend:canvas?.dataset?.roughMeshBackend || null,
+                    roughTriangleCount:Number(canvas?.dataset?.roughTriangleCount || 0),
+                    roughRebuildCount:Number(canvas?.dataset?.roughRebuildCount || 0),
                     width:bounds?.width || 0,height:bounds?.height || 0};
                 }''')
-                ready = bool(details['initialized'] and state['ready']
+                rough_ready = (not details.get('roughCaps') or
+                               (state['roughMeshMode'] == 'detailed' and
+                                state['roughTriangleCount'] > 0 and
+                                not rough_completion_timeout))
+                ready = bool(details['initialized'] and state['ready'] and rough_ready
                              and state['renderState'] == 'ready'
                              and state['width'] > 100 and state['height'] > 100)
                 image = out / 'isolated-native-model.png'
@@ -341,7 +378,9 @@ def run(args):
                 report['images']['isolatedNativeModel'] = {
                     'file': image.name, 'sha256': snapshot_sha(image)}
                 report['isolatedNativeModel'] = {
-                    'ready': ready, 'geometry': details, 'renderer': state,
+                    'ready': ready, 'roughMeshCompleted': rough_ready,
+                    'roughCompletionTimedOut': rough_completion_timeout,
+                    'geometry': details, 'renderer': state,
                     'source': input_evidence or 'production createModel three-material demo',
                     'workstationStateLoaded': False, 'recoveryVerified': False}
                 report['limitations'].append(
@@ -385,6 +424,8 @@ def main():
                              help='Render a production three-material in-memory model in isolated ThreeView')
     model_group.add_argument('--inmemory-project', type=Path,
                              help='Strictly parse a real .wafercad in Node and render its model in isolated ThreeView')
+    parser.add_argument('--inmemory-roi', help='xMin,yMin,xMax,yMax in physical micrometres; for --inmemory-project')
+    parser.add_argument('--inmemory-z-break', help='top,bottom Z coordinates in physical micrometres; for --inmemory-project')
     parser.add_argument('--wait-ms', type=int, default=5500)
     parser.add_argument('--width', type=int, default=1600)
     parser.add_argument('--height', type=int, default=1000)
@@ -393,6 +434,13 @@ def main():
     args = parser.parse_args()
     if not 300 <= args.width <= 4096 or not 300 <= args.height <= 4096 or not 500 <= args.wait_ms <= 60000:
         parser.error('Invalid dimensions or wait interval')
+    if (args.inmemory_roi or args.inmemory_z_break) and not args.inmemory_project:
+        parser.error('ROI and Z break require --inmemory-project')
+    try:
+        args.inmemory_roi = parse_native_bounds(args.inmemory_roi, 'ROI', 4)
+        args.inmemory_z_break = parse_native_bounds(args.inmemory_z_break, 'Z break', 2)
+    except ValueError as exc:
+        parser.error(str(exc))
     try:
         return run(args)
     except Exception as exc:

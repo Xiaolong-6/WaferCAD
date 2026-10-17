@@ -28,6 +28,27 @@ class CapturePreflightTests(unittest.TestCase):
         (self.three / 'build/three.module.js').write_text('export {};')
         (self.three / 'examples/jsm/controls/OrbitControls.js').write_text('export {};')
 
+    def test_inmemory_roi_and_z_break_bounds(self):
+        self.assertIsNone(capture.parse_native_bounds(None, 'ROI', 4))
+        self.assertEqual(capture.parse_native_bounds('-8,-8,8,8', 'ROI', 4), (-8.,-8.,8.,8.))
+        self.assertEqual(capture.parse_native_bounds('173.9,-175.8', 'Z break', 2),
+                         (173.9, -175.8))
+        for value in ('0,0,0,1', '0,0,1,0', '1,1,-1,2', 'nan,0,1,1', '0,0,inf,1',
+                      '0,1,2', 'a,b,c,d'):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    capture.parse_native_bounds(value, 'ROI', 4)
+        for value in ('0,1', '1,1', 'nan,0', '2', 'a,b'):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    capture.parse_native_bounds(value, 'Z break', 2)
+
+    def test_native_model_does_not_duplicate_initial_renderer_build(self):
+        source = (MODULE.parent / 'offline-native-model-view.js').read_text()
+        self.assertIn('await renderer.init()', source)
+        self.assertNotIn('await renderer.render()', source)
+        self.assertIn('roughCaps:', source)
+
     def test_pinned_version_and_files(self):
         self.assertEqual(capture.check_three(self.root), ('0.179.1', self.three))
 

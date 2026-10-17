@@ -273,3 +273,39 @@ Targeted checks:
 `node --test site/tests/process-task-controller.test.mjs site/tests/offline-native-project-export.test.mjs`
 and `python3 scripts/offline-native-app-capture.test.py`.
 Neither diagnostic mode is final Workstation or release acceptance.
+
+### Submicron roughness in native Three.js diagnostics
+
+The native `createThreeView().init()` already schedules a full scene build.
+The standalone in-memory inspector must not immediately call `render()`
+again: doing so supersedes the ongoing build before adaptive rough meshes
+are generated. An initial WebGL frame or `renderState=ready` alone is
+**insufficient** evidence for a rough-surface Example.
+
+Use explicit physical-coordinate XY ROI and a view-only Z break for the
+Photodetector's ~0.3 µm rough feature size within its 7,000 µm device span:
+
+```sh
+python3 scripts/offline-native-app-capture.py \
+  --root . --output test-results/offline-photodetector-rough \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --inmemory-roi=-8,-8,8,8 --inmemory-z-break=173.9,-175.8
+```
+
+The two optional flags are **diagnostic presentation controls**; they do
+not change the project model or scientific geometry. They require
+`--inmemory-project`. The ROI coordinates are in µm with positive X/Y
+extent; the Z break is `top,bottom` in µm. These particular coordinates
+belong to the Photodetector Example and must not be used as generic
+defaults for other devices.
+
+Before writing a native rough-surface screenshot, the capture script now
+waits for `roughMeshMode=detailed` when the physical surface plan contains
+rough caps. It records the rough-mesh backend, triangle count and completion
+status, and returns failure rather than accepting a smooth first frame if
+refinement fails or times out. On managed null-origin Chromium, this is
+native Three.js geometry/presentation diagnosis only; full Workstation
+Open, Recovery and hardware GPU acceptance remain separate.
+
+Focused checks: `python3 scripts/offline-native-app-capture.test.py` and
+`node --test site/tests/offline-native-project-export.test.mjs`.
