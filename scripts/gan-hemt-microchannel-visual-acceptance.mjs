@@ -486,19 +486,51 @@ try {
     null,
     { timeout: 120000 },
   );
-  await page.waitForFunction(
-    () => {
-      const state = window.WaferCadV2Workstation?.snapshot();
-      return (
-        state?.assemblyWires?.length === 2 &&
-        document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2' &&
-        document.getElementById('threeHost')?.dataset.assemblyWireEndcapCount === '4'
-      );
-    },
-    null,
-    { timeout: 120000 },
-  );
+  // Capture evidence BEFORE checking the assembly wire contract. Without
+  // this diagnostic a failed renderer leaves only a two-minute timeout, making
+  // it impossible to distinguish lost Bookmark state from a stale 3D scene.
   await waitForPaint(page);
+  const inspectWireState = () =>
+    page.evaluate(() => {
+      const state = window.WaferCadV2Workstation?.snapshot();
+      const host = document.getElementById('threeHost');
+      return {
+        snapshotWireCount: state?.assemblyWires?.length ?? null,
+        snapshotWireIds: state?.assemblyWires?.map((wire) => wire.id) || [],
+        historyNodeCount: state?.snapshotBranches?.nodes?.length ?? null,
+        modelRevision: state?.model?.revision ?? null,
+        roi: state?.roi,
+        hostPresent: !!host,
+        rendererDataset: host ? { ...host.dataset } : null,
+      };
+    });
+  const diagnostic = await inspectWireState();
+  await writeFile(
+    new URL('three-chip-wire-diagnostic.json', directory),
+    JSON.stringify(diagnostic, null, 2) + '\n',
+  );
+  const precontractShot = await page.locator('#threeHost').screenshot({ type: 'png' });
+  await writeFile(new URL('three-chip-precontract.png', directory), precontractShot);
+  try {
+    await page.waitForFunction(
+      () => {
+        const state = window.WaferCadV2Workstation?.snapshot();
+        return (
+          state?.assemblyWires?.length === 2 &&
+          document.getElementById('threeHost')?.dataset.assemblyWireBuiltCount === '2' &&
+          document.getElementById('threeHost')?.dataset.assemblyWireEndcapCount === '4'
+        );
+      },
+      null,
+      { timeout: 20000 },
+    );
+  } catch (error) {
+    throw new Error(
+      'Three-chip Au wire material/renderer contract failed: ' +
+        JSON.stringify({ before: diagnostic, after: await inspectWireState() }),
+      { cause: error },
+    );
+  }
   const packageCanvas = await page.locator('#threeHost').boundingBox();
   assert.ok(
     packageCanvas && packageCanvas.height >= 340,
