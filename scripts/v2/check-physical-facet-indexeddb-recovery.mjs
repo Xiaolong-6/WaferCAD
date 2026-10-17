@@ -127,7 +127,10 @@ try {
         if (injectAbort && this.name === 'workspace' && value?.key === 'current') {
           injectAbort = false;
           abortCount++;
-          throw new globalThis.DOMException('physical Recovery IndexedDB abort', 'QuotaExceededError');
+          throw new globalThis.DOMException(
+            'physical Recovery IndexedDB abort',
+            'QuotaExceededError',
+          );
         }
         return nativePut.call(this, value, ...args);
       };
@@ -145,9 +148,7 @@ try {
             live = structuredClone(projectState);
             delete live.snapshots;
             delete live.snapshotBranches;
-            if (
-              projectState.model.experimentalPhysicalFacetOwner.originX === 1.6
-            ) {
+            if (projectState.model.experimentalPhysicalFacetOwner.originX === 1.6) {
               injectAbort = true;
             }
           },
@@ -172,8 +173,6 @@ try {
         const persisted = await loadWorkspaceState();
         const points = await listWorkspaceRecoveryPoints();
         const restoredBranches = history.exportBranchState();
-        const branchesIdentical =
-          JSON.stringify(restoredBranches) === JSON.stringify(original.snapshotBranches);
         return {
           abortCount,
           loadedStates,
@@ -183,9 +182,8 @@ try {
           storedSectionUnchanged: JSON.stringify(cut(persisted)) === JSON.stringify(originalCut),
           historyRecordCount: history.exportRecords().length,
           originalHistoryCount: original.snapshots.length,
-          originalBranchPreserved: branchesIdentical,
-          branchBefore: branchesIdentical ? undefined : original.snapshotBranches,
-          branchAfter: branchesIdentical ? undefined : restoredBranches,
+          branchBefore: original.snapshotBranches,
+          branchAfter: restoredBranches,
           preRestoreCheckpointPreserved: points.some((point) => point.reason === 'pre-restore'),
           outcome: statuses.at(-1)?.message || '',
         };
@@ -202,7 +200,11 @@ try {
     assert.equal(result.memorySectionUnchanged, true);
     assert.equal(result.storedSectionUnchanged, true);
     assert.equal(result.historyRecordCount, result.originalHistoryCount);
-    assert.equal(result.originalBranchPreserved, true);
+    assert.deepEqual(
+      result.branchAfter,
+      result.branchBefore,
+      'Recovered History must preserve all branch graph data and values',
+    );
     assert.equal(result.preRestoreCheckpointPreserved, true);
     assert.match(result.outcome, /Recovery restore failed/i);
     assert.deepEqual(report.browserErrors, []);

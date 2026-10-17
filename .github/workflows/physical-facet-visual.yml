@@ -51,10 +51,6 @@ jobs:
         run: node scripts/v2/capture-physical-facet-preview.mjs
       - name: Inspect native v2 Workstation physical file read-only
         run: node scripts/v2/capture-physical-facet-workstation.mjs
-      - name: One-time browser-recovery formatter diagnostic
-        run: |
-          npx prettier --write scripts/v2/check-physical-facet-indexeddb-recovery.mjs
-          git diff --unified=3 -- scripts/v2/check-physical-facet-indexeddb-recovery.mjs
       - name: Fault-inject real IndexedDB Recovery write in Chromium
         run: node scripts/v2/check-physical-facet-indexeddb-recovery.mjs
       - name: Retain unreviewed screenshots and metrics
