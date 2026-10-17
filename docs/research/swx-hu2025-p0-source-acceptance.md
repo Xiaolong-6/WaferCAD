@@ -2,7 +2,7 @@
 
 **Status: BLOCKED — no accepted paper-faithful 2×2 physical device.**
 
-Reference: Hu, Y., Sun, Y., Lu, Y. et al., *Silicon photonic MEMS switches based on split waveguide crossings*, Nature Communications **16**, 331 (2025), [doi:10.1038/s41467-024-55528-9](https://doi.org/10.1038/s41467-024-55528-9). This review is anchored to the article's Fig. 1/2/3, Device Design, Experimental Results and Methods. The original EBL GDS and calibrated local HF release contour are **not available**; avoid claiming metrology of schematic pixels. Author Supplementary Sections 3–8 require independent high-resolution verification before extracting author-exact coordinates.
+Reference: Hu, Y., Sun, Y., Lu, Y. et al., _Silicon photonic MEMS switches based on split waveguide crossings_, Nature Communications **16**, 331 (2025), [doi:10.1038/s41467-024-55528-9](https://doi.org/10.1038/s41467-024-55528-9). This review is anchored to the article's Fig. 1/2/3, Device Design, Experimental Results and Methods. The original EBL GDS and calibrated local HF release contour are **not available**; avoid claiming metrology of schematic pixels. Author Supplementary Sections 3–8 require independent high-resolution verification before extracting author-exact coordinates.
 
 ## What the paper actually establishes
 
