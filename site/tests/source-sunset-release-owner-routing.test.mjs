@@ -72,3 +72,25 @@ test('scientific browser owners have executable v2 checks and actual Node predic
   assert.match(workflow, /npm run test:ui:array/);
   assert.match(workflow, /node scripts\/renderer-product-regression\.mjs/);
 });
+
+test('Example Run All retains native-v2 science and all original replay cases', async () => {
+  const code = await readFile(join(root, 'scripts/example-recipe-runall-acceptance.mjs'), 'utf8');
+  const workflow = await readFile(
+    join(root, '.github/workflows/example-recipe-reconstruction.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /node scripts\/example-recipe-runall-acceptance\.mjs/);
+  assert.match(code, /\/app\.html\?start=example/);
+  assert.doesNotMatch(
+    code.replace(/^\/\/.*$/gm, ''),
+    /app-legacy\.html|newLegacyUiContext|waitForAppReady|waitForStatus/,
+  );
+  for (const required of [
+    /await loadGeometryKernel\(\)/,
+    /assertSameMaterialGeometry/,
+    /assertSameCanonicalArrayGeometry/,
+    /sourceProject\.snapshotBranches\.nodes/,
+    /maxQuantizedAreaUm2: 25/,
+    /assert\.equal\(replayNodes\.length, processSteps\.length\)/,
+  ]) assert.match(code, required);
+});

@@ -211,10 +211,10 @@ try {
       });
       console.log(`${example.id}: beginning ${count}-Step Kernel rebuild`);
       await page.locator('#recipeRunAllBtn').click();
-      await page.getByRole('button', {
-        name: historyChoice === 'keep' ? 'Keep previous history' : 'Clear history',
-        exact: true,
-      }).click({ timeout: 30000 });
+      const historyAction = historyChoice === 'keep' ? 'Keep previous history' : 'Clear history';
+      await page.getByRole('button', { name: historyAction, exact: true }).click({
+        timeout: 30000,
+      });
       await page.waitForFunction(
         () => {
           const summary = document.querySelector('#recipeRunSummary')?.textContent || '';

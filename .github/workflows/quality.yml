@@ -56,6 +56,7 @@ jobs:
             scripts/v2/check-source-sunset-edge-on.mjs
             scripts/v2/check-source-sunset-release-owners.mjs
             scripts/v2/check-source-sunset-renderer-stress.mjs
+            scripts/example-recipe-runall-acceptance.mjs
             docs/LEGACY_SOURCE_SUNSET.md
           )
           npx prettier --write "${files[@]}"
