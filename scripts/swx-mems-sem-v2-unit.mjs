@@ -509,8 +509,7 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
   const fixedOpticalTerminalNetIds = fixedOpticalTerminalPointsUm.map((point, index) =>
     ownerOfPoint(point, 'fixed optical terminal ' + index),
   );
-  const opticalTerminalsShareNet =
-    fixedOpticalTerminalNetIds[0] === fixedOpticalTerminalNetIds[1];
+  const opticalTerminalsShareNet = new Set(fixedOpticalTerminalNetIds).size === 1;
   const stationaryOpticalNetId = fixedOpticalTerminalNetIds[0];
   const opticalFrameConnectedToGroundSi =
     opticalTerminalsShareNet && stationaryOpticalNetId === anchorNetId;
