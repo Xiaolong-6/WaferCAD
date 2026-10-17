@@ -604,39 +604,20 @@ try {
   // survive four border/opacity presentations without rebuilding material.
   const packageBorders = page.locator('#threePanel [data-action="borders:three"]');
   const packageOpacity = page.locator('#threePanel [data-action="opacity:three"]');
-  try {
-    await packageBorders.waitFor({ state: 'visible', timeout: 20000 });
-    await packageOpacity.waitFor({ state: 'visible', timeout: 20000 });
-  } catch (error) {
-    const toolbar = await page.evaluate(() => {
-      const panel = document.getElementById('threePanel');
-      const borders = panel?.querySelector('[data-action="borders:three"]');
-      const opacity = panel?.querySelector('[data-action="opacity:three"]');
-      const rect = (element) => {
-        if (!element) return null;
-        const box = element.getBoundingClientRect();
-        const style = getComputedStyle(element);
-        return {
-          x: box.x,
-          y: box.y,
-          width: box.width,
-          height: box.height,
-          display: style.display,
-          visibility: style.visibility,
-        };
-      };
-      return {
-        viewport: [innerWidth, innerHeight],
-        maximized: window.WaferCadV2Workstation?.snapshot()?.ui?.desktopLayout?.maximized,
-        panel: rect(panel),
-        borders: rect(borders),
-        opacity: rect(opacity),
-        borderCount: document.querySelectorAll('[data-action="borders:three"]').length,
-        opacityCount: document.querySelectorAll('[data-action="opacity:three"]').length,
-      };
-    });
-    throw new Error(JSON.stringify({ toolbar, cause: String(error) }));
-  }
+  assert.equal(await packageBorders.count(), 1, '3D Border control missing from DOM');
+  assert.equal(await packageOpacity.count(), 1, '3D Opacity control missing from DOM');
+  // The production toolbar moves real controls into a Popover overflow menu
+  // when the 3D dock is narrow. Open that menu through its actual trigger;
+  // never bypass the workstation event handler or mutate inspection state.
+  const clickPackageTool = async (control) => {
+    if (!(await control.isVisible())) {
+      const more = page.locator('#threePanel [aria-label="3D more tools"]');
+      assert.ok(await more.isVisible(), 'No visible 3D overflow-menu trigger');
+      if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+      await control.waitFor({ state: 'visible', timeout: 20000 });
+    }
+    await control.click();
+  };
   const scientificState = () =>
     page.evaluate(() => {
       const state = window.WaferCadV2Workstation.snapshot();
@@ -655,7 +636,7 @@ try {
   for (const opacityValue of [1, 0.5]) {
     // Use the production opacity slider's input handler. Directly mutating
     // threeOpacity would bypass the real Workstation render transaction.
-    await packageOpacity.click();
+    await clickPackageTool(packageOpacity);
     await page.locator('#threeOpacityRange').evaluate((slider, next) => {
       slider.value = String(next);
       slider.dispatchEvent(new Event('input', { bubbles: true }));
@@ -680,7 +661,7 @@ try {
       );
       const pressed = (await packageBorders.getAttribute('aria-pressed')) === 'true';
       const changed = pressed !== borders;
-      if (changed) await packageBorders.click();
+      if (changed) await clickPackageTool(packageBorders);
       await page.waitForFunction(
         ({ previousSerial, borders, opacityValue, changed }) => {
           const host = document.getElementById('threeHost');
