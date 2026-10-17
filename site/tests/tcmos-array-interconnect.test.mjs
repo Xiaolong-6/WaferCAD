@@ -14,13 +14,22 @@ await loadGeometryKernel();
 const geometry = await import('../vector-geometry.js');
 const { geometryArea } = await import('../model.js');
 const shape = (points) => [[points.concat([points[0]])]];
-const rect = ([a, b, c, d]) => shape([[a, b], [c, b], [c, d], [a, d]]);
+const rect = ([a, b, c, d]) =>
+  shape([
+    [a, b],
+    [c, b],
+    [c, d],
+    [a, d],
+  ]);
 
 test('4x4 routed overlay preserves every approved source M1 polygon and CNT mapping', () => {
   const layout = buildTcmosRoutedOverlay();
   const approved = readTcmosReferenceMask();
   const m1 = approved.find((group) => group.name === 'METAL1').shapes;
-  assert.equal(approved.reduce((n, group) => n + group.shapes.length, 0), 232);
+  assert.equal(
+    approved.reduce((n, group) => n + group.shapes.length, 0),
+    232,
+  );
   assert.equal(layout.sourceFileMaskElementCount, 3712);
   assert.equal(layout.sourceCntCount, 3488);
   assert.equal(layout.scientificStatus, 'illustrative-routing-topology-only');
@@ -34,8 +43,7 @@ test('4x4 routed overlay preserves every approved source M1 polygon and CNT mapp
     for (const [j, name] of names.entries()) {
       const translated = m1[j].points.map(([x, y]) => [x + cell.x, y + cell.y]);
       assert.deepEqual(layout.m1[4 * i + j].points, translated);
-      assert.equal(layout.m1[4 * i + j].net,
-        name === 'VOUT' ? 'VOUT/' + cell.id : name);
+      assert.equal(layout.m1[4 * i + j].net, name === 'VOUT' ? 'VOUT/' + cell.id : name);
     }
   }
 });
@@ -63,31 +71,36 @@ test('all M1-to-M2 vias are FULLY inside exactly one approved M1 polygon', () =>
 
 test('all 280 Via faces have full real polygon-Boolean metal coverage and no foreign-net overlap', () => {
   const layout = buildTcmosRoutedOverlay();
-  const candidates = (layer) => layer === 'M1'
-    ? layout.m1.map((m) => ({ ...m, geom: shape(m.points) }))
-    : layout.metal.filter((m) => m.layer === layer)
-      .map((m) => ({ ...m, geom: rect(m.rect) }));
-  const byLayer = new Map(['M1', 'M2', 'M3', 'M4']
-    .map((name) => [name, candidates(name)]));
+  const candidates = (layer) =>
+    layer === 'M1'
+      ? layout.m1.map((m) => ({ ...m, geom: shape(m.points) }))
+      : layout.metal.filter((m) => m.layer === layer).map((m) => ({ ...m, geom: rect(m.rect) }));
+  const byLayer = new Map(['M1', 'M2', 'M3', 'M4'].map((name) => [name, candidates(name)]));
   let checked = 0;
   for (const via of layout.vias) {
     const aperture = rect(via.rect);
     for (const layer of [via.from, via.to]) {
-      const intersected = byLayer.get(layer)
+      const intersected = byLayer
+        .get(layer)
         .map((candidate) => ({
           ...candidate,
           hit: geometry.intersection(aperture, candidate.geom),
         }))
         .filter((candidate) => geometryArea(candidate.hit) > 1e-12);
       const foreign = intersected.filter((candidate) => candidate.net !== via.net);
-      assert.deepEqual(foreign.map((candidate) => candidate.id), [],
-        via.id + ': Via face intersects another net on ' + layer);
+      assert.deepEqual(
+        foreign.map((candidate) => candidate.id),
+        [],
+        via.id + ': Via face intersects another net on ' + layer,
+      );
       const owned = intersected.filter((candidate) => candidate.net === via.net);
       assert.ok(owned.length > 0, via.id + ': missing ' + layer + ' conductor');
       const coverage = geometry.unionGeometries(owned.map((candidate) => candidate.hit));
       // This is the approved geometry-science precision, not a weakened DRC tolerance.
-      assert.ok(geometryArea(geometry.difference(aperture, coverage)) < 1e-12,
-        via.id + ': part of the Via face is uncovered by ' + layer);
+      assert.ok(
+        geometryArea(geometry.difference(aperture, coverage)) < 1e-12,
+        via.id + ': part of the Via face is uncovered by ' + layer,
+      );
       checked++;
     }
   }
@@ -103,8 +116,7 @@ test('19 independent net components: 3 buses + 16 accessible and unshorted outpu
   assert.equal(report.isolatedOutputs, 16);
   assert.deepEqual([report.via12, report.via23, report.via34], [64, 64, 12]);
   assert.deepEqual([report.m2Shapes, report.m3Shapes, report.m4Shapes], [64, 44, 3]);
-  assert.equal(report.minimumSameLayerNetSpacing,
-    ROUTED_4X4_SPEC.minimumSameLayerNetSpacing);
+  assert.equal(report.minimumSameLayerNetSpacing, ROUTED_4X4_SPEC.minimumSameLayerNetSpacing);
   assert.equal(report.calibratedElectricalResistance, false);
   assert.equal(report.physicalModelIntegrated, false);
   assert.equal(routed.ports.filter((p) => p.role === 'individual-output-test-port').length, 16);
@@ -127,8 +139,10 @@ test('DRC rejects same-layer VOUT short, wrong via ownership and missing trunk c
   const unconnected = buildTcmosRoutedOverlay();
   unconnected.metal.find((m) => m.id === 'm3-trunk/VIN/0').rect[0] += 0.6;
   unconnected.metal.find((m) => m.id === 'm3-trunk/VIN/0').rect[2] += 0.6;
-  assert.throws(() => auditTcmosRoutedOverlay(unconnected),
-    /expected exactly one complete M3 landing/);
+  assert.throws(
+    () => auditTcmosRoutedOverlay(unconnected),
+    /expected exactly one complete M3 landing/,
+  );
 });
 
 test('approved 4x4 stored geometry and original Recipe remain unchanged by routing generation', () => {
