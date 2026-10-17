@@ -163,10 +163,11 @@ test('Snapshot Manager restores physical material and reopens two distinct facet
   };
   const manager = createSnapshotManager(managerOptions);
   const first = manager.create('Physical phase A');
-  const ownerA = session.live.model.experimentalPhysicalFacetOwner;
   const a = [-6.4, 0.5];
   const b = [6.4, 0.5];
-  const firstCut = physicalPyramidSection(ownerA, a, b);
+  const profileOf = (state) =>
+    physicalPyramidSection(state.model.experimentalPhysicalFacetOwner, a, b);
+  const firstCut = profileOf(session.live);
 
   const shifted = structuredClone(session.live);
   shifted.model.experimentalPhysicalFacetOwner = makePhysicalPyramidOwner({
@@ -176,20 +177,16 @@ test('Snapshot Manager restores physical material and reopens two distinct facet
   shifted.model.revision++;
   session.live = shifted;
   const second = manager.create('Physical phase B');
-  const secondCut = physicalPyramidSection(
-    session.live.model.experimentalPhysicalFacetOwner,
-    a,
-    b,
-  );
+  const secondCut = profileOf(session.live);
   assert.notDeepEqual(secondCut, firstCut, 'Distinct phases must change physical topology');
   assert.equal(manager.restore(first.id), true);
   assert.deepEqual(
-    physicalPyramidSection(session.live.model.experimentalPhysicalFacetOwner, a, b),
+    profileOf(session.live),
     firstCut,
   );
   assert.equal(manager.restore(second.id), true);
   assert.deepEqual(
-    physicalPyramidSection(session.live.model.experimentalPhysicalFacetOwner, a, b),
+    profileOf(session.live),
     secondCut,
   );
 
@@ -212,12 +209,12 @@ test('Snapshot Manager restores physical material and reopens two distinct facet
   restoredManager.importRecords(reopened.snapshots, reopened.snapshotBranches);
   assert.equal(restoredManager.restore(first.id), true);
   assert.deepEqual(
-    physicalPyramidSection(sessionAfterOpen.live.model.experimentalPhysicalFacetOwner, a, b),
+    profileOf(sessionAfterOpen.live),
     firstCut,
   );
   assert.equal(restoredManager.restore(second.id), true);
   assert.deepEqual(
-    physicalPyramidSection(sessionAfterOpen.live.model.experimentalPhysicalFacetOwner, a, b),
+    profileOf(sessionAfterOpen.live),
     secondCut,
   );
 });
