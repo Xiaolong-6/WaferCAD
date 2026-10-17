@@ -492,8 +492,7 @@ export function auditSwxSemV2ElectricalNets(vectorApi, geometry) {
   // Both driven comb handles must remain insulated from the moving
   // grounded spring/shuttle structure. The paper does NOT establish
   // whether the two drives share one on-chip Si net or external bias.
-  const combsSeparatedFromGround =
-    ownerIds[4] !== anchorNetId && ownerIds[5] !== anchorNetId;
+  const combsSeparatedFromGround = ownerIds[4] !== anchorNetId && ownerIds[5] !== anchorNetId;
   const independentCombDriveDomains = new Set(ownerIds.slice(4)).size;
   const uncontactedSiliconNetIndices = silicon
     .map((_, index) => index)
