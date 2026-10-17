@@ -61,6 +61,14 @@ def local_file(url: str, site: Path, three: Path, version: str):
     return path, kind
 
 
+def is_optional_build_info_rejection(item: dict) -> bool:
+    """Only the optional app-origin build stamp may be ignored in offline mode."""
+    parsed = urlsplit(item['url'])
+    return (parsed.scheme == 'https' and parsed.netloc == 'wafercad.local'
+            and parsed.path == '/build-info.json'
+            and item.get('reason') == 'missing-or-unsafe')
+
+
 @contextlib.contextmanager
 def software_display(enabled: bool):
     """Use headful Chromium under Xvfb on Linux; never touch Chromium policies."""
@@ -218,7 +226,7 @@ def run(args):
                     report['httpRequestsAllowed'] = dict(counts)
                     report['rejectedRequests'] = rejected
                     report['unexpectedRejections'] = [v for v in rejected
-                        if not urlsplit(v['url']).path.endswith('/build-info.json')]
+                        if not is_optional_build_info_rejection(v)]
                     report['fatalError'] = 'Normal HTTPS navigation blocked; origin-required mode refuses fallback'
                     (out / 'native-app.evidence.json').write_text(
                         json.dumps(report, indent=2, ensure_ascii=False) + '\n')
@@ -343,7 +351,7 @@ def run(args):
             report['httpRequestsAllowed'] = dict(counts)
             report['rejectedRequests'] = rejected
             # Only exact build-info.json is known harmless; any other denial needs review.
-            report['unexpectedRejections'] = [v for v in rejected if not urlsplit(v['url']).path.endswith('/build-info.json')]
+            report['unexpectedRejections'] = [v for v in rejected if not is_optional_build_info_rejection(v)]
             report['nativeVisualEvidence'] = bool(three_ok and report['fourViewsVisible']
                                                    and not errors and not report['unexpectedRejections'])
             report['evidenceTier'] = ('native-origin-unreviewed' if mode == 'https-origin'

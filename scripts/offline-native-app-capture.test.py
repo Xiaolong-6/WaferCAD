@@ -41,6 +41,20 @@ class CapturePreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Incomplete'):
             capture.check_three(self.root)
 
+    def test_only_app_origin_build_stamp_can_be_ignored(self):
+        expected = {'url': 'https://wafercad.local/build-info.json?version=1',
+                    'reason': 'missing-or-unsafe'}
+        self.assertTrue(capture.is_optional_build_info_rejection(expected))
+        for item in (
+            {'url': 'https://other.example/build-info.json', 'reason': 'external'},
+            {'url': 'https://wafercad.local/nested/build-info.json',
+             'reason': 'missing-or-unsafe'},
+            {'url': 'https://wafercad.local/build-info.json', 'reason': 'external'},
+            {'url': 'http://wafercad.local/build-info.json', 'reason': 'external'},
+        ):
+            with self.subTest(url=item['url']):
+                self.assertFalse(capture.is_optional_build_info_rejection(item))
+
     def test_only_app_and_pinned_cdn_allowed(self):
         path, group = capture.local_file('https://wafercad.local/app.html?start=empty',
                                          self.site, self.three, '0.179.1')
