@@ -86,6 +86,12 @@ test('routed final fixture keeps the original 3712 SVG polygons as exact unchang
   assert.equal(original.filter((s) => s.layer === 10).length, 3488);
   assert.equal(original.filter((s) => s.layer === 11).length, 64);
   assert.equal(additions.length, 251);
+  assert.ok(additions.every((e) => e.sourceCell === project.layout.root),
+    'Supplemental polygon must belong to the actual GDS/OAS root cell');
+  for (const number of [21, 22, 23, 24, 25, 26]) {
+    assert.ok(project.selectedLayerKeys.includes(number + '|0'),
+      'Supplemental layer must be visible in default Mask state');
+  }
   assert.deepEqual([...new Set(additions.map((s) => s.layer))].sort((a, b) => a - b),
     [21, 22, 23, 24, 25, 26]);
   const layers = new Map();
