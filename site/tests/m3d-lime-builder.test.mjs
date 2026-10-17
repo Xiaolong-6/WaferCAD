@@ -30,7 +30,7 @@ test('M3D-LIME source-derived 3-tier process is materialized by the real kernel'
   assert.ok(steps.length >= 40, 'source process stages must not be collapsed to a static stack');
   assert.equal(nodes.length, steps.length + 1, 'Base and each Recipe Step require History');
   assert.equal(project.snapshots.length, 9, 'all nine milestone checkpoints must survive');
-  assert.equal(project.layout.combos.length, 11, 'inferred masks must remain exportable');
+  assert.equal(project.layout.combos.length, 12, 'inferred ML contact mask must remain exportable');
   assert.equal(project.snapshotBranches.branches.length, 1);
   assert.equal(project.snapshotBranches.branches[0].headNodeId, nodes.at(-1).id);
   assert.equal(
@@ -371,6 +371,131 @@ test('all 14 CNTFET-to-RRAM Pd paths stay physically connected over oxide steps'
   }
 });
 
+test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via and no buffer/source short', async () => {
+  const { project } = await verifiedFixture();
+  const { pointInMulti } = await import('../vector-geometry.js');
+  const boxes = (layer) =>
+    project.layout.elements
+      .filter((element) => element.layer === layer)
+      .map((element) => ({
+        x0: Math.min(...element.points.map((p) => p[0])),
+        x1: Math.max(...element.points.map((p) => p[0])),
+        y0: Math.min(...element.points.map((p) => p[1])),
+        y1: Math.max(...element.points.map((p) => p[1])),
+      }));
+  const metal = boxes(21);
+  const via = boxes(22);
+  const rram = boxes(19);
+  const drains = boxes(18);
+  assert.equal(metal.length, 21, '14 original contacts plus 5 trunks, bus and pre-charge spur');
+  assert.equal(via.length, 1, 'only the pre-charge drain receives its own via');
+  assert.deepEqual(via[0], { x0: 47, x1: 47.4, y0: -14.5, y1: -13.5 });
+  assert.equal(rram.length, 14);
+  assert.equal(drains.length, 15);
+  assert.ok(
+    via[0].x0 > drains[14].x0 &&
+      via[0].x1 < drains[14].x1 &&
+      via[0].y0 > drains[14].y0 &&
+      via[0].y1 < drains[14].y1,
+    'ML via must land fully inside the fifteenth CNTFET DRAIN',
+  );
+  const touches = (a, b) =>
+    a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1;
+  const connected = new Set([4]);
+  const queue = [4];
+  while (queue.length) {
+    const current = queue.pop();
+    for (let i = 0; i < metal.length; i++) {
+      if (connected.has(i) || !touches(metal[current], metal[i])) continue;
+      connected.add(i);
+      queue.push(i);
+    }
+  }
+  assert.equal(connected.size, 17, 'ML requires all ten TCAM contacts plus seven trace segments');
+  for (let i = 4; i < 14; i++)
+    assert.ok(connected.has(i), 'TCAM RRAM top contact is absent from common ML: ' + i);
+  for (let i = 0; i < 4; i++)
+    assert.ok(!connected.has(i), 'Buffer RRAM shorted into TCAM Match Line: ' + i);
+  assert.ok(metal.some((r) => touches(r, via[0])), 'the ML must reach the drain via');
+  assert.ok(
+    !metal.some((r) => touches(r, { x0: 43.1, x1: 44.3, y0: -25, y1: -5 })),
+    'ML must not touch the pre-charge SOURCE (the reported external 1 V supply)',
+  );
+
+  const names = new Map(project.model.layers.map((layer) => [layer.name, layer.id]));
+  const regionAt = (x, y) => {
+    const region = project.model.regions.find((r) => pointInMulti([x, y], r.geom));
+    assert.ok(region, 'material-free XY position ' + x + ',' + y);
+    return region;
+  };
+  const segmentAt = (x, y, name) => {
+    const segment = regionAt(x, y).stack.find((s) => s.layerId === names.get(name));
+    assert.ok(segment, name + ' missing at ' + x + ',' + y);
+    return segment;
+  };
+  const contactAt = (x, y, lower, upper) => {
+    const stack = regionAt(x, y).stack;
+    const i = stack.findIndex((s) => s.layerId === names.get(lower));
+    assert.ok(i >= 0, lower + ' missing at ' + x + ',' + y);
+    assert.equal(
+      stack[i + 1]?.layerId,
+      names.get(upper),
+      'Insulating layer or void between ' + lower + ' and ' + upper,
+    );
+    assert.ok(
+      Math.abs(stack[i].z1 - stack[i + 1].z0) < 1e-9,
+      'Nonzero Z gap between ' + lower + ' and ' + upper,
+    );
+  };
+  for (let i = 4; i < 14; i++) {
+    const r = rram[i];
+    const x = (r.x0 + r.x1) / 2;
+    const y = (r.y0 + r.y1) / 2;
+    contactAt(x, y, 'Digital Pt TE 10nm', 'Top Ti interconnect 20nm');
+    contactAt(x, y, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
+  }
+  contactAt(47.2, -14, 'CNT drain Pd 45nm', 'Top Ti interconnect 20nm');
+  contactAt(47.2, -14, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
+  assert.ok(
+    !regionAt(43.5, -14).stack.some((s) => s.layerId === names.get('Top Pd interconnect 120nm')),
+    'pre-charge source must not accidentally acquire ML top Pd',
+  );
+  for (const x of [-38.5, -19.5, -0.5, 18.5, 37.5]) {
+    assert.ok(
+      !regionAt(x, 24).stack.some((s) => s.layerId === names.get('Top Pd interconnect 120nm')),
+      'ML spur must not reach buffer channel at x=' + x,
+    );
+  }
+  const assertContinuousPd = (points, label) => {
+    let previous = null;
+    for (const [x, y] of points) {
+      const film = segmentAt(x, y, 'Top Pd interconnect 120nm');
+      if (previous) {
+        const sharedZ = Math.min(film.z1, previous.z1) - Math.max(film.z0, previous.z0);
+        assert.ok(
+          sharedZ > 0.01,
+          label + ': less than 10nm common Pd Z interval at ' + x + ',' + y,
+        );
+      }
+      previous = film;
+    }
+  };
+  for (const x of [-38.5, -19.5, -0.5, 18.5, 37.5]) {
+    assertContinuousPd(
+      Array.from({ length: 169 }, (_, i) => [x, -23 + (33 * i) / 168]),
+      'TCAM top-electrode ML trunk X=' + x,
+    );
+  }
+  assertContinuousPd(
+    Array.from({ length: 229 }, (_, i) => [-38.5 + (85.7 * i) / 228, -1.5]),
+    'horizontal common Match Line',
+  );
+  assertContinuousPd(
+    Array.from({ length: 81 }, (_, i) => [47.2, -14 + (12.5 * i) / 80]),
+    'pre-charge drain-to-ML spur',
+  );
+});
+
 test('sampled 3-tier cut is physically ordered through both analog CIM and digital RRAM', async () => {
   const { project, validation } = await verifiedFixture();
   const { pointInMulti } = await import('../vector-geometry.js');
@@ -484,8 +609,8 @@ test('CNTFET paper Methods source-to-drain isolation order', async () => {
   );
   assert.equal(steps[25].command, 'record');
   assert.equal(steps[30].command, 'record');
-  assert.equal(steps.length, 46);
-  assert.equal(project.snapshotBranches.nodes.length, 47);
+  assert.equal(steps.length, 50);
+  assert.equal(project.snapshotBranches.nodes.length, 51);
   assert.ok(
     project.snapshotBranches.nodes.some(
       (node) =>

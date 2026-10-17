@@ -64,6 +64,18 @@ const drainContacts = channels.map((c) =>
 const rramSites = drainContacts
   .slice(0, memoryChannels.length)
   .map((c) => rect(c.x + 0.75, c.y + 5, 0.9, 10));
+// Fig. 3b: the ten TCAM RRAM Pt top electrodes, NOT the four buffer
+// electrodes, share ML. The pre-charge FET SOURCE is held at +1V in the
+// experiment; its DRAIN supplies ML. The unpublished XY trace is inferred.
+// One native Ti/Pd top-metal deposition owns both the old RRAM contact islands
+// and these seven bus rectangles; drawing a wire without Process is insufficient.
+const mlTrunks = Array.from({ length: 5 }, (_, i) =>
+  rect(tcamChannels[2 * i].x + 3.3, -27, 0.4, 42),
+);
+const mlBackbone = rect(mlTrunks[0].x, -2, 47.4 - mlTrunks[0].x, 1);
+const mlPrechargeSpur = rect(47, -15, 0.4, 14);
+const mlVia = rect(47, -14.5, 0.4, 1);
+const topContactStubs = rramSites.map((c) => rect(c.x + 0.1, c.y + 1, 0.7, 8));
 const MASKS = Object.freeze([
   {
     id: 11,
@@ -97,8 +109,13 @@ const MASKS = Object.freeze([
   },
   {
     id: 21,
-    name: 'Top Ti/Pd local interconnects',
-    rectangles: rramSites.map((c) => rect(c.x + 0.1, c.y + 1, 0.7, 8)),
+    name: 'Top Ti/Pd: 14 contacts + inferred TCAM ML, buffer isolated',
+    rectangles: [...topContactStubs, ...mlTrunks, mlBackbone, mlPrechargeSpur],
+  },
+  {
+    id: 22,
+    name: 'Inferred ML pre-charge drain contact via through four passivations',
+    rectangles: [mlVia],
   },
 ]);
 const MASK_BY_ID = new Map(MASKS.map((m) => [m.id, m]));
@@ -626,14 +643,32 @@ export async function buildM3DLime() {
     layerIds.get('Digital Pt TE 10nm'),
     'Top passivation must open onto Pt electrode without gouging the 10nm Pt layer',
   );
+  // Dedicated via to the pre-charge DRAIN, which is buried beneath four
+  // passivations. Targeted etches must stop on source Pd without eroding it.
+  const prechargeDrainProbe = [47.2, -14];
+  for (const [material, thickness] of [
+    ['Digital Al2O3 passivation 45nm', 0.045],
+    ['CNT HfO2 passivation 10nm', 0.01],
+    ['CNT Al2O3 passivation 35nm', 0.035],
+    ['Y2O3 interface SURROGATE 10nm', 0.01],
+  ]) {
+    selectiveEtch('Open pre-charge drain through ' + material, material, thickness, 22);
+  }
+  assert.equal(
+    exposed(prechargeDrainProbe).layerId,
+    layerIds.get('CNT drain Pd 45nm'),
+    'Pre-charge ML via must expose drain Pd, not source, gate, oxide or silicon',
+  );
   deposit('Top Ti interconnect adhesion 20nm', 'Top Ti interconnect 20nm', 0.02, 21);
+  assertPhysicalContact(prechargeDrainProbe, 'CNT drain Pd 45nm', 'Top Ti interconnect 20nm');
   assertPhysicalContact(digitalRramProbe, 'Digital Pt TE 10nm', 'Top Ti interconnect 20nm');
   deposit('Top Pd interconnect 120nm', 'Top Pd interconnect 120nm', 0.12, 21);
   assertPhysicalContact(digitalRramProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
+  assertPhysicalContact(prechargeDrainProbe, 'Top Ti interconnect 20nm', 'Top Pd interconnect 120nm');
   record(
-    'Connect ML/SL/SEL externally for TCAM testing',
+    'Route inferred on-chip TCAM ML; connect SL/SEL externally for testing',
     'custom',
-    'Only local connection stubs are modeled; continuous ML/SL/SEL routing and test pad coordinates are not supplied. Sense amplifiers and programming/ADC circuitry were off chip in the experimental demonstration.',
+    'The ten TCAM RRAM Pt top contacts are joined to the pre-charge CNTFET drain by an inferred patterned Ti/Pd ML. The four buffer contacts remain separate; pre-charge source power, SL, SEL and external pads remain unmodeled. Source original GDS and electrical performance are not claimed.',
   );
   bookmark('08 3-tier M3D-LIME representative fabricated devices');
   Object.assign(root, capture());
@@ -697,7 +732,7 @@ export async function buildM3DLime() {
       '2.6um CNT island includes an exact 2um active contact gap and inferred 0.3um overlaps.',
       'Model field and inspection-only ROI focus on an overlapped analog and TCAM cell.',
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
-      'The extra ML pre-charge CNTFET is geometrically represented outside the 14 memory RRAM sites; original pre-charge GDS, wiring to ML, bias circuitry and electrical function are not reconstructed.',
+      'The extra ML pre-charge CNTFET occupies an inferred independent site; its DRAIN is opened through the four passivations and joined to ten TCAM Pt TEs by an inferred Ti/Pd ML. Original GDS, source supply, gate bias, SL/SEL and electrical function are not reconstructed.',
       'Foundry M4 dielectric is a 100nm geometric surrogate for the already completed 130nm CMOS CMP; CIM and ILD CMP endpoint heights are inferred.',
       'CNT network rendered as 1nm surrogate rather than physical tube-level geometry.',
       '45nm top ALD Al2O3 has native conformal sidewall geometry; exact corner shape is limited by the 0.1nm persistence grid.',

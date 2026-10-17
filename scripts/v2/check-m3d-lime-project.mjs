@@ -117,7 +117,7 @@ try {
   const snapshot = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
   const initial = await snapshot();
   assert.deepEqual(initial.model, expected.model, 'v2 project import changed canonical geometry');
-  assert.equal(initial.layout.combos.length, 11, 'v2 lost inferred Mask layers');
+  assert.equal(initial.layout.combos.length, 12, 'v2 lost inferred ML via Mask');
   assert.ok(initial.model.layers.some((layer) => layer.name === 'Digital Ta2O5 RSL 10nm'));
   assert.deepEqual(initial.roi, { type: 'rect', a: [-45, -35], b: [-35, -11] });
   assert.deepEqual(initial.section, { a: [-44, -24], b: [-35, -24] });
@@ -1051,6 +1051,37 @@ try {
     focusedCanvas: prechargeCloseCapture.canvas,
     note: 'Native Fit and focused zoom of inferred pre-charge FET; no claim of ML routing or author GDS',
   };
+  // Second inspection is centered on the ML-to-pre-charge junction, not
+  // just the 20um-wide isolated FET. Fit the actual processed metal topology.
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await waitForPaint(page);
+  await editInspectionRoi({ centerXUm: 43, centerYUm: -7, widthUm: 15, heightUm: 18 });
+  const mlJunctionRoi = (await snapshot()).roi;
+  assert.deepEqual(mlJunctionRoi, {
+    type: 'rect',
+    a: [35.5, -16],
+    b: [50.5, 2],
+  });
+  await showAndVerifyView('three');
+  await page.locator('#threePanel [data-action="maximize:three"]').click();
+  await page.locator('#threePanel [data-action="fit:three"]').click();
+  await page.waitForFunction(
+    () => document.getElementById('threeHost')?.dataset.renderState === 'ready',
+    null,
+    { timeout: 120000 },
+  );
+  await waitForPaint(page);
+  const mlJunctionCapture = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-tcam-ml-junction.png'),
+  );
+  assert.ok(mlJunctionCapture.coloredPixels > 1000, 'Real ML-junction 3D frame is empty');
+  report.threeMlJunctionEvidence = {
+    roi: mlJunctionRoi,
+    coloredPixels: mlJunctionCapture.coloredPixels,
+    canvas: mlJunctionCapture.canvas,
+    note: 'Inferred Ti/Pd ML and physically opened pre-charge drain under real 3D renderer',
+  };
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);
   const savedRoi = beforeCutaway.roi;
@@ -1091,7 +1122,7 @@ try {
   // Model.revision counts view-only layer toggles, hence is intentionally not
   // compared. Every stored material segment and visibility flag is restored.
   // Real Mask-toolbar download, through the production export Worker. Select
-  // all eleven author-unavailable *inferred* layers rather than the three
+  // all twelve author-unavailable *inferred* layers rather than the three
   // initially highlighted inspection layers.
   await showAndVerifyView('mask');
   const maskBefore = await snapshot();
@@ -1129,7 +1160,7 @@ try {
   }
   report.maskInterchange = {
     formats: ['GDSII', 'OASIS'],
-    layers: 11,
+    layers: 12,
     polygons: expected.layout.elements.length,
   };
 
@@ -1166,7 +1197,7 @@ try {
     initial.model.layers.map((layer) => layer.name),
     'Run All produced different material layer set',
   );
-  assert.equal(rebuilt.layout.combos.length, 11, 'Run All lost GDS-exportable masks');
+  assert.equal(rebuilt.layout.combos.length, 12, 'Run All lost GDS-exportable masks');
   assert.deepEqual(rebuilt.roi, initial.roi, 'Run All lost the sample inspection ROI');
   assert.deepEqual(
     rebuilt.section,
