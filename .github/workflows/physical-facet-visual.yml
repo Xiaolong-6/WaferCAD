@@ -7,6 +7,9 @@ on:
     paths:
       - 'site/physical-facet-preview.html'
       - 'site/physical-facet-preview.js'
+      - 'site/physical-facet-shell-preview.html'
+      - 'site/physical-facet-shell-preview.js'
+      - 'site/physical-facet-shell-owner.js'
       - 'site/physical-facet-render-geometry.js'
       - 'site/physical-facet-surface.js'
       - 'site/plan-renderers.js'

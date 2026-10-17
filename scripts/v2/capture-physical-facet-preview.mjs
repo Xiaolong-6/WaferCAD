@@ -123,6 +123,50 @@ try {
       'Browser modules must render without uncaught errors',
     );
     report.geometry = data;
+
+    // Visual proof for the *coated* owner is a separate physical Section
+    // inspector. The existing ThreeView above remains honest bare silicon.
+    const shellPage = await context.newPage();
+    shellPage.on('pageerror', (error) => report.browserErrors.push(error.message));
+    const shellResponse = await shellPage.goto(
+      url.replace('/physical-facet-preview.html', '/physical-facet-shell-preview.html'),
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
+    assert.equal(shellResponse.status(), 200);
+    await shellPage.waitForFunction(() => document.body.dataset.shellReady === 'true', null, {
+      timeout: 45000,
+    });
+    const shellData = await shellPage.evaluate(() => window.WaferCADShellEvidence);
+    assert.equal(shellData.kind, 'wafercad-physical-implicit-shell-v1');
+    assert.equal(shellData.sourceTriangleCount, data.physicalTriangleCount);
+    assert.equal(shellData.views.length, 3);
+    assert.equal(shellData.apex, 'oxide');
+    assert.equal(shellData.corner, 'oxide');
+    assert.equal(shellData.silicon, 'base');
+    for (const item of shellData.views) {
+      assert.equal(item.samples, item.coatingValidated);
+      assert.ok(item.samples >= 30);
+      const canvas = shellPage.locator('#' + item.id);
+      const pixels = await shellPage.evaluate((id) => {
+        const node = document.getElementById(id);
+        const rgba = node.getContext('2d').getImageData(0, 0, node.width, node.height).data;
+        let oxide = 0;
+        for (let i = 0; i < rgba.length; i += 16) {
+          if (rgba[i] > 205 && rgba[i + 1] > 130 && rgba[i + 1] < 200 &&
+              rgba[i + 2] < 140) oxide++;
+        }
+        return oxide;
+      }, item.id);
+      assert.ok(pixels > 20, 'Physical oxide must occupy visible pixels in ' + item.id);
+      const name = item.id + '.png';
+      await canvas.screenshot({ path: resolve(dir, name) });
+      report.pictures.push({ angle: 'coated-material-section', name, oxidePixels: pixels });
+    }
+    await shellPage.close();
+    report.shell = shellData;
+    report.assertions.push(
+      'whole-unit 3D oxide owner and three genuine multilayer Section ROI canvases verified',
+    );
     report.status = 'captured-unreviewed';
     report.assertions.push(
       'WebGL and Section have nonblank pixels and three distinct camera renders',
