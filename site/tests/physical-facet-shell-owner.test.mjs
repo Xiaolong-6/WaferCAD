@@ -96,12 +96,12 @@ test('complete 3D nearest-triangle oracle handles face, edge and vertex exactly'
     [1, 0, 0],
     [0, 1, 0],
   ];
-  assert.deepEqual(closestPhysicalTrianglePoint([0.2, 0.2, 0.3], triangle), {
-    point: [0.2, 0.2, 0],
+  assert.deepEqual(closestPhysicalTrianglePoint([0.25, 0.25, 0.5], triangle), {
+    point: [0.25, 0.25, 0],
     feature: 'face',
   });
-  assert.deepEqual(closestPhysicalTrianglePoint([0.6, -0.4, 0], triangle), {
-    point: [0.6, 0, 0],
+  assert.deepEqual(closestPhysicalTrianglePoint([0.5, -0.25, 0], triangle), {
+    point: [0.5, 0, 0],
     feature: 'edge',
   });
   assert.deepEqual(closestPhysicalTrianglePoint([-0.2, -0.2, 0], triangle), {
