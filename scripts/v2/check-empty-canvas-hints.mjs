@@ -250,7 +250,7 @@ try {
     try {
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await ready(page);
+      const mobileInitial = await ready(page);
       const mainHint = page.locator('#mainPanel .v2-empty-hint');
       assert.equal(await mainHint.isVisible(), true, 'Mobile Main empty hint');
       await shot(page, 'mobile-empty-main');
@@ -263,9 +263,14 @@ try {
       });
       assert.equal(await page.locator('.p-inspector').isVisible(), true);
       assert.equal(await page.locator('#operationType').isVisible(), true);
+      assert.deepEqual(
+        (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,
+        mobileInitial.model,
+        'Mobile Add navigation must not change scientific material geometry',
+      );
       await shot(page, 'mobile-add-opens-process');
       report.cases.push({ label: 'mobile-main-add-to-process', status: 'pass' });
-      await page.locator('[data-action="return-results"]').click();
+      await page.locator('.p-nav [data-action="return-results"]').click();
       await page.waitForFunction(
         () => window.WaferCadV2Workstation.snapshot().ui.mobile === 'view',
       );
