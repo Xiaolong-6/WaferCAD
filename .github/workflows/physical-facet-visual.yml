@@ -35,20 +35,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: One-time exact formatter source evidence
-        run: |
-          npx prettier --write site/physical-facet-preview.html site/physical-facet-preview.js site/physical-facet-render-geometry.js scripts/v2/capture-physical-facet-preview.mjs
-          git diff --stat
-      - name: Upload formatter output for review (temporary)
-        uses: actions/upload-artifact@v6
-        with:
-          name: physical-facet-formatted-sources
-          path: |
-            site/physical-facet-preview.html
-            site/physical-facet-preview.js
-            site/physical-facet-render-geometry.js
-            scripts/v2/capture-physical-facet-preview.mjs
-          retention-days: 1
       - uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright

@@ -10,7 +10,10 @@ export function physicalFacetPresentationZ(z, { compressBulk = false } = {}) {
   return compressBulk ? z - Math.sign(z) * 118 : z;
 }
 
-export function buildPhysicalFacetPresentation(model, { compressBulk = false, maxCells = 256 } = {}) {
+export function buildPhysicalFacetPresentation(
+  model,
+  { compressBulk = false, maxCells = 256 } = {},
+) {
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (!owner) throw new RangeError('Physical presentation requires an opt-in model');
   const physical = physicalPyramidSolidMesh(owner, { maxCells });

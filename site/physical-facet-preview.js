@@ -106,11 +106,11 @@ function drawSection() {
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(0, 0, w, h);
   const mx = (t) => 52 * ratio + t * (w - 86 * ratio);
-  const my = (z) => h / 2 - physicalFacetPresentationZ(z, { compressBulk: true }) * h / 31;
+  const my = (z) => h / 2 - (physicalFacetPresentationZ(z, { compressBulk: true }) * h) / 31;
   ctx.strokeStyle = '#e3eaf0';
   ctx.lineWidth = ratio;
   for (const z of [-10, -5, 0, 5, 10]) {
-    const y = h / 2 - z * h / 31;
+    const y = h / 2 - (z * h) / 31;
     ctx.beginPath();
     ctx.moveTo(40 * ratio, y);
     ctx.lineTo(w - 20 * ratio, y);
@@ -118,8 +118,8 @@ function drawSection() {
   }
   ctx.fillStyle = '#506879';
   ctx.font = `${12 * ratio}px system-ui`;
-  ctx.fillText('A', mx(0) - 20 * ratio, h / 2 - 11 * h / 31);
-  ctx.fillText('B', mx(1) + 8 * ratio, h / 2 - 11 * h / 31);
+  ctx.fillText('A', mx(0) - 20 * ratio, h / 2 - (11 * h) / 31);
+  ctx.fillText('B', mx(1) + 8 * ratio, h / 2 - (11 * h) / 31);
   ctx.beginPath();
   for (const [index, [t, z]] of sectionRing.entries()) {
     if (index === 0) ctx.moveTo(mx(t), my(z));
@@ -144,7 +144,11 @@ function drawSection() {
   ctx.stroke();
   ctx.fillStyle = '#516575';
   ctx.font = `${11 * ratio}px system-ui`;
-  ctx.fillText('Symmetric Z-break shown. Physical interfaces and volume unchanged.', 19 * ratio, h - 20 * ratio);
+  ctx.fillText(
+    'Symmetric Z-break shown. Physical interfaces and volume unchanged.',
+    19 * ratio,
+    h - 20 * ratio,
+  );
 }
 
 function resize() {
