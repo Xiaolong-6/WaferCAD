@@ -40,7 +40,8 @@ try {
     const before = await sample();
     assert.ok(Number(before.rendererDrawTriangles) > 0, 'real initial 3D WebGL frame');
     if (
-      (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).threeDisplay.fast === false
+      (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).threeDisplay.fast ===
+      false
     ) {
       await page.locator('#threePanel [data-action="quality:three"]').click();
       await page.waitForFunction(
@@ -70,7 +71,10 @@ try {
       { timeout: 240000 },
     );
     const far = await sample();
-    assert.equal(far.cameraDampingEnabled, 'true');
+    // Native v2 selects an explicit pointer gesture mode, deliberately disabling
+    // inertial OrbitControls damping at both LOD tiers. Verify that policy
+    // rather than assuming the frozen Legacy editor's default camera mode.
+    assert.equal(far.cameraDampingEnabled, 'false');
     assert.ok(Number(far.electricalFarLodBodyCount) > 0);
     const triangles = Number(far.rendererDrawTriangles);
     const canvas = host.locator('canvas');
@@ -86,12 +90,15 @@ try {
     const handle = await page.waitForFunction(
       ({ previous, farTriangles }) => {
         const node = document.getElementById('threeHost');
-        if (node?.dataset.transparentArrayLodTier !== 'exact' ||
+        if (
+          node?.dataset.transparentArrayLodTier !== 'exact' ||
           node.dataset.renderState !== 'ready' ||
           node.dataset.rendererFrameArrayLodTier !== 'exact' ||
           node.dataset.rendererFrameSceneGeneration !== node.dataset.sceneGeneration ||
           Number(node.dataset.rendererFrameSerial || 0) <= previous ||
-          Number(node.dataset.rendererDrawTriangles || 0) <= farTriangles) return false;
+          Number(node.dataset.rendererDrawTriangles || 0) <= farTriangles
+        )
+          return false;
         const exact = { ...node.dataset };
         document.querySelector('#threePanel [data-action="fit:three"]')?.click();
         return JSON.stringify(exact);
@@ -110,16 +117,18 @@ try {
     await page.waitForFunction(
       (prev) => {
         const node = document.getElementById('threeHost');
-        return /^far-/.test(node?.dataset.transparentArrayLodTier || '') &&
+        return (
+          /^far-/.test(node?.dataset.transparentArrayLodTier || '') &&
           node.dataset.renderState === 'ready' &&
-          Number(node.dataset.rendererFrameSerial || 0) > prev;
+          Number(node.dataset.rendererFrameSerial || 0) > prev
+        );
       },
       Number(exact.rendererFrameSerial || 0),
       { timeout: 120000 },
     );
     const restored = await sample();
     assert.equal(restored.processRevision, far.processRevision);
-    assert.equal(restored.cameraDampingEnabled, 'true');
+    assert.equal(restored.cameraDampingEnabled, 'false');
     assert.ok(Number(restored.electricalFarLodBodyCount) > 0);
     assert.deepEqual(
       (await page.evaluate(() => window.WaferCadV2Workstation.snapshot())).model,

@@ -15,6 +15,7 @@ test('Draw-to-Process legacy gap has a real v2 Worker/Recovery owner', async () 
     'maskSourceMode',
     'restored.model',
     'restored.drawMask',
-  ]) assert.ok(source.includes(assertion), assertion);
+  ])
+    assert.ok(source.includes(assertion), assertion);
   assert.doesNotMatch(source, /app-legacy\.html|newLegacyUi(?:Context|Page)/);
 });

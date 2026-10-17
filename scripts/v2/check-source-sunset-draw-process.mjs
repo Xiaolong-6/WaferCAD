@@ -72,9 +72,10 @@ try {
     const branch = page.getByRole('button', { name: 'Create Variant & apply', exact: true });
     if (await branch.isVisible()) await branch.click();
     await page.waitForFunction(
-      () => window.WaferCadV2Workstation.snapshot().model.layers.some(
-        (layer) => layer.name === 'Draw-selected process film',
-      ),
+      () =>
+        window.WaferCadV2Workstation.snapshot().model.layers.some(
+          (layer) => layer.name === 'Draw-selected process film',
+        ),
       null,
       { timeout: 120000 },
     );
@@ -91,26 +92,30 @@ try {
     assert.equal(step.operation?.replay?.maskContext?.shapeCount, drawn.drawMask.shapes.length);
     assert.deepEqual(deposited.drawMask, drawn.drawMask);
 
-    const coverage = await page.evaluate(async ({ layerId, rect }) => {
-      const { geometryArea } = await import('./model.js');
-      const { pointInMulti } = await import('./vector-geometry.js');
-      const model = window.WaferCadV2Workstation.snapshot().model;
-      const regions = model.regions.filter((region) =>
-        region.stack.some((segment) => segment.layerId === layerId),
-      );
-      const center = [(rect.a[0] + rect.b[0]) / 2, (rect.a[1] + rect.b[1]) / 2];
-      const side = [rect.b[0] + (rect.b[0] - rect.a[0]), center[1]];
-      return {
-        area: regions.reduce((sum, region) => sum + geometryArea(region.geom), 0),
-        thicknesses: regions.flatMap((region) =>
-          region.stack.filter((segment) => segment.layerId === layerId)
-            .map((segment) => segment.z1 - segment.z0),
-        ),
-        centerCovered: regions.some((region) => pointInMulti(center, region.geom)),
-        outsideCovered: regions.some((region) => pointInMulti(side, region.geom)),
-        baseAtOutside: model.regions.some((region) => pointInMulti(side, region.geom)),
-      };
-    }, { layerId: layer.id, rect: shape });
+    const coverage = await page.evaluate(
+      async ({ layerId, rect }) => {
+        const { geometryArea } = await import('./model.js');
+        const { pointInMulti } = await import('./vector-geometry.js');
+        const model = window.WaferCadV2Workstation.snapshot().model;
+        const regions = model.regions.filter((region) =>
+          region.stack.some((segment) => segment.layerId === layerId),
+        );
+        const center = [(rect.a[0] + rect.b[0]) / 2, (rect.a[1] + rect.b[1]) / 2];
+        const side = [rect.b[0] + (rect.b[0] - rect.a[0]), center[1]];
+        return {
+          area: regions.reduce((sum, region) => sum + geometryArea(region.geom), 0),
+          thicknesses: regions.flatMap((region) =>
+            region.stack
+              .filter((segment) => segment.layerId === layerId)
+              .map((segment) => segment.z1 - segment.z0),
+          ),
+          centerCovered: regions.some((region) => pointInMulti(center, region.geom)),
+          outsideCovered: regions.some((region) => pointInMulti(side, region.geom)),
+          baseAtOutside: model.regions.some((region) => pointInMulti(side, region.geom)),
+        };
+      },
+      { layerId: layer.id, rect: shape },
+    );
     assert.ok(coverage.area > 0, 'Draw geometry created actual material area');
     assert.ok(coverage.thicknesses.length > 0, 'physical layer has thickness spans');
     assert.ok(coverage.thicknesses.every((t) => Math.abs(t - 0.125) < 1e-12));

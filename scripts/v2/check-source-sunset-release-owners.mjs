@@ -74,9 +74,7 @@ export const RELEASE_V2_OWNERS = Object.freeze({
     'scripts/v2/check-source-sunset-edge-on.mjs',
     'scripts/v2/check-array-renderer-isolation.mjs',
   ]),
-  klayout: Object.freeze([
-    'scripts/v2/check-klayout-mask-process.mjs',
-  ]),
+  klayout: Object.freeze(['scripts/v2/check-klayout-mask-process.mjs']),
   fig3: Object.freeze([
     'scripts/v2/check-sync.mjs',
     'scripts/v2/check-physical-process-units.mjs',
@@ -138,9 +136,7 @@ export const RELEASE_SCIENTIFIC_TESTS = Object.freeze({
     'site/tests/three-outline-geometry.test.mjs',
     'site/tests/rough-display-lod.test.mjs',
   ]),
-  klayout: Object.freeze([
-    'site/tests/layout-export.test.mjs',
-  ]),
+  klayout: Object.freeze(['site/tests/layout-export.test.mjs']),
   fig3: Object.freeze([
     'site/tests/fig3-native-conformal.test.mjs',
     'site/tests/isotropic-release.test.mjs',

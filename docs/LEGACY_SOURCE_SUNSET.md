@@ -20,7 +20,7 @@ remain reproducible at the immutable `legacy-frozen` Git tag.
 
 - **Workstation / View UX:** native startup, lease isolation, desktop docking,
   mobile, Main/Mask/Section/3D and actual controls via the existing Workstation
-  + View UX wrappers.
+  - View UX wrappers.
 - **Interaction:** native Main ROI/Slice and Mask Draw (rectangle, circle,
   polygon, ring, sector), 0.1 nm editor unit integrity, Mask alignment/ROI,
   actual SVG/GDS/OAS exports, physical Process mask scope, and a persistent
@@ -53,7 +53,7 @@ This preserves required failure propagation without sharing the former
 Persistence, Recovery and renderer outline invariants remain active.
 
 **Scope and residual fidelity risks:** the old pre-v2 UI's exact DOM gestures
-and per-scenario screenshot wording are *not* claims about current v2. The
+and per-scenario screenshot wording are _not_ claims about current v2. The
 old Sector ROI angle-handle gesture, paper-specific every-Step fidelity,
 full-wafer SVG/GLB export probes and some edge-on GPU composition cases still
 need explicit evidence to declare historical scenario-by-scenario parity.

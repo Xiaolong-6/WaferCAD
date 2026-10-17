@@ -129,11 +129,7 @@ try {
       await opacity.fill(i % 2 ? '0.5' : '1');
       await assertRetained('opacity-' + i, prev);
     }
-    assert.deepEqual(
-      (await snap()).model,
-      before.model,
-      '20 renderer toggles do not edit science',
-    );
+    assert.deepEqual((await snap()).model, before.model, '20 renderer toggles do not edit science');
     assert.deepEqual((await snap()).workflow.steps, before.workflow.steps);
     assert.deepEqual(report.errors, []);
     await page.screenshot({ path: resolve(output, 'final-625-renderer.png') });
