@@ -47,10 +47,7 @@ export async function openStagedAssemblyProject(readStagedFile, readAssemblyFile
  * import must be valid before checkpointing the current workspace. Never
  * stage or navigate unless the pre-replacement Recovery checkpoint succeeds.
  */
-export async function handoffAssemblyProjectFile(
-  file,
-  { validate, checkpoint, stage, navigate },
-) {
+export async function handoffAssemblyProjectFile(file, { validate, checkpoint, stage, navigate }) {
   await validate(file);
   await checkpoint();
   await stage(file, 'project');

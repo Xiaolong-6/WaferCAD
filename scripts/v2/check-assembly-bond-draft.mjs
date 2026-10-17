@@ -604,11 +604,13 @@ try {
         await ordinaryTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
           timeout: 90000,
         });
-        const handoff = await ordinaryTab.evaluate(() =>
-          window.WaferCadV2Workstation.snapshot(),
-        );
+        const handoff = await ordinaryTab.evaluate(() => window.WaferCadV2Workstation.snapshot());
         assert.equal(handoff.assemblyPreview.readOnly, false);
-        assert.equal(handoff.workflow.writable, false, 'ordinary History cannot edit this Assembly');
+        assert.equal(
+          handoff.workflow.writable,
+          false,
+          'ordinary History cannot edit this Assembly',
+        );
         // The selected branch has three physical wafers, while the shared
         // source registry also includes the unused donor of another Variant.
         assert.equal(
@@ -629,7 +631,11 @@ try {
           size: handedOffBytes.length,
           text: async () => handedOffBytes.toString('utf8'),
         });
-        assert.equal(handedOffGraph.graph.sources.length, 4, 'Unused Variant donor lost on handoff');
+        assert.equal(
+          handedOffGraph.graph.sources.length,
+          4,
+          'Unused Variant donor lost on handoff',
+        );
         assert.deepEqual(
           handedOffGraph.graph,
           workspace.graph,
