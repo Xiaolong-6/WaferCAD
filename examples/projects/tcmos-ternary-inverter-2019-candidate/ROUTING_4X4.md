@@ -93,6 +93,48 @@ Required commands after a real source checkout is available:
     node scripts/build-tcmos-array-physical-interconnect.mjs
     node scripts/tcmos-array-interconnect-browser-acceptance.mjs
 
+### Saved 23-step physical source validation — executed, with remaining limits
+
+An independent JavaScript verification fetched the *original committed*
+`tcmos-ternary-inverter-130nm.wafercad` blob, decoded its actual shared
+polygon dictionary with the repository's `project-geometry-storage.js` and
+used its **final 23-step physical material** rather than an illustrative
+Si/M1-only seed. It contains 12 physical regions across eight existing
+material layers, including seven partitions with M1, and 232 File Mask
+polygons matching all eight approved SVG layers exactly.
+
+The 23-step material was repeated into 16 sites; the **committed physical
+routing generator** and the original `polygon-clipping.umd.js` ran against
+these full source stacks. The generated routing passes all six symmetric
+metal/Via area checks at 1e-12 µm²: 192 material regions expanded to
+323 routed regions, 17 final layers, 140 vias and 3,963 File Mask polygons.
+All six material-vs-mask missing/extra area values were **0 µm²**. The
+simulated top material Z is 3.375 µm. This isolated run reproduces the
+array expansion and substitutes file/schema APIs; it is **not yet** the
+Workstation runtime or project save/restore acceptance.
+
+Separately, the *real* source `project-io.js` / `project-schema.js` and
+`model-array.js` were loaded from repository code in an isolated JS runtime.
+The committed 23-step source parsed and validated; the canonical 4×4 array
+also validated, and native `resolveArrayModel` produced 192 regions /
+39,856 geometry points with real `validateProcessModel` passing.
+The combined final routed-project real-Schema/full-storage end gate is
+still pending, as are actual Node CLI, Chromium and GDS/OAS/Recovery tests.
+
+**Source-grid distinction discovered and verified:** the approved File Mask
+SVG vertex coordinates are preserved exactly, but its *processed M1 physical
+material* uses the existing `PROJECT_LENGTH_QUANTUM_UM=0.0001` µm
+(0.1 nm) grid. Raw exact SVG versus physical M1 differs by 0.00067625 µm²
+in each symmetric direction. Comparing physical M1 against the same SVG
+canonicalized to the existing persistence grid gives **zero** missing and
+extra area (not a relaxed tolerance). The focused test now asserts that
+quantized-geometry equality at the unchanged 1e-12 µm² threshold. Never
+modify the approved source mask or hide the distinction.
+
+The browser/CLI generator now reads the committed persisted source project
+rather than needlessly rebuilding all 23 source process steps. Separate
+source reconstruction tests continue to cover the 23-step Recipe itself.
+
 ### New strict XY/3D conductor science gates
 
 On the exact approved SVG source and committed routing generator, the
