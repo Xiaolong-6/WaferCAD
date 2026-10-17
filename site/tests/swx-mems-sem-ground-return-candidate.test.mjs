@@ -8,6 +8,7 @@ import {
   SWX_GROUND_RETURN_ASSUMPTIONS,
   createSwxSemGroundReturnCandidate,
   createSwxGroundReturnSupportAudit,
+  auditSwxGroundReturnBucklingRisk,
 } from '../../scripts/swx-mems-sem-ground-return-candidate.mjs';
 import { loadGeometryKernel } from '../../scripts/process-benchmarks.mjs';
 
@@ -105,4 +106,28 @@ test('OFF/ON actual ground and signal routing connects the correct physical Si i
     assert.equal(result.stationaryOpticalExternalGroundVerified, false);
     assert.equal(result.sourceElectricalGroundingAccepted, false);
   }
+});
+
+test('suspended perimeter Si is not accepted without post-HF mechanical qualification', () => {
+  const a = auditSwxGroundReturnBucklingRisk();
+  assert.equal(a.thicknessUm, 0.22);
+  assert.equal(a.measuredResidualCompression, false);
+  assert.equal(a.residualCompressionDirectionKnown, false);
+  assert.equal(a.endConstraintsVerified, false);
+  assert.equal(a.mechanicalFEMVerified, false);
+  assert.equal(a.paperPerimeterMechanicalAcceptance, false);
+  const longest = a.longest;
+  assert.equal(longest.route, 'signal');
+  assert.deepEqual(longest.from, [-61, -115]);
+  assert.deepEqual(longest.to, [61, -115]);
+  assert.equal(longest.lengthUm, 122);
+  // Theoretical idealized pinned/fixed Euler weak-axis strain bounds.
+  assert.ok(longest.pinnedCriticalStrain > 2.6e-6);
+  assert.ok(longest.pinnedCriticalStrain < 2.8e-6);
+  assert.ok(longest.idealClampedCriticalStrain > 1.05e-5);
+  assert.ok(longest.idealClampedCriticalStrain < 1.1e-5);
+  assert.ok(a.hypotheticalStrainToIdealClampedCriticalRatio > 9);
+  // This is a HYPOTHETICAL compressive stress, not measured residual stress.
+  assert.equal(Number(a.stressScenarioMPa.toFixed(4)), 16.9);
+  assert.equal(a.actualWaferBucklingPredicted, false);
 });

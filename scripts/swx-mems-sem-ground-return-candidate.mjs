@@ -69,6 +69,70 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
   ],
 });
 
+/**
+ * A deliberately conservative screening calculation, NOT a FEM result.
+ *
+ * The externally routed Si consists of very slender free-standing beams.
+ * For a prismatic beam under axial compression, Euler critical strain is
+ * (pi^2 / 12) * (h / L)^2 for pinned ends, and four times that for ideal
+ * clamped ends, with weak-axis bending through film thickness h.
+ *
+ * An SOI device-Si residual stress measurement, true end constraints,
+ * geometric imperfections and 3D post-HF FEM are NOT available. Therefore
+ * even the favorable clamped value cannot certify fabrication stability.
+ */
+export function auditSwxGroundReturnBucklingRisk() {
+  const thicknessUm = 0.22; // Paper's full device Si thickness, not a fit.
+  const assumedYoungModulusGPa = 169; // Illustrative crystal-axis value.
+  const measuredResidualCompression = false;
+  const routes = [
+    ...SWX_GROUND_RETURN_ASSUMPTIONS.groundPathsUm.map((points, index) => ({
+      name: 'ground-' + index,
+      points,
+    })),
+    { name: 'signal', points: SWX_GROUND_RETURN_ASSUMPTIONS.signalPathUm },
+  ];
+  const spans = routes.flatMap(({ name, points }) =>
+    points.slice(1).map((to, index) => {
+      const from = points[index];
+      const lengthUm = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      const pinnedCriticalStrain = (Math.PI ** 2 / 12) * (thicknessUm / lengthUm) ** 2;
+      return {
+        route: name,
+        segmentIndex: index,
+        from,
+        to,
+        lengthUm,
+        pinnedCriticalStrain,
+        idealClampedCriticalStrain: pinnedCriticalStrain * 4,
+      };
+    }),
+  );
+  const longest = spans.reduce((best, item) => (item.lengthUm > best.lengthUm ? item : best));
+  // Scenario stresses are NOT measured in the paper or WaferCAD model.
+  const hypothetical100ppmCompression = 100e-6;
+  return {
+    source: 'Hu 2025 220nm Si; ideal uniform Euler beam, weak-axis compression screen only',
+    thicknessUm,
+    assumedYoungModulusGPa,
+    measuredResidualCompression,
+    spans,
+    longest,
+    hypothetical100ppmCompression,
+    stressScenarioMPa: hypothetical100ppmCompression * assumedYoungModulusGPa * 1e3,
+    idealClampedCriticalStressMPa:
+      longest.idealClampedCriticalStrain * assumedYoungModulusGPa * 1e3,
+    hypotheticalStrainToIdealClampedCriticalRatio:
+      hypothetical100ppmCompression / longest.idealClampedCriticalStrain,
+    residualCompressionDirectionKnown: false,
+    endConstraintsVerified: false,
+    geometricImperfectionsVerified: false,
+    actualWaferBucklingPredicted: false,
+    mechanicalFEMVerified: false,
+    paperPerimeterMechanicalAcceptance: false,
+  };
+}
+
 export function createSwxSemGroundReturnCandidate(state = 'off') {
   const original = createSwxSemV2ProcessGeometry(state);
   const groundRails = SWX_GROUND_RETURN_ASSUMPTIONS.groundPathsUm.map(

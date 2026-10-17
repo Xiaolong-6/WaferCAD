@@ -9,6 +9,7 @@ import { buildSwxMemsUnified } from './build-swx-mems-example.mjs';
 import {
   createSwxSemGroundReturnCandidate,
   SWX_GROUND_RETURN_PROCESS_PROFILE,
+  auditSwxGroundReturnBucklingRisk,
 } from './swx-mems-sem-ground-return-candidate.mjs';
 import {
   createSwxSemV2ProcessGeometry,
@@ -25,6 +26,10 @@ const v = await import('../site/vector-geometry.js');
 const originalAudit = auditSwxSemV2ElectricalNets(v, original);
 const candidateAudit = auditSwxSemV2ElectricalNets(v, source);
 const candidateFigureScopeAudit = auditSwxPaperEnvelope(v, source);
+const mechanicalRiskScreen = auditSwxGroundReturnBucklingRisk();
+assert.equal(mechanicalRiskScreen.longest.route, 'signal');
+assert.equal(mechanicalRiskScreen.longest.lengthUm, 122);
+assert.equal(mechanicalRiskScreen.paperPerimeterMechanicalAcceptance, false);
 assert.equal(originalAudit.opticalFrameConnectedToGroundSi, false);
 assert.equal(candidateAudit.opticalFrameConnectedToGroundSi, true);
 assert.equal(candidateAudit.combsSeparatedFromGround, true);
@@ -53,6 +58,8 @@ await writeFile(
       candidateSiliconDomains: candidateAudit.siliconConnectedDomains,
       sourceElectricalNetAudit: candidateAudit,
       figureScopeAudit: candidateFigureScopeAudit,
+      perimeterMechanicalRiskScreen: mechanicalRiskScreen,
+      mechanicalPerimeterAccepted: false,
       extraneousSourceUnverifiedBOXSupportedRails: 0,
       inventedSourcePerimeterRails: true,
       modeledExternalGoldContacts: 2,
