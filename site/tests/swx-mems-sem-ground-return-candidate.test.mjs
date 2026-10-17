@@ -27,8 +27,10 @@ test('ground study is isolated from the original unapproved SEM-v2 cell', () => 
     assert.deepEqual(candidate.maskPolygons.get(2), baseline.maskPolygons.get(2));
     assert.deepEqual(candidate.maskPolygons.get(3), baseline.maskPolygons.get(3));
     assert.equal(candidate.layout.elements.length, baseline.layout.elements.length + 2);
-    assert.equal(candidate.layout.combos.find((combo) => combo.layer === 1).count,
-      candidate.maskPolygons.get(1).length);
+    assert.equal(
+      candidate.layout.combos.find((combo) => combo.layer === 1).count,
+      candidate.maskPolygons.get(1).length,
+    );
     assert.deepEqual(candidate.layout.bounds, baseline.layout.bounds);
     assert.equal(candidate.physicalGroups.candidateGroundRails.length, 2);
     assert.equal(baseline.physicalGroups.candidateGroundRails, undefined);
