@@ -110,10 +110,7 @@ try {
       page.on('pageerror', (error) => report.errors.push(error.message));
       const loadedProjects = [];
       page.on('response', (response) => {
-        if (
-          expectedProject &&
-          new URL(response.url()).pathname.endsWith('/' + expectedProject)
-        ) {
+        if (expectedProject && new URL(response.url()).pathname.endsWith('/' + expectedProject)) {
           loadedProjects.push({ url: response.url(), status: response.status() });
         }
       });
@@ -134,17 +131,19 @@ try {
           const model = window.WaferCadV2Workstation.snapshot().model;
           return { layers: model.layers.length, regions: model.regions.length };
         });
-        await page.locator('#openProjectInput').setInputFiles(resolve('site/examples', openProject));
-        const confirmation = page.locator('#confirmationDialogOverlay');
+        await page
+          .locator('#openProjectInput')
+          .setInputFiles(resolve('site/examples', openProject));
+        const confirmation = page.locator('dialog.v2-dialog');
         await confirmation.waitFor({ state: 'visible', timeout: 15000 });
-        await confirmation.locator('[data-dialog-action="confirm"]').click();
+        await confirmation.getByRole('button', { name: 'Open project' }).click();
         await page.waitForFunction(
           ({ layers, regions }) => {
             const model = window.WaferCadV2Workstation?.snapshot()?.model;
             return Boolean(
               model &&
-                (layers === null || model.layers.length === layers) &&
-                (regions === null || model.regions.length === regions),
+              (layers === null || model.layers.length === layers) &&
+              (regions === null || model.regions.length === regions),
             );
           },
           { layers: expectedLayers, regions: expectedRegions },
@@ -171,7 +170,11 @@ try {
           after,
           origin: new URL(page.url()).origin,
         };
-        assert.notEqual(report.manualOpen.origin, 'null', 'Real origin required for Worker/Recovery');
+        assert.notEqual(
+          report.manualOpen.origin,
+          'null',
+          'Real origin required for Worker/Recovery',
+        );
       }
       await waitForPaint(page);
       await page.screenshot({ path: resolve(output, 'initial-' + width + '.png') });

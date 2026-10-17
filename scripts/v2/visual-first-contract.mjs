@@ -69,12 +69,12 @@ export function parseVisualCaptureSettings(env = process.env) {
   if (env.WAFERCAD_VISUAL_SWIFTSHADER && !['0', '1'].includes(env.WAFERCAD_VISUAL_SWIFTSHADER))
     throw Error('WAFERCAD_VISUAL_SWIFTSHADER must be 0 or 1');
   const requireRough = env.WAFERCAD_VISUAL_REQUIRE_ROUGH === '1';
-  if (
-    env.WAFERCAD_VISUAL_REQUIRE_ROUGH &&
-    !['0', '1'].includes(env.WAFERCAD_VISUAL_REQUIRE_ROUGH)
-  )
+  if (env.WAFERCAD_VISUAL_REQUIRE_ROUGH && !['0', '1'].includes(env.WAFERCAD_VISUAL_REQUIRE_ROUGH))
     throw Error('WAFERCAD_VISUAL_REQUIRE_ROUGH must be 0 or 1');
-  if (requireRough && ((start !== 'example' && !env.WAFERCAD_VISUAL_OPEN_PROJECT) || !views.includes('three')))
+  if (
+    requireRough &&
+    ((start !== 'example' && !env.WAFERCAD_VISUAL_OPEN_PROJECT) || !views.includes('three'))
+  )
     throw Error('Native rough-mesh evidence requires an Example and the 3D view');
   const expectedProject = env.WAFERCAD_VISUAL_EXPECT_PROJECT || null;
   const openProject = env.WAFERCAD_VISUAL_OPEN_PROJECT || null;
