@@ -25,19 +25,24 @@ function minimalPhysicalSource() {
   const model = createModel({ shape: 'rect', width: 14, height: 8, thickness: 2 });
   model.layers[0].name = 'Si 2 µm synthetic scientific seed';
   const oxide = applyOperation(model, {
-    type: 'add', name: 'Interlayer SiO2',
-    thickness: 0.45, face: 'front', growth: 'direct',
+    type: 'add',
+    name: 'Interlayer SiO2',
+    thickness: 0.45,
+    face: 'front',
+    growth: 'direct',
     area: model.boundary,
   });
   assert.equal(oxide.changed, true);
   const metal = applyOperation(model, {
-    type: 'add', name: 'METAL1 Al',
-    thickness: 0.2, face: 'front', growth: 'direct',
+    type: 'add',
+    name: 'METAL1 Al',
+    thickness: 0.2,
+    face: 'front',
+    growth: 'direct',
     area: m1MaskGeometry(groups),
   });
   assert.equal(metal.changed, true);
-  assert.equal(model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible,
-    true);
+  assert.equal(model.layers.find((layer) => layer.name === 'Interlayer SiO2')?.visible, true);
 
   const project = projectForBenchmark({
     model,
@@ -47,28 +52,44 @@ function minimalPhysicalSource() {
   project.layout = {
     name: 'Approved SVG source with minimal physical M1-only seed',
     root: 'TCMOS',
-    elements: groups.flatMap((group) => group.shapes.map(({ points }) => ({
-      kind: 'polygon', sourceCell: 'TCMOS',
-      layer: group.layer, datatype: group.datatype, points,
-    }))),
+    elements: groups.flatMap((group) =>
+      group.shapes.map(({ points }) => ({
+        kind: 'polygon',
+        sourceCell: 'TCMOS',
+        layer: group.layer,
+        datatype: group.datatype,
+        points,
+      })),
+    ),
     linework: [],
     hierarchy: {},
     combos: groups.map((group) => ({
       key: 'TCMOS|' + group.layer + '|0',
-      cell: 'TCMOS', layer: group.layer, datatype: 0,
+      cell: 'TCMOS',
+      layer: group.layer,
+      datatype: 0,
       count: group.shapes.length,
     })),
     bounds: {
-      minX: -7, minY: -4, maxX: 7, maxY: 4,
-      width: 14, height: 8,
+      minX: -7,
+      minY: -4,
+      maxX: 7,
+      maxY: 4,
+      width: 14,
+      height: 8,
     },
     units: { xy: 'µm', dbuToMicron: 1, hasPhysicalUnits: true },
     maskPresentation: {
-      version: 1, background: '#ffffff',
-      showStructure: true, showUnselected: true,
+      version: 1,
+      background: '#ffffff',
+      showStructure: true,
+      showUnselected: true,
       layers: groups.map((group) => ({
-        layer: group.layer, datatype: 0,
-        color: '#92a8bf', mode: 'fill', opacity: 0.75,
+        layer: group.layer,
+        datatype: 0,
+        color: '#92a8bf',
+        mode: 'fill',
+        opacity: 0.75,
       })),
     },
   };
@@ -89,36 +110,60 @@ test('fast real-Kernel 4x4 multimetal Via and M2-M4 physical geometry, storage',
   validateProjectFile(project);
   assert.equal(project.model.kernel, 'vector-2.5d-v1');
   assert.equal(project.layout.elements.length, 3963);
-  assert.equal(project.model.layers.some((layer) => layer.name === 'Interlayer SiO2'), true);
-  const expectedSource = routed.cells.flatMap((cell) => approved.map((element) => ({
-    ...element,
-    points: element.points.map(([x, y]) => [x + cell.x, y + cell.y]),
-  })));
-  assert.deepEqual(project.layout.elements.slice(0, 3712), expectedSource,
-    'Every replicated approved SVG vertex must remain exact on all 16 cells');
+  assert.equal(
+    project.model.layers.some((layer) => layer.name === 'Interlayer SiO2'),
+    true,
+  );
+  const expectedSource = routed.cells.flatMap((cell) =>
+    approved.map((element) => ({
+      ...element,
+      points: element.points.map(([x, y]) => [x + cell.x, y + cell.y]),
+    })),
+  );
+  assert.deepEqual(
+    project.layout.elements.slice(0, 3712),
+    expectedSource,
+    'Every replicated approved SVG vertex must remain exact on all 16 cells',
+  );
 
   assert.equal(report.graph.continuousNets, 19);
   assert.equal(report.materialLayersAdded, 9);
   assert.equal(routed.vias.length, 140);
-  assert.deepEqual(report.viaFootprintChecks.map((check) => check.viaSites), [64, 64, 12]);
-  assert.deepEqual(report.metalFootprintChecks.map((check) => check.shapeCount), [64, 44, 3]);
+  assert.deepEqual(
+    report.viaFootprintChecks.map((check) => check.viaSites),
+    [64, 64, 12],
+  );
+  assert.deepEqual(
+    report.metalFootprintChecks.map((check) => check.shapeCount),
+    [64, 44, 3],
+  );
   for (const check of [...report.viaFootprintChecks, ...report.metalFootprintChecks]) {
     assert.ok(check.designedAreaUm2 > 0);
     assert.ok(check.actualAreaUm2 > 0);
-    assert.ok(check.missingAreaUm2 < 1e-12,
-      check.name + ': incomplete real physical material area');
-    assert.ok(check.extraAreaUm2 < 1e-12,
-      check.name + ': unexpected physically shorting extra conductor');
+    assert.ok(
+      check.missingAreaUm2 < 1e-12,
+      check.name + ': incomplete real physical material area',
+    );
+    assert.ok(
+      check.extraAreaUm2 < 1e-12,
+      check.name + ': unexpected physically shorting extra conductor',
+    );
   }
   const restored = await readProjectFile({
-    size: Buffer.byteLength(json), text: async () => json,
+    size: Buffer.byteLength(json),
+    text: async () => json,
   });
   validateProjectFile(restored);
   assert.equal(restored.layout.elements.length, 3963);
   assert.ok(restored.model.regions.length > 80);
-  assert.deepEqual(restored.layout.elements, project.layout.elements,
-    'Lossless storage must preserve every original and routed SVG/mask vertex');
+  assert.deepEqual(
+    restored.layout.elements,
+    project.layout.elements,
+    'Lossless storage must preserve every original and routed SVG/mask vertex',
+  );
   assert.equal(restored.model.layers.length, project.model.layers.length);
-  assert.ok(!restored.processRecipe && !restored.snapshotBranches,
-    'Do not synthesize fake post-Recipe History in the science prototype');
+  assert.ok(
+    !restored.processRecipe && !restored.snapshotBranches,
+    'Do not synthesize fake post-Recipe History in the science prototype',
+  );
 });
