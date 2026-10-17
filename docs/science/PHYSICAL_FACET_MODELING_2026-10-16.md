@@ -115,3 +115,29 @@ Facet-normal multilayer coating at apex/valley junctions and original-paper
 figure calibration remain blocked. This experimental adapter may only
 become user-facing after an opt-in versioned canonical Model contract and
 save/reopen/rollback test; do not silently upgrade old `.wafercad` files.
+
+## Explicit opt-in persistence staging (not production UI)
+
+`site/physical-facet-model.js` now validates a new optional
+`model.experimentalPhysicalFacetOwner` descriptor against a single
+rectangular Base region and its reference planar Z bounds. Only the
+one-material geometry is supported. The front/back pyramid `z(x,y)`
+remains the scientific truth for this experimental owner; the flat
+`region.stack` is a constrained compatibility reference and **not**
+permission for the legacy renderer to display a physical facet.
+
+Project storage preserves the descriptor with the saved model asset in
+Snapshot / History records, and opt-in tests verify the analytic Section
+survives packed and lossless round trips. Unimplemented Process
+mutations return an explicit failure without changing the model.
+Legacy 3D/Section geometry adapters reject this experimental owner
+rather than rendering a scientifically false flat surface. Production
+Workstation file import also deliberately rejects these experimental
+files until physical geometry renderers consume the same owner.
+
+This is an intermediate **storage and transaction safety contract**,
+not UI activation, native open-in-app certification or complete
+Recovery/rollback validation. No default project has this field; old
+`.wafercad` files are neither upgraded to physical geometry nor
+rebaseline-corrected. Next gate is native UI opt-in rendering plus
+actual save/reopen/history-recovery checks before enabling imports.
