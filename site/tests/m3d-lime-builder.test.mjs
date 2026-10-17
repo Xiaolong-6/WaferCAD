@@ -293,9 +293,7 @@ test('TCAM pre-charge CNTFET is physical but has no invented fifteenth RRAM', as
     'pre-charge Pd step must follow the explicitly inferred 25% sidewall hypothesis',
   );
   for (let i = 0; i < 2; i++) {
-    const overlap =
-      Math.min(seam[i].z1, seam[i + 1].z1) -
-      Math.max(seam[i].z0, seam[i + 1].z0);
+    const overlap = Math.min(seam[i].z1, seam[i + 1].z1) - Math.max(seam[i].z0, seam[i + 1].z0);
     assert.ok(overlap > 0.01, 'pre-charge gate-edge Pd overlap must exceed 10nm');
   }
 });

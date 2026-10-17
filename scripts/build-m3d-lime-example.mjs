@@ -680,7 +680,11 @@ export async function buildM3DLime() {
     siliconHandleSurrogateUm: RECEIVER_THICKNESS_UM,
     demonstratedArraySizes: { cim: 1024, buffer: 512, tcamCells: 5 },
     representedCellCounts: { cim: cimSites.length, buffer: bufferChannels.length, tcamCells: 5 },
-    representedCntfets: { tcamAccess: tcamChannels.length, bufferAccess: bufferChannels.length, mlPrecharge: 1 },
+    representedCntfets: {
+      tcamAccess: tcamChannels.length,
+      bufferAccess: bufferChannels.length,
+      mlPrecharge: 1,
+    },
     representedDigitalRramSites: rramSites.length,
     transistorChannelWUm: REPORTED_CNT_W_UM,
     transistorChannelLUm: REPORTED_CNT_L_UM,
