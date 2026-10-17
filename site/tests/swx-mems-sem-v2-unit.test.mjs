@@ -134,9 +134,7 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
         contact([truss], [pose.springContours[Math.floor(i / 3)]]) > 1e-4,
         state + ' folded spring truss ' + i + ' detached from its beam',
       );
-      const otherFixed = pose.fixed.filter(
-        (ring) => !pose.fixedActuator.slice(-4).includes(ring),
-      );
+      const otherFixed = pose.fixed.filter((ring) => !pose.fixedActuator.slice(-4).includes(ring));
       assert.ok(
         contact([truss], otherFixed) < 1e-8,
         state + ' truss ' + i + ' contacts an unrelated fixed silicon net',

@@ -253,7 +253,12 @@ function semV2PhysicalPose(state) {
     ...source.optics.movableStops,
     ...bridge,
   ];
-  const flexure = [...springs, ...springTrussContours, ...opticalFlexures, ...source.guides.flexure];
+  const flexure = [
+    ...springs,
+    ...springTrussContours,
+    ...opticalFlexures,
+    ...source.guides.flexure,
+  ];
   return {
     source,
     state,
