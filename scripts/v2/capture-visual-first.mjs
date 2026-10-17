@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { launchBrowser, newUiContext, waitForPaint } from '../test-helpers/ui.mjs';
+import { capturePhotodetectorRoughRoi } from './capture-photodetector-rough-roi.mjs';
 import {
   parseVisualCaptureSettings,
   resolvePinnedThree,
@@ -321,6 +322,13 @@ try {
             return { width: canvas?.width || 0, height: canvas?.height || 0 };
           }, view),
         });
+      }
+      if (
+        requireRough &&
+        openProject === 'photodetector-literature-examples.wafercad' &&
+        width > 820
+      ) {
+        report.roughRoi = await capturePhotodetectorRoughRoi(page, output, width);
       }
     } finally {
       await context.close();
