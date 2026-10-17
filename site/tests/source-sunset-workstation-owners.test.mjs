@@ -32,10 +32,7 @@ test('formal Workstation and View UX commands call native owners', async () => {
     packageJson.scripts['test:ui:workstation'],
     'node scripts/workstation-regression.mjs && node scripts/view-ux-v3-regression.mjs',
   );
-  assert.equal(
-    packageJson.scripts['test:ui:view-ux'],
-    'node scripts/view-ux-v3-regression.mjs',
-  );
+  assert.equal(packageJson.scripts['test:ui:view-ux'], 'node scripts/view-ux-v3-regression.mjs');
   const source = await readFile(join(root, 'scripts/workstation-regression.mjs'), 'utf8');
   const viewSource = await readFile(join(root, 'scripts/view-ux-v3-regression.mjs'), 'utf8');
   assert.match(source, /runNativeWorkstationOwners\(\)/);
