@@ -25,7 +25,7 @@ new Function('module', 'exports', vendorSource)(vendor, vendor.exports);
 globalThis.polygonClipping = vendor.exports;
 
 const { createModel, applyOperation, modelBoundsZ } = await import('../model.js');
-const { sectionSlices, materialSolids } = await import('../model-view-geometry.js');
+const { sectionSlices, materialSolids, sectionContours } = await import('../model-view-geometry.js');
 
 const descriptor = {
   layerId: 'base',
@@ -139,6 +139,22 @@ test('normal storage, workspace storage, Snapshot and History keep one true owne
       );
     }
   }
+});
+
+test('native Section contour consumes actual physical facet breakpoints', () => {
+  const source = fixture();
+  const a = [-6.4, 0];
+  const b = [6.4, 0];
+  const physical = physicalPyramidSection(source.model.experimentalPhysicalFacetOwner, a, b);
+  const contours = sectionContours(source.model, a, b);
+  assert.equal(contours.length, 1);
+  assert.equal(contours[0].layerId, 'base');
+  const ring = contours[0].polys[0][0];
+  const top = physical.points.map(({ t, z1 }) => [t, z1]);
+  const bottom = physical.points.toReversed().map(({ t, z0 }) => [t, z0]);
+  assert.deepEqual(ring, [...top, ...bottom, top[0]]);
+  assert.ok(ring.some(([, z]) => z === 130));
+  assert.ok(ring.some(([, z]) => z === -130));
 });
 
 test('production Process and legacy 3D/Section fail closed for physical geometry', () => {

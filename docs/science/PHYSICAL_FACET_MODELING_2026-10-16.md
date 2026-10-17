@@ -133,8 +133,12 @@ Project storage preserves the descriptor with the saved model asset in
 Snapshot / History records, and opt-in tests verify the analytic Section
 survives packed and lossless round trips. Unimplemented Process
 mutations return an explicit failure without changing the model.
-Legacy 3D/Section geometry adapters reject this experimental owner
-rather than rendering a scientifically false flat surface. Production
+The native `sectionContours` geometry API now emits the real polygon
+defined by the owner's face-intersection breakpoints. This is an
+incremental **Section geometry consumer**, not yet an enabled
+Workstation view. Other constant-Z Section slices and legacy 3D
+adapters still reject the physical owner, preventing a misleading
+flat fallback. Production
 Workstation file import also deliberately rejects these experimental
 files until physical geometry renderers consume the same owner.
 
