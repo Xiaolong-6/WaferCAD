@@ -34,7 +34,12 @@ test('Welcome lists independent GaN Main workpieces and an assembly-only referen
     ],
   );
   const gaNWorkpieces = BUNDLED_EXAMPLES.filter((item) =>
-    ["gan-microchannel-interposer-2022","gan-hemt-die-2022","gan-gsg-left-die-2022","gan-gsg-right-die-2022"].includes(item.id),
+    [
+      'gan-microchannel-interposer-2022',
+      'gan-hemt-die-2022',
+      'gan-gsg-left-die-2022',
+      'gan-gsg-right-die-2022',
+    ].includes(item.id),
   );
   assert.equal(gaNWorkpieces.length, 4);
   for (const workpiece of gaNWorkpieces) {

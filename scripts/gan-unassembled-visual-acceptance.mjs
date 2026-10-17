@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import {
-  baseUrl, installPinnedThreeRoute, observePageErrors, waitForPaint,
+  baseUrl,
+  installPinnedThreeRoute,
+  observePageErrors,
+  waitForPaint,
 } from './test-helpers/ui.mjs';
 
 const ids = [
@@ -17,9 +20,7 @@ const folder = new URL('../test-results/gan-unassembled/visual/', import.meta.ur
 await mkdir(folder, { recursive: true });
 const browser = await chromium.launch({
   headless: true,
-  ...(process.env.WAFERCAD_CHROMIUM
-    ? { executablePath: process.env.WAFERCAD_CHROMIUM }
-    : {}),
+  ...(process.env.WAFERCAD_CHROMIUM ? { executablePath: process.env.WAFERCAD_CHROMIUM } : {}),
   args: ['--enable-unsafe-swiftshader'],
 });
 const report = {
@@ -34,10 +35,10 @@ try {
     await installPinnedThreeRoute(context);
     const page = await context.newPage();
     const errors = observePageErrors(page);
-    await page.goto(
-      baseUrl + '/app.html?start=example&example=' + encodeURIComponent(id),
-      { waitUntil: 'domcontentloaded', timeout: 45000 },
-    );
+    await page.goto(baseUrl + '/app.html?start=example&example=' + encodeURIComponent(id), {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000,
+    });
     await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
       timeout: 180000,
     });
@@ -47,10 +48,7 @@ try {
     await page.waitForFunction(
       (rev) => {
         const host = document.getElementById('threeHost');
-        return (
-          host?.dataset.renderState === 'ready' &&
-          Number(host.dataset.modelRevision) === rev
-        );
+        return host?.dataset.renderState === 'ready' && Number(host.dataset.modelRevision) === rev;
       },
       revision,
       { timeout: 180000 },

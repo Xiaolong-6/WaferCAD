@@ -46,7 +46,9 @@ test('native Main/History import and restore works independently on all workpiec
     let current = structuredClone(project);
     const history = createSnapshotManager({
       capture: () => structuredClone(current),
-      restore: (state) => { current = structuredClone(state); },
+      restore: (state) => {
+        current = structuredClone(state);
+      },
     });
     history.importRecords(project.snapshots, project.snapshotBranches);
     assert.equal(history.activeBranch().id, 'main', role);
@@ -103,6 +105,10 @@ test('interposer Main terminates before die transfer, Bond, solder and wire plac
     ),
   );
   assert.match(project.snapshotBranches.nodes[1].operation.label, /NOT SIMULATED/);
-  assert.ok(project.snapshotBranches.nodes.some((node) => /four-level|bridge tier/i.test(node.operation.label)));
+  assert.ok(
+    project.snapshotBranches.nodes.some((node) =>
+      /four-level|bridge tier/i.test(node.operation.label),
+    ),
+  );
   assert.ok(project.layout.elements.length > 0);
 });
