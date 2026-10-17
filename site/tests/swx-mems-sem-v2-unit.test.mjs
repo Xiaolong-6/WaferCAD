@@ -75,7 +75,7 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
   }
 });
 
-test('SEM v2 S6 centerline implements reported 5/3um radii and 15um terminal in both poses', () => {
+test('SEM v2 S6 has actual R1/R2 circular arcs and 15um terminal in OFF/ON', () => {
   for (const state of ['off', 'on']) {
     const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
     assert.equal(pose.hairpins.length, 2);
@@ -91,10 +91,7 @@ test('SEM v2 S6 centerline implements reported 5/3um radii and 15um terminal in 
         const endIndex = arc.lastArcIndex ?? arc.endIndex;
         for (let index = startIndex; index <= endIndex; index++) {
           const point = route.centerline[index];
-          const measuredRadiusUm = Math.hypot(
-            point[0] - arc.center[0],
-            point[1] - arc.center[1],
-          );
+          const measuredRadiusUm = Math.hypot(point[0] - arc.center[0], point[1] - arc.center[1]);
           assert.ok(
             Math.abs(measuredRadiusUm - arc.radiusUm) < 1e-9,
             state + ' S6 optical curve has a wrong physical radius',
