@@ -1,15 +1,6 @@
 name: GaN HEMT microchannel reconstruction
 
 on:
-  # One scoped branch-validation entrypoint while this Draft PR conflicts
-  # with main. GitHub suppresses pull_request workflows for conflicted PRs.
-  # Only edits to this workflow initiate a branch push run; normal code
-  # changes still wait for a deliberate final targeted validation request.
-  push:
-    branches:
-      - feat/example-gan-hemt-microchannel-20261014
-    paths:
-      - .github/workflows/gan-hemt-microchannel.yml
   pull_request:
     paths:
       - scripts/build-gan-hemt-microchannel-example.mjs
@@ -57,18 +48,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      # Temporary read-only output of the two Prettier changes identified
-      # by the automatic Quality workflow after the Main integration.
-      # Restore source before performing all normal scientific checks.
-      - name: Exact formatting proposal for Main-aligned GaN files
-        run: |
-          npx prettier --write site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
-          git diff --no-ext-diff -- site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
-          git restore -- site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Focused lint
-        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js
+        run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Focused formatting
-        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js
+        run: npx prettier --check scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs docs/GAN_HEMT_MICROCHANNEL_RECONSTRUCTION_2026-10-14.md site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Kernel reconstruction and physics-invariant unit tests
         run: node --test site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs
       - name: TSV conformal material wall-science probe

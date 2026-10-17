@@ -166,7 +166,10 @@ test('GSG pad footprints and Cu TSV cores are distinct modeled contacts', async 
     const [start, controlA, controlB, end] = wire.points;
     assert.deepEqual(start.slice(0, 2), [side * 225, 0]);
     assert.deepEqual(end.slice(0, 2), [side * 1250, 0]);
-    for (const [point, metal] of [[start, hemtMetal], [end, gsgMetal]]) {
+    for (const [point, metal] of [
+      [start, hemtMetal],
+      [end, gsgMetal],
+    ]) {
       const surface = stackAt(model, point.slice(0, 2)).filter(
         (segment) => segment.layerId === metal.id,
       );
