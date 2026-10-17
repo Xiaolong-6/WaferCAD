@@ -1013,16 +1013,43 @@ try {
     { timeout: 120000 },
   );
   await waitForPaint(page);
+  const prechargeFittedCamera = (await snapshot()).threeCamera;
   const prechargeCapture = await captureVisibleThree(
     page,
     resolve(output, 'three-local-tcam-ml-precharge.png'),
   );
   assert.ok(prechargeCapture.coloredPixels > 1000, 'ML pre-charge 3D evidence is empty');
+  // The sourced CNTFET width is 20um, while the inferred active S/D gap is
+  // 2um. A full-width Fit produces a narrow strip. Take a second, native UI
+  // gesture-only close-up so the contact junction is genuinely inspectable.
+  await ensureSelected(zoom3d);
+  const prechargeViewport = await page.locator('#threeHost').boundingBox();
+  assert.ok(prechargeViewport, 'Pre-charge 3D viewport cannot be measured');
+  await page.mouse.move(
+    prechargeViewport.x + prechargeViewport.width / 2,
+    prechargeViewport.y + prechargeViewport.height / 2,
+  );
+  await page.mouse.wheel(0, -700);
+  await waitForPaint(page);
+  const prechargeCloseCamera = (await snapshot()).threeCamera;
+  assert.ok(
+    cameraDistance(prechargeCloseCamera) < cameraDistance(prechargeFittedCamera) * 0.8,
+    'Real pre-charge close-up did not bring the device at least 20% closer',
+  );
+  const prechargeCloseCapture = await captureVisibleThree(
+    page,
+    resolve(output, 'three-local-tcam-ml-precharge-focused.png'),
+  );
+  assert.ok(prechargeCloseCapture.coloredPixels > 1000, 'Focused pre-charge 3D evidence is empty');
   report.threePrechargeEvidence = {
     roi: prechargeRoi,
+    fittedCamera: prechargeFittedCamera,
+    focusedCamera: prechargeCloseCamera,
     coloredPixels: prechargeCapture.coloredPixels,
+    focusedColoredPixels: prechargeCloseCapture.coloredPixels,
     canvas: prechargeCapture.canvas,
-    note: 'Independent inferred pre-charge FET; no claim of original ML routing or author GDS',
+    focusedCanvas: prechargeCloseCapture.canvas,
+    note: 'Native Fit and focused zoom of inferred pre-charge FET; no claim of ML routing or author GDS',
   };
   await page.locator('#threePanel [data-action="maximize:three"]').click();
   await waitForPaint(page);

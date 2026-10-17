@@ -198,16 +198,16 @@ jobs:
         run: node --test site/tests/photodetector-rough-conformal.test.mjs
 
       - name: Capture real photodetector rough ROI evidence
-        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        if: ${{ needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || (github.event.pull_request.number == 250 || github.event.pull_request.number == 326)) }}
         env:
           WAFERCAD_AUDIT_PHOTODETECTOR: '1'
-          WAFERCAD_AUDIT_PERSPECTIVE: ${{ github.event.pull_request.number == 250 && '1' || '0' }}
+          WAFERCAD_AUDIT_PERSPECTIVE: ${{ (github.event.pull_request.number == 250 || github.event.pull_request.number == 326) && '1' || '0' }}
           WAFERCAD_AUDIT_FILTER: photodetector-blacksi-final
           WAFERCAD_AUDIT_OUTPUT: test-results/product-review/pr250-photodetector
         run: node scripts/pr250-renderer-audit.mjs
 
       - name: Upload targeted Photodetector ROI evidence
-        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.number == 250) }}
+        if: ${{ !cancelled() && needs.plan.outputs.renderer == 'true' && (github.event_name != 'pull_request' || (github.event.pull_request.number == 250 || github.event.pull_request.number == 326)) }}
         uses: actions/upload-artifact@v6
         with:
           name: pr250-photodetector-${{ github.sha }}

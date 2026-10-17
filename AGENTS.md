@@ -8,6 +8,22 @@ Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `doc
 - Use stable internal entity IDs and preserve project migration, transactional workers, History restore and browser recovery contracts.
 - Add regressions to the suite that owns the behavior. Avoid file splitting solely to reduce line counts.
 - Use locked dependencies via `npm ci`. During iteration run focused checks and (for UI/Renderer/Example changes) inspect real-browser output before broad CI. Before final acceptance run the required Quality, targeted CI and scientific/regression gates; do not weaken tolerances or skip data-integrity checks. Report exact commands, results, commit and environment.
+## Chromium-first local visual acceptance
+
+For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, default to **real local Chromium screenshots and independent AI visual review**. GitHub CI is not the primary visual-debugging loop.
+
+1. Prefer Playwright launching local Chromium against the actual WaferCAD development server.
+2. Operate the real application: select the relevant Example, configure the camera/view, zoom, ROI and display modes, and capture actual screenshots.
+3. Independently inspect the screenshots. Fix obvious visual defects and capture again until the observed result is acceptable.
+4. Do not substitute mock HTML, simulated screenshots, or passing tests alone for real WaferCAD browser visual acceptance.
+5. After local visual and relevant focused tests pass, run risk-appropriate Targeted CI. Before final merge/release acceptance, run the required Quality, scientific regression and release gates.
+6. If the source is inaccessible, Chromium cannot start, or real screenshots cannot be captured, explicitly report the blocker and **do not claim visual acceptance**.
+7. Never omit necessary scientific-correctness, data-integrity, Recovery or other critical-risk tests merely to save CI time.
+
+**Default sequence:** local change → real Chromium screenshot → AI visual inspection → focused local tests → batched fixes → push → necessary CI → final acceptance.
+
+Minimize redundant CI without lowering final acceptance standards.
+
 - Keep approved platform-specific visual baselines separate. Do not replace an approved baseline merely to hide a failed comparison.
 - Preserve other developers' uncommitted work. Inspect branch, HEAD and working tree before changing Git state; integrate concurrent upstream changes without force pushing.
 - Update durable engineering/scientific contracts in the repository. For PR-specific progress, failures and handoff, maintain the PR description as the current status and comments as chronological evidence; do not create dated audit/handoff Markdown by default. Keep essential scientific provenance, fixtures and safety-critical evidence in version control. Chats and ignored artifacts are not authoritative.
