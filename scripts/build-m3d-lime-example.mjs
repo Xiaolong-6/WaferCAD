@@ -44,7 +44,13 @@ const tcamChannels = Array.from({ length: 5 }, (_, i) => [
 const bufferChannels = Array.from({ length: 4 }, (_, i) =>
   rect(-42 + i * 19, 24, CNT_ISLAND_L_UM, REPORTED_CNT_W_UM),
 );
-const channels = [...bufferChannels, ...tcamChannels];
+// Fig. 3a-b includes a separate CNTFET for ML pre-charge in addition to
+// the ten 2T2R TCAM access FETs and four sampled buffer access FETs.
+// Its lateral position and contact dimensions are inferred; it is deliberately
+// outside the 14 memory/RRAM landing sites and must not acquire a fifteenth RRAM.
+const prechargeChannel = rect(44, -25, CNT_ISLAND_L_UM, REPORTED_CNT_W_UM);
+const memoryChannels = [...bufferChannels, ...tcamChannels];
+const channels = [...memoryChannels, prechargeChannel];
 const sourceContacts = channels.map((c) => rect(c.x - 0.9, c.y, 1.2, c.h));
 // Supplementary Fig. 6a shows a laterally separated RRAM pillar and CNTFET,
 // joined via the Pd drain/BE landing. The inferred contact pad extends 0.6um
@@ -53,7 +59,11 @@ const sourceContacts = channels.map((c) => rect(c.x - 0.9, c.y, 1.2, c.h));
 const drainContacts = channels.map((c) =>
   rect(c.x + INFERRED_CONTACT_OVERLAP_UM + REPORTED_CNT_L_UM, c.y, 1.8, c.h),
 );
-const rramSites = drainContacts.map((c) => rect(c.x + 0.75, c.y + 5, 0.9, 10));
+// Digital Ta2O5 RRAM belongs only to buffer and 2T2R access devices.
+// The final Pd drain is the isolated ML pre-charge CNTFET, not an RRAM BE.
+const rramSites = drainContacts
+  .slice(0, memoryChannels.length)
+  .map((c) => rect(c.x + 0.75, c.y + 5, 0.9, 10));
 const MASKS = Object.freeze([
   {
     id: 11,
@@ -73,7 +83,7 @@ const MASKS = Object.freeze([
   },
   {
     id: 15,
-    name: 'BEOL CNTFET bottom gate 10 TCAM + 4 buffer',
+    name: 'BEOL CNTFET gates: 10 TCAM + 4 buffer + 1 ML pre-charge (inferred)',
     rectangles: channels.map((c) => rect(c.x - 0.25, c.y, c.w + 0.5, c.h)),
   },
   { id: 16, name: 'CNT island: 20um W, 2um active L + 0.3um contacts', rectangles: channels },
@@ -670,6 +680,8 @@ export async function buildM3DLime() {
     siliconHandleSurrogateUm: RECEIVER_THICKNESS_UM,
     demonstratedArraySizes: { cim: 1024, buffer: 512, tcamCells: 5 },
     representedCellCounts: { cim: cimSites.length, buffer: bufferChannels.length, tcamCells: 5 },
+    representedCntfets: { tcamAccess: tcamChannels.length, bufferAccess: bufferChannels.length, mlPrecharge: 1 },
+    representedDigitalRramSites: rramSites.length,
     transistorChannelWUm: REPORTED_CNT_W_UM,
     transistorChannelLUm: REPORTED_CNT_L_UM,
     cntIslandLengthUm: CNT_ISLAND_L_UM,
@@ -681,6 +693,7 @@ export async function buildM3DLime() {
       '2.6um CNT island includes an exact 2um active contact gap and inferred 0.3um overlaps.',
       'Model field and inspection-only ROI focus on an overlapped analog and TCAM cell.',
       'CIM 1k-bit and buffer 512-bit arrays are sampled; five 2T2R TCAM cells are represented.',
+      'The extra ML pre-charge CNTFET is geometrically represented outside the 14 memory RRAM sites; original pre-charge GDS, wiring to ML, bias circuitry and electrical function are not reconstructed.',
       'Foundry M4 dielectric is a 100nm geometric surrogate for the already completed 130nm CMOS CMP; CIM and ILD CMP endpoint heights are inferred.',
       'CNT network rendered as 1nm surrogate rather than physical tube-level geometry.',
       '45nm top ALD Al2O3 has native conformal sidewall geometry; exact corner shape is limited by the 0.1nm persistence grid.',
