@@ -21,3 +21,12 @@ The metadata records the exact input SHA-256, checkout commit, view, physical bo
 ## Validation
 
 Focused pure presentation checks: `node --test site/tests/offline-visual-svg.test.mjs`. Full integration should run `--fixture step` plus an actual bundled `.wafercad` against the exact branch checkout and inspect the PNG, exported evidence, and scientific geometry. A simulated fixture cannot prove the real file reader or production topology path. Keep CI and release gates separate; local images are developer inspection artifacts until reviewed and approved.
+
+## Isolated UI Shell capture
+
+```sh
+node scripts/offline-ui-capture.mjs --component navigation --width 390 --height 844 --mobile edit --output test-results/offline-ui
+node scripts/offline-ui-capture.mjs --component topbar --width 1440 --height 960 --output test-results/offline-ui
+```
+
+The UI exporter reads the **actual CSS links from `site/app.html`**, executes the real v2 native icon/component/registry/overlay/Shell modules directly in an `about:blank` Chromium document, and captures a specific component rather than navigating to the app. It records a SHA-256 for each source file. Shell adapters intentionally contain no mocked project, geometry, or business content. Supported targets are `navigation`, `topbar`, and `viewbar`; hidden targets fail rather than returning fake results. This establishes real **shell/component CSS inspection only**. It cannot confirm live domain contents, application startup, runtime interactions, real WebGL render, or scientific geometry.
