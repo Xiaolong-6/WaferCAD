@@ -7,7 +7,7 @@ import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
-const output = resolve('test-results/pr290-edge-on');
+const output = resolve('test-results/array-renderer-edge-on');
 await mkdir(output, { recursive: true });
 const evidence = { result: 'running', errors: [] };
 const browser = await launchBrowser();
@@ -50,15 +50,23 @@ try {
       );
     }
     await page.locator('#threePanel [data-action="opacity:three"]').click();
+    const beforeFar = Number((await sample()).rendererFrameSerial || 0);
     await page.locator('#threeOpacityRange').fill('0.5');
+    // Scene ownership can advance before WebGL presents the new tier. Use
+    // the *completed* far frame, never cached diagnostics from the opaque one.
     await page.waitForFunction(
-      () => {
+      (previous) => {
         const node = document.getElementById('threeHost');
-        return /^far-/.test(node?.dataset.transparentArrayLodTier || '') &&
+        return (
+          /^far-/.test(node?.dataset.transparentArrayLodTier || '') &&
+          /^far-/.test(node?.dataset.rendererFrameArrayLodTier || '') &&
+          node.dataset.rendererFrameSceneGeneration === node.dataset.sceneGeneration &&
           node.dataset.renderState === 'ready' &&
-          Number(node.dataset.rendererDrawTriangles || 0) > 0;
+          Number(node.dataset.rendererFrameSerial || 0) > previous &&
+          Number(node.dataset.rendererDrawTriangles || 0) > 0
+        );
       },
-      null,
+      beforeFar,
       { timeout: 240000 },
     );
     const far = await sample();

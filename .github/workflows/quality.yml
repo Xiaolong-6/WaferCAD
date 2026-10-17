@@ -44,3 +44,19 @@ jobs:
       - name: Final lint, formatting, generated documentation and Node tests
         if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || github.event.pull_request.number == 290 }}
         run: npm run check
+
+      # Non-mutating PR290 diagnostics. The required Quality check still fails
+      # until the formatted contents are committed and reviewed on the branch.
+      - name: Report exact Prettier suggestions for source-retirement files
+        if: ${{ failure() && github.event_name == 'pull_request' && github.event.pull_request.number == 290 }}
+        run: |
+          files=(
+            site/tests/source-sunset-draw-process-owner.test.mjs
+            scripts/v2/check-source-sunset-draw-process.mjs
+            scripts/v2/check-source-sunset-edge-on.mjs
+            scripts/v2/check-source-sunset-release-owners.mjs
+            scripts/v2/check-source-sunset-renderer-stress.mjs
+            docs/LEGACY_SOURCE_SUNSET.md
+          )
+          npx prettier --write "${files[@]}"
+          node -e 'const fs=require("node:fs"); for(const f of process.argv.slice(1)) console.log("PR290_FORMAT_FILE:"+f+":"+JSON.stringify(fs.readFileSync(f,"utf8")));' "${files[@]}"

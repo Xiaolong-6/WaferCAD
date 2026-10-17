@@ -7,13 +7,15 @@ import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
 import { selectScientificView } from './desktop-view-selector.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4173';
-const output = resolve('test-results/pr290-renderer-625-retained');
+const output = resolve('test-results/array-renderer');
 await mkdir(output, { recursive: true });
 const report = { result: 'running', stages: [], errors: [] };
 const browser = await launchBrowser();
 try {
   const { page, context } = await newUiPage(browser, { viewport: { width: 1440, height: 960 } });
   try {
+    // Software WebGL exact transparency can keep the main thread busy for full frames.
+    page.setDefaultTimeout(180000);
     page.on('pageerror', (error) => report.errors.push(error.message));
     await page.goto(base + '/app.html?start=example&example=three-tier-silicon-jlfets', {
       waitUntil: 'domcontentloaded',
