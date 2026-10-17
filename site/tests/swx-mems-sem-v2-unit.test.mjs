@@ -33,8 +33,8 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
     assert.deepEqual(pose.fixedPads.map(centroid), [
       [-70, -20],
       [70, -20],
-      [-64, -77],
-      [64, -77],
+      [-64, -71],
+      [64, -71],
     ]);
     assert.equal(
       maskPolygons.get(1).length,
@@ -75,6 +75,44 @@ test('SEM v2 comb below SWX and opposed fixed optical ports', () => {
   }
 });
 
+test('SEM v2 S6 centerline implements reported 5/3um radii and 15um terminal in both poses', () => {
+  for (const state of ['off', 'on']) {
+    const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
+    assert.equal(pose.hairpins.length, 2);
+    for (const route of pose.hairpins) {
+      assert.equal(route.transitionArcs.length, 1);
+      assert.equal(route.returnArcs.length, 2);
+      assert.deepEqual(route.radiiUm, [5, 3, 3]);
+      assert.equal(route.coreWidthUm, 0.4);
+      assert.equal(route.straightLUm, 15);
+      assert.equal(route.sourceWaypointCoordinatesVerified, false);
+      for (const arc of [...route.transitionArcs, ...route.returnArcs]) {
+        const startIndex = arc.firstArcIndex ?? arc.startIndex;
+        const endIndex = arc.lastArcIndex ?? arc.endIndex;
+        for (let index = startIndex; index <= endIndex; index++) {
+          const point = route.centerline[index];
+          assert.ok(
+            Math.abs(Math.hypot(point[0] - arc.center[0], point[1] - arc.center[1]) - arc.radiusUm) <
+              1e-9,
+            state + ' S6 optical curve has a wrong physical radius',
+          );
+        }
+      }
+      for (const arc of route.returnArcs) {
+        assert.ok(Math.abs(Math.abs(arc.sweepRad) - Math.PI) < 1e-12);
+      }
+      const terminal = route.stationaryEnd;
+      assert.equal(route.centerline.at(-1), terminal);
+      assert.ok(Math.abs(Math.abs(terminal[0] - route.terminalStraightStart[0]) - 15) < 1e-9);
+      assert.equal(terminal[1], -71);
+      assert.ok(
+        Math.abs(route.terminalStraightStart[1] - (terminal[1] + pose.travel)) < 1e-9,
+        'Terminal anchors stay fixed as the suspended S6 flexes',
+      );
+    }
+  }
+});
+
 test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () => {
   for (const state of ['off', 'on']) {
     const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
@@ -105,6 +143,14 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
     }
     for (let i = 0; i < 2; i++) {
       assert.ok(
+        contact([pose.opticalFlexures[i]], [pose.fixedPads[3 - i]]) < 1e-8,
+        state + ' moving S6 guide touches the opposite mode converter support',
+      );
+      assert.ok(
+        contact([pose.opticalFlexures[i]], pose.fixedActuator) < 1e-8,
+        state + ' moving S6 guide contacts a fixed electrostatic conductor',
+      );
+      assert.ok(
         pose.fixedRoutes[i].length > 16,
         state + ' fixed input/output must have a smooth bent guide, not an L-shaped post',
       );
@@ -122,7 +168,7 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
       );
       assert.ok(
         contact([pose.opticalFlexures[i]], [pose.source.optics.movableFacetsAndPorts[i + 3]]) >
-          1e-5,
+          0.1,
         state + ' S6 optical route ' + i + ' lost movable SWX port',
       );
     }

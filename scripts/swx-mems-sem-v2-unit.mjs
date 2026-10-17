@@ -29,8 +29,8 @@ const strip = (points, width) => miteredPolyline(points, width)[0];
 const newTerminalsUm = Object.freeze([
   [-70, -20],
   [70, -20],
-  [-64, -77],
-  [64, -77],
+  [-64, -71],
+  [64, -71],
 ]);
 const electrodeCentersUm = Object.freeze([
   [-41, -70],
@@ -53,6 +53,8 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
   sourceAuthorGdsAvailable: false,
   fullFidelityClaim: false,
   fixedLeadIllustrativeFilletRadiusUm: 6,
+  // Approximate SEM port-to-comb registration, NOT author-mask metrology.
+  s6OpticalTerminalInwardShiftUm: 6,
   fixedTerminalCentersUm: newTerminalsUm,
   electrodeCentersUm,
   fieldUm: [160, 260],
@@ -60,27 +62,52 @@ export const SWX_SEM_V2_ASSUMPTIONS = Object.freeze({
 
 function newHairpin(side, travel) {
   const x = (u) => side * u;
-  const y = (u) => u + travel;
-  const start = [side < 0 ? -22 : 21, y(-61)];
-  const lead = filletPolyline([start, [x(36), y(-65)], [x(58), y(-65)]], 5, 16);
+  const inward = SWX_SEM_V2_ASSUMPTIONS.s6OpticalTerminalInwardShiftUm;
+  const y = (u) => u + inward + travel;
+  // Embed the lead inside the existing movable SWT port rather than
+  // touching only its polygon boundary. The port translates in ON.
+  const start = [side < 0 ? -20 : 19.5, -61 + travel];
+  const lead = filletPolyline(
+    [start, [x(36), y(-65)], [x(58), y(-65)]],
+    SWX_REPORTED.meanderRadiiUm[0],
+    16,
+  );
   const points = [...lead.points];
-  const arcRadius = 3;
+  const returnArcs = [];
+  const radius = SWX_REPORTED.meanderRadiiUm[1];
   const addReturn = (cx, cy, sweep) => {
+    const startIndex = points.length - 1;
     for (let index = 1; index <= 24; index++) {
       const radians = Math.PI / 2 + (sweep * index) / 24;
-      points.push([cx + arcRadius * Math.cos(radians), cy + arcRadius * Math.sin(radians)]);
+      points.push([cx + radius * Math.cos(radians), cy + radius * Math.sin(radians)]);
     }
+    returnArcs.push({
+      center: [cx, cy],
+      radiusUm: radius,
+      sweepRad: sweep,
+      startIndex,
+      endIndex: points.length - 1,
+    });
   };
   addReturn(x(58), y(-68), -side * Math.PI);
   points.push([x(49), y(-71)]);
   addReturn(x(49), y(-74), side * Math.PI);
-  points.push([x(64), -77]);
+  const terminalStraightStart = points.at(-1);
+  const stationaryEnd = [x(64), -77 + inward];
+  points.push(stationaryEnd);
   return {
-    polygons: miteredPolyline(points, 0.4),
+    polygons: miteredPolyline(points, SWX_REPORTED.waveguideCoreUm),
     centerline: points,
-    radiiUm: [5, 3, 3],
-    straightLUm: 15,
+    transitionArcs: lead.arcs,
+    returnArcs,
+    terminalStraightStart,
+    stationaryEnd,
+    movingStart: start,
+    coreWidthUm: SWX_REPORTED.waveguideCoreUm,
+    radiiUm: [SWX_REPORTED.meanderRadiiUm[0], radius, radius],
+    straightLUm: SWX_REPORTED.meanderLengthUm,
     sourceWaypointCoordinatesVerified: false,
+    terminalInwardShiftIsSEMEstimate: true,
   };
 }
 
@@ -336,8 +363,8 @@ export function createSwxSemV2SupportAudit(state = 'off') {
     add('right upper folded spring', [30, -70]),
     add('stationary-but-suspended input guide', [-40, -14.75]),
     add('stationary-but-suspended output guide', [40, -14.75]),
-    add('left moving S6 optical hairpin', [-58, -65 + travel]),
-    add('right moving S6 optical hairpin', [58, -65 + travel]),
+    add('left moving S6 optical hairpin', [-58, -59 + travel]),
+    add('right moving S6 optical hairpin', [58, -59 + travel]),
     add('left S7 narrow aligner beam', [-7.5, -50 + travel / 2]),
     add('right S7 narrow aligner beam', [27.5, -45 + travel / 2]),
     add('central movable SWX-to-shuttle link', [0, -52 + travel]),
