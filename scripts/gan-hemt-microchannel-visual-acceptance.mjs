@@ -587,8 +587,25 @@ try {
     wireBondDiameterUmInferred: 12,
   };
   // PR #229 / #250 integration: exercise actual workstation controls, not a
-  // synthetic standalone renderer. The same saved package and camera must
-  // survive four border/opacity presentations without rebuilding material.
+  // synthetic standalone renderer. This browser began at 1000 px where the
+  // responsive toolbar can hide its second button group. Enlarge the real
+  // viewport for the four-way inspection instead of mutating view state.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('#threeHost').waitFor({ state: 'visible' });
+  await waitForPaint(page);
+  const packageToolbar = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-action="borders:three"]')).map((button) => ({
+      visible: button.getClientRects().length > 0,
+      pressed: button.getAttribute('aria-pressed'),
+    })),
+  );
+  await writeFile(
+    new URL('three-chip-presentation-toolbar.json', directory),
+    JSON.stringify(packageToolbar, null, 2) + '\n',
+  );
+  await page.screenshot({
+    path: new URL('three-chip-presentation-toolbar.png', directory).pathname,
+  });
   const packageBorders = page.locator('[data-action="borders:three"]:visible').first();
   const packageOpacity = page.locator('[data-action="opacity:three"]:visible').first();
   assert.ok(await packageBorders.isVisible(), 'Package 3D border control is unavailable');

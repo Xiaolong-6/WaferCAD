@@ -14,6 +14,11 @@ on:
       - site/ui-v2/assembly-preview.js
       - site/ui-v2/workstation-entry.js
       - site/ui-v2/workstation-runtime.js
+      - site/controllers/project-controller.js
+      - site/controllers/workspace-persistence-controller.js
+      - site/assembly-startup-routing.js
+      - scripts/v2/check-recovery-failure-atomicity.mjs
+      - scripts/v2/check-recovery-corrupt-checkpoint.mjs
       - site/ui-v2/workstation-preview.css
       - .github/workflows/wafer-bonding-preview.yml
   workflow_dispatch:
@@ -30,7 +35,7 @@ jobs:
     # Chromium is expensive: run only on an explicit visual-acceptance label.
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'wafer-bond-visual')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,6 +53,13 @@ jobs:
           python3 -m http.server 4182 --bind 127.0.0.1 --directory site >/tmp/wafercad-assembly-preview-http.log 2>&1 &
           node scripts/v2/check-assembly-preview.mjs
           node scripts/v2/check-assembly-bond-draft.mjs
+      - name: Ordinary Workstation Recovery integrity after Assembly handoff
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+          WAFERCAD_V2_BASE: http://127.0.0.1:4182
+        run: |
+          node scripts/v2/check-recovery-failure-atomicity.mjs
+          node scripts/v2/check-recovery-corrupt-checkpoint.mjs
       - name: Store inspected view screenshots
         uses: actions/upload-artifact@v4
         if: always()
