@@ -1452,6 +1452,8 @@ export function createProcessRecipeController({
       canonicalLengthUm: p.thicknessUm ?? p.depthUm ?? null,
       canonicalImplantStartDepthUm: step.command === 'implant' ? (p.startDepthUm ?? 0) : null,
       canonicalProcessGridUm: p.mask?.sourceMode === 'file' ? (p.mask.processGridUm ?? null) : null,
+      canonicalArrayRepeatDrawMask:
+        p.mask?.sourceMode === 'draw' && p.mask.arrayRepeat === true,
       canonicalDopantInfo:
         step.command === 'implant' && p.dopantPolarity
           ? {

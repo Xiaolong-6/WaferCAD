@@ -532,3 +532,37 @@ test('array Implant commits translated qualitative doping atomically across both
     assert.equal(template.model.dopantRegions?.length || 0, 0);
   }
 });
+
+test('native array local Draw Mask is repeated without touching background sites', async () => {
+  const { attachArrayMaskQuery } = await import('../mask-instance-index.js');
+  const { localGeometry } = await import('../model-array-context.js');
+  const { arrayParts } = await import('../model-array.js');
+  const base = twoSites();
+  const localMask = rectMulti(0.4, 0.8, 1, -2);
+  const area = attachArrayMaskQuery(structuredClone(base.boundary), {
+    index: null,
+    mode: 'mask',
+    boundary: base.boundary,
+    limiter: null,
+    templateGeometry: localMask,
+  });
+  for (const part of arrayParts(base)) {
+    const world = translateGeometry(part.model.boundary, part.x, part.y);
+    const result = localGeometry(area, part, world);
+    assert.equal(difference(result, localMask).length, 0);
+    assert.equal(difference(localMask, result).length, 0);
+  }
+  const inverse = attachArrayMaskQuery(structuredClone(base.boundary), {
+    index: null,
+    mode: 'invert',
+    boundary: base.boundary,
+    limiter: null,
+    templateGeometry: localMask,
+  });
+  for (const part of arrayParts(base)) {
+    const world = translateGeometry(part.model.boundary, part.x, part.y);
+    const result = localGeometry(inverse, part, world);
+    assert.equal(pointInMulti([1, -2], result), false);
+    assert.equal(pointInMulti([3, 0], result), true);
+  }
+});

@@ -854,6 +854,7 @@ export function createProcessPanelController({
     canonicalImplantStartDepthUm = null,
     canonicalDopantInfo = null,
     canonicalProcessGridUm = null,
+    canonicalArrayRepeatDrawMask = false,
     canonicalSurface = null,
     canonicalFaceSurfaces = null,
     canonicalFace = null,
@@ -1071,6 +1072,7 @@ export function createProcessPanelController({
       maskSourceMode,
       maskRoi: maskRoi ? structuredClone(maskRoi) : null,
       ...(canonicalProcessGridUm == null ? {} : { processGridUm: canonicalProcessGridUm }),
+      ...(canonicalArrayRepeatDrawMask ? { arrayRepeatDrawMask: true } : {}),
       ...(maskSourceMode === 'draw'
         ? { drawMask: structuredClone(drawMask) }
         : {
