@@ -6,7 +6,8 @@ import { BUNDLED_EXAMPLES } from '../../bundled-examples.js';
 import { PROCESS_GUIDE } from '../../process-guide.js';
 import { parseProcessRecipeSource } from '../../process-recipe.js';
 
-const manual = (page) => readFile(new URL(`../../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
+const manual = (page) =>
+  readFile(new URL(`../../../docs/wiki/${page}.md`, import.meta.url), 'utf8');
 
 test('Wiki examples cover exactly the published Welcome project families and their sources', async () => {
   const page = await manual('Examples-and-Modeling-Limits');
@@ -120,7 +121,10 @@ test('Mask ROI documentation agrees with Whole face worker clipping', async () =
   assert.match(gettingStarted, /including Whole face/);
   assert.match(worker, /return limiter \? vectorApi\.intersection\(area, limiter\) : area/);
   assert.match(worker, /deferredArrayMaskArea\([\s\S]*?limiter \},[\s\S]*?vectorApi/);
-  const selection = await readFile(new URL('../../selection-geometry.js', import.meta.url), 'utf8');
+  const selection = await readFile(
+    new URL('../../selection-geometry.js', import.meta.url),
+    'utf8',
+  );
   assert.match(
     selection,
     /deferredArrayMaskArea\([\s\S]*?limiter,[\s\S]*?\{ intersection, isEmpty \}/,
