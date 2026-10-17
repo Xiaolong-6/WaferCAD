@@ -83,7 +83,7 @@ test('OFF/ON actual ground and signal routing connects the correct physical Si i
     assert.ok(areaContact(signal, driveNets[1]) > 0.1);
     assert.ok(areaContact(signal, groundNet) < 1e-8);
     const supported = candidate.physicalGroups.candidateSignalSupportRail;
-    assert.ok(areaContact(supported, signal) > 100);
+    assert.ok(geometryArea(v.intersection(union([supported]), union([signal]))) > 100);
     assert.ok(areaContact(supported, groundNet) < 1e-8);
     assert.equal(v.multiBounds(union([supported])).height, 6);
     assert.ok(areaContact(signal, opticalNet) < 1e-8);
@@ -130,7 +130,10 @@ test('suspended perimeter Si is not accepted without post-HF mechanical qualific
   assert.equal(a.supportedExternalSignalSpanUm, 122);
   assert.equal(a.longestUnsupportedSpanUm, 43);
   assert.equal(a.supportedSignalBusSourceVerified, false);
-  assert.equal(a.spans.find((span) => span.route === 'signal' && span.segmentIndex === 2).supportedByBOX, true);
+  assert.equal(
+    a.spans.find((span) => span.route === 'signal' && span.segmentIndex === 2).supportedByBOX,
+    true,
+  );
   // Theoretical idealized pinned/fixed Euler weak-axis strain bounds.
   assert.ok(longest.pinnedCriticalStrain > 2.1e-5);
   assert.ok(longest.pinnedCriticalStrain < 2.2e-5);

@@ -39,8 +39,15 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
   groundTraceWidthUm: 0.8,
   signalTraceWidthUm: 1.2,
   externalSignalSupportWidthUm: 6,
-  externalSignalSupportEndpointsUm: [[-61, -115], [61, -115]],
-  supportedSignalProbePointsUm: [[-33, -115], [0, -115], [33, -115]],
+  externalSignalSupportEndpointsUm: [
+    [-61, -115],
+    [61, -115],
+  ],
+  supportedSignalProbePointsUm: [
+    [-33, -115],
+    [0, -115],
+    [33, -115],
+  ],
   groundPathsUm: [
     [
       [-70, -20],
