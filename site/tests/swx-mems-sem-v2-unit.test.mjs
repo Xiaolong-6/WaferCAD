@@ -168,8 +168,7 @@ test('SEM v2 stationary and movable silicon do not short in OFF or ON pose', () 
         state + ' moving S6 optical feed ' + i + ' missing supported pad',
       );
       assert.ok(
-        contact([pose.opticalFlexures[i]], [pose.source.optics.movableFacetsAndPorts[i + 3]]) >
-          0.1,
+        contact([pose.opticalFlexures[i]], [pose.source.optics.movableFacetsAndPorts[i + 3]]) > 0.1,
         state + ' S6 optical route ' + i + ' lost movable SWX port',
       );
     }
