@@ -93,6 +93,27 @@ Required commands after a real source checkout is available:
     node scripts/build-tcmos-array-physical-interconnect.mjs
     node scripts/tcmos-array-interconnect-browser-acceptance.mjs
 
+### New strict XY/3D conductor science gates
+
+On the exact approved SVG source and committed routing generator, the
+repository's own `site/vendor/polygon-clipping.umd.js` was **actually
+executed in an isolated JavaScript runtime**. It independently validated all
+**280 full XY landing interfaces** of the 140 vias: all expected conductor
+coverage was present, there was no foreign-net overlap, and the missing
+aperture area was exactly **0 µm²**. The verified full-polygon contract has
+been added to `site/tests/tcmos-array-interconnect.test.mjs`; the existing
+1e-12 µm² science threshold was preserved.
+
+The physical routed generator now additionally compares the material actually
+present in the final **flattened 2.5D partition** against the designed polygons
+for **VIA12, VIA23, VIA34, M2, M3, M4**. Each mask/material pair has two
+independent area checks: expected-minus-real (missing film) and
+real-minus-expected (extra film). Both must be **under 1e-12 µm²**.
+The linked Node tests require all six reports and physical Via Z contact
+identity. **These six 2.5D checks have been committed but have NOT been
+executed against the actual full 23-step WaferCAD model** in this session;
+only the independent routing XY Boolean check has run.
+
 The real-browser script now independently checks **every one** of the
 251 supplementary rectangular polygons after both GDS and OAS roundtrips:
 layer/datatype, exact six-decimal coordinate bounding boxes, four genuine
