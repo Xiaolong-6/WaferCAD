@@ -6,9 +6,7 @@
  * is not a welded Boolean union or proof of a metallurgical/electrical bond.
  */
 export function assemblyWireCurve(THREE, wire) {
-  return new THREE.CubicBezierCurve3(
-    ...wire.points.map((point) => new THREE.Vector3(...point)),
-  );
+  return new THREE.CubicBezierCurve3(...wire.points.map((point) => new THREE.Vector3(...point)));
 }
 
 export function createAssemblyWireMeshes(THREE, wire, curve = assemblyWireCurve(THREE, wire)) {

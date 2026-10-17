@@ -30,18 +30,10 @@ export function validateAssemblyWires(wires) {
     if (wire.material !== 'Au' || wire.source !== 'inferred') {
       throw new Error('assemblyWires wire material/source must be explicit');
     }
-    if (
-      !Number.isFinite(wire.diameterUm) ||
-      wire.diameterUm <= 0 ||
-      wire.diameterUm > 500
-    ) {
+    if (!Number.isFinite(wire.diameterUm) || wire.diameterUm <= 0 || wire.diameterUm > 500) {
       throw new Error('assemblyWires wire diameter must be in (0,500] um');
     }
-    if (
-      !Array.isArray(wire.points) ||
-      wire.points.length !== 4 ||
-      !wire.points.every(validPoint)
-    ) {
+    if (!Array.isArray(wire.points) || wire.points.length !== 4 || !wire.points.every(validPoint)) {
       throw new Error('assemblyWires wire must have four finite cubic Bezier 3D points');
     }
     if (
