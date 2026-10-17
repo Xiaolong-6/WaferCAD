@@ -57,6 +57,14 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      # Temporary read-only output of the two Prettier changes identified
+      # by the automatic Quality workflow after the Main integration.
+      # Restore source before performing all normal scientific checks.
+      - name: Exact formatting proposal for Main-aligned GaN files
+        run: |
+          npx prettier --write site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
+          git diff --no-ext-diff -- site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
+          git restore -- site/tests/gan-hemt-tsv-liner-probe.test.mjs scripts/example-recipe-runall-acceptance.mjs
       - name: Focused lint
         run: npx eslint scripts/build-gan-hemt-microchannel-example.mjs site/tests/gan-hemt-microchannel-reconstruction.test.mjs site/tests/assembly-wire-geometry.test.mjs site/tests/gan-hemt-microchannel-replay.test.mjs scripts/gan-hemt-microchannel-visual-acceptance.mjs site/assembly-wire-geometry.js site/assembly-wire-mesh.js site/three-view.js site/ui-v2/three-view.js site/controllers/project-state-controller.js site/project-schema.js
       - name: Focused formatting
