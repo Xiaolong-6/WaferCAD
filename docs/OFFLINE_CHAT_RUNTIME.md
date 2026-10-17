@@ -1,73 +1,51 @@
-# ChatGPT Offline Capture Fallback
+# Offline ChatGPT visual diagnostics (source-backed)
 
-This developer-only path captures scientific and Shell evidence from a complete
-WaferCAD source snapshot when the current ChatGPT browser cannot navigate to
-`localhost` or `file://`, and a Node `playwright` / `three` installation is
-unavailable. It is **not** a native WaferCAD browser/Three.js visual acceptance.
+This is an **isolated diagnostic renderer**, not a substitute for running WaferCAD's production browser UI or its Three.js shader pipeline. It reads `.wafercad` through the real `site/project-io.js` validator, obtains canonical surfaces and sections from WaferCAD, and only then rasterizes individual views without `localhost` or `file://` navigation. The command does not change the model, history, snapshots, or scientific tolerances.
 
-## One-command invocation
+## Batch capture
 
-Required: Node 22+, Python 3.11+ and `cairosvg`, `Pillow`, `playwright`.
-The isolated Shell screenshot additionally requires a system Chromium binary
-(`WAFERCAD_CHROMIUM` overrides detection). Offline 3D additionally requires
-`vtk` and Shapely 2.1+ for constrained polygon triangulation.
+Requires Node 22+, Python with Pillow, CairoSVG, Shapely, VTK (for 3D), and Playwright plus a working Chromium executable (for isolated UI components). No dev server is needed. Execute inside a complete checkout or verified portable source package:
 
-```sh
+```bash
 python3 scripts/offline-chat-acceptance.py \
   --project site/examples/photodetector-literature-examples.wafercad \
-  --views main,mask,section,three \
-  --z-min 174.2 --z-max 175.72 \
-  --z-exaggeration 8 --output test-results/chat-offline-photodetector
+  --views main,mask,section,three,navigation \
+  --z-min 174.2 --z-max 175.72 --scale auto \
+  --output test-results/offline-photodetector
 
 python3 scripts/offline-chat-acceptance.py \
-  --project site/examples/perc-solar-cells-point-contacts.wafercad \
-  --views main,main-back,mask,section,navigation \
-  --width 390 --height 844 --output test-results/chat-offline-perc
+  --project site/examples/m3d-selfpowered-full-replay.wafercad \
+  --views three,navigation --roi 1,-5,8,5 --camera iso \
+  --z-exaggeration 4 --selected-view three \
+  --mobile view --width 390 --height 844 \
+  --output test-results/offline-m3d-roi
 ```
 
-This reads `.wafercad` through the production `readProjectFile()` import,
-validates the model, derives physical Main/Mask/Section using the existing
-`surfaceGroups()`, `sectionSlices()`, `drawShapeGeometry()` and
-`maskLocalToWorld()` functions, then sends **read-only derived data** to
-CairoSVG. For 3D it extracts the same `buildRenderSurfacePlan()` owned
-caps/sidewalls, conservatively triangulates polygon holes with Shapely
-constrained Delaunay, checks area coverage, and renders with VTK. It never
-modifies the canonical model, stored project or History.
+`--roi xmin,ymin,xmax,ymax` constrains **3D only** in physical micrometres. It is sent to the original `buildRenderSurfacePlan(model, clip)` before any mesh conversion, rather than clipping triangles after creating a full wafer. An invalid, zero-area or clearly outside-boundary ROI fails before expensive surface construction; empty material intersection fails explicitly, too. A 100,000-surface guard avoids pathological VTK runs. The ROI never alters canonical model geometry. `--camera iso|top|side` and `--z-exaggeration` only affect VTK presentation, with camera and crop recorded in the JSON evidence. The renderer does not reproduce physical roughness relief or any native Three.js material, opacity, border, depth blending or GPU-specific LOD behavior.
 
-For the optional Shell capture, the Python Playwright adapter injects the
-**actual production v2 JS modules and CSS** into Chromium `about:blank`, then
-screenshots only an actual `navigation`, `topbar`, or `viewbar` component.
-Scientific view adapters remain intentionally empty; do not infer that
-workstation startup, real panel content or interactions have passed.
+`--z-min` and `--z-max` select a **Section** Z window in physical micrometres; the accepted pixel/µm scale is still recorded separately for X and Z. `--scale physical` means X:Z is 1:1 and is not a Z break. Without an intersecting material slice, the rasterizer fails instead of exporting an apparently valid empty image.
 
-Outputs are per-view PNG, SVG (2D), `*.evidence.json`, native derived JSON and
-`summary.evidence.json` with the input SHA-256, file hashes, dimensions, backend,
-limitations, and optional source-bundle revision/dirty flag. A source ZIP alone
-cannot cryptographically attest its Git revision unless its manifest/provenance
-has been independently verified.
+The standalone native v2 Shell exporter loads actual `app.html` CSS, icons, navigation registry and workstation JS into Chromium's memory document. It accepts `navigation`, `topbar` and `viewbar`, desktop or mobile viewport dimensions, `--mobile edit|view`, `--domain project|mask|process|history`, and `--selected-view main|mask|three`. The selected navigation or view button must have the proper `aria-pressed` state. The shipped product tokens are currently **light-only**: a requested dark theme fails instead of fabricating an unsupported appearance. The output contains no real business-content adapters, so it cannot prove full application interactions.
 
-For Section, `--z-min` and `--z-max` select a physical Z window **without
-changing geometry**. `--scale physical` preserves equal X/Z pixel scales;
-`--scale auto` exaggerates Z to make nanometre films observable. No renderer
-Z-break or roughness displacement is reconstructed. The Mask diagnostic uses
-the stored flattened File elements / selected layer keys and does **not**
-recompute active-cell hierarchy; this remains a live-UI acceptance requirement.
-3D opaque previews omit buried surfaces and all native Three.js shaders,
-transparent sorting, GPU roughness, annotation shading and Border rendering.
+Example direct UI capture:
 
-## Minimal local verification (not CI)
+```bash
+python3 scripts/offline-chat-ui.py \
+  --component navigation --mobile view --selected-view mask \
+  --domain mask --width 390 --height 844 \
+  --output test-results/offline-ui-mask
+```
 
-```sh
+## Evidence and tests
+
+Each image is checked for dimensions and non-uniform pixel content; its SHA-256 and the `.wafercad` input hash are listed in `summary.evidence.json`. The source revision is `unavailable` if the checkout is an unversioned archive, or comes from a verified `offline-source-manifest.json` if one is available. Do not infer a branch SHA from a ZIP filename.
+
+Focused local tests:
+
+```bash
 python3 scripts/offline-chat-acceptance.test.py
+node --check scripts/offline-chat-native-export.mjs
+python3 -m py_compile scripts/offline-chat-acceptance.py scripts/offline-chat-vtk.py scripts/offline-chat-ui.py
 ```
 
-The focused tests load full bundled Photodetector and PERC projects, verify
-real output images and unchanged source hashes, test malformed project
-rejection, constrained tessellation of a polygon with a hole and real v2
-Shell execution without URL navigation. Any screenshot from this backend must
-be identified as an **offline diagnostic**, never as the real application
-Chromium release visual gate.
-
-The original Node SVG/Three/UI entrypoints in `OFFLINE_VISUAL_KERNEL.md` remain
-available in environments with pinned dependencies. Include the Python fallback
-files in the portable source package so ChatGPT can run without Node packages.
+These tests cover complete Photodetector and PERC projects, M3D ROI geometry/VTK, polygon holes, rejected invalid or out-of-bound ROI, project read failures, and real mobile/desktop v2 Shell source/selected-state captures. They do **not** cover browser Recovery, actual WebGL rendering, array release regression, interactive Mask editing or the full Quality/release gates. Those remain necessary before final merge.

@@ -32,7 +32,7 @@ def polygon_triangles(geo):
    if abs(tri.area)<1e-11:continue
    yield p
 
-def main(input_path,output,exaggeration):
+def main(input_path,output,exaggeration,camera_mode='iso'):
  src=Path(output);src.mkdir(parents=True,exist_ok=True)
  data=json.loads(Path(input_path).read_text()); plan=data['plan']; layers={l['id']:l for l in data['model']['layers']}
  groups=defaultdict(list); n_cap=0;n_side=0
@@ -67,19 +67,28 @@ def main(input_path,output,exaggeration):
  center=((min(xs)+max(xs))/2,(min(ys)+max(ys))/2,(min(zs)+max(zs))/2)
  radius=max(max(xs)-min(xs),max(ys)-min(ys),max(zs)-min(zs))
  cam=ren.GetActiveCamera(); cam.SetFocalPoint(center)
- cam.SetPosition(center[0]+radius*.95,center[1]-radius*1.45,center[2]+radius*.95)
- cam.SetViewUp(0,0,1);cam.ParallelProjectionOn();cam.SetParallelScale(radius*.9)
+ if camera_mode == 'top':
+  cam.SetPosition(center[0],center[1],center[2]+radius*2)
+  cam.SetViewUp(0,1,0)
+ elif camera_mode == 'side':
+  cam.SetPosition(center[0],center[1]-radius*2,center[2])
+  cam.SetViewUp(0,0,1)
+ else:
+  cam.SetPosition(center[0]+radius*.95,center[1]-radius*1.45,center[2]+radius*.95)
+  cam.SetViewUp(0,0,1)
+ cam.ParallelProjectionOn();cam.SetParallelScale(radius*.85)
  window=vtk.vtkRenderWindow();window.AddRenderer(ren);window.SetSize(1100,850);window.SetOffScreenRendering(1);window.SetMultiSamples(0)
  ren.ResetCameraClippingRange();window.Render()
  snap=vtk.vtkWindowToImageFilter();snap.SetInput(window);snap.Update()
  writer=vtk.vtkPNGWriter();writer.SetFileName(str(src/'three-native.png'));writer.SetInputConnection(snap.GetOutputPort());writer.Write()
- summary={'nativeInputSha256':data['sha256'],'backend':'VTK synthetic triangles from native WaferCAD owned material surfaces','threeJSVisualAcceptance':False,'roughnessRendered':False,'zExaggeration':exaggeration,'capTriangles':n_cap,'exteriorSidewalls':n_side,'layerCount':len(groups),'image':'three-native.png'}
+ summary={'nativeInputSha256':data['sha256'],'backend':'VTK synthetic triangles from native WaferCAD owned material surfaces','threeJSVisualAcceptance':False,'roughnessRendered':False,'zExaggeration':exaggeration,'cameraPreset':camera_mode,'roiUm':data.get('threeRoiUm'),'capTriangles':n_cap,'exteriorSidewalls':n_side,'layerCount':len(groups),'image':'three-native.png'}
  (src/'three-native.evidence.json').write_text(json.dumps(summary,indent=2))
  print(summary)
 if __name__=='__main__':
  parser=argparse.ArgumentParser(description='Diagnostic VTK offscreen image from native WaferCAD surface ownership')
  parser.add_argument('--input',required=True);parser.add_argument('--output',required=True)
  parser.add_argument('--z-exaggeration',type=float,default=8)
+ parser.add_argument('--camera',choices=['iso','top','side'],default='iso')
  args=parser.parse_args()
  if not math.isfinite(args.z_exaggeration) or not 0 < args.z_exaggeration <= 10000:parser.error('Invalid Z exaggeration')
- main(args.input,args.output,args.z_exaggeration)
+ main(args.input,args.output,args.z_exaggeration,args.camera)

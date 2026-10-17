@@ -28,6 +28,10 @@ def main():
     parser.add_argument('--width',type=int,default=1100);parser.add_argument('--height',type=int,default=760)
     parser.add_argument('--z-min',type=float);parser.add_argument('--z-max',type=float)
     parser.add_argument('--z-exaggeration',type=float,default=8)
+    parser.add_argument('--roi',help='3D-only XY crop xmin,ymin,xmax,ymax in physical µm')
+    parser.add_argument('--camera',choices=['iso','top','side'],default='iso')
+    parser.add_argument('--theme',choices=['light','dark'],default='light')
+    parser.add_argument('--selected-view',choices=['main','mask','three'],default='main')
     parser.add_argument('--scale',choices=['auto','physical'],default='auto')
     parser.add_argument('--face',choices=['front','back'])
     parser.add_argument('--mobile',choices=['edit','view'],default='edit')
@@ -35,23 +39,37 @@ def main():
     args=parser.parse_args()
     if (args.z_min is None)!=(args.z_max is None):parser.error('Set both --z-min and --z-max')
     if args.z_min is not None and (not all(map(math.isfinite,(args.z_min,args.z_max))) or args.z_min>=args.z_max):parser.error('Invalid physical Z range')
+    roi=None
+    if args.roi is not None:
+        try:roi=[float(v.strip()) for v in args.roi.split(',')]
+        except ValueError:parser.error('--roi must be four numerical XY bounds')
+        if len(roi)!=4 or not all(map(math.isfinite,roi)) or roi[0]>=roi[2] or roi[1]>=roi[3]:
+            parser.error('3D ROI must be xmin,ymin,xmax,ymax with positive extent')
+    if args.theme != 'light':parser.error('WaferCAD Shell is light-only; dark is not a real production theme')
+    if not math.isfinite(args.z_exaggeration) or not 0<args.z_exaggeration<=10000:
+        parser.error('Invalid Z exaggeration')
     if args.width<320 or args.height<320 or args.width>4096 or args.height>4096:parser.error('Invalid image dimensions')
     requested=[v.strip() for v in args.views.split(',') if v.strip()]
     if not requested or any(v not in VALID for v in requested):parser.error('Unknown view')
+    if roi is not None and 'three' not in requested:parser.error('--roi requires a three view')
     out=Path(args.output).resolve();out.mkdir(parents=True,exist_ok=True)
     images=[];needs_geometry=any(view in {'main','main-back','mask','section','three'} for view in requested)
     if needs_geometry:
-        run_command(['node',str(SCRIPTS/'offline-chat-native-export.mjs'),'--project',args.project,
-                     '--output',str(out),'--three','true' if 'three' in requested else 'false'])
+        command=['node',str(SCRIPTS/'offline-chat-native-export.mjs'),'--project',args.project,
+                 '--output',str(out),'--three','true' if 'three' in requested else 'false']
+        if roi:command.extend(['--roi',','.join(map(str,roi))])
+        run_command(command)
     for view in requested:
         if view in ('navigation','topbar','viewbar'):
             run_command([sys.executable,str(SCRIPTS/'offline-chat-ui.py'),'--component',view,
                          '--output',str(out),'--width',str(args.width),'--height',str(args.height),
-                         '--mobile',args.mobile,'--domain',args.domain])
-            images.append(f'{view}-{args.width}-{args.mobile}.png')
+                         '--mobile',args.mobile,'--domain',args.domain,'--theme',args.theme,
+                         '--selected-view',args.selected_view])
+            images.append(f'{view}-{args.width}-{args.mobile}-{args.domain}-{args.selected_view}-{args.theme}.png')
         elif view=='three':
             run_command([sys.executable,str(SCRIPTS/'offline-chat-vtk.py'),'--input',str(out/'native-three.json'),
-                         '--output',str(out),'--z-exaggeration',str(args.z_exaggeration)])
+                         '--output',str(out),'--z-exaggeration',str(args.z_exaggeration),
+                         '--camera',args.camera])
             images.append('three-native.png')
         else:
             command=[sys.executable,str(SCRIPTS/'offline-chat-raster.py'),'--input',str(out/'native-model.json'),
@@ -74,7 +92,8 @@ def main():
     source_metadata=json.loads(bundle_manifest.read_text()) if bundle_manifest.exists() else None
     provenance={'schema':'wafercad-offline-chat-acceptance-v1','sourceRevision':source_metadata.get('revision') if source_metadata else 'unavailable',
                 'dirtyAtPackaging':source_metadata.get('dirtyAtPackaging') if source_metadata else None,'projectSha256':hashlib.sha256(Path(args.project).read_bytes()).hexdigest(),
-                'views':requested,'images':diagnostics,'method':'real project -> native WaferCAD geometry -> offline diagnostic renderers',
+                'views':requested,'threeRoiUm':roi,'cameraPreset':args.camera,'theme':args.theme,'selectedView':args.selected_view,
+                'images':diagnostics,'method':'real project -> native WaferCAD geometry -> offline diagnostic renderers',
                 'nativeApplicationVisualAcceptance':False,'ciWasRun':False,'limitations':[
                   '3D uses VTK, not the Three.js shader/compositor','Scientific slices omit rough appearance and live UI overlays',
                   'Shell component captures have empty business adapters']}
