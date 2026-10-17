@@ -43,6 +43,11 @@ jobs:
           exit 1
       - name: Compare actual published Microdisk and opt-in native 3D/Section screenshots
         run: node scripts/v2/capture-isotropic-microdisk-workstation.mjs
+      - name: Report exact script Prettier differences
+        if: always()
+        shell: bash
+        run: |
+          diff -u scripts/v2/capture-isotropic-microdisk-workstation.mjs <(npx prettier scripts/v2/capture-isotropic-microdisk-workstation.mjs) || true
       - name: Upload real Workstation screens and physical manifest
         if: always()
         uses: actions/upload-artifact@v6

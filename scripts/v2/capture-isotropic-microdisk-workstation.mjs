@@ -30,19 +30,6 @@ let context;
 let page;
 const errors = [];
 
-function volume(model, layerId, area) {
-  return model.regions.reduce(
-    (sum, region) =>
-      sum +
-      area(region.geom) *
-        region.stack.reduce(
-          (height, part) => height + (part.layerId === layerId ? part.z1 - part.z0 : 0),
-          0,
-        ),
-    0,
-  );
-}
-
 async function capture(view, kind) {
   await selectScientificView(page, kind, 1560);
   if (kind === 'three') {
@@ -143,7 +130,7 @@ try {
       throw new Error('Physical source central support was removed');
     if (JSON.stringify(M08.regions) === JSON.stringify(adaptive.regions))
       throw new Error('Experimental and old eight-band materials unexpectedly identical');
-    const originalSourceHash = await crypto.subtle.digest(
+    const originalSourceHash = await globalThis.crypto.subtle.digest(
       'SHA-256', new TextEncoder().encode(originalText),
     );
     const digest = [...new Uint8Array(originalSourceHash)]
