@@ -89,11 +89,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Validate committed project without rewriting tracked sources
-        run: |
-          node scripts/build-gan-hemt-microchannel-example.mjs
-          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
-          node --test site/tests/welcome-example.test.mjs
+      - name: Validate candidate science model before browser rendering
+        run: node scripts/build-gan-hemt-microchannel-example.mjs
       - name: Check candidate text formatting
         run: npx prettier --check site/bundled-examples.js site/tests/welcome-example.test.mjs docs/wiki/Examples-and-Modeling-Limits.md README.md docs/wiki/Getting-Started.md
       - name: Install headless Chromium for real render acceptance
@@ -107,16 +104,20 @@ jobs:
           done
           cat /tmp/wafercad-gan.log
           exit 1
-      - name: Capture actual 3D example preview
-        env:
-          WAFERCAD_THREE_DIR: ./node_modules/three
-        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      # Real 3D evidence must be captured before a stale committed thumbnail
+      # checksum can abort the job. Do not relax or replace the checksum gate.
       - name: Capture all four real browser views for screenshot audit
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
         run: node scripts/gan-hemt-microchannel-visual-acceptance.mjs
-      - name: Verify Welcome and Wiki catalog, history and previews
-        run: node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
+      - name: Capture candidate 3D thumbnail (evidence only, not canonical)
+        env:
+          WAFERCAD_THREE_DIR: ./node_modules/three
+        run: node scripts/build-example-thumbnails.mjs --id=gan-hemt-microchannel-2022
+      - name: Verify saved Preview shape and Welcome/Wiki catalog after rendering
+        run: |
+          node scripts/build-example-previews.mjs --id=gan-hemt-microchannel-2022
+          node --test site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs site/tests/example-recipe-audit.test.mjs
       - name: Run complete UI Recipe from fresh Base and validate output
         env:
           WAFERCAD_THREE_DIR: ./node_modules/three
@@ -129,6 +130,7 @@ jobs:
           path: |
             test-results/gan-microchannel/
             test-results/example-recipe-runall/
+            site/examples/thumbnails/gan-hemt-microchannel-2022-three.webp
           if-no-files-found: warn
       - name: Verify generation cannot silently edit scientific source assets
         run: |
