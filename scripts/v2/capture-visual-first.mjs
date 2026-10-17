@@ -13,8 +13,21 @@ import {
 } from './visual-first-contract.mjs';
 
 const output = resolve(process.env.WAFERCAD_VISUAL_OUTPUT || 'test-results/visual-first');
-const { example, start, scope, views, untestedViews, requiresWebgl, viewports, softwareWebgl } =
-  parseVisualCaptureSettings();
+const {
+  example,
+  start,
+  scope,
+  views,
+  untestedViews,
+  requiresWebgl,
+  viewports,
+  softwareWebgl,
+  requireRough,
+  expectedProject,
+  openProject,
+  expectedLayers,
+  expectedRegions,
+} = parseVisualCaptureSettings();
 const port = String(process.env.WAFERCAD_VISUAL_PORT || 4189);
 const external = process.env.WAFERCAD_V2_BASE;
 const base = external || 'http://127.0.0.1:' + port;
@@ -28,6 +41,11 @@ const report = {
   requestedViews: views,
   untestedViews,
   requiresWebgl,
+  requireRough,
+  expectedProject,
+  openProject,
+  expectedLayers,
+  expectedRegions,
   visualAcceptance: false,
   base,
   captureKind: 'real-app-native-renderers',
@@ -90,6 +108,15 @@ try {
     try {
       const page = await context.newPage();
       page.on('pageerror', (error) => report.errors.push(error.message));
+      const loadedProjects = [];
+      page.on('response', (response) => {
+        if (
+          expectedProject &&
+          new URL(response.url()).pathname.endsWith('/' + expectedProject)
+        ) {
+          loadedProjects.push({ url: response.url(), status: response.status() });
+        }
+      });
       await page.goto(
         base +
           (start === 'empty'
@@ -102,6 +129,50 @@ try {
         null,
         { timeout: 120000 },
       );
+      if (openProject) {
+        const before = await page.evaluate(() => {
+          const model = window.WaferCadV2Workstation.snapshot().model;
+          return { layers: model.layers.length, regions: model.regions.length };
+        });
+        await page.locator('#openProjectInput').setInputFiles(resolve('site/examples', openProject));
+        const confirmation = page.locator('#confirmationDialogOverlay');
+        await confirmation.waitFor({ state: 'visible', timeout: 15000 });
+        await confirmation.locator('[data-dialog-action="confirm"]').click();
+        await page.waitForFunction(
+          ({ layers, regions }) => {
+            const model = window.WaferCadV2Workstation?.snapshot()?.model;
+            return Boolean(
+              model &&
+                (layers === null || model.layers.length === layers) &&
+                (regions === null || model.regions.length === regions),
+            );
+          },
+          { layers: expectedLayers, regions: expectedRegions },
+          { timeout: 120000 },
+        );
+        const after = await page.evaluate(async () => {
+          const model = window.WaferCadV2Workstation.snapshot().model;
+          const storage = await import('/workspace-persistence.js');
+          const checkpoints = await storage.listWorkspaceRecoveryPoints();
+          return {
+            layers: model.layers.length,
+            regions: model.regions.length,
+            recoveryPoints: checkpoints.length,
+          };
+        });
+        assert.ok(
+          before.layers !== after.layers || before.regions !== after.regions,
+          'Manual Open must replace the initial Workstation model',
+        );
+        assert.ok(after.recoveryPoints > 0, 'Manual Open requires a real Recovery checkpoint');
+        report.manualOpen = {
+          filename: openProject,
+          before,
+          after,
+          origin: new URL(page.url()).origin,
+        };
+        assert.notEqual(report.manualOpen.origin, 'null', 'Real origin required for Worker/Recovery');
+      }
       await waitForPaint(page);
       await page.screenshot({ path: resolve(output, 'initial-' + width + '.png') });
       const initial = await page.evaluate(() => {
@@ -109,11 +180,21 @@ try {
         return {
           source: state.source,
           layers: state.model.layers.length,
+          regions: state.model.regions.length,
           steps: state.workflow.steps.length,
           mode: state.ui.mode,
         };
       });
       assert.ok(initial.layers > 0, 'Capture a real example, not a placeholder');
+      if (expectedLayers !== null)
+        assert.equal(initial.layers, expectedLayers, 'Full project layer count');
+      if (expectedRegions !== null)
+        assert.equal(initial.regions, expectedRegions, 'Full project region count');
+      if (expectedProject && !openProject)
+        assert.ok(
+          loadedProjects.some((item) => item.status === 200),
+          'The full .wafercad project must be fetched from the real application origin',
+        );
       for (const view of views) {
         await page.evaluate(
           ({ name, width }) => {
@@ -170,6 +251,20 @@ try {
             null,
             { timeout: 60000 },
           );
+          if (requireRough) {
+            await page.waitForFunction(
+              () => {
+                const canvas = document.querySelector('#threeHost canvas');
+                return (
+                  document.getElementById('threeHost')?.dataset.renderPhase === 'complete' &&
+                  canvas?.dataset.roughMeshMode === 'detailed' &&
+                  Number(canvas.dataset.roughTriangleCount) > 0
+                );
+              },
+              null,
+              { timeout: 120000 },
+            );
+          }
         }
         const canvasId = { main: 'mainCanvas', mask: 'maskCanvas', section: 'sectionCanvas' }[view];
         if (canvasId) {
@@ -203,6 +298,18 @@ try {
             view === 'three'
               ? await page.locator('#threeHost').getAttribute('data-render-phase')
               : null,
+          roughMesh:
+            view === 'three'
+              ? await page.evaluate(() => {
+                  const canvas = document.querySelector('#threeHost canvas');
+                  return {
+                    mode: canvas?.dataset.roughMeshMode || 'none',
+                    triangleCount: Number(canvas?.dataset.roughTriangleCount || 0),
+                    worker: canvas?.dataset.roughMeshWorker || null,
+                  };
+                })
+              : null,
+          loadedProjects,
           realCanvas: await page.evaluate((view) => {
             const id = { main: 'mainCanvas', mask: 'maskCanvas', section: 'sectionCanvas' }[view];
             const canvas = id

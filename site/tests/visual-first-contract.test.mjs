@@ -66,6 +66,39 @@ test('invalid view, viewport, and example fail closed', () => {
     assert.throws(() => parseVisualCaptureSettings(env));
   }
 });
+test('manual native Photodetector capture demands a real model and completed rough mesh', () => {
+  const capture = parseVisualCaptureSettings({
+    WAFERCAD_VISUAL_START: 'empty',
+    WAFERCAD_VISUAL_OPEN_PROJECT: 'photodetector-literature-examples.wafercad',
+    WAFERCAD_VISUAL_EXPECT_PROJECT: 'photodetector-literature-examples.wafercad',
+    WAFERCAD_VISUAL_EXPECT_LAYERS: '6',
+    WAFERCAD_VISUAL_EXPECT_REGIONS: '5',
+    WAFERCAD_VISUAL_REQUIRE_ROUGH: '1',
+    WAFERCAD_VISUAL_VIEWPORTS: '1440x900',
+  });
+  assert.equal(capture.openProject, 'photodetector-literature-examples.wafercad');
+  assert.equal(capture.expectedProject, capture.openProject);
+  assert.equal(capture.expectedLayers, 6);
+  assert.equal(capture.expectedRegions, 5);
+  assert.equal(capture.requireRough, true);
+  assert.deepEqual(capture.views, ['main', 'mask', 'three', 'section']);
+});
+
+test('rough evidence and manual Open constraints fail closed', () => {
+  for (const env of [
+    { WAFERCAD_VISUAL_REQUIRE_ROUGH: 'x' },
+    { WAFERCAD_VISUAL_REQUIRE_ROUGH: '1', WAFERCAD_VISUAL_SCOPE: '2d-ui' },
+    { WAFERCAD_VISUAL_REQUIRE_ROUGH: '1', WAFERCAD_VISUAL_START: 'empty' },
+    { WAFERCAD_VISUAL_OPEN_PROJECT: '../project.wafercad', WAFERCAD_VISUAL_START: 'empty' },
+    { WAFERCAD_VISUAL_OPEN_PROJECT: 'sample.wafercad' },
+    { WAFERCAD_VISUAL_EXPECT_LAYERS: '0' },
+    { WAFERCAD_VISUAL_EXPECT_REGIONS: 'NaN' },
+    { WAFERCAD_VISUAL_EXPECT_PROJECT: '../private.wafercad' },
+  ]) {
+    assert.throws(() => parseVisualCaptureSettings(env));
+  }
+});
+
 test('pinned Three.js discovery does not silently fall back to a different version', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wc-visual-contract-'));
   try {

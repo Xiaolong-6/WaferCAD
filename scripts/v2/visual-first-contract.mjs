@@ -68,6 +68,32 @@ export function parseVisualCaptureSettings(env = process.env) {
   }
   if (env.WAFERCAD_VISUAL_SWIFTSHADER && !['0', '1'].includes(env.WAFERCAD_VISUAL_SWIFTSHADER))
     throw Error('WAFERCAD_VISUAL_SWIFTSHADER must be 0 or 1');
+  const requireRough = env.WAFERCAD_VISUAL_REQUIRE_ROUGH === '1';
+  if (
+    env.WAFERCAD_VISUAL_REQUIRE_ROUGH &&
+    !['0', '1'].includes(env.WAFERCAD_VISUAL_REQUIRE_ROUGH)
+  )
+    throw Error('WAFERCAD_VISUAL_REQUIRE_ROUGH must be 0 or 1');
+  if (requireRough && ((start !== 'example' && !env.WAFERCAD_VISUAL_OPEN_PROJECT) || !views.includes('three')))
+    throw Error('Native rough-mesh evidence requires an Example and the 3D view');
+  const expectedProject = env.WAFERCAD_VISUAL_EXPECT_PROJECT || null;
+  const openProject = env.WAFERCAD_VISUAL_OPEN_PROJECT || null;
+  if (openProject && (!/^[a-z0-9-]+\.wafercad$/.test(openProject) || start !== 'empty'))
+    throw Error('Manual project Open requires a safe filename and an empty Workstation');
+  if (expectedProject && !/^[a-z0-9-]+\.wafercad$/.test(expectedProject))
+    throw Error('Invalid expected project filename');
+  const expectedLayers = env.WAFERCAD_VISUAL_EXPECT_LAYERS
+    ? Number(env.WAFERCAD_VISUAL_EXPECT_LAYERS)
+    : null;
+  const expectedRegions = env.WAFERCAD_VISUAL_EXPECT_REGIONS
+    ? Number(env.WAFERCAD_VISUAL_EXPECT_REGIONS)
+    : null;
+  if (
+    [expectedLayers, expectedRegions].some(
+      (value) => value !== null && (!Number.isInteger(value) || value < 1),
+    )
+  )
+    throw Error('Expected model counts must be positive integers');
   return {
     example,
     start,
@@ -77,6 +103,11 @@ export function parseVisualCaptureSettings(env = process.env) {
     requiresWebgl: views.includes('three'),
     viewports,
     softwareWebgl: env.WAFERCAD_VISUAL_SWIFTSHADER === '1',
+    requireRough,
+    expectedProject,
+    openProject,
+    expectedLayers,
+    expectedRegions,
   };
 }
 

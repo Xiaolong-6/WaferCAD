@@ -47,11 +47,27 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Capture actual production UI v2 at desktop and portrait widths
         run: npm run preview:visual
+      - name: Capture real full Photodetector Open and roughness
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[visual-photodetector-full]') }}
+        env:
+          WAFERCAD_VISUAL_START: empty
+          WAFERCAD_VISUAL_OPEN_PROJECT: photodetector-literature-examples.wafercad
+          WAFERCAD_VISUAL_EXPECT_PROJECT: photodetector-literature-examples.wafercad
+          WAFERCAD_VISUAL_EXPECT_LAYERS: '6'
+          WAFERCAD_VISUAL_EXPECT_REGIONS: '5'
+          WAFERCAD_VISUAL_REQUIRE_ROUGH: '1'
+          WAFERCAD_VISUAL_VIEWPORTS: 1440x900
+          WAFERCAD_VISUAL_PORT: '4190'
+          WAFERCAD_VISUAL_SWIFTSHADER: '1'
+          WAFERCAD_VISUAL_OUTPUT: test-results/visual-first-photodetector
+        run: npm run preview:visual
       - name: Upload unreviewed evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: visual-first-${{ github.sha }}
-          path: test-results/visual-first/
+          path: |
+            test-results/visual-first/
+            test-results/visual-first-photodetector/
           retention-days: 7
           if-no-files-found: warn
