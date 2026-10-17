@@ -251,7 +251,7 @@ material ownership: Si inside the physical solid, oxide outside Si
 within normal distance `t` of any silicon boundary triangle, and
 void elsewhere. The nearest-point solver includes triangle interiors,
 edges and corners; convex ridges, concave valleys, 3D four-facet
-apexes and domain sidewalls use the *same* geometry, not stitched
+apexes and domain sidewalls use the _same_ geometry, not stitched
 independent appearance patches. The front and back film/void
 interfaces are computed by bounded root finding against this complete
 3D material query. The experimental descriptor is JSON-safe and

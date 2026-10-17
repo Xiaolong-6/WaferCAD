@@ -24,21 +24,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: One-shot exact physical shell formatter
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npx prettier --write site/physical-facet-shell-owner.js site/model-view-geometry.js site/tests/physical-facet-persistence.test.mjs site/tests/physical-facet-shell-owner.test.mjs docs/science/PHYSICAL_FACET_MODELING_2026-10-16.md
-      - name: Capture exact formatted sources
-        uses: actions/upload-artifact@v6
-        with:
-          name: physical-shell-prettier-source
-          path: |
-            site/physical-facet-shell-owner.js
-            site/model-view-geometry.js
-            site/tests/physical-facet-persistence.test.mjs
-            site/tests/physical-facet-shell-owner.test.mjs
-            docs/science/PHYSICAL_FACET_MODELING_2026-10-16.md
-          retention-days: 1
       - name: Verify physical owner, closed mesh and exact Section contracts
         run: >-
           node --test

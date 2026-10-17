@@ -54,7 +54,7 @@ export function closestPhysicalTrianglePoint(point, [a, b, c]) {
   const va = d3 * d6 - d5 * d4;
   if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
     const bc = sub(c, b);
-    return { point: mix(b, c, (d4 - d3) / ((d4 - d3) + (d5 - d6))), feature: 'edge' };
+    return { point: mix(b, c, (d4 - d3) / (d4 - d3 + (d5 - d6))), feature: 'edge' };
   }
 
   const denominator = va + vb + vc;
@@ -72,11 +72,7 @@ export function makePhysicalFacetShell({ silicon, layerId, thicknessUm }) {
   if (typeof layerId !== 'string' || !layerId.trim() || layerId === valid.layerId) {
     throw new RangeError('Exterior shell requires a distinct material layerId');
   }
-  if (
-    !Number.isFinite(thicknessUm) ||
-    thicknessUm <= 0 ||
-    thicknessUm >= valid.pitch / 4
-  ) {
+  if (!Number.isFinite(thicknessUm) || thicknessUm <= 0 || thicknessUm >= valid.pitch / 4) {
     throw new RangeError('Exterior shell thickness exceeds the conservative quarter-pitch limit');
   }
   return {

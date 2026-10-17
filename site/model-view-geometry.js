@@ -107,7 +107,9 @@ export function appearanceSurfaceGroups(model, clip = null) {
 
 export function sectionContours(model, a, b) {
   if (model?.experimentalPhysicalFacetShell) {
-    throw new RangeError('Physical coating Section requires a multi-material renderer; refusing Si-only surrogate');
+    throw new RangeError(
+      'Physical coating Section requires a multi-material renderer; refusing Si-only surrogate',
+    );
   }
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (owner) {

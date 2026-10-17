@@ -163,12 +163,14 @@ test('coated 3D material survives .wafercad, Workspace and History without false
   assert.throws(() => validateProjectFile(poisoned), /coating and silicon descriptors/);
   const earlier = structuredClone(project);
   const time = '2026-10-17T00:00:00.000Z';
-  project.snapshots = [{
-    id: 'coated-unit',
-    name: 'Full exterior oxide owner',
-    createdAt: time,
-    state: earlier,
-  }];
+  project.snapshots = [
+    {
+      id: 'coated-unit',
+      name: 'Full exterior oxide owner',
+      createdAt: time,
+      state: earlier,
+    },
+  ];
   const expected = earlier.model.experimentalPhysicalFacetShell;
   for (const stored of [
     JSON.parse(serializeProject(project)),

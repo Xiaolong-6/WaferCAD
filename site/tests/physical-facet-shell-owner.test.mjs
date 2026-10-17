@@ -144,10 +144,22 @@ test('descriptor is JSON safe, immutable, and rejects unsupported chemistry or h
   const before = JSON.stringify(silicon);
   assert.deepEqual(restorePhysicalFacetShell(JSON.parse(JSON.stringify(descriptor))), descriptor);
   assert.equal(JSON.stringify(silicon), before);
-  assert.throws(() => makePhysicalFacetShell({ silicon, layerId: 'base', thicknessUm }), /distinct/);
-  assert.throws(() => makePhysicalFacetShell({ silicon, layerId: 'oxide', thicknessUm: 0 }), /thickness/);
-  assert.throws(() => makePhysicalFacetShell({ silicon, layerId: 'oxide', thicknessUm: 100 }), /quarter-pitch/);
-  assert.throws(() => restorePhysicalFacetShell({ ...descriptor, kind: 'legacy-appearance-only' }), /Unsupported/);
+  assert.throws(
+    () => makePhysicalFacetShell({ silicon, layerId: 'base', thicknessUm }),
+    /distinct/,
+  );
+  assert.throws(
+    () => makePhysicalFacetShell({ silicon, layerId: 'oxide', thicknessUm: 0 }),
+    /thickness/,
+  );
+  assert.throws(
+    () => makePhysicalFacetShell({ silicon, layerId: 'oxide', thicknessUm: 100 }),
+    /quarter-pitch/,
+  );
+  assert.throws(
+    () => restorePhysicalFacetShell({ ...descriptor, kind: 'legacy-appearance-only' }),
+    /Unsupported/,
+  );
   assert.throws(() => shell.sample([0, 0, Infinity]), /finite/);
   assert.throws(() => shell.column(6.4, 0), /interior XY/);
 });
