@@ -238,7 +238,7 @@ test('ROI belongs to Main and Mask double-click fits the Mask view', () => {
       planRenderers.indexOf('function renderMain()'),
       planRenderers.indexOf('function renderSection()'),
     ),
-    /drawRoi\(ctx, v, back\)/,
+    /drawRoi\(ctx, v, back, colors\)/,
   );
   assert.match(
     roiController,
