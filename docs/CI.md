@@ -153,7 +153,7 @@ A skipped/deferred check is unverified, not passed. Marking a PR ready triggers 
 
 ## Documentation and publication workflows
 
-[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs only on relevant documentation, manual and guide-source PR changes. It runs the three Process Guide/Wiki/Documentation Node suites with read-only repository permissions and does **not** publish Wiki content. Draft Quality independently verifies lint, formatting and generated documentation; neither Draft gate substitutes for final release checks.
+[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on changes to `docs/**`, root documentation (`README.md`, `AGENTS.md`, `THIRD_PARTY_NOTICES.md`), example-authoring provenance (`examples/projects/README.md`), the Welcome catalog (`site/bundled-examples.js`), Process Guide sources, and documentation/publishing workflow definitions. It runs the three Process Guide/Wiki/Documentation Node suites with read-only repository permissions and does **not** publish Wiki content. Draft Quality independently verifies lint, formatting and generated documentation; neither Draft gate substitutes for final release checks.
 
 [Product manual/Wiki sync](../.github/workflows/product-manual-wiki.yml) runs on every main push, including documentation-only pushes, and supports manual dispatch. It installs pinned npm dependencies before checking generation, links/navigation, tutorial/catalog contracts and possible public-behavior drift, then compares managed Wiki pages.
 
