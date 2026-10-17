@@ -7,6 +7,7 @@ on:
       - 'site/model.js'
       - 'site/project-schema.js'
       - 'site/project-io.js'
+      - 'site/controllers/workspace-persistence-controller.js'
       - 'site/tests/physical-facet-*.test.mjs'
       - '.github/workflows/physical-facet-science.yml'
   workflow_dispatch:
@@ -30,3 +31,4 @@ jobs:
           site/tests/physical-facet-owner.test.mjs
           site/tests/physical-facet-surface.test.mjs
           site/tests/physical-facet-persistence.test.mjs
+          site/tests/physical-facet-recovery.test.mjs
