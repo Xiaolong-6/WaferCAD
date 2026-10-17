@@ -214,8 +214,12 @@ export function sectionCutContours(
         [samples.at(-1), -1],
       ]) {
         if (!sample) continue;
-        const line = [at(sample, 'lowerZ'), at(sample, 'upperZ')],
-          key = `${wall.layerId ?? ''}|${segmentKey(...line)}`;
+        const line = [at(sample, 'lowerZ'), at(sample, 'upperZ')];
+        // Group by the physical cut point and material, not the complete
+        // vertical Z span. Adjacent segments can have slightly different
+        // rough LOD heights or a genuine shallow top step while sharing
+        // the same buried material wall.
+        const key = `${wall.layerId ?? ''}|${pointKey(sample.point)}`;
         if (!verticals.has(key)) verticals.set(key, []);
         verticals.get(key).push({
           line,
@@ -298,14 +302,38 @@ export function sectionCutContours(
     }
   }
   for (const candidates of verticals.values()) {
-    // Equal material spans meeting on one straight cut are artificial wall
-    // partitions. Keep genuine ROI corners and changes in material ownership.
-    const continuation = candidates.some((a, i) =>
-      candidates.some(
-        (b, j) => i !== j && a.tangent[0] * b.tangent[0] + a.tangent[1] * b.tangent[1] < -1 + 1e-7,
-      ),
-    );
-    if (!continuation) result.push(candidates[0].line);
+    // Cancel only the *overlap* of co-linear, opposing walls of the same
+    // material. A contact/rough-cap subdivision can perturb the upper
+    // sampled Z, but must not draw a full-height line through the Si body.
+    // Keep any real uncovered height step, ROI corner and material junction.
+    for (const [index, candidate] of candidates.entries()) {
+      const z0 = Math.min(candidate.line[0][2], candidate.line[1][2]),
+        z1 = Math.max(candidate.line[0][2], candidate.line[1][2]);
+      let remaining = [[z0, z1]];
+      for (const [otherIndex, other] of candidates.entries()) {
+        const dot =
+          candidate.tangent[0] * other.tangent[0] + candidate.tangent[1] * other.tangent[1];
+        if (otherIndex === index || dot >= -1 + 1e-7) continue;
+        const otherLow = Math.min(other.line[0][2], other.line[1][2]),
+          otherHigh = Math.max(other.line[0][2], other.line[1][2]);
+        remaining = remaining.flatMap(([start, end]) => {
+          if (otherHigh <= start + 1e-9 || otherLow >= end - 1e-9) return [[start, end]];
+          const parts = [];
+          if (otherLow > start + 1e-9) parts.push([start, Math.min(end, otherLow)]);
+          if (otherHigh < end - 1e-9) parts.push([Math.max(start, otherHigh), end]);
+          return parts;
+        });
+        if (!remaining.length) break;
+      }
+      for (const [start, end] of remaining) {
+        if (end - start <= 1e-9) continue;
+        const p = candidate.line[0];
+        result.push([
+          [p[0], p[1], start],
+          [p[0], p[1], end],
+        ]);
+      }
+    }
   }
   return ownedContourSegments(result);
 }
