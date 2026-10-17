@@ -52,6 +52,7 @@ jobs:
         run: |
           files=(
             site/tests/source-sunset-draw-process-owner.test.mjs
+            site/tests/source-sunset-release-owner-routing.test.mjs
             scripts/v2/check-source-sunset-draw-process.mjs
             scripts/v2/check-source-sunset-edge-on.mjs
             scripts/v2/check-source-sunset-release-owners.mjs

@@ -468,19 +468,14 @@ try {
         page
           .evaluate(() => ({
             url: location.href,
-            ready:
-              window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
+            ready: window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
             status: document.querySelector('[data-slot="status.message"]')?.textContent,
             progress: document.getElementById('recipeProgressCount')?.textContent,
             summary: document.getElementById('recipeRunSummary')?.textContent,
             projectButton: {
-              exists: Boolean(
-                document.querySelector('[data-action="domain:project"]'),
-              ),
+              exists: Boolean(document.querySelector('[data-action="domain:project"]')),
               visible: Boolean(
-                document
-                  .querySelector('[data-action="domain:project"]')
-                  ?.checkVisibility(),
+                document.querySelector('[data-action="domain:project"]')?.checkVisibility(),
               ),
             },
             threeState: document.getElementById('threeHost')?.dataset?.renderState,

@@ -75,22 +75,19 @@ test('scientific browser owners have executable v2 checks and actual Node predic
 
 test('Example Run All retains native-v2 science and all original replay cases', async () => {
   const code = await readFile(join(root, 'scripts/example-recipe-runall-acceptance.mjs'), 'utf8');
-  const workflow = await readFile(
-    join(root, '.github/workflows/example-recipe-reconstruction.yml'),
-    'utf8',
-  );
+  const workflowPath = '.github/workflows/example-recipe-reconstruction.yml';
+  const workflow = await readFile(join(root, workflowPath), 'utf8');
   assert.match(workflow, /node scripts\/example-recipe-runall-acceptance\.mjs/);
   assert.match(code, /\/app\.html\?start=example/);
+  const activeCode = code.replace(/^\/\/.*$/gm, '');
   assert.doesNotMatch(
-    code.replace(/^\/\/.*$/gm, ''),
+    activeCode,
     /app-legacy\.html|newLegacyUiContext|waitForAppReady|waitForStatus/,
   );
-  for (const required of [
-    /await loadGeometryKernel\(\)/,
-    /assertSameMaterialGeometry/,
-    /assertSameCanonicalArrayGeometry/,
-    /sourceProject\.snapshotBranches\.nodes/,
-    /maxQuantizedAreaUm2: 25/,
-    /assert\.equal\(replayNodes\.length, processSteps\.length\)/,
-  ]) assert.match(code, required);
+  assert.match(code, /await loadGeometryKernel\(\)/);
+  assert.match(code, /assertSameMaterialGeometry/);
+  assert.match(code, /assertSameCanonicalArrayGeometry/);
+  assert.match(code, /sourceProject\.snapshotBranches\.nodes/);
+  assert.match(code, /maxQuantizedAreaUm2: 25/);
+  assert.match(code, /assert\.equal\(replayNodes\.length, processSteps\.length\)/);
 });
