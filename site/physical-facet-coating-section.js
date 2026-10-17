@@ -73,6 +73,12 @@ export function physicalAxialFacetCoatingSection(
   if (!Number.isFinite(thicknessUm) || thicknessUm <= 0) {
     throw new RangeError('Normal coating thickness must be finite and positive');
   }
+  // A cropped axial Section cannot certify contact with adjacent 3D
+  // cells once the film reaches half a lateral pitch. Fail closed
+  // rather than extrapolating a valid single-apex arc to a full wafer.
+  if (thicknessUm >= valid.pitch / 2) {
+    throw new RangeError('Physical facet coating exceeds the axial half-pitch applicability');
+  }
   if (
     !Number.isFinite(maxArcStepRadians) ||
     maxArcStepRadians <= 0 ||

@@ -227,8 +227,10 @@ material cross-section, with its true area calculated from the faceted
 polygon plus exact circular-sector/chord corrections. At every
 offset sample, the distance to **all** original Si facets is checked
 to reject neighboring-facet overlap. Invalid axial orientation,
-off-center diagonal cuts, negative normal thickness and oversized
-intersections fail closed.
+off-center diagonal cuts, negative normal thickness, unsupported
+coatings at or above half the lateral pitch, and oversized intersections
+fail closed. The half-pitch restriction is an explicit conservative
+applicability bound for a local Section, not an asserted physics limit.
 
 This is not a 3D coating volume or a canonical material owner.
 It does not yet solve the spherical apex and three-dimensional ridge,
