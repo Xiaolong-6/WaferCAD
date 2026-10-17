@@ -7,15 +7,8 @@ import { fileURLToPath } from 'node:url';
 const scanRoots = ['scripts', 'site/tests', 'site/ui-v2', 'site/controllers'];
 // Include editor entrypoints and root-level source which cannot be inferred
 // from imports under scripts/tests. The public Pages shim is generated later.
-const rootSources = [
-  'site/app.html',
-  'site/app-legacy.html',
-  'site/app-v2-real.html',
-  'site/app.js',
-  'site/workstation.css',
-  'site/welcome.js',
-  'site/index.html',
-];
+const rootSources = ['site/app.html', 'site/welcome.js', 'site/index.html'];
+
 const legacyEditorFiles = new Set(['site/app-legacy.html', 'site/app.js', 'site/workstation.css']);
 const legacyHelper = /\bnewLegacyUi(?:Context|Page)\b/;
 const legacyEditor = /(?:app-legacy\.html|\bworkstation\.css\b)/;

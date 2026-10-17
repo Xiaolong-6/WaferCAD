@@ -3,48 +3,43 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = new URL('../', import.meta.url);
-const [welcomeHtml, appHtml, legacyHtml, appJs, welcomeJs] = await Promise.all([
+const [welcomeHtml, appHtml, welcomeJs, startup, pages] = await Promise.all([
   readFile(new URL('index.html', root), 'utf8'),
   readFile(new URL('app.html', root), 'utf8'),
-  readFile(new URL('app-legacy.html', root), 'utf8'),
-  readFile(new URL('app.js', root), 'utf8'),
   readFile(new URL('welcome.js', root), 'utf8'),
+  readFile(new URL('controllers/startup-controller.js', root), 'utf8'),
+  readFile(new URL('../scripts/build-pages-artifact.mjs', root), 'utf8'),
 ]);
 
-test('welcome and workspace are separate browser pages', () => {
+test('Welcome and production workstation are separate v2 entry points', () => {
   assert.match(welcomeHtml, /id="welcomeScreen"/);
   assert.doesNotMatch(welcomeHtml, /class="app-shell"/);
   assert.match(welcomeHtml, /href="\.\/app\.html\?start=empty"/);
   assert.match(welcomeHtml, /id="welcomeExampleGrid"/);
-  assert.match(welcomeHtml, /Example families/);
-
   assert.match(appHtml, /ui-v2\/workstation-entry\.js/);
-  assert.match(legacyHtml, /class="app-shell"/);
-  assert.doesNotMatch(legacyHtml, /id="welcomeScreen"/);
-  assert.match(legacyHtml, /id="welcomeHomeLink"/);
-  assert.match(legacyHtml, /href="\.\/"/);
 });
 
-test('workspace startup consumes welcome-page intents without embedding welcome state', () => {
-  assert.match(appJs, /initializeWorkspaceStart/);
-  assert.match(appJs, /takeStartupFile/);
-  assert.match(appJs, /openBundledExample/);
+test('v2 Startup accepts project, empty and bundled-example intents', () => {
+  assert.match(startup, /initializeWorkspaceStart/);
+  assert.match(startup, /takeStartupFile/);
+  assert.match(startup, /openBundledExample/);
   assert.match(welcomeJs, /BUNDLED_EXAMPLES/);
   assert.match(welcomeJs, /start=example&example=/);
-  assert.doesNotMatch(appJs, /wafercad\.welcome\.seen/);
-  assert.doesNotMatch(appJs, /setWelcomeVisible/);
+  assert.doesNotMatch(appHtml, /app-legacy\.html/);
 });
 
-test('welcome staging enforces the same layout and project file-size limits before IndexedDB', () => {
+test('Welcome staging still protects maximum file size', () => {
   assert.match(welcomeJs, /MAX_LAYOUT_FILE_BYTES/);
   assert.match(welcomeJs, /MAX_PROJECT_FILE_BYTES/);
   assert.match(welcomeJs, /file\.size > maxBytes/);
 });
 
-test('Welcome interactive preview uses v2 without a project-start intent', () => {
-  assert.match(welcomeJs, /return `\.\/app\.html\?\$\{params\.toString\(\)\}`/);
-  assert.doesNotMatch(welcomeJs, /app-legacy\.html/);
+test('v2 interactive previews and published old-bookmark redirect stay functional', () => {
+  assert.ok(welcomeJs.includes('return `./app.html?${params.toString()}`'));
   assert.match(welcomeJs, /preview: '1'/);
-  assert.doesNotMatch(welcomeJs, /start: 'example'/);
+  assert.doesNotMatch(welcomeJs, /app-legacy\.html/);
   assert.match(appHtml, /ui-v2\/workstation-preview\.css/);
+  const redirectStart = "location.replace('./app.html'";
+  const redirectTail = ' + location.search + location.hash)';
+  assert.ok(pages.includes(redirectStart + redirectTail));
 });

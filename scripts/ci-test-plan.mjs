@@ -278,10 +278,14 @@ async function stdinText() {
 
 async function writeGithubOutputs(plan) {
   if (!process.env.GITHUB_OUTPUT) return;
+  const heavy = ['workstation', 'interaction', 'examples', 'product_layout', 'renderer'];
+  const selected = heavy.filter((suite) => plan.suites[suite]);
   const lines = [
     `full=${plan.full}`,
     ...BROWSER_SUITES.map((suite) => `${suite}=${plan.suites[suite]}`),
     ...RELEASE_GATES.map((gate) => `${gate}=${plan.release[gate]}`),
+    `extended=${selected.length > 0}`,
+    `extended_matrix=${JSON.stringify(selected.length > 0 ? selected : ['none'])}`,
   ];
   await appendFile(process.env.GITHUB_OUTPUT, `${lines.join('\n')}\n`);
 }
