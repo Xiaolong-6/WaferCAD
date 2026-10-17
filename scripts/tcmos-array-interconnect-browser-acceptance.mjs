@@ -58,7 +58,7 @@ try {
   assert.ok(loaded.model.layers.some((l) => l.name === 'VIA34 W (illustrative)'));
   assert.ok(loaded.model.layers.some((l) => l.name === 'ILD4 SiO2 (illustrative)'));
   assert.ok(!loaded.processRecipe && !loaded.snapshotBranches);
-  for (const view of ['mask', 'three', 'section']) {
+  for (const view of ['main', 'mask', 'three', 'section']) {
     const domain = view === 'mask' ? 'mask' : 'project';
     await page.locator('.p-nav [data-action="domain:' + domain + '"]').click();
     const dock = page.locator('[data-action="dock:view:' + view + '"]:visible').first();
