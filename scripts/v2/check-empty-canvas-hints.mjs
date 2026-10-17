@@ -39,7 +39,7 @@ async function ready(page) {
 }
 
 async function showDesktop(page, view) {
-  await page.locator('[data-action="dock:overview"]').click();
+  await page.locator('.p-desktop-dock-actions [data-action="dock:overview"]').click();
   await page.locator(`#${view}Panel [data-action="maximize:${view}"]`).click();
   await waitForPaint(page);
   assert.equal(await page.locator(`#${view}Panel`).isVisible(), true);
