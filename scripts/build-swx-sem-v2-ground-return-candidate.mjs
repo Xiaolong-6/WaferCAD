@@ -33,11 +33,7 @@ const mechanicalRiskScreen = auditSwxGroundReturnBucklingRisk();
 // BOX boundaries, rather than treating the drawn Si pads as fully supported.
 const postHFPerimeterSupportByPose = project.snapshotBranches.branches.map((branch) => ({
   branch: branch.name,
-  ...auditSwxPostHFPerimeterSupport(
-    v,
-    branch.headState.model,
-    SWX_GROUND_RETURN_ASSUMPTIONS,
-  ),
+  ...auditSwxPostHFPerimeterSupport(v, branch.headState.model, SWX_GROUND_RETURN_ASSUMPTIONS),
 }));
 assert.equal(postHFPerimeterSupportByPose.length, 2);
 for (const actual of postHFPerimeterSupportByPose) {
