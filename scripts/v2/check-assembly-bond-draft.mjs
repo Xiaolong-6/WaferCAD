@@ -523,14 +523,31 @@ try {
       const welcomeTab = await context.newPage();
       try {
         await welcomeTab.goto(`${base}/index.html`, { waitUntil: 'domcontentloaded' });
+        // ES module handlers may register after DOMContentLoaded. Never drop
+        // the file selection before Welcome installs its importer.
+        await welcomeTab.waitForFunction(
+          () => typeof document.getElementById('welcomeProjectInput')?.onchange === 'function',
+        );
         await welcomeTab.locator('#welcomeProjectInput').setInputFiles({
           name: workspaceFile.suggestedFilename(),
           mimeType: 'application/json',
           buffer: workspaceBytes,
         });
-        await welcomeTab.waitForURL(/assemblyPreview=1&bondEdit=1&start=staged/, {
-          timeout: 30000,
-        });
+        try {
+          await welcomeTab.waitForURL(/assemblyPreview=1&bondEdit=1&start=staged/, {
+            timeout: 30000,
+          });
+        } catch (error) {
+          const failure = await welcomeTab.evaluate(() => ({
+            url: location.href,
+            status: document.querySelector('#welcomeStatus')?.textContent,
+            importerReady:
+              typeof document.getElementById('welcomeProjectInput')?.onchange === 'function',
+          }));
+          throw new Error('Welcome did not route the staged Assembly: ' + JSON.stringify(failure), {
+            cause: error,
+          });
+        }
         await welcomeTab.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
           timeout: 90000,
         });
