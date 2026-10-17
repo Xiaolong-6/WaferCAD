@@ -22,7 +22,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Geometry and Recipe preflight only
         run: |
-          node --test site/tests/tcmos-array-recipe-experiment.test.mjs
+          node --test site/tests/tcmos-array-recipe-experiment.test.mjs site/tests/model-array.test.mjs
           node scripts/build-tcmos-array-recipe-experiment.mjs
       - name: Real Chromium 16-cell Recipe Run All and strict parity
         timeout-minutes: 30

@@ -124,6 +124,18 @@ try {
   const status = await page.locator('[data-slot="status.message"]').innerText();
   report.runSummary = summary;
   report.runStatus = status;
+  if (!summary.startsWith('Completed: 23/23')) {
+    const failed = await snap();
+    await writeFile(
+      resolve(dir, 'tcmos-4x4-replay-intermediate-model.json'),
+      JSON.stringify({
+        model: failed.model,
+        summary,
+        status,
+        nextStep: 13,
+      }),
+    );
+  }
   assert.ok(
     summary.startsWith('Completed: 23/23') || /Recipe completed:/.test(status),
     'Full 16-cell Recipe failed: ' + summary + ' / ' + status,

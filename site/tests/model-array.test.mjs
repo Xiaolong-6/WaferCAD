@@ -109,6 +109,7 @@ test('normal project IO preserves canonical array definitions without eager expa
 const modelApi = await import('../model.js');
 const { applyOperation, cloneModel } = modelApi;
 const { applyArrayOperation } = await import('../model-array-process.js');
+const { resolveQualitativeDopantRegion } = await import('../dopant-regions.js');
 const { applyAdvancedProcessOperation } = await import('../advanced-process-operations.js');
 const vector = await import('../vector-geometry.js');
 const { buildRenderSurfacePlan } = await import('../renderer-geometry.js');
@@ -488,4 +489,43 @@ test('array Lift-off rejects invalid sacrificial IDs without changing any templa
     /sacrificial layer/,
   );
   assert.deepEqual(source, saved);
+});
+
+test('array Implant commits translated qualitative doping atomically across both cells', () => {
+  const model = twoSites();
+  const before = structuredClone(model);
+  const failure = modelApi.applyOperation(model, {
+    type: 'implant',
+    name: 'Invalid material host',
+    thickness: 0.2,
+    depthStart: 0,
+    face: 'front',
+    area: rectMulti(20, 10),
+    dopantPolarity: 'donor',
+    dopantRole: 'body',
+    dopantHostLayerId: 'not-a-layer',
+  });
+  assert.equal(failure.changed, false);
+  assert.deepEqual(model, before, 'Invalid Implant cannot write partial dopant data');
+  const result = modelApi.applyOperation(model, {
+    type: 'implant',
+    name: 'Two site donor marker',
+    thickness: 0.2,
+    depthStart: 0,
+    face: 'front',
+    area: rectMulti(20, 10),
+    dopantPolarity: 'donor',
+    dopantRole: 'body',
+    dopantHostLayerId: 'base',
+  });
+  assert.equal(result.changed, true);
+  validateProcessModel(model);
+  assert.equal(model.dopantRegions.length, 1);
+  const fragments = resolveQualitativeDopantRegion(model, model.dopantRegions[0], vector);
+  assert.ok(fragments.length >= 2);
+  assert.ok(fragments.some((fragment) => pointInMulti([-5, 0], fragment.geom)));
+  assert.ok(fragments.some((fragment) => pointInMulti([5, 0], fragment.geom)));
+  for (const template of model.array.templates) {
+    assert.equal(template.model.dopantRegions?.length || 0, 0);
+  }
 });

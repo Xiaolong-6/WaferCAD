@@ -100,6 +100,10 @@ export function arrayContext(model, part, parts, { annotations = true, clipBound
   };
   const out = {
     ...model,
+    // Each working set must own its prospective dopant records. A shallow
+    // copy would mutate the persisted array root before the transaction
+    // succeeds, violating rollback semantics.
+    dopantRegions: structuredClone(model.dopantRegions || []),
     kernel: 'vector-2.5d-v1',
     shape: 'rect',
     layers: structuredClone(model.layers),
