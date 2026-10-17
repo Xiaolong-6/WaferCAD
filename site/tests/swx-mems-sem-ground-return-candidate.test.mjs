@@ -26,13 +26,16 @@ test('one isolated two-net electrical candidate replaces 6um retained-BOX rails'
   assert.equal(a.groundTraceWidthUm, 0.8);
   assert.equal(a.signalTraceWidthUm, 1.2);
   assert.equal(a.externalSignalSupportWidthUm, 6);
+  assert.deepEqual(a.rightGroundSupportCenterUm, [76, -38]);
+  assert.equal(a.rightGroundSupportWidthUm, 8);
+  assert.equal(a.externalGroundSupportCoordinatesVerified, false);
   for (const state of ['off', 'on']) {
     const baseline = createSwxSemV2ProcessGeometry(state);
     const candidate = createSwxSemGroundReturnCandidate(state);
-    assert.equal(candidate.maskPolygons.get(1).length, baseline.maskPolygons.get(1).length + 6);
+    assert.equal(candidate.maskPolygons.get(1).length, baseline.maskPolygons.get(1).length + 7);
     assert.deepEqual(candidate.maskPolygons.get(2), baseline.maskPolygons.get(2));
     assert.equal(candidate.maskPolygons.get(3).length, baseline.maskPolygons.get(3).length + 2);
-    assert.equal(candidate.layout.elements.length, baseline.layout.elements.length + 8);
+    assert.equal(candidate.layout.elements.length, baseline.layout.elements.length + 9);
     assert.equal(
       candidate.layout.combos.find((combo) => combo.layer === 1).count,
       candidate.maskPolygons.get(1).length,
@@ -41,12 +44,15 @@ test('one isolated two-net electrical candidate replaces 6um retained-BOX rails'
     assert.equal(candidate.physicalGroups.candidateGroundRails.length, 2);
     assert.ok(candidate.physicalGroups.candidateSignalRail.length > 0);
     assert.equal(candidate.physicalGroups.candidateSignalSupportRail.length, 4);
+    assert.equal(candidate.physicalGroups.candidateRightGroundSupportAnchor.length, 4);
     assert.equal(candidate.physicalGroups.candidateExternalSiliconPads.length, 2);
     assert.equal(candidate.physicalGroups.candidateExternalMetalPads.length, 2);
     assert.equal(baseline.physicalGroups.candidateGroundRails, undefined);
     const support = createSwxGroundReturnSupportAudit(state);
-    assert.equal(support.supported.length, 17);
-    assert.equal(support.released.length, 42);
+    assert.equal(support.supported.length, 18);
+    assert.equal(support.released.length, 46);
+    assert.ok(support.supported.some((entry) => entry.point[0] === 76 && entry.point[1] === -38));
+    assert.ok(support.released.some((entry) => entry.point[0] === 76 && entry.point[1] === -51));
     assert.equal(support.authorPerimeterContactsVerified, false);
     assert.equal(support.outerIsolationTrenchVerified, false);
     assert.equal(support.sourceHFUndercutFrontVerified, false);
@@ -85,6 +91,11 @@ test('OFF/ON actual ground and signal routing connects the correct physical Si i
     const supported = candidate.physicalGroups.candidateSignalSupportRail;
     assert.ok(geometryArea(v.intersection(union([supported]), union([signal]))) > 100);
     assert.ok(areaContact(supported, groundNet) < 1e-8);
+    const rightAnchor = candidate.physicalGroups.candidateRightGroundSupportAnchor;
+    assert.ok(areaContact(rightAnchor, candidate.physicalGroups.candidateGroundRails[1]) > 1);
+    assert.ok(areaContact(rightAnchor, driveNets[0]) < 1e-8);
+    assert.ok(areaContact(rightAnchor, driveNets[1]) < 1e-8);
+    assert.ok(geometryArea(v.intersection(union([rightAnchor]), union([signal]))) < 1e-8);
     assert.equal(v.multiBounds(union([supported])).height, 6);
     assert.ok(areaContact(signal, opticalNet) < 1e-8);
     for (const ground of candidate.physicalGroups.candidateGroundRails) {
@@ -123,24 +134,31 @@ test('suspended perimeter Si is not accepted without post-HF mechanical qualific
   assert.equal(a.mechanicalFEMVerified, false);
   assert.equal(a.paperPerimeterMechanicalAcceptance, false);
   const longest = a.longest;
-  assert.equal(longest.route, 'ground-0');
-  assert.deepEqual(longest.from, [-76, -20]);
-  assert.deepEqual(longest.to, [-76, -63]);
-  assert.equal(longest.lengthUm, 43);
+  assert.equal(longest.route, 'signal');
+  assert.deepEqual(longest.from, [-61, -78]);
+  assert.deepEqual(longest.to, [-61, -115]);
+  assert.equal(longest.lengthUm, 37);
   assert.equal(a.supportedExternalSignalSpanUm, 122);
-  assert.equal(a.longestUnsupportedSpanUm, 43);
+  assert.equal(a.longestUnsupportedSpanUm, 37);
+  assert.equal(a.rightGroundAnchorRetainsBOX, true);
+  assert.equal(a.rightGroundAnchorSourceVerified, false);
+  for (const side of ['ground-0', 'ground-1']) {
+    const segments = a.spans.filter((span) => span.route === side && span.segmentIndex === 1);
+    assert.deepEqual(segments.map((span) => span.lengthUm), [14, 8, 21]);
+    assert.deepEqual(segments.map((span) => span.supportedByBOX), [false, true, false]);
+  }
   assert.equal(a.supportedSignalBusSourceVerified, false);
   assert.equal(
     a.spans.find((span) => span.route === 'signal' && span.segmentIndex === 2).supportedByBOX,
     true,
   );
   // Theoretical idealized pinned/fixed Euler weak-axis strain bounds.
-  assert.ok(longest.pinnedCriticalStrain > 2.1e-5);
-  assert.ok(longest.pinnedCriticalStrain < 2.2e-5);
-  assert.ok(longest.idealClampedCriticalStrain > 8.6e-5);
-  assert.ok(longest.idealClampedCriticalStrain < 8.7e-5);
-  assert.ok(a.hypotheticalStrainToIdealClampedCriticalRatio > 1.1);
-  assert.ok(a.hypotheticalStrainToIdealClampedCriticalRatio < 1.2);
+  assert.ok(longest.pinnedCriticalStrain > 2.9e-5);
+  assert.ok(longest.pinnedCriticalStrain < 3.0e-5);
+  assert.ok(longest.idealClampedCriticalStrain > 1.16e-4);
+  assert.ok(longest.idealClampedCriticalStrain < 1.2e-4);
+  assert.ok(a.hypotheticalStrainToIdealClampedCriticalRatio > 0.8);
+  assert.ok(a.hypotheticalStrainToIdealClampedCriticalRatio < 0.9);
   // This is a HYPOTHETICAL compressive stress, not measured residual stress.
   assert.equal(Number(a.stressScenarioMPa.toFixed(4)), 16.9);
   assert.equal(a.actualWaferBucklingPredicted, false);

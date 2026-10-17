@@ -27,8 +27,9 @@ const originalAudit = auditSwxSemV2ElectricalNets(v, original);
 const candidateAudit = auditSwxSemV2ElectricalNets(v, source);
 const candidateFigureScopeAudit = auditSwxPaperEnvelope(v, source);
 const mechanicalRiskScreen = auditSwxGroundReturnBucklingRisk();
-assert.equal(mechanicalRiskScreen.longest.route, 'ground-0');
-assert.equal(mechanicalRiskScreen.longest.lengthUm, 43);
+assert.equal(mechanicalRiskScreen.longest.route, 'signal');
+assert.equal(mechanicalRiskScreen.longest.lengthUm, 37);
+assert.equal(mechanicalRiskScreen.rightGroundAnchorRetainsBOX, true);
 assert.equal(mechanicalRiskScreen.supportedExternalSignalSpanUm, 122);
 assert.equal(mechanicalRiskScreen.paperPerimeterMechanicalAcceptance, false);
 assert.equal(originalAudit.opticalFrameConnectedToGroundSi, false);
@@ -61,6 +62,9 @@ await writeFile(
       figureScopeAudit: candidateFigureScopeAudit,
       perimeterMechanicalRiskScreen: mechanicalRiskScreen,
       externalSignalBusRetainsBOX: true,
+      leftGroundContactRetainsBOX: true,
+      rightGroundAnchorRetainsBOX: true,
+      rightGroundAnchorAuthorLocationVerified: false,
       originalAuthorExternalSupportMaskVerified: false,
       mechanicalPerimeterAccepted: false,
       extraneousSourceUnverifiedBOXSupportedRails: 0,

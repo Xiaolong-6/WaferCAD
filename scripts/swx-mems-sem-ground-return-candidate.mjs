@@ -33,6 +33,12 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
   ],
   externalSiliconPadWidthUm: 8,
   externalMetalPadWidthUm: 3.5,
+  // One mirrored stationary perimeter Si anchor on the right Ground route.
+  // The left route ALREADY has a grounded 8um Si/CrAu pad at (-76,-38).
+  // The new anchor has NO extra metal electrode or author-GDS attribution.
+  rightGroundSupportCenterUm: [76, -38],
+  rightGroundSupportWidthUm: 8,
+  externalGroundSupportCoordinatesVerified: false,
   // The grounded leads and vertical signal legs remain narrow, released
   // device Si. A wider EXTERNAL horizontal signal pad rail retains BOX;
   // source pad coordinates and the complete perimeter are still unverified.
@@ -72,8 +78,12 @@ export const SWX_GROUND_RETURN_ASSUMPTIONS = Object.freeze({
   ],
   // Local HF probes strictly in the narrow routes and away from pads.
   releasedRailProbePointsUm: [
+    [-76, -25],
+    [76, -25],
     [-76, -51],
-    [76, -40],
+    [76, -51],
+    [-76, -61],
+    [76, -61],
     [-61, -105],
     [61, -105],
   ],
@@ -102,22 +112,37 @@ export function auditSwxGroundReturnBucklingRisk() {
     })),
     { name: 'signal', points: SWX_GROUND_RETURN_ASSUMPTIONS.signalPathUm },
   ];
+  // Both Ground verticals now cross an actual 8um BOX anchor at y=-38:
+  // left: existing Cr/Au contact Si pad; right: new Si-only anchor.
+  // Break those centerline sections into 14um released, 8um BOX-supported,
+  // and 21um released sections. Do not screen a supported 43um path as one
+  // unsupported Euler column.
   const spans = routes.flatMap(({ name, points }) =>
-    points.slice(1).map((to, index) => {
+    points.slice(1).flatMap((to, index) => {
       const from = points[index];
-      const lengthUm = Math.hypot(to[0] - from[0], to[1] - from[1]);
-      const pinnedCriticalStrain = (Math.PI ** 2 / 12) * (thicknessUm / lengthUm) ** 2;
-      const supportedByBOX = name === 'signal' && index === 2;
-      return {
-        route: name,
-        segmentIndex: index,
-        from,
-        to,
-        lengthUm,
-        supportedByBOX,
-        pinnedCriticalStrain,
-        idealClampedCriticalStrain: pinnedCriticalStrain * 4,
-      };
+      const split = name.startsWith('ground-') && index === 1;
+      const pieces = split
+        ? [
+            { from, to: [from[0], -34], supportedByBOX: false },
+            { from: [from[0], -34], to: [from[0], -42], supportedByBOX: true },
+            { from: [from[0], -42], to, supportedByBOX: false },
+          ]
+        : [{ from, to, supportedByBOX: name === 'signal' && index === 2 }];
+      return pieces.map(({ from: a, to: z, supportedByBOX }, pieceIndex) => {
+        const lengthUm = Math.hypot(z[0] - a[0], z[1] - a[1]);
+        const pinnedCriticalStrain = (Math.PI ** 2 / 12) * (thicknessUm / lengthUm) ** 2;
+        return {
+          route: name,
+          segmentIndex: index,
+          pieceIndex,
+          from: a,
+          to: z,
+          lengthUm,
+          supportedByBOX,
+          pinnedCriticalStrain,
+          idealClampedCriticalStrain: pinnedCriticalStrain * 4,
+        };
+      });
     }),
   );
   const unsupported = spans.filter((item) => !item.supportedByBOX);
@@ -134,6 +159,9 @@ export function auditSwxGroundReturnBucklingRisk() {
     longestUnsupportedSpanUm: longest.lengthUm,
     supportedExternalSignalSpanUm: 122,
     supportedSignalBusSourceVerified: false,
+    leftGroundPadRetainsBOX: true,
+    rightGroundAnchorRetainsBOX: true,
+    rightGroundAnchorSourceVerified: false,
     hypothetical100ppmCompression,
     stressScenarioMPa: hypothetical100ppmCompression * assumedYoungModulusGPa * 1e3,
     idealClampedCriticalStressMPa:
@@ -170,7 +198,17 @@ export function createSwxSemGroundReturnCandidate(state = 'off') {
   const metalPads = SWX_GROUND_RETURN_ASSUMPTIONS.externalPadCentersUm.map((center) =>
     pad(center, SWX_GROUND_RETURN_ASSUMPTIONS.externalMetalPadWidthUm),
   );
-  const perimeterRoutes = [...groundRails, signalRail, signalSupportRail, ...siliconPads];
+  const rightGroundSupportAnchor = pad(
+    SWX_GROUND_RETURN_ASSUMPTIONS.rightGroundSupportCenterUm,
+    SWX_GROUND_RETURN_ASSUMPTIONS.rightGroundSupportWidthUm,
+  );
+  const perimeterRoutes = [
+    ...groundRails,
+    signalRail,
+    signalSupportRail,
+    rightGroundSupportAnchor,
+    ...siliconPads,
+  ];
   const maskPolygons = new Map(original.maskPolygons);
   maskPolygons.set(1, [...original.maskPolygons.get(1), ...perimeterRoutes]);
   maskPolygons.set(3, [...original.maskPolygons.get(3), ...metalPads]);
@@ -207,6 +245,7 @@ export function createSwxSemGroundReturnCandidate(state = 'off') {
       candidateGroundRails: groundRails,
       candidateSignalRail: signalRail,
       candidateSignalSupportRail: signalSupportRail,
+      candidateRightGroundSupportAnchor: rightGroundSupportAnchor,
       candidateExternalSiliconPads: siliconPads,
       candidateExternalMetalPads: metalPads,
     },
@@ -228,9 +267,14 @@ export function createSwxGroundReturnSupportAudit(state = 'off') {
         name: 'illustrative supported external signal bus ' + index,
         point,
       })),
+      {
+        name: 'illustrative right-side stationary Ground-only Si anchor',
+        point: SWX_GROUND_RETURN_ASSUMPTIONS.rightGroundSupportCenterUm,
+      },
     ],
-    // The two ground and two signal vertical remote probes must lose BOX.
-    // The external 6um horizontal signal bar retains BOX at three points.
+    // Eight trace probes outside the local BOX anchors must lose BOX.
+    // Horizontal Signal has three retained BOX probes; left/right Ground
+    // each retain BOX at y=-38 but are released above and below.
     released: [
       ...original.released,
       ...SWX_GROUND_RETURN_ASSUMPTIONS.releasedRailProbePointsUm.map((point, index) => ({
