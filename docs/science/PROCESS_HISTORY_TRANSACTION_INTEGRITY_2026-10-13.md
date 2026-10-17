@@ -24,7 +24,7 @@ Previously `site/controllers/history-mutation-controller.js` restored a replay t
 | Persistence writer/checkpoint unavailable | Mutation denied or recoverable; no false saved state |
 | Export/Import/Recovery after failure | Canonical geometry, refs, all branch heads, Recipe and History round-trip |
 
-Use the existing `site/tests/history-mutation-controller.test.mjs`, `scripts/history-regression.mjs`, `scripts/process-recipe-safety-regression.mjs`, `scripts/project-io-runtime-regression.mjs` and `scripts/v2/check-sync.mjs`. Reuse their scientific fixtures and do not replace the snapshot engine with a parallel implementation.
+Use the existing `site/tests/history/history-mutation-controller.test.mjs`, `scripts/history-regression.mjs`, `scripts/process-recipe-safety-regression.mjs`, `scripts/project-io-runtime-regression.mjs` and `scripts/v2/check-sync.mjs`. Reuse their scientific fixtures and do not replace the snapshot engine with a parallel implementation.
 
 ## Verification boundary
 

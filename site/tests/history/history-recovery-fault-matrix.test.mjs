@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createHistoryMutationController } from '../controllers/history-mutation-controller.js';
+import { createHistoryMutationController } from '../../controllers/history-mutation-controller.js';
 
 // Faults are injected at the controller boundary: these cases verify the
 // mutation gate without pretending that a mocked store is IndexedDB itself.

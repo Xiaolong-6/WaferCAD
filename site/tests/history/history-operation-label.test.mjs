@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { historyOperationLabel } from '../history-operation-label.js';
+import { historyOperationLabel } from '../../history-operation-label.js';
 
 test('History labels resolve renamed material and annotation entities by stable id', () => {
   const model = {

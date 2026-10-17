@@ -22,7 +22,7 @@ and do not skip physics, Recovery, worker rollback or morphology contracts.
 
 ## Repository ownership and layout
 
-- `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.
+- `site/tests/*.test.mjs`: flat Node/science ownership and the retained `npm test` discovery glob. Documentation/Wiki/Process Guide checks now live under `site/tests/documentation/*.test.mjs` and are **all imported by** `site/tests/documentation-suite.test.mjs` through the original glob. Five native History tests also live under `site/tests/history/` and are all loaded by `site/tests/history-suite.test.mjs`; specialized CI/owner references use their new canonical paths. Adding a documentation test is automatically discovered; other domains must have an explicit verified runner before any relocation. Silent coverage loss is forbidden.
 - `scripts/*-regression.mjs`, `scripts/v2/` and `scripts/test-helpers/`: real-browser acceptance entry points and reusable helpers. `package.json` scripts and `.github/workflows/` specify their invocation; move only with a reference inventory and verified execution.
 - `tests/fixtures/`: byte-exact or calibrated input/expected data, including compressed Legacy and native Fig3 projects. Protect scientific provenance, hashes and reversible decode procedures.
 - `tests/visual-baselines/`: approved platform-specific reference pixels; do not delete/regenerate to hide regressions. Keep routine CI screenshots in artifacts.
@@ -283,7 +283,7 @@ See [CI routing](CI.md) for the path-to-suite policy and full-regression events.
 
 ## Node test ownership
 
-The former `site/selftest.mjs` monolith has been removed. `npm test` runs `node --test site/tests/*.test.mjs`, including the documentation suite aggregator that imports every grouped documentation test. All other test owners remain flat pending separately validated migration.
+The former `site/selftest.mjs` monolith has been removed. `npm test` runs `node --test site/tests/*.test.mjs`, including the Documentation and History suite aggregators that import every grouped owner. Other test owners remain flat pending separately validated migration.
 
 The migrated self-test contracts are owned by focused files:
 

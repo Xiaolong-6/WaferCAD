@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSnapshotManager } from '../workspace-snapshots.js';
-import { validateHistoryHeadOffThread } from '../history-head-validation.js';
+import { createSnapshotManager } from '../../workspace-snapshots.js';
+import { validateHistoryHeadOffThread } from '../../history-head-validation.js';
 
 test('History worker validates a detached head and terminates on failures', async () => {
   const previousWorker = globalThis.Worker;
