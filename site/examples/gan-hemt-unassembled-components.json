@@ -1,0 +1,33 @@
+{
+  "paper": "10.1038/s41378-022-00462-3",
+  "status": "components-only",
+  "assemblyPerformed": false,
+  "bondHistoryCreated": false,
+  "note": "Three independent die Main histories and an independent Si interposer Main.",
+  "components": [
+    {
+      "role": "interposer",
+      "filename": "gan-microchannel-interposer-2022.wafercad",
+      "independentMain": true,
+      "assembled": false
+    },
+    {
+      "role": "hemt",
+      "filename": "gan-hemt-die-2022.wafercad",
+      "independentMain": true,
+      "assembled": false
+    },
+    {
+      "role": "gsg-left",
+      "filename": "gan-gsg-left-die-2022.wafercad",
+      "independentMain": true,
+      "assembled": false
+    },
+    {
+      "role": "gsg-right",
+      "filename": "gan-gsg-right-die-2022.wafercad",
+      "independentMain": true,
+      "assembled": false
+    }
+  ]
+}
