@@ -3,7 +3,7 @@
 // Converts the verified instanced final material into one global 2.5D
 // partition so continuous upper-metal buses can cross instance boundaries.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildTcmosInverter } from './build-tcmos-inverter-example.mjs';
@@ -310,7 +310,20 @@ export async function buildTcmosPhysicalRoutedVariant(source = null) {
 }
 
 async function main() {
-  const result = await buildTcmosPhysicalRoutedVariant();
+  // The original 23-step source is already an approved persisted project.
+  // Reconstructing those 23 steps again is neither necessary nor desirable
+  // for every routed visual iteration: their own science gate tests that.
+  const approvedPath = new URL(
+    '../examples/projects/tcmos-ternary-inverter-2019-candidate/tcmos-ternary-inverter-130nm.wafercad',
+    import.meta.url,
+  );
+  const { readProjectFile } = await import('../site/project-io.js');
+  const source = await readProjectFile(new Blob([await readFile(approvedPath)]));
+  assert.equal(source.model.kernel, 'vector-2.5d-v1');
+  assert.equal(source.layout.elements.length, 232);
+  assert.equal(source.processRecipe?.steps?.length, 23,
+    'The approved 23-step source process is missing');
+  const result = await buildTcmosPhysicalRoutedVariant(source);
   const out = resolve('test-results/tcmos');
   await mkdir(out, { recursive: true });
   await writeFile(resolve(out, 'tcmos-inverter-4x4-ROUTED-PHYSICAL-PROTOTYPE.wafercad'),
