@@ -72,6 +72,7 @@ test('opt-in Base owner has physical Z bounds and conserves mass', () => {
   const project = fixture();
   const owner = validateExperimentalPhysicalFacetModel(project.model);
   assert.equal(owner.layerId, 'base');
+  assert.equal(project.model.kernel, 'vector-physical-facet-experimental-v1');
   assert.deepEqual(modelBoundsZ(project.model), [-130, 130]);
   const mesh = physicalPyramidSolidMesh(owner);
   const cut = physicalPyramidSection(owner, [-6.4, 0], [6.4, 0]);
@@ -147,22 +148,37 @@ test('production Process and legacy 3D/Section fail closed for physical geometry
   assert.equal(result.changed, false);
   assert.match(result.error, /Experimental physical facet/);
   assert.deepEqual(project.model, before);
-  assert.throws(
-    () => sectionSlices(project.model, [-6.4, 0], [6.4, 0]),
-    /refusing flat surrogate/,
-  );
+  assert.throws(() => sectionSlices(project.model, [-6.4, 0], [6.4, 0]), /refusing flat surrogate/);
   assert.throws(() => materialSolids(project.model), /refusing flat surrogate/);
 });
 
 test('invalid physical descriptors, modified regions and unsupported UI import fail closed', async () => {
   const pristine = fixture();
   for (const edit of [
-    (model) => { model.experimentalPhysicalFacetOwner.height = 0; },
-    (model) => { model.experimentalPhysicalFacetOwner.layerId = 'fake'; },
-    (model) => { model.experimentalPhysicalFacetOwner.domain.maxX = 7; },
-    (model) => { model.regions[0].stack[0].z1 = 126; },
-    (model) => { model.regions[0].geom[0][0][1][0] += 0.2; },
-    (model) => { model.layers.push({ id: 'oxide', name: 'Oxide', color: '#ffffff' }); },
+    (model) => {
+      model.experimentalPhysicalFacetOwner.height = 0;
+    },
+    (model) => {
+      model.experimentalPhysicalFacetOwner.layerId = 'fake';
+    },
+    (model) => {
+      model.experimentalPhysicalFacetOwner.domain.maxX = 7;
+    },
+    (model) => {
+      model.regions[0].stack[0].z1 = 126;
+    },
+    (model) => {
+      model.regions[0].geom[0][0][1][0] += 0.2;
+    },
+    (model) => {
+      model.layers.push({ id: 'oxide', name: 'Oxide', color: '#ffffff' });
+    },
+    (model) => {
+      model.kernel = 'vector-2.5d-v1';
+    },
+    (model) => {
+      delete model.experimentalPhysicalFacetOwner;
+    },
   ]) {
     const mutated = structuredClone(pristine);
     edit(mutated.model);

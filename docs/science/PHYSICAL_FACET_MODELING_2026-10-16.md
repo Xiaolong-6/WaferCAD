@@ -121,7 +121,10 @@ save/reopen/rollback test; do not silently upgrade old `.wafercad` files.
 `site/physical-facet-model.js` now validates a new optional
 `model.experimentalPhysicalFacetOwner` descriptor against a single
 rectangular Base region and its reference planar Z bounds. Only the
-one-material geometry is supported. The front/back pyramid `z(x,y)`
+one-material geometry is supported. The experimental model has a separate
+`vector-physical-facet-experimental-v1` Kernel ID, so older clients
+reject its unfamiliar physical representation instead of silently
+drawing a flat legacy stack. The front/back pyramid `z(x,y)`
 remains the scientific truth for this experimental owner; the flat
 `region.stack` is a constrained compatibility reference and **not**
 permission for the legacy renderer to display a physical facet.

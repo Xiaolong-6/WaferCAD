@@ -1,10 +1,8 @@
 // Opt-in persisted physical Si owner contract (#297).
 // Production drawing still does not understand this surface; that path fails closed.
-import {
-  makePhysicalPyramidOwner,
-  restorePhysicalPyramidOwner,
-} from './physical-facet-owner.js';
+import { makePhysicalPyramidOwner, restorePhysicalPyramidOwner } from './physical-facet-owner.js';
 
+export const PHYSICAL_FACET_MODEL_KERNEL = 'vector-physical-facet-experimental-v1';
 const FIELD = 'experimentalPhysicalFacetOwner';
 
 function fail(reason) {
@@ -12,12 +10,14 @@ function fail(reason) {
 }
 
 export function validateExperimentalPhysicalFacetModel(model) {
-  if (!model || !Object.hasOwn(model, FIELD)) return null;
-  if (
-    model.kernel !== 'vector-2.5d-v1' ||
-    model.shape !== 'rect' ||
-    model.array != null
-  ) {
+  if (!model) return null;
+  if (!Object.hasOwn(model, FIELD)) {
+    if (model.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
+      fail('physical model is missing its owner descriptor');
+    }
+    return null;
+  }
+  if (model.kernel !== PHYSICAL_FACET_MODEL_KERNEL || model.shape !== 'rect' || model.array != null) {
     fail('requires a single rectangular vector model');
   }
   let owner;
@@ -30,11 +30,7 @@ export function validateExperimentalPhysicalFacetModel(model) {
     fail('owner descriptor is not canonical versioned JSON');
   }
   if (owner.layerId !== 'base') fail('only the Base silicon material is supported');
-  if (
-    model.layers?.length !== 1 ||
-    model.layers[0]?.id !== 'base' ||
-    model.regions?.length !== 1
-  ) {
+  if (model.layers?.length !== 1 || model.layers[0]?.id !== 'base' || model.regions?.length !== 1) {
     fail('only one Base layer and one Base region are supported');
   }
   const region = model.regions[0];
@@ -65,9 +61,7 @@ export function validateExperimentalPhysicalFacetModel(model) {
     !ring ||
     ring.length !== 5 ||
     JSON.stringify(ring[0]) !== JSON.stringify(ring[4]) ||
-    !corners.every(([x, y]) =>
-      ring.slice(0, -1).some((p) => p[0] === x && p[1] === y),
-    )
+    !corners.every(([x, y]) => ring.slice(0, -1).some((p) => p[0] === x && p[1] === y))
   ) {
     fail('material boundary must be exactly the physical owner rectangle');
   }
@@ -91,6 +85,7 @@ export function attachExperimentalPhysicalFacetOwner(model, descriptor) {
   if (model?.[FIELD] != null) fail('existing physical owner cannot be overwritten');
   const owner = makePhysicalPyramidOwner(descriptor);
   const copy = structuredClone(model);
+  copy.kernel = PHYSICAL_FACET_MODEL_KERNEL;
   copy[FIELD] = owner;
   validateExperimentalPhysicalFacetModel(copy);
   copy.revision = (Number(copy.revision) || 0) + 1;
@@ -98,13 +93,13 @@ export function attachExperimentalPhysicalFacetOwner(model, descriptor) {
 }
 
 export function assertExperimentalPhysicalFacetNotRendered(model) {
-  if (model?.[FIELD] != null) {
+  if (model?.[FIELD] != null || model?.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
     fail('production Section/3D lacks physical-facet support; refusing flat surrogate');
   }
 }
 
 export function assertExperimentalPhysicalFacetNotProcessed(model) {
-  if (model?.[FIELD] != null) {
+  if (model?.[FIELD] != null || model?.kernel === PHYSICAL_FACET_MODEL_KERNEL) {
     return {
       changed: false,
       error:
