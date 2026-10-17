@@ -421,15 +421,15 @@ try {
             ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
             : example.id === 'magic-1000-mos2-beol'
               ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-            : example.id === 'tio2-metalens-four-unit'
-              ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-              : sourceProject.model.array
-                ? null
-                : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
-                    allowRepeatedNames: true,
-                    xyQuantumUm: 1e-4,
-                    maxQuantizedAreaUm2: 25,
-                  });
+              : example.id === 'tio2-metalens-four-unit'
+                ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+                : sourceProject.model.array
+                  ? null
+                  : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
+                      allowRepeatedNames: true,
+                      xyQuantumUm: 1e-4,
+                      maxQuantizedAreaUm2: 25,
+                    });
       } catch (error) {
         // A completed Recipe with different XY/Z occupancy is a scientific
         // mismatch. Preserve both physical models for diagnosis; never
