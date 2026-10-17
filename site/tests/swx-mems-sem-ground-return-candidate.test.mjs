@@ -145,8 +145,14 @@ test('suspended perimeter Si is not accepted without post-HF mechanical qualific
   assert.equal(a.rightGroundAnchorSourceVerified, false);
   for (const side of ['ground-0', 'ground-1']) {
     const segments = a.spans.filter((span) => span.route === side && span.segmentIndex === 1);
-    assert.deepEqual(segments.map((span) => span.lengthUm), [14, 8, 21]);
-    assert.deepEqual(segments.map((span) => span.supportedByBOX), [false, true, false]);
+    assert.deepEqual(
+      segments.map((span) => span.lengthUm),
+      [14, 8, 21],
+    );
+    assert.deepEqual(
+      segments.map((span) => span.supportedByBOX),
+      [false, true, false],
+    );
   }
   assert.equal(a.supportedSignalBusSourceVerified, false);
   assert.equal(
