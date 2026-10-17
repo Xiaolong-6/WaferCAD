@@ -23,7 +23,12 @@ try {
       timeout: 120000,
     });
     const initial = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
-    assert.equal(initial.model.array.instances.length, 625);
+    assert.equal(initial.model.array.instances.length, 1885, 'complete wafer instances');
+    assert.equal(
+      initial.model.array.instances.filter((site) => site.role === 'device').length,
+      625,
+      '625 physical device sites',
+    );
     await selectScientificView(page, 'three', 1440);
     const host = page.locator('#threeHost');
     await page.waitForFunction(

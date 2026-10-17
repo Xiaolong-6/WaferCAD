@@ -357,7 +357,7 @@ jobs:
           if-no-files-found: warn
 
   process-geometry:
-    name: Native v2 Process scientific release ${{ matrix.domain }}
+    name: Process geometry regression (${{ matrix.domain }})
     needs: plan
     if: ${{ needs.plan.outputs.process == 'true' }}
     strategy:

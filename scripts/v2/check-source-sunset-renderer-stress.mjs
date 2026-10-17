@@ -24,7 +24,12 @@ try {
     });
     const snap = () => page.evaluate(() => window.WaferCadV2Workstation.snapshot());
     const before = await snap();
-    assert.equal(before.model.array.instances.length, 625);
+    assert.equal(before.model.array.instances.length, 1885, 'complete wafer instances');
+    assert.equal(
+      before.model.array.instances.filter((site) => site.role === 'device').length,
+      625,
+      '625 physical device sites',
+    );
     await selectScientificView(page, 'three', 1440);
     const host = page.locator('#threeHost');
     await page.waitForFunction(
@@ -131,7 +136,9 @@ try {
     assert.deepEqual(report.errors, []);
     await page.screenshot({ path: resolve(output, 'final-625-renderer.png') });
     report.result = 'pass';
-    console.log('Native 625-site Renderer: 20 retained-resource toggles and science isolation PASS');
+    console.log(
+      'Native 625-site Renderer: 20 retained-resource toggles and science isolation PASS',
+    );
   } finally {
     await context.close();
   }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { launchBrowser, newUiPage, waitForPaint } from '../test-helpers/ui.mjs';
+import { launchBrowser, newUiPage } from '../test-helpers/ui.mjs';
 
 const base = process.env.WAFERCAD_V2_BASE || 'http://127.0.0.1:4182';
 const output = resolve('test-results/pr290-draw-process-interaction');
@@ -86,9 +86,9 @@ try {
     const step = deposited.workflow.steps.at(-1);
     assert.ok(layer?.id, 'actual Process Worker committed the named film');
     assert.equal(deposited.workflow.steps.length, initial.workflow.steps.length + 1);
-    assert.equal(step.maskSourceMode, 'draw');
-    assert.equal(step.replay?.maskContext?.sourceMode, 'draw');
-    assert.equal(step.replay?.maskContext?.shapeCount, drawn.drawMask.shapes.length);
+    assert.equal(step.operation?.maskSourceMode, 'draw');
+    assert.equal(step.operation?.replay?.maskContext?.sourceMode, 'draw');
+    assert.equal(step.operation?.replay?.maskContext?.shapeCount, drawn.drawMask.shapes.length);
     assert.deepEqual(deposited.drawMask, drawn.drawMask);
 
     const coverage = await page.evaluate(async ({ layerId, rect }) => {
