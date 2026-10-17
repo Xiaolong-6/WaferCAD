@@ -611,7 +611,7 @@ try {
   // never bypass the workstation event handler or mutate inspection state.
   const clickPackageTool = async (control) => {
     if (!(await control.isVisible())) {
-      const more = page.locator('#threePanel [aria-label="3D more tools"]');
+      const more = page.locator('#threePanel button[aria-label="3D more tools"]');
       assert.ok(await more.isVisible(), 'No visible 3D overflow-menu trigger');
       if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
       await control.waitFor({ state: 'visible', timeout: 20000 });
