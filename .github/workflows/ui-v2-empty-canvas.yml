@@ -44,11 +44,6 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-1.55.1
       - run: npx playwright install --with-deps chromium
-      - name: Emit one-time formatting audit for focused script
-        run: |
-          echo 'WAFERCAD_PRETTIER_START'
-          npx prettier scripts/v2/check-empty-canvas-hints.mjs
-          echo 'WAFERCAD_PRETTIER_END'
       - name: Check empty-stage actions and capture real browser screenshots
         run: node scripts/v2/check-empty-canvas-hints.mjs
       - name: Preserve actual screenshot evidence and report

@@ -79,17 +79,22 @@ try {
       assert.equal(await mainHint.getByRole('button', { name: 'Add' }).count(), 1);
       assert.equal(await page.locator('#maskPanel .v2-empty-hint').isVisible(), true);
       const framing = await page.evaluate(() =>
-        Object.fromEntries(['main', 'mask', 'section', 'three'].map((name) => {
-          const panel = document.getElementById(name + 'Panel');
-          const panelStyle = getComputedStyle(panel);
-          const head = panel.querySelector('.p-view-head');
-          const headStyle = getComputedStyle(head);
-          return [name, {
-            width: panelStyle.borderTopWidth,
-            radius: panelStyle.borderTopLeftRadius,
-            divider: headStyle.borderBottomWidth,
-          }];
-        })),
+        Object.fromEntries(
+          ['main', 'mask', 'section', 'three'].map((name) => {
+            const panel = document.getElementById(name + 'Panel');
+            const panelStyle = getComputedStyle(panel);
+            const head = panel.querySelector('.p-view-head');
+            const headStyle = getComputedStyle(head);
+            return [
+              name,
+              {
+                width: panelStyle.borderTopWidth,
+                radius: panelStyle.borderTopLeftRadius,
+                divider: headStyle.borderBottomWidth,
+              },
+            ];
+          }),
+        ),
       );
       for (const [name, frame] of Object.entries(framing)) {
         assert.equal(frame.width, '1px', name + ' panel border');
@@ -128,12 +133,19 @@ try {
       await page.locator('#layerName').fill('Empty hint test layer');
       await page.locator('#operationThickness').fill('0.125');
       await page.locator('#applyOperationBtn').click();
-      const continuation = page.getByRole('button', { name: 'Create Variant & apply', exact: true });
+      const continuation = page.getByRole('button', {
+        name: 'Create Variant & apply',
+        exact: true,
+      });
       if (await continuation.isVisible()) await continuation.click();
-      await page.waitForFunction(() =>
-        window.WaferCadV2Workstation.snapshot().model.layers.some(
-          (layer) => layer.name === 'Empty hint test layer',
-        ), null, { timeout: 120000 });
+      await page.waitForFunction(
+        () =>
+          window.WaferCadV2Workstation.snapshot().model.layers.some(
+            (layer) => layer.name === 'Empty hint test layer',
+          ),
+        null,
+        { timeout: 120000 },
+      );
       await page.waitForFunction(() => !window.WaferCadV2Workstation.snapshot().workflow.busy);
       await waitForPaint(page);
       assert.equal(await mainHint.isVisible(), false, 'Adding a layer hides Main empty hint');
@@ -257,7 +269,9 @@ try {
   }
 
   report.status = 'passed';
-  console.log('EMPTY CANVAS: Main/Mask/Section, native Add/Draw/import, mobile and frame parity PASS');
+  console.log(
+    'EMPTY CANVAS: Main/Mask/Section, native Add/Draw/import, mobile and frame parity PASS',
+  );
 } catch (error) {
   report.status = 'failed';
   report.failure = String(error.stack || error);
