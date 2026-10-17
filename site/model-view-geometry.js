@@ -106,6 +106,9 @@ export function appearanceSurfaceGroups(model, clip = null) {
 }
 
 export function sectionContours(model, a, b) {
+  if (model?.experimentalPhysicalFacetShell) {
+    throw new RangeError('Physical coating Section requires a multi-material renderer; refusing Si-only surrogate');
+  }
   const owner = validateExperimentalPhysicalFacetModel(model);
   if (owner) {
     // One true physical solid, directly from its shared 3D triangle owner.

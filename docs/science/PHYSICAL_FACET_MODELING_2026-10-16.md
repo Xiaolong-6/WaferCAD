@@ -241,3 +241,31 @@ remains unchanged, and no Process or material-layer activation occurs.
 Before integration: prove full 3D watertight film interfaces,
 non-overlapping material ownership and exact Section/volume
 agreements, then inspect real Chromium frames and source-paper SEM.
+
+## Full unit exact implicit 3D silicon/oxide material ownership (2026-10-17)
+
+The experimental `physical-facet-shell-owner.js` defines the entire
+finite-volume coating by its **3D Euclidean distance to the actual
+closed Si triangle mesh**. Each 3D point has mutually exclusive
+material ownership: Si inside the physical solid, oxide outside Si
+within normal distance `t` of any silicon boundary triangle, and
+void elsewhere. The nearest-point solver includes triangle interiors,
+edges and corners; convex ridges, concave valleys, 3D four-facet
+apexes and domain sidewalls use the *same* geometry, not stitched
+independent appearance patches. The front and back film/void
+interfaces are computed by bounded root finding against this complete
+3D material query. The experimental descriptor is JSON-safe and
+persists across .wafercad, Workspace and History with owner identity
+validation.
+
+**Critical acceptance distinction:** the full **implicit material
+occupancy rule** is complete for the closed finite Si test specimen,
+but a watertight **coating triangle mesh has NOT been extracted**.
+The production 3D and Section renderers explicitly reject coated
+experimental models rather than showing an uncoated Si surrogate.
+The normal production project importer and Process remain unavailable.
+A conservative `t < pitch/4` guard is a lab applicability bound, not a
+physical thickness law. A 3D surface-mesh extraction, signed shell
+volume invariants, interactive Chromium 3D/Section coated-specimen
+inspection and original Sahli SEM correspondence remain acceptance
+requirements before production activation or 64×64 scaling.

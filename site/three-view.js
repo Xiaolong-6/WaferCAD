@@ -2552,6 +2552,9 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (clip) throw new RangeError('Experimental physical facets do not support ROI clipping yet');
     const owner = validateExperimentalPhysicalFacetModel(model);
     if (!owner) throw new RangeError('Missing experimental physical facet owner');
+    if (model.experimentalPhysicalFacetShell) {
+      throw new RangeError('Physical coating mesh is unavailable; refusing Si-only 3D rendering');
+    }
     // The global XYZ helper crosses a locally collapsed Si sheet and reads
     // visually as an erroneous vertical material edge in this inspection.
     if (axesHelper) axesHelper.visible = false;

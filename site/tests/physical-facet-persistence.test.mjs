@@ -4,9 +4,11 @@ import test from 'node:test';
 
 import {
   attachExperimentalPhysicalFacetOwner,
+  attachExperimentalPhysicalFacetShell,
   validateExperimentalPhysicalFacetModel,
 } from '../physical-facet-model.js';
 import { makePhysicalPyramidOwner, physicalOwnerVolume } from '../physical-facet-owner.js';
+import { createPhysicalFacetShellQuery } from '../physical-facet-shell-owner.js';
 import { physicalPyramidSection, physicalPyramidSolidMesh } from '../physical-facet-surface.js';
 import {
   expandProjectStorage,
@@ -141,6 +143,52 @@ test('normal storage, workspace storage, Snapshot and History keep one true owne
       );
     }
   }
+});
+
+test('coated 3D material survives .wafercad, Workspace and History without false Si-only views', async () => {
+  const project = fixture();
+  project.model = attachExperimentalPhysicalFacetShell(project.model, {
+    layerId: 'oxide',
+    thicknessUm: 0.05,
+  });
+  validateProjectFile(project);
+  const query = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
+  assert.equal(query.sample([0, 0, 130.02]).materialLayerId, 'oxide');
+  assert.throws(
+    () => sectionContours(project.model, [-6.4, 0], [6.4, 0]),
+    /refusing Si-only surrogate/,
+  );
+  const poisoned = structuredClone(project);
+  poisoned.model.experimentalPhysicalFacetShell.silicon.height = 2;
+  assert.throws(() => validateProjectFile(poisoned), /coating and silicon descriptors/);
+  const earlier = structuredClone(project);
+  const time = '2026-10-17T00:00:00.000Z';
+  project.snapshots = [{
+    id: 'coated-unit',
+    name: 'Full exterior oxide owner',
+    createdAt: time,
+    state: earlier,
+  }];
+  const expected = earlier.model.experimentalPhysicalFacetShell;
+  for (const stored of [
+    JSON.parse(serializeProject(project)),
+    prepareProjectForWorkspaceStorage(project),
+  ]) {
+    const reopened = expandProjectStorage(stored);
+    validateProjectFile(reopened);
+    for (const state of [reopened, reopened.snapshots[0].state]) {
+      assert.deepEqual(state.model.experimentalPhysicalFacetShell, expected);
+      const material = createPhysicalFacetShellQuery(state.model.experimentalPhysicalFacetShell);
+      assert.equal(material.sample([0, 0, 130.02]).materialLayerId, 'oxide');
+      assert.equal(material.sample([0, 0, 0]).materialLayerId, 'base');
+      assert.equal(material.sample([6.42, 6.42, 0]).materialLayerId, 'oxide');
+    }
+  }
+  const raw = serializeProject(project);
+  await assert.rejects(
+    readProjectFile({ size: Buffer.byteLength(raw), text: async () => raw }),
+    /not yet supported in the production Workstation/,
+  );
 });
 
 test('Snapshot Manager restores physical material and reopens two distinct facet phases', () => {

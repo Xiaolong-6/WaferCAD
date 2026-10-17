@@ -32,5 +32,6 @@ jobs:
           site/tests/physical-facet-surface.test.mjs
           site/tests/physical-facet-coating.test.mjs
           site/tests/physical-facet-coating-section.test.mjs
+          site/tests/physical-facet-shell-owner.test.mjs
           site/tests/physical-facet-persistence.test.mjs
           site/tests/physical-facet-recovery.test.mjs
