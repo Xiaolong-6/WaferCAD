@@ -48,6 +48,49 @@ test('4x4 routed overlay preserves every approved source M1 polygon and CNT mapp
   }
 });
 
+test('4x4 translation preserves 64 mutually unshorted physical M1 source nets', () => {
+  const layout = buildTcmosRoutedOverlay();
+  assert.equal(layout.m1.length, 64);
+  const assertIsolated = (metal) => {
+    const polygons = metal.map((entry) => {
+      const geom = shape(entry.points);
+      return { ...entry, geom, bounds: geometry.multiBounds(geom) };
+    });
+    let checkedPairs = 0;
+    for (let i = 0; i < polygons.length; i++) {
+      for (let j = i + 1; j < polygons.length; j++) {
+        const a = polygons[i];
+        const b = polygons[j];
+        checkedPairs++;
+        // The 14 x 8 um demonstration pitch must keep distinct source
+        // cells physically separated, even where their net names agree.
+        // Bounding-box clearance is conservative and catches edge contact.
+        if (a.cellId !== b.cellId) {
+          const dx = Math.max(a.bounds.minX - b.bounds.maxX, b.bounds.minX - a.bounds.maxX, 0);
+          const dy = Math.max(a.bounds.minY - b.bounds.maxY, b.bounds.minY - a.bounds.maxY, 0);
+          assert.ok(Math.hypot(dx, dy) > 1e-9, a.id + ' / ' + b.id + ': M1 inter-cell contact');
+        }
+        if (
+          a.bounds.maxX < b.bounds.minX ||
+          b.bounds.maxX < a.bounds.minX ||
+          a.bounds.maxY < b.bounds.minY ||
+          b.bounds.maxY < a.bounds.minY
+        ) continue;
+        assert.ok(
+          geometryArea(geometry.intersection(a.geom, b.geom)) < 1e-12,
+          a.id + ' / ' + b.id + ': M1 cross-net short',
+        );
+      }
+    }
+    return checkedPairs;
+  };
+  assert.equal(assertIsolated(layout.m1), 2016);
+  // This must be a falsifiable geometry contract, not just a polygon count.
+  const shorted = structuredClone(layout.m1);
+  shorted[1].points = structuredClone(shorted[0].points);
+  assert.throws(() => assertIsolated(shorted), /M1 cross-net short/);
+});
+
 test('all M1-to-M2 vias are FULLY inside exactly one approved M1 polygon', () => {
   const layout = buildTcmosRoutedOverlay();
   const original = readTcmosReferenceMask().find((group) => group.name === 'METAL1').shapes;
