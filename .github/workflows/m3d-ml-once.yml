@@ -1,0 +1,81 @@
+name: M3D ML targeted science and native browser acceptance
+
+on:
+  push:
+    branches:
+      - feat/m3d-precharge-geometry-20261017
+    paths:
+      - .github/workflows/m3d-ml-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  real-kernel-and-k-layout:
+    if: github.repository == 'Xiaolong-6/WaferCAD' && github.ref == 'refs/heads/feat/m3d-precharge-geometry-20261017'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/m3d-precharge-geometry-20261017
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Apply standard formatting only to ML source contracts
+        run: |
+          npx prettier --write scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
+          npx prettier --check scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md
+          npm run lint
+      - name: Rebuild using actual Kernel and schema (no JSON fabrication)
+        run: node scripts/build-m3d-lime-example.mjs --write-repo
+      - name: Strict physical Pd bridge, ML continuity and native ALD
+        run: node --test site/tests/m3d-lime-builder.test.mjs site/tests/m3d-lime-ald45-regression.test.mjs
+      - name: Prepare native Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start real v2 application
+        shell: bash
+        run: |
+          node scripts/v2/serve-v2.mjs > m3d-ml-server.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4182/app.html; then exit 0; fi
+            sleep 1
+          done
+          cat m3d-ml-server.log
+          exit 1
+      - name: Chromium project load, native Section/3D, 50-step Run All and GDS/OAS
+        env:
+          WAFERCAD_THREE_DIR: ${{ github.workspace }}/node_modules/three
+        run: node scripts/v2/check-m3d-lime-project.mjs
+      - name: Verify exported masks with independent KLayout
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-cache-dir klayout==0.30.12
+          python3 scripts/klayout-m3d-lime-verify.py test-results/m3d-lime/browser
+      - name: Commit only verified fixture and source formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- scripts/build-m3d-lime-example.mjs site/tests/m3d-lime-builder.test.mjs scripts/v2/check-m3d-lime-project.mjs docs/M3D_LIME_2023_RECONSTRUCTION.md site/examples/m3d-lime-rram-cntfet.wafercad
+          git diff --cached --check
+          git diff --cached --name-only
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'testdata(m3d): accept kernel-generated ML and precharge drain fixture'
+          git fetch origin refs/heads/feat/m3d-precharge-geometry-20261017
+          test "$(git rev-parse origin/feat/m3d-precharge-geometry-20261017)" = "$GITHUB_SHA"
+          git push origin HEAD:refs/heads/feat/m3d-precharge-geometry-20261017
+      - name: Keep actual targeted evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3d-ml-native-evidence-${{ github.sha }}
+          path: |
+            test-results/m3d-lime/
+            m3d-ml-server.log
+          if-no-files-found: warn
+          retention-days: 14
