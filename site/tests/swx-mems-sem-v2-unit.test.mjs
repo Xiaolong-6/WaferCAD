@@ -204,14 +204,32 @@ test('SEM v2 real post-release ownership includes all twelve wider 1um spring tr
   for (const state of ['off', 'on']) {
     const probes = createSwxSemV2SupportAudit(state);
     assert.equal(probes.supported.length, 12);
-    assert.equal(probes.released.length, 26);
+    assert.equal(probes.released.length, 38);
     assert.equal(
       probes.released.filter((probe) => probe.name.startsWith('folded spring truss ')).length,
       12,
     );
+    const beamProbes = probes.released.filter((probe) =>
+      probe.name.startsWith('folded spring beam '),
+    );
+    assert.equal(beamProbes.length, 12);
+    const pose = createSwxSemV2ProcessGeometry(state).physicalGroups.semV2;
+    for (let index = 0; index < beamProbes.length; index++) {
+      const [x, y] = beamProbes[index].point;
+      const smallColumn = [
+        [x - 0.02, y - 0.02],
+        [x + 0.02, y - 0.02],
+        [x + 0.02, y + 0.02],
+        [x - 0.02, y + 0.02],
+      ];
+      assert.ok(
+        contact([smallColumn], [pose.springContours[Math.floor(index / 3)]]) > 1e-4,
+        state + ' release probe ' + beamProbes[index].name + ' misses its real silicon beam',
+      );
+    }
     assert.equal(probes.outerIsolationTrenchVerified, false);
     assert.equal(probes.sourceHFUndercutFrontVerified, false);
     const names = [...probes.supported, ...probes.released].map((x) => x.name);
-    assert.equal(new Set(names).size, 38);
+    assert.equal(new Set(names).size, 50);
   }
 });
