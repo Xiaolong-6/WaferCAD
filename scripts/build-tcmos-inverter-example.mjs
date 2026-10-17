@@ -473,22 +473,27 @@ const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 const SVG_PROCESS_LAYERS = new Map(
   readTcmosReferenceMask().map(({ layer, shapes }) => [layer, shapes]),
 );
+// Storage and the live browser use the documented 0.0001 µm CAD
+// persistence grid. Match that grid here, before boolean operations, rather
+// than changing scientific test tolerances to conceal rounded vertices.
+const processGrid = (n) => Math.round(n * 10000) / 10000;
 const svgBounds = (points) => {
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  const x = Math.min(...xs), y = Math.min(...ys);
+  const xs = points.map(([x]) => x),
+    ys = points.map(([, y]) => y),
+    x = Math.min(...xs),
+    y = Math.min(...ys);
   return rect(x, y, Math.max(...xs) - x, Math.max(...ys) - y);
 };
 const svgPolygonMask = (points, index) => ({
   id: 'shape-' + (index + 1),
   type: 'polygon',
-  points: points.map((point) => [...point]),
+  points: points.map((point) => point.map(processGrid)),
 });
 const processRectMask = (r, index) => ({
   id: 'shape-' + (index + 1),
   type: 'rect',
-  a: [r.x, r.y],
-  b: [r.x + r.w, r.y + r.h],
+  a: [processGrid(r.x), processGrid(r.y)],
+  b: [processGrid(r.x + r.w), processGrid(r.y + r.h)],
 });
 // The foundry did not publish these five process windows. Derive them
 // deterministically from the SVG ACTIVE/POLY geometry, not from historical
@@ -499,9 +504,7 @@ function tcmosProcessShapes(id) {
   assert.ok(active?.length === 4 && poly?.length === 2, 'SVG ACTIVE/POLY source unavailable');
   if (id === 2 || id === 3) {
     const side = id === 2 ? 0 : 1;
-    return [active[side], active[side + 2]].map(({ points }, i) =>
-      svgPolygonMask(points, i),
-    );
+    return [active[side], active[side + 2]].map(({ points }, i) => svgPolygonMask(points, i));
   }
   if (id === 7 || id === 8 || id === 9) {
     const windows = [];
