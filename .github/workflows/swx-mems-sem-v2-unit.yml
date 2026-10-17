@@ -29,6 +29,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: One-shot documentation format diagnosis (remove after reconciliation)
+        run: |
+          npx prettier docs/research/swx-hu2025-p0-source-acceptance.md > "${RUNNER_TEMP}/p0-formatted.md"
+          diff -u docs/research/swx-hu2025-p0-source-acceptance.md "${RUNNER_TEMP}/p0-formatted.md" || true
       - name: Scientific invariants for original and independent ground-return trial
         run: |
           node --test site/tests/swx-mems-sem-v2-unit.test.mjs site/tests/swx-mems-sem-ground-return-candidate.test.mjs
