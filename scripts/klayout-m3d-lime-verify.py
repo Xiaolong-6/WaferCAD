@@ -173,9 +173,12 @@ def verify_inferred_ml(polys, dbu, filename):
     ml = next(c for c in components if len(c) == 17)
     assert not any(i in ml for i in roots), (
         f"{filename}: buffer RRAM top contact shorted into Match Line")
+    # The five tall ML trunks span -27..15um, so matching only their
+    # lower/upper Y values would incorrectly classify them as ten Pt
+    # electrode stubs. Restrict the endpoint cohort to 8um-high pads.
     tcam = [i for i, b in enumerate(metal)
             if physical(b)[1] in (-27000, 7000)
-            and physical(b)[3] in (-19000, 15000)]
+            and physical(b)[3] - physical(b)[1] == 8000]
     assert len(tcam) == 10 and all(i in ml for i in tcam), (
         f"{filename}: one or more TCAM RRAM top electrodes not wired to ML")
     assert any(touches(via[0], metal[i]) for i in ml), (
