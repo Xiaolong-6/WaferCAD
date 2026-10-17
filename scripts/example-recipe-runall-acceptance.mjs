@@ -12,6 +12,7 @@ import {
   observePageErrors,
 } from './test-helpers/ui.mjs';
 import { readProjectFile } from '../site/project-io.js';
+import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
 
 // Assert an actual production-v2 .wafercad export before and after replay.
@@ -54,7 +55,6 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
   const actualSites = new Map(actual.array?.instances?.map((site) => [site.id, site]));
   const expectedSites = expected.array.instances;
   assert.equal(actualSites.size, expectedSites.length, 'Run All lost/duplicated canonical sites');
-  const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
   await loadGeometryKernel();
   const vectorApi = await import('../site/vector-geometry.js');
   const expectedTemplates = new Map(expected.array.templates.map((item) => [item.id, item.model]));
@@ -105,6 +105,9 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
   };
 }
 
+// Reader geometry validation needs the same Boolean kernel as the app Worker.
+// This preflight keeps malformed project files fail-closed rather than bypassing validation.
+await loadGeometryKernel();
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
 const verifyHistoryParity = process.argv.includes('--history-parity');
@@ -465,7 +468,8 @@ try {
         page
           .evaluate(() => ({
             url: location.href,
-            ready: window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
+            ready:
+              window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
             status: document.querySelector('[data-slot="status.message"]')?.textContent,
             progress: document.getElementById('recipeProgressCount')?.textContent,
             summary: document.getElementById('recipeRunSummary')?.textContent,
