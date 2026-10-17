@@ -815,11 +815,20 @@ function mutateStack(
   return addLayerToSurface(stack, layerId, amount, face);
 }
 
-function splitByArea(model, area, mutator, merge = true) {
+function splitByArea(model, area, mutator, merge = true, useActualHitForRest = false) {
   const next = [];
   for (const region of model.regions) {
     const hit = intersection(region.geom, area);
-    const rest = difference(region.geom, area);
+    // An adaptive band contains curved, nearly coincident Boolean boundaries.
+    // Independent intersection/difference calls can disagree at those edges.
+    // For the opt-in path derive the retained complement from the SAME actual
+    // hit polygon, so one computed cut owns both sides of the split.
+    // Keep the legacy split semantics untouched for saved History replay.
+    const rest = useActualHitForRest
+      ? isEmpty(hit)
+        ? cloneGeom(region.geom)
+        : difference(region.geom, hit)
+      : difference(region.geom, area);
     if (!isEmpty(rest))
       next.push({ id: region.id, geom: rest, stack: region.stack.map((s) => ({ ...s })) });
     if (!isEmpty(hit)) {
@@ -1250,6 +1259,7 @@ function applyIsotropicEtch(model, active, targetLayerIds, amount, face, lateral
             return next;
           },
           false,
+          adaptiveBands !== null,
         );
       }
 

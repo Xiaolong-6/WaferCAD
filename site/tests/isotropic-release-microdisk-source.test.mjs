@@ -87,7 +87,7 @@ test('published M07 Microdisk selectively releases Si under the 148/82 um mask',
     thickness: 36,
     face: 'front',
     area: adaptive.boundary,
-    isotropicLateralErrorUm: 2,
+    isotropicLateralErrorUm: 0.25,
   });
   assert.equal(result.changed, true, result.error || 'Real M07 release must change Si');
 
