@@ -586,6 +586,93 @@ try {
     closedEndcapSurfaces: 4,
     wireBondDiameterUmInferred: 12,
   };
+  // PR #229 / #250 integration: exercise actual workstation controls, not a
+  // synthetic standalone renderer. The same saved package and camera must
+  // survive four border/opacity presentations without rebuilding material.
+  const packageBorders = page.locator('[data-action="borders:three"]:visible').first();
+  const packageOpacity = page.locator('[data-action="opacity:three"]:visible').first();
+  assert.ok(await packageBorders.isVisible(), 'Package 3D border control is unavailable');
+  assert.ok(await packageOpacity.isVisible(), 'Package 3D opacity control is unavailable');
+  const scientificState = () =>
+    page.evaluate(() => {
+      const state = window.WaferCadV2Workstation.snapshot();
+      return {
+        revision: state.model.revision,
+        processRevision: state.model.processRevision,
+        regionCount: state.model.regions.length,
+        layerCount: state.model.layers.length,
+      };
+    });
+  const invariant = await scientificState();
+  const combinations = [];
+  for (const opacityValue of [1, 0.5]) {
+    // Use the production opacity slider's input handler. Directly mutating
+    // threeOpacity would bypass the real Workstation render transaction.
+    await packageOpacity.click();
+    await page.locator('#threeOpacityRange').evaluate((slider, next) => {
+      slider.value = String(next);
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }, opacityValue);
+    await page.keyboard.press('Escape');
+    for (const borders of [false, true]) {
+      const previousSerial = Number(
+        await page.locator('#threeHost').getAttribute('data-renderer-frame-serial'),
+      );
+      const pressed = (await packageBorders.getAttribute('aria-pressed')) === 'true';
+      if (pressed !== borders) await packageBorders.click();
+      await page.waitForFunction(
+        ({ previousSerial, borders, opacityValue }) => {
+          const host = document.getElementById('threeHost');
+          const button = document.querySelector('[data-action="borders:three"]');
+          const expectedOutline = borders ? 'structural-depth' : 'off';
+          return (
+            host?.dataset.renderState === 'ready' &&
+            Number(host.dataset.rendererFrameSerial || 0) > previousSerial &&
+            host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent') &&
+            host.dataset.outlineVisibility === expectedOutline &&
+            host.dataset.assemblyWireBuiltCount === '2' &&
+            host.dataset.assemblyWireEndcapCount === '4' &&
+            button?.getAttribute('aria-pressed') === String(borders)
+          );
+        },
+        { previousSerial, borders, opacityValue },
+        { timeout: 120000 },
+      );
+      await waitForPaint(page);
+      assert.deepEqual(
+        await scientificState(),
+        invariant,
+        '3D presentation controls mutated saved material/process geometry',
+      );
+      const filename =
+        'three-chip-' + (opacityValue === 1 ? 'opaque' : 'transparent') +
+        '-borders-' + (borders ? 'on' : 'off') + '.png';
+      const screenshot = await page.locator('#threeHost').screenshot({ type: 'png' });
+      await writeFile(new URL(filename, directory), screenshot);
+      const diagnostic = await page.locator('#threeHost').evaluate((host) => ({
+        outlineVisibility: host.dataset.outlineVisibility,
+        renderState: host.dataset.renderState,
+        sceneVariant: host.dataset.sceneVariant,
+        frameSerial: Number(host.dataset.rendererFrameSerial),
+        wireCount: Number(host.dataset.assemblyWireBuiltCount),
+        endcapCount: Number(host.dataset.assemblyWireEndcapCount),
+        drawTriangles: Number(host.dataset.rendererDrawTriangles),
+      }));
+      assert.ok(diagnostic.drawTriangles > 0, 'Package 3D rendered no physical triangles');
+      combinations.push({ filename, opacity: opacityValue, borders, bytes: screenshot.length, diagnostic, screenshot });
+    }
+    const pair = combinations.slice(-2);
+    assert.ok(
+      !pair[0].screenshot.equals(pair[1].screenshot),
+      'Border ON/OFF generated identical rendered PNGs for the same package camera',
+    );
+  }
+  report.views.threeChipPresentationMatrix = {
+    packageGeometryStable: true,
+    sameCameraAndBookmark: true,
+    combinations: combinations.map(({ screenshot, ...details }) => details),
+  };
+  assert.deepEqual(historyErrors, [], 'Three-chip presentation matrix emitted browser errors');
   assert.deepEqual(historyErrors, [], 'Three-chip Bookmark restore emitted browser errors');
   await context.close();
 
