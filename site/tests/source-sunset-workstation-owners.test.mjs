@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { NATIVE_WORKSTATION_OWNERS } from '../../scripts/v2/check-source-sunset-workstation.mjs';
 
-test('source retirement Workstation candidates retain every scientific UI ownership slice', async () => {
+test('Workstation native owners cover startup, desktop and mobile UI', async () => {
   assert.deepEqual(NATIVE_WORKSTATION_OWNERS, [
     'scripts/v2/check-startup.mjs',
     'scripts/v2/check-startup-shell.mjs',
@@ -25,7 +25,7 @@ test('source retirement Workstation candidates retain every scientific UI owners
   }
 });
 
-test('formal Workstation and View UX release commands delegate to verified native owners', async () => {
+test('formal Workstation and View UX commands call native owners', async () => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
   assert.equal(

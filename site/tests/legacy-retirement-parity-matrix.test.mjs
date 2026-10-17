@@ -57,10 +57,7 @@ test('Workstation/View UX native candidates preserve release parity gaps', async
   const result = await auditLegacyRetirementParity();
   const rows = new Map(result.rows.map((row) => [row.path, row]));
   for (const [retired, candidate] of [
-    [
-      'scripts/workstation-regression.mjs',
-      'scripts/v2/check-source-sunset-workstation.mjs',
-    ],
+    ['scripts/workstation-regression.mjs', 'scripts/v2/check-source-sunset-workstation.mjs'],
     ['scripts/view-ux-v3-regression.mjs', 'scripts/v2/check-source-sunset-view-ux.mjs'],
   ]) {
     const row = rows.get(retired);
