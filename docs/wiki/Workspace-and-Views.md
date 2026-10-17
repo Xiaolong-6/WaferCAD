@@ -18,14 +18,13 @@ _Conceptual view relationship (not a screenshot): Main and Section share the sam
 
 _A genuine 920 × 600-pixel **Section A–B** output from the shipped MAGIC-1000 representative stack. The horizontal grey Z-break is a **display transformation**, not an air gap. Open this example and switch to 3D to inspect its volume; the small 3D thumbnail was omitted here because it could not explain the material interfaces at instructional scale._
 
-**Find the current controls:** The title bar offers **Overview / Main / Mask / 3D / Split**. The workstation tools include distinct **Project**, **Base**, **Mask**, **Process**, and **History** tabs. On a narrow screen, view choices may require horizontal scrolling. Use the [First 10 Minutes](First-10-Minutes) walkthrough for the exact sequence, rather than an older UI screenshot.
+**Find the current controls:** On desktop, the **left sidebar** contains the project title, workflow tabs (**Project**, **Mask**, **Process**, **History**) and the active editor; **Base** is inside Project. The toolbar centered at the top of the right workspace offers **Overview / Main / Mask / 3D / Section**. The sidebar divider can be resized and the sidebar collapsed/restored. On compact screens, the title bar is hidden: the **fixed bottom navigation** switches between **Edit** and **View**, then presents contextual tabs. In compact Edit mode, **Project** contains the return-to-Welcome link. Follow [First 10 Minutes](First-10-Minutes) for the exact editing sequence.
 
-- **Overview** shows Main, Mask, and 3D together for quick inspection.
+- **Overview** restores Main, Mask, 3D and Section together for quick inspection.
 - **Main** is a planar view of the Front/Back surface and provides A–B and 3D ROI editing.
 - **Mask** shows either the imported layout (**File**) or local editable primitives (**Draw**). Mask opacity changes visualization, not physical coverage.
 - **3D** shows extruded vector structure, rough/pyramid relief, material transparency and ROI cut faces. Switch Fast/Quality for mesh detail.
-- **Split** gives side-by-side primary views.
-- **Section A–B** below the main workspace shows the material stack sampled along the chosen A–B path.
+- **Section A–B** shows the material stack sampled along the chosen A–B path. On desktop it is a peer of Main, Mask and 3D: it can be hidden, restored, arranged or maximized as a scientific view.
 
 ## Toolbar states
 

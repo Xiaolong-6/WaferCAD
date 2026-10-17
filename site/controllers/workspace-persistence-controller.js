@@ -6,6 +6,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
 } from '../workspace-persistence.js';
+import { validateHistoryHeadOffThread } from '../history-head-validation.js';
 import {
   applyWorkspaceViewState,
   captureWorkspaceStructuralIdentity,
@@ -96,7 +97,12 @@ export function createWorkspacePersistenceController({
   appCommit = '',
   status,
   buildProjectSnapshot,
+  progressiveHistoryValidation = false,
+  progressiveWorkspaceRestore = false,
   loadProjectSnapshot,
+  // Only projects returned from strict persistent-storage validation reach
+  // this hook. Snapshot mutation checks still compare detached copies.
+  cacheValidatedProjectSnapshots = () => {},
   snapshotManager,
   syncBaseControls,
   syncTransformInputs,
@@ -137,7 +143,8 @@ export function createWorkspacePersistenceController({
     channel = null,
     channelSequence = 0,
     interactionDepth = 0,
-    transientTimer = null;
+    transientTimer = null,
+    takeoverPendingMessage = null;
   const flushWaiters = new Map();
 
   function installSnapshotMutationTracking() {
@@ -288,15 +295,25 @@ export function createWorkspacePersistenceController({
     return workspaceSession?.hasWriteLease?.() ?? workspaceSession?.canWrite?.() ?? false;
   }
 
-  function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
+  async function loadProjectWithSnapshotHistory(project, { restoreView = false } = {}) {
     if (restoreView) applyStoredViewState(project);
-    loadProjectSnapshot(project);
-    snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+    // loadWorkspaceState / loadWorkspaceRecoveryPoint strictly validate the
+    // complete file before returning it. Reuse that attestation for unchanged
+    // imported snapshots instead of running huge geometry booleans twice.
+    await cacheValidatedProjectSnapshots(project);
+    if (progressiveHistoryValidation && snapshotManager.importRecordsAsync) {
+      await snapshotManager.importRecordsAsync(project.snapshots || [], project.snapshotBranches, {
+        beforeCommit: () => loadProjectSnapshot(project),
+      });
+    } else {
+      loadProjectSnapshot(project);
+      snapshotManager.importRecords(project.snapshots || [], project.snapshotBranches);
+    }
     return Boolean(project?.display?.threeCamera);
   }
 
-  function adoptLoadedCurrentProject(project) {
-    const hasCamera = loadProjectWithSnapshotHistory(project, { restoreView: true });
+  async function adoptLoadedCurrentProject(project) {
+    const hasCamera = await loadProjectWithSnapshotHistory(project, { restoreView: true });
     clearTimer();
     dirty = false;
     viewDirty = false;
@@ -443,17 +460,58 @@ export function createWorkspacePersistenceController({
 
     clearTimer();
     const savingIdentity = currentStructuralIdentity(),
-      project = buildProjectSnapshot(true),
       savingVersion = editVersion;
+    // Legacy callers keep their synchronous History contract. UI v2 performs
+    // strict polygon-boolean validation in a background worker before commit.
+    const offThreadHistory =
+      progressiveHistoryValidation &&
+      typeof snapshotManager?.syncActiveHeadStateAsync === 'function';
+    const immediateProject = offThreadHistory ? null : buildProjectSnapshot(true);
     saving = true;
     failed = false;
     syncSaveStatus();
 
     write = write
       .catch(() => {})
-      .then(() => saveCurrentProject(project))
+      .then(async () => {
+        let project = immediateProject;
+        if (offThreadHistory) {
+          const result = await snapshotManager.syncActiveHeadStateAsync((candidate) =>
+            validateHistoryHeadOffThread(candidate, snapshotManager.validateHeadState),
+          );
+          if (result === 'rejected') throw new Error('Invalid History branch head.');
+          if (result === 'stale' || editVersion !== savingVersion || !hasWriteAccess()) {
+            root
+              .querySelector('.workspace')
+              ?.setAttribute(
+                'data-autosave-retry-reason',
+                !hasWriteAccess() ? 'lease' : result === 'stale' ? 'history-stale' : 'edit-version',
+              );
+            saving = false;
+            dirty = true;
+            syncSaveStatus();
+            schedule({ markDirty: false });
+            return false;
+          }
+          // Worker.postMessage performs the one required synchronous clone.
+          // Avoid copying large History records/branches a second time on UI.
+          // If Worker is unavailable, retain deep-copy semantics for the
+          // foreground storage fallback.
+          project = buildProjectSnapshot(true, {
+            skipHistoryHeadSync: true,
+            workerStorage: typeof globalThis.Worker === 'function',
+          });
+        }
+        return saveCurrentProject(project);
+      })
       .then((saved) => {
-        if (!saved) return false;
+        if (!saved) {
+          if (takeoverPendingMessage && !hasWriteAccess()) {
+            takeoverPendingMessage = null;
+            status('Workspace takeover lost its storage lease before Save.', 'error');
+          }
+          return false;
+        }
         writeMarker();
         clearStoredViewState();
         structuralBaseline = savingIdentity;
@@ -465,6 +523,21 @@ export function createWorkspacePersistenceController({
         if (editVersion !== savingVersion) classifyCurrentDirty();
         syncSaveStatus();
         if (dirty || viewDirty) schedule({ markDirty: false });
+        // An earlier takeover Save may have been superseded while the
+        // background scheduler subsequently committed the latest valid state.
+        // Only a completed, current, lease-authorized storage write can
+        // publish the deferred takeover success message.
+        if (
+          takeoverPendingMessage &&
+          hasWriteAccess() &&
+          !dirty &&
+          !viewDirty &&
+          !pendingDomainCheck
+        ) {
+          const message = takeoverPendingMessage;
+          takeoverPendingMessage = null;
+          status(message, 'success');
+        }
         return true;
       });
 
@@ -472,6 +545,10 @@ export function createWorkspacePersistenceController({
       saving = false;
       failed = true;
       syncSaveStatus();
+      if (takeoverPendingMessage) {
+        takeoverPendingMessage = null;
+        status(`Workspace takeover Save failed: ${error?.message || String(error)}`, 'error');
+      }
       console.warn('Workspace autosave failed.', error);
     });
     return write;
@@ -713,6 +790,7 @@ export function createWorkspacePersistenceController({
           appCommit,
           reason: 'pre-restore',
         });
+
         if (!hasWriteAccess()) {
           throw new Error(
             'This tab no longer owns local autosave. Recovery restore cancelled before changing the workspace.',
@@ -734,7 +812,7 @@ export function createWorkspacePersistenceController({
             );
           }
           replacementStarted = true;
-          const hasCamera = loadProjectWithSnapshotHistory(recovered);
+          const hasCamera = await loadProjectWithSnapshotHistory(recovered);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
@@ -743,15 +821,30 @@ export function createWorkspacePersistenceController({
           markStructuralDirty();
 
           updateStage('Saving restored workspace…');
-          const persisted = await persistNow({ force: true });
-          if (!persisted) throw new Error('Another tab took over local autosave.');
+          let persisted = await persistNow({ force: true });
+          if (!persisted && hasWriteAccess()) {
+            // A concurrent, superseded History attestation can decline this
+            // forced write without an IndexedDB attempt. Drain that result,
+            // cancel its deferred autosave and require one fresh validated
+            // restore commit while the original writer lease is still held.
+            clearTimer();
+            markStructuralDirty();
+            persisted = await persistNow({ force: true });
+          }
+          if (!persisted) {
+            throw new Error(
+              hasWriteAccess()
+                ? 'Recovery restore could not commit a fresh validated workspace.'
+                : 'Another tab took over local autosave.',
+            );
+          }
           committed = true;
           await refreshRecoveryOptions();
           return { ok: true };
         } catch (error) {
           if (replacementStarted && !committed) {
             try {
-              loadProjectWithSnapshotHistory(current, { restoreView: true });
+              await loadProjectWithSnapshotHistory(current, { restoreView: true });
               syncBaseControls();
               syncTransformInputs();
               renderAll();
@@ -898,8 +991,21 @@ export function createWorkspacePersistenceController({
     const result = await runVisibleTask(
       async ({ updateStage }) => {
         updateStage('Saving current workspace…');
-        const persisted = await persistNow({ force: true });
-        if (!persisted) throw new Error('Another tab took over local autosave.');
+        // History validation yields to other views and may observe a new
+        // camera/inspection state while the exact model is being verified.
+        // Retry a fresh, atomic snapshot; never reuse a stale validated head.
+        let persisted = false;
+        for (let attempt = 0; attempt < 3 && hasWriteAccess(); attempt++) {
+          persisted = await persistNow({ force: true });
+          if (persisted) break;
+        }
+        if (!persisted) {
+          throw new Error(
+            hasWriteAccess()
+              ? 'Workspace changed during background validation. Save again.'
+              : 'Another tab took over local autosave.',
+          );
+        }
 
         updateStage('Creating Recovery checkpoint…');
         const project = buildProjectSnapshot(true);
@@ -938,7 +1044,10 @@ export function createWorkspacePersistenceController({
     const flushed = await requestOwnerFlush(),
       marker = readMarker(),
       savedChanged = Boolean(marker?.saveId && marker.saveId !== baseSaveId),
-      latestSaved = savedChanged || !flushed ? await loadWorkspaceState().catch(() => null) : null;
+      latestSaved =
+        savedChanged || !flushed
+          ? await loadWorkspaceState({ background: progressiveWorkspaceRestore }).catch(() => null)
+          : null;
 
     let choice = 'use-current';
     if (savedChanged) {
@@ -973,6 +1082,7 @@ export function createWorkspacePersistenceController({
     }
 
     if (choice === 'cancel') return;
+    takeoverPendingMessage = null;
     if (!workspaceSession.takeOver()) {
       status('Could not take over the local workspace.', 'error');
       return;
@@ -987,7 +1097,7 @@ export function createWorkspacePersistenceController({
       }
       baseSaveId = marker?.saveId || baseSaveId;
       remoteSaveId = marker?.saveId || remoteSaveId;
-      const hasCamera = adoptLoadedCurrentProject(latestSaved);
+      const hasCamera = await adoptLoadedCurrentProject(latestSaved);
       syncBaseControls();
       syncTransformInputs();
       renderAll();
@@ -1004,9 +1114,44 @@ export function createWorkspacePersistenceController({
         });
       }
       if (savedChanged && !dirty) markStructuralDirty();
-      const persisted =
-        dirty || viewDirty || pendingDomainCheck ? await persistNow({ force: true }) : true;
+      const successMessage = savedChanged
+        ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
+        : 'This tab now owns the local workspace.';
+      takeoverPendingMessage = dirty || viewDirty || pendingDomainCheck ? successMessage : null;
+      let persisted = true;
+      try {
+        if (dirty || viewDirty || pendingDomainCheck) {
+          persisted = await persistNow({ force: true });
+          // An off-thread History attestation can be superseded by a newer
+          // in-memory edit before it reaches storage. Retry one fresh,
+          // independently validated transaction while we still own the lease.
+          // Never retry an invalid History head, storage failure or lost lease.
+          const retryReason = root.querySelector('.workspace')?.dataset.autosaveRetryReason;
+          if (
+            !persisted &&
+            hasWriteAccess() &&
+            ['history-stale', 'edit-version'].includes(retryReason)
+          ) {
+            persisted = await persistNow({ force: true });
+          }
+        }
+      } catch (error) {
+        takeoverPendingMessage = null;
+        failed = true;
+        syncSaveStatus();
+        status(`Workspace takeover Save failed: ${error?.message || String(error)}`, 'error');
+        return;
+      }
       if (!persisted || !hasWriteAccess()) {
+        if (hasWriteAccess()) {
+          // A newer, validated autosave may have already committed while
+          // the superseded attempt returned false, or may still be scheduled.
+          // Do not replace its success message with an obsolete failure.
+          syncSaveStatus();
+          await refreshRecoveryOptions();
+          return;
+        }
+        takeoverPendingMessage = null;
         status(
           'Workspace takeover was interrupted by another tab before this state could be saved.',
           'error',
@@ -1014,13 +1159,9 @@ export function createWorkspacePersistenceController({
         syncSaveStatus();
         return;
       }
+      takeoverPendingMessage = null;
       syncSaveStatus();
-      status(
-        savedChanged
-          ? 'Took over this workspace and kept this tab. The previous saved state is available in Recovery.'
-          : 'This tab now owns the local workspace.',
-        'success',
-      );
+      status(successMessage, 'success');
     }
     await refreshRecoveryOptions();
   }
@@ -1035,7 +1176,7 @@ export function createWorkspacePersistenceController({
 
     try {
       if (hasExplicitStart) {
-        const saved = await loadWorkspaceState();
+        const saved = await loadWorkspaceState({ background: progressiveWorkspaceRestore });
         if (saved) applyStoredViewState(saved);
         if (saved && hasWriteAccess()) {
           try {
@@ -1045,7 +1186,7 @@ export function createWorkspacePersistenceController({
             });
           } catch (error) {
             console.error(error);
-            const hasCamera = adoptLoadedCurrentProject(saved);
+            const hasCamera = await adoptLoadedCurrentProject(saved);
             syncBaseControls();
             syncTransformInputs();
             renderAll();
@@ -1061,7 +1202,7 @@ export function createWorkspacePersistenceController({
         }
         const started = await initializeWorkspaceStart();
         if (!started && saved) {
-          const hasCamera = adoptLoadedCurrentProject(saved);
+          const hasCamera = await adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();
@@ -1074,9 +1215,9 @@ export function createWorkspacePersistenceController({
           );
         }
       } else {
-        const saved = await loadWorkspaceState();
+        const saved = await loadWorkspaceState({ background: progressiveWorkspaceRestore });
         if (saved) {
-          const hasCamera = adoptLoadedCurrentProject(saved);
+          const hasCamera = await adoptLoadedCurrentProject(saved);
           syncBaseControls();
           syncTransformInputs();
           renderAll();

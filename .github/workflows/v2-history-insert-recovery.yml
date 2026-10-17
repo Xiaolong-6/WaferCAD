@@ -28,6 +28,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify focused History test formatting with exact diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx prettier scripts/v2/check-history-insert-recovery.mjs | diff -u scripts/v2/check-history-insert-recovery.mjs -
       - run: npx playwright install --with-deps chromium
       - name: Start real v2 Workstation
         shell: bash

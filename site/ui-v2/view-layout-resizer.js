@@ -7,6 +7,7 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
   if (!host) throw Error('Desktop grid host unavailable');
   let handles = [];
   let drag = null;
+  let refreshFrame = null;
   const MIN_WIDTH = 122;
   const MIN_HEIGHT = 96;
 
@@ -116,6 +117,20 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
       }
     }
   }
+  // Splitters use absolute pixel offsets inside a responsive CSS grid. Observe
+  // the grid host itself: resizing the sidebar does not fire window.resize.
+  // RAF coalesces intermediate resize observations into one geometry read.
+  function scheduleRefresh() {
+    if (refreshFrame != null) return;
+    refreshFrame = requestAnimationFrame(() => {
+      refreshFrame = null;
+      refresh();
+    });
+  }
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleRefresh);
+  resizeObserver?.observe(host);
+
   function movedRatios(g, axis, index, delta) {
     const current = [...g.ratios[axis]];
     const available = axis === 'columns' ? g.width : g.height;
@@ -195,7 +210,7 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
     } else {
       setPreview(current.axis, current.g.ratios[current.axis], current.g);
     }
-    requestAnimationFrame(refresh);
+    scheduleRefresh();
   }
   function keyDown(event) {
     const handle = event.target.closest('.v2-dock-divider');
@@ -216,16 +231,18 @@ export function createDesktopLayoutResizer({ root, enabled, getState, dispatch }
   document.addEventListener('pointerup', pointerEnd);
   document.addEventListener('pointercancel', pointerEnd);
   host.addEventListener('keydown', keyDown);
-  window.addEventListener('resize', refresh);
+  window.addEventListener('resize', scheduleRefresh);
   return Object.freeze({
     refresh,
     destroy() {
+      resizeObserver?.disconnect();
+      if (refreshFrame != null) cancelAnimationFrame(refreshFrame);
       host.removeEventListener('pointerdown', pointerDown);
       document.removeEventListener('pointermove', pointerMove);
       document.removeEventListener('pointerup', pointerEnd);
       document.removeEventListener('pointercancel', pointerEnd);
       host.removeEventListener('keydown', keyDown);
-      window.removeEventListener('resize', refresh);
+      window.removeEventListener('resize', scheduleRefresh);
       handles.forEach((node) => node.remove());
       handles = [];
     },
