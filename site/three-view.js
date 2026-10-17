@@ -967,6 +967,19 @@ export function createThreeView({
     sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
   }
 
+  function commitInPlaceSceneVariant(mode) {
+    if (activeSceneVariant === mode) return;
+    // Material presentation was updated on this same mutable scene group,
+    // not rebuilt as a second variant. A stale cache alias for the old mode
+    // must not later restore the new material state under the old label.
+    for (const [cachedMode, entry] of sceneVariantCache) {
+      if (entry?.group === group) sceneVariantCache.delete(cachedMode);
+    }
+    activeSceneVariant = mode;
+    host.dataset.sceneVariant = mode;
+    cacheActiveSceneVariant();
+  }
+
   function restoreSceneVariant(entry) {
     if (!entry?.group || !scene) return false;
     if (group && group !== entry.group) scene.remove(group);
@@ -3072,16 +3085,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
         host.dataset.rendererUpdateKind = 'presentation';
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
-        // Small/non-array scenes update materials in place rather than
-        // constructing separate opaque and transparent scene groups. The
-        // active variant and its cache key must follow those materials;
-        // otherwise later requests see a stale sceneVariant and can restore
-        // a cache entry labeled with the wrong presentation mode.
-        clearSceneVariantCache();
-        activeSceneVariant = targetVariant;
-        host.dataset.sceneVariant = targetVariant;
         applyPresentationState();
-        cacheActiveSceneVariant();
+        commitInPlaceSceneVariant(targetVariant);
         return;
       }
     }
