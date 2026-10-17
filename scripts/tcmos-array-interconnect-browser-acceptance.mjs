@@ -100,6 +100,36 @@ try {
     const key = element.layer + '/' + element.datatype;
     expectedCounts[key] = (expectedCounts[key] || 0) + 1;
   }
+  // The six added routing layers contain only Manhattan rectangles.
+  // Check EVERY exported rectangle's coordinates, not merely a passing
+  // 14-layer/3963-polygon count. Existing source-SVG 8 layers are protected
+  // by the separate exact-source scientific/Recipe tests.
+  const supplementalLayers = new Set([21, 22, 23, 24, 25, 26]);
+  const rectangularSignature = (element) => {
+    const points = element.points;
+    assert.ok(points.length >= 4, 'Invalid routed mask polygon');
+    const xs = points.map(([x]) => x);
+    const ys = points.map(([, y]) => y);
+    const rect = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    const rectArea = (rect[2] - rect[0]) * (rect[3] - rect[1]);
+    const ring = points.at(-1)[0] === points[0][0] &&
+      points.at(-1)[1] === points[0][1]
+      ? points.slice(0, -1)
+      : points;
+    assert.equal(ring.length, 4, 'Routing rectangle changed vertex count');
+    const doubleArea = ring.reduce((value, [x, y], i) => {
+      const [u, v] = ring[(i + 1) % ring.length];
+      return value + x * v - u * y;
+    }, 0);
+    assert.ok(Math.abs(Math.abs(doubleArea) / 2 - rectArea) < 1e-9,
+      'Routing polygon is no longer a complete Manhattan rectangle');
+    return element.layer + '|' + element.datatype + '|' +
+      rect.map((v) => v.toFixed(6)).join(',');
+  };
+  const expectedRouting = file.layout.elements
+    .filter((element) => supplementalLayers.has(element.layer))
+    .map(rectangularSignature).sort();
+  assert.equal(expectedRouting.length, 251);
   const menu = page.locator('[data-action="mask-export-menu"]');
   if (!(await menu.isVisible()))
     await page.getByRole('button', { name: 'Mask more tools' }).click();
@@ -125,6 +155,11 @@ try {
     assert.deepEqual(counts, expectedCounts, format + ': lost or duplicated routing polygons');
     assert.equal(elements.length, 3963);
     assert.equal(Object.keys(counts).length, 14);
+    const actualRouting = elements
+      .filter((element) => supplementalLayers.has(element.layer))
+      .map(rectangularSignature).sort();
+    assert.deepEqual(actualRouting, expectedRouting,
+      format + ': changed one or more supplemental Via/M2/M3/M4 mask rectangles');
     report.exports.push({ format, bytes: bytes.length, layers: 14, polygons: 3963 });
   }
   // Save -> destructive name mutation -> actual Recovery Restore. Merely
