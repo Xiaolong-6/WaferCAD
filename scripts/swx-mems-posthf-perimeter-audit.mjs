@@ -101,19 +101,15 @@ export function auditSwxPostHFPerimeterSupport(vectorApi, model, g) {
   const signalCrossSection = measureBoxCenterline(vectorApi, box, [0, -120], [0, -110]);
   const allSegments = [
     ...g.groundPathsUm.flatMap((points, index) =>
-      points
-        .slice(1)
-        .map((b, i) => ({
-          route: 'ground-' + index,
-          ...measureBoxCenterline(vectorApi, box, points[i], b),
-        })),
-    ),
-    ...g.signalPathUm
-      .slice(1)
-      .map((b, i) => ({
-        route: 'signal',
-        ...measureBoxCenterline(vectorApi, box, g.signalPathUm[i], b),
+      points.slice(1).map((b, i) => ({
+        route: 'ground-' + index,
+        ...measureBoxCenterline(vectorApi, box, points[i], b),
       })),
+    ),
+    ...g.signalPathUm.slice(1).map((b, i) => ({
+      route: 'signal',
+      ...measureBoxCenterline(vectorApi, box, g.signalPathUm[i], b),
+    })),
   ];
   const unsupportedParts = allSegments.flatMap(({ route, intervals }) =>
     intervals.filter((v) => !v.supportedByBOX).map((v) => ({ route, ...v })),

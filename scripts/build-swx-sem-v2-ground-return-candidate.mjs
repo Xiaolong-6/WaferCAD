@@ -43,7 +43,9 @@ assert.equal(postHFPerimeterSupportByPose.length, 2);
 for (const actual of postHFPerimeterSupportByPose) {
   assert.equal(actual.externalSignalContinuouslySupported, true);
   assert.equal(actual.actualGroundSupportShorterThanNominal, true);
-  assert.ok(actual.ground.every((path) => path.supportedLengthUm > 4 && path.supportedLengthUm < 5));
+  assert.ok(
+    actual.ground.every((path) => path.supportedLengthUm > 4 && path.supportedLengthUm < 5),
+  );
   assert.ok(actual.signalCrossSection.supportedLengthUm > 1.9);
   assert.ok(actual.signalCrossSection.supportedLengthUm < 2.1);
   assert.ok(actual.longestActualReleasedSpan.lengthUm > 35);
