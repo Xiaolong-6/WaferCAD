@@ -9,6 +9,11 @@ const excludedFiles = new Set([
   'app-legacy.html',
   'app.js',
   'workstation.css',
+  // Retired browser-only modules retained in Git, not imported by the v2 product.
+  'workstation-ui.js',
+  'controllers/build-controller.js',
+  'controllers/startup-controller.js',
+  'controllers/view-popover-controller.js',
   'app-v2.html',
   'app-v2-main.html',
   'app-v2-mask.html',
