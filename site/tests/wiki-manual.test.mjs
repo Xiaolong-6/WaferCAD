@@ -110,33 +110,6 @@ test('the novice path is discoverable and names the current UI controls', async 
   const v2Mask = await readFile(new URL('../ui-v2/mask-view.js', import.meta.url), 'utf8');
   assert.match(v2Mask, /'mask-source'/);
   assert.match(v2Mask, /'draw-toggle'/);
-
-  const html = await readFile(new URL('../app-legacy.html', import.meta.url), 'utf8');
-  const basePanel = html.slice(html.indexOf('id="baseTools"'), html.indexOf('id="maskTools"'));
-  const projectPanel = html.slice(
-    html.indexOf('id="settingsTools"'),
-    html.indexOf('id="sectionPanel"'),
-  );
-  assert.ok(basePanel.includes('id="applyBaseBtn"'), 'Apply base must belong to Base, not Project');
-  assert.ok(!projectPanel.includes('id="applyBaseBtn"'), 'Project should not claim Base controls');
-  for (const id of ['newProjectBtn', 'saveProjectBtn', 'exportProjectBtn', 'xyUnitSelect']) {
-    assert.ok(projectPanel.includes(`id="${id}"`), `Project control missing: ${id}`);
-  }
-  for (const id of [
-    'baseWidth',
-    'baseHeight',
-    'baseThickness',
-    'maskSourceToggleBtn',
-    'operationType',
-    'operationArea',
-    'growthMode',
-    'etchTargetLayer',
-    'operationThickness',
-    'applyOperationBtn',
-    'xyUnitSelect',
-  ]) {
-    assert.ok(html.includes(`id="${id}"`), `documented beginner control missing in UI: ${id}`);
-  }
 });
 
 test('Mask ROI documentation agrees with Whole face worker clipping', async () => {

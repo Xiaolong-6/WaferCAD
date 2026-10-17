@@ -2,21 +2,33 @@
 // production example. Run with a static server on WAFERCAD_URL (default 4173).
 // This is intentionally separate from History/Recipe metadata-only assertions.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { BUNDLED_EXAMPLES } from '../site/bundled-examples.js';
 import {
   assertNoPageErrors,
   baseUrl,
-  chooseConfirmation,
   launchBrowser,
-  newLegacyUiContext as newUiContext,
+  newUiContext,
   observePageErrors,
-  openFunctionPanel,
-  waitForAppReady,
-  waitForStatus,
 } from './test-helpers/ui.mjs';
-import { exportCurrentProject } from './test-helpers/product-scientific.mjs';
+import { readProjectFile } from '../site/project-io.js';
+import { loadGeometryKernel } from './process-benchmarks.mjs';
 import { assertSameMaterialGeometry } from './magic1000-geometry-comparison.mjs';
+import { selectScientificView } from './v2/desktop-view-selector.mjs';
+
+// Assert an actual production-v2 .wafercad export before and after replay.
+async function exportCurrentProject(page, timeout = 120000) {
+  await page.locator('[data-action="domain:project"]').click();
+  await page.locator('#projectExportMenuBtn').click({ timeout });
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout }),
+    page.locator('#exportProjectBtn').click({ timeout, noWaitAfter: true }),
+  ]);
+  assert.equal(await download.failure(), null, 'Project export must complete');
+  const path = await download.path();
+  assert.ok(path, 'Project export must be readable');
+  return readProjectFile(new Blob([await readFile(path)]));
+}
 
 function materialFootprintPerimeter(model, name, vectorApi) {
   const ids = new Set(
@@ -44,7 +56,6 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
   const actualSites = new Map(actual.array?.instances?.map((site) => [site.id, site]));
   const expectedSites = expected.array.instances;
   assert.equal(actualSites.size, expectedSites.length, 'Run All lost/duplicated canonical sites');
-  const { loadGeometryKernel } = await import('./process-benchmarks.mjs');
   await loadGeometryKernel();
   const vectorApi = await import('../site/vector-geometry.js');
   const expectedTemplates = new Map(expected.array.templates.map((item) => [item.id, item.model]));
@@ -95,6 +106,9 @@ async function assertSameCanonicalArrayGeometry(expected, actual) {
   };
 }
 
+// Reader geometry validation needs the same Boolean kernel as the app Worker.
+// This preflight keeps malformed project files fail-closed rather than bypassing validation.
+await loadGeometryKernel();
 const browser = await launchBrowser();
 const historyChoice = process.argv.includes('--history=keep') ? 'keep' : 'clear';
 const verifyHistoryParity = process.argv.includes('--history-parity');
@@ -123,18 +137,36 @@ try {
     });
     try {
       await page.goto(
-        `${baseUrl}/app-legacy.html?start=example&example=${encodeURIComponent(example.id)}`,
+        `${baseUrl}/app.html?start=example&example=${encodeURIComponent(example.id)}`,
         { waitUntil: 'domcontentloaded', timeout: 120000 },
       );
-      await waitForAppReady(page);
-      await waitForStatus(page, /Opened .*\.wafercad\./, 120000);
       await page.waitForFunction(
-        () => !!document.querySelector('#layerLegend .legend-name'),
+        () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
         null,
         { timeout: 120000 },
       );
+      assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+      const opened = await page.evaluate(() => window.WaferCadV2Workstation.snapshot());
+      assert.ok(opened.source !== 'empty', `${example.id}: example was not imported`);
+      assert.ok(opened.model.layers.length > 1, `${example.id}: source lost physical layers`);
+      if (example.id === 'three-tier-silicon-jlfets') {
+        // This is still the real 625-site, 40-step native-v2 Run All. Use the
+        // actual Main maximize control while processing so repeatedly redrawing
+        // the large 3D scene does not compete with the scientific Worker.
+        // Separate array/renderer owners verify the populated 3D scene.
+        assert.ok(
+          opened.model.array?.instances?.length >= 625,
+          'JLFET Run All must exercise the full native wafer array',
+        );
+        await selectScientificView(page, 'main', 1440);
+        await page.waitForFunction(
+          () => !document.querySelector('#threeHost')?.checkVisibility(),
+          null,
+          { timeout: 30000 },
+        );
+      }
       if (requestedVariant) {
-        await openFunctionPanel(page, 'snapshots', { timeout: 20000 });
+        await page.locator('[data-action="domain:history"]').click();
         const variant = page.locator(`.history-variant[data-variant-id="${requestedVariant}"]`);
         await variant.waitFor({ state: 'attached', timeout: 30000 });
         // A literature Variant can be nested under collapsed family/parent
@@ -165,8 +197,8 @@ try {
         );
       }
       const sourceProject = await exportCurrentProject(page, 120000);
-      await openFunctionPanel(page, 'process', { timeout: 20000 });
-      await page.locator('[data-process-input-mode="recipe"]').click();
+      await page.locator('[data-action="domain:process"]').click();
+      await page.locator('[data-action="process-mode:recipe"]').click();
       const recipeRows = page.locator('.recipe-step-row');
       const count = await recipeRows.count();
       assert.ok(count > 0, `${example.id}: opening the example lost its Recipe`);
@@ -196,19 +228,22 @@ try {
       });
       console.log(`${example.id}: beginning ${count}-Step Kernel rebuild`);
       await page.locator('#recipeRunAllBtn').click();
-      await chooseConfirmation(page, historyChoice);
+      const historyAction = historyChoice === 'keep' ? 'Keep previous history' : 'Clear history';
+      await page.getByRole('button', { name: historyAction, exact: true }).click({
+        timeout: 30000,
+      });
       await page.waitForFunction(
         () => {
           const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
           if (/^(Completed|Failed|Stopped):/.test(summary)) return true;
-          const status = document.querySelector('#statusText')?.textContent || '';
+          const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
           return /Recipe failed at Step|Recipe preflight failed/.test(status);
         },
         null,
         { timeout: 900000 },
       );
       const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
-      const status = (await page.locator('#statusText').innerText()).trim();
+      const status = (await page.locator('[data-slot="status.message"]').innerText()).trim();
       assert.match(
         summary,
         new RegExp(`^Completed: ${count}/${count} steps committed`),
@@ -386,15 +421,15 @@ try {
             ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
             : example.id === 'magic-1000-mos2-beol'
               ? await assertSameMaterialGeometry(sourceProject.model, exported.model)
-              : example.id === 'tio2-metalens-four-unit'
-                ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
-                : sourceProject.model.array
-                  ? null
-                  : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
-                      allowRepeatedNames: true,
-                      xyQuantumUm: 1e-4,
-                      maxQuantizedAreaUm2: 25,
-                    });
+            : example.id === 'tio2-metalens-four-unit'
+              ? await assertSameCanonicalArrayGeometry(sourceProject.model, exported.model)
+              : sourceProject.model.array
+                ? null
+                : await assertSameMaterialGeometry(sourceProject.model, exported.model, {
+                    allowRepeatedNames: true,
+                    xyQuantumUm: 1e-4,
+                    maxQuantizedAreaUm2: 25,
+                  });
       } catch (error) {
         // A completed Recipe with different XY/Z occupancy is a scientific
         // mismatch. Preserve both physical models for diagnosis; never
@@ -452,18 +487,14 @@ try {
         page
           .evaluate(() => ({
             url: location.href,
-            ready: document.documentElement.dataset.appReady,
-            status: document.getElementById('statusText')?.textContent,
+            ready: window.WaferCadV2Workstation?.ready && document.body.dataset.ready === 'true',
+            status: document.querySelector('[data-slot="status.message"]')?.textContent,
             progress: document.getElementById('recipeProgressCount')?.textContent,
             summary: document.getElementById('recipeRunSummary')?.textContent,
             projectButton: {
-              exists: Boolean(
-                document.querySelector('.workstation-rail-button[data-tool="project"]'),
-              ),
+              exists: Boolean(document.querySelector('[data-action="domain:project"]')),
               visible: Boolean(
-                document
-                  .querySelector('.workstation-rail-button[data-tool="project"]')
-                  ?.checkVisibility(),
+                document.querySelector('[data-action="domain:project"]')?.checkVisibility(),
               ),
             },
             threeState: document.getElementById('threeHost')?.dataset?.renderState,

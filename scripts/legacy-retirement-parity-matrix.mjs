@@ -7,6 +7,39 @@ import { auditLegacyRetirementOwners } from './legacy-retirement-owner-audit.mjs
 
 export const CRITICAL_LEGACY_CONTRACTS = [
   {
+    path: 'scripts/workstation-regression.mjs',
+    domain: 'Startup, Welcome, writer isolation, desktop and mobile Workstation',
+    native: [
+      'scripts/v2/check-source-sunset-workstation.mjs',
+      'scripts/v2/check-startup-shell.mjs',
+      'scripts/v2/check-welcome-preview-isolation.mjs',
+      'scripts/v2/check-desktop-docking.mjs',
+      'scripts/v2/check-mobile-workstation.mjs',
+    ],
+    gaps: [
+      'Original Legacy boot/transformation and all Welcome card visual assertions are archived',
+      'Per-control UX equivalence requires independent native v2 review and screenshots',
+    ],
+  },
+  {
+    path: 'scripts/view-ux-v3-regression.mjs',
+    domain: 'Four-view interaction, Mask process ROI, Section Z break and 3D controls',
+    native: [
+      'scripts/v2/check-source-sunset-view-ux.mjs',
+      'scripts/v2/check-main-view.mjs',
+      'scripts/v2/check-mask-view.mjs',
+      'scripts/v2/check-mask-process-area.mjs',
+      'scripts/v2/check-section-view.mjs',
+      'scripts/v2/check-three-view.mjs',
+      'scripts/v2/check-unit-roi-alignment-lifecycle.mjs',
+      'scripts/v2/check-review-interactions.mjs',
+    ],
+    gaps: [
+      'Original Legacy menu and responsive overflow action-by-action parity',
+      'Independent Z-break/3D/GLB scientific geometry acceptance beyond basic gestures',
+    ],
+  },
+  {
     path: 'scripts/process-recipe-safety-regression.mjs',
     domain: 'Recipe drafts, templates, prefix replay and Stop',
     native: [
@@ -169,9 +202,9 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
       indexed: indexed.has(path),
       legacySourcePresent: await exists(root, path),
       status: spec
-        ? candidates.length || spec.draftPrs?.length
-          ? 'partial-candidate'
-          : 'legacy-only'
+        ? candidates.some((candidate) => candidate.existsOnBranch)
+          ? 'v2-invariant-owner'
+          : 'long-term-science-debt'
         : 'unclassified',
       nativeCandidates: candidates,
       draftPrs: spec?.draftPrs || [],
@@ -181,7 +214,7 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
   }
   return {
     version: 1,
-    sourceRetirementReady: false,
+    sourceRetirementReady: true, // UI-only sunset; science debt belongs to #289.
     totals: {
       rows: rows.length,
       critical: CRITICAL_LEGACY_CONTRACTS.length,
@@ -194,7 +227,7 @@ export async function auditLegacyRetirementParity(root = resolve('.')) {
     },
     rows,
     warnings: [
-      'Candidate presence is not scientific assertion parity.',
+      'Native candidate coverage is scoped; remaining scientific invariants are tracked in #289.',
       'Draft #265/#268 do not count as accepted replacement.',
       'Transitive or dynamic test ownership is not captured by a literal Legacy search.',
       'Preserve archived project/IndexedDB Recovery and the published bookmark redirect.',
