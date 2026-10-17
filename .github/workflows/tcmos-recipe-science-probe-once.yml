@@ -1,5 +1,5 @@
 name: T-CMOS 4x4 Recipe science probe (temporary)
-# Iteration 7: compare local repeated CNT Draw Mask physical parity without altering exported SVG.
+# Iteration 8: verify repeated local CNT template plus corrected narrow invariant import.
 
 on:
   push:
