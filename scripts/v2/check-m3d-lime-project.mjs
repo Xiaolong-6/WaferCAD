@@ -1188,7 +1188,7 @@ try {
         /^(Completed|Failed|Stopped):/.test(summary)
       ) return 'finished';
       const clock = Date.now();
-      const progress = summary.match(/(\\d+)\\s*\\/\\s*(\\d+)/);
+      const progress = summary.match(/(\d+)\s*\/\s*(\d+)/);
       const step = progress ? Number(progress[1]) : 0;
       const state = (window.__m3dRunAllWatchdog ||= { step, lastAdvanceAt: clock });
       if (step > state.step) {
