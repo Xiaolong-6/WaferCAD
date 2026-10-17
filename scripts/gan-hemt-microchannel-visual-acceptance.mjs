@@ -664,24 +664,52 @@ try {
     // Use the production opacity slider's input handler. Directly mutating
     // threeOpacity would bypass the real Workstation render transaction.
     await clickPackageTool(packageOpacity);
-    await page.locator('#threeOpacityRange').evaluate((slider, next) => {
-      slider.value = String(next);
-      slider.dispatchEvent(new Event('input', { bubbles: true }));
-    }, opacityValue);
-    await page.keyboard.press('Escape');
-    // Wait for the opacity render to commit before sampling the frame serial.
-    // The first border state can already be selected, requiring no extra frame.
-    await page.waitForFunction(
-      (opacityValue) => {
-        const host = document.getElementById('threeHost');
-        return (
-          host?.dataset.renderState === 'ready' &&
-          host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent')
-        );
-      },
+    const opacitySlider = page.locator('#threeOpacityRange');
+    // Follow the existing check-three-view real-keyboard contract. Synthetic
+    // DOM 'input' is not proof the production slider can change presentation.
+    await opacitySlider.focus();
+    await page.keyboard.press('End');
+    if (opacityValue === 0.5) {
+      for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowLeft');
+    }
+    assert.equal(Number(await opacitySlider.inputValue()), opacityValue);
+    assert.equal(
+      await page.evaluate(() => window.WaferCadV2Workstation.snapshot().threeDisplay.opacity),
       opacityValue,
-      { timeout: 120000 },
+      'Real opacity slider input did not update the Workstation state',
     );
+    await page.keyboard.press('Escape');
+    // A scene variant must commit, not just a slider readout update.
+    try {
+      await page.waitForFunction(
+        (opacityValue) => {
+          const host = document.getElementById('threeHost');
+          return (
+            host?.dataset.renderState === 'ready' &&
+            host.dataset.sceneVariant === (opacityValue === 1 ? 'opaque' : 'transparent')
+          );
+        },
+        opacityValue,
+        { timeout: 90000 },
+      );
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        opacity: window.WaferCadV2Workstation?.snapshot()?.threeDisplay?.opacity,
+        sliderValue: document.getElementById('threeOpacityRange')?.value,
+        rendererDataset: { ...document.getElementById('threeHost')?.dataset },
+      }));
+      const mode = opacityValue === 1 ? 'opaque' : 'transparent';
+      await writeFile(
+        new URL('three-chip-' + mode + '-opacity-failure.json', directory),
+        JSON.stringify({ diagnostic, error: String(error) }, null, 2) + '\n',
+      );
+      const screenshot = await page.locator('#threeHost').screenshot({ type: 'png' });
+      await writeFile(
+        new URL('three-chip-' + mode + '-opacity-failure.png', directory),
+        screenshot,
+      );
+      throw new Error(JSON.stringify({ diagnostic, cause: String(error) }));
+    }
     for (const borders of [false, true]) {
       const previousSerial = Number(
         await page.locator('#threeHost').getAttribute('data-renderer-frame-serial'),
