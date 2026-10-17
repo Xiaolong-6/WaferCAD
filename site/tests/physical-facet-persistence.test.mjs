@@ -180,15 +180,9 @@ test('Snapshot Manager restores physical material and reopens two distinct facet
   const secondCut = profileOf(session.live);
   assert.notDeepEqual(secondCut, firstCut, 'Distinct phases must change physical topology');
   assert.equal(manager.restore(first.id), true);
-  assert.deepEqual(
-    profileOf(session.live),
-    firstCut,
-  );
+  assert.deepEqual(profileOf(session.live), firstCut);
   assert.equal(manager.restore(second.id), true);
-  assert.deepEqual(
-    profileOf(session.live),
-    secondCut,
-  );
+  assert.deepEqual(profileOf(session.live), secondCut);
 
   const stored = {
     ...session.live,
@@ -208,15 +202,9 @@ test('Snapshot Manager restores physical material and reopens two distinct facet
   });
   restoredManager.importRecords(reopened.snapshots, reopened.snapshotBranches);
   assert.equal(restoredManager.restore(first.id), true);
-  assert.deepEqual(
-    profileOf(sessionAfterOpen.live),
-    firstCut,
-  );
+  assert.deepEqual(profileOf(sessionAfterOpen.live), firstCut);
   assert.equal(restoredManager.restore(second.id), true);
-  assert.deepEqual(
-    profileOf(sessionAfterOpen.live),
-    secondCut,
-  );
+  assert.deepEqual(profileOf(sessionAfterOpen.live), secondCut);
 });
 
 test('native Section contour consumes actual physical facet breakpoints', () => {
