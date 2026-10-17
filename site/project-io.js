@@ -1,6 +1,7 @@
 import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
+import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;
@@ -406,6 +407,7 @@ function modelAssetKey(model) {
     Array.isArray(model.regions) ? model.regions.length : 0,
     Array.isArray(model.implants) ? model.implants.length : 0,
     Array.isArray(model.electricalRegions) ? model.electricalRegions.length : 0,
+    JSON.stringify(model.experimentalPhysicalFacetOwner || null),
   ].join('|');
 }
 
@@ -801,5 +803,13 @@ export async function readProjectFile(file) {
   }
 
   expandProjectStorage(parsed);
-  return validateProjectFile(migrateProjectFile(parsed));
+  const project = validateProjectFile(migrateProjectFile(parsed));
+  // The opt-in owner is persisted and strictly validated, but the default
+  // Workstation must not draw its physical material as a flat surrogate.
+  if (validateExperimentalPhysicalFacetModel(project.model)) {
+    throw new Error(
+      'Experimental physical facet is not yet supported in the production Workstation; no flat import is permitted.',
+    );
+  }
+  return project;
 }

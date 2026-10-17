@@ -1,5 +1,10 @@
 import { indexedIntersectionInputs } from './process-boundary-index.js';
 import {
+  assertExperimentalPhysicalFacetNotProcessed,
+  assertExperimentalPhysicalFacetNotRendered,
+  validateExperimentalPhysicalFacetModel,
+} from './physical-facet-model.js';
+import {
   MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
   validateMaterialThicknessUm,
 } from './process-numerical-contract.js';
@@ -239,6 +244,7 @@ export function setLayerVisible(model, id, visible) {
 }
 
 export function visibleMaterialModel(model) {
+  assertExperimentalPhysicalFacetNotRendered(model);
   const hidden = new Set(
     (model?.layers || []).filter((layer) => layer.visible === false).map((layer) => layer.id),
   );
@@ -1564,6 +1570,8 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  const unsupported = assertExperimentalPhysicalFacetNotProcessed(model);
+  if (unsupported) return unsupported;
   if (params?.face === 'both') {
     const applied = applyProcessFaces(model, params, applyOperation);
     if (applied.result?.changed) {
@@ -1598,6 +1606,10 @@ export function applyOperation(model, params) {
 }
 
 export function modelBoundsZ(model) {
+  const physical = validateExperimentalPhysicalFacetModel(model);
+  if (physical) {
+    return [physical.bottomPlaneZ - physical.height, physical.topPlaneZ + physical.height];
+  }
   if (isArrayModel(model)) {
     const bounds = referencedModelParts(model).filter(hasMaterial).map(modelBoundsZ);
     return bounds.length
