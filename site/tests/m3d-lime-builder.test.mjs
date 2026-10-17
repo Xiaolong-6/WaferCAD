@@ -509,6 +509,43 @@ test('inferred Match Line has ten TCAM Pt endpoints, one pre-charge DRAIN via an
     Array.from({ length: 229 }, (_, i) => [-38.5 + (85.7 * i) / 228, -1.5]),
     'horizontal common Match Line',
   );
+  // Sparse uniform sampling can jump over 10nm oxide-wall bands. Enumerate
+  // actual process-region polygon vertices and test a midpoint between *each*
+  // consecutive boundary along the physical metal trace. This probes every
+  // resolved XY material owner, including sub-micrometre junction strips,
+  // rather than relying on arbitrary 72/168-point sampling.
+  const allGeometryCoordinates = (axis, lower, upper) => {
+    const values = new Set([lower, upper]);
+    for (const region of project.model.regions) {
+      for (const polygon of region.geom || []) {
+        for (const ring of polygon || []) {
+          for (const point of ring || []) {
+            const v = point[axis];
+            if (v > lower && v < upper) values.add(v);
+          }
+        }
+      }
+    }
+    const ordered = [...values].sort((a, b) => a - b);
+    return ordered.slice(1).flatMap((upperEdge, i) => {
+      const lowerEdge = ordered[i];
+      return upperEdge - lowerEdge >= 1e-8 ? [(lowerEdge + upperEdge) / 2] : [];
+    });
+  };
+  for (const x of [-38.5, -19.5, -0.5, 18.5, 37.5]) {
+    assertContinuousPd(
+      allGeometryCoordinates(1, -23, 10).map((y) => [x, y]),
+      'every actual material-owner edge on ML trunk X=' + x,
+    );
+  }
+  assertContinuousPd(
+    allGeometryCoordinates(0, -38.5, 47.2).map((x) => [x, -1.5]),
+    'every actual material-owner edge on horizontal ML bus',
+  );
+  assertContinuousPd(
+    allGeometryCoordinates(1, -14, -1.5).map((y) => [47.2, y]),
+    'every actual material-owner edge on pre-charge spur',
+  );
   const overEnd = [-5.12, -5.1, -5.065, -5.035, -5.015, -5.005, -4.995,
     -4.985, -4.965, -4.935, -4.9, -4.88];
   const denseDrainSpur = [
