@@ -1172,17 +1172,39 @@ try {
   await page.locator('#recipeRunAllBtn').click();
   const clear = page.getByRole('button', { name: 'Clear history', exact: true });
   if (await clear.isVisible()) await clear.click();
-  await page.waitForFunction(
-    () => {
+  // With native conformal 45nm ALD and the new connected 142-polygon ML,
+  // Run All now performs more geometry validation than the original 46-step
+  // fixture. Its previous six-minute whole-run timeout expired at 48/50
+  // while native Chromium was actively validating the Top Ti operation.
+  // Keep a bounded *progress-aware* watchdog instead of merely hiding a hang
+  // behind a longer unconditional timeout. The UI's actual Recipe progress
+  // counter must advance; no busy flag or science assertion is bypassed.
+  const runResult = await page.waitForFunction(
+    ({ maxIdleMs }) => {
       const status = document.querySelector('[data-slot="status.message"]')?.textContent || '';
       const summary = document.querySelector('#recipeRunSummary')?.textContent || '';
-      return (
+      if (
         /Recipe completed:|Recipe failed|Recipe preflight failed/.test(status) ||
         /^(Completed|Failed|Stopped):/.test(summary)
-      );
+      ) return 'finished';
+      const clock = Date.now();
+      const progress = summary.match(/(\\d+)\\s*\\/\\s*(\\d+)/);
+      const step = progress ? Number(progress[1]) : 0;
+      const state = (window.__m3dRunAllWatchdog ||= { step, lastAdvanceAt: clock });
+      if (step > state.step) {
+        state.step = step;
+        state.lastAdvanceAt = clock;
+      }
+      if (clock - state.lastAdvanceAt > maxIdleMs) return 'stalled';
+      return false;
     },
-    null,
-    { timeout: 360000 },
+    { maxIdleMs: 360000 },
+    { timeout: 1080000, polling: 2000 },
+  );
+  assert.equal(
+    await runResult.jsonValue(),
+    'finished',
+    'Real Run All has stalled without process-step progress for six minutes',
   );
   const status = await page.locator('[data-slot="status.message"]').innerText();
   const summary = (await page.locator('#recipeRunSummary').innerText()).trim();
