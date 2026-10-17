@@ -334,10 +334,12 @@ test('TCMOS full geometric reconstruction preserves STI, annotated CMOS and expo
   // Fig.1b HVT windows intentionally enclose and slightly overshoot ACTIVE.
   // Only semiconductor-hosted bands have the original silicon source Z=1;
   // over-STI display annotations are not a measured dopant profile.
-  const activeBars = tcmosProcessShapes(1).slice(2, 4).map(({ points }) => {
-    const xs = points.map(([x]) => x);
-    return { x: Math.min(...xs), w: Math.max(...xs) - Math.min(...xs) };
-  });
+  const activeBars = tcmosProcessShapes(1)
+    .slice(2, 4)
+    .map(({ points }) => {
+      const xs = points.map(([x]) => x);
+      return { x: Math.min(...xs), w: Math.max(...xs) - Math.min(...xs) };
+    });
   const onActive = bodyBands.filter((band) => {
     const midX = -5.5 + ((band.t0 + band.t1) / 2) * 11;
     return activeBars.some((r) => midX > r.x && midX < r.x + r.w);

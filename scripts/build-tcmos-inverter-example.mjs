@@ -473,6 +473,10 @@ const BY_ID = new Map(TCMOS_MASKS.map((mask) => [mask.id, mask]));
 const SVG_PROCESS_LAYERS = new Map(
   readTcmosReferenceMask().map(({ layer, shapes }) => [layer, shapes]),
 );
+// Process-mask snapshots use the public project geometry persistence grid,
+// independently of the approved SVG File Mask. Both the generator and
+// Workstation replay consume these same snapped shapes. No tolerance changes.
+const processGrid = (number) => Math.round(number * 10000) / 10000;
 const svgBounds = (points) => {
   const xs = points.map(([x]) => x),
     ys = points.map(([, y]) => y),
@@ -483,13 +487,13 @@ const svgBounds = (points) => {
 const svgPolygonMask = (points, index) => ({
   id: 'shape-' + (index + 1),
   type: 'polygon',
-  points: points.map((point) => [...point]),
+  points: points.map((point) => point.map(processGrid)),
 });
 const processRectMask = (r, index) => ({
   id: 'shape-' + (index + 1),
   type: 'rect',
-  a: [r.x, r.y],
-  b: [r.x + r.w, r.y + r.h],
+  a: [processGrid(r.x), processGrid(r.y)],
+  b: [processGrid(r.x + r.w), processGrid(r.y + r.h)],
 });
 // The foundry did not publish these five process windows. Derive them
 // deterministically from the SVG ACTIVE/POLY geometry, not from historical
