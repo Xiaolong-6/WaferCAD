@@ -632,6 +632,28 @@ try {
       };
     });
   const invariant = await scientificState();
+  const assertStablePresentation = async () => {
+    const actual = await scientificState();
+    const { camera: actualCamera, ...actualScience } = actual;
+    const { camera: initialCamera, ...initialScience } = invariant;
+    assert.deepEqual(
+      actualScience,
+      initialScience,
+      '3D presentation controls mutated saved material/process/ROI/Section geometry',
+    );
+    assert.equal(actualCamera.fov, initialCamera.fov, 'Opacity/Border changed camera FOV');
+    // OrbitControls can round-trip spherical coordinates by about 1e-12 um
+    // while repainting. This is camera-only precision, not physical geometry.
+    for (const field of ['position', 'target']) {
+      assert.equal(actualCamera[field].length, initialCamera[field].length);
+      for (let i = 0; i < actualCamera[field].length; i++) {
+        assert.ok(
+          Math.abs(actualCamera[field][i] - initialCamera[field][i]) <= 1e-9,
+          'Opacity/Border changed camera ' + field + '[' + i + ']',
+        );
+      }
+    }
+  };
   const combinations = [];
   for (const opacityValue of [1, 0.5]) {
     // Use the production opacity slider's input handler. Directly mutating
@@ -709,11 +731,7 @@ try {
         { timeout: 120000 },
       );
       await waitForPaint(page);
-      assert.deepEqual(
-        await scientificState(),
-        invariant,
-        '3D presentation controls mutated saved material/process geometry',
-      );
+      await assertStablePresentation();
       const filename =
         'three-chip-' +
         (opacityValue === 1 ? 'opaque' : 'transparent') +
