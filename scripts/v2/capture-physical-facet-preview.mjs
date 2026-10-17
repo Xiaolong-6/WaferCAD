@@ -45,6 +45,11 @@ try {
     await waitForPaint(page);
     const data = await page.evaluate(() => window.WaferCadPhysicalFacetEvidence);
     assert.ok(data.ready && data.displayedZBreakOnly);
+    assert.equal(data.rendererKind, 'production-createThreeView');
+    assert.equal(data.productionHost.rendererState, 'ready');
+    assert.equal(data.productionHost.rendererPhase, 'complete');
+    assert.equal(data.productionHost.owner, 'wafercad-physical-pyramid-slab-v1');
+    assert.equal(data.productionHost.triangleCount, data.physicalTriangleCount);
     assert.equal(data.sourceKernel, 'vector-physical-facet-experimental-v1');
     assert.equal(data.ownerKind, 'wafercad-physical-pyramid-slab-v1');
     assert.ok(data.physicalTriangleCount >= 32);
@@ -59,10 +64,12 @@ try {
     report.assertions.push('same physical owner, volume, mesh and Section invariants passed');
 
     const pixelCoverage = await page.evaluate(() => {
-      const three = document.getElementById('physicalThree');
+      const host = document.getElementById('physicalThree');
+      const three = host.querySelector('canvas');
       const section = document.getElementById('physicalSection');
+      if (!three) throw new Error('Production ThreeView did not attach WebGL canvas');
       const gl = three.getContext('webgl2');
-      if (!gl) throw new Error('Physical 3D did not establish WebGL2 context');
+      if (!gl) throw new Error('Production ThreeView did not establish WebGL2 context');
       const pixels = new Uint8Array(three.width * three.height * 4);
       gl.readPixels(0, 0, three.width, three.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
       let material = 0;
