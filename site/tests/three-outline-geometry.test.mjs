@@ -202,8 +202,7 @@ test('Ag contact subdivision cannot project a full-height line through same-mate
     [137, 137.1],
     'back-contact or Ag footprint must not create a -140 to +137 vertical seam',
   );
-  const isCorner = ([a, b]) =>
-    a[0] === 4 && b[0] === 4 && a[2] === -140 && b[2] === 137.1;
+  const isCorner = ([a, b]) => a[0] === 4 && b[0] === 4 && a[2] === -140 && b[2] === 137.1;
   assert.ok(contours.some(isCorner), 'preserve a real exterior ROI corner');
   const foreignWalls = [left, { ...right, layerId: 'Ag' }];
   const foreign = sectionCutContours(foreignWalls, clip).filter(isJunction);
