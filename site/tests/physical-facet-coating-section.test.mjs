@@ -50,8 +50,8 @@ for (const face of ['front', 'back']) {
     }
     // Each half facet contributes t × its true 2D slant length; the
     // convex junction contributes the actual circular sector area.
-    const exactArea = thicknessUm * (2 * lengthPerHalfCell) +
-      (thicknessUm * thicknessUm * turn) / 2;
+    const exactArea =
+      thicknessUm * (2 * lengthPerHalfCell) + (thicknessUm * thicknessUm * turn) / 2;
     near(result.areaUm2, exactArea, 1e-9);
     assert.ok(result.offset.length > result.source.length);
   });
@@ -66,8 +66,8 @@ for (const face of ['front', 'back']) {
     const expectedValley = face === 'front' ? 125.5 : -125.5;
     near(join.source[1], expectedValley);
     near(Math.abs(join.intersection[1] - expectedValley), thicknessUm * Math.hypot(slope, 1));
-    const area = thicknessUm * (2 * lengthPerHalfCell) -
-      thicknessUm * thicknessUm * Math.tan(turn / 2);
+    const area =
+      thicknessUm * (2 * lengthPerHalfCell) - thicknessUm * thicknessUm * Math.tan(turn / 2);
     near(result.areaUm2, area, 1e-9);
     assert.equal(result.offset.length, 3);
   });
@@ -84,18 +84,9 @@ for (const face of ['front', 'back']) {
 }
 
 test('unsupported diagonal, off-center, reversed, huge and invalid film Sections fail closed', () => {
-  assert.throws(
-    () => section('front', [-3.2, 0], [3.2, 1]),
-    /left-to-right X Section/,
-  );
-  assert.throws(
-    () => section('front', [-3.2, 1], [3.2, 1]),
-    /Y centerline/,
-  );
-  assert.throws(
-    () => section('front', [3.2, 0], [-3.2, 0]),
-    /left-to-right X Section/,
-  );
+  assert.throws(() => section('front', [-3.2, 0], [3.2, 1]), /left-to-right X Section/);
+  assert.throws(() => section('front', [-3.2, 1], [3.2, 1]), /Y centerline/);
+  assert.throws(() => section('front', [3.2, 0], [-3.2, 0]), /left-to-right X Section/);
   assert.throws(
     () => section('front', [-3.2, 0], [3.2, 0], 100),
     /miter|intersects|physical facet/i,

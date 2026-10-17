@@ -158,16 +158,26 @@ export function physicalAxialFacetCoatingSection(
       const startAngle = Math.atan2(before.normal[1], before.normal[0]);
       for (let j = 1; j < steps; j++) {
         const angle = startAngle + (theta * j) / steps;
-        offset.push([pivot[0] + thicknessUm * Math.cos(angle), pivot[1] + thicknessUm * Math.sin(angle)]);
+        offset.push([
+          pivot[0] + thicknessUm * Math.cos(angle),
+          pivot[1] + thicknessUm * Math.sin(angle),
+        ]);
       }
       offset.push(end);
       for (let j = firstCurvedVertex; j < offset.length - 1; j++) {
         curvedEdgeIndices.add(j);
       }
       circularCorrection +=
-        (thicknessUm * thicknessUm * (Math.abs(theta) - steps * Math.sin(Math.abs(theta) / steps))) /
+        (thicknessUm *
+          thicknessUm *
+          (Math.abs(theta) - steps * Math.sin(Math.abs(theta) / steps))) /
         2;
-      joins.push({ type: 'convex-round', source: [...pivot], angleRadians: Math.abs(theta), samples: steps + 1 });
+      joins.push({
+        type: 'convex-round',
+        source: [...pivot],
+        angleRadians: Math.abs(theta),
+        samples: steps + 1,
+      });
     } else {
       // Intersection of the two offset planes. For an X-monotone curve
       // the X position follows from matching their linear Z equations.
@@ -177,8 +187,7 @@ export function physicalAxialFacetCoatingSection(
       const z1 = pivot[1] + thicknessUm * n1[1];
       const x0 = pivot[0] + thicknessUm * n0[0];
       const x1 = pivot[0] + thicknessUm * n1[0];
-      const x = (z1 - z0 + before.slope * x0 - after.slope * x1) /
-        (before.slope - after.slope);
+      const x = (z1 - z0 + before.slope * x0 - after.slope * x1) / (before.slope - after.slope);
       const point = [x, z0 + before.slope * (x - x0)];
       // The nearest point to each original facet must be within that
       // original facet segment. Otherwise a true offset would switch
@@ -205,10 +214,7 @@ export function physicalAxialFacetCoatingSection(
     // Arc chords intentionally lie inside the exact circle. Only the
     // curved vertices carry a true distance=t guarantee.
     if (curvedEdgeIndices.has(i)) continue;
-    samples.push([
-      (offset[i][0] + offset[i + 1][0]) / 2,
-      (offset[i][1] + offset[i + 1][1]) / 2,
-    ]);
+    samples.push([(offset[i][0] + offset[i + 1][0]) / 2, (offset[i][1] + offset[i + 1][1]) / 2]);
   }
   const allowed = Math.max(EPS, thicknessUm * 1e-9);
   for (const point of samples) {
