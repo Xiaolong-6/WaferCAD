@@ -1626,7 +1626,7 @@ export function applyOperation(model, params) {
   if (!['front', 'back', undefined, null].includes(params?.face)) {
     return { changed: false, error: 'Unsupported Process face.' };
   }
-  if (isArrayModel(model) && params?.isotropicLateralErrorUm != null) {
+  if ((isArrayModel(model) || model?.array != null) && params?.isotropicLateralErrorUm != null) {
     return {
       changed: false,
       error: 'Opt-in adaptive isotropic release does not yet support array Model topology.',
