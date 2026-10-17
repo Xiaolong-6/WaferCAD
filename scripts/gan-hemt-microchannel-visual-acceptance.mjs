@@ -635,9 +635,7 @@ try {
         opacityCount: document.querySelectorAll('[data-action="opacity:three"]').length,
       };
     });
-    throw new Error('3D toolbar not visible after real desktop navigation: ' + JSON.stringify(toolbar), {
-      cause: error,
-    });
+    throw new Error(JSON.stringify({ toolbar, cause: String(error) }));
   }
   const scientificState = () =>
     page.evaluate(() => {
