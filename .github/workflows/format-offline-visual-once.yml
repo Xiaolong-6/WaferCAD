@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   formatting:
-    if: startsWith(github.event.head_commit.message, 'chore(devtools): temporary read-only formatting extract')
+    if: "startsWith(github.event.head_commit.message, 'chore(devtools): temporary read-only formatting extract')"
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -24,25 +24,25 @@ jobs:
       - name: Normalize only the reported formatting failures
         run: |
           ./node_modules/.bin/prettier --write \
-            site/tests/offline-mask-svg.test.mjs \\
-            site/tests/offline-source-revision.test.mjs \\
-            site/tests/offline-three-mesh.test.mjs \\
-            site/tests/offline-visual-svg.test.mjs \\
-            site/tests/process-task-controller.test.mjs \\
-            site/tests/visual-first-contract.test.mjs \\
-            scripts/offline-chat-native-export.mjs \\
-            scripts/offline-mask-svg.mjs \\
-            scripts/offline-native-project-export.mjs \\
-            scripts/offline-source-revision.mjs \\
-            scripts/offline-three-capture.mjs \\
-            scripts/offline-three-mesh.mjs \\
-            scripts/offline-ui-capture.mjs \\
-            scripts/offline-visual-kernel.mjs \\
-            scripts/offline-visual-svg.mjs \\
-            scripts/v2/capture-visual-first.mjs \\
-            scripts/v2/visual-first-contract.mjs \\
-            docs/CI.md \\
-            docs/OFFLINE_CHAT_RUNTIME.md \\
+            site/tests/offline-mask-svg.test.mjs \
+            site/tests/offline-source-revision.test.mjs \
+            site/tests/offline-three-mesh.test.mjs \
+            site/tests/offline-visual-svg.test.mjs \
+            site/tests/process-task-controller.test.mjs \
+            site/tests/visual-first-contract.test.mjs \
+            scripts/offline-chat-native-export.mjs \
+            scripts/offline-mask-svg.mjs \
+            scripts/offline-native-project-export.mjs \
+            scripts/offline-source-revision.mjs \
+            scripts/offline-three-capture.mjs \
+            scripts/offline-three-mesh.mjs \
+            scripts/offline-ui-capture.mjs \
+            scripts/offline-visual-kernel.mjs \
+            scripts/offline-visual-svg.mjs \
+            scripts/v2/capture-visual-first.mjs \
+            scripts/v2/visual-first-contract.mjs \
+            docs/CI.md \
+            docs/OFFLINE_CHAT_RUNTIME.md \
             docs/OFFLINE_VISUAL_KERNEL.md
       - name: Emit changed source content as base64 for offline review
         run: |
