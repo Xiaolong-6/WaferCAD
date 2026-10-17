@@ -321,7 +321,7 @@ export function createProjectController({
       name.textContent = bookmark.name;
       name.title = bookmark.createdAt;
       const meta = root.createElement('span');
-      meta.textContent = bookmark.legacyCheckpoint ? 'legacy saved state' : 'bookmark';
+      meta.textContent = bookmark.legacyCheckpoint ? 'saved checkpoint' : 'bookmark';
       body.append(name, meta);
 
       const editor = root.createElement('div');
@@ -362,30 +362,35 @@ export function createProjectController({
       editor.append(input, save, cancel);
 
       const protectedByLegacyVariant = snapshotManager.branchesUsingSnapshot(bookmark.id);
-      const bookmarkActions = [];
-      if (bookmark.legacyCheckpoint) {
-        bookmarkActions.push({
-          label: 'Restore legacy state',
+      // Both ordinary Bookmarks and checkpoints with a custom inspection
+      // camera/ROI/Section have a saved state. Restore them through the same
+      // validated Snapshot Manager path; a different saved view is not a
+      // reason to surface a misleading "legacy state" action.
+      const requiresVariantSwitch = Boolean(
+        bookmark.branchId && bookmark.branchId !== activeBranch.id,
+      );
+      const bookmarkActions = [
+        {
+          label: 'Restore bookmark',
+          disabled: requiresVariantSwitch,
+          title: requiresVariantSwitch
+            ? "Switch to this bookmark's Variant before restoring its saved state."
+            : 'Restore the saved Process state, inspection camera, ROI and Section.',
           run: async () => {
-            if (
-              !(await prepareHistoryReplacement(
-                'pre-legacy-bookmark-restore',
-                'Legacy state restore',
-              ))
-            ) {
+            if (!(await prepareHistoryReplacement('pre-bookmark-restore', 'Bookmark restore'))) {
               return;
             }
             if (!snapshotManager.restore(bookmark.id)) {
-              status('Legacy saved state failed validation.', 'error');
+              status('Bookmark state failed validation.', 'error');
               return;
             }
             refreshAfterSnapshotLoad();
             onProjectChanged();
             renderSnapshots();
-            status(`Restored legacy saved state "${bookmark.name}".`);
+            status(`Restored bookmark "${bookmark.name}".`);
           },
-        });
-      }
+        },
+      ];
       bookmarkActions.push(
         {
           label: 'Rename bookmark',

@@ -9,6 +9,7 @@ import {
 } from './model-array.js';
 import { robustDifference, robustIntersection } from './polygon-boolean.js';
 import { normalizeProcessRecipe } from './process-recipe.js';
+import { validateAssemblyWires } from './assembly-wire-geometry.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;
@@ -1347,6 +1348,20 @@ function validateProjectCore(project, allowSnapshots, shared = createValidationC
   validateAssetInBudget(project.layout, 'layout', shared.layouts, budget, () =>
     validateLayout(project.layout, budget),
   );
+
+  if (project.assemblyWires != null) {
+    try {
+      validateAssemblyWires(project.assemblyWires);
+    } catch (error) {
+      fail('assemblyWires', error.message);
+    }
+    const metalIds = new Set(project.model.layers.map((layer) => layer.id));
+    for (const wire of project.assemblyWires) {
+      for (const id of wire.contactLayerIds) {
+        if (!metalIds.has(id)) fail('assemblyWires', 'references an unknown contact layer.');
+      }
+    }
+  }
 
   const selectedLayerKeys = assertArray(
     project.selectedLayerKeys,

@@ -70,6 +70,16 @@
       "bytes": 8482,
       "sourceSha256": "d7593aa80852866a814008c6db80c268775843066e45597618c2acd39fd87570",
       "sha256": "3f62bfb7a99736765fcf2d2cfbb182202a7e6a31ccc09e3607319ed5e5bdfd3b"
+    },
+    {
+      "id": "gan-hemt-microchannel-2022",
+      "path": "./examples/thumbnails/gan-hemt-microchannel-2022-three.webp",
+      "view": "three",
+      "width": 640,
+      "height": 560,
+      "bytes": 4752,
+      "sourceSha256": "61e3000e468d2a1a70869667c8058d920a32e8f9aac4cb5fc468e3d5a3afe423",
+      "sha256": "ac49ff3179f52ecd5c2228e01034bc37448681feac41b332edb2155bf8ecc160"
     }
   ]
 }

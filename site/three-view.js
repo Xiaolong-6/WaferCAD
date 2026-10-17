@@ -17,6 +17,8 @@ import {
   implantSolids,
 } from './model-view-geometry.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
+import { pointInMulti } from './vector-geometry.js';
+import { createAssemblyWireMeshes } from './assembly-wire-mesh.js';
 import {
   ownedContourSegments,
   contoursToPositions,
@@ -97,6 +99,7 @@ export function createThreeView({
   host,
   stats,
   getModel,
+  getAssemblyWires = () => [],
   getClipGeometry = () => null,
   getInspection = () => ({ opacity: 1, borders: false }),
   getZCollapse = () => null,
@@ -969,6 +972,19 @@ export function createThreeView({
     sceneVariantCache.set(activeSceneVariant, snapshotSceneVariant(activeSceneVariant));
   }
 
+  function commitInPlaceSceneVariant(mode) {
+    if (activeSceneVariant === mode) return;
+    // Material presentation was updated on this same mutable scene group,
+    // not rebuilt as a second variant. A stale cache alias for the old mode
+    // must not later restore the new material state under the old label.
+    for (const [cachedMode, entry] of sceneVariantCache) {
+      if (entry?.group === group) sceneVariantCache.delete(cachedMode);
+    }
+    activeSceneVariant = mode;
+    host.dataset.sceneVariant = mode;
+    cacheActiveSceneVariant();
+  }
+
   function restoreSceneVariant(entry) {
     if (!entry?.group || !scene) return false;
     if (group && group !== entry.group) scene.remove(group);
@@ -1064,6 +1080,7 @@ export function createThreeView({
       clip: clip || null,
       zCollapse: getZCollapse?.() || null,
       layers,
+      assemblyWires: getAssemblyWires(),
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
   }
@@ -3074,6 +3091,7 @@ diffuseColor.a *= waferCadAlphaScale;`,
         stats.textContent = 'updating 3D…';
         syncRenderPolicy();
         applyPresentationState();
+        commitInPlaceSceneVariant(targetVariant);
         return;
       }
     }
@@ -3894,6 +3912,30 @@ diffuseColor.a *= waferCadAlphaScale;`,
         }
       }
 
+      // Real packaging tubes are project-level 3D assembly geometry, not
+      // extruded Kernel layers. Treat ROI conservatively: never show an
+      // entire floating bond outside its section crop.
+      let assemblyWireBuiltCount = 0;
+      for (const wire of getAssemblyWires() || []) {
+        const points = wire.points.map((xyz) => new THREE.Vector3(...xyz));
+        const curve = new THREE.CubicBezierCurve3(...points);
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        for (const mesh of createAssemblyWireMeshes(THREE, wire, curve)) {
+          group.add(mesh);
+          trackZDisplayObject(mesh);
+        }
+        assemblyWireBuiltCount++;
+      }
+      host.dataset.assemblyWireBuiltCount = String(assemblyWireBuiltCount);
+      host.dataset.assemblyWireEndcapCount = String(assemblyWireBuiltCount * 2);
+
       host.dataset.electricalRegionInternalBuiltCount = String(electricalRegionInternalCount);
       host.dataset.electricalRegionSurfaceBuiltCount = String(electricalRegionSurfaceCount);
       host.dataset.electricalFarLodBodyCount = String(electricalFarLodBodyCount);
@@ -4307,6 +4349,27 @@ diffuseColor.a *= waferCadAlphaScale;`,
         if (sidewallIndex % 2 === 0) await yieldToUi();
       }
 
+      // glTF contains the same true 3D packaging tubes as the workstation,
+      // in physical micrometres before the group-wide 1e-6 metre conversion.
+      // These explicit meshes must never be inferred from a screenshot.
+      for (const wire of getAssemblyWires() || []) {
+        throwIfAborted();
+        const curve = new THREE.CubicBezierCurve3(
+          ...wire.points.map((point) => new THREE.Vector3(...point)),
+        );
+        if (
+          clip &&
+          !Array.from({ length: 65 }, (_, i) => curve.getPoint(i / 64)).every((point) =>
+            pointInMulti([point.x, point.y], clip),
+          )
+        ) {
+          continue;
+        }
+        for (const mesh of createAssemblyWireMeshes(THREE, wire, curve)) {
+          exportGroup.add(mesh);
+          disposable.push(mesh);
+        }
+      }
       await yieldToUi();
       reportProgress(0.91, 'Encoding GLB');
       const exporter = new GLTFExporter();

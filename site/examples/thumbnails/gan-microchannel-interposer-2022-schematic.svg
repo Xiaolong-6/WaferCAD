@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="SCHEMATIC ONLY — HR-Si interposer">
+  <rect width="640" height="360" fill="#eff3f6"/>
+  <text x="24" y="40" font-family="sans-serif" font-size="25" font-weight="bold" fill="#234056">HR-Si interposer</text>
+  <rect x="70" y="122" width="500" height="170" rx="4" fill="#adbecb" stroke="#6b8495"/>
+<path d="M95 266 V237 H156 V211 H217 V185 H278 V157 H339 V184 H399 V212 H460 V238 H539 V266" fill="none" stroke="white" stroke-width="25" />
+  <rect y="321" width="640" height="39" fill="#1e3547"/>
+  <text x="320" y="347" fill="white" font-size="16" font-family="sans-serif" text-anchor="middle">SCHEMATIC ONLY · INDEPENDENT MAIN · NOT BONDED</text>
+</svg>

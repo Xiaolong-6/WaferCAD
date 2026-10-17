@@ -166,6 +166,9 @@ export function createProjectStateController({
       maskRoi: state.maskRoi,
       maskRoiAnchor: state.maskRoiAnchor,
       activeFace: state.activeFace,
+      ...(state.assemblyWires?.length
+        ? { assemblyWires: structuredClone(state.assemblyWires) }
+        : {}),
       ...(state.processRecipe ? { processRecipe: structuredClone(state.processRecipe) } : {}),
       roi: state.roi,
       roiAnchor: state.roiAnchor,
@@ -270,6 +273,7 @@ export function createProjectStateController({
       maskRoi: project.maskRoi ? normalizeMaskRoi(project.maskRoi) : null,
       maskRoiAnchor: project.maskRoiAnchor || 'center',
       activeFace: project.activeFace,
+      assemblyWires: structuredClone(project.assemblyWires || []),
       processRecipe:
         project.processRecipe && typeof project.processRecipe === 'object'
           ? structuredClone(project.processRecipe)
@@ -317,6 +321,7 @@ export function createProjectStateController({
       maskRoi: null,
       maskRoiAnchor: 'center',
       activeFace: 'front',
+      assemblyWires: [],
       processRecipe: null,
       roi: null,
       roiAnchor: 'center',
