@@ -1,7 +1,8 @@
+import { connectedBoundingBoxGroups } from './polygon-bounds-groups.js';
 import {
   BOOLEAN_RETRY_GRID_UM,
   EPS,
-  booleanWithQuantizedRetry,
+  booleanWithNormalizedRetry,
   canonicalizeBooleanGeometry,
   closeRing,
   normalizeMulti,
@@ -67,89 +68,54 @@ function polygonBounds(poly) {
   return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
 }
 
-function boundsMayTouch(a, b, tolerance = EPS) {
-  return Boolean(
-    a &&
-    b &&
-    a.maxX >= b.minX - tolerance &&
-    b.maxX >= a.minX - tolerance &&
-    a.maxY >= b.minY - tolerance &&
-    b.maxY >= a.minY - tolerance,
-  );
-}
-
 function unionPolygonComponents(geometries) {
   const entries = [];
+  const seenGeometryRefs = new WeakSet();
   for (const geom of geometries || []) {
+    // Union is idempotent: repeated *identical object references* represent
+    // the same physical polygon set. Shared Geometry/History templates can
+    // otherwise force duplicate normalization and expensive Boolean sweeps.
+    // Keep value-equal but independently owned geometries in the input.
+    if (geom && typeof geom === 'object') {
+      if (seenGeometryRefs.has(geom)) continue;
+      seenGeometryRefs.add(geom);
+    }
     for (const poly of normalizeMulti(geom)) {
       const bounds = polygonBounds(poly);
       if (bounds) entries.push({ geom: [poly], bounds });
     }
   }
   if (!entries.length) return [];
-  if (entries.length === 1) return cloneGeom(entries[0].geom);
+  // normalizeMulti already copied every point and closed every ring. Returning
+  // the sole detached polygon avoids a redundant structuredClone over a large
+  // mask while keeping the caller's geometry independent.
+  if (entries.length === 1) return entries[0].geom;
 
   // Wafer arrays commonly contain thousands of identical, non-touching polygons.
   // Sending all of them through one Martinez sweep is both slow and a source of
   // output-ring failures. A sweep over bounding boxes first partitions the input
   // into overlap-connected components; singleton components are already exact
   // union results and never enter polygon-clipping.
-  const parent = entries.map((_, index) => index),
-    rank = entries.map(() => 0),
-    find = (index) => {
-      let root = index;
-      while (parent[root] !== root) root = parent[root];
-      while (parent[index] !== index) {
-        const next = parent[index];
-        parent[index] = root;
-        index = next;
-      }
-      return root;
-    },
-    join = (left, right) => {
-      let a = find(left),
-        b = find(right);
-      if (a === b) return;
-      if (rank[a] < rank[b]) [a, b] = [b, a];
-      parent[b] = a;
-      if (rank[a] === rank[b]) rank[a]++;
-    },
-    order = entries
-      .map((_, index) => index)
-      .sort((a, b) => entries[a].bounds.minX - entries[b].bounds.minX),
-    active = [];
-
-  for (const index of order) {
-    const current = entries[index],
-      minX = current.bounds.minX - EPS;
-    let write = 0;
-    for (const otherIndex of active) {
-      const other = entries[otherIndex];
-      if (other.bounds.maxX < minX) continue;
-      active[write++] = otherIndex;
-      if (boundsMayTouch(current.bounds, other.bounds)) join(index, otherIndex);
-    }
-    active.length = write;
-    active.push(index);
-  }
-
-  const components = new Map();
-  for (let index = 0; index < entries.length; index++) {
-    const root = find(index);
-    if (!components.has(root)) components.set(root, []);
-    components.get(root).push(entries[index].geom);
-  }
+  const components = connectedBoundingBoxGroups(
+    entries.map((entry) => entry.bounds),
+    EPS,
+  ).map((indices) => indices.map((index) => entries[index].geom));
 
   const out = [];
+  let mergedComponents = false;
   for (const component of components.values()) {
     if (component.length === 1) {
       out.push(...component[0]);
       continue;
     }
-    const merged = booleanWithQuantizedRetry('union', component);
+    mergedComponents = true;
+    const merged = booleanWithNormalizedRetry('union', component);
     out.push(...merged);
   }
-  return normalizeMulti(out);
+  // Singleton components are already independent, normalized geometry.
+  // Avoid cloning every coordinate a second time for disjoint wafer arrays.
+  // Preserve the original canonicalization when Boolean merging occurred.
+  return mergedComponents ? normalizeMulti(out) : out;
 }
 
 export function unionGeometries(geometries) {
@@ -162,7 +128,7 @@ function unionGeometriesPairwise(geometries) {
     const next = [];
     for (let i = 0; i < level.length; i += 2) {
       if (i + 1 >= level.length) next.push(level[i]);
-      else next.push(booleanWithQuantizedRetry('union', [level[i], level[i + 1]]));
+      else next.push(booleanWithNormalizedRetry('union', [level[i], level[i + 1]]));
     }
     level = next;
   }

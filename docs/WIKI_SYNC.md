@@ -19,6 +19,10 @@ Wiki illustrations must be **relevant to the adjacent procedure**. Prefer exact,
 
 See [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for the page-level inventory and decisions.
 
+## Pre-publication PR verification
+
+[Documentation and Wiki targeted checks](../.github/workflows/documentation-wiki-targeted.yml) runs on relevant pull-request changes, exercises the Process Guide, Wiki Manual and Documentation test suites, and has repository read-only permissions. It cannot push to the Wiki or deploy Pages. Draft Quality separately runs lint, formatting and `docs:check` before the Main publication step.
+
 ## Deploy workflow
 
 `.github/workflows/product-manual-wiki.yml` runs after **every push to main**, with no path filters, and can also be started manually. It:
@@ -30,6 +34,8 @@ See [Wiki content and visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) for
 5. Fails visibly if the Wiki is unavailable or authentication/push fails. No silent skip means a green sync job really inspected the remote Wiki.
 
 `site/` is separately deployed through the existing Pages workflow when site assets change. The wiki is not updated from a feature branch: merge to main first.
+
+The change-coverage warning includes the production v2 Workstation shell, desktop docking, compact navigation and selected public controllers as well as the older source owners. It is **heuristic only**: a matching Wiki edit suppresses the warning, and a silent result cannot prove that screenshots, navigation instructions or scientific descriptions still match the implementation. Review those against the current production UI before acceptance.
 
 ## GitHub prerequisites (one-time setup)
 

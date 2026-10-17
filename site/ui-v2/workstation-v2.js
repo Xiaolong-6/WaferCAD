@@ -11,6 +11,10 @@
     adapters = window.WaferCadV2DomainAdapters.create(),
     presentation = () => ({}),
   }) => {
+    // Preview mode is assigned by workstation-entry after this script loads.
+    // Resolve shell ownership at construction, not at module evaluation.
+    const previewMode = document.body.dataset.previewMode === 'true';
+    const production = document.body.hasAttribute('data-workstation') && !previewMode;
     const slots = new Map();
     const narrow = () => window.WaferCadV2ViewState.compact(window);
     const slot = (name, cls = '', tag = 'div') => {
@@ -51,18 +55,19 @@
       ]),
     );
     const navLabel = el('span', { class: 'p-nav-label' }, 'WORKSPACE');
-    const hideEditor = button('', 'hide-editor', 'back', {
+    const hideEditor = button('', 'hide-editor', production ? 'sidebarCollapse' : 'back', {
       'aria-label': 'Collapse workflow panel',
       'data-help': 'shell.navigation',
     });
-    navHost.append(navLabel, ...navButtons.values(), hideEditor);
+    navHost.append(navLabel, ...navButtons.values(), ...(production ? [] : [hideEditor]));
+    if (production) topbar.append(hideEditor);
     // Mobile uses this exact navigation host as a fixed bottom dock. Reparent
     // stable buttons instead of creating duplicate actions or domain adapters.
-    const mobileEdit = button('Edit', 'show-editor', 'process', {
+    const mobileEdit = button('Edit', 'show-editor', 'switchMode', {
       'aria-label': 'Edit workspace',
       'data-help': 'shell.navigation',
     });
-    const mobileView = button('View', 'return-results', 'back', {
+    const mobileView = button('View', 'return-results', 'switchMode', {
       'aria-label': 'View results',
       'data-help': 'shell.navigation',
     });
@@ -82,7 +87,7 @@
       'data-help': 'shell.section',
     });
     // Desktop controls are separate from the stable contextual mobile dock.
-    const desktopOverview = button('Overview', 'dock:overview', null, {
+    const desktopOverview = button('Overview', 'dock:overview', production ? 'overview' : null, {
       'aria-pressed': 'false',
       'data-help': 'shell.overview',
     });
@@ -147,7 +152,6 @@
       viewbar,
       canvases,
     );
-    const body = el('div', { class: 'p-body' }, navHost, inspector, emptyStrip, separator, stage);
     const status = el(
       'footer',
       { class: 'p-status', role: 'status', 'aria-live': 'polite' },
@@ -184,12 +188,28 @@
     };
     const overlays = window.WaferCadV2Overlays.create({ root, portals });
     window.WaferCadV2ActiveOverlays = overlays;
+    // Production owns a true two-column shell. The M2 standalone prototypes
+    // retain their own layout tree; both paths share the same stable adapters.
+    const sidebar = production
+      ? el(
+          'aside',
+          { class: 'p-sidebar', 'aria-label': 'Project and workflow' },
+          topbar,
+          navHost,
+          inspector,
+          emptyStrip,
+        )
+      : null;
+    const workspace = production
+      ? el('section', { class: 'p-workspace', 'aria-label': 'Scientific workspace' }, stage, status)
+      : null;
+    const body = production
+      ? el('div', { class: 'p-body' }, sidebar, separator, workspace)
+      : el('div', { class: 'p-body' }, navHost, inspector, emptyStrip, separator, stage);
     const workbench = el(
       'div',
       { class: 'p-workbench', 'data-layout': state.layout },
-      topbar,
-      body,
-      status,
+      ...(production ? [body] : [topbar, body, status]),
       ...Object.values(portals),
     );
     root.replaceChildren(workbench);
@@ -201,9 +221,13 @@
       mounted.dataset.keyboard =
         narrow() && state.mobile === 'edit' && editing && occluded > 120 ? 'open' : 'closed';
     };
-    document.addEventListener('focusin', syncKeyboard);
-    document.addEventListener('focusout', syncKeyboard);
-    window.visualViewport?.addEventListener('resize', syncKeyboard);
+    // Standalone M2/Preview keep their original keyboard lifecycle.
+    // Production compact keyboard ownership is in mobile-viewport-controller.js.
+    if (!production) {
+      document.addEventListener('focusin', syncKeyboard);
+      document.addEventListener('focusout', syncKeyboard);
+      window.visualViewport?.addEventListener('resize', syncKeyboard);
+    }
     const tooltips = window.WaferCadV2TooltipController?.create({ root: document });
 
     // Share one measured default between initial ARIA state, drag/keyboard
@@ -216,7 +240,7 @@
     }
 
     function bindDividers() {
-      const horizontal = state.layout === 'c';
+      const horizontal = !production && state.layout === 'c';
       separator.setAttribute('aria-orientation', horizontal ? 'horizontal' : 'vertical');
       separator.setAttribute(
         'aria-valuemax',
@@ -247,7 +271,7 @@
       separator.addEventListener('pointermove', (event) => {
         if (previous == null) return;
         const next = horizontal ? event.clientY : event.clientX;
-        update((next - previous) * (horizontal || state.layout === 'b' ? -1 : 1));
+        update((next - previous) * (horizontal || (!production && state.layout === 'b') ? -1 : 1));
         previous = next;
       });
       const release = () => {
@@ -286,7 +310,7 @@
               ? [...navButtons.values()]
               : [...viewButtons.values(), mobileSection]),
           ]
-        : [navLabel, ...navButtons.values(), hideEditor];
+        : [navLabel, ...navButtons.values(), ...(production ? [] : [hideEditor])];
       navHost.setAttribute(
         'aria-label',
         compact ? (state.mobile === 'edit' ? 'Edit workspaces' : 'Views') : 'Workspaces',
@@ -333,8 +357,8 @@
             ? [
                 el(
                   'div',
-                  { class: 'p-actions' },
-                  button('Restore panel', 'expand-empty', 'process'),
+                  { class: 'p-actions p-restore-panel-actions' },
+                  button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process'),
                 ),
               ]
             : []),
@@ -393,7 +417,9 @@
         el(
           'div',
           { class: 'p-actions' },
-          state.editorHidden ? button('Restore panel', 'expand-empty', 'process') : null,
+          state.editorHidden
+            ? button('Restore panel', 'expand-empty', production ? 'sidebarExpand' : 'process')
+            : null,
           modeButton('overview'),
           viewDivider(),
           modeButton('single'),
@@ -558,7 +584,7 @@
       mounted.dataset.mobile = state.mobile;
       if (state.panelSize) mounted.style.setProperty('--p-panel', `${state.panelSize}px`);
       if (state.bottomSize) mounted.style.setProperty('--p-bottom', `${state.bottomSize}px`);
-      const horizontalDivider = state.layout === 'c';
+      const horizontalDivider = !production && state.layout === 'c';
       separator.setAttribute(
         'aria-valuemax',
         String(horizontalDivider ? 380 : Math.max(240, window.innerWidth - 320)),
@@ -584,7 +610,7 @@
       renderPanel(info);
       renderStage(info);
       renderMobileNav();
-      syncKeyboard();
+      if (!production) syncKeyboard();
       slots.get('status.message').textContent = info.message || '';
       slots.get('status.save').textContent = info.save || '';
       renderVersion(info);
@@ -614,9 +640,11 @@
         ]),
       destroy: () => {
         adapters.destroy();
-        document.removeEventListener('focusin', syncKeyboard);
-        document.removeEventListener('focusout', syncKeyboard);
-        window.visualViewport?.removeEventListener('resize', syncKeyboard);
+        if (!production) {
+          document.removeEventListener('focusin', syncKeyboard);
+          document.removeEventListener('focusout', syncKeyboard);
+          window.visualViewport?.removeEventListener('resize', syncKeyboard);
+        }
         tooltips?.destroy();
         overlays.destroy();
       },

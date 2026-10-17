@@ -114,7 +114,10 @@ test('generated Wiki operation documentation is identical to current Process cat
 
 test('public guide and reusable Process diagrams use canonical catalog', async () => {
   const guide = await readFile(new URL('../guide/index.html', import.meta.url), 'utf8');
-  const panel = await readFile(new URL('../controllers/process-panel-controller.js', import.meta.url), 'utf8');
+  const panel = await readFile(
+    new URL('../controllers/process-panel-controller.js', import.meta.url),
+    'utf8',
+  );
   assert.match(panel, /processGuideKey\(/);
   assert.match(panel, /processGuideSvg\(/);
   assert.match(guide, /wiki\/Process-Operations/);

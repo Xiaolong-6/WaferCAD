@@ -31,6 +31,30 @@ function sameFootprint(a, b) {
   assert.equal(isEmpty(difference(b, a)), true);
 }
 
+test('surface display cache reuses exact front/back union, invalidating on model and visibility', () => {
+  const model = createModel({ shape: 'rect', width: 8, height: 6, thickness: 2 });
+  const original = structuredClone(model);
+  const first = surfaceGroups(model, 'front');
+  const repeated = surfaceGroups(model, 'front');
+  const reverse = surfaceGroups(model, 'back');
+  assert.strictEqual(repeated, first, 'same model and face reuse read-only Boolean output');
+  assert.notStrictEqual(reverse, first, 'front and back derive separately');
+  assert.deepEqual(surfaceGroups(model, 'back'), reverse);
+  assert.deepEqual(model, original, 'a display cache does not mutate physical input');
+  model.revision++;
+  const revised = surfaceGroups(model, 'front');
+  assert.notStrictEqual(revised, first);
+  assert.deepEqual(revised, first, 'revision refresh cannot change the ideal geometry');
+  model.layers[0].visible = false;
+  assert.deepEqual(surfaceGroups(model, 'front'), []);
+  model.layers[0].visible = true;
+  assert.deepEqual(surfaceGroups(model, 'front'), revised);
+  model.regions = structuredClone(model.regions);
+  const newPartition = surfaceGroups(model, 'front');
+  assert.notStrictEqual(newPartition, revised);
+  assert.deepEqual(newPartition, revised);
+});
+
 test('arbitrary XY and Z partitions do not create visible material seams', () => {
   const model = createModel({ shape: 'rect', width: 20, height: 20, thickness: 10 });
   const layerId = model.regions[0].stack[0].layerId;

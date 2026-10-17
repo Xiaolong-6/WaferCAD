@@ -32,8 +32,8 @@ test('Wiki examples cover exactly the published Welcome project families and the
     );
     for (const source of example.sources || []) {
       assert.ok(
-        row.includes(source.doi),
-        `${example.id}: Welcome DOI ${source.doi} missing from Wiki entry`,
+        row.includes(source.doi || source.href),
+        `${example.id}: Welcome source ${source.doi || source.href} missing from Wiki entry`,
       );
     }
   }
@@ -110,8 +110,6 @@ test('the novice path is discoverable and names the current UI controls', async 
   const v2Mask = await readFile(new URL('../ui-v2/mask-view.js', import.meta.url), 'utf8');
   assert.match(v2Mask, /'mask-source'/);
   assert.match(v2Mask, /'draw-toggle'/);
-
-
 });
 
 test('Mask ROI documentation agrees with Whole face worker clipping', async () => {
