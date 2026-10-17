@@ -18,7 +18,10 @@ test('Main hint detects only pristine base-only models', () => {
   assert.equal(isBaseOnlyModel(base()), true);
   assert.equal(isBaseOnlyModel({ ...base(), processRevision: 1 }), false);
   assert.equal(isBaseOnlyModel({ ...base(), layers: [{ id: 'deposit' }] }), false);
-  assert.equal(isBaseOnlyModel({ ...base(), regions: [{ stack: [{ layerId: 'deposit' }] }] }), false);
+  assert.equal(
+    isBaseOnlyModel({ ...base(), regions: [{ stack: [{ layerId: 'deposit' }] }] }),
+    false,
+  );
   assert.equal(isBaseOnlyModel({ ...base(), implants: [{ id: 1 }] }), false);
   assert.equal(isBaseOnlyModel({ ...base(), electricalRegions: [{ id: 1 }] }), false);
   assert.equal(isBaseOnlyModel({ ...base(), array: { instances: [{ x: 0, y: 0 }] } }), false);

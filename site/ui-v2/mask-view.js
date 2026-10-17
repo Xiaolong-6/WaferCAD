@@ -68,7 +68,9 @@ export async function createMaskView({ project, sharedState, workstation } = {})
     ],
   });
   const updateEmptyHint = () =>
-    emptyHint.update(Boolean(workstation && !workstation.readOnlyPreview && isEmptyActiveMask(state)));
+    emptyHint.update(
+      Boolean(workstation && !workstation.readOnlyPreview && isEmptyActiveMask(state)),
+    );
   const caption = () =>
     `${state.maskSourceMode === 'draw' ? `${state.drawMask.shapes.length} drawn shapes` : `${state.layout.elements.length} File elements`} · ${units.label()}`;
   const iconButton = (hint, action, glyph, extra = {}) =>

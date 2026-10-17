@@ -73,7 +73,9 @@ export async function createMainView({ project, sharedState, workstation, render
   });
   // Only the full editable workstation has a Process workflow to open.
   const updateEmptyHint = () =>
-    emptyHint.update(Boolean(workstation && !workstation.readOnlyPreview && isBaseOnlyModel(state?.model)));
+    emptyHint.update(
+      Boolean(workstation && !workstation.readOnlyPreview && isBaseOnlyModel(state?.model)),
+    );
   const caption = () =>
     `${state.model.layers.length} layers · ${modelInventoryCount(state.model)} · ${units.label()}`;
   function sync() {
