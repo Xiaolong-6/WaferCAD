@@ -25,6 +25,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Capture exact S6 test Prettier change (temporary diagnostic)
+        shell: bash
+        run: |
+          npx prettier --write site/tests/swx-mems-sem-v2-unit.test.mjs
+          mkdir -p test-results/swx-sem-v2
+          git diff -- site/tests/swx-mems-sem-v2-unit.test.mjs > test-results/swx-sem-v2/prettier.patch
       - name: Scientific invariants for newly oriented single MEMS unit
         run: node --test site/tests/swx-mems-sem-v2-unit.test.mjs
       - name: Execute actual OFF/ON Kernel and common Recipe
