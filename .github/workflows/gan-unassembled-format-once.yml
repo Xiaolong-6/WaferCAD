@@ -1,0 +1,50 @@
+name: One-shot GaN unassembled formatting and targeted test
+
+on:
+  push:
+    branches:
+      - feat/example-gan-hemt-microchannel-20261014
+    paths:
+      - .github/workflows/gan-unassembled-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-verify:
+    if: github.ref == 'refs/heads/feat/example-gan-hemt-microchannel-20261014'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Format exactly four text files
+        run: |
+          npx --no-install prettier --write \
+            site/tests/gan-unassembled-components.test.mjs \
+            scripts/gan-unassembled-visual-acceptance.mjs \
+            site/tests/welcome-example.test.mjs \
+            docs/wiki/Examples-and-Modeling-Limits.md
+          git diff --check
+      - name: Validate four native project Main and Welcome tests
+        run: |
+          node --test site/tests/gan-unassembled-components.test.mjs site/tests/welcome-example.test.mjs site/tests/wiki-manual.test.mjs
+      - name: Commit formatting only and remove one-shot workflow
+        run: |
+          test "$GITHUB_REF_NAME" = 'feat/example-gan-hemt-microchannel-20261014'
+          git add site/tests/gan-unassembled-components.test.mjs \
+            scripts/gan-unassembled-visual-acceptance.mjs \
+            site/tests/welcome-example.test.mjs \
+            docs/wiki/Examples-and-Modeling-Limits.md
+          git rm .github/workflows/gan-unassembled-format-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --cached --stat
+          git commit -m 'style(gan): format independent Main tests and remove one-time helper [skip ci]'
+          git push origin "HEAD:$GITHUB_REF_NAME"
