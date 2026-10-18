@@ -6,7 +6,7 @@ import {
   contoursToPositions,
   ownedContourSegments,
   sectionCutContours,
-  transparentInspectionContours,
+  borderInspectorContours,
 } from '../three-outline-geometry.js';
 import { roughProfileOffsetAtPoint } from '../surface-rendering.js';
 import { boundaryProfileFromPositions } from '../rough-boundary-profile.js';
@@ -21,7 +21,7 @@ const square = [
   ],
 ];
 
-test('transparent outlines deduplicate owned segments without exposing tessellation', () => {
+test('production border inspector deduplicates physical contours without exposing tessellation', () => {
   const exterior = [
     [
       [0, 0, 0],
@@ -32,14 +32,15 @@ test('transparent outlines deduplicate owned segments without exposing tessellat
       [0, 0, 0],
     ],
   ];
-  const internal = { z: 1, buried: true, polys: [square], layerId: 'buried' };
-  const result = transparentInspectionContours({
+  const internal = { z: 1, buried: true, polys: [square], layerId: 'buried', interfaceLayerId: 'base' };
+  const result = borderInspectorContours({
     borderLines: exterior,
     caps: [internal, { ...internal, z: 2, buried: false }],
   });
-  assert.equal(result.exposed.length, 1);
-  assert.equal(result.buried.length, 4);
-  assert.equal(contoursToPositions(result.buried).length, 24);
+  assert.equal(result.exterior.length, 1);
+  assert.equal(result.interface.length, 4);
+  assert.equal(result.buried.length, 0);
+  assert.equal(contoursToPositions(result.interface).length, 24);
   assert.equal(ownedContourSegments(exterior).length, 1);
 });
 

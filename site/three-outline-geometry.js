@@ -432,14 +432,3 @@ export function contoursToPositions(lines) {
   return ownedContourSegments(lines).flat(2);
 }
 
-// Physical outline spans are also used for the subdued hidden-line reference.
-// Includes exposed perimeter/cut edges, but never triangulation or LOD seams.
-export function transparentInspectionContours(plan, options = {}) {
-  const exposed = ownedContourSegments(plan?.borderLines || []);
-  const buried = buriedInterfaceContours(plan?.caps || [], options);
-  const exposedKeys = new Set(exposed.map(([a, b]) => segmentKey(a, b)));
-  return {
-    exposed,
-    buried: buried.filter(([a, b]) => !exposedKeys.has(segmentKey(a, b))),
-  };
-}
