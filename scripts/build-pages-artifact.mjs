@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Developer fixtures are versioned in Git but are not part of the public application.
-const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/'];
+const excludedDirectories = ['tests/', 'ui-v2/prototypes/', 'ui-v2/reviews/', 'experimental/microdisk/'];
 const excludedFiles = new Set([
   // Archived Legacy source must never be republished as executable UI.
   'app-legacy.html',
@@ -11,8 +11,8 @@ const excludedFiles = new Set([
   'workstation.css',
   // Experimental science oracles belong to tests/preview, not the shipped v2 bundle.
   'isotropic-release-topology.js',
-  'physical-facet-coating.js',
-  'physical-facet-coating-section.js',
+  'experimental/physical-facets/physical-facet-coating.js',
+  'experimental/physical-facets/physical-facet-coating-section.js',
   // Retired browser-only modules retained in Git, not imported by the v2 product.
   'workstation-ui.js',
   'controllers/build-controller.js',

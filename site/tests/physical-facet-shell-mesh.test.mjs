@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
+import { makePhysicalPyramidOwner } from '../experimental/physical-facets/physical-facet-owner.js';
 import {
   createPhysicalFacetShellQuery,
   makePhysicalFacetShell,
-} from '../physical-facet-shell-owner.js';
-import { triangulatePhysicalFacetShell } from '../physical-facet-shell-mesh.js';
+} from '../experimental/physical-facets/physical-facet-shell-owner.js';
+import { triangulatePhysicalFacetShell } from '../experimental/physical-facets/physical-facet-shell-mesh.js';
 
 const silicon = makePhysicalPyramidOwner({
   layerId: 'base',

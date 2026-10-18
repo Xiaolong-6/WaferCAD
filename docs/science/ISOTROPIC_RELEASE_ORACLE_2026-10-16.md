@@ -1,5 +1,7 @@
 # Microdisk isotropic release — pure mathematical oracle (#298)
 
+> **Current status (October 2026):** The bounded Process oracle is opt-in. Draft [PR #332](https://github.com/Xiaolong-6/WaferCAD/pull/332) keeps the separately saved adaptive project, generator, science tests and Chromium evidence in [site/experimental/microdisk](../../site/experimental/README.md). Default Microdisk, snapshots and legacy 8-band replay do not change. The original Fig. 2a SEM depicts a similar sample and the assumed 36 µm radius remains unverified.
+
 The final #242 Microdisk remains an eight-slice selective Si release from a
 paper-derived 148/82 µm SiO₂ mask. Source-independent calculations already
 verify the 1.8 µm oxide and ~230 ng oxide mass; the **36 µm release radius is an

@@ -5,7 +5,7 @@ import {
   applyExperimentalPhysicalFacetConformal,
   assertExperimentalPhysicalFacetNotRendered,
   validateExperimentalPhysicalFacetModel,
-} from './physical-facet-model.js';
+} from './experimental/physical-facets/physical-facet-model.js';
 import {
   MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
   validateMaterialThicknessUm,

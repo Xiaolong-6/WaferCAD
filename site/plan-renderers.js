@@ -7,7 +7,7 @@ import {
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { drawPlanGrid } from './plan-grid.js';
-import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
+import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
   electricalRegionSurfaceGroups,

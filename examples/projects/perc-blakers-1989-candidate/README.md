@@ -1,6 +1,12 @@
 # PERC / Blakers 1989 example candidate
 
-Status: **staging only**. This branch is intentionally not wired into `site/bundled-examples.js` and is not opened as a PR yet.
+**Status reviewed 2026-10-18:** A PERC family is now registered as
+`perc-point-contact-solar-cell` with its published project at
+`site/examples/perc-solar-cells-point-contacts.wafercad`. This candidate
+folder preserves the originally supplied files, hashes and implant-host
+repair procedure; it is not the published runtime asset. The paper's
+unpublished Mask placement and figure correspondence remain subject to
+independent scientific acceptance.
 
 Baseline: `main@0fab3c05e5adc1691775519332be3553dc4fb33e`.
 
@@ -37,7 +43,7 @@ The staging repair deliberately removes only those oxide-hosted C09 annotation p
 
 `repair_stale_implant.py` reproduces the repair from the supplied source project and refuses an unexpected source hash. A production example regression should still assert that every surviving C09 Implant patch is hosted by base Si after C09 and after the C10 oxide strip.
 
-## Presentation work before promotion
+## Original candidate presentation recommendations (historical)
 
 A full-wafer fit hides the 25 um front stripes, so the production example should save useful presentation states:
 
@@ -47,11 +53,15 @@ A full-wafer fit hides the 25 um front stripes, so the production example should
 
 The supplied screenshots also show occasional stale-frame timing after restore/ROI/maximize. Treat that as a separate renderer/UI timing investigation; do not encode screenshot pixels as the example contract.
 
-For Welcome promotion, register the title as **PERC solar cells with point contacts** and use the project-backed read-only Main / Mask / 3D / Section mini viewer as the primary preview. `site/example-previews/perc-blakers-1989.jpg` may remain only as a loading/error fallback; paper figures are not used as preview assets.
+The corresponding Welcome project is already registered and uses a
+project-backed read-only Main/Mask/3D/Section preview. The former JPG is
+retained solely as historical evidence at
+`docs/archive/example-previews/perc-blakers-1989.jpg`; it must not be used
+as a current Welcome fallback or as publication microscopy.
 
-## Promotion plan
+## Original staging promotion checklist (historical)
 
-When this repaired staging candidate is promoted:
+The original candidate-stage plan required:
 
 - place the final project under `site/examples/`;
 - add a **solar-cell literature** entry to `site/bundled-examples.js`, citing Blakers et al., *Applied Physics Letters* 55, 1363–1365 (1989), DOI `10.1063/1.101596`, directly on the Welcome card;
@@ -59,4 +69,7 @@ When this repaired staging candidate is promoted:
 - add a Chromium restore/variant check to `scripts/example-regression.mjs`;
 - only then open the branch as a PR and run CI.
 
-No production example registration has been made on this staging branch. CI is intentionally not requested for this staging-only work.
+At that original candidate checkpoint no production registration had been
+made and no CI was requested. The separately promoted project is now in the
+Welcome catalog; the scientific and browser gate for any further update
+remains independent of this historical source file.

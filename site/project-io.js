@@ -1,7 +1,7 @@
 import { isArrayModel, storedModelParts } from './model-array.js';
 import { migrateProjectFile, validateProjectFile } from './project-schema.js';
 import { compactGeometryDictionary, expandGeometryDictionary } from './project-geometry-storage.js';
-import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
+import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 
 export const MAX_PROJECT_FILE_BYTES = 256 * 1024 * 1024;
 export const PROJECT_LENGTH_QUANTUM_UM = 0.0001;

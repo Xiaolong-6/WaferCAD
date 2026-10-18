@@ -1,7 +1,7 @@
 // One project owner. View facades isolate gesture state while sharing actual project references.
 import { readProjectFile, serializeProject } from '../project-io.js';
 import { CURRENT_PROJECT_VERSION } from '../project-schema.js';
-import { attachExperimentalPhysicalFacetOwner } from '../physical-facet-model.js';
+import { attachExperimentalPhysicalFacetOwner } from '../experimental/physical-facets/physical-facet-model.js';
 import { createProjectStateController } from '../controllers/project-state-controller.js';
 import { createSelectionGeometry } from '../selection-geometry.js';
 import { maskLocalToWorld } from '../mask-roi-geometry.js';

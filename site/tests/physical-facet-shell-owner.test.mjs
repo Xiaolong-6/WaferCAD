@@ -6,9 +6,9 @@ import {
   createPhysicalFacetShellQuery,
   makePhysicalFacetShell,
   restorePhysicalFacetShell,
-} from '../physical-facet-shell-owner.js';
-import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
-import { samplePhysicalPyramidSlab, squarePyramidSample } from '../physical-facet-math.js';
+} from '../experimental/physical-facets/physical-facet-shell-owner.js';
+import { makePhysicalPyramidOwner } from '../experimental/physical-facets/physical-facet-owner.js';
+import { samplePhysicalPyramidSlab, squarePyramidSample } from '../experimental/physical-facets/physical-facet-math.js';
 
 const silicon = makePhysicalPyramidOwner({
   layerId: 'base',

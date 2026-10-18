@@ -25,16 +25,16 @@ This audit reconciles the current feature-branch documentation with the merged c
 - `docs/ARCHITECTURE.md`
 - `docs/USAGE.md`
 - `docs/DEVELOPMENT.md`
-- `docs/PROCESS_BENCHMARKS.md`
+- `docs/science/PROCESS_BENCHMARKS.md`
 - `docs/PRODUCT_REVIEW.md`
 - `docs/MASK_DRAW_PLAN.md`
 - `docs/COMPETITIVE_LANDSCAPE.md`
-- `docs/IMPLANT.md`
-- `docs/ROUGHNESS_MORPHOLOGY.md`
+- `docs/science/IMPLANT.md`
+- `docs/science/ROUGHNESS_MORPHOLOGY.md`
 
 ## Documents reviewed without contract changes
 
-- `docs/KLAYOUT_LAYOUT_COMPATIBILITY.md` — parser/import scope is unaffected by the merged renderer/UI work.
+- `docs/io/KLAYOUT_LAYOUT_COMPATIBILITY.md` — parser/import scope is unaffected by the merged renderer/UI work.
 - Third-party notices/vendor documentation — dependency provenance is unaffected.
 - Review screenshots under `docs/review/` — historical artifacts are kept as evidence of their original run rather than rewritten as current screenshots.
 
@@ -72,7 +72,7 @@ The 3D Implant inspection contract was tightened without changing canonical proc
 - **Inspection-path distinction:** Section A–B samples the A–B line; 3D ROI sidewalls lie on the ROI perimeter. They share the same model and rendering semantics, but they are not automatically the same physical cut. Annular/radial structures can therefore intersect metal or Implant regions at different lateral coordinates. One-to-one comparison requires aligning A–B with the ROI edge being inspected.
 - **Regression coverage:** annotation/unit tests check ROI cut ownership and shared gradient constants; the focused 3D source regression locks the shader/cut-face contract; the real-WebGL product regression now checks that opaque ROI inspection creates a cut-face mesh without restoring the buried internal volume and that transparent inspection adds the gradient volume.
 
-This follow-up was documented in `README.md`, `docs/IMPLANT.md`, `docs/USAGE.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/PRODUCT_REVIEW.md`. Runtime browser/WebGL review remains the final visual acceptance step; this audit does not claim that a visual pass has run merely because static regression coverage exists.
+This follow-up was documented in `README.md`, `docs/science/IMPLANT.md`, `docs/USAGE.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/PRODUCT_REVIEW.md`. Runtime browser/WebGL review remains the final visual acceptance step; this audit does not claim that a visual pass has run merely because static regression coverage exists.
 
 ## Completed integration review — 2026-10-05
 

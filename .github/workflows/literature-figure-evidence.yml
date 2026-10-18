@@ -14,7 +14,7 @@ on:
       - 'site/model.js'
       - 'site/tests/isotropic-release-*.test.mjs'
       - 'docs/science/ISOTROPIC_RELEASE_ORACLE_2026-10-16.md'
-      - 'docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
+      - 'docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md'
       - 'docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json'
       - 'site/examples/photodetector-literature-examples.wafercad'
       - '.github/workflows/literature-figure-evidence.yml'
@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           failure=0
-          for file in site/tests/isotropic-release-optin.test.mjs site/tests/isotropic-release-microdisk-source.test.mjs site/isotropic-release-topology.js site/tests/isotropic-release-topology.test.mjs site/tests/literature-provenance-matrix.test.mjs docs/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs scripts/v2/capture-literature-native-v2.mjs site/tests/native-literature-cases.test.mjs; do
+          for file in site/tests/isotropic-release-optin.test.mjs site/tests/isotropic-release-microdisk-source.test.mjs site/isotropic-release-topology.js site/tests/isotropic-release-topology.test.mjs site/tests/literature-provenance-matrix.test.mjs docs/evidence/SCIENCE_FIGURE_EVIDENCE_2026-10-16.md scripts/v2/check-m3d-second-power-via-section.mjs scripts/v2/capture-literature-native-v2.mjs site/tests/native-literature-cases.test.mjs; do
             diff -u "$file" <(npx prettier "$file") || failure=1
           done
           exit "$failure"

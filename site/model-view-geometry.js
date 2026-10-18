@@ -17,9 +17,9 @@ import {
   unionGeometries,
 } from './vector-geometry.js';
 import { visibleMaterialModel } from './model.js';
-import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
-import { physicalPyramidSection } from './physical-facet-surface.js';
-import { createPhysicalFacetShellQuery } from './physical-facet-shell-owner.js';
+import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
+import { physicalPyramidSection } from './experimental/physical-facets/physical-facet-surface.js';
+import { createPhysicalFacetShellQuery } from './experimental/physical-facets/physical-facet-shell-owner.js';
 import {
   appearanceSurfaceGroupsFromTopology,
   extrusionGroupsFromTopology,

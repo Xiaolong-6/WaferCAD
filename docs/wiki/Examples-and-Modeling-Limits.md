@@ -41,7 +41,7 @@ _Section screenshot from a reproducible browser visual reference (2026-10-05); d
 - **A**: front Al₂O₃ coverage; **B**: inactive-area SiO₂/Al₂O₃. Induced p-inversion and n-accumulation use **Electrical Region** annotations.
 - Ge-hosted Electrical Region marks may be placed in the saved geometric sequence ahead of the physically causative passivation deposition to preserve their material host. Read the annotations as **anticipated** zones, not prematurely induced physical states.
 
-For detailed assumptions, source differences, and the reconstruction acceptance scope see [Photodetector kernel rebuild notes](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md).
+For detailed assumptions, source differences, and the reconstruction acceptance scope see [Photodetector kernel rebuild notes](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md).
 
 ## 2. PERC solar cells with point contacts
 
@@ -111,7 +111,7 @@ _This is a deliberately labeled illustrative schematic, not a rendered 3D screen
 
 The editable example opens with **10 History nodes**, **6 saved fabrication checkpoints** and a **nine-operation Recipe**. Starting from the documented glass display substrate, it deposits **13 nm ITO**, **1,500 nm TiO₂**, **200 nm PMMA**, develops the meta-atom Mask openings, deposits **30 nm Cr**, applies **Lift-off**, etches TiO₂ through the complementary Cr mask, then strips Cr. The remaining cross-sections include a circle, square, annular ring, and ring-plus-central-disk. Use Main, Section and 3D to inspect the canonical geometry and the deliberately empty ring holes.
 
-**Source boundary:** The paper provides the device aperture (30 µm), approximate 4,725 TiO₂ structures, 1.5 µm height, fabrication sequence and geometry families; it does **not** provide all optimized site coordinates/sizes. Opening the example loads the complete **4,725-site GRID array**, its matching Mask, nine Recipe steps, ten compiled History nodes and six checkpoints. The cover previews four representative units. Both XY layouts are illustrative. The earlier golden-angle GDS/CSV remains a separate layout; neither is an optical phase or efficiency reproduction. The [four-unit process project](https://xiaolong-6.github.io/WaferCAD/examples/tio2-metalens-four-unit-process.wafercad) can be rebuilt from a new Base. Full-array stored stages are compiled from processed local templates. Separately, a real Chromium **9/9 Run All from rebuilt Base** has now passed on the complete array, with exported Mask, Recipe, instance roles and XY/Z material occupancy checked within the documented 0.1 nm storage quantization. This is a geometry/process-replay result, **not** an optical design or fabrication validation. See [reconstruction provenance](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md).
+**Source boundary:** The paper provides the device aperture (30 µm), approximate 4,725 TiO₂ structures, 1.5 µm height, fabrication sequence and geometry families; it does **not** provide all optimized site coordinates/sizes. Opening the example loads the complete **4,725-site GRID array**, its matching Mask, nine Recipe steps, ten compiled History nodes and six checkpoints. The cover previews four representative units. Both XY layouts are illustrative. The earlier golden-angle GDS/CSV remains a separate layout; neither is an optical phase or efficiency reproduction. The [four-unit process project](https://xiaolong-6.github.io/WaferCAD/examples/tio2-metalens-four-unit-process.wafercad) can be rebuilt from a new Base. Full-array stored stages are compiled from processed local templates. Separately, a real Chromium **9/9 Run All from rebuilt Base** has now passed on the complete array, with exported Mask, Recipe, instance roles and XY/Z material occupancy checked within the documented 0.1 nm storage quantization. This is a geometry/process-replay result, **not** an optical design or fabrication validation. See [reconstruction provenance](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/examples/TIO2_METALENS_RECONSTRUCTION_2026-10-09.md).
 
 ## How to explore or reproduce an example
 
@@ -131,3 +131,26 @@ WaferCAD evaluates **mask-conditioned 2.5D material geometry** from XY vector do
 WaferCAD does not predict ALD/sputter transport, etch rates, implantation dose/energy/depth profiles, activation, electrical fields, carrier motion, device I–V, photovoltaic conversion efficiency, optical responsivity or mechanical stability. Rough/Pyramid are **render-only** surface morphologies. Implant and Electrical Region are user-defined annotations; Anneal/Clean Record steps store metadata without chemically changing materials.
 
 **Provenance matters:** distinguish source-reported dimensions and steps from inferred masks, reconstructed geometry, idealized transfer/CMP and display-only textures. Use WaferCAD for structural reasoning, process teaching and mask-aware geometry inspection, and validated physics tools or measurements for performance claims.
+
+## Optional research geometry: not required for Welcome projects
+
+The eight Welcome examples deliberately use **lightweight process geometry**
+and display-only Roughness/pyramidal relief where appropriate. Rendering a
+pyramid does not imply that the full 3D facets participated in Boolean Process
+operations; that is an intentional performance trade-off, **not** a defect or
+reason to rebuild the examples.
+
+Optional research is collected under [`site/experimental/`](https://github.com/Xiaolong-6/WaferCAD/tree/main/site/experimental):
+
+- **Physical Si/SiO₂ facets (#297):** a precise point-material oracle,
+  expensive closed surface tessellation and a restricted Both-face SiO₂
+  Conformal operation. Not a default project mode; unsupported process and
+  normal editable imports must reject rather than produce false geometry.
+- **Microdisk adaptive release (#298):** a separate saved 72-band Variant,
+  preserving the published eight-band source project and its History.
+  The 36 µm release radius is assumed, not author-measured.
+
+Neither research path validates unpublished author masks, device-identical SEM,
+full-wafer manufacturing fidelity, or optoelectronic predictive performance.
+Default Examples, Roughness, and normal History/Recovery behavior do not require
+migration to these research structures.

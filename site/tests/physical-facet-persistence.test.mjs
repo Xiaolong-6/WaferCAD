@@ -6,11 +6,11 @@ import {
   attachExperimentalPhysicalFacetOwner,
   attachExperimentalPhysicalFacetShell,
   validateExperimentalPhysicalFacetModel,
-} from '../physical-facet-model.js';
-import { makePhysicalPyramidOwner, physicalOwnerVolume } from '../physical-facet-owner.js';
-import { createPhysicalFacetShellQuery } from '../physical-facet-shell-owner.js';
-import { buildPhysicalFacetPresentation } from '../physical-facet-render-geometry.js';
-import { physicalPyramidSection, physicalPyramidSolidMesh } from '../physical-facet-surface.js';
+} from '../experimental/physical-facets/physical-facet-model.js';
+import { makePhysicalPyramidOwner, physicalOwnerVolume } from '../experimental/physical-facets/physical-facet-owner.js';
+import { createPhysicalFacetShellQuery } from '../experimental/physical-facets/physical-facet-shell-owner.js';
+import { buildPhysicalFacetPresentation } from '../experimental/physical-facets/physical-facet-render-geometry.js';
+import { physicalPyramidSection, physicalPyramidSolidMesh } from '../experimental/physical-facets/physical-facet-surface.js';
 import {
   expandProjectStorage,
   prepareProjectForWorkspaceStorage,

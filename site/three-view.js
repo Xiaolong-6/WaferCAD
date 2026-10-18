@@ -16,11 +16,11 @@ import {
   electricalRegionSolids,
   implantSolids,
 } from './model-view-geometry.js';
-import { buildPhysicalFacetPresentation } from './physical-facet-render-geometry.js';
+import { buildPhysicalFacetPresentation } from './experimental/physical-facets/physical-facet-render-geometry.js';
 import {
   PHYSICAL_FACET_MODEL_KERNEL,
   validateExperimentalPhysicalFacetModel,
-} from './physical-facet-model.js';
+} from './experimental/physical-facets/physical-facet-model.js';
 import { buildRenderSurfacePlan } from './renderer-geometry.js';
 import {
   ownedContourSegments,
