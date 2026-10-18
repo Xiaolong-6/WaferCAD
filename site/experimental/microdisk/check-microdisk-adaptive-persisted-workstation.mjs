@@ -103,6 +103,14 @@ try {
   await selectScientificView(page, 'three', 1560);
   await waitForThreeReady(page, 180000);
   evidence.timingsMs.threeFirstReady = elapsed(threeStart);
+  evidence.threeDiagnostics = await page.evaluate(() => {
+    const host = document.getElementById('threeHost');
+    return Object.fromEntries(
+      Object.entries(host?.dataset || {}).filter(([key]) =>
+        /^(renderer|scene|surface|smooth|sidewall|triangle|webgl|modelRevision|processRevision|rough)/.test(key),
+      ),
+    );
+  });
   evidence.browserMeasures = await page.evaluate(() =>
     performance
       .getEntriesByType('measure')
