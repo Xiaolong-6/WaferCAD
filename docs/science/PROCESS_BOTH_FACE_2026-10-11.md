@@ -34,7 +34,7 @@ The same syntax is available for directional deposition, Extend, directional/iso
 ## UI v2 integration (implemented 2026-10-12) and remaining presentation work
 
 - Process Surface options: Front / Back / Both. `Both` is an **operation target** only.
-- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the Legacy UI continues to use its previous selector. See the [dated integration and test report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
+- The released v2 Manual Surface selector accepts `Both` and the Recipe editor preserves/restores `params.face === 'both'`; the retired Legacy editor's historical Front/Back-only controls are preserved at the `legacy-frozen` tag. See the [dated integration and test report](../ui-v2/MANUAL_BOTH_ACCEPTANCE_2026-10-12.md).
 - Send a _single_ worker operation with `params.face: 'both'`; do not call Apply twice in the UI.
 - One Both application creates one restorable History Step with two distinct, paired material Layer IDs. The v2 Manual form exposes valid paired material targets and rejects unsupported Both combinations; a more explicit two-child layer/legend presentation remains a **future UX enhancement**.
 - For a symmetric oxidation/ALD-like step, material thickness is measured from each local exposed face into the outward direction (one full thickness on each side). Any future diffusion/chemical/transport model should be a separate physical process implementation.

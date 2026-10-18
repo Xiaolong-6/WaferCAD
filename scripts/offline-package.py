@@ -25,7 +25,7 @@ SCRIPT_NAMES = (
     'offline-chat-acceptance.test.py',
 )
 OPTIONAL_TOP = ('AGENTS.md', 'package.json', 'package-lock.json',
-                'THIRD_PARTY_NOTICES.md', 'docs/OFFLINE_VISUAL_KERNEL.md', 'docs/OFFLINE_CHAT_RUNTIME.md')
+                'THIRD_PARTY_NOTICES.md', 'docs/tools/OFFLINE_VISUAL_KERNEL.md', 'docs/tools/OFFLINE_CHAT_RUNTIME.md')
 MODULE_DIRS = ('three', 'playwright', 'playwright-core')
 ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 MAX_FILES = 25000

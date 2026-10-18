@@ -8,7 +8,18 @@ This is an evidence index, not an alternative product contract. Canonical histor
 - [Export API reachability review](SITE_EXPORT_API_REVIEW_2026-10-13.md)
 - [Scientific symbol review](SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md)
 
-Their historical root URLs remain available as link-forwarding pages.
+Old root paths are removed; current Markdown references use the canonical archive paths directly, without forwarding pages.
+
+## Additional archived provenance (2026-10-18 classification)
+
+- [Documentation lifecycle audit — 2026-10-12](DOCUMENT_LIFECYCLE_AUDIT_2026-10-12.md)
+- [Documentation handoff and closeout — 2026-10-13](HANDOFF_STATUS_2026-10-13.md)
+- [P1 science, release and Recovery handoff — 2026-10-14](P1_SCIENCE_RELEASE_RECOVERY_HANDOFF_2026-10-14.md)
+- [Wiki content and visual audit — 2026-10-12](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md)
+- [Product review screenshots, original PNGs and provenance](review/README.md)
+- Legacy candidate preview JPGs (historical only): [Microdisk](example-previews/microdisk-release.jpg), [PERC](example-previews/perc-blakers-1989.jpg), [Photodetector](example-previews/photodetector-literature.jpg), [Mask visualization](example-previews/visualization-mask.jpg). These are not active Welcome assets.
+
+These are dated source records and original images, not fresh UI acceptance evidence.
 
 ## Additional lifecycle dispositions (2026-10-15)
 
@@ -48,7 +59,7 @@ The following are previously committed, revision-specific records preserved in f
 - [Example storage optimization — 2026-10-06](EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md)
 - [Native Conformal follow-up - 2026-10-06](NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md)
 - [Native three-tier Fig3 Welcome example - 2026-10-06](NATIVE_FIG3_EXAMPLE_2026-10-06.md)
-- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
+- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
 - [Photodetector border and 3D Z follow-up — 2026-10-05](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md)
 
 ### Project storage, loading and presentation
@@ -149,7 +160,7 @@ The following are previously committed, revision-specific records preserved in f
 
 ## Additional retired documents and handoff attachments (2026-10-13)
 
-These records describe earlier revisions. Open issues were transferred to the [current handoff disposition](../HANDOFF_STATUS_2026-10-13.md); original test claims are historical evidence, not current acceptance.
+These records describe earlier revisions. Open issues were transferred to the [current handoff disposition](HANDOFF_STATUS_2026-10-13.md); original test claims are historical evidence, not current acceptance.
 
 - [Pre-main desktop audit](PRE_MAIN_DESKTOP_AUDIT_2026-10-08.md)
 - [UI v2 feature inventory](ui-v2/FEATURE_INVENTORY.md)

@@ -6,11 +6,13 @@ The active product is entirely under `site/`.
 
 `app.html` opens the production v2 Workstation. The Welcome page's four-view
 interactive preview uses a read-only v2 renderer; it never acquires the writer
-lease or saves a preview into the local Workspace. The historical
-`app-legacy.html` editor, `app.js`, and `workstation.css` remain in Git for
-scientific browser regressions pending migration. Published Pages ships only a
-same-origin redirect from `app-legacy.html` to `app.html` (preserving query and
-fragment), and excludes the old editor's executable resources.
+lease or saves a preview into the local Workspace. The executable Legacy editor,
+including `app-legacy.html`, `app.js`, and `workstation.css`, has been removed
+from the active checkout. Its historical source and original DOM checks remain
+reproducible at the immutable `legacy-frozen` tag; native-v2 scientific owners
+run against the current application. The published `app-legacy.html` URL is a
+build-generated redirect to `app.html` that preserves query and fragment.
+See [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) for test and rollback ownership.
 
 The v2 footer links the deployed short commit SHA to its full GitHub commit
 (`commit local` for unstamped development). If browser `localStorage` is
@@ -34,7 +36,7 @@ Open `http://localhost:8000`.
 
 `site/controllers/process-recipe-controller.js` owns the guided Recipe editor and runs existing Process operations; `site/process-recipe.js` is the restricted parser/normalizer and must never execute arbitrary JavaScript. **Continue current model** is additive and requires confirmation when a process revision exists. **Rebuild Base first (new Main)** reuses the Base controller's Keep/Clear/Cancel transaction and begins a fresh Main lineage. The Base History contract lives in `workspace-snapshots.js`: when archiving from a detached historical cursor, preserve the source Variant's **original HEAD**, not the currently inspected Step. New features must cover this with unit and browser tests, including Save/Open and Undo/Redo branch graphs.
 
-Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs. Material process lengths follow the [numerical/physical interpretation contract](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md); the continuum Z representation threshold is not a universal atomic-film lower bound.
+Typed Recipe lengths bypass the manual form's editing grid when assembling the existing transactional Process worker request. This includes film thickness, etch/CMP depth, Implant/Electrical depth and rough profile lengths. A 0.35 nm Recipe film must execute as 0.35 nm in every display unit. Export selects lossless storage if compact quantization would change physical Z/depth/profile lengths in the live model or any restorable History state; strict compact serialization keeps its documented grid contract. Recipe `snapshot()` is a structural History mutation and must trigger autosave even when no material operation runs. Material process lengths follow the [numerical/physical interpretation contract](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md); the continuum Z representation threshold is not a universal atomic-film lower bound.
 
 Recipe validation drafts are keyed by stable Step ID. Deleting a Step or changing its operation invalidates stale field errors, and Undo/Redo restores the persisted valid Recipe without unapplied field drafts. Run to Step validates only the requested prefix, and displayed error numbers follow current Step order. The Process material menu caches derived exposure only across identical model/revision, active face and Mask selection (Cell, Layers, transform, ROI, Draw source, layout elements); Geometry Kernel and Process worker validation remain authoritative. See [the Recipe field/cache integration note](archive/RECIPE_LOCAL_REPAIR_2026-10-08.md) for the original patch provenance and acceptance boundaries.
 
@@ -136,7 +138,7 @@ Surface/Implant changes should add both pure geometry/profile assertions and at 
 
 See [Testing](testing.md) for current product layout/renderer commands and [Product review](archive/PRODUCT_REVIEW.md) for the historical Chromium gallery and interaction evidence. Current CI selects semantic coverage by ownership; full screenshot galleries belong to weekly/manual full runs with pinned Three.js. See [Testing](testing.md) for suite ownership and [Development handoff](COLLABORATION.md) for ChatGPT/Codex coordination.
 
-See [Process benchmarks](PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
+See [Process benchmarks](science/PROCESS_BENCHMARKS.md) for analytic step/trench/island geometry, both faces, Direct/Conformal/Grow/Etch checks, and explicit approximation boundaries. These tests run under `npm test`.
 
 ## UI visual system
 
