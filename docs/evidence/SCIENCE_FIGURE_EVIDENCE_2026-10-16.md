@@ -2,7 +2,7 @@
 
 This is a machine-readable **scientific provenance and acceptance gate**, not a
 second set of bundled-example source metadata. The authoritative file is
-[`docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json`](evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json).
+[`docs/evidence/LITERATURE_FIGURE_MATRIX_2026-10-16.json`](LITERATURE_FIGURE_MATRIX_2026-10-16.json).
 Catalog ID, source URI and shipped project path must remain synchronized with
 `site/bundled-examples.js`.
 

@@ -1,10 +1,10 @@
 # Historical product-review screenshots
 
 These five images are the retained acceptance captures from the historical
-[product interaction and visual regression review](../archive/PRODUCT_REVIEW.md).
+[product interaction and visual regression review](../PRODUCT_REVIEW.md).
 They document the original tested UI, and are **not** current production baselines.
 For the underlying environment, tested revision, and full gallery provenance, read
-the linked review and its [validation record](../archive/VALIDATION_2026-10-05.md).
+the linked review and its [validation record](../VALIDATION_2026-10-05.md).
 
 - [Wide A–B editor](ab-wide.png)
 - [Phone A–B editor](ab-phone.png)

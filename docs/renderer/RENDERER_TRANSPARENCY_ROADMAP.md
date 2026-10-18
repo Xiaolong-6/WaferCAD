@@ -1,6 +1,6 @@
 # Renderer transparency bottleneck and phased LOD plan
 
-**Status:** Open performance debt; frame-time targets remain **non-blocking** under the recorded 2026-10-08 acceptance policy. Current main includes the integrated renderer; PR #135 is historical provenance, not a pending main blocker. Owner: 3D Renderer / persistent-scene presentation. This document is the canonical forward plan, not a claim that all phases have shipped; see [the dated v2.1 audit](archive/RENDERER_PERSISTENT_SCENE_V2_1_AUDIT_2026-10-08.md) for the commit-by-commit experiments and CI evidence.
+**Status:** Open performance debt; frame-time targets remain **non-blocking** under the recorded 2026-10-08 acceptance policy. Current main includes the integrated renderer; PR #135 is historical provenance, not a pending main blocker. Owner: 3D Renderer / persistent-scene presentation. This document is the canonical forward plan, not a claim that all phases have shipped; see [the dated v2.1 audit](../archive/RENDERER_PERSISTENT_SCENE_V2_1_AUDIT_2026-10-08.md) for the commit-by-commit experiments and CI evidence.
 
 ## Scope and measured evidence
 
@@ -113,7 +113,7 @@ For the historical **Persistent Scene v2.1 integration PR #135** and its current
 
 [PR #164](https://github.com/Xiaolong-6/WaferCAD/pull/164) tested two
 presentation-only changes; see the dated
-[Transparency Renderer v2 handoff](archive/TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md)
+[Transparency Renderer v2 handoff](../archive/TRANSPARENCY_RENDERER_V2_HANDOFF_2026-10-09.md)
 for exact CI evidence and measured wall times.
 
 - **Keep the restricted smooth planar-cap transparent single pass.** It leaves

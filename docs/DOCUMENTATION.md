@@ -7,8 +7,12 @@
 - `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
 - `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
 - `docs/wiki/` stays flat for the Main-only GitHub Wiki publisher, with its SVG assets under `assets/`.
-- `docs/archive/` owns frozen historical audits; old data and dates remain unchanged.
-- `docs/review/` contains retained historical visual evidence and does not certify current UI.
+- `docs/archive/` owns frozen historical audits, handoffs and original review images under `archive/review/`; old evidence is not a current baseline.
+- `docs/renderer/` owns 3D renderer contracts, open plans and dated technical evidence.
+- `docs/io/` owns layout interchange and Process report contracts.
+- `docs/tools/` owns offline diagnostic tooling, not production renderer alternatives.
+- `docs/operations/` owns repository release/retirement administration.
+- `docs/evidence/` owns research figure provenance and reproducibility registers.
 
 When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers.** The old GitHub file URL may cease to work; clean directory ownership and correct current references take precedence. Run the documentation link graph check and keep scientific provenance intact.
 
@@ -53,7 +57,7 @@ flowchart LR
 
 - Edit operation names/descriptions in `site/process-guide.js` and illustrations in `site/process-guide-svg.js`; run `npm run docs:build` and commit the generated operation reference **and all affected SVG assets** with their sources. The old `site/guide/` route is a compatibility redirect to the Wiki.
 - The same command generates `site/ui-v2/process-guide.generated.js`, a classic-script bridge used only by the portable mock preview, including direct `file://` boot. Never hand-edit its catalog or diagrams. `docs:check` rejects bridge drift; `process-guide.test.mjs` compares all 19 Before/After pairs to the canonical modules. This does not connect production Process controllers or alter geometry.
-- Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
+- Edit other Wiki pages directly. For figures, use exact named-example WaferCAD assets or the canonical Process Guide schematics with source-aware captions; for interaction logic, prefer Mermaid. No generic filler images, unattributed article figures or unlabeled visual approximations. The [visual audit](archive/WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md) records the page-by-page decisions.
 - `site/bundled-examples.js` owns the eight-family Welcome catalog; its IDs, titles and DOI provenance must agree with the examples chapter.
 - `docs/wiki/_Sidebar.md` and `Home.md` own manual navigation. Wiki-relative links omit `.md`; repository-relative links include real filenames. Use links, rather than inline code paths, when readers should open a file.
 - [Wiki sync](WIKI_SYNC.md) owns credentials and managed-page replacement. [CI routing](CI.md) owns trigger behavior. Relevant documentation PRs run focused Process Guide, Wiki and navigation Node tests in a read-only workflow; only the separate Main push workflow may publish Wiki content. Wiki checks also run on every Main push; referenced SVG assets are served from versioned repository files through main-branch raw URLs. Pages is independently path-filtered. A repository commit, a successful Wiki sync and a successful Pages deployment are distinct evidence.

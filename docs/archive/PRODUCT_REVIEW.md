@@ -91,11 +91,11 @@ Visual findings fixed during the review were covered endpoints, clipped header c
 
 Representative final captures:
 
-- [Wide A/B editing](../review/ab-wide.png)
-- [Phone A/B editing](../review/ab-phone.png)
-- [Phone nm-scale ROI editor](../review/roi-phone.png)
-- [Front Conformal trench](../review/trench-front.png)
-- [Back Conformal island, viewed from below](../review/island-back.png)
+- [Wide A/B editing](review/ab-wide.png)
+- [Phone A/B editing](review/ab-phone.png)
+- [Phone nm-scale ROI editor](review/roi-phone.png)
+- [Front Conformal trench](review/trench-front.png)
+- [Back Conformal island, viewed from below](review/island-back.png)
 
 The CI artifact contains the full gallery, 12 reopenable Direct/Conformal/Etch fixtures, and `preview/`. To run the tested preview after downloading the artifact, serve that directory with `python3 -m http.server 8000 --directory preview`, then open `http://localhost:8000`. The preview footer identifies the tested commit.
 

@@ -27,4 +27,4 @@ Mask export can emit **SVG, GDSII, or OASIS** from the active source. When Mask 
 - `site/selection-geometry.js` owns active-source and Mask ROI process-selection geometry.
 - Project schema/storage owns persisted Draw and Mask ROI state.
 
-The older [Mask File / Draw plan](archive/MASK_DRAW_PLAN.md) is retained as historical design evidence and must not be used as the current behavior contract.
+The older [Mask File / Draw plan](../archive/MASK_DRAW_PLAN.md) is retained as historical design evidence and must not be used as the current behavior contract.

@@ -127,7 +127,7 @@ test('categorized documents have no forwarding files or obsolete root aliases', 
   const archived = (await readdir(archiveRoot, { recursive: true }))
     .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
-  assert.equal(archived.length, 82, 'archive inventory must be reviewed deliberately');
+  assert.equal(archived.length, 87, 'archive inventory must be reviewed deliberately');
   for (const entry of archived) {
     assert.ok(archiveIndex.includes(`](${entry})`), `archive index must link to ${entry}`);
     await assert.rejects(
@@ -136,6 +136,25 @@ test('categorized documents have no forwarding files or obsolete root aliases', 
       `archive content must have no duplicate root file: ${entry}`,
     );
   }
+});
+
+test('historical review captures have one canonical archival location', async () => {
+  const docs = new URL('../../../docs/', import.meta.url);
+  const review = await readFile(new URL('archive/PRODUCT_REVIEW.md', docs), 'utf8');
+  const evidence = await readFile(new URL('archive/review/README.md', docs), 'utf8');
+  for (const image of [
+    'ab-wide.png',
+    'ab-phone.png',
+    'roi-phone.png',
+    'trench-front.png',
+    'island-back.png',
+  ]) {
+    await access(new URL('archive/review/' + image, docs));
+    await assert.rejects(access(new URL('review/' + image, docs)), { code: 'ENOENT' });
+    assert.ok(review.includes('(review/' + image + ')'));
+    assert.ok(evidence.includes('(' + image + ')'));
+  }
+  await assert.rejects(access(new URL('review/README.md', docs)), { code: 'ENOENT' });
 });
 
 test('documentation rejects published local user paths and credential strings', async (t) => {

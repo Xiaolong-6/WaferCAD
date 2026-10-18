@@ -1,6 +1,6 @@
 # P1 numerical integrity, release routing and Recovery fault handoff — 2026-10-14
 
-> **Status verified 2026-10-16:** [PR #222](https://github.com/Xiaolong-6/WaferCAD/pull/222), which delivered this P1 science/release/Recovery work, merged into Main on 2026-10-14 (`223ba33`). Branch, baseline, and remaining-work statements below are historical checkpoint evidence; consult the active [Testing](testing.md) and [CI](CI.md) contracts for present gates.
+> **Status verified 2026-10-16:** [PR #222](https://github.com/Xiaolong-6/WaferCAD/pull/222), which delivered this P1 science/release/Recovery work, merged into Main on 2026-10-14 (`223ba33`). Branch, baseline, and remaining-work statements below are historical checkpoint evidence; consult the active [Testing](../testing.md) and [CI](../CI.md) contracts for present gates.
 
 ## Baseline and working boundary
 
@@ -23,7 +23,7 @@
 - Recipe serialization no longer rounds canonical lengths to eight significant
   digits when that changes their replayed value.
 - Added Kernel and Recipe regression cases; see
-  [physical interpretation and limitations](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md).
+  [physical interpretation and limitations](../science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md).
 
 ## P1-2: same-SHA publication gates
 

@@ -34,7 +34,7 @@ This audit reconciles the current feature-branch documentation with the merged c
 
 ## Documents reviewed without contract changes
 
-- `docs/KLAYOUT_LAYOUT_COMPATIBILITY.md` — parser/import scope is unaffected by the merged renderer/UI work.
+- `docs/io/KLAYOUT_LAYOUT_COMPATIBILITY.md` — parser/import scope is unaffected by the merged renderer/UI work.
 - Third-party notices/vendor documentation — dependency provenance is unaffected.
 - Review screenshots under `docs/review/` — historical artifacts are kept as evidence of their original run rather than rewritten as current screenshots.
 

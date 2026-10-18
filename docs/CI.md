@@ -77,7 +77,7 @@ the production Three.js import map to those local bytes, avoiding reliance on
 the CDN. Software WebGL flags are opt-in. An environment where browser policy
 blocks `localhost` cannot complete this capture; a geometry-only SVG/VTK image
 must not be reported as a substitute. See
-[Offline Visual Kernel](OFFLINE_VISUAL_KERNEL.md) for separate diagnostic use.
+[Offline Visual Kernel](tools/OFFLINE_VISUAL_KERNEL.md) for separate diagnostic use.
 
 `visual-first.yml` automatically captures applicable **Draft** PRs, and
 can also be dispatched manually. It never publishes and cannot approve
@@ -170,7 +170,7 @@ the frozen source remains reproducible for historical comparisons.
 PRs touching the artifact builder run the staged Pages browser smoke, which
 verifies the bookmark redirect, absence of old JS/CSS, and real production
 Workers under `/WaferCAD/`. The redirect performs no Project/Recovery
-storage migration or mutation. See [Legacy source sunset](LEGACY_SOURCE_SUNSET.md)
+storage migration or mutation. See [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md)
 for remaining scenario-by-scenario fidelity risks.
 
 ## Welcome four-view preview isolation

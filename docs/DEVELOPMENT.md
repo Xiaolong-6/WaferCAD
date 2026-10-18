@@ -12,7 +12,7 @@ from the active checkout. Its historical source and original DOM checks remain
 reproducible at the immutable `legacy-frozen` tag; native-v2 scientific owners
 run against the current application. The published `app-legacy.html` URL is a
 build-generated redirect to `app.html` that preserves query and fragment.
-See [Legacy source sunset](LEGACY_SOURCE_SUNSET.md) for test and rollback ownership.
+See [Legacy source sunset](operations/LEGACY_SOURCE_SUNSET.md) for test and rollback ownership.
 
 The v2 footer links the deployed short commit SHA to its full GitHub commit
 (`commit local` for unstamped development). If browser `localStorage` is

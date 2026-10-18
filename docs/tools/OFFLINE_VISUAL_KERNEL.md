@@ -16,7 +16,7 @@ It accepts `WAFERCAD_CHROMIUM`, optionally enables software WebGL using
 pinned Three.js 0.179.1 dependency to `node_modules/three`. Only this tier can
 supply renderer/UI screenshots. It strictly rejects an unfinished or lost
 3D WebGL frame, and labels captured evidence **unreviewed** until an AI or
-human actually inspects it. See [CI visual-first guidance](CI.md).
+human actually inspects it. See [CI visual-first guidance](../CI.md).
 
 Both tiers are read-only and do not establish scientific/History/Recovery or
 final Quality acceptance. In managed Chromium environments where navigation
