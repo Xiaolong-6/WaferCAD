@@ -164,7 +164,7 @@ test('background project reader attests History asynchronously and retains stric
   assert.equal(state.isValidSnapshotStates(project.snapshots.map((record) => record.state)), true);
 });
 
-test('shared-model History entries use bounded coalesced attestation batches without trusting mutations', async () => {
+test('shared-model attestation batches remain bounded and reject mutations', async () => {
   let yields = 0;
   const sharedModel = { regions: [{ xy: [0.0000004, 7] }] };
   const records = [
