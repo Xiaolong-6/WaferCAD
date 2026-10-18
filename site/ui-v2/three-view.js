@@ -313,12 +313,7 @@ export function createWorkstationThreeView({ store, workstation }) {
     requestRender();
   };
   borderMenu.append(
-    el(
-      'div',
-      { class: 'v2-border-header' },
-      el('strong', {}, 'Border Inspector'),
-      borderEnable,
-    ),
+    el('div', { class: 'v2-border-header' }, el('strong', {}, 'Border Inspector'), borderEnable),
     el('div', { class: 'v2-border-presets' }, ...presetButtons),
     el('div', { class: 'v2-border-rows' }, ...borderRows),
     el(

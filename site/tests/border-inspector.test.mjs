@@ -250,4 +250,3 @@ test('Border Inspector uses native v2 pressed buttons rather than a small checkb
   assert.match(css, /\.v2-border-master\[aria-pressed='true'\]/);
   assert.match(css, /min-height: 44px/);
 });
-

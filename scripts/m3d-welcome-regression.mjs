@@ -95,7 +95,11 @@ try {
   assert.equal(await enabled.getAttribute('aria-pressed'), starting.pressed);
   await enabled.click();
   const toggled = await visualState();
-  assert.notEqual(toggled.pressed, starting.pressed, 'Inspector pressed button changes pressed state');
+  assert.notEqual(
+    toggled.pressed,
+    starting.pressed,
+    'Inspector pressed button changes pressed state',
+  );
   assert.equal(
     toggled.pressed,
     String((await snapshot()).threeDisplay.borders),
