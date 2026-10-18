@@ -5,15 +5,14 @@ import test from 'node:test';
 import { createSnapshotManager } from '../../site/workspace-snapshots.js';
 import { loadGeometryKernel } from '../process-benchmarks.mjs';
 await loadGeometryKernel();
-const [
-  { readProjectFile, prepareProjectForWorkspaceStorage },
-  { geometryArea },
-  { pointInMulti },
-] = await Promise.all([
+const [projectIo, modelModule, geometryModule] = await Promise.all([
   import('../../site/project-io.js'),
   import('../../site/model.js'),
   import('../../site/vector-geometry.js'),
 ]);
+const { readProjectFile, prepareProjectForWorkspaceStorage } = projectIo;
+const { geometryArea } = modelModule;
+const { pointInMulti } = geometryModule;
 const dir = new URL('../../site/examples/', import.meta.url);
 const parse = async (filename) =>
   readProjectFile(new Blob([await readFile(new URL(filename, dir))], { type: 'application/json' }));
