@@ -1094,7 +1094,9 @@ export function createThreeView({
       // Allocating internal contours is optional, but style changes within an
       // allocated outline set are presentation-only (no Kernel/replay cost).
       internalBorderGeometry: borderNeedsInternalGeometry(
-        inspection.borderSettings, inspection.opacity, inspection.borders,
+        inspection.borderSettings,
+        inspection.opacity,
+        inspection.borders,
       ),
       arrayPresentationLod: arrayViewLod(model, clip, inspection).tier,
     });
@@ -1147,7 +1149,12 @@ export function createThreeView({
       case 'border':
       case 'internal-border':
       case 'hidden-border':
-        return borderPresentationState(descriptor, inspection.borderSettings, opacity, inspection.borders);
+        return borderPresentationState(
+          descriptor,
+          inspection.borderSettings,
+          opacity,
+          inspection.borders,
+        );
       case 'implant-cut':
         return {
           visible: true,
@@ -1223,7 +1230,10 @@ export function createThreeView({
       materials = Array.isArray(object.material) ? object.material : [object.material];
     object.visible = Boolean(state.visible);
     for (const material of materials) applyMaterialPresentation(material, state.materialState);
-    if (object.isLineSegments && ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)) {
+    if (
+      object.isLineSegments &&
+      ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
+    ) {
       object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
     } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     return object;
@@ -1371,7 +1381,10 @@ export function createThreeView({
         materials = Array.isArray(object.material) ? object.material : [object.material];
       object.visible = Boolean(state.visible);
       for (const material of materials) applyMaterialPresentation(material, state.materialState);
-      if (object.isLineSegments && ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)) {
+      if (
+        object.isLineSegments &&
+        ['border', 'internal-border', 'hidden-border'].includes(descriptor.kind)
+      ) {
         object.renderOrder = object.userData?.waferCadBorderOrder ?? object.renderOrder;
       } else if (!state.transparentSort && !object.isLineSegments) object.renderOrder = 0;
     }
@@ -1992,7 +2005,8 @@ diffuseColor.a *= waferCadAlphaScale;`,
     if (dashed) edges.computeLineDistances();
     edges.renderOrder = order;
     edges.userData.waferCadBorderOrder = order;
-    edges.userData.waferCadOutlineRole = presentation?.kind === 'hidden-border' ? 'hidden' : 'visible';
+    edges.userData.waferCadOutlineRole =
+      presentation?.kind === 'hidden-border' ? 'hidden' : 'visible';
     edges.userData.waferCadPlanContours = planContours;
     group.add(edges);
     trackZDisplayObject(edges);
@@ -3714,7 +3728,10 @@ diffuseColor.a *= waferCadAlphaScale;`,
       // silhouette outlines. Never manufacture edges from mesh triangles.
       if (borderNeedsInternalGeometry(inspection.borderSettings, opacity, borders)) {
         const contours = borderInspectorContours(plan);
-        for (const [category, lines] of [['interface', contours.interface], ['buried', contours.buried]]) {
+        for (const [category, lines] of [
+          ['interface', contours.interface],
+          ['buried', contours.buried],
+        ]) {
           const positions = displayBorderPositions(contoursToPositions(lines));
           for (const dashed of [false, true]) {
             addBorderPositions(positions, {
@@ -3722,8 +3739,15 @@ diffuseColor.a *= waferCadAlphaScale;`,
               opacity,
               dashed,
               includeHidden: false,
-              dashSize: Math.max(1e-5, Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006),
-              presentation: { kind: 'internal-border', category, lineStyle: dashed ? 'dashed' : 'solid' },
+              dashSize: Math.max(
+                1e-5,
+                Math.min(Number(model.width) || 1, Number(model.height) || 1) * 0.006,
+              ),
+              presentation: {
+                kind: 'internal-border',
+                category,
+                lineStyle: dashed ? 'dashed' : 'solid',
+              },
             });
           }
         }

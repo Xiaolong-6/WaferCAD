@@ -112,14 +112,29 @@
       '3D Border Inspector',
       'Configure physical outline categories and line styles independently of material opacity.',
     ],
-    'three.border.enabled': ['Show borders', 'Show or hide the selected outlines. No geometry or Process state is modified.'],
+    'three.border.enabled': [
+      'Show borders',
+      'Show or hide the selected outlines. No geometry or Process state is modified.',
+    ],
     'three.border.preset.clean': ['Clean', 'Show only exposed outer edges and ROI cut borders.'],
-    'three.border.preset.structure': ['Structure', 'Show interior material interfaces and buried features when transparent.'],
-    'three.border.preset.xray': ['X-Ray', 'Show interior structure and dashed edges occluded by the nearest surface.'],
+    'three.border.preset.structure': [
+      'Structure',
+      'Show interior material interfaces and buried features when transparent.',
+    ],
+    'three.border.preset.xray': [
+      'X-Ray',
+      'Show interior structure and dashed edges occluded by the nearest surface.',
+    ],
     'three.border.exterior': ['Exterior', 'Physical outer surfaces, steps and exposed edges.'],
-    'three.border.interface': ['Material interfaces', 'Real buried boundaries between different material layers.'],
+    'three.border.interface': [
+      'Material interfaces',
+      'Real buried boundaries between different material layers.',
+    ],
     'three.border.buried': ['Buried features', 'Interior walls, vias and embedded physical edges.'],
-    'three.border.occluded': ['Occluded edges', 'Physical edges hidden behind the nearest solid surface.'],
+    'three.border.occluded': [
+      'Occluded edges',
+      'Physical edges hidden behind the nearest solid surface.',
+    ],
     'three.border.roi': ['ROI cut', 'Edges exposed by the currently selected inspection cut.'],
     'three.border.strength': [
       'Line strength',

@@ -172,14 +172,23 @@ body[data-workstation] #app-root {
   gap: 11px;
   color: var(--text-primary, #273746);
 }
-.v2-border-header, .v2-border-enabled, .v2-border-strength > span {
+.v2-border-header,
+.v2-border-enabled,
+.v2-border-strength > span {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.v2-border-enabled { font-size: 12px; cursor: pointer; }
-.v2-border-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.v2-border-enabled {
+  font-size: 12px;
+  cursor: pointer;
+}
+.v2-border-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
 .v2-border-preset {
   background: #f5f7f9;
   border: 1px solid #d1dbe5;
@@ -188,8 +197,15 @@ body[data-workstation] #app-root {
   color: #34495b;
   cursor: pointer;
 }
-.v2-border-preset[aria-pressed='true'] { background: #e1efff; color: #16529b; border-color: #9bc2f1; }
-.v2-border-rows { display: grid; gap: 1px; }
+.v2-border-preset[aria-pressed='true'] {
+  background: #e1efff;
+  color: #16529b;
+  border-color: #9bc2f1;
+}
+.v2-border-rows {
+  display: grid;
+  gap: 1px;
+}
 .v2-border-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 115px;
@@ -198,7 +214,10 @@ body[data-workstation] #app-root {
   padding: 6px 0;
   border-bottom: 1px solid #e9edf2;
 }
-.v2-border-description { font-size: 12px; font-weight: 600; }
+.v2-border-description {
+  font-size: 12px;
+  font-weight: 600;
+}
 .v2-border-style {
   border: 1px solid #cad5df;
   border-radius: 4px;
@@ -207,8 +226,14 @@ body[data-workstation] #app-root {
   color: #273746;
   min-width: 0;
 }
-.v2-border-strength { display: grid; gap: 6px; font-size: 12px; }
-.v2-border-strength input { width: 100%; }
+.v2-border-strength {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.v2-border-strength input {
+  width: 100%;
+}
 
 /* The portal is the positioned element, while Inspector is its compact child. */
 .v2-main-tools:has(> .v2-border-inspector) {

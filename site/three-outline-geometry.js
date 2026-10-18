@@ -118,7 +118,8 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
           if (!corners.has(key)) corners.set(key, []);
           corners.get(key).push({ point, z0: part.z0, z1: part.z1, ux, uy });
         }
-        const pKey = pointKey(p), qKey = pointKey(q);
+        const pKey = pointKey(p),
+          qKey = pointKey(q);
         const edgeKey = `${part.layerId}|${pKey < qKey ? `${pKey}|${qKey}` : `${qKey}|${pKey}`}`;
         if (!spans.has(edgeKey)) spans.set(edgeKey, { p, q, intervals: [] });
         spans.get(edgeKey).intervals.push([part.z0, part.z1]);
@@ -129,16 +130,23 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
   for (const entries of corners.values()) {
     const levels = [...new Set(entries.flatMap(({ z0, z1 }) => [z0, z1]))].sort((a, b) => a - b);
     for (let i = 1; i < levels.length; i++) {
-      const z0 = levels[i - 1], z1 = levels[i];
+      const z0 = levels[i - 1],
+        z1 = levels[i];
       if (z1 - z0 <= 1e-9) continue;
       const active = entries.filter((w) => w.z0 <= z0 + 1e-9 && w.z1 >= z1 - 1e-9);
       if (!active.length) continue;
       // Straight collinear partitions are computational seams; a wall's real
       // endpoint or non-collinear junction is a physical structural corner.
-      const corner = active.length === 1 || active.some((w, j) =>
-        active.slice(j + 1).some((other) => Math.abs(w.ux * other.uy - w.uy * other.ux) > 1e-8),
-      );
-      if (corner) lines.push([[...active[0].point, z0], [...active[0].point, z1]]);
+      const corner =
+        active.length === 1 ||
+        active.some((w, j) =>
+          active.slice(j + 1).some((other) => Math.abs(w.ux * other.uy - w.uy * other.ux) > 1e-8),
+        );
+      if (corner)
+        lines.push([
+          [...active[0].point, z0],
+          [...active[0].point, z1],
+        ]);
     }
   }
   for (const { p, q, intervals } of spans.values()) {
@@ -147,7 +155,16 @@ export function buriedSidewallContours(sidewalls = [], exposed = []) {
     intervals.sort((a, b) => a[0] - b[0]);
     let [lower, upper] = intervals[0];
     const appendEnds = () => {
-      lines.push([[...p, lower], [...q, lower]], [[...p, upper], [...q, upper]]);
+      lines.push(
+        [
+          [...p, lower],
+          [...q, lower],
+        ],
+        [
+          [...p, upper],
+          [...q, upper],
+        ],
+      );
     };
     for (const [z0, z1] of intervals.slice(1)) {
       if (z0 <= upper + 1e-9) upper = Math.max(upper, z1);
@@ -182,7 +199,10 @@ export function borderInspectorContours(plan, options = {}) {
     includeCap: (cap) => !cap.interfaceLayerId,
   });
   const embeddedWalls = buriedSidewallContours(plan?.sidewalls || [], [...exterior, ...interfaces]);
-  const buried = unownedContourSegments([...embeddedCaps, ...embeddedWalls], [...exterior, ...interfaces]);
+  const buried = unownedContourSegments(
+    [...embeddedCaps, ...embeddedWalls],
+    [...exterior, ...interfaces],
+  );
   return { exterior, interface: interfaces, buried };
 }
 
@@ -441,4 +461,3 @@ export function unownedContourSegments(segments = [], alreadyOutlined = []) {
 export function contoursToPositions(lines) {
   return ownedContourSegments(lines).flat(2);
 }
-

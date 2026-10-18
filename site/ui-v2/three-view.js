@@ -225,13 +225,22 @@ export function createWorkstationThreeView({ store, workstation }) {
     occluded: 'Occluded edges',
     roi: 'ROI cut',
   };
-  const borderMenu = el('div', { class: 'v2-border-inspector p-form', 'data-border-inspector': '' });
+  const borderMenu = el('div', {
+    class: 'v2-border-inspector p-form',
+    'data-border-inspector': '',
+  });
   const borderEnable = el('input', { type: 'checkbox', 'aria-label': 'Show 3D borders' });
   const presetButtons = Object.keys(BORDER_PRESETS).map((preset) => {
-    const choice = el('button', {
-      type: 'button', class: 'v2-border-preset', 'data-border-preset': preset,
-      'data-help': `three.border.preset.${preset}`,
-    }, preset === 'xray' ? 'X-Ray' : preset === 'clean' ? 'Clean' : 'Structure');
+    const choice = el(
+      'button',
+      {
+        type: 'button',
+        class: 'v2-border-preset',
+        'data-border-preset': preset,
+        'data-help': `three.border.preset.${preset}`,
+      },
+      preset === 'xray' ? 'X-Ray' : preset === 'clean' ? 'Clean' : 'Structure',
+    );
     choice.onclick = () => {
       local.borderSettings = normalizeBorderSettings({ preset });
       state.threeShowBorders = true;
@@ -243,12 +252,17 @@ export function createWorkstationThreeView({ store, workstation }) {
   const borderSelectors = new Map();
   const borderRows = BORDER_CATEGORIES.map((category) => {
     const selector = el('select', {
-      class: 'v2-border-style', 'data-border-category': category,
+      class: 'v2-border-style',
+      'data-border-category': category,
       'aria-label': `${borderNames[category]} line style`,
     });
     for (const [value, label] of [
-      ['off', 'Off'], ['auto', 'Auto'], ['solid', 'Solid ━'], ['dashed', 'Dashed ┄'],
-    ]) selector.append(el('option', { value }, label));
+      ['off', 'Off'],
+      ['auto', 'Auto'],
+      ['solid', 'Solid ━'],
+      ['dashed', 'Dashed ┄'],
+    ])
+      selector.append(el('option', { value }, label));
     selector.onchange = () => {
       local.borderSettings = normalizeBorderSettings({
         ...local.borderSettings,
@@ -260,17 +274,25 @@ export function createWorkstationThreeView({ store, workstation }) {
       requestRender();
     };
     borderSelectors.set(category, selector);
-    return el('label', { class: 'v2-border-row', 'data-help': `three.border.${category}` },
-      el('span', { class: 'v2-border-description' }, borderNames[category]), selector,
+    return el(
+      'label',
+      { class: 'v2-border-row', 'data-help': `three.border.${category}` },
+      el('span', { class: 'v2-border-description' }, borderNames[category]),
+      selector,
     );
   });
   const borderStrength = el('input', {
-    type: 'range', min: 15, max: 100, step: 5, 'aria-label': 'Border line strength',
+    type: 'range',
+    min: 15,
+    max: 100,
+    step: 5,
+    'aria-label': 'Border line strength',
   });
   const borderStrengthValue = el('output', {}, '65%');
   borderStrength.oninput = () => {
     local.borderSettings = normalizeBorderSettings({
-      ...local.borderSettings, strength: Number(borderStrength.value) / 100,
+      ...local.borderSettings,
+      strength: Number(borderStrength.value) / 100,
     });
     borderStrengthValue.textContent = `${Math.round(local.borderSettings.strength * 100)}%`;
     requestRender();
@@ -281,21 +303,34 @@ export function createWorkstationThreeView({ store, workstation }) {
     requestRender();
   };
   borderMenu.append(
-    el('div', { class: 'v2-border-header' },
+    el(
+      'div',
+      { class: 'v2-border-header' },
       el('strong', {}, 'Border Inspector'),
-      el('label', { class: 'v2-border-enabled', 'data-help': 'three.border.enabled' }, borderEnable, ' Show'),
+      el(
+        'label',
+        { class: 'v2-border-enabled', 'data-help': 'three.border.enabled' },
+        borderEnable,
+        ' Show',
+      ),
     ),
     el('div', { class: 'v2-border-presets' }, ...presetButtons),
     el('div', { class: 'v2-border-rows' }, ...borderRows),
-    el('label', { class: 'v2-border-strength', 'data-help': 'three.border.strength' },
-      el('span', {}, 'Line strength ', borderStrengthValue), borderStrength,
+    el(
+      'label',
+      { class: 'v2-border-strength', 'data-help': 'three.border.strength' },
+      el('span', {}, 'Line strength ', borderStrengthValue),
+      borderStrength,
     ),
   );
   function updateBorderControls() {
     local.borderSettings = normalizeBorderSettings(local.borderSettings);
     borderEnable.checked = Boolean(state.threeShowBorders);
     for (const presetButton of presetButtons) {
-      presetButton.setAttribute('aria-pressed', String(presetButton.dataset.borderPreset === local.borderSettings.preset));
+      presetButton.setAttribute(
+        'aria-pressed',
+        String(presetButton.dataset.borderPreset === local.borderSettings.preset),
+      );
     }
     for (const [category, selector] of borderSelectors) {
       selector.value = local.borderSettings.styles[category];
