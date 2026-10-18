@@ -22,10 +22,10 @@ const context = await newUiContext(browser, {
 const page = await context.newPage();
 const errors = observePageErrors(page);
 try {
-  await page.goto(baseUrl + '/app.html?start=example&example=tio2-metalens-four-unit', {
-    waitUntil: 'domcontentloaded',
-    timeout: 30000,
-  });
+  await page.goto(
+    baseUrl + '/app.html?start=example&example=tio2-metalens-four-unit',
+    { waitUntil: 'domcontentloaded', timeout: 30000 },
+  );
   await page.waitForFunction(
     () => document.body.dataset.ready === 'true' && window.WaferCadV2Workstation?.ready,
     null,
@@ -90,10 +90,7 @@ try {
     JSON.stringify({ pass: true, ...visual }, null, 2) + '\n',
   );
   assert.deepEqual(errors, [], 'Current v2 browser must not emit page errors');
-  console.log(
-    'Metalens actual v2 Welcome and 3D/Section PASS',
-    JSON.stringify(visual),
-  );
+  console.log('Metalens actual v2 Welcome and 3D/Section PASS', JSON.stringify(visual));
 } finally {
   await context.close();
   await browser.close();
