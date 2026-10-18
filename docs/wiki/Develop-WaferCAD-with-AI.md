@@ -4,7 +4,7 @@
 
 ## 1. Define the deliverables before opening an editor
 
-An AI agent should write a short, auditable *acceptance manifest*:
+An AI agent should write a short, auditable _acceptance manifest_:
 
 **Source provenance** — **Minimum evidence:** Source file, paper/figure, SHA-256, unchanged original layout vertices and layer names; **Insufficient proof:** Hand-copied screenshot rectangles.
 
@@ -34,7 +34,7 @@ Establish substrate, region ownership, contact/via stack, actual Z interfaces an
 
 ### 3. Replay the smallest Recipe from Base.
 
-Compare *intermediate* states, not just final surface appearance. Validate Process parameters, the exact 23-step count where applicable, History/Variants, Undo/Redo and separate Recovery/Export contracts. Retain the original model as the independent baseline.
+Compare _intermediate_ states, not just final surface appearance. Validate Process parameters, the exact 23-step count where applicable, History/Variants, Undo/Redo and separate Recovery/Export contracts. Retain the original model as the independent baseline.
 
 ### 4. Scale to array only after the unit passes.
 
@@ -100,13 +100,13 @@ Document intermediate differences. A scientifically correct mask/region count al
 
 **`about:blank` boot + interception of real `site/` modules** — **Permitted scope:** Read-only local screenshot harness for sandbox `URLBlocklist: ["*"]`; **Must never be inferred:** Successful ordinary Origin Open/Recovery.
 
--  **Node `readProjectFile()` then inject restored model at the supported Workstation loading
+- **Node `readProjectFile()` then inject restored model at the supported Workstation loading
   boundary** — **Permitted scope:** Verify genuine project/model/renderer behavior in a restricted
   test; **Must never be inferred:** Permission to disable Recovery checkpoint safety.
--  **Isolated page sets `Worker` unavailable to trigger an existing equivalent synchronous
+- **Isolated page sets `Worker` unavailable to trigger an existing equivalent synchronous
   renderer** — **Permitted scope:** Debug a Worker-startup sandbox limit; **Must never be
   inferred:** Automatic retry of an already-started Process task.
-**Xvfb + headed Chromium + offline pinned Three.js** — **Permitted scope:** Actual WebGL screenshot reproducibility; **Must never be inferred:** A green CI job or mock is a visual inspection.
+  **Xvfb + headed Chromium + offline pinned Three.js** — **Permitted scope:** Actual WebGL screenshot reproducibility; **Must never be inferred:** A green CI job or mock is a visual inspection.
 
 **Independent Shapely polygon audits over ** exported** project** — **Permitted scope:** Falsify wrong metal owners, voids and shorted nets; **Must never be inferred:** Electrical simulation, PDK DRC or fabrication proof.
 
@@ -118,7 +118,7 @@ Normal-Origin Open, Storage and Recovery must be independently verified before r
 
 An agent should ship: (1) source SHA and model provenance; (2) one-cell geometry/Section; (3) every significant intermediate Recipe state; (4) true array/replay state; (5) actual material Via/net/terminal audit with negative tests; (6) screenshots with camera, ROI, Layer and Border/Opacity settings; (7) exported project readback and recovery; (8) exact-HEAD CI and Main merge status.
 
-Typical *targeted*, not blanket, commands:
+Typical _targeted_, not blanket, commands:
 
 ```bash
 node --test site/tests/tcmos-svg-metal-connectivity.test.mjs site/tests/tcmos-array-interconnect.test.mjs
@@ -138,7 +138,7 @@ In CI failures, separate stale assertions against retired DOM/Renderer code from
 
 **Acceptance check:** Independent full XY/Z material, Via and output-port audit plus negative cases
 
-**Acceptance check:** Recipe, History, Recovery and portable file readback at the *claimed* scope
+**Acceptance check:** Recipe, History, Recovery and portable file readback at the _claimed_ scope
 
 **Acceptance check:** Real headed Chromium screenshots reviewed for intended viewpoints, opacity and layers
 
