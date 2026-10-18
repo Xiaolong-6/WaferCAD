@@ -8,6 +8,17 @@ Read `docs/COLLABORATION.md` for the shared ChatGPT/Codex handoff workflow, `doc
 - Use stable internal entity IDs and preserve project migration, transactional workers, History restore and browser recovery contracts.
 - Add regressions to the suite that owns the behavior. Avoid file splitting solely to reduce line counts.
 - Use locked dependencies via `npm ci`. During iteration run focused checks and (for UI/Renderer/Example changes) inspect real-browser output before broad CI. Before final acceptance run the required Quality, targeted CI and scientific/regression gates; do not weaken tolerances or skip data-integrity checks. Report exact commands, results, commit and environment.
+**Source retrieval before requesting uploads:** Reuse the existing exact-SHA
+source-only GitHub Artifact, verify `wafercad-source-manifest.json`, and
+obtain the pinned Three.js 0.179.1 tarball separately. Search the WaferCAD
+Project Sources/current workspace first; use the tracked
+`vendor/npm/three-0.179.1.tgz` fallback only if missing. Restore via
+`python3 scripts/restore-pinned-three.py --archive <path>` (or
+`WAFERCAD_THREE_ARCHIVE`), which checks `package-lock.json` SHA-512.
+Never package Three.js in a source-only Actions Artifact. See
+[offline bootstrap](docs/DEVELOPMENT.md#offline-source-transport-and-threejs-priority)
+before retrying blocked `git clone` or requesting another ZIP.
+
 ## Chromium-first local visual acceptance
 
 For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, default to **real local Chromium screenshots and independent AI visual review**. GitHub CI is not the primary visual-debugging loop.
@@ -21,6 +32,8 @@ For any visual change involving UI, Renderer, Examples, Mask, 3D or Section, def
 7. Never omit necessary scientific-correctness, data-integrity, Recovery or other critical-risk tests merely to save CI time.
 
 **Default sequence:** local change → real Chromium screenshot → AI visual inspection → focused local tests → batched fixes → push → necessary CI → final acceptance.
+
+**Managed Chromium recovery (mandatory before declaring visual diagnostics blocked):** If normal app navigation fails with `ERR_BLOCKED_BY_ADMINISTRATOR` (including a managed `URLBlocklist: ["*"]`), reuse the existing `scripts/offline-native-app-capture.py` and follow [Offline Visual Kernel — real native app](docs/tools/OFFLINE_VISUAL_KERNEL.md#real-native-app-with-offline-swiftshader-diagnostic). It attempts normal-origin loading, then uses headed Chromium/Xvfb, pinned local Three.js and an `about:blank` fallback for real app/Renderer diagnostics. Start with `--inmemory-demo`; use `--inmemory-project <file>` plus optional ROI/Z break for real validated model geometry. **Do not create a second standalone Chromium runner** or treat `offline-visual-kernel.mjs` SVGs as native WebGL images. The null-origin diagnostic cannot validate Worker-backed project Open, persistent storage, History/Recovery or complete Workstation interaction; those still need normal-origin targeted acceptance. Record the precise coverage and limitations.
 
 Minimize redundant CI without lowering final acceptance standards.
 

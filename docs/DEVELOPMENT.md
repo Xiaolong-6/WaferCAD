@@ -24,6 +24,47 @@ or expired writer lease cannot authorize an IndexedDB commit.
 
 Historical implementations remain available through Git history rather than the active working tree. Do not reintroduce retired backend/client APIs merely for compatibility.
 
+## Offline source transport and Three.js priority
+
+**Do not repeatedly request user uploads or retry blocked git clone.** First
+locate the already-uploaded `three@0.179.1` npm tarball in WaferCAD Project
+Sources (materialize if required) or the current container's `/mnt/data`.
+The stored filename may have a numeric suffix. Then restore Three.js using:
+
+```sh
+python3 scripts/restore-pinned-three.py --archive "/mnt/data/three-0.179.1.tgz"
+# Or: WAFERCAD_THREE_ARCHIVE="/path/to/three.tgz" python3 scripts/restore-pinned-three.py
+```
+
+The helper verifies SHA-512 against `package-lock.json` before extraction.
+If the Sources attachment is unavailable **in a full repository checkout**,
+the tracked `vendor/npm/three-0.179.1.tgz` is a verified fallback
+(run without arguments). The source-only ZIP deliberately omits that tarball;
+therefore its restore requires a separate local Sources/archive copy.
+Reuse `node_modules/three` as long as the local workspace survives.
+Only `npm ci` installs the full development toolchain.
+
+The [source-only Artifact workflow](../.github/workflows/offline-source-bundle.yml)
+uses GitHub's checkout and publishes a ZIP of the exact commit's tracked
+sources, tests, fixtures, docs and workflow files. **It excludes**
+`vendor/npm/three-0.179.1.tgz`, `node_modules` and Chromium. There is no
+npm installation in Actions. `wafercad-source-<SHA>.zip` contains
+`wafercad-source-manifest.json` with the revision and per-file SHA-256.
+Use a completed existing workflow run when possible; run its narrow
+`workflow_dispatch` only when a newer source bundle is necessary (the
+workflow becomes manually dispatchable once present on the default branch).
+The connector downloads the Artifact straight into the execution container,
+where it can be extracted and verified. No `.git` history is included.
+
+**Verified 2026-10-18:** GitHub Connector -> mounted Artifact ZIP -> local
+extraction and hash verification -> native headed Chromium/Xvfb/SwiftShader
+rendering succeeded. `scripts/offline-native-app-capture.py` rendered a real
+in-memory demo and a strictly validated Photodetector model. Managed browser
+navigation still blocked `https://wafercad.local`; `about:blank` fallback
+only verifies the isolated native 3D renderer. Real Worker Open, IndexedDB,
+History/Recovery, synchronized views and complete UI interaction still require
+separate normal-origin acceptance. Do not create a second Chromium runner.
+
 ## Local run
 
 ```bash
@@ -31,6 +72,30 @@ python -m http.server 8000 --directory site
 ```
 
 Open `http://localhost:8000`.
+
+If managed Chromium rejects local/virtual-domain navigation with
+`ERR_BLOCKED_BY_ADMINISTRATOR`, **do not conclude that local 3D diagnostics
+are impossible or create a parallel capture script**. Reuse the existing
+[offline native app capture](tools/OFFLINE_VISUAL_KERNEL.md#real-native-app-with-offline-swiftshader-diagnostic):
+
+```bash
+# Native v2/Three.js Renderer smoke check (headed Chromium + Xvfb on Linux):
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-demo --output test-results/offline-native-demo
+
+# A real, strictly validated model inside the native Three.js viewport:
+python3 scripts/offline-native-app-capture.py --root . \
+  --inmemory-project site/examples/photodetector-literature-examples.wafercad \
+  --output test-results/offline-native-photodetector
+```
+
+The script first attempts the normal application origin; under administrator
+URL blocking it can fall back to the real app source running at `about:blank`
+with local pinned Three.js. Inspect the actual screenshots and evidence report.
+A null-origin capture is **partial Renderer evidence**, not proof of project
+Open/Worker, synchronized views, IndexedDB, History/Recovery, mobile interaction
+or full release acceptance. `scripts/offline-visual-kernel.mjs` is the separate
+scientific SVG/PNG geometry diagnostic, not a WebGL replacement.
 
 ## Process Recipe / Base lifecycle
 
