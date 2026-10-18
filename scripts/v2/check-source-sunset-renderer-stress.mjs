@@ -90,6 +90,22 @@ try {
       await opacity.fill(value);
       await waitFrame(prev, 'warm-up-opacity-' + value);
     }
+    // Cache the optional internal outlines once before measuring steady-state
+    // retention. Their first allocation is legitimate view geometry, not a
+    // leak; every subsequent toggle must retain *exactly* the same resources.
+    const border = page.locator('#threePanel [data-action="borders:three"]');
+    const inspector = page.locator('[data-border-inspector]');
+    await border.click();
+    await inspector.waitFor({ state: 'visible' });
+    const master = inspector.getByRole('button', { name: 'Show 3D borders' });
+    const initialBorders = (await snap()).threeDisplay.borders;
+    assert.equal(await master.getAttribute('aria-pressed'), String(initialBorders));
+    for (const enabled of [!initialBorders, initialBorders]) {
+      const previous = (await measure()).rendererFrameSerial;
+      await master.click();
+      assert.equal((await snap()).threeDisplay.borders, enabled, 'Border warm-up state');
+      await waitFrame(previous, 'warm-up-border-' + String(enabled));
+    }
     const baseline = await measure();
     const retained = [
       'sceneRetainedGroupCount',
@@ -114,13 +130,6 @@ try {
     // Ten real Border visibility changes, each with a completed WebGL frame.
     // The toolbar button now opens an Inspector; clicking that trigger alone
     // never changes the 3D display or schedules a new frame.
-    const border = page.locator('#threePanel [data-action="borders:three"]');
-    const inspector = page.locator('[data-border-inspector]');
-    await border.click();
-    await inspector.waitFor({ state: 'visible' });
-    const master = inspector.getByRole('button', { name: 'Show 3D borders' });
-    const initialBorders = (await snap()).threeDisplay.borders;
-    assert.equal(await master.getAttribute('aria-pressed'), String(initialBorders));
     for (let i = 0; i < 10; i++) {
       // Inspector may close when an independent tool popover takes focus.
       if (!(await master.isVisible())) {

@@ -41,6 +41,88 @@ const cases = [
   { width: 430, height: 932 },
 ];
 
+async function verifyMobileBorderInIsolatedContext(browser, width, height) {
+  // Keep this new 3D presentation check separate from the original View/Edit
+  // transaction invariants: returning from 3D can schedule a Main redraw.
+  const { context, page } = await newUiPage(browser, {
+    viewport: { width, height },
+    hasTouch: true,
+    isMobile: true,
+    deviceScaleFactor: 1,
+  });
+  try {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`${base}/app.html?start=empty`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.WaferCadV2Workstation?.ready, null, {
+      timeout: 120000,
+    });
+    await waitForPaint(page);
+    const mainCanvas = page.locator('#mainCanvas');
+    await page.locator('.p-nav [data-action="view:three"]').click();
+    await page.locator('#threePanel').waitFor({ state: 'visible' });
+    // The responsive toolbar relocates its *original* button via a
+    // ResizeObserver. Wait for its real layout, not a transient visible
+    // state immediately after switching the mobile scientific view.
+    await waitForPaint(page);
+    const border = page.locator('#threePanel [data-action="borders:three"]');
+    const more = page.locator('#threePanel button[popovertarget="p-overflow-3d"]');
+    await page.waitForFunction(() => {
+      const panel = document.getElementById('threePanel');
+      const button = panel?.querySelector('[data-action="borders:three"]');
+      const trigger = panel?.querySelector('button[popovertarget="p-overflow-3d"]');
+      if (!button || !trigger) return false;
+      return button.closest('.p-overflow') ? !trigger.disabled : button.checkVisibility();
+    });
+    await waitForPaint(page);
+    if (await border.evaluate((node) => Boolean(node.closest('.p-overflow')))) {
+      await more.click();
+      await page.locator('#p-overflow-3d').waitFor({ state: 'visible' });
+    }
+    await border.click();
+    const inspector = page.locator('[data-border-inspector]');
+    await inspector.waitFor({ state: 'visible' });
+    const bounds = await inspector.boundingBox();
+    assert.ok(bounds, 'Mobile Border Inspector must have visible bounds');
+    assert.ok(
+      bounds.x >= 0 && bounds.x + bounds.width <= width + 1,
+      'Inspector must not overflow the mobile viewport horizontally',
+    );
+    assert.ok(
+      bounds.y >= 0 && bounds.y + bounds.height <= height + 1,
+      'Inspector must remain reachable inside the viewport',
+    );
+    const controls = inspector.locator('button, select');
+    for (const size of await controls.evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().height),
+    )) {
+      assert.ok(size >= 44, 'Border Inspector touch targets must be at least 44px');
+    }
+    const master = inspector.getByRole('button', { name: 'Show 3D borders' });
+    const before = await master.getAttribute('aria-pressed');
+    await master.click();
+    assert.notEqual(await master.getAttribute('aria-pressed'), before);
+    await master.click();
+    assert.equal(await master.getAttribute('aria-pressed'), before);
+    await inspector.locator('[data-border-preset="xray"]').click();
+    assert.equal(
+      await inspector.locator('[data-border-preset="xray"]').getAttribute('aria-pressed'),
+      'true',
+    );
+    await page.screenshot({
+      path: resolve(output, 'mobile-390x844-border-inspector.png'),
+      animations: 'disabled',
+    });
+    await page.keyboard.press('Escape');
+    assert.equal(await inspector.isVisible(), false);
+    await page.locator('.p-nav [data-action="view:main"]').click();
+    await mainCanvas.waitFor({ state: 'visible' });
+    assert.deepEqual(errors, [], 'Mobile Border Inspector causes no browser JS errors');
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   for (const { width, height } of cases) {
     const { context, page } = await newUiPage(browser, {
@@ -154,70 +236,6 @@ try {
       await page.screenshot({
         path: resolve(output, `mobile-${width}x${height}-view-navigation.png`),
       });
-
-      // Exercise the production mobile route through the 3D toolbar overflow.
-      // Merely finding the Border button in the DOM is not sufficient: at
-      // compact widths it is hidden until the More Tools popover opens.
-      if (width === 390) {
-        await page.locator('.p-nav [data-action="view:three"]').click();
-        await page.locator('#threePanel').waitFor({ state: 'visible' });
-        // The responsive toolbar relocates its *original* button via a
-        // ResizeObserver. Wait for its real layout, not a transient visible
-        // state immediately after switching the mobile scientific view.
-        await waitForPaint(page);
-        const border = page.locator('#threePanel [data-action="borders:three"]');
-        const more = page.locator('#threePanel button[popovertarget="p-overflow-3d"]');
-        await page.waitForFunction(() => {
-          const panel = document.getElementById('threePanel');
-          const button = panel?.querySelector('[data-action="borders:three"]');
-          const trigger = panel?.querySelector('[aria-label="3D more tools"]');
-          if (!button || !trigger) return false;
-          return button.closest('.p-overflow') ? !trigger.disabled : button.checkVisibility();
-        });
-        await waitForPaint(page);
-        if (await border.evaluate((node) => Boolean(node.closest('.p-overflow')))) {
-          await more.click();
-          await page.locator('#p-overflow-3d').waitFor({ state: 'visible' });
-        }
-        await border.click();
-        const inspector = page.locator('[data-border-inspector]');
-        await inspector.waitFor({ state: 'visible' });
-        const bounds = await inspector.boundingBox();
-        assert.ok(bounds, 'Mobile Border Inspector must have visible bounds');
-        assert.ok(
-          bounds.x >= 0 && bounds.x + bounds.width <= width + 1,
-          'Inspector must not overflow the mobile viewport horizontally',
-        );
-        assert.ok(
-          bounds.y >= 0 && bounds.y + bounds.height <= height + 1,
-          'Inspector must remain reachable inside the viewport',
-        );
-        const controls = inspector.locator('button, select');
-        for (const size of await controls.evaluateAll((nodes) =>
-          nodes.map((node) => node.getBoundingClientRect().height),
-        )) {
-          assert.ok(size >= 44, 'Border Inspector touch targets must be at least 44px');
-        }
-        const master = inspector.getByRole('button', { name: 'Show 3D borders' });
-        const before = await master.getAttribute('aria-pressed');
-        await master.click();
-        assert.notEqual(await master.getAttribute('aria-pressed'), before);
-        await master.click();
-        assert.equal(await master.getAttribute('aria-pressed'), before);
-        await inspector.locator('[data-border-preset="xray"]').click();
-        assert.equal(
-          await inspector.locator('[data-border-preset="xray"]').getAttribute('aria-pressed'),
-          'true',
-        );
-        await page.screenshot({
-          path: resolve(output, 'mobile-390x844-border-inspector.png'),
-          animations: 'disabled',
-        });
-        await page.keyboard.press('Escape');
-        assert.equal(await inspector.isVisible(), false);
-        await page.locator('.p-nav [data-action="view:main"]').click();
-        await mainCanvas.waitFor({ state: 'visible' });
-      }
 
       // Pure View/Edit navigation must not invalidate all four scientific models.
       const countersBeforeNavigation = await page.evaluate(
@@ -510,6 +528,7 @@ try {
         'Welcome link opens the real Welcome screen',
       );
       assert.deepEqual(errors, [], 'No uncaught browser errors');
+      if (width === 390) await verifyMobileBorderInIsolatedContext(browser, width, height);
       console.log(`Mobile Workstation ${width}x${height}: OK`);
     } finally {
       await context.close();

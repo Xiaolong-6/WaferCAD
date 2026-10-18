@@ -8,6 +8,8 @@ import {
   resolvedBorderStyle,
   borderNeedsInternalGeometry,
   borderPresentationState,
+  borderContourPresentationPlan,
+  DENSE_ARRAY_BORDER_PREVIEW_SITES,
 } from '../border-inspector.js';
 import {
   buriedInterfaceContours,
@@ -249,4 +251,36 @@ test('Border Inspector uses native v2 pressed buttons rather than a small checkb
   assert.match(css, /@media \(pointer: coarse\)/);
   assert.match(css, /\.v2-border-master\[aria-pressed='true'\]/);
   assert.match(css, /min-height: 44px/);
+});
+
+test('dense array contour LOD retains canonical ownership and exact ROI', () => {
+  const translations = Array.from({ length: 625 }, (_, i) => [
+    (i % 25 - 12) * 1600,
+    (Math.floor(i / 25) - 12) * 1600,
+  ]);
+  const cap = { buried: true, interfaceLayerId: 'oxide', instanceTranslations: translations };
+  const wall = { buried: true, instanceTranslations: translations };
+  const original = { arrayInstances: 625, caps: [cap], sidewalls: [wall], borderLines: [] };
+  const view = borderContourPresentationPlan(original);
+  assert.equal(view.mode, 'array-overview-preview');
+  assert.notEqual(view.plan, original);
+  assert.equal(view.plan.caps.length, original.caps.length, 'keep canonical cap indices');
+  assert.equal(
+    view.plan.caps[0].instanceTranslations.length,
+    DENSE_ARRAY_BORDER_PREVIEW_SITES,
+  );
+  assert.equal(
+    view.plan.sidewalls[0].instanceTranslations.length,
+    DENSE_ARRAY_BORDER_PREVIEW_SITES,
+  );
+  assert.ok(
+    view.plan.caps[0].instanceTranslations.some(([x, y]) => x === 0 && y === 0),
+    'center cell must be represented by overview LOD',
+  );
+  assert.equal(cap.instanceTranslations.length, 625, 'do not mutate physical cap replicas');
+  assert.equal(wall.instanceTranslations.length, 625, 'do not mutate physical wall replicas');
+  const exact = borderContourPresentationPlan(original, { hasRoi: true });
+  assert.equal(exact.mode, 'exact');
+  assert.equal(exact.plan, original, 'an inspection ROI always uses exact physical geometry');
+  assert.equal(borderContourPresentationPlan({ ...original, arrayInstances: 1 }).mode, 'exact');
 });

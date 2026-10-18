@@ -128,7 +128,7 @@
     'three.border.exterior': ['Exterior', 'Physical outer surfaces, steps and exposed edges.'],
     'three.border.interface': [
       'Material interfaces',
-      'Real buried boundaries between different material layers.',
+      'Real buried boundaries between different material layers. Large wafer overviews use a bounded outline preview; select an ROI for complete internal contours.',
     ],
     'three.border.buried': ['Buried features', 'Interior walls, vias and embedded physical edges.'],
     'three.border.occluded': [

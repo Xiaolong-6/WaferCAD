@@ -9,7 +9,11 @@ import { canRenderPlanarCapInSinglePass } from './transparent-pass-policy.js';
 import { disposeRendererSceneResources } from './renderer-v4-resource-lifetime.js';
 import { runTemporaryRendererCapture } from './renderer-capture-transaction.js';
 import { renderDepthAwareOutlines } from './three-outline-pass.js';
-import { borderNeedsInternalGeometry, borderPresentationState } from './border-inspector.js';
+import {
+  borderNeedsInternalGeometry,
+  borderContourPresentationPlan,
+  borderPresentationState,
+} from './border-inspector.js';
 import { shouldYieldDuringSceneAssembly } from './renderer-cooperative-assembly.js';
 import { hasMaterial, layerById, modelBoundsZ } from './model.js';
 import {
@@ -2068,7 +2072,12 @@ diffuseColor.a *= waferCadAlphaScale;`,
       }
     }
     const profiles = group.userData.waferCadRoughBoundaryProfiles || null;
-    const contours = borderInspectorContours(activePlan, { boundaryProfiles: profiles });
+    const scoped = borderContourPresentationPlan(activePlan, {
+      hasRoi: Boolean(getClipGeometry()),
+    });
+    // Explicitly expose overview LOD; selected ROIs retain exact internal lines.
+    host.dataset.internalBorderDetail = scoped.mode;
+    const contours = borderInspectorContours(scoped.plan, { boundaryProfiles: profiles });
     const model = getModel();
     const opacity = Number(inspection.opacity ?? 1);
     for (const [category, lines] of [
