@@ -41,4 +41,4 @@ Preserve **vector-2.5d-v1**, canonical material ownership, units in µm, native 
 
 No in-browser full physical TCAD (dopant diffusion, activation, carrier transport, electrostatics, stress, plasma chemistry), no unconditional general B-rep/voxel rewrite, no AI-generated paper-to-fabrication-accurate model guarantee. Independent physics integration can be evaluated once a validated geometry export exists.
 
-See [Process benchmarks](PROCESS_BENCHMARKS.md), [Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md), [Morphology](ROUGHNESS_MORPHOLOGY.md), [Recipe tutorial](wiki/Recipe-Code-Tutorial.md).
+See [Process benchmarks](science/PROCESS_BENCHMARKS.md), [Kernel v2](science/PROCESS_GEOMETRY_KERNEL_V2.md), [Morphology](science/ROUGHNESS_MORPHOLOGY.md), [Recipe tutorial](wiki/Recipe-Code-Tutorial.md).

@@ -103,7 +103,7 @@ Owns the shared Implant depth-gradient constants and original source/depth norma
 
 ### `site/process-topology.js`
 
-Owns Process Geometry Kernel v2: exposed horizontal faces, buried material interfaces, Rough/Pyramid appearance ownership, true-void vs numerical-crack classification, Conformal material-wall/void-wall targets, Section columns/slices, exact-Z slabs/caps, and deterministic ownership of horizontal interfaces, vertical sidewalls, and physical border lines consumed by 3D. Complex same-material slab unions used only for derived rendering ownership use a fail-soft recursive union path. Process-critical uncovered-domain classification is fail-loud: a Boolean-kernel failure aborts the worker operation instead of being interpreted as “no void,” so the live model remains unchanged. It is a pure derived layer over the canonical region-stack model and is never serialized. See [Process Geometry Kernel v2](PROCESS_GEOMETRY_KERNEL_V2.md).
+Owns Process Geometry Kernel v2: exposed horizontal faces, buried material interfaces, Rough/Pyramid appearance ownership, true-void vs numerical-crack classification, Conformal material-wall/void-wall targets, Section columns/slices, exact-Z slabs/caps, and deterministic ownership of horizontal interfaces, vertical sidewalls, and physical border lines consumed by 3D. Complex same-material slab unions used only for derived rendering ownership use a fail-soft recursive union path. Process-critical uncovered-domain classification is fail-loud: a Boolean-kernel failure aborts the worker operation instead of being interpreted as “no void,” so the live model remains unchanged. It is a pure derived layer over the canonical region-stack model and is never serialized. See [Process Geometry Kernel v2](science/PROCESS_GEOMETRY_KERNEL_V2.md).
 
 ### `site/model.js`
 
@@ -181,7 +181,7 @@ Owns display/input-unit conversions. Internal X, Y and Z remain µm; nm/µm/mm c
 
 ### `site/workspace-snapshots.js`
 
-History value comparisons and private import receipts use `site/state-equality.js`. Its exact own-key/value comparison visits shared object pairs once within a synchronous batch and handles canonical XY pairs directly. The memo is discarded after a failed comparison and at the end of each call; it never authorizes a later live edit using object identity or revision alone. Changed/consumed import receipts continue through strict validation. Geometry, snapshots and export formats are unchanged. See [metalens loading measurements](TIO2_METALENS_PERFORMANCE_2026-10-10.md).
+History value comparisons and private import receipts use `site/state-equality.js`. Its exact own-key/value comparison visits shared object pairs once within a synchronous batch and handles canonical XY pairs directly. The memo is discarded after a failed comparison and at the end of each call; it never authorizes a later live edit using object identity or revision alone. Changed/consumed import receipts continue through strict validation. Geometry, snapshots and export formats are unchanged. See [metalens loading measurements](examples/TIO2_METALENS_PERFORMANCE_2026-10-10.md).
 
 Owns the canonical process-History graph. A successful Process action creates one **Step node** with `branchId`, `parentId`, `processRevision`, timestamp, structured operation metadata, and the exact validated workspace state produced by that action. Geometry-changing Deposit/Extend/Etch/Implant actions record the worker result; Record actions create an explicit non-geometric fabrication Step. In snapshot-branch format v3 every newly written Step is restorable.
 
@@ -243,7 +243,7 @@ Etch has an explicit geometry **Profile**. **Directional** is the default and pr
 
 **Isotropic release** is an opt-in, material-selective undercut primitive. It seeds only from selected target-material surfaces that are actually exposed inside the operation area, then advances a bounded Z-sliced Euclidean-distance front into that material. The XY front may extend beyond the original operation footprint after seeding, which is what allows a XeF₂/HF-like undercut beneath a non-target mask. The subtraction can split one region stack into separated material intervals, producing canonical cavities/overhangs that are consumed by the same Section and 3D topology code and physical GLB export. Geometry mutation is rollback-safe on clipping failure.
 
-Directional Etch alone exposes the optional Surface mode for render-only Stochastic Rough or Pyramid morphology with Normal/Inverted polarity. That appearance metadata does not modify the canonical Z stack. Isotropic release intentionally excludes Rough/Pyramid because it already changes physical geometry. Supported material-geometry fixtures are documented and locked by [process benchmarks](PROCESS_BENCHMARKS.md).
+Directional Etch alone exposes the optional Surface mode for render-only Stochastic Rough or Pyramid morphology with Normal/Inverted polarity. That appearance metadata does not modify the canonical Z stack. Isotropic release intentionally excludes Rough/Pyramid because it already changes physical geometry. Supported material-geometry fixtures are documented and locked by [process benchmarks](science/PROCESS_BENCHMARKS.md).
 
 ## Views
 

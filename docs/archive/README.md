@@ -48,7 +48,7 @@ The following are previously committed, revision-specific records preserved in f
 - [Example storage optimization — 2026-10-06](EXAMPLE_STORAGE_OPTIMIZATION_2026-10-06.md)
 - [Native Conformal follow-up - 2026-10-06](NATIVE_CONFORMAL_FOLLOWUP_2026-10-06.md)
 - [Native three-tier Fig3 Welcome example - 2026-10-06](NATIVE_FIG3_EXAMPLE_2026-10-06.md)
-- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
+- [Photodetector production example · Process Geometry Kernel rebuild (2026-10-08)](../examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md)
 - [Photodetector border and 3D Z follow-up — 2026-10-05](PHOTODETECTOR_RENDER_FOLLOWUP_2026-10-05.md)
 
 ### Project storage, loading and presentation

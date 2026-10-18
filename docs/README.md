@@ -30,8 +30,6 @@ The [CI architecture audit](archive/CI_ARCHITECTURE_AUDIT_2026-10-12.md) tracks 
 
 ## Documentation by responsibility
 
-- [Published path aliases](COMPATIBILITY.md) — forwarding URLs for relocated files; these are not second sources of truth.
-
 - [Scientific contracts](science/README.md) — kernel, precision, geometry, morphology and annotation.
 - [Literature reconstruction](examples/README.md) — paper assumptions and named-example evidence.
 - [UI Workstation](ui-v2/README.md) — production interface ownership and dated UI contracts.

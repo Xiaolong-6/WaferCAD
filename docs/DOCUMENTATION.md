@@ -1,8 +1,8 @@
 # Documentation architecture and maintenance
 
-## Folder ownership and compatibility
+## Folder ownership and canonical references
 
-- `docs/` owns stable entrypoints, engineering conventions and compatibility links.
+- `docs/` owns stable navigation entrypoints and shared engineering conventions.
 - `docs/science/` owns current process, geometry, annotation, unit-integrity and History transaction contracts.
 - `docs/examples/` owns paper-based reconstructions, assumptions and validation provenance.
 - `docs/ui-v2/` owns Workstation implementation contracts and dated engineering checkpoints.
@@ -10,11 +10,11 @@
 - `docs/archive/` owns frozen historical audits; old data and dates remain unchanged.
 - `docs/review/` contains retained historical visual evidence and does not certify current UI.
 
-When relocating an already published Markdown document, retain its old URL as a short compatibility page, including its original heading anchors where feasible. Point navigation to the single canonical destination. Update or preserve repository-relative links and run the focused documentation check. Do not duplicate the full text across active folders or delete scientific provenance for cosmetic tidiness.
+When moving documentation, keep exactly one canonical file in the owning directory and update every tracked Markdown link, source reference and workflow path to that location. **Do not add forwarding Markdown stubs or compatibility ledgers.** The old GitHub file URL may cease to work; clean directory ownership and correct current references take precedence. Run the documentation link graph check and keep scientific provenance intact.
 
 ## Authority and readers
 
-**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. Retain an English pointer at a formerly published URL when retiring localized Wiki content.
+**Documentation language:** English is required for new and actively maintained WaferCAD documentation, release notes, code comments, UI text, prompts and development handoffs. Existing historical audits, plans and archived handoffs may remain in their original language; do not translate them solely to standardize language. When retiring localized Wiki content, update the tracked navigation and link destinations directly rather than creating a placeholder page.
 
 [The documentation map](README.md) is the repository navigation root. [The root README](../README.md) introduces the product and links here; it should summarize rather than duplicate implementation details.
 

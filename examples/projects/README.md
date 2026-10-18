@@ -18,7 +18,7 @@ The Welcome page is driven by `site/bundled-examples.js`. Public, editable bundl
 The current production literature families are:
 
 - **Photodetectors with nanopatterns** — `site/examples/photodetector-literature-examples.wafercad`
-  - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
+  - Rebuilt from the current Process Geometry Kernel using `scripts/maintenance/rebuild-photodetectors.mjs`; see `docs/examples/PHOTODETECTOR_RECONSTRUCTION_V2_2026-10-08.md`.
   - **Black-Si Fig. 1a:** ordered thermal oxidation, lithography, ICP-RIE, B/P contact implants, drive-in and oxide-strip records, conformal passivation, contacts and final forming-gas treatment.
     - FINAL · selectively strips blanket Al while protecting active ALD.
     - QA · intentional nonselective overetch; not a fabrication recommendation.

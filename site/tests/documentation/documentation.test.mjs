@@ -112,48 +112,29 @@ test('heading links retain Unicode, duplicate suffixes and explicit generated an
   assert.ok(anchors.has('deposit-transfer-follow'));
 });
 
-test('archived documents have canonical links and no obsolete originals', async () => {
-  const archiveRoot = new URL('../../../docs/archive/', import.meta.url);
+test('categorized documents have no forwarding files or obsolete root aliases', async () => {
+  const docsRoot = new URL('../../../docs/', import.meta.url);
+  const rootFiles = await readdir(docsRoot, { withFileTypes: true });
+  assert.ok(rootFiles.length > 0);
+  for (const entry of rootFiles.filter((item) => item.isFile() && item.name.endsWith('.md'))) {
+    const source = await readFile(new URL(entry.name, docsRoot), 'utf8');
+    assert.doesNotMatch(source, /^# Moved:/, `${entry.name}: remove obsolete forwarding file`);
+  }
+  await assert.rejects(access(new URL('COMPATIBILITY.md', docsRoot)), { code: 'ENOENT' });
+
+  const archiveRoot = new URL('archive/', docsRoot);
   const archiveIndex = await readFile(new URL('README.md', archiveRoot), 'utf8');
   const archived = (await readdir(archiveRoot, { recursive: true }))
     .map((entry) => String(entry).replaceAll('\\', '/'))
     .filter((entry) => entry.endsWith('.md') && entry !== 'README.md');
-
-  // The 2026-10-16 structure audit deliberately relocated exactly three dated
-  // records. Their original URLs remain readable as forwarding pages.
-  const relocated = new Set([
-    'CI_ARCHITECTURE_AUDIT_2026-10-12.md',
-    'SITE_EXPORT_API_REVIEW_2026-10-13.md',
-    'SITE_SCIENTIFIC_SYMBOL_REVIEW_2026-10-13.md',
-  ]);
-  assert.equal(
-    archived.length,
-    79 + relocated.size,
-    'archive inventory must be reviewed deliberately',
-  );
-  const compatibility = await readFile(
-    new URL('../../../docs/COMPATIBILITY.md', import.meta.url),
-    'utf8',
-  );
-  assert.doesNotMatch(archiveIndex, /legacy permalink|compatibility pointer/);
+  assert.equal(archived.length, 82, 'archive inventory must be reviewed deliberately');
   for (const entry of archived) {
-    assert.ok(
-      archiveIndex.includes(`](${entry})`),
-      `archive index must link directly to the canonical report: ${entry}`,
+    assert.ok(archiveIndex.includes(`](${entry})`), `archive index must link to ${entry}`);
+    await assert.rejects(
+      access(new URL(entry, docsRoot)),
+      { code: 'ENOENT' },
+      `archive content must have no duplicate root file: ${entry}`,
     );
-    const obsoletePath = new URL(`../../../docs/${entry}`, import.meta.url);
-    if (relocated.has(entry)) {
-      const pointer = await readFile(obsoletePath, 'utf8');
-      assert.match(pointer, /^# Moved:/);
-      assert.ok(pointer.includes(`archive/${entry}`), `archive alias must forward: ${entry}`);
-      assert.ok(compatibility.includes(`](${entry})`), `archive alias must be indexed: ${entry}`);
-    } else {
-      await assert.rejects(
-        access(obsoletePath),
-        { code: 'ENOENT' },
-        `obsolete historical stub must be deleted: ${entry}`,
-      );
-    }
   }
 });
 

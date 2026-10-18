@@ -23,7 +23,7 @@
 - Recipe serialization no longer rounds canonical lengths to eight significant
   digits when that changes their replayed value.
 - Added Kernel and Recipe regression cases; see
-  [physical interpretation and limitations](PROCESS_NUMERICAL_CONTRACT_2026-10-14.md).
+  [physical interpretation and limitations](science/PROCESS_NUMERICAL_CONTRACT_2026-10-14.md).
 
 ## P1-2: same-SHA publication gates
 
