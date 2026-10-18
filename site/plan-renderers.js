@@ -7,7 +7,7 @@ import {
 import { IMPLANT_DEPTH_GRADIENT } from './annotation-rendering.js';
 import { layerById, modelBoundsZ } from './model.js';
 import { drawPlanGrid } from './plan-grid.js';
-import { validateExperimentalPhysicalFacetModel } from './physical-facet-model.js';
+import { validateExperimentalPhysicalFacetModel } from './experimental/physical-facets/physical-facet-model.js';
 import {
   electricalRegionSectionBands,
   electricalRegionSurfaceGroups,
@@ -751,7 +751,9 @@ export function createPlanRenderers({
     ctx.fillRect(0, 0, w, h);
     for (const contour of sectionContours(model, section.a, section.b)) {
       const layer = layerById(model, contour.layerId);
-      if (!layer) continue;
+      const experimentalOxide =
+        physicalOwner && contour.layerId === model.experimentalPhysicalFacetShell?.layerId;
+      if (!layer && !experimentalOxide) continue;
       ctx.beginPath();
       for (const poly of contour.polys)
         for (const ring of poly) {
@@ -762,11 +764,11 @@ export function createPlanRenderers({
           });
           ctx.closePath();
         }
-      ctx.fillStyle = layer.color;
+      ctx.fillStyle = experimentalOxide ? '#d88b37' : layer.color;
       ctx.fill('evenodd');
       if (sectionShowBorders) {
         ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(17,24,32,.72)';
+        ctx.strokeStyle = experimentalOxide ? 'rgba(216,139,55,.93)' : 'rgba(17,24,32,.72)';
         ctx.lineWidth = 0.8;
         ctx.stroke();
       }

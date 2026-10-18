@@ -6,10 +6,17 @@ import {
   attachExperimentalPhysicalFacetOwner,
   attachExperimentalPhysicalFacetShell,
   validateExperimentalPhysicalFacetModel,
-} from '../physical-facet-model.js';
-import { makePhysicalPyramidOwner, physicalOwnerVolume } from '../physical-facet-owner.js';
-import { createPhysicalFacetShellQuery } from '../physical-facet-shell-owner.js';
-import { physicalPyramidSection, physicalPyramidSolidMesh } from '../physical-facet-surface.js';
+} from '../experimental/physical-facets/physical-facet-model.js';
+import {
+  makePhysicalPyramidOwner,
+  physicalOwnerVolume,
+} from '../experimental/physical-facets/physical-facet-owner.js';
+import { createPhysicalFacetShellQuery } from '../experimental/physical-facets/physical-facet-shell-owner.js';
+import { buildPhysicalFacetPresentation } from '../experimental/physical-facets/physical-facet-render-geometry.js';
+import {
+  physicalPyramidSection,
+  physicalPyramidSolidMesh,
+} from '../experimental/physical-facets/physical-facet-surface.js';
 import {
   expandProjectStorage,
   prepareProjectForWorkspaceStorage,
@@ -154,10 +161,31 @@ test('coated 3D material survives .wafercad, Workspace and History without false
   validateProjectFile(project);
   const query = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
   assert.equal(query.sample([0, 0, 130.02]).materialLayerId, 'oxide');
-  assert.throws(
-    () => sectionContours(project.model, [-6.4, 0], [6.4, 0]),
-    /refusing Si-only surrogate/,
+  const sections = sectionContours(project.model, [-6.4, 0], [6.4, 0]);
+  assert.deepEqual(
+    sections.map((part) => part.layerId),
+    ['base', 'oxide'],
   );
+  assert.equal(sections[1].polys.length, 2, 'Front/back SiO2 must both appear');
+  const displayed = buildPhysicalFacetPresentation(project.model);
+  assert.equal(displayed.oxideLayerId, 'oxide');
+  assert.equal(displayed.oxideTriangleCount, 25008);
+  assert.deepEqual(displayed.oxideTopology.exterior, {
+    faces: 25008,
+    edges: 37512,
+    invalidEdges: 0,
+  });
+  assert.equal(
+    Object.values(displayed.oxidePositions).reduce((sum, values) => sum + values.length / 9, 0),
+    displayed.oxideTriangleCount,
+    'ThreeView must consume every canonical oxide surface triangle',
+  );
+  for (const polygon of sections[1].polys) {
+    const ring = polygon[0];
+    assert.ok(ring.length > 50, 'Physical film must follow real Section facets');
+    const at = ring[Math.floor((ring.length - 1) / 4)];
+    assert.ok(Number.isFinite(at[0]) && Number.isFinite(at[1]));
+  }
   const poisoned = structuredClone(project);
   poisoned.model.experimentalPhysicalFacetShell.silicon.height = 2;
   assert.throws(() => validateProjectFile(poisoned), /coating and silicon descriptors/);
@@ -339,4 +367,84 @@ test('invalid physical descriptors, modified regions and unsupported UI import f
     (await readProjectFile({ size: Buffer.byteLength(data), text: async () => data })).model,
     legacy.model,
   );
+});
+
+test('bounded physical Both-face Conformal is atomic and survives persisted History', async () => {
+  const project = fixture();
+  const original = structuredClone(project);
+  const operation = {
+    type: 'add',
+    name: 'SiO2',
+    growth: 'conformal',
+    face: 'both',
+    thickness: 0.05,
+    color: '#d88b37',
+    area: structuredClone(project.model.boundary),
+  };
+  for (const wrong of [
+    { ...operation, face: 'front' },
+    { ...operation, area: [] },
+    { ...operation, thickness: 0 },
+    { ...operation, thickness: 1.7 },
+    { ...operation, name: 'Gold' },
+    { ...operation, type: 'etch' },
+  ]) {
+    const before = structuredClone(project.model);
+    const result = applyOperation(project.model, wrong);
+    assert.equal(result.changed, false, 'Unsupported physical operation must fail');
+    assert.ok(result.error);
+    assert.deepEqual(project.model, before, 'Preflight cannot partly mutate the model');
+  }
+  const applied = applyOperation(project.model, operation);
+  assert.deepEqual(applied, { changed: true, layerId: 'layer-1' });
+  assert.equal(project.model.layers.length, 2);
+  assert.equal(project.model.experimentalPhysicalFacetShell.layerId, 'layer-1');
+  assert.deepEqual(modelBoundsZ(project.model), [-130.05, 130.05]);
+  assert.equal(validateProjectFile(project), project);
+  const physical = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
+  assert.equal(physical.sample([0, 0, 130.02]).materialLayerId, 'layer-1');
+  assert.equal(sectionContours(project.model, [-6.4, 0], [6.4, 0])[1].layerId, 'layer-1');
+  const after = structuredClone(project);
+  const time = '2026-10-18T00:00:00.000Z';
+  project.snapshots = [
+    { id: 'before-coat', name: 'Pristine Si', createdAt: time, state: original },
+    { id: 'after-coat', name: 'Full SiO2', createdAt: time, state: after },
+  ];
+  const reopened = expandProjectStorage(JSON.parse(serializeProject(project)));
+  validateProjectFile(reopened);
+  assert.deepEqual(reopened.snapshots[0].state.model, original.model);
+  assert.deepEqual(reopened.snapshots[1].state.model, after.model);
+  const reader = await readProjectFile(
+    {
+      size: Buffer.byteLength(serializeProject(project)),
+      text: async () => serializeProject(project),
+    },
+    { experimentalPhysicalFacetReadOnly: true },
+  );
+  assert.deepEqual(reader.model, after.model);
+  assert.deepEqual(applyOperation(reader.model, operation), {
+    changed: false,
+    error:
+      'Experimental physical facet supports only one full-domain Both-face SiO2 Conformal Add.',
+  });
+  assert.deepEqual(reader.model, after.model);
+});
+
+test('native v2 read-only physical Workstation stages a real saved Conformal Process outcome', async () => {
+  const { loadExperimentalPhysicalFacetPreview } = await import('../ui-v2/workstation-runtime.js');
+  const project = (await loadExperimentalPhysicalFacetPreview({ coated: true })).data;
+  validateProjectFile(project);
+  assert.equal(project.model.processRevision, 1);
+  assert.deepEqual(
+    project.model.layers.map(({ name }) => name),
+    ['Base', 'SiO2'],
+  );
+  assert.equal(project.model.experimentalPhysicalFacetShell.layerId, project.model.layers[1].id);
+  assert.equal(project.model.experimentalPhysicalFacetShell.thicknessUm, 0.05);
+  const bare = (await loadExperimentalPhysicalFacetPreview({ coated: false })).data;
+  assert.equal(bare.model.processRevision, 0);
+  assert.equal(bare.model.layers.length, 1);
+  const oxide = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
+  assert.equal(oxide.sample([0, 0, 130.02]).materialLayerId, 'layer-1');
+  assert.equal(sectionContours(project.model, [-6.4, 0], [6.4, 0])[1].layerId, 'layer-1');
 });

@@ -6,7 +6,7 @@ import {
   samplePhysicalPyramidSlab,
   squarePyramidReliefVolume,
   squarePyramidSample,
-} from '../physical-facet-math.js';
+} from '../experimental/physical-facets/physical-facet-math.js';
 
 const args = { pitch: 6.4, height: 4.5, planeZ: 125.5, originX: 0, originY: 0 };
 

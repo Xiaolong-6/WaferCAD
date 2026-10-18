@@ -30,6 +30,7 @@ try {
   const params = new URLSearchParams(window.location.search);
   const readOnlyPreview = params.get('preview') === '1';
   const physicalFacetPreview = readOnlyPreview && params.get('physicalFacet') === '1';
+  const coatedPhysicalFacetPreview = physicalFacetPreview && params.get('oxide') === '1';
   const allowedViews = physicalFacetPreview
     ? ['three', 'section']
     : ['main', 'mask', 'three', 'section'];
@@ -45,7 +46,7 @@ try {
     }
   })();
   const project = physicalFacetPreview
-      ? await loadExperimentalPhysicalFacetPreview()
+      ? await loadExperimentalPhysicalFacetPreview({ coated: coatedPhysicalFacetPreview })
       : readOnlyPreview
         ? await loadBundledProject(params.get('example'), undefined, { preview: true })
         : await loadWorkstationProject(),

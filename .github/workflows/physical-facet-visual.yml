@@ -5,13 +5,13 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
     paths:
-      - 'site/physical-facet-preview.html'
-      - 'site/physical-facet-preview.js'
-      - 'site/physical-facet-shell-preview.html'
-      - 'site/physical-facet-shell-preview.js'
-      - 'site/physical-facet-shell-owner.js'
-      - 'site/physical-facet-render-geometry.js'
-      - 'site/physical-facet-surface.js'
+      - 'site/experimental/physical-facets/physical-facet-preview.html'
+      - 'site/experimental/physical-facets/physical-facet-preview.js'
+      - 'site/experimental/physical-facets/physical-facet-shell-preview.html'
+      - 'site/experimental/physical-facets/physical-facet-shell-preview.js'
+      - 'site/experimental/physical-facets/physical-facet-shell-owner.js'
+      - 'site/experimental/physical-facets/physical-facet-render-geometry.js'
+      - 'site/experimental/physical-facets/physical-facet-surface.js'
       - 'site/plan-renderers.js'
       - 'site/project-io.js'
       - 'site/ui-v2/workstation-runtime.js'

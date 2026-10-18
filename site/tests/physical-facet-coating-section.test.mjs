@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { physicalAxialFacetCoatingSection } from '../physical-facet-coating-section.js';
-import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
+import { physicalAxialFacetCoatingSection } from '../experimental/physical-facets/physical-facet-coating-section.js';
+import { makePhysicalPyramidOwner } from '../experimental/physical-facets/physical-facet-owner.js';
 
 const owner = makePhysicalPyramidOwner({
   layerId: 'silicon',

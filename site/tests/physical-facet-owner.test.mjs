@@ -6,7 +6,7 @@ import {
   physicalMaterialAt,
   physicalOwnerVolume,
   rejectUnimplementedPhysicalProcess,
-} from '../physical-facet-owner.js';
+} from '../experimental/physical-facets/physical-facet-owner.js';
 
 const config = {
   layerId: 'silicon',

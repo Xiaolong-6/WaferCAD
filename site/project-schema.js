@@ -12,7 +12,7 @@ import { normalizeProcessRecipe } from './process-recipe.js';
 import {
   PHYSICAL_FACET_MODEL_KERNEL,
   validateExperimentalPhysicalFacetModel,
-} from './physical-facet-model.js';
+} from './experimental/physical-facets/physical-facet-model.js';
 
 export const CURRENT_PROJECT_VERSION = 14;
 export const PROJECT_COORDINATE_LIMIT_UM = 1e9;

@@ -14,7 +14,8 @@ const server = spawn(process.execPath, ['scripts/v2/serve-v2.mjs'], {
   env: { ...process.env, WAFERCAD_V2_PORT: port },
   stdio: 'ignore',
 });
-const url = 'http://127.0.0.1:' + port + '/physical-facet-preview.html';
+const url =
+  'http://127.0.0.1:' + port + '/experimental/physical-facets/physical-facet-preview.html';
 const report = { url, status: 'running', pictures: [], browserErrors: [], assertions: [] };
 let browser;
 try {
@@ -129,7 +130,10 @@ try {
     const shellPage = await context.newPage();
     shellPage.on('pageerror', (error) => report.browserErrors.push(error.message));
     const shellResponse = await shellPage.goto(
-      url.replace('/physical-facet-preview.html', '/physical-facet-shell-preview.html'),
+      url.replace(
+        '/experimental/physical-facets/physical-facet-preview.html',
+        '/experimental/physical-facets/physical-facet-shell-preview.html',
+      ),
       { waitUntil: 'domcontentloaded', timeout: 30000 },
     );
     assert.equal(shellResponse.status(), 200);
@@ -166,6 +170,67 @@ try {
     report.assertions.push(
       'whole-unit 3D oxide owner and three genuine multilayer Section ROI canvases verified',
     );
+
+    // The coated path MUST exercise the production createThreeView geometry,
+    // not only the independently useful 2D implicit-shell inspection page.
+    const coatedPage = await context.newPage();
+    coatedPage.on('pageerror', (error) => report.browserErrors.push(error.message));
+    try {
+      const response = await coatedPage.goto(url + '?oxide=1', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+      assert.equal(response.status(), 200);
+      await coatedPage.waitForFunction(
+        () => document.body.dataset.physicalFacetReady === 'true',
+        null,
+        { timeout: 45000 },
+      );
+      await waitForPaint(coatedPage);
+      const evidence = await coatedPage.evaluate(() => window.WaferCadPhysicalFacetEvidence);
+      assert.equal(evidence.productionHost.rendererState, 'ready');
+      assert.equal(evidence.productionHost.rendererPhase, 'complete');
+      assert.equal(evidence.productionHost.oxideTriangleCount, 25008);
+      assert.equal(evidence.physicalOxideTriangles, 25008);
+      assert.equal(evidence.oxideSectionRegions, 2);
+      assert.equal(evidence.productionHost.owner, 'wafercad-physical-pyramid-slab-v1');
+      const visible = await coatedPage.evaluate(() => {
+        const threeCanvas = document.querySelector('#physicalThree canvas');
+        const sectionCanvas = document.querySelector('#physicalSection');
+        if (!threeCanvas || !sectionCanvas) {
+          throw new Error('Native physical Si/SiO2 3D or Section canvas is missing');
+        }
+        const pixels = sectionCanvas
+          .getContext('2d')
+          .getImageData(0, 0, sectionCanvas.width, sectionCanvas.height).data;
+        let orangeSamples = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (pixels[i] > 155 && pixels[i + 1] > 70 && pixels[i + 1] < 180 && pixels[i + 2] < 120) {
+            orangeSamples++;
+          }
+        }
+        return {
+          threeWidth: threeCanvas.width,
+          threeHeight: threeCanvas.height,
+          oxideSectionSamples: orangeSamples,
+        };
+      });
+      assert.ok(visible.threeWidth > 100 && visible.threeHeight > 100);
+      assert.ok(visible.oxideSectionSamples > 10, 'Native physical Section must show SiO2');
+      const threeShot = 'physical-oxide-three.png';
+      const sectionShot = 'physical-oxide-section.png';
+      await coatedPage.screenshot({ path: resolve(dir, threeShot), fullPage: true });
+      await coatedPage.locator('#physicalSection').screenshot({
+        path: resolve(dir, sectionShot),
+      });
+      report.pictures.push(
+        { angle: 'oxide-native-3d', name: threeShot },
+        { angle: 'oxide-native-section', name: sectionShot },
+      );
+      report.coated = { evidence, visible };
+    } finally {
+      await coatedPage.close();
+    }
     report.status = 'captured-unreviewed';
     report.assertions.push(
       'WebGL and Section have nonblank pixels and three distinct camera renders',

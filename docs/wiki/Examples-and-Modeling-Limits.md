@@ -142,3 +142,26 @@ WaferCAD evaluates **mask-conditioned 2.5D material geometry** from XY vector do
 WaferCAD does not predict ALD/sputter transport, etch rates, implantation dose/energy/depth profiles, activation, electrical fields, carrier motion, device I–V, photovoltaic conversion efficiency, optical responsivity or mechanical stability. Rough/Pyramid are **render-only** surface morphologies. Implant and Electrical Region are user-defined annotations; Anneal/Clean Record steps store metadata without chemically changing materials.
 
 **Provenance matters:** distinguish source-reported dimensions and steps from inferred masks, reconstructed geometry, idealized transfer/CMP and display-only textures. Use WaferCAD for structural reasoning, process teaching and mask-aware geometry inspection, and validated physics tools or measurements for performance claims.
+
+## Optional research geometry: not required for Welcome projects
+
+The eight Welcome examples deliberately use **lightweight process geometry**
+and display-only Roughness/pyramidal relief where appropriate. Rendering a
+pyramid does not imply that the full 3D facets participated in Boolean Process
+operations; that is an intentional performance trade-off, **not** a defect or
+reason to rebuild the examples.
+
+Optional research is collected under [`site/experimental/`](https://github.com/Xiaolong-6/WaferCAD/tree/main/site/experimental):
+
+- **Physical Si/SiO₂ facets (#297):** a precise point-material oracle,
+  expensive closed surface tessellation and a restricted Both-face SiO₂
+  Conformal operation. Not a default project mode; unsupported process and
+  normal editable imports must reject rather than produce false geometry.
+- **Microdisk adaptive release (#298):** a separate saved 72-band Variant,
+  preserving the published eight-band source project and its History.
+  The 36 µm release radius is assumed, not author-measured.
+
+Neither research path validates unpublished author masks, device-identical SEM,
+full-wafer manufacturing fidelity, or optoelectronic predictive performance.
+Default Examples, Roughness, and normal History/Recovery behavior do not require
+migration to these research structures.

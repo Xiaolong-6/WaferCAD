@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { physicalFacetNormalCoatingPatch } from '../physical-facet-coating.js';
-import { samplePhysicalPyramidSlab, squarePyramidSample } from '../physical-facet-math.js';
-import { makePhysicalPyramidOwner } from '../physical-facet-owner.js';
-import { signedPhysicalMeshVolume } from '../physical-facet-surface.js';
+import { physicalFacetNormalCoatingPatch } from '../experimental/physical-facets/physical-facet-coating.js';
+import {
+  samplePhysicalPyramidSlab,
+  squarePyramidSample,
+} from '../experimental/physical-facets/physical-facet-math.js';
+import { makePhysicalPyramidOwner } from '../experimental/physical-facets/physical-facet-owner.js';
+import { signedPhysicalMeshVolume } from '../experimental/physical-facets/physical-facet-surface.js';
 
 const owner = makePhysicalPyramidOwner({
   layerId: 'silicon',

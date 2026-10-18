@@ -3,9 +3,10 @@ import { addQualitativeDopantRegion, resolveQualitativeDopantRegion } from './do
 import { adaptiveReleaseDepthBands } from './isotropic-release-oracle.js';
 import {
   assertExperimentalPhysicalFacetNotProcessed,
+  applyExperimentalPhysicalFacetConformal,
   assertExperimentalPhysicalFacetNotRendered,
   validateExperimentalPhysicalFacetModel,
-} from './physical-facet-model.js';
+} from './experimental/physical-facets/physical-facet-model.js';
 import {
   MIN_RESOLVABLE_MATERIAL_SEGMENT_UM,
   validateMaterialThicknessUm,
@@ -1790,6 +1791,8 @@ function applyOperationImpl(
 }
 
 export function applyOperation(model, params) {
+  const physicalConformal = applyExperimentalPhysicalFacetConformal(model, params);
+  if (physicalConformal) return physicalConformal;
   const unsupported = assertExperimentalPhysicalFacetNotProcessed(model);
   if (unsupported) return unsupported;
   if (params?.face === 'both') {
@@ -1834,7 +1837,11 @@ export function applyOperation(model, params) {
 export function modelBoundsZ(model) {
   const physical = validateExperimentalPhysicalFacetModel(model);
   if (physical) {
-    return [physical.bottomPlaneZ - physical.height, physical.topPlaneZ + physical.height];
+    const exterior = model.experimentalPhysicalFacetShell?.thicknessUm || 0;
+    return [
+      physical.bottomPlaneZ - physical.height - exterior,
+      physical.topPlaneZ + physical.height + exterior,
+    ];
   }
   if (isArrayModel(model)) {
     const bounds = referencedModelParts(model).filter(hasMaterial).map(modelBoundsZ);
