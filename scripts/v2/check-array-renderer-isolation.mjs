@@ -77,10 +77,11 @@ try {
       beforeBorder,
       'Opening Inspector must not toggle Border visibility',
     );
-    const enabled = inspector.getByRole('checkbox', { name: 'Show 3D borders' });
-    await enabled.setChecked(!beforeBorder);
+    const enabled = inspector.getByRole('button', { name: 'Show 3D borders' });
+    assert.equal(await enabled.getAttribute('aria-pressed'), String(beforeBorder));
+    await enabled.click();
     assert.equal((await snap()).threeDisplay.borders, !beforeBorder);
-    await enabled.setChecked(beforeBorder);
+    await enabled.click();
     assert.equal((await snap()).threeDisplay.borders, beforeBorder);
     assert.deepEqual((await snap()).model, initial.model, 'Borders do not mutate array instances');
     assert.deepEqual(errors, []);

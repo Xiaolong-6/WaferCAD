@@ -229,13 +229,23 @@ export function createWorkstationThreeView({ store, workstation }) {
     class: 'v2-border-inspector p-form',
     'data-border-inspector': '',
   });
-  const borderEnable = el('input', { type: 'checkbox', 'aria-label': 'Show 3D borders' });
+  const borderEnable = el(
+    'button',
+    {
+      type: 'button',
+      class: 'wc-button v2-border-master',
+      'aria-label': 'Show 3D borders',
+      'aria-pressed': String(state.threeShowBorders),
+      'data-help': 'three.border.enabled',
+    },
+    'Visible',
+  );
   const presetButtons = Object.keys(BORDER_PRESETS).map((preset) => {
     const choice = el(
       'button',
       {
         type: 'button',
-        class: 'v2-border-preset',
+        class: 'wc-segment v2-border-preset',
         'data-border-preset': preset,
         'data-help': `three.border.preset.${preset}`,
       },
@@ -252,7 +262,7 @@ export function createWorkstationThreeView({ store, workstation }) {
   const borderSelectors = new Map();
   const borderRows = BORDER_CATEGORIES.map((category) => {
     const selector = el('select', {
-      class: 'v2-border-style',
+      class: 'wc-select v2-border-style',
       'data-border-category': category,
       'aria-label': `${borderNames[category]} line style`,
     });
@@ -297,8 +307,8 @@ export function createWorkstationThreeView({ store, workstation }) {
     borderStrengthValue.textContent = `${Math.round(local.borderSettings.strength * 100)}%`;
     requestRender();
   };
-  borderEnable.onchange = () => {
-    state.threeShowBorders = borderEnable.checked;
+  borderEnable.onclick = () => {
+    state.threeShowBorders = !state.threeShowBorders;
     updateBorderControls();
     requestRender();
   };
@@ -307,12 +317,7 @@ export function createWorkstationThreeView({ store, workstation }) {
       'div',
       { class: 'v2-border-header' },
       el('strong', {}, 'Border Inspector'),
-      el(
-        'label',
-        { class: 'v2-border-enabled', 'data-help': 'three.border.enabled' },
-        borderEnable,
-        ' Show',
-      ),
+      borderEnable,
     ),
     el('div', { class: 'v2-border-presets' }, ...presetButtons),
     el('div', { class: 'v2-border-rows' }, ...borderRows),
@@ -325,7 +330,8 @@ export function createWorkstationThreeView({ store, workstation }) {
   );
   function updateBorderControls() {
     local.borderSettings = normalizeBorderSettings(local.borderSettings);
-    borderEnable.checked = Boolean(state.threeShowBorders);
+    borderEnable.setAttribute('aria-pressed', String(Boolean(state.threeShowBorders)));
+    borderEnable.textContent = state.threeShowBorders ? 'Visible' : 'Hidden';
     for (const presetButton of presetButtons) {
       presetButton.setAttribute(
         'aria-pressed',

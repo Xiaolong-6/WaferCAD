@@ -91,11 +91,11 @@ try {
     starting.pressed,
     'Opening Border Inspector must not change the border display state',
   );
-  const enabled = inspector.getByRole('checkbox', { name: 'Show 3D borders' });
-  assert.equal(await enabled.isChecked(), starting.pressed === 'true');
-  await enabled.setChecked(starting.pressed !== 'true');
+  const enabled = inspector.getByRole('button', { name: 'Show 3D borders' });
+  assert.equal(await enabled.getAttribute('aria-pressed'), starting.pressed);
+  await enabled.click();
   const toggled = await visualState();
-  assert.notEqual(toggled.pressed, starting.pressed, 'Inspector checkbox changes pressed state');
+  assert.notEqual(toggled.pressed, starting.pressed, 'Inspector pressed button changes pressed state');
   assert.equal(
     toggled.pressed,
     String((await snapshot()).threeDisplay.borders),
@@ -107,7 +107,7 @@ try {
       toggled.outline !== starting.outline,
     'Border toggle changes its selected visual appearance',
   );
-  await enabled.setChecked(starting.pressed === 'true');
+  await enabled.click();
   const restored = await visualState();
   assert.equal(restored.pressed, starting.pressed, 'Border pressed state is reversible');
   assert.equal(restored.fill, starting.fill, 'Border selected fill is reversible');

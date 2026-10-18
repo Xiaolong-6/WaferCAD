@@ -170,19 +170,24 @@ body[data-workstation] #app-root {
   overflow-x: hidden;
   display: grid;
   gap: 11px;
-  color: var(--text-primary, #273746);
+  color: var(--wc-text);
 }
 .v2-border-header,
-.v2-border-enabled,
 .v2-border-strength > span {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.v2-border-enabled {
-  font-size: 12px;
-  cursor: pointer;
+.v2-border-master {
+  min-width: 80px;
+  min-height: var(--wc-control-sm);
+  font-weight: 600;
+}
+.v2-border-master[aria-pressed='true'] {
+  background: var(--wc-accent-tint);
+  border-color: var(--wc-accent);
+  color: var(--wc-accent);
 }
 .v2-border-presets {
   display: grid;
@@ -190,17 +195,15 @@ body[data-workstation] #app-root {
   gap: 5px;
 }
 .v2-border-preset {
-  background: #f5f7f9;
-  border: 1px solid #d1dbe5;
-  border-radius: 5px;
-  padding: 7px 4px;
-  color: #34495b;
-  cursor: pointer;
+  min-height: var(--wc-control-sm);
+  padding: 6px 4px;
+  background: var(--wc-surface);
+  border-color: var(--wc-border);
 }
 .v2-border-preset[aria-pressed='true'] {
-  background: #e1efff;
-  color: #16529b;
-  border-color: #9bc2f1;
+  background: var(--wc-accent-tint);
+  color: var(--wc-accent);
+  border-color: var(--wc-accent);
 }
 .v2-border-rows {
   display: grid;
@@ -212,19 +215,16 @@ body[data-workstation] #app-root {
   align-items: center;
   gap: 10px;
   padding: 6px 0;
-  border-bottom: 1px solid #e9edf2;
+  border-bottom: 1px solid var(--wc-border);
 }
 .v2-border-description {
   font-size: 12px;
   font-weight: 600;
 }
 .v2-border-style {
-  border: 1px solid #cad5df;
-  border-radius: 4px;
-  padding: 5px;
-  background: #fff;
-  color: #273746;
+  min-height: var(--wc-control-sm);
   min-width: 0;
+  border-color: var(--wc-border-strong);
 }
 .v2-border-strength {
   display: grid;
@@ -243,4 +243,14 @@ body[data-workstation] #app-root {
 .v2-main-tools > .v2-border-inspector {
   width: 100%;
   box-sizing: border-box;
+}
+@media (pointer: coarse) {
+  .v2-border-master,
+  .v2-border-preset,
+  .v2-border-style {
+    min-height: 44px;
+  }
+  .v2-border-row {
+    min-height: 44px;
+  }
 }

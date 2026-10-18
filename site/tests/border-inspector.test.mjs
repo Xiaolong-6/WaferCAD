@@ -236,3 +236,18 @@ test('border line presentation is view-only and preserves old depth/opacity sema
     false,
   );
 });
+test('Border Inspector uses native v2 pressed buttons rather than a small checkbox', async () => {
+  const [view, css] = await Promise.all([
+    readFile(new URL('../ui-v2/three-view.js', import.meta.url), 'utf8'),
+    readFile(new URL('../ui-v2/workstation-views.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(view, /class: 'wc-button v2-border-master'/);
+  assert.match(view, /borderEnable\.setAttribute\('aria-pressed'/);
+  assert.match(view, /class: 'wc-segment v2-border-preset'/);
+  assert.match(view, /class: 'wc-select v2-border-style'/);
+  assert.doesNotMatch(view, /borderEnable\.checked|borderEnable\.onchange/);
+  assert.match(css, /@media \(pointer: coarse\)/);
+  assert.match(css, /\.v2-border-master\[aria-pressed='true'\]/);
+  assert.match(css, /min-height: 44px/);
+});
+
