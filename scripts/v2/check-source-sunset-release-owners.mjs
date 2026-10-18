@@ -103,11 +103,11 @@ export const RELEASE_SCIENTIFIC_TESTS = Object.freeze({
   ]),
   recipe: Object.freeze([
     'site/tests/process-recipe-preflight.test.mjs',
-    'site/tests/history-replay.test.mjs',
+    'site/tests/history/history-replay.test.mjs',
   ]),
   transaction: Object.freeze([
     'site/tests/process-task-abort-fault.test.mjs',
-    'site/tests/history-recovery-fault-matrix.test.mjs',
+    'site/tests/history/history-recovery-fault-matrix.test.mjs',
   ]),
   io: Object.freeze([
     'site/tests/project-import-validation.test.mjs',

@@ -1,8 +1,13 @@
 # Suspended silica microdisk example candidate
 
-Status: **staging only**. Do not register on the Welcome page yet and do not open a PR until the example project is packaged and reviewed.
+**Status reviewed 2026-10-18:** A separate, published Microdisk project now
+exists at `site/examples/suspended-silica-microdisks.wafercad` and is listed
+on Welcome as `suspended-silica-microdisk`. This directory retains the
+original candidate package and its independent source/geometry evidence;
+it is not the runtime asset. Publication does not establish a quantitative
+SEM match or remove the experimental continuous-release limitations.
 
-Baseline: current `main`, which already contains PR #89 (isotropic release / undercut etch).
+Original candidate baseline: Main with PR #89 (isotropic release / undercut etch).
 
 ## Source reconstruction
 
@@ -59,11 +64,13 @@ The uploaded reconstruction package has been reviewed and pinned by hash.
 - package audit reports 72 annulus probe points with a real canonical air gap, sampled 13.5–36 µm, and a center Si/SiO2 contact at z = 40 µm
 - package audit also records successful UI import/restore and project round-trip identity checks
 
-The package README and process-flow note are copied into this staging directory for provenance. The large project binary and screenshots remain outside production `site/examples/` until the example is promoted.
+The candidate package README and process-flow note remain here as provenance.
+Its staged binary and screenshots were kept separate from the production
+assets; the published project is now the separate file identified above.
 
-## Production-example plan
+## Original production promotion plan (historical)
 
-When promoted:
+The candidate-stage plan required:
 
 - create a dedicated `.wafercad` project under `site/examples/`;
 - preserve a compact process history from oxide growth through release;
@@ -72,4 +79,6 @@ When promoted:
 - cite Basiri-Esfahani et al., *Nature Communications* 10, 132 (2019), DOI `10.1038/s41467-018-08038-4`, directly on the Welcome card;
 - add structural example regression that asserts a true annular air gap and surviving center support.
 
-No Welcome-page registration or CI-triggering PR is part of this staging step. CI remains intentionally unrequested on this candidate branch.
+At that candidate checkpoint no Welcome registration or CI-triggering PR was
+requested. A published example has since been registered; recheck the
+specific current project and test revision before claiming acceptance.

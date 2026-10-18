@@ -117,7 +117,7 @@ deposit({
 });
 ```
 
-See the [Kernel contract and operation limits](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/PROCESS_BOTH_FACE_2026-10-11.md).
+See the [Kernel contract and operation limits](https://github.com/Xiaolong-6/WaferCAD/blob/main/docs/science/PROCESS_BOTH_FACE_2026-10-11.md).
 
 ### Etch, release and planarization
 

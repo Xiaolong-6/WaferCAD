@@ -69,7 +69,7 @@ jobs:
       - run: npm run docs:check
 
   approved-windows-visual-baseline:
-    name: Current visual layout / ${{ matrix.variant }}
+    name: Native v2 M3D Section / historical layout / ${{ matrix.variant }}
     needs: scientific-baseline
     runs-on: windows-latest
     timeout-minutes: 30
@@ -108,21 +108,29 @@ jobs:
           }
           if (-not $ready) { throw 'WaferCAD localhost preview did not start.' }
       - name: Compare historical 2026-10-05 visual snapshots (diagnostic)
+        if: matrix.variant == 'original-main'
         id: historical
         continue-on-error: true
         run: node scripts/visual-baseline-regression.mjs
-      - name: Enforce current Process and Main layout contracts
+      # Main retired app-legacy.html. The historical product-layout runner
+      # can only boot the frozen original-main source. On the integrated
+      # candidate, exercise the real v2 Workstation with two independent A-B
+      # cuts, actual rendered Section canvases, and physical material probes.
+      # Never recreate the retired Legacy page or suppress a native failure.
+      - name: Enforce native v2 M3D power-via Section and material contracts
         if: matrix.variant == 'integrated-review'
-        run: node scripts/visual-layout-regression.mjs
+        run: node scripts/v2/check-m3d-second-power-via-section.mjs
       - name: Record historical drift without hiding it
         if: always()
         shell: pwsh
         run: |
           "Historical Oct-05 snapshot outcome (${{ matrix.variant }}): ${{ steps.historical.outcome }}" >> $env:GITHUB_STEP_SUMMARY
-          "The October 5 reference (ec5edba) also differs from the existing main branch. Do not overwrite it without fresh visual approval." >> $env:GITHUB_STEP_SUMMARY
+          "Original-main keeps the frozen Legacy baseline; integrated-review runs native v2 M3D geometry and Section screenshots because Main retired app-legacy.html. Do not rebaseline historical pixels." >> $env:GITHUB_STEP_SUMMARY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: windows-visual-baseline-diffs-${{ matrix.variant }}
-          path: test-results/visual-diff
+          name: windows-m3d-native-or-historical-${{ matrix.variant }}
+          path: |
+            test-results/visual-diff
+            test-results/literature-figure-cuts/native-v2-m3d
           if-no-files-found: warn

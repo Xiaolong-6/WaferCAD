@@ -122,6 +122,13 @@ export function createWorkspacePersistenceController({
   windowRef = globalThis.window,
   channelFactory = (name) =>
     typeof globalThis.BroadcastChannel === 'function' ? new BroadcastChannel(name) : null,
+  // Explicit adapter boundary enables fault injection of recovery commits,
+  // without bypassing the production restore, rollback or write-lease gates.
+  recoveryIO = {
+    createCheckpoint: createWorkspaceRecoveryCheckpoint,
+    loadPoint: loadWorkspaceRecoveryPoint,
+    saveState: saveWorkspaceState,
+  },
 }) {
   const $ = (id) => root.getElementById(id);
   let ready = false,
@@ -436,7 +443,7 @@ export function createWorkspacePersistenceController({
 
   async function saveCurrentProject(project) {
     if (recoveryRollbackUnsafe) return false;
-    const saved = await saveWorkspaceState(
+    const saved = await recoveryIO.saveState(
       project,
       { appCommit },
       {
@@ -808,7 +815,7 @@ export function createWorkspacePersistenceController({
       async ({ updateStage }) => {
         updateStage('Protecting current workspace…');
         const current = buildProjectSnapshot(true);
-        await createWorkspaceRecoveryCheckpoint(current, {
+        await recoveryIO.createCheckpoint(current, {
           appCommit,
           reason: 'pre-restore',
         });
@@ -826,7 +833,7 @@ export function createWorkspacePersistenceController({
         let committed = false;
         try {
           updateStage('Loading Recovery checkpoint…');
-          const recovered = await loadWorkspaceRecoveryPoint(key);
+          const recovered = await recoveryIO.loadPoint(key);
           if (!recovered) throw new Error('Recovery checkpoint is unavailable.');
           if (!hasWriteAccess()) {
             throw new Error(
@@ -1429,6 +1436,7 @@ export function createWorkspacePersistenceController({
     scheduleView,
     refreshRecoveryOptions,
     checkpointCurrent,
+    restoreSelectedRecovery,
     syncSessionState,
     setUpdateCommit,
     initializePersistedWorkspace,
