@@ -29,6 +29,7 @@ test('Pages includes product assets but excludes previews and developer-only fix
     'app-legacy.html',
     'app.js',
     'workstation.css',
+    'style.css',
     'isotropic-release-topology.js',
     'experimental/physical-facets/physical-facet-coating.js',
     'experimental/physical-facets/physical-facet-coating-section.js',
@@ -85,6 +86,8 @@ test('staging copies production files without altering source or shipping tests'
   await writeFile(join(source, 'app.html'), 'production');
   await writeFile(join(source, 'app-legacy.html'), 'Legacy source must never deploy');
   await writeFile(join(source, 'app.js'), 'Legacy script must never deploy');
+  await writeFile(join(source, 'style.css'), 'retired editor styles');
+  await writeFile(join(source, 'welcome.css'), 'live welcome styles');
   await writeFile(join(source, 'ui-v2', 'mock-data.js'), 'fixture');
   await writeFile(join(source, 'ui-v2', 'prototypes', 'index.html'), 'prototype');
   await writeFile(join(source, 'tests', 'example.test.mjs'), 'test');
@@ -95,6 +98,7 @@ test('staging copies production files without altering source or shipping tests'
   const redirect = await readFile(join(destination, 'app-legacy.html'), 'utf8');
   assert.match(redirect, /location\.replace\('\.\/app\.html'/);
   assert.doesNotMatch(redirect, /Legacy source must never deploy/);
+  await assert.rejects(access(join(destination, 'style.css')));
   await assert.rejects(access(join(destination, 'app.js')));
   for (const sourceFile of [
     'isotropic-release-topology.js',
@@ -104,6 +108,8 @@ test('staging copies production files without altering source or shipping tests'
     await assert.rejects(access(join(destination, sourceFile)));
   }
   assert.equal(await readFile(join(destination, 'examples', 'live.wafercad'), 'utf8'), 'project');
+  assert.equal(await readFile(join(destination, 'welcome.css'), 'utf8'), 'live welcome styles');
+  assert.equal(await readFile(join(source, 'style.css'), 'utf8'), 'retired editor styles');
   await assert.rejects(access(join(destination, 'ui-v2', 'mock-data.js')));
   await assert.rejects(access(join(destination, 'ui-v2', 'prototypes', 'index.html')));
   await assert.rejects(access(join(destination, 'tests')));
@@ -134,6 +140,7 @@ test('real Pages staging preserves each entrypoint local stylesheet and script',
   assert.doesNotMatch(redirect, /app\.js|workstation\.css|workstation-boot/i);
   await assert.rejects(access(join(destination, 'app.js')));
   await assert.rejects(access(join(destination, 'workstation.css')));
+  await assert.rejects(access(join(destination, 'style.css')));
   for (const page of ['index.html', 'app.html', 'app-legacy.html']) {
     const html = await readFile(join(destination, page), 'utf8');
     const resourceTags = html.match(/<(?:script|link)\b[^>]*>/g) || [];
@@ -146,6 +153,7 @@ test('real Pages staging preserves each entrypoint local stylesheet and script',
     }
   }
   for (const file of [
+    'welcome.css',
     'welcome.js',
     'ui-v2/workstation-entry.js',
     'ui-v2/workstation-preview.css',
