@@ -11,6 +11,7 @@ export function createBaseControlsController({
   getModel,
   setModel,
   setSection,
+  resetAssemblyForNewBase = () => {},
   getBaseRevertSnapshot,
   setBaseRevertSnapshot,
   getHistory,
@@ -132,6 +133,9 @@ export function createBaseControlsController({
       setBaseRevertSnapshot(before);
       saveHistory(before);
       setModel(newModel);
+      // A fresh Base cannot retain assembly wires referencing old metal layers.
+      // The preceding transaction snapshot still owns the original wires for Undo/Revert.
+      resetAssemblyForNewBase();
       setSection({ a: [-width * 0.42, 0], b: [width * 0.42, 0] });
       const result = rebuildMainHistory({
         preservePrevious: action === 'keep',

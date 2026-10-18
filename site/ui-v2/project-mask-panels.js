@@ -342,6 +342,9 @@ export function createProjectMaskPanels({
     },
     getHistory: () => undo,
     getFuture: () => redo,
+    resetAssemblyForNewBase: () => {
+      state.assemblyWires = [];
+    },
     stateSnapshot: transaction,
     restoreSnapshot: restoreTransaction,
     saveHistory: (value = transaction()) => {

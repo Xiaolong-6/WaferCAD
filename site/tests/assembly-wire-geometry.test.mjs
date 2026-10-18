@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { inferredAuWireBond, validateAssemblyWires } from '../assembly-wire-geometry.js';
 import { assemblyWireCurve, createAssemblyWireMeshes } from '../assembly-wire-mesh.js';
+import { createBaseControlsController } from '../controllers/base-controls-controller.js';
+import { createModel } from '../model.js';
 
 const wire = inferredAuWireBond({
   id: 'metal-pad-to-gsg',
@@ -118,4 +120,85 @@ test('Au wire control points climb clear of both saved metal-pad tops', () => {
   assert.equal(c[2], 897.2);
   assert.ok(b[2] > a[2] + wire.diameterUm);
   assert.ok(c[2] > d[2] + wire.diameterUm);
+});
+
+
+test('Base rebuild drops obsolete Au wires and Revert restores them', async () => {
+  const model = createModel({ shape: 'rect', width: 6000, height: 5000, thickness: 400 });
+  model.layers.push(
+    { ...model.layers[0], id: 'layer-26', name: 'Source/drain metal' },
+    { ...model.layers[0], id: 'layer-28', name: 'GSG Au pads' },
+  );
+  const state = { model, assemblyWires: [structuredClone(wire)], section: null };
+  const original = structuredClone(state);
+  const undo = [];
+  const redo = [];
+  let baseRevert = null;
+  const capture = () => ({ workspaceState: structuredClone(state) });
+  const restore = (snapshot) => {
+    Object.assign(state, structuredClone(snapshot.workspaceState));
+  };
+  const controller = createBaseControlsController({
+    root: {
+      getElementById: () => {
+        throw new Error('Recipe Base must not require the manual Base form');
+      },
+    },
+    getModel: () => state.model,
+    setModel: (next) => {
+      state.model = next;
+    },
+    setSection: (next) => {
+      state.section = next;
+    },
+    resetAssemblyForNewBase: () => {
+      state.assemblyWires = [];
+    },
+    getBaseRevertSnapshot: () => baseRevert,
+    setBaseRevertSnapshot: (snapshot) => {
+      baseRevert = snapshot;
+    },
+    getHistory: () => undo,
+    getFuture: () => redo,
+    stateSnapshot: capture,
+    captureBaseSnapshot: capture,
+    restoreSnapshot: restore,
+    saveHistory: (snapshot) => undo.push(snapshot),
+    hasProcessEdits: () => true,
+    manualMicron: Number,
+    formatLengthField: String,
+    syncBaseControls: () => {},
+    renderAll: () => {},
+    fit3d: () => {},
+    status: () => {},
+    getHistoryDetails: () => ({ hasHistory: true }),
+    chooseHistoryAction: async () => 'clear',
+    rebuildMainHistory: ({ previousState, preservePrevious }) => {
+      assert.equal(preservePrevious, false);
+      assert.deepEqual(previousState.assemblyWires, original.assemblyWires);
+      assert.deepEqual(state.assemblyWires, []);
+      assert.ok(
+        wire.contactLayerIds.every((id) => !state.model.layers.some((layer) => layer.id === id)),
+        'A newly seeded Base must not retain the old wire contact layers',
+      );
+      return { archivedBranchId: null };
+    },
+  });
+  assert.equal(
+    await controller.applyBase({
+      recipeBase: {
+        shape: 'rect',
+        width: 6000,
+        height: 5000,
+        thickness: 400,
+        material: 'Si',
+      },
+    }),
+    true,
+  );
+  assert.deepEqual(state.assemblyWires, []);
+  assert.ok(baseRevert, 'Previous assembled package must remain available to Revert');
+  controller.revertBase();
+  assert.deepEqual(state.assemblyWires, original.assemblyWires);
+  assert.deepEqual(state.model, original.model);
 });
