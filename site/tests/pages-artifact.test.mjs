@@ -7,6 +7,35 @@ import test from 'node:test';
 import { auditSiteReachability } from '../../scripts/audit-site-reachability.mjs';
 import { shouldPublishSitePath, stagePagesAssets } from '../../scripts/build-pages-artifact.mjs';
 
+test('style.css exclusion matches only the exact site-relative path', () => {
+  assert.equal(shouldPublishSitePath('style.css'), false);
+  assert.equal(shouldPublishSitePath('./style.css'), false);
+  assert.equal(shouldPublishSitePath('nested/style.css'), true);
+  assert.equal(shouldPublishSitePath('ui-v2/style.css'), true);
+});
+
+test('published scripts, styles, manifests, Workers and previews do not reference style.css', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const { extname, relative } = await import('node:path');
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const extensions = new Set(['.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.xml', '.txt']);
+  const offenders = [];
+  async function visit(folder) {
+    for (const item of await readdir(folder, { withFileTypes: true })) {
+      const full = join(folder, item.name);
+      const path = relative(root, full).replaceAll('\\', '/');
+      if (!shouldPublishSitePath(path)) continue;
+      if (item.isDirectory()) await visit(full);
+      else if (item.isFile() && extensions.has(extname(item.name))) {
+        const content = await readFile(full, 'utf8');
+        if (/(^|[^\w-])style\.css(?:[?#]|\b)/.test(content)) offenders.push(path);
+      }
+    }
+  }
+  await visit(root);
+  assert.deepEqual(offenders, [], 'Production asset would reference removed style.css');
+});
+
 test('Pages includes product assets but excludes previews and developer-only fixtures', () => {
   for (const path of [
     'index.html',

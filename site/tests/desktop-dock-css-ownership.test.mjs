@@ -9,6 +9,19 @@ const app = readFileSync(new URL('../app.html', root), 'utf8');
 const dockRule =
   /body\[data-workstation\]:not\(\[data-preview-mode\]\) \.p-desktop-dock-actions\s*\{([^}]*)\}/g;
 
+
+function enclosingMedia(css, position) {
+  const nesting = [];
+  for (let i = 0; i < position; i++) {
+    if (css[i] === '{') {
+      const prefix = css.slice(Math.max(0, i - 100), i);
+      const query = prefix.match(/@media\s*\((?:min|max)-width:\s*\d+px\)\s*$/);
+      nesting.push(query?.[0] || null);
+    } else if (css[i] === '}') nesting.pop();
+  }
+  return nesting.filter(Boolean);
+}
+
 // Desktop dock action bar belongs to the shell. View-layout owns individual
 // scientific view panes and dividers, not the global navigation/control bar.
 test('desktop dock action bar has exactly one production style owner', () => {
@@ -27,7 +40,11 @@ test('desktop dock action bar has exactly one production style owner', () => {
   ]) {
     assert.ok(styles.includes(rule), `missing desktop dock style: ${rule}`);
   }
-  assert.match(desktop, /@media \(min-width: 821px\)/);
+  assert.deepEqual(
+    enclosingMedia(desktop, shellMatches[0].index),
+    ['@media (min-width: 821px)'],
+    'Dock rule must stay desktop-only, not leak below 821px',
+  );
   assert.ok(app.indexOf('ui-v2/view-layout.css') < app.indexOf('ui-v2/desktop-shell.css'));
 });
 
