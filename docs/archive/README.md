@@ -17,6 +17,7 @@ Old root paths are removed; current Markdown references use the canonical archiv
 - [P1 science, release and Recovery handoff — 2026-10-14](P1_SCIENCE_RELEASE_RECOVERY_HANDOFF_2026-10-14.md)
 - [Wiki content and visual audit — 2026-10-12](WIKI_CONTENT_VISUAL_AUDIT_2026-10-12.md)
 - [Product review screenshots, original PNGs and provenance](review/README.md)
+- Legacy candidate preview JPGs (historical only): [Microdisk](example-previews/microdisk-release.jpg), [PERC](example-previews/perc-blakers-1989.jpg), [Photodetector](example-previews/photodetector-literature.jpg), [Mask visualization](example-previews/visualization-mask.jpg). These are not active Welcome assets.
 
 These are dated source records and original images, not fresh UI acceptance evidence.
 

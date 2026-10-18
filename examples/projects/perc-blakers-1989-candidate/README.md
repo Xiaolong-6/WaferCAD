@@ -47,7 +47,7 @@ A full-wafer fit hides the 25 um front stripes, so the production example should
 
 The supplied screenshots also show occasional stale-frame timing after restore/ROI/maximize. Treat that as a separate renderer/UI timing investigation; do not encode screenshot pixels as the example contract.
 
-For Welcome promotion, register the title as **PERC solar cells with point contacts** and use the project-backed read-only Main / Mask / 3D / Section mini viewer as the primary preview. `site/example-previews/perc-blakers-1989.jpg` may remain only as a loading/error fallback; paper figures are not used as preview assets.
+For Welcome promotion, register the title as **PERC solar cells with point contacts** and use the project-backed read-only Main / Mask / 3D / Section mini viewer as the primary preview. the former JPG is retained only as historical evidence at `docs/archive/example-previews/perc-blakers-1989.jpg` and must not be used as a current Welcome fallback; paper figures are not used as preview assets.
 
 ## Promotion plan
 
