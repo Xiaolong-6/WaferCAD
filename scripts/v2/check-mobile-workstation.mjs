@@ -166,7 +166,7 @@ try {
         // state immediately after switching the mobile scientific view.
         await waitForPaint(page);
         const border = page.locator('#threePanel [data-action="borders:three"]');
-        const more = page.locator('#threePanel [aria-label="3D more tools"]');
+        const more = page.locator('#threePanel button[popovertarget="p-overflow-3d"]');
         await page.waitForFunction(() => {
           const panel = document.getElementById('threePanel');
           const button = panel?.querySelector('[data-action="borders:three"]');
