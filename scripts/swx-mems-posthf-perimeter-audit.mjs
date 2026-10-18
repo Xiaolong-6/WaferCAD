@@ -180,8 +180,34 @@ export function auditSwxPostHFPerimeterSupport(vectorApi, model, g) {
     (best, v) => (!best || v.lengthUm > best.lengthUm ? v : best),
     null,
   );
+  // These are only two explicitly sampled, source-unverified structures,
+  // not an exhaustive inventory of all retained BOX throughout the switch.
+  // A nonzero measurement must never be silently reported as "zero
+  // extraneous rails" just because the older wide-rail hypothesis was removed.
+  const [anchorX, anchorY] = g.rightGroundSupportCenterUm;
+  const anchorHalf = g.rightGroundSupportWidthUm / 2;
+  const rightGroundAnchorSupport = measureBoxCenterline(
+    vectorApi,
+    box,
+    [anchorX, anchorY - anchorHalf],
+    [anchorX, anchorY + anchorHalf],
+  );
+  const examinedSourceUnverifiedBOXSupports = [
+    {
+      feature: 'external-signal-bus',
+      actualSupportedCenterlineUm: signal.supportedLengthUm,
+      sourceLocationVerified: g.authorPerimeterMaskKnown,
+    },
+    {
+      feature: 'right-ground-anchor',
+      actualSupportedCenterlineUm: rightGroundAnchorSupport.supportedLengthUm,
+      sourceLocationVerified: g.externalGroundSupportCoordinatesVerified,
+    },
+  ].filter((item) => !item.sourceLocationVerified && item.actualSupportedCenterlineUm > 0);
   return {
     basis: 'actual post-HF processed BOX geometry, physical centerlines only; no FEM',
+    examinedSourceUnverifiedBOXSupports,
+    examinedSourceUnverifiedBOXSupportsExhaustive: false,
     ground,
     signal,
     signalCrossSection,

@@ -76,6 +76,23 @@ test('genuine OFF/ON post-HF source models expose nominal-vs-actual Ground and S
       SWX_GROUND_RETURN_ASSUMPTIONS,
     );
     assert.equal(actual.externalSignalContinuouslySupported, true);
+    // Unverified BOX-backed perimeter features must remain visible in the
+    // science evidence even though the old broad ground rails were deleted.
+    assert.equal(actual.examinedSourceUnverifiedBOXSupportsExhaustive, false);
+    assert.deepEqual(
+      actual.examinedSourceUnverifiedBOXSupports.map((item) => item.feature),
+      ['external-signal-bus', 'right-ground-anchor'],
+    );
+    assert.ok(
+      actual.examinedSourceUnverifiedBOXSupports.every(
+        (item) => item.sourceLocationVerified === false,
+      ),
+    );
+    const busSupport = actual.examinedSourceUnverifiedBOXSupports[0];
+    const anchorSupport = actual.examinedSourceUnverifiedBOXSupports[1];
+    assert.equal(busSupport.actualSupportedCenterlineUm, 122);
+    assert.ok(anchorSupport.actualSupportedCenterlineUm > 4.12);
+    assert.ok(anchorSupport.actualSupportedCenterlineUm < 4.14);
     assert.equal(actual.actualGroundSupportShorterThanNominal, true);
     assert.equal(actual.ground.length, 2);
     for (const path of actual.ground) {

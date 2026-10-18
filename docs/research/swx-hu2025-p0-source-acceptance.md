@@ -30,6 +30,8 @@ A further independent audit of actual OFF/ON **post-HF BOX** geometry at `9f026b
 
 The live independent results are retained in the [SEM-v2 exact-head workflow artifact](https://github.com/Xiaolong-6/WaferCAD/actions/runs/39026916427) and the `sourceElectricalNetAudit` sections of the original/candidate `science-report.json` files.
 
+The retained BOX underneath the experimentally routed **122 µm external Signal bus** and the unverified right-hand Ground anchor must not be hidden under the old report's hardcoded `extraneousSourceUnverifiedBOXSupportedRails: 0`. The revised actual-post-HF audit records **two examined, source-unverified retained-BOX features** for OFF and ON: Signal bus (122 µm supported centerline) and right Ground anchor (approximately 4.126708 µm). This is deliberately a **non-exhaustive** inventory: it does not certify every other Si/BOX interface, pad or trench. The author-layout and mechanical acceptance flags remain false.
+
 ## Immediate P0 decisions
 
 1. **Keep both geometry variants experimental.** Do not register either as the official Example or silently use the two rails as the paper's peripheral mask. The 64 × 64 physical array stays stopped.

@@ -38,6 +38,11 @@ const postHFPerimeterSupportByPose = project.snapshotBranches.branches.map((bran
 assert.equal(postHFPerimeterSupportByPose.length, 2);
 for (const actual of postHFPerimeterSupportByPose) {
   assert.equal(actual.externalSignalContinuouslySupported, true);
+  assert.deepEqual(
+    actual.examinedSourceUnverifiedBOXSupports.map((item) => item.feature),
+    ['external-signal-bus', 'right-ground-anchor'],
+  );
+  assert.equal(actual.examinedSourceUnverifiedBOXSupportsExhaustive, false);
   assert.equal(actual.actualGroundSupportShorterThanNominal, true);
   assert.ok(
     actual.ground.every((path) => path.supportedLengthUm > 4 && path.supportedLengthUm < 5),
@@ -89,7 +94,12 @@ await writeFile(
       rightGroundAnchorAuthorLocationVerified: false,
       originalAuthorExternalSupportMaskVerified: false,
       mechanicalPerimeterAccepted: false,
-      extraneousSourceUnverifiedBOXSupportedRails: 0,
+      // A hardcoded "0" concealed actually retained BOX under the inferred
+      // perimeter Signal bus and right Ground anchor. The per-pose evidence
+      // above now records both directly from the processed material polygons.
+      examinedSourceUnverifiedBOXSupportCountPerPose: postHFPerimeterSupportByPose.map(
+        (pose) => pose.examinedSourceUnverifiedBOXSupports.length,
+      ),
       inventedSourcePerimeterRails: true,
       modeledExternalGoldContacts: 2,
       paperPadXYCoordinatesVerified: false,
