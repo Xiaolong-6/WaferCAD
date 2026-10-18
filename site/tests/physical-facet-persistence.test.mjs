@@ -423,3 +423,22 @@ test('bounded physical Both-face Conformal is atomic and survives persisted Hist
   });
   assert.deepEqual(reader.model, after.model);
 });
+
+test('native v2 read-only physical Workstation stages a real saved Conformal Process outcome', async () => {
+  const { loadExperimentalPhysicalFacetPreview } = await import('../ui-v2/workstation-runtime.js');
+  const project = (await loadExperimentalPhysicalFacetPreview({ coated: true })).data;
+  validateProjectFile(project);
+  assert.equal(project.model.processRevision, 1);
+  assert.deepEqual(
+    project.model.layers.map(({ name }) => name),
+    ['Base', 'SiO2'],
+  );
+  assert.equal(project.model.experimentalPhysicalFacetShell.layerId, project.model.layers[1].id);
+  assert.equal(project.model.experimentalPhysicalFacetShell.thicknessUm, 0.05);
+  const bare = (await loadExperimentalPhysicalFacetPreview({ coated: false })).data;
+  assert.equal(bare.model.processRevision, 0);
+  assert.equal(bare.model.layers.length, 1);
+  const oxide = createPhysicalFacetShellQuery(project.model.experimentalPhysicalFacetShell);
+  assert.equal(oxide.sample([0, 0, 130.02]).materialLayerId, 'layer-1');
+  assert.equal(sectionContours(project.model, [-6.4, 0], [6.4, 0])[1].layerId, 'layer-1');
+});

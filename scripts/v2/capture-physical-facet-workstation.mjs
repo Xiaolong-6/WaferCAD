@@ -95,6 +95,8 @@ try {
             phase: host.dataset.renderPhase,
             triangles: Number(host.dataset.physicalFacetTriangles),
             oxideTriangles: Number(host.dataset.physicalFacetOxideTriangles || 0),
+            processRevision: window.WaferCadV2Workstation.snapshot().model.processRevision,
+            layers: window.WaferCadV2Workstation.snapshot().model.layers.map((l) => l.name),
             owner: host.dataset.physicalFacetOwner,
             axesHidden: host.dataset.physicalFacetAxesHidden,
             canvasWidth: canvas?.width,
@@ -104,6 +106,8 @@ try {
         assert.equal(metrics.phase, 'complete');
         assert.equal(metrics.triangles, 80);
         assert.equal(metrics.oxideTriangles, coated ? 25008 : 0);
+        assert.equal(metrics.processRevision, coated ? 1 : 0);
+        assert.deepEqual(metrics.layers, coated ? ['Base', 'SiO2'] : ['Base']);
         assert.equal(metrics.owner, 'wafercad-physical-pyramid-slab-v1');
         assert.equal(metrics.axesHidden, 'true');
         assert.ok(metrics.canvasWidth > 100 && metrics.canvasHeight > 100);
@@ -136,8 +140,8 @@ try {
           };
         });
         assert.equal(metrics.owner, 'wafercad-physical-pyramid-slab-v1');
-        assert.equal(metrics.zMin, -130);
-        assert.equal(metrics.zMax, 130);
+        assert.equal(metrics.zMin, coated ? -130.05 : -130);
+        assert.equal(metrics.zMax, coated ? 130.05 : 130);
         if (coated) assert.ok(metrics.oxideSamples > 10, 'Native Workstation misses oxide');
         assert.ok(
           metrics.coloredSamples > 300,
