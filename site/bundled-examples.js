@@ -241,6 +241,36 @@ export const BUNDLED_EXAMPLES = Object.freeze([
     ],
     tags: ['Literature', 'Metalens', 'TiO₂', 'Lift-off', 'EBL / RIE', 'Illustrative XY'],
   },
+  {
+    id: 'tcmos-ternary-inverter-130nm',
+    title: 'Tunnelling-based T-CMOS inverter',
+    figure: 'Jeong et al. · Nature Electronics (2019) Fig. 1a–b',
+    kind: 'project',
+    level: 'CMOS literature reconstruction',
+    variants: ['T-CMOS · 23-Step Recipe', 'Conventional CMOS · comparison'],
+    path: './examples/tcmos-ternary-inverter-130nm.wafercad',
+    filename: 'tcmos-ternary-inverter-130nm.wafercad',
+    previewProject: {
+      path: './examples/previews/tcmos-ternary-inverter-130nm.wafercad',
+      filename: 'tcmos-ternary-inverter-preview.wafercad',
+    },
+    preview: {
+      path: './examples/thumbnails/tcmos-inverter-layout-schematic.svg',
+      view: 'three',
+      alt: 'Illustrative source-vector Mask schematic of the T-CMOS inverter, not a 3D rendering',
+      label: 'Source SVG Mask · schematic only; explore the live 3D preview',
+    },
+    summary:
+      'A complementary tunnelling-based inverter with eight source-vector Mask layers, 218 W contact sites, a replayable 23-step process and T-CMOS / conventional CMOS History variants. The illustrative 4×4 global-routed engineering prototype is separate.',
+    sources: [
+      {
+        citation: 'Jeong et al., tunnelling-based ternary CMOS technology, Nature Electronics (2019), Fig. 1a–b.',
+        doi: '10.1038/s41928-019-0272-8',
+        href: 'https://doi.org/10.1038/s41928-019-0272-8',
+      },
+    ],
+    tags: ['Literature', 'T-CMOS', 'Mask', 'Recipe', 'History', 'Variants'],
+  },
 ]);
 
 export function bundledExampleById(id) {
