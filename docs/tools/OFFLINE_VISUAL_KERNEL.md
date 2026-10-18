@@ -20,8 +20,12 @@ human actually inspects it. See [CI visual-first guidance](../CI.md).
 
 Both tiers are read-only and do not establish scientific/History/Recovery or
 final Quality acceptance. In managed Chromium environments where navigation
-is policy-blocked, Tier B remains **unverified** rather than being replaced
-by simulated images. Do not bypass administrator browser policy.
+is policy-blocked, normal-origin Tier B remains **unverified**. **Before
+declaring native 3D diagnosis blocked, reuse the existing
+`scripts/offline-native-app-capture.py`** (commands below), which can fall
+back to `about:blank` with the real application/Three.js source. That is
+partial native Renderer evidence, not full app-origin acceptance. Do not
+modify or bypass administrator browser policy, or substitute simulated images.
 
 The read-only visual kernel is a developer tool. It **does not start WaferCAD**, navigate to `localhost`, require `file://` access in Chromium or change project / History state.
 
